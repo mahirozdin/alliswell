@@ -1,0 +1,42 @@
+name: Bug report
+description: Something is broken
+title: '[Bug] '
+labels: [bug]
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - API (apps/api)
+        - App (apps/app)
+        - Infra / Docker
+        - Docs
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      placeholder: 'OS, Node/Flutter version, how you run it (compose / local), commit hash'
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      render: shell

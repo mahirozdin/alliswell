@@ -1,0 +1,74 @@
+name: alliswell
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-alliswell_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-alliswell}
+      MYSQL_USER: ${MYSQL_USER:-alliswell}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-alliswell_dev}
+    ports:
+      - '${MYSQL_PORT:-3306}:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Run the API in a container too: `docker compose --profile full up`
+  # (default dev workflow runs the API on the host with `npm run dev`)
+  api:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_USER: ${MYSQL_USER:-alliswell}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:-alliswell_dev}
+      DATABASE_NAME: ${MYSQL_DATABASE:-alliswell}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '${API_PORT:-3000}:3000'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Optional DB admin UI: `docker compose --profile tools up adminer`
+  adminer:
+    profiles: [tools]
+    image: adminer:4
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    depends_on:
+      - mysql
+
+volumes:
+  mysql_data:
+  redis_data:

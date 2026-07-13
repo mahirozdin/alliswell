@@ -1,0 +1,25 @@
+# --- Node ---
+node_modules/
+npm-debug.log*
+coverage/
+*.tsbuildinfo
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- macOS ---
+.DS_Store
+
+# --- IDE ---
+.idea/
+.vscode/
+*.iml
+
+# --- Logs ---
+*.log
+
+# --- Build artifacts ---
+dist/
+build/

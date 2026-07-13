@@ -1,0 +1,30 @@
+{
+  "name": "alliswell",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AllisWell — open-source, self-hosted productivity hub: tasks, projects, notes, documents, calendar sync and reminders.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/api"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @alliswell/api",
+    "start": "npm run start -w @alliswell/api",
+    "lint": "npm run lint -w @alliswell/api",
+    "format": "npm run format -w @alliswell/api",
+    "format:check": "npm run format:check -w @alliswell/api",
+    "test": "npm run test -w @alliswell/api",
+    "test:integration": "npm run test:integration -w @alliswell/api",
+    "db:migrate": "npm run db:migrate -w @alliswell/api",
+    "db:rollback": "npm run db:rollback -w @alliswell/api",
+    "check:no-ts": "bash scripts/check-no-ts.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mahirtahaozdin/alliswell"
+  }
+}

@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (lint, tests, migrations)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root
+          MYSQL_DATABASE: alliswell
+          MYSQL_USER: alliswell
+          MYSQL_PASSWORD: alliswell_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pci_root --silent"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+
+    env:
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: '3306'
+      DATABASE_USER: alliswell
+      DATABASE_PASSWORD: alliswell_ci
+      DATABASE_NAME: alliswell
+      REDIS_URL: redis://127.0.0.1:6379
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Policy — no TypeScript
+        run: npm run check:no-ts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Run migrations (fresh MySQL)
+        run: npm run db:migrate
+
+      - name: Rollback + re-apply migrations (down() paths work)
+        run: npm run db:rollback && npm run db:migrate
+
+      - name: Integration tests
+        run: npm run test:integration
+
+  app:
+    name: Flutter (analyze, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: apps/app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Tests
+        run: flutter test
