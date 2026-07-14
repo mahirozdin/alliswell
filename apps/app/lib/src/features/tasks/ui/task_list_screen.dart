@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../screens/home_shell.dart';
 import '../../../sections.dart';
+import '../../../widgets/status_views.dart';
 import '../providers.dart';
 import 'quick_add_bar.dart';
 import 'task_tile.dart';
@@ -25,59 +26,27 @@ class InboxScreen extends ConsumerWidget {
             onAdd: (title) =>
                 ref.read(inboxTasksProvider.notifier).quickAdd(title),
           ),
-          const Divider(height: 1),
           Expanded(
             child: tasks.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('$error', textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(inboxTasksProvider),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
-                    ),
-                  ],
-                ),
+              error: (error, _) => AwErrorState(
+                message: '$error',
+                onRetry: () => ref.invalidate(inboxTasksProvider),
               ),
               data: (items) => items.isEmpty
-                  ? const _EmptyInbox()
-                  : ListView.separated(
+                  ? AwEmptyState(
+                      icon: AppSection.inbox.selectedIcon,
+                      title: 'Inbox zero',
+                      message: AppSection.inbox.description,
+                    )
+                  : ListView.builder(
+                      padding: awListPadding(context),
                       itemCount: items.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) =>
                           TaskTile(task: items[index]),
                     ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyInbox extends StatelessWidget {
-  const _EmptyInbox();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            AppSection.inbox.selectedIcon,
-            size: 64,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 12),
-          Text('Inbox zero', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(AppSection.inbox.description, style: theme.textTheme.bodyMedium),
         ],
       ),
     );

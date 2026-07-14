@@ -7,6 +7,7 @@ import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/tasks/ui/task_detail_screen.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -58,15 +59,16 @@ void main() {
     expect(find.textContaining('Today ·'), findsOneWidget);
     expect(find.text('Gecikmiş iş'), findsOneWidget);
 
-    // Lower groups live below the fold of the lazy list — scroll in stages.
+    // Lower groups live below the fold of the lazy list — scroll each group
+    // HEADER into view (rows alone can leave the header offstage above).
     await tester.dragUntilVisible(
-      find.text('Uzak iş'),
+      find.textContaining('Later ·'),
       find.byType(ListView),
       const Offset(0, -120),
     );
     expect(find.textContaining('Later ·'), findsOneWidget);
     await tester.dragUntilVisible(
-      find.text('Tarihsiz iş'),
+      find.textContaining('No date ·'),
       find.byType(ListView),
       const Offset(0, -120),
     );
@@ -114,7 +116,13 @@ void main() {
 
     expect(find.textContaining('Selected day ·'), findsOneWidget);
     expect(find.text('Seçilen gün işi'), findsOneWidget);
-    // The other group is still there, just dimmed.
+    // The other group is still there, just dimmed — scroll its row into view
+    // (the lazy list only materializes visible rows).
+    await tester.dragUntilVisible(
+      find.text('Bugünkü iş'),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
     expect(find.textContaining('Today ·'), findsOneWidget);
     expect(
       tester
@@ -315,14 +323,36 @@ void main() {
     await tester.tap(find.text('Detaylı görev'));
     await tester.pumpAndSettle();
 
+    // The detail page scrolls; bring each control into view before tapping
+    // (sections live in cards below the fold on small windows).
+    final detailList = find.descendant(
+      of: find.byType(TaskDetailScreen),
+      matching: find.byType(ListView),
+    );
+
+    await tester.dragUntilVisible(
+      find.byKey(const Key('urgent-switch')),
+      detailList,
+      const Offset(0, -120),
+    );
     await tester.tap(find.byKey(const Key('urgent-switch')));
     await tester.pumpAndSettle();
     expect(api.tasks.single['isUrgent'], isTrue);
 
+    await tester.dragUntilVisible(
+      find.text('Focus'),
+      detailList,
+      const Offset(0, -120),
+    );
     await tester.tap(find.text('Focus'));
     await tester.pumpAndSettle();
     expect(api.tasks.single['tagIds'], [tag['id']]);
 
+    await tester.dragUntilVisible(
+      find.text('Hazırlık'),
+      detailList,
+      const Offset(0, -120),
+    );
     await tester.tap(find.text('Hazırlık'));
     await tester.pumpAndSettle();
     final checklist = (api.tasks.single['checklist'] as List)

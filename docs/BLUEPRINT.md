@@ -655,6 +655,23 @@ POST /api/v1/notes
 
 ## 12. Flutter ekranları
 
+### 12.0 Tasarım dili — "AllisWell Glass" (kalıcı standart)
+
+_(Eklendi 2026-07-15, tasarım turu 1 — ADR-0005. Tek kaynak:
+[docs/DESIGN.md](DESIGN.md); bu bölüm özettir, çelişkide DESIGN.md kazanır.)_
+
+Apple'ın 2026 "Liquid Glass" estetiğinden esinlenen ama **UX'i estetiğin
+önüne koyan** tek tasarım dili: arka planda sakin bir aurora yıkaması,
+navigasyon çubuğu/rayında buzlu cam (backdrop blur), **okunan ve dokunulan
+her şey ise opak, yüksek kontrastlı yüzeylerde**. Girdi alanları her zaman
+dolgulu + görünür kenarlıklı + 2 px odak halkalı; dokunma hedefleri ≥ 44 px;
+metin kontrastı her iki temada ≥ 4.5:1, ikon/kenarlık ≥ 3:1 (palet
+`scripts/design/contrast.py` ile doğrulanır). Renk/boşluk/köşe değerleri
+yalnızca `apps/app/lib/src/theme/` token'larından gelir; hex asla widget'a
+yazılmaz. **Bundan sonraki TÜM geliştirmelerde tasarım bütünlüğünün
+sürdürülmesi esastır** — yeni ekranlar bu dili devralır, sapmalar aynı
+değişiklikte DESIGN.md'ye işlenir (AGENTS.md sert kural 11).
+
 ### 12.1 Ana navigasyon
 
 Home • Inbox • Calendar • Projects • Notes • Search • Settings

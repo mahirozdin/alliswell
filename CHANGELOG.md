@@ -5,6 +5,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed (design round 1 — 2026-07-15)
+
+- **"AllisWell Glass" design system** (ADR-0005, spec in `docs/DESIGN.md`, binding via
+  AGENTS.md hard rule 11): full visual refresh of every screen. Liquid-Glass-inspired but
+  UX-first — frosted-glass navigation chrome over a static aurora wash, while all content,
+  forms and sheets stay on solid, WCAG-verified surfaces (text ≥ 4.5:1, icons/borders ≥ 3:1
+  in BOTH themes; guard script `scripts/design/contrast.py`).
+- Hand-tuned light/dark `ColorScheme`s + `AwTokens` design tokens replace the default
+  `fromSeed` theme; components (inputs, buttons, cards, sheets, dialogs, chips, nav, snackbar,
+  pickers) are themed centrally. Lists became rounded card rows; checkboxes are circular;
+  sheets gained drag handles and width caps on desktop.
+- **Accessibility/UX fixes shipped with the restyle:** priority flags and favorite/pin stars
+  now use per-theme colors with ≥ 3:1 contrast (old amber-on-white was ~2:1); inputs always
+  show a visible border + 2 px focus ring; password fields gained show/hide toggles; form
+  errors render as icon + text banners (never color-only); overdue dates are flagged in red
+  with the word "Overdue"; empty/error states are shared widgets with a Retry path; all
+  icon actions have ≥ 44 px targets and tooltips.
+- App test contract updated with the redesign: `taskPriorityColor(priority, brightness)`
+  (hues fixed, lightness per theme) and scroll-aware widget-test finders.
+
 ### Fixed (feedback round 3 — 2026-07-15)
 
 - **Web task edits never saved:** the API's CORS preflight only allowed GET/HEAD/POST, so

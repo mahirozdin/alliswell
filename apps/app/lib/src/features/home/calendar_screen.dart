@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../screens/home_shell.dart';
+import '../../theme/tokens.dart';
+import '../../widgets/status_views.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/task_tile.dart';
 import 'month_calendar.dart';
@@ -21,7 +23,10 @@ class CalendarScreen extends ConsumerWidget {
       appBar: buildSectionAppBar(context, 'Calendar'),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
+        error: (error, _) => AwErrorState(
+          message: '$error',
+          onRetry: () => ref.invalidate(openTasksProvider),
+        ),
         data: (items) {
           final day = selectedDay ?? dayOf(DateTime.now());
           final dayTasks = [
@@ -35,37 +40,55 @@ class CalendarScreen extends ConsumerWidget {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: MonthCalendar(
-                      markedDays: daysWithTasks(items),
-                      selectedDay: selectedDay,
-                      onDaySelected: (d) =>
-                          ref.read(selectedDayProvider.notifier).select(d),
+                    padding: const EdgeInsets.fromLTRB(
+                      AwSpace.x4,
+                      AwSpace.x2,
+                      AwSpace.x4,
+                      AwSpace.x3,
+                    ),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AwSpace.x3),
+                        child: MonthCalendar(
+                          markedDays: daysWithTasks(items),
+                          selectedDay: selectedDay,
+                          onDaySelected: (d) =>
+                              ref.read(selectedDayProvider.notifier).select(d),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-              const Divider(height: 1),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                padding: const EdgeInsets.fromLTRB(
+                  AwSpace.x5,
+                  AwSpace.x2,
+                  AwSpace.x5,
+                  AwSpace.x1,
+                ),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}'
                     ' · ${dayTasks.length} task${dayTasks.length == 1 ? '' : 's'}',
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.4,
+                    ),
                   ),
                 ),
               ),
               Expanded(
                 child: dayTasks.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Nothing due this day.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
+                    ? const AwEmptyState(
+                        icon: Icons.event_available_outlined,
+                        title: 'Free day',
+                        message: 'Nothing due this day.',
                       )
                     : ListView(
+                        padding: awListPadding(context),
                         children: [
                           for (final task in dayTasks) TaskTile(task: task),
                         ],

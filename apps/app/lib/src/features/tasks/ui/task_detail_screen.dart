@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../theme/tokens.dart';
+import '../../../widgets/status_views.dart';
 import '../../projects/data/project.dart';
 import '../../tags/tags.dart';
 import '../data/task.dart';
@@ -113,117 +115,187 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               (api, id) => task.isCompleted ? api.reopen(id) : api.complete(id),
             ),
           ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Editable in place — autosaves after a pause (feedback round 3).
-          TextField(
-            key: const Key('task-title'),
-            controller: _title,
-            maxLines: null,
-            onChanged: _onTitleChanged,
-            decoration: const InputDecoration(
-              hintText: 'Task title',
-              border: InputBorder.none,
-              isDense: true,
-            ),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-            ),
-          ),
-          if (task.description?.isNotEmpty == true) ...[
-            const SizedBox(height: 8),
-            Text(task.description!, style: theme.textTheme.bodyMedium),
-          ],
-          const SizedBox(height: 16),
-          Row(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: ListView(
+            padding: awListPadding(context, top: AwSpace.x2),
             children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: const Key('status-dropdown'),
-                  initialValue: task.status,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final status in kTaskStatuses)
-                      DropdownMenuItem(
-                        value: status,
-                        child: StatusLabel(status: status),
-                      ),
-                  ],
-                  onChanged: (v) {
-                    if (v != null && v != task.status) {
-                      _apply((api, id) => api.update(id, {'status': v}));
-                    }
-                  },
+              // Editable in place — autosaves after a pause (feedback round 3).
+              TextField(
+                key: const Key('task-title'),
+                controller: _title,
+                maxLines: null,
+                onChanged: _onTitleChanged,
+                decoration: const InputDecoration(
+                  hintText: 'Task title',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  filled: false,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                ),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  decoration: task.isCompleted
+                      ? TextDecoration.lineThrough
+                      : null,
+                  color: task.isCompleted
+                      ? theme.colorScheme.onSurfaceVariant
+                      : null,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  key: const Key('priority-dropdown'),
-                  initialValue: task.priority,
-                  decoration: const InputDecoration(
-                    labelText: 'Priority',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final priority in kTaskPriorities)
-                      DropdownMenuItem(
-                        value: priority,
-                        child: PriorityLabel(priority: priority),
+              if (task.description?.isNotEmpty == true) ...[
+                const SizedBox(height: 8),
+                Text(task.description!, style: theme.textTheme.bodyMedium),
+              ],
+              const SizedBox(height: AwSpace.x3),
+              _SectionCard(
+                title: 'Details',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            key: const Key('status-dropdown'),
+                            initialValue: task.status,
+                            decoration: const InputDecoration(
+                              labelText: 'Status',
+                            ),
+                            items: [
+                              for (final status in kTaskStatuses)
+                                DropdownMenuItem(
+                                  value: status,
+                                  child: StatusLabel(status: status),
+                                ),
+                            ],
+                            onChanged: (v) {
+                              if (v != null && v != task.status) {
+                                _apply(
+                                  (api, id) => api.update(id, {'status': v}),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            key: const Key('priority-dropdown'),
+                            initialValue: task.priority,
+                            decoration: const InputDecoration(
+                              labelText: 'Priority',
+                            ),
+                            items: [
+                              for (final priority in kTaskPriorities)
+                                DropdownMenuItem(
+                                  value: priority,
+                                  child: PriorityLabel(priority: priority),
+                                ),
+                            ],
+                            onChanged: (v) {
+                              if (v != null && v != task.priority) {
+                                _apply(
+                                  (api, id) => api.update(id, {'priority': v}),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    SwitchListTile(
+                      key: const Key('urgent-switch'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Urgent alarm'),
+                      subtitle: const Text(
+                        'Insistent reminder that must be acknowledged',
                       ),
+                      value: task.isUrgent,
+                      onChanged: (v) =>
+                          _apply((api, id) => api.update(id, {'isUrgent': v})),
+                    ),
+                    _DateRow(
+                      label: 'Due',
+                      value: task.dueAt,
+                      onPicked: (picked) => _apply(
+                        (api, id) => api.update(id, {
+                          'dueAt': picked?.toUtc().toIso8601String(),
+                        }),
+                      ),
+                    ),
+                    _DateRow(
+                      label: 'Remind',
+                      value: task.remindAt,
+                      onPicked: (picked) => _apply(
+                        (api, id) => api.update(id, {
+                          'remindAt': picked?.toUtc().toIso8601String(),
+                        }),
+                      ),
+                    ),
                   ],
-                  onChanged: (v) {
-                    if (v != null && v != task.priority) {
-                      _apply((api, id) => api.update(id, {'priority': v}));
-                    }
-                  },
+                ),
+              ),
+              const SizedBox(height: AwSpace.x3),
+              _SectionCard(
+                title: 'Tags',
+                child: _TagPicker(
+                  task: task,
+                  onApply: (action) => _apply(action),
+                ),
+              ),
+              const SizedBox(height: AwSpace.x3),
+              _SectionCard(
+                title: 'Checklist',
+                child: _Checklist(
+                  task: task,
+                  onApply: (action) => _apply(action),
                 ),
               ),
             ],
           ),
-          SwitchListTile(
-            key: const Key('urgent-switch'),
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Urgent alarm'),
-            subtitle: const Text(
-              'Insistent reminder that must be acknowledged',
+        ),
+      ),
+    );
+  }
+}
+
+/// Rounded surface card with a small uppercase-ish section header.
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AwSpace.x4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
             ),
-            value: task.isUrgent,
-            onChanged: (v) =>
-                _apply((api, id) => api.update(id, {'isUrgent': v})),
-          ),
-          _DateRow(
-            label: 'Due',
-            value: task.dueAt,
-            onPicked: (picked) => _apply(
-              (api, id) =>
-                  api.update(id, {'dueAt': picked?.toUtc().toIso8601String()}),
-            ),
-          ),
-          _DateRow(
-            label: 'Remind',
-            value: task.remindAt,
-            onPicked: (picked) => _apply(
-              (api, id) => api.update(id, {
-                'remindAt': picked?.toUtc().toIso8601String(),
-              }),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('Tags', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          _TagPicker(task: task, onApply: (action) => _apply(action)),
-          const SizedBox(height: 16),
-          Text('Checklist', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          _Checklist(task: task, onApply: (action) => _apply(action)),
-        ],
+            const SizedBox(height: AwSpace.x3),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -242,6 +314,7 @@ class _DateRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final local = value?.toLocal();
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -249,9 +322,13 @@ class _DateRow extends StatelessWidget {
       title: Text(label),
       subtitle: Text(
         local == null ? 'Not set' : local.toString().split('.').first,
+        style: TextStyle(
+          color: local == null ? scheme.onSurfaceVariant : scheme.onSurface,
+          fontWeight: local == null ? null : FontWeight.w600,
+        ),
       ),
       trailing: local == null
-          ? null
+          ? Icon(Icons.chevron_right, color: scheme.onSurfaceVariant)
           : IconButton(
               tooltip: 'Clear $label',
               icon: const Icon(Icons.close),

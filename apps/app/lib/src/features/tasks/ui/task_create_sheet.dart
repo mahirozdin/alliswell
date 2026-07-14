@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../theme/tokens.dart';
+import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
@@ -15,6 +17,7 @@ Future<void> showTaskCreateSheet(BuildContext context, {DateTime? initialDue}) {
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    constraints: const BoxConstraints(maxWidth: 560),
     builder: (_) => TaskCreateSheet(initialDue: initialDue),
   );
 }
@@ -115,7 +118,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
         child: Form(
           key: _formKey,
           child: Column(
@@ -129,10 +132,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 controller: _title,
                 autofocus: true,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'Title'),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Give the task a title'
                     : null,
@@ -142,12 +142,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String?>(
+                      isExpanded: true,
                       key: const Key('task-sheet-project'),
                       initialValue: _projectId,
-                      decoration: const InputDecoration(
-                        labelText: 'Project',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: const InputDecoration(labelText: 'Project'),
                       items: [
                         const DropdownMenuItem(
                           value: null,
@@ -182,12 +180,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       key: const Key('task-sheet-priority'),
                       initialValue: _priority,
-                      decoration: const InputDecoration(
-                        labelText: 'Priority',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: const InputDecoration(labelText: 'Priority'),
                       items: [
                         for (final priority in kTaskPriorities)
                           DropdownMenuItem(
@@ -201,61 +197,58 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                   ),
                 ],
               ),
-              ListTile(
-                key: const Key('task-sheet-due'),
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.flag_outlined),
-                title: const Text('Due'),
-                subtitle: Text(_format(_dueAt)),
-                trailing: _dueAt == null
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear due date',
-                        icon: const Icon(Icons.close),
-                        onPressed: () => setState(() => _dueAt = null),
-                      ),
+              const SizedBox(height: 12),
+              _SheetTile(
+                tileKey: const Key('task-sheet-due'),
+                icon: Icons.flag_outlined,
+                title: 'Due',
+                subtitle: _format(_dueAt),
+                isSet: _dueAt != null,
+                clearTooltip: 'Clear due date',
+                onClear: () => setState(() => _dueAt = null),
                 onTap: () async {
                   final picked = await _pickDateTime(_dueAt);
                   setState(() => _dueAt = picked);
                 },
               ),
-              ListTile(
-                key: const Key('task-sheet-remind'),
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.alarm),
-                title: const Text('Remind'),
-                subtitle: Text(_format(_remindAt)),
-                trailing: _remindAt == null
-                    ? null
-                    : IconButton(
-                        tooltip: 'Clear reminder',
-                        icon: const Icon(Icons.close),
-                        onPressed: () => setState(() => _remindAt = null),
-                      ),
+              const SizedBox(height: 8),
+              _SheetTile(
+                tileKey: const Key('task-sheet-remind'),
+                icon: Icons.alarm,
+                title: 'Remind',
+                subtitle: _format(_remindAt),
+                isSet: _remindAt != null,
+                clearTooltip: 'Clear reminder',
+                onClear: () => setState(() => _remindAt = null),
                 onTap: () async {
                   final picked = await _pickDateTime(_remindAt);
                   setState(() => _remindAt = picked);
                 },
               ),
-              SwitchListTile(
-                key: const Key('task-sheet-urgent'),
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Urgent alarm'),
-                subtitle: const Text(
-                  'Insistent reminder that must be acknowledged',
+              const SizedBox(height: 8),
+              _SheetSurface(
+                child: SwitchListTile(
+                  key: const Key('task-sheet-urgent'),
+                  title: const Text('Urgent alarm'),
+                  subtitle: const Text(
+                    'Insistent reminder that must be acknowledged',
+                  ),
+                  secondary: Icon(
+                    Icons.notification_important_outlined,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  value: _isUrgent,
+                  onChanged: (v) => setState(() => _isUrgent = v),
                 ),
-                value: _isUrgent,
-                onChanged: (v) => setState(() => _isUrgent = v),
               ),
               if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  key: const Key('task-sheet-error'),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                const SizedBox(height: 12),
+                AwInlineError(
+                  message: _error!,
+                  textKey: const Key('task-sheet-error'),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               FilledButton(
                 key: const Key('task-sheet-create'),
                 onPressed: _saving ? null : _create,
@@ -270,6 +263,73 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Filled rounded backdrop that makes tappable sheet rows read as controls.
+class _SheetSurface extends StatelessWidget {
+  const _SheetSurface({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    );
+  }
+}
+
+/// Date/reminder picker row: filled surface, chevron affordance, clear action.
+class _SheetTile extends StatelessWidget {
+  const _SheetTile({
+    required this.tileKey,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isSet,
+    required this.clearTooltip,
+    required this.onClear,
+    required this.onTap,
+  });
+
+  final Key tileKey;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isSet;
+  final String clearTooltip;
+  final VoidCallback onClear;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return _SheetSurface(
+      child: ListTile(
+        key: tileKey,
+        leading: Icon(icon, color: scheme.onSurfaceVariant),
+        title: Text(title),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: isSet ? scheme.onSurface : scheme.onSurfaceVariant,
+            fontWeight: isSet ? FontWeight.w600 : null,
+          ),
+        ),
+        trailing: isSet
+            ? IconButton(
+                tooltip: clearTooltip,
+                icon: const Icon(Icons.close),
+                onPressed: onClear,
+              )
+            : Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+        onTap: onTap,
       ),
     );
   }

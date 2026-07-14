@@ -3,10 +3,10 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
+import 'theme/theme.dart';
+import 'widgets/glass.dart';
 
-/// AllisWell brand seed color — matches the default project color in the API
-/// schema (`#2563EB`, see BLUEPRINT §10.2).
-const kSeedColor = Color(0xFF2563EB);
+export 'theme/theme.dart' show kSeedColor;
 
 class AllisWellApp extends ConsumerWidget {
   const AllisWellApp({super.key});
@@ -16,23 +16,16 @@ class AllisWellApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'AllisWell',
       debugShowCheckedModeBanner: false,
-      theme: _buildTheme(Brightness.light),
-      darkTheme: _buildTheme(Brightness.dark),
+      theme: buildAwTheme(Brightness.light),
+      darkTheme: buildAwTheme(Brightness.dark),
       themeMode: ThemeMode.system,
+      // The aurora wash paints once here, under every route; scaffolds use a
+      // translucent veil over it (see theme.dart / docs/DESIGN.md).
+      builder: (context, child) =>
+          AuroraBackground(child: child ?? const SizedBox.shrink()),
       // Required by flutter_quill's editor widgets (OPH-044).
       localizationsDelegates: FlutterQuillLocalizations.localizationsDelegates,
       routerConfig: ref.watch(routerProvider),
     );
   }
-}
-
-ThemeData _buildTheme(Brightness brightness) {
-  final colorScheme = ColorScheme.fromSeed(
-    seedColor: kSeedColor,
-    brightness: brightness,
-  );
-  return ThemeData(
-    colorScheme: colorScheme,
-    visualDensity: VisualDensity.adaptivePlatformDensity,
-  );
 }

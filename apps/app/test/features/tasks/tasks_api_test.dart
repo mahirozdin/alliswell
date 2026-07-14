@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/home/task_grouping.dart';
+import 'package:alliswell/src/theme/tokens.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/features/tasks/data/tasks_api.dart';
 import 'package:alliswell/src/features/tasks/ui/task_visuals.dart';
@@ -149,12 +150,17 @@ void main() {
     expect(icons['completed'], Icons.check_circle);
     expect(icons['inbox'], Icons.inbox_outlined);
 
-    // Priorities → colors; none stays neutral.
-    expect(taskPriorityColor('none'), isNull);
-    expect(taskPriorityColor('low'), const Color(0xFF10B981));
-    expect(taskPriorityColor('medium'), const Color(0xFFF59E0B));
-    expect(taskPriorityColor('high'), const Color(0xFFF97316));
-    expect(taskPriorityColor('urgent'), const Color(0xFFEF4444));
+    // Priorities → colors from the design tokens (docs/DESIGN.md): hues are
+    // fixed per priority, lightness adapts per brightness for contrast;
+    // none stays neutral in both modes.
+    for (final brightness in Brightness.values) {
+      final t = brightness == Brightness.dark ? AwTokens.dark : AwTokens.light;
+      expect(taskPriorityColor('none', brightness), isNull);
+      expect(taskPriorityColor('low', brightness), t.prioLow);
+      expect(taskPriorityColor('medium', brightness), t.prioMedium);
+      expect(taskPriorityColor('high', brightness), t.prioHigh);
+      expect(taskPriorityColor('urgent', brightness), t.prioUrgent);
+    }
   });
 
   test('daysWithTasks marks local due days once', () {

@@ -12,10 +12,11 @@ coverage/
 # --- macOS ---
 .DS_Store
 
-# --- IDE ---
+# --- IDE / local agent tooling ---
 .idea/
 .vscode/
 *.iml
+.claude/
 
 # --- Logs ---
 *.log

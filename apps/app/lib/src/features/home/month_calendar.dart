@@ -66,26 +66,29 @@ class _MonthCalendarState extends State<MonthCalendar> {
       children: [
         Row(
           children: [
-            const SizedBox(width: 4),
+            const SizedBox(width: 8),
             Text(
               '${_months[_month.month - 1]} ${_month.year}',
               style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const Spacer(),
             IconButton(
               tooltip: 'Previous month',
               icon: const Icon(Icons.chevron_left),
+              color: theme.colorScheme.onSurfaceVariant,
               onPressed: () => _shiftMonth(-1),
             ),
             IconButton(
               tooltip: 'Next month',
               icon: const Icon(Icons.chevron_right),
+              color: theme.colorScheme.onSurfaceVariant,
               onPressed: () => _shiftMonth(1),
             ),
           ],
         ),
+        const SizedBox(height: 4),
         Row(
           children: [
             for (final label in _weekdays)
@@ -95,6 +98,8 @@ class _MonthCalendarState extends State<MonthCalendar> {
                     label,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
                     ),
                   ),
                 ),
@@ -156,49 +161,62 @@ class _DayCell extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final textColor = isSelected
         ? scheme.onPrimary
+        : isToday
+        ? scheme.primary
         : inMonth
         ? scheme.onSurface
-        : scheme.onSurfaceVariant.withValues(alpha: 0.5);
+        : scheme.onSurfaceVariant.withValues(alpha: 0.55);
 
     return InkWell(
       customBorder: const CircleBorder(),
       onTap: () => onTap(day),
-      child: SizedBox(
-        height: 44,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? scheme.primary : null,
-                border: isToday && !isSelected
-                    ? Border.all(color: scheme.primary)
-                    : null,
-              ),
-              child: Text(
-                '${day.day}',
-                style: TextStyle(
-                  color: textColor,
-                  fontWeight: isToday || isSelected ? FontWeight.bold : null,
-                  fontSize: 13,
+      child: Semantics(
+        button: true,
+        selected: isSelected,
+        label:
+            '${day.day}${isToday ? ', today' : ''}${hasTasks ? ', has tasks' : ''}',
+        child: SizedBox(
+          height: 46,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOutCubic,
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? scheme.primary : null,
+                  border: isToday && !isSelected
+                      ? Border.all(color: scheme.primary, width: 1.5)
+                      : null,
+                ),
+                child: Text(
+                  '${day.day}',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: isToday || isSelected
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    fontSize: 13,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
-            ),
-            SizedBox(
-              height: 6,
-              child: hasTasks
-                  ? Icon(
-                      Icons.circle,
-                      size: 5,
-                      color: isSelected ? scheme.primary : scheme.tertiary,
-                    )
-                  : null,
-            ),
-          ],
+              SizedBox(
+                height: 6,
+                child: hasTasks
+                    ? Icon(
+                        Icons.circle,
+                        size: 5,
+                        color: isSelected ? scheme.primary : scheme.tertiary,
+                      )
+                    : null,
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (feedback round 3: CORS PATCH fix + görev görsel standardı)
+**Last updated:** 2026-07-15 (design round 1: "AllisWell Glass" tasarım sistemi)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -20,6 +20,18 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **Design round 1 (2026-07-15):** "AllisWell Glass" tasarım sistemi — KALICI görsel dil
+  (ADR-0005; tek kaynak `docs/DESIGN.md`; AGENTS.md sert kural 11 → bundan sonraki TÜM UI
+  işlerinde tasarım bütünlüğü zorunlu). Liquid-Glass esinli ama UX-önce: cam yalnız
+  navigasyon chrome'unda (`widgets/glass.dart`), içerik opak + WCAG-doğrulanmış (metin
+  ≥4.5:1, ikon/kenarlık ≥3:1 — bekçi: `scripts/design/contrast.py`, FAILURES: 0). El
+  ayarı light/dark ColorScheme + `AwTokens` (`lib/src/theme/`), tüm bileşen temaları
+  merkezî; kart-satır listeler, dairesel checkbox, drag-handle'lı/genişlik-sınırlı
+  sheet'ler, görünür input kenarlığı + 2px odak halkası, şifre göster/gizle, ikonlu hata
+  bantları, kırmızı "Overdue", ortak `AwEmptyState/AwErrorState`. Öncelik/yıldız renkleri
+  tema-duyarlı token'lara taşındı (`taskPriorityColor(priority, brightness)` — eski amber
+  beyazda ~2:1 idi). Widget testleri scroll-bilinçli finder'lara güncellendi (69/69 yeşil,
+  analyze temiz). Web'de light+dark, geniş+mobil görsel doğrulama yapıldı (design@ hesabı).
 - **Feedback round 3 (2026-07-15):** KRİTİK — @fastify/cors default'u yüzünden web'den
   PATCH/PUT/DELETE preflight'ta engelleniyordu (görev tarihi kaydetme vb. hiç sunucuya
   ulaşmıyordu); metotlar artık explicit + preflight regresyon testi var. Görev başlığı

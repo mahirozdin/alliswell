@@ -5,6 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../theme/tokens.dart';
 import '../data/delta_markdown.dart';
 import '../data/note.dart';
 import '../providers.dart';
@@ -156,13 +157,14 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 720),
       builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
         child: SingleChildScrollView(
           child: SelectableText(
             markdown.isEmpty ? '*Empty note*' : markdown,
             key: const Key('markdown-preview'),
-            style: const TextStyle(fontFamily: 'monospace'),
+            style: const TextStyle(fontFamily: 'monospace', height: 1.6),
           ),
         ),
       ),
@@ -208,7 +210,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             tooltip: _isPinned ? 'Unpin' : 'Pin',
             icon: Icon(
               _isPinned ? Icons.star : Icons.star_border,
-              color: _isPinned ? Colors.amber : null,
+              color: _isPinned ? context.awTokens.warning : null,
             ),
             onPressed: _togglePin,
           ),
@@ -233,47 +235,68 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       ),
       body: Column(
         children: [
-          QuillSimpleToolbar(
-            controller: _quill,
-            config: const QuillSimpleToolbarConfig(
-              multiRowsDisplay: false,
-              showFontFamily: false,
-              showFontSize: false,
-              showSubscript: false,
-              showSuperscript: false,
-              showAlignmentButtons: false,
-              showIndent: false,
-              showDirection: false,
-              showSearchButton: false,
-            ),
-          ),
-          const Divider(height: 1),
-          // Apple-Notes style: the title is the document's fixed first block —
-          // an H1 the note content flows under (feedback round 1).
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: TextField(
-              key: const Key('note-title'),
-              controller: _title,
-              maxLines: null,
-              decoration: const InputDecoration(
-                hintText: 'Title',
-                border: InputBorder.none,
-                isDense: true,
-              ),
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                child: QuillSimpleToolbar(
+                  controller: _quill,
+                  config: const QuillSimpleToolbarConfig(
+                    multiRowsDisplay: false,
+                    showFontFamily: false,
+                    showFontSize: false,
+                    showSubscript: false,
+                    showSuperscript: false,
+                    showAlignmentButtons: false,
+                    showIndent: false,
+                    showDirection: false,
+                    showSearchButton: false,
+                  ),
+                ),
               ),
             ),
           ),
+          // Apple-Notes style: the title is the document's fixed first block —
+          // an H1 the note content flows under (feedback round 1). Content is
+          // width-capped for a readable measure on wide screens.
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: QuillEditor.basic(
-                controller: _quill,
-                config: const QuillEditorConfig(
-                  placeholder: 'Start writing…',
-                  padding: EdgeInsets.only(top: 8, bottom: 16),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: TextField(
+                        key: const Key('note-title'),
+                        controller: _title,
+                        maxLines: null,
+                        decoration: const InputDecoration(
+                          hintText: 'Title',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          filled: false,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 6),
+                        ),
+                        style: theme.textTheme.headlineMedium,
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: QuillEditor.basic(
+                          controller: _quill,
+                          config: const QuillEditorConfig(
+                            placeholder: 'Start writing…',
+                            padding: EdgeInsets.only(top: 8, bottom: 24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

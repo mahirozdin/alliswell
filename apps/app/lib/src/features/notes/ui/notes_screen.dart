@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/persisted_prefs.dart';
+import '../../../theme/tokens.dart';
+import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
 import '../data/note.dart';
 import '../providers.dart';
@@ -89,8 +91,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                           ref.read(notesQueryProvider.notifier).setSearch('');
                         },
                       ),
-                border: const OutlineInputBorder(),
-                isDense: true,
               ),
             ),
           ),
@@ -114,31 +114,20 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               ],
             ),
           ),
-          const Divider(height: 1),
           Expanded(
             child: notes.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('$error', textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(notesListProvider),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retry'),
-                    ),
-                  ],
-                ),
+              error: (error, _) => AwErrorState(
+                message: '$error',
+                onRetry: () => ref.invalidate(notesListProvider),
               ),
               data: (items) => items.isEmpty
                   ? _EmptyNotes(archived: query.filter == NotesFilter.archived)
                   : isGrid
                   ? _NotesGrid(notes: items, projectNames: projectNames)
-                  : ListView.separated(
+                  : ListView.builder(
+                      padding: awListPadding(context, extraBottom: 72),
                       itemCount: items.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) => NoteTile(
                         note: items[index],
                         projectName: projectNames[items[index].projectId],
@@ -168,24 +157,31 @@ class NoteTile extends ConsumerWidget {
       ?projectName,
     ].join(' · ');
 
-    return ListTile(
-      leading: IconButton(
-        key: Key('pin-${note.id}'),
-        tooltip: note.isPinned ? 'Unpin' : 'Pin',
-        icon: Icon(
-          note.isPinned ? Icons.star : Icons.star_border,
-          color: note.isPinned ? Colors.amber : null,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+          leading: IconButton(
+            key: Key('pin-${note.id}'),
+            tooltip: note.isPinned ? 'Unpin' : 'Pin',
+            icon: Icon(
+              note.isPinned ? Icons.star : Icons.star_border,
+              color: note.isPinned ? context.awTokens.warning : null,
+            ),
+            onPressed: () => toggleNotePinned(ref, note),
+          ),
+          title: Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            note.snippet.isEmpty ? meta : '${note.snippet}\n$meta',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: _NoteMenu(note: note),
+          onTap: () => context.go('/notes/${note.id}'),
         ),
-        onPressed: () => toggleNotePinned(ref, note),
       ),
-      title: Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        note.snippet.isEmpty ? meta : '${note.snippet}\n$meta',
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: _NoteMenu(note: note),
-      onTap: () => context.go('/notes/${note.id}'),
     );
   }
 }
@@ -231,7 +227,7 @@ class _NotesGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 220,
         childAspectRatio: 210 / 297, // A4
@@ -246,37 +242,50 @@ class _NotesGrid extends ConsumerWidget {
           child: InkWell(
             onTap: () => context.go('/notes/${note.id}'),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
-                        child: Text(
-                          note.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            note.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall,
+                          ),
                         ),
                       ),
-                      InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: () => toggleNotePinned(ref, note),
-                        child: Icon(
+                      IconButton(
+                        tooltip: note.isPinned ? 'Unpin' : 'Pin',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => toggleNotePinned(ref, note),
+                        icon: Icon(
                           note.isPinned ? Icons.star : Icons.star_border,
                           size: 18,
-                          color: note.isPinned ? Colors.amber : null,
+                          color: note.isPinned
+                              ? context.awTokens.warning
+                              : null,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 2),
                   Expanded(
-                    child: Text(
-                      note.snippet,
-                      overflow: TextOverflow.fade,
-                      style: theme.textTheme.bodySmall,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Text(
+                        note.snippet,
+                        overflow: TextOverflow.fade,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          height: 1.45,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -306,30 +315,12 @@ class _EmptyNotes extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            archived ? Icons.archive_outlined : Icons.description,
-            size: 64,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            archived ? 'Archive is empty' : 'No notes here',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            archived
-                ? 'Archived notes land here for safekeeping.'
-                : 'Capture the first one with the + button.',
-            style: theme.textTheme.bodyMedium,
-          ),
-        ],
-      ),
+    return AwEmptyState(
+      icon: archived ? Icons.archive_outlined : Icons.description,
+      title: archived ? 'Archive is empty' : 'No notes here',
+      message: archived
+          ? 'Archived notes land here for safekeeping.'
+          : 'Capture the first one with the + button.',
     );
   }
 }

@@ -30,6 +30,14 @@ in [docs/TASKS.md](docs/TASKS.md); the current position in [docs/STATE.md](docs/
    `refactor(api): …`, `test(api): …`. Scope is `api`, `app`, or omitted for repo-wide.
 10. **Do risky things in writing first.** Large refactors and data migrations get a short plan
     (in the task section of `docs/TASKS.md` or an ADR) *before* implementation.
+11. **One design system, forever.** All UI follows the "AllisWell Glass" design language defined
+    in [docs/DESIGN.md](docs/DESIGN.md) (ADR-0005) — **visual continuity is mandatory for every
+    future feature**, screen and platform. Concretely: colors/spacing/radii come from
+    `apps/app/lib/src/theme/` tokens (no raw hex or `Colors.*` in widgets), glass/blur is
+    chrome-only (never under body text), text contrast ≥ 4.5:1 and icon/border contrast ≥ 3:1 in
+    BOTH themes (`python3 scripts/design/contrast.py` must pass after palette edits), tap targets
+    ≥ 44 px, and every UI change is checked in light *and* dark before it is done. Deviations
+    require amending docs/DESIGN.md in the same change.
 
 ## 2. The "do the next task" protocol
 
@@ -86,6 +94,11 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
 - Riverpod for state, go_router for navigation, feature-first folders under `lib/src/features/`.
 - Keep widgets small; extract reusable UI to `lib/src/widgets/`.
 - `dart format .` before committing; zero `flutter analyze` warnings.
+- **UI = docs/DESIGN.md.** Theme/tokens live in `lib/src/theme/` (`buildAwTheme`, `AwTokens`,
+  `AwSpace`/`AwRadius`/`AwMotion`); glass chrome + aurora in `lib/src/widgets/glass.dart`;
+  shared empty/error/inline-error states in `lib/src/widgets/status_views.dart` (use them —
+  don't hand-roll new ones). Lists are card rows with `awListPadding(context)`; favorite/pin
+  stars use `AwTokens.warning`; priority colors only via `taskPriorityColor*` helpers.
 
 ## 5. Testing strategy
 

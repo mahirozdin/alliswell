@@ -80,12 +80,10 @@ class _QuickAddBarState extends State<QuickAddBar> {
                   ),
                 )
               : IconButton(
-                  icon: const Icon(Icons.send),
+                  icon: const Icon(Icons.arrow_upward),
                   tooltip: 'Add task',
                   onPressed: _submit,
                 ),
-          border: const OutlineInputBorder(),
-          isDense: true,
         ),
       ),
     );

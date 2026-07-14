@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
+import '../../../widgets/status_views.dart';
 import '../data/project.dart';
 import '../providers.dart';
 
@@ -31,6 +32,7 @@ Future<void> showProjectEditSheet(BuildContext context, {Project? project}) {
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    constraints: const BoxConstraints(maxWidth: 560),
     builder: (_) => ProjectEditSheet(project: project),
   );
 }
@@ -111,7 +113,7 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
         child: Form(
           key: _formKey,
           child: Column(
@@ -127,15 +129,21 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                 controller: _name,
                 autofocus: !_isEdit,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  border: OutlineInputBorder(),
-                ),
+                decoration: const InputDecoration(labelText: 'Name'),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Give the project a name'
                     : null,
               ),
               const SizedBox(height: 16),
+              Text(
+                'Color',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -162,11 +170,9 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
               if (_isEdit) ...[
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _status,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: const InputDecoration(labelText: 'Status'),
                   items: [
                     for (final status in kProjectStatuses)
                       DropdownMenuItem(value: status, child: Text(status)),
@@ -176,10 +182,9 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
               ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  key: const Key('project-error'),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                AwInlineError(
+                  message: _error!,
+                  textKey: const Key('project-error'),
                 ),
               ],
               const SizedBox(height: 16),
@@ -258,14 +263,21 @@ class _MoreColorsButton extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Theme.of(context).colorScheme.outline),
+      child: Tooltip(
+        message: 'More colors',
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          child: Icon(
+            Icons.palette_outlined,
+            size: 20,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
-        child: const Icon(Icons.palette_outlined, size: 20),
       ),
     );
   }
@@ -284,25 +296,34 @@ class _ColorSwatchDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check mark adapts to the swatch so it stays visible on light colors.
+    final checkColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+        ? Colors.white
+        : Colors.black87;
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: selected
-              ? Border.all(
-                  color: Theme.of(context).colorScheme.onSurface,
-                  width: 3,
-                )
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: selected
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    width: 3,
+                  )
+                : null,
+          ),
+          child: selected
+              ? Icon(Icons.check, size: 18, color: checkColor)
               : null,
         ),
-        child: selected
-            ? const Icon(Icons.check, size: 18, color: Colors.white)
-            : null,
       ),
     );
   }

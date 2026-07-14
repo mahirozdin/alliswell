@@ -3,6 +3,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../widgets/status_views.dart';
 import '../../notes/data/note.dart';
 import '../../notes/providers.dart';
 import '../../notes/ui/notes_screen.dart';
@@ -68,6 +69,10 @@ class _ProjectDetail extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+            ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Delete'),
           ),
@@ -330,21 +335,22 @@ class _ProjectTasksTab extends ConsumerWidget {
           hintText: 'Add a task to this project…',
           onAdd: (title) => _add(ref, title),
         ),
-        const Divider(height: 1),
         Expanded(
           child: tasks.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(child: Text('$error')),
+            error: (error, _) => AwErrorState(
+              message: '$error',
+              onRetry: () => ref.invalidate(projectTasksProvider(projectId)),
+            ),
             data: (items) => items.isEmpty
-                ? const Center(
-                    child: Chip(
-                      avatar: Icon(Icons.check_circle_outline, size: 18),
-                      label: Text('No open tasks in this project'),
-                    ),
+                ? const AwEmptyState(
+                    icon: Icons.check_circle_outline,
+                    title: 'All clear',
+                    message: 'No open tasks in this project',
                   )
-                : ListView.separated(
+                : ListView.builder(
+                    padding: awListPadding(context),
                     itemCount: items.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) =>
                         TaskTile(task: items[index]),
                   ),
@@ -392,21 +398,22 @@ class _ProjectNotesTab extends ConsumerWidget {
             ),
           ),
         ),
-        const Divider(height: 1),
         Expanded(
           child: notes.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(child: Text('$error')),
+            error: (error, _) => AwErrorState(
+              message: '$error',
+              onRetry: () => ref.invalidate(projectNotesProvider(project.id)),
+            ),
             data: (items) => items.isEmpty
-                ? const Center(
-                    child: Chip(
-                      avatar: Icon(Icons.description_outlined, size: 18),
-                      label: Text('No notes attached to this project yet'),
-                    ),
+                ? const AwEmptyState(
+                    icon: Icons.description_outlined,
+                    title: 'No notes yet',
+                    message: 'No notes attached to this project yet',
                   )
-                : ListView.separated(
+                : ListView.builder(
+                    padding: awListPadding(context),
                     itemCount: items.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) =>
                         NoteTile(note: items[index]),
                   ),

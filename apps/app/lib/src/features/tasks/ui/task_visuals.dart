@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../theme/tokens.dart';
+
 /// Standard task visuals (feedback round 3): statuses get ICONS, priorities
 /// get COLORS — consistent across lists, detail dropdowns and create sheets.
 
@@ -15,15 +17,23 @@ IconData taskStatusIcon(String status) => switch (status) {
   _ => Icons.circle_outlined,
 };
 
-/// Fixed palette (matches the project swatches, theme-independent so the
-/// meaning never shifts): low=green, medium=amber, high=orange, urgent=red.
-Color? taskPriorityColor(String priority) => switch (priority) {
-  'low' => const Color(0xFF10B981),
-  'medium' => const Color(0xFFF59E0B),
-  'high' => const Color(0xFFF97316),
-  'urgent' => const Color(0xFFEF4444),
-  _ => null, // none → neutral
-};
+/// Priority → color. Hues are fixed (low=green, medium=amber, high=orange,
+/// urgent=red) so the MEANING never shifts; lightness adapts per brightness
+/// so the flag keeps ≥ 3:1 contrast on surfaces (AwTokens, docs/DESIGN.md).
+Color? taskPriorityColor(String priority, Brightness brightness) {
+  final t = brightness == Brightness.dark ? AwTokens.dark : AwTokens.light;
+  return switch (priority) {
+    'low' => t.prioLow,
+    'medium' => t.prioMedium,
+    'high' => t.prioHigh,
+    'urgent' => t.prioUrgent,
+    _ => null, // none → neutral
+  };
+}
+
+/// Convenience for widgets: resolves against the ambient theme.
+Color? taskPriorityColorOf(BuildContext context, String priority) =>
+    taskPriorityColor(priority, Theme.of(context).brightness);
 
 /// Icon + name, for status dropdown entries.
 class StatusLabel extends StatelessWidget {
@@ -56,7 +66,7 @@ class PriorityLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = taskPriorityColor(priority);
+    final color = taskPriorityColorOf(context, priority);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

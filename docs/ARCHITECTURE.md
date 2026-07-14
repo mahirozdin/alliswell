@@ -91,8 +91,13 @@ channel), URL-field marker `alliswell://task/{id}`; CalDAV connector deferred to
 
 ## 7. Flutter app design
 
-- **State:** Riverpod. **Navigation:** go_router with `StatefulShellRoute` (adaptive: rail ≥ 800px,
-  bottom bar below). **HTTP:** dio with auth interceptor (Epic 03).
+- **State:** Riverpod. **Navigation:** go_router with `StatefulShellRoute` (adaptive: glass rail
+  ≥ 800px, glass bottom bar below). **HTTP:** dio with auth interceptor (Epic 03).
+- **Design system ("AllisWell Glass", ADR-0005):** binding spec in [DESIGN.md](DESIGN.md).
+  Tokens + hand-tuned contrast-verified `ColorScheme`s in `lib/src/theme/` (`tokens.dart`,
+  `theme.dart`); glass chrome + aurora background in `lib/src/widgets/glass.dart`; shared
+  empty/error states in `lib/src/widgets/status_views.dart`; palette guard
+  `scripts/design/contrast.py`. Widgets never hardcode colors.
 - **Local-first (Phase 2):** drift/SQLite replica + outbox; repositories read local, sync in
   background. UI subscribes to local DB streams.
 - **Notifications (Phase 3):** flutter_local_notifications scheduled from local data; push (FCM)

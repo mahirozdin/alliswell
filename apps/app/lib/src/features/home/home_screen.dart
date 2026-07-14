@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/persisted_prefs.dart';
 import '../../screens/home_shell.dart';
+import '../../theme/tokens.dart';
+import '../../widgets/status_views.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
 import '../tasks/ui/task_create_sheet.dart';
@@ -54,19 +56,9 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('$error', textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => ref.invalidate(openTasksProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
-              ),
-            ],
-          ),
+        error: (error, _) => AwErrorState(
+          message: '$error',
+          onRetry: () => ref.invalidate(openTasksProvider),
         ),
         data: (items) {
           final groups = groupTasksForHome(
@@ -101,17 +93,25 @@ class HomeScreen extends ConsumerWidget {
                       child: Column(
                         children: [
                           quickAdd,
-                          const Divider(height: 1),
                           Expanded(child: _GroupedTaskList(groups: groups)),
                         ],
                       ),
                     ),
-                    const VerticalDivider(width: 1),
                     SizedBox(
-                      width: 340,
+                      width: 356,
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(12),
-                        child: calendar,
+                        padding: const EdgeInsets.fromLTRB(
+                          AwSpace.x1,
+                          AwSpace.x2,
+                          AwSpace.x4,
+                          AwSpace.x4,
+                        ),
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AwSpace.x3),
+                            child: calendar,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -128,26 +128,37 @@ class HomeScreen extends ConsumerWidget {
                         maxHeight: constraints.maxHeight * 0.5,
                       ),
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: calendar,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AwSpace.x4,
+                        ),
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AwSpace.x2),
+                            child: calendar,
+                          ),
+                        ),
                       ),
                     ),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      key: const Key('toggle-calendar'),
-                      onPressed: () => ref
-                          .read(homeCalendarVisibleProvider.notifier)
-                          .toggle(),
-                      icon: Icon(
-                        calendarVisible ? Icons.expand_less : Icons.expand_more,
-                      ),
-                      label: Text(
-                        calendarVisible ? 'Hide calendar' : 'Show calendar',
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: AwSpace.x2),
+                      child: TextButton.icon(
+                        key: const Key('toggle-calendar'),
+                        onPressed: () => ref
+                            .read(homeCalendarVisibleProvider.notifier)
+                            .toggle(),
+                        icon: Icon(
+                          calendarVisible
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                        ),
+                        label: Text(
+                          calendarVisible ? 'Hide calendar' : 'Show calendar',
+                        ),
                       ),
                     ),
                   ),
-                  const Divider(height: 1),
                   Expanded(child: _GroupedTaskList(groups: groups)),
                 ],
               );
@@ -168,39 +179,36 @@ class _GroupedTaskList extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (groups.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.beach_access_outlined,
-              size: 64,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 12),
-            Text('All caught up', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              'No open tasks — capture one in the Inbox.',
-              style: theme.textTheme.bodyMedium,
-            ),
-          ],
-        ),
+      return const AwEmptyState(
+        icon: Icons.beach_access_outlined,
+        title: 'All caught up',
+        message: 'No open tasks — capture one in the Inbox.',
       );
     }
 
     return ListView(
+      padding: awListPadding(context, extraBottom: 72),
       children: [
         for (final group in groups) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x1,
+              AwSpace.x4,
+              AwSpace.x1,
+              AwSpace.x2,
+            ),
             child: Text(
               '${group.bucket.label} · ${group.tasks.length}',
               style: theme.textTheme.labelLarge?.copyWith(
                 color: group.dimmed
-                    ? theme.colorScheme.onSurfaceVariant
-                    : theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
+                    ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)
+                    : switch (group.bucket) {
+                        HomeBucket.overdue => theme.colorScheme.error,
+                        HomeBucket.selectedDay => context.awTokens.link,
+                        _ => theme.colorScheme.onSurfaceVariant,
+                      },
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
               ),
             ),
           ),
@@ -211,7 +219,6 @@ class _GroupedTaskList extends StatelessWidget {
               highlighted: group.bucket == HomeBucket.selectedDay,
             ),
         ],
-        const SizedBox(height: 24),
       ],
     );
   }

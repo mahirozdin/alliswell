@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../widgets/status_views.dart';
 import '../providers.dart';
 import 'auth_messages.dart';
 import 'auth_scaffold.dart';
@@ -18,6 +19,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   bool _submitting = false;
+  bool _showPassword = false;
   String? _error;
 
   @override
@@ -62,7 +64,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'Email',
-                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.alternate_email),
                 ),
                 validator: (v) {
                   final value = v?.trim() ?? '';
@@ -76,12 +78,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               TextFormField(
                 controller: _password,
                 autofillHints: const [AutofillHints.password],
-                obscureText: true,
+                obscureText: !_showPassword,
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Password',
-                  border: OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    tooltip: _showPassword ? 'Hide password' : 'Show password',
+                    icon: Icon(
+                      _showPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
+                  ),
                 ),
                 validator: (v) =>
                     (v == null || v.isEmpty) ? 'Enter your password' : null,
@@ -91,11 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
-          Text(
-            _error!,
-            key: const Key('login-error'),
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
-          ),
+          AwInlineError(message: _error!, textKey: const Key('login-error')),
         ],
         const SizedBox(height: 16),
         FilledButton(

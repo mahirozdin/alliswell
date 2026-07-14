@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../sections.dart';
+import '../widgets/glass.dart';
 
-/// Adaptive shell: navigation rail on wide layouts (desktop/web/tablet),
-/// bottom navigation bar on narrow ones (phones).
+/// Adaptive shell: frosted-glass navigation rail on wide layouts
+/// (desktop/web/tablet), frosted-glass bottom bar on narrow ones (phones).
+/// Glass lives only here, in the chrome layer — content stays solid
+/// (docs/DESIGN.md).
 class HomeShell extends StatelessWidget {
   const HomeShell({super.key, required this.navigationShell});
 
@@ -24,45 +27,63 @@ class HomeShell extends StatelessWidget {
         final isWide = constraints.maxWidth >= 800;
         if (isWide) {
           return Scaffold(
+            backgroundColor: Colors.transparent,
             body: Row(
               children: [
-                SafeArea(
-                  child: NavigationRail(
-                    extended: constraints.maxWidth >= 1160,
-                    labelType: constraints.maxWidth >= 1160
-                        ? NavigationRailLabelType.none
-                        : NavigationRailLabelType.all,
-                    selectedIndex: navigationShell.currentIndex,
-                    onDestinationSelected: _goBranch,
-                    destinations: [
-                      for (final section in AppSection.values)
-                        NavigationRailDestination(
-                          icon: Icon(section.icon),
-                          selectedIcon: Icon(section.selectedIcon),
-                          label: Text(section.title),
-                        ),
-                    ],
+                GlassSurface(
+                  edge: GlassEdge.right,
+                  child: SafeArea(
+                    child: NavigationRail(
+                      extended: constraints.maxWidth >= 1160,
+                      labelType: constraints.maxWidth >= 1160
+                          ? NavigationRailLabelType.none
+                          : NavigationRailLabelType.all,
+                      selectedIndex: navigationShell.currentIndex,
+                      onDestinationSelected: _goBranch,
+                      minWidth: 84,
+                      groupAlignment: -0.9,
+                      destinations: [
+                        for (final section in AppSection.values)
+                          NavigationRailDestination(
+                            icon: Tooltip(
+                              message: section.description,
+                              waitDuration: const Duration(milliseconds: 600),
+                              child: Icon(section.icon),
+                            ),
+                            selectedIcon: Icon(section.selectedIcon),
+                            label: Text(section.title),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-                const VerticalDivider(thickness: 1, width: 1),
                 Expanded(child: navigationShell),
               ],
             ),
           );
         }
         return Scaffold(
+          backgroundColor: Colors.transparent,
+          extendBody: true,
           body: navigationShell,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: navigationShell.currentIndex,
-            onDestinationSelected: _goBranch,
-            destinations: [
-              for (final section in AppSection.values)
-                NavigationDestination(
-                  icon: Icon(section.icon),
-                  selectedIcon: Icon(section.selectedIcon),
-                  label: section.title,
-                ),
-            ],
+          bottomNavigationBar: GlassSurface(
+            edge: GlassEdge.top,
+            child: SafeArea(
+              top: false,
+              child: NavigationBar(
+                selectedIndex: navigationShell.currentIndex,
+                onDestinationSelected: _goBranch,
+                destinations: [
+                  for (final section in AppSection.values)
+                    NavigationDestination(
+                      icon: Icon(section.icon),
+                      selectedIcon: Icon(section.selectedIcon),
+                      label: section.title,
+                      tooltip: section.title,
+                    ),
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -80,6 +101,7 @@ AppBar buildSectionAppBar(BuildContext context, String title) {
         tooltip: 'Settings',
         onPressed: () => context.push('/settings'),
       ),
+      const SizedBox(width: 4),
     ],
   );
 }
