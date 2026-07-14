@@ -1,7 +1,8 @@
 import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
-import { deltaToPlainText, isValidDelta } from '../lib/delta.js';
+import { slugify } from '../lib/slug.js';
+import { deltaToMarkdown, deltaToPlainText, isValidDelta } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
@@ -95,6 +96,24 @@ function parseDelta(value) {
   return value;
 }
 
+/**
+ * Full note snapshot (row + preloaded note_links rows) — the shape note
+ * detail responses and sync pull snapshots share.
+ */
+export function serializeNoteSnapshot(row, links) {
+  return {
+    ...serializeNoteRow(row),
+    contentDelta: parseDelta(row.content_delta),
+    contentMarkdown: row.content_markdown ?? null,
+    plainText: row.plain_text ?? null,
+    links: links.map((l) => ({
+      id: l.id,
+      entityType: l.linked_entity_type,
+      entityId: l.linked_entity_id,
+    })),
+  };
+}
+
 export default async function noteRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
@@ -110,17 +129,7 @@ export default async function noteRoutes(app) {
       .where({ note_id: row.id })
       .orderBy('created_at', 'asc')
       .select();
-    return {
-      ...serializeNoteRow(row),
-      contentDelta: parseDelta(row.content_delta),
-      contentMarkdown: row.content_markdown ?? null,
-      plainText: row.plain_text ?? null,
-      links: links.map((l) => ({
-        id: l.id,
-        entityType: l.linked_entity_type,
-        entityId: l.linked_entity_id,
-      })),
-    };
+    return serializeNoteSnapshot(row, links);
   }
 
   async function assertProjectUsable(projectId, workspaceId) {
@@ -299,6 +308,37 @@ export default async function noteRoutes(app) {
       const row = await loadNote(request.params.noteId);
       await app.requireWorkspaceMember(request, row.workspace_id);
       return serializeNoteDetail(row);
+    },
+  );
+
+  // Markdown export (OPH-045). The delta is canonical (BLUEPRINT §9.1), so the
+  // export is derived server-side from it — the client-supplied
+  // content_markdown is only the fallback for delta-less notes.
+  app.get(
+    '/notes/:noteId/export',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { noteId: ULID_PARAM } },
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { format: { type: 'string', enum: ['md'], default: 'md' } },
+        },
+        // No 200 schema: the body is raw markdown, not JSON.
+        response: { 400: errorResponseSchema, 403: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const row = await loadNote(request.params.noteId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+
+      const delta = parseDelta(row.content_delta);
+      const markdown = delta ? deltaToMarkdown(delta) : (row.content_markdown ?? '');
+      return reply
+        .header('content-type', 'text/markdown; charset=utf-8')
+        .header('content-disposition', `attachment; filename="${slugify(row.title, 'note')}.md"`)
+        .send(markdown);
     },
   );
 
