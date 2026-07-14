@@ -135,16 +135,18 @@ back (`db:rollback --all`); integration test asserts the migration set is applie
 
 ## Epic 03 — Auth (Phase 1)
 
-### OPH-020 — Register endpoint
+### OPH-020 — Register endpoint ✅
 
-- [ ] `POST /api/v1/auth/register` (email, password ≥ 8, displayName?) with Ajv schema
-- [ ] argon2id password hashing
-- [ ] Create user + personal workspace (`{name}'s Space`, slug, owner member row) in one transaction
-- [ ] Return access token (JWT, 15 min) + refresh token (opaque, 30 days, stored hashed)
-- [ ] Error codes: `AUTH_EMAIL_TAKEN`, validation errors
-- [ ] Unit + integration tests (duplicate email, weak password, happy path)
+- [x] `POST /api/v1/auth/register` (email, password ≥ 8, displayName?) with Ajv schema
+- [x] argon2id password hashing
+- [x] Create user + personal workspace (`{name}'s Space`, slug, owner member row) in one transaction
+- [x] Return access token (JWT, 15 min) + refresh token (opaque, 30 days, stored hashed)
+- [x] Error codes: `AUTH_EMAIL_TAKEN`, validation errors
+- [x] Unit + integration tests (duplicate email, weak password, happy path)
 
 Acceptance: new user can register and immediately call an authenticated endpoint.
+(_Authenticated endpoints don't exist yet — the issued JWT is verified server-side in tests;
+the end-to-end acceptance closes with `GET /me` in OPH-023._)
 
 ### OPH-021 — Login endpoint
 

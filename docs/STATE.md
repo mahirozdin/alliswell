@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-14 (bootstrap + public release)
+**Last updated:** 2026-07-14 (OPH-020 register endpoint)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,11 +15,17 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 1 — Core domain |
 | Current epic | **Epic 03 — Auth** |
-| ➡️ **Next task** | **OPH-020 — Register endpoint** |
-| Last completed | Epic 01 (OPH-001…007), Epic 02 (OPH-010…015), OPH-090…093 |
+| ➡️ **Next task** | **OPH-021 — Login endpoint** |
+| Last completed | OPH-020; Epic 01 (OPH-001…007), Epic 02 (OPH-010…015), OPH-090…093 |
 
 ## Recently completed
 
+- **OPH-020 — Register endpoint:** `POST /api/v1/auth/register` — argon2id hashing, user +
+  personal workspace + owner membership + refresh token in one transaction, JWT (15 min,
+  iss `alliswell-api` / aud `alliswell-app`) + opaque refresh token (30 d) stored as
+  HMAC-SHA256(JWT_REFRESH_SECRET); `AUTH_EMAIL_TAKEN` incl. unique-index race; production
+  refuses placeholder/short/identical JWT secrets. New libs: passwords/tokens/slug;
+  new plugin: auth (@fastify/jwt). Login (OPH-021) must reuse the same `tokens` response shape.
 - **Epic 01 — Foundation:** monorepo (npm workspaces), full docs set, Docker Compose
   (MySQL 8.4 + Redis 8 + optional api/adminer), Fastify API skeleton with health endpoints,
   Flutter 6-platform shell (Riverpod + go_router, adaptive navigation), GitHub Actions CI.
@@ -34,9 +40,11 @@ against real MySQL 8.4 and all unit+integration tests pass.
   remains with broken plugin symlinks). Until Docker Desktop/OrbStack is installed,
   `docker compose up` and local integration tests can't run — CI covers them meanwhile.
   Also note: something already listens on local port 3306; use `MYSQL_PORT` in `.env` if it conflicts.
-- `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` env vars are placeholders in `.env.example`;
-  OPH-020 must read them from config and refuse to boot in production with defaults.
+- ~~`JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` placeholders~~ — done in OPH-020: config falls
+  back to labeled insecure dev secrets, production refuses placeholders/short/identical values.
 - Apple EventKit work (OPH-077+) requires macOS/Xcode signing setup on the dev machine.
+- Epic 03 acceptance ("register then call an authenticated endpoint") fully closes with
+  OPH-023's `GET /me`; until then the register integration test verifies the JWT server-side.
 
 ## Environment assumptions
 

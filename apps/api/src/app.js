@@ -8,7 +8,9 @@ import sensible from '@fastify/sensible';
 import { loadConfig } from './config.js';
 import mysqlPlugin from './plugins/mysql.js';
 import redisPlugin from './plugins/redis.js';
+import authPlugin from './plugins/auth.js';
 import healthRoutes from './routes/health.js';
+import authRoutes from './routes/auth.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -48,6 +50,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(rateLimit, { max: config.rateLimitMax, timeWindow: '1 minute' });
   await app.register(mysqlPlugin, { db });
   await app.register(redisPlugin, { redis });
+  await app.register(authPlugin);
 
   app.get(
     '/',
@@ -75,6 +78,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   );
 
   await app.register(healthRoutes, { prefix: '/health' });
+  await app.register(authRoutes, { prefix: '/api/v1/auth' });
 
   return app;
 }

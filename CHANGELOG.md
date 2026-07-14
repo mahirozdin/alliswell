@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Auth — registration (OPH-020): `POST /api/v1/auth/register` creates the user, their personal
+  workspace and owner membership in one transaction; passwords hashed with argon2id; returns a
+  15-minute JWT access token and a 30-day opaque refresh token (stored only as a keyed hash).
+  Duplicate emails answer `409 AUTH_EMAIL_TAKEN`. Production now refuses to boot with missing,
+  placeholder, short or identical JWT secrets.
 - Monorepo skeleton: npm workspaces, `apps/api` (Node.js/Fastify) and `apps/app` (Flutter).
 - Project documentation set: `README.md`, `docs/BLUEPRINT.md`, `docs/ARCHITECTURE.md`, `docs/TASKS.md`, `docs/STATE.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, ADRs 0001–0004.
 - Docker Compose stack: MySQL 8.4 + Redis 8 (+ optional `api` and `adminer` profiles).
