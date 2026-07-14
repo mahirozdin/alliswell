@@ -200,13 +200,17 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
 
 ## Epic 04 — Projects / Tags / Tasks (Phase 1)
 
-### OPH-030 — Project CRUD API
+### OPH-030 — Project CRUD API ✅
 
-- [ ] `GET/POST /api/v1/workspaces/:wsId/projects`, `GET/PATCH/DELETE /api/v1/projects/:id`
-- [ ] RGB color validation (`#RRGGBB`), status enum, favorite, sort_order
-- [ ] Soft delete; workspace authorization on every route
-- [ ] Revision bump + `sync_revisions` row on every write (transaction helper)
-- [ ] Tests: CRUD, authz cross-workspace denial, validation
+- [x] `GET/POST /api/v1/workspaces/:wsId/projects`, `GET/PATCH/DELETE /api/v1/projects/:id`
+- [x] RGB color validation (`#RRGGBB`), status enum, favorite, sort_order (list ordered by
+      sort_order, `?status=` filter)
+- [x] Soft delete (owner/admin only — members create/edit); workspace authorization on
+      every route
+- [x] Revision bump + `sync_revisions` row on every write — `recordSyncWrite()` transaction
+      helper in `src/db/sync.js` (workspace row lock serializes writers; entity row gets the
+      returned revision stamped)
+- [x] Tests: CRUD, authz cross-workspace denial, validation, sync-log invariants
 
 ### OPH-031 — Tag CRUD API
 

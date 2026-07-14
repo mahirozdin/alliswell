@@ -12,6 +12,7 @@ import authPlugin from './plugins/auth.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
+import projectRoutes from './routes/projects.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -81,6 +82,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(healthRoutes, { prefix: '/health' });
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(meRoutes, { prefix: '/api/v1' });
+  await app.register(projectRoutes, { prefix: '/api/v1' });
 
   return app;
 }

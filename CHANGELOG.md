@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Projects API (OPH-030): workspace-scoped project CRUD (`/api/v1/workspaces/:id/projects`,
+  `/api/v1/projects/:id`) with color/status validation, soft delete (owner/admin), and the
+  first building block of the sync engine: `recordSyncWrite()` bumps the workspace revision
+  and appends the `sync_revisions` log row inside the same transaction as every entity write.
 - App — secure token storage (OPH-025): sessions persist in the platform keystore
   (Keychain / Android Keystore / libsecret / DPAPI) via flutter_secure_storage and restore on
   app start; expired or corrupt blobs are dropped safely; logout wipes storage even offline.
