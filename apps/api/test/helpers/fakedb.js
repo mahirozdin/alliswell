@@ -59,6 +59,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       is_favorite: false,
       description: null,
       icon: null,
+      readme_note_id: null,
       revision: 0,
     }),
     tags: () => ({ color_rgb: '#64748B', icon: null, revision: 0 }),

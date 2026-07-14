@@ -41,6 +41,7 @@ const projectSchema = {
     dueAt: { type: ['string', 'null'] },
     sortOrder: { type: 'integer' },
     isFavorite: { type: 'boolean' },
+    readmeNoteId: { type: ['string', 'null'] },
     revision: { type: 'integer' },
     createdAt: { type: 'string' },
     updatedAt: { type: 'string' },
@@ -58,6 +59,8 @@ const writableProps = {
   dueAt: { type: ['string', 'null'], format: 'date-time' },
   sortOrder: { type: 'integer', minimum: -1000000, maximum: 1000000 },
   isFavorite: { type: 'boolean' },
+  // The project's README note (feedback round 1) — must live in the same workspace.
+  readmeNoteId: { anyOf: [{ type: 'null' }, ULID_PARAM] },
 };
 
 /** camelCase body → snake_case row values (only for keys present). */
@@ -72,6 +75,7 @@ function toRowPatch(body) {
     dueAt: 'due_at',
     sortOrder: 'sort_order',
     isFavorite: 'is_favorite',
+    readmeNoteId: 'readme_note_id',
   };
   const row = {};
   for (const [camel, snake] of Object.entries(map)) {
@@ -96,6 +100,7 @@ export function serializeProject(row) {
     dueAt: toIso(row.due_at),
     sortOrder: row.sort_order,
     isFavorite: Boolean(row.is_favorite),
+    readmeNoteId: row.readme_note_id ?? null,
     revision: Number(row.revision),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -109,6 +114,20 @@ export default async function projectRoutes(app) {
     const row = await app.db('projects').where({ id }).whereNull('deleted_at').first();
     if (!row) throw coded(app.httpErrors.notFound('Project not found'), 'PROJECT_NOT_FOUND');
     return row;
+  }
+
+  async function assertReadmeNoteUsable(noteId, workspaceId) {
+    const note = await app
+      .db('notes')
+      .where({ id: noteId, workspace_id: workspaceId })
+      .whereNull('deleted_at')
+      .first('id');
+    if (!note) {
+      throw coded(
+        app.httpErrors.badRequest('readmeNoteId does not reference a note in this workspace'),
+        'PROJECT_INVALID_README_NOTE',
+      );
+    }
   }
 
   // ── Workspace-scoped collection ────────────────────────────────────────────
@@ -164,6 +183,9 @@ export default async function projectRoutes(app) {
     async (request, reply) => {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
+      if (request.body.readmeNoteId) {
+        await assertReadmeNoteUsable(request.body.readmeNoteId, workspaceId);
+      }
 
       const id = newId();
       await app.db.transaction(async (trx) => {
@@ -223,6 +245,9 @@ export default async function projectRoutes(app) {
     async (request) => {
       const row = await loadProject(request.params.projectId);
       await app.requireWorkspaceMember(request, row.workspace_id);
+      if (request.body.readmeNoteId) {
+        await assertReadmeNoteUsable(request.body.readmeNoteId, row.workspace_id);
+      }
 
       const patch = toRowPatch(request.body);
       await app.db.transaction(async (trx) => {

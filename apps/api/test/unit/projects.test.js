@@ -156,6 +156,58 @@ describe('single project routes (OPH-030)', () => {
   });
 });
 
+describe('project README note (feedback round 1)', () => {
+  it('sets and clears readmeNoteId, validating the workspace', async () => {
+    const project = (await createProject({ name: 'Docs' })).json();
+    expect(project.readmeNoteId).toBeNull();
+
+    const note = (
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/workspaces/${owner.workspace.id}/notes`,
+        headers: owner.headers,
+        payload: { title: 'Docs README', projectId: project.id },
+      })
+    ).json();
+
+    const set = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/projects/${project.id}`,
+      headers: owner.headers,
+      payload: { readmeNoteId: note.id },
+    });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().readmeNoteId).toBe(note.id);
+
+    const cleared = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/projects/${project.id}`,
+      headers: owner.headers,
+      payload: { readmeNoteId: null },
+    });
+    expect(cleared.json().readmeNoteId).toBeNull();
+
+    // A note from another workspace is rejected.
+    const foreign = await registerUser(app, { email: 'readme-foreign@example.com' });
+    const theirNote = (
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/workspaces/${foreign.workspace.id}/notes`,
+        headers: foreign.headers,
+        payload: { title: 'Theirs' },
+      })
+    ).json();
+    const bad = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/projects/${project.id}`,
+      headers: owner.headers,
+      payload: { readmeNoteId: theirNote.id },
+    });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json()).toMatchObject({ code: 'PROJECT_INVALID_README_NOTE' });
+  });
+});
+
 describe('authorization (OPH-030)', () => {
   it('members can edit but not delete; owners can delete', async () => {
     const created = (await createProject({ name: 'Shared' })).json();

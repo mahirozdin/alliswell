@@ -144,6 +144,12 @@ describe('note CRUD (OPH-040)', () => {
 
     const withArchived = (await listNotes('?includeArchived=true')).json();
     expect(withArchived.items).toHaveLength(3);
+
+    // The archive view: ONLY archived notes.
+    const onlyArchived = (await listNotes('?archived=true')).json();
+    expect(onlyArchived.items.map((n) => n.id)).toEqual([arch.id]);
+    const unarchived = (await listNotes('?archived=false')).json();
+    expect(unarchived.items).toHaveLength(2);
   });
 
   it('searches title + plain text via q', async () => {

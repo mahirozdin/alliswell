@@ -171,6 +171,9 @@ export default async function noteRoutes(app) {
           additionalProperties: false,
           properties: {
             pinned: { type: 'boolean' },
+            // archived=true lists ONLY archived notes (the archive view);
+            // includeArchived=true mixes them into the normal list.
+            archived: { type: 'boolean' },
             includeArchived: { type: 'boolean', default: false },
             projectId: ULID_PARAM,
             taskId: ULID_PARAM,
@@ -204,7 +207,11 @@ export default async function noteRoutes(app) {
         .limit(q.limit);
       if (q.cursor) query = query.where('id', '<', q.cursor);
       if (q.pinned !== undefined) query = query.where({ is_pinned: q.pinned });
-      if (!q.includeArchived) query = query.where({ is_archived: false });
+      if (q.archived !== undefined) {
+        query = query.where({ is_archived: q.archived });
+      } else if (!q.includeArchived) {
+        query = query.where({ is_archived: false });
+      }
       if (q.projectId) query = query.where({ project_id: q.projectId });
       if (q.taskId) {
         // Linked to the task either explicitly or by "created from task".
