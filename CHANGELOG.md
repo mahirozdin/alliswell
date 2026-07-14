@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Auth — login (OPH-021): `POST /api/v1/auth/login` verifies argon2id credentials with a
+  timing-safe unknown-email path (dummy verify) and answers `401 AUTH_INVALID_CREDENTIALS`
+  without revealing which part failed; every login starts a fresh refresh-token family.
+  All `/api/v1/auth/*` routes now share a stricter per-IP rate limit
+  (`RATE_LIMIT_AUTH_MAX`, default 10/min vs the global 300/min).
 - Auth — registration (OPH-020): `POST /api/v1/auth/register` creates the user, their personal
   workspace and owner membership in one transaction; passwords hashed with argon2id; returns a
   15-minute JWT access token and a 30-day opaque refresh token (stored only as a keyed hash).

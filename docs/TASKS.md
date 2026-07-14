@@ -148,13 +148,13 @@ Acceptance: new user can register and immediately call an authenticated endpoint
 (_Authenticated endpoints don't exist yet — the issued JWT is verified server-side in tests;
 the end-to-end acceptance closes with `GET /me` in OPH-023._)
 
-### OPH-021 — Login endpoint
+### OPH-021 — Login endpoint ✅
 
-- [ ] `POST /api/v1/auth/login` — argon2 verify, timing-safe failure path
-- [ ] Same token pair response shape as register
-- [ ] Error `AUTH_INVALID_CREDENTIALS` (no user/pass distinction)
-- [ ] Rate limit tighter than global (e.g. 10/min/IP)
-- [ ] Tests: wrong password, unknown email, happy path
+- [x] `POST /api/v1/auth/login` — argon2 verify, timing-safe failure path
+- [x] Same token pair response shape as register
+- [x] Error `AUTH_INVALID_CREDENTIALS` (no user/pass distinction)
+- [x] Rate limit tighter than global (`RATE_LIMIT_AUTH_MAX`, default 10/min/IP, all auth routes)
+- [x] Tests: wrong password, unknown email, happy path (+ soft-deleted user, rate limit trip)
 
 ### OPH-022 — Refresh token rotation
 

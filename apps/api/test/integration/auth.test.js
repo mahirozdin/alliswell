@@ -90,4 +90,44 @@ describe.runIf(enabled)('integration: POST /api/v1/auth/register', () => {
     expect(res.statusCode).toBe(400);
     expect(await app.db('users').where({ email })).toHaveLength(0);
   });
+
+  describe('POST /api/v1/auth/login (OPH-021)', () => {
+    const email = `${emailPrefix}-login@example.com`;
+    const password = 'login-integration-pw';
+
+    beforeAll(async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/register',
+        payload: { email, password },
+      });
+      expect(res.statusCode).toBe(201);
+    });
+
+    it('logs in and persists a second refresh-token family', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/login',
+        payload: { email, password },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(app.jwt.verify(body.tokens.accessToken).sub).toBe(body.user.id);
+
+      const rows = await app.db('refresh_tokens').where({ user_id: body.user.id });
+      expect(rows).toHaveLength(2);
+      expect(rows[0].family_id).not.toBe(rows[1].family_id);
+    });
+
+    it('rejects wrong password and unknown email with AUTH_INVALID_CREDENTIALS', async () => {
+      for (const payload of [
+        { email, password: 'definitely-wrong-1' },
+        { email: `${emailPrefix}-ghost@example.com`, password },
+      ]) {
+        const res = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload });
+        expect(res.statusCode).toBe(401);
+        expect(res.json()).toMatchObject({ code: 'AUTH_INVALID_CREDENTIALS' });
+      }
+    });
+  });
 });

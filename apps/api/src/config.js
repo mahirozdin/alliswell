@@ -59,6 +59,7 @@ export function loadConfig(env = process.env) {
     logLevel: env.LOG_LEVEL ?? 'info',
     corsOrigin: parseCorsOrigin(env.CORS_ORIGIN),
     rateLimitMax: toInt(env.RATE_LIMIT_MAX, 300, 'RATE_LIMIT_MAX'),
+    rateLimitAuthMax: toInt(env.RATE_LIMIT_AUTH_MAX, 10, 'RATE_LIMIT_AUTH_MAX'),
     database: Object.freeze({
       host: env.DATABASE_HOST ?? '127.0.0.1',
       port: toInt(env.DATABASE_PORT, 3306, 'DATABASE_PORT'),

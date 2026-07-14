@@ -19,6 +19,7 @@ describe('loadConfig', () => {
     expect(config.redisUrl).toBe('redis://127.0.0.1:6379');
     expect(config.corsOrigin).toBe(true);
     expect(config.rateLimitMax).toBe(300);
+    expect(config.rateLimitAuthMax).toBe(10);
   });
 
   it('parses overrides', () => {
