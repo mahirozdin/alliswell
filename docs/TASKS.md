@@ -183,11 +183,18 @@ Acceptance: new user can register and immediately call an authenticated endpoint
       restoring, `/login`+`/register` when signed out; Settings shows account + sign out
 - [x] Widget/unit tests with mocked dio (fake HttpClientAdapter, no sockets)
 
-### OPH-025 — Secure token storage
+### OPH-025 — Secure token storage ✅
 
-- [ ] flutter_secure_storage for tokens (Keychain/Keystore; web: memory + refresh cookie note)
-- [ ] Session restore on app start; logout clears storage
-- [ ] Tests for storage wrapper
+- [x] flutter_secure_storage for tokens (Keychain/Keystore/libsecret/DPAPI; web: in-memory
+      only — localStorage would expose tokens to XSS; httpOnly refresh-cookie flow is the
+      planned web hardening)
+- [x] Session restore on app start (expired refresh tokens dropped eagerly); logout clears
+      storage even when offline
+- [x] Tests for storage wrapper (round-trip, corrupt/incompatible blob recovery, keystore
+      delegation via plugin mock)
+
+Epic 03 acceptance: register from a fresh app → authenticated `GET /me` immediately; session
+survives restart (mobile/desktop); refresh rotation transparent on 401; reuse burns the family. ✔
 
 ---
 

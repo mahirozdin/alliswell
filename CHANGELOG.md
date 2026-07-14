@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- App — secure token storage (OPH-025): sessions persist in the platform keystore
+  (Keychain / Android Keystore / libsecret / DPAPI) via flutter_secure_storage and restore on
+  app start; expired or corrupt blobs are dropped safely; logout wipes storage even offline.
+  On web, tokens deliberately stay in memory (httpOnly refresh-cookie flow is the planned
+  hardening).
 - App — auth layer (OPH-024): dio API client (base URL via `--dart-define=ALLISWELL_API_URL`)
   with an auth interceptor that attaches the access token and transparently refreshes it once
   on a 401; auth repository with single-flight token rotation and forced sign-out when the

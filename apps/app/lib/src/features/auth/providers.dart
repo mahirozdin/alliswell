@@ -6,6 +6,7 @@ import 'data/auth_interceptor.dart';
 import 'data/auth_repository.dart';
 import 'data/models.dart';
 import 'data/secret_store.dart';
+import 'data/secure_secret_store.dart';
 import 'data/token_storage.dart';
 
 /// Where the API lives. Override at build time:
@@ -17,9 +18,10 @@ final apiBaseUrlProvider = Provider<String>(
   ),
 );
 
-/// Platform secret storage. OPH-024 ships the in-memory fallback; OPH-025
-/// swaps in Keychain/Keystore-backed storage on mobile/desktop.
-final secretStoreProvider = Provider<SecretStore>((_) => InMemorySecretStore());
+/// Platform secret storage (OPH-025): Keychain/Keystore-backed on
+/// mobile/desktop, in-memory on web (see secure_secret_store.dart).
+/// Tests override this with a seeded [InMemorySecretStore].
+final secretStoreProvider = Provider<SecretStore>((_) => defaultSecretStore());
 
 final tokenStorageProvider = Provider<TokenStorage>(
   (ref) => TokenStorage(ref.watch(secretStoreProvider)),
