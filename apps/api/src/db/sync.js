@@ -35,3 +35,24 @@ export async function recordSyncWrite(
 
   return revision;
 }
+
+/**
+ * Blueprint-named form of the same helper (OPH-050, BLUEPRINT §6.2) with
+ * positional arguments:
+ *
+ *   const revision = await withRevision(trx, wsId, 'task', taskId, 'update', ['title']);
+ *
+ * Both names hit the identical implementation — routes written against
+ * recordSyncWrite (Epics 04–05) need no retrofit.
+ *
+ * @param {import('knex').Knex.Transaction} trx
+ * @param {string} workspaceId
+ * @param {string} entityType
+ * @param {string} entityId
+ * @param {'create'|'update'|'delete'} operation
+ * @param {string[]} [changedFields]
+ * @returns {Promise<number>} the new workspace revision
+ */
+export function withRevision(trx, workspaceId, entityType, entityId, operation, changedFields) {
+  return recordSyncWrite(trx, { workspaceId, entityType, entityId, operation, changedFields });
+}
