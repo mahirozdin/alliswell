@@ -376,4 +376,185 @@ export default async function noteRoutes(app) {
       return reply.code(204).send();
     },
   );
+
+  // ── Polymorphic links (OPH-041): v1 targets are tasks and projects ────────
+
+  const LINKABLE = {
+    task: { table: 'tasks', code: 'NOTE_INVALID_LINK_TARGET' },
+    project: { table: 'projects', code: 'NOTE_INVALID_LINK_TARGET' },
+  };
+
+  async function assertLinkTarget(entityType, entityId, workspaceId) {
+    const target = LINKABLE[entityType];
+    const row = await app
+      .db(target.table)
+      .where({ id: entityId, workspace_id: workspaceId })
+      .whereNull('deleted_at')
+      .first('id');
+    if (!row) {
+      throw coded(
+        app.httpErrors.badRequest(`${entityType} not found in this workspace`),
+        target.code,
+      );
+    }
+  }
+
+  app.post(
+    '/notes/:noteId/links',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { noteId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['entityType', 'entityId'],
+          properties: {
+            entityType: { type: 'string', enum: Object.keys(LINKABLE) },
+            entityId: ULID_PARAM,
+          },
+        },
+        response: {
+          201: noteDetailSchema,
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const row = await loadNote(request.params.noteId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+      const { entityType, entityId } = request.body;
+      await assertLinkTarget(entityType, entityId, row.workspace_id);
+
+      const existing = await app
+        .db('note_links')
+        .where({ note_id: row.id, linked_entity_type: entityType, linked_entity_id: entityId })
+        .first('id');
+      if (existing) {
+        throw coded(app.httpErrors.conflict('This link already exists'), 'NOTE_LINK_EXISTS');
+      }
+
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'note',
+          entityId: row.id,
+          operation: 'update',
+          changedFields: ['links'],
+        });
+        await trx('note_links').insert({
+          id: newId(),
+          note_id: row.id,
+          linked_entity_type: entityType,
+          linked_entity_id: entityId,
+        });
+        await trx('notes')
+          .where({ id: row.id })
+          .update({ revision, updated_by: request.user.id, updated_at: new Date() });
+      });
+
+      return reply.code(201).send(await serializeNoteDetail(await loadNote(row.id)));
+    },
+  );
+
+  app.delete(
+    '/notes/:noteId/links/:linkId',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { noteId: ULID_PARAM, linkId: ULID_PARAM } },
+        response: { 204: { type: 'null' }, 403: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const row = await loadNote(request.params.noteId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+
+      const link = await app
+        .db('note_links')
+        .where({ id: request.params.linkId, note_id: row.id })
+        .first('id');
+      if (!link) {
+        throw coded(app.httpErrors.notFound('Link not found'), 'NOTE_LINK_NOT_FOUND');
+      }
+
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'note',
+          entityId: row.id,
+          operation: 'update',
+          changedFields: ['links'],
+        });
+        await trx('note_links').where({ id: link.id }).delete();
+        await trx('notes')
+          .where({ id: row.id })
+          .update({ revision, updated_by: request.user.id, updated_at: new Date() });
+      });
+
+      return reply.code(204).send();
+    },
+  );
+
+  // "Create note from task" (OPH-041): inherits the task's project and starts
+  // linked to it — the capture path from a task detail screen.
+  app.post(
+    '/tasks/:taskId/notes',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { taskId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            title: { type: 'string', minLength: 1, maxLength: 500 },
+            contentDelta: writableProps.contentDelta,
+            contentMarkdown: writableProps.contentMarkdown,
+          },
+        },
+        response: { 201: noteDetailSchema, 403: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const task = await app
+        .db('tasks')
+        .where({ id: request.params.taskId })
+        .whereNull('deleted_at')
+        .first();
+      if (!task) throw coded(app.httpErrors.notFound('Task not found'), 'TASK_NOT_FOUND');
+      await app.requireWorkspaceMember(request, task.workspace_id);
+
+      const id = newId();
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: task.workspace_id,
+          entityType: 'note',
+          entityId: id,
+          operation: 'create',
+        });
+        await trx('notes').insert({
+          id,
+          workspace_id: task.workspace_id,
+          project_id: task.project_id ?? null, // inherited from the task
+          created_from_task_id: task.id,
+          ...toRowPatch({ title: task.title, ...request.body }),
+          created_by: request.user.id,
+          updated_by: request.user.id,
+          revision,
+        });
+        await trx('note_links').insert({
+          id: newId(),
+          note_id: id,
+          linked_entity_type: 'task',
+          linked_entity_id: task.id,
+        });
+      });
+
+      return reply.code(201).send(await serializeNoteDetail(await loadNote(id)));
+    },
+  );
 }

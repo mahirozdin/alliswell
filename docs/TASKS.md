@@ -300,11 +300,15 @@ API integration tests). ✔
       (title + plain_text)
 - [x] Tests (unit + real-MySQL integration incl. FULLTEXT and JSON round-trip)
 
-### OPH-041 — Note–task link
+### OPH-041 — Note–task link ✅
 
-- [ ] `POST/DELETE /api/v1/notes/:id/links` (polymorphic, v1: task/project)
-- [ ] "Create note from task" endpoint: inherits task's project automatically
-- [ ] Tests
+- [x] `POST /api/v1/notes/:id/links` + `DELETE /notes/:id/links/:linkId` (polymorphic,
+      v1: task/project; same-workspace target validation, dup → `NOTE_LINK_EXISTS`,
+      note revision bumps on link/unlink)
+- [x] "Create note from task" (`POST /tasks/:id/notes`): inherits the task's project,
+      defaults the title, records `created_from_task_id` and auto-links back; notes list
+      `?taskId=` filter covers both link-based and created-from notes
+- [x] Tests
 
 ### OPH-042 — Note–project link
 

@@ -7,6 +7,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Note links (OPH-041): polymorphic note↔task/project links with workspace validation, and
+  `POST /tasks/:id/notes` to spawn a note from a task — inheriting its project and linking
+  back automatically.
 - Notes API (OPH-040): workspace-scoped note CRUD storing Quill delta JSON as canonical
   content with markdown alongside and server-derived plain text; pinned/archived flags,
   FULLTEXT `?q=` search, cursor pagination and sync revisions.
