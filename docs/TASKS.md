@@ -310,10 +310,11 @@ API integration tests). ✔
       `?taskId=` filter covers both link-based and created-from notes
 - [x] Tests
 
-### OPH-042 — Note–project link
+### OPH-042 — Note–project link ✅
 
-- [ ] Project notes listing (`GET /projects/:id/notes`)
-- [ ] Tests
+- [x] Project notes listing (`GET /projects/:id/notes`) — attached (project_id) ∪
+      link-attached notes, archived hidden by default, cursor pagination
+- [x] Tests
 
 ### OPH-043 — Flutter note list
 

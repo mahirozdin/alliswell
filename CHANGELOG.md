@@ -7,6 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Project notes (OPH-042): `GET /projects/:id/notes` lists a project's notes — both directly
+  attached and link-attached.
 - Note links (OPH-041): polymorphic note↔task/project links with workspace validation, and
   `POST /tasks/:id/notes` to spawn a note from a task — inheriting its project and linking
   back automatically.

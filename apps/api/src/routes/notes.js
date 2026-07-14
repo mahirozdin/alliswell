@@ -499,6 +499,79 @@ export default async function noteRoutes(app) {
     },
   );
 
+  // Project notes listing (OPH-042): both directly-attached (project_id) and
+  // link-attached notes, newest first.
+  app.get(
+    '/projects/:projectId/notes',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { projectId: ULID_PARAM } },
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            includeArchived: { type: 'boolean', default: false },
+            limit: { type: 'integer', minimum: 1, maximum: MAX_PAGE_SIZE, default: 50 },
+            cursor: ULID_PARAM,
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              items: { type: 'array', items: noteRowSchema },
+              nextCursor: { type: ['string', 'null'] },
+            },
+          },
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const project = await app
+        .db('projects')
+        .where({ id: request.params.projectId })
+        .whereNull('deleted_at')
+        .first('id', 'workspace_id');
+      if (!project) {
+        throw coded(app.httpErrors.notFound('Project not found'), 'PROJECT_NOT_FOUND');
+      }
+      await app.requireWorkspaceMember(request, project.workspace_id);
+      const q = request.query;
+
+      const links = await app
+        .db('note_links')
+        .where({ linked_entity_type: 'project', linked_entity_id: project.id })
+        .select('note_id');
+      const linkedIds = links.map((l) => l.note_id);
+
+      // Two id sets (attached ∪ linked) resolved in one paged query.
+      const attached = await app
+        .db('notes')
+        .where({ project_id: project.id })
+        .whereNull('deleted_at')
+        .select('id');
+      const ids = [...new Set([...linkedIds, ...attached.map((n) => n.id)])];
+
+      let query = app
+        .db('notes')
+        .whereIn('id', ids)
+        .whereNull('deleted_at')
+        .orderBy('id', 'desc')
+        .limit(q.limit);
+      if (q.cursor) query = query.where('id', '<', q.cursor);
+      if (!q.includeArchived) query = query.where({ is_archived: false });
+
+      const rows = await query.select();
+      return {
+        items: rows.map(serializeNoteRow),
+        nextCursor: rows.length === q.limit ? rows.at(-1).id : null,
+      };
+    },
+  );
+
   // "Create note from task" (OPH-041): inherits the task's project and starts
   // linked to it — the capture path from a task detail screen.
   app.post(
