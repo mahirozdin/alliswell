@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
 
@@ -6,18 +7,18 @@ import 'router.dart';
 /// schema (`#2563EB`, see BLUEPRINT §10.2).
 const kSeedColor = Color(0xFF2563EB);
 
-class AllisWellApp extends StatelessWidget {
+class AllisWellApp extends ConsumerWidget {
   const AllisWellApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'AllisWell',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: ThemeMode.system,
-      routerConfig: appRouter,
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }

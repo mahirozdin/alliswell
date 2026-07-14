@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- App — auth layer (OPH-024): dio API client (base URL via `--dart-define=ALLISWELL_API_URL`)
+  with an auth interceptor that attaches the access token and transparently refreshes it once
+  on a 401; auth repository with single-flight token rotation and forced sign-out when the
+  session dies; login/register screens; router now guards the shell (splash while restoring,
+  login when signed out) and Settings gained account info + sign out.
 - Auth — middleware & `GET /api/v1/me` (OPH-023): `app.authenticate` route guard (JWT
   issuer/audience/expiry; expired tokens answer `AUTH_TOKEN_EXPIRED` so clients refresh instead
   of re-login), `request.user`, and a workspace-membership authorization helper. `GET /api/v1/me`

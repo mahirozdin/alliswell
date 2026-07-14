@@ -173,12 +173,15 @@ Acceptance: new user can register and immediately call an authenticated endpoint
 - [x] `GET /api/v1/me` returning profile + workspaces (batched queries, no N+1)
 - [x] Tests: missing/expired/garbage/forged token, deleted user, membership + role check
 
-### OPH-024 — Flutter auth repository
+### OPH-024 — Flutter auth repository ✅
 
-- [ ] dio API client with base URL config + auth interceptor (token attach/refresh-on-401)
-- [ ] Auth repository (register/login/refresh/logout) + Riverpod providers
-- [ ] Login & register screens wired to shell (redirect when unauthenticated)
-- [ ] Widget/unit tests with mocked dio
+- [x] dio API client with base URL config (`--dart-define=ALLISWELL_API_URL`) + auth
+      interceptor (token attach, single retry with refresh-on-401, QueuedInterceptor)
+- [x] Auth repository (register/login/refresh/logout, single-flight rotation, session
+      change stream) + Riverpod providers (`authControllerProvider`, `apiClientProvider`)
+- [x] Login & register screens wired to shell — go_router redirect: `/splash` while
+      restoring, `/login`+`/register` when signed out; Settings shows account + sign out
+- [x] Widget/unit tests with mocked dio (fake HttpClientAdapter, no sockets)
 
 ### OPH-025 — Secure token storage
 

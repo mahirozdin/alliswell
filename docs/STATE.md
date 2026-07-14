@@ -15,8 +15,8 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 1 — Core domain |
 | Current epic | **Epic 03 — Auth** |
-| ➡️ **Next task** | **OPH-021 — Login endpoint** |
-| Last completed | OPH-020; Epic 01 (OPH-001…007), Epic 02 (OPH-010…015), OPH-090…093 |
+| ➡️ **Next task** | **OPH-025 — Secure token storage** |
+| Last completed | OPH-020…024; Epic 01, Epic 02, OPH-090…093 |
 
 ## Recently completed
 
