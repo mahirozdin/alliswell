@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
+import 'features/projects/ui/project_detail_screen.dart';
+import 'features/projects/ui/projects_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/placeholder_screen.dart';
 import 'screens/settings_screen.dart';
@@ -70,8 +72,19 @@ final routerProvider = Provider<GoRouter>((ref) {
               routes: [
                 GoRoute(
                   path: section.path,
-                  builder: (context, state) =>
-                      PlaceholderScreen(section: section),
+                  builder: (context, state) => switch (section) {
+                    AppSection.projects => const ProjectsScreen(),
+                    _ => PlaceholderScreen(section: section),
+                  },
+                  routes: [
+                    if (section == AppSection.projects)
+                      GoRoute(
+                        path: ':projectId',
+                        builder: (context, state) => ProjectDetailScreen(
+                          projectId: state.pathParameters['projectId']!,
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),

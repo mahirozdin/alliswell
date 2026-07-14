@@ -41,11 +41,12 @@ void main() {
     await tester.pumpWidget(await signedInApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Projects').last);
+    // Notes is still a placeholder (Epic 05); Projects became real in OPH-036.
+    await tester.tap(find.text('Notes').last);
     await tester.pumpAndSettle();
 
     expect(
-      find.text('Projects with colors, tasks, notes and documents.'),
+      find.text('Rich notes, linkable to tasks and projects.'),
       findsOneWidget,
     );
   });

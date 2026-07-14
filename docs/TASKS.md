@@ -261,11 +261,15 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
       moved remind_at still re-arms
 - [x] Tests incl. preset math in user timezone (`src/lib/time.js` — DST-safe wall-clock→UTC)
 
-### OPH-036 — Flutter project screens
+### OPH-036 — Flutter project screens ✅
 
-- [ ] Projects list (colors, favorite, status) + create/edit sheet with RGB picker
-- [ ] Project detail tabs skeleton (Overview/Tasks/Notes)
-- [ ] Riverpod repositories hitting the API; tests
+- [x] Projects list (color dot, favorite toggle, non-active status) + create/edit bottom
+      sheet with palette + free #RRGGBB input (status dropdown in edit mode)
+- [x] Project detail tabs skeleton (Overview/Tasks/Notes) + edit/delete actions;
+      route `/projects/:projectId` inside the shell branch
+- [x] Riverpod data layer hitting the API (`workspacesProvider` via `GET /me` picks the
+      current workspace; `ProjectsController` re-fetches after mutations); widget + unit
+      tests over a stateful fake API adapter
 
 ### OPH-037 — Flutter task screens
 

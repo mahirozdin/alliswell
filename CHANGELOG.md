@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- App — project screens (OPH-036): the Projects section is now real — list with colors,
+  favorites and status, create/edit bottom sheet with a color palette + free #RRGGBB input,
+  and a project detail screen with the Overview/Tasks/Notes tab skeleton. The app resolves
+  its current workspace via `GET /me`.
 - Task snooze (OPH-035): `POST /tasks/:id/snooze` with an explicit time or the BLUEPRINT
   presets (5 min / 30 min / 1 hour / tomorrow morning — computed at 09:00 on the task's own
   timezone wall clock, DST-safe); task and live reminder snooze together, and unrelated task
