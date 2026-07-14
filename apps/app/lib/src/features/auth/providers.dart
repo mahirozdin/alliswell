@@ -71,7 +71,12 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       (session) => state = AsyncData(session),
     );
     ref.onDispose(sub.cancel);
-    return repository.restore();
+    // Storage must never brick startup: a hanging backend degrades to
+    // signed-out instead of an eternal splash (feedback round 1, item 2).
+    return repository.restore().timeout(
+      const Duration(seconds: 4),
+      onTimeout: () => null,
+    );
   }
 
   /// Throws [AuthException] on failure — screens turn codes into messages.

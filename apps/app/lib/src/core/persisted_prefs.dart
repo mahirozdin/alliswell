@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'kv/local_kv.dart';
 
 /// UI preferences that survive restarts (feedback round 1): synchronous state
-/// with a fallback, hydrated from SharedPreferences right after build and
-/// written back on every change.
+/// with a fallback, hydrated from [localKv] right after build and written
+/// back on every change. [LocalKv] guarantees the calls never hang or throw.
 class PersistedToggle extends Notifier<bool> {
   PersistedToggle(this.prefKey, {required this.fallback});
 
@@ -17,21 +18,15 @@ class PersistedToggle extends Notifier<bool> {
   }
 
   Future<void> _hydrate() async {
-    try {
-      final stored = (await SharedPreferences.getInstance()).getBool(prefKey);
-      if (stored != null && stored != state) state = stored;
-    } on Object {
-      // Preferences unavailable (private mode, tests) — keep the fallback.
+    final stored = await localKv.get(prefKey);
+    if (stored != null && (stored == 'true') != state) {
+      state = stored == 'true';
     }
   }
 
   Future<void> set(bool value) async {
     state = value;
-    try {
-      await (await SharedPreferences.getInstance()).setBool(prefKey, value);
-    } on Object {
-      // Non-persistent session; the in-memory state still applies.
-    }
+    await localKv.set(prefKey, '$value');
   }
 
   Future<void> toggle() => set(!state);
@@ -50,21 +45,13 @@ class PersistedChoice extends Notifier<String> {
   }
 
   Future<void> _hydrate() async {
-    try {
-      final stored = (await SharedPreferences.getInstance()).getString(prefKey);
-      if (stored != null && stored != state) state = stored;
-    } on Object {
-      // Preferences unavailable (private mode, tests) — keep the fallback.
-    }
+    final stored = await localKv.get(prefKey);
+    if (stored != null && stored != state) state = stored;
   }
 
   Future<void> set(String value) async {
     state = value;
-    try {
-      await (await SharedPreferences.getInstance()).setString(prefKey, value);
-    } on Object {
-      // Non-persistent session; the in-memory state still applies.
-    }
+    await localKv.set(prefKey, value);
   }
 }
 
