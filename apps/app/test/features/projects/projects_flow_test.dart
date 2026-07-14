@@ -95,11 +95,10 @@ void main() {
     );
   });
 
-  testWidgets('tapping a project opens the detail tab skeleton', (
+  testWidgets('project detail: README placeholder, live Tasks with quick add', (
     tester,
   ) async {
-    final api = FakeApi()
-      ..seedProject(name: 'Detaylı', description: 'Açıklama metni');
+    final api = FakeApi()..seedProject(name: 'Detaylı');
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
     await openProjects(tester);
@@ -113,11 +112,63 @@ void main() {
     expect(inTabBar('Overview'), findsOneWidget);
     expect(inTabBar('Tasks'), findsOneWidget);
     expect(inTabBar('Notes'), findsOneWidget);
-    expect(find.text('Açıklama metni'), findsOneWidget);
+    // Overview opens on the README section (no README yet → create button).
+    expect(find.byKey(const Key('create-readme')), findsOneWidget);
 
-    // Tasks tab is the OPH-037 placeholder for now.
-    await tester.tap(find.text('Tasks'));
+    // Tasks tab is a real list now — quick-add creates a task IN this project.
+    await tester.tap(inTabBar('Tasks'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('OPH-037'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('project-quick-add')),
+      'Proje görevi',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Proje görevi'), findsOneWidget);
+    expect(api.tasks.single['projectId'], api.projects.single['id']);
+  });
+
+  testWidgets('Create README spawns a linked note and opens its editor', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Dokümanlı');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Dokümanlı'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('create-readme')));
+    await tester.pumpAndSettle();
+
+    // A note titled after the project was created, attached to it, and the
+    // project now references it as its README.
+    expect(api.notes.single['projectId'], api.projects.single['id']);
+    expect(api.notes.single['title'], 'Dokümanlı');
+    expect(api.projects.single['readmeNoteId'], api.notes.single['id']);
+    // We landed in the note editor.
+    expect(find.byKey(const Key('note-title')), findsOneWidget);
+  });
+
+  testWidgets('project Notes tab captures a new note in the project', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Notlu');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Notlu'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Notes')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('project-add-note')));
+    await tester.pumpAndSettle();
+
+    expect(api.notes.single['projectId'], api.projects.single['id']);
+    expect(find.byKey(const Key('note-title')), findsOneWidget);
   });
 }

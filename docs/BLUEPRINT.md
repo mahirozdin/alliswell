@@ -657,15 +657,23 @@ POST /api/v1/notes
 
 ### 12.1 Ana navigasyon
 
-Inbox • Today • Upcoming • Calendar • Projects • Notes • Search • Settings
+Home • Inbox • Calendar • Projects • Notes • Search • Settings
 
-### 12.2 Dashboard kartları
+_(Revize 2026-07-14, feedback round 1: Today ve Upcoming ayrı sekmeler olmaktan çıktı —
+Home her şeyin göründüğü tek kronolojik görünüm; Calendar yalnızca ay görünümü.)_
 
-Bugün • Acil • Geciken • Tarihsiz • Beklemede • Projeler • Son notlar
+### 12.2 Home (eski "Dashboard")
+
+Solda kronolojik görev listesi: Geciken → Bugün → Yarın → Bu hafta → Sonrası → Tarihsiz.
+Sağda Apple Takvim tarzı ay ızgarası (işli günlerde nokta). Takvimden gün seçilince o günün
+görevleri vurgulu ilk grup olur, kalanlar sönük (grey/disabled) ama görünür kalır. Mobilde
+takvim üst yarıda, "Hide calendar" ile katlanır; tercih kalıcıdır (local storage).
 
 ### 12.3 Project detail sekmeleri
 
-Overview • Tasks • Notes • Documents • Calendar • Activity
+Overview (proje README notu — GitHub repo ana sayfası gibi, `projects.readme_note_id`) •
+Tasks (canlı liste + hızlı ekleme) • Notes (canlı liste + hızlı not) • Documents • Calendar •
+Activity
 
 ### 12.4 Task detail alanları
 
@@ -674,7 +682,11 @@ Notes, Checklist, Activity.
 
 ### 12.5 Notes
 
-All notes • Project notes • Task linked notes • Pinned • Search • Editor
+All notes • Pinned • Archive • Project notes • Task linked notes • Search • Editor.
+Liste ve A4-kart (Google Docs ana sayfası tarzı) görünümleri; satır/kartlarda son düzenleme +
+oluşturma tarihi ve bağlı proje. Pin = tek dokunuşla yıldız (dolu/boş). Not başlığı dokümanın
+sabit H1 ilk bloğudur (Apple Notes gibi); markdown export `# başlık` ile başlar.
+Renk seçimi her yerde palet üzerinden yapılır — son kullanıcıya hex kodu gösterilmez/yazdırılmaz.
 
 ## 13. Open-source repo kalitesi
 

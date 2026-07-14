@@ -13,6 +13,7 @@ class Project {
     required this.revision,
     this.description,
     this.icon,
+    this.readmeNoteId,
     this.startAt,
     this.dueAt,
   });
@@ -24,6 +25,7 @@ class Project {
     description: json['description'] as String?,
     colorRgb: json['colorRgb'] as String,
     icon: json['icon'] as String?,
+    readmeNoteId: json['readmeNoteId'] as String?,
     status: json['status'] as String,
     startAt: json['startAt'] != null
         ? DateTime.parse(json['startAt'] as String)
@@ -42,6 +44,7 @@ class Project {
   final String? description;
   final String colorRgb;
   final String? icon;
+  final String? readmeNoteId;
   final String status;
   final DateTime? startAt;
   final DateTime? dueAt;

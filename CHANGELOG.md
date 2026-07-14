@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed (feedback round 1 — 2026-07-14)
+
+- **Home replaces Today/Upcoming:** the app opens on a Home dashboard — chronological task
+  groups (overdue, today, tomorrow, this week, later, no date) beside an Apple-style month
+  calendar; picking a day highlights its tasks and dims the rest. On phones the calendar
+  collapses behind a persisted toggle. A dedicated Calendar tab shows the month + selected day.
+- **Web sessions persist:** reloading the web app no longer signs you out (localStorage-backed
+  session storage; httpOnly refresh-cookie flow remains planned hardening).
+- **Projects:** Overview now opens on the project's README note (GitHub style,
+  `readmeNoteId`); color picking is palette-only (hex codes hidden from end users, full color
+  grid dialog); Tasks/Notes tabs are live lists with in-place quick adds.
+- **Notes:** list ↔ A4-card grid views (persisted), edited/created dates + linked project in
+  rows, one-tap star pinning, archive actions + Archive view, and the note title now renders
+  as the document's fixed H1 first block (markdown exports lead with `# title`).
+
 ### Added
 
 - App — notes (OPH-043, OPH-044): the Notes section is live — searchable (server FULLTEXT)

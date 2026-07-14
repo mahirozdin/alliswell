@@ -66,6 +66,24 @@ final inboxTasksProvider =
       InboxTasksController.new,
     );
 
+/// Open tasks of one project — the project detail Tasks tab.
+final projectTasksProvider = FutureProvider.family<List<Task>, String>((
+  ref,
+  projectId,
+) async {
+  final workspaces = await ref.watch(workspacesProvider.future);
+  if (workspaces.isEmpty) return const [];
+  final page = await ref
+      .watch(tasksApiProvider)
+      .list(
+        workspaces.first.id,
+        statuses: kOpenStatuses,
+        projectId: projectId,
+        limit: 100,
+      );
+  return page.items;
+});
+
 /// Single-task detail (tags + checklist included). Mutating screens invalidate
 /// this after writes.
 final taskDetailProvider = FutureProvider.family<Task, String>(
@@ -77,6 +95,7 @@ final taskDetailProvider = FutureProvider.family<Task, String>(
 void invalidateTaskData(WidgetRef ref, {String? taskId}) {
   ref.invalidate(inboxTasksProvider);
   ref.invalidate(openTasksProvider);
+  ref.invalidate(projectTasksProvider);
   if (taskId != null) ref.invalidate(taskDetailProvider(taskId));
 }
 

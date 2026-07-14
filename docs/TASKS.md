@@ -185,9 +185,10 @@ Acceptance: new user can register and immediately call an authenticated endpoint
 
 ### OPH-025 — Secure token storage ✅
 
-- [x] flutter_secure_storage for tokens (Keychain/Keystore/libsecret/DPAPI; web: in-memory
-      only — localStorage would expose tokens to XSS; httpOnly refresh-cookie flow is the
-      planned web hardening)
+- [x] flutter_secure_storage for tokens (Keychain/Keystore/libsecret/DPAPI). Web —
+      _amended in feedback round 1 (2026-07-14):_ sessions persist in localStorage via
+      shared_preferences so reloads keep you signed in (product decision; XSS trade-off
+      accepted for self-hosted v1, httpOnly refresh-cookie flow stays as future hardening)
 - [x] Session restore on app start (expired refresh tokens dropped eagerly); logout clears
       storage even when offline
 - [x] Tests for storage wrapper (round-trip, corrupt/incompatible blob recovery, keystore
@@ -286,6 +287,12 @@ Epic 04 acceptance: the core-domain loop works end to end — register → creat
 capture tasks in Inbox → plan Today/Upcoming → edit detail (tags, checklist, urgent) →
 complete/reopen — against the real API contract (fake adapter in widget tests, real MySQL in
 API integration tests). ✔
+
+_Amended in feedback round 1 (2026-07-14): Today/Upcoming tabs were replaced by the Home
+dashboard (chronological groups + Apple-style month calendar, day selection highlight/dim,
+collapsible on mobile with a persisted preference) and a dedicated Calendar tab. Projects
+gained a README-note Overview (`readme_note_id`), palette-only color picking (no hex for end
+users) and in-tab quick adds for tasks/notes. See BLUEPRINT §12._
 
 ---
 

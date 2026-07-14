@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-14 (Epic 05: OPH-040…044 — markdown export OPH-045 remains)
+**Last updated:** 2026-07-15 (feedback round 1 applied on top of OPH-040…044)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -20,6 +20,17 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **Feedback round 1 (2026-07-14/15, kullanıcı testi sonrası):** BLUEPRINT §12 revize.
+  (1) Home + Calendar sekmeleri Today/Upcoming'in yerini aldı — kronolojik gruplar
+  (`features/home/task_grouping.dart`, saf/test edilebilir) + özel ay takvimi
+  (`month_calendar.dart`), gün seçimi vurgula/söndür, mobilde kalıcı tercihe bağlı katlanır
+  takvim (`core/persisted_prefs.dart`). (2) Web oturumları localStorage ile kalıcı
+  (`PrefsSecretStore`). (3) Projeler: README notu Overview (`projects.readme_note_id`
+  migration'ı + `readmeNoteId` alanı, `PROJECT_INVALID_README_NOTE`), hex'siz palet + renk
+  ızgarası dialogu, Tasks/Notes sekmelerinde hızlı ekleme; description alanı UI'dan kalktı
+  (kolon duruyor). (4) Notlar: liste/A4-kart görünümleri (kalıcı), meta satırı
+  (edited/created/proje), yıldızla tek dokunuş pin, arşiv menüsü + Archive çipi
+  (`?archived=true`), başlık dokümanın sabit H1 bloğu ve markdown `# başlık` ile başlıyor.
 - **Epic 05 — notes (OPH-040…044; 045 export kaldı):** Notes API — delta JSON canonical +
   markdown + server-derived plain_text (FULLTEXT `?q=`), pinned/archived, polymorphic
   task/project links (`NOTE_LINK_EXISTS`), `POST /tasks/:id/notes` (proje miras alır,

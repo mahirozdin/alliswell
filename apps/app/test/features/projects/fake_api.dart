@@ -286,10 +286,12 @@ class FakeApi {
 
   List<Map<String, dynamic>> _filteredTasks(Map<String, List<String>> query) {
     final statuses = query['status'];
+    final projectId = query['projectId']?.first;
     final dueFrom = query['dueFrom']?.first;
     final dueTo = query['dueTo']?.first;
     return tasks.where((t) {
       if (statuses != null && !statuses.contains(t['status'])) return false;
+      if (projectId != null && t['projectId'] != projectId) return false;
       final due = t['dueAt'] as String?;
       if (dueFrom != null && (due == null || due.compareTo(dueFrom) < 0)) {
         return false;

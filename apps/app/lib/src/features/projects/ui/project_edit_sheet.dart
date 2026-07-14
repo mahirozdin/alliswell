@@ -5,7 +5,8 @@ import '../../../core/api_exception.dart';
 import '../data/project.dart';
 import '../providers.dart';
 
-/// Brand-friendly starting palette; the hex field accepts any #RRGGBB.
+/// Quick-pick palette; the trailing palette button opens the full color grid.
+/// End users never see or type hex codes (feedback round 1).
 const kProjectPalette = [
   '#2563EB',
   '#0EA5E9',
@@ -20,6 +21,9 @@ const kProjectPalette = [
 ];
 
 const kProjectStatuses = ['active', 'paused', 'completed', 'archived'];
+
+String _hexOf(Color color) =>
+    '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
 
 /// Opens the create (project == null) or edit sheet.
 Future<void> showProjectEditSheet(BuildContext context, {Project? project}) {
@@ -43,8 +47,7 @@ class ProjectEditSheet extends ConsumerStatefulWidget {
 class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _description;
-  late final TextEditingController _hex;
+  late String _colorHex;
   late String _status;
   bool _saving = false;
   String? _error;
@@ -55,21 +58,22 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.project?.name ?? '');
-    _description = TextEditingController(
-      text: widget.project?.description ?? '',
-    );
-    _hex = TextEditingController(
-      text: widget.project?.colorRgb ?? kProjectPalette.first,
-    );
+    _colorHex = widget.project?.colorRgb.toUpperCase() ?? kProjectPalette.first;
     _status = widget.project?.status ?? 'active';
   }
 
   @override
   void dispose() {
     _name.dispose();
-    _description.dispose();
-    _hex.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickMoreColors() async {
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (_) => _ColorGridDialog(selectedHex: _colorHex),
+    );
+    if (picked != null) setState(() => _colorHex = picked);
   }
 
   Future<void> _save() async {
@@ -81,11 +85,7 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
     final controller = ref.read(projectsControllerProvider.notifier);
     final body = {
       'name': _name.text.trim(),
-      'colorRgb': _hex.text.trim().toUpperCase(),
-      if (_description.text.trim().isNotEmpty)
-        'description': _description.text.trim()
-      else if (_isEdit)
-        'description': null,
+      'colorRgb': _colorHex,
       if (_isEdit) 'status': _status,
     };
     try {
@@ -107,6 +107,7 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.of(context).viewInsets;
+    final knownColor = kProjectPalette.contains(_colorHex);
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: SingleChildScrollView(
@@ -125,7 +126,7 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
               TextFormField(
                 controller: _name,
                 autofocus: !_isEdit,
-                textInputAction: TextInputAction.next,
+                textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
                   labelText: 'Name',
                   border: OutlineInputBorder(),
@@ -142,34 +143,21 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                   for (final swatch in kProjectPalette)
                     _ColorSwatchDot(
                       color: colorFromRgbHex(swatch),
-                      selected:
-                          _hex.text.trim().toUpperCase() ==
-                          swatch.toUpperCase(),
-                      onTap: () => setState(() => _hex.text = swatch),
+                      selected: _colorHex == swatch,
+                      onTap: () => setState(() => _colorHex = swatch),
                     ),
+                  // A color picked from the full grid shows as its own swatch.
+                  if (!knownColor)
+                    _ColorSwatchDot(
+                      color: colorFromRgbHex(_colorHex),
+                      selected: true,
+                      onTap: _pickMoreColors,
+                    ),
+                  _MoreColorsButton(
+                    key: const Key('more-colors'),
+                    onTap: _pickMoreColors,
+                  ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _hex,
-                decoration: const InputDecoration(
-                  labelText: 'Color (#RRGGBB)',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) =>
-                    RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(v?.trim() ?? '')
-                    ? null
-                    : 'Use the #RRGGBB format',
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _description,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description (optional)',
-                  border: OutlineInputBorder(),
-                ),
               ),
               if (_isEdit) ...[
                 const SizedBox(height: 16),
@@ -208,6 +196,76 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Full palette dialog — a Material color grid, still no hex in sight.
+class _ColorGridDialog extends StatelessWidget {
+  const _ColorGridDialog({required this.selectedHex});
+
+  final String selectedHex;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = <Color>[
+      for (final primary in Colors.primaries) ...[
+        primary.shade300,
+        primary.shade600,
+        primary.shade900,
+      ],
+      Colors.blueGrey.shade700,
+      Colors.brown.shade600,
+      Colors.grey.shade700,
+    ];
+    return AlertDialog(
+      title: const Text('Pick a color'),
+      content: SizedBox(
+        width: 320,
+        child: GridView.count(
+          shrinkWrap: true,
+          crossAxisCount: 6,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          children: [
+            for (final color in colors)
+              _ColorSwatchDot(
+                color: color,
+                selected: _hexOf(color) == selectedHex,
+                onTap: () => Navigator.of(context).pop(_hexOf(color)),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
+class _MoreColorsButton extends StatelessWidget {
+  const _MoreColorsButton({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+        ),
+        child: const Icon(Icons.palette_outlined, size: 20),
       ),
     );
   }
