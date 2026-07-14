@@ -15,7 +15,7 @@ following the same rules — everything you need is in [AGENTS.md](AGENTS.md).
 ## Getting started
 
 ```bash
-git clone <repo> && cd alliswell
+git clone https://github.com/mahirozdin/alliswell.git && cd alliswell
 cp .env.example .env
 docker compose up -d mysql redis
 npm install

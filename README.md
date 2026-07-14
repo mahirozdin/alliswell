@@ -1,13 +1,21 @@
-# AllisWell — Open Productivity Hub
+# AllisWell — Open-Source, Self-Hosted Productivity Hub
 
-> Tasks, projects, notes, documents, calendar sync and urgent reminders — in one open-source,
-> self-hosted, cross-platform app.
+**Tasks, projects, notes and urgent reminders in one app — with true two-way Google & Apple
+Calendar sync.** One codebase for iOS, Android, Web, macOS, Windows and Linux.
 
-[![CI](https://img.shields.io/badge/CI-GitHub_Actions-blue)](.github/workflows/ci.yml)
+AllisWell is a free, open-source, self-hostable alternative to Apple Reminders, Todoist,
+TickTick, Things 3 and Notion — your data lives in **your own MySQL database**, not someone
+else's cloud.
+
+[![CI](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml/badge.svg)](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-brightgreen)](LICENSE)
 [![Backend: JavaScript](https://img.shields.io/badge/Backend-Node.js_(JavaScript_only)-yellow)](AGENTS.md)
 [![App: Flutter](https://img.shields.io/badge/App-Flutter_(6_platforms)-02569B)](apps/app)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-orange)](CONTRIBUTING.md)
+
+> ⚠️ **Status: early development.** The foundation (API skeleton, full database schema,
+> app shell, CI) is in place; features are landing epic by epic — see the
+> [backlog](docs/TASKS.md) and [current state](docs/STATE.md). Star/watch the repo to follow along.
 
 **AllisWell** combines the best ideas of the tools we love but can't fully own:
 
@@ -83,6 +91,9 @@ alliswell/
 Prerequisites: **Node.js ≥ 22**, **Docker**, **Flutter ≥ 3.44** (for the app).
 
 ```bash
+git clone https://github.com/mahirozdin/alliswell.git
+cd alliswell
+
 # 1. Infra: MySQL + Redis
 cp .env.example .env
 docker compose up -d mysql redis

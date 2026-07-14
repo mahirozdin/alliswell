@@ -69,7 +69,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
     async () => ({
       name: 'AllisWell API',
       version: app.pkg.version,
-      docs: 'https://github.com/mahirtahaozdin/alliswell',
+      docs: 'https://github.com/mahirozdin/alliswell',
       health: '/health/ready',
     }),
   );
