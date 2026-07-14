@@ -7,6 +7,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Tags API (OPH-031): workspace-scoped tag CRUD with slugs derived from names
+  (Turkish-diacritic aware), per-workspace uniqueness (`409 TAG_SLUG_TAKEN`), slug release on
+  soft delete so names can be recreated, and sync-revision logging on every write.
 - Projects API (OPH-030): workspace-scoped project CRUD (`/api/v1/workspaces/:id/projects`,
   `/api/v1/projects/:id`) with color/status validation, soft delete (owner/admin), and the
   first building block of the sync engine: `recordSyncWrite()` bumps the workspace revision

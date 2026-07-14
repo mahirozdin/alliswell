@@ -6,8 +6,11 @@ import crypto from 'node:crypto';
  * (workspaces) or the DB unique index (tags), not by the readable part.
  */
 
-/** @param {string} text */
-export function slugify(text) {
+/**
+ * @param {string} text
+ * @param {string} [fallback] returned when nothing slug-safe survives (e.g. "!!!")
+ */
+export function slugify(text, fallback = 'space') {
   const slug = text
     .normalize('NFKD') // decompose accents (é → e + U+0301), then strip the marks
     .replace(/[\u0300-\u036f]/g, '')
@@ -16,7 +19,7 @@ export function slugify(text) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 48)
     .replace(/-+$/, '');
-  return slug || 'space';
+  return slug || fallback;
 }
 
 /** Slug + 8 hex chars of randomness, e.g. `mahir-s-space-3f9a1c2e`. */

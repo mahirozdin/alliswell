@@ -212,10 +212,11 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
       returned revision stamped)
 - [x] Tests: CRUD, authz cross-workspace denial, validation, sync-log invariants
 
-### OPH-031 — Tag CRUD API
+### OPH-031 — Tag CRUD API ✅
 
-- [ ] CRUD under workspace; unique slug per workspace (slugify helper)
-- [ ] Tests incl. duplicate slug conflict
+- [x] CRUD under workspace; unique slug per workspace (slugify helper; slug follows renames;
+      soft delete rewrites the slug to `…--deleted--…` so the name can be recreated)
+- [x] Tests incl. duplicate slug conflict (`409 TAG_SLUG_TAKEN`, case/diacritic-insensitive)
 
 ### OPH-032 — Task CRUD API
 
