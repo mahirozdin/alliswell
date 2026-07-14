@@ -43,6 +43,9 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     task_tags: [],
     checklist_items: [],
     reminders: [],
+    notes: [],
+    note_tags: [],
+    note_links: [],
     sync_revisions: [],
   };
 
@@ -73,6 +76,16 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       completed_at: null,
     }),
     checklist_items: () => ({ is_done: false, sort_order: 0, revision: 0 }),
+    notes: () => ({
+      project_id: null,
+      created_from_task_id: null,
+      content_delta: null,
+      content_markdown: null,
+      plain_text: null,
+      is_pinned: false,
+      is_archived: false,
+      revision: 0,
+    }),
     reminders: () => ({
       timezone: 'Europe/Istanbul',
       alarm_level: 'normal',
@@ -142,6 +155,19 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       },
       whereIn(col, values) {
         filters.push((row) => values.includes(row[col]));
+        return api;
+      },
+      // Only the notes FULLTEXT search uses whereRaw; the fake approximates
+      // MATCH..AGAINST with a case-insensitive substring test (the real index
+      // semantics are covered by test/integration/notes.test.js).
+      whereRaw(sql, bindings) {
+        if (!/^MATCH\(title, plain_text\) AGAINST/.test(sql)) {
+          throw new Error(`fakeDb: unsupported whereRaw "${sql}"`);
+        }
+        const needle = String(bindings[0]).toLowerCase();
+        filters.push((row) =>
+          `${row.title ?? ''} ${row.plain_text ?? ''}`.toLowerCase().includes(needle),
+        );
         return api;
       },
       orderBy(col, dir = 'asc') {

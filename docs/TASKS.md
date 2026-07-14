@@ -291,11 +291,14 @@ API integration tests). ✔
 
 ## Epic 05 — Notes (Phase 1)
 
-### OPH-040 — Note CRUD API
+### OPH-040 — Note CRUD API ✅
 
-- [ ] CRUD with content_delta (JSON), content_markdown, plain_text extraction
-- [ ] Pinned/archived; workspace authz; revisions
-- [ ] Tests
+- [x] CRUD with content_delta (JSON, structurally validated → `NOTE_INVALID_DELTA`),
+      content_markdown, plain_text extraction server-side (`src/lib/delta.js`)
+- [x] Pinned/archived flags (list hides archived unless `includeArchived`); workspace authz;
+      sync revisions on every write; ULID-cursor pagination; `?q=` FULLTEXT search
+      (title + plain_text)
+- [x] Tests (unit + real-MySQL integration incl. FULLTEXT and JSON round-trip)
 
 ### OPH-041 — Note–task link
 

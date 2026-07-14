@@ -1,0 +1,379 @@
+import { newId } from '../lib/ids.js';
+import { coded } from '../lib/errors.js';
+import { toIso } from '../lib/serialize.js';
+import { deltaToPlainText, isValidDelta } from '../lib/delta.js';
+import { recordSyncWrite } from '../db/sync.js';
+
+const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
+const SNIPPET_LENGTH = 160;
+const MAX_PAGE_SIZE = 200;
+
+const errorResponseSchema = {
+  type: 'object',
+  properties: {
+    statusCode: { type: 'integer' },
+    code: { type: 'string' },
+    error: { type: 'string' },
+    message: { type: 'string' },
+  },
+};
+
+// List rows carry a snippet instead of the full content.
+const noteRowSchema = {
+  type: 'object',
+  required: ['id', 'workspaceId', 'title', 'isPinned', 'isArchived', 'revision'],
+  properties: {
+    id: { type: 'string' },
+    workspaceId: { type: 'string' },
+    projectId: { type: ['string', 'null'] },
+    createdFromTaskId: { type: ['string', 'null'] },
+    title: { type: 'string' },
+    snippet: { type: 'string' },
+    isPinned: { type: 'boolean' },
+    isArchived: { type: 'boolean' },
+    revision: { type: 'integer' },
+    createdAt: { type: 'string' },
+    updatedAt: { type: 'string' },
+  },
+};
+
+const noteDetailSchema = {
+  ...noteRowSchema,
+  properties: {
+    ...noteRowSchema.properties,
+    contentDelta: { type: ['array', 'null'] },
+    contentMarkdown: { type: ['string', 'null'] },
+    plainText: { type: ['string', 'null'] },
+    links: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          entityType: { type: 'string' },
+          entityId: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+
+const writableProps = {
+  title: { type: 'string', minLength: 1, maxLength: 500 },
+  contentDelta: { type: ['array', 'null'], maxItems: 20000 },
+  contentMarkdown: { type: ['string', 'null'], maxLength: 1000000 },
+  projectId: { anyOf: [{ type: 'null' }, ULID_PARAM] },
+  isPinned: { type: 'boolean' },
+  isArchived: { type: 'boolean' },
+};
+
+export function serializeNoteRow(row) {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    projectId: row.project_id ?? null,
+    createdFromTaskId: row.created_from_task_id ?? null,
+    title: row.title,
+    snippet: (row.plain_text ?? '').slice(0, SNIPPET_LENGTH),
+    isPinned: Boolean(row.is_pinned),
+    isArchived: Boolean(row.is_archived),
+    revision: Number(row.revision),
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  };
+}
+
+function parseDelta(value) {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+  return value;
+}
+
+export default async function noteRoutes(app) {
+  const auth = { onRequest: [app.authenticate] };
+
+  async function loadNote(id) {
+    const row = await app.db('notes').where({ id }).whereNull('deleted_at').first();
+    if (!row) throw coded(app.httpErrors.notFound('Note not found'), 'NOTE_NOT_FOUND');
+    return row;
+  }
+
+  async function serializeNoteDetail(row) {
+    const links = await app
+      .db('note_links')
+      .where({ note_id: row.id })
+      .orderBy('created_at', 'asc')
+      .select();
+    return {
+      ...serializeNoteRow(row),
+      contentDelta: parseDelta(row.content_delta),
+      contentMarkdown: row.content_markdown ?? null,
+      plainText: row.plain_text ?? null,
+      links: links.map((l) => ({
+        id: l.id,
+        entityType: l.linked_entity_type,
+        entityId: l.linked_entity_id,
+      })),
+    };
+  }
+
+  async function assertProjectUsable(projectId, workspaceId) {
+    const project = await app
+      .db('projects')
+      .where({ id: projectId, workspace_id: workspaceId })
+      .whereNull('deleted_at')
+      .first('id');
+    if (!project) {
+      throw coded(
+        app.httpErrors.badRequest('projectId does not reference a project in this workspace'),
+        'NOTE_INVALID_PROJECT',
+      );
+    }
+  }
+
+  /** camelCase body → row values; content changes re-derive plain_text. */
+  function toRowPatch(body) {
+    const row = {};
+    if ('title' in body) row.title = body.title;
+    if ('contentDelta' in body) {
+      if (body.contentDelta !== null && !isValidDelta(body.contentDelta)) {
+        throw coded(
+          app.httpErrors.badRequest('contentDelta must be an array of Quill insert ops'),
+          'NOTE_INVALID_DELTA',
+        );
+      }
+      row.content_delta = body.contentDelta === null ? null : JSON.stringify(body.contentDelta);
+      row.plain_text = deltaToPlainText(body.contentDelta);
+    }
+    if ('contentMarkdown' in body) row.content_markdown = body.contentMarkdown;
+    if ('projectId' in body) row.project_id = body.projectId;
+    if ('isPinned' in body) row.is_pinned = body.isPinned;
+    if ('isArchived' in body) row.is_archived = body.isArchived;
+    return row;
+  }
+
+  // ── Collection ────────────────────────────────────────────────────────────
+
+  app.get(
+    '/workspaces/:workspaceId/notes',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { workspaceId: ULID_PARAM } },
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            pinned: { type: 'boolean' },
+            includeArchived: { type: 'boolean', default: false },
+            projectId: ULID_PARAM,
+            taskId: ULID_PARAM,
+            q: { type: 'string', minLength: 1, maxLength: 200 },
+            limit: { type: 'integer', minimum: 1, maximum: MAX_PAGE_SIZE, default: 50 },
+            cursor: ULID_PARAM,
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              items: { type: 'array', items: noteRowSchema },
+              nextCursor: { type: ['string', 'null'] },
+            },
+          },
+          403: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const { workspaceId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      const q = request.query;
+
+      let query = app
+        .db('notes')
+        .where({ workspace_id: workspaceId })
+        .whereNull('deleted_at')
+        .orderBy('id', 'desc')
+        .limit(q.limit);
+      if (q.cursor) query = query.where('id', '<', q.cursor);
+      if (q.pinned !== undefined) query = query.where({ is_pinned: q.pinned });
+      if (!q.includeArchived) query = query.where({ is_archived: false });
+      if (q.projectId) query = query.where({ project_id: q.projectId });
+      if (q.taskId) {
+        // Linked to the task either explicitly or by "created from task".
+        const links = await app
+          .db('note_links')
+          .where({ linked_entity_type: 'task', linked_entity_id: q.taskId })
+          .select('note_id');
+        const noteIds = new Set(links.map((l) => l.note_id));
+        const created = await app
+          .db('notes')
+          .where({ created_from_task_id: q.taskId })
+          .whereNull('deleted_at')
+          .select('id');
+        for (const row of created) noteIds.add(row.id);
+        query = query.whereIn('id', [...noteIds]);
+      }
+      if (q.q) {
+        query = query.whereRaw('MATCH(title, plain_text) AGAINST (? IN NATURAL LANGUAGE MODE)', [
+          q.q,
+        ]);
+      }
+
+      const rows = await query.select();
+      return {
+        items: rows.map(serializeNoteRow),
+        nextCursor: rows.length === q.limit ? rows.at(-1).id : null,
+      };
+    },
+  );
+
+  app.post(
+    '/workspaces/:workspaceId/notes',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { workspaceId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['title'],
+          properties: writableProps,
+        },
+        response: { 201: noteDetailSchema, 400: errorResponseSchema, 403: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { workspaceId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      if (request.body.projectId) await assertProjectUsable(request.body.projectId, workspaceId);
+
+      const id = newId();
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId,
+          entityType: 'note',
+          entityId: id,
+          operation: 'create',
+        });
+        await trx('notes').insert({
+          id,
+          workspace_id: workspaceId,
+          ...toRowPatch(request.body),
+          created_by: request.user.id,
+          updated_by: request.user.id,
+          revision,
+        });
+      });
+
+      return reply.code(201).send(await serializeNoteDetail(await loadNote(id)));
+    },
+  );
+
+  // ── Single note ───────────────────────────────────────────────────────────
+
+  app.get(
+    '/notes/:noteId',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { noteId: ULID_PARAM } },
+        response: { 200: noteDetailSchema, 403: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request) => {
+      const row = await loadNote(request.params.noteId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+      return serializeNoteDetail(row);
+    },
+  );
+
+  app.patch(
+    '/notes/:noteId',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { noteId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          minProperties: 1,
+          properties: writableProps,
+        },
+        response: {
+          200: noteDetailSchema,
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const row = await loadNote(request.params.noteId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+      if (request.body.projectId) {
+        await assertProjectUsable(request.body.projectId, row.workspace_id);
+      }
+
+      const patch = toRowPatch(request.body);
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'note',
+          entityId: row.id,
+          operation: 'update',
+          changedFields: Object.keys(patch),
+        });
+        await trx('notes')
+          .where({ id: row.id })
+          .update({
+            ...patch,
+            revision,
+            updated_by: request.user.id,
+            updated_at: new Date(),
+          });
+      });
+
+      return serializeNoteDetail(await loadNote(row.id));
+    },
+  );
+
+  app.delete(
+    '/notes/:noteId',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { noteId: ULID_PARAM } },
+        response: { 204: { type: 'null' }, 403: errorResponseSchema, 404: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const row = await loadNote(request.params.noteId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'note',
+          entityId: row.id,
+          operation: 'delete',
+        });
+        await trx('notes').where({ id: row.id }).update({
+          deleted_at: new Date(),
+          revision,
+          updated_by: request.user.id,
+          updated_at: new Date(),
+        });
+      });
+
+      return reply.code(204).send();
+    },
+  );
+}

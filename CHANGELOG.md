@@ -7,6 +7,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Notes API (OPH-040): workspace-scoped note CRUD storing Quill delta JSON as canonical
+  content with markdown alongside and server-derived plain text; pinned/archived flags,
+  FULLTEXT `?q=` search, cursor pagination and sync revisions.
 - App — task screens (OPH-037): Inbox, Today and Upcoming are live lists from the API with a
   context-aware quick-add bar (Inbox captures, Today dues today, Upcoming dues tomorrow);
   checkbox complete/reopen; task detail screen with status/priority, urgent toggle, due/remind
