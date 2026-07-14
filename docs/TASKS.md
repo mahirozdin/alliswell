@@ -156,12 +156,14 @@ the end-to-end acceptance closes with `GET /me` in OPH-023._)
 - [x] Rate limit tighter than global (`RATE_LIMIT_AUTH_MAX`, default 10/min/IP, all auth routes)
 - [x] Tests: wrong password, unknown email, happy path (+ soft-deleted user, rate limit trip)
 
-### OPH-022 — Refresh token rotation
+### OPH-022 — Refresh token rotation ✅
 
-- [ ] `POST /api/v1/auth/refresh` — rotate: old token revoked, same family id
-- [ ] Reuse detection: refresh with a rotated token revokes the whole family
-- [ ] `POST /api/v1/auth/logout` — revoke current token (and `?all=true` for family)
-- [ ] Tests: rotation chain, reuse attack, expiry
+- [x] `POST /api/v1/auth/refresh` — rotate: old token retired (`rotated_at`), same family id
+- [x] Reuse detection: refresh with a rotated/revoked token revokes the whole family
+      (`AUTH_REFRESH_REUSED`); concurrent rotations settled by an atomic claim UPDATE
+- [x] `POST /api/v1/auth/logout` — revoke current token (and `?all=true` for family); always
+      204 (idempotent, no validity oracle)
+- [x] Tests: rotation chain, reuse attack, expiry (+ soft-deleted user, unknown token)
 
 ### OPH-023 — Auth middleware / plugin
 

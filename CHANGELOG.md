@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Auth — refresh rotation & logout (OPH-022): `POST /api/v1/auth/refresh` rotates the opaque
+  refresh token inside its family; replaying a retired token answers `401 AUTH_REFRESH_REUSED`
+  and revokes the entire family (theft containment), with concurrent rotations settled by an
+  atomic claim. `POST /api/v1/auth/logout` revokes the presented token — or the whole family
+  with `?all=true` — and always answers 204.
 - Auth — login (OPH-021): `POST /api/v1/auth/login` verifies argon2id credentials with a
   timing-safe unknown-email path (dummy verify) and answers `401 AUTH_INVALID_CREDENTIALS`
   without revealing which part failed; every login starts a fresh refresh-token family.
