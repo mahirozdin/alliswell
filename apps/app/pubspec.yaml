@@ -38,6 +38,7 @@ dependencies:
   go_router: ^17.3.0
   dio: ^5.10.0
   flutter_secure_storage: ^10.3.1
+  flutter_quill: ^11.4.0
 
 dev_dependencies:
   flutter_test:

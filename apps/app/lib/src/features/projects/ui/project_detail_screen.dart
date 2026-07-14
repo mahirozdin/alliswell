@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../notes/providers.dart';
+import '../../notes/ui/notes_screen.dart';
 import '../data/project.dart';
 import '../providers.dart';
 import 'project_edit_sheet.dart';
@@ -114,10 +116,7 @@ class _ProjectDetail extends ConsumerWidget {
               icon: Icons.check_circle_outline,
               label: 'Project tasks arrive with OPH-037',
             ),
-            const _ComingSoonTab(
-              icon: Icons.description_outlined,
-              label: 'Notes arrive with Epic 05',
-            ),
+            _ProjectNotesTab(projectId: project.id),
           ],
         ),
       ),
@@ -169,6 +168,33 @@ class _OverviewTab extends StatelessWidget {
           style: theme.textTheme.bodyMedium,
         ),
       ],
+    );
+  }
+}
+
+class _ProjectNotesTab extends ConsumerWidget {
+  const _ProjectNotesTab({required this.projectId});
+
+  final String projectId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notes = ref.watch(projectNotesProvider(projectId));
+    return notes.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(child: Text('$error')),
+      data: (items) => items.isEmpty
+          ? const Center(
+              child: Chip(
+                avatar: Icon(Icons.description_outlined, size: 18),
+                label: Text('No notes attached to this project yet'),
+              ),
+            )
+          : ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (context, index) => NoteTile(note: items[index]),
+            ),
     );
   }
 }

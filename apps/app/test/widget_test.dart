@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -41,19 +42,15 @@ void main() {
     );
   });
 
-  testWidgets('navigating to another section swaps the placeholder', (
-    tester,
-  ) async {
+  testWidgets('navigating to another section swaps the screen', (tester) async {
     await tester.pumpWidget(await signedInApp());
     await tester.pumpAndSettle();
 
-    // Notes is still a placeholder (Epic 05); Projects became real in OPH-036.
+    // Every section is a real screen now — Notes shows its empty state.
     await tester.tap(find.text('Notes').last);
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Rich notes, linkable to tasks and projects.'),
-      findsOneWidget,
-    );
+    expect(find.text('No notes here'), findsOneWidget);
+    expect(find.byKey(const Key('notes-search')), findsOneWidget);
   });
 }

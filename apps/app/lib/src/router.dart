@@ -5,13 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
+import 'features/notes/ui/note_editor_screen.dart';
+import 'features/notes/ui/notes_screen.dart';
 import 'features/projects/ui/project_detail_screen.dart';
 import 'features/projects/ui/projects_screen.dart';
 import 'features/tasks/providers.dart';
 import 'features/tasks/ui/task_detail_screen.dart';
 import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
-import 'screens/placeholder_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
 import 'sections.dart';
@@ -86,7 +87,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                       kind: TaskListKind.upcoming,
                     ),
                     AppSection.projects => const ProjectsScreen(),
-                    _ => PlaceholderScreen(section: section),
+                    AppSection.notes => const NotesScreen(),
                   },
                   routes: [
                     if (section == AppSection.projects)
@@ -96,6 +97,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                           projectId: state.pathParameters['projectId']!,
                         ),
                       ),
+                    if (section == AppSection.notes) ...[
+                      // 'new' must precede ':noteId' so it wins the match.
+                      GoRoute(
+                        path: 'new',
+                        builder: (context, state) => const NoteEditorScreen(),
+                      ),
+                      GoRoute(
+                        path: ':noteId',
+                        builder: (context, state) => NoteEditorScreen(
+                          noteId: state.pathParameters['noteId']!,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],

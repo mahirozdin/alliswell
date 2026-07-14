@@ -316,16 +316,21 @@ API integration tests). ✔
       link-attached notes, archived hidden by default, cursor pagination
 - [x] Tests
 
-### OPH-043 — Flutter note list
+### OPH-043 — Flutter note list ✅
 
-- [ ] All/pinned/project/task-linked filters; search box (server FULLTEXT)
-- [ ] Tests
+- [x] All/Pinned chips + server FULLTEXT search box; project notes on the project detail
+      Notes tab (attached ∪ linked); task-linked filter available via the API (`?taskId=`)
+- [x] Tests (list rendering, pinned/search filtering, project tab) over the stateful fake API
 
-### OPH-044 — Flutter note editor
+### OPH-044 — Flutter note editor ✅
 
-- [ ] flutter_quill editor (rich text: color, links, headings, checklists, code)
-- [ ] Delta autosave; markdown preview/export action
-- [ ] Tests
+- [x] flutter_quill 11 editor (headings, bold/italic/strike/code, colors, links, check/bullet/
+      ordered lists, code blocks; single-row toolbar)
+- [x] Delta autosave (1.5 s debounce; first save creates the note, POST → PATCH after; failed
+      saves stay dirty and retry on next edit); markdown generated client-side on every save
+      (`data/delta_markdown.dart`) + preview sheet action; pin toggle + delete in the app bar
+- [x] Tests: converter fixtures (headers/inline/lists/code fences), editor load, title
+      autosave PATCH, create-on-first-save POST
 
 ### OPH-045 — Markdown export
 

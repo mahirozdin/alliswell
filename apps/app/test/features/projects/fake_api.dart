@@ -9,8 +9,30 @@ class FakeApi {
   final List<Map<String, dynamic>> projects = [];
   final List<Map<String, dynamic>> tasks = [];
   final List<Map<String, dynamic>> tags = [];
+  final List<Map<String, dynamic>> notes = [];
   final List<String> requests = [];
   int _seq = 0;
+
+  Map<String, dynamic> seedNote({
+    required String title,
+    String plainText = '',
+    bool isPinned = false,
+    String? projectId,
+    List<Map<String, dynamic>>? contentDelta,
+  }) {
+    final note = _note({
+      'title': title,
+      'contentDelta':
+          contentDelta ??
+          [
+            {'insert': '$plainText\n'},
+          ],
+      'projectId': projectId,
+      'isPinned': isPinned,
+    });
+    notes.add(note);
+    return note;
+  }
 
   Map<String, dynamic> seedTag({required String name}) {
     _seq += 1;
@@ -109,6 +131,62 @@ class FakeApi {
     if (path == '/api/v1/workspaces/$workspaceId/tags' &&
         options.method == 'GET') {
       return jsonBody(200, {'items': tags});
+    }
+
+    if (path == '/api/v1/workspaces/$workspaceId/notes') {
+      if (options.method == 'GET') {
+        final params = options.uri.queryParameters;
+        var items = notes.where((n) => n['isArchived'] != true).toList();
+        if (params['pinned'] == 'true') {
+          items = items.where((n) => n['isPinned'] == true).toList();
+        }
+        final q = params['q']?.toLowerCase();
+        if (q != null && q.isNotEmpty) {
+          items = items
+              .where(
+                (n) => ('${n['title']} ${n['plainText']}')
+                    .toLowerCase()
+                    .contains(q),
+              )
+              .toList();
+        }
+        return jsonBody(200, {'items': items, 'nextCursor': null});
+      }
+      if (options.method == 'POST') {
+        final note = _note(body ?? const {});
+        notes.add(note);
+        return jsonBody(201, note);
+      }
+    }
+
+    final projectNotes = RegExp(
+      r'^/api/v1/projects/([^/]+)/notes$',
+    ).firstMatch(path);
+    if (projectNotes != null && options.method == 'GET') {
+      final items = notes
+          .where((n) => n['projectId'] == projectNotes.group(1))
+          .toList();
+      return jsonBody(200, {'items': items, 'nextCursor': null});
+    }
+
+    final singleNote = RegExp(r'^/api/v1/notes/([^/]+)$').firstMatch(path);
+    if (singleNote != null) {
+      final index = notes.indexWhere((n) => n['id'] == singleNote.group(1));
+      if (index < 0) return _notFound('NOTE_NOT_FOUND');
+      switch (options.method) {
+        case 'GET':
+          return jsonBody(200, notes[index]);
+        case 'PATCH':
+          notes[index] = {
+            ...notes[index],
+            ...?body,
+            'revision': (notes[index]['revision'] as int) + 1,
+          };
+          return jsonBody(200, notes[index]);
+        case 'DELETE':
+          notes.removeAt(index);
+          return ResponseBody.fromString('', 204);
+      }
     }
 
     if (path == '/api/v1/workspaces/$workspaceId/tasks') {
@@ -310,6 +388,34 @@ class FakeApi {
       'checklist':
           (body['checklist'] as List?)?.cast<Map<String, dynamic>>() ??
           <Map<String, dynamic>>[],
+    };
+  }
+
+  Map<String, dynamic> _note(Map<String, dynamic> body) {
+    _seq += 1;
+    final delta = (body['contentDelta'] as List?)?.cast<Map<String, dynamic>>();
+    final plain = (delta ?? const [])
+        .map((op) => op['insert'])
+        .whereType<String>()
+        .join()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    return {
+      'id': 'NOT$_seq'.padRight(26, '0'),
+      'workspaceId': workspaceId,
+      'projectId': body['projectId'],
+      'createdFromTaskId': null,
+      'title': body['title'] ?? 'Untitled',
+      'snippet': plain,
+      'plainText': plain,
+      'contentDelta': delta,
+      'contentMarkdown': body['contentMarkdown'],
+      'isPinned': body['isPinned'] ?? false,
+      'isArchived': false,
+      'links': <Map<String, dynamic>>[],
+      'revision': 1,
+      'createdAt': '2026-07-14T10:00:00.000Z',
+      'updatedAt': '2026-07-14T10:00:00.000Z',
     };
   }
 

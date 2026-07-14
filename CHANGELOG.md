@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- App — notes (OPH-043, OPH-044): the Notes section is live — searchable (server FULLTEXT)
+  list with All/Pinned chips, project detail Notes tab, and a flutter_quill rich-text editor
+  with debounced delta autosave, client-side markdown generation with a preview sheet, pin
+  and delete actions. New notes are created on their first autosave.
 - Project notes (OPH-042): `GET /projects/:id/notes` lists a project's notes — both directly
   attached and link-attached.
 - Note links (OPH-041): polymorphic note↔task/project links with workspace validation, and

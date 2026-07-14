@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'router.dart';
@@ -18,6 +19,8 @@ class AllisWellApp extends ConsumerWidget {
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
       themeMode: ThemeMode.system,
+      // Required by flutter_quill's editor widgets (OPH-044).
+      localizationsDelegates: FlutterQuillLocalizations.localizationsDelegates,
       routerConfig: ref.watch(routerProvider),
     );
   }

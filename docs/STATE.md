@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-14 (Epic 04 complete: OPH-030…037)
+**Last updated:** 2026-07-14 (Epic 05: OPH-040…044 — markdown export OPH-045 remains)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,11 +15,19 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 1 — Core domain |
 | Current epic | **Epic 05 — Notes** |
-| ➡️ **Next task** | **OPH-040 — Note CRUD API** |
-| Last completed | Epic 04 (OPH-030…037); Epic 03, Epic 02, Epic 01, OPH-090…093 |
+| ➡️ **Next task** | **OPH-045 — Markdown export (server-side)** |
+| Last completed | OPH-040…044; Epic 04, Epic 03, Epic 02, Epic 01, OPH-090…093 |
 
 ## Recently completed
 
+- **Epic 05 — notes (OPH-040…044; 045 export kaldı):** Notes API — delta JSON canonical +
+  markdown + server-derived plain_text (FULLTEXT `?q=`), pinned/archived, polymorphic
+  task/project links (`NOTE_LINK_EXISTS`), `POST /tasks/:id/notes` (proje miras alır,
+  otomatik link), `GET /projects/:id/notes` (attached ∪ linked). App — Notes sekmesi
+  (arama + All/Pinned çipleri), proje detayında Notes tab'ı, flutter_quill 11 editör
+  (debounce'lu delta autosave, ilk kayıtta POST; client-side delta→markdown dönüştürücü
+  `features/notes/data/delta_markdown.dart` + preview sheet). Quill,
+  `FlutterQuillLocalizations.localizationsDelegates`'i app.dart'ta gerektiriyor.
 - **Epic 04 — complete (OPH-030…037).** On top of the API core below: OPH-035 snooze
   (`POST /tasks/:id/snooze`, presets incl. tomorrow_morning at 09:00 task-tz — DST-safe
   `src/lib/time.js`; task + active reminder snooze together; unrelated patches preserve a
@@ -84,9 +92,9 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-040** per its checklist in [TASKS.md](TASKS.md) — notes follow the same
-   route pattern as projects/tasks (workspace-scoped, `recordSyncWrite`, soft delete);
-   note the document-level optimistic lock + conflict copy policy (BLUEPRINT §6.5) when
-   you reach OPH-041.
+2. Implement **OPH-045** per its checklist in [TASKS.md](TASKS.md) — the server-side
+   delta→markdown converter can mirror the client one
+   (apps/app/lib/src/features/notes/data/delta_markdown.dart); add
+   `GET /notes/:id/export?format=md` and fixture-delta tests.
 3. Verify (`npm run lint && npm test`, integration tests if infra up), document, commit,
    then update this file's Snapshot + Recently completed.
