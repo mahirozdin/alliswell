@@ -20,6 +20,9 @@ const UNIQUE_INDEXES = {
   sync_revisions: [
     { name: 'sync_revisions.uq_workspace_revision', cols: ['workspace_id', 'revision'] },
   ],
+  client_mutations: [
+    { name: 'client_mutations.uq_client_mutation', cols: ['client_id', 'client_mutation_id'] },
+  ],
 };
 
 const OPS = {
@@ -47,6 +50,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     note_tags: [],
     note_links: [],
     sync_revisions: [],
+    client_mutations: [],
   };
 
   const columnDefaults = {
@@ -94,6 +98,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       status: 'scheduled',
       revision: 0,
     }),
+    client_mutations: () => ({ user_id: null, result_revision: null, error_code: null }),
   };
 
   function assertUnique(name, candidate, rows) {

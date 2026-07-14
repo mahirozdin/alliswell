@@ -39,7 +39,7 @@ const writableProps = {
   icon: { type: ['string', 'null'], maxLength: 64 },
 };
 
-function serializeTag(row) {
+export function serializeTag(row) {
   return {
     id: row.id,
     workspaceId: row.workspace_id,

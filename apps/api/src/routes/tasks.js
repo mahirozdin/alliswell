@@ -202,7 +202,7 @@ export function serializeTask(row) {
   };
 }
 
-function serializeChecklistItem(row) {
+export function serializeChecklistItem(row) {
   return {
     id: row.id,
     taskId: row.task_id,
