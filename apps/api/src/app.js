@@ -14,6 +14,7 @@ import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
 import projectRoutes from './routes/projects.js';
 import tagRoutes from './routes/tags.js';
+import taskRoutes from './routes/tasks.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -85,6 +86,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(meRoutes, { prefix: '/api/v1' });
   await app.register(projectRoutes, { prefix: '/api/v1' });
   await app.register(tagRoutes, { prefix: '/api/v1' });
+  await app.register(taskRoutes, { prefix: '/api/v1' });
 
   return app;
 }

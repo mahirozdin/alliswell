@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Tasks API (OPH-032): task CRUD with rich filters (status/project/tag/due-range/urgent/parent)
+  and ULID-cursor pagination; subtasks with cycle protection and subtree soft delete; checklist
+  sub-resource; `PUT /tasks/:id/tags` replace-set semantics. Every write logs a sync revision;
+  cross-workspace references are rejected with stable error codes.
 - Tags API (OPH-031): workspace-scoped tag CRUD with slugs derived from names
   (Turkish-diacritic aware), per-workspace uniqueness (`409 TAG_SLUG_TAKEN`), slug release on
   soft delete so names can be recreated, and sync-revision logging on every write.

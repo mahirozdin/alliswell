@@ -218,14 +218,17 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
       soft delete rewrites the slug to `…--deleted--…` so the name can be recreated)
 - [x] Tests incl. duplicate slug conflict (`409 TAG_SLUG_TAKEN`, case/diacritic-insensitive)
 
-### OPH-032 — Task CRUD API
+### OPH-032 — Task CRUD API ✅
 
-- [ ] Create/list (filters: status, projectId, tag, due range, urgent; cursor pagination) /
-      get / patch / soft-delete
-- [ ] Checklist items sub-resource; parent_task_id subtasks
-- [ ] Tag attach/detach (`PUT /tasks/:id/tags`)
-- [ ] Revision + sync_revisions on writes
-- [ ] Tests: filters, pagination, subtask nesting, tag ops
+- [x] Create/list (filters: status multi, projectId, tag, due range, urgent, parentTaskId;
+      ULID-cursor pagination, newest first) / get / patch / soft-delete (subtree cascade,
+      one sync row per task)
+- [x] Checklist items sub-resource (`/tasks/:id/checklist[/:itemId]`, task-scoped);
+      parent_task_id subtasks with cycle guard (`TASK_PARENT_CYCLE`)
+- [x] Tag attach/detach (`PUT /tasks/:id/tags`, replace-set diff; no-op costs no revision)
+- [x] Revision + sync_revisions on writes; cross-workspace reference guards
+      (`TASK_INVALID_PROJECT` / `TASK_INVALID_PARENT` / `TASK_INVALID_TAG`)
+- [x] Tests: filters, pagination, subtask nesting, tag ops (unit + real-MySQL integration)
 
 ### OPH-033 — Task status & priority transitions
 
