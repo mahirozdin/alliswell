@@ -57,8 +57,12 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
           err.errno = 1062;
           throw err;
         }
-        // Mimic the DATETIME(3) defaults the real schema applies.
-        tables[name].push({ created_at: new Date(), updated_at: new Date(), ...row });
+        // Mimic the column defaults the real schema applies (ADR-0004 / OPH-011).
+        const defaults = { created_at: new Date(), updated_at: new Date() };
+        if (name === 'users')
+          Object.assign(defaults, { timezone: 'Europe/Istanbul', locale: 'tr-TR' });
+        if (name === 'workspaces') Object.assign(defaults, { color_rgb: '#2563EB' });
+        tables[name].push({ ...defaults, ...row });
         return [1];
       },
     };

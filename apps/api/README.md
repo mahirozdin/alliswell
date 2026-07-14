@@ -20,6 +20,20 @@ curl -X POST localhost:3000/api/v1/auth/register \
   -d '{"email":"you@example.com","password":"a-strong-password","displayName":"You"}'
 ```
 
+## Endpoints (Epic 03)
+
+| Endpoint                     | Purpose                                                | Errors (`code`)                                                      |
+| ---------------------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
+| `POST /api/v1/auth/register` | account + personal workspace + session                 | `AUTH_EMAIL_TAKEN`                                                   |
+| `POST /api/v1/auth/login`    | credentials → new session (new token family)           | `AUTH_INVALID_CREDENTIALS`                                           |
+| `POST /api/v1/auth/refresh`  | rotate refresh token within its family                 | `AUTH_INVALID_REFRESH_TOKEN`, `AUTH_REFRESH_REUSED` (family revoked) |
+| `POST /api/v1/auth/logout`   | revoke session (`?all=true`: whole family), always 204 | —                                                                    |
+| `GET /api/v1/me`             | profile + workspaces (Bearer access token)             | `AUTH_INVALID_TOKEN`, `AUTH_TOKEN_EXPIRED`                           |
+
+Access tokens are 15-minute JWTs; refresh tokens are opaque, 30-day, stored only as keyed
+hashes, and rotate on every refresh (reuse burns the family). Auth routes share a stricter
+per-IP rate limit (`RATE_LIMIT_AUTH_MAX`, default 10/min).
+
 ## Layout
 
 ```txt

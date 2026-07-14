@@ -145,8 +145,7 @@ back (`db:rollback --all`); integration test asserts the migration set is applie
 - [x] Unit + integration tests (duplicate email, weak password, happy path)
 
 Acceptance: new user can register and immediately call an authenticated endpoint.
-(_Authenticated endpoints don't exist yet — the issued JWT is verified server-side in tests;
-the end-to-end acceptance closes with `GET /me` in OPH-023._)
+(_Closed in OPH-023: the integration suite registers and immediately calls `GET /me`._)
 
 ### OPH-021 — Login endpoint ✅
 
@@ -165,12 +164,14 @@ the end-to-end acceptance closes with `GET /me` in OPH-023._)
       204 (idempotent, no validity oracle)
 - [x] Tests: rotation chain, reuse attack, expiry (+ soft-deleted user, unknown token)
 
-### OPH-023 — Auth middleware / plugin
+### OPH-023 — Auth middleware / plugin ✅
 
-- [ ] `app.authenticate` decorator verifying JWT (issuer/audience/exp)
-- [ ] `request.user` + workspace-membership authorization helper
-- [ ] `GET /api/v1/me` returning profile + workspaces
-- [ ] Tests: missing/expired/garbage token, membership check
+- [x] `app.authenticate` decorator verifying JWT (issuer/audience/exp; expiry gets its own
+      `AUTH_TOKEN_EXPIRED` code so clients know to refresh)
+- [x] `request.user` (`{ id, email }` via formatUser) + `app.requireWorkspaceMember(request,
+      workspaceId, { roles })` authorization helper (403 `AUTH_WORKSPACE_FORBIDDEN`)
+- [x] `GET /api/v1/me` returning profile + workspaces (batched queries, no N+1)
+- [x] Tests: missing/expired/garbage/forged token, deleted user, membership + role check
 
 ### OPH-024 — Flutter auth repository
 

@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Auth — middleware & `GET /api/v1/me` (OPH-023): `app.authenticate` route guard (JWT
+  issuer/audience/expiry; expired tokens answer `AUTH_TOKEN_EXPIRED` so clients refresh instead
+  of re-login), `request.user`, and a workspace-membership authorization helper. `GET /api/v1/me`
+  returns the profile plus workspaces with roles — closing the Epic 03 acceptance: register,
+  then immediately call an authenticated endpoint.
 - Auth — refresh rotation & logout (OPH-022): `POST /api/v1/auth/refresh` rotates the opaque
   refresh token inside its family; replaying a retired token answers `401 AUTH_REFRESH_REUSED`
   and revokes the entire family (theft containment), with concurrent rotations settled by an
