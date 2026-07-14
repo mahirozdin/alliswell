@@ -17,6 +17,7 @@ class FakeApi {
     required String title,
     String plainText = '',
     bool isPinned = false,
+    bool isArchived = false,
     String? projectId,
     List<Map<String, dynamic>>? contentDelta,
   }) {
@@ -30,6 +31,7 @@ class FakeApi {
       'projectId': projectId,
       'isPinned': isPinned,
     });
+    note['isArchived'] = isArchived;
     notes.add(note);
     return note;
   }
@@ -136,7 +138,15 @@ class FakeApi {
     if (path == '/api/v1/workspaces/$workspaceId/notes') {
       if (options.method == 'GET') {
         final params = options.uri.queryParameters;
-        var items = notes.where((n) => n['isArchived'] != true).toList();
+        var items = params['archived'] != null
+            ? notes
+                  .where(
+                    (n) =>
+                        (n['isArchived'] == true) ==
+                        (params['archived'] == 'true'),
+                  )
+                  .toList()
+            : notes.where((n) => n['isArchived'] != true).toList();
         if (params['pinned'] == 'true') {
           items = items.where((n) => n['isPinned'] == true).toList();
         }

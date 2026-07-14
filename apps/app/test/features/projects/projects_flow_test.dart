@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -11,6 +12,7 @@ import '../auth/test_support.dart';
 import 'fake_api.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
+  SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(

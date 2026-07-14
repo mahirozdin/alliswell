@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/auth_api.dart';
@@ -15,18 +16,21 @@ void main() {
   // authenticated API via an empty FakeApi (the shell fetches /me + tasks
   // after login), and secret storage in memory (the real default would hit a
   // platform channel and hang tests).
-  Widget appWith(FakeHandler handler) => ProviderScope(
-    overrides: [
-      secretStoreProvider.overrideWithValue(InMemorySecretStore()),
-      authApiProvider.overrideWithValue(
-        AuthApi(fakeDio(FakeHttpClientAdapter(handler))),
-      ),
-      apiClientProvider.overrideWithValue(
-        fakeDio(FakeHttpClientAdapter(FakeApi().handle)),
-      ),
-    ],
-    child: const AllisWellApp(),
-  );
+  Widget appWith(FakeHandler handler) {
+    SharedPreferences.setMockInitialValues({});
+    return ProviderScope(
+      overrides: [
+        secretStoreProvider.overrideWithValue(InMemorySecretStore()),
+        authApiProvider.overrideWithValue(
+          AuthApi(fakeDio(FakeHttpClientAdapter(handler))),
+        ),
+        apiClientProvider.overrideWithValue(
+          fakeDio(FakeHttpClientAdapter(FakeApi().handle)),
+        ),
+      ],
+      child: const AllisWellApp(),
+    );
+  }
 
   testWidgets('boots to the login screen when signed out', (tester) async {
     await tester.pumpWidget(

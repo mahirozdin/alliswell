@@ -19,6 +19,7 @@ class NotesApi {
   Future<NoteListPage> list(
     String workspaceId, {
     bool? pinned,
+    bool? archived,
     bool? includeArchived,
     String? projectId,
     String? taskId,
@@ -31,6 +32,7 @@ class NotesApi {
         '/api/v1/workspaces/$workspaceId/notes',
         queryParameters: {
           'pinned': ?pinned?.toString(),
+          'archived': ?archived?.toString(),
           'includeArchived': ?includeArchived?.toString(),
           'projectId': ?projectId,
           'taskId': ?taskId,

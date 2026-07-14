@@ -2,11 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../screens/home_shell.dart';
+import '../../../core/persisted_prefs.dart';
+import '../../projects/providers.dart';
 import '../data/note.dart';
 import '../providers.dart';
 
-/// Notes section (OPH-043): search box, All/Pinned chips, server-driven list.
+String _shortDate(DateTime? value) {
+  if (value == null) return '—';
+  final local = value.toLocal();
+  return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
+}
+
+/// Notes section (OPH-043 + feedback round 1): search, All/Pinned/Archived
+/// chips, list ↔ A4-card grid view toggle (persisted), quick pin stars and
+/// archive actions.
 class NotesScreen extends ConsumerStatefulWidget {
   const NotesScreen({super.key});
 
@@ -27,9 +36,32 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   Widget build(BuildContext context) {
     final query = ref.watch(notesQueryProvider);
     final notes = ref.watch(notesListProvider);
+    final viewMode = ref.watch(notesViewModeProvider);
+    final isGrid = viewMode == 'grid';
+    final projects = ref.watch(projectsControllerProvider).value ?? const [];
+    final projectNames = {for (final p in projects) p.id: p.name};
 
     return Scaffold(
-      appBar: buildSectionAppBar(context, 'Notes'),
+      appBar: AppBar(
+        title: const Text('Notes'),
+        actions: [
+          IconButton(
+            key: const Key('notes-view-toggle'),
+            tooltip: isGrid ? 'List view' : 'Card view',
+            icon: Icon(
+              isGrid ? Icons.view_list_outlined : Icons.grid_view_outlined,
+            ),
+            onPressed: () => ref
+                .read(notesViewModeProvider.notifier)
+                .set(isGrid ? 'list' : 'grid'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'New note',
         onPressed: () => context.go('/notes/new'),
@@ -66,21 +98,19 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
-                ChoiceChip(
-                  label: const Text('All'),
-                  selected: query.filter == NotesFilter.all,
-                  onSelected: (_) => ref
-                      .read(notesQueryProvider.notifier)
-                      .setFilter(NotesFilter.all),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Pinned'),
-                  selected: query.filter == NotesFilter.pinned,
-                  onSelected: (_) => ref
-                      .read(notesQueryProvider.notifier)
-                      .setFilter(NotesFilter.pinned),
-                ),
+                for (final (filter, label) in [
+                  (NotesFilter.all, 'All'),
+                  (NotesFilter.pinned, 'Pinned'),
+                  (NotesFilter.archived, 'Archive'),
+                ]) ...[
+                  ChoiceChip(
+                    label: Text(label),
+                    selected: query.filter == filter,
+                    onSelected: (_) =>
+                        ref.read(notesQueryProvider.notifier).setFilter(filter),
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ],
             ),
           ),
@@ -103,12 +133,16 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 ),
               ),
               data: (items) => items.isEmpty
-                  ? const _EmptyNotes()
+                  ? _EmptyNotes(archived: query.filter == NotesFilter.archived)
+                  : isGrid
+                  ? _NotesGrid(notes: items, projectNames: projectNames)
                   : ListView.separated(
                       itemCount: items.length,
                       separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, index) =>
-                          NoteTile(note: items[index]),
+                      itemBuilder: (context, index) => NoteTile(
+                        note: items[index],
+                        projectName: projectNames[items[index].projectId],
+                      ),
                     ),
             ),
           ),
@@ -118,28 +152,157 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   }
 }
 
-/// Shared note row (also used by the project Notes tab).
-class NoteTile extends StatelessWidget {
-  const NoteTile({super.key, required this.note});
+/// Shared note row (also used by the project Notes tab): quick-pin star in
+/// front, metadata line (edited/created/project), archive menu.
+class NoteTile extends ConsumerWidget {
+  const NoteTile({super.key, required this.note, this.projectName});
 
   final NoteRow note;
+  final String? projectName;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final meta = [
+      'Edited ${_shortDate(note.updatedAt)}',
+      'Created ${_shortDate(note.createdAt)}',
+      ?projectName,
+    ].join(' · ');
+
     return ListTile(
-      leading: const Icon(Icons.description_outlined),
+      leading: IconButton(
+        key: Key('pin-${note.id}'),
+        tooltip: note.isPinned ? 'Unpin' : 'Pin',
+        icon: Icon(
+          note.isPinned ? Icons.star : Icons.star_border,
+          color: note.isPinned ? Colors.amber : null,
+        ),
+        onPressed: () => toggleNotePinned(ref, note),
+      ),
       title: Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: note.snippet.isEmpty
-          ? null
-          : Text(note.snippet, maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: note.isPinned ? const Icon(Icons.push_pin, size: 18) : null,
+      subtitle: Text(
+        note.snippet.isEmpty ? meta : '${note.snippet}\n$meta',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: _NoteMenu(note: note),
       onTap: () => context.go('/notes/${note.id}'),
     );
   }
 }
 
+class _NoteMenu extends ConsumerWidget {
+  const _NoteMenu({required this.note});
+
+  final NoteRow note;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return PopupMenuButton<String>(
+      tooltip: 'Note actions',
+      onSelected: (action) {
+        if (action == 'archive') setNoteArchived(ref, note, !note.isArchived);
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'archive',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              note.isArchived
+                  ? Icons.unarchive_outlined
+                  : Icons.archive_outlined,
+            ),
+            title: Text(note.isArchived ? 'Unarchive' : 'Archive'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A4-proportioned cards, Google-Docs-home style.
+class _NotesGrid extends ConsumerWidget {
+  const _NotesGrid({required this.notes, required this.projectNames});
+
+  final List<NoteRow> notes;
+  final Map<String, String> projectNames;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 220,
+        childAspectRatio: 210 / 297, // A4
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemCount: notes.length,
+      itemBuilder: (context, index) {
+        final note = notes[index];
+        return Card(
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.go('/notes/${note.id}'),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          note.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall,
+                        ),
+                      ),
+                      InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => toggleNotePinned(ref, note),
+                        child: Icon(
+                          note.isPinned ? Icons.star : Icons.star_border,
+                          size: 18,
+                          color: note.isPinned ? Colors.amber : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Expanded(
+                    child: Text(
+                      note.snippet,
+                      overflow: TextOverflow.fade,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Edited ${_shortDate(note.updatedAt)}'
+                    '${projectNames[note.projectId] != null ? ' · ${projectNames[note.projectId]}' : ''}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _EmptyNotes extends StatelessWidget {
-  const _EmptyNotes();
+  const _EmptyNotes({required this.archived});
+
+  final bool archived;
 
   @override
   Widget build(BuildContext context) {
@@ -148,12 +311,21 @@ class _EmptyNotes extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.description, size: 64, color: theme.colorScheme.primary),
+          Icon(
+            archived ? Icons.archive_outlined : Icons.description,
+            size: 64,
+            color: theme.colorScheme.primary,
+          ),
           const SizedBox(height: 12),
-          Text('No notes here', style: theme.textTheme.titleMedium),
+          Text(
+            archived ? 'Archive is empty' : 'No notes here',
+            style: theme.textTheme.titleMedium,
+          ),
           const SizedBox(height: 4),
           Text(
-            'Capture the first one with the + button.',
+            archived
+                ? 'Archived notes land here for safekeeping.'
+                : 'Capture the first one with the + button.',
             style: theme.textTheme.bodyMedium,
           ),
         ],

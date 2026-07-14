@@ -51,6 +51,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   Timer? _debounce;
   String? _noteId;
   bool _isPinned = false;
+  bool _isArchived = false;
   bool _dirty = false;
   bool _saving = false;
 
@@ -59,6 +60,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     super.initState();
     _noteId = widget.note?.id;
     _isPinned = widget.note?.isPinned ?? false;
+    _isArchived = widget.note?.isArchived ?? false;
     _title = TextEditingController(text: widget.note?.title ?? '');
     _quill = QuillController.basic();
     final delta = widget.note?.contentDelta;
@@ -88,10 +90,17 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   List<Map<String, dynamic>> get _deltaJson =>
       _quill.document.toDelta().toJson().cast<Map<String, dynamic>>();
 
+  String get _titleText =>
+      _title.text.trim().isEmpty ? 'Untitled' : _title.text.trim();
+
+  /// The title is part of the document (Apple-Notes style): exports lead
+  /// with it as an H1 (feedback round 1).
+  String get _markdown => '# $_titleText\n\n${deltaToMarkdown(_deltaJson)}';
+
   Map<String, dynamic> get _body => {
-    'title': _title.text.trim().isEmpty ? 'Untitled' : _title.text.trim(),
+    'title': _titleText,
     'contentDelta': _deltaJson,
-    'contentMarkdown': deltaToMarkdown(_deltaJson),
+    'contentMarkdown': _markdown,
   };
 
   Future<void> _save() async {
@@ -129,8 +138,20 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     if (mounted) invalidateNoteData(ref, noteId: _noteId);
   }
 
+  Future<void> _toggleArchived() async {
+    if (_noteId == null) {
+      _dirty = true;
+      await _save();
+      if (_noteId == null) return;
+    }
+    final next = !_isArchived;
+    setState(() => _isArchived = next);
+    await ref.read(notesApiProvider).update(_noteId!, {'isArchived': next});
+    if (mounted) invalidateNoteData(ref, noteId: _noteId);
+  }
+
   void _showMarkdownPreview() {
-    final markdown = deltaToMarkdown(_deltaJson);
+    final markdown = _markdown;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -178,22 +199,25 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: TextField(
-          key: const Key('note-title'),
-          controller: _title,
-          decoration: const InputDecoration(
-            hintText: 'Note title',
-            border: InputBorder.none,
-          ),
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        title: const Text('Note'),
         actions: [
           IconButton(
             tooltip: _isPinned ? 'Unpin' : 'Pin',
-            icon: Icon(_isPinned ? Icons.push_pin : Icons.push_pin_outlined),
+            icon: Icon(
+              _isPinned ? Icons.star : Icons.star_border,
+              color: _isPinned ? Colors.amber : null,
+            ),
             onPressed: _togglePin,
+          ),
+          IconButton(
+            tooltip: _isArchived ? 'Unarchive' : 'Archive',
+            icon: Icon(
+              _isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
+            ),
+            onPressed: _toggleArchived,
           ),
           IconButton(
             tooltip: 'Markdown preview',
@@ -224,6 +248,24 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             ),
           ),
           const Divider(height: 1),
+          // Apple-Notes style: the title is the document's fixed first block —
+          // an H1 the note content flows under (feedback round 1).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: TextField(
+              key: const Key('note-title'),
+              controller: _title,
+              maxLines: null,
+              decoration: const InputDecoration(
+                hintText: 'Title',
+                border: InputBorder.none,
+                isDense: true,
+              ),
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -231,7 +273,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                 controller: _quill,
                 config: const QuillEditorConfig(
                   placeholder: 'Start writing…',
-                  padding: EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.only(top: 8, bottom: 16),
                 ),
               ),
             ),

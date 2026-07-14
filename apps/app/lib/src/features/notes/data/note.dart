@@ -11,6 +11,7 @@ class NoteRow {
     required this.revision,
     this.projectId,
     this.createdFromTaskId,
+    this.createdAt,
     this.updatedAt,
   });
 
@@ -24,6 +25,9 @@ class NoteRow {
     isPinned: json['isPinned'] as bool,
     isArchived: json['isArchived'] as bool,
     revision: json['revision'] as int,
+    createdAt: json['createdAt'] != null
+        ? DateTime.parse(json['createdAt'] as String)
+        : null,
     updatedAt: json['updatedAt'] != null
         ? DateTime.parse(json['updatedAt'] as String)
         : null,
@@ -38,6 +42,7 @@ class NoteRow {
   final bool isPinned;
   final bool isArchived;
   final int revision;
+  final DateTime? createdAt;
   final DateTime? updatedAt;
 }
 
@@ -52,6 +57,7 @@ class NoteDetail extends NoteRow {
     required super.revision,
     super.projectId,
     super.createdFromTaskId,
+    super.createdAt,
     super.updatedAt,
     this.contentDelta,
     this.contentMarkdown,
@@ -70,6 +76,7 @@ class NoteDetail extends NoteRow {
       isPinned: row.isPinned,
       isArchived: row.isArchived,
       revision: row.revision,
+      createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       contentDelta: (json['contentDelta'] as List?)
           ?.cast<Map<String, dynamic>>(),

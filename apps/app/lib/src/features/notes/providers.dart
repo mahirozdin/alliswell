@@ -9,7 +9,7 @@ final notesApiProvider = Provider<NotesApi>(
   (ref) => NotesApi(ref.watch(apiClientProvider)),
 );
 
-enum NotesFilter { all, pinned }
+enum NotesFilter { all, pinned, archived }
 
 class NotesQuery {
   const NotesQuery({this.filter = NotesFilter.all, this.search = ''});
@@ -44,11 +44,26 @@ final notesListProvider = FutureProvider<List<NoteRow>>((ref) async {
       .list(
         workspaces.first.id,
         pinned: query.filter == NotesFilter.pinned ? true : null,
+        archived: query.filter == NotesFilter.archived ? true : null,
         query: query.search.trim().isEmpty ? null : query.search.trim(),
         limit: 100,
       );
   return page.items;
 });
+
+/// Star tap on a note row: flip the pin without opening the editor.
+Future<void> toggleNotePinned(WidgetRef ref, NoteRow note) async {
+  await ref.read(notesApiProvider).update(note.id, {
+    'isPinned': !note.isPinned,
+  });
+  invalidateNoteData(ref, noteId: note.id, projectId: note.projectId);
+}
+
+/// Archive/unarchive a note from its row menu or the editor.
+Future<void> setNoteArchived(WidgetRef ref, NoteRow note, bool archived) async {
+  await ref.read(notesApiProvider).update(note.id, {'isArchived': archived});
+  invalidateNoteData(ref, noteId: note.id, projectId: note.projectId);
+}
 
 /// Notes shown on a project's Notes tab (attached ∪ linked).
 final projectNotesProvider = FutureProvider.family<List<NoteRow>, String>(

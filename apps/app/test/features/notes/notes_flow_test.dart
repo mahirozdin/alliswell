@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -12,6 +13,7 @@ import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
+  SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
@@ -48,7 +50,8 @@ void main() {
 
     expect(find.text('Yayla planı'), findsOneWidget);
     expect(find.text('Alışveriş'), findsOneWidget);
-    expect(find.byIcon(Icons.push_pin), findsOneWidget); // pinned marker
+    expect(find.byIcon(Icons.star), findsOneWidget); // pinned = filled star
+    expect(find.byIcon(Icons.star_border), findsOneWidget);
 
     await tester.tap(find.text('Pinned'));
     await tester.pumpAndSettle();
@@ -93,11 +96,61 @@ void main() {
       reason: 'title loads into the app bar field',
     );
 
-    // Markdown preview renders the converted delta.
+    // Markdown preview renders the converted delta, led by the title as H1.
     await tester.tap(find.byIcon(Icons.preview_outlined));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('markdown-preview')), findsOneWidget);
+    expect(find.textContaining('# Detaylı not'), findsOneWidget);
     expect(find.textContaining('**Kalın kısım**'), findsOneWidget);
+  });
+
+  testWidgets('star quick-pins from the list; archive menu hides the note', (
+    tester,
+  ) async {
+    final api = FakeApi()
+      ..seedNote(title: 'Yıldızlanacak', plainText: 'içerik');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openNotes(tester);
+
+    // Quick pin via the leading star — no editor round-trip.
+    await tester.tap(find.byIcon(Icons.star_border));
+    await tester.pumpAndSettle();
+    expect(api.notes.single['isPinned'], isTrue);
+    expect(find.byIcon(Icons.star), findsOneWidget);
+
+    // Archive via the row menu (the chip also says "Archive" — target the
+    // menu item, which mounts later in the overlay) → leaves the default list…
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive').last);
+    await tester.pumpAndSettle();
+    expect(api.notes.single['isArchived'], isTrue);
+    expect(find.text('Yıldızlanacak'), findsNothing);
+
+    // …and shows up under the Archive chip.
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Archive'));
+    await tester.pumpAndSettle();
+    expect(find.text('Yıldızlanacak'), findsOneWidget);
+  });
+
+  testWidgets('view toggle switches to A4 cards and persists the mode', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedNote(title: 'Kart notu', plainText: 'gövde');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openNotes(tester);
+
+    expect(find.byType(GridView), findsNothing);
+    await tester.tap(find.byKey(const Key('notes-view-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(GridView), findsOneWidget);
+    expect(find.text('Kart notu'), findsOneWidget);
+    expect(find.textContaining('Edited '), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('alliswell_notes_view_mode'), 'grid');
   });
 
   testWidgets('title edits autosave via PATCH after the debounce', (
