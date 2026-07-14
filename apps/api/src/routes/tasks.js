@@ -1,9 +1,15 @@
 import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
+import { nextMorningIn } from '../lib/time.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { COLOR_PATTERN } from './projects.js';
+
+// Snooze presets (BLUEPRINT §4.9): fixed offsets in minutes, plus
+// tomorrow_morning which is 09:00 next day on the TASK's wall clock.
+const SNOOZE_PRESET_MINUTES = { '5_min': 5, '30_min': 30, '1_hour': 60 };
+export const SNOOZE_PRESETS = [...Object.keys(SNOOZE_PRESET_MINUTES), 'tomorrow_morning'];
 
 export const TASK_STATUSES = [
   'inbox',
@@ -609,6 +615,104 @@ export default async function taskRoutes(app) {
     await applyTransition(request, row, 'open');
     return taskDetail(row.id);
   });
+
+  // ── Snooze (OPH-035) ──────────────────────────────────────────────────────
+
+  app.post(
+    '/tasks/:taskId/snooze',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { taskId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            preset: { type: 'string', enum: SNOOZE_PRESETS },
+            snoozeUntil: { type: 'string', format: 'date-time' },
+          },
+          // Exactly one of the two: with both present, both branches match and
+          // oneOf fails; with neither, neither matches.
+          oneOf: [{ required: ['preset'] }, { required: ['snoozeUntil'] }],
+        },
+        response: {
+          200: taskDetailSchema,
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const row = await loadTask(request.params.taskId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+      assertNotArchived(row);
+      if (row.status === 'completed' || row.status === 'cancelled') {
+        throw coded(
+          app.httpErrors.conflict('Completed or cancelled tasks cannot be snoozed'),
+          'TASK_INVALID_TRANSITION',
+        );
+      }
+
+      const { preset, snoozeUntil } = request.body;
+      let until;
+      if (snoozeUntil) {
+        until = new Date(snoozeUntil);
+        if (until.getTime() <= Date.now()) {
+          throw coded(
+            app.httpErrors.badRequest('snoozeUntil must be in the future'),
+            'TASK_SNOOZE_IN_PAST',
+          );
+        }
+      } else if (preset === 'tomorrow_morning') {
+        until = nextMorningIn(row.timezone);
+      } else {
+        until = new Date(Date.now() + SNOOZE_PRESET_MINUTES[preset] * 60 * 1000);
+      }
+
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'task',
+          entityId: row.id,
+          operation: 'update',
+          changedFields: ['snoozed_until'],
+        });
+        await trx('tasks').where({ id: row.id }).update({
+          snoozed_until: until,
+          revision,
+          updated_by: request.user.id,
+          updated_at: new Date(),
+        });
+
+        // Silence the live alarm until the same moment.
+        const active = await trx('reminders')
+          .where({ task_id: row.id })
+          .whereNull('deleted_at')
+          .whereIn('status', ['scheduled', 'snoozed', 'delivered'])
+          .orderBy('created_at', 'desc')
+          .first();
+        if (active) {
+          const reminderRevision = await recordSyncWrite(trx, {
+            workspaceId: row.workspace_id,
+            entityType: 'reminder',
+            entityId: active.id,
+            operation: 'update',
+            changedFields: ['status', 'snoozed_until'],
+          });
+          await trx('reminders').where({ id: active.id }).update({
+            status: 'snoozed',
+            snoozed_until: until,
+            revision: reminderRevision,
+            updated_at: new Date(),
+          });
+        }
+      });
+
+      return taskDetail(row.id);
+    },
+  );
 
   app.delete(
     '/tasks/:taskId',

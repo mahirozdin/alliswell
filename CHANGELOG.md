@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Task snooze (OPH-035): `POST /tasks/:id/snooze` with an explicit time or the BLUEPRINT
+  presets (5 min / 30 min / 1 hour / tomorrow morning — computed at 09:00 on the task's own
+  timezone wall clock, DST-safe); task and live reminder snooze together, and unrelated task
+  edits no longer wake a snoozed alarm.
 - Reminder lifecycle (OPH-034): reminders now live in lockstep with their task inside the same
   transaction — setting `remindAt` schedules (or re-arms) the alarm, clearing it cancels,
   completing the task completes it, reopening re-arms, deleting cancels. Urgent tasks default

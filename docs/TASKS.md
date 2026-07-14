@@ -251,11 +251,15 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
       deleted → cancelled; urgency/timezone/repeat mirrored; no-op writes cost no revision
 - [x] Tests (unit + real-MySQL integration)
 
-### OPH-035 — Task snooze endpoint
+### OPH-035 — Task snooze endpoint ✅
 
-- [ ] `POST /api/v1/tasks/:id/snooze` (`snoozeUntil` or preset `5_min|30_min|1_hour|tomorrow_morning`)
-- [ ] Updates task.snoozed_until + reminder.snoozed_until/status
-- [ ] Tests incl. preset math in user timezone
+- [x] `POST /api/v1/tasks/:id/snooze` (`snoozeUntil` XOR preset
+      `5_min|30_min|1_hour|tomorrow_morning`; past times → `TASK_SNOOZE_IN_PAST`;
+      completed/cancelled → `TASK_INVALID_TRANSITION`)
+- [x] Updates task.snoozed_until + the active reminder's snoozed_until/status in one
+      transaction; unrelated task patches now PRESERVE a snooze (reconcile fix) while a
+      moved remind_at still re-arms
+- [x] Tests incl. preset math in user timezone (`src/lib/time.js` — DST-safe wall-clock→UTC)
 
 ### OPH-036 — Flutter project screens
 

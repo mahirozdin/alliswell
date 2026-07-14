@@ -66,13 +66,25 @@ export async function reconcileTaskReminder(trx, { workspaceId, task }) {
   };
 
   if (active) {
+    // A moved remind_at re-arms the alarm completely (clears snooze/delivery
+    // state). Anything else only mirrors task fields and MUST preserve an
+    // in-flight snooze (OPH-035) — a title patch must not wake an alarm up.
+    const remindMoved = !sameInstant(active.remind_at, desired.remind_at);
+    const patch = remindMoved
+      ? desired
+      : {
+          timezone: desired.timezone,
+          alarm_level: desired.alarm_level,
+          requires_acknowledgement: desired.requires_acknowledgement,
+          repeat_rule: desired.repeat_rule,
+        };
+
     const unchanged =
-      sameInstant(active.remind_at, desired.remind_at) &&
-      active.timezone === desired.timezone &&
-      active.alarm_level === desired.alarm_level &&
-      Boolean(active.requires_acknowledgement) === desired.requires_acknowledgement &&
-      (active.repeat_rule ?? null) === desired.repeat_rule &&
-      active.status === 'scheduled';
+      !remindMoved &&
+      active.timezone === patch.timezone &&
+      active.alarm_level === patch.alarm_level &&
+      Boolean(active.requires_acknowledgement) === patch.requires_acknowledgement &&
+      (active.repeat_rule ?? null) === patch.repeat_rule;
     if (unchanged) return;
 
     const revision = await recordSyncWrite(trx, {
@@ -80,11 +92,11 @@ export async function reconcileTaskReminder(trx, { workspaceId, task }) {
       entityType: 'reminder',
       entityId: active.id,
       operation: 'update',
-      changedFields: Object.keys(desired),
+      changedFields: Object.keys(patch),
     });
     await trx('reminders')
       .where({ id: active.id })
-      .update({ ...desired, revision, updated_at: new Date() });
+      .update({ ...patch, revision, updated_at: new Date() });
     return;
   }
 

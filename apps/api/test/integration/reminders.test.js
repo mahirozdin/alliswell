@@ -77,4 +77,33 @@ describe.runIf(enabled)('integration: reminder lifecycle follows the task', () =
       .select();
     expect(active).toHaveLength(1);
   });
+
+  it('snooze presets update the task and the reminder row together (OPH-035)', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${owner.workspace.id}/tasks`,
+      headers: owner.headers,
+      payload: { title: 'Ertele beni', remindAt: '2026-07-23T05:00:00.000Z' },
+    });
+    const task = created.json();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tasks/${task.id}/snooze`,
+      headers: owner.headers,
+      payload: { preset: 'tomorrow_morning' },
+    });
+    expect(res.statusCode).toBe(200);
+    const until = new Date(res.json().snoozedUntil);
+    expect(until.getTime()).toBeGreaterThan(Date.now());
+
+    const reminder = await app.db('reminders').where({ task_id: task.id }).first();
+    expect(reminder.status).toBe('snoozed');
+    expect(new Date(reminder.snoozed_until).getTime()).toBe(until.getTime());
+
+    const row = await app.db('tasks').where({ id: task.id }).first('snoozed_until', 'timezone');
+    expect(new Date(row.snoozed_until).getTime()).toBe(until.getTime());
+    // 09:00 on the task's wall clock (default Europe/Istanbul = UTC+3).
+    expect(until.toISOString()).toMatch(/T06:00:00/);
+  });
 });
