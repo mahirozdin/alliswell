@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,12 +8,15 @@ import '../../tags/tags.dart';
 import '../data/task.dart';
 import '../data/tasks_api.dart';
 import '../providers.dart';
+import 'task_visuals.dart';
 
 /// One task write: gets the API + task id, awaits server confirmation.
 typedef TaskAction = Future<Object?> Function(TasksApi api, String taskId);
 
-/// Task detail (OPH-037): status, priority, urgent toggle, dates, tags and
-/// checklist — every control PATCHes the API and re-fetches.
+/// Task detail (OPH-037 + feedback round 3): editable title with autosave,
+/// status/priority dropdowns with icons/colors, urgent toggle, dates, tags
+/// and checklist — every control PATCHes the API and re-fetches, and failed
+/// writes surface as snackbars instead of vanishing.
 class TaskDetailScreen extends ConsumerWidget {
   const TaskDetailScreen({super.key, required this.taskId});
 
@@ -32,18 +37,68 @@ class TaskDetailScreen extends ConsumerWidget {
   }
 }
 
-class _TaskDetail extends ConsumerWidget {
+class _TaskDetail extends ConsumerStatefulWidget {
   const _TaskDetail({required this.task});
 
   final Task task;
 
-  Future<void> _apply(WidgetRef ref, TaskAction action) async {
-    await action(ref.read(tasksApiProvider), task.id);
-    invalidateTaskData(ref, taskId: task.id);
+  @override
+  ConsumerState<_TaskDetail> createState() => _TaskDetailState();
+}
+
+class _TaskDetailState extends ConsumerState<_TaskDetail> {
+  static const _autosaveDelay = Duration(milliseconds: 1500);
+
+  late final TextEditingController _title;
+  Timer? _titleDebounce;
+
+  Task get task => widget.task;
+
+  @override
+  void initState() {
+    super.initState();
+    _title = TextEditingController(text: task.title);
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void didUpdateWidget(covariant _TaskDetail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Refetches rebuild us with fresh data; only sync the field when the user
+    // isn't mid-edit (their text still matches what the server had before).
+    if (widget.task.title != oldWidget.task.title &&
+        _title.text == oldWidget.task.title) {
+      _title.text = widget.task.title;
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleDebounce?.cancel();
+    _title.dispose();
+    super.dispose();
+  }
+
+  Future<void> _apply(TaskAction action) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await action(ref.read(tasksApiProvider), task.id);
+      if (mounted) invalidateTaskData(ref, taskId: task.id);
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    }
+  }
+
+  void _onTitleChanged(String value) {
+    _titleDebounce?.cancel();
+    _titleDebounce = Timer(_autosaveDelay, () {
+      final title = value.trim();
+      if (title.isEmpty || title == task.title) return;
+      _apply((api, id) => api.update(id, {'title': title}));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
@@ -55,7 +110,6 @@ class _TaskDetail extends ConsumerWidget {
               task.isCompleted ? Icons.replay : Icons.check_circle_outline,
             ),
             onPressed: () => _apply(
-              ref,
               (api, id) => task.isCompleted ? api.reopen(id) : api.complete(id),
             ),
           ),
@@ -64,8 +118,17 @@ class _TaskDetail extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            task.title,
+          // Editable in place — autosaves after a pause (feedback round 3).
+          TextField(
+            key: const Key('task-title'),
+            controller: _title,
+            maxLines: null,
+            onChanged: _onTitleChanged,
+            decoration: const InputDecoration(
+              hintText: 'Task title',
+              border: InputBorder.none,
+              isDense: true,
+            ),
             style: theme.textTheme.headlineSmall?.copyWith(
               decoration: task.isCompleted ? TextDecoration.lineThrough : null,
             ),
@@ -87,11 +150,14 @@ class _TaskDetail extends ConsumerWidget {
                   ),
                   items: [
                     for (final status in kTaskStatuses)
-                      DropdownMenuItem(value: status, child: Text(status)),
+                      DropdownMenuItem(
+                        value: status,
+                        child: StatusLabel(status: status),
+                      ),
                   ],
                   onChanged: (v) {
                     if (v != null && v != task.status) {
-                      _apply(ref, (api, id) => api.update(id, {'status': v}));
+                      _apply((api, id) => api.update(id, {'status': v}));
                     }
                   },
                 ),
@@ -107,11 +173,14 @@ class _TaskDetail extends ConsumerWidget {
                   ),
                   items: [
                     for (final priority in kTaskPriorities)
-                      DropdownMenuItem(value: priority, child: Text(priority)),
+                      DropdownMenuItem(
+                        value: priority,
+                        child: PriorityLabel(priority: priority),
+                      ),
                   ],
                   onChanged: (v) {
                     if (v != null && v != task.priority) {
-                      _apply(ref, (api, id) => api.update(id, {'priority': v}));
+                      _apply((api, id) => api.update(id, {'priority': v}));
                     }
                   },
                 ),
@@ -127,13 +196,12 @@ class _TaskDetail extends ConsumerWidget {
             ),
             value: task.isUrgent,
             onChanged: (v) =>
-                _apply(ref, (api, id) => api.update(id, {'isUrgent': v})),
+                _apply((api, id) => api.update(id, {'isUrgent': v})),
           ),
           _DateRow(
             label: 'Due',
             value: task.dueAt,
             onPicked: (picked) => _apply(
-              ref,
               (api, id) =>
                   api.update(id, {'dueAt': picked?.toUtc().toIso8601String()}),
             ),
@@ -142,7 +210,6 @@ class _TaskDetail extends ConsumerWidget {
             label: 'Remind',
             value: task.remindAt,
             onPicked: (picked) => _apply(
-              ref,
               (api, id) => api.update(id, {
                 'remindAt': picked?.toUtc().toIso8601String(),
               }),
@@ -151,11 +218,11 @@ class _TaskDetail extends ConsumerWidget {
           const SizedBox(height: 16),
           Text('Tags', style: theme.textTheme.titleSmall),
           const SizedBox(height: 8),
-          _TagPicker(task: task, onApply: (action) => _apply(ref, action)),
+          _TagPicker(task: task, onApply: (action) => _apply(action)),
           const SizedBox(height: 16),
           Text('Checklist', style: theme.textTheme.titleSmall),
           const SizedBox(height: 8),
-          _Checklist(task: task, onApply: (action) => _apply(ref, action)),
+          _Checklist(task: task, onApply: (action) => _apply(action)),
         ],
       ),
     );

@@ -1,8 +1,10 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/home/task_grouping.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/features/tasks/data/tasks_api.dart';
+import 'package:alliswell/src/features/tasks/ui/task_visuals.dart';
 
 import '../auth/test_support.dart';
 
@@ -138,6 +140,21 @@ void main() {
     expect(groups.first.dimmed, isFalse);
     expect(groups.first.tasks.single.id, 'selected');
     expect(groups.skip(1).every((g) => g.dimmed), isTrue);
+  });
+
+  test('every status has an icon; priorities have stable colors', () {
+    // Statuses → icons (no fallback hit for the known set).
+    final icons = {for (final s in kTaskStatuses) s: taskStatusIcon(s)};
+    expect(icons.values.toSet(), hasLength(kTaskStatuses.length));
+    expect(icons['completed'], Icons.check_circle);
+    expect(icons['inbox'], Icons.inbox_outlined);
+
+    // Priorities → colors; none stays neutral.
+    expect(taskPriorityColor('none'), isNull);
+    expect(taskPriorityColor('low'), const Color(0xFF10B981));
+    expect(taskPriorityColor('medium'), const Color(0xFFF59E0B));
+    expect(taskPriorityColor('high'), const Color(0xFFF97316));
+    expect(taskPriorityColor('urgent'), const Color(0xFFEF4444));
   });
 
   test('daysWithTasks marks local due days once', () {

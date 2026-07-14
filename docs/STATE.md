@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (feedback round 2: Home görev girişi — quick-add + FAB sheet)
+**Last updated:** 2026-07-15 (feedback round 3: CORS PATCH fix + görev görsel standardı)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -20,6 +20,13 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **Feedback round 3 (2026-07-15):** KRİTİK — @fastify/cors default'u yüzünden web'den
+  PATCH/PUT/DELETE preflight'ta engelleniyordu (görev tarihi kaydetme vb. hiç sunucuya
+  ulaşmıyordu); metotlar artık explicit + preflight regresyon testi var. Görev başlığı
+  detayda yerinde düzenlenebilir (debounce'lu autosave). Görsel standart: statü→ikon,
+  öncelik→renk (`features/tasks/ui/task_visuals.dart`) — satırlarda renkli bayrak + statü
+  ikonu, dropdown'larda ikon/renkli etiket, proje seçicilerde renk noktası. Başarısız
+  yazımlar artık snackbar'la görünür.
 - **Feedback round 2 (2026-07-15):** Home görev girişi geri geldi — listenin üstünde
   seri girişli quick-add (`features/tasks/ui/quick_add_bar.dart`, Enter sonrası odak
   korunur; gün seçiliyken o güne 09:00, değilse tarihsiz) + sağ altta FAB →

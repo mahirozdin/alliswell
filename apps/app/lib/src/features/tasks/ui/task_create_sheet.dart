@@ -5,6 +5,7 @@ import '../../projects/providers.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../providers.dart';
+import 'task_visuals.dart';
 
 /// Full task creation sheet behind the Home FAB (feedback round 2): title
 /// plus the options quick-add skips — project, priority, due/remind
@@ -155,9 +156,23 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                         for (final project in projects)
                           DropdownMenuItem(
                             value: project.id,
-                            child: Text(
-                              project.name,
-                              overflow: TextOverflow.ellipsis,
+                            // The project's color leads its name (feedback
+                            // round 3): a small filled dot, never a hex code.
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: project.color,
+                                  radius: 6,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    project.name,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                       ],
@@ -177,7 +192,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                         for (final priority in kTaskPriorities)
                           DropdownMenuItem(
                             value: priority,
-                            child: Text(priority),
+                            child: PriorityLabel(priority: priority),
                           ),
                       ],
                       onChanged: (v) =>

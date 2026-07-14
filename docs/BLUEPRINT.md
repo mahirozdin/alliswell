@@ -683,8 +683,15 @@ Activity
 
 ### 12.4 Task detail alanları
 
-Title, Project, Status, Priority, Tags, Due date, Reminder, Urgent toggle, Calendar mirror toggle,
-Notes, Checklist, Activity.
+Title (yerinde düzenlenebilir, otomatik kayıt), Project, Status, Priority, Tags, Due date,
+Reminder, Urgent toggle, Calendar mirror toggle, Notes, Checklist, Activity.
+
+Görsel standart (feedback round 3): **statüler ikonla** gösterilir (inbox=gelen kutusu,
+open=boş daire, scheduled=takvim, in_progress=timelapse, waiting=kum saati,
+completed=dolu onay, cancelled=iptal, archived=arşiv), **öncelikler renkle**
+(low=yeşil, medium=amber, high=turuncu, urgent=kırmızı; none=nötr) — listelerde görev
+satırında renkli bayrak + statü ikonu, dropdown'larda ikon/renk + isim birlikte. Proje
+seçicilerde projenin rengi isimden önce içi dolu nokta olarak görünür (hex asla gösterilmez).
 
 ### 12.5 Notes
 

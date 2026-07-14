@@ -246,6 +246,49 @@ void main() {
     expect(find.text('Bugünün işi'), findsOneWidget);
   });
 
+  testWidgets('task tiles show status icons and priority colors', (
+    tester,
+  ) async {
+    final api = FakeApi()
+      ..seedTask(
+        title: 'Öncelikli iş',
+        priority: 'high',
+        dueAt: isoAt(today.add(const Duration(hours: 12))),
+      );
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    // Priority flag (colored) + status icon on the tile.
+    expect(find.byIcon(Icons.flag), findsOneWidget);
+    expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
+  });
+
+  testWidgets('task title edits in place and autosaves', (tester) async {
+    final api = FakeApi()
+      ..seedTask(
+        title: 'Eski görev adı',
+        dueAt: isoAt(today.add(const Duration(hours: 12))),
+      );
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Eski görev adı'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('task-title')),
+      'Yeni görev adı',
+    );
+    await tester.pump(const Duration(seconds: 2)); // debounce fires
+    await tester.pumpAndSettle();
+
+    expect(api.tasks.single['title'], 'Yeni görev adı');
+    expect(
+      api.requests.any((r) => r.startsWith('PATCH /api/v1/tasks/')),
+      isTrue,
+    );
+  });
+
   testWidgets('task detail edits urgent, tags and checklist via the API', (
     tester,
   ) async {

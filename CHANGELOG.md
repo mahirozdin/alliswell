@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed (feedback round 3 — 2026-07-15)
+
+- **Web task edits never saved:** the API's CORS preflight only allowed GET/HEAD/POST, so
+  every browser PATCH/PUT/DELETE (e.g. setting a due date) was blocked. All verbs are now
+  allowed and covered by a regression test; failed writes in the app also surface as
+  snackbars instead of silent console errors.
+
+### Changed (feedback round 3 — 2026-07-15)
+
+- **Task titles edit in place:** the detail screen title is a text field with debounced
+  autosave.
+- **Standard task visuals:** statuses show icons, priorities show colors (low=green,
+  medium=amber, high=orange, urgent=red) — on list rows (colored flag + status icon) and in
+  every status/priority dropdown; project pickers show the project's color dot before its
+  name.
+
 ### Changed (feedback round 2 — 2026-07-15)
 
 - **Home task entry:** a rapid-entry quick-add sits above the list — Enter clears the field

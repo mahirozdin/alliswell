@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../data/task.dart';
 import '../providers.dart';
+import 'task_visuals.dart';
 
-/// Shared task row: checkbox (complete/reopen), due date, urgent marker.
-/// `highlighted` tints the row (selected calendar day); `dimmed` fades it.
+/// Shared task row: checkbox (complete/reopen), due date, colored priority
+/// flag, status icon and urgent marker (feedback round 3). `highlighted`
+/// tints the row (selected calendar day); `dimmed` fades it.
 class TaskTile extends ConsumerWidget {
   const TaskTile({
     super.key,
@@ -19,10 +21,22 @@ class TaskTile extends ConsumerWidget {
   final bool dimmed;
   final bool highlighted;
 
+  Future<void> _toggle(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await toggleTaskCompleted(ref, task);
+    } on Object catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not update "${task.title}": $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final due = task.dueAt?.toLocal();
+    final priorityColor = taskPriorityColor(task.priority);
 
     final tile = ListTile(
       tileColor: highlighted
@@ -30,7 +44,7 @@ class TaskTile extends ConsumerWidget {
           : null,
       leading: Checkbox(
         value: task.isCompleted,
-        onChanged: (_) => toggleTaskCompleted(ref, task),
+        onChanged: (_) => _toggle(context, ref),
       ),
       title: Text(
         task.title,
@@ -43,9 +57,28 @@ class TaskTile extends ConsumerWidget {
       subtitle: due == null
           ? null
           : Text('Due ${due.toString().split('.').first}'),
-      trailing: task.isUrgent
-          ? Icon(Icons.notification_important, color: theme.colorScheme.error)
-          : null,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (priorityColor != null) ...[
+            Icon(Icons.flag, size: 18, color: priorityColor),
+            const SizedBox(width: 6),
+          ],
+          Icon(
+            taskStatusIcon(task.status),
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          if (task.isUrgent) ...[
+            const SizedBox(width: 6),
+            Icon(
+              Icons.notification_important,
+              size: 18,
+              color: theme.colorScheme.error,
+            ),
+          ],
+        ],
+      ),
       onTap: () => context.push('/tasks/${task.id}'),
     );
 
