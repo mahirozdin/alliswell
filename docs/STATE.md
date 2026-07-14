@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (design round 1: "AllisWell Glass" tasarım sistemi)
+**Last updated:** 2026-07-15 (Epic 05 kapandı; Epic 06 sunucu çekirdeği: OPH-050…053)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,13 +13,42 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | Phase 1 — Core domain |
-| Current epic | **Epic 05 — Notes** |
-| ➡️ **Next task** | **OPH-045 — Markdown export (server-side)** |
-| Last completed | OPH-040…044; Epic 04, Epic 03, Epic 02, Epic 01, OPH-090…093 |
+| Current phase | Phase 2 — Sync |
+| Current epic | **Epic 06 — Sync** |
+| ➡️ **Next task** | **OPH-054 — Flutter local DB (drift + outbox şeması)** |
+| Last completed | OPH-045 (Epic 05 ✔); OPH-050…053 (sync sunucu çekirdeği); Epic 04…01 |
 
 ## Recently completed
 
+- **Epic 05 closed + Epic 06 server core (2026-07-15, OPH-045 + OPH-050…053):**
+  - **OPH-045:** `GET /notes/:id/export?format=md` streams `text/markdown` (attachment,
+    slugified filename) converted server-side from the canonical delta — `deltaToMarkdown`
+    in `src/lib/delta.js` mirrors the Dart converter fixture-for-fixture; stored markdown is
+    only the delta-less fallback.
+  - **OPH-050:** `withRevision(trx, wsId, type, id, op, changedFields)` joined
+    `recordSyncWrite` as the blueprint-named form (same implementation, `src/db/sync.js`);
+    all write paths already used it. Integration proof: 12 concurrent writers → gapless
+    revisions 1..12.
+  - **OPH-051 pull:** revision-ascending batches (default 200/max 500, `limit+1` →
+    `hasMore`), coalesced to each entity's latest change; snapshots are CURRENT rows (tasks
+    embed tagIds, notes embed content+links); currently-deleted rows always tombstone, even
+    when the delete log row lies past the window. Types: project/tag/task/note/
+    checklist_item/reminder.
+  - **OPH-052 push:** body = `clientId` + `workspaceId` (documented §6.3 deviation) +
+    `baseRevision` + ≤100 mutations; per-mutation `applied`/`conflict`/`rejected` (+
+    `errorCode`, `discardedFields`, `replayed`). Field-level LWW: only FOREIGN writers
+    conflict (own pushes attributed via `client_mutations.result_revision`), newer wall
+    clock wins (`localUpdatedAt` vs server `updated_at`), losers drop per field,
+    all-dropped → `SYNC_STALE_MUTATION`. Note content: doc-level lock →
+    `NOTE_CONTENT_CONFLICT`. Domain rules preserved in-transaction: urgent⇒ack default,
+    completed_at, reminder reconcile, archived immutability, tag slugs, subtree delete,
+    project-delete role guard. SYNC_* error codes listed in `src/routes/sync.js`.
+  - **OPH-053 idempotency:** every outcome recorded in `client_mutations` (applied ones in
+    the SAME trx as the entity write); replays return the recorded result
+    (`replayed: true`); scoped per clientId; races settle on `uq_client_mutation`.
+  - Tests: unit 135/135 (fakedb gained `client_mutations`), integration 23/23 on real
+    MySQL. Remaining in Epic 06: OPH-054…057 (Flutter drift replica, outbox, conflict UI,
+    Socket.IO fanout).
 - **Design round 1 (2026-07-15):** "AllisWell Glass" tasarım sistemi — KALICI görsel dil
   (ADR-0005; tek kaynak `docs/DESIGN.md`; AGENTS.md sert kural 11 → bundan sonraki TÜM UI
   işlerinde tasarım bütünlüğü zorunlu). Liquid-Glass esinli ama UX-önce: cam yalnız
@@ -127,9 +156,11 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-045** per its checklist in [TASKS.md](TASKS.md) — the server-side
-   delta→markdown converter can mirror the client one
-   (apps/app/lib/src/features/notes/data/delta_markdown.dart); add
-   `GET /notes/:id/export?format=md` and fixture-delta tests.
-3. Verify (`npm run lint && npm test`, integration tests if infra up), document, commit,
-   then update this file's Snapshot + Recently completed.
+2. Implement **OPH-054** per its checklist in [TASKS.md](TASKS.md): drift schema mirroring
+   the server entities + a `pending_mutations` outbox table; repositories read local-first.
+   The server contract to mirror is live in `apps/api/src/routes/sync.js` —
+   `GET /sync/pull` (coalesced snapshots + tombstones, `hasMore`) and `POST /sync/push`
+   (statuses `applied`/`conflict`/`rejected`, `discardedFields`, `replayed`).
+3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
+   `flutter test` for app changes), document, commit, then update this file's Snapshot +
+   Recently completed.

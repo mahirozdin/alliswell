@@ -66,6 +66,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Sync protocol — server core (OPH-050…053): `GET /api/v1/sync/pull` streams batched,
+  per-entity-coalesced snapshots and delete tombstones since a workspace revision;
+  `POST /api/v1/sync/push` applies offline mutation batches (project/tag/task/note/checklist
+  item) with per-mutation statuses, field-level last-write-wins for metadata — own pushes
+  never conflict with themselves (attribution via recorded result revisions) and the newer
+  wall clock wins field by field — plus document-level locking for note content
+  (`NOTE_CONTENT_CONFLICT`). Full idempotency: every outcome is recorded in
+  `client_mutations` (applied ones atomically with the entity write) and replays return the
+  original result without re-applying. `withRevision(...)` joins `recordSyncWrite` as the
+  blueprint-named transaction helper, with integration proof that concurrent writers produce
+  gapless, monotonic revisions.
+- Markdown export (OPH-045): `GET /notes/:id/export?format=md` streams the note as
+  `text/markdown` (attachment, slugified filename), converted server-side from the canonical
+  Quill delta by a converter mirroring the client one fixture-for-fixture — Epic 05 (Notes)
+  is complete.
 - App — notes (OPH-043, OPH-044): the Notes section is live — searchable (server FULLTEXT)
   list with All/Pinned chips, project detail Notes tab, and a flutter_quill rich-text editor
   with debounced delta autosave, client-side markdown generation with a preview sheet, pin

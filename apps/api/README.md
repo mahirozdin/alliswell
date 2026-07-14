@@ -34,6 +34,20 @@ Access tokens are 15-minute JWTs; refresh tokens are opaque, 30-day, stored only
 hashes, and rotate on every refresh (reuse burns the family). Auth routes share a stricter
 per-IP rate limit (`RATE_LIMIT_AUTH_MAX`, default 10/min).
 
+Core-domain endpoints (projects/tags/tasks/notes, Epics 04–05) document their error codes in
+their route files under `src/routes/`.
+
+## Sync (Epic 06 — server core)
+
+| Endpoint                 | Purpose                                                                                   |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| `GET /api/v1/sync/pull`  | changes since a workspace revision — coalesced snapshots + tombstones, `hasMore` batching |
+| `POST /api/v1/sync/push` | idempotent offline mutation batches; per-mutation `applied`/`conflict`/`rejected` results |
+
+Push conflict policy: field-level last-write-wins for metadata (only FOREIGN writers
+conflict; the newer wall clock wins per field), document-level lock for note content.
+`SYNC_*` error codes are listed in `src/routes/sync.js`.
+
 ## Layout
 
 ```txt

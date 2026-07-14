@@ -339,37 +339,81 @@ users) and in-tab quick adds for tasks/notes. See BLUEPRINT §12._
 - [x] Tests: converter fixtures (headers/inline/lists/code fences), editor load, title
       autosave PATCH, create-on-first-save POST
 
-### OPH-045 — Markdown export
+### OPH-045 — Markdown export ✅
 
-- [ ] Server-side delta→markdown converter + `GET /notes/:id/export?format=md`
-- [ ] Tests with fixture deltas
+- [x] Server-side delta→markdown converter + `GET /notes/:id/export?format=md`
+- [x] Tests with fixture deltas
+
+Acceptance: the export streams `text/markdown` (attachment, slugified filename) derived
+server-side from the canonical delta — `deltaToMarkdown` in `src/lib/delta.js` mirrors the
+client converter fixture-for-fixture; stored `content_markdown` is only the fallback for
+delta-less notes. ✔
+
+Epic 05 acceptance: notes work end to end — delta-canonical CRUD + FULLTEXT search,
+task/project links, Flutter list + editor with delta autosave, markdown preview (client)
+and export (server). ✔
 
 ---
 
 ## Epic 06 — Sync (Phase 2)
 
-### OPH-050 — Revision generator
+### OPH-050 — Revision generator ✅
 
-- [ ] Transaction helper: `withRevision(trx, wsId, entityType, entityId, op, changedFields)`
-- [ ] Per-workspace monotonic counter (row lock on workspaces.revision)
-- [ ] Retrofit existing write paths; tests incl. concurrency
+- [x] Transaction helper: `withRevision(trx, wsId, entityType, entityId, op, changedFields)`
+- [x] Per-workspace monotonic counter (row lock on workspaces.revision)
+- [x] Retrofit existing write paths; tests incl. concurrency
 
-### OPH-051 — Sync pull endpoint
+Acceptance notes: `recordSyncWrite()` (object args, `src/db/sync.js`) has been the live
+implementation since OPH-030 and every write path already used it — `withRevision` is the
+blueprint-named positional form of the same function, so no retrofit was required.
+Integration test: 12 concurrent transactions produce gapless, duplicate-free revisions
+1..12 under the workspace row lock. ✔
 
-- [ ] `GET /api/v1/sync/pull?workspaceId&sinceRevision` (batched, `hasMore`)
-- [ ] Entity snapshots for create/update; tombstones for delete
-- [ ] Tests
+### OPH-051 — Sync pull endpoint ✅
 
-### OPH-052 — Sync push endpoint
+- [x] `GET /api/v1/sync/pull?workspaceId&sinceRevision` (batched, `hasMore`)
+- [x] Entity snapshots for create/update; tombstones for delete
+- [x] Tests
 
-- [ ] `POST /api/v1/sync/push` with mutation batch (per BLUEPRINT §6.3)
-- [ ] Field-level LWW merge for metadata; per-mutation result statuses
-- [ ] Tests: apply, conflict, invalid entity
+Acceptance notes: revision-ascending windows (default 200, max 500; `limit+1` probes
+`hasMore`), coalesced to each entity's LATEST change — snapshots reflect current rows
+(tasks embed `tagIds`, notes embed content + links), so intermediate revisions carry
+nothing. Any row that is currently soft-deleted (or missing) answers as a tombstone
+(`operation: 'delete', data: null`) even when its delete log row lies past the window.
+Entity types: project, tag, task, note, checklist_item, reminder. ✔
 
-### OPH-053 — Idempotency table usage
+### OPH-052 — Sync push endpoint ✅
 
-- [ ] Duplicate `clientMutationId` returns recorded result without re-applying
-- [ ] Tests: replay batch
+- [x] `POST /api/v1/sync/push` with mutation batch (per BLUEPRINT §6.3)
+- [x] Field-level LWW merge for metadata; per-mutation result statuses
+- [x] Tests: apply, conflict, invalid entity
+
+Acceptance notes (documented deviations): the body adds a required `workspaceId` beside
+§6.3's `clientId`/`baseRevision`/`mutations` (authorization and the `client_mutations` rows
+need it). Entity types v1: project, tag, task, note, checklist_item — reminders stay
+server-managed. Per-mutation statuses: `applied` / `conflict` / `rejected` plus
+`errorCode`, `discardedFields`, `replayed`. LWW: a field conflicts only when a FOREIGN
+writer changed it after `baseRevision` (own pushes are attributed through recorded result
+revisions and never conflict with themselves); the newer wall clock wins
+(`localUpdatedAt` vs server-canonical `updated_at`), losing fields are dropped one by one,
+and an all-dropped mutation answers `conflict`/`SYNC_STALE_MUTATION`. Note CONTENT never
+merges — document-level lock → `NOTE_CONTENT_CONFLICT` (§6.5), metadata on notes still
+LWW-merges. Domain rules ride along: urgent⇒acknowledgement default, `completed_at`
+bookkeeping + reminder reconcile in the same transaction, archived immutability (lone
+unarchive allowed), tag slug rules (`TAG_SLUG_TAKEN`), task subtree delete cascade, and
+the owner/admin role guard on project deletes. Error codes live in `src/routes/sync.js`. ✔
+
+### OPH-053 — Idempotency table usage ✅
+
+- [x] Duplicate `clientMutationId` returns recorded result without re-applying
+- [x] Tests: replay batch
+
+Acceptance notes: EVERY outcome (applied and conflict/rejected alike) is recorded in
+`client_mutations`; applied rows commit in the SAME transaction as the entity write, so a
+crash can never apply without recording. Replays answer from the record (`replayed: true`,
+original revision, no re-application); idempotency is scoped per `clientId` (two devices may
+reuse a mutation id) and concurrent duplicates settle on the `uq_client_mutation` unique
+key. ✔
 
 ### OPH-054 — Flutter local DB
 
@@ -397,7 +441,7 @@ users) and in-tab quick adds for tasks/notes. See BLUEPRINT §12._
 
 ## Epic 07 — Notifications (Phase 3)
 
-### OPH-060 — Notification device registry
+### OPH-060 — Notification device registry (Very important detail to know: Urgent notifications needs highest priority and exactly-on-time delivery,  so need to make research on the best way to implement this on iOS and Android atleast 5 references to research and implement this)
 
 - [ ] `notification_devices` migration + register/unregister endpoints (platform, push token?)
 - [ ] Tests

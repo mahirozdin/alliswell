@@ -86,7 +86,8 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
 - Soft delete via `deleted_at`; queries must filter `whereNull('deleted_at')` unless explicitly
   including deleted rows.
 - Any write to a synced entity (project/task/tag/note/…) must bump its `revision` and insert a
-  `sync_revisions` row **in the same transaction** (Epic 06 provides the helper; use it).
+  `sync_revisions` row **in the same transaction** — use `recordSyncWrite`/`withRevision`
+  from `src/db/sync.js` (OPH-050) and stamp the returned revision onto the entity row.
 - No N+1 queries: batch with `whereIn`, join, or a single aggregate query.
 
 ### App (`apps/app`)

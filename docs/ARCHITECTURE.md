@@ -74,11 +74,18 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 - FULLTEXT indexes on tasks(title, description) and notes(title, plain_text) for search.
 - Migrations: knex, append-only, ESM `up`/`down`. Full table list in [TASKS.md](TASKS.md) Epic 02.
 
-## 5. Sync engine (Phase 2 — designed, not yet built)
+## 5. Sync engine (server core live — client side is Phase 2's remainder)
 
-Per BLUEPRINT §6: workspace-scoped monotonic revision log (`sync_revisions`), client mutation
-outbox with `clientMutationId` idempotency (`client_mutations`), incremental pull, field-level
-LWW for metadata, conflict copies for notes. Socket.IO (Redis adapter) broadcasts
+Per BLUEPRINT §6: workspace-scoped monotonic revision log (`sync_revisions`; the
+`recordSyncWrite`/`withRevision` helper in `apps/api/src/db/sync.js` runs inside every entity
+write's transaction). `GET /api/v1/sync/pull` streams batched snapshots + delete tombstones
+since a revision, coalesced to each entity's latest change. `POST /api/v1/sync/push` applies
+client mutation batches idempotently — `client_mutations` records every outcome per
+(`clientId`, `clientMutationId`), and replays answer from the record. Conflict policy:
+field-level LWW for metadata (foreign changes detected via the changed-fields log with own
+writes attributed through recorded result revisions; newer wall clock wins), document-level
+optimistic lock for note content (`NOTE_CONTENT_CONFLICT` → client makes a conflict copy).
+Still to come (OPH-057): Socket.IO (Redis adapter) broadcasting
 `sync:changed {workspaceId, toRevision}`; clients respond by pulling — the socket never carries
 entity payloads (keeps ordering and authz in one place: the pull endpoint).
 
