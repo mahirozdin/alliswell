@@ -2,13 +2,52 @@ import 'package:dio/dio.dart';
 
 import '../auth/test_support.dart';
 
-/// In-memory AllisWell API for project/task widget tests: serves /me and a
-/// stateful projects collection the way apps/api does.
+/// In-memory AllisWell API for project/task widget tests: serves /me plus
+/// stateful projects/tasks/tags collections the way apps/api does.
 class FakeApi {
   final String workspaceId = '01WSAAAAAAAAAAAAAAAAAAAAAA';
   final List<Map<String, dynamic>> projects = [];
+  final List<Map<String, dynamic>> tasks = [];
+  final List<Map<String, dynamic>> tags = [];
   final List<String> requests = [];
   int _seq = 0;
+
+  Map<String, dynamic> seedTag({required String name}) {
+    _seq += 1;
+    final tag = {
+      'id': 'TAG$_seq'.padRight(26, '0'),
+      'workspaceId': workspaceId,
+      'name': name,
+      'slug': name.toLowerCase(),
+      'colorRgb': '#64748B',
+      'icon': null,
+      'revision': 1,
+    };
+    tags.add(tag);
+    return tag;
+  }
+
+  Map<String, dynamic> seedTask({
+    required String title,
+    String status = 'open',
+    String priority = 'none',
+    bool isUrgent = false,
+    String? dueAt,
+    List<String> tagIds = const [],
+    List<Map<String, dynamic>> checklist = const [],
+  }) {
+    final task = _task({
+      'title': title,
+      'status': status,
+      'priority': priority,
+      'isUrgent': isUrgent,
+      'dueAt': dueAt,
+      'tagIds': tagIds,
+      'checklist': checklist,
+    });
+    tasks.add(task);
+    return task;
+  }
 
   Map<String, dynamic> seedProject({
     required String name,
@@ -67,6 +106,61 @@ class FakeApi {
       }
     }
 
+    if (path == '/api/v1/workspaces/$workspaceId/tags' &&
+        options.method == 'GET') {
+      return jsonBody(200, {'items': tags});
+    }
+
+    if (path == '/api/v1/workspaces/$workspaceId/tasks') {
+      if (options.method == 'GET') {
+        return jsonBody(200, {
+          'items': _filteredTasks(options.uri.queryParametersAll),
+          'nextCursor': null,
+        });
+      }
+      if (options.method == 'POST') {
+        final task = _task(body ?? const {});
+        tasks.add(task);
+        return jsonBody(201, task);
+      }
+    }
+
+    final taskAction = RegExp(
+      r'^/api/v1/tasks/([^/]+)/(complete|reopen|snooze|tags|checklist)(?:/([^/]+))?$',
+    ).firstMatch(path);
+    if (taskAction != null) {
+      return _handleTaskAction(
+        options.method,
+        taskAction.group(1)!,
+        taskAction.group(2)!,
+        taskAction.group(3),
+        body,
+      );
+    }
+
+    final singleTask = RegExp(r'^/api/v1/tasks/([^/]+)$').firstMatch(path);
+    if (singleTask != null) {
+      final index = tasks.indexWhere((t) => t['id'] == singleTask.group(1));
+      if (index < 0) return _notFound('TASK_NOT_FOUND');
+      switch (options.method) {
+        case 'GET':
+          return jsonBody(200, tasks[index]);
+        case 'PATCH':
+          tasks[index] = {
+            ...tasks[index],
+            ...?body,
+            'revision': (tasks[index]['revision'] as int) + 1,
+          };
+          if (body?['status'] == 'completed') {
+            tasks[index]['completedAt'] = '2026-07-14T12:00:00.000Z';
+          }
+          return jsonBody(200, tasks[index]);
+        case 'DELETE':
+          tasks.removeAt(index);
+          return ResponseBody.fromString('', 204);
+      }
+    }
+
     final single = RegExp(r'^/api/v1/projects/([^/]+)$').firstMatch(path);
     if (single != null) {
       final index = projects.indexWhere((p) => p['id'] == single.group(1));
@@ -100,6 +194,123 @@ class FakeApi {
       'error': 'Not Found',
       'message': 'No fake route for $path',
     });
+  }
+
+  List<Map<String, dynamic>> _filteredTasks(Map<String, List<String>> query) {
+    final statuses = query['status'];
+    final dueFrom = query['dueFrom']?.first;
+    final dueTo = query['dueTo']?.first;
+    return tasks.where((t) {
+      if (statuses != null && !statuses.contains(t['status'])) return false;
+      final due = t['dueAt'] as String?;
+      if (dueFrom != null && (due == null || due.compareTo(dueFrom) < 0)) {
+        return false;
+      }
+      if (dueTo != null && (due == null || due.compareTo(dueTo) > 0)) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  Future<ResponseBody> _handleTaskAction(
+    String method,
+    String taskId,
+    String action,
+    String? itemId,
+    Map<String, dynamic>? body,
+  ) async {
+    final index = tasks.indexWhere((t) => t['id'] == taskId);
+    if (index < 0) return _notFound('TASK_NOT_FOUND');
+    final task = tasks[index];
+
+    switch (action) {
+      case 'complete':
+        task['status'] = 'completed';
+        task['completedAt'] = '2026-07-14T12:00:00.000Z';
+        return jsonBody(200, task);
+      case 'reopen':
+        task['status'] = 'open';
+        task['completedAt'] = null;
+        return jsonBody(200, task);
+      case 'snooze':
+        task['snoozedUntil'] =
+            body?['snoozeUntil'] ?? '2026-07-15T06:00:00.000Z';
+        return jsonBody(200, task);
+      case 'tags':
+        task['tagIds'] = (body?['tagIds'] as List?)?.cast<String>() ?? [];
+        return jsonBody(200, task);
+      case 'checklist':
+        final checklist = (task['checklist'] as List)
+            .cast<Map<String, dynamic>>();
+        if (method == 'POST') {
+          _seq += 1;
+          final item = {
+            'id': 'CHK$_seq'.padRight(26, '0'),
+            'taskId': taskId,
+            'title': body?['title'],
+            'isDone': false,
+            'sortOrder': checklist.length,
+            'revision': 1,
+          };
+          checklist.add(item);
+          return jsonBody(201, item);
+        }
+        final itemIndex = checklist.indexWhere((i) => i['id'] == itemId);
+        if (itemIndex < 0) return _notFound('CHECKLIST_ITEM_NOT_FOUND');
+        if (method == 'PATCH') {
+          checklist[itemIndex] = {...checklist[itemIndex], ...?body};
+          return jsonBody(200, checklist[itemIndex]);
+        }
+        if (method == 'DELETE') {
+          checklist.removeAt(itemIndex);
+          return ResponseBody.fromString('', 204);
+        }
+    }
+    return _notFound('NOT_FOUND');
+  }
+
+  Future<ResponseBody> _notFound(String code) async => jsonBody(404, {
+    'statusCode': 404,
+    'code': code,
+    'error': 'Not Found',
+    'message': code,
+  });
+
+  Map<String, dynamic> _task(Map<String, dynamic> body) {
+    _seq += 1;
+    return {
+      'id': 'TSK$_seq'.padRight(26, '0'),
+      'workspaceId': workspaceId,
+      'projectId': body['projectId'],
+      'parentTaskId': body['parentTaskId'],
+      'title': body['title'] ?? 'Untitled',
+      'description': body['description'],
+      'status': body['status'] ?? 'open',
+      'priority': body['priority'] ?? 'none',
+      'colorRgb': null,
+      'startAt': null,
+      'dueAt': body['dueAt'],
+      'scheduledStartAt': null,
+      'scheduledEndAt': null,
+      'remindAt': body['remindAt'],
+      'snoozedUntil': null,
+      'timezone': 'Europe/Istanbul',
+      'isUrgent': body['isUrgent'] ?? false,
+      'requiresAcknowledgement': body['isUrgent'] ?? false,
+      'repeatRule': null,
+      'estimatedMinutes': null,
+      'actualMinutes': null,
+      'sortOrder': 0,
+      'completedAt': null,
+      'revision': 1,
+      'createdAt': '2026-07-14T10:00:00.000Z',
+      'updatedAt': '2026-07-14T10:00:00.000Z',
+      'tagIds': (body['tagIds'] as List?)?.cast<String>() ?? <String>[],
+      'checklist':
+          (body['checklist'] as List?)?.cast<Map<String, dynamic>>() ??
+          <Map<String, dynamic>>[],
+    };
   }
 
   Map<String, dynamic> _project(Map<String, dynamic> body) {

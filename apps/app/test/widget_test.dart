@@ -7,14 +7,20 @@ import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 
 import 'features/auth/test_support.dart';
+import 'features/projects/fake_api.dart';
 
-/// Boots the app with a persisted session so the shell (not /login) renders —
-/// session restore itself is covered in test/features/auth/.
+/// Boots the app with a persisted session (shell instead of /login) and an
+/// empty in-memory API — session restore itself is covered in test/features/.
 Future<ProviderScope> signedInApp() async {
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
-    overrides: [secretStoreProvider.overrideWithValue(store)],
+    overrides: [
+      secretStoreProvider.overrideWithValue(store),
+      apiClientProvider.overrideWithValue(
+        fakeDio(FakeHttpClientAdapter(FakeApi().handle)),
+      ),
+    ],
     child: const AllisWellApp(),
   );
 }

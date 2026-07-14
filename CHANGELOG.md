@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- App — task screens (OPH-037): Inbox, Today and Upcoming are live lists from the API with a
+  context-aware quick-add bar (Inbox captures, Today dues today, Upcoming dues tomorrow);
+  checkbox complete/reopen; task detail screen with status/priority, urgent toggle, due/remind
+  dates, tag chips and a checklist — completing Epic 04's end-to-end core-domain loop.
 - App — project screens (OPH-036): the Projects section is now real — list with colors,
   favorites and status, create/edit bottom sheet with a color palette + free #RRGGBB input,
   and a project detail screen with the Overview/Tasks/Notes tab skeleton. The app resolves

@@ -7,6 +7,9 @@ import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
 import 'features/projects/ui/project_detail_screen.dart';
 import 'features/projects/ui/projects_screen.dart';
+import 'features/tasks/providers.dart';
+import 'features/tasks/ui/task_detail_screen.dart';
+import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/placeholder_screen.dart';
 import 'screens/settings_screen.dart';
@@ -73,6 +76,15 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                   path: section.path,
                   builder: (context, state) => switch (section) {
+                    AppSection.inbox => const TaskListScreen(
+                      kind: TaskListKind.inbox,
+                    ),
+                    AppSection.today => const TaskListScreen(
+                      kind: TaskListKind.today,
+                    ),
+                    AppSection.upcoming => const TaskListScreen(
+                      kind: TaskListKind.upcoming,
+                    ),
                     AppSection.projects => const ProjectsScreen(),
                     _ => PlaceholderScreen(section: section),
                   },
@@ -93,6 +105,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      // Pushed on top of whichever list opened it (Inbox/Today/Upcoming/…).
+      GoRoute(
+        path: '/tasks/:taskId',
+        builder: (context, state) =>
+            TaskDetailScreen(taskId: state.pathParameters['taskId']!),
       ),
     ],
   );

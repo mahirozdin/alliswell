@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-14 (Epic 04 backend: OPH-030…034; local Docker infra restored)
+**Last updated:** 2026-07-14 (Epic 04 complete: OPH-030…037)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -14,12 +14,20 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | | |
 | --- | --- |
 | Current phase | Phase 1 — Core domain |
-| Current epic | **Epic 04 — Projects / Tags / Tasks** |
-| ➡️ **Next task** | **OPH-035 — Task snooze endpoint** |
-| Last completed | OPH-030…034 (Epic 04 API core); Epic 03, Epic 02, Epic 01, OPH-090…093 |
+| Current epic | **Epic 05 — Notes** |
+| ➡️ **Next task** | **OPH-040 — Note CRUD API** |
+| Last completed | Epic 04 (OPH-030…037); Epic 03, Epic 02, Epic 01, OPH-090…093 |
 
 ## Recently completed
 
+- **Epic 04 — complete (OPH-030…037).** On top of the API core below: OPH-035 snooze
+  (`POST /tasks/:id/snooze`, presets incl. tomorrow_morning at 09:00 task-tz — DST-safe
+  `src/lib/time.js`; task + active reminder snooze together; unrelated patches preserve a
+  snooze). App side: Projects list/edit-sheet/detail-tabs (OPH-036, workspace via `GET /me`),
+  Inbox/Today/Upcoming live lists + quick-add + task detail with status/priority/urgent/
+  dates/tags/checklist (OPH-037). Flutter: feature-first `features/{workspaces,tags,projects,
+  tasks}`; widget tests run against a stateful in-memory API (`test/features/projects/
+  fake_api.dart`). Route map: `/projects/:id` in-branch, `/tasks/:id` pushed top-level.
 - **Epic 04 — core domain API (OPH-030…034):** projects/tags/tasks CRUD under `/api/v1`,
   all workspace-authorized and soft-deleting. **Sync foundation:** `recordSyncWrite()`
   (src/db/sync.js) bumps `workspaces.revision` under row lock + appends `sync_revisions`
@@ -76,8 +84,9 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-035** per its checklist in [TASKS.md](TASKS.md) — snooze updates BOTH
-   `tasks.snoozed_until` and the active reminder row (see `src/db/reminders.js`); preset
-   math runs in the task's timezone.
+2. Implement **OPH-040** per its checklist in [TASKS.md](TASKS.md) — notes follow the same
+   route pattern as projects/tasks (workspace-scoped, `recordSyncWrite`, soft delete);
+   note the document-level optimistic lock + conflict copy policy (BLUEPRINT §6.5) when
+   you reach OPH-041.
 3. Verify (`npm run lint && npm test`, integration tests if infra up), document, commit,
    then update this file's Snapshot + Recently completed.

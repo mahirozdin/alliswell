@@ -7,16 +7,22 @@ import 'package:alliswell/src/features/auth/data/auth_api.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 
+import '../projects/fake_api.dart';
 import 'test_support.dart';
 
 void main() {
-  // Both platform boundaries are faked: HTTP via the adapter, secret storage
-  // in memory (the real default would hit a platform channel and hang tests).
+  // Every platform boundary is faked: auth HTTP via the handler, the
+  // authenticated API via an empty FakeApi (the shell fetches /me + tasks
+  // after login), and secret storage in memory (the real default would hit a
+  // platform channel and hang tests).
   Widget appWith(FakeHandler handler) => ProviderScope(
     overrides: [
       secretStoreProvider.overrideWithValue(InMemorySecretStore()),
       authApiProvider.overrideWithValue(
         AuthApi(fakeDio(FakeHttpClientAdapter(handler))),
+      ),
+      apiClientProvider.overrideWithValue(
+        fakeDio(FakeHttpClientAdapter(FakeApi().handle)),
       ),
     ],
     child: const AllisWellApp(),

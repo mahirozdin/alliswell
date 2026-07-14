@@ -271,11 +271,21 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
       current workspace; `ProjectsController` re-fetches after mutations); widget + unit
       tests over a stateful fake API adapter
 
-### OPH-037 — Flutter task screens
+### OPH-037 — Flutter task screens ✅
 
-- [ ] Inbox/Today/Upcoming lists from API; quick-add bar
-- [ ] Task detail: status, priority, tags, dates, urgent toggle, checklist
-- [ ] Tests
+- [x] Inbox/Today/Upcoming lists from the API (shared `TaskListScreen`; Today = open statuses
+      due up to end-of-day incl. overdue, Upcoming = from tomorrow); quick-add bar per list
+      (Inbox → status inbox, Today → due today, Upcoming → due tomorrow 09:00)
+- [x] Task detail (`/tasks/:id` pushed over the shell): status/priority dropdowns, urgent
+      toggle, due/remind date rows, tag FilterChips (PUT replace-set), checklist
+      add/toggle/remove — every control writes to the API and re-fetches
+- [x] Tests: per-section list filtering, quick-add, checkbox complete drop-off, detail edits
+      (urgent/tags/checklist) over the stateful fake API; TasksApi query-building unit tests
+
+Epic 04 acceptance: the core-domain loop works end to end — register → create projects/tags →
+capture tasks in Inbox → plan Today/Upcoming → edit detail (tags, checklist, urgent) →
+complete/reopen — against the real API contract (fake adapter in widget tests, real MySQL in
+API integration tests). ✔
 
 ---
 
