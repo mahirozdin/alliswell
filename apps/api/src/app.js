@@ -51,7 +51,13 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
 
   await app.register(sensible);
   await app.register(helmet, { contentSecurityPolicy: false });
-  await app.register(cors, { origin: config.corsOrigin });
+  await app.register(cors, {
+    origin: config.corsOrigin,
+    // @fastify/cors defaults to the CORS-safelisted methods (GET/HEAD/POST),
+    // which silently blocks browser PATCH/PUT/DELETE preflights (feedback
+    // round 3, item 1 — web task edits never reached the server).
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
   await app.register(rateLimit, { max: config.rateLimitMax, timeWindow: '1 minute' });
   await app.register(mysqlPlugin, { db });
   await app.register(redisPlugin, { redis });
