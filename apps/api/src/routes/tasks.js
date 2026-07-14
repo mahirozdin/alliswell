@@ -217,6 +217,28 @@ export default async function taskRoutes(app) {
     return row;
   }
 
+  // OPH-033 — archived tasks are immutable (the sole allowed write is
+  // unarchiving via PATCH { status }); everything else answers 409.
+  function assertNotArchived(row) {
+    if (row.status === 'archived') {
+      throw coded(
+        app.httpErrors.conflict('Archived tasks are immutable — unarchive first'),
+        'TASK_ARCHIVED',
+      );
+    }
+  }
+
+  /** Status side effects shared by PATCH and the transition endpoints. */
+  function completionPatch(fromStatus, toStatus) {
+    if (toStatus === 'completed' && fromStatus !== 'completed') {
+      return { completed_at: new Date() };
+    }
+    if (toStatus !== 'completed' && fromStatus === 'completed') {
+      return { completed_at: null };
+    }
+    return {};
+  }
+
   async function assertProjectUsable(projectId, workspaceId) {
     const project = await app
       .db('projects')
@@ -468,10 +490,18 @@ export default async function taskRoutes(app) {
       await app.requireWorkspaceMember(request, row.workspace_id);
 
       const body = request.body;
+      // Archived tasks accept exactly one write: a lone `status` unarchiving them.
+      const isUnarchive =
+        Object.keys(body).length === 1 && body.status !== undefined && body.status !== 'archived';
+      if (!isUnarchive) assertNotArchived(row);
+
       if (body.projectId) await assertProjectUsable(body.projectId, row.workspace_id);
       if (body.parentTaskId) await assertParentUsable(body.parentTaskId, row.workspace_id, row.id);
 
-      const patch = toRowPatch(body);
+      const patch = {
+        ...toRowPatch(body),
+        ...(body.status !== undefined ? completionPatch(row.status, body.status) : {}),
+      };
       await app.db.transaction(async (trx) => {
         const revision = await recordSyncWrite(trx, {
           workspaceId: row.workspace_id,
@@ -493,6 +523,64 @@ export default async function taskRoutes(app) {
       return taskDetail(row.id);
     },
   );
+
+  // ── Status transitions (OPH-033) ──────────────────────────────────────────
+
+  async function applyTransition(request, row, toStatus) {
+    const patch = { status: toStatus, ...completionPatch(row.status, toStatus) };
+    await app.db.transaction(async (trx) => {
+      const revision = await recordSyncWrite(trx, {
+        workspaceId: row.workspace_id,
+        entityType: 'task',
+        entityId: row.id,
+        operation: 'update',
+        changedFields: Object.keys(patch),
+      });
+      await trx('tasks')
+        .where({ id: row.id })
+        .update({
+          ...patch,
+          revision,
+          updated_by: request.user.id,
+          updated_at: new Date(),
+        });
+    });
+  }
+
+  const transitionSchema = {
+    params: { type: 'object', properties: { taskId: ULID_PARAM } },
+    response: {
+      200: taskDetailSchema,
+      403: errorResponseSchema,
+      404: errorResponseSchema,
+      409: errorResponseSchema,
+    },
+  };
+
+  app.post('/tasks/:taskId/complete', { ...auth, schema: transitionSchema }, async (request) => {
+    const row = await loadTask(request.params.taskId);
+    await app.requireWorkspaceMember(request, row.workspace_id);
+    assertNotArchived(row);
+
+    // Idempotent: completing a completed task changes nothing and costs no revision.
+    if (row.status !== 'completed') await applyTransition(request, row, 'completed');
+    return taskDetail(row.id);
+  });
+
+  app.post('/tasks/:taskId/reopen', { ...auth, schema: transitionSchema }, async (request) => {
+    const row = await loadTask(request.params.taskId);
+    await app.requireWorkspaceMember(request, row.workspace_id);
+    assertNotArchived(row);
+
+    if (row.status !== 'completed' && row.status !== 'cancelled') {
+      throw coded(
+        app.httpErrors.conflict('Only completed or cancelled tasks can be reopened'),
+        'TASK_INVALID_TRANSITION',
+      );
+    }
+    await applyTransition(request, row, 'open');
+    return taskDetail(row.id);
+  });
 
   app.delete(
     '/tasks/:taskId',
@@ -565,6 +653,7 @@ export default async function taskRoutes(app) {
     async (request) => {
       const row = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, row.workspace_id);
+      assertNotArchived(row);
 
       const desired = [...new Set(request.body.tagIds)];
       await assertTagsUsable(desired, row.workspace_id);
@@ -639,6 +728,7 @@ export default async function taskRoutes(app) {
     async (request, reply) => {
       const task = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, task.workspace_id);
+      assertNotArchived(task);
 
       const id = newId();
       await app.db.transaction(async (trx) => {
@@ -683,6 +773,7 @@ export default async function taskRoutes(app) {
     async (request) => {
       const task = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, task.workspace_id);
+      assertNotArchived(task);
       const item = await loadChecklistItem(task.id, request.params.itemId);
 
       const patch = {};
@@ -719,6 +810,7 @@ export default async function taskRoutes(app) {
     async (request, reply) => {
       const task = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, task.workspace_id);
+      assertNotArchived(task);
       const item = await loadChecklistItem(task.id, request.params.itemId);
 
       await app.db.transaction(async (trx) => {

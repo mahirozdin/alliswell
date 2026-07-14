@@ -7,6 +7,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Task transitions (OPH-033): `POST /tasks/:id/complete` (idempotent) and `/reopen` with
+  `completed_at` bookkeeping shared with status PATCHes; archived tasks are immutable on every
+  write surface (`409 TASK_ARCHIVED`) except a lone unarchiving status change.
 - Tasks API (OPH-032): task CRUD with rich filters (status/project/tag/due-range/urgent/parent)
   and ULID-cursor pagination; subtasks with cycle protection and subtree soft delete; checklist
   sub-resource; `PUT /tasks/:id/tags` replace-set semantics. Every write logs a sync revision;

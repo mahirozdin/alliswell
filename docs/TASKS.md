@@ -230,11 +230,15 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
       (`TASK_INVALID_PROJECT` / `TASK_INVALID_PARENT` / `TASK_INVALID_TAG`)
 - [x] Tests: filters, pagination, subtask nesting, tag ops (unit + real-MySQL integration)
 
-### OPH-033 — Task status & priority transitions
+### OPH-033 — Task status & priority transitions ✅
 
-- [ ] `POST /tasks/:id/complete` / `reopen`; completed_at handling
-- [ ] Status transition validation (e.g. archived tasks immutable)
-- [ ] Tests
+- [x] `POST /tasks/:id/complete` (idempotent, no revision on no-op) / `reopen` (only from
+      completed/cancelled → `TASK_INVALID_TRANSITION` otherwise); completed_at maintained by
+      both endpoints AND status PATCHes
+- [x] Status transition validation: archived tasks immutable across PATCH/tags/checklist/
+      transitions (`409 TASK_ARCHIVED`) — the only allowed write is a lone unarchiving
+      `PATCH { status }`; soft delete stays allowed (cleanup)
+- [x] Tests
 
 ### OPH-034 — Task urgent / remind fields
 
