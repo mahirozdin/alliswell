@@ -17,13 +17,21 @@ class PersistedToggle extends Notifier<bool> {
   }
 
   Future<void> _hydrate() async {
-    final stored = (await SharedPreferences.getInstance()).getBool(prefKey);
-    if (stored != null && stored != state) state = stored;
+    try {
+      final stored = (await SharedPreferences.getInstance()).getBool(prefKey);
+      if (stored != null && stored != state) state = stored;
+    } on Object {
+      // Preferences unavailable (private mode, tests) — keep the fallback.
+    }
   }
 
   Future<void> set(bool value) async {
     state = value;
-    await (await SharedPreferences.getInstance()).setBool(prefKey, value);
+    try {
+      await (await SharedPreferences.getInstance()).setBool(prefKey, value);
+    } on Object {
+      // Non-persistent session; the in-memory state still applies.
+    }
   }
 
   Future<void> toggle() => set(!state);
@@ -42,13 +50,21 @@ class PersistedChoice extends Notifier<String> {
   }
 
   Future<void> _hydrate() async {
-    final stored = (await SharedPreferences.getInstance()).getString(prefKey);
-    if (stored != null && stored != state) state = stored;
+    try {
+      final stored = (await SharedPreferences.getInstance()).getString(prefKey);
+      if (stored != null && stored != state) state = stored;
+    } on Object {
+      // Preferences unavailable (private mode, tests) — keep the fallback.
+    }
   }
 
   Future<void> set(String value) async {
     state = value;
-    await (await SharedPreferences.getInstance()).setString(prefKey, value);
+    try {
+      await (await SharedPreferences.getInstance()).setString(prefKey, value);
+    } on Object {
+      // Non-persistent session; the in-memory state still applies.
+    }
   }
 }
 

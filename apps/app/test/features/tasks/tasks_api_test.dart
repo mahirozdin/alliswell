@@ -1,10 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/features/home/task_grouping.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/features/tasks/data/tasks_api.dart';
-import 'package:alliswell/src/features/tasks/providers.dart';
 
 import '../auth/test_support.dart';
+
+Task _task(String id, {DateTime? dueAt}) => Task(
+  id: id,
+  workspaceId: 'ws1',
+  title: id,
+  status: 'open',
+  priority: 'none',
+  timezone: 'Europe/Istanbul',
+  isUrgent: false,
+  requiresAcknowledgement: false,
+  sortOrder: 0,
+  revision: 1,
+  dueAt: dueAt,
+);
 
 void main() {
   test('Task.fromJson maps detail fields and tolerates list rows', () {
@@ -85,36 +99,53 @@ void main() {
     },
   );
 
-  test('TaskListKind quick-add bodies match their list semantics', () {
+  test('groupTasksForHome buckets chronologically', () {
     final now = DateTime(2026, 7, 14, 15, 30);
+    final groups = groupTasksForHome([
+      _task('overdue', dueAt: DateTime(2026, 7, 10, 9)),
+      _task('today', dueAt: DateTime(2026, 7, 14, 18)),
+      _task('tomorrow', dueAt: DateTime(2026, 7, 15, 9)),
+      _task('week', dueAt: DateTime(2026, 7, 19, 9)),
+      _task('later', dueAt: DateTime(2026, 8, 20, 9)),
+      _task('undated'),
+    ], now: now);
 
-    expect(TaskListKind.inbox.quickAddBody('Fikir', now), {
-      'title': 'Fikir',
-      'status': 'inbox',
-    });
-
-    final today = TaskListKind.today.quickAddBody('Bugün', now);
-    expect(
-      DateTime.parse(today['dueAt'] as String).toLocal().day,
-      now.day,
-      reason: 'today quick-add is due today',
-    );
-
-    final upcoming = TaskListKind.upcoming.quickAddBody('Yarın', now);
-    final upcomingDue = DateTime.parse(upcoming['dueAt'] as String).toLocal();
-    expect(upcomingDue.day, now.add(const Duration(days: 1)).day);
-    expect(upcomingDue.hour, 9);
+    expect(groups.map((g) => g.bucket), [
+      HomeBucket.overdue,
+      HomeBucket.today,
+      HomeBucket.tomorrow,
+      HomeBucket.thisWeek,
+      HomeBucket.later,
+      HomeBucket.noDate,
+    ]);
+    expect(groups.every((g) => !g.dimmed), isTrue);
+    expect(groups.first.tasks.single.id, 'overdue');
   });
 
-  test('TaskListKind filters: today bounded above, upcoming starts after', () {
+  test('a selected day pulls its group first and dims the rest', () {
     final now = DateTime(2026, 7, 14, 15, 30);
-    final today = TaskListKind.today.describe(now);
-    final upcoming = TaskListKind.upcoming.describe(now);
+    final groups = groupTasksForHome(
+      [
+        _task('selected', dueAt: DateTime(2026, 7, 20, 9)),
+        _task('today', dueAt: DateTime(2026, 7, 14, 18)),
+        _task('undated'),
+      ],
+      now: now,
+      selectedDay: DateTime(2026, 7, 20),
+    );
 
-    expect(today['statuses'], isNot(contains('completed')));
-    final dueTo = today['dueTo'] as DateTime;
-    final dueFrom = upcoming['dueFrom'] as DateTime;
-    expect(dueFrom.isAfter(dueTo), isTrue);
-    expect(TaskListKind.inbox.describe(now)['statuses'], ['inbox']);
+    expect(groups.first.bucket, HomeBucket.selectedDay);
+    expect(groups.first.dimmed, isFalse);
+    expect(groups.first.tasks.single.id, 'selected');
+    expect(groups.skip(1).every((g) => g.dimmed), isTrue);
+  });
+
+  test('daysWithTasks marks local due days once', () {
+    final marked = daysWithTasks([
+      _task('a', dueAt: DateTime(2026, 7, 20, 9)),
+      _task('b', dueAt: DateTime(2026, 7, 20, 22)),
+      _task('c'),
+    ]);
+    expect(marked, {DateTime(2026, 7, 20)});
   });
 }

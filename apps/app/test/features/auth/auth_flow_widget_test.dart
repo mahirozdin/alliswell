@@ -58,11 +58,8 @@ void main() {
     await tester.tap(find.text('Sign in'));
     await tester.pumpAndSettle();
 
-    // Router redirect landed on /today inside the shell.
-    expect(
-      find.text('Everything due, scheduled or urgent today.'),
-      findsOneWidget,
-    );
+    // Router redirect landed on /home inside the shell.
+    expect(find.text('All caught up'), findsOneWidget);
   });
 
   testWidgets('wrong credentials show a friendly inline error', (tester) async {
@@ -129,9 +126,6 @@ void main() {
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Everything due, scheduled or urgent today.'),
-      findsOneWidget,
-    );
+    expect(find.text('All caught up'), findsOneWidget);
   });
 }

@@ -12,119 +12,59 @@ final tasksApiProvider = Provider<TasksApi>(
 /// Statuses that belong on planning lists (terminal ones are filtered out).
 const kOpenStatuses = ['inbox', 'open', 'scheduled', 'in_progress', 'waiting'];
 
-/// The three task list flavors of the shell (OPH-037).
-enum TaskListKind {
-  inbox,
-  today,
-  upcoming;
+/// Every open task of the workspace — feeds Home and Calendar (feedback
+/// round 1). One page of 200 covers v1; local-first sync (Epic 06) replaces
+/// this with a replica later.
+final openTasksProvider = FutureProvider<List<Task>>((ref) async {
+  final workspaces = await ref.watch(workspacesProvider.future);
+  if (workspaces.isEmpty) return const [];
+  final page = await ref
+      .watch(tasksApiProvider)
+      .list(workspaces.first.id, statuses: kOpenStatuses, limit: 200);
+  return page.items;
+});
 
-  /// Server-side filters for this list. `today` includes overdue work
-  /// (no lower bound); `upcoming` starts tomorrow.
-  Map<String, dynamic> describe(DateTime now) {
-    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    return switch (this) {
-      TaskListKind.inbox => {
-        'statuses': const ['inbox'],
-      },
-      TaskListKind.today => {'statuses': kOpenStatuses, 'dueTo': endOfToday},
-      TaskListKind.upcoming => {
-        'statuses': kOpenStatuses,
-        'dueFrom': endOfToday.add(const Duration(seconds: 1)),
-      },
-    };
-  }
+/// The calendar day selected on Home/Calendar (shared so the selection is
+/// consistent across both tabs). Null = no selection.
+class SelectedDayController extends Notifier<DateTime?> {
+  @override
+  DateTime? build() => null;
 
-  /// What the quick-add bar creates in this list context.
-  Map<String, dynamic> quickAddBody(String title, DateTime now) {
-    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
-    return switch (this) {
-      TaskListKind.inbox => {'title': title, 'status': 'inbox'},
-      TaskListKind.today => {
-        'title': title,
-        'dueAt': endOfToday.toUtc().toIso8601String(),
-      },
-      TaskListKind.upcoming => {
-        'title': title,
-        'dueAt': DateTime(
-          now.year,
-          now.month,
-          now.day + 1,
-          9,
-        ).toUtc().toIso8601String(),
-      },
-    };
-  }
+  void select(DateTime? day) => state = day;
 }
 
-class TasksController extends AsyncNotifier<List<Task>> {
-  TasksController(this.kind);
+final selectedDayProvider = NotifierProvider<SelectedDayController, DateTime?>(
+  SelectedDayController.new,
+);
 
-  final TaskListKind kind;
-
+/// The Inbox list (quick capture). Home covers the chronological views.
+class InboxTasksController extends AsyncNotifier<List<Task>> {
   @override
   Future<List<Task>> build() async {
     final workspaces = await ref.watch(workspacesProvider.future);
     if (workspaces.isEmpty) return const [];
-    final filters = kind.describe(DateTime.now());
     final page = await ref
         .watch(tasksApiProvider)
-        .list(
-          workspaces.first.id,
-          statuses: (filters['statuses'] as List?)?.cast<String>(),
-          dueFrom: filters['dueFrom'] as DateTime?,
-          dueTo: filters['dueTo'] as DateTime?,
-          limit: 100,
-        );
+        .list(workspaces.first.id, statuses: const ['inbox'], limit: 100);
     return page.items;
   }
 
-  Future<String> _workspaceId() async {
+  Future<void> quickAdd(String title) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) throw StateError('No workspace available');
-    return workspaces.first.id;
-  }
-
-  Future<void> _refetch() async {
+    await ref.read(tasksApiProvider).create(workspaces.first.id, {
+      'title': title.trim(),
+      'status': 'inbox',
+    });
     ref.invalidateSelf();
     await future;
   }
-
-  Future<void> quickAdd(String title) async {
-    final body = kind.quickAddBody(title.trim(), DateTime.now());
-    await ref.read(tasksApiProvider).create(await _workspaceId(), body);
-    await _refetch();
-  }
-
-  /// Checkbox toggle: complete an open task, reopen a completed one.
-  Future<void> toggleCompleted(Task task) async {
-    final api = ref.read(tasksApiProvider);
-    if (task.isCompleted) {
-      await api.reopen(task.id);
-    } else {
-      await api.complete(task.id);
-    }
-    await _refetch();
-  }
 }
 
-final inboxTasksProvider = AsyncNotifierProvider<TasksController, List<Task>>(
-  () => TasksController(TaskListKind.inbox),
-);
-final todayTasksProvider = AsyncNotifierProvider<TasksController, List<Task>>(
-  () => TasksController(TaskListKind.today),
-);
-final upcomingTasksProvider =
-    AsyncNotifierProvider<TasksController, List<Task>>(
-      () => TasksController(TaskListKind.upcoming),
+final inboxTasksProvider =
+    AsyncNotifierProvider<InboxTasksController, List<Task>>(
+      InboxTasksController.new,
     );
-
-AsyncNotifierProvider<TasksController, List<Task>> taskListProvider(
-  TaskListKind kind,
-) => switch (kind) {
-  TaskListKind.inbox => inboxTasksProvider,
-  TaskListKind.today => todayTasksProvider,
-  TaskListKind.upcoming => upcomingTasksProvider,
-};
 
 /// Single-task detail (tags + checklist included). Mutating screens invalidate
 /// this after writes.
@@ -136,7 +76,18 @@ final taskDetailProvider = FutureProvider.family<Task, String>(
 /// from screen code (hence [WidgetRef]).
 void invalidateTaskData(WidgetRef ref, {String? taskId}) {
   ref.invalidate(inboxTasksProvider);
-  ref.invalidate(todayTasksProvider);
-  ref.invalidate(upcomingTasksProvider);
+  ref.invalidate(openTasksProvider);
   if (taskId != null) ref.invalidate(taskDetailProvider(taskId));
+}
+
+/// Checkbox behavior shared by every task tile: complete an open task,
+/// reopen a completed one, then refresh all task data.
+Future<void> toggleTaskCompleted(WidgetRef ref, Task task) async {
+  final api = ref.read(tasksApiProvider);
+  if (task.isCompleted) {
+    await api.reopen(task.id);
+  } else {
+    await api.complete(task.id);
+  }
+  invalidateTaskData(ref, taskId: task.id);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -13,6 +14,7 @@ import 'features/projects/fake_api.dart';
 /// Boots the app with a persisted session (shell instead of /login) and an
 /// empty in-memory API — session restore itself is covered in test/features/.
 Future<ProviderScope> signedInApp() async {
+  SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
@@ -27,19 +29,14 @@ Future<ProviderScope> signedInApp() async {
 }
 
 void main() {
-  testWidgets('app shell renders the Today section for a restored session', (
-    tester,
-  ) async {
+  testWidgets('app shell renders Home for a restored session', (tester) async {
     await tester.pumpWidget(await signedInApp());
     await tester.pumpAndSettle();
 
-    // Initial route is /today: the section title appears in the page body
-    // and in the navigation destinations.
-    expect(find.text('Today'), findsWidgets);
-    expect(
-      find.text('Everything due, scheduled or urgent today.'),
-      findsOneWidget,
-    );
+    // Initial route is /home: title in the app bar + nav destination, and the
+    // empty state shows since the fake workspace has no tasks.
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('All caught up'), findsOneWidget);
   });
 
   testWidgets('navigating to another section swaps the screen', (tester) async {

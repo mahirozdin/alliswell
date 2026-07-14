@@ -14,24 +14,24 @@ void main() {
   );
 
   test('while restoring, everything parks on /splash', () {
-    expect(redirect(restoring: true, at: '/today'), '/splash');
+    expect(redirect(restoring: true, at: '/home'), '/splash');
     expect(redirect(restoring: true, at: '/login'), '/splash');
     expect(redirect(restoring: true, at: '/splash'), isNull);
   });
 
   test('signed out: only /login and /register are reachable', () {
-    expect(redirect(at: '/today'), '/login');
+    expect(redirect(at: '/home'), '/login');
     expect(redirect(at: '/settings'), '/login');
     expect(redirect(at: '/splash'), '/login');
     expect(redirect(at: '/login'), isNull);
     expect(redirect(at: '/register'), isNull);
   });
 
-  test('signed in: auth and splash pages bounce to Today', () {
-    expect(redirect(loggedIn: true, at: '/login'), '/today');
-    expect(redirect(loggedIn: true, at: '/register'), '/today');
-    expect(redirect(loggedIn: true, at: '/splash'), '/today');
-    expect(redirect(loggedIn: true, at: '/today'), isNull);
+  test('signed in: auth and splash pages bounce to Home', () {
+    expect(redirect(loggedIn: true, at: '/login'), '/home');
+    expect(redirect(loggedIn: true, at: '/register'), '/home');
+    expect(redirect(loggedIn: true, at: '/splash'), '/home');
+    expect(redirect(loggedIn: true, at: '/home'), isNull);
     expect(redirect(loggedIn: true, at: '/settings'), isNull);
   });
 }

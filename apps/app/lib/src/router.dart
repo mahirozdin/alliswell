@@ -5,11 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
+import 'features/home/calendar_screen.dart';
+import 'features/home/home_screen.dart';
 import 'features/notes/ui/note_editor_screen.dart';
 import 'features/notes/ui/notes_screen.dart';
 import 'features/projects/ui/project_detail_screen.dart';
 import 'features/projects/ui/projects_screen.dart';
-import 'features/tasks/providers.dart';
 import 'features/tasks/ui/task_detail_screen.dart';
 import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
@@ -32,7 +33,7 @@ String? computeAuthRedirect({
     return _authLocations.contains(location) ? null : '/login';
   }
   if (location == '/splash' || _authLocations.contains(location)) {
-    return AppSection.today.path;
+    return AppSection.home.path;
   }
   return null;
 }
@@ -77,15 +78,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 GoRoute(
                   path: section.path,
                   builder: (context, state) => switch (section) {
-                    AppSection.inbox => const TaskListScreen(
-                      kind: TaskListKind.inbox,
-                    ),
-                    AppSection.today => const TaskListScreen(
-                      kind: TaskListKind.today,
-                    ),
-                    AppSection.upcoming => const TaskListScreen(
-                      kind: TaskListKind.upcoming,
-                    ),
+                    AppSection.home => const HomeScreen(),
+                    AppSection.inbox => const InboxScreen(),
+                    AppSection.calendar => const CalendarScreen(),
                     AppSection.projects => const ProjectsScreen(),
                     AppSection.notes => const NotesScreen(),
                   },
