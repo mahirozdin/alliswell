@@ -2,6 +2,7 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { recordSyncWrite } from '../db/sync.js';
+import { reconcileTaskReminder } from '../db/reminders.js';
 import { COLOR_PATTERN } from './projects.js';
 
 export const TASK_STATUSES = [
@@ -217,6 +218,17 @@ export default async function taskRoutes(app) {
     return row;
   }
 
+  // OPH-034 — remind_at needs a real timezone for alarm math. The column has a
+  // default, so validity (not presence) is what we enforce; aliases like
+  // Asia/Istanbul are fine — Intl throws on genuinely unknown zones.
+  function assertValidTimezone(tz) {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    } catch {
+      throw coded(app.httpErrors.badRequest(`Unknown timezone: ${tz}`), 'TASK_INVALID_TIMEZONE');
+    }
+  }
+
   // OPH-033 — archived tasks are immutable (the sole allowed write is
   // unarchiving via PATCH { status }); everything else answers 409.
   function assertNotArchived(row) {
@@ -331,6 +343,11 @@ export default async function taskRoutes(app) {
       if (body.projectId) await assertProjectUsable(body.projectId, workspaceId);
       if (body.parentTaskId) await assertParentUsable(body.parentTaskId, workspaceId, null);
       await assertTagsUsable(tagIds, workspaceId);
+      if (body.timezone !== undefined) assertValidTimezone(body.timezone);
+      // Urgent alarms demand acknowledgement unless the caller opts out (OPH-034).
+      if (body.isUrgent === true && body.requiresAcknowledgement === undefined) {
+        body.requiresAcknowledgement = true;
+      }
 
       const id = newId();
       await app.db.transaction(async (trx) => {
@@ -353,6 +370,8 @@ export default async function taskRoutes(app) {
             [...new Set(tagIds)].map((tagId) => ({ task_id: id, tag_id: tagId })),
           );
         }
+        const fresh = await trx('tasks').where({ id }).first();
+        await reconcileTaskReminder(trx, { workspaceId, task: fresh });
       });
 
       return reply.code(201).send(await taskDetail(id));
@@ -497,6 +516,11 @@ export default async function taskRoutes(app) {
 
       if (body.projectId) await assertProjectUsable(body.projectId, row.workspace_id);
       if (body.parentTaskId) await assertParentUsable(body.parentTaskId, row.workspace_id, row.id);
+      if (body.timezone !== undefined) assertValidTimezone(body.timezone);
+      // Turning a task urgent defaults acknowledgement on unless set explicitly.
+      if (body.isUrgent === true && body.requiresAcknowledgement === undefined) {
+        body.requiresAcknowledgement = true;
+      }
 
       const patch = {
         ...toRowPatch(body),
@@ -518,6 +542,8 @@ export default async function taskRoutes(app) {
             updated_by: request.user.id,
             updated_at: new Date(),
           });
+        const fresh = await trx('tasks').where({ id: row.id }).first();
+        await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
       });
 
       return taskDetail(row.id);
@@ -544,6 +570,8 @@ export default async function taskRoutes(app) {
           updated_by: request.user.id,
           updated_at: new Date(),
         });
+      const fresh = await trx('tasks').where({ id: row.id }).first();
+      await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
     });
   }
 
@@ -614,6 +642,8 @@ export default async function taskRoutes(app) {
               updated_by: request.user.id,
               updated_at: new Date(),
             });
+            const fresh = await trx('tasks').where({ id }).first();
+            await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
           }
           const children = await trx('tasks')
             .whereIn('parent_task_id', frontier)

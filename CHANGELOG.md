@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Reminder lifecycle (OPH-034): reminders now live in lockstep with their task inside the same
+  transaction — setting `remindAt` schedules (or re-arms) the alarm, clearing it cancels,
+  completing the task completes it, reopening re-arms, deleting cancels. Urgent tasks default
+  to requiring acknowledgement; timezones are validated (`TASK_INVALID_TIMEZONE`).
 - Task transitions (OPH-033): `POST /tasks/:id/complete` (idempotent) and `/reopen` with
   `completed_at` bookkeeping shared with status PATCHes; archived tasks are immutable on every
   write surface (`409 TASK_ARCHIVED`) except a lone unarchiving status change.

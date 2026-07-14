@@ -240,11 +240,16 @@ survives restart (mobile/desktop); refresh rotation transparent on 401; reuse bu
       `PATCH { status }`; soft delete stays allowed (cleanup)
 - [x] Tests
 
-### OPH-034 — Task urgent / remind fields
+### OPH-034 — Task urgent / remind fields ✅
 
-- [ ] Validation: remind_at requires timezone; urgent implies requires_acknowledgement default
-- [ ] Reminder row lifecycle sync with task.remind_at (create/update/cancel)
-- [ ] Tests
+- [x] Validation: timezone validity enforced via Intl whenever provided (`TASK_INVALID_TIMEZONE`;
+      the column default guarantees presence for remind_at); urgent implies
+      requires_acknowledgement default (create AND patch, explicit opt-out respected)
+- [x] Reminder row lifecycle sync with task writes, same transaction
+      (`src/db/reminders.js` reconcile): remind_at set → scheduled upsert (re-arm in place);
+      cleared → cancelled; task completed → completed; reopened with remind_at → re-armed;
+      deleted → cancelled; urgency/timezone/repeat mirrored; no-op writes cost no revision
+- [x] Tests (unit + real-MySQL integration)
 
 ### OPH-035 — Task snooze endpoint
 
