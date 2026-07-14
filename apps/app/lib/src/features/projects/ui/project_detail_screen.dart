@@ -7,6 +7,7 @@ import '../../notes/data/note.dart';
 import '../../notes/providers.dart';
 import '../../notes/ui/notes_screen.dart';
 import '../../tasks/providers.dart';
+import '../../tasks/ui/quick_add_bar.dart';
 import '../../tasks/ui/task_tile.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/project.dart';
@@ -304,75 +305,30 @@ class _ReadmeViewState extends State<_ReadmeView> {
 
 // ── Tasks tab: live list + in-place quick add ───────────────────────────────
 
-class _ProjectTasksTab extends ConsumerStatefulWidget {
+class _ProjectTasksTab extends ConsumerWidget {
   const _ProjectTasksTab({required this.projectId});
 
   final String projectId;
 
-  @override
-  ConsumerState<_ProjectTasksTab> createState() => _ProjectTasksTabState();
-}
-
-class _ProjectTasksTabState extends ConsumerState<_ProjectTasksTab> {
-  final _controller = TextEditingController();
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _add() async {
-    final title = _controller.text.trim();
-    if (title.isEmpty || _submitting) return;
-    setState(() => _submitting = true);
-    try {
-      final workspaces = await ref.read(workspacesProvider.future);
-      if (workspaces.isEmpty) return;
-      await ref.read(tasksApiProvider).create(workspaces.first.id, {
-        'title': title,
-        'projectId': widget.projectId,
-      });
-      _controller.clear();
-      invalidateTaskData(ref);
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
+  Future<void> _add(WidgetRef ref, String title) async {
+    final workspaces = await ref.read(workspacesProvider.future);
+    if (workspaces.isEmpty) throw StateError('No workspace available');
+    await ref.read(tasksApiProvider).create(workspaces.first.id, {
+      'title': title,
+      'projectId': projectId,
+    });
+    invalidateTaskData(ref);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final tasks = ref.watch(projectTasksProvider(widget.projectId));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tasks = ref.watch(projectTasksProvider(projectId));
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: TextField(
-            key: const Key('project-quick-add'),
-            controller: _controller,
-            onSubmitted: (_) => _add(),
-            decoration: InputDecoration(
-              hintText: 'Add a task to this project…',
-              prefixIcon: const Icon(Icons.add_task),
-              suffixIcon: _submitting
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.send),
-                      tooltip: 'Add task',
-                      onPressed: _add,
-                    ),
-              border: const OutlineInputBorder(),
-              isDense: true,
-            ),
-          ),
+        QuickAddBar(
+          key: const Key('project-quick-add'),
+          hintText: 'Add a task to this project…',
+          onAdd: (title) => _add(ref, title),
         ),
         const Divider(height: 1),
         Expanded(

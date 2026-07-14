@@ -58,15 +58,19 @@ void main() {
     expect(find.textContaining('Today ·'), findsOneWidget);
     expect(find.text('Gecikmiş iş'), findsOneWidget);
 
-    // Lower groups live below the fold of the lazy list — scroll to the last
-    // tile; its header and the one above scroll into view with it.
+    // Lower groups live below the fold of the lazy list — scroll in stages.
+    await tester.dragUntilVisible(
+      find.text('Uzak iş'),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
+    expect(find.textContaining('Later ·'), findsOneWidget);
     await tester.dragUntilVisible(
       find.text('Tarihsiz iş'),
       find.byType(ListView),
       const Offset(0, -120),
     );
     expect(find.textContaining('No date ·'), findsOneWidget);
-    expect(find.textContaining('Later ·'), findsOneWidget);
   });
 
   testWidgets('completing a task on home removes it after refetch', (
@@ -124,6 +128,86 @@ void main() {
     await tester.tap(find.text('$targetDay'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Selected day ·'), findsNothing);
+  });
+
+  testWidgets('home quick-add chains rapid entries without losing focus', (
+    tester,
+  ) async {
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    // type → Enter → type → Enter: no re-tap between entries.
+    await tester.enterText(find.byKey(const Key('home-quick-add')), 'Birinci');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('home-quick-add')), 'İkinci');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(api.tasks, hasLength(2));
+    expect(find.text('Birinci'), findsOneWidget);
+    expect(find.text('İkinci'), findsOneWidget);
+    // Dateless quick adds land in the No date group, visible immediately.
+    expect(find.textContaining('No date ·'), findsOneWidget);
+    expect(api.tasks.every((t) => t['dueAt'] == null), isTrue);
+  });
+
+  testWidgets('home quick-add targets the selected calendar day', (
+    tester,
+  ) async {
+    final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('$targetDay'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('home-quick-add')),
+      'Seçili güne iş',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    final due = DateTime.parse(api.tasks.single['dueAt'] as String).toLocal();
+    expect(due.day, targetDay);
+    expect(find.textContaining('Selected day ·'), findsOneWidget);
+    expect(find.text('Seçili güne iş'), findsOneWidget);
+  });
+
+  testWidgets('FAB sheet creates a task with options', (tester) async {
+    final api = FakeApi();
+    api.seedProject(name: 'Hedef Proje');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('task-sheet-title')),
+      'Opsiyonlu görev',
+    );
+    // Pick a due date via the date + time dialogs (defaults accepted).
+    await tester.tap(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('task-sheet-urgent')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
+
+    expect(api.tasks, hasLength(1));
+    final created = api.tasks.single;
+    expect(created['title'], 'Opsiyonlu görev');
+    expect(created['isUrgent'], isTrue);
+    expect(created['dueAt'], isNotNull);
+    expect(find.text('Opsiyonlu görev'), findsOneWidget);
   });
 
   testWidgets('quick-add on Inbox posts with status inbox and refreshes', (

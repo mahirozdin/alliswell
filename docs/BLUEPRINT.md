@@ -669,6 +669,12 @@ Sağda Apple Takvim tarzı ay ızgarası (işli günlerde nokta). Takvimden gün
 görevleri vurgulu ilk grup olur, kalanlar sönük (grey/disabled) ama görünür kalır. Mobilde
 takvim üst yarıda, "Hide calendar" ile katlanır; tercih kalıcıdır (local storage).
 
+Görev girişi (feedback round 2): listenin üstünde seri girişli quick-add — Enter sonrası alan
+temizlenir ve ODAK KORUNUR (yaz→Enter→yaz→Enter zinciri); gün seçiliyken eklenen görev o güne
+(09:00) düşer, seçim yokken tarihsiz eklenir. Sağ altta FAB, tarih/saat, hatırlatma, öncelik,
+proje ve urgent seçenekli tam oluşturma sheet'ini açar (seçili gün due'ya önceden dolar).
+Aynı seri-odak davranışı Inbox ve proje Tasks sekmesindeki quick-add'lerde de geçerlidir.
+
 ### 12.3 Project detail sekmeleri
 
 Overview (proje README notu — GitHub repo ana sayfası gibi, `projects.readme_note_id`) •

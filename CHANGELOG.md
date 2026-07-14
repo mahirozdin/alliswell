@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed (feedback round 2 — 2026-07-15)
+
+- **Home task entry:** a rapid-entry quick-add sits above the list — Enter clears the field
+  and keeps focus so entries chain (type→Enter→type→Enter); with a calendar day selected the
+  task lands on that day, otherwise dateless. A bottom-right FAB opens the full creation
+  sheet (due/remind date-times, priority, project, urgent), prefilled with the selected day.
+  Inbox and project quick-adds gained the same keep-focus behavior.
+
 ### Changed (feedback round 1 — 2026-07-14)
 
 - **Home replaces Today/Upcoming:** the app opens on a Home dashboard — chronological task
