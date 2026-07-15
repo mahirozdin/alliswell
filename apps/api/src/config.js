@@ -71,6 +71,11 @@ export function loadConfig(env = process.env) {
       name: env.DATABASE_NAME ?? 'alliswell',
     }),
     redisUrl: env.REDIS_URL ?? 'redis://127.0.0.1:6379',
+    // Namespaces this deployment's BullMQ keyspace. Two AllisWell instances
+    // pointed at one Redis would otherwise consume each other's jobs — and
+    // since each has its OWN MySQL, the thief finds no task and drops the job
+    // on the floor. Give every deployment sharing a Redis its own prefix.
+    redisKeyPrefix: env.REDIS_KEY_PREFIX || 'alliswell',
     auth: Object.freeze({
       accessSecret: env.JWT_ACCESS_SECRET || DEV_ACCESS_SECRET,
       refreshSecret: env.JWT_REFRESH_SECRET || DEV_REFRESH_SECRET,
@@ -93,6 +98,16 @@ export function loadConfig(env = process.env) {
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
       // 64 hex chars → 32 bytes. Dev fallback is labeled insecure on purpose.
       tokenKey: env.CALENDAR_TOKEN_KEY || DEV_CALENDAR_TOKEN_KEY,
+      // Public HTTPS address Google POSTs change notifications to (OPH-074).
+      // Optional by design: without it we never open a push channel and the
+      // sweep polls instead, so localhost/NAT self-hosters still sync.
+      webhookUrl: env.GOOGLE_WEBHOOK_URL || null,
+      // Requested channel lifetime. Google caps this at its own limit and
+      // answers with the real expiration — we renew off THAT, never off this.
+      watchTtlSec: toInt(env.CALENDAR_WATCH_TTL_SEC, 604800, 'CALENDAR_WATCH_TTL_SEC'),
+      // How often the sweep renews channels, retries dirty accounts, and polls
+      // channel-less ones.
+      sweepSec: toInt(env.CALENDAR_SYNC_SWEEP_SEC, 300, 'CALENDAR_SYNC_SWEEP_SEC'),
     }),
   };
 
@@ -107,6 +122,14 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.calendar.tokenKey)) {
     throw new Error('CALENDAR_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (config.calendar.watchTtlSec < 60 || config.calendar.sweepSec < 10) {
+    throw new Error('CALENDAR_WATCH_TTL_SEC (≥60) and CALENDAR_SYNC_SWEEP_SEC (≥10) are too small');
+  }
+  // Google refuses a non-HTTPS webhook address, so catch the typo at boot
+  // rather than at the first (invisible, queued) watch call.
+  if (config.calendar.webhookUrl && !config.calendar.webhookUrl.startsWith('https://')) {
+    throw new Error('GOOGLE_WEBHOOK_URL must be a public https:// address (Google requires TLS)');
   }
   if (config.env === 'production') {
     validateProductionSecret('JWT_ACCESS_SECRET', env.JWT_ACCESS_SECRET);

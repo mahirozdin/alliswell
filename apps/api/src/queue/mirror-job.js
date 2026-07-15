@@ -38,6 +38,12 @@ async function mirrorTaskToAccount(app, account, task) {
   const calendarId = link?.provider_calendar_id ?? account.default_calendar_id;
 
   if (!desired) {
+    // A provider-deleted tombstone (OPH-076) is not ours to clean up: the user
+    // removed the event themselves, the flagged row records why we stopped
+    // mirroring, and there is nothing left to delete. Re-enabling the mirror
+    // recreates through the 404 path below.
+    if (link.conflict_status === 'provider_deleted_local_exists') return;
+
     // The task no longer earns an event: remove it (tolerate a remote delete).
     try {
       await google.deleteEvent(accessToken, calendarId, link.provider_event_id);
@@ -60,7 +66,10 @@ async function mirrorTaskToAccount(app, account, task) {
         .db('calendar_event_links')
         .where({ id: link.id })
         .update({
+          // The etag we just caused is what tells the inbound worker this
+          // change is our own echo and not a user edit (OPH-076).
           etag: updated?.etag ?? null,
+          last_provider_updated_at: updated?.updated ? new Date(updated.updated) : null,
           last_local_updated_at: new Date(task.updated_at),
           conflict_status: 'none',
           updated_at: new Date(),
@@ -95,6 +104,7 @@ async function mirrorTaskToAccount(app, account, task) {
     provider_event_id: event.id,
     provider_event_uid: event.iCalUID ?? null,
     etag: event.etag ?? null,
+    last_provider_updated_at: event.updated ? new Date(event.updated) : null,
     last_local_updated_at: new Date(task.updated_at),
     sync_direction: 'both',
     conflict_status: 'none',

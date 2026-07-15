@@ -21,8 +21,9 @@
 │  ├─ routes/    auth, workspaces, projects, tasks, tags,    │
 │  │             notes, sync, integrations, health           │
 │  ├─ plugins/   mysql(knex) · redis(ioredis) · auth · io    │
+│  │             mirror(out) · calendar-sync(in)             │
 │  ├─ lib/       ids(ULID) · errors · revision helper        │
-│  └─ workers/   BullMQ jobs: reminders, calendar sync (Ep.8)│
+│  └─ queue/     BullMQ jobs (inline fallback): calendar     │
 └───────┬───────────────────────────────┬────────────────────┘
         │                               │
 ┌───────▼────────┐              ┌───────▼────────┐
@@ -91,12 +92,24 @@ rooms after commits; clients respond by pulling — the socket never carries ent
 (keeps ordering and authz in one place: the pull endpoint). The app's periodic pull remains
 as the fallback for missed sockets.
 
-## 6. Calendar sync (Phase 4 — designed, not yet built)
+## 6. Calendar sync (Phase 4 — Google live, Apple pending)
 
-Per BLUEPRINT §7: `calendar_event_links` maps tasks↔events per account. Google: OAuth offline,
-`extendedProperties.private.alliswell_task_id`, webhook channels + `syncToken` incremental sync,
-BullMQ workers, etag-based conflict detection. Apple: EventKit bridge on-device (platform
-channel), URL-field marker `alliswell://task/{id}`; CalDAV connector deferred to v2 (ADR-0003).
+Per BLUEPRINT §7, `calendar_event_links` maps tasks↔events per account. Both directions are
+BullMQ queues with an inline fallback when Redis is down (`src/queue/runner.js`), and both
+converge on current state so duplicate jobs are harmless:
+
+- **Outbound** (`plugins/mirror.js`, OPH-070…073, ADR-0006): every committed task write
+  enqueues a mirror pass. `lib/mirror.js` derives the event purely (§7.1); tokens are
+  AES-256-GCM at rest; `extendedProperties.private.alliswell_task_id` (ADR-0003) re-links
+  instead of duplicating.
+- **Inbound** (`plugins/calendar-sync.js`, OPH-074…076, ADR-0007): Google push channels →
+  webhook → `sync_dirty_at` → incremental `syncToken` fetch (full resync on 410).
+  `lib/inbound.js` decides purely: etags suppress our own echoes, foreign moves land on the
+  task's `scheduled_*` fields, and disagreements are recorded in `conflict_status`. A sweep
+  renews channels and polls installs with no public webhook address.
+
+Apple: EventKit bridge on-device (platform channel), URL-field marker `alliswell://task/{id}`;
+CalDAV connector deferred to v2 (ADR-0003).
 
 ## 7. Flutter app design
 

@@ -155,4 +155,61 @@ export class GoogleClient {
       this.#authorized(accessToken),
     );
   }
+
+  /**
+   * One page of the sync feed (OPH-075). `syncToken` makes it incremental —
+   * an expired one answers 410, which the worker turns into a full resync.
+   * Every page of a sync MUST carry the same filters as the first request
+   * (Google's rule), hence the fixed `showDeleted`.
+   *
+   * @param {{ syncToken?: string|null, pageToken?: string|null }} cursor
+   */
+  listEvents(accessToken, calendarId, { syncToken, pageToken } = {}) {
+    const params = new URLSearchParams({ showDeleted: 'true', maxResults: '250' });
+    if (syncToken) params.set('syncToken', syncToken);
+    if (pageToken) params.set('pageToken', pageToken);
+    return request(
+      this.#calendarUrl(`/calendars/${encodeURIComponent(calendarId)}/events?${params}`),
+      this.#authorized(accessToken),
+    );
+  }
+
+  /**
+   * Opens a push channel on a calendar (OPH-074, §7.2 step 6). `address` must
+   * be public HTTPS with a certificate Google trusts; `token` comes back to us
+   * in every notification's `X-Goog-Channel-Token`. The requested ttl is a
+   * ceiling request — the response's `expiration` (unix ms) is the truth.
+   *
+   * @returns {Promise<{ id: string, resourceId: string, expiration?: string }>}
+   */
+  watchEvents(accessToken, calendarId, { channelId, address, token, ttlSeconds }) {
+    return request(
+      this.#calendarUrl(`/calendars/${encodeURIComponent(calendarId)}/events/watch`),
+      this.#authorized(accessToken, {
+        method: 'POST',
+        body: JSON.stringify({
+          id: channelId,
+          type: 'web_hook',
+          address,
+          token,
+          params: { ttl: String(ttlSeconds) },
+        }),
+      }),
+    );
+  }
+
+  /** Closes a push channel. Best effort — an already-dead channel is fine. */
+  async stopChannel(accessToken, { channelId, resourceId }) {
+    try {
+      await request(
+        this.#calendarUrl('/channels/stop'),
+        this.#authorized(accessToken, {
+          method: 'POST',
+          body: JSON.stringify({ id: channelId, resourceId }),
+        }),
+      );
+    } catch (err) {
+      if (err?.status !== 404 && err?.status !== 400) throw err;
+    }
+  }
 }

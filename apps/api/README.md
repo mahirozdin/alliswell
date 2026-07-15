@@ -56,6 +56,16 @@ stores AES-256-GCM-encrypted tokens (`CALENDAR_TOKEN_KEY`, ADR-0006);
 disconnect). Tasks with `calendarMirrorEnabled` mirror to `[Task] …` events through the
 BullMQ-backed queue (`src/plugins/mirror.js`).
 
+Inbound (OPH-074…076, ADR-0007): `POST /api/v1/integrations/google/webhook` is Google's
+push receiver — unauthenticated by nature, gated by the channel token it echoes in
+`X-Goog-Channel-Token` (stored only as an HMAC; a forged one gets `401`
+`GOOGLE_WEBHOOK_INVALID_TOKEN`, an unknown channel gets `200` so Google stops retrying).
+It marks the account dirty; `src/plugins/calendar-sync.js` then runs the incremental
+sync (`syncToken`, full resync on `410`), applies foreign moves to the task's
+`scheduled_*` fields and records disagreements in `calendar_event_links.conflict_status`.
+Set `GOOGLE_WEBHOOK_URL` only if this server is reachable at a public https address —
+without it the sweep polls instead and inbound sync works just the same.
+
 Live updates (OPH-057): a Socket.IO server on the same listener. Authenticate the
 handshake with `auth: { token: <access token> }`; you are joined to a room per workspace
 membership and receive `sync:changed {workspaceId, toRevision}` after every committed

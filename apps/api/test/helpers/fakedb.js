@@ -28,6 +28,10 @@ const UNIQUE_INDEXES = {
       name: 'calendar_accounts.uq_calendar_accounts_identity',
       cols: ['user_id', 'provider', 'provider_account_id'],
     },
+    {
+      name: 'calendar_accounts.uq_calendar_accounts_channel',
+      cols: ['webhook_channel_id'],
+    },
   ],
   calendar_event_links: [
     {
@@ -125,7 +129,9 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       encrypted_refresh_token: null,
       token_expires_at: null,
       sync_token: null,
+      sync_dirty_at: null,
       webhook_channel_id: null,
+      webhook_channel_token_hash: null,
       webhook_resource_id: null,
       webhook_expires_at: null,
       default_calendar_id: null,
@@ -145,6 +151,11 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
 
   function assertUnique(name, candidate, rows) {
     for (const index of UNIQUE_INDEXES[name] ?? []) {
+      // MySQL unique indexes ignore NULLs — any number of rows may hold one
+      // (e.g. accounts without a webhook channel).
+      if (index.cols.some((col) => candidate[col] === null || candidate[col] === undefined)) {
+        continue;
+      }
       const clash = rows.some((row) =>
         index.cols.every((col) => row[col] !== undefined && row[col] === candidate[col]),
       );

@@ -11,6 +11,7 @@ import redisPlugin from './plugins/redis.js';
 import authPlugin from './plugins/auth.js';
 import socketPlugin from './plugins/socket.js';
 import mirrorPlugin from './plugins/mirror.js';
+import calendarSyncPlugin from './plugins/calendar-sync.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -70,6 +71,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(authPlugin);
   await app.register(socketPlugin);
   await app.register(mirrorPlugin);
+  await app.register(calendarSyncPlugin);
 
   app.get(
     '/',

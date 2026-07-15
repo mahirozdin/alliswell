@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (Epic 08 giden dikey: OPH-070…073 — Google bağlantı + görev→etkinlik aynalama)
+**Last updated:** 2026-07-15 (Epic 08 gelen dikey: OPH-074…076 — webhook + incremental sync + iki yönlü çakışma; ADR-0007)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,10 +15,72 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 4 — Calendar |
 | Current epic | **Epic 08 — Calendar** |
-| ➡️ **Next task** | **OPH-074 — Google webhook receiver** (kanal doğrulama + dirty işaretleme; ardından 075/076 inbound sync) |
-| Last completed | OPH-070…073 (Google outbound ✔, ADR-0006); OPH-061…064 (Epic 07 kod ✔) |
+| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** (platform channel: izin + takvim listesi) — ⚠️ macOS/Xcode imza kurulumu gerektirir (aşağıdaki bloklu notlar). Bloklu ise sıradaki uygun iş: **OPH-079 — CalDAV tasarım dokümanı** (saf doküman, altyapı istemez) |
+| Last completed | OPH-074…076 (Google inbound ✔, ADR-0007); OPH-070…073 (Google outbound ✔, ADR-0006) |
 
 ## Recently completed
+
+- **Epic 08 gelen dikey — Google → AllisWell (2026-07-15, OPH-074…076; ADR-0007):**
+  - **OPH-074 webhook:** `POST /api/v1/integrations/google/webhook`. Google'ın
+    bildiriminde GÖVDE YOK — mesaj başlıkların kendisi — bu yüzden route kendi
+    content-type scope'unda (Fastify'ın JSON parser'ı gövdesiz POST'a 400 verirdi).
+    Kapı **kanal token'ı**: biz üretiyoruz, Google'a bir kez veriyoruz, veritabanına
+    yalnız `HMAC-SHA256('channel:'+token)` (`webhook_channel_token_hash`) yazıyoruz —
+    plaintext'e bir daha ihtiyaç yok (yenileme yeni token basar), karşılaştırma
+    sabit zamanlı. Sahte token → `401 GOOGLE_WEBHOOK_INVALID_TOKEN`; bilinmeyen/emekli
+    kanal → `200` (retry kanalı var etmez; hesap olmadan `channels.stop` da
+    çağrılamaz); `X-Goog-Resource-State: sync` kanal-açıldı el sıkışması, dirty
+    yapmaz. Gerçek bildirim → `sync_dirty_at` + kuyruk (alıcı hızlı cevap vermeli).
+  - **Kanal yenileme:** yeni kanal ESKİSİ KAPANMADAN önce açılır (boşluk yok; örtüşme
+    yalnız bildirimi çiftler, sync idempotent). Yenileme, istediğimiz ttl'e değil
+    Google'ın döndüğü `expiration`'a göre. Disconnect artık token'ı iptal etmeden
+    ÖNCE kanalı durduruyor.
+  - **OPH-075 worker:** `plugins/calendar-sync.js` — mirror kuyruğunun aynadaki ikizi
+    (ikisi de artık ortak `queue/runner.js`: Redis varsa BullMQ, yoksa inline).
+    Cursor'a güvenmeden önce SON sayfaya kadar sayfalama (Google `nextSyncToken`'ı
+    yalnız orada verir); `410` → token düşer, tam resync (yerel silme GEREKMEZ —
+    `calendar_event_links` event id ile anahtarlı, her etkinlik yolda kendini
+    uzlaştırır); dirty bayrağı compare-and-clear ile temizlenir (sync sırasında gelen
+    webhook kendi geçişini hak eder). Hatalar bilinçli olarak GÜRÜLTÜLÜ (bubble →
+    backoff → `last_error` status ucunda): yorumlayamadığımız etkinlikler
+    `time_conflict` cevaplıyor, dolayısıyla throw gerçekten altyapı demek.
+  - **OPH-076 çakışma:** tüm matris SAF fonksiyon (`src/lib/inbound.js` —
+    `desiredEventForTask`'ın gelen taraftaki ikizi), dört durum da Google'sız/DB'siz
+    test edildi, sonra uçtan uca tekrar. **Echo bastırma etag temelli**: her giden
+    yazımın etag'i saklanır, kendi değişikliğimiz geri geldiğinde kullanıcı düzenlemesi
+    sanılmaz — mirror ⇄ sync döngüsünü kesen şey bu. Yabancı taşıma `scheduled_*`'a
+    yazılır, `due_at`'e ASLA (bloğu sürüklemek "o saatte yaparım" demek), ve §7.1'in
+    TÜRETTİĞİ pencereyle karşılaştırılır — yoksa etkinliği renklendirmek, due'dan
+    türeyen görevi sessizce takvime çivilerdi. Tüm-gün etkinlikler görev saat diliminde
+    gece yarısına eşlenir (Google'ın dışlayıcı `end.date`'i onurlandırılır).
+    Dört durum: `local_changed_provider_changed` (iki taraf da oynadı → §6.5 LWW,
+    kaybeden düşer, bayrak kalır; sonraki temiz yazım `none`'a çeker = uzlaşıldı),
+    `provider_deleted_local_exists` (kullanıcı etkinliği sildi → görevi KORU, aynalamayı
+    kapat, bayraklı link mezar taşı olarak kalır ve mirror job onu atlar — ne diril, ne
+    görevi sil), `local_deleted_provider_exists` (görev artık etkinlik hak etmiyor ama
+    kayıt yaşıyor ve değişti → yerel kanonik, sil), `time_conflict` (tekrar eden seri
+    veya kullanılamaz sınırlar → bayrakla, iki tarafa da dokunma).
+  - **Polling yedeği:** `GOOGLE_WEBHOOK_URL` opsiyonel (Google public HTTPS + güvendiği
+    sertifika şart). Yoksa kanal açılmaz, süpürme (`CALENDAR_SYNC_SWEEP_SEC`, 5 dk)
+    o hesapları yoklar — localhost/NAT self-hoster'lar dışarıda kalmaz.
+  - **Testler:** birim 195/195 (25 yeni: saf matris + worker uçtan uca + webhook/kanal
+    yaşam döngüsü); entegrasyon 28/28 — gelen dikey gerçek MySQL+Redis/BullMQ üzerinde
+    (webhook → dirty → kuyruk → incremental sync → görev yazımı → sync revision).
+    Migration apply→rollback→re-apply doğrulandı. Entegrasyon 5 kez üst üste yeşil
+    (kararlılık kontrolü).
+  - **Yakalanan iki ince hata:**
+    1. *Mezar taşı yarışı:* bayrak görev yazımından ÖNCE kalıcı olmalı — görev yazımı
+       mirror kuyruğunu tetikliyor ve henüz bayraklanmamış link sıradan bayat link gibi
+       görünüp siliniyordu.
+    2. *Kuyruk keyspace çakışması (üretim hatası, testte ortaya çıktı):* tüm dağıtımlar
+       BullMQ'nun varsayılan `bull:` keyspace'ini kullanıyordu → aynı Redis'i paylaşan
+       iki AllisWell birbirinin işini tüketir; hırsızın kendi MySQL'inde görev
+       olmadığından iş sessizce DÜŞER (yanlış yere gitmez, kaybolur). Artık
+       `REDIS_KEY_PREFIX` (varsayılan `alliswell`) ile isim alanı var; ikinci kuyruk
+       eklenince flaky entegrasyon olarak yüzeye çıktı.
+  - Kalan (Epic 08): OPH-077/078 (EventKit — Xcode imza), OPH-079 (CalDAV doc).
+    App tarafında "Google'ı bağla" UI'ı hâlâ ayrı bir iş; `calendarMirrorEnabled`
+    Flutter modelinde henüz yok (doğrulandı — bu dikey app'e dokunmadı).
 
 - **Epic 08 giden dikey — Google Takvim (2026-07-15, OPH-070…073; ADR-0006):**
   - **OPH-070 bağlantı:** `POST /workspaces/:id/integrations/google/connect` → consent
@@ -49,9 +111,6 @@ against real MySQL 8.4 and all unit+integration tests pass.
     complete → silinir). İnce hata bulundu: gövdesiz DELETE'te `content-type: json`
     göndermek titiz sunucularda 400 — istemci artık yalnız gövde varsa content-type
     koyuyor.
-  - Kalan (Epic 08): OPH-074…076 (webhook + incremental inbound + iki yönlü çakışma),
-    OPH-077+ (EventKit — Xcode imza gereksinimi notu duruyor), OPH-079 (CalDAV doc).
-    App tarafında "Google'ı bağla" UI'ı ayrıca gelecek (STATE notu).
 - **Epic 07 — bildirim katmanı (2026-07-15, OPH-061…064; plan NOTIFICATIONS.md):**
   - **Mantık cihazsız ve tam testli:** `notifications/planner.dart` (saf: replika
     alarmları → istenen OS bildirimleri; iOS 64-bekleyen sınırına karşı ≤40 pencere;
@@ -253,7 +312,12 @@ against real MySQL 8.4 and all unit+integration tests pass.
   service) still owns port 3306 → repo `.env` uses `MYSQL_PORT=3307`/`DATABASE_PORT=3307`.
 - ~~`JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` placeholders~~ — done in OPH-020: config falls
   back to labeled insecure dev secrets, production refuses placeholders/short/identical values.
-- Apple EventKit work (OPH-077+) requires macOS/Xcode signing setup on the dev machine.
+- **⚠️ OPH-077/078 (Apple EventKit) BLOKLU — sıradaki iş bu ama başlanamaz.** Platform
+  channel'ın izin akışı (`NSCalendarsFullAccessUsageDescription` + entitlement) imzalı bir
+  Xcode projesi olmadan ne kurulabilir ne de doğrulanabilir; simülatörde bile EventKit izni
+  gerçek bir bundle kimliği ister. **Kullanıcıdan gereken:** Xcode + Apple Developer imza
+  kurulumu (Epic 07'nin iOS time-sensitive capability adımıyla aynı gereksinim — ikisi tek
+  oturumda halledilebilir). O gelene kadar Epic 08'in kalanı: OPH-079 (CalDAV doc, bloksuz).
 - **Epic 07 cihaz turu bekliyor:** exact teslim davranışı (Doze, alarm ikonu, Focus
   delme, aksiyon butonları) yalnız cihaz/emülatörde gözlenebilir — mantık katmanı tam
   unit-testli; bir Android + bir iOS/macOS cihazda NOTIFICATIONS.md senaryolarını
@@ -271,15 +335,27 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-074 — Google webhook receiver** per its checklist in [TASKS.md](TASKS.md)
-   and BLUEPRINT §7.2 (adım 6-7): `POST /api/v1/integrations/google/webhook` — Google'ın
-   `X-Goog-Channel-Id`/`X-Goog-Resource-Id`/`X-Goog-Channel-Token` başlıklarını doğrula
-   (kanal token'ı hesabı bağlarken üret ve sakla), eşleşen `calendar_accounts` satırını
-   "dirty" işaretle (yeni bir `sync_dirty_at` kolonu için migration gerekir — append-only).
-   Kanal kurulumu/yenilenmesi: watch çağrısı + `webhook_channel_id/resource_id/expires_at`
-   alanları zaten şemada; yenileme süpürmesini mirror kuyruğu gibi bir job'a bağla.
-   Sahte Google helper'ına (`test/helpers/fakegoogle.js`) watch/stop uçlarını ekleyerek
-   testle; gerçek Google CI'da YOK.
+2. Sıradaki iş **OPH-077 — Apple EventKit platform channel** ama BLOKLU: imzalı bir Xcode
+   projesi olmadan iOS/macOS izin akışı ne kurulabilir ne doğrulanabilir (aşağıdaki
+   "Blocked / notes"). Kullanıcı Xcode/imza kurulumunu yapana kadar AGENTS.md §2'nin
+   "blocked ise sıradaki uygun işi al" kuralı geçerli → **OPH-079 — `docs/CALDAV.md`**
+   (iCloud app-specific password akışı, ETag sync, güvenlik uyarıları; v2 kapsamı, saf
+   doküman — altyapı istemez) veya kullanıcıdan onay alarak app tarafındaki "Google'ı
+   bağla" UI'ı (Epic 08'in eksik son parçası; API tarafı 070…076 ile hazır).
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.
+
+### Epic 08 gelen dikeyi devralacaklara notlar
+
+- Politika `src/lib/inbound.js`'te SAF olarak duruyor; davranışı değiştireceksen önce
+  oradaki karar tablosunu ve `test/unit/google-inbound.test.js`'in ilk describe'ını oku —
+  worker sadece uygular.
+- **Etag = echo anahtarı.** Giden tarafta bir yazım yapıp dönen etag'i
+  `calendar_event_links.etag`'e YAZMAZSAN, o değişiklik gelen tarafta kullanıcı
+  düzenlemesi sanılır ve mirror ⇄ sync döngüye girer.
+- Gerçek Google CI'da YOK: her şey `test/helpers/fakegoogle.js`'e karşı koşuyor (watch/
+  stop/`syncToken` feed'i/410 dahil). Sahtenin sözleşmesi Google'ın dokümante ettiği
+  davranışı modelliyor — `nextSyncToken` yalnız son sayfada, iptaller feed'de.
+- Webhook'u elle denemek public HTTPS ister; yerelde `GOOGLE_WEBHOOK_URL`'i boş bırak,
+  süpürme yoklamayla aynı işi yapar (`app.calendarSync.sweep()`).

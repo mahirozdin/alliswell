@@ -660,19 +660,72 @@ plus `alliswell_project_id`, `alliswell_source` and `alliswell_revision`
 `privateExtendedProperty=alliswell_task_id=<id>` and ADOPTS a hit —
 re-linking instead of duplicating after a lost link row (tested). ✔
 
-### OPH-074 — Google webhook receiver
+### OPH-074 — Google webhook receiver ✅
 
-- [ ] `POST /api/v1/integrations/google/webhook` (channel token validation, mark account dirty)
-- [ ] Channel renewal job (channels expire)
+- [x] `POST /api/v1/integrations/google/webhook` (channel token validation, mark account dirty)
+- [x] Channel renewal job (channels expire)
 
-### OPH-075 — Google incremental sync worker
+Acceptance notes (design in [ADR-0007](adr/0007-google-inbound-sync-and-conflict-policy.md)):
+the receiver is unauthenticated by nature — Google's notification carries no
+body, only headers — so the **channel token is the gate**: we mint it, hand it
+to Google once and store only `HMAC-SHA256('channel:'+token)`
+(`webhook_channel_token_hash`, new append-only migration alongside
+`sync_dirty_at`), compared in constant time. A forged token → `401`
+`GOOGLE_WEBHOOK_INVALID_TOKEN`; an unknown/retired channel → `200` (retries
+cannot make it exist, and without the account we cannot even call
+`channels.stop`); `X-Goog-Resource-State: sync` is the channel-opened
+handshake and marks nothing dirty. The route runs in its own content-type
+scope because Fastify's JSON parser would 400 the bodyless POST Google
+actually sends. Real notifications stamp `sync_dirty_at` and enqueue — the
+receiver must answer fast. Renewal (`runWatchJob` + the sweep,
+`CALENDAR_SYNC_SWEEP_SEC`): a fresh channel goes live BEFORE the old one is
+stopped (no gap; overlap only duplicates), keyed off the `expiration` Google
+answered with rather than the ttl we asked for, and disconnect stops the
+channel before revoking the token. `GOOGLE_WEBHOOK_URL` is optional: Google
+demands public HTTPS, so channel-less installs are polled by the same sweep
+instead. ✔
 
-- [ ] Worker consumes dirty accounts; `syncToken` incremental fetch; full resync on 410
+### OPH-075 — Google incremental sync worker ✅
 
-### OPH-076 — Google two-way conflict handling
+- [x] Worker consumes dirty accounts; `syncToken` incremental fetch; full resync on 410
 
-- [ ] etag/updated comparison → apply provider changes to task (time fields), or push local, or
+Acceptance notes: `plugins/calendar-sync.js` mirrors the outbound queue's
+shape (BullMQ with Redis, inline runner without — both now share
+`queue/runner.js`). The worker paginates to the last page before trusting a
+cursor (Google puts `nextSyncToken` there only), absorbs a `410` by dropping
+the token and resyncing in full — no local wipe needed, since
+`calendar_event_links` is keyed by event id and every event reconciles itself
+on the way through — and clears `sync_dirty_at` with a compare-and-clear so a
+notification landing mid-sync keeps its own pass. Errors are deliberately loud
+(bubble → backoff retries → `last_error` on the status endpoint): events we
+merely cannot interpret answer `time_conflict` rather than throwing, so a
+throw really does mean infrastructure. ✔
+
+### OPH-076 — Google two-way conflict handling ✅
+
+- [x] etag/updated comparison → apply provider changes to task (time fields), or push local, or
       flag `conflict_status`; tests for all four conflict states
+
+Acceptance notes: the whole matrix is a PURE function (`src/lib/inbound.js`,
+the inbound twin of `desiredEventForTask`), so all four states are tested
+without Google or a database, then again end to end. **Echo suppression is
+etag-based** — every outbound write stores the etag Google answered with, so
+our own change coming back is never mistaken for a user edit; this is what
+stops mirror ⇄ sync from looping. A foreign move lands on
+`scheduled_start_at`/`scheduled_end_at`, never `due_at` (dragging a block means
+"I'll do it then"), and is compared against the §7.1 **derived** window so a
+cosmetic edit cannot silently pin a due-derived task to a schedule. All-day
+events map to midnight in the task's timezone (exclusive `end.date` honoured).
+The four states: `local_changed_provider_changed` (both moved → §6.5
+last-write-wins, loser dropped, flag recorded; a later clean write resets it to
+`none` = converged), `provider_deleted_local_exists` (the user deleted our
+event → keep the task, stop mirroring it, leave the flagged link as a
+tombstone the mirror job skips — never resurrect, never delete the task),
+`local_deleted_provider_exists` (task no longer earns an event but the entry
+lives and changed → local is canonical, remove it), `time_conflict` (a
+recurring series or unusable boundaries → flag, touch neither side).
+Provider-driven task writes are ordinary writes: one transaction, a sync
+revision, reminder reconciled, attributed to the connecting user. ✔
 
 ### OPH-077 — Apple EventKit Flutter plugin skeleton
 

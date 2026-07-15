@@ -25,6 +25,10 @@ describe.runIf(enabled)('integration: calendar mirror over BullMQ', () => {
         NODE_ENV: 'test',
         RATE_LIMIT_AUTH_MAX: '100',
         CALENDAR_TOKEN_KEY: KEY,
+        // Own BullMQ keyspace: test files run in parallel against one Redis,
+        // and a job picked up by another suite's worker would be handed to
+        // that suite's fake Google, which never issued our access token.
+        REDIS_KEY_PREFIX: emailPrefix,
         ...fakeGoogleEnv(google.url),
       }),
     });

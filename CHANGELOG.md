@@ -5,6 +5,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added (Epic 08 inbound — 2026-07-15, OPH-074…076)
+
+- **Google Calendar changes now flow back into tasks** (ADR-0007, BLUEPRINT §7.2 steps 6-10).
+  `POST /api/v1/integrations/google/webhook` receives Google's push notifications, gated by
+  the channel token it echoes back — minted by us, stored only as an HMAC, compared in
+  constant time (`401 GOOGLE_WEBHOOK_INVALID_TOKEN` for a forged one; `200` for an unknown
+  channel so Google stops retrying; the `sync` handshake marks nothing dirty). Notifications
+  mark the account dirty and hand off to a queue.
+- **Incremental sync worker** (`src/plugins/calendar-sync.js`): `syncToken` fetch with
+  pagination, full resync on `410`, compare-and-clear of the dirty marker so a notification
+  arriving mid-sync keeps its own pass. Channels are renewed a day before they lapse — the
+  replacement goes live before the old one is stopped, so no change slips through the gap.
+- **Two-way conflict handling** (`src/lib/inbound.js`, a pure decision function): our own
+  writes are recognised by etag and ignored (this is what stops mirror ⇄ sync from looping);
+  a foreign move lands on the task's `scheduled_*` fields; disagreements are recorded in
+  `calendar_event_links.conflict_status`. Deleting our event in Google now **stops mirroring
+  that task** instead of resurrecting the event or deleting the task; a recurring series or
+  unusable times are flagged `time_conflict` and neither side is touched; both-changed races
+  resolve by §6.5 last-write-wins. All-day events map to midnight in the task's timezone.
+- `GOOGLE_WEBHOOK_URL` (optional — Google requires public HTTPS), `CALENDAR_WATCH_TTL_SEC`,
+  `CALENDAR_SYNC_SWEEP_SEC`. **Without a public webhook address inbound sync still works**:
+  the sweep polls those accounts instead, so localhost/NAT self-hosters are not left out.
+- Migration `20260715180000_add_calendar_webhook_state`: `webhook_channel_token_hash`,
+  `sync_dirty_at`, a unique index on `webhook_channel_id` and one on `webhook_expires_at`.
+
+### Fixed
+
+- **Two AllisWell deployments sharing one Redis consumed each other's queue jobs.** Both
+  used the default BullMQ keyspace (`bull:calendar-mirror`), so a job could be executed by
+  the wrong instance — which, having its own MySQL, found no such task and dropped the job
+  silently: the calendar simply never updated. The keyspace is now namespaced per
+  deployment (`REDIS_KEY_PREFIX`, default `alliswell`). Surfaced as a flaky integration
+  suite once a second queue-driven test file existed.
+
 ### Changed (design round 1 — 2026-07-15)
 
 - **"AllisWell Glass" design system** (ADR-0005, spec in `docs/DESIGN.md`, binding via

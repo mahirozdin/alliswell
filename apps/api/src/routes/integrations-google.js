@@ -1,8 +1,10 @@
+import crypto from 'node:crypto';
 import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { encryptSecret, decryptSecret } from '../lib/crypto.js';
 import { decodeJwtPayload } from '../lib/google.js';
+import { hashChannelToken } from '../lib/tokens.js';
 import { googleClientFor, getFreshAccessToken } from '../db/calendar.js';
 import { enqueueWorkspaceMirrorSweep } from '../queue/mirror-job.js';
 
@@ -328,16 +330,100 @@ export default async function googleIntegrationRoutes(app) {
     },
     async (request) => {
       const account = await loadOwnAccount(request, request.params.accountId);
-      await app.db('calendar_accounts').where({ id: account.id }).update({
-        default_calendar_id: request.body.defaultCalendarId,
-        updated_at: new Date(),
-      });
+      const calendarChanged = account.default_calendar_id !== request.body.defaultCalendarId;
+      await app
+        .db('calendar_accounts')
+        .where({ id: account.id })
+        .update({
+          default_calendar_id: request.body.defaultCalendarId,
+          // A different calendar is a different event feed: the old cursor and
+          // channel describe a calendar we no longer watch.
+          ...(calendarChanged ? { sync_token: null, sync_dirty_at: new Date() } : {}),
+          updated_at: new Date(),
+        });
       // Backfill: mirror-enabled tasks flow into the newly chosen calendar.
       await enqueueWorkspaceMirrorSweep(app, account.workspace_id);
+      if (calendarChanged) {
+        // §7.2 steps 4-6: first full sync, then open the push channel.
+        app.calendarSync.enqueueSync(account.id);
+        app.calendarSync.enqueueWatch(account.id);
+      }
       const fresh = await app.db('calendar_accounts').where({ id: account.id }).first();
       return serializeAccount(fresh);
     },
   );
+
+  // ── Webhook: Google announces a change (OPH-074, §7.2 step 7) ─────────────
+
+  await app.register(async (webhook) => {
+    // Google's push carries NO body, and may arrive with a JSON content-type
+    // anyway — the stock parser would 400 on the empty payload. This scope
+    // accepts (and drains) whatever shows up; the headers are the message.
+    webhook.removeAllContentTypeParsers();
+    webhook.addContentTypeParser('*', (request, payload, done) => {
+      payload.resume();
+      done(null, null);
+    });
+
+    webhook.post(
+      '/integrations/google/webhook',
+      {
+        schema: {
+          response: { 200: { type: 'null' }, 401: errorResponseSchema },
+        },
+      },
+      async (request, reply) => {
+        const channelId = request.headers['x-goog-channel-id'];
+        const state = request.headers['x-goog-resource-state'];
+        if (!channelId) return reply.code(200).send();
+
+        const account = await app
+          .db('calendar_accounts')
+          .where({ webhook_channel_id: channelId })
+          .whereNull('deleted_at')
+          .first();
+
+        // Unknown or retired channel: 200 so Google stops retrying a message
+        // nobody can act on. We cannot call channels.stop without the account
+        // it belonged to, so the channel dies on its own expiry.
+        if (!account?.webhook_channel_token_hash) {
+          request.log.info({ channelId }, 'google webhook for an unknown channel');
+          return reply.code(200).send();
+        }
+
+        // The channel token is the only thing separating Google from anyone
+        // who guesses a channel id. Compare digests, in constant time.
+        const presented = hashChannelToken(
+          String(request.headers['x-goog-channel-token'] ?? ''),
+          app.config.auth.refreshSecret,
+        );
+        const expected = account.webhook_channel_token_hash;
+        if (
+          presented.length !== expected.length ||
+          !crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(expected))
+        ) {
+          request.log.warn({ channelId }, 'google webhook with a bad channel token');
+          throw coded(
+            app.httpErrors.unauthorized('Invalid channel token'),
+            'GOOGLE_WEBHOOK_INVALID_TOKEN',
+          );
+        }
+
+        // `sync` is the handshake Google sends when a channel opens — an
+        // acknowledgement, not a change.
+        if (state === 'sync') return reply.code(200).send();
+
+        // Mark dirty and hand off: the receiver must answer fast, and the
+        // notification carries no payload worth reading (§8.3-style: ids only).
+        await app
+          .db('calendar_accounts')
+          .where({ id: account.id })
+          .update({ sync_dirty_at: new Date(), updated_at: new Date() });
+        app.calendarSync.enqueueSync(account.id);
+        return reply.code(200).send();
+      },
+    );
+  });
 
   app.delete(
     '/integrations/google/accounts/:accountId',
@@ -351,20 +437,38 @@ export default async function googleIntegrationRoutes(app) {
     async (request, reply) => {
       const account = await loadOwnAccount(request, request.params.accountId);
 
-      // Best-effort revocation at Google, then drop the ciphertext — a
+      // Best-effort cleanup at Google, then drop the ciphertext — a
       // disconnected row keeps NO secrets. Event links stay (events remain in
       // the user's calendar; reconnecting re-links via extended properties).
       const key = app.config.calendar.tokenKey;
       const token = account.encrypted_refresh_token ?? account.encrypted_access_token;
       if (token && app.config.google.clientId) {
-        await googleClientFor(app).revokeToken(decryptSecret(token, key));
+        const google = googleClientFor(app);
+        // Close the push channel BEFORE revoking — afterwards the token is
+        // dead and Google would keep notifying a channel nobody owns until it
+        // expires (OPH-074).
+        if (account.webhook_channel_id && account.webhook_resource_id) {
+          try {
+            const accessToken = await getFreshAccessToken(app, account);
+            await google.stopChannel(accessToken, {
+              channelId: account.webhook_channel_id,
+              resourceId: account.webhook_resource_id,
+            });
+          } catch (err) {
+            request.log.info({ err: err.message }, 'could not stop google channel on disconnect');
+          }
+        }
+        await google.revokeToken(decryptSecret(token, key));
       }
       await app.db('calendar_accounts').where({ id: account.id }).update({
         status: 'disconnected',
         encrypted_access_token: null,
         encrypted_refresh_token: null,
         token_expires_at: null,
+        sync_token: null,
+        sync_dirty_at: null,
         webhook_channel_id: null,
+        webhook_channel_token_hash: null,
         webhook_resource_id: null,
         webhook_expires_at: null,
         deleted_at: new Date(),
