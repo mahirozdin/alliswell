@@ -1,25 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../auth/providers.dart';
+import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/note.dart';
-import 'data/notes_api.dart';
+import 'data/note_store.dart';
 
-final notesApiProvider = Provider<NotesApi>(
-  (ref) => NotesApi(ref.watch(apiClientProvider)),
+export 'data/note_store.dart' show NotesFilter, NotesQuery;
+
+/// Local-first store (OPH-054): reads watch the drift replica, writes are
+/// optimistic + outbox'd.
+final noteStoreProvider = Provider<NoteStore>(
+  (ref) => NoteStore(
+    ref.watch(databaseProvider),
+    () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+  ),
 );
-
-enum NotesFilter { all, pinned, archived }
-
-class NotesQuery {
-  const NotesQuery({this.filter = NotesFilter.all, this.search = ''});
-
-  final NotesFilter filter;
-  final String search;
-
-  NotesQuery copyWith({NotesFilter? filter, String? search}) =>
-      NotesQuery(filter: filter ?? this.filter, search: search ?? this.search);
-}
 
 class NotesQueryController extends Notifier<NotesQuery> {
   @override
@@ -34,51 +29,49 @@ final notesQueryProvider = NotifierProvider<NotesQueryController, NotesQuery>(
   NotesQueryController.new,
 );
 
-/// The Notes section list — reacts to the query (chips + search box).
-final notesListProvider = FutureProvider<List<NoteRow>>((ref) async {
+/// The Notes section list — reacts to the query (chips + search box). Search
+/// is a local substring scan while offline-first (server FULLTEXT remains the
+/// canonical ranking).
+final notesListProvider = StreamProvider<List<NoteRow>>((ref) async* {
+  ref.watch(syncEngineProvider);
   final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) return const [];
+  if (workspaces.isEmpty) {
+    yield const [];
+    return;
+  }
   final query = ref.watch(notesQueryProvider);
-  final page = await ref
-      .watch(notesApiProvider)
-      .list(
-        workspaces.first.id,
-        pinned: query.filter == NotesFilter.pinned ? true : null,
-        archived: query.filter == NotesFilter.archived ? true : null,
-        query: query.search.trim().isEmpty ? null : query.search.trim(),
-        limit: 100,
-      );
-  return page.items;
+  yield* ref.watch(noteStoreProvider).watchList(workspaces.first.id, query);
 });
 
 /// Star tap on a note row: flip the pin without opening the editor.
-Future<void> toggleNotePinned(WidgetRef ref, NoteRow note) async {
-  await ref.read(notesApiProvider).update(note.id, {
-    'isPinned': !note.isPinned,
-  });
-  invalidateNoteData(ref, noteId: note.id, projectId: note.projectId);
-}
+Future<void> toggleNotePinned(WidgetRef ref, NoteRow note) =>
+    ref.read(noteStoreProvider).update(note.id, {'isPinned': !note.isPinned});
 
 /// Archive/unarchive a note from its row menu or the editor.
-Future<void> setNoteArchived(WidgetRef ref, NoteRow note, bool archived) async {
-  await ref.read(notesApiProvider).update(note.id, {'isArchived': archived});
-  invalidateNoteData(ref, noteId: note.id, projectId: note.projectId);
-}
+Future<void> setNoteArchived(WidgetRef ref, NoteRow note, bool archived) =>
+    ref.read(noteStoreProvider).update(note.id, {'isArchived': archived});
 
 /// Notes shown on a project's Notes tab (attached ∪ linked).
-final projectNotesProvider = FutureProvider.family<List<NoteRow>, String>(
-  (ref, projectId) async =>
-      (await ref.watch(notesApiProvider).listForProject(projectId)).items,
-);
+final projectNotesProvider = StreamProvider.family<List<NoteRow>, String>((
+  ref,
+  projectId,
+) async* {
+  ref.watch(syncEngineProvider);
+  final workspaces = await ref.watch(workspacesProvider.future);
+  if (workspaces.isEmpty) {
+    yield const [];
+    return;
+  }
+  yield* ref
+      .watch(noteStoreProvider)
+      .watchForProject(workspaces.first.id, projectId);
+});
 
-/// Full note for the editor.
-final noteDetailProvider = FutureProvider.family<NoteDetail, String>(
-  (ref, noteId) => ref.watch(notesApiProvider).get(noteId),
-);
-
-/// Call after any note write from screen code.
-void invalidateNoteData(WidgetRef ref, {String? noteId, String? projectId}) {
-  ref.invalidate(notesListProvider);
-  if (noteId != null) ref.invalidate(noteDetailProvider(noteId));
-  if (projectId != null) ref.invalidate(projectNotesProvider(projectId));
-}
+/// Full note for the editor — live, so pulled edits show up in place.
+final noteDetailProvider = StreamProvider.family<NoteDetail, String>((
+  ref,
+  noteId,
+) {
+  ref.watch(syncEngineProvider);
+  return ref.watch(noteStoreProvider).watchDetail(noteId);
+});

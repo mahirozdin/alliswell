@@ -11,6 +11,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
+import '../../support/sync_overrides.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -18,6 +19,7 @@ Future<Widget> signedInAppWith(FakeApi api) async {
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
     overrides: [
+      ...syncTestOverrides(),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -153,7 +155,7 @@ void main() {
     expect(prefs.getString('alliswell_notes_view_mode'), 'grid');
   });
 
-  testWidgets('title edits autosave via PATCH after the debounce', (
+  testWidgets('title edits autosave through the outbox after the debounce', (
     tester,
   ) async {
     final api = FakeApi()..seedNote(title: 'Eski başlık', plainText: 'gövde');
@@ -169,10 +171,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.notes.single['title'], 'Yeni başlık');
-    expect(
-      api.requests.any((r) => r.startsWith('PATCH /api/v1/notes/')),
-      isTrue,
-    );
+    expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
   });
 
   testWidgets('FAB creates a new note on first autosave (POST)', (

@@ -10,6 +10,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 
 import 'features/auth/test_support.dart';
 import 'features/projects/fake_api.dart';
+import 'support/sync_overrides.dart';
 
 /// Boots the app with a persisted session (shell instead of /login) and an
 /// empty in-memory API — session restore itself is covered in test/features/.
@@ -19,6 +20,7 @@ Future<ProviderScope> signedInApp() async {
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
     overrides: [
+      ...syncTestOverrides(),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(FakeApi().handle)),

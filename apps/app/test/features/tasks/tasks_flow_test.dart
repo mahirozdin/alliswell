@@ -11,6 +11,7 @@ import 'package:alliswell/src/features/tasks/ui/task_detail_screen.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
+import '../../support/sync_overrides.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -18,6 +19,7 @@ Future<Widget> signedInAppWith(FakeApi api) async {
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
     overrides: [
+      ...syncTestOverrides(),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -92,7 +94,8 @@ void main() {
 
     expect(api.tasks.single['status'], 'completed');
     expect(find.text('Bitecek iş'), findsNothing);
-    expect(api.requests.any((r) => r.contains('/complete')), isTrue);
+    // Local-first: the write reaches the server through the sync outbox.
+    expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
   });
 
   testWidgets('selecting a calendar day highlights it and dims the rest', (
@@ -291,78 +294,79 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.tasks.single['title'], 'Yeni görev adı');
-    expect(
-      api.requests.any((r) => r.startsWith('PATCH /api/v1/tasks/')),
-      isTrue,
-    );
+    expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
   });
 
-  testWidgets('task detail edits urgent, tags and checklist via the API', (
-    tester,
-  ) async {
-    final api = FakeApi();
-    final tag = api.seedTag(name: 'Focus');
-    api.seedTask(
-      title: 'Detaylı görev',
-      dueAt: isoAt(today.add(const Duration(hours: 16))),
-      checklist: [
-        {
-          'id': 'CHKSEED'.padRight(26, '0'),
-          'taskId': 'x',
-          'title': 'Hazırlık',
-          'isDone': false,
-          'sortOrder': 0,
-          'revision': 1,
-        },
-      ],
-    );
+  testWidgets(
+    'task detail edits urgent, tags and checklist through the outbox',
+    (tester) async {
+      final api = FakeApi();
+      final tag = api.seedTag(name: 'Focus');
+      api.seedTask(
+        title: 'Detaylı görev',
+        dueAt: isoAt(today.add(const Duration(hours: 16))),
+        checklist: [
+          {
+            'id': 'CHKSEED'.padRight(26, '0'),
+            'taskId': 'x',
+            'title': 'Hazırlık',
+            'isDone': false,
+            'sortOrder': 0,
+            'revision': 1,
+          },
+        ],
+      );
 
-    await tester.pumpWidget(await signedInAppWith(api));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(await signedInAppWith(api));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Detaylı görev'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.text('Detaylı görev'));
+      await tester.pumpAndSettle();
 
-    // The detail page scrolls; bring each control into view before tapping
-    // (sections live in cards below the fold on small windows).
-    final detailList = find.descendant(
-      of: find.byType(TaskDetailScreen),
-      matching: find.byType(ListView),
-    );
+      // The detail page scrolls; bring each control into view before tapping
+      // (sections live in cards below the fold on small windows).
+      final detailList = find.descendant(
+        of: find.byType(TaskDetailScreen),
+        matching: find.byType(ListView),
+      );
 
-    await tester.dragUntilVisible(
-      find.byKey(const Key('urgent-switch')),
-      detailList,
-      const Offset(0, -120),
-    );
-    await tester.tap(find.byKey(const Key('urgent-switch')));
-    await tester.pumpAndSettle();
-    expect(api.tasks.single['isUrgent'], isTrue);
+      await tester.dragUntilVisible(
+        find.byKey(const Key('urgent-switch')),
+        detailList,
+        const Offset(0, -120),
+      );
+      await tester.tap(find.byKey(const Key('urgent-switch')));
+      await tester.pumpAndSettle();
+      expect(api.tasks.single['isUrgent'], isTrue);
 
-    await tester.dragUntilVisible(
-      find.text('Focus'),
-      detailList,
-      const Offset(0, -120),
-    );
-    await tester.tap(find.text('Focus'));
-    await tester.pumpAndSettle();
-    expect(api.tasks.single['tagIds'], [tag['id']]);
+      await tester.dragUntilVisible(
+        find.text('Focus'),
+        detailList,
+        const Offset(0, -120),
+      );
+      await tester.tap(find.text('Focus'));
+      await tester.pumpAndSettle();
+      expect(api.tasks.single['tagIds'], [tag['id']]);
 
-    await tester.dragUntilVisible(
-      find.text('Hazırlık'),
-      detailList,
-      const Offset(0, -120),
-    );
-    await tester.tap(find.text('Hazırlık'));
-    await tester.pumpAndSettle();
-    final checklist = (api.tasks.single['checklist'] as List)
-        .cast<Map<String, dynamic>>();
-    expect(checklist.first['isDone'], isTrue);
+      await tester.dragUntilVisible(
+        find.text('Hazırlık'),
+        detailList,
+        const Offset(0, -120),
+      );
+      await tester.tap(find.text('Hazırlık'));
+      await tester.pumpAndSettle();
+      final checklist = (api.tasks.single['checklist'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(checklist.first['isDone'], isTrue);
 
-    await tester.enterText(find.byKey(const Key('checklist-add')), 'Yeni adım');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    expect(find.text('Yeni adım'), findsOneWidget);
-    expect((api.tasks.single['checklist'] as List).length, 2);
-  });
+      await tester.enterText(
+        find.byKey(const Key('checklist-add')),
+        'Yeni adım',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.text('Yeni adım'), findsOneWidget);
+      expect((api.tasks.single['checklist'] as List).length, 2);
+    },
+  );
 }

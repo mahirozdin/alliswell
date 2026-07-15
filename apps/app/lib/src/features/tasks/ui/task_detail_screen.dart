@@ -8,17 +8,18 @@ import '../../../widgets/status_views.dart';
 import '../../projects/data/project.dart';
 import '../../tags/tags.dart';
 import '../data/task.dart';
-import '../data/tasks_api.dart';
+import '../data/task_store.dart';
 import '../providers.dart';
 import 'task_visuals.dart';
 
-/// One task write: gets the API + task id, awaits server confirmation.
-typedef TaskAction = Future<Object?> Function(TasksApi api, String taskId);
+/// One task write: gets the store + task id. Writes land in the local
+/// replica instantly and sync in the background (OPH-054/055).
+typedef TaskAction = Future<Object?> Function(TaskStore store, String taskId);
 
 /// Task detail (OPH-037 + feedback round 3): editable title with autosave,
 /// status/priority dropdowns with icons/colors, urgent toggle, dates, tags
-/// and checklist — every control PATCHes the API and re-fetches, and failed
-/// writes surface as snackbars instead of vanishing.
+/// and checklist — every control writes the local replica (instant) and syncs
+/// in the background; failed writes surface as snackbars instead of vanishing.
 class TaskDetailScreen extends ConsumerWidget {
   const TaskDetailScreen({super.key, required this.taskId});
 
@@ -83,8 +84,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
   Future<void> _apply(TaskAction action) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await action(ref.read(tasksApiProvider), task.id);
-      if (mounted) invalidateTaskData(ref, taskId: task.id);
+      await action(ref.read(taskStoreProvider), task.id);
     } on Object catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
     }
@@ -95,7 +95,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     _titleDebounce = Timer(_autosaveDelay, () {
       final title = value.trim();
       if (title.isEmpty || title == task.title) return;
-      _apply((api, id) => api.update(id, {'title': title}));
+      _apply((store, id) => store.update(id, {'title': title}));
     });
   }
 
@@ -112,7 +112,8 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               task.isCompleted ? Icons.replay : Icons.check_circle_outline,
             ),
             onPressed: () => _apply(
-              (api, id) => task.isCompleted ? api.reopen(id) : api.complete(id),
+              (store, id) =>
+                  task.isCompleted ? store.reopen(id) : store.complete(id),
             ),
           ),
           const SizedBox(width: 4),
@@ -178,7 +179,8 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                             onChanged: (v) {
                               if (v != null && v != task.status) {
                                 _apply(
-                                  (api, id) => api.update(id, {'status': v}),
+                                  (store, id) =>
+                                      store.update(id, {'status': v}),
                                 );
                               }
                             },
@@ -203,7 +205,8 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                             onChanged: (v) {
                               if (v != null && v != task.priority) {
                                 _apply(
-                                  (api, id) => api.update(id, {'priority': v}),
+                                  (store, id) =>
+                                      store.update(id, {'priority': v}),
                                 );
                               }
                             },
@@ -220,14 +223,15 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         'Insistent reminder that must be acknowledged',
                       ),
                       value: task.isUrgent,
-                      onChanged: (v) =>
-                          _apply((api, id) => api.update(id, {'isUrgent': v})),
+                      onChanged: (v) => _apply(
+                        (store, id) => store.update(id, {'isUrgent': v}),
+                      ),
                     ),
                     _DateRow(
                       label: 'Due',
                       value: task.dueAt,
                       onPicked: (picked) => _apply(
-                        (api, id) => api.update(id, {
+                        (store, id) => store.update(id, {
                           'dueAt': picked?.toUtc().toIso8601String(),
                         }),
                       ),
@@ -236,7 +240,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       label: 'Remind',
                       value: task.remindAt,
                       onPicked: (picked) => _apply(
-                        (api, id) => api.update(id, {
+                        (store, id) => store.update(id, {
                           'remindAt': picked?.toUtc().toIso8601String(),
                         }),
                       ),
@@ -382,7 +386,7 @@ class _TagPicker extends ConsumerWidget {
                     onSelected: (selected) {
                       final next = {...task.tagIds};
                       selected ? next.add(tag.id) : next.remove(tag.id);
-                      onApply((api, id) => api.setTags(id, next.toList()));
+                      onApply((store, id) => store.setTags(id, next.toList()));
                     },
                   ),
               ],
@@ -413,7 +417,7 @@ class _ChecklistState extends State<_Checklist> {
   void _add() {
     final title = _controller.text.trim();
     if (title.isEmpty) return;
-    widget.onApply((api, id) => api.addChecklistItem(id, title));
+    widget.onApply((store, id) => store.addChecklistItem(id, title));
     _controller.clear();
   }
 
@@ -434,14 +438,14 @@ class _ChecklistState extends State<_Checklist> {
             ),
             value: item.isDone,
             onChanged: (v) => widget.onApply(
-              (api, id) =>
-                  api.setChecklistItemDone(id, item.id, isDone: v ?? false),
+              (store, id) =>
+                  store.setChecklistItemDone(id, item.id, isDone: v ?? false),
             ),
             secondary: IconButton(
               tooltip: 'Remove item',
               icon: const Icon(Icons.close, size: 18),
-              onPressed: () => widget.onApply((api, id) async {
-                await api.deleteChecklistItem(id, item.id);
+              onPressed: () => widget.onApply((store, id) async {
+                await store.deleteChecklistItem(id, item.id);
                 return null;
               }),
             ),

@@ -32,11 +32,10 @@ class HomeScreen extends ConsumerWidget {
         ?.add(const Duration(hours: 9))
         .toUtc()
         .toIso8601String();
-    await ref.read(tasksApiProvider).create(workspaces.first.id, {
+    await ref.read(taskStoreProvider).create(workspaces.first.id, {
       'title': title,
       'dueAt': ?dueAt,
     });
-    invalidateTaskData(ref);
   }
 
   @override

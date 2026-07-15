@@ -143,17 +143,15 @@ class _OverviewTab extends ConsumerWidget {
   Future<void> _createReadme(BuildContext context, WidgetRef ref) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) return;
-    final note = await ref.read(notesApiProvider).create(workspaces.first.id, {
-      'title': project.name,
-      'projectId': project.id,
+    final noteId = await ref.read(noteStoreProvider).create(
+      workspaces.first.id,
+      {'title': project.name, 'projectId': project.id},
+    );
+    await ref.read(projectStoreProvider).update(project.id, {
+      'readmeNoteId': noteId,
     });
-    await ref.read(projectsApiProvider).update(project.id, {
-      'readmeNoteId': note.id,
-    });
-    ref.invalidate(projectsControllerProvider);
     if (context.mounted) {
-      invalidateNoteData(ref, noteId: note.id, projectId: project.id);
-      context.go('/notes/${note.id}');
+      context.go('/notes/$noteId');
     }
   }
 
@@ -318,11 +316,10 @@ class _ProjectTasksTab extends ConsumerWidget {
   Future<void> _add(WidgetRef ref, String title) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) throw StateError('No workspace available');
-    await ref.read(tasksApiProvider).create(workspaces.first.id, {
+    await ref.read(taskStoreProvider).create(workspaces.first.id, {
       'title': title,
       'projectId': projectId,
     });
-    invalidateTaskData(ref);
   }
 
   @override
@@ -371,13 +368,12 @@ class _ProjectNotesTab extends ConsumerWidget {
   Future<void> _addNote(BuildContext context, WidgetRef ref) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) return;
-    final note = await ref.read(notesApiProvider).create(workspaces.first.id, {
-      'title': 'Untitled',
-      'projectId': project.id,
-    });
+    final noteId = await ref.read(noteStoreProvider).create(
+      workspaces.first.id,
+      {'title': 'Untitled', 'projectId': project.id},
+    );
     if (context.mounted) {
-      invalidateNoteData(ref, noteId: note.id, projectId: project.id);
-      context.go('/notes/${note.id}');
+      context.go('/notes/$noteId');
     }
   }
 

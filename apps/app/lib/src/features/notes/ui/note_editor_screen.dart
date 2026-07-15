@@ -109,16 +109,14 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _saving = true;
     _dirty = false;
     try {
-      final api = ref.read(notesApiProvider);
+      final store = ref.read(noteStoreProvider);
       if (_noteId == null) {
         final workspaces = await ref.read(workspacesProvider.future);
         if (workspaces.isEmpty) return;
-        final created = await api.create(workspaces.first.id, _body);
-        _noteId = created.id;
+        _noteId = await store.create(workspaces.first.id, _body);
       } else {
-        await api.update(_noteId!, _body);
+        await store.update(_noteId!, _body);
       }
-      if (mounted) invalidateNoteData(ref, noteId: _noteId);
     } on Object {
       _dirty = true; // keep the changes marked; the next edit retries
     } finally {
@@ -135,8 +133,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     }
     final next = !_isPinned;
     setState(() => _isPinned = next);
-    await ref.read(notesApiProvider).update(_noteId!, {'isPinned': next});
-    if (mounted) invalidateNoteData(ref, noteId: _noteId);
+    await ref.read(noteStoreProvider).update(_noteId!, {'isPinned': next});
   }
 
   Future<void> _toggleArchived() async {
@@ -147,8 +144,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     }
     final next = !_isArchived;
     setState(() => _isArchived = next);
-    await ref.read(notesApiProvider).update(_noteId!, {'isArchived': next});
-    if (mounted) invalidateNoteData(ref, noteId: _noteId);
+    await ref.read(noteStoreProvider).update(_noteId!, {'isArchived': next});
   }
 
   void _showMarkdownPreview() {
@@ -193,8 +189,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _debounce?.cancel();
     _dirty = false;
     if (id != null) {
-      await ref.read(notesApiProvider).delete(id);
-      if (mounted) invalidateNoteData(ref, noteId: id);
+      await ref.read(noteStoreProvider).delete(id);
     }
     if (mounted) context.go('/notes');
   }

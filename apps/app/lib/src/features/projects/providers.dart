@@ -1,28 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../auth/providers.dart';
+import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/project.dart';
-import 'data/projects_api.dart';
+import 'data/project_store.dart';
 
-final projectsApiProvider = Provider<ProjectsApi>(
-  (ref) => ProjectsApi(ref.watch(apiClientProvider)),
+/// Local-first store (OPH-054): reads watch the drift replica, writes are
+/// optimistic + outbox'd.
+final projectStoreProvider = Provider<ProjectStore>(
+  (ref) => ProjectStore(
+    ref.watch(databaseProvider),
+    () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+  ),
 );
 
-/// Projects of the current workspace, server-ordered (sort_order, created_at).
-/// Mutations re-fetch — the server is the source of truth for ordering and
-/// revisions (local-first caching lands with Epic 06).
+/// Projects of the current workspace (sort_order, created_at) — live from the
+/// local replica; the sync engine converges with the server in the background.
 final projectsControllerProvider =
-    AsyncNotifierProvider<ProjectsController, List<Project>>(
+    StreamNotifierProvider<ProjectsController, List<Project>>(
       ProjectsController.new,
     );
 
-class ProjectsController extends AsyncNotifier<List<Project>> {
+class ProjectsController extends StreamNotifier<List<Project>> {
   @override
-  Future<List<Project>> build() async {
+  Stream<List<Project>> build() async* {
+    ref.watch(syncEngineProvider);
     final workspaces = await ref.watch(workspacesProvider.future);
-    if (workspaces.isEmpty) return const [];
-    return ref.watch(projectsApiProvider).list(workspaces.first.id);
+    if (workspaces.isEmpty) {
+      yield const [];
+      return;
+    }
+    yield* ref.watch(projectStoreProvider).watchAll(workspaces.first.id);
   }
 
   Future<String> _workspaceId() async {
@@ -31,26 +39,16 @@ class ProjectsController extends AsyncNotifier<List<Project>> {
     return workspaces.first.id;
   }
 
-  Future<void> _refetch() async {
-    ref.invalidateSelf();
-    await future;
-  }
-
   Future<void> createProject(Map<String, dynamic> body) async {
-    await ref.read(projectsApiProvider).create(await _workspaceId(), body);
-    await _refetch();
+    await ref.read(projectStoreProvider).create(await _workspaceId(), body);
   }
 
-  Future<void> updateProject(String id, Map<String, dynamic> patch) async {
-    await ref.read(projectsApiProvider).update(id, patch);
-    await _refetch();
-  }
+  Future<void> updateProject(String id, Map<String, dynamic> patch) =>
+      ref.read(projectStoreProvider).update(id, patch);
 
   Future<void> toggleFavorite(Project project) =>
       updateProject(project.id, {'isFavorite': !project.isFavorite});
 
-  Future<void> deleteProject(String id) async {
-    await ref.read(projectsApiProvider).delete(id);
-    await _refetch();
-  }
+  Future<void> deleteProject(String id) =>
+      ref.read(projectStoreProvider).delete(id);
 }

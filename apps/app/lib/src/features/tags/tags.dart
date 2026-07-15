@@ -1,8 +1,7 @@
-import 'package:dio/dio.dart';
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api_exception.dart';
-import '../auth/providers.dart';
+import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
 
 /// Mirrors the API's tag shape (apps/api routes/tags.js). Management UI is a
@@ -28,18 +27,24 @@ class Tag {
   final String colorRgb;
 }
 
-/// Tags of the current workspace (server-sorted by name).
-final tagsProvider = FutureProvider<List<Tag>>((ref) async {
+/// Tags of the current workspace (sorted by name) — live from the local
+/// replica (OPH-054).
+final tagsProvider = StreamProvider<List<Tag>>((ref) async* {
+  ref.watch(syncEngineProvider);
   final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) return const [];
-  final dio = ref.watch(apiClientProvider);
-  try {
-    final res = await dio.get<Map<String, dynamic>>(
-      '/api/v1/workspaces/${workspaces.first.id}/tags',
-    );
-    final items = (res.data?['items'] as List?) ?? const [];
-    return items.map((t) => Tag.fromJson(t as Map<String, dynamic>)).toList();
-  } on DioException catch (e) {
-    throw asApiException(e);
+  if (workspaces.isEmpty) {
+    yield const [];
+    return;
   }
+  final db = ref.watch(databaseProvider);
+  yield* (db.select(db.tags)
+        ..where((t) => t.workspaceId.equals(workspaces.first.id))
+        ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+      .watch()
+      .map(
+        (rows) => [
+          for (final r in rows)
+            Tag(id: r.id, name: r.name, slug: r.slug, colorRgb: r.colorRgb),
+        ],
+      );
 });

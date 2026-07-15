@@ -88,7 +88,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     try {
       final workspaces = await ref.read(workspacesProvider.future);
       if (workspaces.isEmpty) throw StateError('No workspace available');
-      await ref.read(tasksApiProvider).create(workspaces.first.id, {
+      await ref.read(taskStoreProvider).create(workspaces.first.id, {
         'title': _title.text.trim(),
         'projectId': ?_projectId,
         if (_priority != 'none') 'priority': _priority,
@@ -97,7 +97,6 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
         if (_isUrgent) 'isUrgent': true,
       });
       if (mounted) {
-        invalidateTaskData(ref);
         Navigator.of(context).pop();
       }
     } on Object catch (e) {

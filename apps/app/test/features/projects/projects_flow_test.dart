@@ -10,6 +10,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 
 import '../auth/test_support.dart';
 import 'fake_api.dart';
+import '../../support/sync_overrides.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -17,6 +18,7 @@ Future<Widget> signedInAppWith(FakeApi api) async {
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
     overrides: [
+      ...syncTestOverrides(),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -50,7 +52,7 @@ void main() {
     expect(find.byIcon(Icons.star_border), findsOneWidget);
   });
 
-  testWidgets('FAB create flow posts to the API and refreshes the list', (
+  testWidgets('FAB create flow syncs to the API and refreshes the list', (
     tester,
   ) async {
     final api = FakeApi();
@@ -70,15 +72,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Yeni Proje'), findsOneWidget);
-    expect(
-      api.requests.where(
-        (r) => r == 'POST /api/v1/workspaces/${api.workspaceId}/projects',
-      ),
-      hasLength(1),
-    );
+    // Local-first: the create reaches the server through one sync push.
+    expect(api.projects.single['name'], 'Yeni Proje');
+    expect(api.requests.where((r) => r.contains('/sync/push')), hasLength(1));
   });
 
-  testWidgets('favorite star toggles via PATCH', (tester) async {
+  testWidgets('favorite star toggles through the outbox', (tester) async {
     final api = FakeApi()..seedProject(name: 'Yıldızsız');
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
@@ -89,10 +88,7 @@ void main() {
 
     expect(find.byIcon(Icons.star), findsOneWidget);
     expect(api.projects.single['isFavorite'], isTrue);
-    expect(
-      api.requests.any((r) => r.startsWith('PATCH /api/v1/projects/')),
-      isTrue,
-    );
+    expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
   });
 
   testWidgets('project detail: README placeholder, live Tasks with quick add', (

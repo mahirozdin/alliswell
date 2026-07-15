@@ -10,6 +10,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 
 import '../projects/fake_api.dart';
 import 'test_support.dart';
+import '../../support/sync_overrides.dart';
 
 void main() {
   // Every platform boundary is faked: auth HTTP via the handler, the
@@ -20,6 +21,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     return ProviderScope(
       overrides: [
+        ...syncTestOverrides(),
         secretStoreProvider.overrideWithValue(InMemorySecretStore()),
         authApiProvider.overrideWithValue(
           AuthApi(fakeDio(FakeHttpClientAdapter(handler))),

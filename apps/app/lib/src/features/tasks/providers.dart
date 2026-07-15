@@ -1,27 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../auth/providers.dart';
+import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/task.dart';
-import 'data/tasks_api.dart';
+import 'data/task_store.dart';
 
-final tasksApiProvider = Provider<TasksApi>(
-  (ref) => TasksApi(ref.watch(apiClientProvider)),
+export 'data/task_store.dart' show kOpenStatuses;
+
+/// Local-first store (OPH-054): reads watch the drift replica, writes are
+/// optimistic + outbox'd, and the sync engine converges with the server in
+/// the background.
+final taskStoreProvider = Provider<TaskStore>(
+  (ref) => TaskStore(
+    ref.watch(databaseProvider),
+    () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+  ),
 );
 
-/// Statuses that belong on planning lists (terminal ones are filtered out).
-const kOpenStatuses = ['inbox', 'open', 'scheduled', 'in_progress', 'waiting'];
-
-/// Every open task of the workspace — feeds Home and Calendar (feedback
-/// round 1). One page of 200 covers v1; local-first sync (Epic 06) replaces
-/// this with a replica later.
-final openTasksProvider = FutureProvider<List<Task>>((ref) async {
+/// Every open task of the workspace — feeds Home and Calendar. Live from the
+/// local replica; watching it keeps background sync running.
+final openTasksProvider = StreamProvider<List<Task>>((ref) async* {
+  ref.watch(syncEngineProvider);
   final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) return const [];
-  final page = await ref
-      .watch(tasksApiProvider)
-      .list(workspaces.first.id, statuses: kOpenStatuses, limit: 200);
-  return page.items;
+  if (workspaces.isEmpty) {
+    yield const [];
+    return;
+  }
+  yield* ref.watch(taskStoreProvider).watchOpen(workspaces.first.id);
 });
 
 /// The calendar day selected on Home/Calendar (shared so the selection is
@@ -38,75 +43,58 @@ final selectedDayProvider = NotifierProvider<SelectedDayController, DateTime?>(
 );
 
 /// The Inbox list (quick capture). Home covers the chronological views.
-class InboxTasksController extends AsyncNotifier<List<Task>> {
+class InboxTasksController extends StreamNotifier<List<Task>> {
   @override
-  Future<List<Task>> build() async {
+  Stream<List<Task>> build() async* {
+    ref.watch(syncEngineProvider);
     final workspaces = await ref.watch(workspacesProvider.future);
-    if (workspaces.isEmpty) return const [];
-    final page = await ref
-        .watch(tasksApiProvider)
-        .list(workspaces.first.id, statuses: const ['inbox'], limit: 100);
-    return page.items;
+    if (workspaces.isEmpty) {
+      yield const [];
+      return;
+    }
+    yield* ref.watch(taskStoreProvider).watchInbox(workspaces.first.id);
   }
 
   Future<void> quickAdd(String title) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) throw StateError('No workspace available');
-    await ref.read(tasksApiProvider).create(workspaces.first.id, {
+    await ref.read(taskStoreProvider).create(workspaces.first.id, {
       'title': title.trim(),
       'status': 'inbox',
     });
-    ref.invalidateSelf();
-    await future;
   }
 }
 
 final inboxTasksProvider =
-    AsyncNotifierProvider<InboxTasksController, List<Task>>(
+    StreamNotifierProvider<InboxTasksController, List<Task>>(
       InboxTasksController.new,
     );
 
 /// Open tasks of one project — the project detail Tasks tab.
-final projectTasksProvider = FutureProvider.family<List<Task>, String>((
+final projectTasksProvider = StreamProvider.family<List<Task>, String>((
   ref,
   projectId,
-) async {
+) async* {
+  ref.watch(syncEngineProvider);
   final workspaces = await ref.watch(workspacesProvider.future);
-  if (workspaces.isEmpty) return const [];
-  final page = await ref
-      .watch(tasksApiProvider)
-      .list(
-        workspaces.first.id,
-        statuses: kOpenStatuses,
-        projectId: projectId,
-        limit: 100,
-      );
-  return page.items;
+  if (workspaces.isEmpty) {
+    yield const [];
+    return;
+  }
+  yield* ref
+      .watch(taskStoreProvider)
+      .watchProjectTasks(workspaces.first.id, projectId);
 });
 
-/// Single-task detail (tags + checklist included). Mutating screens invalidate
-/// this after writes.
-final taskDetailProvider = FutureProvider.family<Task, String>(
-  (ref, taskId) => ref.watch(tasksApiProvider).get(taskId),
-);
-
-/// Invalidate every task list + the given detail — call after any task write
-/// from screen code (hence [WidgetRef]).
-void invalidateTaskData(WidgetRef ref, {String? taskId}) {
-  ref.invalidate(inboxTasksProvider);
-  ref.invalidate(openTasksProvider);
-  ref.invalidate(projectTasksProvider);
-  if (taskId != null) ref.invalidate(taskDetailProvider(taskId));
-}
+/// Single-task detail (tags + checklist included) — live on every part.
+final taskDetailProvider = StreamProvider.family<Task, String>((ref, taskId) {
+  ref.watch(syncEngineProvider);
+  return ref.watch(taskStoreProvider).watchDetail(taskId);
+});
 
 /// Checkbox behavior shared by every task tile: complete an open task,
-/// reopen a completed one, then refresh all task data.
-Future<void> toggleTaskCompleted(WidgetRef ref, Task task) async {
-  final api = ref.read(tasksApiProvider);
-  if (task.isCompleted) {
-    await api.reopen(task.id);
-  } else {
-    await api.complete(task.id);
-  }
-  invalidateTaskData(ref, taskId: task.id);
+/// reopen a completed one. The replica updates instantly; sync follows.
+Future<void> toggleTaskCompleted(WidgetRef ref, Task task) {
+  final store = ref.read(taskStoreProvider);
+  return task.isCompleted ? store.reopen(task.id) : store.complete(task.id);
 }
