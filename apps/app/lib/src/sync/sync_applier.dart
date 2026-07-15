@@ -194,6 +194,7 @@ TasksCompanion taskCompanion(Map<String, dynamic> d) => TasksCompanion.insert(
   requiresAcknowledgement: Value(
     (d['requiresAcknowledgement'] as bool?) ?? false,
   ),
+  calendarMirrorEnabled: Value((d['calendarMirrorEnabled'] as bool?) ?? false),
   repeatRule: Value(d['repeatRule'] as String?),
   estimatedMinutes: Value(d['estimatedMinutes'] as int?),
   actualMinutes: Value(d['actualMinutes'] as int?),

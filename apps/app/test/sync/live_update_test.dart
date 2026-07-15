@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
@@ -55,6 +56,7 @@ void main() {
     final handles = <FakeSocketHandle>[];
     await tester.pumpWidget(
       ProviderScope(
+        retry: awRetry,
         overrides: [
           // A capturing socket instead of the null test default.
           ...syncTestOverrides(

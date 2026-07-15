@@ -735,9 +735,143 @@ revision, reminder reconciled, attributed to the connecting user. ✔
 
 - [ ] Event CRUD with `alliswell://task/{id}` URL marker; mapping rows; foreground resync
 
-### OPH-079 — CalDAV design doc
+### OPH-079 — CalDAV design doc ✅
 
-- [ ] docs/CALDAV.md: iCloud app-specific password flow, ETag sync, security warnings (v2 scope)
+- [x] docs/CALDAV.md: iCloud app-specific password flow, ETag sync, security warnings (v2 scope)
+
+Acceptance notes: [CALDAV.md](CALDAV.md) — 9 references, design-only (nothing built).
+Written now, ahead of its epic slot, because OPH-077/078 are blocked on Xcode
+signing and because the decision it documents — asking users for an iCloud
+app-specific password — is the most security-sensitive thing AllisWell would
+ever do (AGENTS.md rule 10: risky things in writing first). Headline: an
+app-specific password is **not** an OAuth token — unscoped, never expires,
+un-revocable from our side, and reversible at rest by construction (we must
+replay it, so it cannot be hashed like a channel token). Hence: ADR-0006 crypto,
+connector **disabled by default** behind `CALDAV_ENABLED`, verify-before-store,
+plain-language consent, and a disconnect that tells the user the other half of
+revocation is theirs. Protocol: discovery → per-account partition host
+(`p34-caldav.icloud.com`, never hardcode), RFC 6578 `sync-collection` with an
+opaque token (404 = deleted; ANY token rejection → full resync — the RFC does
+not prescribe a status, so don't match on one), no PATCH (whole-VEVENT PUT),
+`If-Match` etag concurrency where a `412` **is** the conflict signal. The
+OPH-015 schema already fits (`apple_caldav`, `provider_event_uid`, `etag`,
+`sync_token`); one append-only migration adds `encrypted_app_password` +
+principal/home URLs. Key finding: **ADR-0007's conflict matrix carries over
+unchanged** if `lib/inbound.js` is fed a normalized event — doing that
+normalization first is the difference between a connector and a second copy of
+Epic 08. CalDAV has no push, so it is polling-only — already a first-class mode
+because OPH-074 built it for webhook-less installs. ✔
+
+---
+
+> **OPH-080/081 added 2026-07-15.** Epic 08 shipped a complete Google API vertical
+> (OPH-070…076) that **no user can reach**: the app has no way to connect an account,
+> and `calendarMirrorEnabled` is not in the Flutter model at all — so mirroring can
+> never be switched on. BLUEPRINT §12 already requires the task-detail "Calendar mirror
+> toggle"; it was simply never given a task. Taken now because OPH-077/078 are blocked
+> on Xcode signing (see STATE.md → Blocked).
+
+### OPH-080 — Flutter Google Calendar connect UI ✅
+
+- [x] Settings → Calendar section: connect (opens consent URL), account status, disconnect
+- [x] Calendar picker after connect (`GET …/calendars` → `PATCH …{defaultCalendarId}`)
+- [x] Honest states: not-configured (`GOOGLE_NOT_CONFIGURED`), needs-reconnect
+      (`CALENDAR_ACCOUNT_REAUTH_REQUIRED`), error (`lastError`)
+- [x] Tests over the fake API; design system compliance (AGENTS.md rule 11, light + dark)
+
+Acceptance notes: `features/integrations/` — REST, deliberately outside the sync
+protocol (calendar accounts are per-user server state; a cached "connected"
+would be a lie), joining `/me` as the only place a screen may call the API
+directly. Flow: connect → pick a calendar → done. `url_launcher` (new
+dependency) opens consent in a REAL browser (`externalApplication` — Google
+blocks webviews, and the app never handles an OAuth code: identity rides in the
+server's signed state, ADR-0006); it sits behind `urlLauncherProvider` so tests
+observe the hand-off without a platform channel. Icon colour tells the truth:
+amber while a connected account still has no calendar (it mirrors nothing),
+green only once it works, red on reauth. `configured: false` is stated plainly,
+not as an error — the integration is optional and self-hosters are their own
+admin. Disconnect says events already in the calendar stay there. Verified in
+the real browser, light AND dark, plus the contrast guard (FAILURES: 0). ✔
+
+**Found by verifying in the browser rather than trusting the tests** — see the
+`awRetry` note under OPH-081.
+
+### OPH-081 — Flutter task calendar mirror toggle ✅
+
+- [x] `calendarMirrorEnabled` through the replica: drift column + schema migration, sync
+      applier mapping, task store write (optimistic + outbox)
+- [x] Task detail toggle (BLUEPRINT §12) — local-first, no REST from the screen
+- [x] Tests: applier round-trip, store write/outbox, detail toggle
+
+Acceptance notes: the server has carried `calendarMirrorEnabled` since OPH-072
+(REST + sync push allowlist + pull snapshots) — the app dropped it at every
+layer, so **zero server work was needed**. Now: drift column (schema v2, the
+project's first replica migration — plan and proof below), `taskCompanion`
+mapping, `Task` model, `TaskStore.update` branch, and the §12 toggle cloned
+from the urgent switch. The subtitle tells the truth per task — "Adds a block
+to your connected calendar" vs "Add a date below and it will appear" — instead
+of silently doing nothing on a task §7.1 can't derive a time from; enabling it
+early still works, because the mirror starts on its own once a date lands.
+
+**Also closed a hole in OPH-076:** `scheduled_*` is where a dragged calendar
+event lands, and the app modelled neither field — so the marquee two-way sync
+was invisible. `Task` now carries them and the detail screen has a Scheduled
+row. Clearing/moving the start clears the end (a stale end would make §7.1
+derive a backwards block), and `desiredEventForTask` now guards that case
+anyway: Google rejects `end <= start` with a 400 the queue could never retry
+away.
+
+**Two real bugs found by running the app instead of trusting green tests:**
+
+1. **Riverpod 3 retries every failed provider by default** — 10×, 200 ms → 6.4 s
+   (`ProviderContainer.defaultRetry`, which only declines for `Error`/
+   `ProviderException`; our `ApiException` is a plain `Exception`). While it
+   retries, the provider reports `AsyncLoading`, so the calendar picker sat on
+   a spinner for ~38 s and asked a dead Google credential **eleven times** —
+   the error state we designed was unreachable. Measured live: request gaps
+   225/420/821/1628/3222/6426 ms. Policy now in `core/retry.dart` (`awRetry`,
+   applied at every `ProviderScope` including the test ones): retry only what a
+   retry could fix — failing to reach the server at all — everything else
+   surfaces at once. After: **1 request, error shown immediately.** This
+   affected every `FutureProvider` in the app, not just the new ones.
+2. **Why the widget tests missed it:** they build their own `ProviderScope`
+   (so they never had the app's policy) and `pumpAndSettle` burns through the
+   backoff in fake time, so the error state appears "instantly" in a test and
+   after 38 real seconds for a user. The regression test is therefore a unit
+   test of the policy itself (`test/core/retry_test.dart`), and the test scopes
+   now share the production policy.
+
+**Migration plan (AGENTS.md rule 10 — written before implementation).** This is the
+**first drift schema migration in the project's history** and it sets the precedent
+for every one after it, so the plan is about the harness as much as the column.
+
+- *Current state:* `schemaVersion => 1` with **no `MigrationStrategy` at all**. Drift's
+  default `onUpgrade` throws, so a bare version bump would brick every existing
+  install on open — including live web (localStorage/IndexedDB) and simulator data.
+- *Change:* `Tasks.calendarMirrorEnabled` = `boolean().withDefault(const Constant(false))`
+  (NOT NULL + default, mirroring the server column), `schemaVersion` 1 → 2, and the
+  first `MigrationStrategy`: `onCreate: (m) => m.createAll()`, plus an
+  `onUpgrade` version ladder — one narrow `if (from < n)` per version:
+  `if (from < 2) await m.addColumn(tasks, tasks.calendarMirrorEnabled)`.
+  (Drift's generated `stepByStep` would read better, but it is produced by the
+  same `drift_dev schema` tooling that is broken here — see *Verification*.)
+- *Why migrate at all, given the replica is cache?* Because it also holds the
+  **outbox**: a failed open would strand writes that never reached the server.
+  "Wipe and re-pull" is not a safe shortcut here.
+- *Safety of the migration itself:* `ADD COLUMN` with a NOT NULL default is the
+  cheapest, least reversible-risk migration SQLite has — existing rows take the
+  default, nothing is rewritten, no data is read or moved.
+- *Verification:* drift's sanctioned schema-test tooling (`drift_dev schema dump`)
+  is **broken on this toolchain** — drift_dev 2.34.0's verifier calls
+  `allSchemaEntities`, which drift 2.34.2's drift3-preview `GeneratedDatabase` does
+  not define. So the migration is tested directly instead, against a real file-backed
+  SQLite: create the schema, drop the new column and set `user_version = 1` to
+  manufacture a genuine v1 database **with a row in it**, close, reopen the real
+  `AwDatabase` over the same file, and assert `onUpgrade` ran, the row survived and
+  the column reads `false`. This exercises the real migration code path, not a mock
+  of it. Revisit the generated harness when the toolchain versions line up.
+- *Rollback:* none needed — a v2 replica is disposable local cache. Worst case a user
+  clears it and the next pull rebuilds from the server (MySQL is canonical, §6.2).
 
 ---
 

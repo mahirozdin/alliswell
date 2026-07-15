@@ -125,7 +125,20 @@ CalDAV connector deferred to v2 (ADR-0003).
   outbox. Feature stores (`features/*/data/*_store.dart`) write optimistically and enqueue
   in one transaction; `SyncEngine` pushes in order (backoff on failure) and pulls
   snapshots/tombstones; conflicts surface via a stream (note content → "çakışan kopya").
-  UI subscribes to local DB streams — no REST calls from screens (auth + `/me` aside).
+  UI subscribes to local DB streams — no REST calls from screens (auth, `/me` and the
+  calendar integration aside: those are per-user server state, not synced entities).
+- **Replica migrations:** bump `schemaVersion` in `sync/db/database.dart` AND add the
+  matching `if (from < n)` step to its `MigrationStrategy` — drift's default `onUpgrade`
+  throws, so a bare bump bricks every existing install on open. The replica is cache, but
+  it holds the **outbox**, so "wipe and re-pull" is not a safe shortcut: a failed open
+  strands writes that never reached the server. Proof lives in `test/sync/migration_test.dart`
+  (manufactures a real v1 database on disk and runs the real migration over it; drift's
+  generated schema-verifier tooling is unusable on this toolchain — see the OPH-081 plan).
+- **Provider retry (`core/retry.dart`):** Riverpod 3 retries every failed provider by
+  default (10×, 200 ms → 6.4 s) and reports `AsyncLoading` throughout, which makes error
+  states unreachable. `awRetry` — passed to every `ProviderScope`, tests included — retries
+  only failures a retry could fix (couldn't reach the server); coded `ApiException`s surface
+  at once.
 - **Notifications (Phase 3):** flutter_local_notifications scheduled from local data; push (FCM)
   only as a supplementary wake-up. Urgent alarms use action buttons (complete/snooze presets).
 - Feature-first folders: `lib/src/features/<domain>/{data,providers,ui}` as epics land.

@@ -20,9 +20,13 @@ export function desiredEventForTask(task) {
   let end;
   if (task.scheduled_start_at) {
     start = new Date(task.scheduled_start_at);
-    end = task.scheduled_end_at
-      ? new Date(task.scheduled_end_at)
-      : new Date(start.getTime() + SLOT_MINUTES * 60000);
+    end =
+      task.scheduled_end_at && new Date(task.scheduled_end_at) > start
+        ? new Date(task.scheduled_end_at)
+        : // No end, or one left behind by a moved start: Google rejects a
+          // backwards block outright, so fall back to the default slot rather
+          // than wedge the mirror queue on a 400 it can never retry away.
+          new Date(start.getTime() + SLOT_MINUTES * 60000);
   } else if (task.due_at) {
     start = new Date(task.due_at);
     end = new Date(start.getTime() + SLOT_MINUTES * 60000);

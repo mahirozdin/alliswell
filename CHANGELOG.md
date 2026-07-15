@@ -5,6 +5,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added (Epic 08 app side — 2026-07-15, OPH-079…081)
+
+- **You can finally connect Google Calendar from the app.** Settings gains a Calendar card
+  (`features/integrations/`): connect (consent opens in a real browser), pick which calendar
+  to use, see the account, disconnect. Honest about every state — a server without an OAuth
+  client says so plainly rather than erroring (the integration is optional), an account
+  Google signed out of asks to be reconnected instead of decaying silently, and a connected
+  account with no calendar chosen is amber, not green, because it mirrors nothing yet.
+  The API for all of this shipped in OPH-070…076; nothing could reach it until now.
+- **Per-task "Show in calendar" toggle** (BLUEPRINT §12) and a **Scheduled row** on the task
+  detail. `calendarMirrorEnabled` and `scheduled_*` now flow through the replica (drift
+  schema v2 + the project's first `MigrationStrategy`), so a calendar event you drag in
+  Google is finally visible in the app — that was OPH-076's whole point.
+- [docs/CALDAV.md](docs/CALDAV.md) (OPH-079): the v2 iCloud connector design, written now
+  because the decision it documents — asking users for an app-specific password, which is
+  unscoped, never expires and cannot be revoked from our side — deserved writing down before
+  anyone starts coding. 9 references.
+- New dependency: `url_launcher` (opens the OAuth consent page).
+
+### Fixed (app — 2026-07-15)
+
+- **Every failed request retried for ~38 seconds behind a spinner.** Riverpod 3 retries any
+  failed provider by default (10×, 200 ms → 6.4 s) and reports `AsyncLoading` while it does,
+  so error states were effectively unreachable — including errors no retry can fix. Found by
+  driving the real app: a dead Google credential was asked eleven times and the user never
+  saw the message. `core/retry.dart` now retries only what a retry could fix (not reaching
+  the server); everything else surfaces immediately. Affected every `FutureProvider` in the
+  app.
+- `desiredEventForTask` could derive a backwards calendar block from a `scheduled_end_at`
+  left behind by a moved start — Google rejects `end <= start` with a 400 the mirror queue
+  could never retry away. It now falls back to the default 30-minute slot.
+
 ### Added (Epic 08 inbound — 2026-07-15, OPH-074…076)
 
 - **Google Calendar changes now flow back into tasks** (ADR-0007, BLUEPRINT §7.2 steps 6-10).

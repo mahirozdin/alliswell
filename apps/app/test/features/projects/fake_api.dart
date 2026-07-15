@@ -67,6 +67,9 @@ class FakeApi {
     String priority = 'none',
     bool isUrgent = false,
     String? dueAt,
+    String? scheduledStartAt,
+    String? scheduledEndAt,
+    bool calendarMirrorEnabled = false,
     List<String> tagIds = const [],
     List<Map<String, dynamic>> checklist = const [],
   }) {
@@ -76,6 +79,9 @@ class FakeApi {
       'priority': priority,
       'isUrgent': isUrgent,
       'dueAt': dueAt,
+      'scheduledStartAt': scheduledStartAt,
+      'scheduledEndAt': scheduledEndAt,
+      'calendarMirrorEnabled': calendarMirrorEnabled,
       'tagIds': tagIds,
       'checklist': checklist,
     });
@@ -101,6 +107,125 @@ class FakeApi {
     projects.add(project);
     _bump();
     return project;
+  }
+
+  // ── Google Calendar integration (OPH-080) ────────────────────────────────
+  // Mirrors apps/api/src/routes/integrations-google.js. Not part of the sync
+  // protocol: calendar accounts are per-user server state.
+
+  /// Does the SERVER have an OAuth client? Flip to false to test the
+  /// not-configured path — the integration is optional by design.
+  bool googleConfigured = true;
+
+  /// Connected accounts, in the server's `accountSchema` shape. Empty = not
+  /// connected yet.
+  final List<Map<String, dynamic>> googleAccounts = [];
+
+  /// What `…/calendars` answers. Set to null to make it fail the way an
+  /// expired refresh token does (502 CALENDAR_ACCOUNT_REAUTH_REQUIRED).
+  List<Map<String, dynamic>>? googleCalendars = [
+    {'id': 'primary', 'summary': 'Ana Takvim', 'primary': true},
+    {'id': 'is-takvimi', 'summary': 'İş', 'primary': false},
+  ];
+
+  /// Every consent URL handed out, so tests can prove the hand-off happened.
+  final List<String> googleConnectCalls = [];
+
+  Map<String, dynamic> seedGoogleAccount({
+    String id = 'ACC1',
+    String email = 'takvim@example.com',
+    String status = 'active',
+    String? defaultCalendarId,
+    String? lastError,
+  }) {
+    final account = {
+      'id': id.padRight(26, '0'),
+      'provider': 'google',
+      'providerAccountId': email,
+      'status': status,
+      'defaultCalendarId': defaultCalendarId,
+      'lastSyncedAt': null,
+      'lastError': lastError,
+      'createdAt': '2026-07-15T10:00:00.000Z',
+      'updatedAt': '2026-07-15T10:00:00.000Z',
+    };
+    googleAccounts.add(account);
+    return account;
+  }
+
+  Future<ResponseBody>? _google(
+    String path,
+    RequestOptions options,
+    Map<String, dynamic>? body,
+  ) {
+    final wsPrefix = '/api/v1/workspaces/$workspaceId/integrations/google';
+
+    if (path == wsPrefix && options.method == 'GET') {
+      return Future.value(
+        jsonBody(200, {
+          'configured': googleConfigured,
+          'items': googleAccounts,
+        }),
+      );
+    }
+
+    if (path == '$wsPrefix/connect' && options.method == 'POST') {
+      if (!googleConfigured) {
+        return Future.value(
+          jsonBody(503, {
+            'code': 'GOOGLE_NOT_CONFIGURED',
+            'message': 'Google Calendar is not configured on this server',
+          }),
+        );
+      }
+      const url = 'https://accounts.google.com/o/oauth2/v2/auth?state=signed';
+      googleConnectCalls.add(url);
+      return Future.value(jsonBody(200, {'authUrl': url}));
+    }
+
+    final calendars = RegExp(
+      r'^/api/v1/integrations/google/accounts/([^/]+)/calendars$',
+    ).firstMatch(path);
+    if (calendars != null && options.method == 'GET') {
+      if (googleCalendars == null) {
+        return Future.value(
+          jsonBody(502, {
+            'code': 'CALENDAR_ACCOUNT_REAUTH_REQUIRED',
+            'message': 'Google rejected the stored credentials — reconnect',
+          }),
+        );
+      }
+      return Future.value(jsonBody(200, {'items': googleCalendars}));
+    }
+
+    final account = RegExp(
+      r'^/api/v1/integrations/google/accounts/([^/]+)$',
+    ).firstMatch(path);
+    if (account != null) {
+      final id = account.group(1)!;
+      final index = googleAccounts.indexWhere((a) => a['id'] == id);
+      if (index < 0) {
+        return Future.value(
+          jsonBody(404, {
+            'code': 'CALENDAR_ACCOUNT_NOT_FOUND',
+            'message': 'Calendar account not found',
+          }),
+        );
+      }
+      if (options.method == 'PATCH') {
+        googleAccounts[index] = {
+          ...googleAccounts[index],
+          'defaultCalendarId': body?['defaultCalendarId'],
+        };
+        return Future.value(jsonBody(200, googleAccounts[index]));
+      }
+      if (options.method == 'DELETE') {
+        googleAccounts.removeAt(index);
+        return Future.value(jsonBody(204, const <String, dynamic>{}));
+      }
+    }
+
+    return null; // not a Google route — fall through to the rest
   }
 
   Future<ResponseBody> handle(
@@ -137,6 +262,9 @@ class FakeApi {
     if (path == '/api/v1/sync/push' && options.method == 'POST') {
       return _syncPush(body ?? const {});
     }
+
+    final google = _google(path, options, body);
+    if (google != null) return google;
 
     if (path == '/api/v1/workspaces/$workspaceId/projects') {
       if (options.method == 'GET') return jsonBody(200, {'items': projects});
@@ -576,13 +704,15 @@ class FakeApi {
       'colorRgb': null,
       'startAt': null,
       'dueAt': body['dueAt'],
-      'scheduledStartAt': null,
-      'scheduledEndAt': null,
+      'scheduledStartAt': body['scheduledStartAt'],
+      'scheduledEndAt': body['scheduledEndAt'],
       'remindAt': body['remindAt'],
       'snoozedUntil': null,
       'timezone': 'Europe/Istanbul',
       'isUrgent': body['isUrgent'] ?? false,
       'requiresAcknowledgement': body['isUrgent'] ?? false,
+      // OPH-081: mirrors routes/tasks.js — snapshots carry it, push accepts it.
+      'calendarMirrorEnabled': body['calendarMirrorEnabled'] ?? false,
       'repeatRule': null,
       'estimatedMinutes': null,
       'actualMinutes': null,

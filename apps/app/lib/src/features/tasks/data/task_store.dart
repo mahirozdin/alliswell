@@ -116,6 +116,9 @@ class TaskStore {
               requiresAcknowledgement: Value(
                 (patch['requiresAcknowledgement'] as bool?) ?? false,
               ),
+              calendarMirrorEnabled: Value(
+                (patch['calendarMirrorEnabled'] as bool?) ?? false,
+              ),
               sortOrder: Value((patch['sortOrder'] as int?) ?? 0),
               createdAt: Value(DateTime.now().toUtc()),
               updatedAt: Value(DateTime.now().toUtc()),
@@ -177,6 +180,13 @@ class TaskStore {
         ),
       );
     }
+    if (effective.containsKey('calendarMirrorEnabled')) {
+      companion = companion.copyWith(
+        calendarMirrorEnabled: Value(
+          effective['calendarMirrorEnabled'] as bool,
+        ),
+      );
+    }
     if (effective.containsKey('dueAt')) {
       companion = companion.copyWith(dueAt: _dateValue(effective, 'dueAt'));
     }
@@ -187,6 +197,16 @@ class TaskStore {
     }
     if (effective.containsKey('startAt')) {
       companion = companion.copyWith(startAt: _dateValue(effective, 'startAt'));
+    }
+    if (effective.containsKey('scheduledStartAt')) {
+      companion = companion.copyWith(
+        scheduledStartAt: _dateValue(effective, 'scheduledStartAt'),
+      );
+    }
+    if (effective.containsKey('scheduledEndAt')) {
+      companion = companion.copyWith(
+        scheduledEndAt: _dateValue(effective, 'scheduledEndAt'),
+      );
     }
     if (effective.containsKey('sortOrder')) {
       companion = companion.copyWith(
@@ -436,12 +456,15 @@ class TaskStore {
     colorRgb: r.colorRgb,
     startAt: r.startAt,
     dueAt: r.dueAt,
+    scheduledStartAt: r.scheduledStartAt,
+    scheduledEndAt: r.scheduledEndAt,
     remindAt: r.remindAt,
     snoozedUntil: r.snoozedUntil,
     completedAt: r.completedAt,
     timezone: r.timezone,
     isUrgent: r.isUrgent,
     requiresAcknowledgement: r.requiresAcknowledgement,
+    calendarMirrorEnabled: r.calendarMirrorEnabled,
     sortOrder: r.sortOrder,
     revision: r.revision,
     tagIds: tagIds,

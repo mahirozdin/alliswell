@@ -227,8 +227,27 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         (store, id) => store.update(id, {'isUrgent': v}),
                       ),
                     ),
+                    // OPH-081: opt-in mirroring (BLUEPRINT §12). Enabling it
+                    // early is fine — the event appears the moment the task
+                    // gets a time — so say that instead of blocking the switch.
+                    SwitchListTile(
+                      key: const Key('calendar-mirror-switch'),
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Show in calendar'),
+                      subtitle: Text(
+                        task.hasCalendarTime
+                            ? 'Adds a block to your connected calendar'
+                            : 'Add a date below and it will appear',
+                      ),
+                      value: task.calendarMirrorEnabled,
+                      onChanged: (v) => _apply(
+                        (store, id) =>
+                            store.update(id, {'calendarMirrorEnabled': v}),
+                      ),
+                    ),
                     _DateRow(
                       label: 'Due',
+                      icon: Icons.flag_outlined,
                       value: task.dueAt,
                       onPicked: (picked) => _apply(
                         (store, id) => store.update(id, {
@@ -236,8 +255,28 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         }),
                       ),
                     ),
+                    // When you'll actually do it — and where a dragged calendar
+                    // event lands (OPH-076). Without this row the two-way sync
+                    // would be invisible in the app.
+                    _DateRow(
+                      key: const Key('scheduled-row'),
+                      label: 'Scheduled',
+                      icon: Icons.event_outlined,
+                      value: task.scheduledStartAt,
+                      onPicked: (picked) => _apply(
+                        (store, id) => store.update(id, {
+                          'scheduledStartAt': picked?.toUtc().toIso8601String(),
+                          // The end belongs to the block: clearing the start
+                          // clears it, and a moved start must never be left
+                          // behind an end (§7.1 would derive a backwards
+                          // block). Null → the derivation uses 30 minutes.
+                          'scheduledEndAt': null,
+                        }),
+                      ),
+                    ),
                     _DateRow(
                       label: 'Remind',
+                      icon: Icons.alarm,
                       value: task.remindAt,
                       onPicked: (picked) => _apply(
                         (store, id) => store.update(id, {
@@ -308,11 +347,14 @@ class _SectionCard extends StatelessWidget {
 class _DateRow extends StatelessWidget {
   const _DateRow({
     required this.label,
+    required this.icon,
     required this.value,
     required this.onPicked,
+    super.key,
   });
 
   final String label;
+  final IconData icon;
   final DateTime? value;
   final void Function(DateTime?) onPicked;
 
@@ -322,7 +364,7 @@ class _DateRow extends StatelessWidget {
     final local = value?.toLocal();
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(label == 'Due' ? Icons.flag_outlined : Icons.alarm),
+      leading: Icon(icon),
       title: Text(label),
       subtitle: Text(
         local == null ? 'Not set' : local.toString().split('.').first,

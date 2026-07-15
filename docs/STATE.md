@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (Epic 08 gelen dikey: OPH-074…076 — webhook + incremental sync + iki yönlü çakışma; ADR-0007)
+**Last updated:** 2026-07-15 (Epic 08 app tarafı: OPH-079…081 — CalDAV doc, Google bağlantı UI'ı, takvim toggle'ı; Riverpod retry hatası)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,10 +15,66 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 4 — Calendar |
 | Current epic | **Epic 08 — Calendar** |
-| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** (platform channel: izin + takvim listesi) — ⚠️ macOS/Xcode imza kurulumu gerektirir (aşağıdaki bloklu notlar). Bloklu ise sıradaki uygun iş: **OPH-079 — CalDAV tasarım dokümanı** (saf doküman, altyapı istemez) |
-| Last completed | OPH-074…076 (Google inbound ✔, ADR-0007); OPH-070…073 (Google outbound ✔, ADR-0006) |
+| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** — ⚠️ HÂLÂ BLOKLU, senden Xcode/imza kurulumu bekliyor (aşağıdaki bloklu notlar). Epic 08'in bloksuz her işi bitti. Bloklu kalırsa sıradaki uygun iş: **Epic 09 — OPH-094 (ROADMAP.md)** + **OPH-095 (v0.1.0 release notes + release workflow)**, ikisi de altyapı istemez |
+| Last completed | OPH-079…081 (CalDAV doc + Google bağlantı UI'ı + takvim toggle ✔); OPH-074…076 (Google inbound ✔, ADR-0007) |
 
 ## Recently completed
+
+- **Epic 08 app tarafı — dikey artık ULAŞILABİLİR (2026-07-15, OPH-079…081):**
+  - **Neden bu paket:** OPH-070…076 ile eksiksiz bir Google API dikeyi vardı ve
+    **hiçbir kullanıcı ona ulaşamıyordu** — app'te bağlanma ekranı yoktu,
+    `calendarMirrorEnabled` Flutter modelinde hiç yoktu. OPH-077/078 Xcode'a bloklu
+    olduğu için AGENTS.md §2'nin "bloklu işi atla" kuralıyla bunlar alındı
+    (OPH-080/081 backlog'a bu oturumda eklendi; BLUEPRINT §12 zaten "Calendar mirror
+    toggle" şart koşuyordu — task'ı yazılmamıştı).
+  - **OPH-079 [CALDAV.md](CALDAV.md):** v2 iCloud connector tasarımı, 9 kaynak, kod yok.
+    Başlık: app-specific password **OAuth token DEĞİL** — kapsamsız, süresiz, bizden
+    iptal edilemez ve tasarımı gereği at-rest geri döndürülebilir (her istekte tekrar
+    oynatmamız gerek, kanal token'ı gibi hash'lenemez). Bu yüzden: connector
+    **varsayılan KAPALI** (`CALDAV_ENABLED`), saklamadan önce doğrula, sade dille
+    onam, ve disconnect kullanıcıya iptalin diğer yarısının onda olduğunu söyler.
+    Kilit bulgu: **ADR-0007'nin çakışma matrisi aynen taşınır** — `lib/inbound.js`'e
+    normalize edilmiş event verilirse; bu normalizasyonu ÖNCE yapmak, connector ile
+    Epic 08'in ikinci bir kopyası arasındaki fark.
+  - **OPH-080 bağlantı UI'ı:** `features/integrations/` — REST, bilinçli olarak sync
+    protokolü DIŞINDA (takvim hesapları kullanıcı başına sunucu durumu; önbelleklenmiş
+    bir "bağlı" yalan olurdu). `url_launcher` (yeni bağımlılık) onamı GERÇEK tarayıcıda
+    açar (`externalApplication`; app OAuth code'a hiç dokunmaz — kimlik sunucunun imzalı
+    state'inde, ADR-0006). İkon rengi doğruyu söyler: takvim seçilmemişse amber (hiçbir
+    şey aynalanmıyor), çalışınca yeşil, reauth'ta kırmızı.
+  - **OPH-081 toggle + replica:** sunucu `calendarMirrorEnabled`'ı OPH-072'den beri
+    taşıyordu → **sıfır sunucu işi**. drift kolonu (şema v2 — projenin İLK replica
+    migration'ı), applier, model, store dalı, §12 toggle'ı. Alt metin göreve göre dürüst:
+    "Adds a block…" / "Add a date below and it will appear". **OPH-076'nın bir deliği de
+    kapandı:** `scheduled_*` sürüklenen etkinliğin indiği yer ve app iki alanı da
+    modellemiyordu — iki yönlü senkron görünmezdi. Artık Scheduled satırı var.
+  - **Tarayıcıda gerçekten koşturarak bulunan İKİ hata (testler yeşilken):**
+    1. **Riverpod 3 hata veren HER provider'ı varsayılan olarak 10 kez, 200ms→6.4s
+       backoff'la yeniden deniyor** ve bu sırada `AsyncLoading` bildiriyor → takvim
+       seçici ~38 sn spinner'da kaldı ve ölü bir Google kimliğine **11 kez** sordu;
+       tasarladığımız hata ekranı ulaşılamazdı. Canlı ölçüm: 225/420/821/1628/3222/6426 ms.
+       Politika `core/retry.dart` (`awRetry`, TÜM ProviderScope'larda — testler dahil):
+       yalnız retry'nin düzeltebileceğini (sunucuya hiç ulaşamama) dene. Sonrası:
+       **1 istek, hata anında.** Bu app'teki tüm FutureProvider'ları etkiliyordu.
+    2. **Testler neden kaçırdı:** kendi `ProviderScope`'larını kuruyorlar (üretim
+       politikası yoktu) ve `pumpAndSettle` backoff'u sahte zamanda yakıyor — testte
+       "anında", kullanıcıda 38 saniye. Regresyon testi bu yüzden politikanın kendi
+       birim testi (`test/core/retry_test.dart`).
+  - **API tarafında bir sertleştirme:** `desiredEventForTask`, taşınan bir start'ın
+    geride bıraktığı `scheduled_end_at`'ten ters blok türetebiliyordu — Google
+    `end <= start`'a 400 veriyor ve kuyruk bunu asla retry'layamaz. Artık 30 dk'lık
+    varsayılan slota düşüyor.
+  - **Testler:** app 114/114 (13 yeni: migration, replica turu, toggle, Scheduled,
+    Google kartının 6 durumu, retry politikası); API 196/196 + 28/28. `flutter analyze`
+    temiz, kontrast bekçisi FAILURES: 0, açık+koyu tema tarayıcıda doğrulandı.
+    Uçtan uca kanıt: UI toggle → optimistic replica → outbox → sync push → MySQL
+    (`calendar_mirror_enabled=1` + `changed_fields:["calendar_mirror_enabled"]`).
+  - **Demo:** `.claude/launch.json` → `api-calendar-demo` (sahte Google kimlikleriyle
+    `configured: true`) + `app-web-built` (statik build servisi). Not: preview sandbox'ı
+    `flutter run`'ı çalıştıramıyor, o yüzden `flutter build web` + python http.server.
+    **Dikkat:** python http.server `Cache-Control` göndermiyor → tarayıcı bayat bundle
+    servis edebiliyor; yeniden build sonrası SW'yi kaldır + `fetch(..., {cache:'reload'})`
+    ile tazele, yoksa düzelttiğin hatayı hâlâ görürsün (yarım saatimi bu yedi).
 
 - **Epic 08 gelen dikey — Google → AllisWell (2026-07-15, OPH-074…076; ADR-0007):**
   - **OPH-074 webhook:** `POST /api/v1/integrations/google/webhook`. Google'ın
@@ -335,13 +391,12 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Sıradaki iş **OPH-077 — Apple EventKit platform channel** ama BLOKLU: imzalı bir Xcode
-   projesi olmadan iOS/macOS izin akışı ne kurulabilir ne doğrulanabilir (aşağıdaki
-   "Blocked / notes"). Kullanıcı Xcode/imza kurulumunu yapana kadar AGENTS.md §2'nin
-   "blocked ise sıradaki uygun işi al" kuralı geçerli → **OPH-079 — `docs/CALDAV.md`**
-   (iCloud app-specific password akışı, ETag sync, güvenlik uyarıları; v2 kapsamı, saf
-   doküman — altyapı istemez) veya kullanıcıdan onay alarak app tarafındaki "Google'ı
-   bağla" UI'ı (Epic 08'in eksik son parçası; API tarafı 070…076 ile hazır).
+2. Sıradaki iş **OPH-077 — Apple EventKit platform channel** ama HÂLÂ BLOKLU (aşağıdaki
+   "Blocked / notes" — kullanıcıdan Xcode/imza kurulumu bekliyor). **Epic 08'in bloksuz
+   her işi bitti**, yani AGENTS.md §2'nin "blocked ise sıradaki uygun işi al" kuralı artık
+   Epic 09'a taşıyor: **OPH-094** (ROADMAP.md — fazlardan üret, README'den bağla) +
+   **OPH-095** (v0.1.0 release notes + GitHub Actions release workflow). İkisi de altyapı
+   istemez ve birlikte tutarlı bir paket.
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.

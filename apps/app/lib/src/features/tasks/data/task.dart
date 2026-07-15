@@ -12,12 +12,15 @@ class Task {
     required this.requiresAcknowledgement,
     required this.sortOrder,
     required this.revision,
+    this.calendarMirrorEnabled = false,
     this.projectId,
     this.parentTaskId,
     this.description,
     this.colorRgb,
     this.startAt,
     this.dueAt,
+    this.scheduledStartAt,
+    this.scheduledEndAt,
     this.remindAt,
     this.snoozedUntil,
     this.completedAt,
@@ -37,12 +40,15 @@ class Task {
     colorRgb: json['colorRgb'] as String?,
     startAt: _date(json['startAt']),
     dueAt: _date(json['dueAt']),
+    scheduledStartAt: _date(json['scheduledStartAt']),
+    scheduledEndAt: _date(json['scheduledEndAt']),
     remindAt: _date(json['remindAt']),
     snoozedUntil: _date(json['snoozedUntil']),
     completedAt: _date(json['completedAt']),
     timezone: json['timezone'] as String,
     isUrgent: json['isUrgent'] as bool,
     requiresAcknowledgement: json['requiresAcknowledgement'] as bool,
+    calendarMirrorEnabled: (json['calendarMirrorEnabled'] as bool?) ?? false,
     sortOrder: json['sortOrder'] as int,
     revision: json['revision'] as int,
     tagIds: ((json['tagIds'] as List?) ?? const []).cast<String>(),
@@ -62,12 +68,27 @@ class Task {
   final String? colorRgb;
   final DateTime? startAt;
   final DateTime? dueAt;
+
+  /// When you plan to actually DO it — the calendar block (§7.1). Dragging the
+  /// mirrored event in Google lands here (OPH-076), which is why the detail
+  /// screen shows it.
+  final DateTime? scheduledStartAt;
+  final DateTime? scheduledEndAt;
   final DateTime? remindAt;
   final DateTime? snoozedUntil;
   final DateTime? completedAt;
+
+  /// What §7.1 would build an event from — nothing to mirror without one.
+  bool get hasCalendarTime =>
+      scheduledStartAt != null ||
+      dueAt != null ||
+      (isUrgent && remindAt != null);
   final String timezone;
   final bool isUrgent;
   final bool requiresAcknowledgement;
+
+  /// Opt-in: mirror this task into the connected calendar (OPH-072/081).
+  final bool calendarMirrorEnabled;
   final int sortOrder;
   final int revision;
   final List<String> tagIds;

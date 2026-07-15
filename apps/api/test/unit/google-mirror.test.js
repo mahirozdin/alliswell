@@ -46,6 +46,18 @@ describe('lib/mirror desiredEventForTask (OPH-072, §7.1)', () => {
     });
   });
 
+  it('never derives a backwards block from an end left behind by a moved start', () => {
+    // Google rejects end <= start with a 400 the queue can never retry away,
+    // so a stale scheduled_end_at falls back to the default slot.
+    const event = desiredEventForTask({
+      ...base,
+      scheduled_start_at: '2030-06-01T14:00:00.000Z',
+      scheduled_end_at: '2030-06-01T10:00:00.000Z',
+    });
+    expect(event.start.dateTime).toBe('2030-06-01T14:00:00.000Z');
+    expect(event.end.dateTime).toBe('2030-06-01T14:30:00.000Z');
+  });
+
   it('falls back: due slot, then urgent reminder block, both 30 minutes', () => {
     const due = desiredEventForTask({ ...base, due_at: '2030-06-01T12:00:00.000Z' });
     expect(due.start.dateTime).toBe('2030-06-01T12:00:00.000Z');

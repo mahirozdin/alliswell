@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
@@ -19,6 +20,7 @@ Future<ProviderScope> signedInApp() async {
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
+    retry: awRetry,
     overrides: [
       ...syncTestOverrides(),
       secretStoreProvider.overrideWithValue(store),

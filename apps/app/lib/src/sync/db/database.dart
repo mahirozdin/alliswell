@@ -70,6 +70,10 @@ class Tasks extends Table {
   IntColumn get estimatedMinutes => integer().nullable()();
   IntColumn get actualMinutes => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  // OPH-081 — opt-in mirroring to the connected calendar (BLUEPRINT §7.1).
+  // Added in schema v2; NOT NULL + default matches the server column.
+  BoolColumn get calendarMirrorEnabled =>
+      boolean().withDefault(const Constant(false))();
   DateTimeColumn get completedAt => dateTime().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
@@ -207,6 +211,27 @@ class SyncStates extends Table {
 class AwDatabase extends _$AwDatabase {
   AwDatabase(super.e);
 
+  /// Bump this for every schema change AND add the matching step below.
+  /// v1 → v2 (OPH-081): tasks.calendar_mirror_enabled.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
+  /// it is NOT expendable: it holds the outbox, so a failed open would strand
+  /// writes that never reached the server. Hence a real migration rather than
+  /// "wipe and re-pull".
+  ///
+  /// One `if (from < n)` per version, in order, each one narrow enough to be
+  /// obviously correct. (Drift's generated `stepByStep` would be nicer, but it
+  /// needs `drift_dev schema dump`, which this toolchain cannot run — see the
+  /// OPH-081 migration plan in docs/TASKS.md.)
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      // v2 (OPH-081): opt-in calendar mirroring. ADD COLUMN with a NOT NULL
+      // default — existing rows take `false`, nothing is rewritten.
+      if (from < 2) await m.addColumn(tasks, tasks.calendarMirrorEnabled);
+    },
+  );
 }

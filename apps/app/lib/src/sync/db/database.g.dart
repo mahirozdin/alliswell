@@ -1666,6 +1666,21 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _calendarMirrorEnabledMeta =
+      const VerificationMeta('calendarMirrorEnabled');
+  @override
+  late final GeneratedColumn<bool> calendarMirrorEnabled =
+      GeneratedColumn<bool>(
+        'calendar_mirror_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("calendar_mirror_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   static const VerificationMeta _completedAtMeta = const VerificationMeta(
     'completedAt',
   );
@@ -1735,6 +1750,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     estimatedMinutes,
     actualMinutes,
     sortOrder,
+    calendarMirrorEnabled,
     completedAt,
     revision,
     createdAt,
@@ -1914,6 +1930,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
+    if (data.containsKey('calendar_mirror_enabled')) {
+      context.handle(
+        _calendarMirrorEnabledMeta,
+        calendarMirrorEnabled.isAcceptableOrUnknown(
+          data['calendar_mirror_enabled']!,
+          _calendarMirrorEnabledMeta,
+        ),
+      );
+    }
     if (data.containsKey('completed_at')) {
       context.handle(
         _completedAtMeta,
@@ -2038,6 +2063,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
       )!,
+      calendarMirrorEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}calendar_mirror_enabled'],
+      )!,
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
@@ -2086,6 +2115,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
   final int? estimatedMinutes;
   final int? actualMinutes;
   final int sortOrder;
+  final bool calendarMirrorEnabled;
   final DateTime? completedAt;
   final int revision;
   final DateTime? createdAt;
@@ -2113,6 +2143,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     this.estimatedMinutes,
     this.actualMinutes,
     required this.sortOrder,
+    required this.calendarMirrorEnabled,
     this.completedAt,
     required this.revision,
     this.createdAt,
@@ -2169,6 +2200,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       map['actual_minutes'] = Variable<int>(actualMinutes);
     }
     map['sort_order'] = Variable<int>(sortOrder);
+    map['calendar_mirror_enabled'] = Variable<bool>(calendarMirrorEnabled);
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
     }
@@ -2232,6 +2264,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ? const Value.absent()
           : Value(actualMinutes),
       sortOrder: Value(sortOrder),
+      calendarMirrorEnabled: Value(calendarMirrorEnabled),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
@@ -2277,6 +2310,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       estimatedMinutes: serializer.fromJson<int?>(json['estimatedMinutes']),
       actualMinutes: serializer.fromJson<int?>(json['actualMinutes']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      calendarMirrorEnabled: serializer.fromJson<bool>(
+        json['calendarMirrorEnabled'],
+      ),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
@@ -2311,6 +2347,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       'estimatedMinutes': serializer.toJson<int?>(estimatedMinutes),
       'actualMinutes': serializer.toJson<int?>(actualMinutes),
       'sortOrder': serializer.toJson<int>(sortOrder),
+      'calendarMirrorEnabled': serializer.toJson<bool>(calendarMirrorEnabled),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
@@ -2341,6 +2378,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     Value<int?> estimatedMinutes = const Value.absent(),
     Value<int?> actualMinutes = const Value.absent(),
     int? sortOrder,
+    bool? calendarMirrorEnabled,
     Value<DateTime?> completedAt = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
@@ -2377,6 +2415,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
         ? actualMinutes.value
         : this.actualMinutes,
     sortOrder: sortOrder ?? this.sortOrder,
+    calendarMirrorEnabled: calendarMirrorEnabled ?? this.calendarMirrorEnabled,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
@@ -2426,6 +2465,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ? data.actualMinutes.value
           : this.actualMinutes,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      calendarMirrorEnabled: data.calendarMirrorEnabled.present
+          ? data.calendarMirrorEnabled.value
+          : this.calendarMirrorEnabled,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
@@ -2460,6 +2502,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ..write('estimatedMinutes: $estimatedMinutes, ')
           ..write('actualMinutes: $actualMinutes, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('calendarMirrorEnabled: $calendarMirrorEnabled, ')
           ..write('completedAt: $completedAt, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
@@ -2492,6 +2535,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     estimatedMinutes,
     actualMinutes,
     sortOrder,
+    calendarMirrorEnabled,
     completedAt,
     revision,
     createdAt,
@@ -2523,6 +2567,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           other.estimatedMinutes == this.estimatedMinutes &&
           other.actualMinutes == this.actualMinutes &&
           other.sortOrder == this.sortOrder &&
+          other.calendarMirrorEnabled == this.calendarMirrorEnabled &&
           other.completedAt == this.completedAt &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
@@ -2552,6 +2597,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
   final Value<int?> estimatedMinutes;
   final Value<int?> actualMinutes;
   final Value<int> sortOrder;
+  final Value<bool> calendarMirrorEnabled;
   final Value<DateTime?> completedAt;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
@@ -2580,6 +2626,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.estimatedMinutes = const Value.absent(),
     this.actualMinutes = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.calendarMirrorEnabled = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2609,6 +2656,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.estimatedMinutes = const Value.absent(),
     this.actualMinutes = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.calendarMirrorEnabled = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -2640,6 +2688,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Expression<int>? estimatedMinutes,
     Expression<int>? actualMinutes,
     Expression<int>? sortOrder,
+    Expression<bool>? calendarMirrorEnabled,
     Expression<DateTime>? completedAt,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
@@ -2670,6 +2719,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       if (estimatedMinutes != null) 'estimated_minutes': estimatedMinutes,
       if (actualMinutes != null) 'actual_minutes': actualMinutes,
       if (sortOrder != null) 'sort_order': sortOrder,
+      if (calendarMirrorEnabled != null)
+        'calendar_mirror_enabled': calendarMirrorEnabled,
       if (completedAt != null) 'completed_at': completedAt,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
@@ -2701,6 +2752,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Value<int?>? estimatedMinutes,
     Value<int?>? actualMinutes,
     Value<int>? sortOrder,
+    Value<bool>? calendarMirrorEnabled,
     Value<DateTime?>? completedAt,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
@@ -2731,6 +2783,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
       actualMinutes: actualMinutes ?? this.actualMinutes,
       sortOrder: sortOrder ?? this.sortOrder,
+      calendarMirrorEnabled:
+          calendarMirrorEnabled ?? this.calendarMirrorEnabled,
       completedAt: completedAt ?? this.completedAt,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
@@ -2810,6 +2864,11 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
+    if (calendarMirrorEnabled.present) {
+      map['calendar_mirror_enabled'] = Variable<bool>(
+        calendarMirrorEnabled.value,
+      );
+    }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
@@ -2853,6 +2912,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
           ..write('estimatedMinutes: $estimatedMinutes, ')
           ..write('actualMinutes: $actualMinutes, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('calendarMirrorEnabled: $calendarMirrorEnabled, ')
           ..write('completedAt: $completedAt, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
@@ -7192,6 +7252,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int?> estimatedMinutes,
       Value<int?> actualMinutes,
       Value<int> sortOrder,
+      Value<bool> calendarMirrorEnabled,
       Value<DateTime?> completedAt,
       Value<int> revision,
       Value<DateTime?> createdAt,
@@ -7222,6 +7283,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int?> estimatedMinutes,
       Value<int?> actualMinutes,
       Value<int> sortOrder,
+      Value<bool> calendarMirrorEnabled,
       Value<DateTime?> completedAt,
       Value<int> revision,
       Value<DateTime?> createdAt,
@@ -7344,6 +7406,11 @@ class $$TasksTableFilterComposer extends Composer<_$AwDatabase, $TasksTable> {
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get calendarMirrorEnabled => $composableBuilder(
+    column: $table.calendarMirrorEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7486,6 +7553,11 @@ class $$TasksTableOrderingComposer extends Composer<_$AwDatabase, $TasksTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get calendarMirrorEnabled => $composableBuilder(
+    column: $table.calendarMirrorEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => ColumnOrderings(column),
@@ -7602,6 +7674,11 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
+  GeneratedColumn<bool> get calendarMirrorEnabled => $composableBuilder(
+    column: $table.calendarMirrorEnabled,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => column,
@@ -7667,6 +7744,7 @@ class $$TasksTableTableManager
                 Value<int?> estimatedMinutes = const Value.absent(),
                 Value<int?> actualMinutes = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<bool> calendarMirrorEnabled = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
@@ -7695,6 +7773,7 @@ class $$TasksTableTableManager
                 estimatedMinutes: estimatedMinutes,
                 actualMinutes: actualMinutes,
                 sortOrder: sortOrder,
+                calendarMirrorEnabled: calendarMirrorEnabled,
                 completedAt: completedAt,
                 revision: revision,
                 createdAt: createdAt,
@@ -7725,6 +7804,7 @@ class $$TasksTableTableManager
                 Value<int?> estimatedMinutes = const Value.absent(),
                 Value<int?> actualMinutes = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<bool> calendarMirrorEnabled = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
@@ -7753,6 +7833,7 @@ class $$TasksTableTableManager
                 estimatedMinutes: estimatedMinutes,
                 actualMinutes: actualMinutes,
                 sortOrder: sortOrder,
+                calendarMirrorEnabled: calendarMirrorEnabled,
                 completedAt: completedAt,
                 revision: revision,
                 createdAt: createdAt,

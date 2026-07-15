@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/auth_api.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -20,6 +21,7 @@ void main() {
   Widget appWith(FakeHandler handler) {
     SharedPreferences.setMockInitialValues({});
     return ProviderScope(
+      retry: awRetry,
       overrides: [
         ...syncTestOverrides(),
         secretStoreProvider.overrideWithValue(InMemorySecretStore()),
