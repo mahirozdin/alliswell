@@ -93,6 +93,10 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
 ### App (`apps/app`)
 
 - Riverpod for state, go_router for navigation, feature-first folders under `lib/src/features/`.
+- **Local-first (Epic 06):** screens never call the REST APIs directly — reads watch the
+  drift replica through the feature stores (`features/*/data/*_store.dart`), writes go
+  through the same stores (optimistic row + outbox enqueue in one transaction, then poke
+  the engine). Widget tests that pump the app need `test/support/sync_overrides.dart`.
 - Keep widgets small; extract reusable UI to `lib/src/widgets/`.
 - `dart format .` before committing; zero `flutter analyze` warnings.
 - **UI = docs/DESIGN.md.** Theme/tokens live in `lib/src/theme/` (`buildAwTheme`, `AwTokens`,

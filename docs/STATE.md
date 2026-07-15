@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (Epic 05 kapandı; Epic 06 sunucu çekirdeği: OPH-050…053)
+**Last updated:** 2026-07-15 (Epic 06 istemci tarafı: OPH-054…056 — app artık local-first)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,11 +15,38 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 2 — Sync |
 | Current epic | **Epic 06 — Sync** |
-| ➡️ **Next task** | **OPH-054 — Flutter local DB (drift + outbox şeması)** |
-| Last completed | OPH-045 (Epic 05 ✔); OPH-050…053 (sync sunucu çekirdeği); Epic 04…01 |
+| ➡️ **Next task** | **OPH-057 — WebSocket live update (Socket.IO + Redis adapter)** |
+| Last completed | OPH-054…056 (local-first app); OPH-050…053 (sunucu); OPH-045 (Epic 05 ✔) |
 
 ## Recently completed
 
+- **Epic 06 client side — the app is local-first (2026-07-15, OPH-054…056):**
+  - **Replica:** drift database (`apps/app/lib/src/sync/db/database.dart`) mirrors all
+    synced entities + `pending_mutations` outbox + per-workspace `sync_states` (clientId,
+    lastRevision). Timestamps as ISO text (DATETIME(3) precision). Native: sqlite file via
+    background isolate; web: drift wasm — `web/sqlite3.wasm` + `web/drift_worker.js`
+    COMMITTED, pinned to sqlite3 3.4.0 / drift 2.34.2 (pubspec upgrade'inde birlikte
+    güncelle). Client id'ler `core/ulid.dart` ULID'leri.
+  - **Stores (OPH-054):** `features/{tasks,projects,notes}/data/*_store.dart` + tags —
+    okumalar drift watch stream'leri (provider adları/şekilleri korundu: ekranlara
+    dokunulmadı), yazmalar optimistic yerel satır + AYNI transaction'da outbox kaydı.
+    UI'dan REST çağrısı kalmadı (auth + /me hariç). Not araması offline substring
+    (FULLTEXT sunucuda kanonik kalır).
+  - **Engine (OPH-055):** `sync/sync_engine.dart` — sıralı batch push (≤100) →
+    sonuç işleme → sayfalı pull (`sync_applier.dart` upsert/tombstone). Tetikler:
+    yazma sonrası debounce, başlangıç, 60 sn periyodik fallback (OPH-057 socket'i
+    bunu ikincilleştirecek). Hata → outbox durur, exponential backoff (1s→60s cap).
+  - **Conflicts (OPH-056):** applied-dışı sonuçlar `SyncConflict` stream'i →
+    shell snackbar. `NOTE_CONTENT_CONFLICT` → yerel içerik "(çakışan kopya)" notu
+    olarak yeni create ile kuyruğa girer; pull orijinali sunucu haliyle geri yükler.
+  - **Tests:** `test/sync/` (şema round-trip, applier, outbox/backoff, conflict copy)
+    + widget testleri FakeApi'nin yeni `/sync/pull`+`/sync/push` uçlarıyla tam döngüyü
+    sürüyor. `flutter analyze` temiz, **80/80** yeşil. Widget testleri
+    `test/support/sync_overrides.dart` kullanmalı (in-memory db —
+    `closeStreamsSynchronously: true`, drift'in stream-cache Timer'ı flutter_test'in
+    pending-timer kontrolüne takılır; pull timer kapalı, debounce 0).
+  - Not: replica sign-out'ta silinmiyor (gelecek sertleştirme, web token notuyla
+    aynı sınıf); Socket.IO fanout OPH-057'de.
 - **Epic 05 closed + Epic 06 server core (2026-07-15, OPH-045 + OPH-050…053):**
   - **OPH-045:** `GET /notes/:id/export?format=md` streams `text/markdown` (attachment,
     slugified filename) converted server-side from the canonical delta — `deltaToMarkdown`
@@ -156,11 +183,12 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-054** per its checklist in [TASKS.md](TASKS.md): drift schema mirroring
-   the server entities + a `pending_mutations` outbox table; repositories read local-first.
-   The server contract to mirror is live in `apps/api/src/routes/sync.js` —
-   `GET /sync/pull` (coalesced snapshots + tombstones, `hasMore`) and `POST /sync/push`
-   (statuses `applied`/`conflict`/`rejected`, `discardedFields`, `replayed`).
+2. Implement **OPH-057** per its checklist in [TASKS.md](TASKS.md): Socket.IO server
+   (auth on connect, rooms per workspace, Redis adapter) emitting
+   `sync:changed {workspaceId, toRevision}` after API/push writes; the Flutter client
+   listens and calls `SyncEngine.syncNow()` (see `apps/app/lib/src/sync/sync_engine.dart`
+   — the 60 s periodic pull then becomes the fallback). The socket must never carry
+   entity payloads (ARCHITECTURE §5).
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.

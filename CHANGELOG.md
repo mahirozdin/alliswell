@@ -66,6 +66,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- App — local-first (OPH-054…056): the app now reads and writes a local drift/SQLite
+  replica of the workspace (native file storage; sqlite-wasm with OPFS/IndexedDB on web)
+  and syncs in the background. Every edit lands instantly, works offline, and is queued in
+  a durable outbox that pushes in order with exponential backoff; pulls apply batched
+  snapshots and tombstones. Server-refused or newer-wins-trimmed writes surface as
+  snackbars, and a note edited on two devices at once keeps your version as a
+  "(çakışan kopya)" note instead of losing anything. Feature data now streams live from
+  the replica everywhere (Home, Inbox, Calendar, Projects, Notes, tags, task detail).
 - Sync protocol — server core (OPH-050…053): `GET /api/v1/sync/pull` streams batched,
   per-entity-coalesced snapshots and delete tombstones since a workspace revision;
   `POST /api/v1/sync/push` applies offline mutation batches (project/tag/task/note/checklist

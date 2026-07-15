@@ -415,21 +415,57 @@ original revision, no re-application); idempotency is scoped per `clientId` (two
 reuse a mutation id) and concurrent duplicates settle on the `uq_client_mutation` unique
 key. ✔
 
-### OPH-054 — Flutter local DB
+### OPH-054 — Flutter local DB ✅
 
-- [ ] drift schema mirroring server entities + `pending_mutations` outbox table
-- [ ] Repository layer reads local-first
-- [ ] Tests
+- [x] drift schema mirroring server entities + `pending_mutations` outbox table
+- [x] Repository layer reads local-first
+- [x] Tests
 
-### OPH-055 — Flutter outbox
+Acceptance notes: `lib/src/sync/db/database.dart` mirrors every synced entity
+(projects/tags/tasks + tag joins/checklist_items/notes + links/reminders) plus
+`pending_mutations` and a per-workspace `sync_states` cursor (clientId +
+lastRevision); timestamps stored as ISO text so DATETIME(3) precision
+round-trips. Native platforms open a background-isolate sqlite file
+(app-support dir); web uses drift's wasm setup — `web/sqlite3.wasm` +
+`web/drift_worker.js` are committed, pinned to the resolved package versions
+(bump together with pubspec). Feature stores (`features/*/data/*_store.dart`)
+expose drift watch streams; every provider the UI consumed kept its name and
+value shape, so screens re-render live from the replica. Client-generated
+ULIDs (`core/ulid.dart`) give offline creates their identity. Offline note
+search is a substring scan over title+plainText (server FULLTEXT remains
+canonical ranking). ✔
 
-- [ ] Mutation enqueue on every local write; background push with retry/backoff
-- [ ] Tests
+### OPH-055 — Flutter outbox ✅
 
-### OPH-056 — Conflict handling
+- [x] Mutation enqueue on every local write; background push with retry/backoff
+- [x] Tests
 
-- [ ] Server conflict statuses surfaced; note conflict-copy flow (v1 policy)
-- [ ] Tests
+Acceptance notes: every store write commits the optimistic row change AND its
+outbox row in ONE drift transaction (`sync/outbox.dart`; the row id doubles as
+the server `clientMutationId`, so retries stay idempotent end to end).
+`SyncEngine` (`sync/sync_engine.dart`) drains the outbox in order (batches of
+≤100), applies per-mutation results, then pulls the workspace forward
+(coalesced snapshots/tombstones applier in `sync/sync_applier.dart`).
+Triggers: debounced poke after every local write, on engine start, and a
+periodic fallback pull (60 s — OPH-057's socket will demote it). Failures keep
+the outbox intact and retry with exponential backoff (1s→2s→…→60s cap);
+`attempts`/`lastError` are recorded on the rows. Widget tests run the full
+loop against the FakeApi, which now speaks `/sync/pull` + `/sync/push`. ✔
+
+### OPH-056 — Conflict handling ✅
+
+- [x] Server conflict statuses surfaced; note conflict-copy flow (v1 policy)
+- [x] Tests
+
+Acceptance notes: push results other than a clean `applied` (conflict,
+rejected, or applied-with-`discardedFields`) emit a `SyncConflict` on the
+engine's stream; the shell listens (`syncConflictsProvider`) and shows a
+snackbar naming what happened — by then the replica already shows the
+server-canonical state via pull. `NOTE_CONTENT_CONFLICT` runs the §6.5 v1
+policy client-side: the local content becomes a NEW note titled
+"… (çakışan kopya)" whose create is enqueued (nothing typed is ever lost),
+while the next pull restores the server content into the original note.
+Replayed mutations never re-surface a conflict. ✔
 
 ### OPH-057 — WebSocket live update
 

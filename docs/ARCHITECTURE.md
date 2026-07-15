@@ -74,7 +74,7 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 - FULLTEXT indexes on tasks(title, description) and notes(title, plain_text) for search.
 - Migrations: knex, append-only, ESM `up`/`down`. Full table list in [TASKS.md](TASKS.md) Epic 02.
 
-## 5. Sync engine (server core live — client side is Phase 2's remainder)
+## 5. Sync engine (live end to end — socket fanout is the remainder)
 
 Per BLUEPRINT §6: workspace-scoped monotonic revision log (`sync_revisions`; the
 `recordSyncWrite`/`withRevision` helper in `apps/api/src/db/sync.js` runs inside every entity
@@ -105,8 +105,12 @@ channel), URL-field marker `alliswell://task/{id}`; CalDAV connector deferred to
   `theme.dart`); glass chrome + aurora background in `lib/src/widgets/glass.dart`; shared
   empty/error states in `lib/src/widgets/status_views.dart`; palette guard
   `scripts/design/contrast.py`. Widgets never hardcode colors.
-- **Local-first (Phase 2):** drift/SQLite replica + outbox; repositories read local, sync in
-  background. UI subscribes to local DB streams.
+- **Local-first (live since OPH-054…056):** drift/SQLite replica (`lib/src/sync/db/`;
+  wasm + committed `web/sqlite3.wasm`/`web/drift_worker.js` on web) + `pending_mutations`
+  outbox. Feature stores (`features/*/data/*_store.dart`) write optimistically and enqueue
+  in one transaction; `SyncEngine` pushes in order (backoff on failure) and pulls
+  snapshots/tombstones; conflicts surface via a stream (note content → "çakışan kopya").
+  UI subscribes to local DB streams — no REST calls from screens (auth + `/me` aside).
 - **Notifications (Phase 3):** flutter_local_notifications scheduled from local data; push (FCM)
   only as a supplementary wake-up. Urgent alarms use action buttons (complete/snooze presets).
 - Feature-first folders: `lib/src/features/<domain>/{data,providers,ui}` as epics land.
