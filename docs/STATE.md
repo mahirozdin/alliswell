@@ -15,7 +15,8 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 4 — Calendar |
 | Current epic | **Epic 08 — Calendar** |
-| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** — ⚠️ HÂLÂ BLOKLU, senden Xcode/imza kurulumu bekliyor (aşağıdaki bloklu notlar). Epic 08'in bloksuz her işi bitti. Bloklu kalırsa sıradaki uygun iş: **Epic 09 — OPH-094 (ROADMAP.md)** + **OPH-095 (v0.1.0 release notes + release workflow)**, ikisi de altyapı istemez |
+| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** — ✅ ARTIK BLOKLU DEĞİL (2026-07-15 ölçümü: imza hazır, cihazlar bağlanıyor — bloklu notlarına bak). Doğrudan başlanabilir. |
+| ⏳ Kullanıcıdan bekleyen TEK şey | **Google OAuth kimlik bilgileri** (`GOOGLE_CLIENT_ID`/`SECRET` → `.env`). Onlar olmadan OPH-070…081 ile yazılan Google Takvim dikeyi çalışmıyor: sunucu `GOOGLE_NOT_CONFIGURED` diyor, app "bu sunucuda kurulu değil" gösteriyor. Kod tarafı hazır ve testli; yalnız kimlik eksik. |
 | Last completed | OPH-079…081 (CalDAV doc + Google bağlantı UI'ı + takvim toggle ✔); OPH-074…076 (Google inbound ✔, ADR-0007) |
 
 ## Recently completed
@@ -368,12 +369,14 @@ against real MySQL 8.4 and all unit+integration tests pass.
   service) still owns port 3306 → repo `.env` uses `MYSQL_PORT=3307`/`DATABASE_PORT=3307`.
 - ~~`JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` placeholders~~ — done in OPH-020: config falls
   back to labeled insecure dev secrets, production refuses placeholders/short/identical values.
-- **⚠️ OPH-077/078 (Apple EventKit) BLOKLU — sıradaki iş bu ama başlanamaz.** Platform
-  channel'ın izin akışı (`NSCalendarsFullAccessUsageDescription` + entitlement) imzalı bir
-  Xcode projesi olmadan ne kurulabilir ne de doğrulanabilir; simülatörde bile EventKit izni
-  gerçek bir bundle kimliği ister. **Kullanıcıdan gereken:** Xcode + Apple Developer imza
-  kurulumu (Epic 07'nin iOS time-sensitive capability adımıyla aynı gereksinim — ikisi tek
-  oturumda halledilebilir). O gelene kadar Epic 08'in kalanı: OPH-079 (CalDAV doc, bloksuz).
+- ~~OPH-077/078 (Apple EventKit) Xcode imzasına bloklu~~ — **2026-07-15'te ölçüldü: BLOKLU
+  DEĞİL, not bayatmış.** `flutter doctor` tamamen yeşil (Xcode 26.2 ✓, Android SDK 37 ✓),
+  `ios/Runner.xcodeproj` içinde `DEVELOPMENT_TEAM = QB8VR32GWN` + `CODE_SIGN_STYLE = Automatic`
+  zaten ayarlı, provisioning profile'lar mevcut, emülatörler (Pixel 9 Pro XL, Medium Phone
+  API 36.1, iOS Simulator) ve gerçek bir iPhone (iOS 26.5, kablosuz) bağlanabiliyor.
+  **OPH-077/078 hemen başlanabilir.** Tek eksik: `ios/Runner/Runner.entitlements` YOK →
+  Time Sensitive Notifications capability henüz eklenmemiş (Xcode'da 3 tık; macOS
+  entitlement'ları zaten var). Ders: bir "bloklu" notunu devralmadan önce ölç.
 - **Epic 07 cihaz turu bekliyor:** exact teslim davranışı (Doze, alarm ikonu, Focus
   delme, aksiyon butonları) yalnız cihaz/emülatörde gözlenebilir — mantık katmanı tam
   unit-testli; bir Android + bir iOS/macOS cihazda NOTIFICATIONS.md senaryolarını
