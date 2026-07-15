@@ -467,20 +467,62 @@ policy client-side: the local content becomes a NEW note titled
 while the next pull restores the server content into the original note.
 Replayed mutations never re-surface a conflict. ✔
 
-### OPH-057 — WebSocket live update
+### OPH-057 — WebSocket live update ✅
 
-- [ ] Socket.IO server (auth on connect, rooms per workspace) + Redis adapter
-- [ ] `sync:changed {workspaceId, toRevision}` event on push/API writes → clients pull
-- [ ] Flutter socket client triggering pull; tests
+- [x] Socket.IO server (auth on connect, rooms per workspace) + Redis adapter
+- [x] `sync:changed {workspaceId, toRevision}` event on push/API writes → clients pull
+- [x] Flutter socket client triggering pull; tests
+
+Acceptance notes: `src/plugins/socket.js` rides the same HTTP listener; the
+access token authenticates the handshake (`auth: { token }`) and the socket
+joins one room per workspace membership (snapshotted at connect — clients
+reconnect to pick up new workspaces; the JWT is verified at connect only,
+which is safe because the event carries no data and the pull re-authenticates
+over HTTP). `recordSyncWrite` announces AFTER its transaction commits via an
+in-process emitter, coalesced per workspace per tick (one event with the top
+revision per burst) — so REST writes and sync pushes both fan out. The Redis
+adapter attaches when Redis is up (its pub/sub pair connects eagerly and
+queues, unlike the fail-fast health-check client); single-node mode
+otherwise. App side: `sync_socket.dart` + `syncSocketProvider` — one socket
+per session (rebuilt on token rotation, `forceNew`), a matching
+`sync:changed` calls `SyncEngine.syncNow()`, and the 60 s periodic pull is
+now the fallback. Widget tests drive a captured fake socket (a foreign edit
+appears in the UI with no local write); server tests cover auth rejection,
+room isolation, burst coalescing and push fanout, plus an integration test
+over real MySQL/Redis with the adapter attached. ✔
+
+Epic 06 acceptance: the full BLUEPRINT §6 loop is live — offline edits queue
+in the outbox, push idempotently with LWW conflict policy, pulls converge
+every replica, and other devices hear about it within a socket round-trip. ✔
 
 ---
 
 ## Epic 07 — Notifications (Phase 3)
 
-### OPH-060 — Notification device registry (Very important detail to know: Urgent notifications needs highest priority and exactly-on-time delivery,  so need to make research on the best way to implement this on iOS and Android atleast 5 references to research and implement this)
+### OPH-060 — Notification device registry ✅ (Very important detail to know: Urgent notifications needs highest priority and exactly-on-time delivery,  so need to make research on the best way to implement this on iOS and Android atleast 5 references to research and implement this)
 
-- [ ] `notification_devices` migration + register/unregister endpoints (platform, push token?)
-- [ ] Tests
+- [x] `notification_devices` migration + register/unregister endpoints (platform, push token?)
+- [x] Research: exactly-on-time, highest-priority delivery on iOS/Android (≥5 references)
+- [x] Tests
+
+Acceptance notes: one row per install, keyed by a device-generated ULID (the
+app will reuse its sync client id). `PUT /notification-devices/:id` is the
+register AND heartbeat (idempotent upsert; 201 on first sight, 200 after;
+untouched fields persist; a device signing into another account is taken over
+by it). `GET` lists only the caller's devices (last-seen first); `DELETE`
+always answers 204 (sign-out must never fail) and cannot touch foreign rows.
+`push_token` is optional — v1 notifications are local; not a synced entity.
+Unit + real-MySQL integration tests; migration verified
+apply→rollback→re-apply.
+
+**Research delivered in [NOTIFICATIONS.md](NOTIFICATIONS.md)** (11 references,
+binding plan for OPH-061…064). Headline decisions: Android urgent →
+`setAlarmClock` (never deferred, Doze-exempt) + `SCHEDULE_EXACT_ALARM`
+runtime flow (denied by default on Android 14) with `USE_EXACT_ALARM` as a
+Play-policy option; iOS urgent → `timeSensitive` interruption level +
+scheduling window ≤40 of the 64 pending slots; re-alert-until-acknowledged is
+a pre-scheduled chain on both platforms (iOS has no background timers);
+critical-alerts entitlement is a flagged stretch goal. ✔
 
 ### OPH-061 — Local notification scheduling
 

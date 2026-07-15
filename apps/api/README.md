@@ -48,6 +48,14 @@ Push conflict policy: field-level last-write-wins for metadata (only FOREIGN wri
 conflict; the newer wall clock wins per field), document-level lock for note content.
 `SYNC_*` error codes are listed in `src/routes/sync.js`.
 
+Live updates (OPH-057): a Socket.IO server on the same listener. Authenticate the
+handshake with `auth: { token: <access token> }`; you are joined to a room per workspace
+membership and receive `sync:changed {workspaceId, toRevision}` after every committed
+write — respond by pulling. Notification devices (OPH-060, Epic 07):
+`PUT/GET/DELETE /api/v1/notification-devices[/:id]` register/heartbeat/unregister an
+install; delivery strategy is documented in
+[docs/NOTIFICATIONS.md](../../docs/NOTIFICATIONS.md).
+
 ## Layout
 
 ```txt

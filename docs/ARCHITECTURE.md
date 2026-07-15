@@ -74,7 +74,7 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 - FULLTEXT indexes on tasks(title, description) and notes(title, plain_text) for search.
 - Migrations: knex, append-only, ESM `up`/`down`. Full table list in [TASKS.md](TASKS.md) Epic 02.
 
-## 5. Sync engine (live end to end — socket fanout is the remainder)
+## 5. Sync engine (live end to end)
 
 Per BLUEPRINT §6: workspace-scoped monotonic revision log (`sync_revisions`; the
 `recordSyncWrite`/`withRevision` helper in `apps/api/src/db/sync.js` runs inside every entity
@@ -85,9 +85,11 @@ client mutation batches idempotently — `client_mutations` records every outcom
 field-level LWW for metadata (foreign changes detected via the changed-fields log with own
 writes attributed through recorded result revisions; newer wall clock wins), document-level
 optimistic lock for note content (`NOTE_CONTENT_CONFLICT` → client makes a conflict copy).
-Still to come (OPH-057): Socket.IO (Redis adapter) broadcasting
-`sync:changed {workspaceId, toRevision}`; clients respond by pulling — the socket never carries
-entity payloads (keeps ordering and authz in one place: the pull endpoint).
+Live updates (OPH-057): Socket.IO on the API listener (`src/plugins/socket.js`, Redis
+adapter across instances) broadcasts `sync:changed {workspaceId, toRevision}` to workspace
+rooms after commits; clients respond by pulling — the socket never carries entity payloads
+(keeps ordering and authz in one place: the pull endpoint). The app's periodic pull remains
+as the fallback for missed sockets.
 
 ## 6. Calendar sync (Phase 4 — designed, not yet built)
 

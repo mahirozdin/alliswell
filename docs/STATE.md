@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (Epic 06 istemci tarafı: OPH-054…056 — app artık local-first)
+**Last updated:** 2026-07-15 (Epic 06 ✔ kapandı: OPH-057 canlı fanout; OPH-060 cihaz kaydı + bildirim araştırması)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,13 +13,40 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | Phase 2 — Sync |
-| Current epic | **Epic 06 — Sync** |
-| ➡️ **Next task** | **OPH-057 — WebSocket live update (Socket.IO + Redis adapter)** |
-| Last completed | OPH-054…056 (local-first app); OPH-050…053 (sunucu); OPH-045 (Epic 05 ✔) |
+| Current phase | Phase 3 — Notifications |
+| Current epic | **Epic 07 — Notifications** |
+| ➡️ **Next task** | **OPH-061 — Local notification scheduling** (plan: [NOTIFICATIONS.md](NOTIFICATIONS.md); cihazda doğrulama gerekir) |
+| Last completed | OPH-057 (Epic 06 ✔), OPH-060 + bildirim araştırması; OPH-054…056; OPH-050…053 |
 
 ## Recently completed
 
+- **Epic 06 closed + Epic 07 opened (2026-07-15, OPH-057 + OPH-060):**
+  - **OPH-057 canlı fanout:** `src/plugins/socket.js` — Socket.IO aynı HTTP
+    listener'da; handshake'te access token doğrulanır, soket üyelik başına
+    `ws:<id>` odalarına katılır (connect anında snapshot; yeni workspace →
+    reconnect). `recordSyncWrite` commit SONRASI in-process emitter'a yayınlar
+    (workspace başına tick'te TEK event, en yüksek revizyonla — REST + sync
+    push ikisi de duyurulur). Redis hazırsa adapter bağlanır (pub/sub çifti
+    eager connect + kuyruklu; health-check istemcisi gibi fail-fast DEĞİL),
+    değilse tek-node mod. App: `sync_socket.dart` + `syncSocketProvider` —
+    oturum başına bir soket (token rotasyonunda yeniden kurulur, forceNew),
+    eşleşen `sync:changed` → `SyncEngine.syncNow()`; 60 sn periyodik pull
+    artık yedek. Testler: sunucu 5 birim (auth reddi, oda izolasyonu, burst
+    coalescing, push fanout) + Redis-adapter'lı entegrasyon; app'te sahte
+    soketle canlı-güncelleme widget testi (yerel yazma OLMADAN yabancı
+    düzenleme UI'a düşer). Dikkat: `sync:ready` connect ack'iyle aynı TCP
+    segmentinde gelebilir — istemci dinleyicileri handshake'ten ÖNCE bağlanmalı.
+  - **OPH-060 cihaz kaydı:** `notification_devices` migration'ı +
+    `PUT/GET/DELETE /api/v1/notification-devices[/:id]` (kayıt=heartbeat
+    upsert, 201/200; hesap değişiminde cihaz devralınır; DELETE her zaman 204).
+    push_token opsiyonel (v1 bildirimleri yerel). Senkron varlık DEĞİL.
+  - **Bildirim araştırması (OPH-060 notu):** [NOTIFICATIONS.md](NOTIFICATIONS.md)
+    — 11 kaynaklı, OPH-061…064 için bağlayıcı plan. Özet: Android acil →
+    `setAlarmClock` (asla ertelenmez, Doze'dan muaf) + Android 14'te varsayılan
+    reddedilen `SCHEDULE_EXACT_ALARM` akışı; iOS acil → `timeSensitive` +
+    64-bekleyen-bildirim sınırına karşı ≤40'lık pencere yöneticisi;
+    onaylanana-dek-tekrar zili iki platformda da ÖN-planlanmış zincir;
+    critical-alerts entitlement bayraklı hedef.
 - **Epic 06 client side — the app is local-first (2026-07-15, OPH-054…056):**
   - **Replica:** drift database (`apps/app/lib/src/sync/db/database.dart`) mirrors all
     synced entities + `pending_mutations` outbox + per-workspace `sync_states` (clientId,
@@ -183,12 +210,13 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-057** per its checklist in [TASKS.md](TASKS.md): Socket.IO server
-   (auth on connect, rooms per workspace, Redis adapter) emitting
-   `sync:changed {workspaceId, toRevision}` after API/push writes; the Flutter client
-   listens and calls `SyncEngine.syncNow()` (see `apps/app/lib/src/sync/sync_engine.dart`
-   — the 60 s periodic pull then becomes the fallback). The socket must never carry
-   entity payloads (ARCHITECTURE §5).
+2. Implement **OPH-061** per its checklist in [TASKS.md](TASKS.md) and the binding plan
+   in [NOTIFICATIONS.md](NOTIFICATIONS.md) §4: a `NotificationScheduler` that watches the
+   replica's reminders stream and diffs against `pendingNotificationRequests` — urgent →
+   `alarmClock`/`timeSensitive`, normal → `exactAllowWhileIdle`; iOS scheduling window
+   ≤40; permission flows with graceful degradation. NOTE: exact-delivery behavior needs a
+   device/simulator pass — unit-test the diffing/window logic, document what was verified
+   where.
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.

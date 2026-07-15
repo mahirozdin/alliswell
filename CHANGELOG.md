@@ -66,6 +66,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Live sync fanout (OPH-057) — Epic 06 complete: a Socket.IO server rides the API's HTTP
+  listener; clients authenticate with their access token, join a room per workspace, and
+  receive `sync:changed {workspaceId, toRevision}` the moment any write commits (REST and
+  offline push batches alike, coalesced per workspace; Redis adapter fans out across API
+  instances). The app opens one socket per session and pulls immediately on a matching
+  event — edits from another device now appear within a round-trip, with the 60-second
+  periodic pull demoted to a fallback. The socket never carries entity data.
+- Notification device registry (OPH-060): `notification_devices` table plus
+  `PUT/GET/DELETE /api/v1/notification-devices[/:id]` — registration doubles as a
+  heartbeat (idempotent upsert), devices follow account switches, and unregistering is
+  always a 204 so sign-out can't fail. Push tokens are optional: v1 notifications are
+  local. Ships with [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) — the researched,
+  11-reference plan for exactly-on-time urgent delivery (Android `setAlarmClock` +
+  exact-alarm permission flows; iOS time-sensitive interruption level + 64-slot
+  scheduling window; pre-scheduled re-alert chains).
 - App — local-first (OPH-054…056): the app now reads and writes a local drift/SQLite
   replica of the workspace (native file storage; sqlite-wasm with OPFS/IndexedDB on web)
   and syncs in the background. Every edit lands instantly, works offline, and is queued in
