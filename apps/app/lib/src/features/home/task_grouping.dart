@@ -25,15 +25,44 @@ extension HomeBucketLabel on HomeBucket {
   };
 }
 
+/// One row of Home. §12 calls Home "the single chronological view where
+/// everything shows" — so a 10:00 meeting sorts above a 16:00 task rather than
+/// living in a separate list (OPH-084).
+sealed class HomeItem {
+  const HomeItem();
+
+  /// The instant this row sits at. Null only for dateless tasks, which sink to
+  /// the bottom of their group.
+  DateTime? get at;
+}
+
+class TaskItem extends HomeItem {
+  const TaskItem(this.task);
+
+  final Task task;
+
+  @override
+  DateTime? get at => task.dueAt;
+}
+
+class EventItem extends HomeItem {
+  const EventItem(this.event);
+
+  final ExternalEvent event;
+
+  @override
+  DateTime? get at => event.startsAt;
+}
+
 class HomeGroup {
   const HomeGroup({
     required this.bucket,
-    required this.tasks,
+    required this.items,
     required this.dimmed,
   });
 
   final HomeBucket bucket;
-  final List<Task> tasks;
+  final List<HomeItem> items;
 
   /// True when a day is selected and this group is not that day's group.
   final bool dimmed;
@@ -44,49 +73,82 @@ DateTime dayOf(DateTime value) {
   return DateTime(local.year, local.month, local.day);
 }
 
-/// Groups open tasks for the home list. `selectedDay` (a local calendar day)
-/// pulls that day's tasks into a highlighted first group; everything else
-/// keeps its chronological order but renders dimmed.
+/// Groups Home's rows. `selectedDay` (a local calendar day) pulls that day into
+/// a highlighted first group; everything else keeps its chronological order but
+/// renders dimmed.
+///
+/// Since OPH-084 the user's own calendar rides along (§12: "everything shows").
+/// Two rules keep events honest:
+///
+/// - **Events never land in Overdue.** A meeting that already happened is not a
+///   debt you owe — Overdue means "you still have to do this". Past events drop
+///   out of Home entirely.
+/// - **An ongoing event belongs to today**, not to the day it started: a trip
+///   that began on Monday and runs through Friday is something happening NOW.
+///   It appears once, at the first day it touches that has not passed.
 List<HomeGroup> groupTasksForHome(
   List<Task> tasks, {
   required DateTime now,
   DateTime? selectedDay,
+  List<ExternalEvent> events = const [],
 }) {
   final today = DateTime(now.year, now.month, now.day);
   final tomorrow = today.add(const Duration(days: 1));
   final weekEnd = today.add(const Duration(days: 7));
 
-  final byBucket = <HomeBucket, List<Task>>{
+  final byBucket = <HomeBucket, List<HomeItem>>{
     for (final b in HomeBucket.values) b: [],
   };
+
+  HomeBucket? bucketForDay(DateTime day) {
+    if (day.isBefore(today)) return null; // caller decides what "past" means
+    if (day == today) return HomeBucket.today;
+    if (day == tomorrow) return HomeBucket.tomorrow;
+    if (day.isBefore(weekEnd)) return HomeBucket.thisWeek;
+    return HomeBucket.later;
+  }
 
   for (final task in tasks) {
     final due = task.dueAt;
     if (selectedDay != null && due != null && dayOf(due) == selectedDay) {
-      byBucket[HomeBucket.selectedDay]!.add(task);
+      byBucket[HomeBucket.selectedDay]!.add(TaskItem(task));
       continue;
     }
     if (due == null) {
-      byBucket[HomeBucket.noDate]!.add(task);
-    } else if (dayOf(due).isBefore(today)) {
-      byBucket[HomeBucket.overdue]!.add(task);
-    } else if (dayOf(due) == today) {
-      byBucket[HomeBucket.today]!.add(task);
-    } else if (dayOf(due) == tomorrow) {
-      byBucket[HomeBucket.tomorrow]!.add(task);
-    } else if (dayOf(due).isBefore(weekEnd)) {
-      byBucket[HomeBucket.thisWeek]!.add(task);
+      byBucket[HomeBucket.noDate]!.add(TaskItem(task));
     } else {
-      byBucket[HomeBucket.later]!.add(task);
+      // A task's deadline CAN be in the past — that is the whole point of
+      // Overdue.
+      final bucket = bucketForDay(dayOf(due)) ?? HomeBucket.overdue;
+      byBucket[bucket]!.add(TaskItem(task));
     }
   }
 
-  int byDue(Task a, Task b) {
-    final [da, db] = [a.dueAt, b.dueAt];
-    if (da == null && db == null) return a.sortOrder.compareTo(b.sortOrder);
-    if (da == null) return 1;
-    if (db == null) return -1;
-    return da.compareTo(db);
+  for (final event in events) {
+    final days = daysOfEvent(event).toList();
+    if (selectedDay != null && days.contains(selectedDay)) {
+      byBucket[HomeBucket.selectedDay]!.add(EventItem(event));
+      continue;
+    }
+    // The first day it touches that has not passed: an ongoing multi-day event
+    // is happening today, and a finished one is history, not a debt.
+    final upcoming = days.where((d) => !d.isBefore(today));
+    if (upcoming.isEmpty) continue;
+    final bucket = bucketForDay(upcoming.first);
+    if (bucket != null) byBucket[bucket]!.add(EventItem(event));
+  }
+
+  int chronologically(HomeItem a, HomeItem b) {
+    final [ta, tb] = [a.at, b.at];
+    if (ta == null && tb == null) {
+      // Dateless tasks only — keep their manual order.
+      final sa = a is TaskItem ? a.task.sortOrder : 0;
+      final sb = b is TaskItem ? b.task.sortOrder : 0;
+      return sa.compareTo(sb);
+    }
+    if (ta == null) return 1; // undated sinks
+    if (tb == null) return -1;
+    return ta.compareTo(tb);
   }
 
   final order = [
@@ -104,7 +166,7 @@ List<HomeGroup> groupTasksForHome(
       if (byBucket[bucket]!.isNotEmpty)
         HomeGroup(
           bucket: bucket,
-          tasks: byBucket[bucket]!..sort(byDue),
+          items: byBucket[bucket]!..sort(chronologically),
           dimmed: selectedDay != null && bucket != HomeBucket.selectedDay,
         ),
   ];

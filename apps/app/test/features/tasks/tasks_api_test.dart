@@ -122,7 +122,7 @@ void main() {
       HomeBucket.noDate,
     ]);
     expect(groups.every((g) => !g.dimmed), isTrue);
-    expect(groups.first.tasks.single.id, 'overdue');
+    expect((groups.first.items.single as TaskItem).task.id, 'overdue');
   });
 
   test('a selected day pulls its group first and dims the rest', () {
@@ -139,7 +139,7 @@ void main() {
 
     expect(groups.first.bucket, HomeBucket.selectedDay);
     expect(groups.first.dimmed, isFalse);
-    expect(groups.first.tasks.single.id, 'selected');
+    expect((groups.first.items.single as TaskItem).task.id, 'selected');
     expect(groups.skip(1).every((g) => g.dimmed), isTrue);
   });
 

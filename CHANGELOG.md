@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added (2026-07-16, OPH-084)
+
+- **Your meetings now sit in Home's chronological list, beside your tasks** — a 10:00 meeting
+  above a 16:00 task, in one stream, which is what §12 means by "the single chronological view
+  where everything shows". The month grid marks days that carry only a meeting too.
+  Two rules keep it honest: a meeting that already happened never lands in **Overdue** (that
+  means "you still owe this" — a past meeting is history, not a debt), and an ongoing
+  multi-day event belongs to **Today**, once, rather than repeating into every bucket it spans.
+
 ### Added (your calendar, in AllisWell — 2026-07-16, OPH-082/083)
 
 - **Google Calendar events now show up in AllisWell** (ADR-0008). Connecting an account used

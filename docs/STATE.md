@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-16 (OPH-082/083 — kendi Google takvimin artık AllisWell'de; ADR-0008. Gerçek hesapta canlı doğrulandı)
+**Last updated:** 2026-07-16 (OPH-084 — takvimin Home'un kronolojik akışında; OPH-082/083 ADR-0008)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,11 +15,27 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 4 — Calendar |
 | Current epic | **Epic 08 — Calendar** |
-| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** — ✅ ARTIK BLOKLU DEĞİL (2026-07-15 ölçümü: imza hazır, cihazlar bağlanıyor — bloklu notlarına bak). Doğrudan başlanabilir. |
+| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** (izin + takvim listesi platform channel'ı). Bloklu DEĞİL: imza hazır, iPhone + emülatörler bağlanıyor. Ardından OPH-078 → **Epic 08 tamamen kapanır**. |
 | ✅ Kullanıcıdan bekleyen | **YOK.** Google OAuth kimlikleri 2026-07-16'da `.env`'e girildi ve gerçek hesapla uçtan uca doğrulandı (41 etkinlik senkronlandı, gerçek `syncToken`). iOS Time-Sensitive capability de eklendi (`ios/Runner/Runner.entitlements`, 3 build config'ine bağlı). Opsiyonel kalan tek şey `GOOGLE_WEBHOOK_URL` (public HTTPS) — yoksa 5 dk'lık yoklama zaten çalışıyor. |
 | Last completed | OPH-079…081 (CalDAV doc + Google bağlantı UI'ı + takvim toggle ✔); OPH-074…076 (Google inbound ✔, ADR-0007) |
 
 ## Recently completed
+
+- **OPH-084 — takvimin Home'un kronolojik akışında (2026-07-16):**
+  - `HomeGroup.tasks` → `HomeGroup.items`: sealed `HomeItem` (`TaskItem` | `EventItem`),
+    `at` sıralama anahtarıyla. Yani 10:00 toplantısı 16:00 görevinin ÜSTÜNDE render
+    oluyor — §12'nin "tek kronolojik görünüm"ü ile "yan tarafta takvim paneli"
+    arasındaki fark bu. Ay ızgarası artık yalnız toplantı taşıyan günleri de
+    noktalıyor.
+  - **İki ürün kuralı** (ikisi de testli, ikisi de "kullanıcıya yalan söyleme"):
+    (1) **Etkinlikler Overdue'ya GİRMEZ** — Overdue "bunu hâlâ yapman lazım" demek;
+    olmuş bir toplantı borç değil, tarihtir → Home'dan tamamen düşer.
+    (2) **Süregelen çok-günlük etkinlik Today'e aittir, bir kez** — pazar başlayıp
+    perşembe biten seyahat ŞU AN oluyor; ne overdue (geçmişte başladı) ne de
+    kapsadığı her bucket'ta tekrarlanır. Geçmemiş ilk gününe oturur.
+  - Takvim bağlı değilse Home eskisi gibi (boş liste — hata değil, spinner değil).
+  - Testler: app 131/131 (7 yeni), analyze temiz, kontrast FAILURES: 0.
+    Mevcut `groupTasksForHome` testleri yeni sözleşmeye taşındı.
 
 - **Kendi takvimin artık AllisWell'de (2026-07-16, OPH-082/083; ADR-0008):**
   - **Nasıl bulundu:** kullanıcı gerçek Google hesabını bağladı ve "takvimimdekiler

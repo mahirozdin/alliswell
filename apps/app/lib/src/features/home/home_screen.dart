@@ -5,6 +5,8 @@ import '../../core/persisted_prefs.dart';
 import '../../screens/home_shell.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
+import '../calendar/providers.dart';
+import '../calendar/ui/external_event_tile.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
 import '../tasks/ui/task_create_sheet.dart';
@@ -42,6 +44,9 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasks = ref.watch(openTasksProvider);
     final selectedDay = ref.watch(selectedDayProvider);
+    // A workspace with no calendar connected has none — not an error state.
+    final events =
+        ref.watch(externalEventsProvider).value ?? const <ExternalEvent>[];
 
     return Scaffold(
       appBar: buildSectionAppBar(context, 'Home'),
@@ -64,9 +69,11 @@ class HomeScreen extends ConsumerWidget {
             items,
             now: DateTime.now(),
             selectedDay: selectedDay,
+            events: events,
           );
           final calendar = MonthCalendar(
-            markedDays: daysWithTasks(items),
+            // A day with a meeting is not an empty day.
+            markedDays: {...daysWithTasks(items), ...daysWithEvents(events)},
             selectedDay: selectedDay,
             onDaySelected: (day) =>
                 ref.read(selectedDayProvider.notifier).select(day),
@@ -197,7 +204,7 @@ class _GroupedTaskList extends StatelessWidget {
               AwSpace.x2,
             ),
             child: Text(
-              '${group.bucket.label} · ${group.tasks.length}',
+              '${group.bucket.label} · ${group.items.length}',
               style: theme.textTheme.labelLarge?.copyWith(
                 color: group.dimmed
                     ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)
@@ -211,12 +218,20 @@ class _GroupedTaskList extends StatelessWidget {
               ),
             ),
           ),
-          for (final task in group.tasks)
-            TaskTile(
-              task: task,
-              dimmed: group.dimmed,
-              highlighted: group.bucket == HomeBucket.selectedDay,
-            ),
+          // One chronological stream (§12): a 10:00 meeting sits above a 16:00
+          // task, and each row renders as what it actually is.
+          for (final item in group.items)
+            switch (item) {
+              TaskItem(:final task) => TaskTile(
+                task: task,
+                dimmed: group.dimmed,
+                highlighted: group.bucket == HomeBucket.selectedDay,
+              ),
+              EventItem(:final event) => Opacity(
+                opacity: group.dimmed ? 0.45 : 1,
+                child: ExternalEventTile(event: event),
+              ),
+            },
         ],
       ],
     );

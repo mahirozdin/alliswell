@@ -789,11 +789,30 @@ function and the shape of every row — a real change that deserves its own task
 rather than being smuggled into this one. The Calendar tab is where the lead
 looked and where the gap was reported; Home is next (OPH-084).
 
-### OPH-084 — External events on Home
+### OPH-084 — External events on Home ✅
 
-- [ ] Home's chronological groups carry events beside tasks (§12: "the single
+- [x] Home's chronological groups carry events beside tasks (§12: "the single
       chronological view where everything shows") — needs `HomeGroup` to hold a
       mixed, ordered list, so the pure grouping function and its tests change
+
+Acceptance notes: `HomeGroup.tasks` became `HomeGroup.items`, a sealed
+`HomeItem` (`TaskItem` | `EventItem`) with an `at` sort key — so a 10:00 meeting
+renders ABOVE a 16:00 task instead of tasks and calendar living in separate
+lists. That is the difference between §12's "one chronological view" and a
+sidebar. The month grid now dots days that only carry a meeting.
+
+Two product rules, both tested, both about not lying to the user:
+
+- **Events never enter Overdue.** Overdue means "you still owe this"; a meeting
+  that already happened is history, not a debt, so past events leave Home
+  entirely rather than nagging beside real work.
+- **An ongoing multi-day event belongs to Today, once.** A trip that started
+  Sunday and runs to Thursday is happening NOW — it is not overdue (it began in
+  the past) and it is not repeated into every bucket it spans. It sits at the
+  first day it touches that has not passed.
+
+A workspace with no calendar connected renders exactly as before (the events
+list is simply empty — not an error, not a spinner).
 
 ### OPH-077 — Apple EventKit Flutter plugin skeleton
 
