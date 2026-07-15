@@ -9,6 +9,7 @@ import { loadConfig } from './config.js';
 import mysqlPlugin from './plugins/mysql.js';
 import redisPlugin from './plugins/redis.js';
 import authPlugin from './plugins/auth.js';
+import socketPlugin from './plugins/socket.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -17,6 +18,7 @@ import tagRoutes from './routes/tags.js';
 import taskRoutes from './routes/tasks.js';
 import noteRoutes from './routes/notes.js';
 import syncRoutes from './routes/sync.js';
+import notificationDeviceRoutes from './routes/notification-devices.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -63,6 +65,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(mysqlPlugin, { db });
   await app.register(redisPlugin, { redis });
   await app.register(authPlugin);
+  await app.register(socketPlugin);
 
   app.get(
     '/',
@@ -97,6 +100,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(taskRoutes, { prefix: '/api/v1' });
   await app.register(noteRoutes, { prefix: '/api/v1' });
   await app.register(syncRoutes, { prefix: '/api/v1' });
+  await app.register(notificationDeviceRoutes, { prefix: '/api/v1' });
 
   return app;
 }

@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { io as ioClient } from 'socket.io-client';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { withRevision } from '../../src/db/sync.js';
@@ -150,6 +151,44 @@ describe.runIf(enabled)('integration: sync revision generator + pull/push', () =
     const row = await app.db('tasks').where({ id: taskId }).first();
     expect(row.title).toBe('Sunucuda düzenlendi');
     expect(row.priority).toBe('high');
+  });
+
+  it('OPH-057: a live client hears committed writes (redis adapter attached)', async () => {
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    const url = `http://127.0.0.1:${app.server.address().port}`;
+
+    const socket = ioClient(url, {
+      auth: { token: owner.headers.authorization.replace('Bearer ', '') },
+      transports: ['websocket'],
+      reconnection: false,
+      timeout: 2000,
+    });
+    const events = [];
+    socket.on('sync:changed', (event) => events.push(event));
+    const ready = new Promise((resolve) => socket.once('sync:ready', resolve));
+    await new Promise((resolve, reject) => {
+      socket.on('connect', resolve);
+      socket.on('connect_error', reject);
+    });
+    expect((await ready).workspaceIds).toContain(owner.workspace.id);
+
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/workspaces/${owner.workspace.id}/tasks`,
+        headers: owner.headers,
+        payload: { title: 'Canlı entegrasyon görevi' },
+      });
+      expect(res.statusCode).toBe(201);
+
+      await vi.waitFor(() => expect(events.length).toBeGreaterThan(0), {
+        timeout: 3000,
+      });
+      expect(events.at(-1).workspaceId).toBe(owner.workspace.id);
+      expect(events.at(-1).toRevision).toBeGreaterThan(0);
+    } finally {
+      socket.disconnect();
+    }
   });
 
   it('OPH-053: replaying a processed batch returns recorded results without re-applying', async () => {
