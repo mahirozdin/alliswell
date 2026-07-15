@@ -1,0 +1,9 @@
+# drift codegen options (OPH-054). Timestamps are stored as ISO-8601 text so
+# millisecond precision survives round-trips — LWW on the server compares
+# `localUpdatedAt` against DATETIME(3).
+targets:
+  $default:
+    builders:
+      drift_dev:
+        options:
+          store_date_time_values_as_text: true
