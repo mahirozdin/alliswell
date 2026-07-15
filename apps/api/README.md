@@ -48,6 +48,14 @@ Push conflict policy: field-level last-write-wins for metadata (only FOREIGN wri
 conflict; the newer wall clock wins per field), document-level lock for note content.
 `SYNC_*` error codes are listed in `src/routes/sync.js`.
 
+Google Calendar (Epic 08, optional — `GOOGLE_NOT_CONFIGURED` without credentials):
+`POST /workspaces/:id/integrations/google/connect` → consent URL; the OAuth callback
+stores AES-256-GCM-encrypted tokens (`CALENDAR_TOKEN_KEY`, ADR-0006);
+`GET /workspaces/:id/integrations/google` (status),
+`GET|PATCH|DELETE /integrations/google/accounts/:id[...]` (calendars / default calendar /
+disconnect). Tasks with `calendarMirrorEnabled` mirror to `[Task] …` events through the
+BullMQ-backed queue (`src/plugins/mirror.js`).
+
 Live updates (OPH-057): a Socket.IO server on the same listener. Authenticate the
 handshake with `auth: { token: <access token> }`; you are joined to a room per workspace
 membership and receive `sync:changed {workspaceId, toRevision}` after every committed

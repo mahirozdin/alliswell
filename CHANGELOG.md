@@ -66,6 +66,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Google Calendar — outbound mirroring (OPH-070…073, ADR-0006): connect a Google account
+  over OAuth (offline access; tokens AES-256-GCM-encrypted at rest under
+  `CALENDAR_TOKEN_KEY`, revoked and wiped on disconnect), pick a default calendar, and
+  tasks opted in via `calendarMirrorEnabled` appear as `[Task] …` events — scheduled
+  blocks verbatim, otherwise a 30-minute due/urgent-reminder slot. Every committed task
+  write flows through a BullMQ queue (exponential-backoff retries; a deterministic inline
+  runner without Redis) and converges the event: edits patch it, completing/cancelling/
+  archiving/deleting removes it, reopening recreates it. Events carry the ADR-0003
+  extended properties, and the worker re-links to an existing event instead of
+  duplicating after a lost mapping row. The integration is optional
+  (`GOOGLE_NOT_CONFIGURED` without credentials); mocked-Google tests cover the whole
+  surface, plus a real-Redis BullMQ integration pass. Inbound sync (webhooks, incremental
+  pulls, two-way conflicts) is next (OPH-074…076).
 - Notifications (OPH-061…064) — Epic 07's client+server core: reminders now become real
   OS notifications scheduled from the local replica, exactly on time — urgent alarms ride
   Android's alarm-clock mode (never deferred, Doze-exempt) and iOS's time-sensitive

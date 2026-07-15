@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (Epic 07 ✔ kod tarafı: OPH-061…064 — bildirim katmanı; cihaz doğrulama turu bekliyor)
+**Last updated:** 2026-07-15 (Epic 08 giden dikey: OPH-070…073 — Google bağlantı + görev→etkinlik aynalama)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,11 +15,43 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 4 — Calendar |
 | Current epic | **Epic 08 — Calendar** |
-| ➡️ **Next task** | **OPH-070 — Google OAuth connect** (token şifreleme AES-256-GCM; mocked-Google testleri) |
-| Last completed | OPH-061…064 (Epic 07 kod ✔ — cihaz turu bekliyor); OPH-057/060; Epic 06 ✔ |
+| ➡️ **Next task** | **OPH-074 — Google webhook receiver** (kanal doğrulama + dirty işaretleme; ardından 075/076 inbound sync) |
+| Last completed | OPH-070…073 (Google outbound ✔, ADR-0006); OPH-061…064 (Epic 07 kod ✔) |
 
 ## Recently completed
 
+- **Epic 08 giden dikey — Google Takvim (2026-07-15, OPH-070…073; ADR-0006):**
+  - **OPH-070 bağlantı:** `POST /workspaces/:id/integrations/google/connect` → consent
+    URL'i (10 dk'lık imzalı `state`, `purpose: google_oauth` — oturum JWT'si state olarak
+    GEÇMEZ, testli); kimliksiz callback kodu takas eder, id_token'dan kimliği çözer,
+    `calendar_accounts`'a upsert eder (yeniden bağlanma çoğaltmaz). Tokenlar dinlenmede
+    **AES-256-GCM** (`src/lib/crypto.js`, `CALENDAR_TOKEN_KEY` 64 hex; Google
+    yapılandırılmışsa production placeholder'ı reddeder). Entegrasyon opsiyonel:
+    kimlik yokken `GOOGLE_NOT_CONFIGURED`. Disconnect Google'da revoke (best-effort) +
+    ciphertext NULL.
+  - **OPH-071:** `GET …/accounts/:id/calendars` — süresi dolan access token yerinde
+    yenilenip yeniden şifrelenir; reddedilen refresh → hesap `error` +
+    `CALENDAR_ACCOUNT_REAUTH_REQUIRED` (502). `PATCH …/accounts/:id {defaultCalendarId}`
+    seçimi kaydeder ve sweep başlatır (workspace'in mirror-enabled görevleri kuyruğa).
+  - **OPH-072/073 aynalama:** görevler `calendarMirrorEnabled` ile opt-in (REST + sync
+    push + snapshot'lar). Saf türetme `src/lib/mirror.js` (§7.1: scheduled blok → due
+    slotu → acil reminder bloğu; biten/arşivlenen/silinen → etkinlik kalkar). Commit
+    sonrası entity olayları görev başına mirror işi kuyruklar: Redis varsa **BullMQ**
+    (exponential backoff, bekleyen işlerde task başına dedupe), yoksa deterministik
+    inline runner (`app.mirror.idle()` testler için). Etkinlikler `[Task] {title}` +
+    ADR-0003 extended-properties (+project/source/revision); oluşturma öncesi
+    `privateExtendedProperty` araması kopyayı ÖNLER (kayıp link satırında yeniden
+    bağlanır, testli). Uzaktan silinen etkinlik yeniden oluşturulur (çakışma politikası
+    OPH-076'da). Eşleme tablosu `calendar_event_links` kanonik.
+  - **Testler:** birim 164/164 (in-process sahte Google: OAuth uçları, kripto
+    tamper/yanlış-anahtar, türetme, yaşam döngüsü, re-link, sweep); entegrasyon 26/26 —
+    BullMQ yolu gerçek Redis'te uçtan uca (yazım → kuyruk → worker → etkinlik;
+    complete → silinir). İnce hata bulundu: gövdesiz DELETE'te `content-type: json`
+    göndermek titiz sunucularda 400 — istemci artık yalnız gövde varsa content-type
+    koyuyor.
+  - Kalan (Epic 08): OPH-074…076 (webhook + incremental inbound + iki yönlü çakışma),
+    OPH-077+ (EventKit — Xcode imza gereksinimi notu duruyor), OPH-079 (CalDAV doc).
+    App tarafında "Google'ı bağla" UI'ı ayrıca gelecek (STATE notu).
 - **Epic 07 — bildirim katmanı (2026-07-15, OPH-061…064; plan NOTIFICATIONS.md):**
   - **Mantık cihazsız ve tam testli:** `notifications/planner.dart` (saf: replika
     alarmları → istenen OS bildirimleri; iOS 64-bekleyen sınırına karşı ≤40 pencere;
@@ -239,12 +271,15 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-070 — Google OAuth connect** per its checklist in [TASKS.md](TASKS.md)
-   and BLUEPRINT §7: OAuth2 offline-access flow with the calendar scope, tokens encrypted
-   at rest (AES-256-GCM, key from env — refuse placeholder keys in production like the JWT
-   secrets), `calendar_accounts` create/status/disconnect endpoints, tests with mocked
-   Google endpoints (no real Google in CI). Reuse the config validation pattern in
-   `src/config.js` and the encrypted-column intent from the OPH-015 migration.
+2. Implement **OPH-074 — Google webhook receiver** per its checklist in [TASKS.md](TASKS.md)
+   and BLUEPRINT §7.2 (adım 6-7): `POST /api/v1/integrations/google/webhook` — Google'ın
+   `X-Goog-Channel-Id`/`X-Goog-Resource-Id`/`X-Goog-Channel-Token` başlıklarını doğrula
+   (kanal token'ı hesabı bağlarken üret ve sakla), eşleşen `calendar_accounts` satırını
+   "dirty" işaretle (yeni bir `sync_dirty_at` kolonu için migration gerekir — append-only).
+   Kanal kurulumu/yenilenmesi: watch çağrısı + `webhook_channel_id/resource_id/expires_at`
+   alanları zaten şemada; yenileme süpürmesini mirror kuyruğu gibi bir job'a bağla.
+   Sahte Google helper'ına (`test/helpers/fakegoogle.js`) watch/stop uçlarını ekleyerek
+   testle; gerçek Google CI'da YOK.
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.

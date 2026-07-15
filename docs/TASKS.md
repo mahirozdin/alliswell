@@ -598,25 +598,67 @@ FCM/APNs land they inherit the same rule. ✔
 
 ## Epic 08 — Calendar (Phase 4)
 
-### OPH-070 — Google OAuth connect
+### OPH-070 — Google OAuth connect ✅
 
-- [ ] OAuth2 flow (offline access, calendar scope); tokens encrypted at rest (AES-256-GCM, key from env)
-- [ ] `calendar_accounts` create/status endpoints; disconnect flow
-- [ ] Tests with mocked Google endpoints
+- [x] OAuth2 flow (offline access, calendar scope); tokens encrypted at rest (AES-256-GCM, key from env)
+- [x] `calendar_accounts` create/status endpoints; disconnect flow
+- [x] Tests with mocked Google endpoints
 
-### OPH-071 — Google calendar list
+Acceptance notes (design in [ADR-0006](adr/0006-google-oauth-token-crypto-and-mirror-queue.md)):
+`POST /workspaces/:id/integrations/google/connect` returns the consent URL
+with a 10-minute signed state (`purpose: google_oauth` — a session JWT does
+NOT pass, tested); the unauthenticated callback exchanges the code, decodes
+the id_token for the Google identity and upserts `calendar_accounts`
+(reconnect never duplicates; `prompt=consent` re-issues refresh tokens).
+Tokens at rest are AES-256-GCM ciphertext under `CALENDAR_TOKEN_KEY`
+(64 hex; production refuses placeholders when Google is configured — the
+integration itself is optional: `GOOGLE_NOT_CONFIGURED` without creds).
+Status endpoint never leaks token material; disconnect revokes at Google
+(best effort) and NULLs the ciphertext. Tests run against an in-process
+fake Google (`test/helpers/fakegoogle.js`) — happy path, forged/expired
+state, failed exchange, reconnect upsert, crypto tamper/wrong-key. ✔
 
-- [ ] List calendars, choose `default_calendar_id`
+### OPH-071 — Google calendar list ✅
 
-### OPH-072 — Mirror task to Google event
+- [x] List calendars, choose `default_calendar_id`
 
-- [ ] Create/update/delete event for mirrored tasks (`[Task] {title}`, scheduled block or due slot)
-- [ ] `calendar_event_links` rows; retries via BullMQ job queue
+Acceptance notes: `GET /integrations/google/accounts/:id/calendars` proxies
+Google's calendarList with transparent refresh — an access token expiring
+within a minute is renewed and re-encrypted in place; a rejected refresh
+flips the account to `error` and answers `CALENDAR_ACCOUNT_REAUTH_REQUIRED`
+(502). `PATCH /integrations/google/accounts/:id {defaultCalendarId}` stores
+the choice and immediately backfills: a mirror sweep enqueues every
+mirror-enabled task of the workspace. Accounts are managed only by the user
+who connected them. ✔
 
-### OPH-073 — Google extended properties mapping
+### OPH-072 — Mirror task to Google event ✅
 
-- [ ] `extendedProperties.private.alliswell_task_id` / `alliswell_workspace_id` (ADR-0003)
-- [ ] Re-link on duplicate detection
+- [x] Create/update/delete event for mirrored tasks (`[Task] {title}`, scheduled block or due slot)
+- [x] `calendar_event_links` rows; retries via BullMQ job queue
+
+Acceptance notes: tasks opt in via the new `calendarMirrorEnabled` field
+(REST + sync push + snapshots). Derivation is pure (`src/lib/mirror.js`,
+§7.1): scheduled block verbatim (open end → +30 min), else a 30-minute due
+slot, else an urgent reminder block; completed/cancelled/archived/deleted →
+event removed. Every committed task write enqueues a mirror job
+(post-commit entity events); BullMQ carries them with exponential-backoff
+retries when Redis is up, an inline serialized runner otherwise (dev
+degraded + unit tests — `app.mirror.idle()` makes tests deterministic).
+The worker converges on CURRENT state, tolerates remote deletions
+(recreates; conflict policy proper is OPH-076) and keeps
+`calendar_event_links` as the mapping source of truth. Proven end-to-end
+over real Redis+BullMQ in integration. ✔
+
+### OPH-073 — Google extended properties mapping ✅
+
+- [x] `extendedProperties.private.alliswell_task_id` / `alliswell_workspace_id` (ADR-0003)
+- [x] Re-link on duplicate detection
+
+Acceptance notes: every mirrored event carries the ADR-0003 private keys
+plus `alliswell_project_id`, `alliswell_source` and `alliswell_revision`
+(§7.1 metadata). Before creating, the worker searches the calendar for
+`privateExtendedProperty=alliswell_task_id=<id>` and ADOPTS a hit —
+re-linking instead of duplicating after a lost link row (tested). ✔
 
 ### OPH-074 — Google webhook receiver
 
