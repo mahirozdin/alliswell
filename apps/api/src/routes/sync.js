@@ -112,6 +112,16 @@ const TASK_FIELDS = {
   sortOrder: { col: 'sort_order', ok: intIn(-1000000, 1000000) },
   // Replace-set, like `PUT /tasks/:id/tags`; logged as 'tags' (REST parity).
   tagIds: { col: 'tags', ok: ulidArray, virtual: true },
+  // Offline snooze (OPH-062): unlike REST's POST /tasks/:id/snooze this
+  // accepts past instants — a queued mutation may arrive after the moment
+  // passed, and dropping a user's snooze would be worse. Update-only.
+  snoozedUntil: { col: 'snoozed_until', ok: isoOrNull, date: true, updateOnly: true },
+};
+
+// Devices may acknowledge an alarm offline (OPH-063). Everything else about
+// reminders stays server-managed through task writes.
+const REMINDER_FIELDS = {
+  status: { col: 'status', ok: oneOf(['acknowledged']), updateOnly: true },
 };
 
 const NOTE_FIELDS = {
@@ -133,7 +143,7 @@ const CHECKLIST_FIELDS = {
 // Note CONTENT is doc-level locked (§6.5) — these intents never LWW-merge.
 const NOTE_CONTENT_INTENTS = new Set(['content_delta', 'content_markdown']);
 
-function serializeReminder(row) {
+export function serializeReminder(row) {
   return {
     id: row.id,
     taskId: row.task_id,
@@ -445,7 +455,47 @@ export default async function syncRoutes(app) {
     if (patch.isUrgent === true && patch.requiresAcknowledgement === undefined) {
       patch.requiresAcknowledgement = true;
     }
+    // Snoozing a finished task is meaningless (REST snooze parity).
+    if (
+      patch.snoozedUntil != null &&
+      row &&
+      (row.status === 'completed' || row.status === 'cancelled')
+    ) {
+      return 'TASK_INVALID_TRANSITION';
+    }
     return null;
+  }
+
+  /**
+   * Mirrors the REST snooze endpoint's reminder side (OPH-035/OPH-062): a
+   * task's snooze silences (or, when cleared, re-arms) its active alarm in
+   * the same transaction. Call AFTER reconcileTaskReminder with the fresh row.
+   */
+  async function applyReminderSnooze(trx, workspaceId, task) {
+    const active = await trx('reminders')
+      .where({ task_id: task.id })
+      .whereNull('deleted_at')
+      .whereIn('status', ['scheduled', 'snoozed', 'delivered'])
+      .orderBy('created_at', 'desc')
+      .first();
+    if (!active) return;
+
+    const snoozed = task.snoozed_until != null;
+    const patch = snoozed
+      ? { status: 'snoozed', snoozed_until: new Date(task.snoozed_until) }
+      : { status: 'scheduled', snoozed_until: null };
+    if (!snoozed && active.status !== 'snoozed') return; // nothing to clear
+
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'reminder',
+      entityId: active.id,
+      operation: 'update',
+      changedFields: ['status', 'snoozed_until'],
+    });
+    await trx('reminders')
+      .where({ id: active.id })
+      .update({ ...patch, revision, updated_at: new Date() });
   }
 
   async function replaceTaskTags(trx, taskId, tagIds) {
@@ -552,6 +602,9 @@ export default async function syncRoutes(app) {
         }
         const fresh = await trx('tasks').where({ id: row.id }).first();
         await reconcileTaskReminder(trx, { workspaceId: ctx.workspaceId, task: fresh });
+        if (keptIntents.some((i) => i.name === 'snoozed_until')) {
+          await applyReminderSnooze(trx, ctx.workspaceId, fresh);
+        }
       },
       // Soft delete cascades through the subtree, one revision per task, and
       // silences reminders — mirrors DELETE /tasks/:id.
@@ -616,6 +669,30 @@ export default async function syncRoutes(app) {
       }),
       updateExtra: (ctx) => ({ updated_by: ctx.userId }),
       deleteExtra: (ctx) => ({ updated_by: ctx.userId }),
+    },
+
+    // Narrow on purpose (OPH-063): devices may only ACKNOWLEDGE an alarm
+    // offline — reminder rows are otherwise server-managed via task writes.
+    reminder: {
+      table: 'reminders',
+      fields: REMINDER_FIELDS,
+      operations: ['update'],
+      requiredOnCreate: [],
+      async ownershipOk(ctx, row) {
+        const task = await app
+          .db('tasks')
+          .where({ id: row.task_id, workspace_id: ctx.workspaceId })
+          .first('id');
+        return Boolean(task);
+      },
+      beforeUpdate(patch, row) {
+        // A silenced alarm has nothing left to acknowledge.
+        if (row.status === 'cancelled' || row.status === 'completed') {
+          return 'REMINDER_INVALID_TRANSITION';
+        }
+        return null;
+      },
+      updateExtra: () => ({ acknowledged_at: new Date() }),
     },
 
     checklist_item: {
@@ -826,6 +903,9 @@ export default async function syncRoutes(app) {
   async function computeAndApply(ctx, mutation) {
     const entity = ENTITIES[mutation.entityType];
     if (!entity) return rejected('SYNC_UNSUPPORTED_ENTITY');
+    if (entity.operations && !entity.operations.includes(mutation.operation)) {
+      return rejected('SYNC_UNSUPPORTED_OPERATION');
+    }
 
     if (mutation.operation !== 'delete') {
       const { patch } = mutation;
@@ -835,7 +915,11 @@ export default async function syncRoutes(app) {
       if (Object.keys(patch).length === 0) return rejected('SYNC_INVALID_PATCH');
       for (const [key, value] of Object.entries(patch)) {
         const spec = entity.fields[key];
-        if (!spec || (spec.createOnly && mutation.operation !== 'create')) {
+        if (
+          !spec ||
+          (spec.createOnly && mutation.operation !== 'create') ||
+          (spec.updateOnly && mutation.operation !== 'update')
+        ) {
           return rejected('SYNC_UNKNOWN_FIELD');
         }
         if (!spec.ok(value)) return rejected('SYNC_INVALID_VALUE');
