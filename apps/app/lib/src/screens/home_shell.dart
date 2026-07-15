@@ -43,6 +43,8 @@ class HomeShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keep the live sync:changed socket (OPH-057) alive while the shell shows.
+    ref.watch(syncSocketProvider);
     ref.listen(syncConflictsProvider, (_, next) {
       final conflict = next.value;
       if (conflict == null) return;

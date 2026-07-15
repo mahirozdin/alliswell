@@ -44,6 +44,7 @@ dependencies:
   drift: ^2.34.2
   path_provider: ^2.1.6
   path: ^1.9.1
+  socket_io_client: ^3.1.6
 
 dev_dependencies:
   flutter_test:

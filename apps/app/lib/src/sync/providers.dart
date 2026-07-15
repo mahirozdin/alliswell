@@ -8,6 +8,7 @@ import 'db/connection.dart';
 import 'db/database.dart';
 import 'sync_api.dart';
 import 'sync_engine.dart';
+import 'sync_socket.dart';
 
 /// The local replica. Widget tests override this with an in-memory database
 /// (the default connection needs platform channels).
@@ -54,4 +55,33 @@ final syncEngineProvider = Provider<SyncEngine?>((ref) {
 final syncConflictsProvider = StreamProvider<SyncConflict>((ref) {
   final engine = ref.watch(syncEngineProvider);
   return engine?.conflicts ?? const Stream.empty();
+});
+
+/// How sockets get built — widget tests override with `null` (no sockets, no
+/// reconnect timers in the fake-async zone).
+final syncSocketFactoryProvider = Provider<SyncSocketFactory?>(
+  (_) => defaultSyncSocketFactory,
+);
+
+/// The live `sync:changed` listener (OPH-057): one socket per signed-in
+/// session, rebuilt when the session (and thus the access token) rotates.
+/// A matching event pulls immediately; the engine's periodic pull stays as
+/// the fallback for missed sockets.
+final syncSocketProvider = Provider<SyncSocketHandle?>((ref) {
+  final factory = ref.watch(syncSocketFactoryProvider);
+  final engine = ref.watch(syncEngineProvider);
+  final session = ref.watch(authControllerProvider).value;
+  if (factory == null || engine == null || session == null) return null;
+
+  final handle = factory(
+    baseUrl: ref.watch(apiClientProvider).options.baseUrl,
+    token: session.tokens.accessToken,
+    onSyncChanged: (payload) {
+      if (syncChangedMatches(payload, engine.workspaceId)) {
+        unawaited(engine.syncNow());
+      }
+    },
+  );
+  ref.onDispose(handle.close);
+  return handle;
 });
