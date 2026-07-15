@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/providers.dart';
+import '../notifications/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
 
@@ -40,12 +41,19 @@ class SettingsScreen extends ConsumerWidget {
                       title: const Text('Server'),
                       subtitle: Text(ref.watch(apiBaseUrlProvider)),
                     ),
-                    const ListTile(
-                      leading: Icon(Icons.notifications_outlined),
-                      title: Text('Notifications'),
-                      subtitle: Text(
-                        'Reminder & urgent alarm settings — arrives with Epic 07',
+                    // OPH-064: lock-screen privacy — generic notification
+                    // content ("Bir hatırlatıcın var") instead of task titles.
+                    SwitchListTile(
+                      key: const Key('notification-privacy'),
+                      secondary: const Icon(Icons.notifications_outlined),
+                      title: const Text('Private notifications'),
+                      subtitle: const Text(
+                        'Hide task titles in reminders and alarms',
                       ),
+                      value: ref.watch(notificationPrivacyProvider),
+                      onChanged: (_) => ref
+                          .read(notificationPrivacyProvider.notifier)
+                          .toggle(),
                     ),
                     const AboutListTile(
                       icon: Icon(Icons.info_outline),

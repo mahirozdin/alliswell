@@ -2,9 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 
+import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_socket.dart';
+
+import 'fake_notifications.dart';
 
 /// Overrides every widget test pumping the full app needs since local-first
 /// (OPH-054): an in-memory replica instead of the platform-channel database,
@@ -29,4 +32,8 @@ List<Override> syncTestOverrides({SyncSocketFactory? socketFactory}) => [
   syncDebounceProvider.overrideWithValue(Duration.zero),
   // No real sockets (and no reconnect timers) inside the fake-async zone.
   syncSocketFactoryProvider.overrideWithValue(socketFactory),
+  // No platform channels: notifications go to an in-memory fake.
+  notificationsGatewayProvider.overrideWith(
+    (ref) => FakeNotificationsGateway(),
+  ),
 ];

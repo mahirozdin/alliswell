@@ -228,6 +228,66 @@ class TaskStore {
 
   Future<void> reopen(String taskId) => update(taskId, {'status': 'open'});
 
+  /// Snooze presets shared with the server (BLUEPRINT §4.9). Offsets are
+  /// from "now"; tomorrow_morning is 09:00 on the device's wall clock — the
+  /// server's task-timezone version applies when snoozing over REST.
+  static DateTime snoozeUntilFor(String preset, {DateTime? now}) {
+    final base = now ?? DateTime.now();
+    switch (preset) {
+      case '5_min':
+        return base.add(const Duration(minutes: 5));
+      case '30_min':
+        return base.add(const Duration(minutes: 30));
+      case '1_hour':
+        return base.add(const Duration(hours: 1));
+      case 'tomorrow_morning':
+        final local = base.toLocal();
+        return DateTime(local.year, local.month, local.day + 1, 9);
+      default:
+        throw ArgumentError.value(preset, 'preset');
+    }
+  }
+
+  /// Offline-first snooze (OPH-062): the task AND its active alarm move
+  /// locally in one transaction; the outbox patch replays the same semantics
+  /// server-side (sync push snoozedUntil → reminder snooze, same trx).
+  Future<void> snooze(String taskId, {String? preset, DateTime? until}) async {
+    final record = await _record(taskId);
+    if (record == null) return;
+    if (record.status == 'completed' || record.status == 'cancelled') return;
+    final snoozeUntil = (until ?? snoozeUntilFor(preset!)).toUtc();
+
+    await _db.transaction(() async {
+      await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
+        TasksCompanion(
+          snoozedUntil: Value(snoozeUntil),
+          updatedAt: Value(DateTime.now().toUtc()),
+        ),
+      );
+      await (_db.update(_db.reminders)..where(
+            (r) =>
+                r.taskId.equals(taskId) &
+                r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
+          ))
+          .write(
+            RemindersCompanion(
+              status: const Value('snoozed'),
+              snoozedUntil: Value(snoozeUntil),
+              updatedAt: Value(DateTime.now().toUtc()),
+            ),
+          );
+      await enqueueMutation(
+        _db,
+        workspaceId: record.workspaceId,
+        entityType: 'task',
+        entityId: taskId,
+        operation: 'update',
+        patch: {'snoozedUntil': snoozeUntil.toIso8601String()},
+      );
+    });
+    _poke();
+  }
+
   /// Replace-set tags, like `PUT /tasks/:id/tags` (synced as an update patch).
   Future<void> setTags(String taskId, List<String> tagIds) async {
     final record = await _record(taskId);

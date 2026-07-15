@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
@@ -43,8 +44,10 @@ class HomeShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Keep the live sync:changed socket (OPH-057) alive while the shell shows.
+    // Keep the live sync:changed socket (OPH-057) and the OS notification
+    // scheduler (OPH-061) alive while the shell shows.
     ref.watch(syncSocketProvider);
+    ref.watch(notificationSchedulerProvider);
     ref.listen(syncConflictsProvider, (_, next) {
       final conflict = next.value;
       if (conflict == null) return;
