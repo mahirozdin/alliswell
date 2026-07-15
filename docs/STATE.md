@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (Epic 08 app tarafı: OPH-079…081 — CalDAV doc, Google bağlantı UI'ı, takvim toggle'ı; Riverpod retry hatası)
+**Last updated:** 2026-07-16 (OPH-082/083 — kendi Google takvimin artık AllisWell'de; ADR-0008. Gerçek hesapta canlı doğrulandı)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -16,11 +16,40 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | Current phase | Phase 4 — Calendar |
 | Current epic | **Epic 08 — Calendar** |
 | ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** — ✅ ARTIK BLOKLU DEĞİL (2026-07-15 ölçümü: imza hazır, cihazlar bağlanıyor — bloklu notlarına bak). Doğrudan başlanabilir. |
-| ⏳ Kullanıcıdan bekleyen TEK şey | **Google OAuth kimlik bilgileri** (`GOOGLE_CLIENT_ID`/`SECRET` → `.env`). Onlar olmadan OPH-070…081 ile yazılan Google Takvim dikeyi çalışmıyor: sunucu `GOOGLE_NOT_CONFIGURED` diyor, app "bu sunucuda kurulu değil" gösteriyor. Kod tarafı hazır ve testli; yalnız kimlik eksik. |
+| ✅ Kullanıcıdan bekleyen | **YOK.** Google OAuth kimlikleri 2026-07-16'da `.env`'e girildi ve gerçek hesapla uçtan uca doğrulandı (41 etkinlik senkronlandı, gerçek `syncToken`). iOS Time-Sensitive capability de eklendi (`ios/Runner/Runner.entitlements`, 3 build config'ine bağlı). Opsiyonel kalan tek şey `GOOGLE_WEBHOOK_URL` (public HTTPS) — yoksa 5 dk'lık yoklama zaten çalışıyor. |
 | Last completed | OPH-079…081 (CalDAV doc + Google bağlantı UI'ı + takvim toggle ✔); OPH-074…076 (Google inbound ✔, ADR-0007) |
 
 ## Recently completed
 
+- **Kendi takvimin artık AllisWell'de (2026-07-16, OPH-082/083; ADR-0008):**
+  - **Nasıl bulundu:** kullanıcı gerçek Google hesabını bağladı ve "takvimimdekiler
+    gelmedi" dedi. Doğruydu ve bilinçliydi — `lib/inbound.js` bizim olmayan her etkinliği
+    yok sayıyordu. Ama sınır yanlış yerdeydi: Calendar sekmesi olan ve §12'de Home için
+    "her şeyin göründüğü tek kronolojik görünüm" denen bir üründe, "günüm nasıl görünüyor"
+    sorusu görevlerle cevaplanamaz. **BLUEPRINT harici etkinliklerden hiç bahsetmiyordu**
+    (v2 park listesinde bile yok) → spec deliği, kod hatası değil.
+  - **Veri zaten elimizdeydi:** OPH-075 worker'ı her geçişte tüm etkinlik akışını çekip
+    yabancı yarısını çöpe atıyordu. Artık saklıyor — senkron başına bir ekstra istek,
+    etkinlik başına değil.
+  - **İki sözleşme bulgusu tasarımı belirledi** (kaynaktan doğrulandı, varsayılmadı):
+    (1) `timeMin`/`timeMax`, `syncToken` ile KULLANILAMIYOR → senkron tarihle
+    pencerelenemez, Google koleksiyonun tamamını senkronlar; pencereyi SAKLARKEN
+    uyguluyoruz (31 gün geri / 400 ileri). (2) `singleEvents` iki tüketiciye birden
+    hizmet edemez: görev aynalaması seri master'ını görmeli (`time_conflict`, ADR-0007,
+    testli), ızgara ise örnekleri. → **iki akış, iki cursor** (`sync_token` +
+    `external_sync_token`), mevcut akışa hiç dokunulmadı.
+  - **Salt-okunur, kod yazmadan:** push `ENTITIES` kaydında olmaması zaten
+    `SYNC_UNSUPPORTED_ENTITY` veriyor. Store'un yazma yolu hiç yok — o yokluk garantinin
+    kendisi. `ExternalEventTile` bilinçli olarak `TaskTile`'dan farklı bir tür: checkbox
+    yerine saat rayı — bir düğünü "tamamlayamazsın", satır da bunu ima etmemeli.
+  - **Değişmemiş etkinlik revizyon harcamıyor** — tam resync tüm takvimi tekrar oynatır,
+    yoksa her toplantı için her cihaz uyanırdı.
+  - **Gerçek hesapta doğrulandı:** 41 etkinlik, gerçek `syncToken`, pencere tuttu
+    (2026-06-16 → 2027-07-23, eski geçmiş elendi), gerçek bir etkinlik Calendar
+    sekmesinde açık+koyu temada göründü. Testler: API 209/209, app 124/124.
+  - **Ertelendi (OPH-084):** Home'un kronolojik gruplarında etkinlikler. §12 istiyor ama
+    `HomeGroup` görev taşıyor; karıştırmak saf gruplama fonksiyonunu ve satır şeklini
+    değiştirir — kendi task'ını hak ediyor, buraya kaçak sokulmaz.
 - **Epic 08 app tarafı — dikey artık ULAŞILABİLİR (2026-07-15, OPH-079…081):**
   - **Neden bu paket:** OPH-070…076 ile eksiksiz bir Google API dikeyi vardı ve
     **hiçbir kullanıcı ona ulaşamıyordu** — app'te bağlanma ekranı yoktu,
