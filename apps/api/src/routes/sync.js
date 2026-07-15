@@ -112,6 +112,7 @@ const TASK_FIELDS = {
   sortOrder: { col: 'sort_order', ok: intIn(-1000000, 1000000) },
   // Replace-set, like `PUT /tasks/:id/tags`; logged as 'tags' (REST parity).
   tagIds: { col: 'tags', ok: ulidArray, virtual: true },
+  calendarMirrorEnabled: { col: 'calendar_mirror_enabled', ok: bool },
   // Offline snooze (OPH-062): unlike REST's POST /tasks/:id/snooze this
   // accepts past instants — a queued mutation may arrive after the moment
   // passed, and dropping a user's snooze would be worse. Update-only.

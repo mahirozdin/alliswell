@@ -23,6 +23,18 @@ const UNIQUE_INDEXES = {
   client_mutations: [
     { name: 'client_mutations.uq_client_mutation', cols: ['client_id', 'client_mutation_id'] },
   ],
+  calendar_accounts: [
+    {
+      name: 'calendar_accounts.uq_calendar_accounts_identity',
+      cols: ['user_id', 'provider', 'provider_account_id'],
+    },
+  ],
+  calendar_event_links: [
+    {
+      name: 'calendar_event_links.uq_cel_account_event',
+      cols: ['calendar_account_id', 'provider_event_id'],
+    },
+  ],
 };
 
 const OPS = {
@@ -52,6 +64,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     sync_revisions: [],
     client_mutations: [],
     notification_devices: [],
+    calendar_accounts: [],
+    calendar_event_links: [],
   };
 
   const columnDefaults = {
@@ -75,6 +89,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       is_urgent: false,
       requires_acknowledgement: false,
       sort_order: 0,
+      calendar_mirror_enabled: false,
       revision: 0,
       project_id: null,
       parent_task_id: null,
@@ -104,6 +119,27 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       push_token: null,
       device_name: null,
       app_version: null,
+    }),
+    calendar_accounts: () => ({
+      encrypted_access_token: null,
+      encrypted_refresh_token: null,
+      token_expires_at: null,
+      sync_token: null,
+      webhook_channel_id: null,
+      webhook_resource_id: null,
+      webhook_expires_at: null,
+      default_calendar_id: null,
+      status: 'active',
+      last_synced_at: null,
+      last_error: null,
+    }),
+    calendar_event_links: () => ({
+      provider_event_uid: null,
+      etag: null,
+      last_provider_updated_at: null,
+      last_local_updated_at: null,
+      sync_direction: 'both',
+      conflict_status: 'none',
     }),
   };
 
@@ -163,6 +199,10 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       },
       whereNot(col, val) {
         filters.push((row) => row[col] !== val);
+        return api;
+      },
+      whereNotNull(col) {
+        filters.push((row) => row[col] !== null && row[col] !== undefined);
         return api;
       },
       whereIn(col, values) {

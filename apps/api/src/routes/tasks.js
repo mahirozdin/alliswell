@@ -62,6 +62,7 @@ const taskSchema = {
     estimatedMinutes: { type: ['integer', 'null'] },
     actualMinutes: { type: ['integer', 'null'] },
     sortOrder: { type: 'integer' },
+    calendarMirrorEnabled: { type: 'boolean' },
     completedAt: { type: ['string', 'null'] },
     revision: { type: 'integer' },
     createdAt: { type: 'string' },
@@ -128,6 +129,8 @@ const writableProps = {
   estimatedMinutes: { type: ['integer', 'null'], minimum: 0, maximum: 60000 },
   actualMinutes: { type: ['integer', 'null'], minimum: 0, maximum: 60000 },
   sortOrder: { type: 'integer', minimum: -1000000, maximum: 1000000 },
+  // Epic 08: opt this task into calendar mirroring (BLUEPRINT §7.1).
+  calendarMirrorEnabled: { type: 'boolean' },
 };
 
 const CAMEL_TO_SNAKE = {
@@ -150,6 +153,7 @@ const CAMEL_TO_SNAKE = {
   estimatedMinutes: 'estimated_minutes',
   actualMinutes: 'actual_minutes',
   sortOrder: 'sort_order',
+  calendarMirrorEnabled: 'calendar_mirror_enabled',
 };
 
 const DATE_FIELDS = new Set([
@@ -195,6 +199,7 @@ export function serializeTask(row) {
     estimatedMinutes: row.estimated_minutes ?? null,
     actualMinutes: row.actual_minutes ?? null,
     sortOrder: row.sort_order,
+    calendarMirrorEnabled: Boolean(row.calendar_mirror_enabled),
     completedAt: toIso(row.completed_at),
     revision: Number(row.revision),
     createdAt: toIso(row.created_at),

@@ -27,9 +27,12 @@ function parseCorsOrigin(value) {
 // placeholders). Generate real values with `openssl rand -hex 32`.
 const DEV_ACCESS_SECRET = 'insecure-dev-access-secret-never-use-in-production';
 const DEV_REFRESH_SECRET = 'insecure-dev-refresh-secret-never-use-in-production';
+// 64 hex chars (32 bytes), obviously patterned so nobody ships it.
+const DEV_CALENDAR_TOKEN_KEY = 'deaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead';
 const INSECURE_SECRETS = new Set([
   DEV_ACCESS_SECRET,
   DEV_REFRESH_SECRET,
+  DEV_CALENDAR_TOKEN_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
 ]);
@@ -74,6 +77,23 @@ export function loadConfig(env = process.env) {
       accessTtlSec: toInt(env.AUTH_ACCESS_TTL_SEC, 900, 'AUTH_ACCESS_TTL_SEC'),
       refreshTtlDays: toInt(env.AUTH_REFRESH_TTL_DAYS, 30, 'AUTH_REFRESH_TTL_DAYS'),
     }),
+    // Google Calendar (Epic 08). The integration is OPTIONAL — endpoints answer
+    // GOOGLE_NOT_CONFIGURED without credentials. Base URLs are configurable so
+    // tests can point the client at an in-process fake Google.
+    google: Object.freeze({
+      clientId: env.GOOGLE_CLIENT_ID || null,
+      clientSecret: env.GOOGLE_CLIENT_SECRET || null,
+      redirectUri:
+        env.GOOGLE_REDIRECT_URI || 'http://localhost:3000/api/v1/integrations/google/callback',
+      authBaseUrl: env.GOOGLE_AUTH_BASE_URL || 'https://accounts.google.com',
+      tokenBaseUrl: env.GOOGLE_TOKEN_BASE_URL || 'https://oauth2.googleapis.com',
+      apiBaseUrl: env.GOOGLE_API_BASE_URL || 'https://www.googleapis.com',
+    }),
+    calendar: Object.freeze({
+      // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
+      // 64 hex chars → 32 bytes. Dev fallback is labeled insecure on purpose.
+      tokenKey: env.CALENDAR_TOKEN_KEY || DEV_CALENDAR_TOKEN_KEY,
+    }),
   };
 
   if (config.port < 1 || config.port > 65535) {
@@ -85,11 +105,20 @@ export function loadConfig(env = process.env) {
   if (config.auth.accessTtlSec < 1 || config.auth.refreshTtlDays < 1) {
     throw new Error('Auth token lifetimes must be positive');
   }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.calendar.tokenKey)) {
+    throw new Error('CALENDAR_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
   if (config.env === 'production') {
     validateProductionSecret('JWT_ACCESS_SECRET', env.JWT_ACCESS_SECRET);
     validateProductionSecret('JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET);
     if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET) {
       throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different values');
+    }
+    // Calendar tokens may only be stored under a real key. Required as soon
+    // as the Google integration is configured.
+    if (config.google.clientId) {
+      validateProductionSecret('GOOGLE_CLIENT_SECRET', env.GOOGLE_CLIENT_SECRET);
+      validateProductionSecret('CALENDAR_TOKEN_KEY', env.CALENDAR_TOKEN_KEY);
     }
   }
 

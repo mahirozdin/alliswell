@@ -37,3 +37,15 @@ export function publishSyncChanged(workspaceId, revision) {
     setImmediate(flush);
   }
 }
+
+/**
+ * Per-entity post-commit notification — the calendar mirror (OPH-072)
+ * listens for task changes. Uncoalesced on purpose: the mirror queue dedupes
+ * by task id itself.
+ *
+ * @param {{ workspaceId: string, entityType: string, entityId: string,
+ *           operation: 'create'|'update'|'delete' }} change
+ */
+export function publishEntityChanged(change) {
+  syncEvents.emit('entity:changed', change);
+}

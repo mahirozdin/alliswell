@@ -1,5 +1,5 @@
 import { newId } from '../lib/ids.js';
-import { publishSyncChanged } from '../lib/sync-events.js';
+import { publishSyncChanged, publishEntityChanged } from '../lib/sync-events.js';
 
 /**
  * Records one entity write in the workspace's monotonic change log
@@ -34,11 +34,14 @@ export async function recordSyncWrite(
     changed_fields: changedFields ? JSON.stringify(changedFields) : null,
   });
 
-  // Announce to live clients only AFTER the transaction commits (an emit from
-  // inside would leak uncommitted revisions). The in-memory test db has no
+  // Announce only AFTER the transaction commits (an emit from inside would
+  // leak uncommitted revisions). The in-memory test db has no
   // executionPromise — its "transactions" always commit.
   (trx.executionPromise ?? Promise.resolve())
-    .then(() => publishSyncChanged(workspaceId, revision))
+    .then(() => {
+      publishSyncChanged(workspaceId, revision);
+      publishEntityChanged({ workspaceId, entityType, entityId, operation });
+    })
     .catch(() => {}); // rolled back — nothing happened, nothing to announce
 
   return revision;

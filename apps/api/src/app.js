@@ -10,6 +10,7 @@ import mysqlPlugin from './plugins/mysql.js';
 import redisPlugin from './plugins/redis.js';
 import authPlugin from './plugins/auth.js';
 import socketPlugin from './plugins/socket.js';
+import mirrorPlugin from './plugins/mirror.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -20,6 +21,7 @@ import noteRoutes from './routes/notes.js';
 import syncRoutes from './routes/sync.js';
 import notificationDeviceRoutes from './routes/notification-devices.js';
 import reminderRoutes from './routes/reminders.js';
+import googleIntegrationRoutes from './routes/integrations-google.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -67,6 +69,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(redisPlugin, { redis });
   await app.register(authPlugin);
   await app.register(socketPlugin);
+  await app.register(mirrorPlugin);
 
   app.get(
     '/',
@@ -103,6 +106,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(syncRoutes, { prefix: '/api/v1' });
   await app.register(notificationDeviceRoutes, { prefix: '/api/v1' });
   await app.register(reminderRoutes, { prefix: '/api/v1' });
+  await app.register(googleIntegrationRoutes, { prefix: '/api/v1' });
 
   return app;
 }
