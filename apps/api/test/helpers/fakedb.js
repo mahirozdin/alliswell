@@ -51,6 +51,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     note_links: [],
     sync_revisions: [],
     client_mutations: [],
+    notification_devices: [],
   };
 
   const columnDefaults = {
@@ -99,6 +100,11 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       revision: 0,
     }),
     client_mutations: () => ({ user_id: null, result_revision: null, error_code: null }),
+    notification_devices: () => ({
+      push_token: null,
+      device_name: null,
+      app_version: null,
+    }),
   };
 
   function assertUnique(name, candidate, rows) {
