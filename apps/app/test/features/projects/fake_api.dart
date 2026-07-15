@@ -131,6 +131,36 @@ class FakeApi {
   /// Every consent URL handed out, so tests can prove the hand-off happened.
   final List<String> googleConnectCalls = [];
 
+  /// The user's own calendar events (OPH-083) — served through `/sync/pull`
+  /// like any other entity, because that is exactly what they are.
+  final List<Map<String, dynamic>> externalEvents = [];
+
+  Map<String, dynamic> seedExternalEvent({
+    required String summary,
+    required String startsAt,
+    required String endsAt,
+    String? location,
+    bool isAllDay = false,
+    bool isBusy = true,
+  }) {
+    _seq += 1;
+    final event = {
+      'id': 'EVT$_seq'.padRight(26, '0'),
+      'workspaceId': workspaceId,
+      'summary': summary,
+      'location': location,
+      'startsAt': startsAt,
+      'endsAt': endsAt,
+      'isAllDay': isAllDay,
+      'isBusy': isBusy,
+      'htmlLink': 'https://calendar.google.com/event?eid=$_seq',
+      'revision': 1,
+    };
+    externalEvents.add(event);
+    _bump();
+    return event;
+  }
+
   Map<String, dynamic> seedGoogleAccount({
     String id = 'ACC1',
     String email = 'takvim@example.com',
@@ -538,6 +568,12 @@ class FakeApi {
       }
       for (final n in notes) {
         snapshot('note', {'links': const [], ...n});
+      }
+      // OPH-083: the user's own calendar events ride the same pull — read-only,
+      // so the fake has no push route for them (mirroring the server's
+      // ENTITIES registry, which simply does not list the type).
+      for (final e in externalEvents) {
+        snapshot('external_event', e);
       }
       for (final d in deleted) {
         changes.add({

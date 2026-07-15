@@ -83,6 +83,27 @@ class Tasks extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// The user's OWN calendar events (OPH-083, ADR-0008) — meetings and
+/// appointments AllisWell did not create. Read-only: nothing here is ever
+/// pushed, so there is no outbox path and no revision bookkeeping beyond the
+/// server's. Added in schema v3.
+@DataClassName('ExternalEventRecord')
+class ExternalEvents extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get summary => text().nullable()();
+  TextColumn get location => text().nullable()();
+  DateTimeColumn get startsAt => dateTime()();
+  DateTimeColumn get endsAt => dateTime()();
+  BoolColumn get isAllDay => boolean().withDefault(const Constant(false))();
+  BoolColumn get isBusy => boolean().withDefault(const Constant(true))();
+  TextColumn get htmlLink => text().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class TaskTagRows extends Table {
   TextColumn get taskId => text()();
   TextColumn get tagId => text()();
@@ -204,6 +225,7 @@ class SyncStates extends Table {
     Notes,
     NoteLinkRows,
     Reminders,
+    ExternalEvents,
     PendingMutations,
     SyncStates,
   ],
@@ -213,8 +235,9 @@ class AwDatabase extends _$AwDatabase {
 
   /// Bump this for every schema change AND add the matching step below.
   /// v1 → v2 (OPH-081): tasks.calendar_mirror_enabled.
+  /// v2 → v3 (OPH-083): external_events (the user's own calendar).
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -232,6 +255,9 @@ class AwDatabase extends _$AwDatabase {
       // v2 (OPH-081): opt-in calendar mirroring. ADD COLUMN with a NOT NULL
       // default — existing rows take `false`, nothing is rewritten.
       if (from < 2) await m.addColumn(tasks, tasks.calendarMirrorEnabled);
+      // v3 (OPH-083): the user's own calendar events. A brand new table, so
+      // nothing existing is touched; the next pull fills it.
+      if (from < 3) await m.createTable(externalEvents);
     },
   );
 }

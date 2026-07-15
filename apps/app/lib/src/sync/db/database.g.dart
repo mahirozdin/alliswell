@@ -5565,6 +5565,619 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
   }
 }
 
+class $ExternalEventsTable extends ExternalEvents
+    with TableInfo<$ExternalEventsTable, ExternalEventRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExternalEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _summaryMeta = const VerificationMeta(
+    'summary',
+  );
+  @override
+  late final GeneratedColumn<String> summary = GeneratedColumn<String>(
+    'summary',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _locationMeta = const VerificationMeta(
+    'location',
+  );
+  @override
+  late final GeneratedColumn<String> location = GeneratedColumn<String>(
+    'location',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _startsAtMeta = const VerificationMeta(
+    'startsAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startsAt = GeneratedColumn<DateTime>(
+    'starts_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endsAtMeta = const VerificationMeta('endsAt');
+  @override
+  late final GeneratedColumn<DateTime> endsAt = GeneratedColumn<DateTime>(
+    'ends_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isAllDayMeta = const VerificationMeta(
+    'isAllDay',
+  );
+  @override
+  late final GeneratedColumn<bool> isAllDay = GeneratedColumn<bool>(
+    'is_all_day',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_all_day" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _isBusyMeta = const VerificationMeta('isBusy');
+  @override
+  late final GeneratedColumn<bool> isBusy = GeneratedColumn<bool>(
+    'is_busy',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_busy" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _htmlLinkMeta = const VerificationMeta(
+    'htmlLink',
+  );
+  @override
+  late final GeneratedColumn<String> htmlLink = GeneratedColumn<String>(
+    'html_link',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    summary,
+    location,
+    startsAt,
+    endsAt,
+    isAllDay,
+    isBusy,
+    htmlLink,
+    revision,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'external_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ExternalEventRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('summary')) {
+      context.handle(
+        _summaryMeta,
+        summary.isAcceptableOrUnknown(data['summary']!, _summaryMeta),
+      );
+    }
+    if (data.containsKey('location')) {
+      context.handle(
+        _locationMeta,
+        location.isAcceptableOrUnknown(data['location']!, _locationMeta),
+      );
+    }
+    if (data.containsKey('starts_at')) {
+      context.handle(
+        _startsAtMeta,
+        startsAt.isAcceptableOrUnknown(data['starts_at']!, _startsAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startsAtMeta);
+    }
+    if (data.containsKey('ends_at')) {
+      context.handle(
+        _endsAtMeta,
+        endsAt.isAcceptableOrUnknown(data['ends_at']!, _endsAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endsAtMeta);
+    }
+    if (data.containsKey('is_all_day')) {
+      context.handle(
+        _isAllDayMeta,
+        isAllDay.isAcceptableOrUnknown(data['is_all_day']!, _isAllDayMeta),
+      );
+    }
+    if (data.containsKey('is_busy')) {
+      context.handle(
+        _isBusyMeta,
+        isBusy.isAcceptableOrUnknown(data['is_busy']!, _isBusyMeta),
+      );
+    }
+    if (data.containsKey('html_link')) {
+      context.handle(
+        _htmlLinkMeta,
+        htmlLink.isAcceptableOrUnknown(data['html_link']!, _htmlLinkMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ExternalEventRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExternalEventRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      summary: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}summary'],
+      ),
+      location: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}location'],
+      ),
+      startsAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}starts_at'],
+      )!,
+      endsAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ends_at'],
+      )!,
+      isAllDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_all_day'],
+      )!,
+      isBusy: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_busy'],
+      )!,
+      htmlLink: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}html_link'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+    );
+  }
+
+  @override
+  $ExternalEventsTable createAlias(String alias) {
+    return $ExternalEventsTable(attachedDatabase, alias);
+  }
+}
+
+class ExternalEventRecord extends DataClass
+    implements Insertable<ExternalEventRecord> {
+  final String id;
+  final String workspaceId;
+  final String? summary;
+  final String? location;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final bool isAllDay;
+  final bool isBusy;
+  final String? htmlLink;
+  final int revision;
+  const ExternalEventRecord({
+    required this.id,
+    required this.workspaceId,
+    this.summary,
+    this.location,
+    required this.startsAt,
+    required this.endsAt,
+    required this.isAllDay,
+    required this.isBusy,
+    this.htmlLink,
+    required this.revision,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    if (!nullToAbsent || summary != null) {
+      map['summary'] = Variable<String>(summary);
+    }
+    if (!nullToAbsent || location != null) {
+      map['location'] = Variable<String>(location);
+    }
+    map['starts_at'] = Variable<DateTime>(startsAt);
+    map['ends_at'] = Variable<DateTime>(endsAt);
+    map['is_all_day'] = Variable<bool>(isAllDay);
+    map['is_busy'] = Variable<bool>(isBusy);
+    if (!nullToAbsent || htmlLink != null) {
+      map['html_link'] = Variable<String>(htmlLink);
+    }
+    map['revision'] = Variable<int>(revision);
+    return map;
+  }
+
+  ExternalEventsCompanion toCompanion(bool nullToAbsent) {
+    return ExternalEventsCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      summary: summary == null && nullToAbsent
+          ? const Value.absent()
+          : Value(summary),
+      location: location == null && nullToAbsent
+          ? const Value.absent()
+          : Value(location),
+      startsAt: Value(startsAt),
+      endsAt: Value(endsAt),
+      isAllDay: Value(isAllDay),
+      isBusy: Value(isBusy),
+      htmlLink: htmlLink == null && nullToAbsent
+          ? const Value.absent()
+          : Value(htmlLink),
+      revision: Value(revision),
+    );
+  }
+
+  factory ExternalEventRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExternalEventRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      summary: serializer.fromJson<String?>(json['summary']),
+      location: serializer.fromJson<String?>(json['location']),
+      startsAt: serializer.fromJson<DateTime>(json['startsAt']),
+      endsAt: serializer.fromJson<DateTime>(json['endsAt']),
+      isAllDay: serializer.fromJson<bool>(json['isAllDay']),
+      isBusy: serializer.fromJson<bool>(json['isBusy']),
+      htmlLink: serializer.fromJson<String?>(json['htmlLink']),
+      revision: serializer.fromJson<int>(json['revision']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'summary': serializer.toJson<String?>(summary),
+      'location': serializer.toJson<String?>(location),
+      'startsAt': serializer.toJson<DateTime>(startsAt),
+      'endsAt': serializer.toJson<DateTime>(endsAt),
+      'isAllDay': serializer.toJson<bool>(isAllDay),
+      'isBusy': serializer.toJson<bool>(isBusy),
+      'htmlLink': serializer.toJson<String?>(htmlLink),
+      'revision': serializer.toJson<int>(revision),
+    };
+  }
+
+  ExternalEventRecord copyWith({
+    String? id,
+    String? workspaceId,
+    Value<String?> summary = const Value.absent(),
+    Value<String?> location = const Value.absent(),
+    DateTime? startsAt,
+    DateTime? endsAt,
+    bool? isAllDay,
+    bool? isBusy,
+    Value<String?> htmlLink = const Value.absent(),
+    int? revision,
+  }) => ExternalEventRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    summary: summary.present ? summary.value : this.summary,
+    location: location.present ? location.value : this.location,
+    startsAt: startsAt ?? this.startsAt,
+    endsAt: endsAt ?? this.endsAt,
+    isAllDay: isAllDay ?? this.isAllDay,
+    isBusy: isBusy ?? this.isBusy,
+    htmlLink: htmlLink.present ? htmlLink.value : this.htmlLink,
+    revision: revision ?? this.revision,
+  );
+  ExternalEventRecord copyWithCompanion(ExternalEventsCompanion data) {
+    return ExternalEventRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      summary: data.summary.present ? data.summary.value : this.summary,
+      location: data.location.present ? data.location.value : this.location,
+      startsAt: data.startsAt.present ? data.startsAt.value : this.startsAt,
+      endsAt: data.endsAt.present ? data.endsAt.value : this.endsAt,
+      isAllDay: data.isAllDay.present ? data.isAllDay.value : this.isAllDay,
+      isBusy: data.isBusy.present ? data.isBusy.value : this.isBusy,
+      htmlLink: data.htmlLink.present ? data.htmlLink.value : this.htmlLink,
+      revision: data.revision.present ? data.revision.value : this.revision,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExternalEventRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('summary: $summary, ')
+          ..write('location: $location, ')
+          ..write('startsAt: $startsAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('isAllDay: $isAllDay, ')
+          ..write('isBusy: $isBusy, ')
+          ..write('htmlLink: $htmlLink, ')
+          ..write('revision: $revision')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    summary,
+    location,
+    startsAt,
+    endsAt,
+    isAllDay,
+    isBusy,
+    htmlLink,
+    revision,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExternalEventRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.summary == this.summary &&
+          other.location == this.location &&
+          other.startsAt == this.startsAt &&
+          other.endsAt == this.endsAt &&
+          other.isAllDay == this.isAllDay &&
+          other.isBusy == this.isBusy &&
+          other.htmlLink == this.htmlLink &&
+          other.revision == this.revision);
+}
+
+class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String?> summary;
+  final Value<String?> location;
+  final Value<DateTime> startsAt;
+  final Value<DateTime> endsAt;
+  final Value<bool> isAllDay;
+  final Value<bool> isBusy;
+  final Value<String?> htmlLink;
+  final Value<int> revision;
+  final Value<int> rowid;
+  const ExternalEventsCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.summary = const Value.absent(),
+    this.location = const Value.absent(),
+    this.startsAt = const Value.absent(),
+    this.endsAt = const Value.absent(),
+    this.isAllDay = const Value.absent(),
+    this.isBusy = const Value.absent(),
+    this.htmlLink = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ExternalEventsCompanion.insert({
+    required String id,
+    required String workspaceId,
+    this.summary = const Value.absent(),
+    this.location = const Value.absent(),
+    required DateTime startsAt,
+    required DateTime endsAt,
+    this.isAllDay = const Value.absent(),
+    this.isBusy = const Value.absent(),
+    this.htmlLink = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       startsAt = Value(startsAt),
+       endsAt = Value(endsAt);
+  static Insertable<ExternalEventRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? summary,
+    Expression<String>? location,
+    Expression<DateTime>? startsAt,
+    Expression<DateTime>? endsAt,
+    Expression<bool>? isAllDay,
+    Expression<bool>? isBusy,
+    Expression<String>? htmlLink,
+    Expression<int>? revision,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (summary != null) 'summary': summary,
+      if (location != null) 'location': location,
+      if (startsAt != null) 'starts_at': startsAt,
+      if (endsAt != null) 'ends_at': endsAt,
+      if (isAllDay != null) 'is_all_day': isAllDay,
+      if (isBusy != null) 'is_busy': isBusy,
+      if (htmlLink != null) 'html_link': htmlLink,
+      if (revision != null) 'revision': revision,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ExternalEventsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String?>? summary,
+    Value<String?>? location,
+    Value<DateTime>? startsAt,
+    Value<DateTime>? endsAt,
+    Value<bool>? isAllDay,
+    Value<bool>? isBusy,
+    Value<String?>? htmlLink,
+    Value<int>? revision,
+    Value<int>? rowid,
+  }) {
+    return ExternalEventsCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      summary: summary ?? this.summary,
+      location: location ?? this.location,
+      startsAt: startsAt ?? this.startsAt,
+      endsAt: endsAt ?? this.endsAt,
+      isAllDay: isAllDay ?? this.isAllDay,
+      isBusy: isBusy ?? this.isBusy,
+      htmlLink: htmlLink ?? this.htmlLink,
+      revision: revision ?? this.revision,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (summary.present) {
+      map['summary'] = Variable<String>(summary.value);
+    }
+    if (location.present) {
+      map['location'] = Variable<String>(location.value);
+    }
+    if (startsAt.present) {
+      map['starts_at'] = Variable<DateTime>(startsAt.value);
+    }
+    if (endsAt.present) {
+      map['ends_at'] = Variable<DateTime>(endsAt.value);
+    }
+    if (isAllDay.present) {
+      map['is_all_day'] = Variable<bool>(isAllDay.value);
+    }
+    if (isBusy.present) {
+      map['is_busy'] = Variable<bool>(isBusy.value);
+    }
+    if (htmlLink.present) {
+      map['html_link'] = Variable<String>(htmlLink.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExternalEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('summary: $summary, ')
+          ..write('location: $location, ')
+          ..write('startsAt: $startsAt, ')
+          ..write('endsAt: $endsAt, ')
+          ..write('isAllDay: $isAllDay, ')
+          ..write('isBusy: $isBusy, ')
+          ..write('htmlLink: $htmlLink, ')
+          ..write('revision: $revision, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingMutationsTable extends PendingMutations
     with TableInfo<$PendingMutationsTable, PendingMutation> {
   @override
@@ -6536,6 +7149,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $NotesTable notes = $NotesTable(this);
   late final $NoteLinkRowsTable noteLinkRows = $NoteLinkRowsTable(this);
   late final $RemindersTable reminders = $RemindersTable(this);
+  late final $ExternalEventsTable externalEvents = $ExternalEventsTable(this);
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
   );
@@ -6553,6 +7167,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     notes,
     noteLinkRows,
     reminders,
+    externalEvents,
     pendingMutations,
     syncStates,
   ];
@@ -9177,6 +9792,307 @@ typedef $$RemindersTableProcessedTableManager =
       Reminder,
       PrefetchHooks Function()
     >;
+typedef $$ExternalEventsTableCreateCompanionBuilder =
+    ExternalEventsCompanion Function({
+      required String id,
+      required String workspaceId,
+      Value<String?> summary,
+      Value<String?> location,
+      required DateTime startsAt,
+      required DateTime endsAt,
+      Value<bool> isAllDay,
+      Value<bool> isBusy,
+      Value<String?> htmlLink,
+      Value<int> revision,
+      Value<int> rowid,
+    });
+typedef $$ExternalEventsTableUpdateCompanionBuilder =
+    ExternalEventsCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String?> summary,
+      Value<String?> location,
+      Value<DateTime> startsAt,
+      Value<DateTime> endsAt,
+      Value<bool> isAllDay,
+      Value<bool> isBusy,
+      Value<String?> htmlLink,
+      Value<int> revision,
+      Value<int> rowid,
+    });
+
+class $$ExternalEventsTableFilterComposer
+    extends Composer<_$AwDatabase, $ExternalEventsTable> {
+  $$ExternalEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get summary => $composableBuilder(
+    column: $table.summary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startsAt => $composableBuilder(
+    column: $table.startsAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endsAt => $composableBuilder(
+    column: $table.endsAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isAllDay => $composableBuilder(
+    column: $table.isAllDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isBusy => $composableBuilder(
+    column: $table.isBusy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get htmlLink => $composableBuilder(
+    column: $table.htmlLink,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ExternalEventsTableOrderingComposer
+    extends Composer<_$AwDatabase, $ExternalEventsTable> {
+  $$ExternalEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get summary => $composableBuilder(
+    column: $table.summary,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startsAt => $composableBuilder(
+    column: $table.startsAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endsAt => $composableBuilder(
+    column: $table.endsAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isAllDay => $composableBuilder(
+    column: $table.isAllDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isBusy => $composableBuilder(
+    column: $table.isBusy,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get htmlLink => $composableBuilder(
+    column: $table.htmlLink,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ExternalEventsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $ExternalEventsTable> {
+  $$ExternalEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get summary =>
+      $composableBuilder(column: $table.summary, builder: (column) => column);
+
+  GeneratedColumn<String> get location =>
+      $composableBuilder(column: $table.location, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startsAt =>
+      $composableBuilder(column: $table.startsAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endsAt =>
+      $composableBuilder(column: $table.endsAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isAllDay =>
+      $composableBuilder(column: $table.isAllDay, builder: (column) => column);
+
+  GeneratedColumn<bool> get isBusy =>
+      $composableBuilder(column: $table.isBusy, builder: (column) => column);
+
+  GeneratedColumn<String> get htmlLink =>
+      $composableBuilder(column: $table.htmlLink, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+}
+
+class $$ExternalEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $ExternalEventsTable,
+          ExternalEventRecord,
+          $$ExternalEventsTableFilterComposer,
+          $$ExternalEventsTableOrderingComposer,
+          $$ExternalEventsTableAnnotationComposer,
+          $$ExternalEventsTableCreateCompanionBuilder,
+          $$ExternalEventsTableUpdateCompanionBuilder,
+          (
+            ExternalEventRecord,
+            BaseReferences<
+              _$AwDatabase,
+              $ExternalEventsTable,
+              ExternalEventRecord
+            >,
+          ),
+          ExternalEventRecord,
+          PrefetchHooks Function()
+        > {
+  $$ExternalEventsTableTableManager(_$AwDatabase db, $ExternalEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExternalEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExternalEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExternalEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String?> summary = const Value.absent(),
+                Value<String?> location = const Value.absent(),
+                Value<DateTime> startsAt = const Value.absent(),
+                Value<DateTime> endsAt = const Value.absent(),
+                Value<bool> isAllDay = const Value.absent(),
+                Value<bool> isBusy = const Value.absent(),
+                Value<String?> htmlLink = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExternalEventsCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                summary: summary,
+                location: location,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                isAllDay: isAllDay,
+                isBusy: isBusy,
+                htmlLink: htmlLink,
+                revision: revision,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                Value<String?> summary = const Value.absent(),
+                Value<String?> location = const Value.absent(),
+                required DateTime startsAt,
+                required DateTime endsAt,
+                Value<bool> isAllDay = const Value.absent(),
+                Value<bool> isBusy = const Value.absent(),
+                Value<String?> htmlLink = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExternalEventsCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                summary: summary,
+                location: location,
+                startsAt: startsAt,
+                endsAt: endsAt,
+                isAllDay: isAllDay,
+                isBusy: isBusy,
+                htmlLink: htmlLink,
+                revision: revision,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ExternalEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $ExternalEventsTable,
+      ExternalEventRecord,
+      $$ExternalEventsTableFilterComposer,
+      $$ExternalEventsTableOrderingComposer,
+      $$ExternalEventsTableAnnotationComposer,
+      $$ExternalEventsTableCreateCompanionBuilder,
+      $$ExternalEventsTableUpdateCompanionBuilder,
+      (
+        ExternalEventRecord,
+        BaseReferences<_$AwDatabase, $ExternalEventsTable, ExternalEventRecord>,
+      ),
+      ExternalEventRecord,
+      PrefetchHooks Function()
+    >;
 typedef $$PendingMutationsTableCreateCompanionBuilder =
     PendingMutationsCompanion Function({
       required String id,
@@ -9687,6 +10603,8 @@ class $AwDatabaseManager {
       $$NoteLinkRowsTableTableManager(_db, _db.noteLinkRows);
   $$RemindersTableTableManager get reminders =>
       $$RemindersTableTableManager(_db, _db.reminders);
+  $$ExternalEventsTableTableManager get externalEvents =>
+      $$ExternalEventsTableTableManager(_db, _db.externalEvents);
   $$PendingMutationsTableTableManager get pendingMutations =>
       $$PendingMutationsTableTableManager(_db, _db.pendingMutations);
   $$SyncStatesTableTableManager get syncStates =>

@@ -15,5 +15,6 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0005](0005-alliswell-glass-design-system.md) | "AllisWell Glass" design system (permanent visual language) | Accepted |
 | [0006](0006-google-oauth-token-crypto-and-mirror-queue.md) | Google OAuth flow, token encryption & the mirror queue | Accepted |
 | [0007](0007-google-inbound-sync-and-conflict-policy.md) | Google inbound sync: push channels, echo suppression & two-way conflict policy | Accepted |
+| [0008](0008-external-calendar-events.md) | External calendar events as a read-only sync entity | Accepted |
 
 Template: [template.md](template.md)

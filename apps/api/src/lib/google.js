@@ -157,15 +157,23 @@ export class GoogleClient {
   }
 
   /**
-   * One page of the sync feed (OPH-075). `syncToken` makes it incremental —
-   * an expired one answers 410, which the worker turns into a full resync.
-   * Every page of a sync MUST carry the same filters as the first request
-   * (Google's rule), hence the fixed `showDeleted`.
+   * One page of a sync feed (OPH-075). `syncToken` makes it incremental — an
+   * expired one answers 410, which the worker turns into a full resync. Every
+   * page of a sync MUST carry the same filters as the first request (Google's
+   * rule), hence the fixed `showDeleted`.
    *
-   * @param {{ syncToken?: string|null, pageToken?: string|null }} cursor
+   * `singleEvents` picks WHICH feed (ADR-0008 §3): false expands nothing and
+   * shows recurrence masters — what the task mirror needs to spot a series;
+   * true expands recurring events into instances — what a calendar grid needs.
+   * The two cannot share a cursor, which is why they are separate syncs.
+   * `timeMin`/`timeMax` are deliberately absent: Google forbids them alongside
+   * a syncToken, so windowing happens when storing instead.
+   *
+   * @param {{ syncToken?: string|null, pageToken?: string|null, singleEvents?: boolean }} cursor
    */
-  listEvents(accessToken, calendarId, { syncToken, pageToken } = {}) {
+  listEvents(accessToken, calendarId, { syncToken, pageToken, singleEvents } = {}) {
     const params = new URLSearchParams({ showDeleted: 'true', maxResults: '250' });
+    if (singleEvents) params.set('singleEvents', 'true');
     if (syncToken) params.set('syncToken', syncToken);
     if (pageToken) params.set('pageToken', pageToken);
     return request(

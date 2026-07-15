@@ -65,6 +65,8 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.checklistItems)..where((c) => c.id.equals(id))).go();
     case 'reminder':
       await (db.delete(db.reminders)..where((r) => r.id.equals(id))).go();
+    case 'external_event':
+      await (db.delete(db.externalEvents)..where((e) => e.id.equals(id))).go();
   }
 }
 
@@ -100,6 +102,10 @@ Future<void> _applySnapshot(
       await db
           .into(db.reminders)
           .insertOnConflictUpdate(reminderCompanion(data));
+    case 'external_event':
+      await db
+          .into(db.externalEvents)
+          .insertOnConflictUpdate(externalEventCompanion(data));
   }
 }
 
@@ -172,6 +178,22 @@ TagsCompanion tagCompanion(Map<String, dynamic> d) => TagsCompanion.insert(
   createdAt: _dateValue(d['createdAt']),
   updatedAt: _dateValue(d['updatedAt']),
 );
+
+/// OPH-083 — the user's own calendar events (ADR-0008). Read-only: no outbox
+/// path exists for this table, so the server is the only writer.
+ExternalEventsCompanion externalEventCompanion(Map<String, dynamic> d) =>
+    ExternalEventsCompanion.insert(
+      id: d['id'] as String,
+      workspaceId: d['workspaceId'] as String,
+      summary: Value(d['summary'] as String?),
+      location: Value(d['location'] as String?),
+      startsAt: _date(d['startsAt'])!,
+      endsAt: _date(d['endsAt'])!,
+      isAllDay: Value((d['isAllDay'] as bool?) ?? false),
+      isBusy: Value((d['isBusy'] as bool?) ?? true),
+      htmlLink: Value(d['htmlLink'] as String?),
+      revision: Value((d['revision'] as int?) ?? 0),
+    );
 
 TasksCompanion taskCompanion(Map<String, dynamic> d) => TasksCompanion.insert(
   id: d['id'] as String,

@@ -39,6 +39,12 @@ const UNIQUE_INDEXES = {
       cols: ['calendar_account_id', 'provider_event_id'],
     },
   ],
+  calendar_external_events: [
+    {
+      name: 'calendar_external_events.uq_cee_account_event',
+      cols: ['calendar_account_id', 'provider_event_id'],
+    },
+  ],
 };
 
 const OPS = {
@@ -70,6 +76,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     notification_devices: [],
     calendar_accounts: [],
     calendar_event_links: [],
+    calendar_external_events: [],
   };
 
   const columnDefaults = {
@@ -124,11 +131,23 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       device_name: null,
       app_version: null,
     }),
+    calendar_external_events: () => ({
+      summary: null,
+      location: null,
+      is_all_day: false,
+      is_busy: true,
+      html_link: null,
+      etag: null,
+      provider_updated_at: null,
+      revision: 0,
+      deleted_at: null,
+    }),
     calendar_accounts: () => ({
       encrypted_access_token: null,
       encrypted_refresh_token: null,
       token_expires_at: null,
       sync_token: null,
+      external_sync_token: null,
       sync_dirty_at: null,
       webhook_channel_id: null,
       webhook_channel_token_hash: null,

@@ -23,6 +23,10 @@ export async function startFakeGoogle() {
     // `expireSyncToken` forces the 410 → full-resync path.
     changes: [], // {calendarId, event}
     expireSyncToken: false,
+    // ADR-0008: the two feeds are told apart by `singleEvents`. The fake does
+    // not expand recurrences (nothing under test needs it) — it just records
+    // which feed asked, so tests can prove both run and stay separate.
+    listCalls: { mirror: 0, external: 0 },
   };
 
   const eventsIn = (calendarId) => {
@@ -147,6 +151,9 @@ export async function startFakeGoogle() {
         ),
       };
     }
+
+    const isExternalFeed = request.query.singleEvents === 'true';
+    state.listCalls[isExternalFeed ? 'external' : 'mirror'] += 1;
 
     const syncToken = request.query.syncToken ?? null;
     if (syncToken && state.expireSyncToken) {

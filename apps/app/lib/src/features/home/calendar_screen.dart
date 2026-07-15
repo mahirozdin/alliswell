@@ -4,13 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../screens/home_shell.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
+import '../calendar/providers.dart';
+import '../calendar/ui/external_event_tile.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/task_tile.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
 
-/// Calendar tab (feedback round 1): just the month view — tapping a day lists
-/// that day's tasks below. Selection is shared with Home.
+/// Calendar tab (feedback round 1): the month view — tapping a day lists that
+/// day below. Selection is shared with Home.
+///
+/// Since OPH-083 it shows the user's OWN calendar too (ADR-0008): tasks alone
+/// could never answer "what does my day look like".
 class CalendarScreen extends ConsumerWidget {
   const CalendarScreen({super.key});
 
@@ -18,6 +23,9 @@ class CalendarScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tasks = ref.watch(openTasksProvider);
     final selectedDay = ref.watch(selectedDayProvider);
+    // A missing calendar is not an error — most workspaces have none connected.
+    final events =
+        ref.watch(externalEventsProvider).value ?? const <ExternalEvent>[];
 
     return Scaffold(
       appBar: buildSectionAppBar(context, 'Calendar'),
@@ -33,6 +41,8 @@ class CalendarScreen extends ConsumerWidget {
             for (final task in items)
               if (task.dueAt != null && dayOf(task.dueAt!) == day) task,
           ]..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
+          final dayEvents = eventsOn(events, day);
+          final total = dayTasks.length + dayEvents.length;
 
           return Column(
             children: [
@@ -50,7 +60,11 @@ class CalendarScreen extends ConsumerWidget {
                       child: Padding(
                         padding: const EdgeInsets.all(AwSpace.x3),
                         child: MonthCalendar(
-                          markedDays: daysWithTasks(items),
+                          // A day with a meeting is not an empty day.
+                          markedDays: {
+                            ...daysWithTasks(items),
+                            ...daysWithEvents(events),
+                          },
                           selectedDay: selectedDay,
                           onDaySelected: (d) =>
                               ref.read(selectedDayProvider.notifier).select(d),
@@ -71,7 +85,7 @@ class CalendarScreen extends ConsumerWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}'
-                    ' · ${dayTasks.length} task${dayTasks.length == 1 ? '' : 's'}',
+                    ' · $total item${total == 1 ? '' : 's'}',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w700,
@@ -81,15 +95,19 @@ class CalendarScreen extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                child: dayTasks.isEmpty
+                child: total == 0
                     ? const AwEmptyState(
                         icon: Icons.event_available_outlined,
                         title: 'Free day',
-                        message: 'Nothing due this day.',
+                        message: 'Nothing due and nothing scheduled.',
                       )
                     : ListView(
                         padding: awListPadding(context),
                         children: [
+                          // Events first: they are fixed points, the tasks fit
+                          // around them.
+                          for (final event in dayEvents)
+                            ExternalEventTile(event: event),
                           for (final task in dayTasks) TaskTile(task: task),
                         ],
                       ),

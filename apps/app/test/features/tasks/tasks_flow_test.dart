@@ -8,6 +8,7 @@ import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/calendar/ui/external_event_tile.dart';
 import 'package:alliswell/src/features/tasks/ui/task_detail_screen.dart';
 
 import '../auth/test_support.dart';
@@ -254,9 +255,47 @@ void main() {
     await tester.tap(find.text('Calendar').last);
     await tester.pumpAndSettle();
 
-    // Defaults to today when nothing is selected.
-    expect(find.textContaining('· 1 task'), findsOneWidget);
+    // Defaults to today when nothing is selected. "items", not "tasks": since
+    // OPH-083 the day also counts calendar events (there are none here).
+    expect(find.textContaining('· 1 item'), findsOneWidget);
     expect(find.text('Bugünün işi'), findsOneWidget);
+  });
+
+  testWidgets('calendar tab shows the day’s meetings beside its tasks', (
+    tester,
+  ) async {
+    // The gap the product lead found by connecting his real Google account:
+    // tasks alone cannot answer "what does my day look like".
+    final api = FakeApi()
+      ..seedTask(
+        title: 'Bugünün işi',
+        dueAt: isoAt(today.add(const Duration(hours: 16))),
+      )
+      ..seedExternalEvent(
+        summary: 'Ekip toplantısı',
+        location: 'Kadıköy',
+        startsAt: isoAt(today.add(const Duration(hours: 10))),
+        endsAt: isoAt(today.add(const Duration(hours: 11))),
+      );
+
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Calendar').last);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('· 2 items'), findsOneWidget);
+    expect(find.text('Ekip toplantısı'), findsOneWidget);
+    expect(find.text('Kadıköy'), findsOneWidget);
+    expect(find.text('Bugünün işi'), findsOneWidget);
+    // Read-only: a meeting has no checkbox to complete it.
+    expect(
+      find.descendant(
+        of: find.byType(ExternalEventTile),
+        matching: find.byType(Checkbox),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('task tiles show status icons and priority colors', (

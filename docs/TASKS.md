@@ -727,6 +727,74 @@ recurring series or unusable boundaries → flag, touch neither side).
 Provider-driven task writes are ordinary writes: one transaction, a sync
 revision, reminder reconciled, attributed to the connecting user. ✔
 
+> **OPH-082/083 added 2026-07-16, from live use.** The product lead connected his real
+> Google account and said his calendar's events never appeared. Correct and deliberate —
+> `lib/inbound.js` ignores any event that isn't ours — but the line was wrong: AllisWell
+> has a Calendar tab and §12 calls Home "the single chronological view where everything
+> shows", and neither can answer "what does my day look like" from tasks alone. BLUEPRINT
+> never specced external events at all (not even in the v2 parking lot), so this is a spec
+> hole, not a code bug. Design: [ADR-0008](adr/0008-external-calendar-events.md).
+> **The data is already in our hands** — the OPH-075 worker fetches the whole feed each
+> pass and drops the foreign half on the floor.
+
+### OPH-082 — External calendar events (server) ✅
+
+- [x] `calendar_external_events` table + `calendar_accounts.external_sync_token` (append-only)
+- [x] Second feed in the inbound worker: `singleEvents=true`, its own cursor, same
+      webhook/dirty/sweep trigger; skip our own events (`alliswell_task_id`), apply the
+      storage window, cancelled → delete
+- [x] Pure derivation `lib/external-events.js` (Google event → row, or skip + reason)
+- [x] `sync/pull` snapshots + tombstones for `external_event`; `sync/push` rejects it
+      (falls out of the `ENTITIES` registry as `SYNC_UNSUPPORTED_ENTITY` — no new code)
+- [x] Tests: pure mapper (window, all-day, ours-skipped, cancelled), worker over the fake
+      Google, pull/push
+
+Acceptance notes: the feed was already in our hands — OPH-075 pulled every event
+each pass and dropped the foreign half. Now it lands in
+`calendar_external_events` as a read-only sync entity. **Verified against the
+product lead's real Google account: 41 events, real syncToken.** Two contract
+findings drove the design: `timeMin`/`timeMax` are incompatible with
+`syncToken`, so a sync cannot be windowed by time (Google syncs whole
+collections) — the window is applied when STORING, and the live account proves
+it (kept 2026-06-16 → 2027-07-23 from a 31-back/400-forward window, older
+history dropped); and `singleEvents` cannot serve both consumers, so the task
+mirror keeps its `singleEvents=false` cursor (it must see recurrence masters to
+answer `time_conflict`) while the display feed gets `singleEvents=true` and its
+own. An unchanged event costs no revision — a full resync replays the whole
+calendar and would otherwise wake every device per meeting. Read-only needed no
+code: absence from the push `ENTITIES` registry IS the enforcement. ✔
+
+### OPH-083 — External calendar events (app) ✅
+
+- [x] drift table + applier mapping (schema v3 + migration step) + store
+- [x] Calendar tab: events on the month grid next to task dots
+- [ ] **Home: events in the chronological groups (§12 "everything shows") — DEFERRED**
+- [x] Read-only affordance — never editable; visually distinct from tasks
+- [x] Tests: applier round-trip, grouping with events, Calendar rendering
+
+Acceptance notes: `features/calendar/` — drift schema v3 (`external_events`,
+migrated by `createTable`, proven by the v1→latest migration test), applier
+case, and a store with **no write path at all — that absence is the read-only
+guarantee**. `ExternalEventTile` is deliberately a different species from
+`TaskTile`: a time rail instead of a checkbox, because you cannot complete a
+meeting and the row must not suggest you can; "not busy" events (Google's
+`transparent` — birthdays, holidays) recede to a muted accent. Day maths is
+pure and tested: Google's exclusive end means an all-day event marks ONE day,
+and multi-day events mark every day they touch. Verified live in the browser
+against the real account, light and dark.
+
+**Deferred, deliberately:** Home's chronological groups. §12 wants events there
+too, but `HomeGroup` carries tasks and mixing events in changes a tested pure
+function and the shape of every row — a real change that deserves its own task
+rather than being smuggled into this one. The Calendar tab is where the lead
+looked and where the gap was reported; Home is next (OPH-084).
+
+### OPH-084 — External events on Home
+
+- [ ] Home's chronological groups carry events beside tasks (§12: "the single
+      chronological view where everything shows") — needs `HomeGroup` to hold a
+      mixed, ordered list, so the pure grouping function and its tests change
+
 ### OPH-077 — Apple EventKit Flutter plugin skeleton
 
 - [ ] Platform channel (iOS/macOS): permission request + calendar list

@@ -1,3 +1,4 @@
+import '../calendar/data/external_event.dart';
 import '../tasks/data/task.dart';
 
 /// Chronological buckets of the home list (feedback round 1). When a calendar
@@ -114,3 +115,40 @@ Set<DateTime> daysWithTasks(List<Task> tasks) => {
   for (final task in tasks)
     if (task.dueAt != null) dayOf(task.dueAt!),
 };
+
+// ── The user's own calendar (OPH-083, ADR-0008) ────────────────────────────
+
+/// Every local day an event touches.
+///
+/// The end is EXCLUSIVE, the way Google models it: an all-day event on the 5th
+/// runs 05-00:00 → 06-00:00 and must mark ONE day, not two. Stepping back a
+/// millisecond is what keeps a one-day event from bleeding into tomorrow.
+Iterable<DateTime> daysOfEvent(ExternalEvent event) sync* {
+  var day = dayOf(event.startsAt);
+  final lastInstant = event.endsAt.isAfter(event.startsAt)
+      ? event.endsAt.subtract(const Duration(milliseconds: 1))
+      : event.endsAt;
+  final last = dayOf(lastInstant);
+  while (!day.isAfter(last)) {
+    yield day;
+    day = DateTime(day.year, day.month, day.day + 1);
+  }
+}
+
+/// Days that carry a meeting — a day with one is not an empty day.
+Set<DateTime> daysWithEvents(List<ExternalEvent> events) => {
+  for (final event in events) ...daysOfEvent(event),
+};
+
+/// A day's events: all-day ones first (they frame the day), then by start time.
+List<ExternalEvent> eventsOn(List<ExternalEvent> events, DateTime day) {
+  final onDay = [
+    for (final event in events)
+      if (daysOfEvent(event).contains(day)) event,
+  ];
+  onDay.sort((a, b) {
+    if (a.isAllDay != b.isAllDay) return a.isAllDay ? -1 : 1;
+    return a.startsAt.compareTo(b.startsAt);
+  });
+  return onDay;
+}

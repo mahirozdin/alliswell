@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added (your calendar, in AllisWell — 2026-07-16, OPH-082/083)
+
+- **Google Calendar events now show up in AllisWell** (ADR-0008). Connecting an account used
+  to do nothing visible unless you mirrored a task: your meetings were deliberately ignored
+  ("none of our business"), which made the Calendar tab a calendar without your calendar in
+  it. They now sync into the replica as a read-only entity and appear on the month grid and
+  in the day list, offline like everything else. Found by the product lead connecting his
+  real account and asking where his events were — the spec never mentioned external events
+  at all.
+- The data was already in hand: the OPH-075 worker fetched the whole event feed every pass
+  and dropped the foreign half. It now keeps it — one extra request per sync, not per event.
+- Events are **read-only by construction**: no write path in the store, and absence from the
+  push registry is the enforcement. A meeting has no checkbox — you cannot complete a
+  wedding, and the row does not pretend otherwise.
+- Migrations: `calendar_external_events` + `calendar_accounts.external_sync_token` (server);
+  replica schema v3 (`external_events`).
+
 ### Added (Epic 08 app side — 2026-07-15, OPH-079…081)
 
 - **You can finally connect Google Calendar from the app.** Settings gains a Calendar card

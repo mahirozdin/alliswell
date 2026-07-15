@@ -163,6 +163,28 @@ export function serializeReminder(row) {
   };
 }
 
+/**
+ * The user's own calendar events (OPH-082, ADR-0008) — a read-only cache of
+ * someone else's system. No provider ids beyond what the app needs to open the
+ * event, and nothing writable: the app renders these, it never edits them.
+ */
+export function serializeExternalEvent(row) {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    summary: row.summary ?? null,
+    location: row.location ?? null,
+    startsAt: toIso(row.starts_at),
+    endsAt: toIso(row.ends_at),
+    isAllDay: Boolean(row.is_all_day),
+    isBusy: Boolean(row.is_busy),
+    htmlLink: row.html_link ?? null,
+    revision: Number(row.revision),
+    createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at),
+  };
+}
+
 /** mysql2 may hand JSON columns back as strings or parsed values. */
 function parseJson(value) {
   if (value == null) return null;
@@ -229,6 +251,12 @@ export default async function syncRoutes(app) {
     reminder: async (ids) => ({
       rows: await app.db('reminders').whereIn('id', ids).select(),
       serialize: serializeReminder,
+    }),
+    // OPH-082 — the user's own calendar events (ADR-0008). Read-only: the app
+    // shows them next to tasks; `push` refuses to write them back.
+    external_event: async (ids) => ({
+      rows: await app.db('calendar_external_events').whereIn('id', ids).select(),
+      serialize: serializeExternalEvent,
     }),
   };
 

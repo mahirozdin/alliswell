@@ -33,15 +33,16 @@ void main() {
     await dir.delete(recursive: true);
   });
 
-  /// Builds the schema as v1 shipped it — every table, minus the v2 column,
+  /// Builds the schema as v1 shipped it — every table, minus what v2/v3 add,
   /// with `user_version = 1` — and leaves one task and one queued mutation in
   /// it, the way a real install would look.
   Future<void> seedV1Database() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
-    // Opening creates the CURRENT schema (v2), so walk it back to v1: drop the
-    // column this migration is supposed to add, then rewind the version.
+    // Opening creates the CURRENT schema, so walk it back to v1: undo what each
+    // later version added, then rewind the version.
+    await db.customStatement('DROP TABLE external_events'); // v3
     await db.customStatement(
-      'ALTER TABLE tasks DROP COLUMN calendar_mirror_enabled',
+      'ALTER TABLE tasks DROP COLUMN calendar_mirror_enabled', // v2
     );
     await db.customStatement('PRAGMA user_version = 1');
     await db.customStatement('''
@@ -62,11 +63,11 @@ void main() {
   }
 
   test(
-    'v1 → v2 adds the mirror flag, keeps every row, and does not re-run',
+    'v1 → latest keeps every row and adds what each version brought',
     () async {
       await seedV1Database();
 
-      // Reopening runs the real onUpgrade.
+      // Reopening runs the real onUpgrade — every step, in order.
       var db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
       final task = await (db.select(
         db.tasks,
@@ -78,7 +79,10 @@ void main() {
       expect(
         task.calendarMirrorEnabled,
         isFalse,
-      ); // …and took the NOT NULL default
+      ); // …and took v2's NOT NULL default
+
+      // v3 (OPH-083): a brand new table, empty until the next pull fills it.
+      expect(await db.select(db.externalEvents).get(), isEmpty);
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -86,7 +90,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 2);
+      expect(version.data['user_version'], 3);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -100,26 +104,29 @@ void main() {
     },
   );
 
-  test('a fresh install creates v2 directly, no migration involved', () async {
-    final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
-    await db
-        .into(db.tasks)
-        .insert(
-          TasksCompanion.insert(
-            id: 'T2'.padRight(26, '0'),
-            workspaceId: 'W1'.padRight(26, '0'),
-            title: 'Yeni kurulum',
-            calendarMirrorEnabled: const Value(true),
-          ),
-        );
+  test(
+    'a fresh install creates the latest schema directly, no migration involved',
+    () async {
+      final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: 'T2'.padRight(26, '0'),
+              workspaceId: 'W1'.padRight(26, '0'),
+              title: 'Yeni kurulum',
+              calendarMirrorEnabled: const Value(true),
+            ),
+          );
 
-    final task = await (db.select(
-      db.tasks,
-    )..where((t) => t.id.equals('T2'.padRight(26, '0')))).getSingle();
-    expect(task.calendarMirrorEnabled, isTrue);
+      final task = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals('T2'.padRight(26, '0')))).getSingle();
+      expect(task.calendarMirrorEnabled, isTrue);
 
-    final version = await db.customSelect('PRAGMA user_version').getSingle();
-    expect(version.data['user_version'], 2);
-    await db.close();
-  });
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 3);
+      await db.close();
+    },
+  );
 }

@@ -4,6 +4,7 @@ import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { desiredEventForTask } from '../lib/mirror.js';
 import { reconcileProviderEvent, CONFLICT } from '../lib/inbound.js';
+import { deriveExternalEvent } from '../lib/external-events.js';
 import { newChannelToken, hashChannelToken } from '../lib/tokens.js';
 import { googleClientFor, getFreshAccessToken } from '../db/calendar.js';
 
@@ -18,6 +19,21 @@ import { googleClientFor, getFreshAccessToken } from '../db/calendar.js';
 const WATCH_RENEW_SLACK_MS = 24 * 60 * 60 * 1000;
 /** 250 events/page — a guard against paginating forever on an API hiccup. */
 const MAX_PAGES = 50;
+
+/**
+ * The two feeds an account syncs (ADR-0008 §3). Same calendar, opposite
+ * `singleEvents`, therefore separate cursors — one Google sync token is tied to
+ * the parameters it was issued with:
+ *
+ * - `mirror`   — recurrence MASTERS visible, so OPH-076 can spot a user turning
+ *                our block into a series (`time_conflict`).
+ * - `external` — recurring events expanded into INSTANCES, which is the only
+ *                shape a calendar grid can draw.
+ */
+const FEEDS = {
+  mirror: { cursorColumn: 'sync_token', singleEvents: false },
+  external: { cursorColumn: 'external_sync_token', singleEvents: true },
+};
 
 async function loadSyncableAccount(app, accountId) {
   const account = await app
@@ -106,15 +122,22 @@ export async function runInboundSyncJob(app, { accountId }) {
   const google = googleClientFor(app);
 
   try {
-    const { events, nextSyncToken } = await fetchChanges(app, google, account, accessToken);
-    for (const event of events) {
+    // Feed 1 — our own events: task ⇄ event reconcile (ADR-0007).
+    const mirror = await fetchFeed(app, google, account, accessToken, FEEDS.mirror);
+    for (const event of mirror.events) {
       await applyProviderEvent(app, { account, event, google, accessToken });
     }
 
+    // Feed 2 — the user's own events, cached for display (ADR-0008). Same
+    // trigger, same pass; one extra request, not one per event.
+    const external = await fetchFeed(app, google, account, accessToken, FEEDS.external);
+    await applyExternalEvents(app, { account, events: external.events });
+
     const patch = { last_synced_at: new Date(), last_error: null, updated_at: new Date() };
-    // Only advance the cursor when Google actually handed one over — a missing
+    // Only advance a cursor when Google actually handed one over — a missing
     // token must not silently reset us to full syncs forever.
-    if (nextSyncToken) patch.sync_token = nextSyncToken;
+    if (mirror.nextSyncToken) patch.sync_token = mirror.nextSyncToken;
+    if (external.nextSyncToken) patch.external_sync_token = external.nextSyncToken;
     await app.db('calendar_accounts').where({ id: account.id }).update(patch);
 
     if (dirtyMarker) {
@@ -149,7 +172,7 @@ async function getFreshAccessTokenOrSkip(app, account) {
   }
 }
 
-async function fetchChanges(app, google, account, accessToken) {
+async function fetchFeed(app, google, account, accessToken, feed) {
   const collect = async (syncToken) => {
     const events = [];
     let pageToken = null;
@@ -158,6 +181,7 @@ async function fetchChanges(app, google, account, accessToken) {
       const res = await google.listEvents(accessToken, account.default_calendar_id, {
         syncToken,
         pageToken,
+        singleEvents: feed.singleEvents,
       });
       events.push(...(res?.items ?? []));
       // Google puts nextSyncToken on the LAST page only.
@@ -168,16 +192,23 @@ async function fetchChanges(app, google, account, accessToken) {
     return { events, nextSyncToken };
   };
 
-  if (!account.sync_token) return collect(null);
+  const cursor = account[feed.cursorColumn];
+  if (!cursor) return collect(null);
   try {
-    return await collect(account.sync_token);
+    return await collect(cursor);
   } catch (err) {
     if (err?.status !== 410) throw err;
     // Google invalidated the token (expiry, ACL change). A full resync is the
-    // only cure — and it needs no local wipe: `calendar_event_links` is keyed
-    // by event id, so every event reconciles itself on the way through.
-    app.log.info({ accountId: account.id }, 'google sync token expired — full resync');
-    await app.db('calendar_accounts').where({ id: account.id }).update({ sync_token: null });
+    // only cure — and it needs no local wipe: both feeds are keyed by event id,
+    // so every event reconciles itself on the way through.
+    app.log.info(
+      { accountId: account.id, cursor: feed.cursorColumn },
+      'google sync token expired — full resync',
+    );
+    await app
+      .db('calendar_accounts')
+      .where({ id: account.id })
+      .update({ [feed.cursorColumn]: null });
     return collect(null);
   }
 }
@@ -311,6 +342,86 @@ async function applyProviderEvent(app, { account, event, google, accessToken }) 
     default:
       throw new Error(`Unhandled inbound decision "${outcome.decision}"`);
   }
+}
+
+// ── The user's own events, cached for display (OPH-082, ADR-0008) ──────────
+
+/**
+ * The other half of the feed: meetings and appointments AllisWell did not
+ * create. We store them so the Calendar and Home views can answer "what does my
+ * day look like" offline, and we never write them back.
+ */
+async function applyExternalEvents(app, { account, events }) {
+  if (events.length === 0) return;
+  // All-day boundaries are calendar dates, so they need a timezone to become
+  // instants. The account's owner is whose day this is.
+  const owner = await app.db('users').where({ id: account.user_id }).first();
+  const timeZone = owner?.timezone ?? 'Europe/Istanbul';
+  const now = new Date();
+
+  for (const event of events) {
+    const outcome = deriveExternalEvent(event, { timeZone, now });
+    if (outcome.action === 'skip') continue;
+    await applyExternalEvent(app, { account, event, outcome });
+  }
+}
+
+async function applyExternalEvent(app, { account, event, outcome }) {
+  const existing = await app
+    .db('calendar_external_events')
+    .where({ calendar_account_id: account.id, provider_event_id: event.id })
+    .first();
+
+  if (outcome.action === 'drop') {
+    // Cancelled, or it left the window. Nothing stored → nothing to do (a full
+    // resync replays the user's whole history through here).
+    if (!existing || existing.deleted_at != null) return;
+    await app.db.transaction(async (trx) => {
+      const revision = await recordSyncWrite(trx, {
+        workspaceId: account.workspace_id,
+        entityType: 'external_event',
+        entityId: existing.id,
+        operation: 'delete',
+      });
+      await trx('calendar_external_events')
+        .where({ id: existing.id })
+        .update({ deleted_at: new Date(), revision, updated_at: new Date() });
+    });
+    return;
+  }
+
+  // Unchanged since we last saw it. Skipping keeps a full resync — which
+  // replays EVERY event — from burning a revision per meeting and waking every
+  // device for nothing.
+  if (existing && existing.deleted_at == null && existing.etag && existing.etag === outcome.values.etag) {
+    return;
+  }
+
+  await app.db.transaction(async (trx) => {
+    const id = existing?.id ?? newId();
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: account.workspace_id,
+      entityType: 'external_event',
+      entityId: id,
+      operation: existing ? 'update' : 'create',
+    });
+    const row = {
+      ...outcome.values,
+      workspace_id: account.workspace_id,
+      calendar_account_id: account.id,
+      provider: 'google',
+      provider_calendar_id: account.default_calendar_id,
+      provider_event_id: event.id,
+      revision,
+      deleted_at: null, // an event can come back from out-of-window
+      updated_at: new Date(),
+    };
+    if (existing) {
+      await trx('calendar_external_events').where({ id: existing.id }).update(row);
+    } else {
+      await trx('calendar_external_events').insert({ id, ...row });
+    }
+  });
 }
 
 /**
