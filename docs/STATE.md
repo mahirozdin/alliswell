@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-15 (Epic 06 ✔ kapandı: OPH-057 canlı fanout; OPH-060 cihaz kaydı + bildirim araştırması)
+**Last updated:** 2026-07-15 (Epic 07 ✔ kod tarafı: OPH-061…064 — bildirim katmanı; cihaz doğrulama turu bekliyor)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,13 +13,36 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | Phase 3 — Notifications |
-| Current epic | **Epic 07 — Notifications** |
-| ➡️ **Next task** | **OPH-061 — Local notification scheduling** (plan: [NOTIFICATIONS.md](NOTIFICATIONS.md); cihazda doğrulama gerekir) |
-| Last completed | OPH-057 (Epic 06 ✔), OPH-060 + bildirim araştırması; OPH-054…056; OPH-050…053 |
+| Current phase | Phase 4 — Calendar |
+| Current epic | **Epic 08 — Calendar** |
+| ➡️ **Next task** | **OPH-070 — Google OAuth connect** (token şifreleme AES-256-GCM; mocked-Google testleri) |
+| Last completed | OPH-061…064 (Epic 07 kod ✔ — cihaz turu bekliyor); OPH-057/060; Epic 06 ✔ |
 
 ## Recently completed
 
+- **Epic 07 — bildirim katmanı (2026-07-15, OPH-061…064; plan NOTIFICATIONS.md):**
+  - **Mantık cihazsız ve tam testli:** `notifications/planner.dart` (saf: replika
+    alarmları → istenen OS bildirimleri; iOS 64-bekleyen sınırına karşı ≤40 pencere;
+    acil+onay zinciri T,+2,+5,+10,+30 dk) + `scheduler.dart` (içerik-hash id'lerle
+    desired-vs-pending diff'i: fazlaları iptal, eksikleri kur; izin reddi sessizce
+    degrade olur). Plugin'e yalnız `gateway_local.dart` dokunur: acil →
+    `alarmClock` + Darwin `timeSensitive`; normal → `exactAllowWhileIdle`.
+  - **Aksiyonlar (OPH-062) local-first:** bildirimden Tamamla/Ertele(5dk/30dk/1sa/
+    yarın)/Onayla → store yazımları (optimistic + outbox) — online/offline ayrımı
+    tek yola indi. Sunucu push'ı artık task `snoozedUntil` kabul ediyor (update-only;
+    REST snooze semantiği aynı trx'te reminder'ı da uyutur/yeniden kurar; geçmiş
+    zaman kabul edilir — offline kuyruk geç gelebilir).
+  - **Acil UX (OPH-063):** `urgent_alarms` kanalı (max önem, alarm kategorisi,
+    verildiyse full-screen intent); onay zinciri her cihazda senkronla söner.
+    Acknowledge: `ReminderStore.acknowledge` → dar push entity'si
+    `reminder {status: acknowledged}` + REST `POST /reminders/:id/acknowledge`
+    (idempotent; sönmüş alarm → `REMINDER_INVALID_TRANSITION`).
+  - **Gizlilik (OPH-064):** Settings → "Private notifications" (cihaz başına
+    kalıcı) — kilit ekranında yalnız "AllisWell / Bir hatırlatıcın var"; tıklama
+    id ile derin bağlanır. Planlayıcı tüm zincire uygular.
+  - **Platform:** manifest izin+receiver'lar, gradle desugaring, macOS
+    time-sensitive entitlement; iOS Xcode capability adımı NOTIFICATIONS.md'de.
+  - Testler: app 97/97 (planner/scheduler/actions 15 yeni), API 150/150 + 25/25.
 - **Epic 06 closed + Epic 07 opened (2026-07-15, OPH-057 + OPH-060):**
   - **OPH-057 canlı fanout:** `src/plugins/socket.js` — Socket.IO aynı HTTP
     listener'da; handshake'te access token doğrulanır, soket üyelik başına
@@ -199,6 +222,12 @@ against real MySQL 8.4 and all unit+integration tests pass.
 - ~~`JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` placeholders~~ — done in OPH-020: config falls
   back to labeled insecure dev secrets, production refuses placeholders/short/identical values.
 - Apple EventKit work (OPH-077+) requires macOS/Xcode signing setup on the dev machine.
+- **Epic 07 cihaz turu bekliyor:** exact teslim davranışı (Doze, alarm ikonu, Focus
+  delme, aksiyon butonları) yalnız cihaz/emülatörde gözlenebilir — mantık katmanı tam
+  unit-testli; bir Android + bir iOS/macOS cihazda NOTIFICATIONS.md senaryolarını
+  koşup sonucu buraya işleyin. iOS time-sensitive capability Xcode'da eklenecek
+  (pbxproj elle düzenlenmedi); Android arka-plan aksiyon isolate'i v1'de yok
+  (aksiyonlar uygulamayı öne getirir).
 - Web builds keep tokens in memory only (signed out after a reload) — the httpOnly
   refresh-cookie flow is the planned hardening; see OPH-025 notes in TASKS.md.
 
@@ -210,13 +239,12 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Implement **OPH-061** per its checklist in [TASKS.md](TASKS.md) and the binding plan
-   in [NOTIFICATIONS.md](NOTIFICATIONS.md) §4: a `NotificationScheduler` that watches the
-   replica's reminders stream and diffs against `pendingNotificationRequests` — urgent →
-   `alarmClock`/`timeSensitive`, normal → `exactAllowWhileIdle`; iOS scheduling window
-   ≤40; permission flows with graceful degradation. NOTE: exact-delivery behavior needs a
-   device/simulator pass — unit-test the diffing/window logic, document what was verified
-   where.
+2. Implement **OPH-070 — Google OAuth connect** per its checklist in [TASKS.md](TASKS.md)
+   and BLUEPRINT §7: OAuth2 offline-access flow with the calendar scope, tokens encrypted
+   at rest (AES-256-GCM, key from env — refuse placeholder keys in production like the JWT
+   secrets), `calendar_accounts` create/status/disconnect endpoints, tests with mocked
+   Google endpoints (no real Google in CI). Reuse the config validation pattern in
+   `src/config.js` and the encrypted-column intent from the OPH-015 migration.
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.

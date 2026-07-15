@@ -66,6 +66,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- Notifications (OPH-061…064) — Epic 07's client+server core: reminders now become real
+  OS notifications scheduled from the local replica, exactly on time — urgent alarms ride
+  Android's alarm-clock mode (never deferred, Doze-exempt) and iOS's time-sensitive
+  interruption level, with a pre-scheduled re-alert chain (T, +2 m, +5 m, +10 m, +30 m)
+  that keeps ringing until acknowledged on ANY device. Notification buttons complete,
+  snooze (5 m/30 m/1 h/tomorrow) and acknowledge straight from the lock screen — all
+  offline-safe outbox writes; the sync push gained `task.snoozedUntil` (snoozes the alarm
+  in the same transaction, REST-parity) and a narrow `reminder {status: acknowledged}`
+  mutation, plus `POST /api/v1/reminders/:id/acknowledge`. A new "Private notifications"
+  setting hides task titles from the lock screen entirely. Exact-delivery behavior awaits
+  a device verification pass (logic is fully unit-tested; see docs/NOTIFICATIONS.md).
 - Live sync fanout (OPH-057) — Epic 06 complete: a Socket.IO server rides the API's HTTP
   listener; clients authenticate with their access token, join a room per workspace, and
   receive `sync:changed {workspaceId, toRevision}` the moment any write commits (REST and

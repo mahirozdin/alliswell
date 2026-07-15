@@ -54,7 +54,10 @@ membership and receive `sync:changed {workspaceId, toRevision}` after every comm
 write — respond by pulling. Notification devices (OPH-060, Epic 07):
 `PUT/GET/DELETE /api/v1/notification-devices[/:id]` register/heartbeat/unregister an
 install; delivery strategy is documented in
-[docs/NOTIFICATIONS.md](../../docs/NOTIFICATIONS.md).
+[docs/NOTIFICATIONS.md](../../docs/NOTIFICATIONS.md). Reminder lifecycle (OPH-062/063):
+`POST /api/v1/reminders/:id/acknowledge` (idempotent), and the sync push accepts
+`task.snoozedUntil` updates plus `reminder {status: acknowledged}` mutations so snoozing
+and acknowledging work offline.
 
 ## Layout
 

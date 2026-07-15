@@ -100,7 +100,16 @@ already replicate). Android uses the same chain model for symmetry.
   alarm overlay + OS toast (best effort) fire from a foreground timer wheel.
   Web additionally needs Notification permission; treat as best-effort.
 
-## 4. Implementation plan (OPH-061…064)
+## 4. Implementation plan (OPH-061…064) — SHIPPED 2026-07-15
+
+> Status: everything below is implemented (`apps/app/lib/src/notifications/`,
+> sync-push `snoozedUntil` + `reminder` acknowledge, REST acknowledge). v1
+> deviations: notification actions run through the main isolate
+> (`showsUserInterface: true` — a background-isolate outbox writer is future
+> work); offline `tomorrow_morning` uses the device's wall clock (the server
+> computes task-timezone mornings for REST snoozes); the iOS time-sensitive
+> capability still needs the one-time Xcode step. Exact-delivery behavior
+> requires the device verification pass tracked in STATE.md.
 
 1. **OPH-061** — `NotificationScheduler` (Dart): watches the replica's
    `reminders` stream, diffs desired vs. scheduled (plugin `pendingNotificationRequests`),

@@ -524,26 +524,75 @@ scheduling window ≤40 of the 64 pending slots; re-alert-until-acknowledged is
 a pre-scheduled chain on both platforms (iOS has no background timers);
 critical-alerts entitlement is a flagged stretch goal. ✔
 
-### OPH-061 — Local notification scheduling
+### OPH-061 — Local notification scheduling ✅
 
-- [ ] flutter_local_notifications setup (all platforms incl. timezone handling)
-- [ ] Schedule/cancel from task.remind_at via local DB
-- [ ] Tests where feasible
+- [x] flutter_local_notifications setup (all platforms incl. timezone handling)
+- [x] Schedule/cancel from task.remind_at via local DB
+- [x] Tests where feasible
 
-### OPH-062 — Snooze actions
+Acceptance notes (per the binding plan in [NOTIFICATIONS.md](NOTIFICATIONS.md)):
+the logic layer is device-free — `notifications/planner.dart` (pure: replica
+alarms → desired OS notifications, ≤40-slot window under iOS's 64 cap,
+urgent chains) + `notifications/scheduler.dart` (diff desired-vs-pending by
+content-hash ids: cancel extras, schedule missing; permission failures
+degrade silently). Only `gateway_local.dart` touches the plugin: urgent →
+`AndroidScheduleMode.alarmClock` + iOS `timeSensitive`, normal →
+`exactAllowWhileIdle` + `.active`; reminders fire on absolute UTC instants
+(no wall-clock math client-side — the server owns timezone semantics).
+Platform config: manifest permissions + boot/schedule receivers, gradle
+desugaring, macOS time-sensitive entitlements (iOS needs the Xcode
+capability once a signed project exists — noted in NOTIFICATIONS.md).
+CAVEAT: exact-delivery behavior (Doze, alarm icon, Focus breakthrough) is
+device-observable only — a device pass is pending (STATE blocked notes);
+planner/scheduler/actions logic is fully unit-tested. ✔
 
-- [ ] Notification action buttons: complete / 5m / 30m / 1h / tomorrow / custom
-- [ ] Actions call snooze endpoint when online; enqueue mutation when offline
+### OPH-062 — Snooze actions ✅
 
-### OPH-063 — Urgent notification UX
+- [x] Notification action buttons: complete / 5m / 30m / 1h / tomorrow / custom
+- [x] Actions call snooze endpoint when online; enqueue mutation when offline
 
-- [ ] Urgent channel: critical sound, requires acknowledgement, re-alert loop until acked
-- [ ] Acknowledge endpoint wiring (`reminders.acknowledged_at`)
+Acceptance notes: actions route through the local-first stores, so the
+checklist's online/offline split collapses into ONE path — `TaskStore.snooze`
+moves the task and its alarm locally in a transaction and enqueues a
+`snoozedUntil` patch; the sync push now accepts it (update-only field) and
+mirrors REST snooze semantics server-side (reminder snoozed/re-armed in the
+same transaction; finished tasks → `TASK_INVALID_TRANSITION`; past instants
+accepted by design — queued offline actions may land late). Buttons: normal
+[Tamamla, 30 dk, 1 saat(+Yarın on iOS)], urgent [Onayla, 5 dk, 30 dk];
+"custom" is the tap itself (deep-link to the task detail). v1 actions run
+through the main isolate (`showsUserInterface: true`) — the
+background-isolate handler is future work (NOTIFICATIONS.md). ✔
 
-### OPH-064 — Notification privacy mode
+### OPH-063 — Urgent notification UX ✅
 
-- [ ] Setting: payloads/notifications show IDs-only vs. title
-- [ ] Server push payloads always minimal (BLUEPRINT §8.3)
+- [x] Urgent channel: critical sound, requires acknowledgement, re-alert loop until acked
+- [x] Acknowledge endpoint wiring (`reminders.acknowledged_at`)
+
+Acceptance notes: urgent+ack alarms pre-schedule the re-alert chain
+(T, +2 m, +5 m, +10 m, +30 m — iOS has no background timers, Android shares
+the shape; every slot rides `alarmClock`, immune to Doze's allow-while-idle
+rate limit) on the dedicated `urgent_alarms` channel (max importance, alarm
+category, full-screen intent where granted, `timeSensitive` on Darwin).
+Acknowledging cancels the chain everywhere: locally at once (planner drops
+the rows → scheduler cancels), other devices via sync. Wiring: local-first
+`ReminderStore.acknowledge` → outbox `reminder {status: acknowledged}`
+mutation (narrow push entity, update-only) + REST
+`POST /api/v1/reminders/:id/acknowledge` (idempotent; silenced alarms →
+`REMINDER_INVALID_TRANSITION`). Critical-alert sound bypass stays a flagged
+stretch goal (Apple entitlement, NOTIFICATIONS.md §2). ✔
+
+### OPH-064 — Notification privacy mode ✅
+
+- [x] Setting: payloads/notifications show IDs-only vs. title
+- [x] Server push payloads always minimal (BLUEPRINT §8.3)
+
+Acceptance notes: Settings gains "Private notifications" (persisted per
+device) — when on, every notification renders as "AllisWell / Bir
+hatırlatıcın var" with no task content; taps still deep-link by id. The
+planner enforces it for the whole urgent chain (tested). Server payloads:
+structurally satisfied today — no push channel exists yet, and the only
+server-emitted signal (`sync:changed`) already carries IDs only; when
+FCM/APNs land they inherit the same rule. ✔
 
 ---
 
