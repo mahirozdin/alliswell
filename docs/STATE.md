@@ -15,7 +15,7 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | Phase 4 — Calendar |
 | Current epic | **Epic 08 — Calendar** |
-| ➡️ **Next task** | **OPH-077 — Apple EventKit Flutter plugin skeleton** (izin + takvim listesi platform channel'ı). Bloklu DEĞİL: imza hazır, iPhone + emülatörler bağlanıyor. Ardından OPH-078 → **Epic 08 tamamen kapanır**. |
+| ➡️ **Next task** | ⚠️ **ÖNCE ŞUNU YAP:** `cd apps/app && flutter clean && flutter pub get && flutter analyze` — OPH-077 commit'i (`e3cb3ea`) analyze KOŞTURULMADAN atıldı (aşağıdaki toolchain notu). Temiz çıkarsa: **OPH-078 — Apple EventKit event CRUD** → Epic 08 tamamen kapanır. |
 | ✅ Kullanıcıdan bekleyen | **YOK.** Google OAuth kimlikleri 2026-07-16'da `.env`'e girildi ve gerçek hesapla uçtan uca doğrulandı (41 etkinlik senkronlandı, gerçek `syncToken`). iOS Time-Sensitive capability de eklendi (`ios/Runner/Runner.entitlements`, 3 build config'ine bağlı). Opsiyonel kalan tek şey `GOOGLE_WEBHOOK_URL` (public HTTPS) — yoksa 5 dk'lık yoklama zaten çalışıyor. |
 | Last completed | OPH-079…081 (CalDAV doc + Google bağlantı UI'ı + takvim toggle ✔); OPH-074…076 (Google inbound ✔, ADR-0007) |
 
@@ -435,6 +435,17 @@ against real MySQL 8.4 and all unit+integration tests pass.
   manage signing" tetiklenmeli (Xcode sertifikayı kendi üretir). Sonucu: iOS derleniyor,
   macOS derlenmiyor — **OPH-077'nin Swift'i iOS build'iyle doğrulandı, macOS yolu
   (symlink + `import FlutterMacOS`) HENÜZ DERLENMEDİ.** Bloklayıcı değil (iOS ana hedef).
+- **⚠️ OPH-077 analyze KOŞTURULMADAN commit edildi (`e3cb3ea`, 2026-07-16) — ilk iş bunu koştur.**
+  Koşan ve GEÇEN: `flutter build ios --debug` (Swift derleniyor, pod bağlı) + kanal
+  sözleşmesi testleri 6/6. Koşmayan: `flutter analyze`. Sebep koda ait değil, ortama ait:
+  üç platform build'i `apps/app/build`'i **1.1 GB**'a çıkardı (repo harici SSD'de) ve
+  analyzer %0 CPU'da bloke kaldı — git bile *"İzlenmeyen dosyaları ortaya dökme 40.31
+  saniye sürdü"* dedi. `flutter clean` de takıldı; sonrasında `pub get` bile yavaşladı
+  (muhtemelen agresif `pkill -9`'ların bıraktığı iz). **Çözüm sırası:** takılı
+  `flutter_tools.snapshot` süreçlerini öldür → `flutter clean` → `pub get` → `analyze`.
+  Ders: üç platformu peş peşe build etme; ve **deney için `git stash` kullanma** — bu
+  oturumda işi neredeyse kaybediyordum (izlenmeyen paket raflanınca deney de kontrolsüz
+  kaldı). Önce commit et, sonra deney yap.
 - **Epic 07 cihaz turu bekliyor:** exact teslim davranışı (Doze, alarm ikonu, Focus
   delme, aksiyon butonları) yalnız cihaz/emülatörde gözlenebilir — mantık katmanı tam
   unit-testli; bir Android + bir iOS/macOS cihazda NOTIFICATIONS.md senaryolarını
