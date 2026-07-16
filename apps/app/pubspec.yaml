@@ -48,6 +48,10 @@ dependencies:
   flutter_local_notifications: ^22.0.1
   timezone: ^0.11.1
   url_launcher: ^6.3.2
+  # Apple EventKit bridge (OPH-077). A package, not files in Runner:
+  # Flutter's tooling wires the podspec for iOS AND macOS, so no pbxproj surgery.
+  alliswell_eventkit:
+    path: packages/alliswell_eventkit
 
 dev_dependencies:
   flutter_test:

@@ -422,6 +422,19 @@ against real MySQL 8.4 and all unit+integration tests pass.
   **OPH-077/078 hemen başlanabilir.** Tek eksik: `ios/Runner/Runner.entitlements` YOK →
   Time Sensitive Notifications capability henüz eklenmemiş (Xcode'da 3 tık; macOS
   entitlement'ları zaten var). Ders: bir "bloklu" notunu devralmadan önce ölç.
+- **⚠️ macOS build'i KIRIK (devralınan, OPH-077'de ortaya çıktı, 2026-07-16).**
+  `flutter build macos` şu hatayla düşüyor: *"Runner has entitlements that require
+  signing with a development certificate"*. **Benim değişikliğim değil** — ölçüldü:
+  `macos/Runner.xcodeproj`'da `DEVELOPMENT_TEAM` HİÇ yoktu (iOS'ta 3 yerde var) ve imza
+  gerektiren `com.apple.developer.usernotifications.time-sensitive` entitlement'ı Epic
+  07'den beri HEAD'de duruyor → macOS zaten imzasız derlenemiyordu, kimse denememişti.
+  OPH-077'de takım kimliği eklendi (`DEVELOPMENT_TEAM = QB8VR32GWN`, iOS ile aynı) ama
+  YETMİYOR: makinede iPhone için sertifika var, **macOS geliştirme sertifikası yok**.
+  **Kullanıcıdan gereken (küçük):** Xcode → Settings → Accounts → takım seçili haldeyken
+  `macos/Runner.xcworkspace` açılıp Signing & Capabilities'te bir kez "Automatically
+  manage signing" tetiklenmeli (Xcode sertifikayı kendi üretir). Sonucu: iOS derleniyor,
+  macOS derlenmiyor — **OPH-077'nin Swift'i iOS build'iyle doğrulandı, macOS yolu
+  (symlink + `import FlutterMacOS`) HENÜZ DERLENMEDİ.** Bloklayıcı değil (iOS ana hedef).
 - **Epic 07 cihaz turu bekliyor:** exact teslim davranışı (Doze, alarm ikonu, Focus
   delme, aksiyon butonları) yalnız cihaz/emülatörde gözlenebilir — mantık katmanı tam
   unit-testli; bir Android + bir iOS/macOS cihazda NOTIFICATIONS.md senaryolarını

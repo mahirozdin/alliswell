@@ -814,9 +814,45 @@ Two product rules, both tested, both about not lying to the user:
 A workspace with no calendar connected renders exactly as before (the events
 list is simply empty — not an error, not a spinner).
 
-### OPH-077 — Apple EventKit Flutter plugin skeleton
+### OPH-077 — Apple EventKit Flutter plugin skeleton ✅
 
-- [ ] Platform channel (iOS/macOS): permission request + calendar list
+- [x] Platform channel (iOS/macOS): permission request + calendar list
+
+Acceptance notes: shipped as a **package** (`apps/app/packages/alliswell_eventkit`),
+not Swift files dropped into `Runner`. That choice is the point: Flutter's
+tooling wires the podspec for iOS *and* macOS by itself, so there is **zero
+pbxproj surgery** — the thing STATE has deliberately avoided since Epic 07.
+Proven by a real `flutter build ios --debug`: the Swift compiles and the pod is
+picked up with nothing hand-edited.
+
+**One Swift file serves both platforms** — `macos/…/Sources` is a symlink to the
+iOS sources, and the only real difference (`import Flutter` vs `FlutterMacOS`,
+`registrar.messenger()` vs `.messenger`) is conditional compilation. EventKit
+itself is identical on both. ⚠️ The macOS half is **not yet compiled** — see the
+macOS signing note in STATE (inherited breakage, not this task's).
+
+The native side is deliberately dumb: it requests access and lists calendars,
+nothing else. Every decision (what mirrors, when, who wins) stays in Dart where
+it is pure and testable — the same seam `notifications/gateway.dart` uses.
+
+Design points worth keeping:
+
+- **`writeOnly` (iOS 17+) is NOT "granted".** It can create events but cannot
+  read them back, which is exactly what re-linking our own events needs — so it
+  is its own state rather than a flavour of yes. `requestFullAccess` therefore
+  answers with a *status*, not a bool: "denied" and "write-only" are different
+  problems and the UI has to say different things about them.
+- **One `EKEventStore` for the plugin's lifetime** — EventKit ties a grant to
+  the instance that asked, so a per-call store would re-prompt the user.
+- **Read-only calendars are surfaced** (`isWritable`): mirroring into a
+  subscribed/holiday calendar fails on *every* write, so the picker must rule
+  them out rather than let the user pick a dead end.
+- Non-Apple platforms answer `restricted` (Apple's own word for "this device
+  will never allow it") instead of throwing — the feature simply does not exist
+  there, and the UI already hides it.
+- `NSCalendarsFullAccessUsageDescription` added to iOS **and** macOS Info.plist
+  (without it the app CRASHES at the prompt, it does not merely get denied), plus
+  the macOS sandbox entitlement `com.apple.security.personal-information.calendars`.
 
 ### OPH-078 — Apple EventKit create/update event
 

@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
 </dict>
 </plist>
