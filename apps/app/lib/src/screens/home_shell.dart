@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/calendar/apple/providers.dart';
 import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
@@ -48,6 +49,9 @@ class HomeShell extends ConsumerWidget {
     // scheduler (OPH-061) alive while the shell shows.
     ref.watch(syncSocketProvider);
     ref.watch(notificationSchedulerProvider);
+    // OPH-078: keep the Apple calendar mirror reconciling while signed in
+    // (self-disables off Apple platforms and until access + a calendar exist).
+    ref.watch(appleMirrorProvider);
     ref.listen(syncConflictsProvider, (_, next) {
       final conflict = next.value;
       if (conflict == null) return;

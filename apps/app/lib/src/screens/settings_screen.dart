@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/providers.dart';
+import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../notifications/providers.dart';
 import '../theme/tokens.dart';
@@ -73,6 +74,9 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AwSpace.x3),
               // OPH-080: the only door to the Epic 08 calendar vertical.
               const GoogleCalendarCard(),
+              const SizedBox(height: AwSpace.x3),
+              // OPH-078: the device-side twin — hides itself off Apple platforms.
+              const AppleCalendarCard(),
               const SizedBox(height: AwSpace.x3),
               // Destructive action, visually separated from the rest.
               Card(

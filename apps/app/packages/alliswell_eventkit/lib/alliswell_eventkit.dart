@@ -117,4 +117,97 @@ class AlliswellEventKit {
       throw EventKitException(e.message ?? e.code);
     }
   }
+
+  // ── Event CRUD (OPH-078) ────────────────────────────────────────────────────
+
+  /// Create ([spec.eventId] null) or update. Returns the resulting event
+  /// identifier — which the caller must persist, because EventKit's identifier
+  /// can change on an iCloud move, and the stored id is the primary map key.
+  Future<String> saveEvent(AppleEventSpec spec) async {
+    try {
+      final res = await _channel.invokeMapMethod<String, Object?>(
+        'saveEvent',
+        spec.toArgs(),
+      );
+      final id = res?['id'] as String?;
+      if (id == null) throw const EventKitException('saveEvent returned no id');
+      return id;
+    } on PlatformException catch (e) {
+      throw EventKitException(e.message ?? e.code);
+    }
+  }
+
+  /// Idempotent: deleting an already-gone event succeeds (the intent — no such
+  /// event — is satisfied), so reconciling can run repeatedly without error.
+  Future<void> deleteEvent(String eventId) async {
+    try {
+      await _channel.invokeMethod<bool>('deleteEvent', {'id': eventId});
+    } on PlatformException catch (e) {
+      throw EventKitException(e.message ?? e.code);
+    }
+  }
+
+  /// Re-link recovery: find an event still carrying our task url when the stored
+  /// identifier has gone stale (ADR-0003). Null when none matches.
+  Future<String?> findEventByUrl({
+    required String calendarId,
+    required String url,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    try {
+      return await _channel.invokeMethod<String>('findEventByUrl', {
+        'calendarId': calendarId,
+        'url': url,
+        'fromMs': from.toUtc().millisecondsSinceEpoch,
+        'toMs': to.toUtc().millisecondsSinceEpoch,
+      });
+    } on MissingPluginException {
+      return null;
+    } on PlatformException catch (e) {
+      throw EventKitException(e.message ?? e.code);
+    }
+  }
+}
+
+/// What to write to EventKit for one task (OPH-078). Purely data — the decision
+/// to write it, and what it should contain, is made by `desiredAppleEvent` in
+/// the app; this package only carries it across the channel.
+class AppleEventSpec {
+  const AppleEventSpec({
+    required this.calendarId,
+    required this.title,
+    required this.url,
+    required this.start,
+    required this.end,
+    this.eventId,
+    this.notes,
+    this.isAllDay = false,
+  });
+
+  /// Null on create; the stored EventKit identifier on update.
+  final String? eventId;
+
+  /// Which calendar to create INTO (ignored on update — an event keeps its
+  /// calendar unless explicitly moved, which v1 does not do).
+  final String calendarId;
+  final String title;
+
+  /// `alliswell://task/{id}` — the re-link recovery key (ADR-0003).
+  final String url;
+  final String? notes;
+  final DateTime start;
+  final DateTime end;
+  final bool isAllDay;
+
+  Map<String, Object?> toArgs() => {
+    if (eventId != null) 'id': eventId,
+    'calendarId': calendarId,
+    'title': title,
+    'url': url,
+    'notes': notes,
+    'startMs': start.toUtc().millisecondsSinceEpoch,
+    'endMs': end.toUtc().millisecondsSinceEpoch,
+    'isAllDay': isAllDay,
+  };
 }

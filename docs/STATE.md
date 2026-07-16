@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-16 (OPH-084 — takvimin Home'un kronolojik akışında; OPH-082/083 ADR-0008)
+**Last updated:** 2026-07-16 (OPH-077/078 — Apple EventKit köprüsü + event CRUD; **Epic 08 KAPANDI**)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,13 +13,42 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | Phase 4 — Calendar |
-| Current epic | **Epic 08 — Calendar** |
-| ➡️ **Next task** | ⚠️ **ÖNCE ŞUNU YAP:** `cd apps/app && flutter clean && flutter pub get && flutter analyze` — OPH-077 commit'i (`e3cb3ea`) analyze KOŞTURULMADAN atıldı (aşağıdaki toolchain notu). Temiz çıkarsa: **OPH-078 — Apple EventKit event CRUD** → Epic 08 tamamen kapanır. |
-| ✅ Kullanıcıdan bekleyen | **YOK.** Google OAuth kimlikleri 2026-07-16'da `.env`'e girildi ve gerçek hesapla uçtan uca doğrulandı (41 etkinlik senkronlandı, gerçek `syncToken`). iOS Time-Sensitive capability de eklendi (`ios/Runner/Runner.entitlements`, 3 build config'ine bağlı). Opsiyonel kalan tek şey `GOOGLE_WEBHOOK_URL` (public HTTPS) — yoksa 5 dk'lık yoklama zaten çalışıyor. |
-| Last completed | OPH-079…081 (CalDAV doc + Google bağlantı UI'ı + takvim toggle ✔); OPH-074…076 (Google inbound ✔, ADR-0007) |
+| Current phase | Phase 4 → Phase 6 |
+| Current epic | **Epic 08 KAPANDI** → sıradaki **Epic 09 — açık kaynak hazırlığı** |
+| ➡️ **Next task** | **OPH-094 — ROADMAP.md** (fazlardan üret, README'den bağla) + **OPH-095 — v0.1.0 release notes + GitHub Actions release workflow'u**. İkisi de saf doküman/CI, altyapı istemez → tutarlı bir iş paketi. |
+| ✅ Kullanıcıdan bekleyen | **YOK.** Google OAuth kimlikleri `.env`'de, gerçek hesapla doğrulandı. iOS imza hazır (build geçiyor). Opsiyonel: `GOOGLE_WEBHOOK_URL` (yoksa 5 dk yoklama çalışıyor) + macOS geliştirme sertifikası (aşağıdaki not; iOS'u etkilemez) + Apple/Android cihaz turu (EventKit yazma + acil bildirim). |
+| Last completed | **Epic 08 tam:** OPH-077/078 (Apple EventKit ✔); OPH-082…084 (harici etkinlikler ✔, ADR-0008); OPH-079…081 (Google app UI ✔); OPH-074…076 (Google inbound ✔) |
 
 ## Recently completed
+
+- **Apple EventKit köprüsü + event CRUD → Epic 08 KAPANDI (2026-07-16, OPH-077/078):**
+  - **Neden cihaz-tarafı:** Apple'ın sunucu-tarafı takvim API'si YOK. Google mirror'ı
+    sunucuda BullMQ ile koşarken, Apple mirror'ı **uygulamanın içinde** koşuyor — replica'yı
+    dinliyor (`appleMirrorProvider` açık-görev stream'ini izler, home shell canlı tutar).
+    v1'de tek yön: görev → etkinlik. Yabancı Apple düzenlemesini geri okumak ertelendi
+    (OPH-076'nın Apple karşılığı; çakışma politikası + push yok, yalnız foreground yoklama).
+  - **Plugin paketi, pbxproj cerrahisi SIFIR:** Swift'i `Runner`'a koymak yerine
+    `packages/alliswell_eventkit` — Flutter tooling podspec'i iOS+macOS için kendi bağlar.
+    Tek Swift dosyası iki platforma birden (macOS kaynağı iOS'a symlink + koşullu import).
+  - **4. saf karar fonksiyonu** (ADR-0008 öngörmüştü): `desiredAppleEvent(task)` sunucunun
+    `desiredEventForTask`'ını fixture-fixture aynalar — aynı §7.1, aynı ters-blok koruması —
+    böylece görev Google'a da Apple'a da gitse aynı saatte oturuyor. `decideAppleMirror`
+    create/update/noop/remove matrisi ayrı testli; motor yalnız uygular.
+  - **İmza koruması** (map satırında içerik parmak izi) → her replica emit'inde tüm seti
+    uzlaştırmak, yalnız gerçekten değişeni yazıyor. **drift v4** (`apple_event_links`,
+    cihaz-yerel, senkron DEĞİL — Apple etkinlikleri cihazda yaşar); `alliswell://task/{id}`
+    URL'i re-link kurtarma anahtarı (ADR-0003 — EventKit id'si iCloud taşımasında değişebilir).
+    **Yetim süpürme**: tümüyle kaybolan görevlerin etkinliğini `reconcileAll` siler.
+  - **Ulaşılabilir** (OPH-080 dersi): Apple takvim Settings kartı — izin iste, takvim seç,
+    dürüst durum (seçilene dek amber; reddedilmişse "sistem ayarlarından izin ver").
+    Apple-olmayan platformlarda tamamen gizlenir. iOS 17 `writeOnly` "verildi" sayılmıyor
+    (yaratır ama okuyamaz → re-link kırılır).
+  - **Yol boyunca OPH-077 defekti düzeldi:** commit'teki (`e3cb3ea`) Swift dosyası BOŞTU
+    (stash bozması). Yeniden yazıldı + `flutter build ios` GEÇTİ.
+  - **Testler:** app 158/158 → +27 (saf türetme, karar matrisi, motor sahte gateway +
+    gerçek in-memory replica üstünde, kanal CRUD sözleşmesi, v4 migration). analyze temiz,
+    iOS build geçti. ⚠️ Gerçek EventKit yazma turu cihazda gözlenmeli (OPH-061 gibi bekliyor);
+    macOS hâlâ build olmuyor (devralınan imza açığı).
 
 - **OPH-084 — takvimin Home'un kronolojik akışında (2026-07-16):**
   - `HomeGroup.tasks` → `HomeGroup.items`: sealed `HomeItem` (`TaskItem` | `EventItem`),
@@ -435,17 +464,15 @@ against real MySQL 8.4 and all unit+integration tests pass.
   manage signing" tetiklenmeli (Xcode sertifikayı kendi üretir). Sonucu: iOS derleniyor,
   macOS derlenmiyor — **OPH-077'nin Swift'i iOS build'iyle doğrulandı, macOS yolu
   (symlink + `import FlutterMacOS`) HENÜZ DERLENMEDİ.** Bloklayıcı değil (iOS ana hedef).
-- **⚠️ OPH-077 analyze KOŞTURULMADAN commit edildi (`e3cb3ea`, 2026-07-16) — ilk iş bunu koştur.**
-  Koşan ve GEÇEN: `flutter build ios --debug` (Swift derleniyor, pod bağlı) + kanal
-  sözleşmesi testleri 6/6. Koşmayan: `flutter analyze`. Sebep koda ait değil, ortama ait:
-  üç platform build'i `apps/app/build`'i **1.1 GB**'a çıkardı (repo harici SSD'de) ve
-  analyzer %0 CPU'da bloke kaldı — git bile *"İzlenmeyen dosyaları ortaya dökme 40.31
-  saniye sürdü"* dedi. `flutter clean` de takıldı; sonrasında `pub get` bile yavaşladı
-  (muhtemelen agresif `pkill -9`'ların bıraktığı iz). **Çözüm sırası:** takılı
-  `flutter_tools.snapshot` süreçlerini öldür → `flutter clean` → `pub get` → `analyze`.
-  Ders: üç platformu peş peşe build etme; ve **deney için `git stash` kullanma** — bu
-  oturumda işi neredeyse kaybediyordum (izlenmeyen paket raflanınca deney de kontrolsüz
-  kaldı). Önce commit et, sonra deney yap.
+- ~~OPH-077 analyze koşturulmadan commit edildi~~ — **çözüldü 2026-07-16.** `build/`'i
+  DOĞRUDAN sildim (`rm -rf`, `flutter clean`'i baypas), analyze 7 saniyede koştu: temiz.
+  Teşhis doğruydu — 1.1 GB `build/` (harici SSD) analyzer'ı tıkıyordu, kod değil. **Ders
+  (hafızaya işlendi):** üç platformu peş peşe build etme; analyze tıkanırsa önce `build/`'i
+  sil. **Daha kötü bir şey de bulundu:** OPH-077 commit'i (`e3cb3ea`) **BOŞ bir Swift
+  plugin dosyası** taşıyordu — önceki oturumun `git stash` kurtarması dosyayı iOS build
+  GEÇTİKTEN sonra ama commit'ten ÖNCE sıfırlamıştı; analyze Swift derlemediği için
+  yakalamadı. OPH-078'de yeniden yazıldı (CRUD'la birlikte) ve gerçek `flutter build ios`
+  ile doğrulandı. İkinci ders: **deney için `git stash` kullanma, önce commit et.**
 - **Epic 07 cihaz turu bekliyor:** exact teslim davranışı (Doze, alarm ikonu, Focus
   delme, aksiyon butonları) yalnız cihaz/emülatörde gözlenebilir — mantık katmanı tam
   unit-testli; bir Android + bir iOS/macOS cihazda NOTIFICATIONS.md senaryolarını

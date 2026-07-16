@@ -215,6 +215,25 @@ class SyncStates extends Table {
   Set<Column<Object>> get primaryKey => {workspaceId};
 }
 
+/// Task → Apple calendar event mapping (OPH-078). Device-LOCAL, never synced:
+/// Apple events live on this device (EventKit has no server), so this table is
+/// per-install state like [SyncStates], not a replicated entity. One row per
+/// mirrored task; [signature] is the last-written content fingerprint, so a
+/// reconcile can skip EventKit when nothing a calendar shows has changed.
+///
+/// Row class renamed to avoid colliding with the domain `AppleEventLink` in
+/// `apple_mirror.dart` (the pure type the engine and tests speak in).
+@DataClassName('AppleEventLinkRow')
+class AppleEventLinks extends Table {
+  TextColumn get taskId => text()();
+  TextColumn get calendarId => text()();
+  TextColumn get eventId => text()();
+  TextColumn get signature => text()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {taskId};
+}
+
 @DriftDatabase(
   tables: [
     Projects,
@@ -226,6 +245,7 @@ class SyncStates extends Table {
     NoteLinkRows,
     Reminders,
     ExternalEvents,
+    AppleEventLinks,
     PendingMutations,
     SyncStates,
   ],
@@ -236,8 +256,9 @@ class AwDatabase extends _$AwDatabase {
   /// Bump this for every schema change AND add the matching step below.
   /// v1 → v2 (OPH-081): tasks.calendar_mirror_enabled.
   /// v2 → v3 (OPH-083): external_events (the user's own calendar).
+  /// v3 → v4 (OPH-078): apple_event_links (device-local Apple mirror map).
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -258,6 +279,8 @@ class AwDatabase extends _$AwDatabase {
       // v3 (OPH-083): the user's own calendar events. A brand new table, so
       // nothing existing is touched; the next pull fills it.
       if (from < 3) await m.createTable(externalEvents);
+      // v4 (OPH-078): device-local Apple mirror map. New table, untouched data.
+      if (from < 4) await m.createTable(appleEventLinks);
     },
   );
 }

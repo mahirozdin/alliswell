@@ -6178,6 +6178,327 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
   }
 }
 
+class $AppleEventLinksTable extends AppleEventLinks
+    with TableInfo<$AppleEventLinksTable, AppleEventLinkRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AppleEventLinksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _calendarIdMeta = const VerificationMeta(
+    'calendarId',
+  );
+  @override
+  late final GeneratedColumn<String> calendarId = GeneratedColumn<String>(
+    'calendar_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventIdMeta = const VerificationMeta(
+    'eventId',
+  );
+  @override
+  late final GeneratedColumn<String> eventId = GeneratedColumn<String>(
+    'event_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _signatureMeta = const VerificationMeta(
+    'signature',
+  );
+  @override
+  late final GeneratedColumn<String> signature = GeneratedColumn<String>(
+    'signature',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    taskId,
+    calendarId,
+    eventId,
+    signature,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'apple_event_links';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AppleEventLinkRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('calendar_id')) {
+      context.handle(
+        _calendarIdMeta,
+        calendarId.isAcceptableOrUnknown(data['calendar_id']!, _calendarIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_calendarIdMeta);
+    }
+    if (data.containsKey('event_id')) {
+      context.handle(
+        _eventIdMeta,
+        eventId.isAcceptableOrUnknown(data['event_id']!, _eventIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('signature')) {
+      context.handle(
+        _signatureMeta,
+        signature.isAcceptableOrUnknown(data['signature']!, _signatureMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_signatureMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId};
+  @override
+  AppleEventLinkRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AppleEventLinkRow(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      calendarId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}calendar_id'],
+      )!,
+      eventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_id'],
+      )!,
+      signature: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signature'],
+      )!,
+    );
+  }
+
+  @override
+  $AppleEventLinksTable createAlias(String alias) {
+    return $AppleEventLinksTable(attachedDatabase, alias);
+  }
+}
+
+class AppleEventLinkRow extends DataClass
+    implements Insertable<AppleEventLinkRow> {
+  final String taskId;
+  final String calendarId;
+  final String eventId;
+  final String signature;
+  const AppleEventLinkRow({
+    required this.taskId,
+    required this.calendarId,
+    required this.eventId,
+    required this.signature,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<String>(taskId);
+    map['calendar_id'] = Variable<String>(calendarId);
+    map['event_id'] = Variable<String>(eventId);
+    map['signature'] = Variable<String>(signature);
+    return map;
+  }
+
+  AppleEventLinksCompanion toCompanion(bool nullToAbsent) {
+    return AppleEventLinksCompanion(
+      taskId: Value(taskId),
+      calendarId: Value(calendarId),
+      eventId: Value(eventId),
+      signature: Value(signature),
+    );
+  }
+
+  factory AppleEventLinkRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AppleEventLinkRow(
+      taskId: serializer.fromJson<String>(json['taskId']),
+      calendarId: serializer.fromJson<String>(json['calendarId']),
+      eventId: serializer.fromJson<String>(json['eventId']),
+      signature: serializer.fromJson<String>(json['signature']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<String>(taskId),
+      'calendarId': serializer.toJson<String>(calendarId),
+      'eventId': serializer.toJson<String>(eventId),
+      'signature': serializer.toJson<String>(signature),
+    };
+  }
+
+  AppleEventLinkRow copyWith({
+    String? taskId,
+    String? calendarId,
+    String? eventId,
+    String? signature,
+  }) => AppleEventLinkRow(
+    taskId: taskId ?? this.taskId,
+    calendarId: calendarId ?? this.calendarId,
+    eventId: eventId ?? this.eventId,
+    signature: signature ?? this.signature,
+  );
+  AppleEventLinkRow copyWithCompanion(AppleEventLinksCompanion data) {
+    return AppleEventLinkRow(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      calendarId: data.calendarId.present
+          ? data.calendarId.value
+          : this.calendarId,
+      eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      signature: data.signature.present ? data.signature.value : this.signature,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppleEventLinkRow(')
+          ..write('taskId: $taskId, ')
+          ..write('calendarId: $calendarId, ')
+          ..write('eventId: $eventId, ')
+          ..write('signature: $signature')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(taskId, calendarId, eventId, signature);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AppleEventLinkRow &&
+          other.taskId == this.taskId &&
+          other.calendarId == this.calendarId &&
+          other.eventId == this.eventId &&
+          other.signature == this.signature);
+}
+
+class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
+  final Value<String> taskId;
+  final Value<String> calendarId;
+  final Value<String> eventId;
+  final Value<String> signature;
+  final Value<int> rowid;
+  const AppleEventLinksCompanion({
+    this.taskId = const Value.absent(),
+    this.calendarId = const Value.absent(),
+    this.eventId = const Value.absent(),
+    this.signature = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AppleEventLinksCompanion.insert({
+    required String taskId,
+    required String calendarId,
+    required String eventId,
+    required String signature,
+    this.rowid = const Value.absent(),
+  }) : taskId = Value(taskId),
+       calendarId = Value(calendarId),
+       eventId = Value(eventId),
+       signature = Value(signature);
+  static Insertable<AppleEventLinkRow> custom({
+    Expression<String>? taskId,
+    Expression<String>? calendarId,
+    Expression<String>? eventId,
+    Expression<String>? signature,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (calendarId != null) 'calendar_id': calendarId,
+      if (eventId != null) 'event_id': eventId,
+      if (signature != null) 'signature': signature,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AppleEventLinksCompanion copyWith({
+    Value<String>? taskId,
+    Value<String>? calendarId,
+    Value<String>? eventId,
+    Value<String>? signature,
+    Value<int>? rowid,
+  }) {
+    return AppleEventLinksCompanion(
+      taskId: taskId ?? this.taskId,
+      calendarId: calendarId ?? this.calendarId,
+      eventId: eventId ?? this.eventId,
+      signature: signature ?? this.signature,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (calendarId.present) {
+      map['calendar_id'] = Variable<String>(calendarId.value);
+    }
+    if (eventId.present) {
+      map['event_id'] = Variable<String>(eventId.value);
+    }
+    if (signature.present) {
+      map['signature'] = Variable<String>(signature.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AppleEventLinksCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('calendarId: $calendarId, ')
+          ..write('eventId: $eventId, ')
+          ..write('signature: $signature, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingMutationsTable extends PendingMutations
     with TableInfo<$PendingMutationsTable, PendingMutation> {
   @override
@@ -7150,6 +7471,9 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $NoteLinkRowsTable noteLinkRows = $NoteLinkRowsTable(this);
   late final $RemindersTable reminders = $RemindersTable(this);
   late final $ExternalEventsTable externalEvents = $ExternalEventsTable(this);
+  late final $AppleEventLinksTable appleEventLinks = $AppleEventLinksTable(
+    this,
+  );
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
   );
@@ -7168,6 +7492,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     noteLinkRows,
     reminders,
     externalEvents,
+    appleEventLinks,
     pendingMutations,
     syncStates,
   ];
@@ -10093,6 +10418,195 @@ typedef $$ExternalEventsTableProcessedTableManager =
       ExternalEventRecord,
       PrefetchHooks Function()
     >;
+typedef $$AppleEventLinksTableCreateCompanionBuilder =
+    AppleEventLinksCompanion Function({
+      required String taskId,
+      required String calendarId,
+      required String eventId,
+      required String signature,
+      Value<int> rowid,
+    });
+typedef $$AppleEventLinksTableUpdateCompanionBuilder =
+    AppleEventLinksCompanion Function({
+      Value<String> taskId,
+      Value<String> calendarId,
+      Value<String> eventId,
+      Value<String> signature,
+      Value<int> rowid,
+    });
+
+class $$AppleEventLinksTableFilterComposer
+    extends Composer<_$AwDatabase, $AppleEventLinksTable> {
+  $$AppleEventLinksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get calendarId => $composableBuilder(
+    column: $table.calendarId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AppleEventLinksTableOrderingComposer
+    extends Composer<_$AwDatabase, $AppleEventLinksTable> {
+  $$AppleEventLinksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get calendarId => $composableBuilder(
+    column: $table.calendarId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get signature => $composableBuilder(
+    column: $table.signature,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AppleEventLinksTableAnnotationComposer
+    extends Composer<_$AwDatabase, $AppleEventLinksTable> {
+  $$AppleEventLinksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get calendarId => $composableBuilder(
+    column: $table.calendarId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get eventId =>
+      $composableBuilder(column: $table.eventId, builder: (column) => column);
+
+  GeneratedColumn<String> get signature =>
+      $composableBuilder(column: $table.signature, builder: (column) => column);
+}
+
+class $$AppleEventLinksTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $AppleEventLinksTable,
+          AppleEventLinkRow,
+          $$AppleEventLinksTableFilterComposer,
+          $$AppleEventLinksTableOrderingComposer,
+          $$AppleEventLinksTableAnnotationComposer,
+          $$AppleEventLinksTableCreateCompanionBuilder,
+          $$AppleEventLinksTableUpdateCompanionBuilder,
+          (
+            AppleEventLinkRow,
+            BaseReferences<
+              _$AwDatabase,
+              $AppleEventLinksTable,
+              AppleEventLinkRow
+            >,
+          ),
+          AppleEventLinkRow,
+          PrefetchHooks Function()
+        > {
+  $$AppleEventLinksTableTableManager(
+    _$AwDatabase db,
+    $AppleEventLinksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AppleEventLinksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AppleEventLinksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AppleEventLinksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> taskId = const Value.absent(),
+                Value<String> calendarId = const Value.absent(),
+                Value<String> eventId = const Value.absent(),
+                Value<String> signature = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AppleEventLinksCompanion(
+                taskId: taskId,
+                calendarId: calendarId,
+                eventId: eventId,
+                signature: signature,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String taskId,
+                required String calendarId,
+                required String eventId,
+                required String signature,
+                Value<int> rowid = const Value.absent(),
+              }) => AppleEventLinksCompanion.insert(
+                taskId: taskId,
+                calendarId: calendarId,
+                eventId: eventId,
+                signature: signature,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AppleEventLinksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $AppleEventLinksTable,
+      AppleEventLinkRow,
+      $$AppleEventLinksTableFilterComposer,
+      $$AppleEventLinksTableOrderingComposer,
+      $$AppleEventLinksTableAnnotationComposer,
+      $$AppleEventLinksTableCreateCompanionBuilder,
+      $$AppleEventLinksTableUpdateCompanionBuilder,
+      (
+        AppleEventLinkRow,
+        BaseReferences<_$AwDatabase, $AppleEventLinksTable, AppleEventLinkRow>,
+      ),
+      AppleEventLinkRow,
+      PrefetchHooks Function()
+    >;
 typedef $$PendingMutationsTableCreateCompanionBuilder =
     PendingMutationsCompanion Function({
       required String id,
@@ -10605,6 +11119,8 @@ class $AwDatabaseManager {
       $$RemindersTableTableManager(_db, _db.reminders);
   $$ExternalEventsTableTableManager get externalEvents =>
       $$ExternalEventsTableTableManager(_db, _db.externalEvents);
+  $$AppleEventLinksTableTableManager get appleEventLinks =>
+      $$AppleEventLinksTableTableManager(_db, _db.appleEventLinks);
   $$PendingMutationsTableTableManager get pendingMutations =>
       $$PendingMutationsTableTableManager(_db, _db.pendingMutations);
   $$SyncStatesTableTableManager get syncStates =>

@@ -111,4 +111,71 @@ void main() {
       ),
     );
   });
+
+  // ── Event CRUD (OPH-078) ────────────────────────────────────────────────────
+
+  test('saving an event sends the full spec and returns the id', () async {
+    handler = (_) => {'id': 'ev-42'};
+    final id = await eventKit.saveEvent(
+      AppleEventSpec(
+        calendarId: 'cal-1',
+        title: '[Task] Sunum',
+        url: 'alliswell://task/T1',
+        notes: 'AllisWell • alliswell://task/T1',
+        start: DateTime.utc(2030, 6, 1, 9),
+        end: DateTime.utc(2030, 6, 1, 10),
+      ),
+    );
+    expect(id, 'ev-42');
+    final args = calls.single.arguments as Map;
+    expect(args['calendarId'], 'cal-1');
+    expect(args['title'], '[Task] Sunum');
+    expect(args['url'], 'alliswell://task/T1');
+    expect(args['startMs'], DateTime.utc(2030, 6, 1, 9).millisecondsSinceEpoch);
+    expect(args.containsKey('id'), isFalse); // create → no id sent
+  });
+
+  test('updating sends the stored event id', () async {
+    handler = (_) => {'id': 'ev-1'};
+    await eventKit.saveEvent(
+      AppleEventSpec(
+        eventId: 'ev-1',
+        calendarId: 'cal-1',
+        title: '[Task] Sunum v2',
+        url: 'alliswell://task/T1',
+        start: DateTime.utc(2030, 6, 1, 9),
+        end: DateTime.utc(2030, 6, 1, 10),
+      ),
+    );
+    expect((calls.single.arguments as Map)['id'], 'ev-1');
+  });
+
+  test('deleting an already-gone event is not an error', () async {
+    handler = (_) => true; // native returns true even when nothing was there
+    await eventKit.deleteEvent('ev-gone');
+    expect(calls.single.method, 'deleteEvent');
+    expect((calls.single.arguments as Map)['id'], 'ev-gone');
+  });
+
+  test('findEventByUrl returns the match, or null off-platform', () async {
+    handler = (_) => 'ev-orphan';
+    final found = await eventKit.findEventByUrl(
+      calendarId: 'cal-1',
+      url: 'alliswell://task/T1',
+      from: DateTime.utc(2030, 5, 31),
+      to: DateTime.utc(2030, 6, 2),
+    );
+    expect(found, 'ev-orphan');
+
+    handler = (_) => throw MissingPluginException();
+    expect(
+      await eventKit.findEventByUrl(
+        calendarId: 'cal-1',
+        url: 'alliswell://task/T1',
+        from: DateTime.utc(2030, 5, 31),
+        to: DateTime.utc(2030, 6, 2),
+      ),
+      isNull,
+    );
+  });
 }

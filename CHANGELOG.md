@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added (2026-07-16, OPH-077/078 — Apple Calendar)
+
+- **Your tasks can now mirror into your Apple Calendar** (iOS/macOS), the device-side twin of
+  the Google mirror. Turn it on in Settings → Apple Calendar (request access, pick a
+  calendar); tasks with "Show in calendar" then appear as `[Task] …` events, kept in step by
+  a reconcile that runs in the app itself — Apple has no server API, so the device is the
+  worker. One-way in v1 (task → event); the same §7.1 derivation as Google, so a task lands
+  at the same time whichever calendar it reaches. Ships as a self-contained Flutter plugin
+  package (`alliswell_eventkit`) that wires iOS **and** macOS with no Xcode project surgery.
+  Hides itself entirely on non-Apple platforms.
+
+### Fixed (2026-07-16)
+
+- **The OPH-077 Swift plugin shipped empty.** The prior session's `git stash` recovery
+  corrupted `AlliswellEventkitPlugin.swift` to zero bytes after the iOS build passed but
+  before the commit, so the method channel had no native handler. `flutter analyze` never
+  caught it (it does not compile Swift). Restored and re-verified with a real
+  `flutter build ios`.
+
 ### Added (2026-07-16, OPH-084)
 
 - **Your meetings now sit in Home's chronological list, beside your tasks** — a 10:00 meeting

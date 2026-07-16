@@ -854,9 +854,51 @@ Design points worth keeping:
   (without it the app CRASHES at the prompt, it does not merely get denied), plus
   the macOS sandbox entitlement `com.apple.security.personal-information.calendars`.
 
-### OPH-078 — Apple EventKit create/update event
+### OPH-078 — Apple EventKit create/update event ✅
 
-- [ ] Event CRUD with `alliswell://task/{id}` URL marker; mapping rows; foreground resync
+- [x] Event CRUD with `alliswell://task/{id}` URL marker; mapping rows; foreground resync
+
+Acceptance notes: the device-side twin of the Google mirror. Apple has no server
+API, so — unlike Google's server-side BullMQ queue — this runs IN THE APP,
+reacting to the replica (`appleMirrorProvider` watches the open-task stream and
+reconciles on every emit; the home shell keeps it alive). One-way in v1: task →
+event. Reading foreign Apple edits back is deferred (the analogue of OPH-076 —
+it needs a conflict policy and there is no push, only foreground polling).
+
+- **The 4th pure decision function** (`apple_mirror.dart`, as ADR-0008 predicted):
+  `desiredAppleEvent(task)` mirrors the server's `desiredEventForTask`
+  fixture-for-fixture — same §7.1 rules, same backwards-end guard — so a task
+  lands at the same time whether it reaches a calendar through Google or
+  EventKit. `decideAppleMirror` is the create/update/noop/remove matrix, tested
+  in isolation. The engine only executes.
+- **Signature guard**: the map row stores a content fingerprint, so reconciling
+  the whole set on every replica emit costs an EventKit round-trip only when
+  something a calendar shows actually changed. (The client can't use revisions —
+  local edits don't bump the server revision — so it compares content.)
+- **Mapping is device-local drift** (`apple_event_links`, schema **v4** +
+  migration step, proven by the v1→latest migration test): Apple events live on
+  the device, so this is per-install cache like `sync_states`, never synced. The
+  `alliswell://task/{id}` URL is the re-link recovery key (ADR-0003) because
+  EventKit's own identifier can change on an iCloud move.
+- **Orphan sweep**: `reconcileAll` deletes events for tasks that vanished
+  entirely (a per-task reconcile never sees a deleted task), so un-mirroring and
+  deletion both clean up.
+- **Reachable** (the OPH-080 lesson): an Apple calendar Settings card — request
+  access, pick which calendar to mirror into, honest status (amber until a
+  calendar is chosen, blocked-in-Settings for denied). Hides itself entirely off
+  Apple platforms. `NSCalendarsFullAccessUsageDescription` + the sandbox
+  entitlement were already added in OPH-077.
+- **Fixed an OPH-077 defect found on the way**: the committed Swift plugin file
+  (`e3cb3ea`) was EMPTY — the previous session's `git stash` dance corrupted it
+  after the iOS build passed but before the commit, and I committed without
+  re-building. So the method channel had no native handler. Restored here (with
+  the CRUD methods) and re-verified by a real `flutter build ios`. The lesson:
+  `flutter analyze` does not compile Swift, so a green analyze hid it.
+- Tests: 27 (pure derivation + decision matrix + engine over a fake gateway and
+  real in-memory replica + channel CRUD contract + v4 migration). ⚠️ The actual
+  EventKit round-trip is device-only — a device pass is pending, consistent with
+  OPH-061's notification device tour. iOS build compiles the Swift; macOS still
+  cannot build (inherited signing gap, STATE).
 
 ### OPH-079 — CalDAV design doc ✅
 
