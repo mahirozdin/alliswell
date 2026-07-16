@@ -47,7 +47,9 @@ else's cloud.
 - 🖥 **One Flutter codebase** — iOS, Android, Web, macOS, Windows, Linux.
 - 🔓 **Self-hosted** — your data in your MySQL, one `docker compose up`.
 
-Current progress lives in [docs/STATE.md](docs/STATE.md) and the full backlog in [docs/TASKS.md](docs/TASKS.md).
+**Status: v0.1.0 — the MVP is complete through Phase 4 (calendar sync).** See the
+[roadmap](ROADMAP.md) for the phase-by-phase picture, live progress in
+[docs/STATE.md](docs/STATE.md), and the full backlog in [docs/TASKS.md](docs/TASKS.md).
 
 ## 🏗 Architecture
 
@@ -129,8 +131,10 @@ Optional DB admin UI: `docker compose --profile tools up -d adminer` → http://
 | --- | --- |
 | [docs/BLUEPRINT.md](docs/BLUEPRINT.md) | Product vision, domain model, full functional spec (TR) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture, stack, sync & calendar design |
+| [ROADMAP.md](ROADMAP.md) | Phase-by-phase roadmap: what's shipped, what's next, what's v2 |
 | [docs/TASKS.md](docs/TASKS.md) | Backlog: epics OPH-001…OPH-095 with acceptance criteria |
 | [docs/STATE.md](docs/STATE.md) | Live development state — what is done, what is next |
+| [CHANGELOG.md](CHANGELOG.md) | What changed, per release |
 | [AGENTS.md](AGENTS.md) | Hard rules & step-by-step workflow for AI agents |
 | [docs/adr/](docs/adr/) | Architecture Decision Records |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute (humans & agents) |

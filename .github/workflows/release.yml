@@ -1,0 +1,106 @@
+name: Release
+
+# Cut a release by pushing a version tag:  git tag v0.1.0 && git push origin v0.1.0
+# The tag is the trigger AND the version — everything else is derived from it.
+on:
+  push:
+    tags: ['v*.*.*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false # never abandon a half-published release
+
+jobs:
+  # A tag must never publish code the test suite has not green-lit, so reuse the
+  # exact CI workflow rather than a trimmed copy of it.
+  gate:
+    name: Test gate
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Publish
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write # create the GitHub Release
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Derive version from the tag
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version"
+
+      # A mismatched tag (v0.2.0 while the code still says 0.1.0) is almost
+      # always a mistake — fail loudly rather than ship a lie.
+      - name: Verify the code declares this version
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          api=$(node -p "require('./apps/api/package.json').version")
+          app=$(grep -m1 '^version:' apps/app/pubspec.yaml | sed -E 's/version:[[:space:]]*([0-9.]+).*/\1/')
+          echo "tag=$version  api=$api  app=$app"
+          if [ "$api" != "$version" ] || [ "$app" != "$version" ]; then
+            echo "::error::Tag v$version does not match api ($api) / app ($app). Bump the versions first."
+            exit 1
+          fi
+
+      # Release notes are the CHANGELOG's section for this version — one source
+      # of truth, so the tag and the notes can never drift.
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          # Grab the version section, but stop at the "Development log" marker
+          # so the release shows the curated summary, not the whole history
+          # (the full detail stays in CHANGELOG.md, linked below).
+          notes=$(awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]"      { grab=1; next }
+            grab && /^## \[/            { exit }
+            grab && /^### Development log/ { exit }
+            grab                       { print }
+          ' CHANGELOG.md)
+          footer="Full change detail: [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md)"
+          notes="${notes}"$'\n\n---\n'"${footer}"
+          if [ -z "$(echo "$notes" | tr -d '[:space:]')" ]; then
+            echo "::error::No CHANGELOG section found for [$version]."
+            exit 1
+          fi
+          {
+            echo "body<<RELEASE_EOF"
+            echo "$notes"
+            echo "RELEASE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+          cache: true
+
+      # The web bundle is the artifact a self-hoster actually wants — a static
+      # build they can serve behind their own API. Desktop/mobile packaging is
+      # roadmap (v2).
+      - name: Build web bundle
+        working-directory: apps/app
+        run: |
+          flutter pub get
+          flutter build web --release
+
+      - name: Package the web bundle
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          tar -C apps/app/build/web -czf "alliswell-web-$version.tar.gz" .
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AllisWell v${{ steps.version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
+          # A pre-1.0 tag is a preview; promote to a full release at 1.0.0.
+          prerelease: ${{ !startsWith(steps.version.outputs.version, '1.') }}
+          files: alliswell-web-${{ steps.version.outputs.version }}.tar.gz
+          fail_on_unmatched_files: true

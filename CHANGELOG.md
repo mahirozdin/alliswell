@@ -5,6 +5,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+_Nothing yet — the next release will collect changes here._
+
+## [0.1.0] - 2026-07-16
+
+First release: the MVP is complete through Phase 4 (calendar sync). AllisWell is
+a self-hosted, offline-first productivity hub — tasks, projects, notes,
+reminders, and two-way Google Calendar sync, across all six Flutter platforms.
+
+### Highlights
+
+- **Accounts & workspaces** — argon2id passwords, 15-minute JWTs with rotating
+  refresh tokens and reuse detection; a personal workspace per user.
+- **Tasks, projects, notes** — subtasks, checklists, tags, priorities, urgent
+  flags and reminders; projects with a README-note overview; Delta-canonical
+  notes with FULLTEXT search and markdown export.
+- **Offline-first sync** — a local SQLite replica is the source the UI reads;
+  writes queue in an outbox and push idempotently with field-level
+  last-write-wins; Socket.IO fans changes out live. Works fully offline.
+- **Exact reminders** — local notifications scheduled from the replica, snooze
+  presets, and urgent alarms that re-alert until acknowledged; a lock-screen
+  privacy mode.
+- **Calendar sync** — Google (server-side): OAuth, task→event mirror, webhook +
+  incremental sync, two-way conflict handling, and your own events flowing back
+  into Home and the Calendar tab. Apple (device-side): an EventKit task→event
+  mirror. CalDAV is designed (v2).
+- **"AllisWell Glass" design system** — hand-tuned light/dark, WCAG-verified in
+  both themes.
+
+### Known limitations
+
+- Device passes pending for exact notification delivery and the Apple EventKit
+  write round-trip (logic is unit-tested; hardware observation remains).
+- macOS desktop build needs a local signing certificate (iOS builds today).
+- Web builds keep tokens in memory only (signed out after a reload); the
+  httpOnly refresh-cookie flow is planned hardening.
+- Single active workspace in the UI (multi-workspace sharing is schema-ready, v2).
+
+### Development log
+
+The detailed, session-by-session record of how 0.1.0 was built follows.
+
 ### Added (2026-07-16, OPH-077/078 — Apple Calendar)
 
 - **Your tasks can now mirror into your Apple Calendar** (iOS/macOS), the device-side twin of

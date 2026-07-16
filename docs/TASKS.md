@@ -1058,13 +1058,39 @@ for every one after it, so the plan is about the harness as much as the column.
 
 - [x] Checklist mirroring Definition of Done
 
-### OPH-094 — Public roadmap
+### OPH-094 — Public roadmap ✅
 
-- [ ] ROADMAP.md generated from phases; link from README; GitHub Projects note
+- [x] ROADMAP.md generated from phases; link from README; GitHub Projects note
 
-### OPH-095 — First release notes
+Acceptance notes: [ROADMAP.md](../ROADMAP.md) — phase-by-phase (0-6) from
+BLUEPRINT §14, honest against real state (✅ shipped / 🟡 partial / ⏳ planned /
+💤 v2), with a v0.1.0 milestone and a v2 parking lot that matches TASKS.md's.
+Linked from the README docs index AND the top-of-file status line. The "GitHub
+Projects note" is deliberate: the markdown files (STATE/TASKS/CHANGELOG) stay the
+single source of truth — a Projects board is optional and layered on top only if
+the project grows a team — because those files are what the AI-agent workflow
+reads and writes. Cross-linked to STATE/TASKS/CHANGELOG so they can't silently
+drift ("when they disagree, they win"). ✔
 
-- [ ] v0.1.0 tag notes; release automation (GitHub Actions release workflow)
+### OPH-095 — First release notes ✅
+
+- [x] v0.1.0 tag notes; release automation (GitHub Actions release workflow)
+
+Acceptance notes: `.github/workflows/release.yml` — triggered by a `v*.*.*` tag,
+where the tag IS the version. It (1) **gates on the full CI suite** by reusing
+`ci.yml` via `workflow_call` (a tag never publishes code CI has not green-lit —
+no trimmed copy to drift); (2) **verifies the tag matches** `apps/api`'s and
+`apps/app`'s declared versions, failing loudly on a mismatch; (3) **extracts the
+release notes from CHANGELOG.md** for that version (one source of truth — the
+awk stops at the "Development log" marker so the release shows the curated
+Highlights + Known limitations, not the whole history, with a link to the full
+log); (4) builds the **web bundle** (`alliswell-web-<v>.tar.gz`, the artifact a
+self-hoster actually wants) and (5) publishes a GitHub Release, marked
+prerelease below 1.0. CHANGELOG restructured with a curated `## [0.1.0]` section.
+The extractor + version check + YAML were verified locally
+(`awk`/`python3 -c yaml.safe_load`). **Cutting the actual v0.1.0 release is left
+to the maintainer** — pushing a tag is an outward publish; the automation is
+ready, the command is `git tag v0.1.0 && git push origin v0.1.0`. ✔
 
 ---
 

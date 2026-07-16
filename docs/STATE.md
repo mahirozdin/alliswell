@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-16 (OPH-077/078 — Apple EventKit köprüsü + event CRUD; **Epic 08 KAPANDI**)
+**Last updated:** 2026-07-16 (OPH-094/095 — ROADMAP + release automation; **Epic 09 KAPANDI, v0.1.0 hazır**)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,13 +13,32 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | Phase 4 → Phase 6 |
-| Current epic | **Epic 08 KAPANDI** → sıradaki **Epic 09 — açık kaynak hazırlığı** |
-| ➡️ **Next task** | **OPH-094 — ROADMAP.md** (fazlardan üret, README'den bağla) + **OPH-095 — v0.1.0 release notes + GitHub Actions release workflow'u**. İkisi de saf doküman/CI, altyapı istemez → tutarlı bir iş paketi. |
-| ✅ Kullanıcıdan bekleyen | **YOK.** Google OAuth kimlikleri `.env`'de, gerçek hesapla doğrulandı. iOS imza hazır (build geçiyor). Opsiyonel: `GOOGLE_WEBHOOK_URL` (yoksa 5 dk yoklama çalışıyor) + macOS geliştirme sertifikası (aşağıdaki not; iOS'u etkilemez) + Apple/Android cihaz turu (EventKit yazma + acil bildirim). |
-| Last completed | **Epic 08 tam:** OPH-077/078 (Apple EventKit ✔); OPH-082…084 (harici etkinlikler ✔, ADR-0008); OPH-079…081 (Google app UI ✔); OPH-074…076 (Google inbound ✔) |
+| Current phase | **v0.1.0 hazır** — Phase 0-4 tam, Phase 5-6 kısmi (kalanı v2) |
+| Current epic | **Epic 09 KAPANDI** — planlı MVP backlog'unun (OPH-001…095) TAMAMI bitti |
+| ➡️ **Next task** | Planlı iş kalmadı. Seçenekler: (a) **v0.1.0 release'i kes** — kullanıcı `git tag v0.1.0 && git push origin v0.1.0` (dışa yayın, otomasyon hazır); (b) **cihaz turları** (EventKit yazma + acil bildirim, cihaz gerektirir); (c) **v2 park listesinden** iş çek (TASKS.md sonu — proje dokümanları, import/export, CalDAV connector, çoklu-workspace UI, vb.). |
+| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. v0.1.0 tag'ini kesmek maintainer'a bırakıldı (dışa yayın). Opsiyonel: `GOOGLE_WEBHOOK_URL` (yoksa 5 dk yoklama çalışıyor), macOS geliştirme sertifikası (iOS'u etkilemez), Apple/Android cihaz turu. |
+| Last completed | **Epic 09 tam:** OPH-094/095 (ROADMAP + release otomasyonu ✔); **Epic 08 tam:** OPH-077/078 (Apple EventKit ✔), OPH-082…084 (harici etkinlikler ✔) |
 
 ## Recently completed
+
+- **Epic 09 KAPANDI — ROADMAP + release otomasyonu → tüm MVP backlog'u bitti (2026-07-16, OPH-094/095):**
+  - **[ROADMAP.md](../ROADMAP.md)** (OPH-094): fazlardan üretilmiş, gerçek duruma karşı
+    dürüst (✅/🟡/⏳/💤), v0.1.0 milestone + v2 park listesi. README docs index'ten VE üst
+    durum satırından bağlı. "GitHub Projects notu" bilinçli: markdown dosyaları (STATE/
+    TASKS/CHANGELOG) tek gerçek kaynak kalıyor — board opsiyonel — çünkü AI-agent akışı bu
+    dosyaları okuyup yazıyor.
+  - **`.github/workflows/release.yml`** (OPH-095): `v*.*.*` tag'iyle tetiklenir, tag = sürüm.
+    (1) `ci.yml`'i `workflow_call` ile YENİDEN KULLANIR (tam test süiti geçmeden tag yayınlamaz
+    — kopya yok, drift yok); (2) tag'in `apps/api` + `apps/app` sürümleriyle EŞLEŞTİĞİNİ
+    doğrular; (3) release notlarını CHANGELOG'dan ÇIKARIR (awk "Development log" işaretinde
+    durur → düzenli Highlights + Known limitations); (4) **web bundle** kurar
+    (`alliswell-web-<v>.tar.gz`); (5) 1.0 altı prerelease olarak GitHub Release yayınlar.
+    `ci.yml`'e `workflow_call` trigger'ı eklendi. CHANGELOG düzenli `## [0.1.0]` bölümüyle
+    yeniden yapılandırıldı. **Yerel doğrulama:** sürüm eşleşmesi + awk çıkarıcı (28 satır) +
+    her iki workflow'un YAML'i (`python3 yaml.safe_load`) — hepsi geçti.
+  - **v0.1.0 tag'ini kesmek maintainer'a bırakıldı** — tag push dışa yayın; otomasyon hazır.
+  - Not: OPH-095'in başındaki "OPH-077/078 Xcode'a bloklu" ifadesi bayattı; artık her ikisi
+    de bitti (imza hazır, iOS build geçiyor).
 
 - **Apple EventKit köprüsü + event CRUD → Epic 08 KAPANDI (2026-07-16, OPH-077/078):**
   - **Neden cihaz-tarafı:** Apple'ın sunucu-tarafı takvim API'si YOK. Google mirror'ı
