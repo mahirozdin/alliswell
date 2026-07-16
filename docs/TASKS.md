@@ -768,7 +768,8 @@ code: absence from the push `ENTITIES` registry IS the enforcement. ✔
 
 - [x] drift table + applier mapping (schema v3 + migration step) + store
 - [x] Calendar tab: events on the month grid next to task dots
-- [ ] **Home: events in the chronological groups (§12 "everything shows") — DEFERRED**
+- [x] **Home: events in the chronological groups (§12 "everything shows")** — deferred here,
+      shipped as its own task OPH-084 ✅ (checkbox was left stale; corrected 2026-07-17)
 - [x] Read-only affordance — never editable; visually distinct from tasks
 - [x] Tests: applier round-trip, grouping with events, Calendar rendering
 
@@ -1091,6 +1092,527 @@ The extractor + version check + YAML were verified locally
 (`awk`/`python3 -c yaml.safe_load`). **Cutting the actual v0.1.0 release is left
 to the maintainer** — pushing a tag is an outward publish; the automation is
 ready, the command is `git tag v0.1.0 && git push origin v0.1.0`. ✔
+
+---
+
+## Epic 10 — Feedback round 4: user-testing UX corrections (Phase 4.9, v0.1.1)
+
+> **Source:** the FIRST hands-on user-testing session (2026-07-17, Mahir; iOS simulator +
+> web against the full local stack). 13 numbered feedback items, captured verbatim and
+> researched against the codebase the same day. The binding spec changes already landed in
+> BLUEPRINT (§4.2, §4.3, §12.2–§12.7) and DESIGN §4 ("Project badge") — **when a task below
+> and those sections disagree, the sections win** (they carry the reviewed wording).
+>
+> Every task still follows AGENTS.md §2/§3 in full: tests + docs + `flutter analyze` clean +
+> both themes checked + contrast guard where palettes move. Work strictly top-to-bottom —
+> the two bug fixes come first on purpose.
+>
+> Mapping (user's item № → task): 1→OPH-102, 2→OPH-103, 3→OPH-107, 4→OPH-111, 5→OPH-105,
+> 6→OPH-101, 7→OPH-100, 8→OPH-106, 9→OPH-102, 10→OPH-104, 11→OPH-108, 12→OPH-109, 13→OPH-110.
+
+### OPH-100 — Fix web sign-out crash (204 body is not a Map) 🐞
+
+- [ ] `AuthApi._post` never casts `res.data` — type-check and fall back to `{}`
+- [ ] `AuthRepository.logout` clears local state no matter WHAT the client throws
+- [ ] Regression test: adapter returns 204 with an EMPTY STRING body (dio-web behavior)
+
+**User's report (item 7):** signing out on web logged `TypeError: "": type 'String' is not a
+subtype of type 'Map<String, dynamic>?'` from `auth_api.dart:54` — after the server had
+already answered `204 No Content`.
+
+**Diagnosis (verified in source):** `POST /api/v1/auth/logout` correctly returns 204 with no
+body. On web, dio materializes an empty body as the empty STRING `''`, so
+`res.data as Map<String, dynamic>?` in `_post` (apps/app/lib/src/features/auth/data/auth_api.dart)
+throws a `TypeError`. That error is NOT an `AuthException`, and `AuthRepository.logout`
+(auth_repository.dart, `on AuthException` only) lets it escape **before `_clearSession()`
+runs** — so the server session is revoked but the app still holds the dead session; the UI
+only recovers when the next refresh fails. Two layers must change:
+
+1. `_post`: replace the cast with a type check — `final data = res.data; return data is
+   Map<String, dynamic> ? data : const <String, dynamic>{};`. This fixes every 204/empty
+   response, not just logout.
+2. `logout()`: broaden the catch (`on Object`) around the API call — sign-out is a
+   local-state guarantee; the server call is best-effort (the comment already says so, the
+   catch just didn't match reality).
+
+**Tests** (`apps/app/test/features/auth/`): fake `HttpClientAdapter` returning 204 with `''`
+→ `logout()` completes and the session store is empty; a second test where the adapter
+throws a plain `Exception` → local session STILL cleared. Existing login/refresh tests stay
+green.
+
+**DoD:** `flutter analyze` + `flutter test`; manual web verify (sign out → login screen, no
+console error).
+
+### OPH-101 — Mobile: FABs are covered by the glass bottom nav 🐞
+
+- [ ] Failing-first widget test: shell at phone size, tap each section's FAB
+- [ ] Fix so every FAB sits fully ABOVE the glass `NavigationBar` and receives taps
+- [ ] Audit every bottom-anchored control on narrow layouts (FABs ×3 + list padding)
+
+**User's report (item 6):** on mobile the floating action button sits BEHIND the bottom
+navigation and cannot be tapped — note/project/task creation was untestable.
+
+**Diagnosis (verified in source):** `HomeShell` (apps/app/lib/src/screens/home_shell.dart)
+uses `extendBody: true` with a `GlassSurface`-wrapped `NavigationBar` so content scrolls
+under the glass (DESIGN §4 "Navigation"). The section screens are NESTED `Scaffold`s with
+their own `floatingActionButton` — the nested scaffold doesn't reserve space for the OUTER
+scaffold's bar, so the FAB lands under the glass. Affected FABs (grepped):
+`home_screen.dart:53`, `projects_screen.dart:21`, `notes_screen.dart:67`. Lists already
+compensate via `awListPadding` — FABs don't.
+
+**Spec:** on narrow layouts every FAB clears the nav bar by `MediaQuery.paddingOf(context)
+.bottom` (published by `extendBody`) — implement ONCE (e.g. a small shared wrapper in
+`lib/src/widgets/`, or padding applied where the FABs are declared), not three magic
+numbers. Wide layouts (rail) must not gain stray bottom padding. Pushed full-screen routes
+(`/tasks/:id`, `/settings`) render OUTSIDE the shell and are unaffected — confirm, don't
+"fix".
+
+**Tests:** widget test pumping the real `HomeShell` (use `test/support/sync_overrides.dart`)
+at 390×844: for Home/Projects/Notes assert the FAB's rect does not intersect the
+`NavigationBar`'s rect AND `tester.tap` on it opens the create sheet (write it BEFORE the
+fix — it must fail against today's layout, that's the regression proof).
+
+**DoD:** analyze + tests; manual iOS-simulator pass (task, project and note creation all
+reachable); light + dark screenshots.
+
+### OPH-102 — Home buckets: 30-day horizon; dateless on top, never dimmed
+
+- [ ] `HomeBucket.later` → `HomeBucket.next30Days` ("Next 30 days"); horizon = today+30
+- [ ] Items beyond the horizon (tasks AND events) do not enter Home at all
+- [ ] `noDate` group renders directly under Overdue, ABOVE Today
+- [ ] `noDate` rows are NEVER dimmed — not even when a calendar day is selected
+- [ ] Rewrite `test/features/home/` grouping tests to the new contract
+
+**User's report (items 1 + 9):** Home must show Today/Tomorrow/This Week/Next 30 Days and no
+more — the unbounded "Later" bucket fills with every future instance of recurring (e.g.
+monthly) calendar events and buries real work. Dateless tasks currently sit at the BOTTOM
+looking disabled; they are always-active work and belong at the TOP, above Today, at full
+brightness.
+
+**Spec (pure function `groupTasksForHome`, apps/app/lib/src/features/home/task_grouping.dart):**
+
+- Bucket order: `selectedDay?` → `overdue` → `noDate` → `today` → `tomorrow` → `thisWeek` →
+  `next30Days`. (Overdue keeps the crown — it is owed debt; the user asked "above Today"
+  and this satisfies it. If he later wants dateless above Overdue it is a 2-line swap.)
+- Day boundaries (local days): today = `dayOf(now)`; tomorrow = +1; thisWeek = +2…+6
+  (`day.isBefore(today+7)`); next30Days = +7…+30 INCLUSIVE (`!day.isAfter(today+30)`).
+- **Horizon:** a dated task with due day > today+30 → dropped (no bucket). An event whose
+  anchor day (existing "first day it touches that has not passed" rule — do NOT change it)
+  is > today+30 → dropped. They live on the Calendar tab. Recurring Google events arrive as
+  separate instances (`singleEvents=true` feed), so the horizon naturally caps them.
+- `daysWithTasks` / `daysWithEvents` (month-grid dots) stay UNBOUNDED — dots are the
+  calendar's job; only the LIST has a horizon. Server sync windows are untouched.
+- Dimming: the `dimmed` flag stays selection-driven, but the `noDate` group is ALWAYS
+  `dimmed: false` — dateless work belongs to every day, including the selected one. (This
+  is the "looks disabled" half of item 9: with a day selected, dateless rows faded at 0.45.)
+- `HomeBucketLabel`: 'Next 30 days'. Update the ordering comment in `home_screen.dart` and
+  keep BLUEPRINT §12.2 (already revised) truthful.
+- Cross-ref: `noDate` gets emptier when OPH-107 removes inbox captures from `watchOpen` —
+  don't pre-implement that here.
+
+**Tests:** task at +29d in next30Days; at +31d absent; monthly-event instances at +40/+70d
+absent while the +20d instance shows; dateless: position (index 1 with an overdue present,
+index 0 without) and `dimmed == false` while another day is selected; selected-day pull and
+event overdue-exclusion (existing rules) still hold.
+
+**DoD:** analyze + `flutter test`; light+dark web check of Home with a seeded month of data.
+
+### OPH-103 — Home (mobile): the month calendar scrolls WITH the list
+
+- [ ] Narrow layout: calendar becomes the first element of ONE scrollable (no sticky header)
+- [ ] "Hide calendar" toggle + persisted pref keep working; quick-add stays pinned above
+- [ ] No nested scrolling; empty state still fills the remainder
+
+**User's report (item 2):** keep "Hide calendar", but even with the calendar visible,
+scrolling the list must slide the calendar off-screen — it must NOT stay fixed at the top
+eating half the screen.
+
+**Today (home_screen.dart, narrow branch):** `Column[quickAdd, calendar(≤50% height, own
+inner `SingleChildScrollView`), toggle row, Expanded(list)]` — the calendar is a permanent
+header. **Target:** `Column[quickAdd, Expanded(CustomScrollView(slivers: [if (visible)
+calendar card, toggle row, …grouped list…]))]` — calendar and toggle are ordinary scroll
+content (`SliverToBoxAdapter`); the 50%-height cap and the inner scroll view are REMOVED
+(the outer scroll owns everything). Wide layout (side panel) unchanged.
+
+Refactor `_GroupedTaskList` so ONE builder yields the group slivers/rows used by both
+layouts — do not duplicate the group-rendering logic. Empty state: `SliverFillRemaining`
+hosting the existing `AwEmptyState`. Keep `awListPadding`'s bottom clearance on the LAST
+sliver so rows still clear the glass bar (and the FAB fixed in OPH-101).
+
+**Tests (widget, phone size):** with 30+ rows, `drag` the list up → `MonthCalendar` is no
+longer hit-testable/visible, and dragging back down reveals it; toggle hides/shows and
+persists (fake `localKv`); quick-add still appends while scrolled; day-tap on a marked day
+still selects (grid tap targets unaffected by the sliver move).
+
+**DoD:** analyze + tests; iOS simulator manual scroll check; light + dark.
+
+### OPH-104 — Project badge on task rows
+
+- [ ] `ProjectBadge` widget per DESIGN §4 (filled pill, 6-char + "…", tooltip, computed
+      foreground, semantics)
+- [ ] `projectsByIdProvider` (Map<String, Project> from the replica) — no per-row queries
+- [ ] Rightmost in `TaskTile`'s trailing cluster; hidden via flag inside a project's own
+      Tasks tab
+- [ ] Foreground-helper unit test sweeps `kProjectPalette` + color-grid extremes
+
+**User's report (item 10):** on Home you cannot tell which task belongs to which project.
+Wanted: at the row's far right, a FILLED badge in the project's color with the project name
+inside (truncate after 6 chars with "…"), full name on hover — one glance, no tap.
+
+**Spec:** DESIGN §4 "Project badge" (added 2026-07-17) is the binding visual contract —
+radius `AwRadius.s`, padding 8×2, `labelSmall` w600, min height 22, `Tooltip` (hover +
+long-press) with the full name, `semanticLabel: 'Project: <full name>'`, foreground by
+relative luminance (> 0.45 → ink `#101828`, else white). Put the luminance helper next to
+`taskPriorityColor` in `task_visuals.dart` (or `theme/`) so future colored chips reuse it.
+Truncation is data-side (`Characters` API, first 6 graphemes + '…') — NOT `TextOverflow`
+(the pill must hug its short label).
+
+**Data path:** `Task` carries only `projectId`. Add a `projectsByIdProvider` derived from
+the existing replica stream (`projectsControllerProvider`) so `TaskTile` resolves name+color
+with a map lookup. Rows without a project render NO badge. Trailing order: priority flag ·
+status icon · urgent · **badge** (badge outermost — the user asked for the far right).
+`TaskTile` gains `showProjectBadge` (default true); the project-detail Tasks tab passes
+false (same-project badge is noise).
+
+**Tests:** widget — badge shows name 'Deneme' as-is (6 chars) and 'Deneme Projesi' as
+'Deneme…' with tooltip 'Deneme Projesi'; no badge when `projectId == null`; hidden in the
+project tab; unit — foreground helper against every `kProjectPalette` swatch and
+white/black grid extremes (assert the documented threshold behavior, both themes).
+
+**DoD:** analyze + tests; light + dark screenshots of Home rows with 2+ project colors.
+
+### OPH-105 — Status icons: `open` is no longer a bare circle
+
+- [ ] `taskStatusIcon`: `open` → `Icons.hourglass_empty`; `waiting` → `Icons.pause_circle_outline`
+- [ ] Sweep tests/keys referencing the old icons; verify dropdowns + rows in both themes
+
+**User's report (item 5):** the `open` status icon must change to a "waiting/pending" style
+icon — an open task is work waiting to be done — and it must NOT be a plain circle (it
+collides with the circular completion checkbox at the row's left).
+
+**Spec:** single source `taskStatusIcon` (apps/app/lib/src/features/tasks/ui/task_visuals.dart):
+`'open' => Icons.hourglass_empty` (the pending metaphor the user asked for) and, to keep
+statuses distinguishable (feedback round 3 rule: status→icon, one meaning each),
+`'waiting' => Icons.pause_circle_outline` (on-hold hands the hourglass to `open`). All other
+statuses unchanged. BLUEPRINT §12.4 already documents this mapping — keep code equal to it.
+Everything downstream (row trailing icon, `StatusLabel` dropdown entries in detail + sheets)
+updates through the one function; verify nothing else hardcodes `radio_button_unchecked`
+(grep app + tests).
+
+**Tests:** unit on the mapping (open ≠ waiting, open is not `radio_button_unchecked`);
+adjust any widget test finding the old icons.
+
+**DoD:** analyze + tests; light + dark spot-check of a task row and the status dropdown.
+
+### OPH-106 — Project picker: always legible in the create sheet, added to detail
+
+- [ ] Create sheet: picker visible with 0 projects, with a helper pointing to Projects
+- [ ] Task DETAIL screen gains a Project dropdown (`Key('detail-project')`)
+- [ ] Archived projects excluded from both pickers (forward-ref OPH-110)
+
+**User's report (item 8):** opened "new task" from the FAB — no project selection visible;
+detailed creation must allow choosing a project.
+
+**Diagnosis (verified):** the sheet HAS a picker (`Key('task-sheet-project')`,
+task_create_sheet.dart) — but with zero projects it renders a dropdown whose only entry is
+"No project", which reads as "no picker". (At test time the user's workspace had no
+projects yet — mobile project creation was blocked by OPH-101.) The DETAIL screen
+(task_detail_screen.dart) has status/priority dropdowns but genuinely NO project field.
+
+**Spec:**
+
+1. Create sheet: when `projects` is empty, keep the field visible and add
+   `helperText: 'No projects yet — create one in the Projects tab'` (disabled state is
+   fine); with projects present, behavior unchanged (color dot + name entries).
+2. Detail screen: add a 'Project' `DropdownButtonFormField` beside status/priority — entries
+   'No project' + each project with its color dot (same visual as the sheet — extract the
+   entry row into a shared widget instead of copying it); on change
+   `taskStore.update(id, {'projectId': value})` (server + sync already accept `projectId`;
+   verified in TASK_FIELDS and REST PATCH).
+3. Both pickers exclude `status == 'archived'` projects once OPH-110 lands — write the
+   filter against project status NOW (there are no archived projects yet, so it is inert);
+   if the CURRENT task already points at an archived project, show that single entry
+   suffixed ' (archived)' so the value stays visible/clearable.
+4. Cross-ref OPH-107: once the auto-promote rule exists, assigning a project to an
+   inbox-status task flips it to `open` — the detail dropdown must not fight that (it just
+   patches `projectId`; the store rule does the rest).
+
+**Tests:** sheet with 0 projects shows the helper; with 2 projects shows both entries;
+detail dropdown change writes `projectId` to the replica AND enqueues one outbox mutation
+(assert via the drift test db); picker hides an archived project but shows it suffixed when
+already assigned.
+
+**DoD:** analyze + tests; light + dark; manual web run: FAB → create with a project.
+
+### OPH-107 — Inbox is a CAPTURE box: out of Home, with a triage flow
+
+- [ ] `kOpenStatuses` split: planning lists (Home, project tabs) exclude `inbox`
+- [ ] Auto-promote in `TaskStore` (create+update): date OR project set on an inbox row →
+      status `open` in the SAME write/outbox mutation (unless the patch sets status itself)
+- [ ] Inbox rows become `CaptureTile`: no checkbox; actions Plan / To note / Delete;
+      tap = Plan
+- [ ] `TaskCreateSheet` gains edit/triage mode (prefilled, 'Save', updates instead of
+      creating)
+- [ ] Copy: quick-add hint, empty state and section description say "capture now, sort
+      later — these don't show on Home"
+- [ ] BLUEPRINT §4.3 + §12.6 stay the binding wording
+
+**User's report (item 3):** Inbox must be where fleeting ideas are captured so they aren't
+lost — written serially, evaluated/planned later — and the user must UNDERSTAND that from
+the UI. If it stays a task status, inbox items must NOT appear as work on Home. (Both
+halves adopted: keep the existing `inbox` status — zero schema work, sync already carries
+it — and pull it out of the planning lists.)
+
+**Verified plumbing:** captures already write `status: 'inbox'`
+(`InboxTasksController.quickAdd`) and `watchInbox` filters on it; the leak is
+`kOpenStatuses` (task_store.dart) including `'inbox'`, which `watchOpen` (Home) and
+`watchProjectTasks` use.
+
+**Spec:**
+
+1. **Visibility:** introduce `kPlanningStatuses = ['open', 'scheduled', 'in_progress',
+   'waiting']`; `watchOpen` + `watchProjectTasks` use it. `watchInbox` unchanged. Keep
+   `kOpenStatuses` only if something still needs the "not terminal" meaning — otherwise
+   delete it (grep first; update the export in providers.dart).
+2. **Auto-promote (store-level, single source):** in `TaskStore.update` — if the current
+   row's status is `inbox`, the patch does NOT contain `status`, and it sets a non-null
+   `dueAt` OR non-null `projectId` → merge `status: 'open'` into the SAME optimistic write
+   and the SAME outbox mutation (one server round-trip, no applier change — the server
+   echoes status back). Mirror the rule in `create` (a capture created WITH a date/project
+   isn't a capture). Server needs no change (`open` is a legal PATCH value).
+3. **Inbox UI (task_list_screen.dart):** rows render as a new `CaptureTile` — leading
+   `Icons.inbox_outlined` (NOT a checkbox: you don't "complete" a thought), title (wraps to
+   2 lines), trailing: `event_outlined` 'Plan' → triage sheet; `description_outlined`
+   'To note' → confirmation dialog ("Convert to a note? The capture moves to Notes.") →
+   `noteStore.create(workspaceId, {'title': <capture title>})` then `taskStore.delete(id)`;
+   `delete_outline` 'Delete' → existing delete confirm. Row tap = Plan. All three have
+   tooltips + 44px targets (G4).
+4. **Triage sheet:** extend `TaskCreateSheet` with an optional `task` parameter → edit mode:
+   title prefilled, header 'Plan task', button 'Save', submit calls `taskStore.update`
+   (auto-promote fires if a date/project was chosen; if the user saves with NEITHER, the
+   capture honestly stays in Inbox — no silent promote).
+5. **Copy:** quick-add hint 'Capture a thought…'; empty state title 'Inbox is for
+   capturing' message 'Type above and sort later — captures never show on Home.'; section
+   description (sections.dart) 'Capture thoughts fast — they stay out of Home until
+   planned.' (feeds tooltips AND the OPH-111 tour).
+
+**Tests:** store — inbox row absent from `watchOpen`/`watchProjectTasks`, present in
+`watchInbox`; auto-promote on date-set, on project-set, NOT on unrelated patch, NOT when
+patch carries an explicit status; create-with-date is born `open`; ONE outbox mutation per
+promote. Widget — Home pumped with a seeded capture shows nothing; Plan flow sets a date →
+row leaves Inbox and appears on Home; To-note flow creates the note and removes the capture;
+quick-add still keeps focus (feedback round 2 contract).
+
+**DoD:** analyze + tests; light + dark; manual: capture → plan → appears on Home.
+
+### OPH-108 — Tab selection returns to the section root
+
+- [ ] `HomeShell._goBranch`: `initialLocation: true` unconditionally
+- [ ] Widget test: Projects→detail→Notes→Projects lands on the LIST
+
+**User's report (item 11):** opened the Deneme project, switched to another tab, tapped
+Projects again — the project detail was still open. Returning to a tab must open that
+section's main page.
+
+**Spec:** in home_shell.dart, `_goBranch` currently passes `initialLocation: index ==
+navigationShell.currentIndex` (re-tap resets, switch-back restores). Change to
+`initialLocation: true` — selecting a tab ALWAYS shows the section root; tabs are sections,
+not stacks (BLUEPRINT §12.3 note). This intentionally applies to every branch (consistency
+beats per-tab surprises). Safety audit performed: the note editor flushes its debounced
+autosave in `dispose()` (note_editor_screen.dart — verified), and task detail + settings are
+pushed on the ROOT navigator, so they sit above the shell and are unaffected.
+
+**Tests:** widget — navigate Projects → detail, switch to Notes, back to Projects → project
+LIST visible (and detail disposed); same for Notes editor → Home → Notes lands on the notes
+list with the note's latest text persisted (proves the dispose-flush).
+
+**DoD:** analyze + tests; quick manual tab-dance on web + iOS sim.
+
+### OPH-109 — README lives in its project; Notes list hides READMEs
+
+- [ ] Root-level pushed route `/edit-note/:noteId` (top of the shell, like `/tasks/:taskId`)
+- [ ] Overview Create/Edit README uses `context.push('/edit-note/…')` — never `go('/notes/…')`
+- [ ] Notes list: default EXCLUDES readme notes; new 'READMEs' chip lists ONLY them
+- [ ] Project detail Notes tab hides the project's own README
+- [ ] API: `GET /workspaces/:id/notes` gains `readme` filter (default exclude / `true` = only)
+
+**User's report (item 12):** creating a README from a project's Overview dumped him into the
+Notes tab — it must stay on the project's Overview. README notes must not pollute the notes
+list either; only an explicit filter should reveal them.
+
+**Verified today:** `_OverviewTab._createReadme` (project_detail_screen.dart) creates the
+note, sets `readmeNoteId`, then `context.go('/notes/$noteId')` — a BRANCH SWITCH; the Edit
+pencil does the same. The notes list has no notion of "readme".
+
+**Spec:**
+
+1. **Routing:** add `GoRoute(path: '/edit-note/:noteId')` at the ROOT level (same tier as
+   `/tasks/:taskId`) building `NoteEditorScreen(noteId: …)`. Overview's create flow ends
+   with `context.push('/edit-note/$noteId')`; the pencil likewise. Back pops to Overview,
+   whose README card live-updates (it already watches the note). Verify the editor's own
+   pop/delete paths behave when pushed outside the Notes branch (it must `pop` — not
+   `go('/notes')`).
+2. **Which notes are READMEs:** exactly those referenced by any project's `readmeNoteId`
+   (no schema change). App side: `note_store.watchList` combines the notes stream with a
+   watch over `projects.readmeNoteId` (drift join or two-stream combine) exposing
+   `isReadme` per row; `NotesFilter.all/pinned/archived` exclude them; new
+   `NotesFilter.readmes` chip ('READMEs') lists ONLY them, rows showing the owning
+   project's color dot + name. `watchProjectNotes` additionally excludes THAT project's
+   own readme (it lives in Overview).
+3. **API parity (apps/api/src/routes/notes.js):** `readme` boolean in the list
+   querystring — absent/false ⇒ exclude readme notes, `true` ⇒ only readme notes.
+   Implementation note: fetch the workspace's non-null `readme_note_id`s first and use
+   `whereIn`/`whereNotIn` with the id list (two cheap queries) — keeps the unit fakedb
+   viable and avoids subquery support questions. Document the param in the route schema.
+4. Deleting a project or clearing `readmeNoteId` naturally returns the note to the default
+   list (it is derived state — assert in a test rather than "handling" it).
+
+**Tests:** app — create-readme keeps the router location inside `/projects/:id` (assert via
+`GoRouter.of` location) and pushes the editor; notes list default hides the readme; READMEs
+chip shows it with the project dot; project Notes tab hides its own readme but still shows
+other project notes. API unit — `readme` filter both ways + schema validation; existing
+list tests untouched.
+
+**DoD:** analyze + `flutter test`; `npm test`; light + dark; manual: create README on web,
+land back on Overview.
+
+### OPH-110 — Project archiving with an optional cascade
+
+- [ ] API: `POST /projects/:projectId/archive` + `/unarchive` with
+      `{includeTasks?, includeNotes?}` — one transaction, every write revisioned
+- [ ] Archive cascade reuses the task status side-effect path (reminders die/revive
+      correctly)
+- [ ] App: archive/unarchive dialogs with live counts; Projects list hides archived by
+      default + 'Archived' chip; detail banner + Unarchive
+- [ ] Edit sheet no longer offers bare 'archived' in its status dropdown
+- [ ] Pickers exclude archived projects (OPH-106 wrote the filter; verify end-to-end)
+
+**User's report (item 13):** no way to archive a project. Archiving must ask whether to also
+archive the project's tasks and notes; archived things must disappear from normal views and
+only show in an archive view; unarchiving must ask the mirrored question. "This needs to be
+designed well — write a detailed task."
+
+**Verified foundation (no migration needed):** `projects.status` enum already contains
+`archived` (migration 20260714000200); drift `Projects.status` exists; sync
+`PROJECT_FIELDS.status` and REST PATCH both accept it. What's missing is the FLOW: cascade,
+default-hidden lists, and honest dialogs. Note: `project_edit_sheet.dart` currently offers
+'archived' as a plain dropdown status — REMOVE it there (`kProjectStatuses` in the sheet →
+active/paused/completed); archiving goes through the dedicated flow so the cascade question
+is never skipped. (Server keeps accepting the value — v1 clients/API users may set it; only
+the app UI funnels.)
+
+**Server spec (apps/api/src/routes/projects.js):**
+
+- `POST /projects/:projectId/archive` body `{includeTasks?: bool=false, includeNotes?:
+  bool=false}` (Ajv), member-allowed (reversible — parity with PATCH, not with delete).
+  In ONE transaction: project → `status='archived'` via the existing revisioned write
+  path; if `includeTasks`, every task of the project with status IN
+  inbox/open/scheduled/in_progress/waiting → `status='archived'`, EACH going through the
+  same status side-effect helper PATCH uses (tasks.js "Status side effects") so reminders
+  deactivate — never a bare column update; completed/cancelled/archived tasks untouched.
+  If `includeNotes`, notes of the project with `is_archived=false` → `true`, revisioned.
+  Response `{project, tasksChanged, notesChanged}`. Archiving an archived project: 200,
+  zero changes (idempotent).
+- `POST /projects/:projectId/unarchive` mirrors: project → `active`; `includeTasks` →
+  the project's `archived` tasks → `open` (side-effect path revives reminders; past
+  `remind_at` reconciles like any past reminder); `includeNotes` → `is_archived=false`.
+  **Documented simplification:** unarchive-with-cascade restores ALL archived
+  tasks/notes of the project, including ones archived individually beforehand — tracking
+  "which ones the cascade touched" needs new columns; v1 chooses the simple symmetric
+  rule and the dialog copy says so.
+- Every entity write = `recordSyncWrite` in the same trx (existing pattern from the
+  subtree delete) so replicas converge; workspace revision bumps once per row (gapless
+  guarantee already proven in OPH-050).
+
+**App spec:**
+
+- **Two write paths, both honest about offline:** plain archive/unarchive with BOTH
+  checkboxes off = `projectStore.update(id, {'status': …})` → optimistic + outbox (works
+  offline). Any cascade = the REST endpoint via the authenticated dio (multi-entity
+  transactions cannot be one outbox mutation); offline → `AwInlineError`/snackbar
+  "Archiving with its tasks/notes needs a connection." and nothing changes locally
+  (replica converges from the pull after the call succeeds).
+- **Entry points:** overflow menu on each Projects row + project detail app-bar menu:
+  'Archive project…' opens a dialog — body explains the effect, two checkboxes with LIVE
+  counts from the replica: 'Also archive its open tasks (N)' / 'Also archive its notes
+  (M)'; confirm = error-styled `FilledButton`? No — archive is reversible: primary
+  FilledButton, destructive styling reserved for delete (DESIGN §4 Dialogs). Unarchive
+  mirrors with counts of archived items + the "restores ALL archived" caveat line.
+- **Lists:** `project_store.watchAll` keeps returning everything; the projects screen
+  filters — default view = status != archived; a ChoiceChip row (pattern: notes chips)
+  All/Archived; archived rows carry an `archive_outlined` marker and their menu offers
+  Unarchive. Project DETAIL of an archived project: banner 'This project is archived' +
+  Unarchive button (content stays readable; edits stay possible — server allows them).
+- **Ripples:** Home shows tasks of a non-cascaded archived project (their status is
+  untouched — user's explicit choice); pickers exclude archived projects (OPH-106);
+  project badge (OPH-104) still renders name+color for them.
+
+**Tests:** API unit (fakedb) — archive with/without each flag (counts, statuses, notes),
+reminder deactivation on cascaded tasks + revival on unarchive, idempotent re-archive,
+member role allowed, response shape; integration — one full cascade + unarchive round on
+real MySQL (revisions strictly increase, replica-visible rows via /sync/pull). App —
+default list hides archived, chip shows them, dialog counts match seeded replica, offline
+cascade shows the error and leaves state untouched, plain archive works offline through
+the outbox, detail banner + unarchive flow.
+
+**DoD:** analyze + `flutter test`; `npm test` + `npm run test:integration`; light + dark;
+CHANGELOG + BLUEPRINT §4.2 kept truthful.
+
+### OPH-111 — Onboarding: welcome + feature tour (skippable, replayable)
+
+- [ ] Hand-rolled tour overlay (NO new package): welcome card → spotlight steps over the
+      nav destinations (+ quick-add, FAB, Settings) with Next/dots/Skip
+- [ ] Auto-runs once per device after first sign-in (`alliswell_onboarding_seen_v1` via
+      `localKv`); Settings gains 'App tour' to replay
+- [ ] Adapts to narrow (bottom bar) and wide (rail) anchors; resize mid-tour degrades
+      gracefully
+- [ ] A11y: semantics, focus, ESC/back = skip, AwMotion.fast fades only
+
+**User's report (item 4):** there must be an onboarding introducing every feature — what it
+is, how it's used. Even if skippable (top-right), the bottom menu must be walked item by
+item with the rest dimmed and a bubble explaining each simply. Settings must let the user
+re-watch the guide. "There are lots of features and nobody knows what anything is."
+
+**Spec (BLUEPRINT §12.7 is the binding wording):**
+
+- **Structure:** `features/onboarding/` — `tour_steps.dart` (PURE list of steps per layout:
+  id, anchor key, title, body — reuses/extends `AppSection.description` copy so tooltips
+  and tour never drift), `tour_controller.dart` (Riverpod Notifier: idle → step i → done;
+  exposes start/next/skip), `tour_overlay.dart` (an `Overlay`/`Stack` layer inside
+  `HomeShell`: veil-dimmed backdrop with a cut-out or highlight pill on the anchored
+  widget, plus a SOLID bubble card — glass stays chrome-only, G1 — with icon, title, 2-line
+  body, step dots, Next/Done, and a persistent 'Skip tour' in the top-right).
+- **Anchors:** `HomeShell` exposes `GlobalKey`s for each destination (bar item on narrow,
+  rail destination on wide) + the Home quick-add, the FAB, and the Settings gear. Steps
+  whose anchor is absent (e.g. FAB while another tab is fronted) either navigate first
+  (tour switches branch via `_goBranch` before highlighting — acceptable) or are skipped;
+  pick ONE behavior and test it. On `MediaQuery` size flips mid-tour, re-resolve anchors;
+  if the layout class changed, end the tour quietly (state stays 'seen').
+- **Content (7 steps max):** Home (chronological view, 30-day horizon), Inbox (capture —
+  OPH-107 copy), Calendar (your month + external events), Projects (colors, README
+  overview), Notes (rich notes, pin/archive), quick-add vs FAB (serial capture vs full
+  form), Settings (calendar connect, notifications, replay this tour).
+- **Trigger:** after the first successful session restore/sign-in AND Home's first frame
+  (post-frame callback in `HomeShell` when the flag is unset). Never during widget tests
+  unless opted in — tests get the flag pre-set through the existing overrides support
+  (extend `test/support/sync_overrides.dart` so EVERY current widget test keeps passing
+  untouched).
+- **Persistence:** `PersistedToggle('alliswell_onboarding_seen_v1', fallback: false)` —
+  set true on skip AND on finish. Settings tile 'App tour' (help icon) calls
+  `tourController.start()` directly (does not clear the flag).
+- **A11y/quality:** every bubble is a `Semantics` region announcing "step i of n"; back
+  button/ESC = skip; tap outside advances nothing (explicit buttons only); text/tokens
+  meet G2 (bubble = solid surface, veil ≥ scrim contrast); animations `AwMotion.fast`
+  fades only.
+
+**Tests:** unit — steps list per layout (anchors defined, copy non-empty, ≤7); controller
+transitions incl. skip-at-step-3. Widget — flag unset → welcome shows after pump; Skip →
+flag persisted true and overlay gone; full Next-walk ends the tour and persists; Settings
+tile relaunches with the flag already true; narrow AND wide runs (two `MediaQuery` sizes);
+existing suite stays green with the flag pre-set.
+
+**DoD:** analyze + tests; light + dark; manual run on web (wide) + iOS sim (narrow);
+BLUEPRINT §12.7 stays truthful.
 
 ---
 

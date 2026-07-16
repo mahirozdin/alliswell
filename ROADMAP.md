@@ -7,7 +7,7 @@ Where AllisWell is and where it's going. Generated from the phase plan in
 **Legend:** ✅ shipped · 🟡 partial (rest deferred) · ⏳ planned · 💤 v2 parking lot
 
 > This file is a summary. The authoritative, task-by-task status is
-> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-095); the live pointer to
+> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-111); the live pointer to
 > "what's next" is [docs/STATE.md](docs/STATE.md). When they disagree, they win.
 
 ---
@@ -70,6 +70,21 @@ _Epic 08. ADRs [0006](docs/adr/0006-google-oauth-token-crypto-and-mirror-queue.m
 
 > ⏳ **Device pass pending:** the EventKit write round-trip is device-only.
 > **macOS build** needs a local signing certificate (iOS builds today).
+
+---
+
+## v0.1.1 — first user-testing feedback ⏳ (next)
+
+The first hands-on testing round (2026-07-17, iOS simulator + web) produced
+**Epic 10 (OPH-100…OPH-111)**: two bug fixes (web sign-out crash, FABs hidden
+behind the glass nav), a Home rework (30-day horizon with
+Today/Tomorrow/This Week/Next 30 Days, dateless tasks on top, the month
+calendar scrolling with the list, project badges on task rows), clearer
+status icons, a project picker in task create/detail, tabs that return to
+their root, README notes that stay inside their project, an Inbox reworked
+as a true capture box, project archiving with an optional cascade, and a
+first-run onboarding tour. Spec deltas live in BLUEPRINT §12.2–§12.7 and
+DESIGN §4; the tasks in [docs/TASKS.md](docs/TASKS.md).
 
 ---
 

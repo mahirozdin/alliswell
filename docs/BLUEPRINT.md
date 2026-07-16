@@ -184,6 +184,12 @@ Project, task ve notların bağlandığı ana iş alanıdır.
 - Status: `active`, `paused`, `completed`, `archived`.
 - Start date, due date, sort order, favorite.
 - Workspace relation.
+- **Arşivleme (rev. 2026-07-17, feedback round 4 — OPH-110):** `archived` statüsü serbest bir
+  dropdown seçeneği değil, ÖZEL bir akıştır. Arşivlerken kullanıcıya projenin açık görevlerini
+  ve notlarını da arşivlemek isteyip istemediği sorulur (kaskad opsiyonel, sunucuda tek
+  transaction); arşivden çıkarma aynı soruyu tersine sorar. Arşivli projeler proje listesinde
+  varsayılan GİZLİDİR (yalnız "Archived" filtresiyle görünür) ve görev oluşturma/detay proje
+  seçicilerine çıkmazlar.
 
 ### 4.3 Task / TODO
 
@@ -195,6 +201,10 @@ Task, sistemin en kritik domainidir.
 - Project relation (optional), parent task (optional), checklist items.
 - Status: `inbox`, `open`, `scheduled`, `in_progress`, `waiting`, `completed`, `cancelled`,
   `archived`.
+- **`inbox` bir YAKALAMA durumudur (rev. 2026-07-17, feedback round 4 — OPH-107):** Inbox'a
+  atılanlar plan listelerinde (Home dahil) GÖRÜNMEZ — yakalama henüz iş değildir. Görev tarih
+  YA DA proje kazandığında statü otomatik `open`'a yükselir (triyaj tamamlanmış sayılır);
+  ayrıntı §12.6.
 - Priority: `none`, `low`, `medium`, `high`, `urgent`.
 - Color (optional), tags.
 - Due date, start date, scheduled start/end, reminder time (hepsi optional).
@@ -681,10 +691,30 @@ Home her şeyin göründüğü tek kronolojik görünüm; Calendar yalnızca ay 
 
 ### 12.2 Home (eski "Dashboard")
 
-Solda kronolojik görev listesi: Geciken → Bugün → Yarın → Bu hafta → Sonrası → Tarihsiz.
-Sağda Apple Takvim tarzı ay ızgarası (işli günlerde nokta). Takvimden gün seçilince o günün
-görevleri vurgulu ilk grup olur, kalanlar sönük (grey/disabled) ama görünür kalır. Mobilde
-takvim üst yarıda, "Hide calendar" ile katlanır; tercih kalıcıdır (local storage).
+Solda kronolojik görev listesi, sağda (geniş ekranda) Apple Takvim tarzı ay ızgarası (işli
+günlerde nokta). Takvimden gün seçilince o günün görevleri vurgulu ilk grup olur, kalanlar
+sönük (grey) ama görünür kalır — **Tarihsiz grubu hariç** (aşağıda).
+
+_(Revize 2026-07-17, feedback round 4 — OPH-102/103/104. Eski "…→ Sonrası → Tarihsiz" düzeni
+kaldırıldı.)_
+
+- **Gruplar ve sıra:** Geciken → **Tarihsiz** → Bugün → Yarın → Bu hafta → **Sonraki 30 gün**.
+  Sınırlar: Bugün = yerel gün; Yarın = +1; Bu hafta = +2…+6; Sonraki 30 gün = +7…+30 (dahil).
+- **Ufuk 30 gündür; "Sonrası/Later" grubu YOK.** +30 günden ileri tarihli görevler ve takvim
+  etkinlikleri Home'a hiç girmez — Calendar sekmesinde yaşarlar. Böylece aylık/haftalık tekrar
+  eden bir toplantının sonsuz örnekleri listeyi doldurmaz ve önündeki işler rahat görünür.
+  (Ay ızgarasının noktaları ufuktan bağımsızdır — her tarihli gün işlenir.)
+- **Tarihsiz görevler listenin ÜSTÜNDE durur** (Geciken'in hemen altında, Bugün'ün üstünde) ve
+  HİÇBİR ZAMAN sönük çizilmez: tarihi olmayan iş "her günün işi"dir; takvimden gün seçiliyken
+  bile tam opaklıkta kalır. (Inbox yakalamaları bu gruba GİRMEZ — §12.6.)
+- **Mobilde takvim listeyle birlikte kayar:** ay ızgarası kayan içeriğin İLK öğesidir, sabit
+  (sticky) başlık DEĞİLDİR — liste yukarı kaydırılınca takvim ekrandan çıkar, en üste dönünce
+  geri gelir. "Hide calendar" düğmesi ve kalıcı tercihi (local storage) aynen durur. Quick-add
+  çubuğu kaymaz (seri giriş her an elde). Geniş ekranda takvim sağ panelde sabittir (değişmedi).
+- **Proje rozeti:** projeye bağlı her görev satırının sağ ucunda projenin renginde DOLU bir
+  rozet bulunur; içinde proje adı yazar (6 karakterden uzunsa ilk 6 karakter + "…"); üzerine
+  gelince / uzun basınca tam ad tooltip'te görünür. Hangi görev hangi projenin, tek bakışta.
+  Görsel kural: DESIGN.md §4 "Project badge".
 
 Görev girişi (feedback round 2): listenin üstünde seri girişli quick-add — Enter sonrası alan
 temizlenir ve ODAK KORUNUR (yaz→Enter→yaz→Enter zinciri); gün seçiliyken eklenen görev o güne
@@ -698,13 +728,22 @@ Overview (proje README notu — GitHub repo ana sayfası gibi, `projects.readme_
 Tasks (canlı liste + hızlı ekleme) • Notes (canlı liste + hızlı not) • Documents • Calendar •
 Activity
 
+_(Rev. 2026-07-17, feedback round 4 — OPH-109/110:)_ README notu **proje bağlamında**
+düzenlenir: Overview'daki "Create README" / kalem, editörü mevcut ekranın ÜSTÜNE push'lar
+(Notes sekmesine GEÇMEZ); geri dönüş Overview'a iner ve README kartı canlı güncellenir.
+Projenin kendi README'si projenin Notes sekmesinde de listelenmez — yeri Overview'dır.
+Proje sekmelere döndüğünde detay değil LİSTE açılır (sekmeler bölümdür, yığın değil —
+OPH-108). Arşivli proje detayı "arşivli" bandı + Unarchive eylemi gösterir.
+
 ### 12.4 Task detail alanları
 
 Title (yerinde düzenlenebilir, otomatik kayıt), Project, Status, Priority, Tags, Due date,
 Reminder, Urgent toggle, Calendar mirror toggle, Notes, Checklist, Activity.
 
-Görsel standart (feedback round 3): **statüler ikonla** gösterilir (inbox=gelen kutusu,
-open=boş daire, scheduled=takvim, in_progress=timelapse, waiting=kum saati,
+Görsel standart (feedback round 3; ikonlar rev. 2026-07-17 feedback round 4 — OPH-105):
+**statüler ikonla** gösterilir (inbox=gelen kutusu, open=**kum saati** [boş daire DEĞİL —
+boş daire satır başındaki dairesel tamamlama kutusuyla karışıyordu], scheduled=takvim,
+in_progress=timelapse, waiting=**duraklat dairesi** [kum saatini open'a devretti],
 completed=dolu onay, cancelled=iptal, archived=arşiv), **öncelikler renkle**
 (low=yeşil, medium=amber, high=turuncu, urgent=kırmızı; none=nötr) — listelerde görev
 satırında renkli bayrak + statü ikonu, dropdown'larda ikon/renk + isim birlikte. Proje
@@ -712,11 +751,47 @@ seçicilerde projenin rengi isimden önce içi dolu nokta olarak görünür (hex
 
 ### 12.5 Notes
 
-All notes • Pinned • Archive • Project notes • Task linked notes • Search • Editor.
+All notes • Pinned • Archive • **READMEs** • Project notes • Task linked notes • Search • Editor.
 Liste ve A4-kart (Google Docs ana sayfası tarzı) görünümleri; satır/kartlarda son düzenleme +
 oluşturma tarihi ve bağlı proje. Pin = tek dokunuşla yıldız (dolu/boş). Not başlığı dokümanın
 sabit H1 ilk bloğudur (Apple Notes gibi); markdown export `# başlık` ile başlar.
 Renk seçimi her yerde palet üzerinden yapılır — son kullanıcıya hex kodu gösterilmez/yazdırılmaz.
+
+_(Rev. 2026-07-17, feedback round 4 — OPH-109:)_ **README notları varsayılan listelerde
+GÖRÜNMEZ** (All/Pinned/Archive onları dışlar) — proje README'si projenin Overview'ına aittir,
+not listesinde kopya gürültüdür. Yeni **READMEs** filtre çipi YALNIZ readme notlarını listeler
+(satırda projenin renk noktası + adı ile).
+
+### 12.6 Inbox — yakalama kutusu
+
+_(Revize 2026-07-17, feedback round 4 — OPH-107. Eski davranış: Inbox quick-add'i sıradan
+görev ekliyordu ve bunlar Home'da iş olarak görünüyordu.)_
+
+Inbox bir görev listesi değil, **düşünce yakalama kutusudur** (GTD "inbox"): akla gelen fikir
+kaybolmasın diye SERİ yazılır, sonra değerlendirilir/projelendirilir. Davranış:
+
+- Inbox quick-add'i `status=inbox` ile yazar; bu kayıtlar **Home'da ve hiçbir plan listesinde
+  görünmez** — yakalama, henüz taahhüt edilmiş iş değildir.
+- Satırlar görev satırı gibi DEĞİL, yakalama satırı gibi çizilir: tamamlama kutusu YOK; üç
+  triyaj eylemi VAR — **Planla** (tarih/proje/öncelik seçtiren sheet; kaydedince statü `open`
+  olur ve kayıt Home'a taşınır), **Nota çevir** (başlığı içerik olan yeni not oluşur, yakalama
+  silinir — onay istenir), **Sil**. Satıra dokunmak Planla'yı açar.
+- Bir yakalamaya HERHANGİ bir yerden tarih VEYA proje verilirse statü otomatik `open` olur
+  (triyaj tamamlanmıştır; §4.3).
+- Boş durum ve ipucu metinleri kutunun amacını kullanıcıya AÇIKÇA anlatır ("yaz, sonra ayıkla;
+  buraya atılanlar Home'a düşmez").
+
+### 12.7 Onboarding ve özellik turu
+
+_(Eklendi 2026-07-17, feedback round 4 — OPH-111.)_
+
+İlk oturum açılışında (cihaz başına bir kez, yerel kalıcı bayrak) karşılama kartı + navigasyon
+öğelerinin adım adım **spotlight turu**: her sekme sırayla vurgulanır (kalanlar karartılır),
+baloncuk o bölümün NE olduğunu ve NASIL kullanıldığını 1-2 cümleyle anlatır — Inbox'ın yakalama
+anlamı, Home'un 30 günlük ufku, quick-add/FAB farkı ve Settings'teki takvim bağlama dahil.
+Sağ üstte her an **Skip**; turu atlamak hiçbir şeyi kilitlemez. Settings'te **"App tour"**
+satırı turu istendiği kadar tekrar başlatır. Tur, cam tasarım diliyle uyumlu elle yazılmış bir
+overlay'dir (yeni paket bağımlılığı YOK); dar ekranda alt bara, geniş ekranda raya çapalanır.
 
 ## 13. Open-source repo kalitesi
 

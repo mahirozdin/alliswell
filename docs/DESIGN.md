@@ -109,6 +109,18 @@ Tabular figures for day numbers and timers.
   Never stack another wash inside a screen.
 - **Overdue** dates render in `error` color w600 with the word "Overdue".
 - **Stars (favorite/pin)** use `AwTokens.warning`, never `Colors.amber`.
+- **Project badge (task rows — added 2026-07-17, feedback round 4, OPH-104):**
+  a FILLED pill in the project's color, rightmost element of the row's
+  trailing cluster. Radius 10 (`AwRadius.s`), padding 8×2, `labelSmall` w600,
+  min height 22, tap-transparent (the row handles taps). Label = the project
+  name, truncated to its first 6 characters + "…" when longer (grapheme-safe
+  via `Characters`); the FULL name is always available through `Tooltip`
+  (hover + long-press) and `semanticLabel` (`Project: <name>`). The foreground
+  is computed, never fixed: relative luminance of the fill > 0.45 → ink
+  `#101828`, otherwise white `#FFFFFF` — one shared helper (with a unit test
+  sweeping `kProjectPalette` and the full color-grid) so the pair stays
+  ≥ 4.5:1. Project colors are user data (G6 exception). The badge is HIDDEN
+  inside a project's own Tasks tab, where it would be redundant.
 - **Content width:** long-form/detail content is capped (`maxWidth` 720–760,
   centered) on wide screens; full-bleed lists cap via their own layout.
 

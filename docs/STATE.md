@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-16 (OPH-094/095 — ROADMAP + release automation; **Epic 09 KAPANDI, v0.1.0 hazır**)
+**Last updated:** 2026-07-17 (feedback round 4 yakalandı → **Epic 10 açıldı: OPH-100…111**; BLUEPRINT §4/§12 + DESIGN §4 revize)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,13 +13,41 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | **v0.1.0 hazır** — Phase 0-4 tam, Phase 5-6 kısmi (kalanı v2) |
-| Current epic | **Epic 09 KAPANDI** — planlı MVP backlog'unun (OPH-001…095) TAMAMI bitti |
-| ➡️ **Next task** | Planlı iş kalmadı. Seçenekler: (a) **v0.1.0 release'i kes** — kullanıcı `git tag v0.1.0 && git push origin v0.1.0` (dışa yayın, otomasyon hazır); (b) **cihaz turları** (EventKit yazma + acil bildirim, cihaz gerektirir); (c) **v2 park listesinden** iş çek (TASKS.md sonu — proje dokümanları, import/export, CalDAV connector, çoklu-workspace UI, vb.). |
-| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. v0.1.0 tag'ini kesmek maintainer'a bırakıldı (dışa yayın). Opsiyonel: `GOOGLE_WEBHOOK_URL` (yoksa 5 dk yoklama çalışıyor), macOS geliştirme sertifikası (iOS'u etkilemez), Apple/Android cihaz turu. |
-| Last completed | **Epic 09 tam:** OPH-094/095 (ROADMAP + release otomasyonu ✔); **Epic 08 tam:** OPH-077/078 (Apple EventKit ✔), OPH-082…084 (harici etkinlikler ✔) |
+| Current phase | **v0.1.0 hazır**; ilk kullanıcı testi geri bildirimi **v0.1.1 (Phase 4.9)** olarak planlandı |
+| Current epic | **Epic 10 — Feedback round 4** (OPH-100…111): kullanıcı testinden 13 madde, hepsi TASKS.md'de ayrıntılı task |
+| ➡️ **Next task** | **OPH-100 — web sign-out crash düzeltmesi** (bug'lar önce: sonra OPH-101 FAB, sonra sırayla). "Sıradaki işi yap" yeniden çalışıyor. |
+| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. v0.1.0 tag'i hâlâ maintainer'da (dışa yayın; Epic 10 v0.1.1'i besler). Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası, Apple/Android cihaz turu. |
+| Last completed | **Feedback round 4 dokümantasyonu** (BLUEPRINT §4.2/§4.3/§12.2-12.7 revize, DESIGN §4 "Project badge", Epic 10 backlog). Öncesi: Epic 09 tam (OPH-094/095), Epic 08 tam. |
 
 ## Recently completed
+
+- **Feedback round 4 → Epic 10 doğdu (2026-07-17):**
+  - **Nasıl:** tüm yığın yerelde koşuldu (colima + MySQL 3307 + Redis + API 3000 +
+    `flutter run` web 8080 + iPhone 17 Pro simülatörü; kayıt/giriş smoke'u geçti) ve
+    kullanıcı İLK gerçek el testini yaptı — 13 numaralı madde bildirdi. Hepsi aynı gün
+    koda karşı araştırıldı; kalıcı spec değişiklikleri BLUEPRINT'e (§4.2 arşiv, §4.3
+    inbox=yakalama, §12.2 Home 30-gün ufku + rozet + kayan takvim, §12.3 README bağlamı,
+    §12.4 statü ikonları, §12.5 README filtresi, YENİ §12.6 Inbox / §12.7 Onboarding) ve
+    DESIGN §4'e ("Project badge" bileşeni) işlendi; sonra TASKS.md'ye **Epic 10
+    (OPH-100…111)** olarak, uygulayacak ajanın karar vermesine yer bırakmayan ayrıntıda
+    yazıldı (madde↔task eşleme tablosu epic başında).
+  - **Araştırmanın kilit bulguları (task'lara gömülü ama özet):**
+    1. *Web sign-out crash'i (OPH-100):* `auth_api._post` 204'ün web-dio'daki `''`
+       gövdesini `as Map` ile cast ediyor; TypeError `AuthException` olmadığından
+       `logout()` yerel temizliğe HİÇ ulaşmıyor — sunucu oturumu ölü, app "girili".
+    2. *FAB'lar (OPH-101):* shell `extendBody: true` + cam NavigationBar; iç
+       Scaffold'ların FAB'ı (home/projects/notes ×3) barın ALTINA çiziliyor.
+    3. *Inbox (OPH-107):* `status='inbox'` zaten var ve quick-add onu yazıyor; sızıntı
+       `kOpenStatuses`'ın inbox'ı içermesi → Home'a düşüyor. Şema işi sıfır.
+    4. *Proje arşivi (OPH-110):* `projects.status` enum'ında `archived` GÜN 1'den beri
+       var (migration 20260714000200), sync/REST kabul ediyor — migration GEREKMEZ;
+       eksik olan akış (kaskad + varsayılan-gizli listeler + dürüst dialoglar).
+    5. *Create sheet'te proje seçici (OPH-106) aslında VAR* — sıfır projede tek "No
+       project" girdisine çöküp görünmez oluyor; detay ekranında ise gerçekten yok.
+  - **OPH-083'teki bayat `[ ]` kapatıldı** (madde OPH-084 olarak çoktan bitmişti) —
+    "sıradaki işi yap" artık yanlış pozitif bulamaz.
+  - Not: bu tur SADECE dokümantasyon; kod değişmedi, testler koşulmadı (gerek yok).
+    Sıradaki oturum OPH-100'den başlar.
 
 - **Epic 09 KAPANDI — ROADMAP + release otomasyonu → tüm MVP backlog'u bitti (2026-07-16, OPH-094/095):**
   - **[ROADMAP.md](../ROADMAP.md)** (OPH-094): fazlardan üretilmiş, gerçek duruma karşı
@@ -509,12 +537,12 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Sıradaki iş **OPH-077 — Apple EventKit platform channel** ama HÂLÂ BLOKLU (aşağıdaki
-   "Blocked / notes" — kullanıcıdan Xcode/imza kurulumu bekliyor). **Epic 08'in bloksuz
-   her işi bitti**, yani AGENTS.md §2'nin "blocked ise sıradaki uygun işi al" kuralı artık
-   Epic 09'a taşıyor: **OPH-094** (ROADMAP.md — fazlardan üret, README'den bağla) +
-   **OPH-095** (v0.1.0 release notes + GitHub Actions release workflow). İkisi de altyapı
-   istemez ve birlikte tutarlı bir paket.
+2. Sıradaki iş **OPH-100 — web sign-out crash** (Epic 10, TASKS.md sonu). Epic 10 sırayla
+   gider: iki bug (OPH-100/101) → Home paketi (102/103/104) → küçük UI (105/106) → büyük
+   akışlar (107 inbox, 108 sekme kökü, 109 README, 110 arşiv, 111 onboarding). Her task
+   kendi içinde teşhis + spec + test listesi taşıyor; BLUEPRINT §12.2-12.7 ve DESIGN §4
+   bağlayıcı metin. UI işlerinde kontrast bekçisi + açık/koyu tema kontrolü zorunlu
+   (sert kural 11).
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.

@@ -5,7 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
-_Nothing yet — the next release will collect changes here._
+### Planned (docs, 2026-07-17)
+
+- **Epic 10 — feedback round 4** (OPH-100…OPH-111), from the first hands-on user-testing
+  session: web sign-out crash fix, FABs unblocked from the glass nav, Home reworked to a
+  30-day horizon (Today/Tomorrow/This Week/Next 30 Days, dateless on top, calendar scrolls
+  with the list, project badges on rows), clearer status icons, project picker in create +
+  detail, tabs returning to their root, README notes kept inside their project (+ a
+  READMEs notes filter), Inbox reworked as a true capture box, project archiving with an
+  optional cascade, and a first-run onboarding tour. BLUEPRINT §4.2/§4.3/§12.2–§12.7 and
+  DESIGN §4 revised to match; details in [docs/TASKS.md](docs/TASKS.md).
 
 ## [0.1.0] - 2026-07-16
 
