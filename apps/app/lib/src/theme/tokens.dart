@@ -40,6 +40,16 @@ abstract final class AwMotion {
 /// solid on purpose — glass is for chrome, never under body text.
 const double kAwGlassSigma = 18;
 
+/// WCAG relative-luminance contrast ratio between two opaque colors (≥ 1).
+/// Small helper for choosing legible ink on user-picked (data) colors.
+double awContrastRatio(Color a, Color b) {
+  final la = a.computeLuminance();
+  final lb = b.computeLuminance();
+  final hi = la > lb ? la : lb;
+  final lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 /// Theme-dependent tokens that Material's [ColorScheme] has no slot for.
 @immutable
 class AwTokens extends ThemeExtension<AwTokens> {

@@ -6,24 +6,30 @@ import '../tasks/data/task.dart';
 enum HomeBucket {
   selectedDay,
   overdue,
+  noDate,
   today,
   tomorrow,
   thisWeek,
-  later,
-  noDate,
+  next30Days,
 }
 
 extension HomeBucketLabel on HomeBucket {
   String get label => switch (this) {
     HomeBucket.selectedDay => 'Selected day',
     HomeBucket.overdue => 'Overdue',
+    HomeBucket.noDate => 'No date',
     HomeBucket.today => 'Today',
     HomeBucket.tomorrow => 'Tomorrow',
     HomeBucket.thisWeek => 'This week',
-    HomeBucket.later => 'Later',
-    HomeBucket.noDate => 'No date',
+    HomeBucket.next30Days => 'Next 30 days',
   };
 }
+
+/// How far ahead Home looks. Beyond this the list would fill with every future
+/// instance of a recurring calendar event and bury real work, so anything
+/// dated past `today + kHomeHorizonDays` lives on the Calendar tab instead
+/// (OPH-102). The month grid's dots are NOT bounded by this — only the list.
+const int kHomeHorizonDays = 30;
 
 /// One row of Home. §12 calls Home "the single chronological view where
 /// everything shows" — so a 10:00 meeting sorts above a 16:00 task rather than
@@ -75,17 +81,26 @@ DateTime dayOf(DateTime value) {
 
 /// Groups Home's rows. `selectedDay` (a local calendar day) pulls that day into
 /// a highlighted first group; everything else keeps its chronological order but
-/// renders dimmed.
+/// renders dimmed — EXCEPT the No-date group (see below).
+///
+/// Order (OPH-102): Selected day? → Overdue → **No date** → Today → Tomorrow →
+/// This week → Next 30 days. Two rules make it honest to the user:
+///
+/// - **A 30-day horizon; there is no open-ended "Later".** Anything dated more
+///   than [kHomeHorizonDays] days out — tasks AND events — is dropped from Home
+///   and lives on the Calendar tab, so recurring meetings can't bury real work.
+/// - **Dateless work sits at the top and is never dimmed.** A task with no date
+///   is "every day's work": it renders directly under Overdue, above Today, and
+///   stays full-opacity even while a calendar day is selected.
 ///
 /// Since OPH-084 the user's own calendar rides along (§12: "everything shows").
-/// Two rules keep events honest:
+/// Two more rules keep events honest:
 ///
 /// - **Events never land in Overdue.** A meeting that already happened is not a
-///   debt you owe — Overdue means "you still have to do this". Past events drop
-///   out of Home entirely.
-/// - **An ongoing event belongs to today**, not to the day it started: a trip
-///   that began on Monday and runs through Friday is something happening NOW.
-///   It appears once, at the first day it touches that has not passed.
+///   debt you owe. Past events drop out of Home entirely.
+/// - **An ongoing event belongs to today**, not the day it started: a trip that
+///   began Monday and runs through Friday is happening NOW. It appears once, at
+///   the first day it touches that has not passed.
 List<HomeGroup> groupTasksForHome(
   List<Task> tasks, {
   required DateTime now,
@@ -95,17 +110,20 @@ List<HomeGroup> groupTasksForHome(
   final today = DateTime(now.year, now.month, now.day);
   final tomorrow = today.add(const Duration(days: 1));
   final weekEnd = today.add(const Duration(days: 7));
+  final horizon = today.add(const Duration(days: kHomeHorizonDays));
 
   final byBucket = <HomeBucket, List<HomeItem>>{
     for (final b in HomeBucket.values) b: [],
   };
 
-  HomeBucket? bucketForDay(DateTime day) {
-    if (day.isBefore(today)) return null; // caller decides what "past" means
+  /// Bucket for a NON-past day (callers handle past/overdue themselves).
+  /// Returns null when the day is beyond the horizon → not shown on Home.
+  HomeBucket? futureBucketForDay(DateTime day) {
     if (day == today) return HomeBucket.today;
     if (day == tomorrow) return HomeBucket.tomorrow;
-    if (day.isBefore(weekEnd)) return HomeBucket.thisWeek;
-    return HomeBucket.later;
+    if (day.isBefore(weekEnd)) return HomeBucket.thisWeek; // +2..+6
+    if (!day.isAfter(horizon)) return HomeBucket.next30Days; // +7..+30
+    return null; // beyond the horizon
   }
 
   for (final task in tasks) {
@@ -116,12 +134,17 @@ List<HomeGroup> groupTasksForHome(
     }
     if (due == null) {
       byBucket[HomeBucket.noDate]!.add(TaskItem(task));
-    } else {
-      // A task's deadline CAN be in the past — that is the whole point of
-      // Overdue.
-      final bucket = bucketForDay(dayOf(due)) ?? HomeBucket.overdue;
-      byBucket[bucket]!.add(TaskItem(task));
+      continue;
     }
+    final day = dayOf(due);
+    if (day.isBefore(today)) {
+      // A task's deadline CAN be in the past — that is the whole point of
+      // Overdue (a beyond-horizon FUTURE task, by contrast, is simply dropped).
+      byBucket[HomeBucket.overdue]!.add(TaskItem(task));
+      continue;
+    }
+    final bucket = futureBucketForDay(day);
+    if (bucket != null) byBucket[bucket]!.add(TaskItem(task));
   }
 
   for (final event in events) {
@@ -130,11 +153,9 @@ List<HomeGroup> groupTasksForHome(
       byBucket[HomeBucket.selectedDay]!.add(EventItem(event));
       continue;
     }
-    // The first day it touches that has not passed: an ongoing multi-day event
-    // is happening today, and a finished one is history, not a debt.
     final upcoming = days.where((d) => !d.isBefore(today));
-    if (upcoming.isEmpty) continue;
-    final bucket = bucketForDay(upcoming.first);
+    if (upcoming.isEmpty) continue; // finished → history, not Home
+    final bucket = futureBucketForDay(upcoming.first);
     if (bucket != null) byBucket[bucket]!.add(EventItem(event));
   }
 
@@ -154,11 +175,11 @@ List<HomeGroup> groupTasksForHome(
   final order = [
     if (selectedDay != null) HomeBucket.selectedDay,
     HomeBucket.overdue,
+    HomeBucket.noDate,
     HomeBucket.today,
     HomeBucket.tomorrow,
     HomeBucket.thisWeek,
-    HomeBucket.later,
-    HomeBucket.noDate,
+    HomeBucket.next30Days,
   ];
 
   return [
@@ -167,7 +188,12 @@ List<HomeGroup> groupTasksForHome(
         HomeGroup(
           bucket: bucket,
           items: byBucket[bucket]!..sort(chronologically),
-          dimmed: selectedDay != null && bucket != HomeBucket.selectedDay,
+          // Dateless work belongs to every day, so it stays lit even when a
+          // day is selected; only truly other-day groups dim.
+          dimmed:
+              selectedDay != null &&
+              bucket != HomeBucket.selectedDay &&
+              bucket != HomeBucket.noDate,
         ),
   ];
 }

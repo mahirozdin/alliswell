@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../theme/tokens.dart';
+import '../../projects/providers.dart';
+import '../../projects/ui/project_badge.dart';
 import '../data/task.dart';
 import '../providers.dart';
 import 'task_visuals.dart';
@@ -37,11 +39,16 @@ class TaskTile extends ConsumerWidget {
     required this.task,
     this.dimmed = false,
     this.highlighted = false,
+    this.showProjectBadge = true,
   });
 
   final Task task;
   final bool dimmed;
   final bool highlighted;
+
+  /// Whether to show the project badge at the row's far right (OPH-104).
+  /// Off inside a project's own Tasks tab, where every row is that project.
+  final bool showProjectBadge;
 
   Future<void> _toggle(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -62,6 +69,9 @@ class TaskTile extends ConsumerWidget {
     final isOverdue =
         due != null && !task.isCompleted && due.isBefore(DateTime.now());
     final priorityColor = taskPriorityColorOf(context, task.priority);
+    final project = (showProjectBadge && task.projectId != null)
+        ? ref.watch(projectsByIdProvider)[task.projectId]
+        : null;
 
     final tile = Card(
       clipBehavior: Clip.antiAlias,
@@ -135,6 +145,11 @@ class TaskTile extends ConsumerWidget {
                 color: scheme.error,
                 semanticLabel: 'Urgent',
               ),
+            ],
+            // Project badge is the far-right element (OPH-104).
+            if (project != null) ...[
+              const SizedBox(width: AwSpace.x2),
+              ProjectBadge(name: project.name, color: project.color),
             ],
           ],
         ),

@@ -1203,13 +1203,26 @@ fix — it must fail against today's layout, that's the regression proof).
 **DoD:** analyze + tests; manual iOS-simulator pass (task, project and note creation all
 reachable); light + dark screenshots.
 
-### OPH-102 — Home buckets: 30-day horizon; dateless on top, never dimmed
+### OPH-102 — Home buckets: 30-day horizon; dateless on top, never dimmed ✅
 
-- [ ] `HomeBucket.later` → `HomeBucket.next30Days` ("Next 30 days"); horizon = today+30
-- [ ] Items beyond the horizon (tasks AND events) do not enter Home at all
-- [ ] `noDate` group renders directly under Overdue, ABOVE Today
-- [ ] `noDate` rows are NEVER dimmed — not even when a calendar day is selected
-- [ ] Rewrite `test/features/home/` grouping tests to the new contract
+- [x] `HomeBucket.later` → `HomeBucket.next30Days` ("Next 30 days"); horizon = today+30
+- [x] Items beyond the horizon (tasks AND events) do not enter Home at all
+- [x] `noDate` group renders directly under Overdue, ABOVE Today
+- [x] `noDate` rows are NEVER dimmed — not even when a calendar day is selected
+- [x] Rewrite `test/features/home/` grouping tests to the new contract
+
+Acceptance notes: pure `groupTasksForHome` (`task_grouping.dart`). Order is
+Selected day? → Overdue → No date → Today → Tomorrow → This week → Next 30
+days; `kHomeHorizonDays = 30`. `futureBucketForDay` returns null past the
+horizon; tasks split past→Overdue vs future-beyond→dropped BEFORE calling it
+(so a +40d task drops while an overdue one stays); events reuse their existing
+"first upcoming day" anchor and drop the same way. `daysWithTasks/Events`
+(month-grid dots) stay UNBOUNDED — only the LIST has the horizon. Dimming
+excludes `noDate` (`dimmed: selectedDay != null && bucket != selectedDay &&
+bucket != noDate`). Tests rewritten across `home_events_test.dart` +
+`tasks_api_test.dart` (+2 grouping tests: +29d in / +31d out, dateless
+position + never-dims); the two affected widget suites moved to a wide surface
+so tasks stay visible. ✔
 
 **User's report (items 1 + 9):** Home must show Today/Tomorrow/This Week/Next 30 Days and no
 more — the unbounded "Later" bucket fills with every future instance of recurring (e.g.
@@ -1245,11 +1258,20 @@ event overdue-exclusion (existing rules) still hold.
 
 **DoD:** analyze + `flutter test`; light+dark web check of Home with a seeded month of data.
 
-### OPH-103 — Home (mobile): the month calendar scrolls WITH the list
+### OPH-103 — Home (mobile): the month calendar scrolls WITH the list ✅
 
-- [ ] Narrow layout: calendar becomes the first element of ONE scrollable (no sticky header)
-- [ ] "Hide calendar" toggle + persisted pref keep working; quick-add stays pinned above
-- [ ] No nested scrolling; empty state still fills the remainder
+- [x] Narrow layout: calendar becomes the first element of ONE scrollable (no sticky header)
+- [x] "Hide calendar" toggle + persisted pref keep working; quick-add stays pinned above
+- [x] No nested scrolling; empty state still fills the remainder
+
+Acceptance notes: narrow Home is now `Column[quickAdd, Expanded(CustomScrollView
+key: 'home-scroll')]` — the calendar card and toggle are `SliverToBoxAdapter`s
+(the 50%-height cap + inner scroll are gone), the groups a `SliverList`, and
+empty a `SliverFillRemaining`. Group/row building was extracted to a shared
+`buildHomeGroupRows` used by BOTH the wide `_GroupedTaskList` (ListView) and the
+narrow slivers — no duplicated logic. `home_scroll_test.dart`: dragging the list
+up makes `MonthCalendar` un-hit-testable and dragging back restores it; Hide
+persists; quick-add stays pinned and still captures. ✔
 
 **User's report (item 2):** keep "Hide calendar", but even with the calendar visible,
 scrolling the list must slide the calendar off-screen — it must NOT stay fixed at the top
@@ -1274,14 +1296,29 @@ still selects (grid tap targets unaffected by the sliver move).
 
 **DoD:** analyze + tests; iOS simulator manual scroll check; light + dark.
 
-### OPH-104 — Project badge on task rows
+### OPH-104 — Project badge on task rows ✅
 
-- [ ] `ProjectBadge` widget per DESIGN §4 (filled pill, 6-char + "…", tooltip, computed
+- [x] `ProjectBadge` widget per DESIGN §4 (filled pill, 6-char + "…", tooltip, computed
       foreground, semantics)
-- [ ] `projectsByIdProvider` (Map<String, Project> from the replica) — no per-row queries
-- [ ] Rightmost in `TaskTile`'s trailing cluster; hidden via flag inside a project's own
+- [x] `projectsByIdProvider` (Map<String, Project> from the replica) — no per-row queries
+- [x] Rightmost in `TaskTile`'s trailing cluster; hidden via flag inside a project's own
       Tasks tab
-- [ ] Foreground-helper unit test sweeps `kProjectPalette` + color-grid extremes
+- [x] Foreground-helper unit test sweeps `kProjectPalette` + color-grid extremes
+
+Acceptance notes: `ProjectBadge` (`features/projects/ui/project_badge.dart`) —
+filled pill (`AwRadius.s`, 8×2 pad, `labelSmall` w600), grapheme-safe
+`shortLabel` (first 6 + "…"), `Tooltip` + `Semantics('Project: <name>')`.
+**Contrast reality found during work:** the palette's violet `#8B5CF6`
+(luminance ≈ 0.198) sits in a dead zone where NEITHER near-black nor white text
+reaches 4.5:1 on the raw fill — so `legibleColors` picks the higher-contrast ink
+AND nudges the fill's lightness a few percent (monotonic, away from the ink)
+until AA passes; most colors pass untouched. `awContrastRatio` helper added to
+`tokens.dart` (theme layer, no cross-feature import). `projectsByIdProvider`
+(map over the existing replica stream) feeds `TaskTile`; badge is the
+outermost trailing element, `showProjectBadge: false` in the project Tasks tab.
+`project_badge_test.dart` (39 cases): every `kProjectPalette` swatch + all
+`Colors.primaries` + neutrals + white/black/mid-grey clear 4.5:1; violet is
+nudged, blue untouched; truncation + tooltip widget test. ✔
 
 **User's report (item 10):** on Home you cannot tell which task belongs to which project.
 Wanted: at the row's far right, a FILLED badge in the project's color with the project name

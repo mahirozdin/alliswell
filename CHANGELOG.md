@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **Home rework** (OPH-102/103/104): the task list now spans a **30-day
+  horizon** (Today / Tomorrow / This week / Next 30 days) so recurring calendar
+  events past a month no longer bury real work; **dateless tasks sit at the top**
+  (under Overdue, above Today) and never dim; on phones the **month calendar
+  scrolls away with the list** instead of staying pinned; and every task row now
+  shows a **colored project badge** with the project's name (its ink is computed
+  for legibility on any project color).
+
 ### Fixed
 
 - **Web sign-out crash** (OPH-100): signing out on the web build threw a

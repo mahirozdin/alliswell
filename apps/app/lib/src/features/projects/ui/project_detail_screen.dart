@@ -348,8 +348,9 @@ class _ProjectTasksTab extends ConsumerWidget {
                 : ListView.builder(
                     padding: awListPadding(context),
                     itemCount: items.length,
+                    // Every row here is this project — the badge would be noise.
                     itemBuilder: (context, index) =>
-                        TaskTile(task: items[index]),
+                        TaskTile(task: items[index], showProjectBadge: false),
                   ),
           ),
         ),

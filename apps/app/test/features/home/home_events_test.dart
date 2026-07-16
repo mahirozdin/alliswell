@@ -105,7 +105,7 @@ void main() {
     expect(groups.single.items, hasLength(1));
   });
 
-  test('a future event lands in its own bucket', () {
+  test('a future event within the horizon lands in Next 30 days', () {
     final groups = groupTasksForHome(
       const [],
       now: now,
@@ -116,17 +116,97 @@ void main() {
           endsAt: DateTime(2026, 7, 15, 10),
         ),
         _event(
-          'gelecek ay',
-          startsAt: DateTime(2026, 8, 20, 9),
-          endsAt: DateTime(2026, 8, 20, 10),
+          'bu ay içinde', // +10 days → within the 30-day horizon
+          startsAt: DateTime(2026, 7, 24, 9),
+          endsAt: DateTime(2026, 7, 24, 10),
         ),
       ],
     );
 
     expect(groups.map((g) => g.bucket), [
       HomeBucket.tomorrow,
-      HomeBucket.later,
+      HomeBucket.next30Days,
     ]);
+  });
+
+  test('recurring instances past the 30-day horizon never reach Home', () {
+    // now = 2026-07-14 → horizon = 2026-08-13.
+    final groups = groupTasksForHome(
+      const [],
+      now: now,
+      events: [
+        _event(
+          'bu ay', // +10d, in
+          startsAt: DateTime(2026, 7, 24, 9),
+          endsAt: DateTime(2026, 7, 24, 10),
+        ),
+        _event(
+          'gelecek ay', // +41d, out
+          startsAt: DateTime(2026, 8, 24, 9),
+          endsAt: DateTime(2026, 8, 24, 10),
+        ),
+        _event(
+          'daha sonra', // +72d, out
+          startsAt: DateTime(2026, 9, 24, 9),
+          endsAt: DateTime(2026, 9, 24, 10),
+        ),
+      ],
+    );
+
+    // Only the in-horizon instance survives; the far ones live on Calendar.
+    expect(groups.map((g) => g.bucket), [HomeBucket.next30Days]);
+    expect(groups.single.items, hasLength(1));
+    expect((groups.single.items.single as EventItem).event.id, 'bu ay');
+  });
+
+  test('the task list horizon is 30 days: +29d shows, +31d is dropped', () {
+    final groups = groupTasksForHome(
+      [
+        _task('yakın', dueAt: DateTime(2026, 8, 12, 9)), // +29d, in
+        _task('uzak', dueAt: DateTime(2026, 8, 14, 9)), // +31d, out
+      ],
+      now: now,
+    );
+
+    final ids = groups
+        .expand((g) => g.items)
+        .whereType<TaskItem>()
+        .map((i) => i.task.id);
+    expect(ids, ['yakın'], reason: '+31d is beyond the horizon → not on Home');
+    expect(
+      groups.single.bucket,
+      HomeBucket.next30Days,
+      reason: '+29d is past this-week',
+    );
+  });
+
+  test('dateless work sits under Overdue, above Today, and never dims', () {
+    final groups = groupTasksForHome(
+      [
+        _task('gecikmiş', dueAt: DateTime(2026, 7, 10)), // overdue
+        _task('tarihsiz'), // no date
+        _task('bugünkü', dueAt: DateTime(2026, 7, 14, 18)), // today
+      ],
+      now: now,
+      selectedDay: DateTime(2026, 7, 25), // a day with nothing on it
+    );
+
+    // Order: Overdue → No date → Today (the empty Selected-day group drops out).
+    expect(groups.map((g) => g.bucket), [
+      HomeBucket.overdue,
+      HomeBucket.noDate,
+      HomeBucket.today,
+    ]);
+    // Dateless is "every day's work" → lit even while a day is selected, while
+    // the other real-day groups dim.
+    expect(
+      groups.singleWhere((g) => g.bucket == HomeBucket.noDate).dimmed,
+      isFalse,
+    );
+    expect(
+      groups.singleWhere((g) => g.bucket == HomeBucket.today).dimmed,
+      isTrue,
+    );
   });
 
   test('a selected day gathers that day’s meetings too', () {

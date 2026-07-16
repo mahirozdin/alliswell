@@ -102,27 +102,34 @@ void main() {
     },
   );
 
-  test('groupTasksForHome buckets chronologically', () {
+  test('groupTasksForHome buckets chronologically within a 30-day horizon', () {
     final now = DateTime(2026, 7, 14, 15, 30);
     final groups = groupTasksForHome([
       _task('overdue', dueAt: DateTime(2026, 7, 10, 9)),
       _task('today', dueAt: DateTime(2026, 7, 14, 18)),
       _task('tomorrow', dueAt: DateTime(2026, 7, 15, 9)),
       _task('week', dueAt: DateTime(2026, 7, 19, 9)),
-      _task('later', dueAt: DateTime(2026, 8, 20, 9)),
+      _task('next30', dueAt: DateTime(2026, 8, 10, 9)), // +27d → in
+      _task('beyond', dueAt: DateTime(2026, 8, 20, 9)), // +37d → dropped
       _task('undated'),
     ], now: now);
 
+    // Dateless sits under Overdue and above Today; nothing past +30d appears.
     expect(groups.map((g) => g.bucket), [
       HomeBucket.overdue,
+      HomeBucket.noDate,
       HomeBucket.today,
       HomeBucket.tomorrow,
       HomeBucket.thisWeek,
-      HomeBucket.later,
-      HomeBucket.noDate,
+      HomeBucket.next30Days,
     ]);
     expect(groups.every((g) => !g.dimmed), isTrue);
     expect((groups.first.items.single as TaskItem).task.id, 'overdue');
+    expect(
+      groups.expand((g) => g.items).map((i) => (i as TaskItem).task.id),
+      isNot(contains('beyond')),
+      reason: 'a +37d task is beyond the horizon → Calendar tab only',
+    );
   });
 
   test('a selected day pulls its group first and dims the rest', () {
@@ -140,7 +147,16 @@ void main() {
     expect(groups.first.bucket, HomeBucket.selectedDay);
     expect(groups.first.dimmed, isFalse);
     expect((groups.first.items.single as TaskItem).task.id, 'selected');
-    expect(groups.skip(1).every((g) => g.dimmed), isTrue);
+    // The other real-day group dims; the dateless group never does — it's
+    // every day's work (OPH-102).
+    expect(
+      groups.singleWhere((g) => g.bucket == HomeBucket.today).dimmed,
+      isTrue,
+    );
+    expect(
+      groups.singleWhere((g) => g.bucket == HomeBucket.noDate).dimmed,
+      isFalse,
+    );
   });
 
   test('every status has an icon; priorities have stable colors', () {

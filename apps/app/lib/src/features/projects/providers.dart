@@ -21,6 +21,13 @@ final projectsControllerProvider =
       ProjectsController.new,
     );
 
+/// Projects keyed by id, for O(1) name+color lookups on task rows — the
+/// project badge (OPH-104) resolves a task's project without a per-row query.
+final projectsByIdProvider = Provider<Map<String, Project>>((ref) {
+  final projects = ref.watch(projectsControllerProvider).value ?? const [];
+  return {for (final project in projects) project.id: project};
+});
+
 class ProjectsController extends StreamNotifier<List<Project>> {
   @override
   Stream<List<Project>> build() async* {

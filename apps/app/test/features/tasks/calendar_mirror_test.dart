@@ -20,6 +20,14 @@ import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
 
+/// Render Home wide (task ListView + side calendar) so a task is reachable to
+/// tap into its detail, rather than sitting below the scrollable calendar.
+/// Call FIRST in a test, before pumpWidget.
+Future<void> wideSurface(WidgetTester tester) async {
+  await tester.binding.setSurfaceSize(const Size(1200, 900));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+}
+
 /// OPH-081 — `calendarMirrorEnabled` end to end through the local-first stack.
 /// The server has carried this field since OPH-072 (REST + sync push + pull
 /// snapshots); until now the app dropped it on the floor at every layer.
@@ -144,11 +152,18 @@ void main() {
       );
     }
 
+    // A due date within Home's 30-day horizon so the task shows up to be opened.
+    final soon = DateTime.now()
+        .add(const Duration(days: 3))
+        .toUtc()
+        .toIso8601String();
+
     testWidgets('the switch reaches the server and explains itself', (
       tester,
     ) async {
+      await wideSurface(tester);
       final api = FakeApi();
-      api.seedTask(title: 'Takvimli iş', dueAt: '2030-06-01T12:00:00.000Z');
+      api.seedTask(title: 'Takvimli iş', dueAt: soon);
       await tester.pumpWidget(await signedInAppWith(api));
       await tester.pumpAndSettle();
 
@@ -170,6 +185,7 @@ void main() {
     testWidgets('a task with no dates says why nothing will show up', (
       tester,
     ) async {
+      await wideSurface(tester);
       final api = FakeApi();
       api.seedTask(title: 'Tarihsiz iş');
       await tester.pumpWidget(await signedInAppWith(api));
@@ -190,6 +206,7 @@ void main() {
     testWidgets('a scheduled block arriving from the calendar is visible', (
       tester,
     ) async {
+      await wideSurface(tester);
       final api = FakeApi();
       // What OPH-076 writes when the user drags our event in Google.
       api.seedTask(

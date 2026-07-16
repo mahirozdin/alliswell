@@ -119,47 +119,71 @@ class HomeScreen extends ConsumerWidget {
               }
 
               final calendarVisible = ref.watch(homeCalendarVisibleProvider);
+              // The calendar is the FIRST item of one scroll view, so it slides
+              // off-screen as the list scrolls (OPH-103) instead of staying
+              // pinned and eating half the screen. Quick add stays fixed above.
               return Column(
                 children: [
                   quickAdd,
-                  if (calendarVisible)
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: constraints.maxHeight * 0.5,
-                      ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AwSpace.x4,
-                        ),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AwSpace.x2),
-                            child: calendar,
+                  Expanded(
+                    child: CustomScrollView(
+                      key: const Key('home-scroll'),
+                      slivers: [
+                        if (calendarVisible)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AwSpace.x4,
+                              ),
+                              child: Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(AwSpace.x2),
+                                  child: calendar,
+                                ),
+                              ),
+                            ),
+                          ),
+                        SliverToBoxAdapter(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: AwSpace.x2),
+                              child: TextButton.icon(
+                                key: const Key('toggle-calendar'),
+                                onPressed: () => ref
+                                    .read(homeCalendarVisibleProvider.notifier)
+                                    .toggle(),
+                                icon: Icon(
+                                  calendarVisible
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                ),
+                                label: Text(
+                                  calendarVisible
+                                      ? 'Hide calendar'
+                                      : 'Show calendar',
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: AwSpace.x2),
-                      child: TextButton.icon(
-                        key: const Key('toggle-calendar'),
-                        onPressed: () => ref
-                            .read(homeCalendarVisibleProvider.notifier)
-                            .toggle(),
-                        icon: Icon(
-                          calendarVisible
-                              ? Icons.expand_less
-                              : Icons.expand_more,
-                        ),
-                        label: Text(
-                          calendarVisible ? 'Hide calendar' : 'Show calendar',
-                        ),
-                      ),
+                        if (groups.isEmpty)
+                          const SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _HomeEmpty(),
+                          )
+                        else
+                          SliverPadding(
+                            padding: awListPadding(context, extraBottom: 72),
+                            sliver: SliverList(
+                              delegate: SliverChildListDelegate(
+                                buildHomeGroupRows(context, groups),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  Expanded(child: _GroupedTaskList(groups: groups)),
                 ],
               );
             },
@@ -170,6 +194,9 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// The wide-layout task list: a plain ListView of the shared group rows.
+/// (The narrow layout renders the same rows inside a CustomScrollView so the
+/// calendar scrolls with them — OPH-103.)
 class _GroupedTaskList extends StatelessWidget {
   const _GroupedTaskList({required this.groups});
 
@@ -177,57 +204,69 @@ class _GroupedTaskList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (groups.isEmpty) {
-      return const AwEmptyState(
-        icon: Icons.beach_access_outlined,
-        title: 'All caught up',
-        message: 'No open tasks — capture one in the Inbox.',
-      );
-    }
-
+    if (groups.isEmpty) return const _HomeEmpty();
     return ListView(
       padding: awListPadding(context, extraBottom: 72),
-      children: [
-        for (final group in groups) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AwSpace.x1,
-              AwSpace.x4,
-              AwSpace.x1,
-              AwSpace.x2,
-            ),
-            child: Text(
-              '${group.bucket.label} · ${group.items.length}',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: group.dimmed
-                    ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)
-                    : switch (group.bucket) {
-                        HomeBucket.overdue => theme.colorScheme.error,
-                        HomeBucket.selectedDay => context.awTokens.link,
-                        _ => theme.colorScheme.onSurfaceVariant,
-                      },
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
-              ),
-            ),
-          ),
-          // One chronological stream (§12): a 10:00 meeting sits above a 16:00
-          // task, and each row renders as what it actually is.
-          for (final item in group.items)
-            switch (item) {
-              TaskItem(:final task) => TaskTile(
-                task: task,
-                dimmed: group.dimmed,
-                highlighted: group.bucket == HomeBucket.selectedDay,
-              ),
-              EventItem(:final event) => Opacity(
-                opacity: group.dimmed ? 0.45 : 1,
-                child: ExternalEventTile(event: event),
-              ),
-            },
-        ],
-      ],
+      children: buildHomeGroupRows(context, groups),
     );
   }
+}
+
+/// Home's "nothing to do" state — shared by both layouts so it reads the same
+/// in the wide ListView and the narrow SliverFillRemaining.
+class _HomeEmpty extends StatelessWidget {
+  const _HomeEmpty();
+
+  @override
+  Widget build(BuildContext context) => const AwEmptyState(
+    icon: Icons.beach_access_outlined,
+    title: 'All caught up',
+    message: 'No open tasks — capture one in the Inbox.',
+  );
+}
+
+/// The header + row widgets for Home's groups, shared by the wide ListView and
+/// the narrow CustomScrollView (OPH-103) so the group/row logic lives in ONE
+/// place. Each group is a labelled header followed by its chronological rows
+/// (§12): a 10:00 meeting sits above a 16:00 task, each rendered as what it is.
+List<Widget> buildHomeGroupRows(BuildContext context, List<HomeGroup> groups) {
+  final theme = Theme.of(context);
+  return [
+    for (final group in groups) ...[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AwSpace.x1,
+          AwSpace.x4,
+          AwSpace.x1,
+          AwSpace.x2,
+        ),
+        child: Text(
+          '${group.bucket.label} · ${group.items.length}',
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: group.dimmed
+                ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)
+                : switch (group.bucket) {
+                    HomeBucket.overdue => theme.colorScheme.error,
+                    HomeBucket.selectedDay => context.awTokens.link,
+                    _ => theme.colorScheme.onSurfaceVariant,
+                  },
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ),
+      for (final item in group.items)
+        switch (item) {
+          TaskItem(:final task) => TaskTile(
+            task: task,
+            dimmed: group.dimmed,
+            highlighted: group.bucket == HomeBucket.selectedDay,
+          ),
+          EventItem(:final event) => Opacity(
+            opacity: group.dimmed ? 0.45 : 1,
+            child: ExternalEventTile(event: event),
+          ),
+        },
+    ],
+  ];
 }

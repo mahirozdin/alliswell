@@ -34,6 +34,15 @@ Future<Widget> signedInAppWith(FakeApi api) async {
 
 String isoAt(DateTime local) => local.toUtc().toIso8601String();
 
+/// Render Home in its two-pane wide layout (task ListView + side calendar) so
+/// tasks stay visible instead of being pushed past the fold by the scrollable
+/// calendar. The narrow scrolling layout has its own coverage in
+/// home_scroll_test.dart. Call FIRST in a test, before pumpWidget.
+Future<void> wideSurface(WidgetTester tester) async {
+  await tester.binding.setSurfaceSize(const Size(1200, 900));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+}
+
 void main() {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -41,6 +50,7 @@ void main() {
   testWidgets('home groups tasks chronologically with overdue and no-date', (
     tester,
   ) async {
+    await wideSurface(tester);
     final api = FakeApi()
       ..seedTask(
         title: 'Gecikmiş iş',
@@ -52,37 +62,41 @@ void main() {
       )
       ..seedTask(title: 'Tarihsiz iş')
       ..seedTask(
-        title: 'Uzak iş',
+        title: 'Ay içi iş', // +20d → within the 30-day horizon
+        dueAt: isoAt(today.add(const Duration(days: 20, hours: 9))),
+      )
+      ..seedTask(
+        title: 'Çok uzak iş', // +40d → beyond the horizon, dropped from Home
         dueAt: isoAt(today.add(const Duration(days: 40, hours: 9))),
       );
 
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    // Home is the initial section now.
+    // Home is the initial section. No date now sits directly under Overdue.
     expect(find.textContaining('Overdue ·'), findsOneWidget);
-    expect(find.textContaining('Today ·'), findsOneWidget);
     expect(find.text('Gecikmiş iş'), findsOneWidget);
-
-    // Lower groups live below the fold of the lazy list — scroll each group
-    // HEADER into view (rows alone can leave the header offstage above).
-    await tester.dragUntilVisible(
-      find.textContaining('Later ·'),
-      find.byType(ListView),
-      const Offset(0, -120),
-    );
-    expect(find.textContaining('Later ·'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.textContaining('No date ·'),
-      find.byType(ListView),
-      const Offset(0, -120),
-    );
     expect(find.textContaining('No date ·'), findsOneWidget);
+    expect(find.textContaining('Today ·'), findsOneWidget);
+
+    // Scroll the far group into view; the 30-day horizon keeps '+40d' off Home.
+    await tester.dragUntilVisible(
+      find.textContaining('Next 30 days ·'),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
+    expect(find.text('Ay içi iş'), findsOneWidget);
+    expect(
+      find.text('Çok uzak iş'),
+      findsNothing,
+      reason: 'a +40d task lives on the Calendar tab, not Home',
+    );
   });
 
   testWidgets('completing a task on home removes it after refetch', (
     tester,
   ) async {
+    await wideSurface(tester);
     final api = FakeApi()
       ..seedTask(
         title: 'Bitecek iş',
@@ -104,6 +118,7 @@ void main() {
   testWidgets('selecting a calendar day highlights it and dims the rest', (
     tester,
   ) async {
+    await wideSurface(tester);
     // Pick a day in the current month that is not today (grid shows one month).
     final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
     final target = DateTime(today.year, today.month, targetDay, 9);
@@ -147,6 +162,7 @@ void main() {
   testWidgets('home quick-add chains rapid entries without losing focus', (
     tester,
   ) async {
+    await wideSurface(tester);
     final api = FakeApi();
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
@@ -170,6 +186,7 @@ void main() {
   testWidgets('home quick-add targets the selected calendar day', (
     tester,
   ) async {
+    await wideSurface(tester);
     final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
     final api = FakeApi();
     await tester.pumpWidget(await signedInAppWith(api));
@@ -191,6 +208,7 @@ void main() {
   });
 
   testWidgets('FAB sheet creates a task with options', (tester) async {
+    await wideSurface(tester);
     final api = FakeApi();
     api.seedProject(name: 'Hedef Proje');
     await tester.pumpWidget(await signedInAppWith(api));
@@ -301,6 +319,7 @@ void main() {
   testWidgets('task tiles show status icons and priority colors', (
     tester,
   ) async {
+    await wideSurface(tester);
     final api = FakeApi()
       ..seedTask(
         title: 'Öncelikli iş',
@@ -316,6 +335,7 @@ void main() {
   });
 
   testWidgets('task title edits in place and autosaves', (tester) async {
+    await wideSurface(tester);
     final api = FakeApi()
       ..seedTask(
         title: 'Eski görev adı',
@@ -341,6 +361,7 @@ void main() {
   testWidgets(
     'task detail edits urgent, tags and checklist through the outbox',
     (tester) async {
+      await wideSurface(tester);
       final api = FakeApi();
       final tag = api.seedTag(name: 'Focus');
       api.seedTask(
