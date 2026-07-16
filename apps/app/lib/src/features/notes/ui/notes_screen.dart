@@ -64,11 +64,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'New note',
-        onPressed: () => context.go('/notes/new'),
-        child: const Icon(Icons.add),
-      ),
+      // FAB hoisted to HomeShell (OPH-101).
       body: Column(
         children: [
           Padding(
@@ -94,9 +90,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               ),
             ),
           ),
-          Padding(
+          // Horizontally scrollable so the filter strip never overflows on
+          // phones (and survives extra chips like OPH-109's 'READMEs').
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 for (final (filter, label) in [
                   (NotesFilter.all, 'All'),

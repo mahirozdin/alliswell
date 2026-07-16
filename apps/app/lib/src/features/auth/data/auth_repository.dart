@@ -90,8 +90,12 @@ class AuthRepository {
     if (current != null) {
       try {
         await _api.logout(current.tokens.refreshToken, allDevices: allDevices);
-      } on AuthException {
-        // Offline or already revoked — local cleanup still proceeds.
+      } on Object {
+        // Sign-out is a local-state guarantee; the server revoke is
+        // best-effort. Swallow ANYTHING (offline, already-revoked, or an
+        // unexpected decode error) so `_clearSession` below always runs —
+        // never leave the app holding a session the server already killed
+        // (OPH-100).
       }
     }
     await _clearSession();

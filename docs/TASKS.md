@@ -1110,11 +1110,21 @@ ready, the command is `git tag v0.1.0 && git push origin v0.1.0`. ✔
 > Mapping (user's item № → task): 1→OPH-102, 2→OPH-103, 3→OPH-107, 4→OPH-111, 5→OPH-105,
 > 6→OPH-101, 7→OPH-100, 8→OPH-106, 9→OPH-102, 10→OPH-104, 11→OPH-108, 12→OPH-109, 13→OPH-110.
 
-### OPH-100 — Fix web sign-out crash (204 body is not a Map) 🐞
+### OPH-100 — Fix web sign-out crash (204 body is not a Map) ✅
 
-- [ ] `AuthApi._post` never casts `res.data` — type-check and fall back to `{}`
-- [ ] `AuthRepository.logout` clears local state no matter WHAT the client throws
-- [ ] Regression test: adapter returns 204 with an EMPTY STRING body (dio-web behavior)
+- [x] `AuthApi._post` never casts `res.data` — type-check and fall back to `{}`
+- [x] `AuthRepository.logout` clears local state no matter WHAT the client throws
+- [x] Regression test: adapter returns 204 with an EMPTY STRING body (dio-web behavior)
+
+Acceptance notes: both layers changed exactly as specced. `_post` replaced the
+`res.data as Map<String, dynamic>?` cast with a type check (`data is Map ? data
+: {}`) — fixes every empty/204 response, not just logout. `logout` broadened
+`on AuthException` → `on Object` so the best-effort server revoke can never
+block the local `_clearSession`. Tests (`auth_repository_test.dart`, +2): a
+logout whose handler returns `emptyBody(204)` (the real dio-web shape — a new
+`test_support` helper, NOT `jsonBody(204, {})`) completes and clears; and a
+stub API that throws a non-AuthException still clears locally. 11/11 auth tests
+green. ✔
 
 **User's report (item 7):** signing out on web logged `TypeError: "": type 'String' is not a
 subtype of type 'Map<String, dynamic>?'` from `auth_api.dart:54` — after the server had
@@ -1143,11 +1153,29 @@ green.
 **DoD:** `flutter analyze` + `flutter test`; manual web verify (sign out → login screen, no
 console error).
 
-### OPH-101 — Mobile: FABs are covered by the glass bottom nav 🐞
+### OPH-101 — Mobile: FABs are covered by the glass bottom nav ✅
 
-- [ ] Failing-first widget test: shell at phone size, tap each section's FAB
-- [ ] Fix so every FAB sits fully ABOVE the glass `NavigationBar` and receives taps
-- [ ] Audit every bottom-anchored control on narrow layouts (FABs ×3 + list padding)
+- [x] Failing-first widget test: shell at phone size, tap each section's FAB
+- [x] Fix so every FAB sits fully ABOVE the glass `NavigationBar` and receives taps
+- [x] Audit every bottom-anchored control on narrow layouts (FABs ×3 + list padding)
+
+Acceptance notes: **deviation from the specced "shared wrapper" — hoisted the
+FAB to the shell instead**, which is the correct fix. A `Padding` wrapper on
+the FAB was tried first (`MediaQuery.paddingOf(context).bottom`) and PROVEN
+wrong two ways by the failing-first test: in a nested Scaffold the section's
+FAB is positioned by the INNER scaffold (padding doesn't lift it enough), and
+padding inside the FAB slot overflows its transition box. The nested-Scaffold
+FAB is the anti-pattern; the fix removes all three section FABs
+(home/projects/notes) and renders ONE FAB from `HomeShell`'s own Scaffold via
+`_sectionFab(currentIndex)` — Flutter then places it above the shell's own
+`bottomNavigationBar` natively, in both the narrow (bar) and wide (rail)
+branches. Test (`test/features/shell/fab_layering_test.dart`) pumps the real
+shell at 390×844 and, for Home/Projects/Notes, asserts the FAB rect does not
+overlap the `NavigationBar` rect AND that a `tester.tap` opens the create sheet
+/ editor (it fails against the old layout — real regression proof). **Also
+fixed in passing:** the Notes filter-chip `Row` overflowed at phone width (26
+px) and would have broken again when OPH-109 adds the 'READMEs' chip → made it
+a horizontal scroll strip. `flutter analyze` clean; full suite 161/161. ✔
 
 **User's report (item 6):** on mobile the floating action button sits BEHIND the bottom
 navigation and cannot be tapped — note/project/task creation was untestable.

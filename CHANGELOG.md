@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Web sign-out crash** (OPH-100): signing out on the web build threw a
+  `TypeError` because a `204 No Content` response body arrives as an empty
+  string on dio-web; the app now type-checks the response and always clears the
+  local session even if the server call fails.
+- **Mobile create buttons unreachable** (OPH-101): the floating action buttons
+  on Home, Projects and Notes were painted behind the glass bottom navigation
+  bar and could not be tapped on phones. The FAB is now rendered by the app
+  shell so it always sits above the bar. Also fixed a Notes filter-chip row
+  that overflowed on narrow screens.
+
 ### Planned (docs, 2026-07-17)
 
 - **Epic 10 — feedback round 4** (OPH-100…OPH-111), from the first hands-on user-testing

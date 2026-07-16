@@ -7,7 +7,6 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/project.dart';
 import '../providers.dart';
-import 'project_edit_sheet.dart';
 
 /// Projects list (OPH-036): color, favorite toggle, status; FAB creates.
 class ProjectsScreen extends ConsumerWidget {
@@ -16,13 +15,9 @@ class ProjectsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projects = ref.watch(projectsControllerProvider);
+    // FAB hoisted to HomeShell (OPH-101).
     return Scaffold(
       appBar: buildSectionAppBar(context, 'Projects'),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'New project',
-        onPressed: () => showProjectEditSheet(context),
-        child: const Icon(Icons.add),
-      ),
       body: projects.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

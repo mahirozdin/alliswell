@@ -9,7 +9,6 @@ import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
-import '../tasks/ui/task_create_sheet.dart';
 import '../tasks/ui/task_tile.dart';
 import '../workspaces/workspaces.dart';
 import 'month_calendar.dart';
@@ -48,16 +47,11 @@ class HomeScreen extends ConsumerWidget {
     final events =
         ref.watch(externalEventsProvider).value ?? const <ExternalEvent>[];
 
+    // The create FAB is rendered by HomeShell's own Scaffold (OPH-101), so it
+    // clears the glass bottom bar; this screen only supplies the list + quick
+    // add + calendar.
     return Scaffold(
       appBar: buildSectionAppBar(context, 'Home'),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'New task with options',
-        onPressed: () => showTaskCreateSheet(
-          context,
-          initialDue: selectedDay?.add(const Duration(hours: 9)),
-        ),
-        child: const Icon(Icons.add),
-      ),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

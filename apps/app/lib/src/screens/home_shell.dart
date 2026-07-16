@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/calendar/apple/providers.dart';
+import '../features/projects/ui/project_edit_sheet.dart';
+import '../features/tasks/providers.dart';
+import '../features/tasks/ui/task_create_sheet.dart';
 import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
@@ -23,6 +26,37 @@ class HomeShell extends ConsumerWidget {
       index,
       initialLocation: index == navigationShell.currentIndex,
     );
+  }
+
+  /// The current section's create action, rendered by the shell's OWN Scaffold
+  /// so Flutter positions it above the glass bottom bar. The section screens
+  /// used to own these FABs, but as nested Scaffolds their FAB was painted
+  /// behind the bar and could not be tapped (OPH-101). Sections with no create
+  /// action (Inbox, Calendar) get none.
+  Widget? _sectionFab(BuildContext context, WidgetRef ref) {
+    return switch (AppSection.values[navigationShell.currentIndex]) {
+      AppSection.home => FloatingActionButton(
+        tooltip: 'New task with options',
+        onPressed: () => showTaskCreateSheet(
+          context,
+          initialDue: ref.read(selectedDayProvider)?.add(
+            const Duration(hours: 9),
+          ),
+        ),
+        child: const Icon(Icons.add),
+      ),
+      AppSection.projects => FloatingActionButton(
+        tooltip: 'New project',
+        onPressed: () => showProjectEditSheet(context),
+        child: const Icon(Icons.add),
+      ),
+      AppSection.notes => FloatingActionButton(
+        tooltip: 'New note',
+        onPressed: () => context.go('/notes/new'),
+        child: const Icon(Icons.add),
+      ),
+      AppSection.inbox || AppSection.calendar => null,
+    };
   }
 
   /// OPH-056: a sync push the server refused (or trimmed via LWW) surfaces
@@ -65,6 +99,7 @@ class HomeShell extends ConsumerWidget {
         if (isWide) {
           return Scaffold(
             backgroundColor: Colors.transparent,
+            floatingActionButton: _sectionFab(context, ref),
             body: Row(
               children: [
                 GlassSurface(
@@ -102,6 +137,7 @@ class HomeShell extends ConsumerWidget {
         return Scaffold(
           backgroundColor: Colors.transparent,
           extendBody: true,
+          floatingActionButton: _sectionFab(context, ref),
           body: navigationShell,
           bottomNavigationBar: GlassSurface(
             edge: GlassEdge.top,

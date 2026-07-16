@@ -51,7 +51,12 @@ class AuthApi {
         data: body,
         queryParameters: query,
       );
-      return (res.data as Map<String, dynamic>?) ?? const {};
+      // A 204 (e.g. logout) has no body; dio-web materializes that as the
+      // empty STRING '', not null — so a blind `as Map` cast throws a
+      // TypeError that isn't an AuthException and escapes the callers'
+      // handling (OPH-100). Type-check instead of casting.
+      final data = res.data;
+      return data is Map<String, dynamic> ? data : const <String, dynamic>{};
     } on DioException catch (e) {
       throw _asAuthException(e);
     }

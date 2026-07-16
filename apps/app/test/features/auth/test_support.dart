@@ -48,6 +48,18 @@ ResponseBody jsonBody(int status, Object data) => ResponseBody.fromString(
   },
 );
 
+/// A response with a completely empty body — what a `204 No Content` (e.g.
+/// logout) looks like on dio-web, where `res.data` comes back as the empty
+/// STRING '' (not null). Reproduces the OPH-100 sign-out crash on the old
+/// `as Map` cast.
+ResponseBody emptyBody(int status) => ResponseBody.fromString(
+  '',
+  status,
+  headers: {
+    Headers.contentTypeHeader: [Headers.jsonContentType],
+  },
+);
+
 Dio fakeDio(FakeHttpClientAdapter adapter) {
   final dio = Dio(BaseOptions(baseUrl: 'http://alliswell.test'));
   dio.httpClientAdapter = adapter;
