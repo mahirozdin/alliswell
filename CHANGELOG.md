@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **Clearer status icons** (OPH-105): an open task now shows a pending
+  hourglass instead of a bare circle (which collided with the completion
+  checkbox); "waiting" takes a pause icon.
+- **Project picker everywhere** (OPH-106): the task detail screen gained a
+  project dropdown, and the create sheet now explains itself when you have no
+  projects yet instead of showing an empty-looking picker.
 - **Home rework** (OPH-102/103/104): the task list now spans a **30-day
   horizon** (Today / Tomorrow / This week / Next 30 days) so recurring calendar
   events past a month no longer bury real work; **dateless tasks sit at the top**

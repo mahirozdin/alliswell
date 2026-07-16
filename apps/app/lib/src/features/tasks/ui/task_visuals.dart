@@ -7,10 +7,13 @@ import '../../../theme/tokens.dart';
 
 IconData taskStatusIcon(String status) => switch (status) {
   'inbox' => Icons.inbox_outlined,
-  'open' => Icons.radio_button_unchecked,
+  // 'open' is work waiting to be done → an hourglass, NOT a bare circle (the
+  // circle collided with the row's circular completion checkbox — OPH-105).
+  'open' => Icons.hourglass_empty,
   'scheduled' => Icons.event_outlined,
   'in_progress' => Icons.timelapse,
-  'waiting' => Icons.hourglass_empty,
+  // 'waiting' (on hold) hands the hourglass to 'open' and takes a pause circle.
+  'waiting' => Icons.pause_circle_outline,
   'completed' => Icons.check_circle,
   'cancelled' => Icons.cancel_outlined,
   'archived' => Icons.archive_outlined,

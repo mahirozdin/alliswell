@@ -329,9 +329,9 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    // Priority flag (colored) + status icon on the tile.
+    // Priority flag (colored) + status icon on the tile (open → hourglass).
     expect(find.byIcon(Icons.flag), findsOneWidget);
-    expect(find.byIcon(Icons.radio_button_unchecked), findsOneWidget);
+    expect(find.byIcon(Icons.hourglass_empty), findsOneWidget);
   });
 
   testWidgets('task title edits in place and autosaves', (tester) async {
@@ -431,4 +431,49 @@ void main() {
       expect((api.tasks.single['checklist'] as List).length, 2);
     },
   );
+
+  testWidgets('task detail assigns a project through the picker (OPH-106)', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi();
+    final project = api.seedProject(name: 'Hedef Proje');
+    api.seedTask(
+      title: 'Projesiz görev',
+      dueAt: isoAt(today.add(const Duration(hours: 12))),
+    );
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Projesiz görev'));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const Key('detail-project')));
+    await tester.tap(find.byKey(const Key('detail-project')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Hedef Proje').last);
+    await tester.pumpAndSettle();
+
+    expect(api.tasks.single['projectId'], project['id']);
+    expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
+  });
+
+  testWidgets('create sheet explains when there are no projects yet (OPH-106)', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    // The picker stays visible (not hidden) with a hint pointing to Projects.
+    expect(find.byKey(const Key('task-sheet-project')), findsOneWidget);
+    expect(
+      find.text('No projects yet — create one in the Projects tab'),
+      findsOneWidget,
+    );
+  });
 }

@@ -165,6 +165,11 @@ void main() {
     expect(icons.values.toSet(), hasLength(kTaskStatuses.length));
     expect(icons['completed'], Icons.check_circle);
     expect(icons['inbox'], Icons.inbox_outlined);
+    // OPH-105: 'open' is a pending hourglass, never a bare circle (which
+    // collided with the row's circular completion checkbox).
+    expect(icons['open'], Icons.hourglass_empty);
+    expect(icons['open'], isNot(Icons.radio_button_unchecked));
+    expect(icons['waiting'], Icons.pause_circle_outline);
 
     // Priorities → colors from the design tokens (docs/DESIGN.md): hues are
     // fixed per priority, lightness adapts per brightness for contrast;

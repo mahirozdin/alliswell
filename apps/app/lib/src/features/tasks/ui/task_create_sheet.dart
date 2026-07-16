@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
+import '../../projects/ui/project_picker.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../providers.dart';
@@ -144,35 +145,19 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                       isExpanded: true,
                       key: const Key('task-sheet-project'),
                       initialValue: _projectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('No project'),
-                        ),
-                        for (final project in projects)
-                          DropdownMenuItem(
-                            value: project.id,
-                            // The project's color leads its name (feedback
-                            // round 3): a small filled dot, never a hex code.
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: project.color,
-                                  radius: 6,
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    project.name,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
+                      decoration: InputDecoration(
+                        labelText: 'Project',
+                        // With no projects the picker's only entry is "No
+                        // project", which reads as "no picker" — say why
+                        // (OPH-106).
+                        helperText: projects.isEmpty
+                            ? 'No projects yet — create one in the Projects tab'
+                            : null,
+                      ),
+                      items: projectDropdownItems(
+                        projects,
+                        currentValue: _projectId,
+                      ),
                       onChanged: (v) => setState(() => _projectId = v),
                     ),
                   ),

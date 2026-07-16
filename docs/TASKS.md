@@ -1346,10 +1346,19 @@ white/black grid extremes (assert the documented threshold behavior, both themes
 
 **DoD:** analyze + tests; light + dark screenshots of Home rows with 2+ project colors.
 
-### OPH-105 — Status icons: `open` is no longer a bare circle
+### OPH-105 — Status icons: `open` is no longer a bare circle ✅
 
-- [ ] `taskStatusIcon`: `open` → `Icons.hourglass_empty`; `waiting` → `Icons.pause_circle_outline`
-- [ ] Sweep tests/keys referencing the old icons; verify dropdowns + rows in both themes
+- [x] `taskStatusIcon`: `open` → `Icons.hourglass_empty`; `waiting` → `Icons.pause_circle_outline`
+- [x] Sweep tests/keys referencing the old icons; verify dropdowns + rows in both themes
+
+Acceptance notes: single source `taskStatusIcon` (`task_visuals.dart`) — `open`
+is now a pending hourglass (was `radio_button_unchecked`, which fought the row's
+circular checkbox), and `waiting` took `pause_circle_outline` so every status
+stays a distinct icon. `tasks_api_test` gained assertions (`open ==
+hourglass_empty`, `open != radio_button_unchecked`, `waiting ==
+pause_circle_outline`) plus its existing all-unique check; the row test in
+`tasks_flow_test` now expects the hourglass. Grepped: no other
+`radio_button_unchecked` reference remains. ✔
 
 **User's report (item 5):** the `open` status icon must change to a "waiting/pending" style
 icon — an open task is work waiting to be done — and it must NOT be a plain circle (it
@@ -1369,11 +1378,23 @@ adjust any widget test finding the old icons.
 
 **DoD:** analyze + tests; light + dark spot-check of a task row and the status dropdown.
 
-### OPH-106 — Project picker: always legible in the create sheet, added to detail
+### OPH-106 — Project picker: always legible in the create sheet, added to detail ✅
 
-- [ ] Create sheet: picker visible with 0 projects, with a helper pointing to Projects
-- [ ] Task DETAIL screen gains a Project dropdown (`Key('detail-project')`)
-- [ ] Archived projects excluded from both pickers (forward-ref OPH-110)
+- [x] Create sheet: picker visible with 0 projects, with a helper pointing to Projects
+- [x] Task DETAIL screen gains a Project dropdown (`Key('detail-project')`)
+- [x] Archived projects excluded from both pickers (forward-ref OPH-110)
+
+Acceptance notes: shared `projectDropdownItems` (`features/projects/ui/
+project_picker.dart`) builds the 'No project' + color-dot entries for BOTH the
+create sheet and the new task-detail dropdown (`Key('detail-project')`, writes
+`projectId` through the store). The create sheet keeps the field visible when
+`projects.isEmpty` and adds the helper 'No projects yet — create one in the
+Projects tab'. Archived projects are filtered NOW (inert until OPH-110) — with
+one exception: an archived project that is the task's CURRENT value stays,
+suffixed ' (archived)', so the value never silently vanishes. Tests:
+`project_picker_test.dart` (No-project lead, active list, archived hidden,
+archived-current kept+suffixed) + two widget tests (detail assigns a project →
+one sync push; empty-state helper shows). ✔
 
 **User's report (item 8):** opened "new task" from the FAB — no project selection visible;
 detailed creation must allow choosing a project.

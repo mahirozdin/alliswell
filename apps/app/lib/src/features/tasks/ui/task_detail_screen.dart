@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/data/project.dart';
+import '../../projects/providers.dart';
+import '../../projects/ui/project_picker.dart';
 import '../../tags/tags.dart';
 import '../data/task.dart';
 import '../data/task_store.dart';
@@ -213,6 +215,28 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Project picker (OPH-106): same color-dot entries as the
+                    // create sheet; assigning a project also promotes an inbox
+                    // capture to 'open' via the store rule (OPH-107).
+                    DropdownButtonFormField<String?>(
+                      isExpanded: true,
+                      key: const Key('detail-project'),
+                      initialValue: task.projectId,
+                      decoration: const InputDecoration(labelText: 'Project'),
+                      items: projectDropdownItems(
+                        ref.watch(projectsControllerProvider).value ??
+                            const <Project>[],
+                        currentValue: task.projectId,
+                      ),
+                      onChanged: (v) {
+                        if (v != task.projectId) {
+                          _apply(
+                            (store, id) => store.update(id, {'projectId': v}),
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(height: 4),
                     SwitchListTile(
