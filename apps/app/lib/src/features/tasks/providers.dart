@@ -5,7 +5,7 @@ import '../workspaces/workspaces.dart';
 import 'data/task.dart';
 import 'data/task_store.dart';
 
-export 'data/task_store.dart' show kOpenStatuses;
+export 'data/task_store.dart' show kPlanningStatuses;
 
 /// Local-first store (OPH-054): reads watch the drift replica, writes are
 /// optimistic + outbox'd, and the sync engine converges with the server in

@@ -476,4 +476,82 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('an inbox capture stays off Home and has no checkbox (OPH-107)', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi()
+      ..seedTask(title: 'Yakalanan fikir', status: 'inbox')
+      ..seedTask(
+        title: 'Gerçek iş',
+        dueAt: isoAt(today.add(const Duration(hours: 12))),
+      );
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    // Home shows the real task but NOT the capture.
+    expect(find.text('Gerçek iş'), findsOneWidget);
+    expect(find.text('Yakalanan fikir'), findsNothing);
+
+    // The Inbox shows the capture with triage actions and no completion box.
+    await tester.tap(find.text('Inbox').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Yakalanan fikir'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing);
+    expect(find.byKey(const Key('capture-plan')), findsOneWidget);
+  });
+
+  testWidgets('planning a capture with a date moves it to Home (OPH-107)', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi()..seedTask(title: 'Planlanacak', status: 'inbox');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Inbox').last);
+    await tester.pumpAndSettle();
+
+    // Plan opens the sheet in edit mode.
+    await tester.tap(find.byKey(const Key('capture-plan')));
+    await tester.pumpAndSettle();
+    expect(find.text('Plan task'), findsOneWidget);
+
+    // Give it a due date (accept picker defaults) and save.
+    await tester.tap(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
+
+    // It left the Inbox and now shows on Home as a real 'open' task.
+    expect(find.text('Planlanacak'), findsNothing);
+    expect(api.tasks.single['status'], 'open');
+    await tester.tap(find.text('Home').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Planlanacak'), findsOneWidget);
+  });
+
+  testWidgets('converting a capture to a note removes it (OPH-107)', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi()..seedTask(title: 'Nota gidecek', status: 'inbox');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Inbox').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('capture-to-note')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Convert'));
+    await tester.pumpAndSettle();
+
+    // The capture is gone from the Inbox and a note carries its title.
+    expect(find.text('Nota gidecek'), findsNothing);
+    expect(api.notes.any((n) => n['title'] == 'Nota gidecek'), isTrue);
+  });
 }

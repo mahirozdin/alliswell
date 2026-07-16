@@ -1430,18 +1430,35 @@ already assigned.
 
 **DoD:** analyze + tests; light + dark; manual web run: FAB → create with a project.
 
-### OPH-107 — Inbox is a CAPTURE box: out of Home, with a triage flow
+### OPH-107 — Inbox is a CAPTURE box: out of Home, with a triage flow ✅
 
-- [ ] `kOpenStatuses` split: planning lists (Home, project tabs) exclude `inbox`
-- [ ] Auto-promote in `TaskStore` (create+update): date OR project set on an inbox row →
+- [x] `kOpenStatuses` split: planning lists (Home, project tabs) exclude `inbox`
+- [x] Auto-promote in `TaskStore` (create+update): date OR project set on an inbox row →
       status `open` in the SAME write/outbox mutation (unless the patch sets status itself)
-- [ ] Inbox rows become `CaptureTile`: no checkbox; actions Plan / To note / Delete;
+- [x] Inbox rows become `CaptureTile`: no checkbox; actions Plan / To note / Delete;
       tap = Plan
-- [ ] `TaskCreateSheet` gains edit/triage mode (prefilled, 'Save', updates instead of
+- [x] `TaskCreateSheet` gains edit/triage mode (prefilled, 'Save', updates instead of
       creating)
-- [ ] Copy: quick-add hint, empty state and section description say "capture now, sort
+- [x] Copy: quick-add hint, empty state and section description say "capture now, sort
       later — these don't show on Home"
-- [ ] BLUEPRINT §4.3 + §12.6 stay the binding wording
+- [x] BLUEPRINT §4.3 + §12.6 stay the binding wording
+
+Acceptance notes: `kOpenStatuses` → `kPlanningStatuses` (`['open', 'scheduled',
+'in_progress', 'waiting']`, no `inbox`); `watchOpen` + `watchProjectTasks` use
+it, `watchInbox` unchanged. Auto-promote lives in the store (single source):
+`update` merges `status: 'open'` into the SAME optimistic write + outbox
+mutation when an `inbox` row gains a non-null `dueAt`/`projectId` and the patch
+carries no explicit status; `create` mirrors it. Inbox rows are a new
+`_CaptureTile` (inbox icon, NO checkbox — you don't complete a thought; Plan /
+Convert-to-note / Delete, tap = Plan). `TaskCreateSheet` gained a `task`
+param → 'Plan task'/'Save' edit mode that updates in place (a date/project
+there triggers the promote). Copy: quick-add 'Capture a thought…', empty state
+'Inbox is for capturing', section description updated (feeds the OPH-111 tour).
+Tests: `inbox_capture_test.dart` (8 store cases: off planning lists, promote on
+date/project, NOT on unrelated patch / null-clear / explicit status, born-open,
+one-mutation-carries-status) + 3 widget tests (Home excludes the capture & it
+has no checkbox; Plan→date moves it to Home as 'open'; Convert→note removes it).
+analyze clean; suite 223/223. ✔
 
 **User's report (item 3):** Inbox must be where fleeting ideas are captured so they aren't
 lost — written serially, evaluated/planned later — and the user must UNDERSTAND that from

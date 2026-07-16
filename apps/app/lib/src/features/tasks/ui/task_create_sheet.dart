@@ -13,21 +13,29 @@ import 'task_visuals.dart';
 /// Full task creation sheet behind the Home FAB (feedback round 2): title
 /// plus the options quick-add skips — project, priority, due/remind
 /// date-times and the urgent toggle.
-Future<void> showTaskCreateSheet(BuildContext context, {DateTime? initialDue}) {
+Future<void> showTaskCreateSheet(
+  BuildContext context, {
+  DateTime? initialDue,
+  Task? task,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     constraints: const BoxConstraints(maxWidth: 560),
-    builder: (_) => TaskCreateSheet(initialDue: initialDue),
+    builder: (_) => TaskCreateSheet(initialDue: initialDue, task: task),
   );
 }
 
 class TaskCreateSheet extends ConsumerStatefulWidget {
-  const TaskCreateSheet({super.key, this.initialDue});
+  const TaskCreateSheet({super.key, this.initialDue, this.task});
 
   /// Prefilled due date (e.g. the day selected on the Home calendar).
   final DateTime? initialDue;
+
+  /// When set, the sheet EDITS this task ("Plan task" / "Save") instead of
+  /// creating a new one — the Inbox triage flow (OPH-107).
+  final Task? task;
 
   @override
   ConsumerState<TaskCreateSheet> createState() => _TaskCreateSheetState();
@@ -47,7 +55,17 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   @override
   void initState() {
     super.initState();
-    _dueAt = widget.initialDue;
+    final task = widget.task;
+    if (task != null) {
+      _title.text = task.title;
+      _projectId = task.projectId;
+      _priority = task.priority;
+      _dueAt = task.dueAt?.toLocal();
+      _remindAt = task.remindAt?.toLocal();
+      _isUrgent = task.isUrgent;
+    } else {
+      _dueAt = widget.initialDue;
+    }
   }
 
   @override
@@ -87,16 +105,30 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
       _error = null;
     });
     try {
-      final workspaces = await ref.read(workspacesProvider.future);
-      if (workspaces.isEmpty) throw StateError('No workspace available');
-      await ref.read(taskStoreProvider).create(workspaces.first.id, {
-        'title': _title.text.trim(),
-        'projectId': ?_projectId,
-        if (_priority != 'none') 'priority': _priority,
-        'dueAt': ?_dueAt?.toUtc().toIso8601String(),
-        'remindAt': ?_remindAt?.toUtc().toIso8601String(),
-        if (_isUrgent) 'isUrgent': true,
-      });
+      final editing = widget.task;
+      if (editing != null) {
+        // Triage: update in place. Nulls are sent so cleared fields clear; a
+        // date or project here promotes an inbox capture to 'open' (OPH-107).
+        await ref.read(taskStoreProvider).update(editing.id, {
+          'title': _title.text.trim(),
+          'projectId': _projectId,
+          'priority': _priority,
+          'dueAt': _dueAt?.toUtc().toIso8601String(),
+          'remindAt': _remindAt?.toUtc().toIso8601String(),
+          'isUrgent': _isUrgent,
+        });
+      } else {
+        final workspaces = await ref.read(workspacesProvider.future);
+        if (workspaces.isEmpty) throw StateError('No workspace available');
+        await ref.read(taskStoreProvider).create(workspaces.first.id, {
+          'title': _title.text.trim(),
+          'projectId': ?_projectId,
+          if (_priority != 'none') 'priority': _priority,
+          'dueAt': ?_dueAt?.toUtc().toIso8601String(),
+          'remindAt': ?_remindAt?.toUtc().toIso8601String(),
+          if (_isUrgent) 'isUrgent': true,
+        });
+      }
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -125,7 +157,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('New task', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                widget.task != null ? 'Plan task' : 'New task',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 key: const Key('task-sheet-title'),
@@ -242,7 +277,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Create task'),
+                    : Text(widget.task != null ? 'Save' : 'Create task'),
               ),
             ],
           ),

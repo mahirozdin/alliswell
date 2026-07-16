@@ -16,7 +16,7 @@ enum AppSection {
     path: '/inbox',
     icon: Icons.inbox_outlined,
     selectedIcon: Icons.inbox,
-    description: 'Capture tasks fast, organize them later.',
+    description: 'Capture thoughts fast — they stay out of Home until planned.',
   ),
   calendar(
     title: 'Calendar',

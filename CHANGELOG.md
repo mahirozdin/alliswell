@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **Inbox is now a capture box** (OPH-107): the Inbox is for jotting thoughts
+  fast — captures stay OUT of Home until you triage them. Each row offers Plan
+  (opens a planning sheet), Convert-to-note, or Delete instead of a completion
+  checkbox; giving a capture a date or project promotes it to a real task
+  automatically.
 - **Clearer status icons** (OPH-105): an open task now shows a pending
   hourglass instead of a bare circle (which collided with the completion
   checkbox); "waiting" takes a pause icon.

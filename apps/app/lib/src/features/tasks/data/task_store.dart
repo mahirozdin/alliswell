@@ -7,8 +7,10 @@ import '../../../sync/streams.dart';
 import '../../../sync/sync_applier.dart';
 import 'task.dart';
 
-/// Statuses that belong on planning lists (terminal ones are filtered out).
-const kOpenStatuses = ['inbox', 'open', 'scheduled', 'in_progress', 'waiting'];
+/// Statuses that appear on planning lists (Home, project Tasks). Inbox captures
+/// (`inbox`) are excluded — they live only in the Inbox until triaged (OPH-107);
+/// terminal statuses (completed/cancelled/archived) never appear here either.
+const kPlanningStatuses = ['open', 'scheduled', 'in_progress', 'waiting'];
 
 /// Local-first task access (OPH-054): reads are drift watch queries over the
 /// replica; writes change the replica optimistically AND enqueue the same
@@ -24,7 +26,7 @@ class TaskStore {
 
   Stream<List<Task>> watchOpen(String workspaceId) => _watchList(
     workspaceId,
-    (t) => t.workspaceId.equals(workspaceId) & t.status.isIn(kOpenStatuses),
+    (t) => t.workspaceId.equals(workspaceId) & t.status.isIn(kPlanningStatuses),
   );
 
   Stream<List<Task>> watchInbox(String workspaceId) => _watchList(
@@ -37,7 +39,7 @@ class TaskStore {
         workspaceId,
         (t) =>
             t.workspaceId.equals(workspaceId) &
-            t.status.isIn(kOpenStatuses) &
+            t.status.isIn(kPlanningStatuses) &
             t.projectId.equals(projectId),
       );
 
@@ -94,6 +96,12 @@ class TaskStore {
         !patch.containsKey('requiresAcknowledgement')) {
       patch['requiresAcknowledgement'] = true;
     }
+    // A capture created WITH a date or project isn't a capture — promote it so
+    // it lands on planning lists, not the Inbox (OPH-107 parity with update).
+    if (patch['status'] == 'inbox' &&
+        (patch['dueAt'] != null || patch['projectId'] != null)) {
+      patch['status'] = 'open';
+    }
     final tagIds = ((patch['tagIds'] as List?) ?? const []).cast<String>();
 
     await _db.transaction(() async {
@@ -145,6 +153,16 @@ class TaskStore {
     if (effective['isUrgent'] == true &&
         !effective.containsKey('requiresAcknowledgement')) {
       effective['requiresAcknowledgement'] = true;
+    }
+    // Auto-promote a capture: giving an inbox item a date or a project means it
+    // has been triaged, so it graduates to 'open' in the SAME write + outbox
+    // mutation (OPH-107) — unless the caller set status explicitly.
+    if (record.status == 'inbox' && !effective.containsKey('status')) {
+      final gainsDate =
+          effective.containsKey('dueAt') && effective['dueAt'] != null;
+      final gainsProject =
+          effective.containsKey('projectId') && effective['projectId'] != null;
+      if (gainsDate || gainsProject) effective['status'] = 'open';
     }
 
     var companion = const TasksCompanion();
