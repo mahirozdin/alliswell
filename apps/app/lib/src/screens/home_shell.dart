@@ -22,10 +22,12 @@ class HomeShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   void _goBranch(int index) {
-    navigationShell.goBranch(
-      index,
-      initialLocation: index == navigationShell.currentIndex,
-    );
+    // Selecting a tab always returns to that section's root (OPH-108): tabs are
+    // sections, not stacks, so re-tapping AND switching-back both reset to the
+    // list. Task detail / settings are pushed on the root navigator (above the
+    // shell), so they are unaffected; the note editor flushes its autosave in
+    // dispose(), so resetting the Notes branch never loses an edit.
+    navigationShell.goBranch(index, initialLocation: true);
   }
 
   /// The current section's create action, rendered by the shell's OWN Scaffold

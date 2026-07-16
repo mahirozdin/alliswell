@@ -1491,10 +1491,19 @@ quick-add still keeps focus (feedback round 2 contract).
 
 **DoD:** analyze + tests; light + dark; manual: capture → plan → appears on Home.
 
-### OPH-108 — Tab selection returns to the section root
+### OPH-108 — Tab selection returns to the section root ✅
 
-- [ ] `HomeShell._goBranch`: `initialLocation: true` unconditionally
-- [ ] Widget test: Projects→detail→Notes→Projects lands on the LIST
+- [x] `HomeShell._goBranch`: `initialLocation: true` unconditionally
+- [x] Widget test: Projects→detail→Notes→Projects lands on the LIST
+
+Acceptance notes: one-liner in `home_shell.dart` (`goBranch(index,
+initialLocation: true)`). Safety audit held: task detail + settings are pushed
+on the ROOT navigator (above the shell, unaffected), and the note editor
+flushes its debounced autosave in `dispose()` — so resetting a branch never
+loses an edit. Widget test (`projects_flow_test.dart`) opens a project detail
+(asserts its `TabBar`), switches to Inbox and back to Projects, and asserts the
+LIST is shown (no `TabBar`) — fails against the old restore-last-location
+behavior. ✔
 
 **User's report (item 11):** opened the Deneme project, switched to another tab, tapped
 Projects again — the project detail was still open. Returning to a tab must open that

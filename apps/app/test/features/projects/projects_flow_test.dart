@@ -169,4 +169,28 @@ void main() {
     expect(api.notes.single['projectId'], api.projects.single['id']);
     expect(find.byKey(const Key('note-title')), findsOneWidget);
   });
+
+  testWidgets('returning to a tab shows its root, not the last detail (OPH-108)', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Deneme');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+
+    // Open the project detail (its Overview/Tasks/Notes TabBar marks "detail").
+    await tester.tap(find.text('Deneme'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TabBar), findsOneWidget);
+
+    // Switch away (Inbox has no name clash) and back to Projects.
+    await tester.tap(find.text('Inbox').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Projects').last);
+    await tester.pumpAndSettle();
+
+    // We land on the projects LIST (no detail tabs), not the reopened project.
+    expect(find.byType(TabBar), findsNothing);
+    expect(find.text('Deneme'), findsOneWidget); // the list row
+  });
 }
