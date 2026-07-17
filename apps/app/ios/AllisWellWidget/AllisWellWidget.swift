@@ -1,8 +1,7 @@
 // AllisWell home-screen widget (Epic 12, OPH-131). Renders the JSON snapshot the
 // Flutter app writes to the App Group via `home_widget` (see
 // apps/app/lib/src/features/widgets/). The widget does NO i18n and NO DB access —
-// it just draws this pre-localized snapshot. See ios/AllisWellWidget/SETUP.md for
-// how to add this file to a Widget Extension target in Xcode.
+// it draws this pre-localized snapshot. @main lives in AllisWellWidgetBundle.swift.
 //
 // The snapshot schema mirrors WidgetSnapshot.toJson() in widget_snapshot.dart.
 
@@ -22,11 +21,12 @@ struct AWSnapshot: Codable {
   let generatedAt: String
   let locale: String
   let date: AWDate
+  let strings: [String: String]?
   let buckets: [AWBucket]
 
   static let empty = AWSnapshot(
     v: 1, generatedAt: "", locale: "en",
-    date: AWDate(weekday: "", day: "", month: ""), buckets: [])
+    date: AWDate(weekday: "", day: "", month: ""), strings: nil, buckets: [])
 }
 
 struct AWDate: Codable {
@@ -83,8 +83,7 @@ struct AWProvider: TimelineProvider {
   func getTimeline(in context: Context, completion: @escaping (Timeline<AWEntry>) -> Void) {
     let entry = AWEntry(date: Date(), snapshot: loadAWSnapshot())
     // Roll Today/Overdue over at the next local midnight; foreground app pushes
-    // (home_widget updateWidget) keep it current the rest of the time — those are
-    // budget-exempt, so the sparse timeline stays well within Apple's 40–70/day.
+    // (home_widget updateWidget) keep it current the rest of the time.
     let nextMidnight =
       Calendar.current.nextDate(
         after: Date(),
@@ -94,7 +93,7 @@ struct AWProvider: TimelineProvider {
   }
 }
 
-// MARK: - Colors (mirror docs/DESIGN.md — keep in sync if the palette moves)
+// MARK: - Colors (mirror docs/DESIGN.md)
 
 private func awColor(hex: String?) -> Color? {
   guard var s = hex else { return nil }
@@ -138,7 +137,6 @@ struct AWTaskRowView: View {
   let row: AWTaskRow
   var body: some View {
     HStack(spacing: 8) {
-      // Circular checkbox (interactivity lands in OPH-132; this is the visual).
       Image(systemName: row.done ? "largecircle.fill.circle" : "circle")
         .foregroundStyle(row.done ? Color.green : Color.secondary)
         .imageScale(.medium)
@@ -162,7 +160,6 @@ struct AWTaskRowView: View {
 
 struct AWBucketView: View {
   let bucket: AWBucket
-  let maxRows: Int
   var body: some View {
     VStack(alignment: .leading, spacing: 4) {
       HStack {
@@ -173,7 +170,7 @@ struct AWBucketView: View {
           .font(.caption2).foregroundStyle(.secondary)
         Spacer()
       }
-      ForEach(bucket.items.prefix(maxRows)) { AWTaskRowView(row: $0) }
+      ForEach(bucket.items) { AWTaskRowView(row: $0) }
       if let more = bucket.more, more > 0 {
         Text("+\(more)").font(.caption2).foregroundStyle(.secondary)
       }
@@ -189,7 +186,7 @@ struct AllisWellWidgetEntryView: View {
     switch family {
     case .systemMedium: return 4
     case .systemLarge: return 10
-    default: return 18  // extraLarge (iPad/macOS)
+    default: return 18
     }
   }
 
@@ -201,24 +198,22 @@ struct AllisWellWidgetEntryView: View {
       }
       if snap.buckets.isEmpty {
         Spacer()
-        Text("All caught up").font(.subheadline).foregroundStyle(.secondary)
+        Text(snap.strings?["allCaughtUp"] ?? "All caught up")
+          .font(.subheadline).foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .center)
         Spacer()
       } else {
-        // Fill each bucket in order until the size's row budget is spent.
-        let budget = rowBudget
-        let plan = distribute(snap.buckets, budget: budget, showLabels: family != .systemMedium)
-        ForEach(plan, id: \.id) { AWBucketView(bucket: $0, maxRows: $0.items.count) }
+        ForEach(distribute(snap.buckets, budget: rowBudget)) { AWBucketView(bucket: $0) }
       }
       Spacer(minLength: 0)
     }
     .padding(family == .systemMedium ? 12 : 14)
     .widgetURL(URL(string: "alliswell://open"))
-    .awContainerBackground()
   }
 }
 
 /// Greedily trims buckets so the visible rows fit the size's budget.
-private func distribute(_ buckets: [AWBucket], budget: Int, showLabels: Bool) -> [AWBucket] {
+private func distribute(_ buckets: [AWBucket], budget: Int) -> [AWBucket] {
   var remaining = budget
   var out: [AWBucket] = []
   for b in buckets {
@@ -235,25 +230,19 @@ private func distribute(_ buckets: [AWBucket], budget: Int, showLabels: Bool) ->
   return out
 }
 
-private extension View {
-  /// iOS 17+ themes the widget via containerBackground; older OSes just get a
-  /// solid tint (DESIGN §8 W3 — no fake glass).
-  @ViewBuilder func awContainerBackground() -> some View {
-    if #available(iOS 17.0, *) {
-      self.containerBackground(for: .widget) { Color(.systemBackground) }
-    } else {
-      self.background(Color(.systemBackground))
-    }
-  }
-}
+// MARK: - Widget (no @main — that's in AllisWellWidgetBundle.swift)
 
-// MARK: - Widget
-
-@main
 struct AllisWellWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kWidgetKind, provider: AWProvider()) { entry in
-      AllisWellWidgetEntryView(entry: entry)
+      if #available(iOS 17.0, *) {
+        AllisWellWidgetEntryView(entry: entry)
+          .containerBackground(for: .widget) { Color(.systemBackground) }
+      } else {
+        AllisWellWidgetEntryView(entry: entry)
+          .padding()
+          .background(Color(.systemBackground))
+      }
     }
     .configurationDisplayName("AllisWell")
     .description("Your tasks at a glance — overdue, today and beyond.")
