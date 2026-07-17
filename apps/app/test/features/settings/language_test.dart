@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/settings/account_locale.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/screens/settings_screen.dart';
 
@@ -40,14 +42,21 @@ void main() {
   group('language picker sheet', () {
     Future<void> openPicker(WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          supportedLocales: awSupportedLocales,
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => Center(
-                child: ElevatedButton(
-                  onPressed: () => showLanguagePicker(context),
-                  child: const Text('open'),
+        ProviderScope(
+          // The picker pushes the choice to the account (OPH-126); stub it so the
+          // test doesn't reach the auth/network stack.
+          overrides: [
+            accountLocaleSyncProvider.overrideWithValue((_) async {}),
+          ],
+          child: MaterialApp(
+            supportedLocales: awSupportedLocales,
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => Center(
+                  child: ElevatedButton(
+                    onPressed: () => showLanguagePicker(context),
+                    child: const Text('open'),
+                  ),
                 ),
               ),
             ),

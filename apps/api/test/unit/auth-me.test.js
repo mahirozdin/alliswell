@@ -110,6 +110,52 @@ describe('GET /api/v1/me (OPH-023)', () => {
   });
 });
 
+const patchMe = (app, token, payload) =>
+  app.inject({
+    method: 'PATCH',
+    url: '/api/v1/me',
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+    payload,
+  });
+
+describe('PATCH /api/v1/me (OPH-126) — account language', () => {
+  it('updates the locale and returns (and persists) the fresh profile', async () => {
+    const { app, accessToken } = await appWithSession();
+
+    const res = await patchMe(app, accessToken, { locale: 'en' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().user.locale).toBe('en');
+
+    // A follow-up GET sees the persisted value.
+    const after = await me(app, accessToken);
+    expect(after.json().user.locale).toBe('en');
+
+    await app.close();
+  });
+
+  it('accepts a region variant (tr-TR)', async () => {
+    const { app, accessToken } = await appWithSession();
+    const res = await patchMe(app, accessToken, { locale: 'tr-TR' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().user.locale).toBe('tr-TR');
+    await app.close();
+  });
+
+  it('rejects a malformed locale with 400', async () => {
+    const { app, accessToken } = await appWithSession();
+    const res = await patchMe(app, accessToken, { locale: 'english!' });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('rejects an unauthenticated request with 401', async () => {
+    const { app } = await appWithSession();
+    const res = await patchMe(app, null, { locale: 'en' });
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+});
+
 describe('app.requireWorkspaceMember (OPH-023)', () => {
   it('allows members, enforces roles, and rejects outsiders with 403', async () => {
     const { app, tables, registered } = await appWithSession();

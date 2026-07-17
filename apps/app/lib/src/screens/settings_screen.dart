@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/onboarding/tour.dart';
+import '../features/settings/account_locale.dart';
 import '../i18n/i18n.dart';
 import '../notifications/providers.dart';
 import '../theme/tokens.dart';
@@ -143,12 +146,15 @@ Future<void> showLanguagePicker(BuildContext context) {
   );
 }
 
-class _LanguagePickerSheet extends StatelessWidget {
+class _LanguagePickerSheet extends ConsumerWidget {
   const _LanguagePickerSheet();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final i18n = AwI18n.instance;
+    // OPH-126: also push the choice to the account (best-effort) so it can
+    // follow the user to another device.
+    final syncToAccount = ref.read(accountLocaleSyncProvider);
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -174,6 +180,7 @@ class _LanguagePickerSheet extends StatelessWidget {
             selected: i18n.followsDevice,
             onTap: () async {
               await i18n.useSystemLocale();
+              unawaited(syncToAccount(i18n.locale.languageCode));
               if (context.mounted) Navigator.of(context).pop();
             },
           ),
@@ -188,6 +195,7 @@ class _LanguagePickerSheet extends StatelessWidget {
                   i18n.locale.languageCode == locale.languageCode,
               onTap: () async {
                 await i18n.setLocale(locale);
+                unawaited(syncToAccount(locale.languageCode));
                 if (context.mounted) Navigator.of(context).pop();
               },
             ),
