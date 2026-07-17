@@ -2046,28 +2046,31 @@ configures-once/saves-JSON/updates, and re-updates on a second publish. **Suite
 
 ### OPH-131 — iOS Widget Extension: target, App Group, rendering, deep-link floor
 
-- [ ] Add an `AllisWellWidget` **Widget Extension** target to `ios/Runner.xcodeproj` (**commit the
-      `project.pbxproj` diff** — deliberate deviation, ADR-0010). Add **App Groups** capability
-      `group.com.alliswell.alliswell` to **both** Runner and the extension (`Runner.entitlements` +
-      `AllisWellWidgetExtension.entitlements`).
-- [ ] SwiftUI views reading the shared `UserDefaults(suiteName:)` snapshot; `supportedFamilies:
-      [.systemMedium, .systemLarge, .systemExtraLarge]`; **date header** (weekday name + big day
-      number) on large/extraLarge; bucketed list at the DESIGN §8 density (W6/W7); solid tinted
-      "aurora" card + `.containerBackground` (W3).
-- [ ] `TimelineProvider` with a **midnight-rollover** reload policy (`.after` next midnight);
-      `WidgetCenter.shared.reloadTimelines(ofKind:)` from `updateWidget`.
-- [ ] **Deep-link floor:** tap → `alliswell://task/{id}` (ADR-0003) / `alliswell://add`; add the
-      `add` route to the router's `onOpenURL`/deep-link handling.
-- [ ] Podfile links `home_widget` into the extension; verify a real `flutter build ios`.
+- [x] **Swift written** (`ios/AllisWellWidget/AllisWellWidget.swift`): `AWSnapshot` Codable model
+      mirroring the OPH-130 JSON, `AWProvider` `TimelineProvider` reading the App-Group
+      `UserDefaults(suiteName:)` with a **midnight-rollover** `.after` policy, SwiftUI views —
+      date header (weekday + big day number) on large/xl, bucketed rows with a circular checkbox,
+      priority dot, time and project color, per-size row budget — `supportedFamilies:
+      [.systemMedium, .systemLarge, .systemExtraLarge]`, `.containerBackground` behind
+      `if #available(iOS 17)`, `.widgetURL(alliswell://open)`.
+- [x] Extension `Info.plist` + `AllisWellWidget.entitlements` (App Group) written.
+- [ ] **USER (Xcode, once):** create the Widget Extension target, add these files, add the App
+      Groups capability to Runner + extension, set min iOS 16, build. Step-by-step:
+      [ios/AllisWellWidget/SETUP.md](../apps/app/ios/AllisWellWidget/SETUP.md).
+- [ ] Verify a real `flutter build ios` + device: the widget renders in each size, updates on edit.
 
 **Context:** ADR-0010 D6 size mapping; iPhone ceiling = `systemLarge`. `analyze` won't compile
-Swift — this is build+device verified.
+Swift — creating the Xcode target + the device pass is a GUI/hardware step that can't run here, so
+the Swift is written as a ready-to-integrate package (NOT yet in `project.pbxproj`, so the app
+still builds) and handed off via SETUP.md. The `alliswell://` deep-link ROUTING (so a tap lands on
+the right screen) is deferred to OPH-132/135 — for now the tap opens the app.
 
 **Tests:** data path covered by OPH-130's Dart tests; native verified by `flutter build ios` +
 device: light+dark, medium/large on iPhone, extraLarge on iPad.
 
 **DoD:** `flutter build ios` green; device screenshots (both themes, all sizes); STATE device note;
-WIDGETS.md/ DESIGN §8 truthful.
+WIDGETS.md/ DESIGN §8 truthful. **Status: Swift + setup handed off; awaiting the Xcode target +
+device pass.**
 
 ### OPH-132 — iOS interactivity: quick-complete + quick-add (App Intents)
 

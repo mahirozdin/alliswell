@@ -16,11 +16,24 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | **Phase 7 planlandı (v0.2.0)** — feedback round 5: i18n + widgets docs'a işlendi. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
 | Current epic | **Epic 12 — Widgets** DEVAM EDİYOR (OPH-130 ✅ Dart çekirdeği). Sıradaki OPH-131…136 **native** (Swift/Kotlin) — Xcode/Android Studio target + gerçek cihaz build'i gerektirir; bu ortamda tam doğrulanamaz. |
-| ➡️ **Next task** | **OPH-131 — iOS Widget Extension** (target + App Group + snapshot render + deep-link). **NATIVE** — `ios/Runner.xcodeproj`'a widget extension target eklenmeli (pbxproj + entitlements commit), `flutter build ios` + cihaz turuyla doğrulanır. Binding: [WIDGETS.md](WIDGETS.md) §7 + ADR-0010. Snapshot çekirdeği (OPH-130) hazır. |
+| ➡️ **Next task** | **OPH-131 device pass** — Swift + Info.plist + entitlements YAZILDI (`ios/AllisWellWidget/`, build'i etkilemiyor). **Kullanıcı adımı:** Xcode'da Widget Extension target'ı oluştur + App Group + dosyaları ekle → [SETUP.md](../apps/app/ios/AllisWellWidget/SETUP.md), sonra `flutter build ios` + cihaz. Ardından **OPH-132** (App Intents etkileşim). |
 | ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası (Epic 12 macOS widget + EventKit için), Apple/Android cihaz turu. Widget epiği için: gerçek iOS/Android cihaz/simülatör (native build doğrulaması). |
 | Last completed | **OPH-130 — Widget snapshot çekirdeği** (Epic 12): `home_widget` seam'i — saf `groupTasksForWidget` (overdue/noDate/today/thisWeek/thisMonth, 30-gün ufuk), `WidgetSnapshot` JSON serializer (lokalize etiket + `intl` tarih başlığı), `WidgetBridge`/`widgetSyncProvider` (task/proje değişince push, iOS/Android/macOS dışı no-op). Tek tam-test-edilebilir widget task'ı. App 270/270. (Epic 11 i18n bundan önce KAPANDI: OPH-120…128, tüm UI EN+TR.) |
 
 ## Recently completed
+
+- **OPH-131 — iOS widget Swift yazıldı, Xcode/cihaza teslim edildi (2026-07-17):**
+  - **Ne yazıldı:** `ios/AllisWellWidget/` — `AllisWellWidget.swift` (OPH-130 JSON'unu birebir
+    aynalayan `AWSnapshot` Codable; App-Group `UserDefaults`'tan okuyan `AWProvider`
+    TimelineProvider + gece-yarısı `.after` politikası; SwiftUI görünümler: tarih başlığı,
+    dairesel checkbox + öncelik noktası + saat + proje rengi olan bucket satırları; boyut başına
+    satır bütçesi; `supportedFamilies` medium/large/extraLarge; iOS 17 `containerBackground`
+    guard'lı; `.widgetURL(alliswell://open)`), extension `Info.plist` + App-Group `.entitlements`,
+    ve **`SETUP.md`** (Xcode adımları).
+  - **Neden "bitti" değil:** Widget Extension target'ı yaratmak GUI/pbxproj işi + cihaz build'i
+    ister (`analyze`/`test` Swift derlemez). Dosyalar target'ta OLMADIĞI için **app hâlâ derleniyor**
+    (270/270); kullanıcı SETUP.md ile target'ı kurup cihazda doğrulayınca kapanır.
+  - **Ertelendi:** `alliswell://` deep-link ROUTING (tap doğru ekrana insin) → OPH-132/135.
 
 - **OPH-130 — Widget snapshot core (2026-07-17, Epic 12 başladı):**
   - **Ne:** ana ekran widget'ının Dart tarafı — `lib/src/features/widgets/`. Saf
