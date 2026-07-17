@@ -3,6 +3,12 @@
     "title": "AllisWell",
     "tagline": "Tasks, projects, notes, calendar and reminders — self-hosted."
   },
+  "settings": {
+    "language": {
+      "title": "Language",
+      "system": "System default"
+    }
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

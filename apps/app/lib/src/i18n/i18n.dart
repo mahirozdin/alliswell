@@ -29,6 +29,11 @@ const List<Locale> awSupportedLocales = [Locale('en'), Locale('tr')];
 /// English is the base/fallback locale.
 const Locale awFallbackLocale = Locale('en');
 
+/// Each language shown in ITS OWN language (endonym), so someone who lands in a
+/// language they can't read still recognizes their own in the Settings picker.
+/// NOT translated — keep the value the same in every locale file.
+const Map<String, String> awLanguageEndonyms = {'en': 'English', 'tr': 'Türkçe'};
+
 /// Where the JSON locale files live (also declared as an asset dir in pubspec).
 const String kAwI18nPath = 'assets/i18n';
 

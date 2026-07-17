@@ -15,10 +15,10 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | | |
 | --- | --- |
 | Current phase | **Phase 7 planlandı (v0.2.0)** — feedback round 5: i18n + widgets docs'a işlendi. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
-| Current epic | **Epic 11 — Localization (i18n)** DEVAM EDİYOR (OPH-120 ✅; sıradaki OPH-121); sonra **Epic 12 — Widgets** (OPH-130…136). i18n önce (widget snapshot'ı lokalize etiket yazsın). |
-| ➡️ **Next task** | **OPH-121 — Language picker in Settings + persistence** (TASKS.md). i18n motoru (OPH-120) hazır: `AwI18n.instance.setLocale/useSystemLocale`. Binding: BLUEPRINT §12.9 + ADR-0009. |
+| Current epic | **Epic 11 — Localization (i18n)** DEVAM EDİYOR (OPH-120, 121 ✅; sıradaki OPH-122); sonra **Epic 12 — Widgets** (OPH-130…136). i18n önce (widget snapshot'ı lokalize etiket yazsın). |
+| ➡️ **Next task** | **OPH-122 — Extract strings: auth, shell, settings, shared states** (TASKS.md). Dil altyapısı + Settings dil seçici hazır; artık hardcoded string'leri `.tr()`'e taşımaya başla. Binding: ADR-0009, DESIGN §9. |
 | ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası (Epic 12 macOS widget + EventKit için), Apple/Android cihaz turu. Widget epiği için: gerçek iOS/Android cihaz/simülatör (native build doğrulaması). |
-| Last completed | **OPH-120 — i18n foundation** (Epic 11): app'e ait senkron JSON i18n deposu (`AwI18n`), cihaz/tarayıcı algılama + en fallback + kalıcı ayar + runtime switch; easy_localization denendi ve fake-async test uyumsuzluğu yüzünden özel katmana çevrildi (ADR-0009 revize). Süit 247/247. |
+| Last completed | **OPH-121 — Settings dil seçici** (Epic 11): Settings → Language modal sheet (System default + endonym'ler, check'li), `AwI18n.setLocale/useSystemLocale`, localKv kalıcılık, boot geri yükler. Süit 252/252. (OPH-120: i18n motoru — senkron JSON deposu `AwI18n`, easy_localization fake-async uyumsuzluğu yüzünden özel katmana çevrildi, ADR-0009 revize.) |
 
 ## Recently completed
 
@@ -44,8 +44,11 @@ against real MySQL 8.4 and all unit+integration tests pass.
     en/tr çözümü, tr-eksik anahtar en'e fallback, bilinmeyen anahtar passthrough, `{name}` args, +2
     widget testi (`.tr()` render + dil değişimi rebuild) — hepsi plain `pumpAndSettle`. **Süit
     247/247** (236 dokunulmadı + 11), `flutter analyze` temiz.
-  - **Kalan Epic 11:** OPH-121 (dil seçici — motor hazır), sonra string çıkarma (122-124),
-    hata-kodu lokalizasyonu (125), `PATCH /me` (126), CI bekçisi (127), web lang + docs (128).
+  - **OPH-121 (dil seçici) de bitti:** Settings → Language modal sheet (System default +
+    endonym'ler, check), `setLocale`/`useSystemLocale`, localKv kalıcılık, `boot()` geri yükler;
+    `settings.language.*` en+tr'ye eklendi; 5 test (unit + sheet widget). Süit 252/252.
+  - **Kalan Epic 11:** string çıkarma (122-124), hata-kodu lokalizasyonu (125), `PATCH /me` (126),
+    CI bekçisi (127), web lang + docs (128).
 
 - **Feedback round 5 → Epic 11 (i18n) + Epic 12 (widgets) doğdu (2026-07-17, SADECE docs):**
   - **Kaynak:** Mahir iki özellik istedi — (1) iOS/Android/macOS **ana ekran widget'ları**

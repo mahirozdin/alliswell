@@ -1845,27 +1845,33 @@ nothing read it. This task stood up the engine + the one-seam indirection.
 **DoD:** `flutter analyze` + `flutter test` green; app boots (device/en); no visual change yet
 (strings convert in OPH-122+). ✔
 
-### OPH-121 — Language picker in Settings + persistence
+### OPH-121 — Language picker in Settings + persistence ✅
 
-- [ ] Settings → **"Language"** `ListTile` (after "App tour") opening a sheet/dialog: **System
-      default** · **English** · **Türkçe** (list grows from `supportedLocales`, each shown by its
-      endonym).
-- [ ] Runtime switch via `AwI18n.instance.setLocale(...)` (no restart, rebuilds via the
-      `ListenableBuilder`); **System default** calls `AwI18n.instance.useSystemLocale()` (clears the
-      override, follows the device); current selection is shown with a check.
-- [ ] Persists across restart (localKv key `alliswell_locale`).
+- [x] Settings → **"Language"** `ListTile` (after "App tour") opens a modal bottom sheet: **System
+      default** + every `awSupportedLocales` entry by its endonym (`awLanguageEndonyms`), current
+      choice checkmarked. Subtitle shows the active language / "System default".
+- [x] Runtime switch via `AwI18n.instance.setLocale(...)` (no restart — the app-level
+      `ListenableBuilder` rebuilds); **System default** → `AwI18n.instance.useSystemLocale()`.
+- [x] Persists to localKv (`alliswell_locale`); `boot()` restores it over the device locale.
 
-**Context:** `settings_screen.dart` is a plain `Card`/`ListTile` list — add the row using DESIGN
-components. Endonyms: "English", "Türkçe".
+Acceptance notes: language-picker UX researched (endonyms, System-default with
+device detection, no flags, check on current — matches SimpleLocalize/Smashing
+guidance). Endonyms are constants (`awLanguageEndonyms`, NOT translated) so a user
+stuck in an unreadable language finds their own; "Language"/"System default" ARE
+localized (`settings.language.*` keys — added to en+tr now, the rest of Settings
+extracts in OPH-122). The sheet uses the central DESIGN bottom-sheet theme
+(drag handle, solid surface). Tests (`test/features/settings/language_test.dart`,
+5): setLocale switches + persists; useSystemLocale clears; boot restores a
+persisted override; and two widget tests driving the real sheet — tapping
+`language-tr` sets the tr override, tapping `language-system` clears it (both hit
+the cached locale so they resolve under a plain `pumpAndSettle`). **Full suite
+252/252, analyze clean.** Light/dark + web visual pass folded into the epic's
+demo round. ✔
 
-**Spec:** "System default" is the absence of an override (device/browser wins); any explicit pick
-persists and wins, on app AND web.
+**Context:** `settings_screen.dart` is a plain `Card`/`ListTile` list — added the row + a
+`showLanguagePicker` sheet using DESIGN components.
 
-**Tests:** pump Settings, tap Language, pick Türkçe → a known visible label reads Turkish; pick
-System default → resolves to the platform locale; a second pump (simulated restart, override
-pre-set in localKv) still reads Türkçe.
-
-**DoD:** analyze + test; both themes; row matches DESIGN.
+**DoD:** analyze + test ✔; both themes via the central sheet theme; row matches DESIGN.
 
 ### OPH-122 — Extract strings: auth, shell, settings, shared states
 

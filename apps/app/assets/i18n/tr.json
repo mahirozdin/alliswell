@@ -3,6 +3,12 @@
     "title": "AllisWell",
     "tagline": "Görevler, projeler, notlar, takvim ve hatırlatıcılar — kendi sunucunda."
   },
+  "settings": {
+    "language": {
+      "title": "Dil",
+      "system": "Sistem varsayılanı"
+    }
+  },
   "common": {
     "save": "Kaydet",
     "cancel": "İptal",

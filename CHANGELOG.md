@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Language picker in Settings** (OPH-121): Settings → **Language** lets you
+  pick a language — **System default** (follow the device/browser) or any shipped
+  language shown in its own name (English, Türkçe). The choice applies instantly,
+  persists across restarts, and the current one is checkmarked.
 - **Localization foundation** (OPH-120, Epic 11): the app now has an
   internationalization layer — a small, app-owned synchronous store that reads
   JSON locale files (`assets/i18n/en.json` + `tr.json`), auto-detects the device
