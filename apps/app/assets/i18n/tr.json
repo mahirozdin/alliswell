@@ -23,7 +23,7 @@
   "nav": {
     "home": "Ana Sayfa",
     "homeDesc": "Her şey tek bakışta — geciken, bugün ve sonrası.",
-    "inbox": "Gelen Kutusu",
+    "inbox": "Fikirler",
     "inboxDesc": "Fikirleri hızlıca yakala — planlanana dek Ana Sayfa'ya düşmezler.",
     "calendar": "Takvim",
     "calendarDesc": "Ayın, gün gün.",
@@ -76,7 +76,7 @@
   },
   "home": {
     "allCaughtUp": "Her şey tamam",
-    "allCaughtUpBody": "Açık görev yok — Gelen Kutusu'ndan bir tane yakala.",
+    "allCaughtUpBody": "Açık görev yok — Fikirler'den bir tane yakala.",
     "quickAddHint": "Hızlıca görev ekle…",
     "quickAddForDay": "{date} için hızlı ekle…",
     "hideCalendar": "Takvimi gizle",
@@ -93,7 +93,7 @@
   },
   "task": {
     "status": {
-      "inbox": "Gelen Kutusu",
+      "inbox": "Fikir",
       "open": "Açık",
       "scheduled": "Planlanmış",
       "in_progress": "Devam ediyor",
@@ -155,7 +155,7 @@
   },
   "inbox": {
     "captureHint": "Bir düşünce yakala…",
-    "captureTitle": "Gelen Kutusu yakalamak içindir",
+    "captureTitle": "Fikirler yakalamak içindir",
     "captureBody": "Yukarıya yaz, sonra ayıkla — yakalamalar planlanana dek Ana Sayfa'da görünmez.",
     "convertTitle": "Nota mı çevrilsin?",
     "convertBody": "Bu yakalama yeni bir not olarak Notlar'a taşınır.",
@@ -296,7 +296,7 @@
     "welcomeBody": "Temellerin 30 saniyelik turu. İstediğin an atlayabilirsin.",
     "homeTitle": "Ana Sayfa",
     "homeBody": "Günün tek kronolojik listede — geciken, tarihsiz işler, bugün ve sonraki 30 gün. Üstte hızlı ekleme; + düğmesi tam formu açar.",
-    "inboxTitle": "Gelen Kutusu",
+    "inboxTitle": "Fikirler",
     "inboxBody": "Bir düşünceyi hızlıca yakala. Planlayana dek burada kalır — Ana Sayfa'nın dışında — böylece hiçbir şey kaybolmaz ve günün dağılmaz.",
     "calendarTitle": "Takvim",
     "calendarBody": "Ayın tek bakışta. Ayarlar'dan bir takvim bağla, kendi etkinliklerin görevlerinin yanında görünsün.",

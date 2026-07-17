@@ -20,7 +20,9 @@ import 'task_grouping.dart';
 /// task list (overdue → today → tomorrow → this week → later → no date) with
 /// an Apple-style month calendar — right panel on wide layouts, collapsible
 /// top half on phones (visibility persisted). Picking a day pulls its tasks
-/// to a highlighted first group and dims the rest.
+/// to a highlighted first group and dims the future groups (Overdue/Today/
+/// No-date stay lit); hiding the calendar drops the selection so an invisible
+/// filter can never keep dimming the list (feedback round 6).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -156,9 +158,21 @@ class HomeScreen extends ConsumerWidget {
                               padding: const EdgeInsets.only(right: AwSpace.x2),
                               child: TextButton.icon(
                                 key: const Key('toggle-calendar'),
-                                onPressed: () => ref
-                                    .read(homeCalendarVisibleProvider.notifier)
-                                    .toggle(),
+                                onPressed: () {
+                                  // Hiding the calendar clears the selection:
+                                  // a filter you can no longer see must not
+                                  // keep dimming Home (feedback round 6).
+                                  if (calendarVisible) {
+                                    ref
+                                        .read(selectedDayProvider.notifier)
+                                        .select(null);
+                                  }
+                                  ref
+                                      .read(
+                                        homeCalendarVisibleProvider.notifier,
+                                      )
+                                      .toggle();
+                                },
                                 icon: Icon(
                                   calendarVisible
                                       ? Icons.expand_less

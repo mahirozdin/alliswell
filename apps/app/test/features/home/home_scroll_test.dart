@@ -4,11 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/home/month_calendar.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -96,5 +98,30 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(api.tasks.any((t) => t['title'] == 'Yeni iş'), isTrue);
+  });
+
+  testWidgets('hiding the calendar clears the day selection', (tester) async {
+    _phone(tester);
+    // localKv is a global singleton cache — the previous test's "Hide
+    // calendar" tap persists across tests unless cleared here.
+    await localKv.remove('alliswell_home_calendar_visible');
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInApp(api));
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AllisWellApp)),
+    );
+    final today = DateTime.now();
+    final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
+    await tester.tap(find.text('$targetDay'));
+    await tester.pumpAndSettle();
+    expect(container.read(selectedDayProvider), isNotNull);
+
+    // Hiding the calendar drops the selection — a filter you can no longer
+    // see must not keep dimming Home (feedback round 6).
+    await tester.tap(find.byKey(const Key('toggle-calendar')));
+    await tester.pumpAndSettle();
+    expect(container.read(selectedDayProvider), isNull);
   });
 }

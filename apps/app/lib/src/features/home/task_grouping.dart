@@ -75,8 +75,9 @@ DateTime dayOf(DateTime value) {
 }
 
 /// Groups Home's rows. `selectedDay` (a local calendar day) pulls that day into
-/// a highlighted first group; everything else keeps its chronological order but
-/// renders dimmed — EXCEPT the No-date group (see below).
+/// a highlighted first group; FUTURE groups (tomorrow and beyond) render dimmed
+/// while Overdue, Today and No-date stay at full opacity — what demands
+/// attention right now must never look disabled (feedback round 6).
 ///
 /// Order (OPH-102): Selected day? → Overdue → **No date** → Today → Tomorrow →
 /// This week → Next 30 days. Two rules make it honest to the user:
@@ -183,12 +184,15 @@ List<HomeGroup> groupTasksForHome(
         HomeGroup(
           bucket: bucket,
           items: byBucket[bucket]!..sort(chronologically),
-          // Dateless work belongs to every day, so it stays lit even when a
-          // day is selected; only truly other-day groups dim.
+          // Work you must face NOW never fades (feedback round 6): dateless
+          // belongs to every day, and Overdue/Today are current debts — a
+          // selected day only dims the genuinely future groups.
           dimmed:
               selectedDay != null &&
               bucket != HomeBucket.selectedDay &&
-              bucket != HomeBucket.noDate,
+              bucket != HomeBucket.noDate &&
+              bucket != HomeBucket.overdue &&
+              bucket != HomeBucket.today,
         ),
   ];
 }

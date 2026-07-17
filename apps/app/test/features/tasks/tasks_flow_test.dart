@@ -115,7 +115,7 @@ void main() {
     expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
   });
 
-  testWidgets('selecting a calendar day highlights it and dims the rest', (
+  testWidgets('selecting a calendar day dims future groups but never Today', (
     tester,
   ) async {
     await wideSurface(tester);
@@ -127,6 +127,10 @@ void main() {
       ..seedTask(
         title: 'Bugünkü iş',
         dueAt: isoAt(today.add(const Duration(hours: 18))),
+      )
+      ..seedTask(
+        title: 'Yarınki iş',
+        dueAt: isoAt(today.add(const Duration(days: 1, hours: 9))),
       );
 
     await tester.pumpWidget(await signedInAppWith(api));
@@ -137,8 +141,8 @@ void main() {
 
     expect(find.textContaining('Selected day ·'), findsOneWidget);
     expect(find.text('Seçilen gün işi'), findsOneWidget);
-    // The other group is still there, just dimmed — scroll its row into view
-    // (the lazy list only materializes visible rows).
+    // Today is a current debt, not a future plan — it must never look
+    // disabled while some other day is selected (feedback round 6).
     await tester.dragUntilVisible(
       find.text('Bugünkü iş'),
       find.byType(ListView),
@@ -147,10 +151,34 @@ void main() {
     expect(find.textContaining('Today ·'), findsOneWidget);
     expect(
       tester
-          .widgetList<Opacity>(find.byType(Opacity))
+          .widgetList<Opacity>(
+            find.ancestor(
+              of: find.text('Bugünkü iş'),
+              matching: find.byType(Opacity),
+            ),
+          )
+          .every((o) => o.opacity >= 0.99),
+      isTrue,
+      reason: "today's work never dims",
+    );
+    // Future groups are still there, just dimmed — scroll a row into view
+    // (the lazy list only materializes visible rows).
+    await tester.dragUntilVisible(
+      find.text('Yarınki iş'),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
+    expect(
+      tester
+          .widgetList<Opacity>(
+            find.ancestor(
+              of: find.text('Yarınki iş'),
+              matching: find.byType(Opacity),
+            ),
+          )
           .any((o) => o.opacity < 0.5),
       isTrue,
-      reason: 'non-selected tasks render dimmed',
+      reason: 'future-day tasks render dimmed while a day is selected',
     );
 
     // Tapping the same day again clears the selection.

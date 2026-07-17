@@ -205,3 +205,8 @@ _(Added 2026-07-17, feedback round 5 — [ADR-0009](adr/0009-localization-i18n-a
 - **L4 — RTL is v1-out-of-scope but not precluded.** en + tr are LTR; don't bake
   in `EdgeInsets.only(left:)` where `.start`/`.end` (directional) is meant, so an
   RTL locale can drop in later without a layout rewrite.
+- **L5 — Bottom-bar labels stay short (~≤10 chars, ideally one word).** The phone
+  `NavigationBar` bolds the selected label (w700); a long label wraps to two lines
+  and breaks the bar (feedback round 6: TR "Gelen Kutusu" wrapped when selected →
+  renamed "Fikirler"). Every locale must pick tab labels that fit one line at
+  `labelMedium` w700 on a five-tab 390 px bar.

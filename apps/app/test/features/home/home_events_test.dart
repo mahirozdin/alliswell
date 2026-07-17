@@ -177,31 +177,37 @@ void main() {
     );
   });
 
-  test('dateless work sits under Overdue, above Today, and never dims', () {
+  test('Overdue, No-date and Today stay lit while a day is selected', () {
     final groups = groupTasksForHome(
       [
         _task('gecikmiş', dueAt: DateTime(2026, 7, 10)), // overdue
         _task('tarihsiz'), // no date
         _task('bugünkü', dueAt: DateTime(2026, 7, 14, 18)), // today
+        _task('yarınki', dueAt: DateTime(2026, 7, 15, 9)), // tomorrow
       ],
       now: now,
       selectedDay: DateTime(2026, 7, 25), // a day with nothing on it
     );
 
-    // Order: Overdue → No date → Today (the empty Selected-day group drops out).
+    // Order: Overdue → No date → Today → Tomorrow (the empty Selected-day
+    // group drops out).
     expect(groups.map((g) => g.bucket), [
       HomeBucket.overdue,
       HomeBucket.noDate,
       HomeBucket.today,
+      HomeBucket.tomorrow,
     ]);
-    // Dateless is "every day's work" → lit even while a day is selected, while
-    // the other real-day groups dim.
+    // What demands attention NOW never fades; only the future groups dim
+    // (feedback round 6).
+    for (final lit in [
+      HomeBucket.overdue,
+      HomeBucket.noDate,
+      HomeBucket.today,
+    ]) {
+      expect(groups.singleWhere((g) => g.bucket == lit).dimmed, isFalse);
+    }
     expect(
-      groups.singleWhere((g) => g.bucket == HomeBucket.noDate).dimmed,
-      isFalse,
-    );
-    expect(
-      groups.singleWhere((g) => g.bucket == HomeBucket.today).dimmed,
+      groups.singleWhere((g) => g.bucket == HomeBucket.tomorrow).dimmed,
       isTrue,
     );
   });

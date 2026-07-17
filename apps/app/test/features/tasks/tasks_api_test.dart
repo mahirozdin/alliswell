@@ -132,12 +132,13 @@ void main() {
     );
   });
 
-  test('a selected day pulls its group first and dims the rest', () {
+  test('a selected day pulls its group first and dims only future groups', () {
     final now = DateTime(2026, 7, 14, 15, 30);
     final groups = groupTasksForHome(
       [
         _task('selected', dueAt: DateTime(2026, 7, 20, 9)),
         _task('today', dueAt: DateTime(2026, 7, 14, 18)),
+        _task('tomorrow', dueAt: DateTime(2026, 7, 15, 9)),
         _task('undated'),
       ],
       now: now,
@@ -147,11 +148,15 @@ void main() {
     expect(groups.first.bucket, HomeBucket.selectedDay);
     expect(groups.first.dimmed, isFalse);
     expect((groups.first.items.single as TaskItem).task.id, 'selected');
-    // The other real-day group dims; the dateless group never does — it's
-    // every day's work (OPH-102).
+    // Only genuinely future groups dim; Today and the dateless group stay
+    // lit — current work must never look disabled (feedback round 6).
+    expect(
+      groups.singleWhere((g) => g.bucket == HomeBucket.tomorrow).dimmed,
+      isTrue,
+    );
     expect(
       groups.singleWhere((g) => g.bucket == HomeBucket.today).dimmed,
-      isTrue,
+      isFalse,
     );
     expect(
       groups.singleWhere((g) => g.bucket == HomeBucket.noDate).dimmed,
