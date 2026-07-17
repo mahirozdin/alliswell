@@ -59,7 +59,10 @@ void main() {
       // on the raw color, so the fill must move.
       final violet = ProjectBadge.legibleColors(const Color(0xFF8B5CF6));
       expect(violet.fill, isNot(const Color(0xFF8B5CF6)));
-      expect(awContrastRatio(violet.ink, violet.fill), greaterThanOrEqualTo(4.5));
+      expect(
+        awContrastRatio(violet.ink, violet.fill),
+        greaterThanOrEqualTo(4.5),
+      );
     });
   });
 
@@ -70,7 +73,10 @@ void main() {
       const MaterialApp(
         home: Scaffold(
           body: Center(
-            child: ProjectBadge(name: 'Deneme Projesi', color: Color(0xFF2563EB)),
+            child: ProjectBadge(
+              name: 'Deneme Projesi',
+              color: Color(0xFF2563EB),
+            ),
           ),
         ),
       ),

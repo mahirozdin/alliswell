@@ -38,45 +38,45 @@ class TourOverlay extends StatelessWidget {
         explicitChildNodes: true,
         label: 'App tour, step ${state.step + 1} of ${kTourSteps.length}',
         child: AnimatedSwitcher(
-        duration: AwMotion.fast,
-        child: KeyedSubtree(
-          key: ValueKey(state.step),
-          child: Stack(
-            children: [
-              // Dimming scrim with the spotlight hole. Absorbs taps so the app
-              // underneath can't be poked mid-tour (advance via the buttons).
-              Positioned.fill(
-                child: GestureDetector(
-                  onTap: () {},
-                  child: CustomPaint(painter: _SpotlightPainter(anchorRect)),
+          duration: AwMotion.fast,
+          child: KeyedSubtree(
+            key: ValueKey(state.step),
+            child: Stack(
+              children: [
+                // Dimming scrim with the spotlight hole. Absorbs taps so the app
+                // underneath can't be poked mid-tour (advance via the buttons).
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: () {},
+                    child: CustomPaint(painter: _SpotlightPainter(anchorRect)),
+                  ),
                 ),
-              ),
-              if (anchorRect != null)
-                Positioned.fromRect(
-                  rect: anchorRect!.inflate(10),
-                  child: IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(14),
+                if (anchorRect != null)
+                  Positioned.fromRect(
+                    rect: anchorRect!.inflate(10),
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(14),
+                          ),
+                          border: Border.all(color: scheme.primary, width: 2),
                         ),
-                        border: Border.all(color: scheme.primary, width: 2),
                       ),
                     ),
                   ),
+                Positioned(
+                  top: media.padding.top + 4,
+                  right: 4,
+                  child: TextButton(
+                    key: const Key('tour-skip'),
+                    onPressed: onSkip,
+                    style: TextButton.styleFrom(foregroundColor: Colors.white),
+                    child: const Text('Skip'),
+                  ),
                 ),
-              Positioned(
-                top: media.padding.top + 4,
-                right: 4,
-                child: TextButton(
-                  key: const Key('tour-skip'),
-                  onPressed: onSkip,
-                  style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  child: const Text('Skip'),
-                ),
-              ),
-              _bubble(context),
-            ],
+                _bubble(context),
+              ],
             ),
           ),
         ),

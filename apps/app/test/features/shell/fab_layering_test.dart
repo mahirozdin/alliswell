@@ -34,66 +34,67 @@ void main() {
   // OPH-101: on phones the shell's glass NavigationBar (extendBody: true) was
   // painted over each section's nested-Scaffold FAB, so the FAB could not be
   // tapped. The FAB must sit fully above the bar AND fire its action.
-  testWidgets('section FABs clear the glass bottom bar and stay tappable on phones', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844); // a phone → bottom bar
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+  testWidgets(
+    'section FABs clear the glass bottom bar and stay tappable on phones',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844); // a phone → bottom bar
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
-    final api = FakeApi();
-    await tester.pumpWidget(await signedInApp(api));
-    await tester.pumpAndSettle();
+      final api = FakeApi();
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
 
-    // Narrow layout confirmed: the bottom NavigationBar is what covers the FAB.
-    expect(find.byType(NavigationBar), findsOneWidget);
-    Rect fabRect() => tester.getRect(find.byType(FloatingActionButton));
-    Rect navRect() => tester.getRect(find.byType(NavigationBar));
+      // Narrow layout confirmed: the bottom NavigationBar is what covers the FAB.
+      expect(find.byType(NavigationBar), findsOneWidget);
+      Rect fabRect() => tester.getRect(find.byType(FloatingActionButton));
+      Rect navRect() => tester.getRect(find.byType(NavigationBar));
 
-    // The shell renders exactly one FAB (for the current section).
-    expect(find.byType(FloatingActionButton), findsOneWidget);
+      // The shell renders exactly one FAB (for the current section).
+      expect(find.byType(FloatingActionButton), findsOneWidget);
 
-    // Home: above the bar, and tapping opens the create sheet.
-    expect(
-      fabRect().overlaps(navRect()),
-      isFalse,
-      reason: 'Home FAB overlaps the glass bar',
-    );
-    await tester.tap(find.byType(FloatingActionButton));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('task-sheet-title')), findsOneWidget);
-    Navigator.of(
-      tester.element(find.byKey(const Key('task-sheet-title'))),
-    ).pop();
-    await tester.pumpAndSettle();
+      // Home: above the bar, and tapping opens the create sheet.
+      expect(
+        fabRect().overlaps(navRect()),
+        isFalse,
+        reason: 'Home FAB overlaps the glass bar',
+      );
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('task-sheet-title')), findsOneWidget);
+      Navigator.of(
+        tester.element(find.byKey(const Key('task-sheet-title'))),
+      ).pop();
+      await tester.pumpAndSettle();
 
-    // Projects: above the bar, tap opens the project sheet.
-    await tester.tap(find.text('Projects').last);
-    await tester.pumpAndSettle();
-    expect(
-      fabRect().overlaps(navRect()),
-      isFalse,
-      reason: 'Projects FAB overlaps the glass bar',
-    );
-    await tester.tap(find.byType(FloatingActionButton));
-    await tester.pumpAndSettle();
-    expect(find.text('Create project'), findsOneWidget);
-    Navigator.of(tester.element(find.text('Create project'))).pop();
-    await tester.pumpAndSettle();
+      // Projects: above the bar, tap opens the project sheet.
+      await tester.tap(find.text('Projects').last);
+      await tester.pumpAndSettle();
+      expect(
+        fabRect().overlaps(navRect()),
+        isFalse,
+        reason: 'Projects FAB overlaps the glass bar',
+      );
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.text('Create project'), findsOneWidget);
+      Navigator.of(tester.element(find.text('Create project'))).pop();
+      await tester.pumpAndSettle();
 
-    // Notes: above the bar, tap opens the note editor.
-    await tester.tap(find.text('Notes').last);
-    await tester.pumpAndSettle();
-    expect(
-      fabRect().overlaps(navRect()),
-      isFalse,
-      reason: 'Notes FAB overlaps the glass bar',
-    );
-    await tester.tap(find.byType(FloatingActionButton));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('note-title')), findsOneWidget);
-  });
+      // Notes: above the bar, tap opens the note editor.
+      await tester.tap(find.text('Notes').last);
+      await tester.pumpAndSettle();
+      expect(
+        fabRect().overlaps(navRect()),
+        isFalse,
+        reason: 'Notes FAB overlaps the glass bar',
+      );
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('note-title')), findsOneWidget);
+    },
+  );
 }

@@ -8,6 +8,7 @@ import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
 import '../features/tasks/providers.dart';
 import '../features/tasks/ui/task_create_sheet.dart';
+import '../i18n/i18n.dart';
 import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
@@ -69,22 +70,22 @@ class HomeShell extends ConsumerWidget {
   Widget? _sectionFab(BuildContext context, WidgetRef ref) {
     return switch (AppSection.values[navigationShell.currentIndex]) {
       AppSection.home => FloatingActionButton(
-        tooltip: 'New task with options',
+        tooltip: 'shell.fabNewTask'.tr(),
         onPressed: () => showTaskCreateSheet(
           context,
-          initialDue: ref.read(selectedDayProvider)?.add(
-            const Duration(hours: 9),
-          ),
+          initialDue: ref
+              .read(selectedDayProvider)
+              ?.add(const Duration(hours: 9)),
         ),
         child: const Icon(Icons.add),
       ),
       AppSection.projects => FloatingActionButton(
-        tooltip: 'New project',
+        tooltip: 'shell.fabNewProject'.tr(),
         onPressed: () => showProjectEditSheet(context),
         child: const Icon(Icons.add),
       ),
       AppSection.notes => FloatingActionButton(
-        tooltip: 'New note',
+        tooltip: 'shell.fabNewNote'.tr(),
         onPressed: () => context.go('/notes/new'),
         child: const Icon(Icons.add),
       ),
@@ -163,9 +164,7 @@ class HomeShell extends ConsumerWidget {
                               key: _navKeys[section]!.icon,
                               child: Tooltip(
                                 message: section.description,
-                                waitDuration: const Duration(
-                                  milliseconds: 600,
-                                ),
+                                waitDuration: const Duration(milliseconds: 600),
                                 child: Icon(section.icon),
                               ),
                             ),
@@ -242,7 +241,7 @@ AppBar buildSectionAppBar(BuildContext context, String title) {
     actions: [
       IconButton(
         icon: const Icon(Icons.settings_outlined),
-        tooltip: 'Settings',
+        tooltip: 'shell.settingsTooltip'.tr(),
         onPressed: () => context.push('/settings'),
       ),
       const SizedBox(width: 4),

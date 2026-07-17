@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart';
 import 'auth_messages.dart';
@@ -50,7 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Sign in to your space',
+      title: 'auth.signInTitle'.tr(),
       children: [
         Form(
           key: _formKey,
@@ -62,14 +63,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 autofillHints: const [AutofillHints.email],
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.alternate_email),
+                decoration: InputDecoration(
+                  labelText: 'auth.email'.tr(),
+                  prefixIcon: const Icon(Icons.alternate_email),
                 ),
                 validator: (v) {
                   final value = v?.trim() ?? '';
                   if (value.isEmpty || !value.contains('@')) {
-                    return 'Enter a valid email address';
+                    return 'auth.invalidEmail'.tr();
                   }
                   return null;
                 },
@@ -82,10 +83,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
-                  labelText: 'Password',
+                  labelText: 'auth.password'.tr(),
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    tooltip: _showPassword ? 'Hide password' : 'Show password',
+                    tooltip: _showPassword
+                        ? 'auth.hidePassword'.tr()
+                        : 'auth.showPassword'.tr(),
                     icon: Icon(
                       _showPassword
                           ? Icons.visibility_off_outlined
@@ -96,7 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
                 validator: (v) =>
-                    (v == null || v.isEmpty) ? 'Enter your password' : null,
+                    (v == null || v.isEmpty) ? 'auth.enterPassword'.tr() : null,
               ),
             ],
           ),
@@ -114,12 +117,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Sign in'),
+              : Text('auth.signIn'.tr()),
         ),
         const SizedBox(height: 8),
         TextButton(
           onPressed: _submitting ? null : () => context.go('/register'),
-          child: const Text('New here? Create an account'),
+          child: Text('auth.toRegister'.tr()),
         ),
       ],
     );

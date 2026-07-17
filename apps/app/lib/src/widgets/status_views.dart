@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
 
 /// Shared empty state: soft icon badge, title, guidance line, optional action.
@@ -99,7 +100,7 @@ class AwErrorState extends StatelessWidget {
             ),
             const SizedBox(height: AwSpace.x4),
             Text(
-              'Something went wrong',
+              'state.somethingWrong'.tr(),
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
@@ -119,7 +120,7 @@ class AwErrorState extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+                label: Text('common.retry'.tr()),
               ),
             ],
           ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../i18n/i18n.dart';
 import '../../screens/home_shell.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
@@ -28,7 +29,7 @@ class CalendarScreen extends ConsumerWidget {
         ref.watch(externalEventsProvider).value ?? const <ExternalEvent>[];
 
     return Scaffold(
-      appBar: buildSectionAppBar(context, 'Calendar'),
+      appBar: buildSectionAppBar(context, 'nav.calendar'.tr()),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

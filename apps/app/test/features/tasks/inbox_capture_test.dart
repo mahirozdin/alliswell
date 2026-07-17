@@ -23,9 +23,9 @@ void main() {
   Future<String> capture(String title) =>
       store.create(ws, {'title': title, 'status': 'inbox'});
 
-  Future<String> statusOf(String id) async =>
-      (await (db.select(db.tasks)..where((t) => t.id.equals(id))).getSingle())
-          .status;
+  Future<String> statusOf(String id) async => (await (db.select(
+    db.tasks,
+  )..where((t) => t.id.equals(id))).getSingle()).status;
 
   test('a capture stays off planning lists but shows in the Inbox', () async {
     await capture('Fikir');
@@ -78,17 +78,21 @@ void main() {
     expect(await statusOf(id), 'open');
   });
 
-  test('promotion rides ONE outbox mutation that carries the new status', () async {
-    final id = await capture('Tek mutation');
-    await store.update(id, {'projectId': 'P2'.padRight(26, '0')});
+  test(
+    'promotion rides ONE outbox mutation that carries the new status',
+    () async {
+      final id = await capture('Tek mutation');
+      await store.update(id, {'projectId': 'P2'.padRight(26, '0')});
 
-    final rows =
-        await (db.select(db.pendingMutations)
-              ..where((m) => m.entityId.equals(id))).get();
-    final updates = rows.where((r) => r.operation == 'update').toList();
-    expect(updates, hasLength(1), reason: 'one write → one mutation');
-    final patch = jsonDecode(updates.single.patchJson!) as Map<String, dynamic>;
-    expect(patch['status'], 'open');
-    expect(patch['projectId'], 'P2'.padRight(26, '0'));
-  });
+      final rows = await (db.select(
+        db.pendingMutations,
+      )..where((m) => m.entityId.equals(id))).get();
+      final updates = rows.where((r) => r.operation == 'update').toList();
+      expect(updates, hasLength(1), reason: 'one write → one mutation');
+      final patch =
+          jsonDecode(updates.single.patchJson!) as Map<String, dynamic>;
+      expect(patch['status'], 'open');
+      expect(patch['projectId'], 'P2'.padRight(26, '0'));
+    },
+  );
 }

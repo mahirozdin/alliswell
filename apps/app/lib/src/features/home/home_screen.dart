@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/persisted_prefs.dart';
+import '../../i18n/i18n.dart';
 import '../../screens/home_shell.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
@@ -51,7 +52,7 @@ class HomeScreen extends ConsumerWidget {
     // clears the glass bottom bar; this screen only supplies the list + quick
     // add + calendar.
     return Scaffold(
-      appBar: buildSectionAppBar(context, 'Home'),
+      appBar: buildSectionAppBar(context, 'nav.home'.tr()),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

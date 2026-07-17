@@ -48,15 +48,14 @@ class NoteStore {
   /// their project's Overview, so the ordinary notes lists hide them; only the
   /// 'READMEs' filter surfaces them.
   Stream<Set<String>> _readmeNoteIds(String workspaceId) =>
-      (_db.select(_db.projects)
-            ..where((p) => p.workspaceId.equals(workspaceId)))
-          .watch()
-          .map(
-            (rows) => {
-              for (final p in rows)
-                if (p.readmeNoteId != null) p.readmeNoteId!,
-            },
-          );
+      (_db.select(
+        _db.projects,
+      )..where((p) => p.workspaceId.equals(workspaceId))).watch().map(
+        (rows) => {
+          for (final p in rows)
+            if (p.readmeNoteId != null) p.readmeNoteId!,
+        },
+      );
 
   Stream<List<NoteRow>> watchList(String workspaceId, NotesQuery query) =>
       combineLatest2(
@@ -74,12 +73,7 @@ class NoteStore {
         },
       );
 
-  bool _matches(
-    NoteRecord r,
-    NotesQuery query,
-    String needle,
-    bool isReadme,
-  ) {
+  bool _matches(NoteRecord r, NotesQuery query, String needle, bool isReadme) {
     switch (query.filter) {
       case NotesFilter.readmes:
         if (!isReadme) return false;

@@ -64,22 +64,25 @@ void main() {
       expect(sections, AppSection.values.toSet());
     });
 
-    test('next advances; finishing on the last step persists the seen flag', () async {
-      SharedPreferences.setMockInitialValues({});
-      final c = ProviderContainer();
-      addTearDown(c.dispose);
-      final ctl = c.read(tourControllerProvider.notifier);
-      ctl.start();
-      expect(c.read(tourControllerProvider).running, isTrue);
-      for (var i = 0; i < kTourSteps.length - 1; i++) {
-        ctl.next();
-      }
-      expect(c.read(tourControllerProvider).isLast, isTrue);
-      ctl.next(); // Done
-      expect(c.read(tourControllerProvider).running, isFalse);
-      await Future<void>.delayed(Duration.zero);
-      expect(await localKv.get(kOnboardingSeenKey), 'true');
-    });
+    test(
+      'next advances; finishing on the last step persists the seen flag',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final c = ProviderContainer();
+        addTearDown(c.dispose);
+        final ctl = c.read(tourControllerProvider.notifier);
+        ctl.start();
+        expect(c.read(tourControllerProvider).running, isTrue);
+        for (var i = 0; i < kTourSteps.length - 1; i++) {
+          ctl.next();
+        }
+        expect(c.read(tourControllerProvider).isLast, isTrue);
+        ctl.next(); // Done
+        expect(c.read(tourControllerProvider).running, isFalse);
+        await Future<void>.delayed(Duration.zero);
+        expect(await localKv.get(kOnboardingSeenKey), 'true');
+      },
+    );
 
     test('skip ends the tour and persists the flag', () async {
       SharedPreferences.setMockInitialValues({});

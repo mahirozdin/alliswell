@@ -111,10 +111,12 @@ class ProjectsController extends StreamNotifier<List<Project>> {
       await updateProject(id, {'status': status});
       return;
     }
-    await ref.read(apiClientProvider).post(
-      '/api/v1/projects/$id/$endpoint',
-      data: {'includeTasks': includeTasks, 'includeNotes': includeNotes},
-    );
+    await ref
+        .read(apiClientProvider)
+        .post(
+          '/api/v1/projects/$id/$endpoint',
+          data: {'includeTasks': includeTasks, 'includeNotes': includeNotes},
+        );
     await ref.read(syncEngineProvider)?.syncNow();
   }
 }

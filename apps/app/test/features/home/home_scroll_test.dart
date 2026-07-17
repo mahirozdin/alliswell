@@ -58,7 +58,10 @@ void main() {
     expect(find.byType(MonthCalendar).hitTestable(), findsOneWidget);
 
     // Scroll the list up — the calendar leaves the viewport (not pinned).
-    await tester.drag(find.byKey(const Key('home-scroll')), const Offset(0, -500));
+    await tester.drag(
+      find.byKey(const Key('home-scroll')),
+      const Offset(0, -500),
+    );
     await tester.pumpAndSettle();
     expect(
       find.byType(MonthCalendar).hitTestable(),
@@ -67,7 +70,10 @@ void main() {
     );
 
     // Scroll back to the top — it comes back.
-    await tester.drag(find.byKey(const Key('home-scroll')), const Offset(0, 700));
+    await tester.drag(
+      find.byKey(const Key('home-scroll')),
+      const Offset(0, 700),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(MonthCalendar).hitTestable(), findsOneWidget);
   });

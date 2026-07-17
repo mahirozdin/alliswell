@@ -458,24 +458,25 @@ void main() {
     expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
   });
 
-  testWidgets('create sheet explains when there are no projects yet (OPH-106)', (
-    tester,
-  ) async {
-    await wideSurface(tester);
-    final api = FakeApi();
-    await tester.pumpWidget(await signedInAppWith(api));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'create sheet explains when there are no projects yet (OPH-106)',
+    (tester) async {
+      await wideSurface(tester);
+      final api = FakeApi();
+      await tester.pumpWidget(await signedInAppWith(api));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(FloatingActionButton));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
 
-    // The picker stays visible (not hidden) with a hint pointing to Projects.
-    expect(find.byKey(const Key('task-sheet-project')), findsOneWidget);
-    expect(
-      find.text('No projects yet — create one in the Projects tab'),
-      findsOneWidget,
-    );
-  });
+      // The picker stays visible (not hidden) with a hint pointing to Projects.
+      expect(find.byKey(const Key('task-sheet-project')), findsOneWidget);
+      expect(
+        find.text('No projects yet — create one in the Projects tab'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('an inbox capture stays off Home and has no checkbox (OPH-107)', (
     tester,

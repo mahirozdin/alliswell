@@ -36,9 +36,8 @@ class ProjectBadge extends StatelessWidget {
   /// lightness — away from the ink — until it passes. The shift is monotonic
   /// (lightening only ever favors dark ink), so it never oscillates.
   static ({Color fill, Color ink}) legibleColors(Color base) {
-    Color inkFor(Color c) => awContrastRatio(_ink, c) >= awContrastRatio(_paper, c)
-        ? _ink
-        : _paper;
+    Color inkFor(Color c) =>
+        awContrastRatio(_ink, c) >= awContrastRatio(_paper, c) ? _ink : _paper;
 
     var fill = base;
     var ink = inkFor(fill);

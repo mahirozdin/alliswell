@@ -18,7 +18,7 @@ class SettingsScreen extends ConsumerWidget {
     final session = ref.watch(authControllerProvider).value;
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text('settings.title'.tr())),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -36,13 +36,17 @@ class SettingsScreen extends ConsumerWidget {
                           color: scheme.onPrimaryContainer,
                         ),
                       ),
-                      title: Text(session?.user.displayName ?? 'Account'),
-                      subtitle: Text(session?.user.email ?? 'Not signed in'),
+                      title: Text(
+                        session?.user.displayName ?? 'settings.account'.tr(),
+                      ),
+                      subtitle: Text(
+                        session?.user.email ?? 'settings.notSignedIn'.tr(),
+                      ),
                     ),
                     const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
                     ListTile(
                       leading: const Icon(Icons.dns_outlined),
-                      title: const Text('Server'),
+                      title: Text('settings.server'.tr()),
                       subtitle: Text(ref.watch(apiBaseUrlProvider)),
                     ),
                     // OPH-064: lock-screen privacy — generic notification
@@ -50,10 +54,8 @@ class SettingsScreen extends ConsumerWidget {
                     SwitchListTile(
                       key: const Key('notification-privacy'),
                       secondary: const Icon(Icons.notifications_outlined),
-                      title: const Text('Private notifications'),
-                      subtitle: const Text(
-                        'Hide task titles in reminders and alarms',
-                      ),
+                      title: Text('settings.privateNotifications'.tr()),
+                      subtitle: Text('settings.privateNotificationsSub'.tr()),
                       value: ref.watch(notificationPrivacyProvider),
                       onChanged: (_) => ref
                           .read(notificationPrivacyProvider.notifier)
@@ -64,8 +66,8 @@ class SettingsScreen extends ConsumerWidget {
                     ListTile(
                       key: const Key('replay-tour'),
                       leading: const Icon(Icons.help_outline),
-                      title: const Text('App tour'),
-                      subtitle: const Text('Replay the feature walkthrough'),
+                      title: Text('settings.appTour'.tr()),
+                      subtitle: Text('settings.appTourSub'.tr()),
                       onTap: () {
                         ref.read(tourControllerProvider.notifier).start();
                         Navigator.of(context).pop();
@@ -90,16 +92,11 @@ class SettingsScreen extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => showLanguagePicker(context),
                     ),
-                    const AboutListTile(
-                      icon: Icon(Icons.info_outline),
+                    AboutListTile(
+                      icon: const Icon(Icons.info_outline),
                       applicationName: 'AllisWell',
                       applicationVersion: '0.1.0',
-                      aboutBoxChildren: [
-                        Text(
-                          'Open-source, self-hosted productivity hub — '
-                          'tasks, projects, notes, calendar and reminders.',
-                        ),
-                      ],
+                      aboutBoxChildren: [Text('settings.aboutBody'.tr())],
                     ),
                   ],
                 ),
@@ -116,7 +113,7 @@ class SettingsScreen extends ConsumerWidget {
                 child: ListTile(
                   leading: Icon(Icons.logout, color: scheme.error),
                   title: Text(
-                    'Sign out',
+                    'settings.signOut'.tr(),
                     style: TextStyle(
                       color: scheme.error,
                       fontWeight: FontWeight.w600,
@@ -218,9 +215,7 @@ class _LanguageOption extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return ListTile(
       title: Text(label),
-      trailing: selected
-          ? Icon(Icons.check, color: scheme.primary)
-          : null,
+      trailing: selected ? Icon(Icons.check, color: scheme.primary) : null,
       onTap: onTap,
     );
   }

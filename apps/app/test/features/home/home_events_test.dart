@@ -160,13 +160,10 @@ void main() {
   });
 
   test('the task list horizon is 30 days: +29d shows, +31d is dropped', () {
-    final groups = groupTasksForHome(
-      [
-        _task('yakın', dueAt: DateTime(2026, 8, 12, 9)), // +29d, in
-        _task('uzak', dueAt: DateTime(2026, 8, 14, 9)), // +31d, out
-      ],
-      now: now,
-    );
+    final groups = groupTasksForHome([
+      _task('yakın', dueAt: DateTime(2026, 8, 12, 9)), // +29d, in
+      _task('uzak', dueAt: DateTime(2026, 8, 14, 9)), // +31d, out
+    ], now: now);
 
     final ids = groups
         .expand((g) => g.items)

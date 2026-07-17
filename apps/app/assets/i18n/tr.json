@@ -3,12 +3,6 @@
     "title": "AllisWell",
     "tagline": "Görevler, projeler, notlar, takvim ve hatırlatıcılar — kendi sunucunda."
   },
-  "settings": {
-    "language": {
-      "title": "Dil",
-      "system": "Sistem varsayılanı"
-    }
-  },
   "common": {
     "save": "Kaydet",
     "cancel": "İptal",
@@ -25,5 +19,59 @@
     "yes": "Evet",
     "no": "Hayır",
     "greeting": "Merhaba, {name}"
+  },
+  "nav": {
+    "home": "Ana Sayfa",
+    "homeDesc": "Her şey tek bakışta — geciken, bugün ve sonrası.",
+    "inbox": "Gelen Kutusu",
+    "inboxDesc": "Fikirleri hızlıca yakala — planlanana dek Ana Sayfa'ya düşmezler.",
+    "calendar": "Takvim",
+    "calendarDesc": "Ayın, gün gün.",
+    "projects": "Projeler",
+    "projectsDesc": "Renkli projeler; görevler, notlar ve dokümanlar.",
+    "notes": "Notlar",
+    "notesDesc": "Görevlere ve projelere bağlanabilen zengin notlar."
+  },
+  "auth": {
+    "signInTitle": "Alanına giriş yap",
+    "registerTitle": "Hesabını oluştur",
+    "email": "E-posta",
+    "password": "Parola",
+    "name": "Ad (opsiyonel)",
+    "passwordHelper": "En az 8 karakter",
+    "invalidEmail": "Geçerli bir e-posta adresi gir",
+    "enterPassword": "Parolanı gir",
+    "passwordTooShort": "Parola en az 8 karakter olmalı",
+    "showPassword": "Parolayı göster",
+    "hidePassword": "Parolayı gizle",
+    "signIn": "Giriş yap",
+    "createAccount": "Hesap oluştur",
+    "toRegister": "Yeni misin? Hesap oluştur",
+    "toLogin": "Zaten hesabın var mı? Giriş yap"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "account": "Hesap",
+    "notSignedIn": "Giriş yapılmadı",
+    "server": "Sunucu",
+    "privateNotifications": "Gizli bildirimler",
+    "privateNotificationsSub": "Hatırlatıcı ve alarmlarda görev başlıklarını gizle",
+    "appTour": "Uygulama turu",
+    "appTourSub": "Özellik turunu tekrar oynat",
+    "signOut": "Çıkış yap",
+    "aboutBody": "Açık kaynak, kendi sunucunda barındırılan üretkenlik merkezi — görevler, projeler, notlar, takvim ve hatırlatıcılar.",
+    "language": {
+      "title": "Dil",
+      "system": "Sistem varsayılanı"
+    }
+  },
+  "shell": {
+    "fabNewTask": "Seçeneklerle yeni görev",
+    "fabNewProject": "Yeni proje",
+    "fabNewNote": "Yeni not",
+    "settingsTooltip": "Ayarlar"
+  },
+  "state": {
+    "somethingWrong": "Bir şeyler ters gitti"
   }
 }

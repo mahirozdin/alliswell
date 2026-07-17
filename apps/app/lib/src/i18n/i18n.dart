@@ -32,7 +32,10 @@ const Locale awFallbackLocale = Locale('en');
 /// Each language shown in ITS OWN language (endonym), so someone who lands in a
 /// language they can't read still recognizes their own in the Settings picker.
 /// NOT translated — keep the value the same in every locale file.
-const Map<String, String> awLanguageEndonyms = {'en': 'English', 'tr': 'Türkçe'};
+const Map<String, String> awLanguageEndonyms = {
+  'en': 'English',
+  'tr': 'Türkçe',
+};
 
 /// Where the JSON locale files live (also declared as an asset dir in pubspec).
 const String kAwI18nPath = 'assets/i18n';
@@ -160,7 +163,10 @@ class AwI18n extends ChangeNotifier {
   /// Loads locales into the cache without changing the active one. Used by the
   /// test bootstrap so `.tr()` resolves synchronously from the first frame.
   @visibleForTesting
-  Future<void> loadForTest(Locale active, {List<Locale> also = const []}) async {
+  Future<void> loadForTest(
+    Locale active, {
+    List<Locale> also = const [],
+  }) async {
     for (final l in {awFallbackLocale, active, ...also}) {
       await _read(l);
     }

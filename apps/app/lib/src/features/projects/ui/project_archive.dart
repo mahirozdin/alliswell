@@ -96,7 +96,9 @@ class _ArchiveDialogState extends ConsumerState<_ArchiveDialog> {
             key: const Key('archive-include-tasks'),
             contentPadding: EdgeInsets.zero,
             value: _tasks,
-            onChanged: _busy ? null : (v) => setState(() => _tasks = v ?? false),
+            onChanged: _busy
+                ? null
+                : (v) => setState(() => _tasks = v ?? false),
             title: Text(
               _archiving
                   ? 'Also archive its open tasks${openTasks == null ? '' : ' ($openTasks)'}'
@@ -107,7 +109,9 @@ class _ArchiveDialogState extends ConsumerState<_ArchiveDialog> {
             key: const Key('archive-include-notes'),
             contentPadding: EdgeInsets.zero,
             value: _notes,
-            onChanged: _busy ? null : (v) => setState(() => _notes = v ?? false),
+            onChanged: _busy
+                ? null
+                : (v) => setState(() => _notes = v ?? false),
             title: Text(
               _archiving
                   ? 'Also archive its notes${notes == null ? '' : ' ($notes)'}'

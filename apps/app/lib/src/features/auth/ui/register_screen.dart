@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart';
 import 'auth_messages.dart';
@@ -56,7 +57,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Create your account',
+      title: 'auth.registerTitle'.tr(),
       children: [
         Form(
           key: _formKey,
@@ -67,9 +68,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 controller: _displayName,
                 autofillHints: const [AutofillHints.name],
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Name (optional)',
-                  prefixIcon: Icon(Icons.person_outline),
+                decoration: InputDecoration(
+                  labelText: 'auth.name'.tr(),
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: 12),
@@ -78,14 +79,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 autofillHints: const [AutofillHints.email],
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.alternate_email),
+                decoration: InputDecoration(
+                  labelText: 'auth.email'.tr(),
+                  prefixIcon: const Icon(Icons.alternate_email),
                 ),
                 validator: (v) {
                   final value = v?.trim() ?? '';
                   if (value.isEmpty || !value.contains('@')) {
-                    return 'Enter a valid email address';
+                    return 'auth.invalidEmail'.tr();
                   }
                   return null;
                 },
@@ -98,11 +99,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
                 decoration: InputDecoration(
-                  labelText: 'Password',
-                  helperText: 'At least 8 characters',
+                  labelText: 'auth.password'.tr(),
+                  helperText: 'auth.passwordHelper'.tr(),
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    tooltip: _showPassword ? 'Hide password' : 'Show password',
+                    tooltip: _showPassword
+                        ? 'auth.hidePassword'.tr()
+                        : 'auth.showPassword'.tr(),
                     icon: Icon(
                       _showPassword
                           ? Icons.visibility_off_outlined
@@ -113,7 +116,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                 ),
                 validator: (v) => (v == null || v.length < 8)
-                    ? 'Password must be at least 8 characters'
+                    ? 'auth.passwordTooShort'.tr()
                     : null,
               ),
             ],
@@ -132,12 +135,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Create account'),
+              : Text('auth.createAccount'.tr()),
         ),
         const SizedBox(height: 8),
         TextButton(
           onPressed: _submitting ? null : () => context.go('/login'),
-          child: const Text('Already have an account? Sign in'),
+          child: Text('auth.toLogin'.tr()),
         ),
       ],
     );

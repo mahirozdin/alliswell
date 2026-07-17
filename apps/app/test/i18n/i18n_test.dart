@@ -70,15 +70,16 @@ void main() {
     });
   });
 
-  testWidgets('renders a translated key with a plain pumpAndSettle (no runAsync)', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: _SaveLabel())),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Save'), findsOneWidget);
-  });
+  testWidgets(
+    'renders a translated key with a plain pumpAndSettle (no runAsync)',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: _SaveLabel())),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Save'), findsOneWidget);
+    },
+  );
 
   testWidgets('a language switch rebuilds translated text', (tester) async {
     await tester.pumpWidget(

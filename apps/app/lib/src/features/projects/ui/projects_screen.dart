@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -22,7 +23,7 @@ class ProjectsScreen extends ConsumerWidget {
     final showArchived = ref.watch(projectsShowArchivedProvider);
     // FAB hoisted to HomeShell (OPH-101).
     return Scaffold(
-      appBar: buildSectionAppBar(context, 'Projects'),
+      appBar: buildSectionAppBar(context, 'nav.projects'.tr()),
       body: Column(
         children: [
           Padding(
@@ -99,7 +100,12 @@ class _ProjectTile extends ConsumerWidget {
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: ListTile(
-          contentPadding: const EdgeInsets.fromLTRB(AwSpace.x4, 0, AwSpace.x2, 0),
+          contentPadding: const EdgeInsets.fromLTRB(
+            AwSpace.x4,
+            0,
+            AwSpace.x2,
+            0,
+          ),
           leading: Container(
             width: 18,
             height: 18,

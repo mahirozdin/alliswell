@@ -3,12 +3,6 @@
     "title": "AllisWell",
     "tagline": "Tasks, projects, notes, calendar and reminders — self-hosted."
   },
-  "settings": {
-    "language": {
-      "title": "Language",
-      "system": "System default"
-    }
-  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -26,5 +20,59 @@
     "no": "No",
     "help": "Help",
     "greeting": "Hi, {name}"
+  },
+  "nav": {
+    "home": "Home",
+    "homeDesc": "Everything at a glance — overdue, today and beyond.",
+    "inbox": "Inbox",
+    "inboxDesc": "Capture thoughts fast — they stay out of Home until planned.",
+    "calendar": "Calendar",
+    "calendarDesc": "Your month, one day at a time.",
+    "projects": "Projects",
+    "projectsDesc": "Projects with colors, tasks, notes and documents.",
+    "notes": "Notes",
+    "notesDesc": "Rich notes, linkable to tasks and projects."
+  },
+  "auth": {
+    "signInTitle": "Sign in to your space",
+    "registerTitle": "Create your account",
+    "email": "Email",
+    "password": "Password",
+    "name": "Name (optional)",
+    "passwordHelper": "At least 8 characters",
+    "invalidEmail": "Enter a valid email address",
+    "enterPassword": "Enter your password",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "toRegister": "New here? Create an account",
+    "toLogin": "Already have an account? Sign in"
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "notSignedIn": "Not signed in",
+    "server": "Server",
+    "privateNotifications": "Private notifications",
+    "privateNotificationsSub": "Hide task titles in reminders and alarms",
+    "appTour": "App tour",
+    "appTourSub": "Replay the feature walkthrough",
+    "signOut": "Sign out",
+    "aboutBody": "Open-source, self-hosted productivity hub — tasks, projects, notes, calendar and reminders.",
+    "language": {
+      "title": "Language",
+      "system": "System default"
+    }
+  },
+  "shell": {
+    "fabNewTask": "New task with options",
+    "fabNewProject": "New project",
+    "fabNewNote": "New note",
+    "settingsTooltip": "Settings"
+  },
+  "state": {
+    "somethingWrong": "Something went wrong"
   }
 }

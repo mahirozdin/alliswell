@@ -42,10 +42,10 @@ void main() {
   });
 
   test('keeps an archived project as the current value, suffixed', () {
-    final items = projectDropdownItems(
-      [_p('P1', 'Alpha'), _p('P2', 'Eski', status: 'archived')],
-      currentValue: 'P2',
-    );
+    final items = projectDropdownItems([
+      _p('P1', 'Alpha'),
+      _p('P2', 'Eski', status: 'archived'),
+    ], currentValue: 'P2');
     expect(items.map((i) => i.value), [null, 'P1', 'P2']);
     final archived = items.firstWhere((i) => i.value == 'P2');
     expect(_labelOf(archived), 'Eski (archived)');

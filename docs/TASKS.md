@@ -1873,21 +1873,30 @@ demo round. ✔
 
 **DoD:** analyze + test ✔; both themes via the central sheet theme; row matches DESIGN.
 
-### OPH-122 — Extract strings: auth, shell, settings, shared states
+### OPH-122 — Extract strings: auth, shell, settings, shared states ✅
 
-- [ ] Move to `en`+`tr` keys: login/register screens, nav labels (Home/Inbox/Calendar/Projects/
-      Notes/Search/Settings), all `settings_screen.dart` rows, sign-out, and the default copy in
-      `widgets/status_views.dart` (`AwEmptyState`/`AwErrorState`/`AwInlineError`).
-- [ ] Update widget tests that matched English literals (match via key or accept both locales);
-      preserve every `Key('…')`.
+- [x] Moved to `en`+`tr` keys: login/register (`auth.*`), nav labels + descriptions
+      (`sections.dart` → `nav.*`, now localized getters), section app-bar titles, all
+      `settings_screen.dart` rows (`settings.*`), FAB tooltips + Settings tooltip (`shell.*`), and
+      `AwErrorState` (`state.somethingWrong` + `common.retry`).
+- [x] Existing widget tests untouched (English values kept identical, so `find.text('Home')` still
+      matches); every `Key('…')` preserved.
 
-**Context:** the chrome layer — `features/auth/ui/*`, `screens/settings_screen.dart`,
-`screens/home_shell.dart`, `widgets/status_views.dart`. Key groups: `auth.*`, `nav.*`,
-`settings.*`, `state.*`, `common.*`.
+Acceptance notes: the extraction keeps each **English value byte-identical** to
+the old literal, so all 236 pre-existing tests pass with ZERO changes — the
+cleanest possible sweep. `AppSection.title`/`description` became localized getters
+(the enum stores `nav.*` keys); this flows to both the nav bar/rail AND the
+onboarding tour for free. `const` was dropped only where a `.tr()` moved into a
+formerly-const widget. New test `test/i18n/extraction_test.dart` (4) proves the
+labels actually flip: `AppSection.home.title` → "Home"/"Ana Sayfa",
+`AwErrorState` → "Something went wrong"/"Bir şeyler ters gitti" + "Retry"/"Tekrar
+dene". **Full suite 256/256, analyze clean.** (Auth error MESSAGES —
+`friendlyAuthMessage` — stay for OPH-125 with the other error-code mapping.) ✔
 
-**Tests:** existing suites stay green in `en`; a spot test asserts a nav label localizes to `tr`.
+**Context:** the chrome layer — `features/auth/ui/*`, `sections.dart`, `screens/settings_screen.dart`,
+`screens/home_shell.dart`, `widgets/status_views.dart`, + the 3 section-screen app-bar titles.
 
-**DoD:** analyze + test; visual parity in `en`, `tr` renders.
+**DoD:** analyze + test ✔; English parity kept; `tr` renders (extraction_test).
 
 ### OPH-123 — Extract strings: Home, tasks, quick-add, task create/detail
 

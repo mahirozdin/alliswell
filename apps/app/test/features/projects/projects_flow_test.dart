@@ -194,84 +194,87 @@ void main() {
     expect(find.text('Deneme'), findsOneWidget); // the list row
   });
 
-  testWidgets('a README is hidden from the notes list, shown under READMEs (OPH-109)', (
-    tester,
-  ) async {
-    final api = FakeApi()..seedProject(name: 'Dokümanlı');
-    await tester.pumpWidget(await signedInAppWith(api));
-    await tester.pumpAndSettle();
-    await openProjects(tester);
-    await tester.tap(find.text('Dokümanlı'));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'a README is hidden from the notes list, shown under READMEs (OPH-109)',
+    (tester) async {
+      final api = FakeApi()..seedProject(name: 'Dokümanlı');
+      await tester.pumpWidget(await signedInAppWith(api));
+      await tester.pumpAndSettle();
+      await openProjects(tester);
+      await tester.tap(find.text('Dokümanlı'));
+      await tester.pumpAndSettle();
 
-    // Create the README (its title defaults to the project name) — the editor
-    // is pushed on top of the project (OPH-109), so pop back to the project.
-    await tester.tap(find.byKey(const Key('create-readme')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('note-title')), findsOneWidget);
-    Navigator.of(tester.element(find.byKey(const Key('note-title')))).pop();
-    await tester.pumpAndSettle();
+      // Create the README (its title defaults to the project name) — the editor
+      // is pushed on top of the project (OPH-109), so pop back to the project.
+      await tester.tap(find.byKey(const Key('create-readme')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('note-title')), findsOneWidget);
+      Navigator.of(tester.element(find.byKey(const Key('note-title')))).pop();
+      await tester.pumpAndSettle();
 
-    // Leave the project (Inbox has no name clash) and open the Notes section.
-    await tester.tap(find.text('Inbox').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notes').last);
-    await tester.pumpAndSettle();
+      // Leave the project (Inbox has no name clash) and open the Notes section.
+      await tester.tap(find.text('Inbox').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Notes').last);
+      await tester.pumpAndSettle();
 
-    // Default (All) hides the README; the READMEs chip surfaces it.
-    expect(find.text('Dokümanlı'), findsNothing);
-    await tester.tap(find.text('READMEs'));
-    await tester.pumpAndSettle();
-    expect(find.text('Dokümanlı'), findsOneWidget);
-  });
+      // Default (All) hides the README; the READMEs chip surfaces it.
+      expect(find.text('Dokümanlı'), findsNothing);
+      await tester.tap(find.text('READMEs'));
+      await tester.pumpAndSettle();
+      expect(find.text('Dokümanlı'), findsOneWidget);
+    },
+  );
 
-  testWidgets('archiving a project moves it behind the Archived chip (OPH-110)', (
-    tester,
-  ) async {
-    final api = FakeApi()..seedProject(name: 'Arşivlenecek');
-    await tester.pumpWidget(await signedInAppWith(api));
-    await tester.pumpAndSettle();
-    await openProjects(tester);
-    expect(find.text('Arşivlenecek'), findsOneWidget);
+  testWidgets(
+    'archiving a project moves it behind the Archived chip (OPH-110)',
+    (tester) async {
+      final api = FakeApi()..seedProject(name: 'Arşivlenecek');
+      await tester.pumpWidget(await signedInAppWith(api));
+      await tester.pumpAndSettle();
+      await openProjects(tester);
+      expect(find.text('Arşivlenecek'), findsOneWidget);
 
-    // Row menu → Archive… → confirm (no cascade → optimistic status flip).
-    await tester.tap(find.byType(PopupMenuButton<String>).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Archive…'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('archive-confirm')));
-    await tester.pumpAndSettle();
+      // Row menu → Archive… → confirm (no cascade → optimistic status flip).
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Archive…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('archive-confirm')));
+      await tester.pumpAndSettle();
 
-    // Gone from the default (Active) view, moved to archived on the server.
-    expect(find.text('Arşivlenecek'), findsNothing);
-    expect(api.projects.single['status'], 'archived');
+      // Gone from the default (Active) view, moved to archived on the server.
+      expect(find.text('Arşivlenecek'), findsNothing);
+      expect(api.projects.single['status'], 'archived');
 
-    // The Archived chip surfaces it, with an Unarchive… action.
-    await tester.tap(find.text('Archived'));
-    await tester.pumpAndSettle();
-    expect(find.text('Arşivlenecek'), findsOneWidget);
-    await tester.tap(find.byType(PopupMenuButton<String>).first);
-    await tester.pumpAndSettle();
-    expect(find.text('Unarchive…'), findsOneWidget);
-  });
+      // The Archived chip surfaces it, with an Unarchive… action.
+      await tester.tap(find.text('Archived'));
+      await tester.pumpAndSettle();
+      expect(find.text('Arşivlenecek'), findsOneWidget);
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Unarchive…'), findsOneWidget);
+    },
+  );
 
-  testWidgets('the edit sheet no longer offers "archived" as a status (OPH-110)', (
-    tester,
-  ) async {
-    final api = FakeApi()..seedProject(name: 'Düzenlenecek');
-    await tester.pumpWidget(await signedInAppWith(api));
-    await tester.pumpAndSettle();
-    await openProjects(tester);
+  testWidgets(
+    'the edit sheet no longer offers "archived" as a status (OPH-110)',
+    (tester) async {
+      final api = FakeApi()..seedProject(name: 'Düzenlenecek');
+      await tester.pumpWidget(await signedInAppWith(api));
+      await tester.pumpAndSettle();
+      await openProjects(tester);
 
-    await tester.tap(find.byType(PopupMenuButton<String>).first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Edit'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
 
-    // Open the status dropdown; archiving is a dedicated flow, not a plain pick.
-    await tester.tap(find.text('active').last);
-    await tester.pumpAndSettle();
-    expect(find.text('archived'), findsNothing);
-    expect(find.text('paused'), findsWidgets);
-  });
+      // Open the status dropdown; archiving is a dedicated flow, not a plain pick.
+      await tester.tap(find.text('active').last);
+      await tester.pumpAndSettle();
+      expect(find.text('archived'), findsNothing);
+      expect(find.text('paused'), findsWidgets);
+    },
+  );
 }
