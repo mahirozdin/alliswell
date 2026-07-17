@@ -239,6 +239,10 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
         filters.push((row) => values.includes(row[col]));
         return api;
       },
+      whereNotIn(col, values) {
+        filters.push((row) => !values.includes(row[col]));
+        return api;
+      },
       // Only the notes FULLTEXT search uses whereRaw; the fake approximates
       // MATCH..AGAINST with a case-insensitive substring test (the real index
       // semantics are covered by test/integration/notes.test.js).

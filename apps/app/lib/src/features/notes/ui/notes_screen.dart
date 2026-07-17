@@ -102,6 +102,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                   (NotesFilter.all, 'All'),
                   (NotesFilter.pinned, 'Pinned'),
                   (NotesFilter.archived, 'Archive'),
+                  (NotesFilter.readmes, 'READMEs'),
                 ]) ...[
                   ChoiceChip(
                     label: Text(label),

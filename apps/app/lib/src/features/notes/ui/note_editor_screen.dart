@@ -191,7 +191,15 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     if (id != null) {
       await ref.read(noteStoreProvider).delete(id);
     }
-    if (mounted) context.go('/notes');
+    if (!mounted) return;
+    // Pop back to wherever we came from — the project Overview when opened via
+    // /edit-note (OPH-109), or the notes list when opened from there. Fall back
+    // to the Notes tab if this is somehow the only page.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/notes');
+    }
   }
 
   @override

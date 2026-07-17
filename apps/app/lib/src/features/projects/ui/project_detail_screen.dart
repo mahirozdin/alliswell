@@ -151,7 +151,9 @@ class _OverviewTab extends ConsumerWidget {
       'readmeNoteId': noteId,
     });
     if (context.mounted) {
-      context.go('/notes/$noteId');
+      // Edit in the project's context, not the Notes tab (OPH-109): push
+      // full-screen so back returns here and the README card refreshes.
+      context.push('/edit-note/$noteId');
     }
   }
 
@@ -200,7 +202,8 @@ class _OverviewTab extends ConsumerWidget {
                 key: const Key('edit-readme'),
                 tooltip: 'Edit README',
                 icon: const Icon(Icons.edit_outlined, size: 18),
-                onPressed: () => context.go('/notes/${project.readmeNoteId}'),
+                onPressed: () =>
+                    context.push('/edit-note/${project.readmeNoteId}'),
               ),
           ],
         ),

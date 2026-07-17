@@ -193,4 +193,35 @@ void main() {
     expect(find.byType(TabBar), findsNothing);
     expect(find.text('Deneme'), findsOneWidget); // the list row
   });
+
+  testWidgets('a README is hidden from the notes list, shown under READMEs (OPH-109)', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Dokümanlı');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Dokümanlı'));
+    await tester.pumpAndSettle();
+
+    // Create the README (its title defaults to the project name) — the editor
+    // is pushed on top of the project (OPH-109), so pop back to the project.
+    await tester.tap(find.byKey(const Key('create-readme')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('note-title')), findsOneWidget);
+    Navigator.of(tester.element(find.byKey(const Key('note-title')))).pop();
+    await tester.pumpAndSettle();
+
+    // Leave the project (Inbox has no name clash) and open the Notes section.
+    await tester.tap(find.text('Inbox').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notes').last);
+    await tester.pumpAndSettle();
+
+    // Default (All) hides the README; the READMEs chip surfaces it.
+    expect(find.text('Dokümanlı'), findsNothing);
+    await tester.tap(find.text('READMEs'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dokümanlı'), findsOneWidget);
+  });
 }

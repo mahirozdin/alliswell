@@ -15,7 +15,7 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | **v0.1.0 hazır**; ilk kullanıcı testi geri bildirimi **v0.1.1 (Phase 4.9)** olarak planlandı |
 | Current epic | **Epic 10 — Feedback round 4** (OPH-100…111): kullanıcı testinden 13 madde, hepsi TASKS.md'de ayrıntılı task |
-| ➡️ **Next task** | **OPH-109 — README proje bağlamında + Notes filtresi** (sonra 110 arşiv, 111 onboarding). Bitti: OPH-100…108 ✅ (Inbox yakalama kutusu OPH-107 dahil). |
+| ➡️ **Next task** | **OPH-110 — proje arşivleme (kaskad)** (sonra 111 onboarding). Bitti: OPH-100…109 ✅ (README proje bağlamı OPH-109 dahil). |
 | ✅ Kullanıcıdan bekleyen | Zorunlu YOK. v0.1.0 tag'i hâlâ maintainer'da (dışa yayın; Epic 10 v0.1.1'i besler). Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası, Apple/Android cihaz turu. |
 | Last completed | **Feedback round 4 dokümantasyonu** (BLUEPRINT §4.2/§4.3/§12.2-12.7 revize, DESIGN §4 "Project badge", Epic 10 backlog). Öncesi: Epic 09 tam (OPH-094/095), Epic 08 tam. |
 

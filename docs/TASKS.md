@@ -1540,13 +1540,28 @@ list with the note's latest text persisted (proves the dispose-flush).
 
 **DoD:** analyze + tests; quick manual tab-dance on web + iOS sim.
 
-### OPH-109 — README lives in its project; Notes list hides READMEs
+### OPH-109 — README lives in its project; Notes list hides READMEs ✅
 
-- [ ] Root-level pushed route `/edit-note/:noteId` (top of the shell, like `/tasks/:taskId`)
-- [ ] Overview Create/Edit README uses `context.push('/edit-note/…')` — never `go('/notes/…')`
-- [ ] Notes list: default EXCLUDES readme notes; new 'READMEs' chip lists ONLY them
-- [ ] Project detail Notes tab hides the project's own README
-- [ ] API: `GET /workspaces/:id/notes` gains `readme` filter (default exclude / `true` = only)
+- [x] Root-level pushed route `/edit-note/:noteId` (top of the shell, like `/tasks/:taskId`)
+- [x] Overview Create/Edit README uses `context.push('/edit-note/…')` — never `go('/notes/…')`
+- [x] Notes list: default EXCLUDES readme notes; new 'READMEs' chip lists ONLY them
+- [x] Project detail Notes tab hides the project's own README
+- [x] API: `GET /workspaces/:id/notes` gains `readme` filter (default exclude / `true` = only)
+
+Acceptance notes: new root route `/edit-note/:noteId` (sibling of
+`/tasks/:taskId`); the Overview create-flow and pencil `context.push` it, so it
+opens full-screen and back pops to the Overview (whose README card live-refreshes)
+instead of switching to the Notes branch. The editor's delete now pops when it
+can (falls back to `/notes`), so both entry points behave. Which notes are
+READMEs = ids referenced by any project's `readmeNoteId`: `note_store.watchList`
+combines the notes stream with a `_readmeNoteIds` stream over `projects` —
+all/pinned/archived exclude READMEs, the new `NotesFilter.readmes` ('READMEs'
+chip) lists only them; `watchForProject` additionally drops the project's own
+README. API parity: `readme` bool on the list querystring, implemented with two
+cheap queries + `whereIn`/`whereNotIn` (fakedb gained `whereNotIn`). Tests: API
+unit (exclude default / only with `readme=true`) + app widget (README hidden
+under All, shown under READMEs; create-README pushes the editor and pops back).
+analyze + lint clean; app 225/225, API 210/210. ✔
 
 **User's report (item 12):** creating a README from a project's Overview dumped him into the
 Notes tab — it must stay on the project's Overview. README notes must not pollute the notes

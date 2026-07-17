@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **README notes stay in their project** (OPH-109): creating or editing a
+  project's README opens full-screen and returns to the project's Overview
+  instead of jumping to the Notes tab, and README notes no longer clutter the
+  notes list — a new "READMEs" filter surfaces them on demand.
 - **Inbox is now a capture box** (OPH-107): the Inbox is for jotting thoughts
   fast — captures stay OUT of Home until you triage them. Each row offers Plan
   (opens a planning sheet), Convert-to-note, or Delete instead of a completion

@@ -152,6 +152,33 @@ describe('note CRUD (OPH-040)', () => {
     expect(unarchived.items).toHaveLength(2);
   });
 
+  it('excludes README notes by default, lists only them with readme=true (OPH-109)', async () => {
+    await createNote({ title: 'Sıradan not' });
+    const readme = (await createNote({ title: 'Proje README' })).json();
+    const project = (
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/workspaces/${owner.workspace.id}/projects`,
+        headers: owner.headers,
+        payload: { name: 'Dokümanlı proje' },
+      })
+    ).json();
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/projects/${project.id}`,
+      headers: owner.headers,
+      payload: { readmeNoteId: readme.id },
+    });
+
+    // Default: the README is hidden (it lives in the project Overview).
+    const normal = (await listNotes()).json();
+    expect(normal.items.map((n) => n.title)).toEqual(['Sıradan not']);
+
+    // readme=true: ONLY README notes.
+    const onlyReadmes = (await listNotes('?readme=true')).json();
+    expect(onlyReadmes.items.map((n) => n.id)).toEqual([readme.id]);
+  });
+
   it('searches title + plain text via q', async () => {
     await createNote({ title: 'Alışveriş', contentDelta: [{ insert: 'süt ve yumurta\n' }] });
     await createNote({ title: 'Deniz feneri', contentDelta: [{ insert: 'rota planı\n' }] });

@@ -184,6 +184,10 @@ export default async function noteRoutes(app) {
             // includeArchived=true mixes them into the normal list.
             archived: { type: 'boolean' },
             includeArchived: { type: 'boolean', default: false },
+            // README notes (a project's readme_note_id) live in the project
+            // Overview, not the notes list (OPH-109). Absent/false excludes
+            // them; readme=true lists ONLY them.
+            readme: { type: 'boolean' },
             projectId: ULID_PARAM,
             taskId: ULID_PARAM,
             q: { type: 'string', minLength: 1, maxLength: 200 },
@@ -220,6 +224,20 @@ export default async function noteRoutes(app) {
         query = query.where({ is_archived: q.archived });
       } else if (!q.includeArchived) {
         query = query.where({ is_archived: false });
+      }
+      // README filter (OPH-109): two cheap queries + whereIn/whereNotIn keeps
+      // the unit fakedb viable and avoids subquery-support questions.
+      const readmeRows = await app
+        .db('projects')
+        .where({ workspace_id: workspaceId })
+        .whereNotNull('readme_note_id')
+        .select('readme_note_id');
+      const readmeIds = readmeRows.map((r) => r.readme_note_id);
+      if (q.readme === true) {
+        // Empty list → knex emits `1 = 0`, i.e. no rows (correct).
+        query = query.whereIn('id', readmeIds);
+      } else if (readmeIds.length) {
+        query = query.whereNotIn('id', readmeIds);
       }
       if (q.projectId) query = query.where({ project_id: q.projectId });
       if (q.taskId) {

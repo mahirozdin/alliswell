@@ -11,7 +11,7 @@ import 'note.dart';
 const _snippetLength = 160;
 const _maxPlainText = 60000;
 
-enum NotesFilter { all, pinned, archived }
+enum NotesFilter { all, pinned, archived, readmes }
 
 class NotesQuery {
   const NotesQuery({this.filter = NotesFilter.all, this.search = ''});
@@ -44,36 +44,62 @@ class NoteStore {
   final AwDatabase _db;
   final void Function() _poke;
 
-  Stream<List<NoteRow>> watchList(String workspaceId, NotesQuery query) =>
-      (_db.select(_db.notes)
-            ..where((n) => n.workspaceId.equals(workspaceId))
-            ..orderBy([(n) => OrderingTerm.desc(n.id)]))
+  /// The note ids that are a project's README (OPH-109). README notes live in
+  /// their project's Overview, so the ordinary notes lists hide them; only the
+  /// 'READMEs' filter surfaces them.
+  Stream<Set<String>> _readmeNoteIds(String workspaceId) =>
+      (_db.select(_db.projects)
+            ..where((p) => p.workspaceId.equals(workspaceId)))
           .watch()
-          .map((rows) {
-            final needle = query.search.trim().toLowerCase();
-            return [
-              for (final r in rows)
-                if (_matches(r, query, needle)) _row(r),
-            ];
-          });
+          .map(
+            (rows) => {
+              for (final p in rows)
+                if (p.readmeNoteId != null) p.readmeNoteId!,
+            },
+          );
 
-  bool _matches(NoteRecord r, NotesQuery query, String needle) {
+  Stream<List<NoteRow>> watchList(String workspaceId, NotesQuery query) =>
+      combineLatest2(
+        (_db.select(_db.notes)
+              ..where((n) => n.workspaceId.equals(workspaceId))
+              ..orderBy([(n) => OrderingTerm.desc(n.id)]))
+            .watch(),
+        _readmeNoteIds(workspaceId),
+        (rows, readmeIds) {
+          final needle = query.search.trim().toLowerCase();
+          return [
+            for (final r in rows)
+              if (_matches(r, query, needle, readmeIds.contains(r.id))) _row(r),
+          ];
+        },
+      );
+
+  bool _matches(
+    NoteRecord r,
+    NotesQuery query,
+    String needle,
+    bool isReadme,
+  ) {
     switch (query.filter) {
+      case NotesFilter.readmes:
+        if (!isReadme) return false;
       case NotesFilter.archived:
-        if (!r.isArchived) return false;
+        if (isReadme || !r.isArchived) return false;
       case NotesFilter.pinned:
-        if (!r.isPinned || r.isArchived) return false;
+        if (isReadme || !r.isPinned || r.isArchived) return false;
       case NotesFilter.all:
-        if (r.isArchived) return false;
+        // README notes belong to their project's Overview, not the notes list.
+        if (isReadme || r.isArchived) return false;
     }
     if (needle.isEmpty) return true;
     return '${r.title} ${r.plainText ?? ''}'.toLowerCase().contains(needle);
   }
 
   /// A project's notes: directly attached (projectId) ∪ link-attached,
-  /// archived hidden — mirrors `GET /projects/:id/notes`.
+  /// archived hidden — mirrors `GET /projects/:id/notes`. The project's OWN
+  /// README is excluded (OPH-109): it lives in the Overview tab, not here.
   Stream<List<NoteRow>> watchForProject(String workspaceId, String projectId) =>
-      combineLatest2(
+      combineLatest3(
         (_db.select(_db.notes)
               ..where((n) => n.workspaceId.equals(workspaceId))
               ..orderBy([(n) => OrderingTerm.desc(n.id)]))
@@ -83,11 +109,16 @@ class NoteStore {
                   l.entityType.equals('project') & l.entityId.equals(projectId),
             ))
             .watch(),
-        (rows, links) {
+        (_db.select(
+          _db.projects,
+        )..where((p) => p.id.equals(projectId))).watchSingleOrNull(),
+        (rows, links, project) {
           final linked = {for (final l in links) l.noteId};
+          final readmeId = project?.readmeNoteId;
           return [
             for (final r in rows)
               if (!r.isArchived &&
+                  r.id != readmeId &&
                   (r.projectId == projectId || linked.contains(r.id)))
                 _row(r),
           ];

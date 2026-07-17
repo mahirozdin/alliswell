@@ -121,6 +121,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) =>
             TaskDetailScreen(taskId: state.pathParameters['taskId']!),
       ),
+      // README editing stays in the project's context (OPH-109): the Overview
+      // pushes this full-screen and back pops to the Overview, instead of
+      // switching to the Notes branch.
+      GoRoute(
+        path: '/edit-note/:noteId',
+        builder: (context, state) =>
+            NoteEditorScreen(noteId: state.pathParameters['noteId']!),
+      ),
     ],
   );
   ref.onDispose(router.dispose);
