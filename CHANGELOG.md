@@ -43,6 +43,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **Feedback round 5** (user testing on web): the onboarding tour now
+  spotlights the specific navigation item at each step (it was highlighting the
+  whole side rail); the task-row status icon sits consistently at the far right
+  with the project badge and flags to its left; the project badge renders as a
+  compact pill instead of a stretched bar; and a project's README overview shows
+  its title as a heading and refreshes its content after an edit.
 - **Web sign-out crash** (OPH-100): signing out on the web build threw a
   `TypeError` because a `204 No Content` response body arrives as an empty
   string on dio-web; the app now type-checks the response and always clears the

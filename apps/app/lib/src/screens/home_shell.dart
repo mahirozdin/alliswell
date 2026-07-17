@@ -23,10 +23,18 @@ class HomeShell extends ConsumerWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  // Anchors for the onboarding spotlight (OPH-111): the whole bottom bar / rail.
-  // Static so they stay stable across rebuilds (there is one shell).
-  static final GlobalKey _barKey = GlobalKey(debugLabel: 'nav-bar');
-  static final GlobalKey _railKey = GlobalKey(debugLabel: 'nav-rail');
+  // Per-destination anchors for the tour spotlight (feedback round 5): two keys
+  // per section — the unselected `icon` and the `selectedIcon` — because only
+  // one of them is mounted at a time. Static so they stay stable across
+  // rebuilds (there is one shell).
+  static final Map<AppSection, ({GlobalKey icon, GlobalKey selected})>
+  _navKeys = {
+    for (final s in AppSection.values)
+      s: (
+        icon: GlobalKey(debugLabel: 'nav-${s.name}'),
+        selected: GlobalKey(debugLabel: 'nav-sel-${s.name}'),
+      ),
+  };
 
   static Rect? _rectOf(GlobalKey key) {
     final box = key.currentContext?.findRenderObject() as RenderBox?;
@@ -34,20 +42,14 @@ class HomeShell extends ConsumerWidget {
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
-  /// The spotlight rect for a step: on phones, the destination's slice of the
-  /// bottom bar; on wide layouts, the whole rail (its items sit near the top,
-  /// so a per-item slice would mislead). Null for welcome/farewell cards, or
-  /// when the anchor isn't laid out (e.g. just after a resize → graceful).
-  static Rect? _anchorRect(TourStep step, {required bool isWide}) {
+  /// The on-screen rect of the step's specific nav destination — works for both
+  /// the bottom bar and the rail (whichever icon is mounted). Null for
+  /// welcome/farewell cards or an anchor that isn't laid out yet (graceful).
+  static Rect? _anchorRect(TourStep step) {
     final section = step.section;
     if (section == null) return null;
-    if (isWide) return _rectOf(_railKey);
-    final bar = _rectOf(_barKey);
-    if (bar == null) return null;
-    final count = AppSection.values.length;
-    final w = bar.width / count;
-    final index = AppSection.values.indexOf(section);
-    return Rect.fromLTWH(bar.left + index * w, bar.top, w, bar.height).deflate(4);
+    final keys = _navKeys[section]!;
+    return _rectOf(keys.icon) ?? _rectOf(keys.selected);
   }
 
   void _goBranch(int index) {
@@ -146,7 +148,6 @@ class HomeShell extends ConsumerWidget {
                   edge: GlassEdge.right,
                   child: SafeArea(
                     child: NavigationRail(
-                      key: _railKey,
                       extended: constraints.maxWidth >= 1160,
                       labelType: constraints.maxWidth >= 1160
                           ? NavigationRailLabelType.none
@@ -158,12 +159,20 @@ class HomeShell extends ConsumerWidget {
                       destinations: [
                         for (final section in AppSection.values)
                           NavigationRailDestination(
-                            icon: Tooltip(
-                              message: section.description,
-                              waitDuration: const Duration(milliseconds: 600),
-                              child: Icon(section.icon),
+                            icon: KeyedSubtree(
+                              key: _navKeys[section]!.icon,
+                              child: Tooltip(
+                                message: section.description,
+                                waitDuration: const Duration(
+                                  milliseconds: 600,
+                                ),
+                                child: Icon(section.icon),
+                              ),
                             ),
-                            selectedIcon: Icon(section.selectedIcon),
+                            selectedIcon: KeyedSubtree(
+                              key: _navKeys[section]!.selected,
+                              child: Icon(section.selectedIcon),
+                            ),
                             label: Text(section.title),
                           ),
                       ],
@@ -185,14 +194,19 @@ class HomeShell extends ConsumerWidget {
             child: SafeArea(
               top: false,
               child: NavigationBar(
-                key: _barKey,
                 selectedIndex: navigationShell.currentIndex,
                 onDestinationSelected: _goBranch,
                 destinations: [
                   for (final section in AppSection.values)
                     NavigationDestination(
-                      icon: Icon(section.icon),
-                      selectedIcon: Icon(section.selectedIcon),
+                      icon: KeyedSubtree(
+                        key: _navKeys[section]!.icon,
+                        child: Icon(section.icon),
+                      ),
+                      selectedIcon: KeyedSubtree(
+                        key: _navKeys[section]!.selected,
+                        child: Icon(section.selectedIcon),
+                      ),
                       label: section.title,
                       tooltip: section.title,
                     ),
@@ -205,14 +219,13 @@ class HomeShell extends ConsumerWidget {
     );
 
     if (!tour.running) return shell;
-    final isWide = MediaQuery.sizeOf(context).width >= 800;
     return Stack(
       children: [
         shell,
         Positioned.fill(
           child: TourOverlay(
             state: tour,
-            anchorRect: _anchorRect(tour.current, isWide: isWide),
+            anchorRect: _anchorRect(tour.current),
             onNext: () => ref.read(tourControllerProvider.notifier).next(),
             onSkip: () => ref.read(tourControllerProvider.notifier).skip(),
           ),

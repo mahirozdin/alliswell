@@ -53,7 +53,7 @@ class TourOverlay extends StatelessWidget {
               ),
               if (anchorRect != null)
                 Positioned.fromRect(
-                  rect: anchorRect!.inflate(6),
+                  rect: anchorRect!.inflate(10),
                   child: IgnorePointer(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -130,21 +130,31 @@ class TourOverlay extends StatelessWidget {
 
     final rect = anchorRect;
     final screen = MediaQuery.sizeOf(context);
-    // Center the card for the welcome/farewell (no anchor) OR a tall anchor
-    // like the wide-layout rail — an above/below placement there would push the
-    // card off-screen. Only a short anchor (a bottom-bar slice) gets placed
-    // just above it.
-    if (rect == null || rect.height > screen.height * 0.5) {
+    // Welcome / farewell (no anchor) → center.
+    if (rect == null) {
       return Center(
         child: Padding(padding: const EdgeInsets.all(AwSpace.x6), child: card),
       );
     }
-    final placeAbove = rect.center.dy > screen.height / 2;
+    // A rail icon sits on the left → put the card to its RIGHT, roughly level
+    // with it. A bottom-bar icon sits low → put the card ABOVE it.
+    final onLeft = rect.center.dx < screen.width * 0.35;
+    if (onLeft) {
+      final top = (rect.top - 12).clamp(
+        MediaQuery.paddingOf(context).top + 8,
+        screen.height - 280,
+      );
+      return Positioned(
+        left: rect.right + AwSpace.x4,
+        right: AwSpace.x4,
+        top: top,
+        child: Align(alignment: Alignment.centerLeft, child: card),
+      );
+    }
     return Positioned(
       left: AwSpace.x4,
       right: AwSpace.x4,
-      top: placeAbove ? null : rect.bottom + AwSpace.x4,
-      bottom: placeAbove ? screen.height - rect.top + AwSpace.x4 : null,
+      bottom: screen.height - rect.top + AwSpace.x4,
       child: Align(alignment: Alignment.center, child: card),
     );
   }
@@ -164,7 +174,7 @@ class _SpotlightPainter extends CustomPainter {
       return;
     }
     final rrect = RRect.fromRectAndRadius(
-      hole!.inflate(6),
+      hole!.inflate(10),
       const Radius.circular(14),
     );
     canvas.drawPath(

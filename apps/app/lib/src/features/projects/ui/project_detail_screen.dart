@@ -298,10 +298,24 @@ class _ReadmeViewState extends State<_ReadmeView> {
   void initState() {
     super.initState();
     _controller = QuillController.basic()..readOnly = true;
+    _applyDelta();
+  }
+
+  /// (Re)load the note's content into the read-only controller. Needed on
+  /// updates too: the Overview tab is kept alive, so when the README is edited
+  /// its content must refresh here instead of staying at the initial (often
+  /// empty) delta — feedback round 5.
+  void _applyDelta() {
     final delta = widget.note.contentDelta;
-    if (delta != null && delta.isNotEmpty) {
-      _controller.document = Document.fromJson(delta);
-    }
+    _controller.document = (delta != null && delta.isNotEmpty)
+        ? Document.fromJson(delta)
+        : Document();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReadmeView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.note, oldWidget.note)) _applyDelta();
   }
 
   @override
@@ -312,18 +326,37 @@ class _ReadmeViewState extends State<_ReadmeView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_controller.document.isEmpty()) {
-      return Text(
-        'Empty README — open it with the pencil to start writing.',
-        style: Theme.of(context).textTheme.bodyMedium,
-      );
-    }
-    return QuillEditor.basic(
-      controller: _controller,
-      config: const QuillEditorConfig(
-        showCursor: false,
-        padding: EdgeInsets.zero,
-      ),
+    final theme = Theme.of(context);
+    final title = widget.note.title.trim();
+    final body = _controller.document.isEmpty()
+        ? Text(
+            'Empty README — open it with the pencil to start writing.',
+            style: theme.textTheme.bodyMedium,
+          )
+        : QuillEditor.basic(
+            controller: _controller,
+            config: const QuillEditorConfig(
+              showCursor: false,
+              padding: EdgeInsets.zero,
+            ),
+          );
+    // Show the note title as the document heading (feedback round 5): the
+    // overview used to render only the body.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (title.isNotEmpty) ...[
+          Text(
+            title,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        body,
+      ],
     );
   }
 }

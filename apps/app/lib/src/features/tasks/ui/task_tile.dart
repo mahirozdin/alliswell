@@ -119,9 +119,16 @@ class TaskTile extends ConsumerWidget {
                       )
                     : null,
               ),
+        // The STATUS icon is always the rightmost element so it forms a
+        // consistent scan column; the badge, priority flag and urgent marker
+        // fill in to its left (feedback round 5).
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (project != null) ...[
+              ProjectBadge(name: project.name, color: project.color),
+              const SizedBox(width: AwSpace.x2),
+            ],
             if (priorityColor != null) ...[
               Icon(
                 Icons.flag,
@@ -131,26 +138,21 @@ class TaskTile extends ConsumerWidget {
               ),
               const SizedBox(width: AwSpace.x2),
             ],
-            Icon(
-              taskStatusIcon(task.status),
-              size: 18,
-              color: scheme.onSurfaceVariant,
-              semanticLabel: 'Status: ${task.status}',
-            ),
             if (task.isUrgent) ...[
-              const SizedBox(width: AwSpace.x2),
               Icon(
                 Icons.notification_important,
                 size: 18,
                 color: scheme.error,
                 semanticLabel: 'Urgent',
               ),
-            ],
-            // Project badge is the far-right element (OPH-104).
-            if (project != null) ...[
               const SizedBox(width: AwSpace.x2),
-              ProjectBadge(name: project.name, color: project.color),
             ],
+            Icon(
+              taskStatusIcon(task.status),
+              size: 18,
+              color: scheme.onSurfaceVariant,
+              semanticLabel: 'Status: ${task.status}',
+            ),
           ],
         ),
         onTap: () => context.push('/tasks/${task.id}'),

@@ -66,23 +66,24 @@ class ProjectBadge extends StatelessWidget {
       waitDuration: const Duration(milliseconds: 400),
       child: Semantics(
         label: 'Project: $name',
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 22),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AwSpace.x2,
-            vertical: 2,
-          ),
+        // DecoratedBox + Padding sizes to the label, so the pill hugs its text.
+        // (A Container with `alignment` set expanded to the row height under the
+        // row's loose constraints — feedback round 5.)
+        child: DecoratedBox(
           decoration: BoxDecoration(
             color: fill,
             borderRadius: BorderRadius.circular(AwRadius.s),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            shortLabel(name),
-            maxLines: 1,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: ink,
-              fontWeight: FontWeight.w600,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            child: Text(
+              shortLabel(name),
+              maxLines: 1,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: ink,
+                fontWeight: FontWeight.w600,
+                height: 1.1,
+              ),
             ),
           ),
         ),
