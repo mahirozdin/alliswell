@@ -9,8 +9,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 - **The UI is getting translated** (OPH-122+): app text is moving behind the
   localization layer so switching to Türkçe actually translates the interface —
-  so far sign-in/sign-up, the navigation labels, Settings, and shared empty/error
-  states (with a full Turkish translation shipped alongside English).
+  so far sign-in/sign-up, the navigation, Settings, shared empty/error states, and
+  the whole **Home + task surface** (bucket headers, status/priority names,
+  quick-add, the task create/detail sheets, task rows with locale-aware dates, and
+  the Inbox) — with a full Turkish translation alongside English. As a bonus, the
+  status and priority dropdowns now show proper names instead of raw values like
+  `in_progress`.
 - **Language picker in Settings** (OPH-121): Settings → **Language** lets you
   pick a language — **System default** (follow the device/browser) or any shipped
   language shown in its own name (English, Türkçe). The choice applies instantly,

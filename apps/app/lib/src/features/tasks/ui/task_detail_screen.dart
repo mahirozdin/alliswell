@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/data/project.dart';
@@ -87,8 +88,8 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await action(ref.read(taskStoreProvider), task.id);
-    } on Object catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Could not save: $e')));
+    } on Object catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text('task.couldNotSave'.tr())));
     }
   }
 
@@ -106,10 +107,12 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task'),
+        title: Text('task.detailTitle'.tr()),
         actions: [
           IconButton(
-            tooltip: task.isCompleted ? 'Reopen' : 'Complete',
+            tooltip: task.isCompleted
+                ? 'task.reopen'.tr()
+                : 'task.complete'.tr(),
             icon: Icon(
               task.isCompleted ? Icons.replay : Icons.check_circle_outline,
             ),
@@ -133,14 +136,14 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 controller: _title,
                 maxLines: null,
                 onChanged: _onTitleChanged,
-                decoration: const InputDecoration(
-                  hintText: 'Task title',
+                decoration: InputDecoration(
+                  hintText: 'task.titleHint'.tr(),
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
                   filled: false,
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8),
                 ),
                 style: theme.textTheme.headlineSmall?.copyWith(
                   decoration: task.isCompleted
@@ -157,7 +160,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               ],
               const SizedBox(height: AwSpace.x3),
               _SectionCard(
-                title: 'Details',
+                title: 'task.details'.tr(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -168,8 +171,8 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                             isExpanded: true,
                             key: const Key('status-dropdown'),
                             initialValue: task.status,
-                            decoration: const InputDecoration(
-                              labelText: 'Status',
+                            decoration: InputDecoration(
+                              labelText: 'task.statusLabel'.tr(),
                             ),
                             items: [
                               for (final status in kTaskStatuses)
@@ -194,8 +197,8 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                             isExpanded: true,
                             key: const Key('priority-dropdown'),
                             initialValue: task.priority,
-                            decoration: const InputDecoration(
-                              labelText: 'Priority',
+                            decoration: InputDecoration(
+                              labelText: 'task.priorityLabel'.tr(),
                             ),
                             items: [
                               for (final priority in kTaskPriorities)
@@ -224,7 +227,9 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       isExpanded: true,
                       key: const Key('detail-project'),
                       initialValue: task.projectId,
-                      decoration: const InputDecoration(labelText: 'Project'),
+                      decoration: InputDecoration(
+                        labelText: 'task.project'.tr(),
+                      ),
                       items: projectDropdownItems(
                         ref.watch(projectsControllerProvider).value ??
                             const <Project>[],
@@ -242,10 +247,8 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     SwitchListTile(
                       key: const Key('urgent-switch'),
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Urgent alarm'),
-                      subtitle: const Text(
-                        'Insistent reminder that must be acknowledged',
-                      ),
+                      title: Text('task.urgentAlarm'.tr()),
+                      subtitle: Text('task.urgentAlarmSub'.tr()),
                       value: task.isUrgent,
                       onChanged: (v) => _apply(
                         (store, id) => store.update(id, {'isUrgent': v}),
@@ -257,11 +260,11 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     SwitchListTile(
                       key: const Key('calendar-mirror-switch'),
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('Show in calendar'),
+                      title: Text('task.showInCalendar'.tr()),
                       subtitle: Text(
                         task.hasCalendarTime
-                            ? 'Adds a block to your connected calendar'
-                            : 'Add a date below and it will appear',
+                            ? 'task.showInCalendarOnSub'.tr()
+                            : 'task.showInCalendarOffSub'.tr(),
                       ),
                       value: task.calendarMirrorEnabled,
                       onChanged: (v) => _apply(
@@ -270,7 +273,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       ),
                     ),
                     _DateRow(
-                      label: 'Due',
+                      label: 'task.due'.tr(),
                       icon: Icons.flag_outlined,
                       value: task.dueAt,
                       onPicked: (picked) => _apply(
@@ -284,7 +287,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     // would be invisible in the app.
                     _DateRow(
                       key: const Key('scheduled-row'),
-                      label: 'Scheduled',
+                      label: 'task.scheduledField'.tr(),
                       icon: Icons.event_outlined,
                       value: task.scheduledStartAt,
                       onPicked: (picked) => _apply(
@@ -299,7 +302,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       ),
                     ),
                     _DateRow(
-                      label: 'Remind',
+                      label: 'task.remind'.tr(),
                       icon: Icons.alarm,
                       value: task.remindAt,
                       onPicked: (picked) => _apply(
@@ -313,7 +316,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               ),
               const SizedBox(height: AwSpace.x3),
               _SectionCard(
-                title: 'Tags',
+                title: 'task.tags'.tr(),
                 child: _TagPicker(
                   task: task,
                   onApply: (action) => _apply(action),
@@ -321,7 +324,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               ),
               const SizedBox(height: AwSpace.x3),
               _SectionCard(
-                title: 'Checklist',
+                title: 'task.checklist'.tr(),
                 child: _Checklist(
                   task: task,
                   onApply: (action) => _apply(action),
@@ -391,7 +394,7 @@ class _DateRow extends StatelessWidget {
       leading: Icon(icon),
       title: Text(label),
       subtitle: Text(
-        local == null ? 'Not set' : local.toString().split('.').first,
+        local == null ? 'task.notSet'.tr() : local.toString().split('.').first,
         style: TextStyle(
           color: local == null ? scheme.onSurfaceVariant : scheme.onSurface,
           fontWeight: local == null ? null : FontWeight.w600,
@@ -400,7 +403,7 @@ class _DateRow extends StatelessWidget {
       trailing: local == null
           ? Icon(Icons.chevron_right, color: scheme.onSurfaceVariant)
           : IconButton(
-              tooltip: 'Clear $label',
+              tooltip: 'task.clearField'.tr(args: {'field': label}),
               icon: const Icon(Icons.close),
               onPressed: () => onPicked(null),
             ),
@@ -434,7 +437,7 @@ class _TagPicker extends ConsumerWidget {
       error: (error, _) => Text('$error'),
       data: (items) => items.isEmpty
           ? Text(
-              'No tags in this workspace yet.',
+              'task.noTagsYet'.tr(),
               style: Theme.of(context).textTheme.bodySmall,
             )
           : Wrap(
@@ -508,7 +511,7 @@ class _ChecklistState extends State<_Checklist> {
                   store.setChecklistItemDone(id, item.id, isDone: v ?? false),
             ),
             secondary: IconButton(
-              tooltip: 'Remove item',
+              tooltip: 'task.removeItem'.tr(),
               icon: const Icon(Icons.close, size: 18),
               onPressed: () => widget.onApply((store, id) async {
                 await store.deleteChecklistItem(id, item.id);
@@ -521,11 +524,11 @@ class _ChecklistState extends State<_Checklist> {
           controller: _controller,
           onSubmitted: (_) => _add(),
           decoration: InputDecoration(
-            hintText: 'Add checklist item…',
+            hintText: 'task.addChecklistItem'.tr(),
             isDense: true,
             suffixIcon: IconButton(
               icon: const Icon(Icons.add),
-              tooltip: 'Add item',
+              tooltip: 'task.addItem'.tr(),
               onPressed: _add,
             ),
           ),

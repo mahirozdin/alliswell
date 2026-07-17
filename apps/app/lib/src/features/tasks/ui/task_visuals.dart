@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 
 /// Standard task visuals (feedback round 3): statuses get ICONS, priorities
 /// get COLORS — consistent across lists, detail dropdowns and create sheets.
+
+/// Localized status/priority names (OPH-123) — keys mirror the enum values.
+String taskStatusLabel(String status) => 'task.status.$status'.tr();
+String taskPriorityLabel(String priority) => 'task.priority.$priority'.tr();
 
 IconData taskStatusIcon(String status) => switch (status) {
   'inbox' => Icons.inbox_outlined,
@@ -55,7 +60,7 @@ class StatusLabel extends StatelessWidget {
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 8),
-        Text(status),
+        Text(taskStatusLabel(status)),
       ],
     );
   }
@@ -79,7 +84,7 @@ class PriorityLabel extends StatelessWidget {
           color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 8),
-        Text(priority),
+        Text(taskPriorityLabel(priority)),
       ],
     );
   }

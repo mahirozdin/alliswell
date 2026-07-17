@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_badge.dart';
@@ -9,24 +11,17 @@ import '../data/task.dart';
 import '../providers.dart';
 import 'task_visuals.dart';
 
+/// Locale-aware short date + 24h time (OPH-123). English renders identically to
+/// the old hand-rolled format ("Jul 15, 09:30"); other locales get their own
+/// month name and ordering via `intl` (date data initialized in `main()` /
+/// `flutter_test_config.dart`).
 String _formatDue(DateTime due) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
+  final date = DateFormat.MMMd(
+    AwI18n.instance.locale.toLanguageTag(),
+  ).format(due);
   final time =
       '${due.hour.toString().padLeft(2, '0')}:${due.minute.toString().padLeft(2, '0')}';
-  return '${months[due.month - 1]} ${due.day}, $time';
+  return '$date, $time';
 }
 
 /// Shared task row: a rounded surface card with checkbox (complete/reopen),
@@ -54,9 +49,11 @@ class TaskTile extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await toggleTaskCompleted(ref, task);
-    } on Object catch (e) {
+    } on Object catch (_) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Could not update "${task.title}": $e')),
+        SnackBar(
+          content: Text('task.couldNotUpdate'.tr(args: {'title': task.title})),
+        ),
       );
     }
   }
@@ -93,8 +90,8 @@ class TaskTile extends ConsumerWidget {
           value: task.isCompleted,
           onChanged: (_) => _toggle(context, ref),
           semanticLabel: task.isCompleted
-              ? 'Reopen "${task.title}"'
-              : 'Complete "${task.title}"',
+              ? 'task.reopenNamed'.tr(args: {'title': task.title})
+              : 'task.completeNamed'.tr(args: {'title': task.title}),
         ),
         title: Text(
           task.title,
@@ -110,8 +107,8 @@ class TaskTile extends ConsumerWidget {
             ? null
             : Text(
                 isOverdue
-                    ? 'Overdue — ${_formatDue(due)}'
-                    : 'Due ${_formatDue(due)}',
+                    ? 'task.overdueDue'.tr(args: {'date': _formatDue(due)})
+                    : 'task.dueOn'.tr(args: {'date': _formatDue(due)}),
                 style: isOverdue
                     ? theme.textTheme.bodyMedium?.copyWith(
                         color: scheme.error,
@@ -134,7 +131,9 @@ class TaskTile extends ConsumerWidget {
                 Icons.flag,
                 size: 18,
                 color: priorityColor,
-                semanticLabel: '${task.priority} priority',
+                semanticLabel: 'task.prioritySemantic'.tr(
+                  args: {'priority': taskPriorityLabel(task.priority)},
+                ),
               ),
               const SizedBox(width: AwSpace.x2),
             ],
@@ -143,7 +142,7 @@ class TaskTile extends ConsumerWidget {
                 Icons.notification_important,
                 size: 18,
                 color: scheme.error,
-                semanticLabel: 'Urgent',
+                semanticLabel: 'task.urgent'.tr(),
               ),
               const SizedBox(width: AwSpace.x2),
             ],
@@ -151,7 +150,9 @@ class TaskTile extends ConsumerWidget {
               taskStatusIcon(task.status),
               size: 18,
               color: scheme.onSurfaceVariant,
-              semanticLabel: 'Status: ${task.status}',
+              semanticLabel: 'task.statusSemantic'.tr(
+                args: {'status': taskStatusLabel(task.status)},
+              ),
             ),
           ],
         ),

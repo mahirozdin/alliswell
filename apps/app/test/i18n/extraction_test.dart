@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/features/home/task_grouping.dart';
+import 'package:alliswell/src/features/tasks/ui/task_visuals.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sections.dart';
 import 'package:alliswell/src/widgets/status_views.dart';
@@ -50,6 +52,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Bir şeyler ters gitti'), findsOneWidget);
       expect(find.text('Tekrar dene'), findsOneWidget);
+    });
+  });
+
+  group('task surface (OPH-123)', () {
+    test('Home bucket labels localize', () {
+      expect(HomeBucket.overdue.label, 'Overdue');
+      expect(HomeBucket.next30Days.label, 'Next 30 days');
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect(HomeBucket.overdue.label, 'Geciken');
+      expect(HomeBucket.noDate.label, 'Tarihsiz');
+    });
+
+    test('status + priority names localize', () {
+      expect(taskStatusLabel('open'), 'Open');
+      expect(taskStatusLabel('in_progress'), 'In progress');
+      expect(taskPriorityLabel('high'), 'High');
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect(taskStatusLabel('open'), 'Açık');
+      expect(taskPriorityLabel('urgent'), 'Acil');
     });
   });
 }

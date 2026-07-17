@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../i18n/i18n.dart';
+
 /// Rapid-entry task bar (feedback round 2): submit clears the field
 /// immediately and KEEPS focus, so type → Enter → type → Enter chains work
 /// without touching the mouse. Saving happens in the background; failures
@@ -42,11 +44,13 @@ class _QuickAddBarState extends State<QuickAddBar> {
     setState(() => _inFlight++);
     try {
       await widget.onAdd(title);
-    } on Object catch (e) {
+    } on Object catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not add "$title": $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('task.couldNotAdd'.tr(args: {'title': title})),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -81,7 +85,7 @@ class _QuickAddBarState extends State<QuickAddBar> {
                 )
               : IconButton(
                   icon: const Icon(Icons.arrow_upward),
-                  tooltip: 'Add task',
+                  tooltip: 'task.addTask'.tr(),
                   onPressed: _submit,
                 ),
         ),

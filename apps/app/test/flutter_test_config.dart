@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -21,5 +22,6 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     const Locale('en'),
     also: const [Locale('tr')],
   );
+  await initializeDateFormatting();
   await testMain();
 }

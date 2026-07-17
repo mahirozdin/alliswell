@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../sections.dart';
 import '../../../theme/tokens.dart';
@@ -27,7 +28,7 @@ class InboxScreen extends ConsumerWidget {
         children: [
           QuickAddBar(
             key: const Key('quick-add'),
-            hintText: 'Capture a thought…',
+            hintText: 'inbox.captureHint'.tr(),
             onAdd: (title) =>
                 ref.read(inboxTasksProvider.notifier).quickAdd(title),
           ),
@@ -39,12 +40,10 @@ class InboxScreen extends ConsumerWidget {
                 onRetry: () => ref.invalidate(inboxTasksProvider),
               ),
               data: (items) => items.isEmpty
-                  ? const AwEmptyState(
+                  ? AwEmptyState(
                       icon: Icons.inbox_outlined,
-                      title: 'Inbox is for capturing',
-                      message:
-                          'Type above and sort later — captures never show on '
-                          'Home until you plan them.',
+                      title: 'inbox.captureTitle'.tr(),
+                      message: 'inbox.captureBody'.tr(),
                     )
                   : ListView.builder(
                       padding: awListPadding(context),
@@ -87,7 +86,7 @@ class _CaptureTile extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text('common.cancel'.tr()),
           ),
           FilledButton(
             style: destructive
@@ -106,9 +105,9 @@ class _CaptureTile extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     if (!await _confirm(
       context,
-      title: 'Convert to a note?',
-      body: 'This capture moves to Notes as a new note.',
-      action: 'Convert',
+      title: 'inbox.convertTitle'.tr(),
+      body: 'inbox.convertBody'.tr(),
+      action: 'inbox.convert'.tr(),
     )) {
       return;
     }
@@ -118,15 +117,15 @@ class _CaptureTile extends ConsumerWidget {
       'title': task.title,
     });
     await ref.read(taskStoreProvider).delete(task.id);
-    messenger.showSnackBar(const SnackBar(content: Text('Moved to Notes')));
+    messenger.showSnackBar(SnackBar(content: Text('inbox.movedToNotes'.tr())));
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref) async {
     if (!await _confirm(
       context,
-      title: 'Delete capture?',
-      body: '“${task.title}” will be removed.',
-      action: 'Delete',
+      title: 'inbox.deleteTitle'.tr(),
+      body: 'inbox.deleteBody'.tr(args: {'title': task.title}),
+      action: 'common.delete'.tr(),
       destructive: true,
     )) {
       return;
@@ -163,21 +162,21 @@ class _CaptureTile extends ConsumerWidget {
                 ),
                 IconButton(
                   key: const Key('capture-plan'),
-                  tooltip: 'Plan',
+                  tooltip: 'inbox.plan'.tr(),
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.event_outlined),
                   onPressed: () => _plan(context),
                 ),
                 IconButton(
                   key: const Key('capture-to-note'),
-                  tooltip: 'Convert to note',
+                  tooltip: 'inbox.convertToNote'.tr(),
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.description_outlined),
                   onPressed: () => _toNote(context, ref),
                 ),
                 IconButton(
                   key: const Key('capture-delete'),
-                  tooltip: 'Delete',
+                  tooltip: 'common.delete'.tr(),
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _delete(context, ref),

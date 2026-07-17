@@ -1898,24 +1898,31 @@ dene". **Full suite 256/256, analyze clean.** (Auth error MESSAGES —
 
 **DoD:** analyze + test ✔; English parity kept; `tr` renders (extraction_test).
 
-### OPH-123 — Extract strings: Home, tasks, quick-add, task create/detail
+### OPH-123 — Extract strings: Home, tasks, quick-add, task create/detail ✅
 
-- [ ] `HomeBucketLabel` (`task_grouping.dart`) → key lookups `home.bucket.{overdue,noDate,today,
-      tomorrow,thisWeek,next30Days,selectedDay}`; task **status** labels `task.status.*` and
-      **priority** labels `task.priority.*` (used by `task_visuals.dart` dropdowns); quick-add hints
-      including the interpolated "Quick add for <date>"; task create/detail sheets; task snackbars.
-- [ ] "Overdue" word + relative/absolute dates localized via `intl` in the active locale.
+- [x] `HomeBucketLabel` → `'home.bucket.$name'.tr()` (widget snapshot reuses these); status/
+      priority → `taskStatusLabel`/`taskPriorityLabel` helpers (`task.status.*`/`task.priority.*`,
+      used by the `StatusLabel`/`PriorityLabel` dropdown chips); Home empty-state + quick-add hints
+      (interpolated day); task create sheet, task detail (all fields, tags, checklist, calendar
+      toggle), task tile (overdue/due, semantics), and the Inbox capture screen; task snackbars.
+- [x] Dates localized via `intl` (`DateFormat.MMMd(locale)`; `initializeDateFormatting()` in
+      `main()` + test bootstrap) — **English renders byte-identically** to the old format.
 
-**Context:** the largest surface — `features/home/*`, `features/tasks/ui/*`. **`HomeBucketLabel`
-keys are ALSO consumed by the widget snapshot (OPH-130)** — this is why they must be real keys.
+Acceptance notes: the largest sweep — 8 UI files + `intl`. Every ENGLISH value
+kept identical, so all pre-existing tests pass unchanged. `HomeBucket.label` is
+now `'home.bucket.$name'.tr()` (enum-name keys) so the **widget snapshot (OPH-130)
+reuses the exact same strings**. Status/priority got `taskStatusLabel`/
+`taskPriorityLabel` helpers — a nice side-fix, since the dropdowns previously
+showed the RAW enum value (`in_progress`) and now show proper localized names.
+`intl` added as a direct dep; `DateFormat.MMMd` gives "Jul 15" (en, unchanged) /
+"15 Tem" (tr). Snackbar error strings dropped the raw `$e` (cleaner UX; `catch (_)`).
+New keys: `home.*`, `task.*`, `inbox.*`. Tests: `extraction_test.dart` +2 (bucket
+labels + status/priority flip en↔tr). **Full suite 258/258, analyze clean.** ✔
 
-**Spec:** parameterized strings use `.tr(args: {...})` (`{name}` placeholders). The Home group
-header `'${bucket.label} · N'` keeps its shape with a localized label + the count.
+**Context:** the largest surface — `features/home/*`, `features/tasks/ui/*` (grouping, tile,
+quick-add, create sheet, detail, list/Inbox), `task_visuals.dart`.
 
-**Tests:** a grouping-driven widget test asserts the `overdue`/`today` headers localize; a
-create-sheet test asserts a hint localizes.
-
-**DoD:** analyze + test; both themes; contrast unaffected (text-only).
+**DoD:** analyze + test ✔; English parity kept; `tr` renders; dates locale-aware.
 
 ### OPH-124 — Extract strings: projects, notes, calendar/integrations, onboarding
 

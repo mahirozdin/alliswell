@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
@@ -140,7 +141,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   }
 
   String _format(DateTime? value) =>
-      value == null ? 'Not set' : value.toString().split('.').first;
+      value == null ? 'task.notSet'.tr() : value.toString().split('.').first;
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +159,9 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                widget.task != null ? 'Plan task' : 'New task',
+                widget.task != null
+                    ? 'task.planTask'.tr()
+                    : 'task.newTask'.tr(),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
@@ -167,9 +170,9 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 controller: _title,
                 autofocus: true,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(labelText: 'Title'),
+                decoration: InputDecoration(labelText: 'task.title'.tr()),
                 validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Give the task a title'
+                    ? 'task.titleRequired'.tr()
                     : null,
               ),
               const SizedBox(height: 12),
@@ -181,12 +184,12 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                       key: const Key('task-sheet-project'),
                       initialValue: _projectId,
                       decoration: InputDecoration(
-                        labelText: 'Project',
+                        labelText: 'task.project'.tr(),
                         // With no projects the picker's only entry is "No
                         // project", which reads as "no picker" — say why
                         // (OPH-106).
                         helperText: projects.isEmpty
-                            ? 'No projects yet — create one in the Projects tab'
+                            ? 'task.noProjectsHint'.tr()
                             : null,
                       ),
                       items: projectDropdownItems(
@@ -202,7 +205,9 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                       isExpanded: true,
                       key: const Key('task-sheet-priority'),
                       initialValue: _priority,
-                      decoration: const InputDecoration(labelText: 'Priority'),
+                      decoration: InputDecoration(
+                        labelText: 'task.priorityLabel'.tr(),
+                      ),
                       items: [
                         for (final priority in kTaskPriorities)
                           DropdownMenuItem(
@@ -220,10 +225,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
               _SheetTile(
                 tileKey: const Key('task-sheet-due'),
                 icon: Icons.flag_outlined,
-                title: 'Due',
+                title: 'task.due'.tr(),
                 subtitle: _format(_dueAt),
                 isSet: _dueAt != null,
-                clearTooltip: 'Clear due date',
+                clearTooltip: 'task.clearDue'.tr(),
                 onClear: () => setState(() => _dueAt = null),
                 onTap: () async {
                   final picked = await _pickDateTime(_dueAt);
@@ -234,10 +239,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
               _SheetTile(
                 tileKey: const Key('task-sheet-remind'),
                 icon: Icons.alarm,
-                title: 'Remind',
+                title: 'task.remind'.tr(),
                 subtitle: _format(_remindAt),
                 isSet: _remindAt != null,
-                clearTooltip: 'Clear reminder',
+                clearTooltip: 'task.clearReminder'.tr(),
                 onClear: () => setState(() => _remindAt = null),
                 onTap: () async {
                   final picked = await _pickDateTime(_remindAt);
@@ -248,10 +253,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
               _SheetSurface(
                 child: SwitchListTile(
                   key: const Key('task-sheet-urgent'),
-                  title: const Text('Urgent alarm'),
-                  subtitle: const Text(
-                    'Insistent reminder that must be acknowledged',
-                  ),
+                  title: Text('task.urgentAlarm'.tr()),
+                  subtitle: Text('task.urgentAlarmSub'.tr()),
                   secondary: Icon(
                     Icons.notification_important_outlined,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -277,7 +280,11 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(widget.task != null ? 'Save' : 'Create task'),
+                    : Text(
+                        widget.task != null
+                            ? 'common.save'.tr()
+                            : 'task.createTask'.tr(),
+                      ),
               ),
             ],
           ),

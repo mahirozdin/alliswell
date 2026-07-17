@@ -1,3 +1,4 @@
+import '../../i18n/i18n.dart';
 import '../calendar/data/external_event.dart';
 import '../tasks/data/task.dart';
 
@@ -14,15 +15,9 @@ enum HomeBucket {
 }
 
 extension HomeBucketLabel on HomeBucket {
-  String get label => switch (this) {
-    HomeBucket.selectedDay => 'Selected day',
-    HomeBucket.overdue => 'Overdue',
-    HomeBucket.noDate => 'No date',
-    HomeBucket.today => 'Today',
-    HomeBucket.tomorrow => 'Tomorrow',
-    HomeBucket.thisWeek => 'This week',
-    HomeBucket.next30Days => 'Next 30 days',
-  };
+  /// Localized group header (OPH-123). Keys mirror the enum names, so the widget
+  /// snapshot (Epic 12) reuses the same `home.bucket.*` strings.
+  String get label => 'home.bucket.$name'.tr();
 }
 
 /// How far ahead Home looks. Beyond this the list would fill with every future

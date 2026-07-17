@@ -77,9 +77,13 @@ class HomeScreen extends ConsumerWidget {
           final quickAdd = QuickAddBar(
             key: const Key('home-quick-add'),
             hintText: selectedDay == null
-                ? 'Quick add a task…'
-                : 'Quick add for '
-                      '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}-${selectedDay.day.toString().padLeft(2, '0')}…',
+                ? 'home.quickAddHint'.tr()
+                : 'home.quickAddForDay'.tr(
+                    args: {
+                      'date':
+                          '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}-${selectedDay.day.toString().padLeft(2, '0')}',
+                    },
+                  ),
             onAdd: (title) => _quickAdd(ref, title),
           );
 
@@ -161,8 +165,8 @@ class HomeScreen extends ConsumerWidget {
                                 ),
                                 label: Text(
                                   calendarVisible
-                                      ? 'Hide calendar'
-                                      : 'Show calendar',
+                                      ? 'home.hideCalendar'.tr()
+                                      : 'home.showCalendar'.tr(),
                                 ),
                               ),
                             ),
@@ -219,10 +223,10 @@ class _HomeEmpty extends StatelessWidget {
   const _HomeEmpty();
 
   @override
-  Widget build(BuildContext context) => const AwEmptyState(
+  Widget build(BuildContext context) => AwEmptyState(
     icon: Icons.beach_access_outlined,
-    title: 'All caught up',
-    message: 'No open tasks — capture one in the Inbox.',
+    title: 'home.allCaughtUp'.tr(),
+    message: 'home.allCaughtUpBody'.tr(),
   );
 }
 
