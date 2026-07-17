@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
@@ -57,11 +58,9 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
 
   /// Server codes → something a person can act on (no jargon in end-user UI).
   String _message(ApiException e) => switch (e.code) {
-    'GOOGLE_NOT_CONFIGURED' =>
-      'Google Calendar is not set up on this server yet.',
-    'CALENDAR_ACCOUNT_REAUTH_REQUIRED' =>
-      'Google needs you to sign in again. Disconnect and reconnect.',
-    'NETWORK_ERROR' => 'Could not reach the server. Check your connection.',
+    'GOOGLE_NOT_CONFIGURED' => 'calendar.notSetUpYet'.tr(),
+    'CALENDAR_ACCOUNT_REAUTH_REQUIRED' => 'calendar.reauthLong'.tr(),
+    'NETWORK_ERROR' => 'calendar.networkError'.tr(),
     _ => e.message,
   };
 
@@ -100,24 +99,24 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
 
     return Card(
       child: status.when(
-        loading: () => const ListTile(
-          leading: Icon(Icons.event_outlined),
-          title: Text('Calendar'),
-          subtitle: Text('Checking…'),
+        loading: () => ListTile(
+          leading: const Icon(Icons.event_outlined),
+          title: Text('calendar.calendar'.tr()),
+          subtitle: Text('calendar.checking'.tr()),
         ),
         error: (_, _) =>
-            AwInlineError(message: 'Could not check your calendar connection.'),
+            AwInlineError(message: 'calendar.couldNotCheckGoogle'.tr()),
         data: (data) {
           if (workspace == null || data == null) return const SizedBox.shrink();
           // Optional integration: a server without an OAuth client is not
           // broken. Say so plainly — self-hosters are usually their own admin
           // and this is the hint that tells them what to set up.
           if (!data.configured) {
-            return const ListTile(
-              key: Key('google-not-configured'),
-              leading: Icon(Icons.event_outlined),
-              title: Text('Calendar'),
-              subtitle: Text('Google Calendar is not set up on this server'),
+            return ListTile(
+              key: const Key('google-not-configured'),
+              leading: const Icon(Icons.event_outlined),
+              title: Text('calendar.calendar'.tr()),
+              subtitle: Text('calendar.notSetUpServer'.tr()),
             );
           }
           final account = data.account;
@@ -132,12 +131,10 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
   Widget _disconnected(String workspaceId) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      const ListTile(
-        leading: Icon(Icons.event_outlined),
-        title: Text('Google Calendar'),
-        subtitle: Text(
-          'Show your tasks as blocks, and see changes you make there',
-        ),
+      ListTile(
+        leading: const Icon(Icons.event_outlined),
+        title: Text('calendar.google'.tr()),
+        subtitle: Text('calendar.googleBlurb'.tr()),
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -152,7 +149,7 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
             key: const Key('google-connect'),
             onPressed: _busy ? null : () => _connect(workspaceId),
             icon: const Icon(Icons.link),
-            label: const Text('Connect'),
+            label: Text('calendar.connect'.tr()),
           ),
         ),
       ),
@@ -174,11 +171,11 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
                 ? scheme.error
                 : (account.needsCalendar ? tokens.warning : tokens.success),
           ),
-          title: const Text('Google Calendar'),
+          title: Text('calendar.google'.tr()),
           subtitle: Text(account.providerAccountId),
           trailing: IconButton(
             key: const Key('google-refresh'),
-            tooltip: 'Refresh',
+            tooltip: 'calendar.refresh'.tr(),
             icon: const Icon(Icons.refresh),
             onPressed: () => ref.invalidate(googleIntegrationProvider),
           ),
@@ -193,16 +190,16 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
             ),
             child: AwInlineError(
               key: const Key('google-reauth'),
-              message: 'Google signed you out. Disconnect and connect again.',
+              message: 'calendar.googleSignedOut'.tr(),
             ),
           )
         else
           ListTile(
             key: const Key('google-calendar-row'),
             leading: const Icon(Icons.calendar_month_outlined),
-            title: const Text('Calendar'),
+            title: Text('calendar.calendar'.tr()),
             subtitle: Text(
-              account.defaultCalendarId ?? 'Choose which calendar to use',
+              account.defaultCalendarId ?? 'calendar.chooseWhich'.tr(),
               style: TextStyle(
                 color: account.needsCalendar
                     ? scheme.onSurfaceVariant
@@ -218,10 +215,10 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
           key: const Key('google-disconnect'),
           leading: Icon(Icons.link_off, color: scheme.error),
           title: Text(
-            'Disconnect',
+            'calendar.disconnect'.tr(),
             style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
           ),
-          subtitle: const Text('Events already in your calendar stay there'),
+          subtitle: Text('calendar.disconnectSub'.tr()),
           onTap: _busy ? null : () => _disconnect(account),
         ),
       ],
@@ -251,8 +248,8 @@ class _CalendarPicker extends ConsumerWidget {
               message:
                   e is ApiException &&
                       e.code == 'CALENDAR_ACCOUNT_REAUTH_REQUIRED'
-                  ? 'Google needs you to sign in again.'
-                  : 'Could not load your calendars.',
+                  ? 'calendar.reauthShort'.tr()
+                  : 'calendar.couldNotLoad'.tr(),
               onRetry: () => ref.invalidate(googleCalendarsProvider(accountId)),
             ),
           ),
@@ -268,7 +265,7 @@ class _CalendarPicker extends ConsumerWidget {
                   AwSpace.x2,
                 ),
                 child: Text(
-                  'Choose a calendar',
+                  'calendar.chooseTitle'.tr(),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -277,7 +274,9 @@ class _CalendarPicker extends ConsumerWidget {
                   key: Key('calendar-${calendar.id}'),
                   leading: const Icon(Icons.calendar_month_outlined),
                   title: Text(calendar.summary),
-                  subtitle: calendar.primary ? const Text('Default') : null,
+                  subtitle: calendar.primary
+                      ? Text('calendar.default'.tr())
+                      : null,
                   onTap: () => Navigator.of(context).pop(calendar),
                 ),
             ],

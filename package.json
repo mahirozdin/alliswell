@@ -21,7 +21,8 @@
     "test:integration": "npm run test:integration -w @alliswell/api",
     "db:migrate": "npm run db:migrate -w @alliswell/api",
     "db:rollback": "npm run db:rollback -w @alliswell/api",
-    "check:no-ts": "bash scripts/check-no-ts.sh"
+    "check:no-ts": "bash scripts/check-no-ts.sh",
+    "check:i18n": "node scripts/i18n/check.mjs"
   },
   "repository": {
     "type": "git",

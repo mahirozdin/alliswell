@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../i18n/i18n.dart';
+
 /// Apple-Calendar-style month grid: weekday header, 6 rows of days, a dot
 /// under days that have tasks, outlined today and a filled selected day.
 /// Tapping the selected day again clears the selection.
@@ -75,13 +77,13 @@ class _MonthCalendarState extends State<MonthCalendar> {
             ),
             const Spacer(),
             IconButton(
-              tooltip: 'Previous month',
+              tooltip: 'calendar.previousMonth'.tr(),
               icon: const Icon(Icons.chevron_left),
               color: theme.colorScheme.onSurfaceVariant,
               onPressed: () => _shiftMonth(-1),
             ),
             IconButton(
-              tooltip: 'Next month',
+              tooltip: 'calendar.nextMonth'.tr(),
               icon: const Icon(Icons.chevron_right),
               color: theme.colorScheme.onSurfaceVariant,
               onPressed: () => _shiftMonth(1),

@@ -65,6 +65,9 @@ jobs:
       - name: Policy — no TypeScript
         run: npm run check:no-ts
 
+      - name: Policy — no hardcoded app strings (i18n)
+        run: npm run check:i18n
+
       - name: Lint
         run: npm run lint
 

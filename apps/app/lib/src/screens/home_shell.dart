@@ -98,17 +98,21 @@ class HomeShell extends ConsumerWidget {
   /// time the user reads it.
   String _conflictMessage(SyncConflict conflict) {
     if (conflict.conflictCopyNoteId != null) {
-      return 'Note edited elsewhere — your version was kept as a conflicted copy.';
+      return 'sync.noteConflict'.tr();
     }
     if (conflict.discardedFields.isNotEmpty) {
-      return 'Some changes were overridden by a newer edit '
-          '(${conflict.discardedFields.join(', ')}).';
+      return 'sync.fieldsOverridden'.tr(
+        args: {'fields': conflict.discardedFields.join(', ')},
+      );
     }
     if (conflict.status == 'rejected') {
-      return 'A change was rejected by the server'
-          '${conflict.errorCode != null ? ' (${conflict.errorCode})' : ''}.';
+      return 'sync.rejected'.tr(
+        args: {
+          'code': conflict.errorCode != null ? ' (${conflict.errorCode})' : '',
+        },
+      );
     }
-    return 'A change conflicted with a newer edit and was not applied.';
+    return 'sync.conflicted'.tr();
   }
 
   @override

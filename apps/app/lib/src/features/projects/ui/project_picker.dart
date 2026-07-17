@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../i18n/i18n.dart';
 import '../data/project.dart';
 
 /// Shared project-picker entries for the task create sheet and task detail
@@ -17,7 +18,7 @@ List<DropdownMenuItem<String?>> projectDropdownItems(
     (p) => p.status != 'archived' || p.id == currentValue,
   );
   return [
-    const DropdownMenuItem<String?>(value: null, child: Text('No project')),
+    DropdownMenuItem<String?>(value: null, child: Text('project.none'.tr())),
     for (final project in visible)
       DropdownMenuItem<String?>(
         value: project.id,
@@ -29,7 +30,7 @@ List<DropdownMenuItem<String?>> projectDropdownItems(
             Flexible(
               child: Text(
                 project.status == 'archived'
-                    ? '${project.name} (archived)'
+                    ? 'project.archivedName'.tr(args: {'name': project.name})
                     : project.name,
                 overflow: TextOverflow.ellipsis,
               ),

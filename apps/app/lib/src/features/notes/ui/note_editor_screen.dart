@@ -5,6 +5,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/delta_markdown.dart';
 import '../data/note.dart';
@@ -92,7 +93,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       _quill.document.toDelta().toJson().cast<Map<String, dynamic>>();
 
   String get _titleText =>
-      _title.text.trim().isEmpty ? 'Untitled' : _title.text.trim();
+      _title.text.trim().isEmpty ? 'note.untitled'.tr() : _title.text.trim();
 
   /// The title is part of the document (Apple-Notes style): exports lead
   /// with it as an H1 (feedback round 1).
@@ -158,7 +159,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
         padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
         child: SingleChildScrollView(
           child: SelectableText(
-            markdown.isEmpty ? '*Empty note*' : markdown,
+            markdown.isEmpty ? 'note.emptyPreview'.tr() : markdown,
             key: const Key('markdown-preview'),
             style: const TextStyle(fontFamily: 'monospace', height: 1.6),
           ),
@@ -172,15 +173,15 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete note?'),
+        title: Text('note.deleteTitle'.tr()),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text('common.cancel'.tr()),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text('common.delete'.tr()),
           ),
         ],
       ),
@@ -207,10 +208,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Note'),
+        title: Text('note.detailTitle'.tr()),
         actions: [
           IconButton(
-            tooltip: _isPinned ? 'Unpin' : 'Pin',
+            tooltip: _isPinned ? 'note.unpin'.tr() : 'note.pin'.tr(),
             icon: Icon(
               _isPinned ? Icons.star : Icons.star_border,
               color: _isPinned ? context.awTokens.warning : null,
@@ -218,19 +219,19 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             onPressed: _togglePin,
           ),
           IconButton(
-            tooltip: _isArchived ? 'Unarchive' : 'Archive',
+            tooltip: _isArchived ? 'note.unarchive'.tr() : 'note.archive'.tr(),
             icon: Icon(
               _isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
             ),
             onPressed: _toggleArchived,
           ),
           IconButton(
-            tooltip: 'Markdown preview',
+            tooltip: 'note.markdownPreview'.tr(),
             icon: const Icon(Icons.preview_outlined),
             onPressed: _showMarkdownPreview,
           ),
           IconButton(
-            tooltip: 'Delete note',
+            tooltip: 'note.deleteTooltip'.tr(),
             icon: const Icon(Icons.delete_outline),
             onPressed: _delete,
           ),
@@ -275,14 +276,16 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                         key: const Key('note-title'),
                         controller: _title,
                         maxLines: null,
-                        decoration: const InputDecoration(
-                          hintText: 'Title',
+                        decoration: InputDecoration(
+                          hintText: 'note.titleHint'.tr(),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           filled: false,
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 6),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 6,
+                          ),
                         ),
                         style: theme.textTheme.headlineMedium,
                       ),
@@ -292,9 +295,9 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: QuillEditor.basic(
                           controller: _quill,
-                          config: const QuillEditorConfig(
-                            placeholder: 'Start writing…',
-                            padding: EdgeInsets.only(top: 8, bottom: 24),
+                          config: QuillEditorConfig(
+                            placeholder: 'note.startWriting'.tr(),
+                            padding: const EdgeInsets.only(top: 8, bottom: 24),
                           ),
                         ),
                       ),

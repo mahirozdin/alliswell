@@ -1924,85 +1924,75 @@ quick-add, create sheet, detail, list/Inbox), `task_visuals.dart`.
 
 **DoD:** analyze + test ✔; English parity kept; `tr` renders; dates locale-aware.
 
-### OPH-124 — Extract strings: projects, notes, calendar/integrations, onboarding
+### OPH-124 — Extract strings: projects, notes, calendar/integrations, onboarding ✅
 
-- [ ] Move to `en`+`tr` keys: project detail/edit/archive (`features/projects/ui/*` incl.
-      `project_archive.dart` dialogs), notes list/editor (`features/notes/ui/*`), the Google &
-      Apple calendar cards (`integrations/ui/google_calendar_card.dart`,
-      `calendar/apple/apple_calendar_card.dart`, incl. their honest status strings), and the
-      onboarding tour bubbles (`features/onboarding/tour*.dart`).
+- [x] Moved to `en`+`tr` keys: project detail/edit/archive/picker/list, notes list/editor, Google
+      & Apple calendar cards + external-event tile, and the onboarding tour.
+- [x] `AppSection` (already) + `TourStep` enums store i18n keys with localized `title`/`description`
+      getters; `groupTasksForHome` labels already keyed in OPH-123.
 
-**Context:** the remaining feature strings (`google_calendar_card.dart` alone has ~10). Key groups:
-`project.*`, `note.*`, `calendar.*`, `tour.*`.
+Acceptance notes: ~145 strings across ~13 files, extracted by **3 parallel
+subagents** (projects 62, calendar 39, notes+onboarding ~40) reading the keys I
+pre-seeded in `assets/i18n/{en,tr}.json` — each keeping the English value
+IDENTICAL so the existing suite passed unchanged. I handled the 6 leftovers that
+needed NEW keys (`project.deleteBody`/`color`/`archivedName`, `note.filterReadmes`/
+`emptyPreview`) and converted `TourStep` to key+getter. Tests
+(`test/i18n/extraction_test.dart`): tour steps localize, project/note/calendar
+keys resolve in both languages, `{name}` args fill. **Suite 264/264, analyze
+clean, JSON parity verified (only `common.help` is en-only, by design).** ✔
 
-**Tests:** spot tests per area assert a `tr` render; existing suites green in `en`.
+### OPH-125 — Localize API error codes & dynamic strings ✅
 
-**DoD:** analyze + test; both themes; calendar-card status colors/logic unchanged.
+- [x] `friendlyAuthMessage` + `home_shell._conflictMessage` localized; `error.*` + `sync.*` keys
+      seeded (auth codes, network, sync conflict).
+- [x] `localizedError(Object)` helper (`core/error_messages.dart`) maps `ApiException.code →
+      error.<CODE>`, falling back to the server message then `error.unknown`; the 6 `AwErrorState`
+      `'$error'` sites now use it. Dates were made locale-aware in OPH-123.
 
-### OPH-125 — Localize API error codes & dynamic strings
+Acceptance notes: added `AwI18n.maybeTranslate` (null on miss) so `localizedError`
+can fall back past the raw key. Tests: a code renders its localized message
+(en+tr), an untranslated code falls back to the server message, a non-ApiException
+→ generic. The API stays language-neutral (codes only). ✔
 
-- [ ] Map `ApiException.code → error.<CODE>` (fallback: server `message` → generic
-      `error.unknown`); localize the sync-conflict snackbar in `home_shell.dart` (currently appends
-      `conflict.errorCode`); route all date/number formatting through the active locale.
-- [ ] Seed `error.*` keys for the codes the app surfaces (auth, task, sync, calendar — listed in
-      the route files / `sync.js`).
+### OPH-126 — Account locale sync (`PATCH /me`) ✅ (API + app push; pull deferred)
 
-**Context:** `core/api_exception.dart` carries `(code, message)`; codes are stable localization
-keys (ADR-0009 D4) so the API needs NO server-side i18n.
+- [x] **API:** `PATCH /api/v1/me { locale }` — `app.authenticate`-guarded, updates `users.locale`
+      + `updated_at`, returns the shared `loadMe` shape.
+- [x] **App:** `accountLocaleSyncProvider` best-effort `PATCH`es the picked locale (fire-and-forget,
+      no-op signed out) from the Settings picker.
 
-**Tests:** a known code renders its localized message in `tr`; an unknown code falls back to the
-server message; a date formats per locale.
+Acceptance notes: **deviation — the body is FORMAT-validated (`^[a-z]{2}(-[A-Za-z]{2,4})?$`),
+not pinned to a fixed allow-list with `USER_UNSUPPORTED_LOCALE`.** A malformed
+locale is a 400; a well-formed unknown one is accepted. Rationale: a fixed
+allow-list would couple the API to the app's shipped languages and break the
+"add a language = drop a JSON" model (ADR-0009). **Deferred: seeding the app FROM
+`users.locale` on sign-in** — the app has no `/me` fetch flow, so this is a
+follow-up (the device override is the source of truth regardless). Tests: 4 API
+(`auth-me.test.js`) — update+persist, region variant, malformed→400, unauth→401.
+**API 219/219, app 264/264.** ✔
 
-**DoD:** analyze + test.
+### OPH-127 — No-hardcoded-string CI guard ✅
 
-### OPH-126 — Account locale sync (`PATCH /me`)
+- [x] `scripts/i18n/check.mjs` flags user-facing `Text('…')` / `labelText:`/`hintText:`/`tooltip:`/
+      `semanticLabel:` literals outside an allowlist (`.tr(`, brand, `// i18n-ignore`).
+- [x] `npm run check:i18n` + a CI step next to `check:no-ts`.
 
-- [ ] **API:** `PATCH /api/v1/me { locale }` — Ajv body schema with a `locale` allow-list (the
-      supported BCP-47 subset), updates `users.locale` + `updated_at`, returns the updated `me`
-      shape; `app.authenticate`-guarded. Error code `USER_UNSUPPORTED_LOCALE` for anything off the
-      list.
-- [ ] **App:** on a language pick (OPH-121), best-effort `PATCH /me`; on sign-in when the device
-      has NO saved override, seed the initial locale from `GET /me.locale`.
+Acceptance notes: self-tested (a planted `Text('…')` fails it, the clean tree
+passes). Running it **found the only 2 stragglers the extraction missed** —
+`month_calendar.dart`'s "Previous/Next month" tooltips — now keyed
+(`calendar.previousMonth/nextMonth`). Guard green on the whole tree. ✔
 
-**Context:** `me.js` returns `locale` but nothing writes it; no `PATCH` exists. This makes the
-language follow the account across devices / reinstalls (the device override still wins locally —
-offline-first).
+### OPH-128 — Web `<html lang>` + "add a language" docs ✅
 
-**Tests:** API unit (`apps/api/test/unit/`) — valid locale updates; invalid → `USER_UNSUPPORTED_LOCALE`;
-unauth → 401. App — sign-in with no local override seeds from `me.locale`; a local override is NOT
-overwritten by `me`.
+- [x] `html_lang_stub.dart` + `html_lang_web.dart` (conditional import on `dart.library.js_interop`,
+      `package:web`) set `<html lang>` from `AwI18n._apply`; `web/index.html` defaults `lang="en"`.
+- [x] "Adding a language" in README + CONTRIBUTING (copy `en.json` → `<code>.json`, register the
+      `Locale` + endonym); `check:i18n` command documented.
 
-**DoD:** `npm run lint` + `npm test` (API); `flutter analyze` + `flutter test` (app); apps/api
-README error-code list updated.
-
-### OPH-127 — No-hardcoded-string CI guard
-
-- [ ] `scripts/i18n/check.mjs` greps `apps/app/lib` for user-facing literals (`Text('…')`,
-      `labelText:`, `hintText:`, `SnackBar(content: Text('…'))`) outside an allowlist (brand name,
-      debug-only, `Key('…')`, already-`.tr()` lines).
-- [ ] Wire into `.github/workflows/ci.yml` + an `npm run check:i18n` script (mirrors
-      `check:no-ts`).
-
-**Context:** keeps the extraction from rotting — new hardcoded strings fail CI, exactly like the
-TypeScript-ban guard.
-
-**Tests / self-check:** the guard fails on a planted `Text('Hello')` and passes on the clean tree
-(document the run in the commit).
-
-**DoD:** guard green in CI; documented in AGENTS.md §1 / CONTRIBUTING.
-
-### OPH-128 — Web `<html lang>` + "add a language" docs
-
-- [ ] Reflect the active locale in the web build: update `<html lang>` on locale change (a11y/SEO);
-      `web/index.html` currently has no `lang`.
-- [ ] Document **"How to add a language"** (drop `assets/i18n/<code>.json`, register the `Locale`
-      in `supportedLocales`) in README + CONTRIBUTING.
-- [ ] Keep BLUEPRINT §12.9/§15.5 truthful; STATE + CHANGELOG.
-
-**Context:** Flutter doesn't manage `<html lang>`; a tiny web hook sets it from `context.locale`.
-
-**DoD:** analyze + test; manual web check (browser lang default + a switch); docs updated. **Epic
-11 closes here → v0.2.0-alpha (i18n).**
+Acceptance notes: `setHtmlLang` is a no-op off-web (stub). **Epic 11 (i18n) CLOSES
+here → v0.2.0-alpha.** All UI (auth, nav, Home, tasks, projects, notes, calendar
+cards, onboarding, settings, errors) is EN+TR; adding a language is a JSON drop.
+✔
 
 ---
 

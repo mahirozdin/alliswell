@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../i18n/i18n.dart';
 import '../../theme/tokens.dart';
 import 'tour.dart';
 
@@ -36,7 +37,9 @@ class TourOverlay extends StatelessWidget {
       child: Semantics(
         container: true,
         explicitChildNodes: true,
-        label: 'App tour, step ${state.step + 1} of ${kTourSteps.length}',
+        label: 'tour.stepOf'.tr(
+          args: {'step': '${state.step + 1}', 'total': '${kTourSteps.length}'},
+        ),
         child: AnimatedSwitcher(
           duration: AwMotion.fast,
           child: KeyedSubtree(
@@ -72,7 +75,7 @@ class TourOverlay extends StatelessWidget {
                     key: const Key('tour-skip'),
                     onPressed: onSkip,
                     style: TextButton.styleFrom(foregroundColor: Colors.white),
-                    child: const Text('Skip'),
+                    child: Text('tour.skip'.tr()),
                   ),
                 ),
                 _bubble(context),
@@ -118,7 +121,9 @@ class TourOverlay extends StatelessWidget {
                   FilledButton(
                     key: const Key('tour-next'),
                     onPressed: onNext,
-                    child: Text(state.isLast ? 'Done' : 'Next'),
+                    child: Text(
+                      state.isLast ? 'tour.done'.tr() : 'tour.next'.tr(),
+                    ),
                   ),
                 ],
               ),

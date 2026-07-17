@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import 'apple_calendar_gateway.dart';
@@ -25,13 +26,13 @@ class AppleCalendarCard extends ConsumerWidget {
     final access = ref.watch(appleAccessProvider);
     return Card(
       child: access.when(
-        loading: () => const ListTile(
-          leading: Icon(Icons.event_outlined),
-          title: Text('Apple Calendar'),
-          subtitle: Text('Checking…'),
+        loading: () => ListTile(
+          leading: const Icon(Icons.event_outlined),
+          title: Text('calendar.apple'.tr()),
+          subtitle: Text('calendar.checking'.tr()),
         ),
         error: (_, _) =>
-            AwInlineError(message: 'Could not check calendar access.'),
+            AwInlineError(message: 'calendar.couldNotCheckApple'.tr()),
         data: (status) => _body(context, ref, status),
       ),
     );
@@ -45,11 +46,11 @@ class AppleCalendarCard extends ConsumerWidget {
       case EventKitAccess.restricted:
         // A dead end the app cannot argue with — only the user, in iOS/macOS
         // Settings. Say exactly that instead of a useless retry button.
-        return const ListTile(
-          key: Key('apple-blocked'),
-          leading: Icon(Icons.event_busy_outlined),
-          title: Text('Apple Calendar'),
-          subtitle: Text('Blocked — allow calendar access in system Settings'),
+        return ListTile(
+          key: const Key('apple-blocked'),
+          leading: const Icon(Icons.event_busy_outlined),
+          title: Text('calendar.apple'.tr()),
+          subtitle: Text('calendar.appleBlocked'.tr()),
         );
       case EventKitAccess.writeOnly:
       case EventKitAccess.notDetermined:
@@ -57,8 +58,8 @@ class AppleCalendarCard extends ConsumerWidget {
           // writeOnly can create but not read, which breaks re-linking — treat
           // it like "not connected" and ask again for full access.
           note: status == EventKitAccess.writeOnly
-              ? 'AllisWell needs full calendar access to keep events in sync'
-              : 'Show your tasks as events in your Apple Calendar',
+              ? 'calendar.appleFullAccess'.tr()
+              : 'calendar.appleBlurb'.tr(),
         );
     }
   }
@@ -93,7 +94,7 @@ class _DisconnectedState extends ConsumerState<_Disconnected> {
     children: [
       ListTile(
         leading: const Icon(Icons.event_outlined),
-        title: const Text('Apple Calendar'),
+        title: Text('calendar.apple'.tr()),
         subtitle: Text(widget.note),
       ),
       Padding(
@@ -109,7 +110,7 @@ class _DisconnectedState extends ConsumerState<_Disconnected> {
             key: const Key('apple-connect'),
             onPressed: _busy ? null : _connect,
             icon: const Icon(Icons.link),
-            label: const Text('Connect'),
+            label: Text('calendar.connect'.tr()),
           ),
         ),
       ),
@@ -134,15 +135,19 @@ class _Connected extends ConsumerWidget {
             // nothing (same honesty as the Google card).
             color: hasCalendar ? tokens.success : tokens.warning,
           ),
-          title: const Text('Apple Calendar'),
-          subtitle: Text(hasCalendar ? 'Connected' : 'Access granted'),
+          title: Text('calendar.apple'.tr()),
+          subtitle: Text(
+            hasCalendar
+                ? 'calendar.connected'.tr()
+                : 'calendar.accessGranted'.tr(),
+          ),
         ),
         ListTile(
           key: const Key('apple-calendar-row'),
           leading: const Icon(Icons.calendar_month_outlined),
-          title: const Text('Calendar'),
+          title: Text('calendar.calendar'.tr()),
           subtitle: Text(
-            hasCalendar ? chosen : 'Choose which calendar to use',
+            hasCalendar ? chosen : 'calendar.chooseWhich'.tr(),
             style: TextStyle(
               color: hasCalendar ? scheme.onSurface : scheme.onSurfaceVariant,
               fontWeight: hasCalendar ? FontWeight.w600 : null,
@@ -185,7 +190,7 @@ class _CalendarPicker extends ConsumerWidget {
           error: (_, _) => Padding(
             padding: const EdgeInsets.all(AwSpace.x4),
             child: AwErrorState(
-              message: 'Could not load your calendars.',
+              message: 'calendar.couldNotLoad'.tr(),
               onRetry: () => ref.invalidate(_appleCalendarsProvider),
             ),
           ),
@@ -197,14 +202,14 @@ class _CalendarPicker extends ConsumerWidget {
               shrinkWrap: true,
               padding: const EdgeInsets.only(bottom: AwSpace.x4),
               children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
                     AwSpace.x4,
                     0,
                     AwSpace.x4,
                     AwSpace.x2,
                   ),
-                  child: Text('Choose a calendar'),
+                  child: Text('calendar.chooseTitle'.tr()),
                 ),
                 for (final calendar in writable)
                   ListTile(

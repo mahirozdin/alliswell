@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../notes/providers.dart';
 import '../../tasks/providers.dart';
 import '../data/project.dart';
@@ -59,8 +60,8 @@ class _ArchiveDialogState extends ConsumerState<_ArchiveDialog> {
       if (mounted) {
         setState(
           () => _error = (_tasks || _notes)
-              ? 'Archiving with its tasks/notes needs a connection.'
-              : 'Could not update the project.',
+              ? 'project.archiveConnNeeded'.tr()
+              : 'project.couldNotUpdate'.tr(),
         );
       }
     } finally {
@@ -81,15 +82,19 @@ class _ArchiveDialogState extends ConsumerState<_ArchiveDialog> {
     final scheme = Theme.of(context).colorScheme;
 
     return AlertDialog(
-      title: Text(_archiving ? 'Archive project?' : 'Unarchive project?'),
+      title: Text(
+        _archiving
+            ? 'project.archiveTitle'.tr()
+            : 'project.unarchiveTitle'.tr(),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             _archiving
-                ? 'It leaves the active list. Choose what to take with it.'
-                : 'It returns to the active list. Choose what to restore.',
+                ? 'project.archiveBody'.tr()
+                : 'project.unarchiveBody'.tr(),
           ),
           const SizedBox(height: 8),
           CheckboxListTile(
@@ -101,8 +106,8 @@ class _ArchiveDialogState extends ConsumerState<_ArchiveDialog> {
                 : (v) => setState(() => _tasks = v ?? false),
             title: Text(
               _archiving
-                  ? 'Also archive its open tasks${openTasks == null ? '' : ' ($openTasks)'}'
-                  : 'Also restore its tasks',
+                  ? "${'project.alsoArchiveTasks'.tr()}${openTasks == null ? '' : ' ($openTasks)'}"
+                  : 'project.alsoRestoreTasks'.tr(),
             ),
           ),
           CheckboxListTile(
@@ -114,15 +119,15 @@ class _ArchiveDialogState extends ConsumerState<_ArchiveDialog> {
                 : (v) => setState(() => _notes = v ?? false),
             title: Text(
               _archiving
-                  ? 'Also archive its notes${notes == null ? '' : ' ($notes)'}'
-                  : 'Also restore its notes',
+                  ? "${'project.alsoArchiveNotes'.tr()}${notes == null ? '' : ' ($notes)'}"
+                  : 'project.alsoRestoreNotes'.tr(),
             ),
           ),
           if (!_archiving && (_tasks || _notes))
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'Restores ALL archived tasks and notes of this project.',
+                'project.restoreAllNote'.tr(),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -135,12 +140,14 @@ class _ArchiveDialogState extends ConsumerState<_ArchiveDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text('common.cancel'.tr()),
         ),
         FilledButton(
           key: const Key('archive-confirm'),
           onPressed: _busy ? null : _confirm,
-          child: Text(_archiving ? 'Archive' : 'Unarchive'),
+          child: Text(
+            _archiving ? 'project.archive'.tr() : 'project.unarchive'.tr(),
+          ),
         ),
       ],
     );

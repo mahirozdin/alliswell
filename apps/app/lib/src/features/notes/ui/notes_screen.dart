@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
@@ -45,11 +47,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notes'),
+        title: Text('nav.notes'.tr()),
         actions: [
           IconButton(
             key: const Key('notes-view-toggle'),
-            tooltip: isGrid ? 'List view' : 'Card view',
+            tooltip: isGrid ? 'note.listView'.tr() : 'note.cardView'.tr(),
             icon: Icon(
               isGrid ? Icons.view_list_outlined : Icons.grid_view_outlined,
             ),
@@ -59,7 +61,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
+            tooltip: 'shell.settingsTooltip'.tr(),
             onPressed: () => context.push('/settings'),
           ),
         ],
@@ -75,12 +77,12 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               onSubmitted: (v) =>
                   ref.read(notesQueryProvider.notifier).setSearch(v),
               decoration: InputDecoration(
-                hintText: 'Search notes…',
+                hintText: 'note.searchHint'.tr(),
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: query.search.isEmpty
                     ? null
                     : IconButton(
-                        tooltip: 'Clear search',
+                        tooltip: 'note.clearSearch'.tr(),
                         icon: const Icon(Icons.close),
                         onPressed: () {
                           _search.clear();
@@ -99,10 +101,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (final (filter, label) in [
-                  (NotesFilter.all, 'All'),
-                  (NotesFilter.pinned, 'Pinned'),
-                  (NotesFilter.archived, 'Archive'),
-                  (NotesFilter.readmes, 'READMEs'),
+                  (NotesFilter.all, 'note.filterAll'.tr()),
+                  (NotesFilter.pinned, 'note.filterPinned'.tr()),
+                  (NotesFilter.archived, 'note.filterArchived'.tr()),
+                  (NotesFilter.readmes, 'note.filterReadmes'.tr()),
                 ]) ...[
                   ChoiceChip(
                     label: Text(label),
@@ -119,7 +121,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             child: notes.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => AwErrorState(
-                message: '$error',
+                message: localizedError(error),
                 onRetry: () => ref.invalidate(notesListProvider),
               ),
               data: (items) => items.isEmpty
@@ -153,8 +155,8 @@ class NoteTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final meta = [
-      'Edited ${_shortDate(note.updatedAt)}',
-      'Created ${_shortDate(note.createdAt)}',
+      'note.edited'.tr(args: {'date': _shortDate(note.updatedAt)}),
+      'note.created'.tr(args: {'date': _shortDate(note.createdAt)}),
       ?projectName,
     ].join(' · ');
 
@@ -166,7 +168,7 @@ class NoteTile extends ConsumerWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
           leading: IconButton(
             key: Key('pin-${note.id}'),
-            tooltip: note.isPinned ? 'Unpin' : 'Pin',
+            tooltip: note.isPinned ? 'note.unpin'.tr() : 'note.pin'.tr(),
             icon: Icon(
               note.isPinned ? Icons.star : Icons.star_border,
               color: note.isPinned ? context.awTokens.warning : null,
@@ -195,7 +197,7 @@ class _NoteMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
-      tooltip: 'Note actions',
+      tooltip: 'note.actions'.tr(),
       onSelected: (action) {
         if (action == 'archive') setNoteArchived(ref, note, !note.isArchived);
       },
@@ -209,7 +211,9 @@ class _NoteMenu extends ConsumerWidget {
                   ? Icons.unarchive_outlined
                   : Icons.archive_outlined,
             ),
-            title: Text(note.isArchived ? 'Unarchive' : 'Archive'),
+            title: Text(
+              note.isArchived ? 'note.unarchive'.tr() : 'note.archive'.tr(),
+            ),
           ),
         ),
       ],
@@ -262,7 +266,9 @@ class _NotesGrid extends ConsumerWidget {
                         ),
                       ),
                       IconButton(
-                        tooltip: note.isPinned ? 'Unpin' : 'Pin',
+                        tooltip: note.isPinned
+                            ? 'note.unpin'.tr()
+                            : 'note.pin'.tr(),
                         visualDensity: VisualDensity.compact,
                         onPressed: () => toggleNotePinned(ref, note),
                         icon: Icon(
@@ -291,8 +297,12 @@ class _NotesGrid extends ConsumerWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Edited ${_shortDate(note.updatedAt)}'
-                    '${projectNames[note.projectId] != null ? ' · ${projectNames[note.projectId]}' : ''}',
+                    'note.edited'.tr(
+                          args: {'date': _shortDate(note.updatedAt)},
+                        ) +
+                        (projectNames[note.projectId] != null
+                            ? ' · ${projectNames[note.projectId]}'
+                            : ''),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelSmall?.copyWith(
@@ -318,10 +328,8 @@ class _EmptyNotes extends StatelessWidget {
   Widget build(BuildContext context) {
     return AwEmptyState(
       icon: archived ? Icons.archive_outlined : Icons.description,
-      title: archived ? 'Archive is empty' : 'No notes here',
-      message: archived
-          ? 'Archived notes land here for safekeeping.'
-          : 'Capture the first one with the + button.',
+      title: archived ? 'note.archiveEmpty'.tr() : 'note.empty'.tr(),
+      message: archived ? 'note.archivedHere'.tr() : 'note.captureFirst'.tr(),
     );
   }
 }

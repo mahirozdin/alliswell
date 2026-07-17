@@ -98,6 +98,9 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
   through the same stores (optimistic row + outbox enqueue in one transaction, then poke
   the engine). Widget tests that pump the app need `test/support/sync_overrides.dart`.
 - Keep widgets small; extract reusable UI to `lib/src/widgets/`.
+- **No hardcoded user-facing strings** (Epic 11, ADR-0009): every label goes through the i18n
+  facade — `'some.key'.tr()`, with the key added to `apps/app/assets/i18n/{en,tr}.json` (English is
+  the base/fallback). CI enforces this (`npm run check:i18n`); escape hatch `// i18n-ignore`.
 - `dart format .` before committing; zero `flutter analyze` warnings.
 - **UI = docs/DESIGN.md.** Theme/tokens live in `lib/src/theme/` (`buildAwTheme`, `AwTokens`,
   `AwSpace`/`AwRadius`/`AwMotion`); glass chrome + aurora in `lib/src/widgets/glass.dart`;

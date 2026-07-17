@@ -7,14 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
-- **The UI is getting translated** (OPH-122+): app text is moving behind the
-  localization layer so switching to Türkçe actually translates the interface —
-  so far sign-in/sign-up, the navigation, Settings, shared empty/error states, and
-  the whole **Home + task surface** (bucket headers, status/priority names,
-  quick-add, the task create/detail sheets, task rows with locale-aware dates, and
-  the Inbox) — with a full Turkish translation alongside English. As a bonus, the
-  status and priority dropdowns now show proper names instead of raw values like
-  `in_progress`.
+- **The app is fully bilingual — English + Türkçe** (OPH-122…128, Epic 11 done):
+  every screen is now translated — sign-in/sign-up, navigation, Home and the whole
+  task surface (bucket headers, locale-aware dates, quick-add, create/detail
+  sheets, the Inbox), projects, notes, the Google/Apple calendar cards, the
+  onboarding tour, Settings, and error messages. Switch languages in **Settings →
+  Language** and the entire interface flips instantly. Bonus: status/priority
+  dropdowns show proper names instead of `in_progress`; the picked language is
+  saved to your account too (so it can follow you), and on the web the page
+  `lang` reflects the active language for screen readers. Adding a new language
+  needs no code — drop a JSON file (see
+  [CONTRIBUTING](CONTRIBUTING.md#translating-adding-a-language)); a CI check keeps
+  the UI free of hardcoded strings.
 - **Language picker in Settings** (OPH-121): Settings → **Language** lets you
   pick a language — **System default** (follow the device/browser) or any shipped
   language shown in its own name (English, Türkçe). The choice applies instantly,

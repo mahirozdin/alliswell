@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/kv/local_kv.dart';
+import '../../i18n/i18n.dart';
 import '../../sections.dart';
 
 /// Per-device flag: the first-run tour has been seen (skipped or finished).
@@ -14,59 +15,47 @@ final tourAutoStartProvider = Provider<bool>((_) => true);
 /// One step of the tour. [section] anchors the spotlight to a nav destination;
 /// a null section is a plain centered card (welcome / farewell).
 class TourStep {
-  const TourStep({this.section, required this.title, required this.body});
+  const TourStep({this.section, required this.titleKey, required this.bodyKey});
 
   final AppSection? section;
-  final String title;
-  final String body;
+  final String titleKey;
+  final String bodyKey;
+
+  String get title => titleKey.tr();
+  String get body => bodyKey.tr();
 }
 
 /// The tour script: a welcome card, one spotlight per nav section, and a
 /// farewell pointing at Settings. Section copy stays close to each
 /// `AppSection.description` so the tour and the tooltips don't drift.
 const List<TourStep> kTourSteps = [
-  TourStep(
-    title: 'Welcome to AllisWell',
-    body: 'A 30-second tour of the essentials. You can skip it anytime.',
-  ),
+  TourStep(titleKey: 'tour.welcomeTitle', bodyKey: 'tour.welcomeBody'),
   TourStep(
     section: AppSection.home,
-    title: 'Home',
-    body:
-        'Your day in one chronological list — overdue, dateless work, today, '
-        'and the next 30 days. Quick-add at the top; the + button opens the '
-        'full form.',
+    titleKey: 'tour.homeTitle',
+    bodyKey: 'tour.homeBody',
   ),
   TourStep(
     section: AppSection.inbox,
-    title: 'Inbox',
-    body:
-        'Capture a thought fast. It stays here — out of Home — until you plan '
-        'it, so nothing gets lost and nothing clutters your day.',
+    titleKey: 'tour.inboxTitle',
+    bodyKey: 'tour.inboxBody',
   ),
   TourStep(
     section: AppSection.calendar,
-    title: 'Calendar',
-    body:
-        'Your month at a glance. Connect a calendar in Settings and your own '
-        'events show up beside your tasks.',
+    titleKey: 'tour.calendarTitle',
+    bodyKey: 'tour.calendarBody',
   ),
   TourStep(
     section: AppSection.projects,
-    title: 'Projects',
-    body:
-        'Group work with a color and a README overview, with its own tasks and '
-        'notes. Archive a project when it is done.',
+    titleKey: 'tour.projectsTitle',
+    bodyKey: 'tour.projectsBody',
   ),
   TourStep(
     section: AppSection.notes,
-    title: 'Notes',
-    body: 'Rich notes you can pin, archive, and link to tasks and projects.',
+    titleKey: 'tour.notesTitle',
+    bodyKey: 'tour.notesBody',
   ),
-  TourStep(
-    title: 'You’re all set',
-    body: 'Reopen this tour anytime from Settings → App tour.',
-  ),
+  TourStep(titleKey: 'tour.doneTitle', bodyKey: 'tour.doneBody'),
 ];
 
 /// Tour position. [running] gates the overlay; [step] indexes [kTourSteps].

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../theme/tokens.dart';
@@ -31,8 +32,8 @@ class ProjectsScreen extends ConsumerWidget {
             child: Row(
               children: [
                 for (final (archived, label) in [
-                  (false, 'Active'),
-                  (true, 'Archived'),
+                  (false, 'project.filterActive'.tr()),
+                  (true, 'project.filterArchived'.tr()),
                 ]) ...[
                   ChoiceChip(
                     label: Text(label),
@@ -50,7 +51,7 @@ class ProjectsScreen extends ConsumerWidget {
             child: projects.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => AwErrorState(
-                message: '$error',
+                message: localizedError(error),
                 onRetry: () => ref.invalidate(projectsControllerProvider),
               ),
               data: (all) {
@@ -64,11 +65,11 @@ class ProjectsScreen extends ConsumerWidget {
                         ? Icons.archive_outlined
                         : Icons.folder_open,
                     title: showArchived
-                        ? 'No archived projects'
-                        : 'No projects yet',
+                        ? 'project.noArchived'.tr()
+                        : 'project.empty'.tr(),
                     message: showArchived
-                        ? 'Archived projects show up here.'
-                        : 'Create your first project with the + button.',
+                        ? 'project.archivedHere'.tr()
+                        : 'project.createFirst'.tr(),
                   );
                 }
                 return ListView.builder(
@@ -122,8 +123,8 @@ class _ProjectTile extends ConsumerWidget {
             children: [
               IconButton(
                 tooltip: project.isFavorite
-                    ? 'Remove favorite'
-                    : 'Mark favorite',
+                    ? 'project.removeFavorite'.tr()
+                    : 'project.markFavorite'.tr(),
                 icon: Icon(
                   project.isFavorite ? Icons.star : Icons.star_border,
                   color: project.isFavorite ? tokens.warning : null,
@@ -134,7 +135,7 @@ class _ProjectTile extends ConsumerWidget {
               ),
               PopupMenuButton<String>(
                 key: Key('project-menu-${project.id}'),
-                tooltip: 'Project actions',
+                tooltip: 'project.actions'.tr(),
                 onSelected: (action) {
                   if (action == 'edit') {
                     showProjectEditSheet(context, project: project);
@@ -143,10 +144,14 @@ class _ProjectTile extends ConsumerWidget {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  PopupMenuItem(value: 'edit', child: Text('common.edit'.tr())),
                   PopupMenuItem(
                     value: archived ? 'unarchive' : 'archive',
-                    child: Text(archived ? 'Unarchive…' : 'Archive…'),
+                    child: Text(
+                      archived
+                          ? 'project.unarchiveMenu'.tr()
+                          : 'project.archiveMenu'.tr(),
+                    ),
                   ),
                 ],
               ),

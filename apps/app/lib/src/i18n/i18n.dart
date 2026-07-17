@@ -21,6 +21,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/kv/local_kv.dart';
+// Sets `<html lang>` on web; a no-op everywhere else (OPH-128).
+import 'html_lang_stub.dart'
+    if (dart.library.js_interop) 'html_lang_web.dart';
 
 /// The locales AllisWell ships. Adding a language: drop `assets/i18n/<code>.json`
 /// and add its [Locale] here — no other code change (ADR-0009).
@@ -128,6 +131,7 @@ class AwI18n extends ChangeNotifier {
         ? _fallback
         : await _read(locale);
     _locale = locale;
+    setHtmlLang(locale.languageCode);
     notifyListeners();
   }
 
@@ -141,10 +145,16 @@ class AwI18n extends ChangeNotifier {
     return map;
   }
 
+  /// The translation for [key] in the active locale (or the English fallback),
+  /// or null if the key is defined in NEITHER — lets callers detect a miss and
+  /// fall back to something other than the raw key (e.g. a server message).
+  String? maybeTranslate(String key) =>
+      _lookup(_active, key) ?? _lookup(_fallback, key);
+
   /// Resolves a dotted [key] in the active locale, falling back to English, then
   /// to the key itself. `{name}` placeholders are filled from [args].
   String translate(String key, {Map<String, String>? args}) {
-    final value = _lookup(_active, key) ?? _lookup(_fallback, key);
+    final value = maybeTranslate(key);
     if (value == null) {
       assert(() {
         debugPrint('[i18n] missing key: $key');

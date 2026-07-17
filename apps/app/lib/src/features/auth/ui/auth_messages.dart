@@ -1,21 +1,23 @@
+import '../../../i18n/i18n.dart';
 import '../data/models.dart';
 
-/// Human-readable text for the API's stable error codes (AGENTS.md §4).
+/// Localized human-readable text for the API's stable error codes (AGENTS.md §4,
+/// OPH-125). The server returns a language-neutral `code`; the app maps it to an
+/// `error.<CODE>` key, falling back to the server message then a generic string.
 String friendlyAuthMessage(Object error) {
   if (error is AuthException) {
     switch (error.code) {
       case 'AUTH_INVALID_CREDENTIALS':
-        return 'Email or password is incorrect.';
+        return 'error.AUTH_INVALID_CREDENTIALS'.tr();
       case 'AUTH_EMAIL_TAKEN':
-        return 'An account with this email already exists.';
+        return 'error.AUTH_EMAIL_TAKEN'.tr();
       case 'AUTH_INVALID_REFRESH_TOKEN':
       case 'AUTH_REFRESH_REUSED':
-        return 'Your session has expired. Please sign in again.';
+        return 'error.sessionExpired'.tr();
       case 'NETWORK_ERROR':
-        return 'Could not reach the server. Check your connection '
-            'and the server address.';
+        return 'error.NETWORK_ERROR'.tr();
     }
     return error.message;
   }
-  return 'Something went wrong. Please try again.';
+  return 'error.unknown'.tr();
 }

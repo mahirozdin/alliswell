@@ -124,6 +124,7 @@ Optional DB admin UI: `docker compose --profile tools up -d adminer` → http://
 | `npm run lint` / `npm run format` | ESLint / Prettier |
 | `npm run db:migrate` / `db:rollback` | Knex migrations |
 | `npm run check:no-ts` | Enforce the JavaScript-only policy |
+| `npm run check:i18n` | Enforce no hardcoded UI strings (localization) |
 
 ## 📚 Documentation index
 
@@ -153,6 +154,10 @@ This repository is built to be developed continuously by AI coding agents:
 
 Contributions are very welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) and pick a task from
 [docs/TASKS.md](docs/TASKS.md). Please open an issue before large changes.
+
+**Translations** are especially welcome and need no Dart: copy
+`apps/app/assets/i18n/en.json` to `<code>.json`, translate the values, and register the locale
+— see [CONTRIBUTING.md](CONTRIBUTING.md#translating-adding-a-language). Ships with English + Turkish.
 
 ## 📄 License
 

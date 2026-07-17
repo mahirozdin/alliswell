@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/core/error_messages.dart';
 import 'package:alliswell/src/features/home/task_grouping.dart';
+import 'package:alliswell/src/features/onboarding/tour.dart';
 import 'package:alliswell/src/features/tasks/ui/task_visuals.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sections.dart';
@@ -71,6 +74,61 @@ void main() {
       AwI18n.instance.setActiveCached(const Locale('tr'));
       expect(taskStatusLabel('open'), 'Açık');
       expect(taskPriorityLabel('urgent'), 'Acil');
+    });
+  });
+
+  group('feature strings (OPH-124)', () {
+    test('onboarding tour steps localize', () {
+      expect(kTourSteps.first.title, 'Welcome to AllisWell');
+      expect(kTourSteps[1].title, 'Home');
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect(kTourSteps.first.title, "AllisWell'e hoş geldin");
+      expect(kTourSteps.last.title, 'Hazırsın');
+    });
+
+    test('project / note / calendar keys resolve in both languages', () {
+      expect('project.archive'.tr(), 'Archive');
+      expect('note.pin'.tr(), 'Pin');
+      expect('calendar.connect'.tr(), 'Connect');
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect('project.archive'.tr(), 'Arşivle');
+      expect('note.pin'.tr(), 'Sabitle');
+      expect('calendar.connect'.tr(), 'Bağlan');
+    });
+
+    test('args fill placeholders (project.deleteBody)', () {
+      expect(
+        'project.deleteBody'.tr(args: {'name': 'Netgross'}),
+        '"Netgross" will be removed. Its tasks stay in the workspace.',
+      );
+    });
+  });
+
+  group('error messages (OPH-125)', () {
+    test('maps an ApiException code to a localized message', () {
+      expect(
+        localizedError(const ApiException('NETWORK_ERROR', 'raw')),
+        contains('Could not reach'),
+      );
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect(
+        localizedError(const ApiException('NETWORK_ERROR', 'raw')),
+        contains('ulaşılamadı'),
+      );
+    });
+
+    test('falls back to the server message for an untranslated code', () {
+      expect(
+        localizedError(const ApiException('WEIRD_CODE', 'Server said no')),
+        'Server said no',
+      );
+    });
+
+    test('a non-ApiException resolves to the generic message', () {
+      expect(
+        localizedError(Exception('boom')),
+        'Something went wrong. Please try again.',
+      );
     });
   });
 }

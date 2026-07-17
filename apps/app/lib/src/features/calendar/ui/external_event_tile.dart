@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/external_event.dart';
 
@@ -100,7 +101,7 @@ class ExternalEventTile extends StatelessWidget {
             // Says "this came from your calendar, and it lives there" — the
             // read-only affordance, without a disabled-looking control.
             Tooltip(
-              message: 'From your calendar',
+              message: 'calendar.fromYourCalendar'.tr(),
               child: Icon(
                 Icons.event_outlined,
                 size: 16,

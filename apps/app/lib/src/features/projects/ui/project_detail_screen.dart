@@ -3,6 +3,8 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/error_messages.dart';
+import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../../notes/data/note.dart';
 import '../../notes/providers.dart';
@@ -42,7 +44,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         if (project == null) {
           return Scaffold(
             appBar: AppBar(),
-            body: const Center(child: Text('Project not found')),
+            body: Center(child: Text('project.notFound'.tr())),
           );
         }
         return _ProjectDetail(project: project);
@@ -60,14 +62,14 @@ class _ProjectDetail extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete project?'),
+        title: Text('project.deleteTitle'.tr()),
         content: Text(
-          '"${project.name}" will be removed. Its tasks stay in the workspace.',
+          'project.deleteBody'.tr(args: {'name': project.name}),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
+            child: Text('common.cancel'.tr()),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -75,7 +77,7 @@ class _ProjectDetail extends ConsumerWidget {
               foregroundColor: Theme.of(dialogContext).colorScheme.onError,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
+            child: Text('common.delete'.tr()),
           ),
         ],
       ),
@@ -104,21 +106,21 @@ class _ProjectDetail extends ConsumerWidget {
           ),
           actions: [
             IconButton(
-              tooltip: 'Edit project',
+              tooltip: 'project.editTooltip'.tr(),
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => showProjectEditSheet(context, project: project),
             ),
             IconButton(
-              tooltip: 'Delete project',
+              tooltip: 'project.deleteTooltip'.tr(),
               icon: const Icon(Icons.delete_outline),
               onPressed: () => _confirmDelete(context, ref),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'Overview'),
-              Tab(text: 'Tasks'),
-              Tab(text: 'Notes'),
+              Tab(text: 'project.tabOverview'.tr()),
+              Tab(text: 'project.tabTasks'.tr()),
+              Tab(text: 'project.tabNotes'.tr()),
             ],
           ),
         ),
@@ -126,13 +128,13 @@ class _ProjectDetail extends ConsumerWidget {
           children: [
             if (project.status == 'archived')
               MaterialBanner(
-                content: const Text('This project is archived.'),
+                content: Text('project.archivedBanner'.tr()),
                 leading: const Icon(Icons.archive_outlined),
                 actions: [
                   TextButton(
                     key: const Key('detail-unarchive'),
                     onPressed: () => showProjectArchiveDialog(context, project),
-                    child: const Text('Unarchive'),
+                    child: Text('project.unarchive'.tr()),
                   ),
                 ],
               ),
@@ -192,15 +194,23 @@ class _OverviewTab extends ConsumerWidget {
               label: Text(project.status),
             ),
             if (project.isFavorite)
-              const Chip(
-                avatar: Icon(Icons.star, size: 18, color: Colors.amber),
-                label: Text('Favorite'),
+              Chip(
+                avatar: const Icon(Icons.star, size: 18, color: Colors.amber),
+                label: Text('project.favorite'.tr()),
               ),
             if (project.dueAt != null)
               Chip(
                 avatar: const Icon(Icons.flag_outlined, size: 18),
                 label: Text(
-                  'Due ${project.dueAt!.toLocal().toString().split(' ').first}',
+                  'project.dueOn'.tr(
+                    args: {
+                      'date': project.dueAt!
+                          .toLocal()
+                          .toString()
+                          .split(' ')
+                          .first,
+                    },
+                  ),
                 ),
               ),
           ],
@@ -214,12 +224,12 @@ class _OverviewTab extends ConsumerWidget {
               color: theme.colorScheme.primary,
             ),
             const SizedBox(width: 6),
-            Text('README', style: theme.textTheme.titleSmall),
+            Text('project.readme'.tr(), style: theme.textTheme.titleSmall),
             const Spacer(),
             if (project.readmeNoteId != null)
               IconButton(
                 key: const Key('edit-readme'),
-                tooltip: 'Edit README',
+                tooltip: 'project.editReadme'.tr(),
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 onPressed: () =>
                     context.push('/edit-note/${project.readmeNoteId}'),
@@ -234,8 +244,7 @@ class _OverviewTab extends ConsumerWidget {
               child: Column(
                 children: [
                   Text(
-                    'No README yet — the note that opens with this project, '
-                    'like a repo home page.',
+                    'project.noReadme'.tr(),
                     style: theme.textTheme.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -244,7 +253,7 @@ class _OverviewTab extends ConsumerWidget {
                     key: const Key('create-readme'),
                     onPressed: () => _createReadme(context, ref),
                     icon: const Icon(Icons.post_add),
-                    label: const Text('Create README'),
+                    label: Text('project.createReadme'.tr()),
                   ),
                 ],
               ),
@@ -329,10 +338,7 @@ class _ReadmeViewState extends State<_ReadmeView> {
     final theme = Theme.of(context);
     final title = widget.note.title.trim();
     final body = _controller.document.isEmpty()
-        ? Text(
-            'Empty README — open it with the pencil to start writing.',
-            style: theme.textTheme.bodyMedium,
-          )
+        ? Text('project.emptyReadme'.tr(), style: theme.textTheme.bodyMedium)
         : QuillEditor.basic(
             controller: _controller,
             config: const QuillEditorConfig(
@@ -384,21 +390,21 @@ class _ProjectTasksTab extends ConsumerWidget {
       children: [
         QuickAddBar(
           key: const Key('project-quick-add'),
-          hintText: 'Add a task to this project…',
+          hintText: 'project.addTaskHint'.tr(),
           onAdd: (title) => _add(ref, title),
         ),
         Expanded(
           child: tasks.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => AwErrorState(
-              message: '$error',
+              message: localizedError(error),
               onRetry: () => ref.invalidate(projectTasksProvider(projectId)),
             ),
             data: (items) => items.isEmpty
-                ? const AwEmptyState(
+                ? AwEmptyState(
                     icon: Icons.check_circle_outline,
-                    title: 'All clear',
-                    message: 'No open tasks in this project',
+                    title: 'project.allClear'.tr(),
+                    message: 'project.noOpenTasks'.tr(),
                   )
                 : ListView.builder(
                     padding: awListPadding(context),
@@ -446,7 +452,7 @@ class _ProjectNotesTab extends ConsumerWidget {
               key: const Key('project-add-note'),
               onPressed: () => _addNote(context, ref),
               icon: const Icon(Icons.note_add_outlined),
-              label: const Text('New note in this project'),
+              label: Text('project.newNote'.tr()),
             ),
           ),
         ),
@@ -454,14 +460,14 @@ class _ProjectNotesTab extends ConsumerWidget {
           child: notes.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, _) => AwErrorState(
-              message: '$error',
+              message: localizedError(error),
               onRetry: () => ref.invalidate(projectNotesProvider(project.id)),
             ),
             data: (items) => items.isEmpty
-                ? const AwEmptyState(
+                ? AwEmptyState(
                     icon: Icons.description_outlined,
-                    title: 'No notes yet',
-                    message: 'No notes attached to this project yet',
+                    title: 'project.noNotesTitle'.tr(),
+                    message: 'project.noNotesBody'.tr(),
                   )
                 : ListView.builder(
                     padding: awListPadding(context),

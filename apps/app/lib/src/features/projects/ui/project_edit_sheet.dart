@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
+import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../data/project.dart';
 import '../providers.dart';
@@ -103,7 +104,7 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } on Object {
-      setState(() => _error = 'Something went wrong. Please try again.');
+      setState(() => _error = 'project.genericError'.tr());
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -124,7 +125,7 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                _isEdit ? 'Edit project' : 'New project',
+                _isEdit ? 'project.edit'.tr() : 'project.new'.tr(),
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
@@ -132,14 +133,14 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                 controller: _name,
                 autofocus: !_isEdit,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(labelText: 'Name'),
+                decoration: InputDecoration(labelText: 'project.name'.tr()),
                 validator: (v) => (v == null || v.trim().isEmpty)
-                    ? 'Give the project a name'
+                    ? 'project.nameRequired'.tr()
                     : null,
               ),
               const SizedBox(height: 16),
               Text(
-                'Color',
+                'project.color'.tr(),
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w700,
@@ -175,7 +176,7 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                 DropdownButtonFormField<String>(
                   isExpanded: true,
                   initialValue: _status,
-                  decoration: const InputDecoration(labelText: 'Status'),
+                  decoration: InputDecoration(labelText: 'project.status'.tr()),
                   items: [
                     for (final status in [
                       ...kProjectStatuses,
@@ -202,7 +203,11 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(_isEdit ? 'Save changes' : 'Create project'),
+                    : Text(
+                        _isEdit
+                            ? 'project.saveChanges'.tr()
+                            : 'project.create'.tr(),
+                      ),
               ),
             ],
           ),
@@ -231,7 +236,7 @@ class _ColorGridDialog extends StatelessWidget {
       Colors.grey.shade700,
     ];
     return AlertDialog(
-      title: const Text('Pick a color'),
+      title: Text('project.pickColor'.tr()),
       content: SizedBox(
         width: 320,
         child: GridView.count(
@@ -252,7 +257,7 @@ class _ColorGridDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text('common.cancel'.tr()),
         ),
       ],
     );
@@ -270,7 +275,7 @@ class _MoreColorsButton extends StatelessWidget {
       onTap: onTap,
       customBorder: const CircleBorder(),
       child: Tooltip(
-        message: 'More colors',
+        message: 'project.moreColors'.tr(),
         child: Container(
           width: 40,
           height: 40,

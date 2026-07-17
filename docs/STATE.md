@@ -3,8 +3,8 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-17 (**feedback round 5 planlandı** — Epic 11 i18n + Epic 12 widgets
-docs'a işlendi; kod değişmedi. v0.1.1 hâlâ hazır, hedef v0.2.0.)
+**Last updated:** 2026-07-17 (**Epic 11 — Localization (i18n) KAPANDI**, OPH-120…128 9/9.
+Tüm UI EN+TR. Sıradaki: Epic 12 widgets (OPH-130). Hedef v0.2.0.)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,12 +15,31 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | | |
 | --- | --- |
 | Current phase | **Phase 7 planlandı (v0.2.0)** — feedback round 5: i18n + widgets docs'a işlendi. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
-| Current epic | **Epic 11 — Localization (i18n)** DEVAM EDİYOR (OPH-120…123 ✅; sıradaki OPH-124); sonra **Epic 12 — Widgets** (OPH-130…136). i18n önce (widget snapshot'ı lokalize etiket yazsın). |
-| ➡️ **Next task** | **OPH-124 — Extract strings: projects, notes, calendar/integrations, onboarding** (TASKS.md). Kalan feature string'leri: proje detay/edit/arşiv, not liste/editör, Google/Apple takvim kartları, tur baloncukları. Binding: ADR-0009, DESIGN §9. |
+| Current epic | **Epic 11 — Localization (i18n) KAPANDI** (OPH-120…128, 9/9 ✅). Sıradaki: **Epic 12 — Widgets** (OPH-130…136) — çoğu native Swift/Kotlin, gerçek cihaz/build gerektirir. |
+| ➡️ **Next task** | **OPH-130 — Widget snapshot core (Dart: pure grouping + bridge)** (Epic 12 başı, TASKS.md). Widget epiğinin tek tam-test-edilebilir task'ı. Binding: [WIDGETS.md](WIDGETS.md) + ADR-0010 + DESIGN §8. i18n hazır → snapshot lokalize etiket yazabilir. Native task'lar `flutter build ios`/`apk` + cihaz turu ister. |
 | ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası (Epic 12 macOS widget + EventKit için), Apple/Android cihaz turu. Widget epiği için: gerçek iOS/Android cihaz/simülatör (native build doğrulaması). |
-| Last completed | **OPH-123 — string çıkarma (Home + tasks)** (Epic 11): en büyük yüzey (8 dosya) — HomeBucketLabel, statü/öncelik etiketleri (`taskStatusLabel`/`taskPriorityLabel`), quick-add, create/detail sheet'leri, task tile, Inbox; `intl` ile locale-aware tarih (en birebir aynı). İngilizce korundu → testler değişmedi. Süit 258/258. (OPH-120 motor, 121 dil seçici, 122 chrome.) |
+| Last completed | **OPH-124…128 → Epic 11 (i18n) KAPANDI**: projeler/notlar/takvim/onboarding string'leri (3 paralel ajan, ~145 string), hata-kodu lokalizasyonu + `localizedError`, `PATCH /me` (API + app push), CI hardcoded-string bekçisi (`check:i18n`), web `<html lang>` + "dil ekleme" dokümanı. **Tüm UI EN+TR; dil eklemek = JSON drop.** App 264/264, API 219/219, bekçi+analyze temiz. |
 
 ## Recently completed
+
+- **OPH-124…128 → Epic 11 (Localization) KAPANDI (2026-07-17):**
+  - **OPH-124 (feature string'leri):** projeler/notlar/takvim kartları/onboarding — **3 paralel
+    alt-ajan** ~145 string'i çıkardı (proje 62, takvim 39, not+onboarding ~40), her biri İngilizce
+    değeri BİREBİR koruyarak (mevcut testler değişmedi). `TourStep` da `AppSection` gibi key+getter'a
+    çevrildi. 6 yeni-anahtar gerektiren artık elle bitti. extraction_test spot-check'leri.
+  - **OPH-125 (hata + dinamik):** `friendlyAuthMessage` + `home_shell._conflictMessage` lokalize;
+    `error.*`/`sync.*` anahtarları; `localizedError()` helper (`AwI18n.maybeTranslate`) + 6
+    `AwErrorState('$error')` yeri dönüştürüldü.
+  - **OPH-126 (`PATCH /me`):** API endpoint (format-doğrulamalı, sabit allow-list DEĞİL — self-host
+    "JSON drop" modelini korur; `loadMe` ortak helper; 4 test). App: `accountLocaleSyncProvider`
+    dil seçince best-effort PATCH. **Ertelendi:** sign-in'de me.locale'den seed (app'te `/me` fetch
+    akışı yok).
+  - **OPH-127 (CI bekçisi):** `scripts/i18n/check.mjs` + `npm run check:i18n` + CI adımı;
+    self-test'li. Bekçi 2 kaçağı yakaladı (`month_calendar` ay tooltip'leri) → düzeltildi.
+  - **OPH-128 (web lang + docs):** conditional-import ile `<html lang>` (web'de `package:web`),
+    `index.html` `lang="en"`; README + CONTRIBUTING "dil ekleme".
+  - **Sonuç:** tüm UI EN+TR; dil eklemek = `assets/i18n/<kod>.json` + locale kaydı. **App 264/264,
+    API 219/219, `check:i18n` + analyze temiz.** Sıradaki oturum OPH-130 (widget çekirdeği).
 
 - **OPH-120 — i18n foundation (2026-07-17, Epic 11 başladı):**
   - **Ne:** app'e ait **senkron** JSON i18n deposu `lib/src/i18n/i18n.dart` (`AwI18n`

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../sections.dart';
@@ -36,7 +37,7 @@ class InboxScreen extends ConsumerWidget {
             child: tasks.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => AwErrorState(
-                message: '$error',
+                message: localizedError(error),
                 onRetry: () => ref.invalidate(inboxTasksProvider),
               ),
               data: (items) => items.isEmpty

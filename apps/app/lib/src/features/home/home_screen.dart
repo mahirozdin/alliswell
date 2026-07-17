@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/error_messages.dart';
 import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
 import '../../screens/home_shell.dart';
@@ -56,7 +57,7 @@ class HomeScreen extends ConsumerWidget {
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
-          message: '$error',
+          message: localizedError(error),
           onRetry: () => ref.invalidate(openTasksProvider),
         ),
         data: (items) {
