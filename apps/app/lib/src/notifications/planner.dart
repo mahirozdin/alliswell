@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../i18n/i18n.dart';
 import 'gateway.dart';
 
 /// What the planner needs to know about one alarm — a reminder row joined
@@ -75,12 +76,14 @@ List<PlannedNotification> planNotifications({
           ? 'AllisWell'
           : (alarm.urgent ? '⏰ ${alarm.taskTitle}' : alarm.taskTitle);
       final body = privacyMode
-          ? 'Bir hatırlatıcın var'
+          ? 'notif.privateBody'.tr()
           : (alarm.urgent
                 ? (index == 0
-                      ? 'Acil hatırlatıcı — onay bekliyor'
-                      : 'Hâlâ onay bekliyor (${index + 1}. hatırlatma)')
-                : 'Hatırlatıcı');
+                      ? 'notif.urgentFirst'.tr()
+                      : 'notif.urgentRepeat'.tr(
+                          args: {'count': '${index + 1}'},
+                        ))
+                : 'notif.reminder'.tr());
 
       final payload = jsonEncode({
         'taskId': alarm.taskId,

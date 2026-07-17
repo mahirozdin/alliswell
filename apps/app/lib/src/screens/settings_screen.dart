@@ -9,6 +9,7 @@ import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/onboarding/tour.dart';
 import '../features/settings/account_locale.dart';
 import '../i18n/i18n.dart';
+import '../notifications/gateway.dart';
 import '../notifications/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
@@ -64,6 +65,10 @@ class SettingsScreen extends ConsumerWidget {
                           .read(notificationPrivacyProvider.notifier)
                           .toggle(),
                     ),
+                    // Feedback round 6: an honest status row for the
+                    // product's backbone — can the alarm actually ring on
+                    // this device? Tapping re-runs the permission flow.
+                    const _AlarmStatusTile(),
                     // OPH-111: replay the first-run tour on demand. Start it,
                     // then pop back to the shell where the overlay lives.
                     ListTile(
@@ -131,6 +136,84 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Feedback round 6: the alarm-permission status row. It reports what the OS
+/// will actually let an urgent alarm do — in plain language, worst problem
+/// first — and a tap re-runs the permission flow (Android: deep-links to the
+/// "Alarms & reminders" special access when that is the missing piece).
+class _AlarmStatusTile extends ConsumerStatefulWidget {
+  const _AlarmStatusTile();
+
+  @override
+  ConsumerState<_AlarmStatusTile> createState() => _AlarmStatusTileState();
+}
+
+class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
+  late Future<AlarmSupport> _support;
+
+  @override
+  void initState() {
+    super.initState();
+    _support = _probe();
+  }
+
+  Future<AlarmSupport> _probe() async {
+    final gateway = ref.read(notificationsGatewayProvider);
+    try {
+      await gateway.initialize();
+      return await gateway.alarmSupport();
+    } catch (_) {
+      // No notification surface here (web) — nothing to warn about.
+      return const AlarmSupport(
+        notificationsEnabled: true,
+        criticalAlertsEnabled: false,
+      );
+    }
+  }
+
+  Future<void> _request() async {
+    final gateway = ref.read(notificationsGatewayProvider);
+    try {
+      await gateway.requestPermissions();
+    } catch (_) {
+      // Denials and missing platform surfaces both just re-probe below.
+    }
+    if (mounted) setState(() => _support = _probe());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<AlarmSupport>(
+      future: _support,
+      builder: (context, snapshot) {
+        final support = snapshot.data;
+        final subtitle = support == null
+            ? 'settings.alarms.checking'.tr()
+            : !support.notificationsEnabled
+            ? 'settings.alarms.off'.tr()
+            : support.exactAlarmsEnabled == false
+            ? 'settings.alarms.exact'.tr()
+            : support.criticalAlertsEnabled
+            ? 'settings.alarms.readyCritical'.tr()
+            : 'settings.alarms.ready'.tr();
+        final warn =
+            support != null &&
+            (!support.notificationsEnabled ||
+                support.exactAlarmsEnabled == false);
+        return ListTile(
+          key: const Key('alarm-status'),
+          leading: Icon(
+            warn ? Icons.alarm_off_outlined : Icons.alarm_on_outlined,
+            color: warn ? Theme.of(context).colorScheme.error : null,
+          ),
+          title: Text('settings.alarms.title'.tr()),
+          subtitle: Text(subtitle),
+          onTap: _request,
+        );
+      },
     );
   }
 }

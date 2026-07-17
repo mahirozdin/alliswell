@@ -48,8 +48,8 @@ void main() {
     expect(plan.map((n) => n.fireAt), [
       for (final offset in kUrgentChainOffsets) base.add(offset),
     ]);
-    expect(plan.first.body, contains('onay bekliyor'));
-    expect(plan.last.body, contains('5. hatırlatma'));
+    expect(plan.first.body, contains('waiting for acknowledgement'));
+    expect(plan.last.body, contains('alert 5'));
     // Urgent WITHOUT ack requirement rings once.
     expect(
       planNotifications(
@@ -106,7 +106,7 @@ void main() {
     );
     for (final n in plan) {
       expect(n.title, 'AllisWell');
-      expect(n.body, 'Bir hatırlatıcın var');
+      expect(n.body, 'You have a reminder');
       expect(n.title.contains('gizli'), isFalse);
       // The payload still routes taps by id — content stays off the lock screen.
       expect(n.payload, isNot(contains('gizli')));

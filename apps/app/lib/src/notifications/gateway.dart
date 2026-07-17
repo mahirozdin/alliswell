@@ -38,6 +38,26 @@ class NotificationEvent {
   final String? payload;
 }
 
+/// What the OS currently lets us do — feeds the honest status row in
+/// Settings (feedback round 6). Never cached across app runs; always probed.
+class AlarmSupport {
+  const AlarmSupport({
+    required this.notificationsEnabled,
+    required this.criticalAlertsEnabled,
+    this.exactAlarmsEnabled,
+  });
+
+  final bool notificationsEnabled;
+
+  /// iOS/macOS: true only when Apple granted the critical-alerts entitlement
+  /// AND the user allowed them — the pair that lets sound bypass the mute
+  /// switch. Always false without the entitlement (docs/NOTIFICATIONS.md §2).
+  final bool criticalAlertsEnabled;
+
+  /// Android: the "Alarms & reminders" special access (null elsewhere).
+  final bool? exactAlarmsEnabled;
+}
+
 abstract class NotificationsGateway {
   /// Idempotent; safe to call before every use.
   Future<void> initialize();
@@ -45,6 +65,9 @@ abstract class NotificationsGateway {
   /// Ask the OS for notification (and Android exact-alarm) permission.
   /// Returns false when the user declined — callers degrade, never crash.
   Future<bool> requestPermissions();
+
+  /// Probe what delivery the OS currently allows (see [AlarmSupport]).
+  Future<AlarmSupport> alarmSupport();
 
   Future<Set<int>> pendingIds();
 

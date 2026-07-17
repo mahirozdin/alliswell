@@ -58,6 +58,14 @@
     "privateNotificationsSub": "Hatırlatıcı ve alarmlarda görev başlıklarını gizle",
     "appTour": "Uygulama turu",
     "appTourSub": "Özellik turunu tekrar oynat",
+    "alarms": {
+      "title": "Acil alarmlar",
+      "checking": "Kontrol ediliyor…",
+      "off": "Bildirimler kapalı — alarm çalamaz. Düzeltmek için dokun.",
+      "exact": "Alarmlar tam saatinde çalsın diye \"Alarmlar ve hatırlatıcılar\" iznini vermek için dokun.",
+      "readyCritical": "Hazır — telefon sessizde bile çalar.",
+      "ready": "Hazır — Uyku ve Odak modlarını deler. Sessiz anahtarı açıksa iOS ses çaldırmaz."
+    },
     "signOut": "Çıkış yap",
     "aboutBody": "Açık kaynak, kendi sunucunda barındırılan üretkenlik merkezi — görevler, projeler, notlar, takvim ve hatırlatıcılar.",
     "language": {
@@ -321,6 +329,27 @@
     "fieldsOverridden": "Bazı değişiklikler daha yeni bir düzenlemeyle geçersiz kılındı ({fields}).",
     "rejected": "Bir değişiklik sunucu tarafından reddedildi{code}.",
     "conflicted": "Bir değişiklik daha yeni bir düzenlemeyle çakıştı ve uygulanmadı."
+  },
+  "notif": {
+    "privateBody": "Bir hatırlatıcın var",
+    "urgentFirst": "Acil hatırlatıcı — onay bekliyor",
+    "urgentRepeat": "Hâlâ onay bekliyor ({count}. hatırlatma)",
+    "reminder": "Hatırlatıcı",
+    "action": {
+      "complete": "Tamamla",
+      "acknowledge": "Onayla",
+      "snooze5m": "5 dk",
+      "snooze30m": "30 dk",
+      "snooze1h": "1 saat",
+      "snoozeTomorrow": "Yarın sabah",
+      "open": "Aç"
+    },
+    "channel": {
+      "urgentName": "Acil alarmlar",
+      "urgentDesc": "Onay gerektiren ısrarcı alarmlar",
+      "remindersName": "Hatırlatıcılar",
+      "remindersDesc": "Görev hatırlatıcıları"
+    }
   },
   "widget": {
     "bucket": {

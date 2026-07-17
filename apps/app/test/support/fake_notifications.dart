@@ -20,6 +20,12 @@ class FakeNotificationsGateway implements NotificationsGateway {
   }
 
   @override
+  Future<AlarmSupport> alarmSupport() async => const AlarmSupport(
+    notificationsEnabled: true,
+    criticalAlertsEnabled: false,
+  );
+
+  @override
   Future<Set<int>> pendingIds() async => scheduled.keys.toSet();
 
   @override

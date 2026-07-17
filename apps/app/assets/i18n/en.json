@@ -59,6 +59,14 @@
     "privateNotificationsSub": "Hide task titles in reminders and alarms",
     "appTour": "App tour",
     "appTourSub": "Replay the feature walkthrough",
+    "alarms": {
+      "title": "Urgent alarms",
+      "checking": "Checking…",
+      "off": "Notifications are off — alarms cannot ring. Tap to fix.",
+      "exact": "Tap to grant \"Alarms & reminders\" so alarms ring exactly on time.",
+      "readyCritical": "Ready — rings even when the phone is on silent.",
+      "ready": "Ready — breaks through Sleep and Focus modes. If the mute switch is on, iOS plays no sound."
+    },
     "signOut": "Sign out",
     "aboutBody": "Open-source, self-hosted productivity hub — tasks, projects, notes, calendar and reminders.",
     "language": {
@@ -322,6 +330,27 @@
     "fieldsOverridden": "Some changes were overridden by a newer edit ({fields}).",
     "rejected": "A change was rejected by the server{code}.",
     "conflicted": "A change conflicted with a newer edit and was not applied."
+  },
+  "notif": {
+    "privateBody": "You have a reminder",
+    "urgentFirst": "Urgent reminder — waiting for acknowledgement",
+    "urgentRepeat": "Still waiting for acknowledgement (alert {count})",
+    "reminder": "Reminder",
+    "action": {
+      "complete": "Complete",
+      "acknowledge": "Acknowledge",
+      "snooze5m": "5 min",
+      "snooze30m": "30 min",
+      "snooze1h": "1 hour",
+      "snoozeTomorrow": "Tomorrow morning",
+      "open": "Open"
+    },
+    "channel": {
+      "urgentName": "Urgent alarms",
+      "urgentDesc": "Insistent alarms that need acknowledgement",
+      "remindersName": "Reminders",
+      "remindersDesc": "Task reminders"
+    }
   },
   "widget": {
     "bucket": {
