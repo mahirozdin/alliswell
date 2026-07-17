@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Localization foundation** (OPH-120, Epic 11): the app now has an
+  internationalization layer — a small, app-owned synchronous store that reads
+  JSON locale files (`assets/i18n/en.json` + `tr.json`), auto-detects the device
+  or browser language, falls back to English per key, and rebuilds the UI when
+  the language changes. No third-party i18n package. Strings are still English in
+  this task; the extraction and the Settings language picker follow. Adding a
+  language is dropping a JSON file. (See [ADR-0009](docs/adr/0009-localization-i18n-architecture.md).)
 - **First-run onboarding tour** (OPH-111): a spotlight walkthrough of the main
   navigation that starts once for a new device and can be replayed anytime from
   Settings → App tour. Skippable, keyboard/back-friendly, and adapts to the

@@ -156,3 +156,52 @@ python3 scripts/design/contrast.py
 ```
 
 It must print `FAILURES: 0` before a palette change ships.
+
+## 8. Widget design (home-screen / desktop — Epic 12)
+
+_(Added 2026-07-17, feedback round 5. Full plan: [WIDGETS.md](WIDGETS.md);
+decision [ADR-0010](adr/0010-home-screen-widgets-architecture.md).)_
+
+Widgets render in **native views** (SwiftUI on Apple, Jetpack Glance on Android),
+NOT Flutter — so they can't consume `AwTokens`/`theme.dart` directly. They must
+still *read as AllisWell*. Rules:
+
+- **W1 — Token parity, not token reuse.** Mirror the DESIGN §3.1 palette as a
+  small native constant table (light + dark), keyed by the same roles
+  (`primary`, `onSurface`, `surface`, `error`, `success`, priority hues). One
+  source of truth in spirit; when a token moves, the widget table moves in the
+  same change.
+- **W2 — Contrast floors still apply** (G2): text ≥ 4.5:1, icons/borders ≥ 3:1,
+  in light AND dark. The OS switches the widget's appearance — provide both.
+- **W3 — No fake glass.** A widget can't blur live content behind it. Use a
+  **solid tinted card** that evokes the aurora (a subtle vertical wash), never a
+  translucent panel. Respect the OS `containerBackground` on iOS 26 so the system
+  themes it.
+- **W4 — Circular checkbox, same as the app** (§4): completing animates the row
+  away after ~1–2 s. Hit target ≥ 44 pt and **generous** — the stock Reminders
+  widget's biggest complaint is accidental completion.
+- **W5 — Project color = data (G6 exception).** The row's project dot/badge uses
+  the user's color; compute readable ink over it with the SAME luminance rule as
+  the "Project badge" (§4) so it stays ≥ 4.5:1.
+- **W6 — Date header** (large/extraLarge): weekday **name** + big **day number**,
+  tabular figures, mirroring the Apple-Calendar reference and DESIGN §3.3.
+- **W7 — Density per size** (WIDGETS.md §5): 4×2 = header + 3–4 rows, no bucket
+  labels; 4×4 = bucketed scroll ~8–10 rows + labels/counts; extraLarge/4×6 =
+  richest, optional week strip. Truncate with an honest "+N more", never silently.
+- **W8 — Both themes + all sizes reviewed** before ship, on device (the native
+  layer isn't covered by `flutter test`).
+
+## 9. Localization & text (Epic 11)
+
+_(Added 2026-07-17, feedback round 5 — [ADR-0009](adr/0009-localization-i18n-architecture.md).)_
+
+- **L1 — No hardcoded user-facing strings.** Every label comes from the i18n
+  facade (`lib/src/i18n/`); a CI grep guards against raw `Text('literal')`.
+- **L2 — Layouts survive text expansion.** Turkish/German strings run longer than
+  English — never assume a fixed width; prefer wrap or ellipsis + tooltip (already
+  the §4 badge rule). Check the longest supported locale, not just `en`.
+- **L3 — Tabular figures + locale-aware dates.** Numbers/dates format through the
+  active locale (`intl`); day/month names come localized.
+- **L4 — RTL is v1-out-of-scope but not precluded.** en + tr are LTR; don't bake
+  in `EdgeInsets.only(left:)` where `.start`/`.end` (directional) is meant, so an
+  RTL locale can drop in later without a layout rewrite.

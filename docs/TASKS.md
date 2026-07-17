@@ -1791,6 +1791,362 @@ BLUEPRINT §12.7 stays truthful.
 
 ---
 
+## Epic 11 — Localization (i18n) (Phase 7, v0.2.0)
+
+> **Source:** feedback round 5 (2026-07-17, Mahir) — "tüm hardcoded string'leri çıkar, JSON dil
+> mekanizması ekle; cihaz TR ise ve tr.json varsa Türkçe açılsın, fallback en.json; ayarlardan
+> kalıcı dil değişimi; web'de tarayıcı diline göre." Binding spec: BLUEPRINT §12.9 + §15.5,
+> [ADR-0009](adr/0009-localization-i18n-architecture.md), DESIGN §9. **When a task below and those
+> disagree, the spec sections win.**
+>
+> **This epic ships BEFORE Epic 12 (widgets) on purpose:** the widget snapshot (OPH-130) writes
+> ALREADY-LOCALIZED bucket/date labels, so i18n must exist first. (If Mahir wants widgets first,
+> the two epics just swap — nothing else changes.)
+>
+> Every task follows AGENTS.md §2/§3: tests + docs + `flutter analyze` clean; UI tasks check both
+> themes. Work strictly top-to-bottom.
+
+### OPH-120 — i18n foundation & wiring ✅
+
+- [x] `flutter_localizations` (SDK) added; `assets/i18n/` registered; `assets/i18n/en.json` +
+      `tr.json` seeded with the `common.*` set + `app.*`.
+- [x] `main.dart`: `WidgetsFlutterBinding.ensureInitialized()` + `await AwI18n.instance.boot()`
+      before `runApp` (loads the persisted/device locale + fallback synchronously).
+- [x] `app.dart`: `ListenableBuilder(listenable: AwI18n.instance)` wraps `MaterialApp.router`;
+      `locale: AwI18n.instance.locale`, `supportedLocales: awSupportedLocales`, delegates =
+      Global{Material,Widgets,Cupertino}Localizations + `FlutterQuillLocalizations`.
+- [x] `lib/src/i18n/i18n.dart` — the `AwI18n` synchronous store + `String.tr()`; nothing else
+      touches the engine (one seam, ADR-0009 D2).
+- [x] `test/flutter_test_config.dart` bootstraps the store off disk so `.tr()` resolves under a
+      plain `pumpAndSettle`.
+
+Acceptance notes: **deviation from the specced `easy_localization` — replaced it
+with an app-owned SYNCHRONOUS store (ADR-0009 revised).** easy_localization was
+implemented first and reverted: its `LocalizationsDelegate` loads translations
+asynchronously, and under flutter_test's fake-async clock that load never
+completes during `pumpAndSettle`, so the `Localizations` widget blocked the whole
+app subtree — ~40 full-app tests rendered nothing, and `.tr()` returned raw keys.
+The fix (`AwI18n`, ~180 lines, unit-tested) reads the JSON into memory before
+`runApp` (`boot()`), so `'key'.tr()` is a synchronous map lookup at build time.
+Device/browser detection (`PlatformDispatcher.instance.locales` → first supported
+→ `en`; `resolveInitialLocale` pure + tested), persisted override via `localKv`,
+per-key fallback to `en`, `{name}` interpolation, and runtime switch via a
+`ChangeNotifier` + `ListenableBuilder` (the `MaterialApp` is built INSIDE the
+builder — a const child would not rebuild on locale change; that was a real bug
+caught by a test). Tests: `test/i18n/i18n_test.dart` (11) — `resolveInitialLocale`
+cases, en/tr resolution, en-fallback for a tr-missing key, unknown-key
+passthrough, `{name}` args, and two widget tests proving `.tr()` renders and a
+language switch rebuilds — all with plain `pumpAndSettle`, no `runAsync`. **Full
+suite 247/247 (236 existing untouched + 11), `flutter analyze` clean.** ✔
+
+**Context:** there was NO i18n; `app.dart` wired only Quill's delegates. `users.locale` exists but
+nothing read it. This task stood up the engine + the one-seam indirection.
+
+**DoD:** `flutter analyze` + `flutter test` green; app boots (device/en); no visual change yet
+(strings convert in OPH-122+). ✔
+
+### OPH-121 — Language picker in Settings + persistence
+
+- [ ] Settings → **"Language"** `ListTile` (after "App tour") opening a sheet/dialog: **System
+      default** · **English** · **Türkçe** (list grows from `supportedLocales`, each shown by its
+      endonym).
+- [ ] Runtime switch via `AwI18n.instance.setLocale(...)` (no restart, rebuilds via the
+      `ListenableBuilder`); **System default** calls `AwI18n.instance.useSystemLocale()` (clears the
+      override, follows the device); current selection is shown with a check.
+- [ ] Persists across restart (localKv key `alliswell_locale`).
+
+**Context:** `settings_screen.dart` is a plain `Card`/`ListTile` list — add the row using DESIGN
+components. Endonyms: "English", "Türkçe".
+
+**Spec:** "System default" is the absence of an override (device/browser wins); any explicit pick
+persists and wins, on app AND web.
+
+**Tests:** pump Settings, tap Language, pick Türkçe → a known visible label reads Turkish; pick
+System default → resolves to the platform locale; a second pump (simulated restart, override
+pre-set in localKv) still reads Türkçe.
+
+**DoD:** analyze + test; both themes; row matches DESIGN.
+
+### OPH-122 — Extract strings: auth, shell, settings, shared states
+
+- [ ] Move to `en`+`tr` keys: login/register screens, nav labels (Home/Inbox/Calendar/Projects/
+      Notes/Search/Settings), all `settings_screen.dart` rows, sign-out, and the default copy in
+      `widgets/status_views.dart` (`AwEmptyState`/`AwErrorState`/`AwInlineError`).
+- [ ] Update widget tests that matched English literals (match via key or accept both locales);
+      preserve every `Key('…')`.
+
+**Context:** the chrome layer — `features/auth/ui/*`, `screens/settings_screen.dart`,
+`screens/home_shell.dart`, `widgets/status_views.dart`. Key groups: `auth.*`, `nav.*`,
+`settings.*`, `state.*`, `common.*`.
+
+**Tests:** existing suites stay green in `en`; a spot test asserts a nav label localizes to `tr`.
+
+**DoD:** analyze + test; visual parity in `en`, `tr` renders.
+
+### OPH-123 — Extract strings: Home, tasks, quick-add, task create/detail
+
+- [ ] `HomeBucketLabel` (`task_grouping.dart`) → key lookups `home.bucket.{overdue,noDate,today,
+      tomorrow,thisWeek,next30Days,selectedDay}`; task **status** labels `task.status.*` and
+      **priority** labels `task.priority.*` (used by `task_visuals.dart` dropdowns); quick-add hints
+      including the interpolated "Quick add for <date>"; task create/detail sheets; task snackbars.
+- [ ] "Overdue" word + relative/absolute dates localized via `intl` in the active locale.
+
+**Context:** the largest surface — `features/home/*`, `features/tasks/ui/*`. **`HomeBucketLabel`
+keys are ALSO consumed by the widget snapshot (OPH-130)** — this is why they must be real keys.
+
+**Spec:** parameterized strings use `.tr(args: {...})` (`{name}` placeholders). The Home group
+header `'${bucket.label} · N'` keeps its shape with a localized label + the count.
+
+**Tests:** a grouping-driven widget test asserts the `overdue`/`today` headers localize; a
+create-sheet test asserts a hint localizes.
+
+**DoD:** analyze + test; both themes; contrast unaffected (text-only).
+
+### OPH-124 — Extract strings: projects, notes, calendar/integrations, onboarding
+
+- [ ] Move to `en`+`tr` keys: project detail/edit/archive (`features/projects/ui/*` incl.
+      `project_archive.dart` dialogs), notes list/editor (`features/notes/ui/*`), the Google &
+      Apple calendar cards (`integrations/ui/google_calendar_card.dart`,
+      `calendar/apple/apple_calendar_card.dart`, incl. their honest status strings), and the
+      onboarding tour bubbles (`features/onboarding/tour*.dart`).
+
+**Context:** the remaining feature strings (`google_calendar_card.dart` alone has ~10). Key groups:
+`project.*`, `note.*`, `calendar.*`, `tour.*`.
+
+**Tests:** spot tests per area assert a `tr` render; existing suites green in `en`.
+
+**DoD:** analyze + test; both themes; calendar-card status colors/logic unchanged.
+
+### OPH-125 — Localize API error codes & dynamic strings
+
+- [ ] Map `ApiException.code → error.<CODE>` (fallback: server `message` → generic
+      `error.unknown`); localize the sync-conflict snackbar in `home_shell.dart` (currently appends
+      `conflict.errorCode`); route all date/number formatting through the active locale.
+- [ ] Seed `error.*` keys for the codes the app surfaces (auth, task, sync, calendar — listed in
+      the route files / `sync.js`).
+
+**Context:** `core/api_exception.dart` carries `(code, message)`; codes are stable localization
+keys (ADR-0009 D4) so the API needs NO server-side i18n.
+
+**Tests:** a known code renders its localized message in `tr`; an unknown code falls back to the
+server message; a date formats per locale.
+
+**DoD:** analyze + test.
+
+### OPH-126 — Account locale sync (`PATCH /me`)
+
+- [ ] **API:** `PATCH /api/v1/me { locale }` — Ajv body schema with a `locale` allow-list (the
+      supported BCP-47 subset), updates `users.locale` + `updated_at`, returns the updated `me`
+      shape; `app.authenticate`-guarded. Error code `USER_UNSUPPORTED_LOCALE` for anything off the
+      list.
+- [ ] **App:** on a language pick (OPH-121), best-effort `PATCH /me`; on sign-in when the device
+      has NO saved override, seed the initial locale from `GET /me.locale`.
+
+**Context:** `me.js` returns `locale` but nothing writes it; no `PATCH` exists. This makes the
+language follow the account across devices / reinstalls (the device override still wins locally —
+offline-first).
+
+**Tests:** API unit (`apps/api/test/unit/`) — valid locale updates; invalid → `USER_UNSUPPORTED_LOCALE`;
+unauth → 401. App — sign-in with no local override seeds from `me.locale`; a local override is NOT
+overwritten by `me`.
+
+**DoD:** `npm run lint` + `npm test` (API); `flutter analyze` + `flutter test` (app); apps/api
+README error-code list updated.
+
+### OPH-127 — No-hardcoded-string CI guard
+
+- [ ] `scripts/i18n/check.mjs` greps `apps/app/lib` for user-facing literals (`Text('…')`,
+      `labelText:`, `hintText:`, `SnackBar(content: Text('…'))`) outside an allowlist (brand name,
+      debug-only, `Key('…')`, already-`.tr()` lines).
+- [ ] Wire into `.github/workflows/ci.yml` + an `npm run check:i18n` script (mirrors
+      `check:no-ts`).
+
+**Context:** keeps the extraction from rotting — new hardcoded strings fail CI, exactly like the
+TypeScript-ban guard.
+
+**Tests / self-check:** the guard fails on a planted `Text('Hello')` and passes on the clean tree
+(document the run in the commit).
+
+**DoD:** guard green in CI; documented in AGENTS.md §1 / CONTRIBUTING.
+
+### OPH-128 — Web `<html lang>` + "add a language" docs
+
+- [ ] Reflect the active locale in the web build: update `<html lang>` on locale change (a11y/SEO);
+      `web/index.html` currently has no `lang`.
+- [ ] Document **"How to add a language"** (drop `assets/i18n/<code>.json`, register the `Locale`
+      in `supportedLocales`) in README + CONTRIBUTING.
+- [ ] Keep BLUEPRINT §12.9/§15.5 truthful; STATE + CHANGELOG.
+
+**Context:** Flutter doesn't manage `<html lang>`; a tiny web hook sets it from `context.locale`.
+
+**DoD:** analyze + test; manual web check (browser lang default + a switch); docs updated. **Epic
+11 closes here → v0.2.0-alpha (i18n).**
+
+---
+
+## Epic 12 — Home-screen / desktop widgets (Phase 7, v0.2.0)
+
+> **Source:** feedback round 5 (2026-07-17, Mahir) — iOS/Android/macOS widgets in **4×2 / 4×4 /
+> 4×6** sizes that (A) stay in sync with tasks, (B) summarize Home's buckets (geçmiş/nodate/bugün/
+> bu hafta/bu ay) in a scroll, (C) carry an Apple-Calendar-style date header at the largest size,
+> and (D) allow quick-add + quick-complete like the Apple Reminders widget. Binding plan:
+> [WIDGETS.md](WIDGETS.md) + [ADR-0010](adr/0010-home-screen-widgets-architecture.md); visual spec
+> DESIGN §8; product spec BLUEPRINT §12.8 + §15.6. **When a task and those disagree, they win.**
+>
+> **User item → task:** A(sync)→OPH-130/131/133 · B(bucketed scroll)→OPH-130 · C(date header,
+> largest)→OPH-131/133/134 · D(quick add/complete)→OPH-132/133.
+>
+> **HARD platform constraint (dokümante edilmiş revizyon):** iPhone'da **4×6 / tam-ekran widget
+> YOKTUR** — WidgetKit'in iPhone için en büyük boyutu `systemLarge` (4×4). "4×6/full" tier'ı
+> iPad/macOS'ta `systemExtraLarge`, Android'de gerçek 4×6 olarak verilir; iPhone'da `systemLarge`'a
+> iner (WIDGETS.md §2, ADR-0010 D6). Bu kapsam kesintisi değil, platform sınırıdır.
+>
+> **DEPENDS ON Epic 11** (localized snapshot labels). **Native reality:** `flutter analyze` +
+> `flutter test` compile NO Swift/Kotlin — every native task is proven only by a real `flutter
+> build ios`/`apk`/`macos` + a device/simulator pass, recorded in STATE (the EventKit lesson).
+
+### OPH-130 — Widget snapshot core (Dart: pure grouping + bridge)
+
+- [ ] Add `home_widget` to `apps/app/pubspec.yaml`. New `lib/src/features/widgets/`.
+- [ ] Pure `groupTasksForWidget(tasks, {now, events})` — sibling of `groupTasksForHome`
+      (`task_grouping.dart`) with buckets **overdue → noDate → today → thisWeek → thisMonth**
+      (horizon = end of current month; reuse the event rules: events never overdue, ongoing =
+      today-once). Fully unit-tested.
+- [ ] `WidgetSnapshot` serializer → the compact JSON of WIDGETS.md §3.1 (`date{weekday,day,month}`,
+      `counts`, `buckets[]` with top-N `items{id,title,done,time,projectColor}`, `more{}` for
+      truncation). Labels come from the Epic 11 i18n facade (already localized).
+- [ ] `WidgetBridge` (Riverpod) listens to `openTasksProvider` + `externalEventsProvider`, calls
+      `HomeWidget.setAppGroupId('group.com.alliswell.alliswell')`, and `saveWidgetData` +
+      `updateWidget(iOSName:'AllisWellWidget', androidName:'TasksWidgetProvider',
+      qualifiedAndroidName:'com.alliswell.alliswell.TasksWidgetProvider')` after every change.
+
+**Context:** `groupTasksForHome` already produces these buckets — the widget mirrors that tested
+philosophy. **This is the ONLY fully green-testable task and carries the correctness weight.**
+
+**Tests** (`apps/app/test/features/widgets/`): bucket boundaries (+/- month edge, overdue,
+dateless, ongoing event); snapshot JSON shape + per-bucket top-N truncation + `more` counts;
+localized labels (en vs tr); "WidgetBridge writes + calls updateWidget when the task stream
+changes" via a fake `HomeWidget`.
+
+**DoD:** `flutter analyze` + `flutter test` (all green, no infra); no native code yet.
+
+### OPH-131 — iOS Widget Extension: target, App Group, rendering, deep-link floor
+
+- [ ] Add an `AllisWellWidget` **Widget Extension** target to `ios/Runner.xcodeproj` (**commit the
+      `project.pbxproj` diff** — deliberate deviation, ADR-0010). Add **App Groups** capability
+      `group.com.alliswell.alliswell` to **both** Runner and the extension (`Runner.entitlements` +
+      `AllisWellWidgetExtension.entitlements`).
+- [ ] SwiftUI views reading the shared `UserDefaults(suiteName:)` snapshot; `supportedFamilies:
+      [.systemMedium, .systemLarge, .systemExtraLarge]`; **date header** (weekday name + big day
+      number) on large/extraLarge; bucketed list at the DESIGN §8 density (W6/W7); solid tinted
+      "aurora" card + `.containerBackground` (W3).
+- [ ] `TimelineProvider` with a **midnight-rollover** reload policy (`.after` next midnight);
+      `WidgetCenter.shared.reloadTimelines(ofKind:)` from `updateWidget`.
+- [ ] **Deep-link floor:** tap → `alliswell://task/{id}` (ADR-0003) / `alliswell://add`; add the
+      `add` route to the router's `onOpenURL`/deep-link handling.
+- [ ] Podfile links `home_widget` into the extension; verify a real `flutter build ios`.
+
+**Context:** ADR-0010 D6 size mapping; iPhone ceiling = `systemLarge`. `analyze` won't compile
+Swift — this is build+device verified.
+
+**Tests:** data path covered by OPH-130's Dart tests; native verified by `flutter build ios` +
+device: light+dark, medium/large on iPhone, extraLarge on iPad.
+
+**DoD:** `flutter build ios` green; device screenshots (both themes, all sizes); STATE device note;
+WIDGETS.md/ DESIGN §8 truthful.
+
+### OPH-132 — iOS interactivity: quick-complete + quick-add (App Intents)
+
+- [ ] iOS 17+ `Button(intent:)` / `Toggle(isOn:intent:)` + a shared `AppIntent` that is a member of
+      **BOTH** the Runner and Widget Extension targets → `HomeWidgetBackgroundWorker.run(url:
+      appGroup:)` (`alliswell://complete?id=…` / `alliswell://add`).
+- [ ] Dart `@pragma('vm:entry-point')` `widgetCallback(Uri?)` → `TaskStore.complete()` /
+      `TaskStore.create()` (the SAME optimistic + outbox path the UI uses → syncs to server) →
+      `HomeWidget.updateWidget(...)`; `HomeWidget.registerInteractivityCallback(widgetCallback)` in
+      `main()`.
+- [ ] Gate interactive code `@available(iOS 17, *)`; iOS 16 keeps the deep-link path (OPH-131).
+      Circular checkbox completes in place and the row animates away after ~1–2 s; **generous hit
+      target** (Reminders UX lesson, DESIGN W4).
+
+**Context:** user item D; ADR-0010 D4. App-intent reloads are budget-exempt (free sync).
+
+**Tests:** the Dart `widgetCallback` (`complete`/`add`) against a fake `TaskStore` (optimistic row +
+outbox enqueued); device pass on iOS 17+ — complete + add from the widget **without opening the
+app**, and confirm the change syncs (appears on another surface).
+
+**DoD:** `flutter build ios`; device: offline complete + quick-add both work and sync; STATE note.
+
+### OPH-133 — Android widget (Glance): target, snapshot, interactivity, resize, midnight
+
+- [ ] `TasksWidgetProvider` (Jetpack **Glance** `GlanceAppWidget` + `GlanceAppWidgetReceiver`) under
+      `android/app/src/main/kotlin/com/alliswell/alliswell/`; `res/xml/tasks_widget_info.xml`
+      (`targetCellWidth/Height` 4×2 default, `resizeMode="horizontal|vertical"`, `minResize*`/
+      `maxResize*` to allow 4×6, `updatePeriodMillis` 0 or large, `previewLayout`).
+- [ ] Reads the SharedPreferences snapshot; scrollable **bucketed `LazyColumn`**; date header on the
+      larger sizes; circular checkbox → `actionRunCallback` → `HomeWidgetBackgroundIntent.getBroadcast`
+      → the SAME Dart `widgetCallback` → `TaskStore`; quick-add "+".
+- [ ] Responsive layouts for 4×2 / 4×4 / **true 4×6** (Glance size handling / `SizeF` map);
+      `AndroidManifest.xml` receivers (the provider **and** `es.antonborri.home_widget.
+      HomeWidgetBackgroundReceiver`); a **WorkManager** job re-pushes at local midnight (date
+      rollover). Pin `androidx.glance`.
+- [ ] Verify a real `flutter build apk`.
+
+**Context:** Android honors a TRUE resizable 4×6 (no `systemLarge` ceiling). `analyze` won't compile
+Kotlin — build+device verified.
+
+**Tests:** data path from OPH-130; device: three sizes, complete + quick-add without opening the
+app + sync, both themes.
+
+**DoD:** `flutter build apk` green; device screenshots (3 sizes, light+dark); STATE note.
+
+### OPH-134 — macOS widget parity (gated on macOS signing)
+
+- [ ] Widget Extension in `macos/Runner.xcodeproj`; **App Sandbox** + `com.apple.security.
+      application-groups` (`group.com.alliswell.alliswell`) added to **both** `DebugProfile.
+      entitlements` and `Release.entitlements` (edit the plists directly). The App-Group string is
+      **byte-identical** across Dart `setAppGroupId`, Runner, and the extension; decide the
+      `group.…` vs `<TeamID>.group.…` form once (macOS `home_widget` won't add the team prefix).
+- [ ] Desktop / Notification Center; supports `systemExtraLarge`; deep-link + (macOS 14+)
+      interactivity reusing the shared `AppIntent`.
+
+**Context:** **explicitly gated on the inherited macOS dev-cert gap** (STATE "Blocked / notes":
+`flutter build macos` fails today — no macOS development certificate). Ship the code; device-verify
+when the cert lands, exactly like the EventKit macOS path. NOT a blocker for iOS/Android.
+
+**DoD:** code compiles once the cert is present; the gate is recorded in STATE; no regression to
+iOS/Android widgets.
+
+### OPH-135 — Widget configuration, accessory tier, density & privacy
+
+- [ ] `AppIntentConfiguration` (iOS) / Glance config so a widget instance can pick which
+      project / bucket-set it shows (Things/Todoist "configurable per instance" pattern).
+- [ ] Optional lock-screen `accessoryRectangular` / `accessoryCircular` "next task" / count (iOS
+      16+, Structured-style).
+- [ ] Todoist-style **compact/density** option; **"Private widget"** toggle in Settings (renders
+      counts/placeholders instead of task titles — OPH-064 privacy ethos, WIDGETS.md §9).
+
+**Context:** reference synthesis (WIDGETS.md §10) + privacy (§9). Fast-follow polish over the core.
+
+**Tests:** Dart config/privacy plumbing (snapshot omits titles when Private is on); device pass for
+the configurable + accessory surfaces.
+
+**DoD:** build + device (iOS/Android); STATE note.
+
+### OPH-136 — Widget docs, cross-platform QA matrix & release note
+
+- [ ] Finalize WIDGETS.md against on-device reality — confirm the two research "double-check" flags
+      (Glance stable version at build time; exact Apple family names/sizes on the min OS targets).
+- [ ] README "Widgets" section + placeholder screenshots; the "how to" for self-hosters.
+- [ ] **QA matrix in STATE:** iOS · iPad · Android · macOS × {4×2, 4×4, 4×6/xl} × {light, dark} ×
+      {complete, add, sync, midnight rollover} — pass/blocked per cell.
+- [ ] BLUEPRINT §12.8/§15.6 + CHANGELOG + ROADMAP v0.2.0 truthful.
+
+**Context:** closes Epic 12.
+
+**DoD:** docs + QA matrix recorded. **Epic 12 closes → v0.2.0 (i18n + widgets).**
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

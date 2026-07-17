@@ -1,0 +1,23 @@
+{
+  "app": {
+    "title": "AllisWell",
+    "tagline": "Görevler, projeler, notlar, takvim ve hatırlatıcılar — kendi sunucunda."
+  },
+  "common": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "remove": "Kaldır",
+    "retry": "Tekrar dene",
+    "close": "Kapat",
+    "done": "Tamam",
+    "edit": "Düzenle",
+    "add": "Ekle",
+    "search": "Ara",
+    "loading": "Yükleniyor…",
+    "ok": "Tamam",
+    "yes": "Evet",
+    "no": "Hayır",
+    "greeting": "Merhaba, {name}"
+  }
+}

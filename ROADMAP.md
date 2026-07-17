@@ -7,7 +7,7 @@ Where AllisWell is and where it's going. Generated from the phase plan in
 **Legend:** ✅ shipped · 🟡 partial (rest deferred) · ⏳ planned · 💤 v2 parking lot
 
 > This file is a summary. The authoritative, task-by-task status is
-> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-111); the live pointer to
+> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-136); the live pointer to
 > "what's next" is [docs/STATE.md](docs/STATE.md). When they disagree, they win.
 
 ---
@@ -104,6 +104,30 @@ CONTRIBUTING / SECURITY / issue + PR templates, **this roadmap**, and
 **release automation** (a tagged GitHub Actions release pipeline). ⏳ Remaining:
 import/export from other apps, a performance pass, and packaged distribution
 (Docker image publish, TestFlight/F-Droid).
+
+### Phase 7 — Localization & widgets ⏳ (planned, feedback round 5)
+
+The second feedback round (2026-07-17) added two features, specced and broken
+into tasks (docs only so far):
+
+- **Localization (i18n) — Epic 11 (OPH-120…128).** Strip every hardcoded string
+  behind JSON locales (an app-owned synchronous store, no third-party package):
+  auto-detect the device/browser language, fall back to English, and let the user
+  pin a language from Settings that persists. Ships `en` + `tr`; adding a language
+  is dropping a JSON.
+  [ADR-0009](docs/adr/0009-localization-i18n-architecture.md), BLUEPRINT §12.9/§15.5.
+- **Home-screen / desktop widgets — Epic 12 (OPH-130…136).** iOS/Android/macOS
+  widgets in three sizes that mirror Home's buckets in a scroll, carry an
+  Apple-Calendar-style date header at the largest size, and offer quick-add +
+  tap-to-complete like Apple Reminders — kept in sync via a `home_widget`
+  App-Group/SharedPreferences snapshot. Note: a true **4×6 / full-screen widget
+  does not exist on iPhone** (WidgetKit's ceiling is 4×4); it is delivered as
+  `systemExtraLarge` on iPad/macOS and a real 4×6 on Android.
+  [ADR-0010](docs/adr/0010-home-screen-widgets-architecture.md) +
+  [docs/WIDGETS.md](docs/WIDGETS.md), BLUEPRINT §12.8/§15.6.
+
+i18n ships first so the widgets are born localized. Native widget targets are
+verified by real device builds (the notification/EventKit pattern).
 
 ---
 

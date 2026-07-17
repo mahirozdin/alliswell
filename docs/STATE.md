@@ -3,7 +3,8 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-17 (**Epic 10 KAPANDI** — feedback round 4'ün tamamı OPH-100…111 bitti; **v0.1.1 hazır**)
+**Last updated:** 2026-07-17 (**feedback round 5 planlandı** — Epic 11 i18n + Epic 12 widgets
+docs'a işlendi; kod değişmedi. v0.1.1 hâlâ hazır, hedef v0.2.0.)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,13 +14,74 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | **v0.1.1 hazır** — feedback round 4'ün TAMAMI bitti (Phase 0-4 tam + Epic 10 UX turu) |
-| Current epic | **Epic 10 KAPANDI** — OPH-100…111 (12/12), kullanıcı testinden gelen 13 maddenin hepsi karşılandı |
-| ➡️ **Next task** | Planlı iş kalmadı (v0.1.0 ve v0.1.1 backlog'u bitti). Seçenekler: v0.1.1 release'i kes (maintainer tag'i), cihaz turları, veya v2 park listesi (TASKS.md sonu). Kullanıcıya sor. |
-| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Release tag'i maintainer'da. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası, Apple/Android cihaz turu (onboarding + bildirim + EventKit yazma). |
-| Last completed | **Epic 10 tam** (OPH-100…111): sign-out crash, FAB→shell, Home 30-gün ufku + rozet + kayan takvim, statü ikonu, proje seçici, sekme-kökü, Inbox yakalama kutusu, README proje bağlamı, proje arşivleme kaskadı, **onboarding turu (OPH-111)**. |
+| Current phase | **Phase 7 planlandı (v0.2.0)** — feedback round 5: i18n + widgets docs'a işlendi. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
+| Current epic | **Epic 11 — Localization (i18n)** DEVAM EDİYOR (OPH-120 ✅; sıradaki OPH-121); sonra **Epic 12 — Widgets** (OPH-130…136). i18n önce (widget snapshot'ı lokalize etiket yazsın). |
+| ➡️ **Next task** | **OPH-121 — Language picker in Settings + persistence** (TASKS.md). i18n motoru (OPH-120) hazır: `AwI18n.instance.setLocale/useSystemLocale`. Binding: BLUEPRINT §12.9 + ADR-0009. |
+| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası (Epic 12 macOS widget + EventKit için), Apple/Android cihaz turu. Widget epiği için: gerçek iOS/Android cihaz/simülatör (native build doğrulaması). |
+| Last completed | **OPH-120 — i18n foundation** (Epic 11): app'e ait senkron JSON i18n deposu (`AwI18n`), cihaz/tarayıcı algılama + en fallback + kalıcı ayar + runtime switch; easy_localization denendi ve fake-async test uyumsuzluğu yüzünden özel katmana çevrildi (ADR-0009 revize). Süit 247/247. |
 
 ## Recently completed
+
+- **OPH-120 — i18n foundation (2026-07-17, Epic 11 başladı):**
+  - **Ne:** app'e ait **senkron** JSON i18n deposu `lib/src/i18n/i18n.dart` (`AwI18n`
+    ChangeNotifier) — `assets/i18n/en.json` (temel/fallback) + `tr.json` `runApp`'ten önce belleğe
+    yüklenir (`AwI18n.instance.boot()`), `'key'.tr()` build anında senkron çözülür. Cihaz/tarayıcı
+    algılama (`PlatformDispatcher.instance.locales` → ilk desteklenen → `en`; `resolveInitialLocale`
+    saf+testli), kalıcı ayar (`localKv` `alliswell_locale`), per-key en fallback, `{name}`
+    interpolasyon, runtime switch (`ListenableBuilder`). Üçüncü parti paket YOK (yalnız
+    `flutter_localizations` SDK). Widget'lar `'key'.tr()` kullanır; motor tek seam'de.
+  - **KİLİT SAPMA (ADR-0009 revize):** önce `easy_localization` kuruldu, sonra geri alındı.
+    Paketin `LocalizationsDelegate`'i çevirileri **async** yüklüyor; flutter_test'in fake-async
+    saatinde bu yükleme `pumpAndSettle` sırasında bitmiyor → `Localizations` widget'ı tüm app
+    alt-ağacını bloke ediyor, **~40 tam-app testi hiçbir şey render etmiyor** ve `.tr()` ham anahtar
+    dönüyor. Tek çareler kırılgan (`runAsync` + sabit gecikme) veya paketin `src/`'sine sızıp global
+    store'u pre-seed etmek. "Kurumsal kalite" barı için sahip olduğumuz senkron store daha temiz.
+    Küçük gerçek bug da yakalandı: `ListenableBuilder`'ın const child'ı locale değişince yeniden
+    build EDİLMEZ → `MaterialApp` builder'ın İÇİNDE kuruldu.
+  - **Nasıl doğrulandı:** `test/flutter_test_config.dart` (Flutter'ın resmi suite hook'u) JSON'u
+    diskten okuyup en+tr'yi senkron cache'e yüklüyor → mevcut testler `pumpAndSettle`'la aynen
+    geçiyor, DEĞİŞTİRİLMEDİ. `test/i18n/i18n_test.dart` (11 test): resolveInitialLocale vakaları,
+    en/tr çözümü, tr-eksik anahtar en'e fallback, bilinmeyen anahtar passthrough, `{name}` args, +2
+    widget testi (`.tr()` render + dil değişimi rebuild) — hepsi plain `pumpAndSettle`. **Süit
+    247/247** (236 dokunulmadı + 11), `flutter analyze` temiz.
+  - **Kalan Epic 11:** OPH-121 (dil seçici — motor hazır), sonra string çıkarma (122-124),
+    hata-kodu lokalizasyonu (125), `PATCH /me` (126), CI bekçisi (127), web lang + docs (128).
+
+- **Feedback round 5 → Epic 11 (i18n) + Epic 12 (widgets) doğdu (2026-07-17, SADECE docs):**
+  - **Kaynak:** Mahir iki özellik istedi — (1) iOS/Android/macOS **ana ekran widget'ları**
+    (4×2/4×4/4×6; tasklarla senkron; Home bucket özeti kaydırılabilir; en büyük boyutta Apple-Takvim
+    tarzı tarih başlığı; Apple-Reminders tarzı hızlı ekle/tamamla) ve (2) tüm hardcoded string'lerin
+    çıkarılıp **JSON dil mekanizması** (cihaz/tarayıcı dili otomatik, en.json fallback, ayarlardan
+    kalıcı değişim, en+tr). "Çakışsa bile dokümante et" yetkisiyle kalıcı spec + task olarak işlendi.
+  - **Nasıl (araştırma):** widget konusu "çok hassas" istendiği için **2 paralel araştırma ajanı**
+    (iOS/macOS WidgetKit + `home_widget`; Android Glance + referans uygulamalar) kaynak-destekli
+    tarama yaptı → [WIDGETS.md](WIDGETS.md) (NOTIFICATIONS.md/CALDAV.md analoğu, bağlayıcı plan).
+    i18n için `easy_localization` vs slang/gen-l10n karşılaştırıldı.
+  - **Araştırmanın kilit bulguları (task/doc'a gömülü ama özet):**
+    1. **iPhone'da 4×6 / tam-ekran widget YOK** — WidgetKit'in iPhone tavanı `systemLarge` (4×4).
+       "4×6/full" iPad/macOS'ta `systemExtraLarge`, Android'de gerçek 4×6; iPhone'da 4×4'e iner. Bu
+       platform sınırı ADR-0010 D6 + WIDGETS.md §2'de revizyon olarak yazıldı (kapsam kesintisi değil).
+    2. **Widget ayrı sandbox — drift replica'sını okuyamaz** → App Group (iOS/macOS)/SharedPreferences
+       (Android) + `home_widget` ile küçük JSON snapshot köprüsü; native SwiftUI/Glance render eder.
+    3. **Etkileşim** iOS 17+/macOS 14+ App Intents (`Button/Toggle(intent:)`), Android Glance
+       aksiyonları → `@pragma('vm:entry-point')` Dart callback → yerel-önce `TaskStore` (senkron).
+       iOS 16 fallback: derin bağlantı. Ön-plan `updateWidget` push'ları yenileme bütçesinden MUAF.
+    4. **Widget = App-Extension target** → plugin paketi vending EDEMEZ; `project.pbxproj` +
+       entitlement'lar commit edilir (EventKit "pbxproj yok" modelinden bilinçli sapma).
+    5. **i18n:** başta `easy_localization` seçildi ama uygulamada (OPH-120) geri alındı —
+       async yüklemesi fake-async test süitiyle çakıştı; app'e ait **senkron** JSON deposuna
+       (`AwI18n`) çevrildi (ADR-0009 revize). slang de reddedilmişti (JSON'u derliyor → runtime
+       dil DROP edilemez). Sonuç kullanıcının tüm isteklerini karşılıyor, üçüncü parti paket yok.
+    6. **`groupTasksForHome` zaten widget bucket'larını üretiyor** — widget onu aynalar
+       (`groupTasksForWidget`); `HomeBucketLabel` string'leri i18n'in çıkaracağı türden →
+       **Epic 11 (i18n), Epic 12'den (widgets) ÖNCE** gider (widget snapshot'ı lokalize etiket yazsın).
+  - **Kalıcı değişiklikler:** BLUEPRINT (§2.6 tech-ref, §3 prensip 13-14, YENİ §12.8 widgets /
+    §12.9 i18n, §14 Phase 7, YENİ §15.5 i18n / §15.6 widget köprüsü, §16 Risk 5-6, §18 Epic 11-12),
+    DESIGN (§8 widget tasarımı / §9 yerelleştirme), ARCHITECTURE (§7), **ADR-0009** (i18n) +
+    **ADR-0010** (widgets), **WIDGETS.md** (yeni). TASKS.md'ye **Epic 11 (OPH-120…128, 9 task)** +
+    **Epic 12 (OPH-130…136, 7 task)** ayrıntılı yazıldı.
+  - Not: bu tur SADECE dokümantasyon; kod değişmedi, testler koşulmadı (round 4 gibi). Sıradaki
+    oturum **OPH-120**'den başlar. Kullanıcı isterse Epic 11↔12 sırası takas edilebilir.
 
 - **Feedback round 4 → Epic 10 doğdu (2026-07-17):**
   - **Nasıl:** tüm yığın yerelde koşuldu (colima + MySQL 3307 + Redis + API 3000 +
@@ -537,12 +599,14 @@ against real MySQL 8.4 and all unit+integration tests pass.
 ## How to continue (for agents)
 
 1. Read [../AGENTS.md](../AGENTS.md) §2 (protocol) if you haven't.
-2. Sıradaki iş **OPH-100 — web sign-out crash** (Epic 10, TASKS.md sonu). Epic 10 sırayla
-   gider: iki bug (OPH-100/101) → Home paketi (102/103/104) → küçük UI (105/106) → büyük
-   akışlar (107 inbox, 108 sekme kökü, 109 README, 110 arşiv, 111 onboarding). Her task
-   kendi içinde teşhis + spec + test listesi taşıyor; BLUEPRINT §12.2-12.7 ve DESIGN §4
-   bağlayıcı metin. UI işlerinde kontrast bekçisi + açık/koyu tema kontrolü zorunlu
-   (sert kural 11).
+2. Sıradaki iş **OPH-120 — i18n foundation & wiring** (Epic 11, TASKS.md sonu). **Epic 11
+   (i18n, OPH-120…128) ÖNCE, Epic 12 (widgets, OPH-130…136) SONRA** — widget snapshot'ı
+   lokalize etiket yazacağı için i18n prerequisite'tir. Bağlayıcı metin: BLUEPRINT §12.8/§12.9
+   + §15.5/§15.6, ADR-0009 (i18n), ADR-0010 + [WIDGETS.md](WIDGETS.md) (widgets), DESIGN §8/§9.
+   **Widget epiğinde native uyarı:** `flutter analyze`/`test` Swift/Kotlin derlemez → her native
+   task gerçek `flutter build ios`/`apk`/`macos` + cihaz turuyla doğrulanır (EventKit dersi);
+   macOS widget'ı imza açığına bloklu (OPH-134). UI işlerinde kontrast bekçisi + açık/koyu tema
+   zorunlu (sert kural 11).
 3. Verify (`npm run lint && npm test`, integration tests if infra up; `flutter analyze` +
    `flutter test` for app changes), document, commit, then update this file's Snapshot +
    Recently completed.

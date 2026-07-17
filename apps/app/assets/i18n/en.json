@@ -1,0 +1,24 @@
+{
+  "app": {
+    "title": "AllisWell",
+    "tagline": "Tasks, projects, notes, calendar and reminders — self-hosted."
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "remove": "Remove",
+    "retry": "Retry",
+    "close": "Close",
+    "done": "Done",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "loading": "Loading…",
+    "ok": "OK",
+    "yes": "Yes",
+    "no": "No",
+    "help": "Help",
+    "greeting": "Hi, {name}"
+  }
+}

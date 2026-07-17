@@ -149,6 +149,15 @@ Eksik görülen alan:
   local notification gösterme ve schedule etmeyi destekler.
 - Flutter Quill, Android, iOS, web ve desktop için rich text editor sağlayan WYSIWYG editor olarak
   değerlendirilecektir.
+- Home-screen / masaüstü widget'ları platforma özel App-Extension yüzeyleridir: iOS/macOS'ta
+  **WidgetKit** (`WidgetFamily`, App Intents ile etkileşim), Android'de **App Widgets / Jetpack
+  Glance**. Flutter uygulaması ile native widget arasında veri köprüsü `home_widget` paketi +
+  **App Group** (iOS/macOS) / **SharedPreferences** (Android) üzerinden kurulur — detay
+  [WIDGETS.md](WIDGETS.md), karar [ADR-0010](adr/0010-home-screen-widgets-architecture.md).
+- Yerelleştirme (i18n): app'e ait, **senkron** JSON dil deposu (`lib/src/i18n/`, `AwI18n`) —
+  cihaz/tarayıcı dili otomatik algılanır, İngilizce'ye (`en.json`) fallback, ayarlardan kalıcı dil
+  seçimi (localKv). Üçüncü parti i18n paketi yok (yalnız `flutter_localizations` SDK). Karar
+  [ADR-0009](adr/0009-localization-i18n-architecture.md).
 
 ## 3. Ürün prensipleri
 
@@ -164,6 +173,13 @@ Eksik görülen alan:
 10. Platform native bildirim deneyimi.
 11. Veri taşınabilirliği.
 12. Minimum vendor lock-in.
+13. **Çok dilli / yerelleştirilebilir** (rev. 2026-07-17, feedback round 5). Uygulamada
+    hardcoded metin bulunmaz; tüm arayüz JSON dil dosyalarından beslenir, cihaz/tarayıcı dili
+    otomatik algılanır (İngilizce fallback) ve kullanıcı ayarlardan dili kalıcı olarak
+    değiştirebilir. Bir dil eklemek = bir JSON dosyası sağlamak (§12.9, §15.5, ADR-0009).
+14. **Glanceable erişim — ana ekran widget'ları** (rev. 2026-07-17, feedback round 5). Kullanıcı,
+    uygulamayı açmadan görevlerini ana ekranda/masaüstünde görebilmeli, hızlı ekleyebilmeli ve
+    hızlı tamamlayabilmelidir (§12.8, §15.6, ADR-0010).
 
 ## 4. Ana domain modeli
 
@@ -793,6 +809,67 @@ Sağ üstte her an **Skip**; turu atlamak hiçbir şeyi kilitlemez. Settings'te 
 satırı turu istendiği kadar tekrar başlatır. Tur, cam tasarım diliyle uyumlu elle yazılmış bir
 overlay'dir (yeni paket bağımlılığı YOK); dar ekranda alt bara, geniş ekranda raya çapalanır.
 
+### 12.8 Ana ekran / masaüstü widget'ları
+
+_(Eklendi 2026-07-17, feedback round 5 — Epic 12. Bağlayıcı plan: [WIDGETS.md](WIDGETS.md);
+karar [ADR-0010](adr/0010-home-screen-widgets-architecture.md); görsel spec DESIGN.md §8.
+Çelişkide WIDGETS.md + ADR-0010 kazanır.)_
+
+Kullanıcı, uygulamayı açmadan görevlerini ana ekranda görebilmeli; hızlı ekleyip hızlı
+tamamlayabilmelidir — Apple Reminders + Apple Takvim widget'larının birleşimi.
+
+- **Platformlar:** iOS, iPadOS, Android, macOS. Web/Windows/Linux'te ana ekran widget yüzeyi
+  kapsam dışıdır (widget o platformlarda kendini gizler).
+- **Üç boyut** (kullanıcı isteği "4×2 ≈ ekranın ⅓'ü", "4×4 ≈ ⅔", "4×6 / tam ekran"):
+  - **4×2 (~⅓):** iOS `systemMedium` · Android 4×2. Kompakt tarih başlığı + ilk 3-4 görev +
+    hızlı-ekle "+".
+  - **4×4 (~⅔):** iOS `systemLarge` (iPhone'da EN BÜYÜK) · Android 4×4. Tam tarih başlığı +
+    kaydırılabilir bucket listesi (~8-10 satır) + hızlı-ekle satırı.
+  - **4×6 / tam ekran:** **iPhone'da MÜMKÜN DEĞİL — WidgetKit'te iPhone için `systemLarge`
+    (4×4) üstü bir ana ekran boyutu yoktur.** Bu istek platform gerçeğiyle çakışıyor ve şöyle
+    karşılanır: **iPad/macOS'ta `systemExtraLarge`** (~8×4 yatay), **Android'de gerçek,
+    yeniden boyutlanabilir 4×6**; iPhone'da en büyük tier `systemLarge`'a iner. (Kapsam kesintisi
+    değil, platform sınırı — her platformda fiziksel olarak izin verilen kadarı verilir.)
+- **A) Sürekli senkron.** Widget, drift replica'sını okuyamaz (ayrı sandbox); uygulama her görev
+  değişiminde `home_widget` ile paylaşımlı konteynere küçük bir JSON snapshot yazar ve widget'ı
+  tazeler. Ön planda yapılan bu tazelemeler Apple'ın yenileme bütçesinden MUAFtır → widget bedava
+  senkron kalır (WIDGETS.md §6).
+- **B) Home özeti, kaydırılabilir bucket'lar.** Widget, Home'un kronolojik gruplarını aynalar
+  (saf `groupTasksForWidget`, `groupTasksForHome`'un kardeşi): **Gecikmiş → Tarihsiz → Bugün →
+  Bu hafta → Bu ay**, içinde kaydırılır. Ufuk ayın sonudur (tekrar eden etkinlikler taşmasın).
+- **C) En büyük boyutta takvim başlığı.** Tepede Apple-Takvim tarzı tarih başlığı: o günün
+  **gün adı + gün sayısı** (ve `systemExtraLarge`/4×6'da opsiyonel hafta şeridi / mini ay ızgarası).
+- **D) Hızlı ekle + hızlı tamamla (uygulamayı açmadan).** iOS 17+/macOS 14+ App Intents
+  (`Button/Toggle(intent:)`) ve Android Glance aksiyonları, dairesel checkbox'a dokununca görevi
+  arka planda tamamlar (satır ~1-2 sn sonra kaybolur), "+" hızlı ekler. Yazımlar **yerel-önce
+  `TaskStore`'dan geçer** (optimistic + outbox → sunucuya senkron olur). iOS 16 tabanında yalnız
+  derin bağlantı (dokunma uygulamayı açar). Dokunma hedefleri cömert olmalı (Reminders dersi).
+- **Etiketler yerelleştirilmiş gelir:** snapshot metinleri uygulama tarafından çevrilir (Epic 11) —
+  native widget çeviri paketi taşımaz. Bu yüzden **Epic 12, Epic 11'e (i18n) bağımlıdır.**
+- **Gizlilik:** "Private widget" seçeneği (OPH-064 ruhu) açıkken widget başlık yerine sayı/yer
+  tutucu gösterir. Cihaz-yerel ayar.
+
+### 12.9 Uygulama dili ve yerelleştirme (i18n)
+
+_(Eklendi 2026-07-17, feedback round 5 — Epic 11. Karar [ADR-0009](adr/0009-localization-i18n-architecture.md);
+mimari §15.5.)_
+
+Uygulamada (ve aynı Flutter kodundan derlenen web'de) hardcoded metin bulunmaz. Davranış:
+
+- **Diller JSON'dur.** `assets/i18n/en.json` (temel/fallback) + `tr.json` ile başlanır. Bir dil
+  eklemek = `<kod>.json` sağlamak + locale'i kaydetmek (Dart'a dokunmadan).
+- **Otomatik algılama:** kayıtlı bir tercih yoksa cihaz dili kullanılır; desteklenmeyen bir dil
+  İngilizce'ye düşer. TR cihaz + `tr.json` varsa uygulama Türkçe açılır.
+- **Web:** varsayılan tarayıcı dili; ayarlardan yapılan seçim yine kalıcıdır ve kazanır.
+- **Ayarlardan kalıcı değişim:** Settings → **Dil** (Sistem / English / Türkçe …) anında,
+  yeniden başlatmadan değiştirir ve seçimi cihazda saklar (localKv).
+- **Hesaba bağlı dil:** seçilen dil `PATCH /me { locale }` ile `users.locale`'e yazılır; yeni bir
+  cihazda, yerel tercih yoksa uygulama `GET /me.locale` ile o dilde açılır (yerel tercih yereldeyken
+  yine öncelikli).
+- **Hata mesajları:** API dilden bağımsız `code` döndürür; uygulama `code`'u yerelleştirilmiş
+  mesaja çevirir (`error.<CODE>`), yoksa sunucu `message`'ına düşer.
+- **RTL v1 kapsamı dışındadır** (en + tr LTR); mimari RTL'i engellemez (v2).
+
 ## 13. Open-source repo kalitesi
 
 ### 13.1 README içeriği
@@ -836,6 +913,10 @@ Tests:
   documents, task/note backlinks, search.
 - **Phase 6 — Polish & open-source readiness:** import/export, theming, accessibility,
   performance, contribution guide, public roadmap, release automation.
+- **Phase 7 — Localization & widgets (v0.2.0, feedback round 5):** JSON i18n (device/browser
+  auto-detect, en fallback, settings override, en+tr) — Epic 11; home-screen/desktop widgets on
+  iOS/Android/macOS (3 sizes, bucketed summary, calendar header, quick add/complete) — Epic 12.
+  i18n ships first so widgets are born localized.
 
 ## 15. Kurumsal kalite gereksinimleri
 
@@ -859,6 +940,38 @@ never committed, dependency scanning.
 JSON export, Markdown export for notes, ICS export for calendar items, MySQL backup docs, user
 data deletion flow.
 
+### 15.5 Uluslararasılaştırma (i18n)
+
+_(Eklendi 2026-07-17, feedback round 5 — [ADR-0009](adr/0009-localization-i18n-architecture.md).)_
+
+- **Motor:** app'e ait senkron JSON deposu `lib/src/i18n/i18n.dart` (`AwI18n`) — `runApp`'ten
+  ÖNCE belleğe yüklenir, `'key'.tr()` build anında senkron çözülür (widget testleri `runAsync`
+  istemez). Üçüncü parti paket yok. Motor tek seam'de (`.tr()` extension) — değiştirilebilir kalır.
+- **Anahtar düzeni:** noktalı isim alanı (`home.title`, `task.status.open`, `common.save`,
+  `widget.bucket.overdue`, `error.<CODE>`). Eksik `tr` anahtarı `en`'e düşer (kısmi çeviri
+  yayınlanabilir). `{name}` yer tutucuları `args`'tan doldurulur.
+- **Delegate'ler:** Global{Material,Widgets,Cupertino}Localizations + mevcut FlutterQuill
+  delegate'leri (yerleşik widget'ları yerelleştirir); app string'leri `AwI18n`'den gelir.
+- **Hardcoded-string bekçisi:** CI'da bir grep taraması, allowlist dışındaki ham
+  `Text('literal')`/`labelText:`/`hintText:` metinlerinde başarısız olur (yeni metin doğuştan
+  anahtarlı gelir).
+- **v1 diller:** `en` (temel) + `tr`. RTL v2.
+
+### 15.6 Widget veri köprüsü, tazelik & gizlilik
+
+_(Eklendi 2026-07-17, feedback round 5 — [ADR-0010](adr/0010-home-screen-widgets-architecture.md),
+[WIDGETS.md](WIDGETS.md).)_
+
+- **Köprü:** `home_widget` + App Group (iOS/macOS) / SharedPreferences (Android). Uygulama küçük
+  (birkaç KB) bir JSON snapshot yazar; widget yalnız onu render eder, DB'ye dokunmaz.
+- **Tazelik:** ön planda `updateWidget` push'ları Apple bütçesinden muaf (40-70 reload/gün);
+  gece yarısı bucket döndürme için seyrek self-refresh timeline + Android WorkManager.
+- **Yazma yolu:** widget'tan tamamla/ekle yerel-önce `TaskStore`'dan geçer (senkron olur) — ayrı
+  yazma yolu YOK.
+- **Native derleme zorunlu:** `flutter analyze`/`test` Swift/Kotlin derlemez; her native widget
+  görevi gerçek `flutter build ios`/`apk`/`macos` + cihaz turuyla doğrulanır (EventKit dersi).
+- **Gizlilik:** "Private widget" açıkken başlık yerine sayı/yer tutucu.
+
 ## 16. Teknik riskler
 
 **Risk 1 — Apple Calendar cross-platform sync.** Apple tarafı Google kadar kolay değildir.
@@ -876,6 +989,18 @@ conflict UI.
 **Risk 4 — Notification reliability.** Mobile OS'ler background task ve notification
 davranışlarını kısıtlayabilir. *Mitigation:* local scheduled notification; push only as
 supplement; foreground resync; kullanıcıya permission health screen.
+
+**Risk 5 — Widget platform sınırları & tazelik bütçesi.** (a) iPhone'da 4×4 üstü ana ekran
+widget'ı yoktur → "4×6/tam ekran" iPhone'da karşılanamaz (iPad/macOS `systemExtraLarge`, Android
+4×6). (b) WidgetKit yenileme bütçesi (40-70/gün) arka planda kısıtlıdır. (c) Widget ayrı sandbox
+— DB'yi okuyamaz. (d) `flutter analyze`/`test` native kodu derlemez. *Mitigation:* boyut haritası
+platform gerçeğine göre dokümante edildi (WIDGETS.md §2); ön plan push'ları bütçeden muaf +
+midnight self-refresh; App Group snapshot köprüsü; her native görev build+cihaz turuyla doğrulanır.
+
+**Risk 6 — i18n metin genişlemesi.** Çeviriler tight layout'ları taşırabilir; RTL v1'de yok.
+*Mitigation:* sabit genişlikli etiket yok (kırpma + tooltip, DESIGN §4/§9); RTL mimaride
+engellenmedi (v2); i18n motoru app'e ait ve üçüncü parti bağımlılığı yok (§15.5) — bakım riski
+minimal, tüm aramalar tek seam'den geçer.
 
 ## 17. MVP kabul kriterleri
 
@@ -909,6 +1034,9 @@ supplement; foreground resync; kullanıcıya permission health screen.
 - **Epic 07 — Notifications:** OPH-060…OPH-064.
 - **Epic 08 — Calendar:** OPH-070…OPH-079.
 - **Epic 09 — Open-source readiness:** OPH-090…OPH-095.
+- **Epic 10 — Feedback round 4 (UX düzeltmeleri):** OPH-100…OPH-111.
+- **Epic 11 — Localization (i18n):** OPH-120…OPH-128 (feedback round 5).
+- **Epic 12 — Home-screen widgets:** OPH-130…OPH-136 (feedback round 5).
 
 ## 19. Nihai hedef
 

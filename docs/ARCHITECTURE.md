@@ -141,6 +141,22 @@ CalDAV connector deferred to v2 (ADR-0003).
   at once.
 - **Notifications (Phase 3):** flutter_local_notifications scheduled from local data; push (FCM)
   only as a supplementary wake-up. Urgent alarms use action buttons (complete/snooze presets).
+- **Localization (Phase 7, ADR-0009):** an app-owned, **synchronous** JSON store
+  (`lib/src/i18n/i18n.dart`, `AwI18n`) — JSON locales (`assets/i18n/en.json` base + `tr.json`)
+  read into memory before `runApp`, so `'key'.tr()` resolves at build time (no async → widget
+  tests stay simple). Device/browser auto-detect, `en` per-key fallback, a persisted Settings
+  override (localKv), runtime switch via a `ListenableBuilder`. No third-party i18n package
+  (only `flutter_localizations` SDK for the Material/Cupertino delegates). API returns stable
+  error `code`s the app maps to `error.<CODE>`. A CI grep guards against new hardcoded strings.
+- **Home-screen widgets (Phase 7, ADR-0010, [WIDGETS.md](WIDGETS.md)):** native widgets
+  (SwiftUI/WidgetKit on iOS·macOS, Jetpack Glance on Android) rendering a small JSON snapshot
+  the app writes to a shared container via `home_widget` (App Group / SharedPreferences) — the
+  widget can't read the drift replica (separate sandbox). A pure `groupTasksForWidget` projects
+  the buckets; quick-add/complete run App Intents (iOS 17+) / Glance actions → a
+  `@pragma('vm:entry-point')` Dart callback → the local-first `TaskStore` (syncs). Freshness =
+  foreground `updateWidget` pushes (budget-exempt) + a sparse midnight-rollover timeline. Widget
+  extensions are committed Xcode/Gradle targets (pbxproj + entitlements) — a deliberate deviation
+  from the "no pbxproj" plugin model, since a plugin package can't vend an app-extension target.
 - Feature-first folders: `lib/src/features/<domain>/{data,providers,ui}` as epics land.
 
 ## 8. Quality gates
