@@ -73,11 +73,11 @@ _Epic 08. ADRs [0006](docs/adr/0006-google-oauth-token-crypto-and-mirror-queue.m
 
 ---
 
-## v0.1.1 — first user-testing feedback ⏳ (next)
+## v0.1.1 — first user-testing feedback ✅
 
 The first hands-on testing round (2026-07-17, iOS simulator + web) produced
-**Epic 10 (OPH-100…OPH-111)**: two bug fixes (web sign-out crash, FABs hidden
-behind the glass nav), a Home rework (30-day horizon with
+**Epic 10 (OPH-100…OPH-111)**, now shipped: two bug fixes (web sign-out crash,
+FABs hidden behind the glass nav), a Home rework (30-day horizon with
 Today/Tomorrow/This Week/Next 30 Days, dateless tasks on top, the month
 calendar scrolling with the list, project badges on task rows), clearer
 status icons, a project picker in task create/detail, tabs that return to

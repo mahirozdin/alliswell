@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
+import '../features/onboarding/tour.dart';
 import '../notifications/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
@@ -56,6 +57,18 @@ class SettingsScreen extends ConsumerWidget {
                       onChanged: (_) => ref
                           .read(notificationPrivacyProvider.notifier)
                           .toggle(),
+                    ),
+                    // OPH-111: replay the first-run tour on demand. Start it,
+                    // then pop back to the shell where the overlay lives.
+                    ListTile(
+                      key: const Key('replay-tour'),
+                      leading: const Icon(Icons.help_outline),
+                      title: const Text('App tour'),
+                      subtitle: const Text('Replay the feature walkthrough'),
+                      onTap: () {
+                        ref.read(tourControllerProvider.notifier).start();
+                        Navigator.of(context).pop();
+                      },
                     ),
                     const AboutListTile(
                       icon: Icon(Icons.info_outline),

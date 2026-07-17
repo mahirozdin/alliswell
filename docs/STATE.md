@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-17 (feedback round 4 yakalandı → **Epic 10 açıldı: OPH-100…111**; BLUEPRINT §4/§12 + DESIGN §4 revize)
+**Last updated:** 2026-07-17 (**Epic 10 KAPANDI** — feedback round 4'ün tamamı OPH-100…111 bitti; **v0.1.1 hazır**)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -13,11 +13,11 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | **v0.1.0 hazır**; ilk kullanıcı testi geri bildirimi **v0.1.1 (Phase 4.9)** olarak planlandı |
-| Current epic | **Epic 10 — Feedback round 4** (OPH-100…111): kullanıcı testinden 13 madde, hepsi TASKS.md'de ayrıntılı task |
-| ➡️ **Next task** | **OPH-111 — onboarding/özellik turu** (Epic 10'un SON işi). Bitti: OPH-100…110 ✅ (proje arşivleme kaskadı OPH-110 dahil). |
-| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. v0.1.0 tag'i hâlâ maintainer'da (dışa yayın; Epic 10 v0.1.1'i besler). Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası, Apple/Android cihaz turu. |
-| Last completed | **Feedback round 4 dokümantasyonu** (BLUEPRINT §4.2/§4.3/§12.2-12.7 revize, DESIGN §4 "Project badge", Epic 10 backlog). Öncesi: Epic 09 tam (OPH-094/095), Epic 08 tam. |
+| Current phase | **v0.1.1 hazır** — feedback round 4'ün TAMAMI bitti (Phase 0-4 tam + Epic 10 UX turu) |
+| Current epic | **Epic 10 KAPANDI** — OPH-100…111 (12/12), kullanıcı testinden gelen 13 maddenin hepsi karşılandı |
+| ➡️ **Next task** | Planlı iş kalmadı (v0.1.0 ve v0.1.1 backlog'u bitti). Seçenekler: v0.1.1 release'i kes (maintainer tag'i), cihaz turları, veya v2 park listesi (TASKS.md sonu). Kullanıcıya sor. |
+| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Release tag'i maintainer'da. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası, Apple/Android cihaz turu (onboarding + bildirim + EventKit yazma). |
+| Last completed | **Epic 10 tam** (OPH-100…111): sign-out crash, FAB→shell, Home 30-gün ufku + rozet + kayan takvim, statü ikonu, proje seçici, sekme-kökü, Inbox yakalama kutusu, README proje bağlamı, proje arşivleme kaskadı, **onboarding turu (OPH-111)**. |
 
 ## Recently completed
 

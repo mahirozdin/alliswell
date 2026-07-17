@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/calendar/apple/providers.dart';
+import '../features/onboarding/tour.dart';
+import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
 import '../features/tasks/providers.dart';
 import '../features/tasks/ui/task_create_sheet.dart';
@@ -20,6 +22,33 @@ class HomeShell extends ConsumerWidget {
   const HomeShell({super.key, required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
+
+  // Anchors for the onboarding spotlight (OPH-111): the whole bottom bar / rail.
+  // Static so they stay stable across rebuilds (there is one shell).
+  static final GlobalKey _barKey = GlobalKey(debugLabel: 'nav-bar');
+  static final GlobalKey _railKey = GlobalKey(debugLabel: 'nav-rail');
+
+  static Rect? _rectOf(GlobalKey key) {
+    final box = key.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// The spotlight rect for a step: on phones, the destination's slice of the
+  /// bottom bar; on wide layouts, the whole rail (its items sit near the top,
+  /// so a per-item slice would mislead). Null for welcome/farewell cards, or
+  /// when the anchor isn't laid out (e.g. just after a resize → graceful).
+  static Rect? _anchorRect(TourStep step, {required bool isWide}) {
+    final section = step.section;
+    if (section == null) return null;
+    if (isWide) return _rectOf(_railKey);
+    final bar = _rectOf(_barKey);
+    if (bar == null) return null;
+    final count = AppSection.values.length;
+    final w = bar.width / count;
+    final index = AppSection.values.indexOf(section);
+    return Rect.fromLTWH(bar.left + index * w, bar.top, w, bar.height).deflate(4);
+  }
 
   void _goBranch(int index) {
     // Selecting a tab always returns to that section's root (OPH-108): tabs are
@@ -95,7 +124,16 @@ class HomeShell extends ConsumerWidget {
         context,
       )?.showSnackBar(SnackBar(content: Text(_conflictMessage(conflict))));
     });
-    return LayoutBuilder(
+
+    // First-run onboarding tour (OPH-111): try to auto-start once after the
+    // first frame (no-op in tests / when already seen), and overlay it when
+    // running.
+    final tour = ref.watch(tourControllerProvider);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(tourControllerProvider.notifier).maybeAutoStart(),
+    );
+
+    final shell = LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 800;
         if (isWide) {
@@ -108,6 +146,7 @@ class HomeShell extends ConsumerWidget {
                   edge: GlassEdge.right,
                   child: SafeArea(
                     child: NavigationRail(
+                      key: _railKey,
                       extended: constraints.maxWidth >= 1160,
                       labelType: constraints.maxWidth >= 1160
                           ? NavigationRailLabelType.none
@@ -146,6 +185,7 @@ class HomeShell extends ConsumerWidget {
             child: SafeArea(
               top: false,
               child: NavigationBar(
+                key: _barKey,
                 selectedIndex: navigationShell.currentIndex,
                 onDestinationSelected: _goBranch,
                 destinations: [
@@ -162,6 +202,22 @@ class HomeShell extends ConsumerWidget {
           ),
         );
       },
+    );
+
+    if (!tour.running) return shell;
+    final isWide = MediaQuery.sizeOf(context).width >= 800;
+    return Stack(
+      children: [
+        shell,
+        Positioned.fill(
+          child: TourOverlay(
+            state: tour,
+            anchorRect: _anchorRect(tour.current, isWide: isWide),
+            onNext: () => ref.read(tourControllerProvider.notifier).next(),
+            onSkip: () => ref.read(tourControllerProvider.notifier).skip(),
+          ),
+        ),
+      ],
     );
   }
 }

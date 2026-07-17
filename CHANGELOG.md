@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **First-run onboarding tour** (OPH-111): a spotlight walkthrough of the main
+  navigation that starts once for a new device and can be replayed anytime from
+  Settings → App tour. Skippable, keyboard/back-friendly, and adapts to the
+  phone bottom bar and the desktop rail.
 - **Project archiving** (OPH-110): projects can be archived (and unarchived) with
   an optional cascade that also archives their tasks and notes — reminders on
   cascaded tasks deactivate and revive correctly. Archived projects are hidden

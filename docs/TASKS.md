@@ -1707,15 +1707,41 @@ the outbox, detail banner + unarchive flow.
 **DoD:** analyze + `flutter test`; `npm test` + `npm run test:integration`; light + dark;
 CHANGELOG + BLUEPRINT §4.2 kept truthful.
 
-### OPH-111 — Onboarding: welcome + feature tour (skippable, replayable)
+### OPH-111 — Onboarding: welcome + feature tour (skippable, replayable) ✅
 
-- [ ] Hand-rolled tour overlay (NO new package): welcome card → spotlight steps over the
+- [x] Hand-rolled tour overlay (NO new package): welcome card → spotlight steps over the
       nav destinations (+ quick-add, FAB, Settings) with Next/dots/Skip
-- [ ] Auto-runs once per device after first sign-in (`alliswell_onboarding_seen_v1` via
+- [x] Auto-runs once per device after first sign-in (`alliswell_onboarding_seen_v1` via
       `localKv`); Settings gains 'App tour' to replay
-- [ ] Adapts to narrow (bottom bar) and wide (rail) anchors; resize mid-tour degrades
+- [x] Adapts to narrow (bottom bar) and wide (rail) anchors; resize mid-tour degrades
       gracefully
-- [ ] A11y: semantics, focus, ESC/back = skip, AwMotion.fast fades only
+- [x] A11y: semantics, focus, ESC/back = skip, AwMotion.fast fades only
+
+Acceptance notes: `features/onboarding/` — `tour.dart` (pure `kTourSteps`:
+welcome → one step per nav section → farewell; a `TourController` Notifier with
+`maybeAutoStart`/`next`/`skip`/`finish`) and `tour_overlay.dart` (a CustomPaint
+scrim with a spotlight cut-out over the anchor + a SOLID bubble card — glass
+stays chrome-only, G1 — with title, body, step dots, Next/Done, and a
+persistent Skip). `HomeShell` owns stable `GlobalKey`s on the bottom bar / rail
+and computes the anchor rect (a per-destination slice on phones, the whole rail
+on wide — its items sit near the top so a slice would mislead); a post-frame
+`maybeAutoStart` fires once. Persistence: `kOnboardingSeenKey` via `localKv`,
+set on skip AND finish; Settings gains an 'App tour' tile that replays it.
+**Test safety (the key risk):** the overlay would cover every full-app widget
+test, so `tourAutoStartProvider` (default true) is overridden to false in
+`syncTestOverrides` — the tour never auto-fires under test unless a test opts in
+with `tourAutoStart: true`. A11y: a `Semantics` region announces "step i of n",
+`PopScope` maps system-back/ESC to Skip, `AwMotion.fast` fades only.
+**Scope notes (deliberate):** the spotlight walks the 5 nav destinations (the
+"introduce the bottom menu" ask); quick-add / FAB / Settings are called out in
+the step copy rather than separately anchored. A mid-tour layout-class change
+degrades to a centered bubble (graceful) rather than an explicit tour-end.
+Manual device run deferred — the dev systems were shut down at the user's
+request; both layouts are widget-tested instead. Tests
+(`test/features/onboarding/tour_test.dart`, 9): script shape, next/skip/finish
+persistence, auto-start gating (disabled / already-seen), and widget flows
+(auto-start + Skip, full Next-walk, phone bottom-bar anchors, no-start when
+seen). `flutter analyze` clean; app suite **236/236**. ✔
 
 **User's report (item 4):** there must be an onboarding introducing every feature — what it
 is, how it's used. Even if skippable (top-right), the bottom menu must be walked item by
