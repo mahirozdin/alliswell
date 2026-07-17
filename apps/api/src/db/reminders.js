@@ -13,12 +13,25 @@ function sameInstant(a, b) {
 }
 
 /**
+ * The instant a task's alarm must fire, or null for "no alarm". An explicit
+ * remind_at always wins; an URGENT task alarms at its deadline even without
+ * one — an urgent task whose due time passes silently is the product failing
+ * at its main job (BLUEPRINT §4.9, feedback round 6).
+ */
+export function effectiveRemindAt(task) {
+  if (task.remind_at != null) return task.remind_at;
+  if (task.is_urgent && task.due_at != null) return task.due_at;
+  return null;
+}
+
+/**
  * Keeps the task's reminder row in lockstep with the task (OPH-034, BLUEPRINT
  * §4.9). Call inside the SAME transaction as the task write, with the
  * post-write task row:
  *
- * - task wants an alarm (remind_at set, task live and not completed/cancelled/
- *   archived) → upsert the active reminder, re-armed to `scheduled`
+ * - task wants an alarm (remind_at set — or urgent with a due date — and task
+ *   live, not completed/cancelled/archived) → upsert the active reminder,
+ *   re-armed to `scheduled`
  * - task no longer wants one → terminal-ize the active reminder
  *   (`completed` when the task was completed, else `cancelled`)
  *
@@ -34,8 +47,9 @@ export async function reconcileTaskReminder(trx, { workspaceId, task }) {
     .orderBy('created_at', 'desc')
     .first();
 
+  const remindAt = effectiveRemindAt(task);
   const wantsReminder =
-    task.remind_at != null && task.deleted_at == null && !SILENCED_TASK_STATUSES.has(task.status);
+    remindAt != null && task.deleted_at == null && !SILENCED_TASK_STATUSES.has(task.status);
 
   if (!wantsReminder) {
     if (!active) return;
@@ -54,7 +68,7 @@ export async function reconcileTaskReminder(trx, { workspaceId, task }) {
   }
 
   const desired = {
-    remind_at: new Date(task.remind_at),
+    remind_at: new Date(remindAt),
     timezone: task.timezone,
     alarm_level: task.is_urgent ? 'urgent' : 'normal',
     requires_acknowledgement: Boolean(task.requires_acknowledgement),

@@ -149,3 +149,47 @@ describe('reminder row lifecycle (OPH-034)', () => {
     expect(tables.reminders[0].status).toBe('cancelled');
   });
 });
+
+describe('urgent tasks alarm at their deadline (feedback round 6)', () => {
+  const DUE_AT = '2026-07-22T14:00:00.000Z';
+
+  it('urgent + dueAt without remindAt spawns an urgent reminder at the deadline', async () => {
+    await createTask({ title: 'Acil işin saati', dueAt: DUE_AT, isUrgent: true });
+
+    expect(activeReminders()).toHaveLength(1);
+    const reminder = activeReminders()[0];
+    expect(reminder.alarm_level).toBe('urgent');
+    expect(reminder.requires_acknowledgement).toBe(true);
+    expect(new Date(reminder.remind_at).toISOString()).toBe(DUE_AT);
+  });
+
+  it('a plain task with only a dueAt still gets no reminder', async () => {
+    await createTask({ title: 'Sakin', dueAt: DUE_AT });
+    expect(tables.reminders).toHaveLength(0);
+  });
+
+  it('an explicit remindAt wins over the deadline', async () => {
+    await createTask({
+      title: 'Önden haber ver',
+      dueAt: DUE_AT,
+      remindAt: REMIND_AT,
+      isUrgent: true,
+    });
+    expect(activeReminders()).toHaveLength(1);
+    expect(new Date(activeReminders()[0].remind_at).toISOString()).toBe(REMIND_AT);
+  });
+
+  it('moving the deadline moves the alarm; dropping urgency cancels it', async () => {
+    const task = (await createTask({ title: 'Kayan acil', dueAt: DUE_AT, isUrgent: true })).json();
+    const later = '2026-07-23T09:00:00.000Z';
+
+    await patchTask(task.id, { dueAt: later });
+    expect(activeReminders()).toHaveLength(1);
+    expect(new Date(activeReminders()[0].remind_at).toISOString()).toBe(later);
+    expect(activeReminders()[0].status).toBe('scheduled');
+
+    await patchTask(task.id, { isUrgent: false });
+    expect(activeReminders()).toHaveLength(0);
+    expect(tables.reminders.at(-1).status).toBe('cancelled');
+  });
+});
