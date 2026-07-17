@@ -12,6 +12,23 @@
 > iOS/iPadOS 26, macOS 26 (Tahoe); feature floors iOS 16 (accessory), **iOS 17 /
 > macOS 14 (interactivity)**, iOS 18 (Control Center). `home_widget` v0.9.3.
 
+## 0. Implementation status (2026-07-17)
+
+| Piece | Status |
+| --- | --- |
+| Dart snapshot core (`groupTasksForWidget`, `WidgetSnapshot`, `WidgetBridge`) | ✅ **done + unit-tested** (OPH-130) |
+| Android widget — rendering + tap-to-open | ✅ **written, `flutter build apk` green** (OPH-133); RemoteViews (not Glance) |
+| iOS widget — SwiftUI + timeline | 🟡 **Swift written** (`apps/app/ios/AllisWellWidget/`), awaiting the Xcode target + device — see that folder's `SETUP.md` (OPH-131) |
+| In-widget complete / quick-add (App Intents / Glance actions) | ⏳ deferred — background isolate + device (OPH-132, shared Android bit) |
+| macOS widget | ⏳ deferred — blocked on the macOS signing gap (OPH-134) |
+| Configurable list, accessory tier, private-widget, WorkManager midnight | ⏳ deferred (OPH-135) |
+| Device visual/QA pass (all sizes, light+dark, sync) | ⏳ needs a real device/emulator |
+
+The Dart core is the single source of truth both native widgets render; it's the
+only fully unit-testable piece, and it's done. The native layers are verified by
+build (`apk` green; iOS awaits its Xcode target) — the on-device *visual* pass is
+tracked like the notification/EventKit device passes.
+
 ## 1. What we are building
 
 A single glanceable surface that mirrors **Home**: the user's tasks bucketed
