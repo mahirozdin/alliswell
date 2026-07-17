@@ -2167,6 +2167,121 @@ the configurable + accessory surfaces.
 
 ---
 
+## Epic 13 — Feedback round 6: the alarm backbone (Phase 7, v0.2.0)
+
+> **Source:** Mahir's 2026-07-18 device test (iPhone, Sleep Focus on): an urgent task due 00:50
+> plus a 00:49 reminder produced one *silent* notification — no alarm sound, no urgent
+> breakthrough, and nothing at the due time at all. Alarms are the product's backbone (BLUEPRINT
+> §8.2). Research is baked into [NOTIFICATIONS.md](NOTIFICATIONS.md) §§1–2b (critical-alerts
+> policy, AlarmKit, Android DND mechanics).
+> **Item↔task map:** (1) tab wraps + rename → OPH-137 · (2) Today looks disabled → OPH-137 ·
+> (3) alarm/urgent delivery → OPH-138/139 now; OPH-140…143 device/native follow-ups.
+
+### OPH-137 — TR "Fikirler" rename + Home dim honesty — ✅ 2026-07-18
+
+- [x] tr.json renames (tab/status/tour/empty states): Gelen Kutusu → **Fikirler**, task status →
+      "Fikir". The selected-tab bold no longer overflows (8-char label); DESIGN §9 gained **L5**
+      (bottom-bar labels ≲10 chars, every locale).
+- [x] `groupTasksForHome`: **Overdue/Today/No-date NEVER dim** — current debts must not look
+      disabled; only future groups dim while a calendar day is selected. **Hiding the phone
+      calendar clears the day selection** (an invisible filter must not keep dimming Home).
+      Grouping + widget tests updated; new hide-clears-selection test.
+
+### OPH-138 — Urgent tasks alarm at their deadline — ✅ 2026-07-18
+
+- [x] API: `effectiveRemindAt(task)` = `remind_at ?? (is_urgent ? due_at : null)` inside
+      `reconcileTaskReminder` (`src/db/reminders.js`) — one seam covers REST, sync push and the
+      calendar job. Moving `due_at` moves the alarm; dropping urgency cancels it. 4 new tests.
+- [x] App: `ReminderStore.watchAlarms` merges reminder rows with **synthetic task-derived
+      alarms** (same rule) so the alarm is scheduled even offline/mid-sync; a task with ANY
+      reminder row (even terminal) never synthesizes — acknowledged stays acknowledged. Synthetic
+      acknowledge resolves to the task's active row. 9 new tests (`reminder_store_test.dart`).
+
+### OPH-139 — Real alarm delivery: sound + interruption levels + critical path — ✅ 2026-07-18
+
+- [x] 28 s alarm bed synthesized (dual-tone pulse train, under iOS's 30 s cap):
+      `ios/Runner/Resources/aw_alarm.caf` (ima4, wired into the pbxproj, verified inside the
+      built .app) + `android/.../res/raw/aw_alarm.m4a`.
+- [x] iOS: urgent = `timeSensitive` + alarm sound; upgraded to `critical` + volume 1.0 **only**
+      when `checkPermissions().isCriticalEnabled` (an unentitled critical payload can silence the
+      notification outright). `requestPermissions(critical: true)` — safe without the
+      entitlement. **Normal reminders are now `timeSensitive`** (`.active` was buried by every
+      Focus mode). macOS: default sound, timeSensitive.
+- [x] Android: **versioned `urgent_alarms_v2` channel** — `USAGE_ALARM` (alarm stream: rings
+      through muted ringer and default DND) + `FLAG_INSISTENT` (loops until opened) + full-screen
+      intent; the soundless v1 channel is deleted at startup.
+- [x] Settings → **"Acil alarmlar" honest status row** (notifications / exact-alarm / critical
+      states in plain language; tap re-runs the permission flow). Notification bodies, action
+      labels and channel names localized (en+tr) — planner strings were TR-hardcoded.
+
+### OPH-140 — Device verification pass: the alarm matrix
+
+- [ ] iOS device: urgent due-time alarm rings under Sleep Focus (time-sensitive breakthrough,
+      28 s sound at ringer volume, screen lights); chain re-alerts at +2/+5/+10/+30; Onayla stops
+      the chain on every device (sync); normal reminder banners+sounds; mute-switch behavior
+      documented (silent — expected until OPH-141/142).
+- [ ] iOS sanity: Settings → AllisWell shows the "Time Sensitive Notifications" toggle; the
+      PROVISIONING PROFILE carries the time-sensitive entitlement (most common silent failure —
+      NOTIFICATIONS.md §2).
+- [ ] Android device: v2 channel rings on the ALARM stream with the ringer muted; insistent loop
+      until opened; default DND lets it through; "Alarms & reminders" special-access flow;
+      full-screen intent where granted.
+- [ ] Record the matrix in STATE (like the Epic 12 widget QA matrix).
+
+**Context:** exact delivery can only be proven on devices (NOTIFICATIONS.md verification note).
+
+**DoD:** matrix recorded in STATE; regressions become tasks.
+
+### OPH-141 — iOS 26 AlarmKit bridge: ring through the mute switch, no entitlement
+
+- [ ] Native bridge (plugin package like `alliswell_eventkit`, or Runner-side channel — decide at
+      implementation; AlarmKit needs a Live Activity presentation, which may force Runner):
+      `AlarmManager.requestAuthorization` + `NSAlarmKitUsageDescription`, schedule/cancel API for
+      URGENT alarms on iOS 26+, alert presentation with Onayla/Ertele mapping to the existing
+      action handlers. iOS < 26 and non-urgent stay on OPH-139 delivery.
+- [ ] The planner remains the single source of truth: the gateway grows an AlarmKit lane so the
+      content-hash diff cancels AlarmKit alarms on acknowledge/complete/snooze exactly like
+      notifications (NOTIFICATIONS.md §2b is the binding spec).
+- [ ] Real-device pass (Xcode target work — same constraints as Epic 12 natives).
+
+**Context:** research 2026-07-18 — Apple's AlarmKit alert "breaks through silent mode and the
+current Focus" with no special entitlement; critical alerts are effectively refused to task
+managers (NOTIFICATIONS.md §2). This is the sanctioned way to never miss an urgent task on a
+muted iPhone.
+
+**Tests:** Dart lane logic device-free (fake AlarmKit host); Swift by real build + device pass.
+
+**DoD:** urgent alarm rings on a MUTED iOS 26 device with the app killed; STATE matrix updated.
+
+### OPH-142 — Critical-alerts entitlement application (user action; code is ready)
+
+- [ ] **Mahir (Account Holder):** submit
+      <https://developer.apple.com/contact/request/notifications-critical-alerts-entitlement/> —
+      justification draft in NOTIFICATIONS.md §2. Expect refusal for a task manager; AlarmKit
+      (OPH-141) is the primary path — this is belt-and-braces for muted phones on iOS < 26.
+- [ ] If granted: add `com.apple.developer.usernotifications.critical-alerts` = true to
+      `Runner.entitlements`, regenerate provisioning profiles. **No code change** — OPH-139
+      already gates on the runtime grant, and the second "Critical Alerts" permission prompt +
+      Settings toggle appear automatically.
+
+### OPH-143 — Foreground ring screen + degradation banners
+
+- [ ] In-app full-screen "alarm ringing" overlay when an urgent alarm fires while the app is
+      OPEN (all platforms — and desktop/web's ONLY alarm surface, NOTIFICATIONS.md §3): task
+      title, Onayla + snooze presets, looping audio until acted on. Gate auto-show behind a
+      provider defaulted OFF in `test/support/sync_overrides.dart` (OPH-111 lesson — it would
+      cover every full-app widget test).
+- [ ] Honest degradation banners (§1 "never fail silently"): urgent-task banner when Android
+      exact alarms are denied ("alarms may be late — grant Alarms & reminders") and when
+      notifications are off on any platform.
+
+**Tests:** overlay widget tests with a fake clock; banner permission states via the gateway fake.
+
+**DoD:** analyze + suites green; STATE note. **Epic 13 device tail rides the Epic 12 device
+tour** (one physical session can clear both matrices).
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

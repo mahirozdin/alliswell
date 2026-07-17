@@ -7,6 +7,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Urgent tasks now alarm at their deadline** (OPH-138, Epic 13): an urgent
+  task with a due time rings AT that time even if you never set a separate
+  reminder — the deadline itself is the alarm (an explicit "Remind" time still
+  wins when you set one). Works offline too: the device arms the alarm straight
+  from the task and hands over to the synced reminder seamlessly.
+- **Urgent alarms actually sound like alarms** (OPH-139, Epic 13): a real 28-second
+  alarm ring (not the default ding) that repeats at +2/+5/+10/+30 minutes until
+  acknowledged. On iPhone, alarms and reminders are now **Time Sensitive** — they
+  break through Sleep and Focus modes (the old level was silently buried by any
+  Focus). On Android the alarm plays on the **alarm channel**: it rings at alarm
+  volume even when the ringer is muted, gets through default Do Not Disturb, and
+  loops until you open it. A Critical-Alerts path (rings even on a muted iPhone)
+  ships ready behind Apple's special approval — and the honest plan for muted
+  iPhones is the new iOS 26 AlarmKit task
+  ([docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md)).
+- **Settings → "Urgent alarms" status row** (OPH-139): plain-language answer to
+  "can the alarm actually ring on this device?" — flags notifications being off
+  or Android's exact-alarm access missing, and a tap re-runs the permission flow.
+
 - **Home-screen widgets — taking shape** (OPH-130/131/133, Epic 12): the app
   projects your open tasks into a compact, bucketed snapshot (Overdue / No date /
   Today / This week / This month) with a localized date header and publishes it
@@ -51,6 +70,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **The Inbox is now "Fikirler" in Turkish** (OPH-137): the tab, the task status
+  and the tour all follow — and the bottom-bar label no longer wraps when
+  selected.
+- **Today never looks disabled** (OPH-137): picking a calendar day used to fade
+  every other group — including Today and Overdue, which read as "done/inactive".
+  Now only future groups dim, and collapsing the calendar clears the day
+  selection so an invisible filter can't keep dimming Home.
+- Notification texts, action buttons and Android channel names are localized
+  (English + Türkçe) — they were Turkish-only before (OPH-139).
 - **README notes stay in their project** (OPH-109): creating or editing a
   project's README opens full-screen and returns to the project's Overview
   instead of jumping to the Notes tab, and README notes no longer clutter the

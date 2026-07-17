@@ -3,9 +3,11 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-17 (**Epic 11 (i18n) KAPANDI**; **Epic 12:** OPH-130 (Dart çekirdek) ✅,
-OPH-131 (iOS Swift, Xcode bekliyor), **OPH-133 (Android render `flutter build apk` ile derlendi)**.
-Kalan hep cihaz/Xcode/etkileşim. Hedef v0.2.0.)
+**Last updated:** 2026-07-18 (**Feedback round 6 → Epic 13 doğdu ve çekirdeği AYNI GÜN gemiye
+bindi:** OPH-137 (Fikirler + Home dim) ✅, OPH-138 (acil task due saatinde alarm) ✅, OPH-139
+(gerçek alarm sesi + timeSensitive/critical + Android v2 kanal) ✅. Kalan: OPH-140 cihaz matrisi,
+OPH-141 AlarmKit (iOS 26), OPH-142 critical başvurusu, OPH-143 ring-screen. Epic 12 cihaz işleri
+aynen bekliyor. Hedef v0.2.0.)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,11 +17,11 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | **Phase 7 planlandı (v0.2.0)** — feedback round 5: i18n + widgets docs'a işlendi. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
-| Current epic | **Epic 12 — Widgets** DEVAM EDİYOR (OPH-130 ✅ Dart çekirdeği). Sıradaki OPH-131…136 **native** (Swift/Kotlin) — Xcode/Android Studio target + gerçek cihaz build'i gerektirir; bu ortamda tam doğrulanamaz. |
-| ➡️ **Next task** | **Cihaz turları + etkileşim.** iOS: OPH-131 Xcode target'ı ([SETUP.md](../apps/app/ios/AllisWellWidget/SETUP.md)) + cihaz. Android: OPH-133 görsel tur (render `flutter build apk` ile DERLENDİ). Sonra **OPH-132/133-interaktivite** (uygulamayı açmadan tamamla/ekle — arka plan isolate + cihaz ister). Tek başına ilerlenebilir Dart işi kalmadı; hepsi cihaz/Xcode. |
-| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası (Epic 12 macOS widget + EventKit için), Apple/Android cihaz turu. Widget epiği için: gerçek iOS/Android cihaz/simülatör (native build doğrulaması). |
-| Last completed | **OPH-133 — Android widget render'ı DERLENDİ** (Epic 12): `TasksWidgetProvider`+`TasksWidgetService` (RemoteViews scrollable bucketed liste, `home_widget` snapshot'ından; light+dark renkler; tap→uygulamayı açar), `res/xml`+layout+manifest → **`flutter build apk` GEÇTİ**. Etkileşim + midnight + cihaz görseli ertelendi. (Ayrıca: OPH-131 iOS Swift yazıldı/Xcode bekliyor; OPH-130 Dart çekirdeği.) App 270/270. |
+| Current phase | **Phase 7 (v0.2.0)** — Epic 11 kapalı; Epic 12 cihaz kuyruğunda; **Epic 13 (alarm omurgası) çekirdeği gemide**. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
+| Current epic | **Epic 13 — Alarm omurgası** (feedback round 6): OPH-137/138/139 ✅. Kalan OPH-140…143 **cihaz/native** (AlarmKit = iOS 26 Swift + Live Activity). Epic 12'nin cihaz işleri (OPH-131 Xcode target, 132/133 etkileşim) aynen duruyor — tek fiziksel oturumda ikisi birden kapatılabilir. |
+| ➡️ **Next task** | **OPH-140 cihaz doğrulama matrisi** (alarm gerçekten çalıyor mu: Uyku Odağı + zincir + Onayla) — Epic 12 cihaz turu ile birleştir. Cihazsız ilerlenebilir tek iş: OPH-143'ün overlay/banner Dart kısmı. Sonra OPH-141 AlarmKit (Xcode). |
+| ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Önerilen: **cihaz turu** (OPH-140 + Epic 12 görsel tur — telefonu tak, alarmları test et) ve **OPH-142 critical-alerts başvurusu** (Account Holder; formu NOTIFICATIONS.md §2'de, ret ihtimali yüksek — asıl yol AlarmKit). Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS sertifikası. |
+| Last completed | **OPH-137+138+139 — feedback round 6 çekirdeği** (2026-07-18): TR "Fikirler" + Home dim dürüstlüğü; acil task **due saatinde** alarm (API `effectiveRemindAt` + app sentetik alarm); gerçek alarm sesi (28 sn caf/m4a) + iOS timeSensitive/critical gate + Android `urgent_alarms_v2` (USAGE_ALARM + insistent + FSI) + Settings dürüst izin satırı. **App 280/280, API birim 223/223 + entegrasyon yeşil, analyze + check:i18n + kontrast temiz, `flutter build ios` GEÇTİ (caf bundle'da doğrulandı).** |
 
 ## Recently completed
 

@@ -281,6 +281,14 @@ Reminder, task alarm yaşam döngüsüdür.
 Alanlar: `task_id`, `remind_at`, `timezone`, `alarm_level`, `is_urgent`,
 `requires_acknowledgement`, `delivered_at`, `acknowledged_at`, `snoozed_until`, `repeat_rule`.
 
+**Etkin alarm anı (rev. 2026-07-18, feedback round 6):** `remind_at` her zaman kazanır; ama
+**acil (`is_urgent`) bir task, `remind_at` verilmemiş olsa bile `due_at` anında alarm çalar** —
+acil bir işin bitiş saati sessizce geçiyorsa ürün asıl görevinde başarısız demektir. Tek kural
+tek yerde yaşar: API `effectiveRemindAt(task)` (`src/db/reminders.js`, tüm yazım yolları
+`reconcileTaskReminder` üzerinden) ve uygulamadaki sentetik alarm türetimi
+(`ReminderStore.watchAlarms`) aynı kuralı aynalar — reminder satırı senkrondan önce de alarm
+kurulur, satır gelince devralır.
+
 ## 5. Sistem mimarisi
 
 ### 5.1 Yüksek seviye mimari
@@ -481,6 +489,16 @@ project update (v2).
 
 Acil task alarmında aksiyonlar: Tamamlandı • 5 dk ertele • 30 dk ertele • 1 saat ertele •
 Yarın sabah ertele • Özel ertele.
+
+**Teslimat sözleşmesi (rev. 2026-07-18, feedback round 6 — bağlayıcı ayrıntı
+[NOTIFICATIONS.md](NOTIFICATIONS.md)):** acil alarm bir "ding" değil ALARMDIR — 28 sn'lik alarm
+sesi; iOS'ta `timeSensitive` (Uyku/Odak modlarını deler), Android'de alarm ses kanalı
+(`USAGE_ALARM`: zil sessizken bile alarm kısıklığında çalar, varsayılan DND'yi deler) +
+`FLAG_INSISTENT` (açılana dek döngü) + tam ekran intent. Onaylanana dek T, +2, +5, +10, +30 dk
+zinciri. Normal hatırlatıcılar da `timeSensitive` (kullanıcının saat verdiği bildirim tanımı
+gereği zamana duyarlıdır; `.active` her Odak modunda sessizce gömülüyordu). iOS'ta sessiz
+anahtarını yalnız Apple onaylı **Critical Alerts** (kod yolu hazır, entitlement gate'li —
+görev uygulamalarına fiilen verilmiyor) veya **AlarmKit** (iOS 26+, OPH-141) aşar.
 
 ### 8.3 Gizlilik
 
