@@ -3,8 +3,8 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-17 (**Epic 11 — Localization (i18n) KAPANDI**, OPH-120…128 9/9.
-Tüm UI EN+TR. Sıradaki: Epic 12 widgets (OPH-130). Hedef v0.2.0.)
+**Last updated:** 2026-07-17 (**Epic 11 (i18n) KAPANDI** + **Epic 12 OPH-130 (widget Dart
+çekirdeği) bitti**. Sıradaki OPH-131 native iOS widget — cihaz build'i ister. Hedef v0.2.0.)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -15,12 +15,29 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | | |
 | --- | --- |
 | Current phase | **Phase 7 planlandı (v0.2.0)** — feedback round 5: i18n + widgets docs'a işlendi. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
-| Current epic | **Epic 11 — Localization (i18n) KAPANDI** (OPH-120…128, 9/9 ✅). Sıradaki: **Epic 12 — Widgets** (OPH-130…136) — çoğu native Swift/Kotlin, gerçek cihaz/build gerektirir. |
-| ➡️ **Next task** | **OPH-130 — Widget snapshot core (Dart: pure grouping + bridge)** (Epic 12 başı, TASKS.md). Widget epiğinin tek tam-test-edilebilir task'ı. Binding: [WIDGETS.md](WIDGETS.md) + ADR-0010 + DESIGN §8. i18n hazır → snapshot lokalize etiket yazabilir. Native task'lar `flutter build ios`/`apk` + cihaz turu ister. |
+| Current epic | **Epic 12 — Widgets** DEVAM EDİYOR (OPH-130 ✅ Dart çekirdeği). Sıradaki OPH-131…136 **native** (Swift/Kotlin) — Xcode/Android Studio target + gerçek cihaz build'i gerektirir; bu ortamda tam doğrulanamaz. |
+| ➡️ **Next task** | **OPH-131 — iOS Widget Extension** (target + App Group + snapshot render + deep-link). **NATIVE** — `ios/Runner.xcodeproj`'a widget extension target eklenmeli (pbxproj + entitlements commit), `flutter build ios` + cihaz turuyla doğrulanır. Binding: [WIDGETS.md](WIDGETS.md) §7 + ADR-0010. Snapshot çekirdeği (OPH-130) hazır. |
 | ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası (Epic 12 macOS widget + EventKit için), Apple/Android cihaz turu. Widget epiği için: gerçek iOS/Android cihaz/simülatör (native build doğrulaması). |
-| Last completed | **OPH-124…128 → Epic 11 (i18n) KAPANDI**: projeler/notlar/takvim/onboarding string'leri (3 paralel ajan, ~145 string), hata-kodu lokalizasyonu + `localizedError`, `PATCH /me` (API + app push), CI hardcoded-string bekçisi (`check:i18n`), web `<html lang>` + "dil ekleme" dokümanı. **Tüm UI EN+TR; dil eklemek = JSON drop.** App 264/264, API 219/219, bekçi+analyze temiz. |
+| Last completed | **OPH-130 — Widget snapshot çekirdeği** (Epic 12): `home_widget` seam'i — saf `groupTasksForWidget` (overdue/noDate/today/thisWeek/thisMonth, 30-gün ufuk), `WidgetSnapshot` JSON serializer (lokalize etiket + `intl` tarih başlığı), `WidgetBridge`/`widgetSyncProvider` (task/proje değişince push, iOS/Android/macOS dışı no-op). Tek tam-test-edilebilir widget task'ı. App 270/270. (Epic 11 i18n bundan önce KAPANDI: OPH-120…128, tüm UI EN+TR.) |
 
 ## Recently completed
+
+- **OPH-130 — Widget snapshot core (2026-07-17, Epic 12 başladı):**
+  - **Ne:** ana ekran widget'ının Dart tarafı — `lib/src/features/widgets/`. Saf
+    `groupTasksForWidget` (overdue→noDate→today→thisWeek→thisMonth, 30-gün rolling ufuk;
+    `groupTasksForHome`'un glanceable kardeşi, task-only). `WidgetSnapshot` serializer → küçük JSON
+    (WIDGETS.md §3.1: `date{weekday,day,month}` + bucket'lar top-N `items` + `more`), etiketler
+    `widget.bucket.*`.tr() ile lokalize, tarih `intl`. `WidgetHost` seam (home_widget üstünde) +
+    `WidgetBridge.publish` (configure→save→update) + `widgetSyncProvider` (openTasks/projects
+    değişince push; iOS/Android/macOS dışı no-op), `HomeShell`'de izleniyor.
+  - **Test edilebilirlik:** bridge `WidgetHost` soyutlamasının arkasında → `FakeWidgetHost` ile
+    platform-kanalsız test; `syncTestOverrides`'a da eklendi (tam-app süiti home_widget'a değmez).
+    6 test (bucket sınırları + +30 drop, snapshot şekli/en-tr etiket/tarih başlığı/truncation/
+    proje rengi, bridge configure-once/save/update). **App 270/270, analyze + check:i18n temiz.**
+  - **Sapma:** snapshot task-only (plan "events" diyordu — widget bir görev bakışı; takvim yönünü
+    tarih başlığı taşıyor). **Kalan Epic 12 NATIVE** (OPH-131 iOS ext, 132 iOS App Intents, 133
+    Android Glance, 134 macOS [imza bloklu], 135 config/gizlilik, 136 docs/QA) — hepsi gerçek
+    cihaz/build turu ister; `analyze`/`test` Swift/Kotlin derlemez.
 
 - **OPH-124…128 → Epic 11 (Localization) KAPANDI (2026-07-17):**
   - **OPH-124 (feature string'leri):** projeler/notlar/takvim kartları/onboarding — **3 paralel

@@ -2017,30 +2017,32 @@ cards, onboarding, settings, errors) is EN+TR; adding a language is a JSON drop.
 > `flutter test` compile NO Swift/Kotlin — every native task is proven only by a real `flutter
 > build ios`/`apk`/`macos` + a device/simulator pass, recorded in STATE (the EventKit lesson).
 
-### OPH-130 — Widget snapshot core (Dart: pure grouping + bridge)
+### OPH-130 — Widget snapshot core (Dart: pure grouping + bridge) ✅
 
-- [ ] Add `home_widget` to `apps/app/pubspec.yaml`. New `lib/src/features/widgets/`.
-- [ ] Pure `groupTasksForWidget(tasks, {now, events})` — sibling of `groupTasksForHome`
-      (`task_grouping.dart`) with buckets **overdue → noDate → today → thisWeek → thisMonth**
-      (horizon = end of current month; reuse the event rules: events never overdue, ongoing =
-      today-once). Fully unit-tested.
-- [ ] `WidgetSnapshot` serializer → the compact JSON of WIDGETS.md §3.1 (`date{weekday,day,month}`,
-      `counts`, `buckets[]` with top-N `items{id,title,done,time,projectColor}`, `more{}` for
-      truncation). Labels come from the Epic 11 i18n facade (already localized).
-- [ ] `WidgetBridge` (Riverpod) listens to `openTasksProvider` + `externalEventsProvider`, calls
-      `HomeWidget.setAppGroupId('group.com.alliswell.alliswell')`, and `saveWidgetData` +
-      `updateWidget(iOSName:'AllisWellWidget', androidName:'TasksWidgetProvider',
-      qualifiedAndroidName:'com.alliswell.alliswell.TasksWidgetProvider')` after every change.
+- [x] `home_widget ^0.9.0` (resolved 0.9.3); new `lib/src/features/widgets/`.
+- [x] Pure `groupTasksForWidget(tasks, {now})` — buckets **overdue → noDate → today → thisWeek →
+      thisMonth**, rolling 30-day horizon (`kWidgetHorizonDays`). Tasks-only (the calendar header
+      covers the date). Fully unit-tested.
+- [x] `WidgetSnapshot` serializer → the compact JSON of WIDGETS.md §3.1 (`v`, `generatedAt`,
+      `locale`, `date{weekday,day,month}`, `buckets[]` with `label`/`count`/top-N
+      `items{id,title,done,priority,time,projectColor}`/`more`). Labels via `widget.bucket.*`.tr()
+      (already localized); dates via `intl` in the active locale.
+- [x] `WidgetHost` seam (over `home_widget`) + `WidgetBridge.publish` (configure→save→update) +
+      `widgetSyncProvider` (republishes on open-task/project change, self-disables off iOS/Android/
+      macOS), watched by `HomeShell`.
 
-**Context:** `groupTasksForHome` already produces these buckets — the widget mirrors that tested
-philosophy. **This is the ONLY fully green-testable task and carries the correctness weight.**
+Acceptance notes: the snapshot is tasks-only (deviation from the plan's "events"
+mention — the widget is a task glance; the date header carries the calendar
+aspect, C). The bridge is behind a `WidgetHost` abstraction so it's unit-tested
+with a `FakeWidgetHost` (no platform channels) — also added to `syncTestOverrides`
+so the full-app suite doesn't hit `home_widget`. Tests
+(`test/features/widgets/widget_core_test.dart`, 6): bucket boundaries + the +30
+drop; snapshot shape, en/tr labels + localized date header (Friday/Cuma,
+July/Temmuz), top-N truncation with `more`, project color + done flag; bridge
+configures-once/saves-JSON/updates, and re-updates on a second publish. **Suite
+270/270, analyze + check:i18n clean.** No native code yet (OPH-131+).
 
-**Tests** (`apps/app/test/features/widgets/`): bucket boundaries (+/- month edge, overdue,
-dateless, ongoing event); snapshot JSON shape + per-bucket top-N truncation + `more` counts;
-localized labels (en vs tr); "WidgetBridge writes + calls updateWidget when the task stream
-changes" via a fake `HomeWidget`.
-
-**DoD:** `flutter analyze` + `flutter test` (all green, no infra); no native code yet.
+**DoD:** `flutter analyze` + `flutter test` (all green, no infra). ✔
 
 ### OPH-131 — iOS Widget Extension: target, App Group, rendering, deep-link floor
 

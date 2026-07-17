@@ -8,6 +8,7 @@ import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
 import '../features/tasks/providers.dart';
 import '../features/tasks/ui/task_create_sheet.dart';
+import '../features/widgets/widget_bridge.dart';
 import '../i18n/i18n.dart';
 import '../notifications/providers.dart';
 import '../sections.dart';
@@ -124,6 +125,9 @@ class HomeShell extends ConsumerWidget {
     // OPH-078: keep the Apple calendar mirror reconciling while signed in
     // (self-disables off Apple platforms and until access + a calendar exist).
     ref.watch(appleMirrorProvider);
+    // OPH-130: republish the home-screen widget snapshot on task/project change
+    // (self-disables off iOS/Android/macOS).
+    ref.watch(widgetSyncProvider);
     ref.listen(syncConflictsProvider, (_, next) {
       final conflict = next.value;
       if (conflict == null) return;

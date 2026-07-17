@@ -321,5 +321,16 @@
     "fieldsOverridden": "Bazı değişiklikler daha yeni bir düzenlemeyle geçersiz kılındı ({fields}).",
     "rejected": "Bir değişiklik sunucu tarafından reddedildi{code}.",
     "conflicted": "Bir değişiklik daha yeni bir düzenlemeyle çakıştı ve uygulanmadı."
+  },
+  "widget": {
+    "bucket": {
+      "overdue": "Gecikmiş",
+      "noDate": "Tarihsiz",
+      "today": "Bugün",
+      "thisWeek": "Bu hafta",
+      "thisMonth": "Bu ay"
+    },
+    "allCaughtUp": "Her şey tamam",
+    "addTask": "Görev ekle"
   }
 }

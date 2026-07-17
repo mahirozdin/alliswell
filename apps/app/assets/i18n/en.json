@@ -322,5 +322,16 @@
     "fieldsOverridden": "Some changes were overridden by a newer edit ({fields}).",
     "rejected": "A change was rejected by the server{code}.",
     "conflicted": "A change conflicted with a newer edit and was not applied."
+  },
+  "widget": {
+    "bucket": {
+      "overdue": "Overdue",
+      "noDate": "No date",
+      "today": "Today",
+      "thisWeek": "This week",
+      "thisMonth": "This month"
+    },
+    "allCaughtUp": "All caught up",
+    "addTask": "Add task"
   }
 }

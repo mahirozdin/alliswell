@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Home-screen widget groundwork** (OPH-130, Epic 12): the app now projects your
+  open tasks into a compact, bucketed snapshot (Overdue / No date / Today / This
+  week / This month) with a localized date header and publishes it through the
+  `home_widget` bridge on every change. The native widgets that render it
+  (iOS/Android/macOS, in three sizes) come next. (See
+  [ADR-0010](docs/adr/0010-home-screen-widgets-architecture.md) / [docs/WIDGETS.md](docs/WIDGETS.md).)
 - **The app is fully bilingual — English + Türkçe** (OPH-122…128, Epic 11 done):
   every screen is now translated — sign-in/sign-up, navigation, Home and the whole
   task surface (bucket headers, locale-aware dates, quick-add, create/detail

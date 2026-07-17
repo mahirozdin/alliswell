@@ -3,12 +3,14 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 
 import 'package:alliswell/src/features/onboarding/tour.dart';
+import 'package:alliswell/src/features/widgets/widget_host.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_socket.dart';
 
 import 'fake_notifications.dart';
+import 'fake_widget_host.dart';
 
 /// Overrides every widget test pumping the full app needs since local-first
 /// (OPH-054): an in-memory replica instead of the platform-channel database,
@@ -44,4 +46,7 @@ List<Override> syncTestOverrides({
   // (OPH-111) — it would cover the UI the test is driving. Tests that assert
   // the tour opt back in with `tourAutoStart: true`.
   tourAutoStartProvider.overrideWithValue(tourAutoStart),
+  // No platform channels: the home-screen widget bridge (OPH-130), watched by
+  // HomeShell, pushes to an in-memory fake instead of home_widget.
+  widgetHostProvider.overrideWithValue(FakeWidgetHost()),
 ];
