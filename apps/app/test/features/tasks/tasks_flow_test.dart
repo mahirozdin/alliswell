@@ -554,4 +554,26 @@ void main() {
     expect(find.text('Nota gidecek'), findsNothing);
     expect(api.notes.any((n) => n['title'] == 'Nota gidecek'), isTrue);
   });
+
+  testWidgets('a long capture title fits a phone row without overflow (OPH-107)', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(375, 812));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final api = FakeApi()
+      ..seedTask(
+        title:
+            'Çok uzun bir yakalama başlığı ki satıra sığmasın ve taşma olmasın',
+        status: 'inbox',
+      );
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Inbox').last);
+    await tester.pumpAndSettle();
+
+    // A RenderFlex overflow would have thrown during layout; the three actions
+    // and the title coexist at 375 px.
+    expect(find.byKey(const Key('capture-plan')), findsOneWidget);
+    expect(find.byKey(const Key('capture-delete')), findsOneWidget);
+  });
 }
