@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **Project archiving** (OPH-110): projects can be archived (and unarchived) with
+  an optional cascade that also archives their tasks and notes — reminders on
+  cascaded tasks deactivate and revive correctly. Archived projects are hidden
+  behind an Active/Archived filter and show a banner with an Unarchive action.
+
 ### Changed
 
 - **README notes stay in their project** (OPH-109): creating or editing a

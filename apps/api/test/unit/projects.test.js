@@ -271,3 +271,91 @@ describe('authorization (OPH-030)', () => {
     expect(unauthenticated.statusCode).toBe(401);
   });
 });
+
+describe('POST /projects/:id/archive & /unarchive (OPH-110)', () => {
+  const createTask = (payload) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${owner.workspace.id}/tasks`,
+      headers: owner.headers,
+      payload,
+    });
+  const createNote = (payload) =>
+    app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${owner.workspace.id}/notes`,
+      headers: owner.headers,
+      payload,
+    });
+  const archive = (id, body = {}, headers = owner.headers) =>
+    app.inject({ method: 'POST', url: `/api/v1/projects/${id}/archive`, headers, payload: body });
+  const unarchive = (id, body = {}) =>
+    app.inject({ method: 'POST', url: `/api/v1/projects/${id}/unarchive`, headers: owner.headers, payload: body });
+
+  it('archives just the project by default, leaving tasks and notes', async () => {
+    const project = (await createProject({ name: 'Arşivlik' })).json();
+    await createTask({ title: 'Görev', projectId: project.id });
+    const res = await archive(project.id);
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.project.status).toBe('archived');
+    expect(body.tasksChanged).toBe(0);
+    expect(body.notesChanged).toBe(0);
+    expect(tables.tasks.find((t) => t.title === 'Görev').status).not.toBe('archived');
+  });
+
+  it('cascades to tasks and notes, deactivating the reminder', async () => {
+    const project = (await createProject({ name: 'Tam' })).json();
+    await createTask({
+      title: 'Hatırlatmalı',
+      projectId: project.id,
+      remindAt: new Date(Date.now() + 3600_000).toISOString(),
+    });
+    await createNote({ title: 'Proje notu', projectId: project.id });
+    expect(tables.reminders[0].status).toBe('scheduled');
+
+    const body = (await archive(project.id, { includeTasks: true, includeNotes: true })).json();
+    expect(body.tasksChanged).toBe(1);
+    expect(body.notesChanged).toBe(1);
+    expect(tables.tasks.find((t) => t.title === 'Hatırlatmalı').status).toBe('archived');
+    expect(tables.notes.find((n) => n.title === 'Proje notu').is_archived).toBeTruthy();
+    // The reminder is silenced with its archived task.
+    expect(tables.reminders[0].status).toBe('cancelled');
+  });
+
+  it('re-archiving is idempotent (zero changes)', async () => {
+    const project = (await createProject({ name: 'İki kez' })).json();
+    await createTask({ title: 'G', projectId: project.id });
+    await archive(project.id, { includeTasks: true });
+    const again = (await archive(project.id, { includeTasks: true })).json();
+    expect(again.project.status).toBe('archived');
+    expect(again.tasksChanged).toBe(0);
+  });
+
+  it('unarchive with cascade revives tasks, notes and re-arms the reminder', async () => {
+    const project = (await createProject({ name: 'Geri' })).json();
+    await createTask({
+      title: 'Hatırlatmalı',
+      projectId: project.id,
+      remindAt: new Date(Date.now() + 3600_000).toISOString(),
+    });
+    await createNote({ title: 'Not', projectId: project.id });
+    await archive(project.id, { includeTasks: true, includeNotes: true });
+
+    const body = (await unarchive(project.id, { includeTasks: true, includeNotes: true })).json();
+    expect(body.project.status).toBe('active');
+    expect(body.tasksChanged).toBe(1);
+    expect(body.notesChanged).toBe(1);
+    expect(tables.tasks.find((t) => t.title === 'Hatırlatmalı').status).toBe('open');
+    expect(tables.notes.find((n) => n.title === 'Not').is_archived).toBeFalsy();
+    expect(tables.reminders.some((r) => r.status === 'scheduled')).toBe(true);
+  });
+
+  it('a member (not just owner/admin) can archive — it is reversible', async () => {
+    const member = await registerUser(app, { email: 'member@example.com' });
+    addMember(tables, { workspaceId: owner.workspace.id, user: member.user });
+    const project = (await createProject({ name: 'Üye arşivler' })).json();
+    const res = await archive(project.id, {}, member.headers);
+    expect(res.statusCode).toBe(200);
+  });
+});

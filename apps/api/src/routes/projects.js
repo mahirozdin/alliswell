@@ -2,8 +2,12 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { recordSyncWrite } from '../db/sync.js';
+import { reconcileTaskReminder } from '../db/reminders.js';
 
 export const PROJECT_STATUSES = ['active', 'paused', 'completed', 'archived'];
+// Non-terminal task statuses the archive cascade sweeps (OPH-110); terminal
+// ones (completed/cancelled/already-archived) are left untouched.
+const CASCADE_TASK_STATUSES = ['inbox', 'open', 'scheduled', 'in_progress', 'waiting'];
 export const COLOR_PATTERN = '^#[0-9A-Fa-f]{6}$';
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
@@ -270,6 +274,162 @@ export default async function projectRoutes(app) {
 
       return serializeProject(await loadProject(row.id));
     },
+  );
+
+  // ── Archive / unarchive with an optional cascade (OPH-110) ─────────────────
+  //
+  // Reversible, so member-allowed (parity with PATCH, not delete). Everything
+  // happens in ONE transaction, every row revisioned so replicas converge.
+  // The task cascade routes each write through reconcileTaskReminder so a
+  // reminder deactivates on archive and re-arms on unarchive.
+  async function transitionProject(request, { toStatus, taskFrom, taskTo, noteArchived }) {
+    const row = await loadProject(request.params.projectId);
+    await app.requireWorkspaceMember(request, row.workspace_id);
+    const includeTasks = request.body?.includeTasks ?? false;
+    const includeNotes = request.body?.includeNotes ?? false;
+    let tasksChanged = 0;
+    let notesChanged = 0;
+
+    await app.db.transaction(async (trx) => {
+      if (row.status !== toStatus) {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'project',
+          entityId: row.id,
+          operation: 'update',
+          changedFields: ['status'],
+        });
+        await trx('projects').where({ id: row.id }).update({
+          status: toStatus,
+          revision,
+          updated_by: request.user.id,
+          updated_at: new Date(),
+        });
+      }
+
+      if (includeTasks) {
+        const tasks = await trx('tasks')
+          .where({ project_id: row.id, workspace_id: row.workspace_id })
+          .whereNull('deleted_at')
+          .whereIn('status', taskFrom)
+          .select();
+        for (const task of tasks) {
+          const revision = await recordSyncWrite(trx, {
+            workspaceId: row.workspace_id,
+            entityType: 'task',
+            entityId: task.id,
+            operation: 'update',
+            changedFields: ['status'],
+          });
+          await trx('tasks').where({ id: task.id }).update({
+            status: taskTo,
+            revision,
+            updated_by: request.user.id,
+            updated_at: new Date(),
+          });
+          // Same status side-effect path PATCH uses → reminders (de)activate.
+          await reconcileTaskReminder(trx, {
+            workspaceId: row.workspace_id,
+            task: { ...task, status: taskTo },
+          });
+        }
+        tasksChanged = tasks.length;
+      }
+
+      if (includeNotes) {
+        const notes = await trx('notes')
+          .where({
+            project_id: row.id,
+            workspace_id: row.workspace_id,
+            is_archived: !noteArchived,
+          })
+          .whereNull('deleted_at')
+          .select('id');
+        for (const note of notes) {
+          const revision = await recordSyncWrite(trx, {
+            workspaceId: row.workspace_id,
+            entityType: 'note',
+            entityId: note.id,
+            operation: 'update',
+            changedFields: ['is_archived'],
+          });
+          await trx('notes').where({ id: note.id }).update({
+            is_archived: noteArchived,
+            revision,
+            updated_by: request.user.id,
+            updated_at: new Date(),
+          });
+        }
+        notesChanged = notes.length;
+      }
+    });
+
+    return {
+      project: serializeProject(await loadProject(row.id)),
+      tasksChanged,
+      notesChanged,
+    };
+  }
+
+  const cascadeBody = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      includeTasks: { type: 'boolean', default: false },
+      includeNotes: { type: 'boolean', default: false },
+    },
+  };
+  const transitionResponse = {
+    200: {
+      type: 'object',
+      properties: {
+        project: projectSchema,
+        tasksChanged: { type: 'integer' },
+        notesChanged: { type: 'integer' },
+      },
+    },
+    403: errorResponseSchema,
+    404: errorResponseSchema,
+  };
+
+  app.post(
+    '/projects/:projectId/archive',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { projectId: ULID_PARAM } },
+        body: cascadeBody,
+        response: transitionResponse,
+      },
+    },
+    (request) =>
+      transitionProject(request, {
+        toStatus: 'archived',
+        taskFrom: CASCADE_TASK_STATUSES,
+        taskTo: 'archived',
+        noteArchived: true,
+      }),
+  );
+
+  app.post(
+    '/projects/:projectId/unarchive',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { projectId: ULID_PARAM } },
+        body: cascadeBody,
+        response: transitionResponse,
+      },
+    },
+    // Documented simplification: unarchive-with-cascade restores ALL archived
+    // tasks/notes of the project, including any archived individually before.
+    (request) =>
+      transitionProject(request, {
+        toStatus: 'active',
+        taskFrom: ['archived'],
+        taskTo: 'open',
+        noteArchived: false,
+      }),
   );
 
   app.delete(

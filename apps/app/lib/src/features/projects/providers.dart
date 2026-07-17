@@ -1,9 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../sync/providers.dart';
+import '../auth/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/project.dart';
 import 'data/project_store.dart';
+
+/// Projects list toggle: show the active projects or the archived ones
+/// (OPH-110). Archived projects are hidden from the default view.
+class ProjectsShowArchived extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool value) => state = value;
+}
+
+final projectsShowArchivedProvider =
+    NotifierProvider<ProjectsShowArchived, bool>(ProjectsShowArchived.new);
 
 /// Local-first store (OPH-054): reads watch the drift replica, writes are
 /// optimistic + outbox'd.
@@ -58,4 +71,50 @@ class ProjectsController extends StreamNotifier<List<Project>> {
 
   Future<void> deleteProject(String id) =>
       ref.read(projectStoreProvider).delete(id);
+
+  /// Archive/unarchive (OPH-110). With no cascade it is a plain optimistic
+  /// status flip through the outbox (works offline). WITH a cascade it is a
+  /// multi-entity server transaction, so it goes over REST and we pull to
+  /// converge the replica — hence it needs a connection.
+  Future<void> archiveProject(
+    String id, {
+    bool includeTasks = false,
+    bool includeNotes = false,
+  }) => _transition(
+    id,
+    endpoint: 'archive',
+    status: 'archived',
+    includeTasks: includeTasks,
+    includeNotes: includeNotes,
+  );
+
+  Future<void> unarchiveProject(
+    String id, {
+    bool includeTasks = false,
+    bool includeNotes = false,
+  }) => _transition(
+    id,
+    endpoint: 'unarchive',
+    status: 'active',
+    includeTasks: includeTasks,
+    includeNotes: includeNotes,
+  );
+
+  Future<void> _transition(
+    String id, {
+    required String endpoint,
+    required String status,
+    required bool includeTasks,
+    required bool includeNotes,
+  }) async {
+    if (!includeTasks && !includeNotes) {
+      await updateProject(id, {'status': status});
+      return;
+    }
+    await ref.read(apiClientProvider).post(
+      '/api/v1/projects/$id/$endpoint',
+      data: {'includeTasks': includeTasks, 'includeNotes': includeNotes},
+    );
+    await ref.read(syncEngineProvider)?.syncNow();
+  }
 }

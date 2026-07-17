@@ -13,6 +13,7 @@ import '../../tasks/ui/task_tile.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/project.dart';
 import '../providers.dart';
+import 'project_archive.dart';
 import 'project_edit_sheet.dart';
 
 /// Project detail (OPH-036 + feedback round 1): Overview opens on the
@@ -121,11 +122,29 @@ class _ProjectDetail extends ConsumerWidget {
             ],
           ),
         ),
-        body: TabBarView(
+        body: Column(
           children: [
-            _OverviewTab(project: project),
-            _ProjectTasksTab(projectId: project.id),
-            _ProjectNotesTab(project: project),
+            if (project.status == 'archived')
+              MaterialBanner(
+                content: const Text('This project is archived.'),
+                leading: const Icon(Icons.archive_outlined),
+                actions: [
+                  TextButton(
+                    key: const Key('detail-unarchive'),
+                    onPressed: () => showProjectArchiveDialog(context, project),
+                    child: const Text('Unarchive'),
+                  ),
+                ],
+              ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _OverviewTab(project: project),
+                  _ProjectTasksTab(projectId: project.id),
+                  _ProjectNotesTab(project: project),
+                ],
+              ),
+            ),
           ],
         ),
       ),

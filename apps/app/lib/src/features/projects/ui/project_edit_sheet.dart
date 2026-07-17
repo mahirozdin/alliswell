@@ -21,7 +21,10 @@ const kProjectPalette = [
   '#64748B',
 ];
 
-const kProjectStatuses = ['active', 'paused', 'completed', 'archived'];
+// 'archived' is intentionally NOT selectable here (OPH-110): archiving goes
+// through the dedicated flow so its cascade question is never skipped. An
+// already-archived project keeps its value in the dropdown (see build).
+const kProjectStatuses = ['active', 'paused', 'completed'];
 
 String _hexOf(Color color) =>
     '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
@@ -174,7 +177,10 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                   initialValue: _status,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: [
-                    for (final status in kProjectStatuses)
+                    for (final status in [
+                      ...kProjectStatuses,
+                      if (!kProjectStatuses.contains(_status)) _status,
+                    ])
                       DropdownMenuItem(value: status, child: Text(status)),
                   ],
                   onChanged: (v) => setState(() => _status = v ?? _status),

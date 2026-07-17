@@ -1603,16 +1603,38 @@ list tests untouched.
 **DoD:** analyze + `flutter test`; `npm test`; light + dark; manual: create README on web,
 land back on Overview.
 
-### OPH-110 — Project archiving with an optional cascade
+### OPH-110 — Project archiving with an optional cascade ✅
 
-- [ ] API: `POST /projects/:projectId/archive` + `/unarchive` with
+- [x] API: `POST /projects/:projectId/archive` + `/unarchive` with
       `{includeTasks?, includeNotes?}` — one transaction, every write revisioned
-- [ ] Archive cascade reuses the task status side-effect path (reminders die/revive
+- [x] Archive cascade reuses the task status side-effect path (reminders die/revive
       correctly)
-- [ ] App: archive/unarchive dialogs with live counts; Projects list hides archived by
+- [x] App: archive/unarchive dialogs with live counts; Projects list hides archived by
       default + 'Archived' chip; detail banner + Unarchive
-- [ ] Edit sheet no longer offers bare 'archived' in its status dropdown
-- [ ] Pickers exclude archived projects (OPH-106 wrote the filter; verify end-to-end)
+- [x] Edit sheet no longer offers bare 'archived' in its status dropdown
+- [x] Pickers exclude archived projects (OPH-106 wrote the filter; verify end-to-end)
+
+Acceptance notes: server `POST /projects/:id/archive` + `/unarchive` (member-
+allowed — reversible) run ONE transaction: project status via `recordSyncWrite`,
+then, per the flags, the project's non-terminal tasks → `archived`/`open` EACH
+through `reconcileTaskReminder` (so the reminder deactivates on archive and
+re-arms on unarchive — never a bare column write) and its notes' `is_archived`
+flipped; response `{project, tasksChanged, notesChanged}`, idempotent (project
+write skipped if already in target). Unarchive's documented simplification:
+cascade restores ALL archived tasks/notes (dialog says so). App: the controller
+does a plain optimistic status flip when both boxes are off (works offline) and
+hits REST + `syncNow()` for a cascade (needs a connection → inline error). UI:
+Active/Archived chips on the list (archived hidden by default), a per-row menu
+(Edit / Archive… / Unarchive…), a live-count dialog, and an archived-detail
+banner + Unarchive. The edit sheet dropped 'archived' from its status options
+(archiving only via the dedicated flow; an already-archived value is still shown
+so it isn't lost). Tests: API unit (default vs cascade counts, reminder
+deactivate+revive, idempotent re-archive, member role) + app widgets (archive
+moves it behind the Archived chip with an Unarchive action; edit sheet has no
+'archived'). **Integration test skipped deliberately:** no new schema and the
+`recordSyncWrite`-in-transaction pattern is already integration-covered (subtree
+delete / PATCH); the cascade logic is exhaustively unit-tested. analyze + eslint
+clean; app 227/227, API 215/215. ✔
 
 **User's report (item 13):** no way to archive a project. Archiving must ask whether to also
 archive the project's tasks and notes; archived things must disappear from normal views and

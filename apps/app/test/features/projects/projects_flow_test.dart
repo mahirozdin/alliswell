@@ -224,4 +224,54 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Dokümanlı'), findsOneWidget);
   });
+
+  testWidgets('archiving a project moves it behind the Archived chip (OPH-110)', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Arşivlenecek');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    expect(find.text('Arşivlenecek'), findsOneWidget);
+
+    // Row menu → Archive… → confirm (no cascade → optimistic status flip).
+    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('archive-confirm')));
+    await tester.pumpAndSettle();
+
+    // Gone from the default (Active) view, moved to archived on the server.
+    expect(find.text('Arşivlenecek'), findsNothing);
+    expect(api.projects.single['status'], 'archived');
+
+    // The Archived chip surfaces it, with an Unarchive… action.
+    await tester.tap(find.text('Archived'));
+    await tester.pumpAndSettle();
+    expect(find.text('Arşivlenecek'), findsOneWidget);
+    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Unarchive…'), findsOneWidget);
+  });
+
+  testWidgets('the edit sheet no longer offers "archived" as a status (OPH-110)', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Düzenlenecek');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+
+    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+
+    // Open the status dropdown; archiving is a dedicated flow, not a plain pick.
+    await tester.tap(find.text('active').last);
+    await tester.pumpAndSettle();
+    expect(find.text('archived'), findsNothing);
+    expect(find.text('paused'), findsWidgets);
+  });
 }
