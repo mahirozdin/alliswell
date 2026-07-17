@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AllisWell tasks widget (OPH-133). Default 4x2 (~1/3 screen), resizable up to
+     a tall 4x6 — Android honors a true 4x6 (WIDGETS.md §2). updatePeriodMillis is
+     the 30-min floor as a safety net; the app pushes fresh data on every change. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="80dp"
+    android:maxResizeWidth="360dp"
+    android:maxResizeHeight="520dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/tasks_widget"
+    android:previewLayout="@layout/tasks_widget"
+    android:description="@string/aw_widget_description" />

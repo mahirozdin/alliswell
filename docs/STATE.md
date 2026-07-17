@@ -3,8 +3,9 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-17 (**Epic 11 (i18n) KAPANDI** + **Epic 12 OPH-130 (widget Dart
-çekirdeği) bitti**. Sıradaki OPH-131 native iOS widget — cihaz build'i ister. Hedef v0.2.0.)
+**Last updated:** 2026-07-17 (**Epic 11 (i18n) KAPANDI**; **Epic 12:** OPH-130 (Dart çekirdek) ✅,
+OPH-131 (iOS Swift, Xcode bekliyor), **OPH-133 (Android render `flutter build apk` ile derlendi)**.
+Kalan hep cihaz/Xcode/etkileşim. Hedef v0.2.0.)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -16,11 +17,26 @@ against real MySQL 8.4 and all unit+integration tests pass.
 | --- | --- |
 | Current phase | **Phase 7 planlandı (v0.2.0)** — feedback round 5: i18n + widgets docs'a işlendi. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
 | Current epic | **Epic 12 — Widgets** DEVAM EDİYOR (OPH-130 ✅ Dart çekirdeği). Sıradaki OPH-131…136 **native** (Swift/Kotlin) — Xcode/Android Studio target + gerçek cihaz build'i gerektirir; bu ortamda tam doğrulanamaz. |
-| ➡️ **Next task** | **OPH-131 device pass** — Swift + Info.plist + entitlements YAZILDI (`ios/AllisWellWidget/`, build'i etkilemiyor). **Kullanıcı adımı:** Xcode'da Widget Extension target'ı oluştur + App Group + dosyaları ekle → [SETUP.md](../apps/app/ios/AllisWellWidget/SETUP.md), sonra `flutter build ios` + cihaz. Ardından **OPH-132** (App Intents etkileşim). |
+| ➡️ **Next task** | **Cihaz turları + etkileşim.** iOS: OPH-131 Xcode target'ı ([SETUP.md](../apps/app/ios/AllisWellWidget/SETUP.md)) + cihaz. Android: OPH-133 görsel tur (render `flutter build apk` ile DERLENDİ). Sonra **OPH-132/133-interaktivite** (uygulamayı açmadan tamamla/ekle — arka plan isolate + cihaz ister). Tek başına ilerlenebilir Dart işi kalmadı; hepsi cihaz/Xcode. |
 | ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS geliştirme sertifikası (Epic 12 macOS widget + EventKit için), Apple/Android cihaz turu. Widget epiği için: gerçek iOS/Android cihaz/simülatör (native build doğrulaması). |
-| Last completed | **OPH-130 — Widget snapshot çekirdeği** (Epic 12): `home_widget` seam'i — saf `groupTasksForWidget` (overdue/noDate/today/thisWeek/thisMonth, 30-gün ufuk), `WidgetSnapshot` JSON serializer (lokalize etiket + `intl` tarih başlığı), `WidgetBridge`/`widgetSyncProvider` (task/proje değişince push, iOS/Android/macOS dışı no-op). Tek tam-test-edilebilir widget task'ı. App 270/270. (Epic 11 i18n bundan önce KAPANDI: OPH-120…128, tüm UI EN+TR.) |
+| Last completed | **OPH-133 — Android widget render'ı DERLENDİ** (Epic 12): `TasksWidgetProvider`+`TasksWidgetService` (RemoteViews scrollable bucketed liste, `home_widget` snapshot'ından; light+dark renkler; tap→uygulamayı açar), `res/xml`+layout+manifest → **`flutter build apk` GEÇTİ**. Etkileşim + midnight + cihaz görseli ertelendi. (Ayrıca: OPH-131 iOS Swift yazıldı/Xcode bekliyor; OPH-130 Dart çekirdeği.) App 270/270. |
 
 ## Recently completed
+
+- **OPH-133 — Android widget render'ı yazıldı + `flutter build apk` ile DERLENDİ (2026-07-17):**
+  - **Ne:** `TasksWidgetProvider : HomeWidgetProvider` (home_widget SharedPreferences snapshot'ını
+    okur, tarih başlığı + `setRemoteAdapter` ile scrollable liste, `HomeWidgetLaunchIntent` ile
+    tap→uygulama) + `TasksWidgetService`/`TasksRemoteViewsFactory` (bucket'ları düz listeye açar:
+    bölüm başlığı + `○/●` check + proje-renk noktası + başlık + saat; lokalize boş durum) +
+    `res/xml/tasks_widget_info.xml` (4×2 varsayılan, true 4×6'ya resize) + layout'lar +
+    `values(-night)/colors.xml` (DESIGN §3.1 light+dark) + manifest receiver/service.
+  - **DOĞRULAMA:** `flutter build apk` **GEÇTİ** (96s; Kotlin+resource+manifest derlenip linklendi;
+    tek çıktı home_widget/quill'in KGP-deprecation uyarısı — benim kodumla ilgisiz). Hafıza kuralı:
+    Kotlin'i sadece gerçek build derler → bu, cihazsız yapılabilecek en güçlü doğrulama.
+  - **Sapma:** Jetpack Glance yerine **RemoteViews** (Compose bağımlılığı ağır + cihazsız
+    doğrulaması zor; klasik `ListView`+`RemoteViewsService` daha güvenli derlenir).
+  - **Ertelendi (cihaz/arka-plan ister):** etkileşim (uygulamayı açmadan tamamla/ekle — OPH-132 ile
+    ortak `widgetCallback`), WorkManager midnight, cihazda görsel tur (3 boyut, light/dark).
 
 - **OPH-131 — iOS widget Swift yazıldı, Xcode/cihaza teslim edildi (2026-07-17):**
   - **Ne yazıldı:** `ios/AllisWellWidget/` — `AllisWellWidget.swift` (OPH-130 JSON'unu birebir

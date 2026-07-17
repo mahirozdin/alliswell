@@ -87,6 +87,7 @@ void main() {
       expect(snap.buckets.single.label, 'Today');
       expect(snap.buckets.single.count, 1);
       expect(snap.buckets.single.items.single.time, '11:30');
+      expect(snap.strings['allCaughtUp'], 'All caught up');
 
       AwI18n.instance.setActiveCached(const Locale('tr'));
       final tr = buildWidgetSnapshot([

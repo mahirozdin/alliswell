@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown in the widget picker gallery (OPH-133). A localized values-<lang>/
+         variant can override it per language. -->
+    <string name="aw_widget_description">Your tasks at a glance — overdue, today and beyond.</string>
+</resources>

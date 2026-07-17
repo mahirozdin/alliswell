@@ -2093,28 +2093,31 @@ app**, and confirm the change syncs (appears on another surface).
 
 **DoD:** `flutter build ios`; device: offline complete + quick-add both work and sync; STATE note.
 
-### OPH-133 — Android widget (Glance): target, snapshot, interactivity, resize, midnight
+### OPH-133 — Android widget: rendering compile-verified 🟡 (interactivity + device pending)
 
-- [ ] `TasksWidgetProvider` (Jetpack **Glance** `GlanceAppWidget` + `GlanceAppWidgetReceiver`) under
-      `android/app/src/main/kotlin/com/alliswell/alliswell/`; `res/xml/tasks_widget_info.xml`
-      (`targetCellWidth/Height` 4×2 default, `resizeMode="horizontal|vertical"`, `minResize*`/
-      `maxResize*` to allow 4×6, `updatePeriodMillis` 0 or large, `previewLayout`).
-- [ ] Reads the SharedPreferences snapshot; scrollable **bucketed `LazyColumn`**; date header on the
-      larger sizes; circular checkbox → `actionRunCallback` → `HomeWidgetBackgroundIntent.getBroadcast`
-      → the SAME Dart `widgetCallback` → `TaskStore`; quick-add "+".
-- [ ] Responsive layouts for 4×2 / 4×4 / **true 4×6** (Glance size handling / `SizeF` map);
-      `AndroidManifest.xml` receivers (the provider **and** `es.antonborri.home_widget.
-      HomeWidgetBackgroundReceiver`); a **WorkManager** job re-pushes at local midnight (date
-      rollover). Pin `androidx.glance`.
-- [ ] Verify a real `flutter build apk`.
+- [x] `TasksWidgetProvider : HomeWidgetProvider` + `TasksWidgetService`/`TasksRemoteViewsFactory`
+      under `android/app/src/main/kotlin/com/alliswell/alliswell/`; reads the `home_widget`
+      SharedPreferences snapshot; **scrollable bucketed list** (RemoteViews `ListView` collection —
+      bucket section headers + `○`/`●` check, project-color dot, title, time); localized empty state.
+- [x] `res/xml/tasks_widget_info.xml` (`targetCellWidth/Height` 4×2 default, `resizeMode`,
+      `minResize*`/`maxResize*` for a **true 4×6**), `res/layout/*`, `res/values(-night)/colors.xml`
+      (light+dark, DESIGN §3.1), manifest receiver + service.
+- [x] **Tap → opens the app** via `HomeWidgetLaunchIntent` (`alliswell://open`) — deep-link floor.
+- [x] **Verified a real `flutter build apk`** (Kotlin + resources + manifest compile + link).
+- [ ] **Interactivity** (tap-to-complete / quick-add without opening the app) — `actionRunCallback`/
+      `HomeWidgetBackgroundIntent` → the Dart `widgetCallback` → `TaskStore` — DEFERRED (shared with
+      OPH-132; needs the background isolate + a device).
+- [ ] **WorkManager** midnight re-push — DEFERRED (the app's foreground push covers the common case).
+- [ ] **Device visual pass** — three sizes, light+dark on a real device/emulator.
 
-**Context:** Android honors a TRUE resizable 4×6 (no `systemLarge` ceiling). `analyze` won't compile
-Kotlin — build+device verified.
+Acceptance notes: **deviation — RemoteViews collection, not Jetpack Glance.** Glance pulls a heavy
+Compose dependency and is harder to compile-verify without a device; a `ListView` +
+`RemoteViewsService`/`RemoteViewsFactory` is the classic scrollable widget, compiles clean, and is
+lower-risk. Reconsider Glance if we add richer interactivity. The rendering + tap-to-open path is
+**build-verified** (`flutter build apk` green, only a benign KGP-deprecation warning from
+home_widget/quill); the device VISUAL pass is deferred like the notification/EventKit device passes.
 
-**Tests:** data path from OPH-130; device: three sizes, complete + quick-add without opening the
-app + sync, both themes.
-
-**DoD:** `flutter build apk` green; device screenshots (3 sizes, light+dark); STATE note.
+**DoD:** `flutter build apk` green ✔; interactivity + device screenshots pending.
 
 ### OPH-134 — macOS widget parity (gated on macOS signing)
 

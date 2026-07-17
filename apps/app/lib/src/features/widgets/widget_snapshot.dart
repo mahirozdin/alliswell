@@ -95,6 +95,7 @@ class WidgetSnapshot {
     required this.locale,
     required this.date,
     required this.buckets,
+    required this.strings,
   });
 
   final int version;
@@ -103,11 +104,16 @@ class WidgetSnapshot {
   final WidgetDateHeader date;
   final List<WidgetBucketData> buckets;
 
+  /// Pre-localized chrome the native widget needs (empty state, quick-add label)
+  /// so it carries no translations of its own.
+  final Map<String, String> strings;
+
   Map<String, dynamic> toJson() => {
     'v': version,
     'generatedAt': generatedAt,
     'locale': locale,
     'date': date.toJson(),
+    'strings': strings,
     'buckets': [for (final bucket in buckets) bucket.toJson()],
   };
 }
@@ -182,6 +188,10 @@ WidgetSnapshot buildWidgetSnapshot(
       day: DateFormat.d(localeTag).format(now),
       month: DateFormat.MMMM(localeTag).format(now),
     ),
+    strings: {
+      'allCaughtUp': 'widget.allCaughtUp'.tr(),
+      'addTask': 'widget.addTask'.tr(),
+    },
     buckets: buckets,
   );
 }
