@@ -7,6 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Files are fully readable, synced and cleaned up** (OPH-152, Epic 14): every
+  device now learns about attachments through normal sync (metadata only — the
+  bytes stay in storage and download links are minted fresh on demand, with the
+  file's current name, Turkish characters intact). A project can list ALL of its
+  files — its own plus its tasks' and notes' — each row saying where it came
+  from. Files can be renamed (the stored object never moves). And deleting a
+  task (subtree included), note or project deletes its files everywhere: other
+  devices drop them on the next sync and the storage objects are cleaned up in
+  the background. Note exports now include embedded images/videos as markdown
+  links labeled with the file's name.
 - **File uploads live on the API** (OPH-151, Epic 14): the full attachment
   lifecycle — declare a file on a project/task/note, PUT the bytes straight to
   storage with a presigned URL, and a verification step that only publishes

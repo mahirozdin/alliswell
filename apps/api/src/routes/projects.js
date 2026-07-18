@@ -3,6 +3,7 @@ import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
+import { cascadeDeleteFiles } from '../db/files.js';
 
 export const PROJECT_STATUSES = ['active', 'paused', 'completed', 'archived'];
 // Non-terminal task statuses the archive cascade sweeps (OPH-110); terminal
@@ -462,6 +463,12 @@ export default async function projectRoutes(app) {
           revision,
           updated_by: request.user.id,
           updated_at: new Date(),
+        });
+        // Files targeted at the project itself die with it (Epic 14). Tasks
+        // and notes survive project deletion today, so their files do too.
+        await cascadeDeleteFiles(trx, app, {
+          workspaceId: row.workspace_id,
+          targets: [{ type: 'project', id: row.id }],
         });
       });
 

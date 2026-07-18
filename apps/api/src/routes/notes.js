@@ -2,8 +2,9 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
-import { deltaToMarkdown, deltaToPlainText, isValidDelta } from '../lib/delta.js';
+import { deltaToMarkdown, deltaToPlainText, embedFileIds, isValidDelta } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
+import { cascadeDeleteFiles } from '../db/files.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 const SNIPPET_LENGTH = 160;
@@ -352,7 +353,22 @@ export default async function noteRoutes(app) {
       await app.requireWorkspaceMember(request, row.workspace_id);
 
       const delta = parseDelta(row.content_delta);
-      const markdown = delta ? deltaToMarkdown(delta) : (row.content_markdown ?? '');
+      // Attachment embeds export with their CURRENT file name as the label
+      // (OPH-152) — the alliswell://file/{id} source stays stable either way.
+      let embedLabel;
+      const fileIds = delta ? embedFileIds(delta) : [];
+      if (fileIds.length > 0) {
+        const files = await app
+          .db('files')
+          .whereIn('id', fileIds)
+          .whereNull('deleted_at')
+          .select('id', 'name');
+        const names = new Map(files.map((f) => [`alliswell://file/${f.id}`, f.name]));
+        embedLabel = (source) => names.get(source) ?? null;
+      }
+      const markdown = delta
+        ? deltaToMarkdown(delta, { embedLabel })
+        : (row.content_markdown ?? '');
       return reply
         .header('content-type', 'text/markdown; charset=utf-8')
         .header('content-disposition', `attachment; filename="${slugify(row.title, 'note')}.md"`)
@@ -435,6 +451,12 @@ export default async function noteRoutes(app) {
           revision,
           updated_by: request.user.id,
           updated_at: new Date(),
+        });
+        // A deleted note takes its attachments (inline embeds included) with
+        // it — Epic 14, ATTACHMENTS.md §5.
+        await cascadeDeleteFiles(trx, app, {
+          workspaceId: row.workspace_id,
+          targets: [{ type: 'note', id: row.id }],
         });
       });
 

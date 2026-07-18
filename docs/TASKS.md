@@ -2364,38 +2364,41 @@ STATE); MinIO wired in CI in the same change; `.env.example` + README index upda
 **DoD met 2026-07-18:** unit 255/255; integration 35/35; migrations rollback/re-apply green;
 lint+format clean; CHANGELOG; STATE.
 
-### OPH-152 — API: read surface, pull-only sync, cascade cleanup, rename, markdown embeds
+### OPH-152 — API: read surface, pull-only sync, cascade cleanup, rename, markdown embeds — ✅ 2026-07-18
 
-- [ ] `GET /api/v1/files/:fileId` (member): `{file, downloadUrl, downloadExpiresAt}` —
-      URL null unless `ready`; minted per request (never stored).
-- [ ] `GET /api/v1/workspaces/:workspaceId/files` (member): `?targetType&targetId` list
-      (ready + uploading of that target, newest first) **or** `?projectId=` aggregate —
-      project files ∪ files of the project's (undeleted) tasks ∪ notes, each row +
-      `source: {type, id, title}`; batched queries, no N+1.
-- [ ] `PATCH /api/v1/files/:fileId` `{name}` (member, `ready` only): validate like init,
-      update + `recordSyncWrite('file','update',['name'])`.
-- [ ] Sync pull: `file` joins `SNAPSHOT_LOADERS` (ready rows snapshot via `serializeFile`;
-      deleted → tombstone). Push: **deliberately absent** from `ENTITIES` → test proves
-      `SYNC_UNSUPPORTED_ENTITY`.
-- [ ] Cascade (one helper, `src/db/files.js`: `cascadeDeleteFiles(trx, {workspaceId, targets,
-      userId}) → storageKeys`): task REST delete + sync `customDelete` (every subtree id),
-      note REST + sync delete, project REST + sync delete (project-targeted files only —
-      mirrors what entity deletion already does). Caller enqueues returned keys post-commit.
-      Archiving anything touches no files (test).
-- [ ] `GET /api/v1/workspaces/:workspaceId/files/usage` (member): `{totalBytes, fileCount}`
-      over ready+undeleted rows.
-- [ ] Markdown export: `deltaToMarkdown` (src/lib/delta.js) maps image embeds →
-      `![name](alliswell://file/{id})`, video/other embeds → `[name](alliswell://file/{id})`
-      (name from a passed resolver when available, else the URI); `deltaToPlainText` keeps
-      skipping embeds (search unchanged). Fixture set extended — the Dart converter mirrors it
-      in OPH-156.
-- [ ] Tests — unit: download-url shape/renewal, target list, aggregate list (incl. files of
-      deleted tasks excluded), rename validation + revision, pull snapshot/tombstone, push
-      refusal, cascade per entity type (task subtree included) + returned keys, usage sums,
-      markdown fixtures. Integration: delete task → file tombstone pulls + object gone
-      (MinIO); aggregate list over real rows.
+- [x] `GET /api/v1/files/:fileId` (member): `{file, downloadUrl, downloadExpiresAt}` —
+      URL null unless `ready` (and null with storage off — metadata still answers); minted
+      per request, never stored.
+- [x] `GET /api/v1/workspaces/:workspaceId/files` (member): `?targetType&targetId` list
+      (newest first) **or** `?projectId=` aggregate — project files ∪ files of the project's
+      (undeleted) tasks ∪ notes, each row + `source: {type, id, title}`; batched queries.
+- [x] `PATCH /api/v1/files/:fileId` `{name}` (member, `ready` only → 409 `FILE_NOT_READY`):
+      sanitize like init, update + `recordSyncWrite('file','update',['name'])`.
+- [x] Sync pull: `file` joins `SNAPSHOT_LOADERS`; deleted → tombstone. Push: **deliberately
+      absent** from `ENTITIES` — test proves `SYNC_UNSUPPORTED_ENTITY` (ADR-0008 model).
+- [x] Cascade `cascadeDeleteFiles(trx, app, {workspaceId, targets})` (src/db/files.js):
+      ready → tombstone revision each, uploading → hard delete; object deletions scheduled
+      post-commit via `executionPromise` (rollback-safe). Wired into task REST delete + sync
+      `customDelete` (whole subtree), note + project REST deletes and a new generic
+      `afterDelete` hook in sync `applyDelete`. Archiving touches no files (test).
+- [x] `GET /api/v1/workspaces/:workspaceId/files/usage`: `{totalBytes, fileCount}` over
+      ready+undeleted rows (summed in JS — the in-memory test db has no aggregates;
+      workspaces hold hundreds of files, not millions).
+- [x] Markdown export: `deltaToMarkdown(ops, {embedLabel})` renders image embeds
+      `![label](source)`, video/other sourced embeds `[label|'attachment'](source)`;
+      `embedFileIds(ops)` extracts `alliswell://file/{id}` refs; the export route resolves
+      labels to current file names. `deltaToPlainText` keeps skipping embeds. **Contract
+      change:** the OPH-045 "embeds are dropped" fixture updated on purpose — the Dart
+      converter mirrors the new fixtures in OPH-156.
+- [x] Tests — unit 18 new (files-read 13: download URL, target+aggregate lists with sources,
+      partial-query 400, usage, rename matrix, pull snapshot/tombstone, push refusal, cascade
+      subtree/uploading/note/project/sync-push/archive; delta-embeds 5: markdown fixtures,
+      resolver labels, embedFileIds, export-route names) + 1 legacy fixture updated;
+      integration 1 (aggregate + real presigned download of Turkish filename + task-delete
+      cascade → pull tombstone + BullMQ worker removes the object, project file survives).
 
-**DoD:** unit + integration green; CHANGELOG; STATE.
+**DoD met 2026-07-18:** unit 273/273; integration 36/36; lint+format+no-ts clean; CHANGELOG;
+STATE. **The API vertical of Epic 14 is complete — everything the app needs exists.**
 
 ### OPH-153 — App: replica v5 `files` + pull-only FileStore + upload service + storage probe
 

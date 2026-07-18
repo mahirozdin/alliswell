@@ -24,6 +24,8 @@ import { slugify } from '../lib/slug.js';
 import { deltaToPlainText, isValidDelta } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
+import { cascadeDeleteFiles } from '../db/files.js';
+import { serializeFile } from './files.js';
 import { PROJECT_STATUSES, COLOR_PATTERN, serializeProject } from './projects.js';
 import { serializeTag } from './tags.js';
 import { TASK_STATUSES, TASK_PRIORITIES, serializeTask, serializeChecklistItem } from './tasks.js';
@@ -257,6 +259,14 @@ export default async function syncRoutes(app) {
     external_event: async (ids) => ({
       rows: await app.db('calendar_external_events').whereIn('id', ids).select(),
       serialize: serializeExternalEvent,
+    }),
+    // OPH-152 — attachment metadata (Epic 14, ADR-0011): pull-only, like
+    // external events — file WRITES are REST (an upload is inherently online),
+    // so `file` is deliberately absent from ENTITIES below. Only verified
+    // `ready` rows ever enter the log; uploading rows are invisible here.
+    file: async (ids) => ({
+      rows: await app.db('files').whereIn('id', ids).select(),
+      serialize: serializeFile,
     }),
   };
 
@@ -565,6 +575,14 @@ export default async function syncRoutes(app) {
       }),
       updateExtra: (ctx) => ({ updated_by: ctx.userId }),
       deleteExtra: (ctx) => ({ updated_by: ctx.userId }),
+      // Files targeted at the project itself die with it (Epic 14). Tasks and
+      // notes survive project deletion today, so their files do too.
+      async afterDelete(trx, ctx, row) {
+        await cascadeDeleteFiles(trx, app, {
+          workspaceId: ctx.workspaceId,
+          targets: [{ type: 'project', id: row.id }],
+        });
+      },
     },
 
     tag: {
@@ -666,6 +684,11 @@ export default async function syncRoutes(app) {
           frontier = children.map((c) => c.id).filter((id) => !seen.has(id));
           for (const id of frontier) seen.add(id);
         }
+        // Every task in the subtree takes its attachments with it (Epic 14).
+        await cascadeDeleteFiles(trx, app, {
+          workspaceId: ctx.workspaceId,
+          targets: [...seen].map((id) => ({ type: 'task', id })),
+        });
         return headRevision;
       },
     },
@@ -698,6 +721,14 @@ export default async function syncRoutes(app) {
       }),
       updateExtra: (ctx) => ({ updated_by: ctx.userId }),
       deleteExtra: (ctx) => ({ updated_by: ctx.userId }),
+      // A deleted note takes its attachments — inline embeds included — with
+      // it (Epic 14, ATTACHMENTS.md §5).
+      async afterDelete(trx, ctx, row) {
+        await cascadeDeleteFiles(trx, app, {
+          workspaceId: ctx.workspaceId,
+          targets: [{ type: 'note', id: row.id }],
+        });
+      },
     },
 
     // Narrow on purpose (OPH-063): devices may only ACKNOWLEDGE an alarm
@@ -923,6 +954,7 @@ export default async function syncRoutes(app) {
             revision,
             updated_at: new Date(),
           });
+        await entity.afterDelete?.(trx, ctx, row);
       }
       await recordRow(trx, ctx, mutation, { status: 'applied', revision });
     });

@@ -283,6 +283,262 @@ export default async function fileRoutes(app) {
     },
   );
 
+  // ── Read surface (OPH-152) ────────────────────────────────────────────────
+
+  app.get(
+    '/files/:fileId',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { fileId: ULID_PARAM } },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              file: fileSchema,
+              // Minted per request, never stored: null while uploading or
+              // when storage is off (metadata still answers honestly).
+              downloadUrl: { type: ['string', 'null'] },
+              downloadExpiresAt: { type: ['string', 'null'] },
+            },
+          },
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const row = await loadFile(request.params.fileId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+
+      let downloadUrl = null;
+      let downloadExpiresAt = null;
+      if (row.status === 'ready' && app.storage.enabled) {
+        const signed = await app.storage.presignGet(row.storage_key, {
+          filename: row.name,
+          contentType: row.mime,
+        });
+        downloadUrl = signed.url;
+        downloadExpiresAt = signed.expiresAt;
+      }
+      return { file: serializeFile(row), downloadUrl, downloadExpiresAt };
+    },
+  );
+
+  const fileWithSourceSchema = {
+    type: 'object',
+    properties: {
+      ...fileSchema.properties,
+      source: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: FILE_TARGET_TYPES },
+          id: { type: 'string' },
+          title: { type: 'string' },
+        },
+      },
+    },
+  };
+
+  app.get(
+    '/workspaces/:workspaceId/files',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { workspaceId: ULID_PARAM } },
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            targetType: { type: 'string', enum: FILE_TARGET_TYPES },
+            targetId: ULID_PARAM,
+            projectId: ULID_PARAM,
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: { files: { type: 'array', items: fileWithSourceSchema } },
+          },
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const { workspaceId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      const { targetType, targetId, projectId } = request.query;
+
+      // ── One entity's attachments ──
+      if (!projectId) {
+        if (!targetType || !targetId) {
+          throw coded(
+            app.httpErrors.badRequest('Pass targetType+targetId, or projectId'),
+            'FILE_INVALID_TARGET',
+          );
+        }
+        const rows = await app
+          .db('files')
+          .where({ workspace_id: workspaceId, target_type: targetType, target_id: targetId })
+          .whereNull('deleted_at')
+          .orderBy('created_at', 'desc')
+          .select();
+        return { files: rows.map(serializeFile) };
+      }
+
+      // ── The project "Files" tab aggregate (ATTACHMENTS.md §6): the
+      //    project's own files ∪ its live tasks' ∪ its live notes' files,
+      //    each row naming its source ──
+      const project = await app
+        .db('projects')
+        .where({ id: projectId, workspace_id: workspaceId })
+        .whereNull('deleted_at')
+        .first('id', 'name');
+      if (!project) {
+        throw coded(app.httpErrors.notFound('Project not found'), 'PROJECT_NOT_FOUND');
+      }
+      const [tasks, notes] = await Promise.all([
+        app
+          .db('tasks')
+          .where({ workspace_id: workspaceId, project_id: projectId })
+          .whereNull('deleted_at')
+          .select('id', 'title'),
+        app
+          .db('notes')
+          .where({ workspace_id: workspaceId, project_id: projectId })
+          .whereNull('deleted_at')
+          .select('id', 'title'),
+      ]);
+      const sources = new Map([[`project:${project.id}`, project.name]]);
+      for (const t of tasks) sources.set(`task:${t.id}`, t.title);
+      for (const n of notes) sources.set(`note:${n.id}`, n.title);
+
+      const rows = [];
+      const collect = async (type, ids) => {
+        if (ids.length === 0) return;
+        rows.push(
+          ...(await app
+            .db('files')
+            .where({ workspace_id: workspaceId, target_type: type })
+            .whereIn('target_id', ids)
+            .whereNull('deleted_at')
+            .select()),
+        );
+      };
+      await collect('project', [project.id]);
+      await collect(
+        'task',
+        tasks.map((t) => t.id),
+      );
+      await collect(
+        'note',
+        notes.map((n) => n.id),
+      );
+      rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      return {
+        files: rows.map((row) => ({
+          ...serializeFile(row),
+          source: {
+            type: row.target_type,
+            id: row.target_id,
+            title: sources.get(`${row.target_type}:${row.target_id}`) ?? '',
+          },
+        })),
+      };
+    },
+  );
+
+  app.get(
+    '/workspaces/:workspaceId/files/usage',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { workspaceId: ULID_PARAM } },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              totalBytes: { type: 'integer' },
+              fileCount: { type: 'integer' },
+            },
+          },
+          403: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const { workspaceId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      // Summed in JS on purpose: workspaces hold hundreds of files, not
+      // millions, and the in-memory test db has no aggregate support.
+      const rows = await app
+        .db('files')
+        .where({ workspace_id: workspaceId, status: 'ready' })
+        .whereNull('deleted_at')
+        .select('size_bytes');
+      return {
+        totalBytes: rows.reduce((sum, row) => sum + Number(row.size_bytes), 0),
+        fileCount: rows.length,
+      };
+    },
+  );
+
+  // ── Rename (metadata only — the object never moves) ───────────────────────
+
+  app.patch(
+    '/files/:fileId',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { fileId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['name'],
+          properties: { name: { type: 'string', minLength: 1, maxLength: 1024 } },
+        },
+        response: {
+          200: { type: 'object', properties: { file: fileSchema } },
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const row = await loadFile(request.params.fileId);
+      await app.requireWorkspaceMember(request, row.workspace_id);
+      if (row.status !== 'ready') {
+        throw coded(
+          app.httpErrors.conflict('Only completed files can be renamed'),
+          'FILE_NOT_READY',
+        );
+      }
+      const name = sanitizeFileName(request.body.name);
+      if (!name) {
+        throw coded(app.httpErrors.badRequest('Invalid file name'), 'FILE_NAME_INVALID');
+      }
+
+      let fresh;
+      await app.db.transaction(async (trx) => {
+        const revision = await recordSyncWrite(trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'file',
+          entityId: row.id,
+          operation: 'update',
+          changedFields: ['name'],
+        });
+        await trx('files').where({ id: row.id }).update({ name, revision, updated_at: new Date() });
+        fresh = await trx('files').where({ id: row.id }).first();
+      });
+      return { file: serializeFile(fresh) };
+    },
+  );
+
   // ── Abort / delete ────────────────────────────────────────────────────────
 
   app.delete(

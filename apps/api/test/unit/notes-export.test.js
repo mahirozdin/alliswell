@@ -30,12 +30,14 @@ describe('lib/delta deltaToMarkdown (OPH-045)', () => {
     ]);
   });
 
-  it('merges consecutive code lines into one fenced block, skips embeds', () => {
+  it('merges consecutive code lines into one fenced block, renders embeds inline', () => {
     const markdown = deltaToMarkdown([
       { insert: 'const a = 1;' },
       { insert: '\n', attributes: { 'code-block': true } },
       { insert: 'const b = 2;' },
       { insert: '\n', attributes: { 'code-block': true } },
+      // Since OPH-152 image embeds render as markdown images (they used to be
+      // dropped) — attachment coverage lives in delta-embeds.test.js.
       { insert: { image: 'x.png' } },
       { insert: 'son satır\n' },
     ]);
@@ -45,7 +47,7 @@ describe('lib/delta deltaToMarkdown (OPH-045)', () => {
       'const a = 1;',
       'const b = 2;',
       '```',
-      'son satır',
+      '![](x.png)son satır',
     ]);
   });
 

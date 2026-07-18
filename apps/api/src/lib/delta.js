@@ -36,17 +36,39 @@ export function isValidDelta(ops) {
   );
 }
 
+// Attachment embeds reference files by the app scheme (ADR-0003/ADR-0011,
+// ATTACHMENTS.md §7) — a stable id, never an expiring presigned URL.
+const FILE_EMBED_RE = /^alliswell:\/\/file\/([0-9A-HJKMNP-TV-Z]{26})$/;
+
+/** File ids referenced by image/video embeds in a delta (unique, in order). */
+export function embedFileIds(ops) {
+  if (!Array.isArray(ops)) return [];
+  const ids = [];
+  for (const op of ops) {
+    const insert = op?.insert;
+    if (insert === null || typeof insert !== 'object') continue;
+    const source = typeof insert.image === 'string' ? insert.image : insert.video;
+    const match = typeof source === 'string' ? source.match(FILE_EMBED_RE) : null;
+    if (match && !ids.includes(match[1])) ids.push(match[1]);
+  }
+  return ids;
+}
+
 /**
  * Canonical Quill Delta → Markdown converter (OPH-045). Mirrors the client
  * converter (apps/app/lib/src/features/notes/data/delta_markdown.dart) so an
  * offline preview and a server export produce identical documents. Covers what
  * our toolbar can produce: headers, bold/italic/strike/code, links,
- * bullet/ordered/checked lists, blockquote and code blocks.
+ * bullet/ordered/checked lists, blockquote and code blocks — and (OPH-152)
+ * image/video embeds: `![label](source)` / `[label](source)`, where
+ * `embedLabel(source, kind)` may supply a label (the export route resolves
+ * `alliswell://file/{id}` sources to the file's current name).
  *
  * @param {Array<{ insert?: unknown, attributes?: Record<string, unknown> }>|null|undefined} ops
+ * @param {{ embedLabel?: (source: string, kind: 'image'|'video') => string|null }} [options]
  * @returns {string}
  */
-export function deltaToMarkdown(ops) {
+export function deltaToMarkdown(ops, { embedLabel } = {}) {
   if (!Array.isArray(ops)) return '';
   const lines = [];
   let buffer = '';
@@ -106,7 +128,22 @@ export function deltaToMarkdown(ops) {
 
   for (const op of ops) {
     const insert = op?.insert;
-    if (typeof insert !== 'string') continue; // embeds are dropped in markdown export
+    if (typeof insert !== 'string') {
+      // Embeds: images become markdown images, anything else with a source
+      // becomes a link. Unknown embed shapes are still dropped.
+      if (insert !== null && typeof insert === 'object') {
+        const kind = typeof insert.image === 'string' ? 'image' : 'video';
+        const source = kind === 'image' ? insert.image : insert.video;
+        if (typeof source === 'string' && source.length > 0) {
+          const label = embedLabel?.(source, kind) ?? null;
+          buffer +=
+            kind === 'image'
+              ? `![${label ?? ''}](${source})`
+              : `[${label ?? 'attachment'}](${source})`;
+        }
+      }
+      continue;
+    }
     const attrs = op.attributes;
 
     let remaining = insert;
