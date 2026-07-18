@@ -45,6 +45,7 @@ const UNIQUE_INDEXES = {
       cols: ['calendar_account_id', 'provider_event_id'],
     },
   ],
+  files: [{ name: 'files.uq_files_storage_key', cols: ['storage_key'] }],
 };
 
 const OPS = {
@@ -77,6 +78,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     calendar_accounts: [],
     calendar_event_links: [],
     calendar_external_events: [],
+    files: [],
   };
 
   const columnDefaults = {

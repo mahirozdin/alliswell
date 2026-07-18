@@ -2328,42 +2328,41 @@ tour** (one physical session can clear both matrices).
 locally (colima; MinIO on **9010** on this machine — port 9000 is a local ssh tunnel, see
 STATE); MinIO wired in CI in the same change; `.env.example` + README index updated; CHANGELOG.
 
-### OPH-151 — API: `files` migration + upload lifecycle (init → presigned PUT → complete) + sweep
+### OPH-151 — API: `files` migration + upload lifecycle (init → presigned PUT → complete) + sweep — ✅ 2026-07-18
 
-- [ ] Migration `create_files` (ATTACHMENTS.md §3): ULID PK, `workspace_id` FK CASCADE,
+- [x] Migration `create_files` (ATTACHMENTS.md §3): ULID PK, `workspace_id` FK CASCADE,
       `target_type` enum(project|task|note), `target_id` (no FK, validated at init),
       `uploaded_by`, `name` 255, `mime` 255, `size_bytes` BIGINT UNSIGNED, `storage_key` 300
       UNIQUE (`ws/{wsId}/{fileId}`), `status` enum(uploading|ready), `revision`, timestamps +
       `deleted_at`; indexes `(workspace_id, target_type, target_id)` + `(status, created_at)`.
-- [ ] `POST /api/v1/workspaces/:workspaceId/files` (member): validates storage enabled
+      Rollback→re-apply verified (all 10 migrations).
+- [x] `POST /api/v1/workspaces/:workspaceId/files` (member): validates storage enabled
       (`STORAGE_NOT_CONFIGURED` 503), target exists+undeleted+in-workspace
-      (`FILE_INVALID_TARGET`), name 1–255 no control chars, path separators stripped
-      (`FILE_NAME_INVALID`), declared `sizeBytes` ≤ cap (`FILE_TOO_LARGE`). Inserts
+      (`FILE_INVALID_TARGET`), name sanitized to basename, 1–255, no control chars
+      (`FILE_NAME_INVALID`), declared `sizeBytes` ≤ cap (413 `FILE_TOO_LARGE`). Inserts
       `status='uploading'` **without** `recordSyncWrite` (invisible to sync) → `201 {file,
       upload: {method:'PUT', url, headers:{'content-type'}, expiresAt}}`.
-- [ ] `POST /api/v1/files/:fileId/complete` (member): `uploading` only (`FILE_NOT_READY`
-      otherwise); `head(key)` — missing → 409 `FILE_UPLOAD_INCOMPLETE` (row stays, PUT can
-      retry); size ≠ declared or > cap → best-effort `remove(key)`, row hard-deleted, 409
-      `FILE_UPLOAD_MISMATCH`; match → transaction: `recordSyncWrite('file','create')` + row
-      `status='ready'` + revision stamp → `200 {file}`.
-- [ ] `DELETE /api/v1/files/:fileId` (member): `uploading` → hard delete row + best-effort
-      object remove (never synced); `ready` → soft delete + `recordSyncWrite('file','delete')`
-      + enqueue object deletion. 204 both ways; idempotent on already-deleted.
-- [ ] Object-deletion job on `queue/runner.js` (`name: 'storage-delete'`, `jobKey =
-      storage_key`; NoSuchKey/404 = success) — enqueued only after commit
-      (`trx.executionPromise` pattern, like `recordSyncWrite`'s announce).
-- [ ] Stale-upload sweep in the storage plugin: every `STORAGE_SWEEP_SEC`, `uploading` rows
-      older than 24 h → hard delete + best-effort object remove; runs once at boot; timer
-      unref'd + cleared on close (test-safe like the calendar sweep).
-- [ ] `serializeFile` in the route module (id/workspaceId/targetType/targetId/name/mime/
-      sizeBytes/status/uploadedBy/revision/createdAt/updatedAt — **no URLs/keys**).
-- [ ] Tests — unit (fake storage): the whole matrix (happy path, not-configured, bad target,
-      oversize declared, mismatch → object removed + row gone, incomplete → retryable, abort,
-      sweep with fake clock, no sync row before complete, revision stamped after). Integration
-      (MinIO + MySQL): init → PUT → complete → row ready + `sync_revisions` create; mismatch
-      actually deletes the object; abort removes it.
+- [x] `POST /api/v1/files/:fileId/complete` (member): already-ready → 200 idempotent (retry
+      after a network blip must not error — small deviation from the drafted `FILE_NOT_READY`);
+      `head(key)` missing → 409 `FILE_UPLOAD_INCOMPLETE` (row stays, PUT can retry); size ≠
+      declared → `remove(key)`, row hard-deleted, 409 `FILE_UPLOAD_MISMATCH`; match →
+      transaction: `recordSyncWrite('file','create')` + `status='ready'` + revision stamp.
+- [x] `DELETE /api/v1/files/:fileId` (member): `uploading` → hard delete + queued object
+      remove (never synced); `ready` → `softDeleteReadyFile` (src/db/files.js) tombstone +
+      post-commit enqueue. 204 both ways; idempotent on already-deleted; 403 non-members.
+- [x] `plugins/storage-gc.js`: `storage-delete` job on `queue/runner.js` (`jobKey =
+      storage_key`, missing object = success) + stale-upload sweep (24 h cutoff, guarded
+      delete so a just-completed row survives, batch 100, timer unref'd + skipped in tests —
+      `app.storageGc.sweepStaleUploads()` for suites).
+- [x] `serializeFile` + `fileSchema` in the route module (no URLs/keys in payloads).
+- [x] Tests — unit 15 (fake storage `test/helpers/fakestorage.js`): sanitize matrix, 503 off,
+      init shape + zero sync rows, mismatch destroys object+row, incomplete retryable,
+      complete idempotency, delete both branches + revision/log assertions, sweep age matrix,
+      disabled no-op; integration 3 (MySQL+MinIO+BullMQ): real PUT → complete → revision row,
+      mismatch deletes the real object, delete → tombstone + worker removes object (polled).
 
-**DoD:** unit + integration green; CHANGELOG; STATE.
+**DoD met 2026-07-18:** unit 255/255; integration 35/35; migrations rollback/re-apply green;
+lint+format clean; CHANGELOG; STATE.
 
 ### OPH-152 — API: read surface, pull-only sync, cascade cleanup, rename, markdown embeds
 

@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **File uploads live on the API** (OPH-151, Epic 14): the full attachment
+  lifecycle — declare a file on a project/task/note, PUT the bytes straight to
+  storage with a presigned URL, and a verification step that only publishes
+  files whose bytes actually match what was declared (liars get deleted).
+  Abandoned uploads are swept after 24 h; deleting a file queues the object
+  cleanup with retries so nothing orphans in the bucket.
 - **File attachments are coming — storage foundation shipped** (OPH-150, Epic 14):
   the API can now talk to Cloudflare R2 (or any S3-compatible store — MinIO ships
   in docker-compose for local dev/CI). Bytes will never pass through the API
