@@ -77,10 +77,15 @@ describe('lib/external-events deriveExternalEvent (OPH-082, ADR-0008)', () => {
     expect(deriveExternalEvent(faraway, ctx)).toMatchObject({ action: 'drop' });
 
     // Yesterday and next month are both inside it.
-    expect(deriveExternalEvent(meeting({
-      start: { dateTime: '2030-05-31T09:00:00.000Z' },
-      end: { dateTime: '2030-05-31T10:00:00.000Z' },
-    }), ctx).action).toBe('store');
+    expect(
+      deriveExternalEvent(
+        meeting({
+          start: { dateTime: '2030-05-31T09:00:00.000Z' },
+          end: { dateTime: '2030-05-31T10:00:00.000Z' },
+        }),
+        ctx,
+      ).action,
+    ).toBe('store');
   });
 
   it('maps an all-day event onto the user timezone and marks it not-busy', () => {
@@ -102,7 +107,10 @@ describe('lib/external-events deriveExternalEvent (OPH-082, ADR-0008)', () => {
   it('does not guess at events it cannot place', () => {
     for (const broken of [
       { start: undefined, end: undefined },
-      { start: { dateTime: '2030-06-02T10:00:00.000Z' }, end: { dateTime: '2030-06-02T09:00:00.000Z' } },
+      {
+        start: { dateTime: '2030-06-02T10:00:00.000Z' },
+        end: { dateTime: '2030-06-02T09:00:00.000Z' },
+      },
     ]) {
       expect(deriveExternalEvent(meeting(broken), ctx)).toMatchObject({
         action: 'skip',
@@ -254,7 +262,9 @@ describe('external events end to end (OPH-082)', () => {
     const row = tables.calendar_external_events.find((e) => e.id === id);
     expect(row.deleted_at).toBeInstanceOf(Date); // soft — pull turns it into a tombstone
     expect(
-      tables.sync_revisions.filter((r) => r.entity_type === 'external_event' && r.operation === 'delete'),
+      tables.sync_revisions.filter(
+        (r) => r.entity_type === 'external_event' && r.operation === 'delete',
+      ),
     ).toHaveLength(1);
   });
 
@@ -283,7 +293,11 @@ describe('external events end to end (OPH-082)', () => {
     });
     expect(pull.statusCode).toBe(200);
     const change = pull.json().changes.find((c) => c.entityType === 'external_event');
-    expect(change.data).toMatchObject({ summary: 'Ekip toplantısı', isAllDay: false, isBusy: true });
+    expect(change.data).toMatchObject({
+      summary: 'Ekip toplantısı',
+      isAllDay: false,
+      isBusy: true,
+    });
     // No provider ids leak to clients — they render it, they don't manage it.
     expect(change.data.providerEventId).toBeUndefined();
 

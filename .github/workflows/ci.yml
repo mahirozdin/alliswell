@@ -83,6 +83,18 @@ jobs:
       - name: Rollback + re-apply migrations (down() paths work)
         run: npm run db:rollback && npm run db:migrate
 
+      # Service containers cannot override an image's command, and minio/minio
+      # needs `server /data` — so MinIO (the R2 stand-in for the attachments
+      # integration tests, docs/ATTACHMENTS.md) starts as a plain container.
+      # Credentials match the docker-compose defaults the tests assume; the
+      # test bootstrap creates the bucket itself (with retries), so no
+      # healthcheck choreography is needed.
+      - name: Start MinIO (attachments storage)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=alliswell -e MINIO_ROOT_PASSWORD=alliswell_dev \
+            minio/minio:latest server /data
+
       - name: Integration tests
         run: npm run test:integration
 

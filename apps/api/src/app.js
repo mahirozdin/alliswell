@@ -12,6 +12,7 @@ import authPlugin from './plugins/auth.js';
 import socketPlugin from './plugins/socket.js';
 import mirrorPlugin from './plugins/mirror.js';
 import calendarSyncPlugin from './plugins/calendar-sync.js';
+import storagePlugin from './plugins/storage.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -23,6 +24,7 @@ import syncRoutes from './routes/sync.js';
 import notificationDeviceRoutes from './routes/notification-devices.js';
 import reminderRoutes from './routes/reminders.js';
 import googleIntegrationRoutes from './routes/integrations-google.js';
+import storageRoutes from './routes/storage.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -46,7 +48,7 @@ function loggerOptions(config) {
  *   const app = await buildApp({ config, db: fakeDb, redis: fakeRedis });
  *   const res = await app.inject({ method: 'GET', url: '/health/ready' });
  */
-export async function buildApp({ config = loadConfig(), logger, db, redis } = {}) {
+export async function buildApp({ config = loadConfig(), logger, db, redis, storage } = {}) {
   const app = Fastify({
     logger: logger ?? loggerOptions(config),
     requestIdHeader: 'x-request-id',
@@ -68,6 +70,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(rateLimit, { max: config.rateLimitMax, timeWindow: '1 minute' });
   await app.register(mysqlPlugin, { db });
   await app.register(redisPlugin, { redis });
+  await app.register(storagePlugin, { storage });
   await app.register(authPlugin);
   await app.register(socketPlugin);
   await app.register(mirrorPlugin);
@@ -109,6 +112,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis } = {}
   await app.register(notificationDeviceRoutes, { prefix: '/api/v1' });
   await app.register(reminderRoutes, { prefix: '/api/v1' });
   await app.register(googleIntegrationRoutes, { prefix: '/api/v1' });
+  await app.register(storageRoutes, { prefix: '/api/v1' });
 
   return app;
 }

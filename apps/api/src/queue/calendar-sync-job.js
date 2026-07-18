@@ -393,7 +393,12 @@ async function applyExternalEvent(app, { account, event, outcome }) {
   // Unchanged since we last saw it. Skipping keeps a full resync — which
   // replays EVERY event — from burning a revision per meeting and waking every
   // device for nothing.
-  if (existing && existing.deleted_at == null && existing.etag && existing.etag === outcome.values.etag) {
+  if (
+    existing &&
+    existing.deleted_at == null &&
+    existing.etag &&
+    existing.etag === outcome.values.etag
+  ) {
     return;
   }
 

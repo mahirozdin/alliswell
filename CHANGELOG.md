@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **File attachments are coming — storage foundation shipped** (OPH-150, Epic 14):
+  the API can now talk to Cloudflare R2 (or any S3-compatible store — MinIO ships
+  in docker-compose for local dev/CI). Bytes will never pass through the API
+  server: it mints short-lived presigned upload/download URLs instead. Fully
+  optional — without `STORAGE_S3_*` config everything answers honestly that
+  storage is off. `GET /api/v1/storage` reports availability + limits to the app.
+  Full design (incl. the R2 CORS setup web browsers need):
+  [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md).
+
 - **Urgent tasks now alarm at their deadline** (OPH-138, Epic 13): an urgent
   task with a due time rings AT that time even if you never set a separate
   reminder — the deadline itself is the alarm (an explicit "Remind" time still

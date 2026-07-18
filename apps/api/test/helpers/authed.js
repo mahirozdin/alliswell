@@ -6,9 +6,9 @@ import { fakeDb, fakeRedis } from './fakedb.js';
 // of the way (it has its own dedicated tests in auth-login.test.js).
 const testConfig = loadConfig({ NODE_ENV: 'test', RATE_LIMIT_AUTH_MAX: '1000' });
 
-export async function buildTestApp({ config = testConfig, dbOptions } = {}) {
+export async function buildTestApp({ config = testConfig, dbOptions, storage } = {}) {
   const { db, tables } = fakeDb(dbOptions);
-  const app = await buildApp({ config, db, redis: fakeRedis() });
+  const app = await buildApp({ config, db, redis: fakeRedis(), storage });
   return { app, tables };
 }
 

@@ -290,7 +290,12 @@ describe('POST /projects/:id/archive & /unarchive (OPH-110)', () => {
   const archive = (id, body = {}, headers = owner.headers) =>
     app.inject({ method: 'POST', url: `/api/v1/projects/${id}/archive`, headers, payload: body });
   const unarchive = (id, body = {}) =>
-    app.inject({ method: 'POST', url: `/api/v1/projects/${id}/unarchive`, headers: owner.headers, payload: body });
+    app.inject({
+      method: 'POST',
+      url: `/api/v1/projects/${id}/unarchive`,
+      headers: owner.headers,
+      payload: body,
+    });
 
   it('archives just the project by default, leaving tasks and notes', async () => {
     const project = (await createProject({ name: 'Arşivlik' })).json();

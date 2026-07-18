@@ -33,6 +33,28 @@ services:
       timeout: 3s
       retries: 30
 
+  # S3-compatible object storage for attachments (Epic 14, docs/ATTACHMENTS.md)
+  # — the dev/CI stand-in for Cloudflare R2. The `alliswell` bucket is created
+  # automatically the first time the integration tests run (or make it yourself
+  # in the console at http://localhost:9001).
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-alliswell}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-alliswell_dev}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
   # Run the API in a container too: `docker compose --profile full up`
   # (default dev workflow runs the API on the host with `npm run dev`)
   api:
@@ -72,3 +94,4 @@ services:
 volumes:
   mysql_data:
   redis_data:
+  minio_data:

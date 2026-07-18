@@ -22,6 +22,14 @@ function parseCorsOrigin(value) {
   return value.split(',').map((origin) => origin.trim());
 }
 
+function toBool(value, fallback, name) {
+  if (value === undefined || value === null || value === '') return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1') return true;
+  if (normalized === 'false' || normalized === '0') return false;
+  throw new Error(`Invalid boolean for ${name}: "${value}"`);
+}
+
 // Development/test fallbacks so the app boots without a .env. Deliberately listed as
 // insecure below — production refuses to start with any of these (or the .env.example
 // placeholders). Generate real values with `openssl rand -hex 32`.
@@ -94,6 +102,24 @@ export function loadConfig(env = process.env) {
       tokenBaseUrl: env.GOOGLE_TOKEN_BASE_URL || 'https://oauth2.googleapis.com',
       apiBaseUrl: env.GOOGLE_API_BASE_URL || 'https://www.googleapis.com',
     }),
+    // Attachments (Epic 14, ATTACHMENTS.md / ADR-0011). Optional like Google:
+    // with no storage env at all the file endpoints answer
+    // STORAGE_NOT_CONFIGURED and the app shows honest empty states. The
+    // endpoint is S3-compatible — Cloudflare R2 is the documented primary
+    // (https://<ACCOUNT_ID>.r2.cloudflarestorage.com, region "auto"); MinIO
+    // fills the same role in dev/CI.
+    storage: Object.freeze({
+      endpoint: env.STORAGE_S3_ENDPOINT || null,
+      region: env.STORAGE_S3_REGION || 'auto',
+      bucket: env.STORAGE_S3_BUCKET || null,
+      accessKeyId: env.STORAGE_S3_ACCESS_KEY_ID || null,
+      secretAccessKey: env.STORAGE_S3_SECRET_ACCESS_KEY || null,
+      // Bucket-in-path URLs: R2 accepts both styles, MinIO requires path style.
+      forcePathStyle: toBool(env.STORAGE_S3_FORCE_PATH_STYLE, true, 'STORAGE_S3_FORCE_PATH_STYLE'),
+      maxUploadBytes: toInt(env.STORAGE_MAX_UPLOAD_MB, 512, 'STORAGE_MAX_UPLOAD_MB') * 1024 * 1024,
+      presignTtlSec: toInt(env.STORAGE_PRESIGN_TTL_SEC, 3600, 'STORAGE_PRESIGN_TTL_SEC'),
+      sweepSec: toInt(env.STORAGE_SWEEP_SEC, 3600, 'STORAGE_SWEEP_SEC'),
+    }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
       // 64 hex chars → 32 bytes. Dev fallback is labeled insecure on purpose.
@@ -125,6 +151,30 @@ export function loadConfig(env = process.env) {
   }
   if (config.calendar.watchTtlSec < 60 || config.calendar.sweepSec < 10) {
     throw new Error('CALENDAR_WATCH_TTL_SEC (≥60) and CALENDAR_SYNC_SWEEP_SEC (≥10) are too small');
+  }
+  // Storage is all-or-nothing: a half-configured store would boot fine and
+  // then fail on the first upload — surface the typo at startup instead.
+  {
+    const core = ['endpoint', 'bucket', 'accessKeyId', 'secretAccessKey'];
+    const set = core.filter((key) => config.storage[key]);
+    if (set.length > 0 && set.length < core.length) {
+      const missing = core.filter((key) => !config.storage[key]);
+      throw new Error(
+        `Partial storage config: missing ${missing
+          .map((k) => `STORAGE_S3_${k.replace(/([A-Z])/g, '_$1').toUpperCase()}`)
+          .join(', ')} (set all of endpoint/bucket/keys, or none to disable attachments)`,
+      );
+    }
+  }
+  if (config.storage.maxUploadBytes < 1024 * 1024) {
+    throw new Error('STORAGE_MAX_UPLOAD_MB must be at least 1');
+  }
+  // R2 refuses presigned URLs beyond 7 days; catch the config typo at boot.
+  if (config.storage.presignTtlSec < 60 || config.storage.presignTtlSec > 604800) {
+    throw new Error('STORAGE_PRESIGN_TTL_SEC must be between 60 and 604800 (7 days, the R2 cap)');
+  }
+  if (config.storage.sweepSec < 10) {
+    throw new Error('STORAGE_SWEEP_SEC must be at least 10');
   }
   // Google refuses a non-HTTPS webhook address, so catch the typo at boot
   // rather than at the first (invisible, queued) watch call.

@@ -2296,32 +2296,37 @@ tour** (one physical session can clear both matrices).
 > cascade + queue object cleanup. Feature is optional config (`STORAGE_S3_*` unset ⇒
 > `STORAGE_NOT_CONFIGURED` + honest empty states).
 
-### OPH-150 — API: storage foundation (config, S3/R2 plugin, MinIO in compose+CI, status endpoint)
+### OPH-150 — API: storage foundation (config, S3/R2 plugin, MinIO in compose+CI, status endpoint) — ✅ 2026-07-18
 
-- [ ] Deps: `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` (apps/api).
-- [ ] `config.js` → frozen `storage` block: `STORAGE_S3_ENDPOINT/REGION('auto')/BUCKET/
+- [x] Deps: `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` (apps/api).
+- [x] `config.js` → frozen `storage` block: `STORAGE_S3_ENDPOINT/REGION('auto')/BUCKET/
       ACCESS_KEY_ID/SECRET_ACCESS_KEY/FORCE_PATH_STYLE(true)`, `STORAGE_MAX_UPLOAD_MB(512)`,
       `STORAGE_PRESIGN_TTL_SEC(3600, 60…604800)`, `STORAGE_SWEEP_SEC(3600, ≥10)`;
       `configured` = endpoint+bucket+both keys; partial config (some but not all of the four) =
-      boot error; TTL/size ranges validated. `.env.example` documented (R2 endpoint example +
-      CORS pointer).
-- [ ] `src/plugins/storage.js` (fastify-plugin): decorates `app.storage` =
+      boot error naming the missing vars; TTL/size ranges validated. `.env.example` documented
+      (R2 endpoint example + CORS pointer).
+- [x] `src/plugins/storage.js` (fastify-plugin): decorates `app.storage` =
       `{ enabled, maxUploadBytes, presignTtlSec, presignPut(key, {contentType}),
       presignGet(key, {filename, contentType}), head(key), remove(key) }` over an S3Client
       (region `auto`, `forcePathStyle`), **injectable** via `buildApp({ storage })` exactly like
       `db`/`redis`. GET presigns set `response-content-disposition` (RFC 5987 `filename*`) +
       `response-content-type`. Disabled mode → `enabled: false`, helpers throw.
-- [ ] `GET /api/v1/storage` (auth): `{configured, maxUploadBytes, presignTtlSec}` — the app's
+- [x] `GET /api/v1/storage` (auth): `{configured, maxUploadBytes, presignTtlSec}` — the app's
       feature probe.
-- [ ] docker-compose: `minio` service (console optional), healthcheck, `.env` ports; CI
-      (`ci.yml`): MinIO service container with a pre-created bucket, `STORAGE_*` env for
-      integration jobs.
-- [ ] Tests — unit: config validation matrix (off/partial/bad TTL), status endpoint on/off,
-      fake-storage presign shapes; integration (MinIO): presignPut → real `fetch` PUT →
-      head sees the byte count → presignGet GETs the same bytes → remove → head 404.
+- [x] docker-compose: `minio` service (console on 9001), healthcheck (`mc ready local`),
+      `.env` ports. CI: **deviation** — GH service containers cannot override an image command
+      and `minio/minio` needs `server /data`, so CI starts MinIO via a plain `docker run` step;
+      the test bootstrap (`test/helpers/minio.js`) creates the bucket itself with retries, so
+      neither compose nor CI needs init choreography (first run IS the init).
+- [x] Tests — unit (17): config validation matrix (off/partial named-missing-vars/TTL range/
+      bad bool), `contentDisposition` RFC 5987 (Turkish round-trip, quote escape), offline
+      SigV4 presign shapes (PUT + GET response-* overrides), status endpoint auth/off/on;
+      integration (4, real MinIO): presigned PUT → head byte count → presigned GET same bytes
+      + pinned name/type → tampered signature 403 → idempotent remove + head null.
 
-**DoD:** lint + unit green; integration green locally (colima) — MinIO wired in CI in the same
-change; `.env.example` + README env docs updated; CHANGELOG.
+**DoD met 2026-07-18:** lint + format + `check:no-ts` green; unit 240/240; integration 32/32
+locally (colima; MinIO on **9010** on this machine — port 9000 is a local ssh tunnel, see
+STATE); MinIO wired in CI in the same change; `.env.example` + README index updated; CHANGELOG.
 
 ### OPH-151 — API: `files` migration + upload lifecycle (init → presigned PUT → complete) + sweep
 
