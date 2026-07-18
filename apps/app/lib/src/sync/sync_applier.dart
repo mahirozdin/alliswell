@@ -67,6 +67,8 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.reminders)..where((r) => r.id.equals(id))).go();
     case 'external_event':
       await (db.delete(db.externalEvents)..where((e) => e.id.equals(id))).go();
+    case 'file':
+      await (db.delete(db.fileRows)..where((f) => f.id.equals(id))).go();
   }
 }
 
@@ -106,6 +108,8 @@ Future<void> _applySnapshot(
       await db
           .into(db.externalEvents)
           .insertOnConflictUpdate(externalEventCompanion(data));
+    case 'file':
+      await db.into(db.fileRows).insertOnConflictUpdate(fileCompanion(data));
   }
 }
 
@@ -193,6 +197,24 @@ ExternalEventsCompanion externalEventCompanion(Map<String, dynamic> d) =>
       isBusy: Value((d['isBusy'] as bool?) ?? true),
       htmlLink: Value(d['htmlLink'] as String?),
       revision: Value((d['revision'] as int?) ?? 0),
+    );
+
+/// OPH-153 — attachment metadata (Epic 14, ADR-0011). Pull-only: no outbox
+/// path exists for this table, so the server is the only writer.
+FileRowsCompanion fileCompanion(Map<String, dynamic> d) =>
+    FileRowsCompanion.insert(
+      id: d['id'] as String,
+      workspaceId: d['workspaceId'] as String,
+      targetType: d['targetType'] as String,
+      targetId: d['targetId'] as String,
+      name: d['name'] as String,
+      mime: (d['mime'] as String?) ?? 'application/octet-stream',
+      sizeBytes: (d['sizeBytes'] as num?)?.toInt() ?? 0,
+      status: (d['status'] as String?) ?? 'ready',
+      uploadedBy: Value(d['uploadedBy'] as String?),
+      revision: Value((d['revision'] as int?) ?? 0),
+      createdAt: _dateValue(d['createdAt']),
+      updatedAt: _dateValue(d['updatedAt']),
     );
 
 TasksCompanion taskCompanion(Map<String, dynamic> d) => TasksCompanion.insert(

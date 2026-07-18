@@ -62,6 +62,7 @@ dependencies:
   # Flutter's tooling wires the podspec for iOS AND macOS, so no pbxproj surgery.
   alliswell_eventkit:
     path: packages/alliswell_eventkit
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:

@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The app now speaks attachments** (OPH-153, Epic 14): every device keeps a
+  local, offline-capable copy of attachment metadata (the lists render without
+  a network; the bytes fetch on demand), and the upload machinery is in place —
+  visible progress, cancel, honest failure with retry. Large videos stream from
+  disk during upload instead of loading into memory. UI surfaces (task
+  attachments, the project Files tab, note media) land next.
 - **Files are fully readable, synced and cleaned up** (OPH-152, Epic 14): every
   device now learns about attachments through normal sync (metadata only — the
   bytes stay in storage and download links are minted fresh on demand, with the

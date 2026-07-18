@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 
+import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/features/onboarding/tour.dart';
 import 'package:alliswell/src/features/widgets/widget_host.dart';
 import 'package:alliswell/src/notifications/providers.dart';
@@ -49,4 +50,7 @@ List<Override> syncTestOverrides({
   // No platform channels: the home-screen widget bridge (OPH-130), watched by
   // HomeShell, pushes to an in-memory fake instead of home_widget.
   widgetHostProvider.overrideWithValue(FakeWidgetHost()),
+  // No platform channels: the file picker (OPH-153) answers "picked nothing"
+  // unless a test overrides it with fake picks of its own.
+  filePickerProvider.overrideWithValue(() async => const []),
 ];

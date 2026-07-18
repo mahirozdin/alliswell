@@ -104,6 +104,35 @@ class ExternalEvents extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// Attachment metadata (OPH-153, Epic 14, ADR-0011) — pull-only like
+/// [ExternalEvents]: the binaries live in object storage (R2), only verified
+/// `ready` rows ever sync, and writes are REST + `syncNow()` — so there is no
+/// outbox path for this table and the server is the only writer. Added in
+/// schema v5.
+@DataClassName('FileRecord')
+class FileRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+
+  /// `project` | `task` | `note` — who this file hangs off.
+  TextColumn get targetType => text()();
+  TextColumn get targetId => text()();
+  TextColumn get name => text()();
+  TextColumn get mime => text()();
+  IntColumn get sizeBytes => integer()();
+
+  /// Always `ready` in practice (uploading rows never sync) — kept so the
+  /// shape mirrors the server serializer field-for-field.
+  TextColumn get status => text()();
+  TextColumn get uploadedBy => text().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class TaskTagRows extends Table {
   TextColumn get taskId => text()();
   TextColumn get tagId => text()();
@@ -246,6 +275,7 @@ class AppleEventLinks extends Table {
     Reminders,
     ExternalEvents,
     AppleEventLinks,
+    FileRows,
     PendingMutations,
     SyncStates,
   ],
@@ -257,8 +287,9 @@ class AwDatabase extends _$AwDatabase {
   /// v1 → v2 (OPH-081): tasks.calendar_mirror_enabled.
   /// v2 → v3 (OPH-083): external_events (the user's own calendar).
   /// v3 → v4 (OPH-078): apple_event_links (device-local Apple mirror map).
+  /// v4 → v5 (OPH-153): file_rows (attachment metadata, pull-only).
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -281,6 +312,9 @@ class AwDatabase extends _$AwDatabase {
       if (from < 3) await m.createTable(externalEvents);
       // v4 (OPH-078): device-local Apple mirror map. New table, untouched data.
       if (from < 4) await m.createTable(appleEventLinks);
+      // v5 (OPH-153): attachment metadata. New pull-only table; the next
+      // sync pull fills it — nothing existing is touched.
+      if (from < 5) await m.createTable(fileRows);
     },
   );
 }

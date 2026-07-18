@@ -2400,32 +2400,37 @@ lint+format clean; CHANGELOG; STATE.
 **DoD met 2026-07-18:** unit 273/273; integration 36/36; lint+format+no-ts clean; CHANGELOG;
 STATE. **The API vertical of Epic 14 is complete — everything the app needs exists.**
 
-### OPH-153 — App: replica v5 `files` + pull-only FileStore + upload service + storage probe
+### OPH-153 — App: replica v5 `files` + pull-only FileStore + upload service + storage probe — ✅ 2026-07-18
 
-- [ ] drift `FileRows` table (mirrors `serializeFile`; comment: read-only, no outbox path —
+- [x] drift `FileRows` table (mirrors `serializeFile`; read-only, no outbox path —
       ExternalEvents precedent), `@DriftDatabase` list, `schemaVersion => 5`, `onUpgrade`
-      `if (from < 5) createTable`; regenerate `database.g.dart`; hand-rolled migration test
-      extended (v4→v5, drift_dev dump is broken on this toolchain — STATE note).
-- [ ] `sync_applier.dart`: `case 'file':` snapshot upsert + tombstone + companion mapper.
-- [ ] `features/files/` — `FileStore` (read-only): `watchForTarget(type, id)`,
-      `watchForProject(projectId)` (project ∪ its tasks' ∪ its notes' files via replica
-      joins, newest first, with source info), `watchUsage(workspaceId)`; providers keep
-      `syncEngineProvider` alive (calendar pattern).
-- [ ] `FilesApi` (dio via `apiClientProvider`, GoogleIntegrationsApi template): storageStatus,
-      init, complete, downloadUrl, rename, delete + `ApiException` mapping.
-- [ ] `UploadService`: pick result → init → dio PUT to presigned URL (`onSendProgress`,
-      CancelToken) → complete → `syncNow()` (archive-flow pattern); state machine
-      (queued/uploading(progress)/failed(retry)/done) exposed per target via a provider;
-      cancel aborts via DELETE. Web-safe (bytes) + io (stream from path) both covered.
-- [ ] `storageStatusProvider` (FutureProvider, REST — deployment state is not replica data);
-      picker seam `filePickerProvider` (wraps `file_picker`, override-able; added to
-      `syncTestOverrides`). New dep: `file_picker`.
-- [ ] Tests: applier round-trip (snapshot/tombstone), v4→v5 migration, store queries (target +
-      project aggregate + source labels), upload service against `FakeApi` + a fake transport
-      (progress events, cancel → DELETE, failure → retry, complete → replica row after pull),
-      probe on/off.
+      `if (from < 5) createTable(fileRows)`; `database.g.dart` regenerated; hand-rolled
+      migration test extended to v5 (drift_dev dump is broken on this toolchain).
+- [x] `sync_applier.dart`: `case 'file':` snapshot upsert + tombstone + `fileCompanion`.
+- [x] `features/files/` — `FileStore` (read-only): `watchForTarget(type, id)` newest-first,
+      `watchForProject(projectId)` — **one `customSelect` UNION** (project ∪ its tasks' ∪ its
+      notes' files with `source_type/id/title`, `readsFrom` all four tables → a single live
+      stream). `watchUsage` deferred to OPH-157 with the usage UI.
+- [x] `FilesApi` (dio via `apiClientProvider`, GoogleIntegrationsApi template): storageStatus,
+      initUpload → `UploadTicket`, complete, download (null-safe), rename, delete +
+      `ApiException` mapping. `FileUrlCache` caches minted URLs until ~expiry (list thumbs
+      must not re-mint per rebuild; URLs never persisted).
+- [x] `UploadsNotifier` (Riverpod `Notifier`): pickAndUpload/start → init → PUT via
+      `uploadTransportProvider` (a **bare** dio — an Authorization header would break the
+      presigned signature) with `onSendProgress` + CancelToken → complete → `syncNow()`;
+      failed(errorCode) → retry (fresh init — old URL may be expired) / dismiss; cancel →
+      abort DELETE. io streams from path (video never fits memory), web uses bytes —
+      conditional-import picker (`pick_files_io/web.dart`), re-openable `PickedUpload.open()`.
+      `mimeForName` extension map so previews work when pickers omit MIME.
+- [x] `storageStatusProvider` (REST — deployment state is not replica data); `filePickerProvider`
+      seam added to `syncTestOverrides` (picks nothing by default). New dep: `file_picker` 11
+      (v11 API: static `FilePicker.pickFiles`, no `.platform`).
+- [x] Tests (12 new): applier round-trip/tombstone/upsert-rename, v4→v5 migration (user_version
+      5 asserted), store target list + aggregate with source titles + out-of-project exclusion +
+      live stream update, upload controller happy path (progress 0.5 observed, content-type
+      travels), init-fail→retry, PUT-fail→dismiss, cancel→abort DELETE, mimeForName.
 
-**DoD:** `flutter analyze` + suite green; CHANGELOG; STATE.
+**DoD met 2026-07-18:** `flutter analyze` clean; app suite **290/290**; CHANGELOG; STATE.
 
 ### OPH-154 — App: task detail "Attachments" section
 
