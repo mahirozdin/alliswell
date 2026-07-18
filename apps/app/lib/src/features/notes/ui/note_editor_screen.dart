@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../files/providers.dart';
+import '../../files/ui/file_widgets.dart' show UploadRowTile;
+import '../../files/ui/note_media.dart';
 import '../../../theme/tokens.dart';
 import '../data/delta_markdown.dart';
 import '../data/note.dart';
@@ -87,6 +90,20 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _dirty = true;
     _debounce?.cancel();
     _debounce = Timer(_autosaveDelay, _save);
+  }
+
+  /// Media uploads need a target id: force-create a brand-new note first
+  /// (the editor autosaves anyway — this just does it NOW). OPH-156.
+  Future<({String noteId, String workspaceId})?> _ensureNote() async {
+    final workspaces = await ref.read(workspacesProvider.future);
+    if (workspaces.isEmpty) return null;
+    if (_noteId == null) {
+      _dirty = true; // _save() is a no-op unless something is dirty
+      await _save();
+    }
+    final id = _noteId;
+    if (id == null) return null;
+    return (noteId: id, workspaceId: workspaces.first.id);
   }
 
   List<Map<String, dynamic>> get _deltaJson =>
@@ -244,23 +261,45 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                child: QuillSimpleToolbar(
-                  controller: _quill,
-                  config: const QuillSimpleToolbarConfig(
-                    multiRowsDisplay: false,
-                    showFontFamily: false,
-                    showFontSize: false,
-                    showSubscript: false,
-                    showSuperscript: false,
-                    showAlignmentButtons: false,
-                    showIndent: false,
-                    showDirection: false,
-                    showSearchButton: false,
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: QuillSimpleToolbar(
+                        controller: _quill,
+                        config: const QuillSimpleToolbarConfig(
+                          multiRowsDisplay: false,
+                          showFontFamily: false,
+                          showFontSize: false,
+                          showSubscript: false,
+                          showSuperscript: false,
+                          showAlignmentButtons: false,
+                          showIndent: false,
+                          showDirection: false,
+                          showSearchButton: false,
+                        ),
+                      ),
+                    ),
+                    // Epic 14 (OPH-156): inline images/videos.
+                    NoteMediaButtons(
+                      controller: _quill,
+                      ensureNote: _ensureNote,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
+          // In-flight/failed media uploads for THIS note (F2: visible state).
+          for (final job
+              in ref
+                  .watch(uploadsProvider)
+                  .where(
+                    (j) => j.targetType == 'note' && j.targetId == _noteId,
+                  ))
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: UploadRowTile(job: job),
+            ),
           // Apple-Notes style: the title is the document's fixed first block —
           // an H1 the note content flows under (feedback round 1). Content is
           // width-capped for a readable measure on wide screens.
@@ -298,6 +337,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                           config: QuillEditorConfig(
                             placeholder: 'note.startWriting'.tr(),
                             padding: const EdgeInsets.only(top: 8, bottom: 24),
+                            embedBuilders: awNoteEmbedBuilders(),
                           ),
                         ),
                       ),

@@ -1,8 +1,12 @@
 /// Minimal Quill Delta → Markdown converter for preview/export (OPH-044).
 /// Covers what our toolbar can produce: headers, bold/italic/strike/code,
-/// links, bullet/ordered/checked lists, blockquote and code blocks. The
-/// server-side converter (OPH-045) will be the canonical exporter; this one
-/// keeps export/preview fully offline-capable in the app.
+/// links, bullet/ordered/checked lists, blockquote and code blocks — and
+/// (OPH-156) image/video embeds, fixture-for-fixture with the server's
+/// converter (OPH-152): `![](source)` for images, `[attachment](source)` for
+/// other sourced embeds; unknown embed shapes are dropped. The server-side
+/// converter (OPH-045) is the canonical exporter (it also resolves
+/// `alliswell://file/{id}` labels to current file names); this one keeps
+/// export/preview fully offline-capable in the app.
 String deltaToMarkdown(List<Map<String, dynamic>> ops) {
   final lines = <String>[];
   var buffer = StringBuffer();
@@ -64,7 +68,20 @@ String deltaToMarkdown(List<Map<String, dynamic>> ops) {
   for (final op in ops) {
     final insert = op['insert'];
     final attrs = (op['attributes'] as Map?)?.cast<String, dynamic>();
-    if (insert is! String) continue; // embeds are dropped in markdown export
+    if (insert is! String) {
+      // Embeds (OPH-156, server parity): images become markdown images,
+      // anything else with a source becomes a link. Unknown shapes drop.
+      if (insert is Map) {
+        final image = insert['image'];
+        final video = insert['video'];
+        final isImage = image is String && image.isNotEmpty;
+        final source = isImage ? image : video;
+        if (source is String && source.isNotEmpty) {
+          buffer.write(isImage ? '![]($source)' : '[attachment]($source)');
+        }
+      }
+      continue;
+    }
 
     var remaining = insert;
     while (remaining.contains('\n')) {

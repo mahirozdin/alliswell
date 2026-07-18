@@ -388,6 +388,10 @@
     "filterNotes": "Notes",
     "emptyTitle": "No files yet",
     "emptyBody": "Files you add to this project, its tasks or its notes appear here.",
-    "notConfiguredHint": "Set STORAGE_S3_* on the server — see docs/ATTACHMENTS.md."
+    "notConfiguredHint": "Set STORAGE_S3_* on the server — see docs/ATTACHMENTS.md.",
+    "insertImage": "Insert image",
+    "insertVideo": "Insert video",
+    "attachedNotEmbedded": "Uploaded as an attachment — this file type doesn't embed inline",
+    "mediaUnavailable": "Attachment unavailable"
   }
 }

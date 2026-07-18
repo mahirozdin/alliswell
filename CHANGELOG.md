@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Notes carry images and videos inline** (OPH-156, Epic 14): the note editor
+  gained insert-image / insert-video buttons — the file uploads to the note and
+  drops into the text right where your cursor is. Images render inline (tap for
+  full screen), videos show as a named tile that opens on tap, and the project
+  README shows them too. Offline or missing media degrades to a labeled
+  placeholder, never a broken-image icon. Embedded media also appears in the
+  project's Files tab, and markdown exports reference it with stable links.
 - **Every project has a Files tab now** (OPH-155, Epic 14): a simple file
   manager on project detail — one list of everything in the project (its own
   files plus its tasks' and notes'), each row labeled with where it lives,

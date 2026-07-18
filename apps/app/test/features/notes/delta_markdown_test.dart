@@ -46,7 +46,7 @@ void main() {
     ]);
   });
 
-  test('merges consecutive code lines into one fenced block, skips embeds', () {
+  test('merges consecutive code lines into one fenced block, renders embeds inline', () {
     final markdown = deltaToMarkdown([
       {'insert': 'const a = 1;'},
       {
@@ -58,6 +58,8 @@ void main() {
         'insert': '\n',
         'attributes': {'code-block': true},
       },
+      // Since OPH-156 image embeds render as markdown images (server parity —
+      // they used to be dropped); attachment coverage: note_media_test.dart.
       {
         'insert': {'image': 'x.png'},
       },
@@ -69,7 +71,7 @@ void main() {
       'const a = 1;',
       'const b = 2;',
       '```',
-      'son satır',
+      '![](x.png)son satır',
     ]);
   });
 

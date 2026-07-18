@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api_exception.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
 import 'data/file_attachment.dart';
@@ -102,30 +103,62 @@ final projectFilesProvider =
 /// Short-lived download URLs, cached per file until shortly before expiry so
 /// list thumbnails do not re-mint on every rebuild. Presigned URLs are never
 /// persisted anywhere (ATTACHMENTS.md §9).
+///
+/// Memoizes the FUTURE, not just the value: widgets may call this from build,
+/// and handing back a fresh future per build would never let the tree settle.
+/// A null answer (offline, not ready) is cached briefly too — the honest
+/// placeholder must be stable, not a retry storm.
 class FileUrlCache {
   FileUrlCache(this._api);
 
   final FilesApi _api;
-  final _cache = <String, FileDownload>{};
+  final _futures = <String, Future<String?>>{};
+  final _validUntil = <String, DateTime>{};
 
-  Future<String?> urlFor(String fileId) async {
-    final hit = _cache[fileId];
-    if (hit != null &&
-        (hit.expiresAt == null ||
-            hit.expiresAt!.isAfter(
-              DateTime.now().add(const Duration(minutes: 1)),
-            ))) {
-      return hit.url;
+  Future<String?> urlFor(String fileId) {
+    final cached = _futures[fileId];
+    final until = _validUntil[fileId];
+    if (cached != null && (until == null || until.isAfter(DateTime.now()))) {
+      return cached;
     }
-    final fresh = await _api.download(fileId);
-    if (fresh == null) return null;
-    _cache[fileId] = fresh;
-    return fresh.url;
+    final future = () async {
+      try {
+        final fresh = await _api.download(fileId);
+        if (fresh != null) {
+          // Renew a minute before the store would refuse the URL.
+          _validUntil[fileId] =
+              (fresh.expiresAt ??
+                      DateTime.now().add(const Duration(minutes: 55)))
+                  .subtract(const Duration(minutes: 1));
+          return fresh.url;
+        }
+      } on ApiException {
+        // Unreachable/denied: fall through to the placeholder answer.
+      }
+      _validUntil[fileId] = DateTime.now().add(const Duration(minutes: 2));
+      return null;
+    }();
+    _futures[fileId] = future;
+    return future;
   }
 
-  void evict(String fileId) => _cache.remove(fileId);
+  void evict(String fileId) {
+    _futures.remove(fileId);
+    _validUntil.remove(fileId);
+  }
 }
 
 final fileUrlCacheProvider = Provider<FileUrlCache>(
   (ref) => FileUrlCache(ref.watch(filesApiProvider)),
 );
+
+/// Build-safe wrappers for per-file lookups: riverpod caches the future per
+/// id, so widgets `watch` these instead of minting futures inside build.
+final fileUrlProvider = FutureProvider.autoDispose.family<String?, String>(
+  (ref, fileId) => ref.watch(fileUrlCacheProvider).urlFor(fileId),
+);
+
+final fileByIdProvider = FutureProvider.autoDispose
+    .family<FileAttachment?, String>(
+      (ref, fileId) => ref.watch(fileStoreProvider).byId(fileId),
+    );

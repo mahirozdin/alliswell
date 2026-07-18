@@ -63,23 +63,18 @@ class FileLeadingThumb extends ConsumerWidget {
     );
     if (!file.isImage) return iconTile;
 
-    return FutureBuilder<String?>(
-      future: ref.read(fileUrlCacheProvider).urlFor(file.id),
-      builder: (context, snapshot) {
-        final url = snapshot.data;
-        // Fetching or unavailable: the honest tile, never a broken glyph.
-        if (url == null) return iconTile;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(AwRadius.s),
-          child: Image.network(
-            url,
-            width: 40,
-            height: 40,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => iconTile,
-          ),
-        );
-      },
+    // Fetching or unavailable → the honest tile, never a broken glyph (F3).
+    final url = ref.watch(fileUrlProvider(file.id)).value;
+    if (url == null) return iconTile;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AwRadius.s),
+      child: Image.network(
+        url,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => iconTile,
+      ),
     );
   }
 }
@@ -276,15 +271,8 @@ Future<void> openFileExternally(
   FileAttachment file,
 ) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
-  String? url;
-  try {
-    url = await ref.read(fileUrlCacheProvider).urlFor(file.id);
-  } on ApiException catch (e) {
-    messenger?.showSnackBar(
-      SnackBar(content: Text(_errorText(e.code, 'file.couldNotOpen'.tr()))),
-    );
-    return;
-  }
+  // urlFor answers null on any failure (it never throws) — one honest path.
+  final url = await ref.read(fileUrlCacheProvider).urlFor(file.id);
   if (url == null) {
     messenger?.showSnackBar(SnackBar(content: Text('file.couldNotOpen'.tr())));
     return;
@@ -330,9 +318,7 @@ Future<void> showFileRenameDialog(
     await ref.read(syncEngineProvider)?.syncNow();
   } on ApiException catch (e) {
     messenger?.showSnackBar(
-      SnackBar(
-        content: Text(_errorText(e.code, 'file.couldNotRename'.tr())),
-      ),
+      SnackBar(content: Text(_errorText(e.code, 'file.couldNotRename'.tr()))),
     );
   }
 }
@@ -371,9 +357,7 @@ Future<void> confirmFileDelete(
     await ref.read(syncEngineProvider)?.syncNow();
   } on ApiException catch (e) {
     messenger?.showSnackBar(
-      SnackBar(
-        content: Text(_errorText(e.code, 'file.couldNotDelete'.tr())),
-      ),
+      SnackBar(content: Text(_errorText(e.code, 'file.couldNotDelete'.tr()))),
     );
   }
 }
@@ -419,32 +403,29 @@ class _FileImageViewer extends ConsumerWidget {
           ),
         ],
       ),
-      body: FutureBuilder<String?>(
-        future: ref.read(fileUrlCacheProvider).urlFor(file.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final url = snapshot.data;
-          if (url == null) {
-            return Center(child: Text('file.couldNotOpen'.tr()));
-          }
-          return InteractiveViewer(
-            maxScale: 6,
-            child: Center(
-              child: Image.network(
-                url,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, progress) => progress == null
-                    ? child
-                    : const Center(child: CircularProgressIndicator()),
-                errorBuilder: (_, _, _) =>
-                    Center(child: Text('file.couldNotOpen'.tr())),
-              ),
-            ),
-          );
-        },
-      ),
+      body: ref
+          .watch(fileUrlProvider(file.id))
+          .when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) => Center(child: Text('file.couldNotOpen'.tr())),
+            data: (url) => url == null
+                ? Center(child: Text('file.couldNotOpen'.tr()))
+                : InteractiveViewer(
+                    maxScale: 6,
+                    child: Center(
+                      child: Image.network(
+                        url,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, progress) =>
+                            progress == null
+                            ? child
+                            : const Center(child: CircularProgressIndicator()),
+                        errorBuilder: (_, _, _) =>
+                            Center(child: Text('file.couldNotOpen'.tr())),
+                      ),
+                    ),
+                  ),
+          ),
     );
   }
 }

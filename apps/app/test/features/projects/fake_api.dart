@@ -69,7 +69,7 @@ class FakeApi {
   }) {
     _seq += 1;
     final file = {
-      'id': 'FIL$_seq'.padRight(26, '0'),
+      'id': 'FDS$_seq'.padRight(26, '0'),
       'workspaceId': workspaceId,
       'targetType': targetType,
       'targetId': targetId,
@@ -799,7 +799,7 @@ class FakeApi {
         );
       }
       _seq += 1;
-      final id = 'FIL$_seq'.padRight(26, '0');
+      final id = 'FDS$_seq'.padRight(26, '0');
       final mime = (body?['mime'] as String?) ?? 'application/octet-stream';
       final file = {
         'id': id,

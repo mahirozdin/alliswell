@@ -2475,27 +2475,33 @@ CHANGELOG; STATE.
 **DoD met 2026-07-18:** analyze clean; app suite **299/299**; contrast FAILURES: 0;
 check:i18n green; CHANGELOG; STATE.
 
-### OPH-156 — App: inline images/videos in notes (+ Dart markdown parity)
+### OPH-156 — App: inline images/videos in notes (+ Dart markdown parity) — ✅ 2026-07-18
 
-- [ ] Editor toolbar: image + video insert buttons (custom, next to `QuillSimpleToolbar` —
-      no `flutter_quill_extensions` dependency): picker → upload targeting the note (a new
-      note autosaves first so it has an id) → insert standard Quill `image`/`video` embed with
-      source `alliswell://file/{fileId}`; while uploading, a progress chip near the toolbar
-      (cancel supported), insertion only on complete (no phantom embeds).
-- [ ] Custom `EmbedBuilder`s (editor + read-only README view): resolve id → cached presigned
-      URL (in-memory per file until expiry): image inline (shimmer while fetching, tap =
-      viewer), video/unknown → tile (kind icon + filename + open action). Offline/error →
-      placeholder tile (F3), never a broken glyph. Unknown-scheme sources (http images from
-      elsewhere) still render via plain network image — don't break foreign deltas.
-- [ ] Dart `deltaToMarkdown` (delta_markdown.dart) mirrors OPH-152's fixtures: image →
-      `![name](alliswell://file/{id})`, other embeds → `[name](…)`; `plainTextFromDelta`
-      unchanged. Fixture-for-fixture parity test with the API set.
-- [ ] Deleting the embed leaves the file row (undo safety — BLUEPRINT §12.5 rev.); the file
-      stays visible under the note/project Files surfaces.
-- [ ] i18n en+tr; widget tests: insert flow via fakes (embed lands with the file id), embed
-      renders image/tile/placeholder states, markdown parity, README read-only render.
+- [x] Editor toolbar: image + video insert buttons (`NoteMediaButtons`, custom — no
+      `flutter_quill_extensions`): picker → upload targeting the note (`_ensureNote()`
+      force-autosaves a brand-new note first) → on complete a standard Quill `image`/`video`
+      embed with source `alliswell://file/{fileId}` lands at the caret (no phantom embeds);
+      in-flight/failed uploads render as F2 rows under the toolbar (cancel/retry). Non-media
+      picks still upload as note attachments with an honest "won't embed inline" snackbar.
+- [x] `awNoteEmbedBuilders()` (editor + read-only README view): id → minted URL via
+      **riverpod family providers** (`fileUrlProvider`/`fileByIdProvider` — futures must be
+      provider-cached, minting them in build never settles; `FileUrlCache` also memoizes
+      futures now, incl. brief null-caching so placeholders are stable, and never throws).
+      Image inline (progress tile while fetching, tap = viewer), video/other → tile with the
+      file's CURRENT name + open action; offline/gone → placeholder naming the file (F3);
+      foreign http sources still render.
+- [x] Dart `deltaToMarkdown` mirrors OPH-152 fixtures: `![](source)` / `[attachment](source)`,
+      unknown embeds drop; the legacy "skips embeds" fixture updated like the API's;
+      `plainTextFromDelta` unchanged. Parity tests replicate the server cases verbatim.
+- [x] Deleting the embed leaves the file row (undo safety); the file stays in the note's
+      attachments / project Files tab. **Test-double lesson:** fake ids must be REAL ULIDs —
+      Crockford excludes I/L/O/U, so `FIL…` seeds never matched the embed regex (renamed).
+- [x] i18n en+tr (4 new keys); 7 tests: markdown parity ×2, scheme parser, image placeholder
+      names the file from the replica, video tile + open icon, insert flow (upload targets the
+      note, mime guessed, embed renders), non-media honest path.
 
-**DoD:** analyze + suite green; light+dark; CHANGELOG; STATE.
+**DoD met 2026-07-18:** analyze clean; app suite **306/306**; contrast FAILURES: 0;
+check:i18n green; CHANGELOG; STATE.
 
 ### OPH-157 — Hardening, docs & the attachment QA matrix
 

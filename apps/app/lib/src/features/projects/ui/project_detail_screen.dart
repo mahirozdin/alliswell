@@ -8,6 +8,7 @@ import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart';
+import '../../files/ui/note_media.dart';
 import '../../notes/data/note.dart';
 import '../../notes/providers.dart';
 import '../../notes/ui/notes_screen.dart';
@@ -343,9 +344,11 @@ class _ReadmeViewState extends State<_ReadmeView> {
         ? Text('project.emptyReadme'.tr(), style: theme.textTheme.bodyMedium)
         : QuillEditor.basic(
             controller: _controller,
-            config: const QuillEditorConfig(
+            config: QuillEditorConfig(
               showCursor: false,
               padding: EdgeInsets.zero,
+              // README images/videos render like in the editor (OPH-156).
+              embedBuilders: awNoteEmbedBuilders(),
             ),
           );
     // Show the note title as the document heading (feedback round 5): the

@@ -387,6 +387,10 @@
     "filterNotes": "Notlar",
     "emptyTitle": "Henüz dosya yok",
     "emptyBody": "Bu projeye, görevlerine veya notlarına eklediğin dosyalar burada görünür.",
-    "notConfiguredHint": "Sunucuda STORAGE_S3_* ayarlayın — bkz. docs/ATTACHMENTS.md."
+    "notConfiguredHint": "Sunucuda STORAGE_S3_* ayarlayın — bkz. docs/ATTACHMENTS.md.",
+    "insertImage": "Resim ekle",
+    "insertVideo": "Video ekle",
+    "attachedNotEmbedded": "Ek olarak yüklendi — bu dosya türü satır içinde gösterilmez",
+    "mediaUnavailable": "Ek şu an açılamıyor"
   }
 }

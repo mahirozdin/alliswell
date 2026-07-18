@@ -63,6 +63,15 @@ class FileStore {
 
   final AwDatabase _db;
 
+  /// One file by id — how note embeds resolve `alliswell://file/{id}` to a
+  /// name/mime (OPH-156). Null when the row hasn't synced yet or is gone.
+  Future<FileAttachment?> byId(String id) async {
+    final row = await (_db.select(
+      _db.fileRows,
+    )..where((f) => f.id.equals(id))).getSingleOrNull();
+    return row == null ? null : _attachment(row);
+  }
+
   /// One entity's attachments, newest first.
   Stream<List<FileAttachment>> watchForTarget({
     required String targetType,
