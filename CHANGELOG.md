@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Attach files to tasks** (OPH-154, Epic 14): task detail gained an
+  Attachments section — add images, videos or any file from the picker, watch
+  real upload progress (cancelable), tap an image for a full-screen viewer,
+  and open/download, rename or delete anything from its action sheet (delete
+  always confirms with the filename). If the server has no file storage
+  configured, the section says so plainly instead of showing a dead button.
 - **The app now speaks attachments** (OPH-153, Epic 14): every device keeps a
   local, offline-capable copy of attachment metadata (the lists render without
   a network; the bytes fetch on demand), and the upload machinery is in place —

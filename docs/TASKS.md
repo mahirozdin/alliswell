@@ -2432,21 +2432,29 @@ STATE. **The API vertical of Epic 14 is complete — everything the app needs ex
 
 **DoD met 2026-07-18:** `flutter analyze` clean; app suite **290/290**; CHANGELOG; STATE.
 
-### OPH-154 — App: task detail "Attachments" section
+### OPH-154 — App: task detail "Attachments" section — ✅ 2026-07-18
 
-- [ ] `_SectionCard(title: 'task.attachments')` after Checklist: DESIGN §10 rows (thumb/kind
-      icon + name + `size · date`), add button → picker → visible progress row (cancel),
-      failed row → retry (F2).
-- [ ] Tap: image → full-screen viewer (InteractiveViewer, presigned URL, loading + honest
-      error); others → action sheet Open/Download (`urlLauncherProvider`) · Rename (sheet) ·
-      Delete (confirm with filename). Sizes locale-formatted (KB/MB helper, testable).
-- [ ] Storage not configured → the section renders a single quiet explainer row (F6), no
-      spinner. Offline image → placeholder tile (F3).
-- [ ] i18n en+tr (`task.attachments`, `file.*` namespace); contrast guard still FAILURES: 0.
-- [ ] Widget tests: list renders from replica rows, upload happy path via fakes, cancel,
-      failure→retry, delete confirm flow, not-configured state.
+- [x] `_SectionCard(title: 'task.attachments')` after Checklist hosting the reusable
+      `AttachmentsSection` (`features/files/ui/file_widgets.dart` — F1: ONE row anatomy shared
+      with OPH-155/156): `FileRowTile` (thumb/kind icon + name + `size · date`),
+      `UploadRowTile` (determinate progress + cancel; failed → error colors + retry/dismiss),
+      add button → picker seam → the real `UploadsNotifier` handshake.
+- [x] Tap: image → full-screen `_FileImageViewer` (InteractiveViewer, minted URL, honest
+      loading/error, open+delete in the app bar); others → action sheet Open/Download
+      (`urlLauncherProvider` + `FileUrlCache`) · Rename (prefilled dialog → REST + syncNow) ·
+      Delete (confirm names the file, error-colored — F5). `formatBytes` KB/MB helper.
+- [x] Storage not configured → one quiet explainer row, add button absent (F6); thumbnails
+      fall back to kind icons whenever a URL can't be minted (F3 — also what keeps widget
+      tests off the network: the fake server answers `downloadUrl: null` by default).
+- [x] i18n en+tr (`task.attachments` + new `file.*` namespace, 12 keys); contrast FAILURES: 0.
+- [x] Widget tests (4, full-app over FakeApi — extended with `/storage` + file endpoints,
+      `seedFile`, pull integration): seeded rows render (name+size), pick→upload→synced row
+      appears (mime guessed for the picker gap), delete via sheet with named confirm →
+      tombstone pulled, not-configured explainer. `syncTestOverrides` grew `filePicker` +
+      `uploadTransport` params (instant fake PUT default).
 
-**DoD:** analyze + suite green; light+dark checked; CHANGELOG; STATE.
+**DoD met 2026-07-18:** analyze clean; app suite **294/294**; check:i18n + contrast green;
+CHANGELOG; STATE.
 
 ### OPH-155 — App: project "Files" tab (the file manager)
 

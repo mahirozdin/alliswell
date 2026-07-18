@@ -159,7 +159,8 @@
     "addItem": "Öğe ekle",
     "removeItem": "Öğeyi kaldır",
     "overdueDue": "Gecikti — {date}",
-    "dueOn": "Bitiş {date}"
+    "dueOn": "Bitiş {date}",
+    "attachments": "Ekler"
   },
   "inbox": {
     "captureHint": "Bir düşünce yakala…",
@@ -361,5 +362,19 @@
     },
     "allCaughtUp": "Her şey tamam",
     "addTask": "Görev ekle"
+  },
+  "file": {
+    "add": "Dosya ekle",
+    "openDownload": "Aç / İndir",
+    "rename": "Yeniden adlandır",
+    "renameTitle": "Dosyayı yeniden adlandır",
+    "nameLabel": "Dosya adı",
+    "deleteConfirm": "“{name}” silinsin mi?",
+    "deleteBody": "Dosya tüm cihazlardan kaldırılır. Bu işlem geri alınamaz.",
+    "uploadFailed": "Yükleme başarısız",
+    "notConfigured": "Bu sunucuda dosya deposu kurulu değil",
+    "couldNotOpen": "İndirme bağlantısı alınamadı",
+    "couldNotRename": "Dosya yeniden adlandırılamadı",
+    "couldNotDelete": "Dosya silinemedi"
   }
 }

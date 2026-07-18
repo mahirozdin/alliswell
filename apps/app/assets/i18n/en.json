@@ -160,7 +160,8 @@
     "addItem": "Add item",
     "removeItem": "Remove item",
     "overdueDue": "Overdue — {date}",
-    "dueOn": "Due {date}"
+    "dueOn": "Due {date}",
+    "attachments": "Attachments"
   },
   "inbox": {
     "captureHint": "Capture a thought…",
@@ -362,5 +363,19 @@
     },
     "allCaughtUp": "All caught up",
     "addTask": "Add task"
+  },
+  "file": {
+    "add": "Add file",
+    "openDownload": "Open / Download",
+    "rename": "Rename",
+    "renameTitle": "Rename file",
+    "nameLabel": "File name",
+    "deleteConfirm": "Delete “{name}”?",
+    "deleteBody": "The file is removed from every device. This cannot be undone.",
+    "uploadFailed": "Upload failed",
+    "notConfigured": "File storage isn't set up on this server",
+    "couldNotOpen": "Could not get a download link",
+    "couldNotRename": "Could not rename the file",
+    "couldNotDelete": "Could not delete the file"
   }
 }

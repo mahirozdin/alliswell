@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -21,6 +22,8 @@ import 'fake_widget_host.dart';
 List<Override> syncTestOverrides({
   SyncSocketFactory? socketFactory,
   bool tourAutoStart = false,
+  Future<List<PickedUpload>> Function()? filePicker,
+  UploadTransport? uploadTransport,
 }) => [
   databaseProvider.overrideWith((ref) {
     // closeStreamsSynchronously: drift otherwise keeps a Timer.run alive per
@@ -51,6 +54,21 @@ List<Override> syncTestOverrides({
   // HomeShell, pushes to an in-memory fake instead of home_widget.
   widgetHostProvider.overrideWithValue(FakeWidgetHost()),
   // No platform channels: the file picker (OPH-153) answers "picked nothing"
-  // unless a test overrides it with fake picks of its own.
-  filePickerProvider.overrideWithValue(() async => const []),
+  // unless a test passes fake picks of its own via [filePicker].
+  filePickerProvider.overrideWithValue(filePicker ?? () async => const []),
+  // No network: the presigned PUT succeeds instantly with full progress
+  // unless a test injects its own transport (failure/cancel scenarios).
+  uploadTransportProvider.overrideWithValue(
+    uploadTransport ?? _instantUploadTransport,
+  ),
 ];
+
+Future<void> _instantUploadTransport({
+  required String url,
+  required Map<String, String> headers,
+  required PickedUpload source,
+  void Function(int sent, int total)? onProgress,
+  CancelToken? cancelToken,
+}) async {
+  onProgress?.call(source.sizeBytes, source.sizeBytes);
+}

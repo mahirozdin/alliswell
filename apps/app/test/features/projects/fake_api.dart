@@ -14,6 +14,21 @@ class FakeApi {
   final List<Map<String, dynamic>> notes = [];
   final List<String> requests = [];
 
+  // ── Attachments (Epic 14, OPH-154+) ──────────────────────────────────────
+  /// Is STORAGE_S3_* configured on the fake server? Flip to false to test the
+  /// honest not-configured surfaces (F6).
+  bool storageConfigured = true;
+  int storageMaxUploadBytes = 512 * 1024 * 1024;
+
+  /// READY files (they sync). Uploading attempts live in [pendingUploads]
+  /// until /complete, mirroring the server's invisible-until-verified rule.
+  final List<Map<String, dynamic>> files = [];
+  final Map<String, Map<String, dynamic>> pendingUploads = {};
+
+  /// Optional per-file download URL the metadata endpoint answers. Default
+  /// none → the app renders kind icons (no Image.network in tests).
+  final Map<String, String> downloadUrls = {};
+
   /// Workspace revision + tombstones for the pull endpoint.
   int revision = 0;
   final List<Map<String, String>> deleted = [];
@@ -43,6 +58,33 @@ class FakeApi {
     notes.add(note);
     _bump();
     return note;
+  }
+
+  Map<String, dynamic> seedFile({
+    required String name,
+    required String targetType,
+    required String targetId,
+    String mime = 'application/octet-stream',
+    int sizeBytes = 2048,
+  }) {
+    _seq += 1;
+    final file = {
+      'id': 'FIL$_seq'.padRight(26, '0'),
+      'workspaceId': workspaceId,
+      'targetType': targetType,
+      'targetId': targetId,
+      'name': name,
+      'mime': mime,
+      'sizeBytes': sizeBytes,
+      'status': 'ready',
+      'uploadedBy': 'user-1',
+      'revision': 1,
+      'createdAt': '2026-07-18T10:00:00.000Z',
+      'updatedAt': '2026-07-18T10:00:00.000Z',
+    };
+    files.add(file);
+    _bump();
+    return file;
   }
 
   Map<String, dynamic> seedTag({required String name}) {
@@ -295,6 +337,9 @@ class FakeApi {
 
     final google = _google(path, options, body);
     if (google != null) return google;
+
+    final filesRes = _files(path, options, body);
+    if (filesRes != null) return filesRes;
 
     if (path == '/api/v1/workspaces/$workspaceId/projects') {
       if (options.method == 'GET') return jsonBody(200, {'items': projects});
@@ -575,6 +620,11 @@ class FakeApi {
       for (final e in externalEvents) {
         snapshot('external_event', e);
       }
+      // Epic 14: attachment metadata is pull-only, exactly like the events —
+      // no push route exists for 'file' (the server refuses them too).
+      for (final f in files) {
+        snapshot('file', f);
+      }
       for (final d in deleted) {
         changes.add({
           'revision': revision,
@@ -717,6 +767,116 @@ class FakeApi {
       }
       return;
     }
+  }
+
+  // ── Attachments (Epic 14) — mirrors apps/api/src/routes/files.js ────────
+
+  Future<ResponseBody>? _files(
+    String path,
+    RequestOptions options,
+    Map<String, dynamic>? body,
+  ) {
+    if (path == '/api/v1/storage' && options.method == 'GET') {
+      return Future.value(
+        jsonBody(200, {
+          'configured': storageConfigured,
+          'maxUploadBytes': storageMaxUploadBytes,
+          'presignTtlSec': 3600,
+        }),
+      );
+    }
+
+    if (path == '/api/v1/workspaces/$workspaceId/files' &&
+        options.method == 'POST') {
+      if (!storageConfigured) {
+        return Future.value(
+          jsonBody(503, {
+            'statusCode': 503,
+            'code': 'STORAGE_NOT_CONFIGURED',
+            'error': 'Service Unavailable',
+            'message': 'storage off',
+          }),
+        );
+      }
+      _seq += 1;
+      final id = 'FIL$_seq'.padRight(26, '0');
+      final mime = (body?['mime'] as String?) ?? 'application/octet-stream';
+      final file = {
+        'id': id,
+        'workspaceId': workspaceId,
+        'targetType': body?['targetType'],
+        'targetId': body?['targetId'],
+        'name': body?['name'],
+        'mime': mime,
+        'sizeBytes': body?['sizeBytes'],
+        'status': 'uploading',
+        'uploadedBy': 'user-1',
+        'revision': 0,
+        'createdAt': '2026-07-18T10:00:00.000Z',
+        'updatedAt': '2026-07-18T10:00:00.000Z',
+      };
+      pendingUploads[id] = file;
+      return Future.value(
+        jsonBody(201, {
+          'file': file,
+          'upload': {
+            'method': 'PUT',
+            'url': 'https://fake-store/put/$id',
+            'headers': {'content-type': mime},
+            'expiresAt': '2030-01-01T00:00:00.000Z',
+          },
+        }),
+      );
+    }
+
+    final complete = RegExp(
+      r'^/api/v1/files/([^/]+)/complete$',
+    ).firstMatch(path);
+    if (complete != null && options.method == 'POST') {
+      final id = complete.group(1)!;
+      final pending = pendingUploads.remove(id);
+      if (pending == null) return _notFound('FILE_NOT_FOUND');
+      pending['status'] = 'ready';
+      pending['revision'] = revision + 1;
+      files.add(pending);
+      _bump();
+      return Future.value(jsonBody(200, {'file': pending}));
+    }
+
+    final byId = RegExp(r'^/api/v1/files/([^/]+)$').firstMatch(path);
+    if (byId != null) {
+      final id = byId.group(1)!;
+      final index = files.indexWhere((f) => f['id'] == id);
+      switch (options.method) {
+        case 'GET':
+          if (index < 0) return _notFound('FILE_NOT_FOUND');
+          return Future.value(
+            jsonBody(200, {
+              'file': files[index],
+              'downloadUrl': downloadUrls[id],
+              'downloadExpiresAt': downloadUrls.containsKey(id)
+                  ? '2030-01-01T00:00:00.000Z'
+                  : null,
+            }),
+          );
+        case 'PATCH':
+          if (index < 0) return _notFound('FILE_NOT_FOUND');
+          files[index]['name'] = body?['name'];
+          files[index]['revision'] = revision + 1;
+          _bump();
+          return Future.value(jsonBody(200, {'file': files[index]}));
+        case 'DELETE':
+          if (index >= 0) {
+            files.removeAt(index);
+            deleted.add({'entityType': 'file', 'entityId': id});
+            _bump();
+          } else {
+            pendingUploads.remove(id);
+          }
+          return Future.value(ResponseBody.fromString('', 204));
+      }
+    }
+    return null;
   }
 
   Future<ResponseBody> _notFound(String code) async => jsonBody(404, {

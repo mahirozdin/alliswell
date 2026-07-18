@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../../files/ui/file_widgets.dart';
 import '../../projects/data/project.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
@@ -328,6 +329,18 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 child: _Checklist(
                   task: task,
                   onApply: (action) => _apply(action),
+                ),
+              ),
+              const SizedBox(height: AwSpace.x3),
+              // Epic 14 (OPH-154): images/videos/any file on the task —
+              // uploads are visible and cancelable, rows come from the synced
+              // replica (offline-capable metadata, on-demand bytes).
+              _SectionCard(
+                title: 'task.attachments'.tr(),
+                child: AttachmentsSection(
+                  workspaceId: task.workspaceId,
+                  targetType: 'task',
+                  targetId: task.id,
                 ),
               ),
             ],
