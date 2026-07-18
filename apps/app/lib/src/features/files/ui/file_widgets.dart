@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api_exception.dart';
-import '../../../i18n/i18n.dart';
+import '../../../i18n/i18n.dart' show AwI18n, AwTr;
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
@@ -160,7 +160,7 @@ class UploadRowTile extends ConsumerWidget {
         title: Text(job.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: failed
             ? Text(
-                localizedError(job.errorCode, 'file.uploadFailed'.tr()),
+                _errorText(job.errorCode, 'file.uploadFailed'.tr()),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.error,
                 ),
@@ -198,12 +198,13 @@ class UploadRowTile extends ConsumerWidget {
   }
 }
 
-/// Maps a stable error code through `error.<CODE>` with an honest fallback.
-String localizedError(String? code, String fallback) {
+/// Maps a stable error code through `error.<CODE>` with an honest, surface-
+/// specific fallback (private: the app-wide mapper is `localizedError` in
+/// core/error_messages.dart — this one exists for code-only sites like
+/// UploadJob.errorCode where there is no exception object).
+String _errorText(String? code, String fallback) {
   if (code == null) return fallback;
-  final key = 'error.$code';
-  final text = key.tr();
-  return text == key ? fallback : text;
+  return AwI18n.instance.maybeTranslate('error.$code') ?? fallback;
 }
 
 /// Open/Download · Rename · Delete for one file (F5: destructive confirms
@@ -280,7 +281,7 @@ Future<void> openFileExternally(
     url = await ref.read(fileUrlCacheProvider).urlFor(file.id);
   } on ApiException catch (e) {
     messenger?.showSnackBar(
-      SnackBar(content: Text(localizedError(e.code, 'file.couldNotOpen'.tr()))),
+      SnackBar(content: Text(_errorText(e.code, 'file.couldNotOpen'.tr()))),
     );
     return;
   }
@@ -330,7 +331,7 @@ Future<void> showFileRenameDialog(
   } on ApiException catch (e) {
     messenger?.showSnackBar(
       SnackBar(
-        content: Text(localizedError(e.code, 'file.couldNotRename'.tr())),
+        content: Text(_errorText(e.code, 'file.couldNotRename'.tr())),
       ),
     );
   }
@@ -371,7 +372,7 @@ Future<void> confirmFileDelete(
   } on ApiException catch (e) {
     messenger?.showSnackBar(
       SnackBar(
-        content: Text(localizedError(e.code, 'file.couldNotDelete'.tr())),
+        content: Text(_errorText(e.code, 'file.couldNotDelete'.tr())),
       ),
     );
   }

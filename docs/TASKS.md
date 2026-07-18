@@ -2456,21 +2456,24 @@ STATE. **The API vertical of Epic 14 is complete — everything the app needs ex
 **DoD met 2026-07-18:** analyze clean; app suite **294/294**; check:i18n + contrast green;
 CHANGELOG; STATE.
 
-### OPH-155 — App: project "Files" tab (the file manager)
+### OPH-155 — App: project "Files" tab (the file manager) — ✅ 2026-07-18
 
-- [ ] `ProjectDetailScreen`: `DefaultTabController length 4`, new `Tab('project.tabFiles')` +
-      `_ProjectFilesTab` (shape of `_ProjectTasksTab`): aggregated `watchForProject` list,
-      source filter chips (All · Project · Tasks · Notes), source badge per row (F4), sort
-      toggle (date default · name · size), upload FAB targeting the project, footer line with
-      usage (`files.usage` endpoint data via store/REST).
-- [ ] Row actions identical to OPH-154 (open/download, rename, delete); uploading rows with
-      progress; empty + not-configured `AwEmptyState`s (F6); archived-project banner logic
-      untouched (uploads still allowed — archiving deletes nothing).
-- [ ] i18n en+tr; L5 check: tab label fits (`Files`/`Dosyalar`).
-- [ ] Widget tests: tab appears, aggregate list with badges + filters, sort, upload flow,
-      actions, empty/not-configured states.
+- [x] `ProjectDetailScreen`: `DefaultTabController length 4`, `Tab('project.tabFiles')` +
+      `_ProjectFilesTab`: aggregated `projectFilesProvider` list (live replica UNION), source
+      filter chips (All · Project · Tasks · Notes), `_SourceBadge` per row (F4 — project label
+      or the task/note title), sort menu (date default · name · size). **Deviations:** upload
+      is a top action row, not a FAB — the Tasks/Notes tabs set that in-project pattern
+      (OPH-101 hoisted-FAB lesson); the usage footer moved to OPH-157 with its endpoint UI.
+- [x] Row actions are OPH-154's shared widgets verbatim (F1); uploads targeting the project
+      render progress rows; empty + not-configured `AwEmptyState`s (F6); archived-banner
+      logic untouched.
+- [x] i18n en+tr (12 new `file.*` keys + `project.tabFiles`); L5: `Files`/`Dosyalar` fit.
+- [x] Widget tests (5): aggregate with badges + filter narrowing, sort by name, upload
+      targets the PROJECT, empty state, storage-off explainer with a disabled (not dead)
+      add button.
 
-**DoD:** analyze + suite green; light+dark; CHANGELOG; STATE.
+**DoD met 2026-07-18:** analyze clean; app suite **299/299**; contrast FAILURES: 0;
+check:i18n green; CHANGELOG; STATE.
 
 ### OPH-156 — App: inline images/videos in notes (+ Dart markdown parity)
 

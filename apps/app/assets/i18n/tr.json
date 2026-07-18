@@ -234,7 +234,8 @@
     "markFavorite": "Favori yap",
     "actions": "Proje işlemleri",
     "unarchiveMenu": "Arşivden çıkar…",
-    "archiveMenu": "Arşivle…"
+    "archiveMenu": "Arşivle…",
+    "tabFiles": "Dosyalar"
   },
   "note": {
     "untitled": "Başlıksız",
@@ -375,6 +376,17 @@
     "notConfigured": "Bu sunucuda dosya deposu kurulu değil",
     "couldNotOpen": "İndirme bağlantısı alınamadı",
     "couldNotRename": "Dosya yeniden adlandırılamadı",
-    "couldNotDelete": "Dosya silinemedi"
+    "couldNotDelete": "Dosya silinemedi",
+    "sort": "Sırala",
+    "sortDate": "En yeni önce",
+    "sortName": "Ada göre",
+    "sortSize": "Boyuta göre",
+    "filterAll": "Tümü",
+    "filterProject": "Proje",
+    "filterTasks": "Görevler",
+    "filterNotes": "Notlar",
+    "emptyTitle": "Henüz dosya yok",
+    "emptyBody": "Bu projeye, görevlerine veya notlarına eklediğin dosyalar burada görünür.",
+    "notConfiguredHint": "Sunucuda STORAGE_S3_* ayarlayın — bkz. docs/ATTACHMENTS.md."
   }
 }

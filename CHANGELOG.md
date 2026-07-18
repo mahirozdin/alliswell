@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Every project has a Files tab now** (OPH-155, Epic 14): a simple file
+  manager on project detail — one list of everything in the project (its own
+  files plus its tasks' and notes'), each row labeled with where it lives,
+  filterable by source, sortable by date/name/size, uploads straight into the
+  project, and the same open/rename/delete actions as task attachments. Works
+  offline for browsing; empty and "storage not set up" states say the truth.
 - **Attach files to tasks** (OPH-154, Epic 14): task detail gained an
   Attachments section — add images, videos or any file from the picker, watch
   real upload progress (cancelable), tap an image for a full-screen viewer,

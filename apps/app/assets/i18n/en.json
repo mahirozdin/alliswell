@@ -235,7 +235,8 @@
     "markFavorite": "Mark favorite",
     "actions": "Project actions",
     "unarchiveMenu": "Unarchive…",
-    "archiveMenu": "Archive…"
+    "archiveMenu": "Archive…",
+    "tabFiles": "Files"
   },
   "note": {
     "untitled": "Untitled",
@@ -376,6 +377,17 @@
     "notConfigured": "File storage isn't set up on this server",
     "couldNotOpen": "Could not get a download link",
     "couldNotRename": "Could not rename the file",
-    "couldNotDelete": "Could not delete the file"
+    "couldNotDelete": "Could not delete the file",
+    "sort": "Sort",
+    "sortDate": "Newest first",
+    "sortName": "By name",
+    "sortSize": "By size",
+    "filterAll": "All",
+    "filterProject": "Project",
+    "filterTasks": "Tasks",
+    "filterNotes": "Notes",
+    "emptyTitle": "No files yet",
+    "emptyBody": "Files you add to this project, its tasks or its notes appear here.",
+    "notConfiguredHint": "Set STORAGE_S3_* on the server — see docs/ATTACHMENTS.md."
   }
 }

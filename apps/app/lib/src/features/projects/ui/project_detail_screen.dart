@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
+import '../../files/providers.dart';
+import '../../files/ui/file_widgets.dart';
 import '../../notes/data/note.dart';
 import '../../notes/providers.dart';
 import '../../notes/ui/notes_screen.dart';
@@ -63,9 +65,7 @@ class _ProjectDetail extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('project.deleteTitle'.tr()),
-        content: Text(
-          'project.deleteBody'.tr(args: {'name': project.name}),
-        ),
+        content: Text('project.deleteBody'.tr(args: {'name': project.name})),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -92,7 +92,7 @@ class _ProjectDetail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Row(
@@ -121,6 +121,7 @@ class _ProjectDetail extends ConsumerWidget {
               Tab(text: 'project.tabOverview'.tr()),
               Tab(text: 'project.tabTasks'.tr()),
               Tab(text: 'project.tabNotes'.tr()),
+              Tab(text: 'project.tabFiles'.tr()),
             ],
           ),
         ),
@@ -144,6 +145,7 @@ class _ProjectDetail extends ConsumerWidget {
                   _OverviewTab(project: project),
                   _ProjectTasksTab(projectId: project.id),
                   _ProjectNotesTab(project: project),
+                  _ProjectFilesTab(project: project),
                 ],
               ),
             ),
@@ -478,6 +480,196 @@ class _ProjectNotesTab extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The project file manager (Epic 14, OPH-155 — BLUEPRINT §12.3 rev.): the
+/// project's own files ∪ its tasks' ∪ its notes' files from the replica
+/// (offline-capable), with source badges (F4), source filter chips, sort
+/// toggles and uploads targeting the PROJECT. Follows the Tasks/Notes tab
+/// shape (top action row, not a FAB — those tabs set the pattern).
+enum _FileSort { date, name, size }
+
+class _ProjectFilesTab extends ConsumerStatefulWidget {
+  const _ProjectFilesTab({required this.project});
+
+  final Project project;
+
+  @override
+  ConsumerState<_ProjectFilesTab> createState() => _ProjectFilesTabState();
+}
+
+class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
+  String _filter = 'all'; // all | project | task | note
+  _FileSort _sort = _FileSort.date;
+
+  List<ProjectFileEntry> _arrange(List<ProjectFileEntry> entries) {
+    final filtered = _filter == 'all'
+        ? entries.toList()
+        : entries.where((e) => e.sourceType == _filter).toList();
+    switch (_sort) {
+      case _FileSort.date:
+        break; // the store already orders newest-first
+      case _FileSort.name:
+        filtered.sort(
+          (a, b) =>
+              a.file.name.toLowerCase().compareTo(b.file.name.toLowerCase()),
+        );
+      case _FileSort.size:
+        filtered.sort((a, b) => b.file.sizeBytes.compareTo(a.file.sizeBytes));
+    }
+    return filtered;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final project = widget.project;
+    final status = ref.watch(storageStatusProvider);
+    final entries = ref.watch(projectFilesProvider(project.id));
+    final uploads = ref
+        .watch(uploadsProvider)
+        .where((j) => j.targetType == 'project' && j.targetId == project.id)
+        .toList();
+    final configured = status.value?.configured ?? true;
+
+    Widget list(List<ProjectFileEntry> all) {
+      final items = _arrange(all);
+      if (items.isEmpty && uploads.isEmpty) {
+        return configured
+            ? AwEmptyState(
+                icon: Icons.folder_open_outlined,
+                title: 'file.emptyTitle'.tr(),
+                message: 'file.emptyBody'.tr(),
+              )
+            : AwEmptyState(
+                icon: Icons.cloud_off_outlined,
+                title: 'file.notConfigured'.tr(),
+                message: 'file.notConfiguredHint'.tr(),
+              );
+      }
+      return ListView(
+        padding: awListPadding(context),
+        children: [
+          for (final job in uploads) UploadRowTile(job: job),
+          for (final entry in items)
+            FileRowTile(
+              file: entry.file,
+              badge: _SourceBadge(entry: entry),
+            ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            children: [
+              OutlinedButton.icon(
+                key: const Key('project-add-file'),
+                onPressed: configured
+                    ? () => ref
+                          .read(uploadsProvider.notifier)
+                          .pickAndUpload(
+                            workspaceId: project.workspaceId,
+                            targetType: 'project',
+                            targetId: project.id,
+                          )
+                    : null,
+                icon: const Icon(Icons.upload_file_outlined),
+                label: Text('file.add'.tr()),
+              ),
+              const Spacer(),
+              PopupMenuButton<_FileSort>(
+                tooltip: 'file.sort'.tr(),
+                icon: const Icon(Icons.sort),
+                initialValue: _sort,
+                onSelected: (value) => setState(() => _sort = value),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: _FileSort.date,
+                    child: Text('file.sortDate'.tr()),
+                  ),
+                  PopupMenuItem(
+                    value: _FileSort.name,
+                    child: Text('file.sortName'.tr()),
+                  ),
+                  PopupMenuItem(
+                    value: _FileSort.size,
+                    child: Text('file.sortSize'.tr()),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (value, label) in [
+                  ('all', 'file.filterAll'),
+                  ('project', 'file.filterProject'),
+                  ('task', 'file.filterTasks'),
+                  ('note', 'file.filterNotes'),
+                ]) ...[
+                  FilterChip(
+                    label: Text(label.tr()),
+                    selected: _filter == value,
+                    onSelected: (_) => setState(() => _filter = value),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+        ),
+        Expanded(
+          child: entries.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => AwErrorState(
+              message: localizedError(error),
+              onRetry: () => ref.invalidate(projectFilesProvider(project.id)),
+            ),
+            data: list,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Where a file came from (F4): the project itself or a task/note title.
+class _SourceBadge extends StatelessWidget {
+  const _SourceBadge({required this.entry});
+
+  final ProjectFileEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = entry.sourceType == 'project'
+        ? 'file.filterProject'.tr()
+        : entry.sourceTitle;
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
