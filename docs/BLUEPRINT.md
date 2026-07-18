@@ -226,7 +226,7 @@ Task, sistemin en kritik domainidir.
 - Due date, start date, scheduled start/end, reminder time (hepsi optional).
 - Urgent flag, repeat rule, estimated duration, actual duration.
 - Calendar mirror flag, calendar provider mapping.
-- Notes relation, attachments (v2).
+- Notes relation, attachments (**rev. 2026-07-18, feedback round 7 — v1'e alındı, Epic 14; §4.10**).
 
 Task tipleri: simple task, scheduled task, deadline task, urgent reminder, recurring task,
 checklist parent, project milestone (v2).
@@ -246,6 +246,12 @@ Note, bağımsız veya task/proje bağlantılı bilgi birimidir.
 Özellikler: `title`, `content_delta` (JSON), `content_markdown`, `plain_text`, `project_id`
 (optional), `created_from_task_id` (optional), tags, pinned, archived, linked tasks, linked
 projects, backlinks (v2).
+
+**Satır içi medya (rev. 2026-07-18, feedback round 7 — Epic 14):** not gövdesi Quill
+image/video embed'leri taşır; embed kaynağı HER ZAMAN `alliswell://file/{fileId}` şemasıdır
+(ADR-0003 adlandırması) — asla presigned URL değil, çünkü presigned URL'ler süreli ve cihaza
+özeldir. Render, dosya id'sini isteğe bağlı mintlenen indirme URL'ine çözer; offline'da dürüst
+yer tutucu gösterilir. Ayrıntı: §4.10 + [ATTACHMENTS.md](ATTACHMENTS.md).
 
 ### 4.6 Project Documents
 
@@ -288,6 +294,34 @@ tek yerde yaşar: API `effectiveRemindAt(task)` (`src/db/reminders.js`, tüm yaz
 `reconcileTaskReminder` üzerinden) ve uygulamadaki sentetik alarm türetimi
 (`ReminderStore.watchAlarms`) aynı kuralı aynalar — reminder satırı senkrondan önce de alarm
 kurulur, satır gelince devralır.
+
+### 4.10 File / Attachment
+
+_(Eklendi 2026-07-18, feedback round 7 — Epic 14; bağlayıcı plan
+[ATTACHMENTS.md](ATTACHMENTS.md), karar [ADR-0011](adr/0011-attachments-r2-s3-storage.md).)_
+
+File, bir task/not/projeye ekli ikili dosyadır (resim, video, **her tür** dosya — MIME
+allowlist'i yok). Metadata MySQL'de (`files` tablosu), bytes S3-uyumlu obje deposunda
+(birincil hedef **Cloudflare R2**; dev/CI'da MinIO).
+
+Alanlar: `id`, `workspace_id`, `target_type` (`project`|`task`|`note`), `target_id`,
+`uploaded_by`, `name` (görünen ad; yeniden adlandırılabilir), `mime`, `size_bytes`,
+`storage_key` (opak: `ws/{workspaceId}/{fileId}` — dosya adı içermez), `status`
+(`uploading`|`ready`), `revision`, `created_at`, `updated_at`, `deleted_at`.
+
+Temel kurallar:
+
+- **Bytes API'den geçmez:** yükleme presigned PUT, indirme presigned GET (varsayılan 1 saat
+  TTL). API metadata + yetki servisidir; upload 3 adımdır (init → PUT → complete/HeadObject
+  doğrulama). `uploading` satırlar senkrona görünmez; yalnız `ready` olanlar yayınlanır.
+- **`file` pull-only senkron varlığıdır** (ADR-0008 modeli): metadata her cihazın
+  replikasına iner (listeler offline çalışır); push `SYNC_UNSUPPORTED_ENTITY` cevaplar —
+  yükleme doğası gereği online'dır, outbox'ta bekletmek yalan olur.
+- **Yetim bayt yok:** task (alt-ağaç dahil) / not / proje silinince dosyaları da aynı
+  transaction'da soft-delete edilir (her biri kendi revizyonuyla) ve obje silme işi
+  kuyruklanır; 24 saati geçmiş `uploading` artıkları süpürülür. Arşivleme hiçbir şey silmez.
+- **Özellik opsiyoneldir:** `STORAGE_S3_*` env yoksa uçlar `STORAGE_NOT_CONFIGURED` döner,
+  uygulama dürüst boş durumlar gösterir.
 
 ## 5. Sistem mimarisi
 
@@ -759,8 +793,15 @@ Aynı seri-odak davranışı Inbox ve proje Tasks sekmesindeki quick-add'lerde d
 ### 12.3 Project detail sekmeleri
 
 Overview (proje README notu — GitHub repo ana sayfası gibi, `projects.readme_note_id`) •
-Tasks (canlı liste + hızlı ekleme) • Notes (canlı liste + hızlı not) • Documents • Calendar •
-Activity
+Tasks (canlı liste + hızlı ekleme) • Notes (canlı liste + hızlı not) • **Files (dosya
+yöneticisi — Epic 14)** • Documents • Calendar • Activity
+
+_(Rev. 2026-07-18, feedback round 7 — OPH-155:)_ **Files sekmesi** projenin dosya
+yöneticisidir: projenin kendi dosyaları ∪ görevlerinin ∪ notlarının dosyaları tek listede
+(replika sorgusu — offline çalışır), kaynak rozetiyle (Project/Task/Not adı). Kaynak filtre
+çipleri (All · Project · Tasks · Notes), varsayılan sıralama en yeni; yükle FAB'ı dosyayı
+PROJEYE ekler. Satır eylemleri: aç/indir (presigned URL), yeniden adlandır, sil (onaylı).
+Depo yapılandırılmamışsa dürüst boş durum (`STORAGE_S3_*` işaret edilir) — spinner değil.
 
 _(Rev. 2026-07-17, feedback round 4 — OPH-109/110:)_ README notu **proje bağlamında**
 düzenlenir: Overview'daki "Create README" / kalem, editörü mevcut ekranın ÜSTÜNE push'lar
@@ -772,7 +813,15 @@ OPH-108). Arşivli proje detayı "arşivli" bandı + Unarchive eylemi gösterir.
 ### 12.4 Task detail alanları
 
 Title (yerinde düzenlenebilir, otomatik kayıt), Project, Status, Priority, Tags, Due date,
-Reminder, Urgent toggle, Calendar mirror toggle, Notes, Checklist, Activity.
+Reminder, Urgent toggle, Calendar mirror toggle, Notes, Checklist, **Attachments (Epic 14)**,
+Activity.
+
+_(Rev. 2026-07-18, feedback round 7 — OPH-154:)_ **Attachments bölümü** checklist'in altında
+kendi kartında yaşar: ekle butonu (dosya seçici), yüklerken ilerleme çubuklu satır (iptal
+edilebilir), hazır dosyalarda başparmak (resim) / tür ikonu (video, diğer), ad + boyut +
+tarih. Dokunma: resim → tam ekran görüntüleyici; diğerleri → aç/indir · yeniden adlandır ·
+sil eylem sayfası. Yükleme açıkça görünür ve iptal edilebilir — arka plan kuyruğu yalanı yok
+(offline'da dürüst hata).
 
 Görsel standart (feedback round 3; ikonlar rev. 2026-07-17 feedback round 4 — OPH-105):
 **statüler ikonla** gösterilir (inbox=gelen kutusu, open=**kum saati** [boş daire DEĞİL —
@@ -795,6 +844,15 @@ _(Rev. 2026-07-17, feedback round 4 — OPH-109:)_ **README notları varsayılan
 GÖRÜNMEZ** (All/Pinned/Archive onları dışlar) — proje README'si projenin Overview'ına aittir,
 not listesinde kopya gürültüdür. Yeni **READMEs** filtre çipi YALNIZ readme notlarını listeler
 (satırda projenin renk noktası + adı ile).
+
+_(Rev. 2026-07-18, feedback round 7 — OPH-156:)_ **Editörde satır içi resim/video:** araç
+çubuğuna resim/video ekleme butonları gelir; seçilen dosya nota yüklenir (hedef = not) ve
+tamamlanınca delta'ya `alliswell://file/{fileId}` kaynaklı standart Quill embed'i düşer.
+Render: resimler inline (yüklenme shimmer'ı, dokun = görüntüleyici), video/diğerleri ad +
+aç eylemli kutucuk; URL çözülemezse (offline) dosya adlı yer tutucu — kırık-resim glifi asla.
+Embed'i gövdeden silmek dosya SATIRINI silmez (undo güvenliği) — dosya, notun eklerinde ve
+projenin Files sekmesinde yaşamaya devam eder; oradan açıkça silinebilir. Markdown export
+resim embed'ini `![ad](alliswell://file/{id})`, diğerlerini `[ad](…)` olarak yazar.
 
 ### 12.6 Inbox — yakalama kutusu
 
@@ -934,7 +992,12 @@ Tests:
 - **Phase 7 — Localization & widgets (v0.2.0, feedback round 5):** JSON i18n (device/browser
   auto-detect, en fallback, settings override, en+tr) — Epic 11; home-screen/desktop widgets on
   iOS/Android/macOS (3 sizes, bucketed summary, calendar header, quick add/complete) — Epic 12.
-  i18n ships first so widgets are born localized.
+  i18n ships first so widgets are born localized. Feedback round 6 added Epic 13 (alarm
+  backbone) to the same release.
+- **Phase 8 — Attachments & files (v0.3.0, feedback round 7):** Cloudflare R2 / S3-compatible
+  object storage, presigned direct upload/download, attachments on tasks, inline images/videos
+  in notes, project "Files" tab as a simple file manager — Epic 14
+  ([ATTACHMENTS.md](ATTACHMENTS.md), ADR-0011).
 
 ## 15. Kurumsal kalite gereksinimleri
 
@@ -952,6 +1015,14 @@ background workers, avoid N+1 queries.
 OAuth tokens encrypted, refresh token rotation, rate limit, input validation, SQL injection
 protection, XSS protection for rendered notes, CSP for web, secure storage on mobile, secrets
 never committed, dependency scanning.
+
+_(Ek 2026-07-18, Epic 14 — obje depolama:)_ S3/R2 kimlik bilgileri YALNIZ sunucuda
+(`STORAGE_S3_*` env); istemciler tek-nesne, tek-fiil, süreli presigned URL alır. Storage
+key'ler opaktır (`ws/{wsId}/{fileId}` — URL/log'larda dosya adı/PII yok). Dosya adları
+görüntü verisidir: kontrol karakterleri reddedilir, path ayırıcılar temizlenir, indirmeler
+RFC 5987 `filename*` ile servis edilir. Bytes hiçbir zaman app origin'inden servis edilmez
+(SVG-XSS sınıfı bizim domain'e dokunamaz); `response-content-type` DB'den sabitlenir.
+Presigned URL'ler loglanmaz, senkrona/export'a yazılmaz.
 
 ### 15.4 Backup / export
 
@@ -1020,6 +1091,15 @@ midnight self-refresh; App Group snapshot köprüsü; her native görev build+ci
 engellenmedi (v2); i18n motoru app'e ait ve üçüncü parti bağımlılığı yok (§15.5) — bakım riski
 minimal, tüm aramalar tek seam'den geçer.
 
+**Risk 7 — Obje depolama yapılandırması & CORS (Epic 14).** Attachments ikinci bir veri
+deposu (R2/S3) getirir. (a) Web'de doğrudan PUT/GET tarayıcı preflight'ından geçer —
+self-hoster bucket CORS'unu kurmazsa web yüklemeleri kırılır. (b) API ile bucket arasında
+yetim nesne riski (yarım upload, silinen entity) vardır. (c) Yanlış kimlik bilgisi sessiz
+bozulma üretebilir. *Mitigation:* özellik tamamen opsiyonel ve dürüst
+(`STORAGE_NOT_CONFIGURED` + UI boş durumları); ATTACHMENTS.md §8 CORS rehberi; 3-adımlı
+upload'da complete-time HeadObject doğrulaması; sweep + commit-sonrası silme kuyruğu yetim
+bırakmaz; entegrasyon testleri gerçek MinIO'ya karşı koşar (CI dahil).
+
 ## 17. MVP kabul kriterleri
 
 - Kullanıcı kayıt/giriş yapabilir; workspace oluşur.
@@ -1055,6 +1135,8 @@ minimal, tüm aramalar tek seam'den geçer.
 - **Epic 10 — Feedback round 4 (UX düzeltmeleri):** OPH-100…OPH-111.
 - **Epic 11 — Localization (i18n):** OPH-120…OPH-128 (feedback round 5).
 - **Epic 12 — Home-screen widgets:** OPH-130…OPH-136 (feedback round 5).
+- **Epic 13 — Alarm omurgası:** OPH-137…OPH-143 (feedback round 6).
+- **Epic 14 — Attachments & project files (R2/S3):** OPH-150…OPH-157 (feedback round 7).
 
 ## 19. Nihai hedef
 

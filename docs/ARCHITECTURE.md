@@ -111,6 +111,21 @@ converge on current state so duplicate jobs are harmless:
 Apple: EventKit bridge on-device (platform channel), URL-field marker `alliswell://task/{id}`;
 CalDAV connector deferred to v2 (ADR-0003).
 
+## 6b. File storage (Epic 14 — Cloudflare R2 / S3-compatible)
+
+Per [ATTACHMENTS.md](ATTACHMENTS.md) / ADR-0011. Binary attachments live in an S3-compatible
+object store (R2 primary, MinIO in dev/CI); MySQL keeps only metadata (`files`, polymorphic
+`target_type`/`target_id` over project|task|note, opaque keys `ws/{wsId}/{fileId}`).
+`src/plugins/storage.js` wraps `@aws-sdk/client-s3` behind an injectable seam
+(`buildApp({ storage })` for unit tests) and decorates presign/head/delete helpers. Bytes
+never pass through Fastify: upload is init (row `status='uploading'`, unsynced) → client PUT
+to a presigned URL → complete (HeadObject verifies size → `ready` + `recordSyncWrite`);
+downloads are presigned GETs minted per request. `file` is a **pull-only** sync entity
+(ADR-0008 model — pushes answer `SYNC_UNSUPPORTED_ENTITY`); entity deletion cascades to files
+in-transaction and object deletion rides the queue runner (`jobKey = storage_key`); a sweep
+reaps stale uploads. Feature is optional config (`STORAGE_S3_*`): unset ⇒
+`STORAGE_NOT_CONFIGURED` and honest app empty states.
+
 ## 7. Flutter app design
 
 - **State:** Riverpod. **Navigation:** go_router with `StatefulShellRoute` (adaptive: glass rail

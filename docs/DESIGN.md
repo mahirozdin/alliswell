@@ -210,3 +210,35 @@ _(Added 2026-07-17, feedback round 5 — [ADR-0009](adr/0009-localization-i18n-a
   and breaks the bar (feedback round 6: TR "Gelen Kutusu" wrapped when selected →
   renamed "Fikirler"). Every locale must pick tab labels that fit one line at
   `labelMedium` w700 on a five-tab 390 px bar.
+
+## 10. Files & attachments (Epic 14)
+
+_(Added 2026-07-18, feedback round 7 — [ATTACHMENTS.md](ATTACHMENTS.md),
+[ADR-0011](adr/0011-attachments-r2-s3-storage.md).)_
+
+- **F1 — One file row, three homes.** Task attachments, note attachments and the
+  project Files tab all render the SAME row anatomy: leading 40 px square —
+  image thumbnail (rounded `AwRadius.s`, `BoxFit.cover`) or a kind icon on a
+  soft `surfaceContainerHighest` tile (video → `movie`, audio → `audiotrack`,
+  archive → `folder_zip`, else `insert_drive_file`) — then filename (1 line,
+  ellipsis), then a `size · date` subtitle in `onSurfaceVariant`. `Card` +
+  `ListTile`, `awListPadding` lists, tap targets ≥ 44 px — the §4 card-row
+  idiom, no new shapes.
+- **F2 — Uploads are visible state, not chrome.** An uploading row shows a
+  determinate `LinearProgressIndicator` under the subtitle + a cancel action.
+  Failure flips the row to the inline-error treatment (`AwInlineError` colors)
+  with a retry — never a silent disappearance (G-honesty).
+- **F3 — Previews stay honest offline.** Metadata is local; bytes are not. An
+  image that can't fetch renders a placeholder tile (kind icon + filename), not
+  a broken-image glyph, not an endless shimmer. Shimmer only while a fetch is
+  actually in flight.
+- **F4 — Source badges on the Files tab.** Aggregated rows carry a small badge
+  naming their origin (Project / task title / note title) with the same
+  luminance-ink rule as the Project badge (§4) when tinted by project color.
+- **F5 — Destructive = confirm.** Delete always confirms with the filename in
+  the dialog (`AlertDialog`, error-colored action); rename uses the standard
+  modal sheet with a prefilled `TextField`.
+- **F6 — No raw storage talk in UI.** Users see filenames, sizes (`KB/MB`,
+  locale-formatted) and dates — never storage keys, presigned URLs, bucket or
+  MIME strings. Configuration problems speak product language ("File storage
+  isn't set up on this server") with a docs pointer, in an `AwEmptyState`.

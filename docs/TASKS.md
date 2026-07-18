@@ -2282,11 +2282,224 @@ tour** (one physical session can clear both matrices).
 
 ---
 
+## Epic 14 — Attachments & project files: Cloudflare R2 / S3 storage (Phase 8, v0.3.0)
+
+> **Source:** Mahir's 2026-07-18 request (feedback round 7): R2 in the backend; image/video/any
+> file attachments on tasks; inline images/videos in notes; a project **Files** tab as a simple
+> file manager (upload/download/rename/delete). Pulled forward from the v2 parking lot
+> ("Attachments — S3-compatible storage").
+> **Binding docs:** [ATTACHMENTS.md](ATTACHMENTS.md) (protocol, schema, CORS, security, UX),
+> [ADR-0011](adr/0011-attachments-r2-s3-storage.md); BLUEPRINT §4.10, §12.3/12.4/12.5, §16
+> Risk 7; DESIGN §10.
+> **Shape:** bytes go client↔bucket via presigned URLs (API never proxies); `files` metadata is
+> a **pull-only** sync entity (ADR-0008 model); REST writes + `syncNow()` convergence; deletes
+> cascade + queue object cleanup. Feature is optional config (`STORAGE_S3_*` unset ⇒
+> `STORAGE_NOT_CONFIGURED` + honest empty states).
+
+### OPH-150 — API: storage foundation (config, S3/R2 plugin, MinIO in compose+CI, status endpoint)
+
+- [ ] Deps: `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner` (apps/api).
+- [ ] `config.js` → frozen `storage` block: `STORAGE_S3_ENDPOINT/REGION('auto')/BUCKET/
+      ACCESS_KEY_ID/SECRET_ACCESS_KEY/FORCE_PATH_STYLE(true)`, `STORAGE_MAX_UPLOAD_MB(512)`,
+      `STORAGE_PRESIGN_TTL_SEC(3600, 60…604800)`, `STORAGE_SWEEP_SEC(3600, ≥10)`;
+      `configured` = endpoint+bucket+both keys; partial config (some but not all of the four) =
+      boot error; TTL/size ranges validated. `.env.example` documented (R2 endpoint example +
+      CORS pointer).
+- [ ] `src/plugins/storage.js` (fastify-plugin): decorates `app.storage` =
+      `{ enabled, maxUploadBytes, presignTtlSec, presignPut(key, {contentType}),
+      presignGet(key, {filename, contentType}), head(key), remove(key) }` over an S3Client
+      (region `auto`, `forcePathStyle`), **injectable** via `buildApp({ storage })` exactly like
+      `db`/`redis`. GET presigns set `response-content-disposition` (RFC 5987 `filename*`) +
+      `response-content-type`. Disabled mode → `enabled: false`, helpers throw.
+- [ ] `GET /api/v1/storage` (auth): `{configured, maxUploadBytes, presignTtlSec}` — the app's
+      feature probe.
+- [ ] docker-compose: `minio` service (console optional), healthcheck, `.env` ports; CI
+      (`ci.yml`): MinIO service container with a pre-created bucket, `STORAGE_*` env for
+      integration jobs.
+- [ ] Tests — unit: config validation matrix (off/partial/bad TTL), status endpoint on/off,
+      fake-storage presign shapes; integration (MinIO): presignPut → real `fetch` PUT →
+      head sees the byte count → presignGet GETs the same bytes → remove → head 404.
+
+**DoD:** lint + unit green; integration green locally (colima) — MinIO wired in CI in the same
+change; `.env.example` + README env docs updated; CHANGELOG.
+
+### OPH-151 — API: `files` migration + upload lifecycle (init → presigned PUT → complete) + sweep
+
+- [ ] Migration `create_files` (ATTACHMENTS.md §3): ULID PK, `workspace_id` FK CASCADE,
+      `target_type` enum(project|task|note), `target_id` (no FK, validated at init),
+      `uploaded_by`, `name` 255, `mime` 255, `size_bytes` BIGINT UNSIGNED, `storage_key` 300
+      UNIQUE (`ws/{wsId}/{fileId}`), `status` enum(uploading|ready), `revision`, timestamps +
+      `deleted_at`; indexes `(workspace_id, target_type, target_id)` + `(status, created_at)`.
+- [ ] `POST /api/v1/workspaces/:workspaceId/files` (member): validates storage enabled
+      (`STORAGE_NOT_CONFIGURED` 503), target exists+undeleted+in-workspace
+      (`FILE_INVALID_TARGET`), name 1–255 no control chars, path separators stripped
+      (`FILE_NAME_INVALID`), declared `sizeBytes` ≤ cap (`FILE_TOO_LARGE`). Inserts
+      `status='uploading'` **without** `recordSyncWrite` (invisible to sync) → `201 {file,
+      upload: {method:'PUT', url, headers:{'content-type'}, expiresAt}}`.
+- [ ] `POST /api/v1/files/:fileId/complete` (member): `uploading` only (`FILE_NOT_READY`
+      otherwise); `head(key)` — missing → 409 `FILE_UPLOAD_INCOMPLETE` (row stays, PUT can
+      retry); size ≠ declared or > cap → best-effort `remove(key)`, row hard-deleted, 409
+      `FILE_UPLOAD_MISMATCH`; match → transaction: `recordSyncWrite('file','create')` + row
+      `status='ready'` + revision stamp → `200 {file}`.
+- [ ] `DELETE /api/v1/files/:fileId` (member): `uploading` → hard delete row + best-effort
+      object remove (never synced); `ready` → soft delete + `recordSyncWrite('file','delete')`
+      + enqueue object deletion. 204 both ways; idempotent on already-deleted.
+- [ ] Object-deletion job on `queue/runner.js` (`name: 'storage-delete'`, `jobKey =
+      storage_key`; NoSuchKey/404 = success) — enqueued only after commit
+      (`trx.executionPromise` pattern, like `recordSyncWrite`'s announce).
+- [ ] Stale-upload sweep in the storage plugin: every `STORAGE_SWEEP_SEC`, `uploading` rows
+      older than 24 h → hard delete + best-effort object remove; runs once at boot; timer
+      unref'd + cleared on close (test-safe like the calendar sweep).
+- [ ] `serializeFile` in the route module (id/workspaceId/targetType/targetId/name/mime/
+      sizeBytes/status/uploadedBy/revision/createdAt/updatedAt — **no URLs/keys**).
+- [ ] Tests — unit (fake storage): the whole matrix (happy path, not-configured, bad target,
+      oversize declared, mismatch → object removed + row gone, incomplete → retryable, abort,
+      sweep with fake clock, no sync row before complete, revision stamped after). Integration
+      (MinIO + MySQL): init → PUT → complete → row ready + `sync_revisions` create; mismatch
+      actually deletes the object; abort removes it.
+
+**DoD:** unit + integration green; CHANGELOG; STATE.
+
+### OPH-152 — API: read surface, pull-only sync, cascade cleanup, rename, markdown embeds
+
+- [ ] `GET /api/v1/files/:fileId` (member): `{file, downloadUrl, downloadExpiresAt}` —
+      URL null unless `ready`; minted per request (never stored).
+- [ ] `GET /api/v1/workspaces/:workspaceId/files` (member): `?targetType&targetId` list
+      (ready + uploading of that target, newest first) **or** `?projectId=` aggregate —
+      project files ∪ files of the project's (undeleted) tasks ∪ notes, each row +
+      `source: {type, id, title}`; batched queries, no N+1.
+- [ ] `PATCH /api/v1/files/:fileId` `{name}` (member, `ready` only): validate like init,
+      update + `recordSyncWrite('file','update',['name'])`.
+- [ ] Sync pull: `file` joins `SNAPSHOT_LOADERS` (ready rows snapshot via `serializeFile`;
+      deleted → tombstone). Push: **deliberately absent** from `ENTITIES` → test proves
+      `SYNC_UNSUPPORTED_ENTITY`.
+- [ ] Cascade (one helper, `src/db/files.js`: `cascadeDeleteFiles(trx, {workspaceId, targets,
+      userId}) → storageKeys`): task REST delete + sync `customDelete` (every subtree id),
+      note REST + sync delete, project REST + sync delete (project-targeted files only —
+      mirrors what entity deletion already does). Caller enqueues returned keys post-commit.
+      Archiving anything touches no files (test).
+- [ ] `GET /api/v1/workspaces/:workspaceId/files/usage` (member): `{totalBytes, fileCount}`
+      over ready+undeleted rows.
+- [ ] Markdown export: `deltaToMarkdown` (src/lib/delta.js) maps image embeds →
+      `![name](alliswell://file/{id})`, video/other embeds → `[name](alliswell://file/{id})`
+      (name from a passed resolver when available, else the URI); `deltaToPlainText` keeps
+      skipping embeds (search unchanged). Fixture set extended — the Dart converter mirrors it
+      in OPH-156.
+- [ ] Tests — unit: download-url shape/renewal, target list, aggregate list (incl. files of
+      deleted tasks excluded), rename validation + revision, pull snapshot/tombstone, push
+      refusal, cascade per entity type (task subtree included) + returned keys, usage sums,
+      markdown fixtures. Integration: delete task → file tombstone pulls + object gone
+      (MinIO); aggregate list over real rows.
+
+**DoD:** unit + integration green; CHANGELOG; STATE.
+
+### OPH-153 — App: replica v5 `files` + pull-only FileStore + upload service + storage probe
+
+- [ ] drift `FileRows` table (mirrors `serializeFile`; comment: read-only, no outbox path —
+      ExternalEvents precedent), `@DriftDatabase` list, `schemaVersion => 5`, `onUpgrade`
+      `if (from < 5) createTable`; regenerate `database.g.dart`; hand-rolled migration test
+      extended (v4→v5, drift_dev dump is broken on this toolchain — STATE note).
+- [ ] `sync_applier.dart`: `case 'file':` snapshot upsert + tombstone + companion mapper.
+- [ ] `features/files/` — `FileStore` (read-only): `watchForTarget(type, id)`,
+      `watchForProject(projectId)` (project ∪ its tasks' ∪ its notes' files via replica
+      joins, newest first, with source info), `watchUsage(workspaceId)`; providers keep
+      `syncEngineProvider` alive (calendar pattern).
+- [ ] `FilesApi` (dio via `apiClientProvider`, GoogleIntegrationsApi template): storageStatus,
+      init, complete, downloadUrl, rename, delete + `ApiException` mapping.
+- [ ] `UploadService`: pick result → init → dio PUT to presigned URL (`onSendProgress`,
+      CancelToken) → complete → `syncNow()` (archive-flow pattern); state machine
+      (queued/uploading(progress)/failed(retry)/done) exposed per target via a provider;
+      cancel aborts via DELETE. Web-safe (bytes) + io (stream from path) both covered.
+- [ ] `storageStatusProvider` (FutureProvider, REST — deployment state is not replica data);
+      picker seam `filePickerProvider` (wraps `file_picker`, override-able; added to
+      `syncTestOverrides`). New dep: `file_picker`.
+- [ ] Tests: applier round-trip (snapshot/tombstone), v4→v5 migration, store queries (target +
+      project aggregate + source labels), upload service against `FakeApi` + a fake transport
+      (progress events, cancel → DELETE, failure → retry, complete → replica row after pull),
+      probe on/off.
+
+**DoD:** `flutter analyze` + suite green; CHANGELOG; STATE.
+
+### OPH-154 — App: task detail "Attachments" section
+
+- [ ] `_SectionCard(title: 'task.attachments')` after Checklist: DESIGN §10 rows (thumb/kind
+      icon + name + `size · date`), add button → picker → visible progress row (cancel),
+      failed row → retry (F2).
+- [ ] Tap: image → full-screen viewer (InteractiveViewer, presigned URL, loading + honest
+      error); others → action sheet Open/Download (`urlLauncherProvider`) · Rename (sheet) ·
+      Delete (confirm with filename). Sizes locale-formatted (KB/MB helper, testable).
+- [ ] Storage not configured → the section renders a single quiet explainer row (F6), no
+      spinner. Offline image → placeholder tile (F3).
+- [ ] i18n en+tr (`task.attachments`, `file.*` namespace); contrast guard still FAILURES: 0.
+- [ ] Widget tests: list renders from replica rows, upload happy path via fakes, cancel,
+      failure→retry, delete confirm flow, not-configured state.
+
+**DoD:** analyze + suite green; light+dark checked; CHANGELOG; STATE.
+
+### OPH-155 — App: project "Files" tab (the file manager)
+
+- [ ] `ProjectDetailScreen`: `DefaultTabController length 4`, new `Tab('project.tabFiles')` +
+      `_ProjectFilesTab` (shape of `_ProjectTasksTab`): aggregated `watchForProject` list,
+      source filter chips (All · Project · Tasks · Notes), source badge per row (F4), sort
+      toggle (date default · name · size), upload FAB targeting the project, footer line with
+      usage (`files.usage` endpoint data via store/REST).
+- [ ] Row actions identical to OPH-154 (open/download, rename, delete); uploading rows with
+      progress; empty + not-configured `AwEmptyState`s (F6); archived-project banner logic
+      untouched (uploads still allowed — archiving deletes nothing).
+- [ ] i18n en+tr; L5 check: tab label fits (`Files`/`Dosyalar`).
+- [ ] Widget tests: tab appears, aggregate list with badges + filters, sort, upload flow,
+      actions, empty/not-configured states.
+
+**DoD:** analyze + suite green; light+dark; CHANGELOG; STATE.
+
+### OPH-156 — App: inline images/videos in notes (+ Dart markdown parity)
+
+- [ ] Editor toolbar: image + video insert buttons (custom, next to `QuillSimpleToolbar` —
+      no `flutter_quill_extensions` dependency): picker → upload targeting the note (a new
+      note autosaves first so it has an id) → insert standard Quill `image`/`video` embed with
+      source `alliswell://file/{fileId}`; while uploading, a progress chip near the toolbar
+      (cancel supported), insertion only on complete (no phantom embeds).
+- [ ] Custom `EmbedBuilder`s (editor + read-only README view): resolve id → cached presigned
+      URL (in-memory per file until expiry): image inline (shimmer while fetching, tap =
+      viewer), video/unknown → tile (kind icon + filename + open action). Offline/error →
+      placeholder tile (F3), never a broken glyph. Unknown-scheme sources (http images from
+      elsewhere) still render via plain network image — don't break foreign deltas.
+- [ ] Dart `deltaToMarkdown` (delta_markdown.dart) mirrors OPH-152's fixtures: image →
+      `![name](alliswell://file/{id})`, other embeds → `[name](…)`; `plainTextFromDelta`
+      unchanged. Fixture-for-fixture parity test with the API set.
+- [ ] Deleting the embed leaves the file row (undo safety — BLUEPRINT §12.5 rev.); the file
+      stays visible under the note/project Files surfaces.
+- [ ] i18n en+tr; widget tests: insert flow via fakes (embed lands with the file id), embed
+      renders image/tile/placeholder states, markdown parity, README read-only render.
+
+**DoD:** analyze + suite green; light+dark; CHANGELOG; STATE.
+
+### OPH-157 — Hardening, docs & the attachment QA matrix
+
+- [ ] Upload polish: retry keeps the original picked bytes where the platform allows;
+      duplicate-name uploads allowed (files are id-keyed) but the list disambiguates with
+      dates; graceful `FILE_UPLOAD_MISMATCH` restart.
+- [ ] Web reality pass: CORS happy path + the CORS-missing error surfaced honestly (names the
+      fix), CanvasKit image fetch, download via `Content-Disposition`.
+- [ ] Docs: README "Attachments & file storage" section (R2 setup walkthrough + CORS JSON +
+      MinIO dev loop), ATTACHMENTS.md trued up against implementation, SECURITY.md storage
+      paragraph, ROADMAP v0.3.0, BLUEPRINT/§18 + parking-lot cleanup verified.
+- [ ] **Manual matrix in STATE** (rides the Epic 12/13 device tour): iPhone photo upload,
+      Android video, desktop picker, web CORS ±, 100 MB file, offline placeholders, rename/
+      delete propagation across two clients.
+
+**DoD:** suites green; matrix recorded in STATE; **Epic 14 closes → v0.3.0.**
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
 - Project documents (block editor) — Phase 5 detail tasks to be expanded when reached.
 - Kanban & timeline views; smart lists/filters DSL; global search screen.
-- Attachments (S3-compatible storage); import from Todoist/TickTick/Apple Reminders; ICS export.
+- Attachments v2: multipart >5 GB uploads, thumbnails/transcodes, quota enforcement, local
+  binary cache for offline viewing, camera capture, inline video playback, public share links
+  (v1 shipped in Epic 14 — ATTACHMENTS.md §11).
+- Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).

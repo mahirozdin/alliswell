@@ -132,6 +132,7 @@ Optional DB admin UI: `docker compose --profile tools up -d adminer` → http://
 | --- | --- |
 | [docs/BLUEPRINT.md](docs/BLUEPRINT.md) | Product vision, domain model, full functional spec (TR) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture, stack, sync & calendar design |
+| [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md) | File attachments: R2/S3 storage, presigned flow, CORS setup |
 | [ROADMAP.md](ROADMAP.md) | Phase-by-phase roadmap: what's shipped, what's next, what's v2 |
 | [docs/TASKS.md](docs/TASKS.md) | Backlog: epics OPH-001…OPH-095 with acceptance criteria |
 | [docs/STATE.md](docs/STATE.md) | Live development state — what is done, what is next |

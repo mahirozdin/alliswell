@@ -3,11 +3,12 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-18 (**Feedback round 6 → Epic 13 doğdu ve çekirdeği AYNI GÜN gemiye
-bindi:** OPH-137 (Fikirler + Home dim) ✅, OPH-138 (acil task due saatinde alarm) ✅, OPH-139
-(gerçek alarm sesi + timeSensitive/critical + Android v2 kanal) ✅. Kalan: OPH-140 cihaz matrisi,
-OPH-141 AlarmKit (iOS 26), OPH-142 critical başvurusu, OPH-143 ring-screen. Epic 12 cihaz işleri
-aynen bekliyor. Hedef v0.2.0.)
+**Last updated:** 2026-07-18 (**Feedback round 7 → Epic 14 doğdu: Attachments & project files
+(Cloudflare R2/S3).** Kalıcı dokümanlar yazıldı — [ATTACHMENTS.md](ATTACHMENTS.md), ADR-0011,
+BLUEPRINT §4.10/§12.3-12.5/§14 Phase 8/§15.3/§16 Risk 7/§18, DESIGN §10, ARCHITECTURE §6b,
+TASKS Epic 14 (OPH-150…157) — ve implementasyon başladı. Epic 12/13'ün cihaz kuyruğu
+(OPH-131 Xcode, 140…143) kullanıcının cihaz turunu bekliyor; Epic 14 cihazsız ilerliyor.
+Hedef v0.3.0.)
 
 **Repository:** https://github.com/mahirozdin/alliswell (public) — CI green since the first push
 ([run #1](https://github.com/mahirozdin/alliswell/actions)): migrations apply/rollback/re-apply
@@ -17,13 +18,39 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 | | |
 | --- | --- |
-| Current phase | **Phase 7 (v0.2.0)** — Epic 11 kapalı; Epic 12 cihaz kuyruğunda; **Epic 13 (alarm omurgası) çekirdeği gemide**. v0.1.1 hâlâ hazır (Epic 10 kapalı). |
-| Current epic | **Epic 13 — Alarm omurgası** (feedback round 6): OPH-137/138/139 ✅. Kalan OPH-140…143 **cihaz/native** (AlarmKit = iOS 26 Swift + Live Activity). Epic 12'nin cihaz işleri (OPH-131 Xcode target, 132/133 etkileşim) aynen duruyor — tek fiziksel oturumda ikisi birden kapatılabilir. |
-| ➡️ **Next task** | **OPH-140 cihaz doğrulama matrisi** (alarm gerçekten çalıyor mu: Uyku Odağı + zincir + Onayla) — Epic 12 cihaz turu ile birleştir. Cihazsız ilerlenebilir tek iş: OPH-143'ün overlay/banner Dart kısmı. Sonra OPH-141 AlarmKit (Xcode). |
+| Current phase | **Phase 8 (v0.3.0)** — **Epic 14: Attachments & project files (R2/S3)** aktif. Phase 7'nin cihaz kuyruğu (Epic 12 OPH-131/132/133 kalanları + Epic 13 OPH-140…143) kullanıcının cihaz turunu bekliyor. |
+| Current epic | **Epic 14 — Attachments & project files** (feedback round 7, 2026-07-18): R2/S3 presigned depolama, task ekleri, notlarda satır içi resim/video, proje Files sekmesi (dosya yöneticisi). Plan: [ATTACHMENTS.md](ATTACHMENTS.md) + ADR-0011. Tamamen cihazsız ilerlenebilir. |
+| ➡️ **Next task** | Epic 14 sırada: **OPH-150 → 151 → 152** (API dikeyi) sonra **OPH-153…156** (app) — bkz. TASKS.md Epic 14. Cihaz turu geldiğinde Epic 12/13 kuyruğu (OPH-140 matrisi + OPH-131 Xcode) araya alınabilir. |
 | ✅ Kullanıcıdan bekleyen | Zorunlu YOK. Önerilen: **cihaz turu** (OPH-140 + Epic 12 görsel tur — telefonu tak, alarmları test et) ve **OPH-142 critical-alerts başvurusu** (Account Holder; formu NOTIFICATIONS.md §2'de, ret ihtimali yüksek — asıl yol AlarmKit). Opsiyonel: `GOOGLE_WEBHOOK_URL`, macOS sertifikası. |
 | Last completed | **OPH-137+138+139 — feedback round 6 çekirdeği** (2026-07-18): TR "Fikirler" + Home dim dürüstlüğü; acil task **due saatinde** alarm (API `effectiveRemindAt` + app sentetik alarm); gerçek alarm sesi (28 sn caf/m4a) + iOS timeSensitive/critical gate + Android `urgent_alarms_v2` (USAGE_ALARM + insistent + FSI) + Settings dürüst izin satırı. **App 280/280, API birim 223/223 + entegrasyon yeşil, analyze + check:i18n + kontrast temiz, `flutter build ios` GEÇTİ (caf bundle'da doğrulandı).** |
 
 ## Recently completed
+
+- **Feedback round 7 → Epic 14 (Attachments & project files, R2/S3) doğdu (2026-07-18):**
+  - **Kaynak:** Mahir dosya ekleri istedi — R2 backend'e, tasklara resim/video/dosya eki,
+    notlara satır içi resim/video, projede file-manager gibi bir **Files** sekmesi
+    (indir/yükle/yeniden adlandır/sil), her tür dosya.
+  - **Tasarım kararları ([ATTACHMENTS.md](ATTACHMENTS.md) + ADR-0011):** (1) S3 protokolü
+    konuşulur, R2 birincil (MinIO dev/CI) — vendor kilidi yok; (2) **bytes API'den geçmez** —
+    3 adımlı presigned upload (init→PUT→complete/HeadObject) + presigned GET indirme (R2
+    egress bedava, self-host VPS'i bant genişliği ödemesin); (3) `files` tek polimorfik tablo
+    (project|task|note hedefi), key'ler opak `ws/{wsId}/{fileId}`; (4) `file` **pull-only**
+    senkron varlığı (ADR-0008 external_event modeli — push `SYNC_UNSUPPORTED_ENTITY`,
+    yükleme doğası gereği online); (5) silme kaskadı + commit-sonrası obje-silme kuyruğu +
+    24 saat stale-upload süpürmesi = yetim bayt yok; (6) özellik `STORAGE_S3_*` yokken
+    kapalı ve dürüst (`STORAGE_NOT_CONFIGURED`); (7) not embed'leri `alliswell://file/{id}`
+    şemasıyla (asla presigned URL — süreli); (8) web için R2 bucket **CORS** kurulumu tek
+    kullanıcı-tarafı adım (ATTACHMENTS.md §8 rehber).
+  - **Kalıcı doküman revizyonları:** BLUEPRINT (§4.3, §4.5, YENİ §4.10, §12.3 Files sekmesi,
+    §12.4 Attachments, §12.5 editör medyası, §14 **Phase 8 (v0.3.0)**, §15.3 depolama
+    güvenliği, §16 **Risk 7**, §18 Epic 13+14 satırları), DESIGN **§10** (F1…F6 dosya
+    bileşen kuralları), ARCHITECTURE **§6b**, TASKS **Epic 14 (OPH-150…157, 8 task)**,
+    parking-lot güncellendi (attachments v1'e çekildi; v2 kalanları listelendi).
+  - **App keşfi (Explore ajanı):** proje detayı 3 sekmeli `DefaultTabController` (4.'yü
+    eklemek yeterli), task detayı `_SectionCard` idiomu, quill 11.5.1 embed builder'sız
+    (custom builder gerekecek; `flutter_quill_extensions` YOK), drift v4→v5, REST şablonu
+    `GoogleIntegrationsApi` + `urlLauncherProvider` seam'i, `file_picker` eklenmeli.
+  - Implementasyon aynı gün OPH-150'den başladı (aşağıya bakın).
 
 - **OPH-133 — Android widget render'ı yazıldı + `flutter build apk` ile DERLENDİ (2026-07-17):**
   - **Ne:** `TasksWidgetProvider : HomeWidgetProvider` (home_widget SharedPreferences snapshot'ını
