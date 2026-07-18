@@ -6,18 +6,25 @@
 > Definition of Done (AGENTS.md hard rule 11). If a change needs to deviate,
 > amend THIS file (and note why) in the same PR — never ship a one-off style.
 >
-> Established 2026-07-15 (design round 1, ADR-0005). Code home:
-> `apps/app/lib/src/theme/` (tokens + theme) and `apps/app/lib/src/widgets/`
-> (glass surfaces, shared states).
+> Established 2026-07-15 (design round 1, ADR-0005). **v2 "Liquid" refresh
+> 2026-07-18 (design round 8, ADR-0012)** — researched against Apple's Liquid
+> Glass guidance (HIG Materials, Adopting Liquid Glass; sources in the ADR).
+> Code home: `apps/app/lib/src/theme/` (tokens + theme) and
+> `apps/app/lib/src/widgets/` (glass surfaces, shared states).
 
 ## 1. Design language in one paragraph
 
-Apple-2026 "Liquid Glass" inspired, but **UX-first**: a calm aurora wash in
-the background, frosted-glass **chrome** (navigation rail, bottom bar), and
-**solid, high-contrast surfaces for everything users read or touch**. Rounded
-geometry (10–24 px), hairline borders, circular checkboxes, one accent blue.
-No decoration may ever cost legibility: if glass and readability conflict,
-readability wins.
+Apple-2026 **Liquid Glass**, UX-first. Navigation floats in its own glass
+layer above the content — a **capsule bottom bar** on phones, a **rounded
+glass panel rail** on wide layouts — built from blur + a saturation boost
+(color bleeds through vividly, never gray fog), a gradient **lensing edge**,
+a specular top catchlight and a soft ambient shadow. Beneath it: a colorful
+but calm **aurora wash** (azure/violet/mint blobs) and **solid,
+high-contrast surfaces for everything users read or touch**. Geometry is
+round and concentric (12–28 px, capsule controls), checkboxes are circular,
+and the palette is vivid Apple-flavored: azure primary, indigo secondary,
+saturated semantic hues — every pair contrast-verified. No decoration may
+ever cost legibility: if glass and readability conflict, readability wins.
 
 ## 2. Non-negotiable principles
 
@@ -41,20 +48,22 @@ Roles come from the hand-tuned `ColorScheme` in `theme.dart` (NOT
 
 | Token | Light | Dark | Used for |
 | --- | --- | --- | --- |
-| primary | `#2563EB` | `#8AB4FF` | buttons, selection, FAB |
-| onSurface | `#101828` | `#E7ECF6` | body text |
-| onSurfaceVariant | `#43516C` | `#A8B4CE` | secondary text, icons |
-| surface (cards) | `#FFFFFF` | `#131C31` | list rows, cards, sheets |
-| surfaceContainerHigh | `#E9EEF7` | `#1C2842` | input fill |
-| outline (input border) | `#697D9E` | `#6A7CA5` | enabled input borders (≥3:1 vs fill) |
-| error | `#B42318` | `#F97066` | errors, overdue, destructive |
-| tertiary | `#0F766E` | `#2DD4BF` | calendar dots, positive accents |
-| AwTokens.success | `#047857` | `#34D399` | done states, low priority |
-| AwTokens.warning | `#B45309` | `#FBBF24` | favorite/pin stars, medium priority |
-| AwTokens.link | `#1D4ED8` | `#8AB4FF` | text buttons, links |
-| AwTokens.prioLow/Med/High/Urgent | `#047857 #B45309 #C2410C #DC2626` | `#34D399 #FBBF24 #FB923C #F87171` | priority flags |
-| AwTokens.hairline | `#101828` @ 8% | `#E7ECF6` @ 12% | decorative card borders, dividers |
-| AwTokens.glassTint / veil / aurora* | see file | see file | chrome + background wash |
+| primary | `#0A5CFF` | `#3E9BFF` | buttons, selection, FAB (vivid azure) |
+| secondary | `#5A50E0` | `#B9AFFF` | selected chips, secondary accents (indigo) |
+| onSurface | `#0F1B2E` | `#EAF0FD` | body text |
+| onSurfaceVariant | `#44536F` | `#AAB6D6` | secondary text, icons |
+| surface (cards) | `#FFFFFF` | `#151F3C` | list rows, cards, sheets |
+| surfaceContainerHigh | `#E7EEFA` | `#1F2C51` | input fill |
+| outline (input border) | `#63789E` | `#7186B5` | enabled input borders (≥3:1 vs fill) |
+| error | `#D70015` | `#FF5147` | errors, overdue, destructive (Apple red) |
+| tertiary | `#0C7D6C` | `#35D6C2` | calendar dots, positive accents (teal) |
+| AwTokens.success | `#0D7A33` | `#30D158` | done states, switches-on (Apple green) |
+| AwTokens.warning | `#C77700` | `#FFC400` | favorite/pin stars, medium priority |
+| AwTokens.link | `#0B54D0` | `#3E9BFF` | text buttons, links |
+| AwTokens.prioLow/Med/High/Urgent | `#0F9D46 #C77700 #E8500A #E3261A` | `#30D158 #FFC400 #FF8A1E #FF453A` | priority flags (vivid, ≥3:1) |
+| AwTokens.hairline | `#0F1B2E` @ 8% | `#EAF0FD` @ 12% | decorative card borders, dividers |
+| AwTokens.glassTint/Stroke/Highlight/Shadow | see file | see file | glass material (tint, lens edge, catchlight, float shadow) |
+| AwTokens.aurora* / blobA·B·C / veil | see file | see file | background wash (azure/violet/mint blobs under a translucent veil) |
 
 **Priority hues are fixed** (low=green, medium=amber, high=orange,
 urgent=red) — only lightness adapts per theme, so meaning never shifts
@@ -63,11 +72,15 @@ two verified lightnesses.
 
 ### 3.2 Shape, spacing, motion
 
-- Radius scale `AwRadius`: **10** chips/small · **14** inputs & list rows ·
-  **18** cards · **24** sheets/dialogs. FAB uses 18.
+- Radius scale `AwRadius` (v2 — rounder, concentric: a nested shape's radius
+  ≈ parent radius − padding): **12** chips/badges · **16** inputs & list
+  rows · **20** cards · **28** sheets/dialogs · **32 (pill)** floating
+  chrome. Buttons are **capsules** (`StadiumBorder`); the FAB is a circle.
 - Spacing `AwSpace`: 4-pt grid (4/8/12/16/20/24/32/48). No off-grid values.
 - Motion `AwMotion`: fast 150 ms · base 220 ms · slow 320 ms.
-- Blur: `kAwGlassSigma = 18` (only inside `GlassSurface`).
+- Glass material: `kAwGlassSigma = 22` blur + `kAwGlassSaturation = 1.55`
+  saturation boost on the backdrop (only inside `GlassSurface`) — the boost
+  is what keeps blurred color vivid instead of gray.
 
 ### 3.3 Typography
 
@@ -79,29 +92,37 @@ Tabular figures for day numbers and timers.
 
 ## 4. Component rules (all themed centrally in `theme.dart`)
 
-- **Lists** are inset grouped cards: each row is a `Card` (radius 18,
+- **Lists** are inset grouped cards: each row is a `Card` (radius 20,
   hairline border, solid surface) with 6 px vertical rhythm inside
   `awListPadding(context)` (clears glass bars + FAB). No full-width
   divider lists.
 - **Checkboxes are circular** (Apple Reminders style); checked fill =
-  `AwTokens.success`.
-- **Buttons:** `FilledButton` = the one primary action per screen;
-  `FilledButton` with error colors for destructive confirms; `OutlinedButton`
-  secondary; `TextButton` tertiary/links. Min height 48.
+  `AwTokens.success`. **Switches read as iOS**: `AwTokens.success` track
+  when on, near-white knob.
+- **Buttons are capsules** (`StadiumBorder`, min height 48): `FilledButton`
+  = the one primary action per screen; `FilledButton` with error colors for
+  destructive confirms; `OutlinedButton` secondary; `TextButton`
+  tertiary/links. The FAB is a solid-primary **circle** (solid fills on
+  glass, per Apple guidance — glass is never stacked on glass).
 - **Sheets:** modal bottom sheets with drag handle (theme default), top
-  radius 24, `maxWidth 560` on wide screens, solid `surfaceContainerLow`.
+  radius 28, `maxWidth 560` on wide screens, solid `surfaceContainerLow`.
   Tappable rows inside sheets get a filled `surfaceContainerHigh` backdrop +
   chevron affordance (see `_SheetTile` in `task_create_sheet.dart`).
-- **Dialogs:** radius 24, solid, destructive action = error-colored
+- **Dialogs:** radius 28, solid, destructive action = error-colored
   `FilledButton`, cancel always present (escape route).
 - **Empty/error states:** use `AwEmptyState` / `AwErrorState`
   (`widgets/status_views.dart`) — icon badge, title, guidance, and for
   errors ALWAYS a Retry action. Inline form errors use `AwInlineError`
   (icon + errorContainer band above the submit button).
-- **Navigation:** `GlassSurface` wraps the `NavigationRail` (≥800 px) and
-  the bottom `NavigationBar` (<800 px, `extendBody: true` so content scrolls
-  under the glass). Selected item = primaryContainer pill; labels always
-  visible.
+- **Navigation floats** (Liquid Glass functional layer, v2): on phones
+  (<800 px) the `NavigationBar` lives in a **floating glass capsule**
+  (`GlassSurface(floating: true, radius: AwRadius.pill)`, 12 px side/bottom
+  margins, `extendBody: true` so content scrolls and peeks beneath it); on
+  wide layouts (≥800 px) the `NavigationRail` lives in a **floating glass
+  panel** (radius 28, 12 px margins). Floating glass = blur + saturation
+  boost + gradient lensing edge + specular catchlight + soft `glassShadow`.
+  Selected item = primaryContainer pill; labels always visible. Glass is
+  chrome-only (G1) — never under body text, never glass-on-glass.
 - **App bars:** transparent over the wash, title left, `titleLarge` w700,
   no elevation/tint.
 - **Backgrounds:** `AuroraBackground` is painted ONCE in `app.dart`
@@ -111,7 +132,7 @@ Tabular figures for day numbers and timers.
 - **Stars (favorite/pin)** use `AwTokens.warning`, never `Colors.amber`.
 - **Project badge (task rows — added 2026-07-17, feedback round 4, OPH-104):**
   a FILLED pill in the project's color, rightmost element of the row's
-  trailing cluster. Radius 10 (`AwRadius.s`), padding 8×2, `labelSmall` w600,
+  trailing cluster. Radius `AwRadius.s`, padding 8×2, `labelSmall` w600,
   min height 22, tap-transparent (the row handles taps). Label = the project
   name, truncated to its first 6 characters + "…" when longer (grapheme-safe
   via `Characters`); the FULL name is always available through `Tooltip`
@@ -127,6 +148,10 @@ Tabular figures for day numbers and timers.
 ## 5. Accessibility checklist (per UI PR)
 
 - [ ] Light + dark screenshots reviewed (no assumption from one theme).
+      Generator: `cd apps/app && flutter test --update-goldens
+      --dart-define=screenshots=true test/design_screenshots_test.dart`
+      → PNGs in `apps/app/test/goldens/` (real fonts, real shadows,
+      phone + desktop, both themes; skipped in CI without the define).
 - [ ] New color pairs verified ≥ 4.5:1 text / ≥ 3:1 icons-borders
       (script: `scripts/design/contrast.py`).
 - [ ] Tap targets ≥ 44 px; icon buttons have `tooltip`; meaningful controls

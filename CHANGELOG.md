@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **"Liquid Glass v2" visual refresh** (design round 8, ADR-0012): the whole
+  app moved to an authentic Apple Liquid Glass look — vivid azure/indigo
+  palette with Apple-red/green semantic colors (all 50 pairs still
+  WCAG-verified, `FAILURES: 0`), navigation that floats as a glass capsule
+  bar (phones) / glass panel rail (desktop) with blur + saturation boost,
+  lensing edge, catchlight and soft shadow, a colorful azure/violet/mint
+  aurora, capsule buttons, circular FAB, iOS-green switches, and rounder
+  concentric radii (12/16/20/28/pill 32). Android home-screen widget colors
+  moved with the tokens (W1). New reproducible screenshot harness
+  (`design_screenshots_test.dart`) renders light+dark, phone+desktop with
+  real fonts/shadows for the DESIGN §5 review; month-header and dropdown
+  labels hardened against narrow-width overflow found by it.
+
 ### Added
 
 - **Files tab shows your storage footprint** (OPH-157, Epic 14): a quiet

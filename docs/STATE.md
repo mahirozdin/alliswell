@@ -3,8 +3,17 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-18 (**Feedback round 7 → Epic 14 doğdu: Attachments & project files
-(Cloudflare R2/S3).** Kalıcı dokümanlar yazıldı — [ATTACHMENTS.md](ATTACHMENTS.md), ADR-0011,
+**Last updated:** 2026-07-18 (**Design round 8 → "Liquid Glass v2" görsel yenileme, ADR-0012:**
+Mahir'in "renkler belirgin değil, Apple Liquid tarzı değil" geri bildirimi üzerine Apple'ın
+Liquid Glass rehberleri araştırıldı (HIG Materials, Adopting Liquid Glass, Newsroom + 3 kaynak
+daha — ADR'de) ve tüm tema yenilendi: canlı azure/indigo palet (kontrast bekçisi 50 çift,
+FAILURES: 0), yüzen kapsül alt bar + yüzen cam rail (blur+saturation, lens kenarı, gölge),
+renkli aurora, kapsül butonlar, dairesel FAB, iOS-yeşili switch'ler, 12/16/20/28 radius.
+Android widget renkleri W1 gereği birlikte taşındı. Yeni screenshot harness'ı
+`design_screenshots_test.dart` (--dart-define=screenshots=true) DESIGN §5 turunu üretilebilir
+yaptı; gerçek fontla ortaya çıkan iki dar-genişlik taşması sertleştirildi (ay başlığı,
+dropdown etiketleri). App 306/306 yeşil. — Önceki: **Feedback round 7 → Epic 14 doğdu:
+Attachments & project files (Cloudflare R2/S3).** Kalıcı dokümanlar yazıldı — [ATTACHMENTS.md](ATTACHMENTS.md), ADR-0011,
 BLUEPRINT §4.10/§12.3-12.5/§14 Phase 8/§15.3/§16 Risk 7/§18, DESIGN §10, ARCHITECTURE §6b,
 TASKS Epic 14 (OPH-150…157) — ve implementasyon başladı. Epic 12/13'ün cihaz kuyruğu
 (OPH-131 Xcode, 140…143) kullanıcının cihaz turunu bekliyor; Epic 14 cihazsız ilerliyor.
@@ -26,6 +35,12 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **Design round 8 → "Liquid Glass v2" (2026-07-18, ADR-0012):** Apple kaynaklarına dayalı
+  tam görsel yenileme — DESIGN.md §1/§3/§4/§5 güncellendi, `tokens.dart`/`theme.dart`/
+  `glass.dart`/`home_shell.dart` yeniden yazıldı/geçirildi, `scripts/design/contrast.py`
+  yeni paletle 50 çifti doğruluyor (FAILURES: 0), Android widget renk tabloları taşındı,
+  kalıcı screenshot harness eklendi (`apps/app/test/design_screenshots_test.dart`).
+  Ekran görüntüleri (açık+koyu, telefon+masaüstü) üretildi ve gözden geçirildi.
 - **Feedback round 7 → Epic 14 (Attachments & project files, R2/S3) doğdu (2026-07-18):**
   - **Kaynak:** Mahir dosya ekleri istedi — R2 backend'e, tasklara resim/video/dosya eki,
     notlara satır içi resim/video, projede file-manager gibi bir **Files** sekmesi

@@ -51,17 +51,23 @@ class StatusLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          taskStatusIcon(status),
-          size: 18,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 8),
-        Text(taskStatusLabel(status)),
-      ],
+    // Same FittedBox(scaleDown) treatment as PriorityLabel: dropdown entries
+    // must survive tight measuring passes and long locales (DESIGN §9 L2).
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            taskStatusIcon(status),
+            size: 18,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Text(taskStatusLabel(status)),
+        ],
+      ),
     );
   }
 }
@@ -75,17 +81,24 @@ class PriorityLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = taskPriorityColorOf(context, priority);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          color == null ? Icons.flag_outlined : Icons.flag,
-          size: 18,
-          color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 8),
-        Text(taskPriorityLabel(priority)),
-      ],
+    // FittedBox(scaleDown): identical at normal widths, but survives the
+    // dropdown's tight measuring passes and long locales without overflow
+    // (DESIGN §9 L2).
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            color == null ? Icons.flag_outlined : Icons.flag,
+            size: 18,
+            color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Text(taskPriorityLabel(priority)),
+        ],
+      ),
     );
   }
 }

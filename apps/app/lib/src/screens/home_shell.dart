@@ -14,12 +14,13 @@ import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
+import '../theme/tokens.dart';
 import '../widgets/glass.dart';
 
-/// Adaptive shell: frosted-glass navigation rail on wide layouts
-/// (desktop/web/tablet), frosted-glass bottom bar on narrow ones (phones).
-/// Glass lives only here, in the chrome layer — content stays solid
-/// (docs/DESIGN.md).
+/// Adaptive shell: floating Liquid Glass chrome — a glass rail panel on wide
+/// layouts (desktop/web/tablet), a glass capsule bottom bar on narrow ones
+/// (phones). Navigation floats in its own functional layer above the content,
+/// which scrolls beneath it (docs/DESIGN.md §4); content itself stays solid.
 class HomeShell extends ConsumerWidget {
   const HomeShell({super.key, required this.navigationShell});
 
@@ -153,36 +154,50 @@ class HomeShell extends ConsumerWidget {
             floatingActionButton: _sectionFab(context, ref),
             body: Row(
               children: [
-                GlassSurface(
-                  edge: GlassEdge.right,
-                  child: SafeArea(
-                    child: NavigationRail(
-                      extended: constraints.maxWidth >= 1160,
-                      labelType: constraints.maxWidth >= 1160
-                          ? NavigationRailLabelType.none
-                          : NavigationRailLabelType.all,
-                      selectedIndex: navigationShell.currentIndex,
-                      onDestinationSelected: _goBranch,
-                      minWidth: 84,
-                      groupAlignment: -0.9,
-                      destinations: [
-                        for (final section in AppSection.values)
-                          NavigationRailDestination(
-                            icon: KeyedSubtree(
-                              key: _navKeys[section]!.icon,
-                              child: Tooltip(
-                                message: section.description,
-                                waitDuration: const Duration(milliseconds: 600),
-                                child: Icon(section.icon),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AwSpace.x3,
+                    AwSpace.x3,
+                    0,
+                    AwSpace.x3,
+                  ),
+                  child: GlassSurface(
+                    floating: true,
+                    borderRadius: const BorderRadius.all(
+                      Radius.circular(AwRadius.xl),
+                    ),
+                    child: SafeArea(
+                      right: false,
+                      child: NavigationRail(
+                        extended: constraints.maxWidth >= 1160,
+                        labelType: constraints.maxWidth >= 1160
+                            ? NavigationRailLabelType.none
+                            : NavigationRailLabelType.all,
+                        selectedIndex: navigationShell.currentIndex,
+                        onDestinationSelected: _goBranch,
+                        minWidth: 84,
+                        groupAlignment: -0.9,
+                        destinations: [
+                          for (final section in AppSection.values)
+                            NavigationRailDestination(
+                              icon: KeyedSubtree(
+                                key: _navKeys[section]!.icon,
+                                child: Tooltip(
+                                  message: section.description,
+                                  waitDuration: const Duration(
+                                    milliseconds: 600,
+                                  ),
+                                  child: Icon(section.icon),
+                                ),
                               ),
+                              selectedIcon: KeyedSubtree(
+                                key: _navKeys[section]!.selected,
+                                child: Icon(section.selectedIcon),
+                              ),
+                              label: Text(section.title),
                             ),
-                            selectedIcon: KeyedSubtree(
-                              key: _navKeys[section]!.selected,
-                              child: Icon(section.selectedIcon),
-                            ),
-                            label: Text(section.title),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -196,28 +211,35 @@ class HomeShell extends ConsumerWidget {
           extendBody: true,
           floatingActionButton: _sectionFab(context, ref),
           body: navigationShell,
-          bottomNavigationBar: GlassSurface(
-            edge: GlassEdge.top,
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
             child: SafeArea(
               top: false,
-              child: NavigationBar(
-                selectedIndex: navigationShell.currentIndex,
-                onDestinationSelected: _goBranch,
-                destinations: [
-                  for (final section in AppSection.values)
-                    NavigationDestination(
-                      icon: KeyedSubtree(
-                        key: _navKeys[section]!.icon,
-                        child: Icon(section.icon),
+              minimum: const EdgeInsets.only(bottom: AwSpace.x3),
+              child: GlassSurface(
+                floating: true,
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(AwRadius.pill),
+                ),
+                child: NavigationBar(
+                  selectedIndex: navigationShell.currentIndex,
+                  onDestinationSelected: _goBranch,
+                  destinations: [
+                    for (final section in AppSection.values)
+                      NavigationDestination(
+                        icon: KeyedSubtree(
+                          key: _navKeys[section]!.icon,
+                          child: Icon(section.icon),
+                        ),
+                        selectedIcon: KeyedSubtree(
+                          key: _navKeys[section]!.selected,
+                          child: Icon(section.selectedIcon),
+                        ),
+                        label: section.title,
+                        tooltip: section.title,
                       ),
-                      selectedIcon: KeyedSubtree(
-                        key: _navKeys[section]!.selected,
-                        child: Icon(section.selectedIcon),
-                      ),
-                      label: section.title,
-                      tooltip: section.title,
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

@@ -9,7 +9,9 @@ import '../auth/providers.dart';
 /// fire-and-forget: a no-op when signed out, and silent on failure (the local
 /// choice already succeeded). Seeding the app FROM `users.locale` on a fresh
 /// sign-in is a follow-up — the app has no `/me` fetch flow yet.
-final accountLocaleSyncProvider = Provider<Future<void> Function(String)>((ref) {
+final accountLocaleSyncProvider = Provider<Future<void> Function(String)>((
+  ref,
+) {
   return (String languageCode) async {
     if (ref.read(authControllerProvider).value == null) return;
     try {

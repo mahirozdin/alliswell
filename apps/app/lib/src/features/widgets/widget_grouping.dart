@@ -72,6 +72,9 @@ List<WidgetGroup> groupTasksForWidget(
   return [
     for (final bucket in WidgetBucket.values)
       if (byBucket[bucket]!.isNotEmpty)
-        WidgetGroup(bucket: bucket, tasks: byBucket[bucket]!..sort(chronologically)),
+        WidgetGroup(
+          bucket: bucket,
+          tasks: byBucket[bucket]!..sort(chronologically),
+        ),
   ];
 }

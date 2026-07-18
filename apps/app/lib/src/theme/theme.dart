@@ -7,86 +7,91 @@ import 'tokens.dart';
 /// (`#2563EB`, BLUEPRINT §10.2). Kept exported for the palette pickers.
 const kSeedColor = Color(0xFF2563EB);
 
-/// Builds the "AllisWell Glass" theme (docs/DESIGN.md). Hand-tuned
-/// [ColorScheme] instead of `fromSeed`: every role is contrast-verified
-/// (text ≥ 4.5:1, icons/borders ≥ 3:1) — keep it that way when editing.
-ThemeData buildAwTheme(Brightness brightness) {
+/// Builds the "AllisWell Glass v2 — Liquid" theme (docs/DESIGN.md).
+/// Hand-tuned [ColorScheme] instead of `fromSeed`: every role is
+/// contrast-verified (text ≥ 4.5:1, icons/borders ≥ 3:1) — keep it that way
+/// when editing (run `python3 scripts/design/contrast.py`).
+///
+/// [fontFamilyOverride] exists for the screenshot harness only (the platform
+/// default family renders as box glyphs inside `flutter test`); production
+/// callers pass nothing and keep the system font (DESIGN §3.3).
+ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
   final isDark = brightness == Brightness.dark;
   final tokens = isDark ? AwTokens.dark : AwTokens.light;
 
   final scheme = isDark
       ? const ColorScheme(
           brightness: Brightness.dark,
-          primary: Color(0xFF8AB4FF),
-          onPrimary: Color(0xFF0A1E4A),
-          primaryContainer: Color(0xFF284B8F),
-          onPrimaryContainer: Color(0xFFDBE6FF),
-          secondary: Color(0xFF9FB2D9),
-          onSecondary: Color(0xFF16233F),
-          secondaryContainer: Color(0xFF2A3A5E),
-          onSecondaryContainer: Color(0xFFDCE5F7),
-          tertiary: Color(0xFF2DD4BF),
-          onTertiary: Color(0xFF063F38),
-          tertiaryContainer: Color(0xFF115E56),
-          onTertiaryContainer: Color(0xFFB7F5EA),
-          error: Color(0xFFF97066),
-          onError: Color(0xFF4A0E0A),
-          errorContainer: Color(0xFF7F1D1D),
-          onErrorContainer: Color(0xFFFECDCA),
-          surface: Color(0xFF131C31),
-          onSurface: Color(0xFFE7ECF6),
-          surfaceDim: Color(0xFF0B1020),
-          surfaceBright: Color(0xFF263252),
-          surfaceContainerLowest: Color(0xFF0E1526),
-          surfaceContainerLow: Color(0xFF111A2E),
-          surfaceContainer: Color(0xFF16203A),
-          surfaceContainerHigh: Color(0xFF1C2842),
-          surfaceContainerHighest: Color(0xFF233152),
-          onSurfaceVariant: Color(0xFFA8B4CE),
-          outline: Color(0xFF6A7CA5),
-          outlineVariant: Color(0xFF33415F),
+          primary: Color(0xFF3E9BFF),
+          onPrimary: Color(0xFF04234E),
+          primaryContainer: Color(0xFF1D4FA6),
+          onPrimaryContainer: Color(0xFFD9E8FF),
+          secondary: Color(0xFFB9AFFF),
+          onSecondary: Color(0xFF241B66),
+          secondaryContainer: Color(0xFF3B3583),
+          onSecondaryContainer: Color(0xFFE6E1FF),
+          tertiary: Color(0xFF35D6C2),
+          onTertiary: Color(0xFF04352D),
+          tertiaryContainer: Color(0xFF0E5B4F),
+          onTertiaryContainer: Color(0xFFBDF6EC),
+          error: Color(0xFFFF5147),
+          onError: Color(0xFF450603),
+          errorContainer: Color(0xFF7A1F18),
+          onErrorContainer: Color(0xFFFFD9D5),
+          surface: Color(0xFF151F3C),
+          onSurface: Color(0xFFEAF0FD),
+          surfaceDim: Color(0xFF0A0F26),
+          surfaceBright: Color(0xFF2A3963),
+          surfaceContainerLowest: Color(0xFF0E1630),
+          surfaceContainerLow: Color(0xFF121B36),
+          surfaceContainer: Color(0xFF182342),
+          surfaceContainerHigh: Color(0xFF1F2C51),
+          surfaceContainerHighest: Color(0xFF26345E),
+          onSurfaceVariant: Color(0xFFAAB6D6),
+          outline: Color(0xFF7186B5),
+          outlineVariant: Color(0xFF37456B),
           shadow: Color(0xFF000000),
           scrim: Color(0xFF000000),
-          inverseSurface: Color(0xFFE7ECF6),
-          onInverseSurface: Color(0xFF131C31),
-          inversePrimary: Color(0xFF2563EB),
+          inverseSurface: Color(0xFFEAF0FD),
+          onInverseSurface: Color(0xFF151F3C),
+          inversePrimary: Color(0xFF0A5CFF),
           surfaceTint: Colors.transparent,
         )
       : const ColorScheme(
           brightness: Brightness.light,
-          primary: Color(0xFF2563EB),
+          primary: Color(0xFF0A5CFF),
           onPrimary: Color(0xFFFFFFFF),
-          primaryContainer: Color(0xFFDBEAFE),
-          onPrimaryContainer: Color(0xFF1E3A8A),
-          secondary: Color(0xFF44557E),
+          primaryContainer: Color(0xFFD6E5FF),
+          onPrimaryContainer: Color(0xFF0A3FBF),
+          secondary: Color(0xFF5A50E0),
           onSecondary: Color(0xFFFFFFFF),
-          secondaryContainer: Color(0xFFDDE7F6),
-          onSecondaryContainer: Color(0xFF24345C),
-          tertiary: Color(0xFF0F766E),
+          secondaryContainer: Color(0xFFE4E1FF),
+          onSecondaryContainer: Color(0xFF3A32A8),
+          tertiary: Color(0xFF0C7D6C),
           onTertiary: Color(0xFFFFFFFF),
-          tertiaryContainer: Color(0xFFCCFBF1),
-          onTertiaryContainer: Color(0xFF134E4A),
-          error: Color(0xFFB42318),
+          tertiaryContainer: Color(0xFFBFF2E6),
+          onTertiaryContainer: Color(0xFF084F44),
+          error: Color(0xFFD70015),
           onError: Color(0xFFFFFFFF),
-          errorContainer: Color(0xFFFEE4E2),
-          onErrorContainer: Color(0xFF7A271A),
+          errorContainer: Color(0xFFFFE3E0),
+          onErrorContainer: Color(0xFF99000F),
           surface: Color(0xFFFFFFFF),
-          onSurface: Color(0xFF101828),
-          surfaceDim: Color(0xFFE3E9F4),
+          onSurface: Color(0xFF0F1B2E),
+          surfaceDim: Color(0xFFDEE7F7),
           surfaceBright: Color(0xFFFFFFFF),
           surfaceContainerLowest: Color(0xFFFFFFFF),
-          surfaceContainerLow: Color(0xFFF8FAFD),
-          surfaceContainer: Color(0xFFEEF2F9),
-          surfaceContainerHigh: Color(0xFFE9EEF7),
-          surfaceContainerHighest: Color(0xFFE1E8F3),
-          onSurfaceVariant: Color(0xFF43516C),
-          outline: Color(0xFF697D9E),
-          outlineVariant: Color(0xFFC9D4E5),
-          shadow: Color(0xFF0B1020),
-          scrim: Color(0xFF0B1020),
+          surfaceContainerLow: Color(0xFFF6F9FF),
+          surfaceContainer: Color(0xFFEBF1FC),
+          surfaceContainerHigh: Color(0xFFE7EEFA),
+          surfaceContainerHighest: Color(0xFFDEE8F8),
+          onSurfaceVariant: Color(0xFF44536F),
+          outline: Color(0xFF63789E),
+          outlineVariant: Color(0xFFC7D3E8),
+          shadow: Color(0xFF0A1C3D),
+          scrim: Color(0xFF0A1C3D),
           inverseSurface: Color(0xFF1D2739),
           onInverseSurface: Color(0xFFEFF3FA),
-          inversePrimary: Color(0xFF8AB4FF),
+          inversePrimary: Color(0xFF3E9BFF),
           surfaceTint: Colors.transparent,
         );
 
@@ -100,6 +105,7 @@ ThemeData buildAwTheme(Brightness brightness) {
       ).englishLike.apply(
         bodyColor: scheme.onSurface,
         displayColor: scheme.onSurface,
+        fontFamily: fontFamilyOverride,
       );
   final textTheme = baseText.copyWith(
     headlineMedium: baseText.headlineMedium?.copyWith(
@@ -112,7 +118,7 @@ ThemeData buildAwTheme(Brightness brightness) {
     ),
     titleLarge: baseText.titleLarge?.copyWith(
       fontWeight: FontWeight.w700,
-      letterSpacing: -0.2,
+      letterSpacing: -0.3,
     ),
     titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
     titleSmall: baseText.titleSmall?.copyWith(fontWeight: FontWeight.w600),
@@ -200,13 +206,14 @@ ThemeData buildAwTheme(Brightness brightness) {
         vertical: 14,
       ),
     ),
+    // Liquid Glass control geometry: primary actions are capsules, the way
+    // iOS 26 buttons nestle into rounded corners. One prominent (filled)
+    // action per screen; everything else stays quieter.
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size(64, 48),
         padding: const EdgeInsets.symmetric(horizontal: AwSpace.x6),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AwRadius.m)),
-        ),
+        shape: const StadiumBorder(),
         textStyle: textTheme.labelLarge,
         animationDuration: AwMotion.fast,
       ),
@@ -217,9 +224,7 @@ ThemeData buildAwTheme(Brightness brightness) {
         elevation: 0,
         backgroundColor: scheme.surfaceContainerHigh,
         foregroundColor: scheme.onSurface,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AwRadius.m)),
-        ),
+        shape: const StadiumBorder(),
         textStyle: textTheme.labelLarge,
       ),
     ),
@@ -228,9 +233,7 @@ ThemeData buildAwTheme(Brightness brightness) {
         minimumSize: const Size(64, 48),
         foregroundColor: tokens.link,
         side: BorderSide(color: scheme.outline),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AwRadius.m)),
-        ),
+        shape: const StadiumBorder(),
         textStyle: textTheme.labelLarge,
       ),
     ),
@@ -238,9 +241,7 @@ ThemeData buildAwTheme(Brightness brightness) {
       style: TextButton.styleFrom(
         minimumSize: const Size(48, 44),
         foregroundColor: tokens.link,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AwRadius.s)),
-        ),
+        shape: const StadiumBorder(),
         textStyle: textTheme.labelLarge,
       ),
     ),
@@ -253,11 +254,9 @@ ThemeData buildAwTheme(Brightness brightness) {
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: scheme.primary,
       foregroundColor: scheme.onPrimary,
-      elevation: 3,
-      highlightElevation: 1,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(AwRadius.l)),
-      ),
+      elevation: 4,
+      highlightElevation: 2,
+      shape: const CircleBorder(),
     ),
     checkboxTheme: CheckboxThemeData(
       shape: const CircleBorder(),
@@ -268,18 +267,19 @@ ThemeData buildAwTheme(Brightness brightness) {
             : Colors.transparent,
       ),
       checkColor: WidgetStatePropertyAll(
-        isDark ? const Color(0xFF06281D) : Colors.white,
+        isDark ? const Color(0xFF052E1B) : Colors.white,
       ),
     ),
+    // Switches read as iOS: green when on, white knob.
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? scheme.onPrimary
+            ? (isDark ? scheme.onSurface : scheme.surfaceBright)
             : scheme.outline,
       ),
       trackColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? scheme.primary
+            ? tokens.success
             : scheme.surfaceContainerHighest,
       ),
       trackOutlineColor: WidgetStateProperty.resolveWith(
@@ -304,7 +304,7 @@ ThemeData buildAwTheme(Brightness brightness) {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      height: 68,
+      height: 64,
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,

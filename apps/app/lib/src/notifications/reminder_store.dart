@@ -139,15 +139,9 @@ class ReminderStore {
     }
 
     final joined =
-        await ((_db.select(
-              _db.reminders,
-            )..where((r) => r.id.equals(id))).join([
-              innerJoin(
-                _db.tasks,
-                _db.tasks.id.equalsExp(_db.reminders.taskId),
-              ),
-            ]))
-            .getSingleOrNull();
+        await ((_db.select(_db.reminders)..where((r) => r.id.equals(id))).join([
+          innerJoin(_db.tasks, _db.tasks.id.equalsExp(_db.reminders.taskId)),
+        ])).getSingleOrNull();
     if (joined == null) return;
     final reminder = joined.readTable(_db.reminders);
     final task = joined.readTable(_db.tasks);

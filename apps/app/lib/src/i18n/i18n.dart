@@ -22,8 +22,7 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import '../core/kv/local_kv.dart';
 // Sets `<html lang>` on web; a no-op everywhere else (OPH-128).
-import 'html_lang_stub.dart'
-    if (dart.library.js_interop) 'html_lang_web.dart';
+import 'html_lang_stub.dart' if (dart.library.js_interop) 'html_lang_web.dart';
 
 /// The locales AllisWell ships. Adding a language: drop `assets/i18n/<code>.json`
 /// and add its [Locale] here — no other code change (ADR-0009).

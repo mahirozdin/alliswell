@@ -69,13 +69,18 @@ class _MonthCalendarState extends State<MonthCalendar> {
         Row(
           children: [
             const SizedBox(width: 8),
-            Text(
-              '${_months[_month.month - 1]} ${_month.year}',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
+            // Expanded + ellipsis so long month names (or mid-animation
+            // widths) never overflow the header (DESIGN §9 L2).
+            Expanded(
+              child: Text(
+                '${_months[_month.month - 1]} ${_month.year}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-            const Spacer(),
             IconButton(
               tooltip: 'calendar.previousMonth'.tr(),
               icon: const Icon(Icons.chevron_left),

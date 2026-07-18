@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Dark palette for the home-screen widget (OPH-133), mirroring docs/DESIGN.md. -->
 <resources>
-    <color name="aw_widget_bg">#FF131C31</color>
-    <color name="aw_widget_text">#FFE7ECF6</color>
-    <color name="aw_widget_secondary">#FFA8B4CE</color>
-    <color name="aw_widget_overdue">#FFF97066</color>
-    <color name="aw_widget_accent">#FF8AB4FF</color>
+    <color name="aw_widget_bg">#FF151F3C</color>
+    <color name="aw_widget_text">#FFEAF0FD</color>
+    <color name="aw_widget_secondary">#FFAAB6D6</color>
+    <color name="aw_widget_overdue">#FFFF5147</color>
+    <color name="aw_widget_accent">#FF3E9BFF</color>
 </resources>

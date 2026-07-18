@@ -3,8 +3,8 @@
      values-night/ variant carries the dark palette. -->
 <resources>
     <color name="aw_widget_bg">#FFFFFFFF</color>
-    <color name="aw_widget_text">#FF101828</color>
-    <color name="aw_widget_secondary">#FF43516C</color>
-    <color name="aw_widget_overdue">#FFB42318</color>
-    <color name="aw_widget_accent">#FF2563EB</color>
+    <color name="aw_widget_text">#FF0F1B2E</color>
+    <color name="aw_widget_secondary">#FF44536F</color>
+    <color name="aw_widget_overdue">#FFD70015</color>
+    <color name="aw_widget_accent">#FF0A5CFF</color>
 </resources>
