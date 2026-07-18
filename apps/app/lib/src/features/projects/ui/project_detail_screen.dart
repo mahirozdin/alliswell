@@ -528,7 +528,9 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
   @override
   Widget build(BuildContext context) {
     final project = widget.project;
+    final theme = Theme.of(context);
     final status = ref.watch(storageStatusProvider);
+    final usage = ref.watch(workspaceFilesUsageProvider).value;
     final entries = ref.watch(projectFilesProvider(project.id));
     final uploads = ref
         .watch(uploadsProvider)
@@ -641,6 +643,23 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
             data: list,
           ),
         ),
+        // Quiet workspace-wide footprint line (OPH-157). Display only —
+        // quota enforcement is deliberately v2 (ATTACHMENTS.md §11).
+        if (configured && usage != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              'file.usage'.tr(
+                args: {
+                  'count': '${usage.fileCount}',
+                  'size': formatBytes(usage.totalBytes),
+                },
+              ),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
       ],
     );
   }

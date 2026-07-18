@@ -27,3 +27,14 @@ For contributors — the standing rules (BLUEPRINT §15.3, enforced through revi
 - Notification payloads contain IDs only, never task content.
 - Rate limiting globally and stricter on auth endpoints.
 - Secrets live in `.env` (gitignored); `.env.example` carries placeholders only.
+
+## File storage (attachments)
+
+S3/R2 credentials live only on the server (`STORAGE_S3_*`, never committed).
+Clients receive single-object, single-verb presigned URLs that expire
+(`STORAGE_PRESIGN_TTL_SEC`, default 1 h); URLs are never logged, synced or
+exported. Storage keys are opaque (`ws/{workspaceId}/{fileId}` — no filenames,
+no PII). Uploads only become visible after the server verifies the object
+against its declaration; mismatches are deleted. Bytes are never served from
+the app origin, and download content types are pinned server-side. Details:
+[docs/ATTACHMENTS.md](docs/ATTACHMENTS.md) §9.

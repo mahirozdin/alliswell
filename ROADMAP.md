@@ -131,13 +131,27 @@ verified by real device builds (the notification/EventKit pattern).
 
 ---
 
+## Toward v0.3.0
+
+### Phase 8 — Attachments & project files 🟡 (feedback round 7)
+
+Cloudflare R2 / any S3-compatible store; bytes go client↔bucket via presigned
+URLs (the API never proxies them). Shipped: the whole API vertical (storage
+plugin + MinIO dev/CI, presigned upload lifecycle with verification + GC
+sweeps, pull-only `file` sync entity, delete cascades, rename, markdown-export
+embeds) and the app surfaces (task-detail Attachments, the project **Files**
+tab with source badges/filters/sort/usage footer, inline note images & videos
+with honest offline placeholders). Remaining: the manual device/web QA matrix
+(CORS reality pass, big files) — rides the Epic 12/13 device tour. Design:
+[docs/ATTACHMENTS.md](docs/ATTACHMENTS.md), ADR-0011.
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:
 
 - Multi-user workspace sharing & roles UI (the schema already supports members).
 - Project documents (block editor); Kanban & timeline views; smart-list / filter DSL.
-- Attachments (S3-compatible); import from Todoist / TickTick / Apple Reminders; ICS export.
+- Attachments v2 (multipart >5 GB, thumbnails, quotas, offline binary cache — v1 shipped in Phase 8); import from Todoist / TickTick / Apple Reminders; ICS export.
 - CalDAV connector for iCloud ([design](docs/CALDAV.md)); the inbound half of the Apple mirror.
 - Metrics endpoint (Prometheus), audit-log UI, admin panel.
 - E2E tests (Patrol / integration_test), web httpOnly refresh-cookie hardening.

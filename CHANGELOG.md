@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Files tab shows your storage footprint** (OPH-157, Epic 14): a quiet
+  "N files · X MB used" line under the project file manager. Attachment setup
+  is now documented for self-hosters (README + docs/ATTACHMENTS.md — including
+  the one-time R2 CORS rule web browsers need) and the security model is spelled
+  out in SECURITY.md.
 - **Notes carry images and videos inline** (OPH-156, Epic 14): the note editor
   gained insert-image / insert-video buttons — the file uploads to the note and
   drops into the text right where your cursor is. Images render inline (tap for

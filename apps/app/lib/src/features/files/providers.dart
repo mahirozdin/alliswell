@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_exception.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
+import '../workspaces/workspaces.dart';
 import 'data/file_attachment.dart';
 import 'data/files_api.dart';
 import 'data/pick_files.dart';
@@ -162,3 +163,12 @@ final fileByIdProvider = FutureProvider.autoDispose
     .family<FileAttachment?, String>(
       (ref, fileId) => ref.watch(fileStoreProvider).byId(fileId),
     );
+
+/// Workspace storage footprint for the Files-tab footer (OPH-157) — REST,
+/// fetched per mount (autoDispose): usage is server truth, not replica data.
+final workspaceFilesUsageProvider =
+    FutureProvider.autoDispose<({int totalBytes, int fileCount})?>((ref) async {
+      final workspace = ref.watch(currentWorkspaceProvider).value;
+      if (workspace == null) return null;
+      return ref.watch(filesApiProvider).usage(workspace.id);
+    });

@@ -46,34 +46,37 @@ void main() {
     ]);
   });
 
-  test('merges consecutive code lines into one fenced block, renders embeds inline', () {
-    final markdown = deltaToMarkdown([
-      {'insert': 'const a = 1;'},
-      {
-        'insert': '\n',
-        'attributes': {'code-block': true},
-      },
-      {'insert': 'const b = 2;'},
-      {
-        'insert': '\n',
-        'attributes': {'code-block': true},
-      },
-      // Since OPH-156 image embeds render as markdown images (server parity —
-      // they used to be dropped); attachment coverage: note_media_test.dart.
-      {
-        'insert': {'image': 'x.png'},
-      },
-      {'insert': 'son satır\n'},
-    ]);
+  test(
+    'merges consecutive code lines into one fenced block, renders embeds inline',
+    () {
+      final markdown = deltaToMarkdown([
+        {'insert': 'const a = 1;'},
+        {
+          'insert': '\n',
+          'attributes': {'code-block': true},
+        },
+        {'insert': 'const b = 2;'},
+        {
+          'insert': '\n',
+          'attributes': {'code-block': true},
+        },
+        // Since OPH-156 image embeds render as markdown images (server parity —
+        // they used to be dropped); attachment coverage: note_media_test.dart.
+        {
+          'insert': {'image': 'x.png'},
+        },
+        {'insert': 'son satır\n'},
+      ]);
 
-    expect(markdown.split('\n'), [
-      '```',
-      'const a = 1;',
-      'const b = 2;',
-      '```',
-      '![](x.png)son satır',
-    ]);
-  });
+      expect(markdown.split('\n'), [
+        '```',
+        'const a = 1;',
+        'const b = 2;',
+        '```',
+        '![](x.png)son satır',
+      ]);
+    },
+  );
 
   test('empty and trailing-newline documents come out clean', () {
     expect(deltaToMarkdown([]), '');

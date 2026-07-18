@@ -776,6 +776,17 @@ class FakeApi {
     RequestOptions options,
     Map<String, dynamic>? body,
   ) {
+    if (path == '/api/v1/workspaces/$workspaceId/files/usage' &&
+        options.method == 'GET') {
+      var total = 0;
+      for (final f in files) {
+        total += (f['sizeBytes'] as num).toInt();
+      }
+      return Future.value(
+        jsonBody(200, {'totalBytes': total, 'fileCount': files.length}),
+      );
+    }
+
     if (path == '/api/v1/storage' && options.method == 'GET') {
       return Future.value(
         jsonBody(200, {

@@ -391,6 +391,7 @@
     "insertImage": "Resim ekle",
     "insertVideo": "Video ekle",
     "attachedNotEmbedded": "Ek olarak yüklendi — bu dosya türü satır içinde gösterilmez",
-    "mediaUnavailable": "Ek şu an açılamıyor"
+    "mediaUnavailable": "Ek şu an açılamıyor",
+    "usage": "{count} dosya · {size} kullanımda"
   }
 }

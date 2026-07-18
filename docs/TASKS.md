@@ -2503,21 +2503,27 @@ check:i18n green; CHANGELOG; STATE.
 **DoD met 2026-07-18:** analyze clean; app suite **306/306**; contrast FAILURES: 0;
 check:i18n green; CHANGELOG; STATE.
 
-### OPH-157 — Hardening, docs & the attachment QA matrix
+### OPH-157 — Hardening, docs & the attachment QA matrix — 🟡 code+docs ✅ 2026-07-18; manual matrix ⏳ device tour
 
-- [ ] Upload polish: retry keeps the original picked bytes where the platform allows;
-      duplicate-name uploads allowed (files are id-keyed) but the list disambiguates with
-      dates; graceful `FILE_UPLOAD_MISMATCH` restart.
-- [ ] Web reality pass: CORS happy path + the CORS-missing error surfaced honestly (names the
-      fix), CanvasKit image fetch, download via `Content-Disposition`.
-- [ ] Docs: README "Attachments & file storage" section (R2 setup walkthrough + CORS JSON +
-      MinIO dev loop), ATTACHMENTS.md trued up against implementation, SECURITY.md storage
-      paragraph, ROADMAP v0.3.0, BLUEPRINT/§18 + parking-lot cleanup verified.
+- [x] Upload polish (landed across 153-156 by design): retry re-reads the original source
+      (path on io / bytes on web — `PickedUpload.open()` is re-openable), duplicate names
+      allowed (id-keyed) and disambiguated by the `size · date` subtitle, mismatch restarts
+      from a fresh init. **Usage footer** on the Files tab: `FilesApi.usage` +
+      `workspaceFilesUsageProvider` → "{count} files · {size} used" (display only — quota
+      enforcement stays v2). FakeApi usage endpoint + footer test.
+- [x] Docs: README "📎 Attachments & file storage" section (R2 + CORS pointer + optionality),
+      ATTACHMENTS.md §0a implementation-status table (trued against reality), SECURITY.md
+      "File storage" section, ROADMAP "Toward v0.3.0 / Phase 8" + parking-lot v2 line,
+      BLUEPRINT §18 + parking-lot verified.
+- [ ] **Web reality pass** (needs a real browser + a real bucket): CORS happy path + the
+      CORS-missing error surfaced honestly, CanvasKit image fetch, `Content-Disposition`
+      download.
 - [ ] **Manual matrix in STATE** (rides the Epic 12/13 device tour): iPhone photo upload,
       Android video, desktop picker, web CORS ±, 100 MB file, offline placeholders, rename/
       delete propagation across two clients.
 
-**DoD:** suites green; matrix recorded in STATE; **Epic 14 closes → v0.3.0.**
+**DoD:** suites green ✔; matrix recorded in STATE ⏳; **Epic 14 closes → v0.3.0 after the
+manual pass.**
 
 ---
 

@@ -88,6 +88,20 @@ alliswell/
 └── ...
 ```
 
+## 📎 Attachments & file storage (optional)
+
+Attach images, videos — any file — to tasks, notes and projects, with a
+file-manager **Files** tab per project. Bytes live in an S3-compatible object
+store; the primary target is **Cloudflare R2** (MinIO ships in docker-compose
+for local dev). The API only mints short-lived presigned URLs — uploads and
+downloads go straight between the client and the bucket.
+
+Enable it by setting `STORAGE_S3_*` in `.env` (endpoint, bucket, access keys —
+see `.env.example`). Without them the feature is off and the app says so
+honestly. **Web users need a one-time CORS rule on the bucket** — the full
+setup guide (R2 walkthrough, CORS JSON, limits, security model) is
+[docs/ATTACHMENTS.md](docs/ATTACHMENTS.md).
+
 ## 🚀 Quickstart (development)
 
 Prerequisites: **Node.js ≥ 22**, **Docker**, **Flutter ≥ 3.44** (for the app).

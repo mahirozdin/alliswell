@@ -65,10 +65,10 @@ void main() {
         _task('today', dueAt: DateTime(2026, 7, 17, 9)),
         _task('overdue', dueAt: DateTime(2026, 7, 1, 9)),
       ], now: now);
-      expect(
-        groups.map((g) => g.bucket).toList(),
-        [WidgetBucket.overdue, WidgetBucket.today],
-      );
+      expect(groups.map((g) => g.bucket).toList(), [
+        WidgetBucket.overdue,
+        WidgetBucket.today,
+      ]);
     });
   });
 
@@ -124,23 +124,26 @@ void main() {
   });
 
   group('WidgetBridge (OPH-130)', () {
-    test('publish configures once, saves the JSON snapshot, and updates', () async {
-      final host = FakeWidgetHost();
-      final bridge = WidgetBridge(host);
+    test(
+      'publish configures once, saves the JSON snapshot, and updates',
+      () async {
+        final host = FakeWidgetHost();
+        final bridge = WidgetBridge(host);
 
-      await bridge.publish([
-        _task('today', dueAt: DateTime(2026, 7, 17, 9)),
-      ], now: now);
+        await bridge.publish([
+          _task('today', dueAt: DateTime(2026, 7, 17, 9)),
+        ], now: now);
 
-      expect(host.configured, isTrue);
-      expect(host.updates, 1);
-      final json = jsonDecode(host.lastSaved!) as Map<String, dynamic>;
-      expect(json['v'], kWidgetSnapshotVersion);
-      expect((json['buckets'] as List).first['label'], 'Today');
+        expect(host.configured, isTrue);
+        expect(host.updates, 1);
+        final json = jsonDecode(host.lastSaved!) as Map<String, dynamic>;
+        expect(json['v'], kWidgetSnapshotVersion);
+        expect((json['buckets'] as List).first['label'], 'Today');
 
-      // A second publish updates again but does not re-configure.
-      await bridge.publish(const [], now: now);
-      expect(host.updates, 2);
-    });
+        // A second publish updates again but does not re-configure.
+        await bridge.publish(const [], now: now);
+        expect(host.updates, 2);
+      },
+    );
   });
 }

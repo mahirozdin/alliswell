@@ -113,6 +113,19 @@ class FilesApi {
     () => _dio.patch<void>('/api/v1/files/$fileId', data: {'name': name}),
   );
 
+  /// Workspace-wide storage footprint (ready files only) — the Files tab
+  /// footer (OPH-157). Display data; quota enforcement is v2.
+  Future<({int totalBytes, int fileCount})> usage(String workspaceId) =>
+      _run(() async {
+        final res = await _dio.get<Map<String, dynamic>>(
+          '/api/v1/workspaces/$workspaceId/files/usage',
+        );
+        return (
+          totalBytes: (res.data?['totalBytes'] as num?)?.toInt() ?? 0,
+          fileCount: (res.data?['fileCount'] as num?)?.toInt() ?? 0,
+        );
+      });
+
   /// Abort (uploading) or delete (ready) — the server picks the right path.
   Future<void> delete(String fileId) =>
       _run(() => _dio.delete<void>('/api/v1/files/$fileId'));

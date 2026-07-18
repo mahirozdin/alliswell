@@ -392,6 +392,7 @@
     "insertImage": "Insert image",
     "insertVideo": "Insert video",
     "attachedNotEmbedded": "Uploaded as an attachment — this file type doesn't embed inline",
-    "mediaUnavailable": "Attachment unavailable"
+    "mediaUnavailable": "Attachment unavailable",
+    "usage": "{count} files · {size} used"
   }
 }

@@ -10,6 +10,22 @@
 > via its S3-compatible API; dev/CI stand-in: **MinIO**. SDK: `@aws-sdk/client-s3`
 > v3 + `@aws-sdk/s3-request-presigner`.
 
+## 0a. Implementation status (2026-07-18)
+
+| Piece | Status |
+| --- | --- |
+| API: storage plugin (R2/S3), MinIO dev/CI, status endpoint | ✅ done + tested (OPH-150) |
+| API: upload lifecycle (init → presigned PUT → verify), GC + sweep | ✅ done + tested (OPH-151) |
+| API: read surface, pull-only sync, delete cascades, rename, md embeds | ✅ done + tested (OPH-152) |
+| App: replica v5, FileStore, upload machinery | ✅ done + tested (OPH-153) |
+| App: task-detail Attachments section | ✅ done + tested (OPH-154) |
+| App: project Files tab (manager + usage footer) | ✅ done + tested (OPH-155/157) |
+| App: inline note images/videos + markdown parity | ✅ done + tested (OPH-156) |
+| Manual QA matrix — devices, web CORS reality, 100 MB files | ⏳ rides the Epic 12/13 device tour (OPH-157) |
+
+Everything below was written before implementation and then trued against it;
+deviations are called out inline and in TASKS.md acceptance notes.
+
 ## 0. What the user asked for (scope)
 
 1. **Cloudflare R2 in the backend** — binary storage for images, videos and *any*
