@@ -2264,21 +2264,36 @@ muted iPhone.
       already gates on the runtime grant, and the second "Critical Alerts" permission prompt +
       Settings toggle appear automatically.
 
-### OPH-143 — Foreground ring screen + degradation banners
+### OPH-143 — Foreground ring screen + degradation banners — ✅ 2026-07-19
 
-- [ ] In-app full-screen "alarm ringing" overlay when an urgent alarm fires while the app is
+- [x] In-app full-screen "alarm ringing" overlay when an urgent alarm fires while the app is
       OPEN (all platforms — and desktop/web's ONLY alarm surface, NOTIFICATIONS.md §3): task
-      title, Onayla + snooze presets, looping audio until acted on. Gate auto-show behind a
-      provider defaulted OFF in `test/support/sync_overrides.dart` (OPH-111 lesson — it would
-      cover every full-app widget test).
-- [ ] Honest degradation banners (§1 "never fail silently"): urgent-task banner when Android
-      exact alarms are denied ("alarms may be late — grant Alarms & reminders") and when
-      notifications are off on any platform.
+      title, Onayla + snooze presets (5/30 dk, 1 saat), Tamamla/Aç. `AlarmOverlayController`
+      (`lib/src/notifications/alarm_overlay.dart`) watches `reminderStoreProvider.watchAlarms`
+      + a foreground timer wheel (arms to the next urgent fire) and drives `AlarmRingScreen`,
+      mounted in `HomeShell` above the tour (an urgent alarm outranks onboarding). Auto-show
+      gated behind `alarmOverlayAutoShowProvider` (defaulted OFF in
+      `test/support/sync_overrides.dart` — OPH-111 idiom). `PopScope(canPop:false)` so the
+      alarm is answered, not dismissed. **Deviation (documented):** looping in-app AUDIO is a
+      seam (`AlarmFeedback` → `HapticAlarmFeedback` haptic pulse today; `SilentAlarmFeedback`
+      in tests) — a real player rides the device audio tour, since on mobile the OS
+      notification already carries the 28 s bed (OPH-139) and desktop/web are best-effort
+      (NOTIFICATIONS.md §3). Ring decision is a pure fn (`ringingAlarm(alarms, now)`); the
+      "fake clock" is just `now`.
+- [x] Honest degradation banners (§1 "never fail silently"): `AlarmDegradationBanner` at the top
+      of Home warns when notifications are off (any platform) or Android exact alarms are denied
+      ("alarms may arrive late — allow Alarms & reminders"); worst-problem-first cascade mirrors
+      the Settings status row (OPH-139), tap re-runs the permission flow + re-probes. New
+      `alarmSupportProvider` (probes the gateway; permissive fallback off-platform). New `alarm.*`
+      i18n (en+tr). DESIGN §11 records the ring/banner component rules (Rule 11).
 
-**Tests:** overlay widget tests with a fake clock; banner permission states via the gateway fake.
+**Tests:** `ringingAlarm`/`nextUrgentFireAfter` pure (fake clock); `AlarmOverlayController` gate
+ON→rings / OFF→silent (seeded urgent-due synthetic alarm); `AlarmRingScreen` renders + Acknowledge
+flips the reminder row + snooze moves the task; `AlarmDegradationBanner` three permission states.
+**App 322/322, analyze + check:i18n + contrast (FAILURES: 0) clean.**
 
-**DoD:** analyze + suites green; STATE note. **Epic 13 device tail rides the Epic 12 device
-tour** (one physical session can clear both matrices).
+**DoD:** analyze + suites green; STATE note ✔. **Epic 13 device tail rides the Epic 12 device
+tour** (one physical session can clear both matrices — OPH-140).
 
 ---
 

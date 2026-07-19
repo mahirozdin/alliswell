@@ -354,6 +354,17 @@
       "remindersDesc": "Task reminders"
     }
   },
+  "alarm": {
+    "ringing": {
+      "label": "Urgent reminder",
+      "snooze": "Snooze"
+    },
+    "banner": {
+      "notificationsOff": "Notifications are off — you won't be alerted. Tap to turn them on.",
+      "exactOff": "Alarms may arrive late — allow \"Alarms & reminders\". Tap to fix.",
+      "fix": "Fix"
+    }
+  },
   "widget": {
     "bucket": {
       "overdue": "Overdue",

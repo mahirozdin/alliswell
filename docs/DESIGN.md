@@ -267,3 +267,35 @@ _(Added 2026-07-18, feedback round 7 — [ATTACHMENTS.md](ATTACHMENTS.md),
   locale-formatted) and dates — never storage keys, presigned URLs, bucket or
   MIME strings. Configuration problems speak product language ("File storage
   isn't set up on this server") with a docs pointer, in an `AwEmptyState`.
+
+## 11. Alarm surfaces (Epic 13 — OPH-143)
+
+The urgent alarm has two in-app surfaces. Both obey rule G1 (glass is
+chrome-only): the ring screen is a **solid** takeover, never live glass under
+its text.
+
+- **A1 — Ring screen = solid takeover, urgency-colored.** When an urgent alarm
+  is due while the app is open, `AlarmRingScreen` fills the shell (above the
+  onboarding tour). Background is `surface` with a faint `prioUrgent` wash
+  (`Color.alphaBlend`, ~10% — never a saturated red field under text); the
+  pulsing ring, the `label` and the primary button carry the urgency. Ink stays
+  `onSurface`/`onSurfaceVariant` for ≥ 4.5:1. The primary "Onayla" uses the
+  Material `error`/`onError` pair (contrast-guaranteed); snooze presets are
+  `OutlinedButton` capsules, secondary actions are `TextButton`s. Radii/spacing
+  from tokens; the pulse uses an `AnimationController` (repeat), so ring tests
+  drive it with `pump()`, never `pumpAndSettle`.
+- **A2 — It must be answered, not dismissed.** `PopScope(canPop:false)`: system
+  back/ESC does nothing; only Onayla / snooze / complete / open clears it. This
+  is the product's "insistent, must be acknowledged" rule (BLUEPRINT §8.2) made
+  visual.
+- **A3 — Insistence is a seam.** Physical alerting (`AlarmFeedback`) is
+  injected: `HapticAlarmFeedback` (a haptic pulse loop) in production, silence
+  in tests. A looping audio bed is a follow-up behind the same seam — on mobile
+  the OS notification already carries it (OPH-139); desktop/web are best-effort
+  (NOTIFICATIONS.md §3).
+- **A4 — Degradation banner is honest, at the top of Home.** When the OS can't
+  ring reliably, `AlarmDegradationBanner` says so on `errorContainer`
+  (`onErrorContainer` ink, `alarm_off` icon, radius `m`) with a one-tap fix —
+  worst-problem-first (notifications off → exact-alarm denied), the same cascade
+  as the Settings status row (OPH-139). Healthy delivery shows nothing: never
+  nag a user whose alarms already work.

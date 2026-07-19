@@ -32,6 +32,25 @@ final reminderStoreProvider = Provider<ReminderStore>(
   ),
 );
 
+/// A one-shot probe of what alarm delivery the OS currently allows (OPH-139
+/// [AlarmSupport]) — feeds the honest degradation banner (OPH-143). Invalidate
+/// to re-probe (e.g. after the user returns from the permission flow).
+final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
+  ref,
+) async {
+  final gateway = ref.watch(notificationsGatewayProvider);
+  try {
+    await gateway.initialize();
+    return await gateway.alarmSupport();
+  } catch (_) {
+    // Web / no platform channel: assume permissive so we never nag falsely.
+    return const AlarmSupport(
+      notificationsEnabled: true,
+      criticalAlertsEnabled: false,
+    );
+  }
+});
+
 /// One scheduler per signed-in workspace: keeps the OS schedule equal to the
 /// replica (OPH-061) and routes notification taps/actions into the stores
 /// (OPH-062/063). Rebuilt when the privacy setting flips (OPH-064) so

@@ -353,6 +353,17 @@
       "remindersDesc": "Görev hatırlatıcıları"
     }
   },
+  "alarm": {
+    "ringing": {
+      "label": "Acil hatırlatma",
+      "snooze": "Ertele"
+    },
+    "banner": {
+      "notificationsOff": "Bildirimler kapalı — uyarılmayacaksın. Açmak için dokun.",
+      "exactOff": "Alarmlar geç gelebilir — \"Alarmlar ve hatırlatıcılar\" iznini ver. Düzeltmek için dokun.",
+      "fix": "Düzelt"
+    }
+  },
   "widget": {
     "bucket": {
       "overdue": "Gecikmiş",

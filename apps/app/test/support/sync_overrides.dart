@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/features/onboarding/tour.dart';
 import 'package:alliswell/src/features/widgets/widget_host.dart';
+import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -22,6 +23,7 @@ import 'fake_widget_host.dart';
 List<Override> syncTestOverrides({
   SyncSocketFactory? socketFactory,
   bool tourAutoStart = false,
+  bool alarmOverlayAutoShow = false,
   Future<List<PickedUpload>> Function()? filePicker,
   UploadTransport? uploadTransport,
 }) => [
@@ -50,6 +52,12 @@ List<Override> syncTestOverrides({
   // (OPH-111) — it would cover the UI the test is driving. Tests that assert
   // the tour opt back in with `tourAutoStart: true`.
   tourAutoStartProvider.overrideWithValue(tourAutoStart),
+  // Same idiom for the foreground alarm ring (OPH-143): a due urgent alarm
+  // must not cover the app under test. Ring tests opt in with
+  // `alarmOverlayAutoShow: true`. Feedback is silenced so no haptic timer
+  // outlives the test body.
+  alarmOverlayAutoShowProvider.overrideWithValue(alarmOverlayAutoShow),
+  alarmFeedbackProvider.overrideWithValue(const SilentAlarmFeedback()),
   // No platform channels: the home-screen widget bridge (OPH-130), watched by
   // HomeShell, pushes to an in-memory fake instead of home_widget.
   widgetHostProvider.overrideWithValue(FakeWidgetHost()),

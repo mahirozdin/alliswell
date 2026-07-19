@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/error_messages.dart';
 import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
+import '../../notifications/alarm_banner.dart';
 import '../../screens/home_shell.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
@@ -90,123 +91,146 @@ class HomeScreen extends ConsumerWidget {
             onAdd: (title) => _quickAdd(ref, title),
           );
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 720;
-              if (isWide) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
+          return Column(
+            children: [
+              // Honest alarm-degradation banner (OPH-143): only shown when the
+              // OS can't ring urgent alarms reliably; nothing otherwise.
+              const AlarmDegradationBanner(),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 720;
+                    if (isWide) {
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          quickAdd,
-                          Expanded(child: _GroupedTaskList(groups: groups)),
-                        ],
-                      ),
-                    ),
-                    SizedBox(
-                      width: 356,
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(
-                          AwSpace.x1,
-                          AwSpace.x2,
-                          AwSpace.x4,
-                          AwSpace.x4,
-                        ),
-                        child: Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(AwSpace.x3),
-                            child: calendar,
+                          Expanded(
+                            child: Column(
+                              children: [
+                                quickAdd,
+                                Expanded(
+                                  child: _GroupedTaskList(groups: groups),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
-
-              final calendarVisible = ref.watch(homeCalendarVisibleProvider);
-              // The calendar is the FIRST item of one scroll view, so it slides
-              // off-screen as the list scrolls (OPH-103) instead of staying
-              // pinned and eating half the screen. Quick add stays fixed above.
-              return Column(
-                children: [
-                  quickAdd,
-                  Expanded(
-                    child: CustomScrollView(
-                      key: const Key('home-scroll'),
-                      slivers: [
-                        if (calendarVisible)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AwSpace.x4,
+                          SizedBox(
+                            width: 356,
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(
+                                AwSpace.x1,
+                                AwSpace.x2,
+                                AwSpace.x4,
+                                AwSpace.x4,
                               ),
                               child: Card(
                                 child: Padding(
-                                  padding: const EdgeInsets.all(AwSpace.x2),
+                                  padding: const EdgeInsets.all(AwSpace.x3),
                                   child: calendar,
                                 ),
                               ),
                             ),
                           ),
-                        SliverToBoxAdapter(
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(right: AwSpace.x2),
-                              child: TextButton.icon(
-                                key: const Key('toggle-calendar'),
-                                onPressed: () {
-                                  // Hiding the calendar clears the selection:
-                                  // a filter you can no longer see must not
-                                  // keep dimming Home (feedback round 6).
-                                  if (calendarVisible) {
-                                    ref
-                                        .read(selectedDayProvider.notifier)
-                                        .select(null);
-                                  }
-                                  ref
-                                      .read(
-                                        homeCalendarVisibleProvider.notifier,
-                                      )
-                                      .toggle();
-                                },
-                                icon: Icon(
-                                  calendarVisible
-                                      ? Icons.expand_less
-                                      : Icons.expand_more,
+                        ],
+                      );
+                    }
+
+                    final calendarVisible = ref.watch(
+                      homeCalendarVisibleProvider,
+                    );
+                    // The calendar is the FIRST item of one scroll view, so it slides
+                    // off-screen as the list scrolls (OPH-103) instead of staying
+                    // pinned and eating half the screen. Quick add stays fixed above.
+                    return Column(
+                      children: [
+                        quickAdd,
+                        Expanded(
+                          child: CustomScrollView(
+                            key: const Key('home-scroll'),
+                            slivers: [
+                              if (calendarVisible)
+                                SliverToBoxAdapter(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AwSpace.x4,
+                                    ),
+                                    child: Card(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(
+                                          AwSpace.x2,
+                                        ),
+                                        child: calendar,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                label: Text(
-                                  calendarVisible
-                                      ? 'home.hideCalendar'.tr()
-                                      : 'home.showCalendar'.tr(),
+                              SliverToBoxAdapter(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                      right: AwSpace.x2,
+                                    ),
+                                    child: TextButton.icon(
+                                      key: const Key('toggle-calendar'),
+                                      onPressed: () {
+                                        // Hiding the calendar clears the selection:
+                                        // a filter you can no longer see must not
+                                        // keep dimming Home (feedback round 6).
+                                        if (calendarVisible) {
+                                          ref
+                                              .read(
+                                                selectedDayProvider.notifier,
+                                              )
+                                              .select(null);
+                                        }
+                                        ref
+                                            .read(
+                                              homeCalendarVisibleProvider
+                                                  .notifier,
+                                            )
+                                            .toggle();
+                                      },
+                                      icon: Icon(
+                                        calendarVisible
+                                            ? Icons.expand_less
+                                            : Icons.expand_more,
+                                      ),
+                                      label: Text(
+                                        calendarVisible
+                                            ? 'home.hideCalendar'.tr()
+                                            : 'home.showCalendar'.tr(),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                              if (groups.isEmpty)
+                                const SliverFillRemaining(
+                                  hasScrollBody: false,
+                                  child: _HomeEmpty(),
+                                )
+                              else
+                                SliverPadding(
+                                  padding: awListPadding(
+                                    context,
+                                    extraBottom: 72,
+                                  ),
+                                  sliver: SliverList(
+                                    delegate: SliverChildListDelegate(
+                                      buildHomeGroupRows(context, groups),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                        if (groups.isEmpty)
-                          const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: _HomeEmpty(),
-                          )
-                        else
-                          SliverPadding(
-                            padding: awListPadding(context, extraBottom: 72),
-                            sliver: SliverList(
-                              delegate: SliverChildListDelegate(
-                                buildHomeGroupRows(context, groups),
-                              ),
-                            ),
-                          ),
                       ],
-                    ),
-                  ),
-                ],
-              );
-            },
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),

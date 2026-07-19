@@ -22,7 +22,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
-- **Files tab shows your storage footprint** (OPH-157, Epic 14): a quiet
+- **Urgent alarms now ring inside the open app** (OPH-143, Epic 13): when an
+  urgent task comes due while AllisWell is open, a full-screen alarm takes over
+  with the task, an Acknowledge button and snooze presets (5/30 min, 1 hour) —
+  it must be answered, not swiped away. This is the *only* alarm surface on
+  desktop and web, and the foreground companion to the phone's OS notification.
+  A haptic pulse carries the insistence today (a looping sound is a follow-up;
+  on mobile the OS alarm already plays it). Home also shows an honest banner
+  when the OS can't ring alarms reliably — notifications turned off, or Android
+  "Alarms & reminders" not granted — with a one-tap fix, so alarms never fail
+  silently.
   "N files · X MB used" line under the project file manager. Attachment setup
   is now documented for self-hosters (README + docs/ATTACHMENTS.md — including
   the one-time R2 CORS rule web browsers need) and the security model is spelled

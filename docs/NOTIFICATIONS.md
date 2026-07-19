@@ -171,6 +171,14 @@ notifications). [16]
   running app is its own alarm: the sync engine already ticks — an in-app
   alarm overlay + OS toast (best effort) fire from a foreground timer wheel.
   Web additionally needs Notification permission; treat as best-effort.
+  **Shipped 2026-07-19 (OPH-143):** the in-app overlay is `AlarmRingScreen`,
+  driven by `AlarmOverlayController` (watches the replica's alarm feed + a
+  foreground timer wheel armed to the next urgent fire). It is the ONLY alarm
+  surface on desktop/web, and the foreground companion to the OS notification on
+  mobile. Insistence is a seam (`AlarmFeedback`): haptic today, a looping audio
+  bed is the follow-up (on mobile the OS notification already carries the 28 s
+  bed). An `AlarmDegradationBanner` on Home surfaces the "never fail silently"
+  rule when notifications are off or Android exact alarms are denied.
 
 ## 4. Implementation plan (OPH-061…064) — SHIPPED 2026-07-15
 

@@ -10,6 +10,8 @@ import '../features/tasks/providers.dart';
 import '../features/tasks/ui/task_create_sheet.dart';
 import '../features/widgets/widget_bridge.dart';
 import '../i18n/i18n.dart';
+import '../notifications/alarm_overlay.dart';
+import '../notifications/alarm_ring_screen.dart';
 import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
@@ -145,6 +147,12 @@ class HomeShell extends ConsumerWidget {
       (_) => ref.read(tourControllerProvider.notifier).maybeAutoStart(),
     );
 
+    // Foreground alarm ring (OPH-143): when an urgent alarm comes due while the
+    // app is open, it takes over the screen — desktop/web's only alarm surface,
+    // and the companion to the OS notification on mobile. Gated OFF in tests
+    // (alarmOverlayAutoShowProvider) so a due alarm never covers the app.
+    final ringing = ref.watch(alarmOverlayControllerProvider).ringing;
+
     final shell = LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 800;
@@ -247,18 +255,28 @@ class HomeShell extends ConsumerWidget {
       },
     );
 
-    if (!tour.running) return shell;
+    if (!tour.running && ringing == null) return shell;
     return Stack(
       children: [
         shell,
-        Positioned.fill(
-          child: TourOverlay(
-            state: tour,
-            anchorRect: _anchorRect(tour.current),
-            onNext: () => ref.read(tourControllerProvider.notifier).next(),
-            onSkip: () => ref.read(tourControllerProvider.notifier).skip(),
+        if (tour.running)
+          Positioned.fill(
+            child: TourOverlay(
+              state: tour,
+              anchorRect: _anchorRect(tour.current),
+              onNext: () => ref.read(tourControllerProvider.notifier).next(),
+              onSkip: () => ref.read(tourControllerProvider.notifier).skip(),
+            ),
           ),
-        ),
+        // An urgent alarm outranks onboarding — layered last, so it is on top.
+        if (ringing != null)
+          Positioned.fill(
+            child: AlarmRingScreen(
+              alarm: ringing,
+              onHandled: (id) =>
+                  ref.read(alarmOverlayControllerProvider.notifier).handled(id),
+            ),
+          ),
       ],
     );
   }
