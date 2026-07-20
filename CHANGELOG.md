@@ -24,6 +24,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   Risk 8, DESIGN §10 F7-F9 + §12/§13/§14, ARCHITECTURE §6c, ATTACHMENTS §14,
   TASKS Epic 15 (OPH-160…170).
 
+### Fixed
+
+- **Connecting Google Calendar now actually starts syncing** (OPH-160): the
+  OAuth callback auto-selects your primary calendar and immediately enqueues
+  the first inbound sync and the push channel — previously the account sat on
+  a hidden "pick a calendar" step and nothing was ever fetched, so Home stayed
+  empty even after a reload. The app also pulls the moment you return from the
+  browser or choose a different calendar (no more waiting for the next 60 s
+  cycle). Reconnects keep your chosen calendar and refresh the feed.
+
 ### Changed
 
 - **"Liquid Glass v2" visual refresh** (design round 8, ADR-0012): the whole

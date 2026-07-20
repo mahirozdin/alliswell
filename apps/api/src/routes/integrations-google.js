@@ -191,11 +191,14 @@ export default async function googleIntegrationRoutes(app) {
           .db('calendar_accounts')
           .where({ user_id: state.sub, provider: 'google', provider_account_id: providerAccountId })
           .first('id');
+        let accountId;
         if (existing) {
+          accountId = existing.id;
           await app.db('calendar_accounts').where({ id: existing.id }).update(values);
         } else {
+          accountId = newId();
           await app.db('calendar_accounts').insert({
-            id: newId(),
+            id: accountId,
             user_id: state.sub,
             provider: 'google',
             provider_account_id: providerAccountId,
@@ -203,10 +206,49 @@ export default async function googleIntegrationRoutes(app) {
           });
         }
 
+        // Round 8 (OPH-160): "connected" must mean "data flows". The old flow
+        // parked the account on a hidden second step — nothing synced until the
+        // user separately picked a default calendar. Auto-select the primary
+        // calendar when none is chosen yet, then start the first sync and the
+        // push channel immediately (the PATCH branch below stays the way to
+        // switch calendars later). Failure here is non-fatal: tokens are saved
+        // and the manual picker still works.
+        let calendarReady = false;
+        try {
+          const row = await app.db('calendar_accounts').where({ id: accountId }).first();
+          if (row.default_calendar_id) {
+            calendarReady = true; // reconnect: channel/cursor may be stale — resync below
+          } else {
+            const list = await googleClientFor(app).listCalendars(tokens.access_token);
+            const primary = (list?.items ?? []).find((c) => c.primary);
+            if (primary) {
+              await app.db('calendar_accounts').where({ id: accountId }).update({
+                default_calendar_id: primary.id,
+                sync_token: null,
+                sync_dirty_at: new Date(),
+                updated_at: new Date(),
+              });
+              calendarReady = true;
+            }
+          }
+          if (calendarReady) {
+            // Mirror backfill + §7.2 steps 4-6, exactly like the PATCH branch.
+            await enqueueWorkspaceMirrorSweep(app, row.workspace_id);
+            app.calendarSync.enqueueSync(accountId);
+            app.calendarSync.enqueueWatch(accountId);
+          }
+        } catch (err) {
+          request.log.warn({ err: err.message }, 'google auto calendar select failed');
+        }
+
         return reply.send(
           closePage(
             'Google Takvim bağlandı',
-            'Bu pencereyi kapatıp AllisWell’e dönebilirsin. Sırada: varsayılan takvimi seç.',
+            calendarReady
+              ? 'Takvimin bağlandı; etkinlikler arka planda senkronize ediliyor. ' +
+                  'Bu pencereyi kapatıp AllisWell’e dönebilirsin. ' +
+                  'İstersen Ayarlar’dan farklı bir takvim seçebilirsin.'
+              : 'Bu pencereyi kapatıp AllisWell’e dönebilirsin. Sırada: varsayılan takvimi seç.',
           ),
         );
       } catch (err) {

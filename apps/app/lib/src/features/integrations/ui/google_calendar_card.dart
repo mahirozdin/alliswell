@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
@@ -33,8 +36,20 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
     // happened is coming back. (Web lifecycle is unreliable — the explicit
     // refresh action below is the guarantee, this is the courtesy.)
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.invalidate(googleIntegrationProvider),
+      onResume: () {
+        ref.invalidate(googleIntegrationProvider);
+        _pullSoon();
+      },
     );
+  }
+
+  /// OPH-160: the server starts the first sync the moment the account is
+  /// connected (primary calendar auto-selected) or a calendar is chosen —
+  /// pull right away instead of waiting for the 60 s interval, so events
+  /// appear while the user is still looking.
+  void _pullSoon() {
+    final engine = ref.read(syncEngineProvider);
+    if (engine != null) unawaited(engine.syncNow());
   }
 
   @override
@@ -89,6 +104,7 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
           .read(googleIntegrationsApiProvider)
           .chooseCalendar(account.id, chosen.id);
       ref.invalidate(googleIntegrationProvider);
+      _pullSoon();
     });
   }
 

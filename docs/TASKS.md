@@ -2551,29 +2551,36 @@ manual pass.**
 > (klasörler). Sıra bağımlılık sırasıdır: bug önce, küçük kazanımlar, oluşturma akışı,
 > etiketler → arama (etiket tier'ı ister), pano, dosyalar (API → app).
 
-### OPH-160 — Google connect: otomatik primary takvim + anında ilk sync (bug, round 8 #1)
+### OPH-160 — Google connect: otomatik primary takvim + anında ilk sync (bug, round 8 #1) ✅ 2026-07-20
 
 Kök neden (2026-07-20 tanısı): OAuth callback yalnız token yazar, `default_calendar_id`
 NULL kalır; sync/watch/sweep üçü de NULL'da erken çıkar → bağlantı "başarılı" görünür ama
 hiçbir event çekilmez; kullanıcının ayrı bir "takvim seç" adımı attığı varsayılır (gizli
 ikinci adım). App tarafı da takvim seçildiğinde `syncNow()` çağırmaz (60 sn'lik pull'u bekler).
 
-- [ ] API: callback başarısında `listCalendars` ile `primary` takvimi bul,
+- [x] API: callback başarısında `listCalendars` ile `primary` takvimi bul,
       `default_calendar_id`'ye yaz ve `enqueueSync` + `enqueueWatch` kuyruğla (PATCH
-      `calendarChanged` dalının birebir aynısı — `integrations-google.js:346-350`).
-      Primary bulunamazsa (teorik) mevcut davranışa düş: seçim kullanıcıya kalır.
-- [ ] API: callback HTML metni güncelle — "Sırada: varsayılan takvimi seç" yerine
-      "Takvimin bağlandı; etkinlikler senkronize ediliyor. Uygulamaya dönebilirsin."
-      (İstemeyen Ayarlar'dan takvimi değiştirir — o yol aynen durur.)
-- [ ] App: `chooseCalendar` sonrası ve `GoogleCalendarCard` onResume yolunda
-      `syncNow()` tetikle (status invalidate'e ek) — "bağla → dön → veriler aksın".
-- [ ] Unit test (fakegoogle `primary: true` hazır): callback sonrası hesap satırında
-      `default_calendar_id` dolu VE sync+watch job'ları kuyruklanmış.
-- [ ] App testi: takvim seçimi fake engine'de `syncNow` çağırıyor.
-- [ ] Docs: BLUEPRINT §7.2 (✅ bu commit'te revize), CHANGELOG, STATE.
+      `calendarChanged` dalının birebir aynısı; mirror sweep dahil). Primary yoksa /
+      listeleme hata verirse eski davranışa düş (non-fatal — tokenlar kayıtlı, picker
+      çalışır). Reconnect'te seçili takvim korunur ama feed yine tazelenir (bayat
+      kanal/cursor durumu).
+- [x] API: callback HTML metni — takvim hazırsa "etkinlikler arka planda senkronize
+      ediliyor… istersen Ayarlar'dan farklı bir takvim seçebilirsin"; düşüşte eski metin.
+- [x] App: `_pullSoon()` (`syncEngineProvider?.syncNow()`) — `chooseCalendar` sonrası VE
+      onResume'da (bağlantı dönüşü) tetiklenir.
+- [x] Unit test: `google-oauth.test.js` "auto-selects the primary calendar…" — seed'li
+      fakegoogle meeting'i callback→idle sonrası `calendar_external_events`'te; reconnect
+      takvimi değiştirmiyor ama external feed sayacı artıyor. 274/274.
+- [x] App testi: takvim seçimi `GET /api/v1/sync/pull` tetikliyor (öncesinde pull yok
+      assertion'ıyla atfedilebilir). 6/6.
+- [x] Docs: BLUEPRINT §7.2 (docs commit'inde revize), CHANGELOG, STATE.
 
 Acceptance: temiz bir hesapla bağlan → hiçbir ek adım atmadan Home'da etkinlikler
-(socket + syncNow ile saniyeler içinde) görünür.
+(socket + syncNow ile saniyeler içinde) görünür. ✔ (fakegoogle uçtan uca; gerçek Google
+hesabı doğrulaması kullanıcı turunda.)
+
+**DoD met 2026-07-20:** API unit 274/274; app google_calendar 6/6 + tam süit yeşil;
+analyze temiz; CHANGELOG; STATE.
 
 ### OPH-161 — Varsayılan görev saati: 23:59 + Ayarlar tercihi (round 8 #6)
 

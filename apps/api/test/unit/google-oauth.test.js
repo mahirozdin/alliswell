@@ -110,6 +110,54 @@ describe('Google OAuth connect (OPH-070) + calendars (OPH-071)', () => {
     expect(JSON.stringify(item)).not.toContain('v1:');
   });
 
+  it('auto-selects the primary calendar and starts the first sync at connect (OPH-160)', async () => {
+    // A meeting that already lives in the user's Google calendar.
+    const soon = new Date(Date.now() + 86400_000);
+    const meeting = {
+      id: 'ev-first',
+      etag: '"first-1"',
+      updated: new Date().toISOString(),
+      summary: 'Diş randevusu',
+      start: { dateTime: soon.toISOString() },
+      end: { dateTime: new Date(soon.getTime() + 3600_000).toISOString() },
+    };
+    google.state.eventsIn('primary').set('ev-first', meeting);
+    google.state.logChange('primary', meeting);
+
+    const state = new URL((await connect()).json().authUrl).searchParams.get('state');
+    const res = await callback(`code=good-code&state=${encodeURIComponent(state)}`);
+    expect(res.statusCode).toBe(200);
+    // The page promises data is flowing — no hidden "pick a calendar" step.
+    expect(res.body).toContain('senkronize');
+
+    // Connect alone chose the primary calendar…
+    const account = tables.calendar_accounts.at(0);
+    expect(account.default_calendar_id).toBe('primary');
+
+    // …and enqueued the first inbound sync: the meeting reaches the replica
+    // feed without any further user action.
+    await app.calendarSync.idle();
+    await app.mirror.idle();
+    expect(google.state.listCalls.external).toBeGreaterThan(0);
+    expect(
+      tables.calendar_external_events.some(
+        (e) => e.summary === 'Diş randevusu' && e.deleted_at == null,
+      ),
+    ).toBe(true);
+
+    // Reconnecting keeps the chosen calendar (no surprise switch) but still
+    // refreshes the feed — the stale-channel case.
+    const externalCallsBefore = google.state.listCalls.external;
+    const state2 = new URL((await connect()).json().authUrl).searchParams.get('state');
+    const again = await callback(`code=good-code&state=${encodeURIComponent(state2)}`);
+    expect(again.statusCode).toBe(200);
+    expect(tables.calendar_accounts).toHaveLength(1);
+    expect(tables.calendar_accounts.at(0).default_calendar_id).toBe('primary');
+    await app.calendarSync.idle();
+    await app.mirror.idle();
+    expect(google.state.listCalls.external).toBeGreaterThan(externalCallsBefore);
+  });
+
   it('rejects forged/expired/missing state and failed exchanges', async () => {
     expect((await callback('code=x&state=not-a-jwt')).statusCode).toBe(400);
     expect((await callback('error=access_denied')).statusCode).toBe(400);

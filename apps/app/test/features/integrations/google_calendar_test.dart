@@ -106,12 +106,25 @@ void main() {
       expect(find.text('Ana Takvim'), findsOneWidget);
       expect(find.text('İş'), findsOneWidget);
 
+      // Nothing has pulled yet — the pull below is attributable to the choice.
+      expect(
+        api.requests.any((r) => r.startsWith('GET /api/v1/sync/pull')),
+        isFalse,
+      );
+
       await tester.tap(find.byKey(const Key('calendar-is-takvimi')));
       await tester.pumpAndSettle();
 
       // …and choosing it is what starts the mirroring (the server backfills).
       expect(api.googleAccounts.single['defaultCalendarId'], 'is-takvimi');
       expect(find.text('is-takvimi'), findsOneWidget);
+
+      // OPH-160: choosing also pulls right away — the server enqueued the
+      // first sync at choose time; events must not wait for the 60 s interval.
+      expect(
+        api.requests.where((r) => r.startsWith('GET /api/v1/sync/pull')),
+        isNotEmpty,
+      );
     },
   );
 
