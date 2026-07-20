@@ -6,6 +6,7 @@ import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
 import '../data/note.dart';
@@ -28,11 +29,8 @@ class NotesScreen extends ConsumerStatefulWidget {
 }
 
 class _NotesScreenState extends ConsumerState<NotesScreen> {
-  final _search = TextEditingController();
-
   @override
   void dispose() {
-    _search.dispose();
     super.dispose();
   }
 
@@ -69,27 +67,15 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       // FAB hoisted to HomeShell (OPH-101).
       body: Column(
         children: [
+          // OPH-167: the shared search field (DESIGN S1) — as-you-type with
+          // debounce, fold-insensitive matching in the store (ADR-0013).
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: TextField(
+            child: AwSearchField(
               key: const Key('notes-search'),
-              controller: _search,
-              onSubmitted: (v) =>
-                  ref.read(notesQueryProvider.notifier).setSearch(v),
-              decoration: InputDecoration(
-                hintText: 'note.searchHint'.tr(),
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: query.search.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'note.clearSearch'.tr(),
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          _search.clear();
-                          ref.read(notesQueryProvider.notifier).setSearch('');
-                        },
-                      ),
-              ),
+              hintText: 'note.searchHint'.tr(),
+              onQuery: (q) =>
+                  ref.read(notesQueryProvider.notifier).setSearch(q),
             ),
           ),
           // Horizontally scrollable so the filter strip never overflows on

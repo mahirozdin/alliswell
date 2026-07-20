@@ -35,6 +35,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Search that speaks Turkish** (OPH-167, ADR-0013): every content screen
+  can now search — Home covers tasks, captures AND your connected calendar;
+  Notes searches titles and full note bodies; Projects filters as you type.
+  Matching is case- and accent-insensitive the way Turkish actually needs:
+  "cay" finds Çay, "isi" finds ısı, "ULKU" finds ülkü — folding no database
+  engine performs (verified against SQLite and MySQL), done by one app-owned
+  fold mirrored byte-for-byte on the API and guarded by a cross-stack parity
+  fixture. Results rank title hits above tag hits above body hits, with the
+  match context shown honestly; everything runs on-device over the replica —
+  instant and offline. The API's task list gains a matching `?q=` for
+  integrations.
+
 - **Attach files while creating a task** (OPH-166): the new-task sheet takes
   file selections up front — they list as removable pending rows and upload
   the moment the task is saved. No more create-first-then-hunt-for-the-

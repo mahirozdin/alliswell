@@ -43,10 +43,11 @@ String _trimUrl(String url) {
 }
 
 /// The launchable form of a detected URL (`www.` gets an https scheme).
-Uri? linkUriOf(String url) =>
-    Uri.tryParse(url.startsWith(RegExp('https?://', caseSensitive: false))
-        ? url
-        : 'https://$url');
+Uri? linkUriOf(String url) => Uri.tryParse(
+  url.startsWith(RegExp('https?://', caseSensitive: false))
+      ? url
+      : 'https://$url',
+);
 
 /// Splits [text] into plain and link segments, in order, losslessly —
 /// concatenating every segment's `text` reproduces [text] exactly.

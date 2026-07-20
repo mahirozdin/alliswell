@@ -407,6 +407,12 @@ export default async function taskRoutes(app) {
             dueFrom: { type: 'string', format: 'date-time' },
             dueTo: { type: 'string', format: 'date-time' },
             urgent: { type: 'boolean' },
+            // OPH-167: free-text search over title+description — the notes
+            // `q` twin, riding the ft_tasks_title_description index that has
+            // waited unused since the first migration. Secondary to the
+            // app's local fold search (ADR-0013: the ai_ci collation folds
+            // ç/ü/ö/İ but NOT ı — documented gap on this path).
+            q: { type: 'string', minLength: 1, maxLength: 200 },
             limit: { type: 'integer', minimum: 1, maximum: MAX_PAGE_SIZE, default: 50 },
             cursor: ULID_PARAM,
           },
@@ -443,6 +449,11 @@ export default async function taskRoutes(app) {
       if (q.urgent !== undefined) query = query.where({ is_urgent: q.urgent });
       if (q.dueFrom) query = query.where('due_at', '>=', new Date(q.dueFrom));
       if (q.dueTo) query = query.where('due_at', '<=', new Date(q.dueTo));
+      if (q.q) {
+        query = query.whereRaw('MATCH(title, description) AGAINST (? IN NATURAL LANGUAGE MODE)', [
+          q.q,
+        ]);
+      }
       if (q.tagId) {
         const tagged = await app.db('task_tags').where({ tag_id: q.tagId }).select('task_id');
         query = query.whereIn(

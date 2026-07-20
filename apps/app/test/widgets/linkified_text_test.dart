@@ -25,9 +25,7 @@ void main() {
 
   testWidgets('mixed text renders losslessly around the link', (tester) async {
     await tester.pumpWidget(
-      host(
-        LinkifiedText('önce https://x.dev sonra', onOpen: (_) {}),
-      ),
+      host(LinkifiedText('önce https://x.dev sonra', onOpen: (_) {})),
     );
 
     expect(

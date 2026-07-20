@@ -14,7 +14,10 @@ void main() {
 
   test('a mid-sentence https URL becomes a link segment', () {
     final out = seg('tasarım şurada https://example.com/spec duruyor');
-    expect(out.map((s) => s.text).join(), 'tasarım şurada https://example.com/spec duruyor');
+    expect(
+      out.map((s) => s.text).join(),
+      'tasarım şurada https://example.com/spec duruyor',
+    );
     final link = out.singleWhere((s) => s.uri != null);
     expect(link.text, 'https://example.com/spec');
     expect(link.uri.toString(), 'https://example.com/spec');

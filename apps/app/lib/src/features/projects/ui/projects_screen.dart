@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
+import '../../../search/providers.dart';
+import '../../../widgets/search_field.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/project.dart';
@@ -27,6 +29,17 @@ class ProjectsScreen extends ConsumerWidget {
       appBar: buildSectionAppBar(context, 'nav.projects'.tr()),
       body: Column(
         children: [
+          // OPH-167 (DESIGN §12): fold-insensitive search, ANDs with the
+          // Active/Archived chips below (S1/S5).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: AwSearchField(
+              key: const Key('projects-search'),
+              hintText: 'project.searchHint'.tr(),
+              onQuery: (q) =>
+                  ref.read(projectsSearchQueryProvider.notifier).set(q),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Row(
@@ -55,10 +68,21 @@ class ProjectsScreen extends ConsumerWidget {
                 onRetry: () => ref.invalidate(projectsControllerProvider),
               ),
               data: (all) {
-                final items = [
+                var items = [
                   for (final p in all)
                     if ((p.status == 'archived') == showArchived) p,
                 ];
+                final hits = ref.watch(projectsSearchResultsProvider).value;
+                if (hits != null) {
+                  // Ranked ids from the fold engine: name hits first (S3).
+                  final order = {
+                    for (final (i, hit) in hits.indexed) hit.id: i,
+                  };
+                  items = [
+                    for (final p in items)
+                      if (order.containsKey(p.id)) p,
+                  ]..sort((a, b) => order[a.id]!.compareTo(order[b.id]!));
+                }
                 if (items.isEmpty) {
                   return AwEmptyState(
                     icon: showArchived

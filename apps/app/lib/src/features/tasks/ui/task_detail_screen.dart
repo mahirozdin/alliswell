@@ -578,9 +578,8 @@ class _DescriptionFieldState extends ConsumerState<_DescriptionField> {
     final value = raw.trim();
     if (value == _current.trim()) return;
     widget.onApply(
-      (store, id) => store.update(id, {
-        'description': value.isEmpty ? null : value,
-      }),
+      (store, id) =>
+          store.update(id, {'description': value.isEmpty ? null : value}),
     );
   }
 

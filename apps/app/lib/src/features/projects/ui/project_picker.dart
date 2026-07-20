@@ -62,10 +62,7 @@ List<DropdownMenuItem<String?>> projectDropdownItems(
                   child: Text(
                     'project.addFromPicker'.tr(),
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: color,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(color: color, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],

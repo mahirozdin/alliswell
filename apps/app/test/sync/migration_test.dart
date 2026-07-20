@@ -40,6 +40,18 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
+    for (final drop in [
+      // v6 (OPH-167): fold shadows on the tables v1 already had.
+      'ALTER TABLE tasks DROP COLUMN title_fold',
+      'ALTER TABLE tasks DROP COLUMN description_fold',
+      'ALTER TABLE projects DROP COLUMN name_fold',
+      'ALTER TABLE projects DROP COLUMN description_fold',
+      'ALTER TABLE tags DROP COLUMN name_fold',
+      'ALTER TABLE notes DROP COLUMN title_fold',
+      'ALTER TABLE notes DROP COLUMN body_fold',
+    ]) {
+      await db.customStatement(drop);
+    }
     await db.customStatement('DROP TABLE external_events'); // v3
     await db.customStatement(
       'ALTER TABLE tasks DROP COLUMN calendar_mirror_enabled', // v2
@@ -87,6 +99,9 @@ void main() {
       expect(await db.select(db.appleEventLinks).get(), isEmpty);
       // v5 (OPH-153): attachment metadata, created empty — pull-only.
       expect(await db.select(db.fileRows).get(), isEmpty);
+      // v6 (OPH-167): the backfill folded the pre-existing row's text —
+      // Turkish 'iş' matched by a plain 'is' query is the whole point.
+      expect(task.titleFold, 'v1 tarihinden kalma is');
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -94,7 +109,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 5);
+      expect(version.data['user_version'], 6);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -129,7 +144,7 @@ void main() {
       expect(task.calendarMirrorEnabled, isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 5);
+      expect(version.data['user_version'], 6);
       await db.close();
     },
   );

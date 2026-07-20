@@ -2701,29 +2701,40 @@ Sunucu hazır: tags CRUD + `PUT /tasks/:id/tags` + sync push `tag` (slug'ı serv
 
 **DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
-### OPH-167 — Arama: TR fold motoru + Home/Notlar/Projeler (round 8 #5, ADR-0013)
+### OPH-167 — Arama: TR fold motoru + Home/Notlar/Projeler (round 8 #5, ADR-0013) ✅ 2026-07-20
 
-- [ ] `core/fold.dart`: `foldSearchText()` — İ/I/ı→i ÖNCE, sonra lowercase, sonra Latin-1 +
-      Latin Extended-A açık harita (ç→c, ğ→g, ş→s, ö→o, ü→u, â→a, é→e …), boşluk sıkıştır.
-      **Parite fixture'ı** `fold_parity.json` (app asseti + API test fixture'ı) iki yönde
-      test edilir (flutter + vitest) — API'ye aynı fold'un JS aynası `src/lib/fold.js`.
-- [ ] Drift v6: `*_fold` gölge kolonları (tasks: title/description; notes: title/body;
-      projects: name/description; tags: name; external_events: summary/location) + migration
-      backfill (Dart'ta hesapla); `migration_test` v6 walk-back + beklentiler.
-- [ ] Yazım noktaları fold'u doldurur: feature store'lar (create/update) + `sync_applier`
-      (pull upsert) — applier testi her entity tipinde fold kolonlarını assert eder.
-- [ ] `SearchService` (tek SQL, tier UNION): tier 0 başlık/ad, tier 1 etiket (task_tags
-      join), tier 2 gövde/açıklama; çok kelime = AND; `MIN(tier)` + ekranın doğal sırası.
-- [ ] UI (DESIGN §12): paylaşılan `AwSearchField` — Home (görev + external event + Fikirler;
-      event'ler summary/location), Notlar (mevcut arama bu motora taşınır + gövde), Projeler.
-      Debounce 250 ms; ≥150 ms'de ilerleme satırı; sonuç satırında eşleşme bağlamı (snippet
-      veya #etiket). Boş sonuç `AwEmptyState`.
-- [ ] API paritesi (ikincil yol): tasks listesine `?q=` — mevcut `ft_tasks_title_description`
-      FULLTEXT (BOOLEAN MODE `q*`); fakedb MATCH taklidi zaten var. Ajv şema + unit test.
-      (Bilinen ı/i boşluğu ADR-0013'te belgeli — app yolu otoritedir.)
-- [ ] Testler: fold eş-sınıfları (cay↔Çay, ISI↔ısı, ULKU↔ülkü), tier sıralaması, çok
-      kelime AND, üç ekran widget testi (yaz→sonuç, temizle→eski liste), performans smoke
-      (1k satır <50 ms yerelde).
+- [x] `core/fold.dart` (OPH-165'te doğdu, burada tamamlandı) + **JS aynası `src/lib/fold.js`**;
+      **parite fixture'ı `apps/app/test/fixtures/fold_parity.json`** iki süitte de assert
+      (flutter + vitest; idempotens dahil) — tek taraf değişirse diğer süit kırılır.
+- [x] Drift v6: 9 `*_fold` gölge kolonu + **Dart backfill** (`backfillSearchFolds` —
+      migration içinde; fold SQL'de koşamaz, kolonların varlık sebebi bu). Migration dersi:
+      v3'ün `createTable(externalEvents)`'i tabloyu GÜNCEL tanımla (fold'lu) yaratır →
+      v6 addColumn'ları `from >= 3` guard'ıyla (duplicate column tuzağı). `migration_test`
+      v6 walk-back + seed'li satırın fold'lanmış backfill assert'i ('iş' → 'is').
+- [x] İki yazım çatı noktası fold'u dolduruyor: `sync_applier` companion'ları (5 entity,
+      `_foldValue` helper) + store'lar (task create/update, project create/update, note
+      create/update [gövde=plainText], tag create/rename). Servis testleri satırları GERÇEK
+      applier'dan geçirerek bunu da kanıtlıyor.
+- [x] `SearchService` (tek SQL/domain): tier CASE (0 başlık/ad — TÜM kelimeler tek alanda;
+      1 etiket — GROUP_CONCAT'li tag agregasyonu; 2 gövde), kelimeler AND + alanlar-arası
+      bölünebilir, LIKE ESCAPE ile %/_ literal. `searchTasks(statuses)` /
+      `searchEvents` / `searchProjects` + `searchSnippet` (fold-index → orijinal pencere).
+- [x] UI (DESIGN §12): paylaşılan `AwSearchField` (debounce 250 ms + anında temizleme);
+      Home'da arama modu (görev + Fikirler yakalamaları + takvim etkinlikleri tek sıralı
+      listede; eşleşme bağlamı satırı — #etiket veya açıklama snippet'i; ≥150 ms
+      `_DelayedProgress`; boş sonuç `AwEmptyState`; temizle → eski liste aynen), Notlar
+      (onSubmitted → as-you-type'a terfi etti, motor fold'a taşındı + başlık>gövde sıralı),
+      Projeler (fold sıralı filtre, çiplerle AND).
+- [x] API paritesi: tasks `?q=` (NATURAL LANGUAGE MATCH — notes q'nun ikizi; ilk migration'dan
+      beri boş bekleyen `ft_tasks_title_description` nihayet işinde). fakedb MATCH taklidi
+      kolon listesini genelleştirdi. Bilinen ı/i boşluğu ADR-0013'te belgeli — app yolu
+      otoritedir.
+- [x] Testler: fold eş-sınıfları + parite fixture (2 stack), servis 7 senaryo (tier sırası,
+      çok kelime AND, status kapsamı, event/proje tier'ları, wildcard literal, snippet),
+      migration v6, 3 ekran akış testi (fold in→out, kapsam, boş durum, temizleme), API q=.
+
+**DoD met 2026-07-20:** API unit + app süiti + analyze + check:i18n + lint/format yeşil;
+CHANGELOG; STATE.
 
 ### OPH-168 — Pano: Home Kanban görünümü (round 8 #8, DESIGN §14)
 

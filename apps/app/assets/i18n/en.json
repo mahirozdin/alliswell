@@ -19,7 +19,8 @@
     "yes": "Yes",
     "no": "No",
     "help": "Help",
-    "greeting": "Hi, {name}"
+    "greeting": "Hi, {name}",
+    "clear": "Clear"
   },
   "nav": {
     "home": "Home",
@@ -100,7 +101,10 @@
       "tomorrow": "Tomorrow",
       "thisWeek": "This week",
       "next30Days": "Next 30 days"
-    }
+    },
+    "searchHint": "Search tasks, captures and your calendar…",
+    "searchEmptyTitle": "No results",
+    "searchEmptyBody": "Nothing matches “{query}”."
   },
   "task": {
     "status": {
@@ -256,7 +260,8 @@
     "actions": "Project actions",
     "unarchiveMenu": "Unarchive…",
     "archiveMenu": "Archive…",
-    "tabFiles": "Files"
+    "tabFiles": "Files",
+    "searchHint": "Search projects…"
   },
   "note": {
     "untitled": "Untitled",

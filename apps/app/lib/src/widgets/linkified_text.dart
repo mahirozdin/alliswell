@@ -6,12 +6,7 @@ import '../core/linkify.dart';
 /// Body text whose URLs are tappable (round 8, OPH-164). Owns and disposes the
 /// tap recognizers — `TextSpan` recognizers leak if nobody does.
 class LinkifiedText extends StatefulWidget {
-  const LinkifiedText(
-    this.text, {
-    super.key,
-    required this.onOpen,
-    this.style,
-  });
+  const LinkifiedText(this.text, {super.key, required this.onOpen, this.style});
 
   final String text;
   final void Function(Uri uri) onOpen;

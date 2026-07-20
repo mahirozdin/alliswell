@@ -18,7 +18,8 @@
     "ok": "Tamam",
     "yes": "Evet",
     "no": "Hayır",
-    "greeting": "Merhaba, {name}"
+    "greeting": "Merhaba, {name}",
+    "clear": "Temizle"
   },
   "nav": {
     "home": "Ana Sayfa",
@@ -99,7 +100,10 @@
       "tomorrow": "Yarın",
       "thisWeek": "Bu hafta",
       "next30Days": "Sonraki 30 gün"
-    }
+    },
+    "searchHint": "Görevlerde, fikirlerde ve takviminde ara…",
+    "searchEmptyTitle": "Sonuç yok",
+    "searchEmptyBody": "“{query}” ile eşleşen bir şey yok."
   },
   "task": {
     "status": {
@@ -255,7 +259,8 @@
     "actions": "Proje işlemleri",
     "unarchiveMenu": "Arşivden çıkar…",
     "archiveMenu": "Arşivle…",
-    "tabFiles": "Dosyalar"
+    "tabFiles": "Dosyalar",
+    "searchHint": "Projelerde ara…"
   },
   "note": {
     "untitled": "Başlıksız",

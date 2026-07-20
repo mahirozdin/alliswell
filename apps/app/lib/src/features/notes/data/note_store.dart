@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../../../core/fold.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
@@ -65,15 +66,39 @@ class NoteStore {
             .watch(),
         _readmeNoteIds(workspaceId),
         (rows, readmeIds) {
-          final needle = query.search.trim().toLowerCase();
-          return [
+          // OPH-167 (ADR-0013): search folds — case- AND Turkish-accent-
+          // insensitive, every word must match somewhere (AND, order-free).
+          final words = query.search.trim().isEmpty
+              ? const <String>[]
+              : foldSearchText(
+                  query.search,
+                ).split(' ').where((w) => w.isNotEmpty).toList();
+          final hits = [
             for (final r in rows)
-              if (_matches(r, query, needle, readmeIds.contains(r.id))) _row(r),
+              if (_matches(r, query, words, readmeIds.contains(r.id)))
+                (_tier(r, words), _row(r)),
           ];
+          if (words.isNotEmpty) {
+            // Ranked tiers (S3): title hits above body hits, stable within.
+            hits.sort((a, b) => a.$1.compareTo(b.$1));
+          }
+          return [for (final hit in hits) hit.$2];
         },
       );
 
-  bool _matches(NoteRecord r, NotesQuery query, String needle, bool isReadme) {
+  /// 0 = every word in the title, 2 = body carried the match.
+  int _tier(NoteRecord r, List<String> words) {
+    if (words.isEmpty) return 0;
+    final title = r.titleFold ?? foldSearchText(r.title);
+    return words.every(title.contains) ? 0 : 2;
+  }
+
+  bool _matches(
+    NoteRecord r,
+    NotesQuery query,
+    List<String> words,
+    bool isReadme,
+  ) {
     switch (query.filter) {
       case NotesFilter.readmes:
         if (!isReadme) return false;
@@ -85,8 +110,13 @@ class NoteStore {
         // README notes belong to their project's Overview, not the notes list.
         if (isReadme || r.isArchived) return false;
     }
-    if (needle.isEmpty) return true;
-    return '${r.title} ${r.plainText ?? ''}'.toLowerCase().contains(needle);
+    if (words.isEmpty) return true;
+    // Fold columns arrive with v6; rows written before the migration ran (or
+    // by an older peer) fold on the fly — correctness beats the fast path.
+    final haystack =
+        '${r.titleFold ?? foldSearchText(r.title)} '
+        '${r.bodyFold ?? foldSearchText(r.plainText ?? '')}';
+    return words.every(haystack.contains);
   }
 
   /// A project's notes: directly attached (projectId) ∪ link-attached,
@@ -140,10 +170,14 @@ class NoteStore {
               id: id,
               workspaceId: workspaceId,
               title: (body['title'] as String).trim(),
+              titleFold: Value(
+                foldSearchText((body['title'] as String).trim()),
+              ),
               projectId: Value(body['projectId'] as String?),
               contentDelta: Value(delta == null ? null : jsonEncode(delta)),
               contentMarkdown: Value(body['contentMarkdown'] as String?),
               plainText: Value(plainTextFromDelta(delta)),
+              bodyFold: Value(foldSearchText(plainTextFromDelta(delta))),
               isPinned: Value((body['isPinned'] as bool?) ?? false),
               createdAt: Value(DateTime.now().toUtc()),
               updatedAt: Value(DateTime.now().toUtc()),
@@ -172,6 +206,7 @@ class NoteStore {
     if (patch.containsKey('title')) {
       companion = companion.copyWith(
         title: Value((patch['title'] as String).trim()),
+        titleFold: Value(foldSearchText((patch['title'] as String).trim())),
       );
     }
     if (patch.containsKey('contentDelta')) {
@@ -180,6 +215,7 @@ class NoteStore {
       companion = companion.copyWith(
         contentDelta: Value(delta == null ? null : jsonEncode(delta)),
         plainText: Value(plainTextFromDelta(delta)),
+        bodyFold: Value(foldSearchText(plainTextFromDelta(delta))),
       );
     }
     if (patch.containsKey('contentMarkdown')) {

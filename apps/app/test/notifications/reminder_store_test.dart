@@ -69,28 +69,34 @@ void main() {
         ),
       );
 
-  test('a task with remindAt and no reminder row yields a synthetic alarm', () async {
-    final at = DateTime.utc(2030, 6, 1, 9);
-    await seedTask(remindAt: at);
+  test(
+    'a task with remindAt and no reminder row yields a synthetic alarm',
+    () async {
+      final at = DateTime.utc(2030, 6, 1, 9);
+      await seedTask(remindAt: at);
 
-    final alarms = await store.watchAlarms(ws).first;
-    expect(alarms, hasLength(1));
-    expect(alarms.single.reminderId, '$kSyntheticReminderPrefix${id('T1')}');
-    expect(alarms.single.remindAt, at);
-    expect(alarms.single.status, 'scheduled');
-    expect(alarms.single.urgent, isFalse);
-  });
+      final alarms = await store.watchAlarms(ws).first;
+      expect(alarms, hasLength(1));
+      expect(alarms.single.reminderId, '$kSyntheticReminderPrefix${id('T1')}');
+      expect(alarms.single.remindAt, at);
+      expect(alarms.single.status, 'scheduled');
+      expect(alarms.single.urgent, isFalse);
+    },
+  );
 
-  test('an urgent task alarms at its deadline without any reminder row', () async {
-    final due = DateTime.utc(2030, 6, 2, 14);
-    await seedTask(dueAt: due, urgent: true);
+  test(
+    'an urgent task alarms at its deadline without any reminder row',
+    () async {
+      final due = DateTime.utc(2030, 6, 2, 14);
+      await seedTask(dueAt: due, urgent: true);
 
-    final alarms = await store.watchAlarms(ws).first;
-    expect(alarms, hasLength(1));
-    expect(alarms.single.remindAt, due);
-    expect(alarms.single.urgent, isTrue);
-    expect(alarms.single.requiresAcknowledgement, isTrue);
-  });
+      final alarms = await store.watchAlarms(ws).first;
+      expect(alarms, hasLength(1));
+      expect(alarms.single.remindAt, due);
+      expect(alarms.single.urgent, isTrue);
+      expect(alarms.single.requiresAcknowledgement, isTrue);
+    },
+  );
 
   test('a plain due date synthesizes nothing', () async {
     await seedTask(dueAt: DateTime.utc(2030, 6, 2, 14));
@@ -117,14 +123,17 @@ void main() {
     expect(alarms.single.reminderId, id('R1'));
   });
 
-  test('a terminal reminder row never resurrects as a synthetic alarm', () async {
-    // The server acknowledged this alarm; the task still carries remindAt.
-    final at = DateTime.utc(2030, 6, 1, 9);
-    await seedTask(remindAt: at, urgent: true);
-    await seedReminder(remindAt: at, status: 'acknowledged');
+  test(
+    'a terminal reminder row never resurrects as a synthetic alarm',
+    () async {
+      // The server acknowledged this alarm; the task still carries remindAt.
+      final at = DateTime.utc(2030, 6, 1, 9);
+      await seedTask(remindAt: at, urgent: true);
+      await seedReminder(remindAt: at, status: 'acknowledged');
 
-    expect(await store.watchAlarms(ws).first, isEmpty);
-  });
+      expect(await store.watchAlarms(ws).first, isEmpty);
+    },
+  );
 
   test('completed and archived tasks synthesize nothing', () async {
     await seedTask(
@@ -141,24 +150,30 @@ void main() {
     expect(await store.watchAlarms(ws).first, isEmpty);
   });
 
-  test('acknowledging a synthetic id resolves to the task’s active row', () async {
-    final at = DateTime.utc(2030, 6, 1, 9);
-    await seedTask(remindAt: at, urgent: true);
-    await seedReminder(remindAt: at);
+  test(
+    'acknowledging a synthetic id resolves to the task’s active row',
+    () async {
+      final at = DateTime.utc(2030, 6, 1, 9);
+      await seedTask(remindAt: at, urgent: true);
+      await seedReminder(remindAt: at);
 
-    await store.acknowledge('$kSyntheticReminderPrefix${id('T1')}');
+      await store.acknowledge('$kSyntheticReminderPrefix${id('T1')}');
 
-    final row = await db.select(db.reminders).getSingle();
-    expect(row.status, 'acknowledged');
-    final outbox = await db.select(db.pendingMutations).get();
-    expect(outbox.single.entityId, id('R1'));
-  });
+      final row = await db.select(db.reminders).getSingle();
+      expect(row.status, 'acknowledged');
+      final outbox = await db.select(db.pendingMutations).get();
+      expect(outbox.single.entityId, id('R1'));
+    },
+  );
 
-  test('acknowledging a synthetic id with no row yet is a safe no-op', () async {
-    await seedTask(dueAt: DateTime.utc(2030, 6, 2, 14), urgent: true);
+  test(
+    'acknowledging a synthetic id with no row yet is a safe no-op',
+    () async {
+      await seedTask(dueAt: DateTime.utc(2030, 6, 2, 14), urgent: true);
 
-    await store.acknowledge('$kSyntheticReminderPrefix${id('T1')}');
+      await store.acknowledge('$kSyntheticReminderPrefix${id('T1')}');
 
-    expect(await db.select(db.pendingMutations).get(), isEmpty);
-  });
+      expect(await db.select(db.pendingMutations).get(), isEmpty);
+    },
+  );
 }

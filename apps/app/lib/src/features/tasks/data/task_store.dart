@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../core/fold.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
@@ -43,30 +44,48 @@ class TaskStore {
             t.projectId.equals(projectId),
       );
 
+  /// One WATCHED JOIN, not two combined streams: lists hydrate tagIds
+  /// (OPH-165, DESIGN T4) while keeping the single-stream emission semantics
+  /// the sync tests rely on — drift re-emits this stream when EITHER table
+  /// changes.
   Stream<List<Task>> _watchList(
     String workspaceId,
     Expression<bool> Function($TasksTable) filter,
-  ) => combineLatest2(
-    (_db.select(_db.tasks)
-          ..where(filter)
-          // ULIDs sort by creation time — newest first, like the server list.
-          ..orderBy([(t) => OrderingTerm.desc(t.id)]))
-        .watch(),
-    // OPH-165: list rows carry inline tags (DESIGN T4), so lists hydrate
-    // tagIds too — previously only watchDetail joined them, which left every
-    // list Task with an empty set.
-    _db.select(_db.taskTagRows).watch(),
-    (rows, tagRows) {
-      final byTask = <String, List<String>>{};
-      for (final r in tagRows) {
-        byTask.putIfAbsent(r.taskId, () => []).add(r.tagId);
+  ) {
+    final query =
+        (_db.select(_db.tasks)
+              ..where(filter)
+              // ULIDs sort by creation time — newest first, like the server
+              // list.
+              ..orderBy([(t) => OrderingTerm.desc(t.id)]))
+            .join([
+              leftOuterJoin(
+                _db.taskTagRows,
+                _db.taskTagRows.taskId.equalsExp(_db.tasks.id),
+              ),
+            ]);
+    return query.watch().map((rows) {
+      // The join multiplies rows per tag; regroup preserving query order.
+      final order = <String>[];
+      final tasksById = <String, TaskRecord>{};
+      final tagsByTask = <String, List<String>>{};
+      for (final row in rows) {
+        final record = row.readTable(_db.tasks);
+        if (!tasksById.containsKey(record.id)) {
+          order.add(record.id);
+          tasksById[record.id] = record;
+        }
+        final tagRow = row.readTableOrNull(_db.taskTagRows);
+        if (tagRow != null) {
+          tagsByTask.putIfAbsent(record.id, () => []).add(tagRow.tagId);
+        }
       }
       return [
-        for (final row in rows)
-          _task(row, tagIds: (byTask[row.id]?..sort()) ?? const []),
+        for (final id in order)
+          _task(tasksById[id]!, tagIds: (tagsByTask[id]?..sort()) ?? const []),
       ];
-    },
-  );
+    });
+  }
 
   /// Detail = task row + tag joins + checklist, live on every part.
   Stream<Task> watchDetail(String taskId) => combineLatest3(
@@ -126,11 +145,19 @@ class TaskStore {
               id: id,
               workspaceId: workspaceId,
               title: (patch['title'] as String).trim(),
+              titleFold: Value(
+                foldSearchText((patch['title'] as String).trim()),
+              ),
               projectId: Value(patch['projectId'] as String?),
               parentTaskId: Value(patch['parentTaskId'] as String?),
               status: Value((patch['status'] as String?) ?? 'open'),
               priority: Value((patch['priority'] as String?) ?? 'none'),
               description: Value(patch['description'] as String?),
+              descriptionFold: Value(
+                patch['description'] == null
+                    ? null
+                    : foldSearchText(patch['description'] as String),
+              ),
               dueAt: _dateValue(patch, 'dueAt'),
               remindAt: _dateValue(patch, 'remindAt'),
               startAt: _dateValue(patch, 'startAt'),
@@ -181,13 +208,19 @@ class TaskStore {
 
     var companion = const TasksCompanion();
     if (effective.containsKey('title')) {
+      final title = (effective['title'] as String).trim();
       companion = companion.copyWith(
-        title: Value((effective['title'] as String).trim()),
+        title: Value(title),
+        titleFold: Value(foldSearchText(title)),
       );
     }
     if (effective.containsKey('description')) {
+      final description = effective['description'] as String?;
       companion = companion.copyWith(
-        description: Value(effective['description'] as String?),
+        description: Value(description),
+        descriptionFold: Value(
+          description == null ? null : foldSearchText(description),
+        ),
       );
     }
     if (effective.containsKey('projectId')) {

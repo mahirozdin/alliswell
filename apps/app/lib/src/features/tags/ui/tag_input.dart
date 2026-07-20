@@ -82,9 +82,7 @@ class _TagInputFieldState extends ConsumerState<TagInputField> {
       } else {
         final workspaces = await ref.read(workspacesProvider.future);
         if (workspaces.isEmpty) return;
-        id = await ref
-            .read(tagStoreProvider)
-            .create(workspaces.first.id, text);
+        id = await ref.read(tagStoreProvider).create(workspaces.first.id, text);
       }
       if (!widget.value.contains(id)) {
         widget.onChanged([...widget.value, id]);
@@ -211,9 +209,7 @@ class _TagInputFieldState extends ConsumerState<TagInputField> {
                 ActionChip(
                   key: const Key('tag-create-suggestion'),
                   avatar: const Icon(Icons.add, size: 16),
-                  label: Text(
-                    'tag.createSuggestion'.tr(args: {'name': query}),
-                  ),
+                  label: Text('tag.createSuggestion'.tr(args: {'name': query})),
                   onPressed: () => _commit(query, tags),
                 ),
               for (final tag in matches.take(6))

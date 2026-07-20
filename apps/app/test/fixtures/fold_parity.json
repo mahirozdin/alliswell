@@ -1,0 +1,25 @@
+{
+  "_comment": "ADR-0013 cross-stack fold parity: input → folded. Asserted by apps/app/test/core/fold_test.dart AND apps/api/test/unit/fold.test.js. Change fold.dart or fold.js alone and one side fails.",
+  "pairs": {
+    "Çay": "cay",
+    "cay": "cay",
+    "ISI": "isi",
+    "ısı": "isi",
+    "İstanbul": "istanbul",
+    "IŞIK": "isik",
+    "ÜLKÜ": "ulku",
+    "göğüş": "gogus",
+    "şeker": "seker",
+    "kâğıt": "kagit",
+    "ÇAĞRI Ölçer": "cagri olcer",
+    "café": "cafe",
+    "Großmann": "grossmann",
+    "naïve": "naive",
+    "Łódź": "lodz",
+    "  çok   boşluk  ": "cok bosluk",
+    "Дом 123": "дом 123",
+    "øre œuvre æther": "ore oeuvre aether",
+    "đavo Śląsk": "davo slask",
+    "#Acil-İş (2026)": "#acil-is (2026)"
+  }
+}

@@ -138,6 +138,28 @@ class $ProjectsTable extends Projects
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _nameFoldMeta = const VerificationMeta(
+    'nameFold',
+  );
+  @override
+  late final GeneratedColumn<String> nameFold = GeneratedColumn<String>(
+    'name_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _descriptionFoldMeta = const VerificationMeta(
+    'descriptionFold',
+  );
+  @override
+  late final GeneratedColumn<String> descriptionFold = GeneratedColumn<String>(
+    'description_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -186,6 +208,8 @@ class $ProjectsTable extends Projects
     sortOrder,
     isFavorite,
     readmeNoteId,
+    nameFold,
+    descriptionFold,
     revision,
     createdAt,
     updatedAt,
@@ -286,6 +310,21 @@ class $ProjectsTable extends Projects
         ),
       );
     }
+    if (data.containsKey('name_fold')) {
+      context.handle(
+        _nameFoldMeta,
+        nameFold.isAcceptableOrUnknown(data['name_fold']!, _nameFoldMeta),
+      );
+    }
+    if (data.containsKey('description_fold')) {
+      context.handle(
+        _descriptionFoldMeta,
+        descriptionFold.isAcceptableOrUnknown(
+          data['description_fold']!,
+          _descriptionFoldMeta,
+        ),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -361,6 +400,14 @@ class $ProjectsTable extends Projects
         DriftSqlType.string,
         data['${effectivePrefix}readme_note_id'],
       ),
+      nameFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_fold'],
+      ),
+      descriptionFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description_fold'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -395,6 +442,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
   final int sortOrder;
   final bool isFavorite;
   final String? readmeNoteId;
+  final String? nameFold;
+  final String? descriptionFold;
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -411,6 +460,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
     required this.sortOrder,
     required this.isFavorite,
     this.readmeNoteId,
+    this.nameFold,
+    this.descriptionFold,
     required this.revision,
     this.createdAt,
     this.updatedAt,
@@ -439,6 +490,12 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
     map['is_favorite'] = Variable<bool>(isFavorite);
     if (!nullToAbsent || readmeNoteId != null) {
       map['readme_note_id'] = Variable<String>(readmeNoteId);
+    }
+    if (!nullToAbsent || nameFold != null) {
+      map['name_fold'] = Variable<String>(nameFold);
+    }
+    if (!nullToAbsent || descriptionFold != null) {
+      map['description_fold'] = Variable<String>(descriptionFold);
     }
     map['revision'] = Variable<int>(revision);
     if (!nullToAbsent || createdAt != null) {
@@ -472,6 +529,12 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
       readmeNoteId: readmeNoteId == null && nullToAbsent
           ? const Value.absent()
           : Value(readmeNoteId),
+      nameFold: nameFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameFold),
+      descriptionFold: descriptionFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(descriptionFold),
       revision: Value(revision),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
@@ -500,6 +563,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       readmeNoteId: serializer.fromJson<String?>(json['readmeNoteId']),
+      nameFold: serializer.fromJson<String?>(json['nameFold']),
+      descriptionFold: serializer.fromJson<String?>(json['descriptionFold']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -521,6 +586,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'readmeNoteId': serializer.toJson<String?>(readmeNoteId),
+      'nameFold': serializer.toJson<String?>(nameFold),
+      'descriptionFold': serializer.toJson<String?>(descriptionFold),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -540,6 +607,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
     int? sortOrder,
     bool? isFavorite,
     Value<String?> readmeNoteId = const Value.absent(),
+    Value<String?> nameFold = const Value.absent(),
+    Value<String?> descriptionFold = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -556,6 +625,10 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
     sortOrder: sortOrder ?? this.sortOrder,
     isFavorite: isFavorite ?? this.isFavorite,
     readmeNoteId: readmeNoteId.present ? readmeNoteId.value : this.readmeNoteId,
+    nameFold: nameFold.present ? nameFold.value : this.nameFold,
+    descriptionFold: descriptionFold.present
+        ? descriptionFold.value
+        : this.descriptionFold,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -582,6 +655,10 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
       readmeNoteId: data.readmeNoteId.present
           ? data.readmeNoteId.value
           : this.readmeNoteId,
+      nameFold: data.nameFold.present ? data.nameFold.value : this.nameFold,
+      descriptionFold: data.descriptionFold.present
+          ? data.descriptionFold.value
+          : this.descriptionFold,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -603,6 +680,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
           ..write('sortOrder: $sortOrder, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('readmeNoteId: $readmeNoteId, ')
+          ..write('nameFold: $nameFold, ')
+          ..write('descriptionFold: $descriptionFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -624,6 +703,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
     sortOrder,
     isFavorite,
     readmeNoteId,
+    nameFold,
+    descriptionFold,
     revision,
     createdAt,
     updatedAt,
@@ -644,6 +725,8 @@ class ProjectRecord extends DataClass implements Insertable<ProjectRecord> {
           other.sortOrder == this.sortOrder &&
           other.isFavorite == this.isFavorite &&
           other.readmeNoteId == this.readmeNoteId &&
+          other.nameFold == this.nameFold &&
+          other.descriptionFold == this.descriptionFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -662,6 +745,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
   final Value<int> sortOrder;
   final Value<bool> isFavorite;
   final Value<String?> readmeNoteId;
+  final Value<String?> nameFold;
+  final Value<String?> descriptionFold;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
@@ -679,6 +764,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
     this.sortOrder = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.readmeNoteId = const Value.absent(),
+    this.nameFold = const Value.absent(),
+    this.descriptionFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -697,6 +784,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
     this.sortOrder = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.readmeNoteId = const Value.absent(),
+    this.nameFold = const Value.absent(),
+    this.descriptionFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -717,6 +806,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
     Expression<int>? sortOrder,
     Expression<bool>? isFavorite,
     Expression<String>? readmeNoteId,
+    Expression<String>? nameFold,
+    Expression<String>? descriptionFold,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -735,6 +826,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (readmeNoteId != null) 'readme_note_id': readmeNoteId,
+      if (nameFold != null) 'name_fold': nameFold,
+      if (descriptionFold != null) 'description_fold': descriptionFold,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -755,6 +848,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
     Value<int>? sortOrder,
     Value<bool>? isFavorite,
     Value<String?>? readmeNoteId,
+    Value<String?>? nameFold,
+    Value<String?>? descriptionFold,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -773,6 +868,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
       sortOrder: sortOrder ?? this.sortOrder,
       isFavorite: isFavorite ?? this.isFavorite,
       readmeNoteId: readmeNoteId ?? this.readmeNoteId,
+      nameFold: nameFold ?? this.nameFold,
+      descriptionFold: descriptionFold ?? this.descriptionFold,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -819,6 +916,12 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
     if (readmeNoteId.present) {
       map['readme_note_id'] = Variable<String>(readmeNoteId.value);
     }
+    if (nameFold.present) {
+      map['name_fold'] = Variable<String>(nameFold.value);
+    }
+    if (descriptionFold.present) {
+      map['description_fold'] = Variable<String>(descriptionFold.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -849,6 +952,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRecord> {
           ..write('sortOrder: $sortOrder, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('readmeNoteId: $readmeNoteId, ')
+          ..write('nameFold: $nameFold, ')
+          ..write('descriptionFold: $descriptionFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -922,6 +1027,17 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRecord> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _nameFoldMeta = const VerificationMeta(
+    'nameFold',
+  );
+  @override
+  late final GeneratedColumn<String> nameFold = GeneratedColumn<String>(
+    'name_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -964,6 +1080,7 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRecord> {
     slug,
     colorRgb,
     icon,
+    nameFold,
     revision,
     createdAt,
     updatedAt,
@@ -1024,6 +1141,12 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRecord> {
         icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
       );
     }
+    if (data.containsKey('name_fold')) {
+      context.handle(
+        _nameFoldMeta,
+        nameFold.isAcceptableOrUnknown(data['name_fold']!, _nameFoldMeta),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -1075,6 +1198,10 @@ class $TagsTable extends Tags with TableInfo<$TagsTable, TagRecord> {
         DriftSqlType.string,
         data['${effectivePrefix}icon'],
       ),
+      nameFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_fold'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -1103,6 +1230,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
   final String slug;
   final String colorRgb;
   final String? icon;
+  final String? nameFold;
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -1113,6 +1241,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
     required this.slug,
     required this.colorRgb,
     this.icon,
+    this.nameFold,
     required this.revision,
     this.createdAt,
     this.updatedAt,
@@ -1127,6 +1256,9 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
     map['color_rgb'] = Variable<String>(colorRgb);
     if (!nullToAbsent || icon != null) {
       map['icon'] = Variable<String>(icon);
+    }
+    if (!nullToAbsent || nameFold != null) {
+      map['name_fold'] = Variable<String>(nameFold);
     }
     map['revision'] = Variable<int>(revision);
     if (!nullToAbsent || createdAt != null) {
@@ -1146,6 +1278,9 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
       slug: Value(slug),
       colorRgb: Value(colorRgb),
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      nameFold: nameFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameFold),
       revision: Value(revision),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
@@ -1168,6 +1303,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
       slug: serializer.fromJson<String>(json['slug']),
       colorRgb: serializer.fromJson<String>(json['colorRgb']),
       icon: serializer.fromJson<String?>(json['icon']),
+      nameFold: serializer.fromJson<String?>(json['nameFold']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -1183,6 +1319,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
       'slug': serializer.toJson<String>(slug),
       'colorRgb': serializer.toJson<String>(colorRgb),
       'icon': serializer.toJson<String?>(icon),
+      'nameFold': serializer.toJson<String?>(nameFold),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -1196,6 +1333,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
     String? slug,
     String? colorRgb,
     Value<String?> icon = const Value.absent(),
+    Value<String?> nameFold = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -1206,6 +1344,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
     slug: slug ?? this.slug,
     colorRgb: colorRgb ?? this.colorRgb,
     icon: icon.present ? icon.value : this.icon,
+    nameFold: nameFold.present ? nameFold.value : this.nameFold,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -1220,6 +1359,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
       slug: data.slug.present ? data.slug.value : this.slug,
       colorRgb: data.colorRgb.present ? data.colorRgb.value : this.colorRgb,
       icon: data.icon.present ? data.icon.value : this.icon,
+      nameFold: data.nameFold.present ? data.nameFold.value : this.nameFold,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -1235,6 +1375,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
           ..write('slug: $slug, ')
           ..write('colorRgb: $colorRgb, ')
           ..write('icon: $icon, ')
+          ..write('nameFold: $nameFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -1250,6 +1391,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
     slug,
     colorRgb,
     icon,
+    nameFold,
     revision,
     createdAt,
     updatedAt,
@@ -1264,6 +1406,7 @@ class TagRecord extends DataClass implements Insertable<TagRecord> {
           other.slug == this.slug &&
           other.colorRgb == this.colorRgb &&
           other.icon == this.icon &&
+          other.nameFold == this.nameFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -1276,6 +1419,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
   final Value<String> slug;
   final Value<String> colorRgb;
   final Value<String?> icon;
+  final Value<String?> nameFold;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
@@ -1287,6 +1431,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
     this.slug = const Value.absent(),
     this.colorRgb = const Value.absent(),
     this.icon = const Value.absent(),
+    this.nameFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1299,6 +1444,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
     required String slug,
     this.colorRgb = const Value.absent(),
     this.icon = const Value.absent(),
+    this.nameFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1314,6 +1460,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
     Expression<String>? slug,
     Expression<String>? colorRgb,
     Expression<String>? icon,
+    Expression<String>? nameFold,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1326,6 +1473,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
       if (slug != null) 'slug': slug,
       if (colorRgb != null) 'color_rgb': colorRgb,
       if (icon != null) 'icon': icon,
+      if (nameFold != null) 'name_fold': nameFold,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1340,6 +1488,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
     Value<String>? slug,
     Value<String>? colorRgb,
     Value<String?>? icon,
+    Value<String?>? nameFold,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -1352,6 +1501,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
       slug: slug ?? this.slug,
       colorRgb: colorRgb ?? this.colorRgb,
       icon: icon ?? this.icon,
+      nameFold: nameFold ?? this.nameFold,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1380,6 +1530,9 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
     if (icon.present) {
       map['icon'] = Variable<String>(icon.value);
     }
+    if (nameFold.present) {
+      map['name_fold'] = Variable<String>(nameFold.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -1404,6 +1557,7 @@ class TagsCompanion extends UpdateCompanion<TagRecord> {
           ..write('slug: $slug, ')
           ..write('colorRgb: $colorRgb, ')
           ..write('icon: $icon, ')
+          ..write('nameFold: $nameFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -1692,6 +1846,28 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _titleFoldMeta = const VerificationMeta(
+    'titleFold',
+  );
+  @override
+  late final GeneratedColumn<String> titleFold = GeneratedColumn<String>(
+    'title_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _descriptionFoldMeta = const VerificationMeta(
+    'descriptionFold',
+  );
+  @override
+  late final GeneratedColumn<String> descriptionFold = GeneratedColumn<String>(
+    'description_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -1752,6 +1928,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     sortOrder,
     calendarMirrorEnabled,
     completedAt,
+    titleFold,
+    descriptionFold,
     revision,
     createdAt,
     updatedAt,
@@ -1948,6 +2126,21 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         ),
       );
     }
+    if (data.containsKey('title_fold')) {
+      context.handle(
+        _titleFoldMeta,
+        titleFold.isAcceptableOrUnknown(data['title_fold']!, _titleFoldMeta),
+      );
+    }
+    if (data.containsKey('description_fold')) {
+      context.handle(
+        _descriptionFoldMeta,
+        descriptionFold.isAcceptableOrUnknown(
+          data['description_fold']!,
+          _descriptionFoldMeta,
+        ),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -2071,6 +2264,14 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
       ),
+      titleFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_fold'],
+      ),
+      descriptionFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description_fold'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -2117,6 +2318,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
   final int sortOrder;
   final bool calendarMirrorEnabled;
   final DateTime? completedAt;
+  final String? titleFold;
+  final String? descriptionFold;
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -2145,6 +2348,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     required this.sortOrder,
     required this.calendarMirrorEnabled,
     this.completedAt,
+    this.titleFold,
+    this.descriptionFold,
     required this.revision,
     this.createdAt,
     this.updatedAt,
@@ -2203,6 +2408,12 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     map['calendar_mirror_enabled'] = Variable<bool>(calendarMirrorEnabled);
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
+    }
+    if (!nullToAbsent || titleFold != null) {
+      map['title_fold'] = Variable<String>(titleFold);
+    }
+    if (!nullToAbsent || descriptionFold != null) {
+      map['description_fold'] = Variable<String>(descriptionFold);
     }
     map['revision'] = Variable<int>(revision);
     if (!nullToAbsent || createdAt != null) {
@@ -2268,6 +2479,12 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
+      titleFold: titleFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titleFold),
+      descriptionFold: descriptionFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(descriptionFold),
       revision: Value(revision),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
@@ -2314,6 +2531,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
         json['calendarMirrorEnabled'],
       ),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
+      titleFold: serializer.fromJson<String?>(json['titleFold']),
+      descriptionFold: serializer.fromJson<String?>(json['descriptionFold']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -2349,6 +2568,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       'sortOrder': serializer.toJson<int>(sortOrder),
       'calendarMirrorEnabled': serializer.toJson<bool>(calendarMirrorEnabled),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
+      'titleFold': serializer.toJson<String?>(titleFold),
+      'descriptionFold': serializer.toJson<String?>(descriptionFold),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -2380,6 +2601,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     int? sortOrder,
     bool? calendarMirrorEnabled,
     Value<DateTime?> completedAt = const Value.absent(),
+    Value<String?> titleFold = const Value.absent(),
+    Value<String?> descriptionFold = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -2417,6 +2640,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     sortOrder: sortOrder ?? this.sortOrder,
     calendarMirrorEnabled: calendarMirrorEnabled ?? this.calendarMirrorEnabled,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
+    titleFold: titleFold.present ? titleFold.value : this.titleFold,
+    descriptionFold: descriptionFold.present
+        ? descriptionFold.value
+        : this.descriptionFold,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -2471,6 +2698,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
+      titleFold: data.titleFold.present ? data.titleFold.value : this.titleFold,
+      descriptionFold: data.descriptionFold.present
+          ? data.descriptionFold.value
+          : this.descriptionFold,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2504,6 +2735,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ..write('sortOrder: $sortOrder, ')
           ..write('calendarMirrorEnabled: $calendarMirrorEnabled, ')
           ..write('completedAt: $completedAt, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('descriptionFold: $descriptionFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2537,6 +2770,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     sortOrder,
     calendarMirrorEnabled,
     completedAt,
+    titleFold,
+    descriptionFold,
     revision,
     createdAt,
     updatedAt,
@@ -2569,6 +2804,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           other.sortOrder == this.sortOrder &&
           other.calendarMirrorEnabled == this.calendarMirrorEnabled &&
           other.completedAt == this.completedAt &&
+          other.titleFold == this.titleFold &&
+          other.descriptionFold == this.descriptionFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -2599,6 +2836,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
   final Value<int> sortOrder;
   final Value<bool> calendarMirrorEnabled;
   final Value<DateTime?> completedAt;
+  final Value<String?> titleFold;
+  final Value<String?> descriptionFold;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
@@ -2628,6 +2867,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.sortOrder = const Value.absent(),
     this.calendarMirrorEnabled = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.descriptionFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2658,6 +2899,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.sortOrder = const Value.absent(),
     this.calendarMirrorEnabled = const Value.absent(),
     this.completedAt = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.descriptionFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2690,6 +2933,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Expression<int>? sortOrder,
     Expression<bool>? calendarMirrorEnabled,
     Expression<DateTime>? completedAt,
+    Expression<String>? titleFold,
+    Expression<String>? descriptionFold,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2722,6 +2967,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       if (calendarMirrorEnabled != null)
         'calendar_mirror_enabled': calendarMirrorEnabled,
       if (completedAt != null) 'completed_at': completedAt,
+      if (titleFold != null) 'title_fold': titleFold,
+      if (descriptionFold != null) 'description_fold': descriptionFold,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2754,6 +3001,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Value<int>? sortOrder,
     Value<bool>? calendarMirrorEnabled,
     Value<DateTime?>? completedAt,
+    Value<String?>? titleFold,
+    Value<String?>? descriptionFold,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -2786,6 +3035,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       calendarMirrorEnabled:
           calendarMirrorEnabled ?? this.calendarMirrorEnabled,
       completedAt: completedAt ?? this.completedAt,
+      titleFold: titleFold ?? this.titleFold,
+      descriptionFold: descriptionFold ?? this.descriptionFold,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2872,6 +3123,12 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
+    if (titleFold.present) {
+      map['title_fold'] = Variable<String>(titleFold.value);
+    }
+    if (descriptionFold.present) {
+      map['description_fold'] = Variable<String>(descriptionFold.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -2914,6 +3171,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
           ..write('sortOrder: $sortOrder, ')
           ..write('calendarMirrorEnabled: $calendarMirrorEnabled, ')
           ..write('completedAt: $completedAt, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('descriptionFold: $descriptionFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -3757,6 +4016,28 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _titleFoldMeta = const VerificationMeta(
+    'titleFold',
+  );
+  @override
+  late final GeneratedColumn<String> titleFold = GeneratedColumn<String>(
+    'title_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bodyFoldMeta = const VerificationMeta(
+    'bodyFold',
+  );
+  @override
+  late final GeneratedColumn<String> bodyFold = GeneratedColumn<String>(
+    'body_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -3803,6 +4084,8 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
     plainText,
     isPinned,
     isArchived,
+    titleFold,
+    bodyFold,
     revision,
     createdAt,
     updatedAt,
@@ -3894,6 +4177,18 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
         isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
       );
     }
+    if (data.containsKey('title_fold')) {
+      context.handle(
+        _titleFoldMeta,
+        titleFold.isAcceptableOrUnknown(data['title_fold']!, _titleFoldMeta),
+      );
+    }
+    if (data.containsKey('body_fold')) {
+      context.handle(
+        _bodyFoldMeta,
+        bodyFold.isAcceptableOrUnknown(data['body_fold']!, _bodyFoldMeta),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -3961,6 +4256,14 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
         DriftSqlType.bool,
         data['${effectivePrefix}is_archived'],
       )!,
+      titleFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_fold'],
+      ),
+      bodyFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body_fold'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -3995,6 +4298,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
   final String? plainText;
   final bool isPinned;
   final bool isArchived;
+  final String? titleFold;
+  final String? bodyFold;
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -4009,6 +4314,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     this.plainText,
     required this.isPinned,
     required this.isArchived,
+    this.titleFold,
+    this.bodyFold,
     required this.revision,
     this.createdAt,
     this.updatedAt,
@@ -4036,6 +4343,12 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     }
     map['is_pinned'] = Variable<bool>(isPinned);
     map['is_archived'] = Variable<bool>(isArchived);
+    if (!nullToAbsent || titleFold != null) {
+      map['title_fold'] = Variable<String>(titleFold);
+    }
+    if (!nullToAbsent || bodyFold != null) {
+      map['body_fold'] = Variable<String>(bodyFold);
+    }
     map['revision'] = Variable<int>(revision);
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
@@ -4068,6 +4381,12 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
           : Value(plainText),
       isPinned: Value(isPinned),
       isArchived: Value(isArchived),
+      titleFold: titleFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titleFold),
+      bodyFold: bodyFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bodyFold),
       revision: Value(revision),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
@@ -4096,6 +4415,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       plainText: serializer.fromJson<String?>(json['plainText']),
       isPinned: serializer.fromJson<bool>(json['isPinned']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
+      titleFold: serializer.fromJson<String?>(json['titleFold']),
+      bodyFold: serializer.fromJson<String?>(json['bodyFold']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -4115,6 +4436,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       'plainText': serializer.toJson<String?>(plainText),
       'isPinned': serializer.toJson<bool>(isPinned),
       'isArchived': serializer.toJson<bool>(isArchived),
+      'titleFold': serializer.toJson<String?>(titleFold),
+      'bodyFold': serializer.toJson<String?>(bodyFold),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -4132,6 +4455,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     Value<String?> plainText = const Value.absent(),
     bool? isPinned,
     bool? isArchived,
+    Value<String?> titleFold = const Value.absent(),
+    Value<String?> bodyFold = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -4150,6 +4475,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     plainText: plainText.present ? plainText.value : this.plainText,
     isPinned: isPinned ?? this.isPinned,
     isArchived: isArchived ?? this.isArchived,
+    titleFold: titleFold.present ? titleFold.value : this.titleFold,
+    bodyFold: bodyFold.present ? bodyFold.value : this.bodyFold,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -4176,6 +4503,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       isArchived: data.isArchived.present
           ? data.isArchived.value
           : this.isArchived,
+      titleFold: data.titleFold.present ? data.titleFold.value : this.titleFold,
+      bodyFold: data.bodyFold.present ? data.bodyFold.value : this.bodyFold,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -4195,6 +4524,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
           ..write('plainText: $plainText, ')
           ..write('isPinned: $isPinned, ')
           ..write('isArchived: $isArchived, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('bodyFold: $bodyFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -4214,6 +4545,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     plainText,
     isPinned,
     isArchived,
+    titleFold,
+    bodyFold,
     revision,
     createdAt,
     updatedAt,
@@ -4232,6 +4565,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
           other.plainText == this.plainText &&
           other.isPinned == this.isPinned &&
           other.isArchived == this.isArchived &&
+          other.titleFold == this.titleFold &&
+          other.bodyFold == this.bodyFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -4248,6 +4583,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
   final Value<String?> plainText;
   final Value<bool> isPinned;
   final Value<bool> isArchived;
+  final Value<String?> titleFold;
+  final Value<String?> bodyFold;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
@@ -4263,6 +4600,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     this.plainText = const Value.absent(),
     this.isPinned = const Value.absent(),
     this.isArchived = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.bodyFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4279,6 +4618,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     this.plainText = const Value.absent(),
     this.isPinned = const Value.absent(),
     this.isArchived = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.bodyFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4297,6 +4638,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     Expression<String>? plainText,
     Expression<bool>? isPinned,
     Expression<bool>? isArchived,
+    Expression<String>? titleFold,
+    Expression<String>? bodyFold,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -4313,6 +4656,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
       if (plainText != null) 'plain_text': plainText,
       if (isPinned != null) 'is_pinned': isPinned,
       if (isArchived != null) 'is_archived': isArchived,
+      if (titleFold != null) 'title_fold': titleFold,
+      if (bodyFold != null) 'body_fold': bodyFold,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4331,6 +4676,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     Value<String?>? plainText,
     Value<bool>? isPinned,
     Value<bool>? isArchived,
+    Value<String?>? titleFold,
+    Value<String?>? bodyFold,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -4347,6 +4694,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
       plainText: plainText ?? this.plainText,
       isPinned: isPinned ?? this.isPinned,
       isArchived: isArchived ?? this.isArchived,
+      titleFold: titleFold ?? this.titleFold,
+      bodyFold: bodyFold ?? this.bodyFold,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4387,6 +4736,12 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     if (isArchived.present) {
       map['is_archived'] = Variable<bool>(isArchived.value);
     }
+    if (titleFold.present) {
+      map['title_fold'] = Variable<String>(titleFold.value);
+    }
+    if (bodyFold.present) {
+      map['body_fold'] = Variable<String>(bodyFold.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -4415,6 +4770,8 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
           ..write('plainText: $plainText, ')
           ..write('isPinned: $isPinned, ')
           ..write('isArchived: $isArchived, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('bodyFold: $bodyFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5672,6 +6029,28 @@ class $ExternalEventsTable extends ExternalEvents
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _summaryFoldMeta = const VerificationMeta(
+    'summaryFold',
+  );
+  @override
+  late final GeneratedColumn<String> summaryFold = GeneratedColumn<String>(
+    'summary_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _locationFoldMeta = const VerificationMeta(
+    'locationFold',
+  );
+  @override
+  late final GeneratedColumn<String> locationFold = GeneratedColumn<String>(
+    'location_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -5695,6 +6074,8 @@ class $ExternalEventsTable extends ExternalEvents
     isAllDay,
     isBusy,
     htmlLink,
+    summaryFold,
+    locationFold,
     revision,
   ];
   @override
@@ -5771,6 +6152,24 @@ class $ExternalEventsTable extends ExternalEvents
         htmlLink.isAcceptableOrUnknown(data['html_link']!, _htmlLinkMeta),
       );
     }
+    if (data.containsKey('summary_fold')) {
+      context.handle(
+        _summaryFoldMeta,
+        summaryFold.isAcceptableOrUnknown(
+          data['summary_fold']!,
+          _summaryFoldMeta,
+        ),
+      );
+    }
+    if (data.containsKey('location_fold')) {
+      context.handle(
+        _locationFoldMeta,
+        locationFold.isAcceptableOrUnknown(
+          data['location_fold']!,
+          _locationFoldMeta,
+        ),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -5822,6 +6221,14 @@ class $ExternalEventsTable extends ExternalEvents
         DriftSqlType.string,
         data['${effectivePrefix}html_link'],
       ),
+      summaryFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}summary_fold'],
+      ),
+      locationFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}location_fold'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -5846,6 +6253,8 @@ class ExternalEventRecord extends DataClass
   final bool isAllDay;
   final bool isBusy;
   final String? htmlLink;
+  final String? summaryFold;
+  final String? locationFold;
   final int revision;
   const ExternalEventRecord({
     required this.id,
@@ -5857,6 +6266,8 @@ class ExternalEventRecord extends DataClass
     required this.isAllDay,
     required this.isBusy,
     this.htmlLink,
+    this.summaryFold,
+    this.locationFold,
     required this.revision,
   });
   @override
@@ -5876,6 +6287,12 @@ class ExternalEventRecord extends DataClass
     map['is_busy'] = Variable<bool>(isBusy);
     if (!nullToAbsent || htmlLink != null) {
       map['html_link'] = Variable<String>(htmlLink);
+    }
+    if (!nullToAbsent || summaryFold != null) {
+      map['summary_fold'] = Variable<String>(summaryFold);
+    }
+    if (!nullToAbsent || locationFold != null) {
+      map['location_fold'] = Variable<String>(locationFold);
     }
     map['revision'] = Variable<int>(revision);
     return map;
@@ -5898,6 +6315,12 @@ class ExternalEventRecord extends DataClass
       htmlLink: htmlLink == null && nullToAbsent
           ? const Value.absent()
           : Value(htmlLink),
+      summaryFold: summaryFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(summaryFold),
+      locationFold: locationFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(locationFold),
       revision: Value(revision),
     );
   }
@@ -5917,6 +6340,8 @@ class ExternalEventRecord extends DataClass
       isAllDay: serializer.fromJson<bool>(json['isAllDay']),
       isBusy: serializer.fromJson<bool>(json['isBusy']),
       htmlLink: serializer.fromJson<String?>(json['htmlLink']),
+      summaryFold: serializer.fromJson<String?>(json['summaryFold']),
+      locationFold: serializer.fromJson<String?>(json['locationFold']),
       revision: serializer.fromJson<int>(json['revision']),
     );
   }
@@ -5933,6 +6358,8 @@ class ExternalEventRecord extends DataClass
       'isAllDay': serializer.toJson<bool>(isAllDay),
       'isBusy': serializer.toJson<bool>(isBusy),
       'htmlLink': serializer.toJson<String?>(htmlLink),
+      'summaryFold': serializer.toJson<String?>(summaryFold),
+      'locationFold': serializer.toJson<String?>(locationFold),
       'revision': serializer.toJson<int>(revision),
     };
   }
@@ -5947,6 +6374,8 @@ class ExternalEventRecord extends DataClass
     bool? isAllDay,
     bool? isBusy,
     Value<String?> htmlLink = const Value.absent(),
+    Value<String?> summaryFold = const Value.absent(),
+    Value<String?> locationFold = const Value.absent(),
     int? revision,
   }) => ExternalEventRecord(
     id: id ?? this.id,
@@ -5958,6 +6387,8 @@ class ExternalEventRecord extends DataClass
     isAllDay: isAllDay ?? this.isAllDay,
     isBusy: isBusy ?? this.isBusy,
     htmlLink: htmlLink.present ? htmlLink.value : this.htmlLink,
+    summaryFold: summaryFold.present ? summaryFold.value : this.summaryFold,
+    locationFold: locationFold.present ? locationFold.value : this.locationFold,
     revision: revision ?? this.revision,
   );
   ExternalEventRecord copyWithCompanion(ExternalEventsCompanion data) {
@@ -5973,6 +6404,12 @@ class ExternalEventRecord extends DataClass
       isAllDay: data.isAllDay.present ? data.isAllDay.value : this.isAllDay,
       isBusy: data.isBusy.present ? data.isBusy.value : this.isBusy,
       htmlLink: data.htmlLink.present ? data.htmlLink.value : this.htmlLink,
+      summaryFold: data.summaryFold.present
+          ? data.summaryFold.value
+          : this.summaryFold,
+      locationFold: data.locationFold.present
+          ? data.locationFold.value
+          : this.locationFold,
       revision: data.revision.present ? data.revision.value : this.revision,
     );
   }
@@ -5989,6 +6426,8 @@ class ExternalEventRecord extends DataClass
           ..write('isAllDay: $isAllDay, ')
           ..write('isBusy: $isBusy, ')
           ..write('htmlLink: $htmlLink, ')
+          ..write('summaryFold: $summaryFold, ')
+          ..write('locationFold: $locationFold, ')
           ..write('revision: $revision')
           ..write(')'))
         .toString();
@@ -6005,6 +6444,8 @@ class ExternalEventRecord extends DataClass
     isAllDay,
     isBusy,
     htmlLink,
+    summaryFold,
+    locationFold,
     revision,
   );
   @override
@@ -6020,6 +6461,8 @@ class ExternalEventRecord extends DataClass
           other.isAllDay == this.isAllDay &&
           other.isBusy == this.isBusy &&
           other.htmlLink == this.htmlLink &&
+          other.summaryFold == this.summaryFold &&
+          other.locationFold == this.locationFold &&
           other.revision == this.revision);
 }
 
@@ -6033,6 +6476,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
   final Value<bool> isAllDay;
   final Value<bool> isBusy;
   final Value<String?> htmlLink;
+  final Value<String?> summaryFold;
+  final Value<String?> locationFold;
   final Value<int> revision;
   final Value<int> rowid;
   const ExternalEventsCompanion({
@@ -6045,6 +6490,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
     this.isAllDay = const Value.absent(),
     this.isBusy = const Value.absent(),
     this.htmlLink = const Value.absent(),
+    this.summaryFold = const Value.absent(),
+    this.locationFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -6058,6 +6505,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
     this.isAllDay = const Value.absent(),
     this.isBusy = const Value.absent(),
     this.htmlLink = const Value.absent(),
+    this.summaryFold = const Value.absent(),
+    this.locationFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -6074,6 +6523,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
     Expression<bool>? isAllDay,
     Expression<bool>? isBusy,
     Expression<String>? htmlLink,
+    Expression<String>? summaryFold,
+    Expression<String>? locationFold,
     Expression<int>? revision,
     Expression<int>? rowid,
   }) {
@@ -6087,6 +6538,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
       if (isAllDay != null) 'is_all_day': isAllDay,
       if (isBusy != null) 'is_busy': isBusy,
       if (htmlLink != null) 'html_link': htmlLink,
+      if (summaryFold != null) 'summary_fold': summaryFold,
+      if (locationFold != null) 'location_fold': locationFold,
       if (revision != null) 'revision': revision,
       if (rowid != null) 'rowid': rowid,
     });
@@ -6102,6 +6555,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
     Value<bool>? isAllDay,
     Value<bool>? isBusy,
     Value<String?>? htmlLink,
+    Value<String?>? summaryFold,
+    Value<String?>? locationFold,
     Value<int>? revision,
     Value<int>? rowid,
   }) {
@@ -6115,6 +6570,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
       isAllDay: isAllDay ?? this.isAllDay,
       isBusy: isBusy ?? this.isBusy,
       htmlLink: htmlLink ?? this.htmlLink,
+      summaryFold: summaryFold ?? this.summaryFold,
+      locationFold: locationFold ?? this.locationFold,
       revision: revision ?? this.revision,
       rowid: rowid ?? this.rowid,
     );
@@ -6150,6 +6607,12 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
     if (htmlLink.present) {
       map['html_link'] = Variable<String>(htmlLink.value);
     }
+    if (summaryFold.present) {
+      map['summary_fold'] = Variable<String>(summaryFold.value);
+    }
+    if (locationFold.present) {
+      map['location_fold'] = Variable<String>(locationFold.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -6171,6 +6634,8 @@ class ExternalEventsCompanion extends UpdateCompanion<ExternalEventRecord> {
           ..write('isAllDay: $isAllDay, ')
           ..write('isBusy: $isBusy, ')
           ..write('htmlLink: $htmlLink, ')
+          ..write('summaryFold: $summaryFold, ')
+          ..write('locationFold: $locationFold, ')
           ..write('revision: $revision, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -8230,6 +8695,8 @@ typedef $$ProjectsTableCreateCompanionBuilder =
       Value<int> sortOrder,
       Value<bool> isFavorite,
       Value<String?> readmeNoteId,
+      Value<String?> nameFold,
+      Value<String?> descriptionFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -8249,6 +8716,8 @@ typedef $$ProjectsTableUpdateCompanionBuilder =
       Value<int> sortOrder,
       Value<bool> isFavorite,
       Value<String?> readmeNoteId,
+      Value<String?> nameFold,
+      Value<String?> descriptionFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -8321,6 +8790,16 @@ class $$ProjectsTableFilterComposer
 
   ColumnFilters<String> get readmeNoteId => $composableBuilder(
     column: $table.readmeNoteId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get descriptionFold => $composableBuilder(
+    column: $table.descriptionFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8409,6 +8888,16 @@ class $$ProjectsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get descriptionFold => $composableBuilder(
+    column: $table.descriptionFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -8478,6 +8967,14 @@ class $$ProjectsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get nameFold =>
+      $composableBuilder(column: $table.nameFold, builder: (column) => column);
+
+  GeneratedColumn<String> get descriptionFold => $composableBuilder(
+    column: $table.descriptionFold,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
 
@@ -8531,6 +9028,8 @@ class $$ProjectsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<String?> readmeNoteId = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
+                Value<String?> descriptionFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -8548,6 +9047,8 @@ class $$ProjectsTableTableManager
                 sortOrder: sortOrder,
                 isFavorite: isFavorite,
                 readmeNoteId: readmeNoteId,
+                nameFold: nameFold,
+                descriptionFold: descriptionFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -8567,6 +9068,8 @@ class $$ProjectsTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<String?> readmeNoteId = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
+                Value<String?> descriptionFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -8584,6 +9087,8 @@ class $$ProjectsTableTableManager
                 sortOrder: sortOrder,
                 isFavorite: isFavorite,
                 readmeNoteId: readmeNoteId,
+                nameFold: nameFold,
+                descriptionFold: descriptionFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -8622,6 +9127,7 @@ typedef $$TagsTableCreateCompanionBuilder =
       required String slug,
       Value<String> colorRgb,
       Value<String?> icon,
+      Value<String?> nameFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -8635,6 +9141,7 @@ typedef $$TagsTableUpdateCompanionBuilder =
       Value<String> slug,
       Value<String> colorRgb,
       Value<String?> icon,
+      Value<String?> nameFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -8676,6 +9183,11 @@ class $$TagsTableFilterComposer extends Composer<_$AwDatabase, $TagsTable> {
 
   ColumnFilters<String> get icon => $composableBuilder(
     column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8733,6 +9245,11 @@ class $$TagsTableOrderingComposer extends Composer<_$AwDatabase, $TagsTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -8776,6 +9293,9 @@ class $$TagsTableAnnotationComposer extends Composer<_$AwDatabase, $TagsTable> {
 
   GeneratedColumn<String> get icon =>
       $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<String> get nameFold =>
+      $composableBuilder(column: $table.nameFold, builder: (column) => column);
 
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
@@ -8821,6 +9341,7 @@ class $$TagsTableTableManager
                 Value<String> slug = const Value.absent(),
                 Value<String> colorRgb = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -8832,6 +9353,7 @@ class $$TagsTableTableManager
                 slug: slug,
                 colorRgb: colorRgb,
                 icon: icon,
+                nameFold: nameFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -8845,6 +9367,7 @@ class $$TagsTableTableManager
                 required String slug,
                 Value<String> colorRgb = const Value.absent(),
                 Value<String?> icon = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -8856,6 +9379,7 @@ class $$TagsTableTableManager
                 slug: slug,
                 colorRgb: colorRgb,
                 icon: icon,
+                nameFold: nameFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -8909,6 +9433,8 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<int> sortOrder,
       Value<bool> calendarMirrorEnabled,
       Value<DateTime?> completedAt,
+      Value<String?> titleFold,
+      Value<String?> descriptionFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -8940,6 +9466,8 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<int> sortOrder,
       Value<bool> calendarMirrorEnabled,
       Value<DateTime?> completedAt,
+      Value<String?> titleFold,
+      Value<String?> descriptionFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -9071,6 +9599,16 @@ class $$TasksTableFilterComposer extends Composer<_$AwDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get descriptionFold => $composableBuilder(
+    column: $table.descriptionFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9218,6 +9756,16 @@ class $$TasksTableOrderingComposer extends Composer<_$AwDatabase, $TasksTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get descriptionFold => $composableBuilder(
+    column: $table.descriptionFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -9339,6 +9887,14 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get titleFold =>
+      $composableBuilder(column: $table.titleFold, builder: (column) => column);
+
+  GeneratedColumn<String> get descriptionFold => $composableBuilder(
+    column: $table.descriptionFold,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
 
@@ -9401,6 +9957,8 @@ class $$TasksTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> calendarMirrorEnabled = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> descriptionFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -9430,6 +9988,8 @@ class $$TasksTableTableManager
                 sortOrder: sortOrder,
                 calendarMirrorEnabled: calendarMirrorEnabled,
                 completedAt: completedAt,
+                titleFold: titleFold,
+                descriptionFold: descriptionFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -9461,6 +10021,8 @@ class $$TasksTableTableManager
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> calendarMirrorEnabled = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> descriptionFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -9490,6 +10052,8 @@ class $$TasksTableTableManager
                 sortOrder: sortOrder,
                 calendarMirrorEnabled: calendarMirrorEnabled,
                 completedAt: completedAt,
+                titleFold: titleFold,
+                descriptionFold: descriptionFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -9930,6 +10494,8 @@ typedef $$NotesTableCreateCompanionBuilder =
       Value<String?> plainText,
       Value<bool> isPinned,
       Value<bool> isArchived,
+      Value<String?> titleFold,
+      Value<String?> bodyFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -9947,6 +10513,8 @@ typedef $$NotesTableUpdateCompanionBuilder =
       Value<String?> plainText,
       Value<bool> isPinned,
       Value<bool> isArchived,
+      Value<String?> titleFold,
+      Value<String?> bodyFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -10008,6 +10576,16 @@ class $$NotesTableFilterComposer extends Composer<_$AwDatabase, $NotesTable> {
 
   ColumnFilters<bool> get isArchived => $composableBuilder(
     column: $table.isArchived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bodyFold => $composableBuilder(
+    column: $table.bodyFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10085,6 +10663,16 @@ class $$NotesTableOrderingComposer extends Composer<_$AwDatabase, $NotesTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bodyFold => $composableBuilder(
+    column: $table.bodyFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -10150,6 +10738,12 @@ class $$NotesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get titleFold =>
+      $composableBuilder(column: $table.titleFold, builder: (column) => column);
+
+  GeneratedColumn<String> get bodyFold =>
+      $composableBuilder(column: $table.bodyFold, builder: (column) => column);
+
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
 
@@ -10198,6 +10792,8 @@ class $$NotesTableTableManager
                 Value<String?> plainText = const Value.absent(),
                 Value<bool> isPinned = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> bodyFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -10213,6 +10809,8 @@ class $$NotesTableTableManager
                 plainText: plainText,
                 isPinned: isPinned,
                 isArchived: isArchived,
+                titleFold: titleFold,
+                bodyFold: bodyFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -10230,6 +10828,8 @@ class $$NotesTableTableManager
                 Value<String?> plainText = const Value.absent(),
                 Value<bool> isPinned = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> bodyFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -10245,6 +10845,8 @@ class $$NotesTableTableManager
                 plainText: plainText,
                 isPinned: isPinned,
                 isArchived: isArchived,
+                titleFold: titleFold,
+                bodyFold: bodyFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -10843,6 +11445,8 @@ typedef $$ExternalEventsTableCreateCompanionBuilder =
       Value<bool> isAllDay,
       Value<bool> isBusy,
       Value<String?> htmlLink,
+      Value<String?> summaryFold,
+      Value<String?> locationFold,
       Value<int> revision,
       Value<int> rowid,
     });
@@ -10857,6 +11461,8 @@ typedef $$ExternalEventsTableUpdateCompanionBuilder =
       Value<bool> isAllDay,
       Value<bool> isBusy,
       Value<String?> htmlLink,
+      Value<String?> summaryFold,
+      Value<String?> locationFold,
       Value<int> revision,
       Value<int> rowid,
     });
@@ -10912,6 +11518,16 @@ class $$ExternalEventsTableFilterComposer
 
   ColumnFilters<String> get htmlLink => $composableBuilder(
     column: $table.htmlLink,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get summaryFold => $composableBuilder(
+    column: $table.summaryFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get locationFold => $composableBuilder(
+    column: $table.locationFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10975,6 +11591,16 @@ class $$ExternalEventsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get summaryFold => $composableBuilder(
+    column: $table.summaryFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get locationFold => $composableBuilder(
+    column: $table.locationFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -11018,6 +11644,16 @@ class $$ExternalEventsTableAnnotationComposer
 
   GeneratedColumn<String> get htmlLink =>
       $composableBuilder(column: $table.htmlLink, builder: (column) => column);
+
+  GeneratedColumn<String> get summaryFold => $composableBuilder(
+    column: $table.summaryFold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get locationFold => $composableBuilder(
+    column: $table.locationFold,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
@@ -11067,6 +11703,8 @@ class $$ExternalEventsTableTableManager
                 Value<bool> isAllDay = const Value.absent(),
                 Value<bool> isBusy = const Value.absent(),
                 Value<String?> htmlLink = const Value.absent(),
+                Value<String?> summaryFold = const Value.absent(),
+                Value<String?> locationFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExternalEventsCompanion(
@@ -11079,6 +11717,8 @@ class $$ExternalEventsTableTableManager
                 isAllDay: isAllDay,
                 isBusy: isBusy,
                 htmlLink: htmlLink,
+                summaryFold: summaryFold,
+                locationFold: locationFold,
                 revision: revision,
                 rowid: rowid,
               ),
@@ -11093,6 +11733,8 @@ class $$ExternalEventsTableTableManager
                 Value<bool> isAllDay = const Value.absent(),
                 Value<bool> isBusy = const Value.absent(),
                 Value<String?> htmlLink = const Value.absent(),
+                Value<String?> summaryFold = const Value.absent(),
+                Value<String?> locationFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ExternalEventsCompanion.insert(
@@ -11105,6 +11747,8 @@ class $$ExternalEventsTableTableManager
                 isAllDay: isAllDay,
                 isBusy: isBusy,
                 htmlLink: htmlLink,
+                summaryFold: summaryFold,
+                locationFold: locationFold,
                 revision: revision,
                 rowid: rowid,
               ),

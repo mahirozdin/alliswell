@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+import '../../core/fold.dart';
+
 part 'database.g.dart';
 
 /// Local replica of the server's synced entities (OPH-054, BLUEPRINT §6).
@@ -20,6 +22,9 @@ class Projects extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   TextColumn get readmeNoteId => text().nullable()();
+  // ADR-0013 (v6): folded shadows for search.
+  TextColumn get nameFold => text().nullable()();
+  TextColumn get descriptionFold => text().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -36,6 +41,9 @@ class Tags extends Table {
   TextColumn get slug => text()();
   TextColumn get colorRgb => text().withDefault(const Constant('#64748B'))();
   TextColumn get icon => text().nullable()();
+  // ADR-0013 (v6): folded shadow of [name] — search matches run on this.
+  // Writers (stores + applier) MUST keep it in step via foldSearchText.
+  TextColumn get nameFold => text().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -75,6 +83,9 @@ class Tasks extends Table {
   BoolColumn get calendarMirrorEnabled =>
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get completedAt => dateTime().nullable()();
+  // ADR-0013 (v6): folded shadows for search (title > … > description).
+  TextColumn get titleFold => text().nullable()();
+  TextColumn get descriptionFold => text().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -98,6 +109,9 @@ class ExternalEvents extends Table {
   BoolColumn get isAllDay => boolean().withDefault(const Constant(false))();
   BoolColumn get isBusy => boolean().withDefault(const Constant(true))();
   TextColumn get htmlLink => text().nullable()();
+  // ADR-0013 (v6): folded shadows — Home search covers the calendar too.
+  TextColumn get summaryFold => text().nullable()();
+  TextColumn get locationFold => text().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
 
   @override
@@ -170,6 +184,9 @@ class Notes extends Table {
   TextColumn get plainText => text().nullable()();
   BoolColumn get isPinned => boolean().withDefault(const Constant(false))();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
+  // ADR-0013 (v6): folded shadows (body = the delta's plain text).
+  TextColumn get titleFold => text().nullable()();
+  TextColumn get bodyFold => text().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -288,8 +305,9 @@ class AwDatabase extends _$AwDatabase {
   /// v2 → v3 (OPH-083): external_events (the user's own calendar).
   /// v3 → v4 (OPH-078): apple_event_links (device-local Apple mirror map).
   /// v4 → v5 (OPH-153): file_rows (attachment metadata, pull-only).
+  /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -315,6 +333,65 @@ class AwDatabase extends _$AwDatabase {
       // v5 (OPH-153): attachment metadata. New pull-only table; the next
       // sync pull fills it — nothing existing is touched.
       if (from < 5) await m.createTable(fileRows);
+      // v6 (OPH-167, ADR-0013): folded search shadows. Columns are nullable
+      // (no rewrite on ADD), then a one-time Dart backfill folds existing
+      // rows — the fold CANNOT run in SQL, that is the whole point.
+      if (from < 6) {
+        await m.addColumn(projects, projects.nameFold);
+        await m.addColumn(projects, projects.descriptionFold);
+        await m.addColumn(tags, tags.nameFold);
+        await m.addColumn(tasks, tasks.titleFold);
+        await m.addColumn(tasks, tasks.descriptionFold);
+        await m.addColumn(notes, notes.titleFold);
+        await m.addColumn(notes, notes.bodyFold);
+        // external_events only exists pre-v6 for installs that were ≥ v3;
+        // older ones just got it CREATED above with the current definition —
+        // fold columns included — and a second ADD would throw.
+        if (from >= 3) {
+          await m.addColumn(externalEvents, externalEvents.summaryFold);
+          await m.addColumn(externalEvents, externalEvents.locationFold);
+        }
+        await backfillSearchFolds(this);
+      }
     },
   );
+}
+
+/// One-time v6 backfill (ADR-0013): fold existing rows' searchable text into
+/// the shadow columns. Runs inside the migration; the fold cannot run in SQL
+/// — that gap is why the columns exist at all.
+Future<void> backfillSearchFolds(AwDatabase db) async {
+  Future<void> run(String table, Map<String, String> srcToFold) async {
+    final cols = srcToFold.keys.join(', ');
+    final rows = await db.customSelect('SELECT id, $cols FROM $table').get();
+    for (final row in rows) {
+      final sets = <String>[];
+      final args = <Object?>[];
+      srcToFold.forEach((src, fold) {
+        final value = row.read<String?>(src);
+        sets.add('$fold = ?');
+        args.add(value == null ? null : foldSearchText(value));
+      });
+      args.add(row.read<String>('id'));
+      await db.customStatement(
+        'UPDATE $table SET ${sets.join(', ')} WHERE id = ?',
+        args,
+      );
+    }
+  }
+
+  await run('projects', {
+    'name': 'name_fold',
+    'description': 'description_fold',
+  });
+  await run('tags', {'name': 'name_fold'});
+  await run('tasks', {
+    'title': 'title_fold',
+    'description': 'description_fold',
+  });
+  await run('notes', {'title': 'title_fold', 'plain_text': 'body_fold'});
+  await run('external_events', {
+    'summary': 'summary_fold',
+    'location': 'location_fold',
+  });
 }

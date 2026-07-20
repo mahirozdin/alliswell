@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../core/fold.dart';
 import 'db/database.dart';
 import 'sync_api.dart';
 
@@ -152,6 +153,12 @@ Future<void> _replaceNoteLinks(
 
 // ── Snapshot JSON (REST serializer shape) → drift companions ────────────────
 
+/// ADR-0013: pulled rows fold here — the applier is one of the two write
+/// choke points (feature stores are the other). Missing a path silently
+/// breaks search for that entity; the applier test asserts every type.
+Value<String?> _foldValue(Object? source) =>
+    Value(source == null ? null : foldSearchText(source as String));
+
 ProjectsCompanion projectCompanion(Map<String, dynamic> d) =>
     ProjectsCompanion.insert(
       id: d['id'] as String,
@@ -166,6 +173,8 @@ ProjectsCompanion projectCompanion(Map<String, dynamic> d) =>
       sortOrder: Value((d['sortOrder'] as int?) ?? 0),
       isFavorite: Value((d['isFavorite'] as bool?) ?? false),
       readmeNoteId: Value(d['readmeNoteId'] as String?),
+      nameFold: _foldValue(d['name']),
+      descriptionFold: _foldValue(d['description']),
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),
@@ -178,6 +187,7 @@ TagsCompanion tagCompanion(Map<String, dynamic> d) => TagsCompanion.insert(
   slug: d['slug'] as String,
   colorRgb: Value((d['colorRgb'] as String?) ?? '#64748B'),
   icon: Value(d['icon'] as String?),
+  nameFold: _foldValue(d['name']),
   revision: Value((d['revision'] as int?) ?? 0),
   createdAt: _dateValue(d['createdAt']),
   updatedAt: _dateValue(d['updatedAt']),
@@ -196,6 +206,8 @@ ExternalEventsCompanion externalEventCompanion(Map<String, dynamic> d) =>
       isAllDay: Value((d['isAllDay'] as bool?) ?? false),
       isBusy: Value((d['isBusy'] as bool?) ?? true),
       htmlLink: Value(d['htmlLink'] as String?),
+      summaryFold: _foldValue(d['summary']),
+      locationFold: _foldValue(d['location']),
       revision: Value((d['revision'] as int?) ?? 0),
     );
 
@@ -244,6 +256,8 @@ TasksCompanion taskCompanion(Map<String, dynamic> d) => TasksCompanion.insert(
   actualMinutes: Value(d['actualMinutes'] as int?),
   sortOrder: Value((d['sortOrder'] as int?) ?? 0),
   completedAt: _dateValue(d['completedAt']),
+  titleFold: _foldValue(d['title']),
+  descriptionFold: _foldValue(d['description']),
   revision: Value((d['revision'] as int?) ?? 0),
   createdAt: _dateValue(d['createdAt']),
   updatedAt: _dateValue(d['updatedAt']),
@@ -262,6 +276,10 @@ NotesCompanion noteCompanion(Map<String, dynamic> d) => NotesCompanion.insert(
   plainText: Value((d['plainText'] as String?) ?? (d['snippet'] as String?)),
   isPinned: Value((d['isPinned'] as bool?) ?? false),
   isArchived: Value((d['isArchived'] as bool?) ?? false),
+  titleFold: _foldValue(d['title']),
+  bodyFold: _foldValue(
+    (d['plainText'] as String?) ?? (d['snippet'] as String?),
+  ),
   revision: Value((d['revision'] as int?) ?? 0),
   createdAt: _dateValue(d['createdAt']),
   updatedAt: _dateValue(d['updatedAt']),

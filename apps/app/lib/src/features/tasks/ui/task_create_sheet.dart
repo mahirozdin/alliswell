@@ -252,10 +252,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 Builder(
                   builder: (context) {
                     final configured =
-                        ref
-                            .watch(storageStatusProvider)
-                            .value
-                            ?.configured ??
+                        ref.watch(storageStatusProvider).value?.configured ??
                         true; // optimistic while loading (F6 idiom)
                     if (!configured && _pendingFiles.isEmpty) {
                       return Row(
@@ -285,8 +282,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final (index, file)
-                            in _pendingFiles.indexed)
+                        for (final (index, file) in _pendingFiles.indexed)
                           ListTile(
                             key: Key('pending-file-$index'),
                             dense: true,
@@ -304,9 +300,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                             trailing: IconButton(
                               tooltip: 'common.remove'.tr(),
                               icon: const Icon(Icons.close, size: 18),
-                              onPressed: () => setState(
-                                () => _pendingFiles.removeAt(index),
-                              ),
+                              onPressed: () =>
+                                  setState(() => _pendingFiles.removeAt(index)),
                             ),
                           ),
                         Align(

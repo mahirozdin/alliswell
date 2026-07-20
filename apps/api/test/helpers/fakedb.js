@@ -246,15 +246,23 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
         return api;
       },
       // Only the notes FULLTEXT search uses whereRaw; the fake approximates
-      // MATCH..AGAINST with a case-insensitive substring test (the real index
-      // semantics are covered by test/integration/notes.test.js).
+      // MATCH..AGAINST with a case-insensitive substring test over the named
+      // columns (the real index semantics are covered by the integration
+      // suites). Notes use (title, plain_text); tasks (title, description) —
+      // OPH-167.
       whereRaw(sql, bindings) {
-        if (!/^MATCH\(title, plain_text\) AGAINST/.test(sql)) {
+        const match = /^MATCH\(([a-z_, ]+)\) AGAINST/.exec(sql);
+        if (!match) {
           throw new Error(`fakeDb: unsupported whereRaw "${sql}"`);
         }
+        const columns = match[1].split(',').map((c) => c.trim());
         const needle = String(bindings[0]).toLowerCase();
         filters.push((row) =>
-          `${row.title ?? ''} ${row.plain_text ?? ''}`.toLowerCase().includes(needle),
+          columns
+            .map((col) => row[col] ?? '')
+            .join(' ')
+            .toLowerCase()
+            .includes(needle),
         );
         return api;
       },

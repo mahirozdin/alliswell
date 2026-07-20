@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../core/fold.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
@@ -35,6 +36,12 @@ class ProjectStore {
               workspaceId: workspaceId,
               name: (body['name'] as String).trim(),
               description: Value(body['description'] as String?),
+              nameFold: Value(foldSearchText((body['name'] as String).trim())),
+              descriptionFold: Value(
+                body['description'] == null
+                    ? null
+                    : foldSearchText(body['description'] as String),
+              ),
               colorRgb: Value((body['colorRgb'] as String?) ?? '#2563EB'),
               icon: Value(body['icon'] as String?),
               status: Value((body['status'] as String?) ?? 'active'),
@@ -68,11 +75,17 @@ class ProjectStore {
     if (patch.containsKey('name')) {
       companion = companion.copyWith(
         name: Value((patch['name'] as String).trim()),
+        nameFold: Value(foldSearchText((patch['name'] as String).trim())),
       );
     }
     if (patch.containsKey('description')) {
       companion = companion.copyWith(
         description: Value(patch['description'] as String?),
+        descriptionFold: Value(
+          patch['description'] == null
+              ? null
+              : foldSearchText(patch['description'] as String),
+        ),
       );
     }
     if (patch.containsKey('colorRgb')) {

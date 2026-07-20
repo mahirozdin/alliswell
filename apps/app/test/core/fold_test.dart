@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/fold.dart';
@@ -10,7 +13,10 @@ void main() {
     expect(foldSearchText('Çay'), 'cay');
     expect(foldSearchText('cay'), 'cay');
     expect(foldSearchText('ISI'), 'isi'); // I → i (not Turkish casing!)
-    expect(foldSearchText('ısı'), 'isi'); // dotless ı → i — nothing engine-side does this
+    expect(
+      foldSearchText('ısı'),
+      'isi',
+    ); // dotless ı → i — nothing engine-side does this
     expect(foldSearchText('İstanbul'), 'istanbul'); // İ → i
     expect(foldSearchText('ÜLKÜ'), 'ulku');
     expect(foldSearchText('göğüş'), 'gogus');
@@ -36,5 +42,22 @@ void main() {
 
   test('non-Latin passes through casefolded, untouched otherwise', () {
     expect(foldSearchText('Дом 123'), 'дом 123');
+  });
+
+  test('matches the cross-stack parity fixture (fold.js twin)', () {
+    final fixture =
+        jsonDecode(File('test/fixtures/fold_parity.json').readAsStringSync())
+            as Map<String, dynamic>;
+    final pairs = (fixture['pairs'] as Map<String, dynamic>)
+        .cast<String, String>();
+    for (final entry in pairs.entries) {
+      expect(
+        foldSearchText(entry.key),
+        entry.value,
+        reason: 'fold(${entry.key})',
+      );
+      // Idempotence: folding folded text changes nothing.
+      expect(foldSearchText(entry.value), entry.value);
+    }
   });
 }

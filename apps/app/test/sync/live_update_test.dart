@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,6 +49,12 @@ void main() {
   testWidgets('a sync:changed event pulls foreign edits into the UI', (
     tester,
   ) async {
+    // Wide two-pane surface so seeded rows are on-screen without scrolling —
+    // this test is about the socket→pull chain, not sliver economics (the
+    // narrow layout keeps the search field + calendar in the scroll, OPH-167).
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({});
     final store = InMemorySecretStore();
     await TokenStorage(store).save(fakeSession());

@@ -68,12 +68,7 @@ class _TagManageSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tags = ref.watch(tagsProvider).value ?? const <Tag>[];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AwSpace.x4,
-        0,
-        AwSpace.x4,
-        AwSpace.x4,
-      ),
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, 0, AwSpace.x4, AwSpace.x4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,

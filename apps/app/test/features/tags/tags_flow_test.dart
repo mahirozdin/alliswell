@@ -76,10 +76,7 @@ void main() {
     expect(api.tags, hasLength(2)); // both were auto-created…
     final task = api.tasks.single;
     expect(task['tagIds'], hasLength(2)); // …and ride the task
-    expect(
-      api.tags.map((t) => t['name']),
-      containsAll(<String>['acil', 'ev']),
-    );
+    expect(api.tags.map((t) => t['name']), containsAll(<String>['acil', 'ev']));
   });
 
   testWidgets('typing an existing tag fold-matches instead of duplicating '

@@ -49,6 +49,7 @@ class TagStore {
               colorRgb: colorRgb == null
                   ? const Value.absent()
                   : Value(colorRgb),
+              nameFold: Value(foldSearchText(trimmed)),
               createdAt: Value(now),
               updatedAt: Value(now),
             ),
@@ -84,6 +85,9 @@ class TagStore {
           slug: name == null
               ? const Value.absent()
               : Value(provisionalSlug(name)),
+          nameFold: name == null
+              ? const Value.absent()
+              : Value(foldSearchText(name)),
           colorRgb: colorRgb == null ? const Value.absent() : Value(colorRgb),
           updatedAt: Value(DateTime.now().toUtc()),
         ),

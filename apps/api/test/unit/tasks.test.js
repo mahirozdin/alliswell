@@ -167,6 +167,22 @@ describe('GET /workspaces/:wsId/tasks — filters & pagination (OPH-032)', () =>
     const byTag = (await listTasks(`?tagId=${tag.id}`)).json();
     expect(byTag.items.map((t) => t.title)).toEqual(['tagged']);
   });
+
+  it('searches title+description with ?q= (OPH-167, the notes-q twin)', async () => {
+    await createTask({ title: 'Sunum hazırla', description: 'pazartesi teslim' });
+    await createTask({ title: 'Alakasız iş' });
+
+    // Title hit and description hit both ride ft_tasks_title_description
+    // (the fake mimics MATCH…AGAINST as a substring test — same shape).
+    const byTitle = (await listTasks('?q=Sunum')).json();
+    expect(byTitle.items.map((t) => t.title)).toEqual(['Sunum hazırla']);
+
+    const byDescription = (await listTasks('?q=teslim')).json();
+    expect(byDescription.items.map((t) => t.title)).toEqual(['Sunum hazırla']);
+
+    const none = (await listTasks('?q=bulunmaz')).json();
+    expect(none.items).toEqual([]);
+  });
 });
 
 describe('subtasks (OPH-032)', () => {
