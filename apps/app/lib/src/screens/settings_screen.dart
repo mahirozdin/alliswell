@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/persisted_prefs.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
@@ -99,6 +100,40 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => showLanguagePicker(context),
+                    ),
+                    // OPH-161: where a day-only task lands. One source of
+                    // truth for quick-add, the FAB prefill and date pickers.
+                    Builder(
+                      builder: (context) {
+                        final (hour, minute) = parseTaskTime(
+                          ref.watch(defaultTaskTimeProvider),
+                        );
+                        final current = TimeOfDay(hour: hour, minute: minute);
+                        return ListTile(
+                          key: const Key('settings-default-task-time'),
+                          leading: const Icon(Icons.schedule_outlined),
+                          title: Text('settings.defaultTaskTime.title'.tr()),
+                          subtitle: Text(
+                            'settings.defaultTaskTime.sub'.tr(
+                              args: {'time': current.format(context)},
+                            ),
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: current,
+                            );
+                            if (picked == null) return;
+                            final value =
+                                '${picked.hour.toString().padLeft(2, '0')}:'
+                                '${picked.minute.toString().padLeft(2, '0')}';
+                            await ref
+                                .read(defaultTaskTimeProvider.notifier)
+                                .set(value);
+                          },
+                        );
+                      },
                     ),
                     AboutListTile(
                       icon: const Icon(Icons.info_outline),

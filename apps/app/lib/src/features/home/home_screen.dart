@@ -27,17 +27,20 @@ import 'task_grouping.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  /// Quick add from Home: lands on the selected calendar day (09:00) when one
-  /// is picked, otherwise dateless — either way it appears in the list right
-  /// away (feedback round 2).
+  /// Quick add from Home: lands on the selected calendar day at the user's
+  /// default task time (Settings; factory 23:59 — OPH-161) when one is picked,
+  /// otherwise dateless — either way it appears in the list right away
+  /// (feedback round 2).
   Future<void> _quickAdd(WidgetRef ref, String title) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) throw StateError('No workspace available');
     final selectedDay = ref.read(selectedDayProvider);
-    final dueAt = selectedDay
-        ?.add(const Duration(hours: 9))
-        .toUtc()
-        .toIso8601String();
+    final dueAt = selectedDay == null
+        ? null
+        : applyDefaultTaskTime(
+            selectedDay,
+            ref.read(defaultTaskTimeProvider),
+          ).toUtc().toIso8601String();
     await ref.read(taskStoreProvider).create(workspaces.first.id, {
       'title': title,
       'dueAt': ?dueAt,

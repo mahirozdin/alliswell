@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/persisted_prefs.dart';
 import '../features/calendar/apple/providers.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
@@ -75,12 +76,16 @@ class HomeShell extends ConsumerWidget {
     return switch (AppSection.values[navigationShell.currentIndex]) {
       AppSection.home => FloatingActionButton(
         tooltip: 'shell.fabNewTask'.tr(),
-        onPressed: () => showTaskCreateSheet(
-          context,
-          initialDue: ref
-              .read(selectedDayProvider)
-              ?.add(const Duration(hours: 9)),
-        ),
+        onPressed: () {
+          // Day-only prefill lands on the user's default task time (OPH-161).
+          final day = ref.read(selectedDayProvider);
+          showTaskCreateSheet(
+            context,
+            initialDue: day == null
+                ? null
+                : applyDefaultTaskTime(day, ref.read(defaultTaskTimeProvider)),
+          );
+        },
         child: const Icon(Icons.add),
       ),
       AppSection.projects => FloatingActionButton(

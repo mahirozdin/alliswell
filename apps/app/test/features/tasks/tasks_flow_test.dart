@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/persisted_prefs.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -231,8 +232,41 @@ void main() {
 
     final due = DateTime.parse(api.tasks.single['dueAt'] as String).toLocal();
     expect(due.day, targetDay);
+    // OPH-161: day-only quick-adds are due by the END of that day (23:59
+    // factory default), not at an invented 09:00 morning deadline.
+    expect(due.hour, 23);
+    expect(due.minute, 59);
     expect(find.textContaining('Selected day ·'), findsOneWidget);
     expect(find.text('Seçili güne iş'), findsOneWidget);
+  });
+
+  testWidgets('quick-add honors the default-task-time setting', (tester) async {
+    await wideSurface(tester);
+    final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    // Change the preference exactly the way the Settings row does — through
+    // the notifier (also persists to localKv).
+    final container = ProviderScope.containerOf(
+      tester.element(find.byKey(const Key('home-quick-add'))),
+      listen: false,
+    );
+    await container.read(defaultTaskTimeProvider.notifier).set('07:15');
+
+    await tester.tap(find.text('$targetDay'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('home-quick-add')),
+      'Sabahçı iş',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    final due = DateTime.parse(api.tasks.single['dueAt'] as String).toLocal();
+    expect(due.day, targetDay);
+    expect(due.hour, 7);
+    expect(due.minute, 15);
   });
 
   testWidgets('FAB sheet creates a task with options', (tester) async {

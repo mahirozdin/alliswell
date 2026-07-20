@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -384,7 +385,7 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _DateRow extends StatelessWidget {
+class _DateRow extends ConsumerWidget {
   const _DateRow({
     required this.label,
     required this.icon,
@@ -399,7 +400,7 @@ class _DateRow extends StatelessWidget {
   final void Function(DateTime?) onPicked;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final local = value?.toLocal();
     return ListTile(
@@ -429,7 +430,10 @@ class _DateRow extends StatelessWidget {
           lastDate: now.add(const Duration(days: 365 * 5)),
         );
         if (picked != null) {
-          onPicked(DateTime(picked.year, picked.month, picked.day, 9));
+          // Day-only pick lands on the user's default task time (OPH-161).
+          onPicked(
+            applyDefaultTaskTime(picked, ref.read(defaultTaskTimeProvider)),
+          );
         }
       },
     );

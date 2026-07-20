@@ -71,6 +71,10 @@
     "language": {
       "title": "Dil",
       "system": "Sistem varsayılanı"
+    },
+    "defaultTaskTime": {
+      "title": "Varsayılan görev saati",
+      "sub": "Yalnız gün seçilen görevler {time} saatine düşer"
     }
   },
   "shell": {

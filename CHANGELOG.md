@@ -24,6 +24,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   Risk 8, DESIGN §10 F7-F9 + §12/§13/§14, ARCHITECTURE §6c, ATTACHMENTS §14,
   TASKS Epic 15 (OPH-160…170).
 
+### Added
+
+- **Default task time is yours now** (OPH-161): tasks created for a day
+  without an explicit time — quick-add on a selected calendar day, the FAB's
+  prefill, date-picker fallbacks — land at a configurable default time
+  instead of a hardcoded 09:00. Factory default is **23:59** ("due by the end
+  of that day"); change it in Settings → Default task time.
+
 ### Fixed
 
 - **Connecting Google Calendar now actually starts syncing** (OPH-160): the

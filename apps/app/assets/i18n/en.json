@@ -72,6 +72,10 @@
     "language": {
       "title": "Language",
       "system": "System default"
+    },
+    "defaultTaskTime": {
+      "title": "Default task time",
+      "sub": "Day-only tasks are due at {time}"
     }
   },
   "shell": {

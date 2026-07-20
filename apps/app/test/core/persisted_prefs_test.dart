@@ -41,6 +41,39 @@ void main() {
     expect(prefs.getString('alliswell_notes_view_mode'), 'grid');
   });
 
+  group('default task time (OPH-161)', () {
+    test('parseTaskTime reads HH:mm and falls back to 23:59 on junk', () {
+      expect(parseTaskTime('23:59'), (23, 59));
+      expect(parseTaskTime('07:15'), (7, 15));
+      expect(parseTaskTime('9:05'), (9, 5)); // single-digit hour tolerated
+      // A corrupted preference must never crash task creation.
+      expect(parseTaskTime(''), (23, 59));
+      expect(parseTaskTime('gibberish'), (23, 59));
+      expect(parseTaskTime('25:00'), (23, 59));
+      expect(parseTaskTime('12:75'), (23, 59));
+      expect(parseTaskTime('12:5'), (23, 59)); // minutes must be two digits
+    });
+
+    test('applyDefaultTaskTime keeps the calendar date, sets the time', () {
+      final day = DateTime(2026, 7, 21);
+      expect(applyDefaultTaskTime(day, '23:59'), DateTime(2026, 7, 21, 23, 59));
+      expect(applyDefaultTaskTime(day, '07:15'), DateTime(2026, 7, 21, 7, 15));
+      expect(applyDefaultTaskTime(day, 'bad'), DateTime(2026, 7, 21, 23, 59));
+    });
+
+    test('defaultTaskTimeProvider defaults to 23:59 and round-trips', () async {
+      SharedPreferences.setMockInitialValues({});
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      expect(container.read(defaultTaskTimeProvider), '23:59');
+      await container.read(defaultTaskTimeProvider.notifier).set('07:15');
+      expect(container.read(defaultTaskTimeProvider), '07:15');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('alliswell_default_task_time'), '07:15');
+    });
+  });
+
   test('LocalKvSecretStore persists sessions (web reload survival)', () async {
     SharedPreferences.setMockInitialValues({});
     final storage = TokenStorage(LocalKvSecretStore(localKv));

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -77,6 +78,11 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
 
   Future<DateTime?> _pickDateTime(DateTime? current) async {
     final now = DateTime.now();
+    // The user's default task time backs both the picker's starting position
+    // and the "picked a date, dismissed the clock" fallback (OPH-161).
+    final (defHour, defMinute) = parseTaskTime(
+      ref.read(defaultTaskTimeProvider),
+    );
     final date = await showDatePicker(
       context: context,
       initialDate: current ?? now,
@@ -88,14 +94,14 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
       context: context,
       initialTime: current != null
           ? TimeOfDay.fromDateTime(current)
-          : const TimeOfDay(hour: 9, minute: 0),
+          : TimeOfDay(hour: defHour, minute: defMinute),
     );
     return DateTime(
       date.year,
       date.month,
       date.day,
-      time?.hour ?? 9,
-      time?.minute ?? 0,
+      time?.hour ?? defHour,
+      time?.minute ?? defMinute,
     );
   }
 

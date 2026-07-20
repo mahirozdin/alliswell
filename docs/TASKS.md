@@ -2582,18 +2582,25 @@ hesabı doğrulaması kullanıcı turunda.)
 **DoD met 2026-07-20:** API unit 274/274; app google_calendar 6/6 + tam süit yeşil;
 analyze temiz; CHANGELOG; STATE.
 
-### OPH-161 — Varsayılan görev saati: 23:59 + Ayarlar tercihi (round 8 #6)
+### OPH-161 — Varsayılan görev saati: 23:59 + Ayarlar tercihi (round 8 #6) ✅ 2026-07-20
 
-- [ ] `defaultTaskTimeProvider`: `PersistedChoice('alliswell_default_task_time',
-      fallback: '23:59')` ("HH:mm"); parse + `DateTime applyDefaultTaskTime(day)` yardımcısı.
-- [ ] 4 sabit 09:00 sitesini helper'a bağla: `task_create_sheet.dart` (`_pickDateTime`
-      initialTime + fallback), `task_detail_screen.dart` `_DateRow` picker'ı,
-      `home_screen.dart` `_quickAdd` (`Duration(hours: 9)`), `home_shell.dart` FAB ön-dolumu.
-- [ ] Settings satırı (dil satırı idiomu): "Varsayılan görev saati" + `showTimePicker`;
-      alt yazıda seçili saat.
-- [ ] i18n: `settings.defaultTaskTime*` (en+tr).
-- [ ] Testler: helper unit (parse/fallback/geçersiz değer), quick-add seçili günle 23:59'a
-      düşüyor, ayar değişince yeni saat uygulanıyor.
+- [x] `defaultTaskTimeProvider`: `PersistedChoice('alliswell_default_task_time',
+      fallback: '23:59')` ("HH:mm"); `parseTaskTime` (bozuk değerde 23:59'a düşer — tercih
+      çöpü görev oluşturmayı ASLA kıramaz) + `applyDefaultTaskTime(day, hhmm)` yardımcıları
+      (`core/persisted_prefs.dart`).
+- [x] 4 sabit 09:00 sitesi helper'a bağlandı: `task_create_sheet.dart` (`_pickDateTime`
+      initialTime + saat-iptal fallback'i), `task_detail_screen.dart` `_DateRow`
+      (ConsumerWidget'a çevrildi), `home_screen.dart` `_quickAdd`, `home_shell.dart` FAB
+      ön-dolumu. Kod tabanında görev-saatı sabiti kalmadı (snooze'un "tomorrow morning"
+      09:00'u AYRI bir kavramdır, bilinçle dokunulmadı).
+- [x] Settings satırı (dil satırı idiomu, `settings-default-task-time` key'i):
+      `showTimePicker` ile seçim; alt yazı yerelleştirilmiş saati gösterir.
+- [x] i18n: `settings.defaultTaskTime.{title,sub}` (en+tr).
+- [x] Testler: parse/apply/round-trip unit'leri (persisted_prefs_test), quick-add seçili
+      günle **23:59**'a düşüyor (eski test güçlendirildi), notifier'la '07:15' yazınca
+      quick-add onu kullanıyor (yeni test).
+
+**DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
 ### OPH-162 — Takvim sekmesini kaldır; seçili gün ufku aşsın (round 8 #9)
 

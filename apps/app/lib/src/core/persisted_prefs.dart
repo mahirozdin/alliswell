@@ -64,3 +64,30 @@ final homeCalendarVisibleProvider = NotifierProvider<PersistedToggle, bool>(
 final notesViewModeProvider = NotifierProvider<PersistedChoice, String>(
   () => PersistedChoice('alliswell_notes_view_mode', fallback: 'list'),
 );
+
+/// The time-of-day a task lands on when the user picked only a DAY
+/// (round 8, OPH-161 — quick-add on a selected day, FAB prefill, date-picker
+/// fallbacks). Stored as 'HH:mm'. The factory default is 23:59 — "due by the
+/// end of that day" — because the old fixed 09:00 turned every day-only task
+/// into an early-morning deadline. User-changeable in Settings.
+final defaultTaskTimeProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_default_task_time', fallback: '23:59'),
+);
+
+/// 'HH:mm' → (hour, minute), falling back to 23:59 on junk — a corrupted
+/// preference must never crash task creation.
+(int, int) parseTaskTime(String value) {
+  final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value.trim());
+  if (match == null) return (23, 59);
+  final hour = int.parse(match.group(1)!);
+  final minute = int.parse(match.group(2)!);
+  if (hour > 23 || minute > 59) return (23, 59);
+  return (hour, minute);
+}
+
+/// [day]'s date at the user's default task time ('HH:mm', see
+/// [defaultTaskTimeProvider]). Keeps [day]'s calendar date untouched.
+DateTime applyDefaultTaskTime(DateTime day, String hhmm) {
+  final (hour, minute) = parseTaskTime(hhmm);
+  return DateTime(day.year, day.month, day.day, hour, minute);
+}
