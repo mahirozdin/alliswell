@@ -105,6 +105,7 @@ class FakeApi {
 
   Map<String, dynamic> seedTask({
     required String title,
+    String? description,
     String status = 'open',
     String priority = 'none',
     bool isUrgent = false,
@@ -117,6 +118,7 @@ class FakeApi {
   }) {
     final task = _task({
       'title': title,
+      'description': description,
       'status': status,
       'priority': priority,
       'isUrgent': isUrgent,

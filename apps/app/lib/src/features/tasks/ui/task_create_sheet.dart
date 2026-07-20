@@ -46,6 +46,7 @@ class TaskCreateSheet extends ConsumerStatefulWidget {
 class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
+  final _description = TextEditingController();
   String? _projectId;
   String _priority = 'none';
   DateTime? _dueAt;
@@ -60,6 +61,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     final task = widget.task;
     if (task != null) {
       _title.text = task.title;
+      _description.text = task.description ?? '';
       _projectId = task.projectId;
       _priority = task.priority;
       _dueAt = task.dueAt?.toLocal();
@@ -73,7 +75,14 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   @override
   void dispose() {
     _title.dispose();
+    _description.dispose();
     super.dispose();
+  }
+
+  /// Empty description = no description — never an empty-string field.
+  String? get _descriptionOrNull {
+    final value = _description.text.trim();
+    return value.isEmpty ? null : value;
   }
 
   Future<DateTime?> _pickDateTime(DateTime? current) async {
@@ -118,6 +127,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
         // date or project here promotes an inbox capture to 'open' (OPH-107).
         await ref.read(taskStoreProvider).update(editing.id, {
           'title': _title.text.trim(),
+          'description': _descriptionOrNull,
           'projectId': _projectId,
           'priority': _priority,
           'dueAt': _dueAt?.toUtc().toIso8601String(),
@@ -129,6 +139,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
         if (workspaces.isEmpty) throw StateError('No workspace available');
         await ref.read(taskStoreProvider).create(workspaces.first.id, {
           'title': _title.text.trim(),
+          'description': ?_descriptionOrNull,
           'projectId': ?_projectId,
           if (_priority != 'none') 'priority': _priority,
           'dueAt': ?_dueAt?.toUtc().toIso8601String(),
@@ -180,6 +191,20 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'task.titleRequired'.tr()
                     : null,
+              ),
+              const SizedBox(height: 12),
+              // The task's OWN context (OPH-164) — links, short details. Not a
+              // Note: long-form writing belongs to a linked note.
+              TextFormField(
+                key: const Key('task-sheet-description'),
+                controller: _description,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  labelText: 'task.descriptionLabel'.tr(),
+                  hintText: 'task.descriptionHint'.tr(),
+                ),
               ),
               const SizedBox(height: 12),
               Row(

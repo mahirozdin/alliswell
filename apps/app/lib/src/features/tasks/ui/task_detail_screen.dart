@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/linkified_text.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/ui/file_widgets.dart';
+import '../../integrations/providers.dart';
 import '../../projects/data/project.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
@@ -156,10 +158,10 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       : null,
                 ),
               ),
-              if (task.description?.isNotEmpty == true) ...[
-                const SizedBox(height: 8),
-                Text(task.description!, style: theme.textTheme.bodyMedium),
-              ],
+              const SizedBox(height: 4),
+              // OPH-164: the task's own description — editable in place with
+              // the title's autosave DNA; URLs are tappable in display mode.
+              _DescriptionField(task: task, onApply: _apply),
               const SizedBox(height: AwSpace.x3),
               _SectionCard(
                 title: 'task.details'.tr(),
@@ -548,6 +550,136 @@ class _ChecklistState extends State<_Checklist> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The task's own description (round 8, OPH-164) — not a Note.
+///
+/// Display mode renders URLs tappable ([LinkifiedText]); tapping the text (or
+/// the "Add description" affordance when empty) switches to an in-place
+/// editor with the title's autosave DNA: debounce while typing, flush on
+/// focus loss. Empty text saves as null — a task with nothing to say has no
+/// description row, not a blank one.
+class _DescriptionField extends ConsumerStatefulWidget {
+  const _DescriptionField({required this.task, required this.onApply});
+
+  final Task task;
+  final Future<void> Function(TaskAction action) onApply;
+
+  @override
+  ConsumerState<_DescriptionField> createState() => _DescriptionFieldState();
+}
+
+class _DescriptionFieldState extends ConsumerState<_DescriptionField> {
+  static const _autosaveDelay = Duration(milliseconds: 1500);
+
+  late final TextEditingController _controller;
+  final FocusNode _focus = FocusNode();
+  Timer? _debounce;
+  bool _editing = false;
+
+  String get _current => widget.task.description ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: _current);
+    _focus.addListener(() {
+      if (!_focus.hasFocus && _editing) {
+        _flush();
+        setState(() => _editing = false);
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _DescriptionField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Refetch while not editing → sync the controller (title-field idiom).
+    final fresh = widget.task.description ?? '';
+    final old = oldWidget.task.description ?? '';
+    if (fresh != old && !_editing) _controller.text = fresh;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _save(String raw) {
+    final value = raw.trim();
+    if (value == _current.trim()) return;
+    widget.onApply(
+      (store, id) => store.update(id, {
+        'description': value.isEmpty ? null : value,
+      }),
+    );
+  }
+
+  void _flush() {
+    _debounce?.cancel();
+    _save(_controller.text);
+  }
+
+  void _onChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(_autosaveDelay, () => _save(value));
+  }
+
+  void _startEditing() {
+    setState(() => _editing = true);
+    _focus.requestFocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (_editing) {
+      return TextField(
+        key: const Key('task-description'),
+        controller: _controller,
+        focusNode: _focus,
+        maxLines: null,
+        onChanged: _onChanged,
+        decoration: InputDecoration(
+          hintText: 'task.descriptionHint'.tr(),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          filled: false,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+        ),
+        style: theme.textTheme.bodyMedium,
+      );
+    }
+    if (_current.trim().isEmpty) {
+      return Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: TextButton.icon(
+          key: const Key('task-add-description'),
+          onPressed: _startEditing,
+          icon: const Icon(Icons.notes_outlined, size: 18),
+          label: Text('task.addDescription'.tr()),
+        ),
+      );
+    }
+    return InkWell(
+      key: const Key('task-description-display'),
+      borderRadius: BorderRadius.circular(AwRadius.s),
+      onTap: _startEditing,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: LinkifiedText(
+          _current,
+          style: theme.textTheme.bodyMedium,
+          onOpen: (uri) => ref.read(urlLauncherProvider)(uri),
+        ),
+      ),
     );
   }
 }

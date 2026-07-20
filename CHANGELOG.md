@@ -35,6 +35,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Tasks have a real description now** (OPH-164): a description field in the
+  new-task sheet, and an edit-in-place description on task detail that
+  autosaves like the title. URLs in it are detected and tappable — paste a
+  link, tap it later. This is the task's own context, separate from linked
+  Notes; rich formatting and link previews stay deliberate v2 items.
+
 - **Create a project without leaving the task you're writing** (OPH-163): the
   project picker — in the new-task sheet and on task detail — now ends with
   "+ Add project". It opens the usual project sheet on top; the new project

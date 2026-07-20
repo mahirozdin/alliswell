@@ -2637,20 +2637,25 @@ analyze temiz; CHANGELOG; STATE.
 
 **DoD met 2026-07-20:** app süiti + analyze yeşil; CHANGELOG; STATE.
 
-### OPH-164 — Görev açıklaması: oluşturmada alan, detayda düzenlenebilir, linkify (round 8 #7)
+### OPH-164 — Görev açıklaması: oluşturmada alan, detayda düzenlenebilir, linkify (round 8 #7) ✅ 2026-07-20
 
 API hazır (`tasks.description` yazılabilir; sync `TASK_FIELDS.description` mevcut).
 
-- [ ] Create sheet: başlığın altında çok satırlı "Açıklama" alanı (opsiyonel, 3-6 satır
-      arası büyür); `store.create`'e `description` geçir.
-- [ ] Detail: salt-okunur description metnini düzenlenebilir yap — başlık gibi autosave
-      (odak kaybında/debounce'ta `store.update`); boşken "Açıklama ekle" placeholder'ı.
-- [ ] Linkify: görüntülemede URL'ler algılanır (http/https + www.), tıklanabilir
-      (`urlLauncherProvider`); düzenleme modunda düz metin. Saf `linkifySpans()` util +
-      unit testleri (TR karakterli URL, nokta/parantez sınırları).
-- [ ] OG link önizlemesi bilinçli v2 (parking lot — sunucu proxy'si ister).
-- [ ] i18n `task.description*`; widget testleri: create'te açıklama kaydolur, detayda
-      düzenleme sync'e patch atar, link tap launcher'ı çağırır (fake).
+- [x] Create sheet: başlığın altında çok satırlı "Açıklama" alanı (1→4 satır büyür,
+      `task-sheet-description`); boş = null (asla boş string alan yok); triage/edit modu da
+      description'ı ön-doldurur ve günceller.
+- [x] Detail: `_DescriptionField` — görüntüleme modunda linkify'lı metin (tap → düzenleme),
+      düzenlemede başlığın autosave DNA'sı (1500 ms debounce + odak kaybında flush);
+      boşken "Açıklama ekle" affordance'ı (`task-add-description`).
+- [x] Linkify: saf `core/linkify.dart` (`linkifySegments` — kayıpsız bölme; kuyruk
+      noktalama kırpma; Wikipedia parantez sezgisi; `www.` → https) + recognizer'ları
+      sahiplenen/dispose eden `widgets/linkified_text.dart`. 6 unit + 2 widget testi.
+- [x] OG link önizlemesi bilinçli v2 (parking lot — sunucu proxy'si ister).
+- [x] i18n `task.descriptionLabel/Hint`, `task.addDescription` (en+tr). Widget testleri:
+      create payload'ında description; detayda display→edit→debounce→push patch; boş
+      görevde add-affordance → ilk kayıt; link tap onOpen'a launchable https URI veriyor.
+
+**DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
 ### OPH-165 — Etiket sistemi: chip-input, #tag, otomatik oluşturma, yönetim (round 8 #4)
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,7 +17,10 @@ import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
 
-Future<Widget> signedInAppWith(FakeApi api) async {
+Future<Widget> signedInAppWith(
+  FakeApi api, {
+  List<Override> extra = const [],
+}) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
@@ -28,6 +32,7 @@ Future<Widget> signedInAppWith(FakeApi api) async {
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
       ),
+      ...extra,
     ],
     child: const AllisWellApp(),
   );
@@ -283,6 +288,11 @@ void main() {
       find.byKey(const Key('task-sheet-title')),
       'Opsiyonlu görev',
     );
+    // OPH-164: the sheet carries the task's own description field.
+    await tester.enterText(
+      find.byKey(const Key('task-sheet-description')),
+      'bağlam: https://x.dev/spec',
+    );
     // Pick a due date via the date + time dialogs (defaults accepted).
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
@@ -299,9 +309,59 @@ void main() {
     expect(api.tasks, hasLength(1));
     final created = api.tasks.single;
     expect(created['title'], 'Opsiyonlu görev');
+    expect(created['description'], 'bağlam: https://x.dev/spec');
     expect(created['isUrgent'], isTrue);
     expect(created['dueAt'], isNotNull);
     expect(find.text('Opsiyonlu görev'), findsOneWidget);
+  });
+
+  testWidgets('task description edits in place and autosaves (OPH-164)', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final soon = isoAt(today.add(const Duration(days: 2, hours: 12)));
+    final api = FakeApi()
+      ..seedTask(title: 'Açıklamalı iş', description: 'eski metin', dueAt: soon)
+      ..seedTask(title: 'Açıklamasız iş', dueAt: soon);
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    // Existing description renders in display mode; tapping starts the edit.
+    await tester.tap(find.text('Açıklamalı iş'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('task-description-display')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('task-description')),
+      'yeni metin https://x.dev',
+    );
+    await tester.pump(const Duration(milliseconds: 1600)); // autosave debounce
+    await tester.pumpAndSettle();
+    expect(
+      api.tasks.firstWhere((t) => t['title'] == 'Açıklamalı iş')['description'],
+      'yeni metin https://x.dev',
+    );
+
+    // A task without one offers "Add description" instead of a blank row.
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Açıklamasız iş'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('task-add-description')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('task-add-description')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('task-description')),
+      'ilk açıklama',
+    );
+    await tester.pump(const Duration(milliseconds: 1600));
+    await tester.pumpAndSettle();
+    expect(
+      api.tasks.firstWhere(
+        (t) => t['title'] == 'Açıklamasız iş',
+      )['description'],
+      'ilk açıklama',
+    );
   });
 
   testWidgets('the project picker creates a project inline (OPH-163)', (
