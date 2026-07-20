@@ -35,6 +35,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Create a project without leaving the task you're writing** (OPH-163): the
+  project picker — in the new-task sheet and on task detail — now ends with
+  "+ Add project". It opens the usual project sheet on top; the new project
+  comes back already selected.
+
 - **Default task time is yours now** (OPH-161): tasks created for a day
   without an explicit time — quick-add on a selected calendar day, the FAB's
   prefill, date-picker fallbacks — land at a configurable default time

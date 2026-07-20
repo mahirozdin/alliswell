@@ -185,22 +185,18 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: DropdownButtonFormField<String?>(
-                      isExpanded: true,
+                    child: ProjectPickerField(
                       key: const Key('task-sheet-project'),
-                      initialValue: _projectId,
+                      projects: projects,
+                      value: _projectId,
                       decoration: InputDecoration(
                         labelText: 'task.project'.tr(),
-                        // With no projects the picker's only entry is "No
-                        // project", which reads as "no picker" — say why
-                        // (OPH-106).
+                        // With no projects the picker still carries "+ Add
+                        // project" (OPH-163) — the hint tells first-timers
+                        // why the list is otherwise empty (OPH-106).
                         helperText: projects.isEmpty
                             ? 'task.noProjectsHint'.tr()
                             : null,
-                      ),
-                      items: projectDropdownItems(
-                        projects,
-                        currentValue: _projectId,
                       ),
                       onChanged: (v) => setState(() => _projectId = v),
                     ),

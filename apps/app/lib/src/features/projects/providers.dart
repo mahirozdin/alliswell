@@ -59,8 +59,10 @@ class ProjectsController extends StreamNotifier<List<Project>> {
     return workspaces.first.id;
   }
 
-  Future<void> createProject(Map<String, dynamic> body) async {
-    await ref.read(projectStoreProvider).create(await _workspaceId(), body);
+  /// Returns the new project's id so callers (the picker's inline create,
+  /// OPH-163) can select it immediately.
+  Future<String> createProject(Map<String, dynamic> body) async {
+    return ref.read(projectStoreProvider).create(await _workspaceId(), body);
   }
 
   Future<void> updateProject(String id, Map<String, dynamic> patch) =>

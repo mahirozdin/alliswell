@@ -213,6 +213,7 @@
     "pickColor": "Bir renk seç",
     "moreColors": "Daha fazla renk",
     "none": "Proje yok",
+    "addFromPicker": "Proje ekle",
     "genericError": "Bir şeyler ters gitti. Lütfen tekrar dene.",
     "archiveTitle": "Proje arşivlensin mi?",
     "unarchiveTitle": "Proje arşivden çıkarılsın mı?",

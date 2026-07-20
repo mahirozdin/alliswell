@@ -225,17 +225,14 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     // Project picker (OPH-106): same color-dot entries as the
                     // create sheet; assigning a project also promotes an inbox
                     // capture to 'open' via the store rule (OPH-107).
-                    DropdownButtonFormField<String?>(
-                      isExpanded: true,
+                    ProjectPickerField(
                       key: const Key('detail-project'),
-                      initialValue: task.projectId,
+                      projects:
+                          ref.watch(projectsControllerProvider).value ??
+                          const <Project>[],
+                      value: task.projectId,
                       decoration: InputDecoration(
                         labelText: 'task.project'.tr(),
-                      ),
-                      items: projectDropdownItems(
-                        ref.watch(projectsControllerProvider).value ??
-                            const <Project>[],
-                        currentValue: task.projectId,
                       ),
                       onChanged: (v) {
                         if (v != task.projectId) {

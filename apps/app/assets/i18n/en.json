@@ -214,6 +214,7 @@
     "pickColor": "Pick a color",
     "moreColors": "More colors",
     "none": "No project",
+    "addFromPicker": "Add project",
     "genericError": "Something went wrong. Please try again.",
     "archiveTitle": "Archive project?",
     "unarchiveTitle": "Unarchive project?",

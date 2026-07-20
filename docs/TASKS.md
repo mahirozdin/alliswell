@@ -2619,17 +2619,23 @@ analyze temiz; CHANGELOG; STATE.
 
 **DoD met 2026-07-20:** app 326/326, analyze temiz; CHANGELOG; STATE.
 
-### OPH-163 — Proje seçicide "+ Proje ekle" (round 8 #2)
+### OPH-163 — Proje seçicide "+ Proje ekle" (round 8 #2) ✅ 2026-07-20
 
-- [ ] `project_picker.dart`: dropdown item listesinin sonuna sabit "+ Proje ekle" girdisi
-      (sentinel değer); seçilince `showProjectEditSheet(context)` aç, dönen projeyi alanın
-      değeri yap (sheet `Navigator.pop(project)` ile projeyi döndürür — gerekiyorsa
-      `ProjectEditSheet`'e dönüş değeri ekle).
-- [ ] İki kullanım yeri de kazanır: task create sheet + task detail proje alanı (aynı
-      builder). Dropdown kapanıp sheet açılırken state kaybolmaz (create sheet form değerleri
-      korunur).
-- [ ] i18n: `project.addFromPicker` (en+tr). Widget testi: picker'dan proje oluştur →
-      alan yeni projeyi seçili gösterir; task o projeyle kaydolur.
+- [x] `project_picker.dart`: `kCreateProjectValue` sentinel'i + `withCreate` param'ıyla
+      liste sonunda "+ Proje ekle" girdisi (primary renk + ikon); `showProjectEditSheet`
+      artık `Future<String?>` — create dalı yeni projenin id'sini pop'lar
+      (`ProjectStore.create` zaten id döndürüyordu, controller'a geçirildi).
+- [x] Yeni paylaşılan **`ProjectPickerField`**: sentinel'i içeride çözer (`onChanged`'a
+      yalnız gerçek değerler gider), `DropdownButtonFormField` uncontrolled olduğu için
+      epoch-key ile kendini yeniden tohumlar — iptal edilen create'te sentinel görünen
+      değer olarak ASLA takılı kalmaz; dış value değişiminde de re-seed.
+- [x] İki site geçirildi: create sheet (`task-sheet-project`) + detail (`detail-project`) —
+      form state'i sheet üstüne sheet açılırken korunuyor.
+- [x] i18n: `project.addFromPicker` (en "Add project" / tr "Proje ekle"). Widget testi:
+      FAB sheet → picker → "Add project" → adlandır+oluştur → alan yeni projeyi seçili
+      gösteriyor → task o projeyle push'lanıyor (api.projects.single.id eşleşmesi).
+
+**DoD met 2026-07-20:** app süiti + analyze yeşil; CHANGELOG; STATE.
 
 ### OPH-164 — Görev açıklaması: oluşturmada alan, detayda düzenlenebilir, linkify (round 8 #7)
 

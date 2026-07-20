@@ -30,9 +30,10 @@ const kProjectStatuses = ['active', 'paused', 'completed'];
 String _hexOf(Color color) =>
     '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
 
-/// Opens the create (project == null) or edit sheet.
-Future<void> showProjectEditSheet(BuildContext context, {Project? project}) {
-  return showModalBottomSheet<void>(
+/// Opens the create (project == null) or edit sheet. Resolves to the CREATED
+/// project's id (OPH-163 — the picker selects it inline); null on edit/cancel.
+Future<String?> showProjectEditSheet(BuildContext context, {Project? project}) {
+  return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
@@ -95,12 +96,13 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
       if (_isEdit) 'status': _status,
     };
     try {
+      String? createdId;
       if (_isEdit) {
         await controller.updateProject(widget.project!.id, body);
       } else {
-        await controller.createProject(body);
+        createdId = await controller.createProject(body);
       }
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(createdId);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } on Object {

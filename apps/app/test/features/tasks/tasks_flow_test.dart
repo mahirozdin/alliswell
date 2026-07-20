@@ -304,6 +304,44 @@ void main() {
     expect(find.text('Opsiyonlu görev'), findsOneWidget);
   });
 
+  testWidgets('the project picker creates a project inline (OPH-163)', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('task-sheet-title')),
+      'Yeni projeli iş',
+    );
+
+    // Open the picker; its last entry creates a project without leaving the
+    // task flow (round 8 #2).
+    await tester.tap(find.byKey(const Key('task-sheet-project')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add project').last);
+    await tester.pumpAndSettle();
+
+    // The project sheet stacked on top: name it and create.
+    await tester.enterText(find.byType(TextFormField).last, 'Anında Proje');
+    await tester.tap(find.text('Create project'));
+    await tester.pumpAndSettle();
+
+    // Back in the task sheet with the NEW project selected in the field.
+    expect(find.text('Anında Proje'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
+
+    final pushedProject = api.projects.single;
+    expect(pushedProject['name'], 'Anında Proje');
+    expect(api.tasks.single['projectId'], pushedProject['id']);
+  });
+
   testWidgets('quick-add on Inbox posts with status inbox and refreshes', (
     tester,
   ) async {
