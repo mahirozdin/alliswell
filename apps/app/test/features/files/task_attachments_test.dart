@@ -178,4 +178,60 @@ void main() {
     );
     expect(find.text('Add file'), findsNothing);
   });
+
+  testWidgets('create sheet picks files and uploads them to the new task '
+      '(OPH-166)', (tester) async {
+    await wideSurface(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(
+      await signedInAppWith(
+        api,
+        picks: [
+          PickedUpload.fromBytes(
+            name: 'plan.pdf',
+            bytes: Uint8List.fromList(List.filled(96, 7)),
+          ),
+          PickedUpload.fromBytes(
+            name: 'silinecek.txt',
+            bytes: Uint8List.fromList(List.filled(8, 2)),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('task-sheet-title')),
+      'Ekli doğan iş',
+    );
+
+    // Pick: both selections appear as removable pending rows — no upload yet
+    // (there is no task to own one).
+    await tester.tap(find.byKey(const Key('task-sheet-attach')));
+    await tester.pumpAndSettle();
+    expect(find.text('plan.pdf'), findsOneWidget);
+    expect(find.text('silinecek.txt'), findsOneWidget);
+    expect(api.files, isEmpty);
+
+    // Changed my mind about one.
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('pending-file-1')),
+        matching: find.byIcon(Icons.close),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('silinecek.txt'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
+
+    // The kept file uploaded against the NEW task.
+    expect(api.files, hasLength(1));
+    expect(api.files.single['name'], 'plan.pdf');
+    expect(api.files.single['targetType'], 'task');
+    expect(api.files.single['targetId'], api.tasks.single['id']);
+  });
 }

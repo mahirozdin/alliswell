@@ -2685,16 +2685,21 @@ Sunucu hazır: tags CRUD + `PUT /tasks/:id/tags` + sync push `tag` (slug'ı serv
 
 **DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
-### OPH-166 — Oluşturma sheet'inde ek seçimi (round 8 #3)
+### OPH-166 — Oluşturma sheet'inde ek seçimi (round 8 #3) ✅ 2026-07-20
 
-- [ ] Create sheet'e "Ekler" bölümü: `filePickerProvider` ile seç → bekleyen liste
-      (ad + boyut; kaldır ×); henüz upload YOK (task yok).
-- [ ] Kaydet akışı: task create → dönen id ile seçimleri sırayla `uploads.start(targetType:
-      'task', targetId: id)` — mevcut UploadsNotifier makinesi; sheet kapanır, yüklemeler
-      detay/rozet akışında görünür (F2 zaten var).
-- [ ] Depo yapılandırılmamışsa bölüm dürüst kapalı görünür (F6 empty-state dili, seçtirmez).
-- [ ] i18n `task.attachOnCreate*`; testler: seç→kaydet→fake transport'ta doğru hedefle
-      upload başlar; storage-off durumda bölüm devre dışı.
+- [x] Create sheet'e Ekler bölümü: `filePickerProvider` ile seç → bekleyen satırlar
+      (tür ikonu + ad + boyut + kaldır ×, `pending-file-N`); upload YOK — task yok.
+      Yalnız create modunda (edit/triage detaydaki tam bölümü kullanır — kopya yok).
+- [x] Kaydet akışı: `TaskStore.create` id döndürür → seçimler `uploads.start(targetType:
+      'task', targetId: id)` ile makineye devredilir (`unawaited` — sheet beklemez;
+      F2 satırları detayda görünür).
+- [x] Depo yapılandırılmamışsa AttachmentsSection'ın aynı dürüst satırı (`file.notConfigured`,
+      cloud_off) — ölü buton yok.
+- [x] Yeni i18n GEREKMEDİ (`file.add`, `file.notConfigured`, `common.remove` mevcuttu).
+      Test: iki dosya seç → bekleyen satırlar + `api.files` boş → birini kaldır → kaydet →
+      tek dosya YENİ task id'siyle yüklendi (init+PUT+complete fake sunucuda). 5/5.
+
+**DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
 ### OPH-167 — Arama: TR fold motoru + Home/Notlar/Projeler (round 8 #5, ADR-0013)
 

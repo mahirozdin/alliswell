@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:async';
+
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../../files/providers.dart';
+import '../../files/ui/file_widgets.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
 import '../../tags/ui/tag_input.dart';
@@ -49,6 +53,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   final _title = TextEditingController();
   final _description = TextEditingController();
   List<String> _tagIds = const [];
+  final List<PickedUpload> _pendingFiles = [];
   String? _projectId;
   String _priority = 'none';
   DateTime? _dueAt;
@@ -86,6 +91,14 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   String? get _descriptionOrNull {
     final value = _description.text.trim();
     return value.isEmpty ? null : value;
+  }
+
+  /// OPH-166: files are PICKED here but uploaded on save — a task must exist
+  /// to own them. Until then they are plain local selections (removable).
+  Future<void> _pickFiles() async {
+    final picked = await ref.read(filePickerProvider)();
+    if (picked.isEmpty || !mounted) return;
+    setState(() => _pendingFiles.addAll(picked));
   }
 
   Future<DateTime?> _pickDateTime(DateTime? current) async {
@@ -141,7 +154,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
       } else {
         final workspaces = await ref.read(workspacesProvider.future);
         if (workspaces.isEmpty) throw StateError('No workspace available');
-        await ref.read(taskStoreProvider).create(workspaces.first.id, {
+        final workspaceId = workspaces.first.id;
+        final taskId = await ref.read(taskStoreProvider).create(workspaceId, {
           'title': _title.text.trim(),
           'description': ?_descriptionOrNull,
           'projectId': ?_projectId,
@@ -151,6 +165,19 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           if (_isUrgent) 'isUrgent': true,
           if (_tagIds.isNotEmpty) 'tagIds': _tagIds,
         });
+        // OPH-166: now the task exists — hand the picked files to the upload
+        // machinery (F2 rows surface on detail; the sheet does not wait).
+        final uploads = ref.read(uploadsProvider.notifier);
+        for (final source in _pendingFiles) {
+          unawaited(
+            uploads.start(
+              workspaceId: workspaceId,
+              targetType: 'task',
+              targetId: taskId,
+              source: source,
+            ),
+          );
+        }
       }
       if (mounted) {
         Navigator.of(context).pop();
@@ -219,6 +246,84 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 onChanged: (tagIds) => setState(() => _tagIds = tagIds),
               ),
               const SizedBox(height: 12),
+              // OPH-166: attachments, picked now, uploaded on save. Edit/triage
+              // mode has the full section on detail — no duplicate here.
+              if (widget.task == null) ...[
+                Builder(
+                  builder: (context) {
+                    final configured =
+                        ref
+                            .watch(storageStatusProvider)
+                            .value
+                            ?.configured ??
+                        true; // optimistic while loading (F6 idiom)
+                    if (!configured && _pendingFiles.isEmpty) {
+                      return Row(
+                        children: [
+                          Icon(
+                            Icons.cloud_off_outlined,
+                            size: 18,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: AwSpace.x2),
+                          Expanded(
+                            child: Text(
+                              'file.notConfigured'.tr(),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final (index, file)
+                            in _pendingFiles.indexed)
+                          ListTile(
+                            key: Key('pending-file-$index'),
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              fileKindIcon(file.mime ?? ''),
+                              size: 20,
+                            ),
+                            title: Text(
+                              file.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(formatBytes(file.sizeBytes)),
+                            trailing: IconButton(
+                              tooltip: 'common.remove'.tr(),
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () => setState(
+                                () => _pendingFiles.removeAt(index),
+                              ),
+                            ),
+                          ),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton.icon(
+                            key: const Key('task-sheet-attach'),
+                            onPressed: _pickFiles,
+                            icon: const Icon(Icons.attach_file, size: 18),
+                            label: Text('file.add'.tr()),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 children: [
                   Expanded(

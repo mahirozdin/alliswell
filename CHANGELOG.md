@@ -35,6 +35,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Attach files while creating a task** (OPH-166): the new-task sheet takes
+  file selections up front — they list as removable pending rows and upload
+  the moment the task is saved. No more create-first-then-hunt-for-the-
+  attachments-section.
+
 - **Tags you can actually type** (OPH-165): a chip-input on the new-task sheet
   and the task detail — type a name, hit Enter/Tab/comma, it becomes a `#tag`
   chip. Existing tags are suggested case- and Turkish-accent-insensitively
