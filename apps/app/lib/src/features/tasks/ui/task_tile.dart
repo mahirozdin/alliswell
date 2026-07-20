@@ -218,11 +218,17 @@ class _InlineTag extends StatelessWidget {
       children: [
         CircleAvatar(backgroundColor: tag.color, radius: 4),
         const SizedBox(width: 3),
-        Text(
-          '#${tag.name}',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            fontWeight: FontWeight.w500,
+        // Flexible so a long tag ellipsizes in a tight column (board cards,
+        // narrow phones) instead of overflowing the row.
+        Flexible(
+          child: Text(
+            '#${tag.name}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],

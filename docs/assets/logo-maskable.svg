@@ -1,0 +1,31 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AllisWell logo (maskable)">
+  <defs>
+    <linearGradient id="awm-face" x1="40" y1="20" x2="472" y2="492" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="0.52" stop-color="#4F63EF"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+    <linearGradient id="awm-check" x1="150" y1="180" x2="368" y2="356" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8F0FF"/>
+    </linearGradient>
+    <filter id="awm-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#152B73" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <!-- full-bleed gradient (the OS applies its own mask shape) -->
+  <rect x="0" y="0" width="512" height="512" fill="url(#awm-face)"/>
+
+  <!-- content kept inside the 80% safe zone -->
+  <g transform="translate(256 256) scale(0.72) translate(-256 -256)">
+    <path d="M150 258 L224 332 L360 176" fill="none" stroke="url(#awm-check)" stroke-width="48"
+          stroke-linecap="round" stroke-linejoin="round" filter="url(#awm-shadow)"/>
+    <path d="M372 132
+             C376 150 384 158 402 162
+             C384 166 376 174 372 192
+             C368 174 360 166 342 162
+             C360 158 368 150 372 132 Z"
+          fill="#FFFFFF" fill-opacity="0.95"/>
+  </g>
+</svg>

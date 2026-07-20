@@ -317,7 +317,10 @@ class _BoardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final card = Stack(
       children: [
-        TaskTile(task: task),
+        // No project badge on the board: a 320-px status column has no room
+        // for it beside the title + status icons, and the column is already a
+        // status grouping. (The move affordance sits where the badge would.)
+        TaskTile(task: task, showProjectBadge: false),
         PositionedDirectional(
           top: 10,
           end: AwSpace.x1,

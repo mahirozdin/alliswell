@@ -1,0 +1,37 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AllisWell logo">
+  <defs>
+    <linearGradient id="aw-face" x1="88" y1="60" x2="440" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="0.52" stop-color="#4F63EF"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+    <linearGradient id="aw-gloss" x1="256" y1="44" x2="256" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.38"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="aw-check" x1="150" y1="180" x2="368" y2="356" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8F0FF"/>
+    </linearGradient>
+    <filter id="aw-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#152B73" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+
+  <!-- glass squircle -->
+  <rect x="44" y="44" width="424" height="424" rx="116" fill="url(#aw-face)"/>
+  <rect x="44" y="44" width="424" height="424" rx="116" fill="url(#aw-gloss)"/>
+  <rect x="45" y="45" width="422" height="422" rx="115" fill="none" stroke="#FFFFFF" stroke-opacity="0.40" stroke-width="2"/>
+
+  <!-- confident, rounded checkmark -->
+  <path d="M150 258 L224 332 L360 176" fill="none" stroke="url(#aw-check)" stroke-width="48"
+        stroke-linecap="round" stroke-linejoin="round" filter="url(#aw-shadow)"/>
+
+  <!-- wellbeing spark -->
+  <path d="M372 132
+           C376 150 384 158 402 162
+           C384 166 376 174 372 192
+           C368 174 360 166 342 162
+           C360 158 368 150 372 132 Z"
+        fill="#FFFFFF" fill-opacity="0.95"/>
+</svg>

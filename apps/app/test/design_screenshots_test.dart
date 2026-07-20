@@ -24,6 +24,7 @@ import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
+import 'package:alliswell/src/sections.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/widgets/glass.dart';
 
@@ -109,34 +110,176 @@ Future<Widget> _signedInScreenshotApp(FakeApi api) async {
   );
 }
 
+/// A realistic, screenshot-ready workspace: four colored projects (two
+/// favorites), five tags, tasks spread across every Home group AND every
+/// default board column (open/in-progress/waiting/completed), two notes, and a
+/// small Files tree (folders + workspace uploads + a project attachment). Rich
+/// enough to show project badges, tag chips, priority flags and the month
+/// calendar without looking staged.
 FakeApi _seededApi() {
   final api = FakeApi();
-  api.seedProject(name: 'Launch v1', colorRgb: '#8E44EC', isFavorite: true);
-  api.seedProject(name: 'Home reno', colorRgb: '#0C7D6C');
   final now = DateTime.now();
   String iso(DateTime d) => d.toUtc().toIso8601String();
-  api.seedTask(
-    title: 'Ship the new Liquid Glass theme',
-    priority: 'high',
-    dueAt: iso(DateTime(now.year, now.month, now.day, 18)),
+  // A time today at [h]:[m], shifted by [addDays]; late hours keep "today"
+  // tasks reading as Today instead of overdue-today whatever the clock says.
+  String day(int addDays, int h, int m) => iso(
+    DateTime(now.year, now.month, now.day, h, m).add(Duration(days: addDays)),
   );
+
+  final launch = api.seedProject(
+    name: 'Launch v1',
+    colorRgb: '#8E44EC',
+    isFavorite: true,
+  )['id'] as String;
+  final reno = api.seedProject(
+    name: 'Home renovation',
+    colorRgb: '#0C7D6C',
+  )['id'] as String;
+  final personal = api.seedProject(
+    name: 'Personal',
+    colorRgb: '#2563EB',
+    isFavorite: true,
+  )['id'] as String;
+  final reading = api.seedProject(
+    name: 'Reading list',
+    colorRgb: '#E8500A',
+  )['id'] as String;
+
+  final design = api.seedTag(name: 'design')['id'] as String;
+  final health = api.seedTag(name: 'health')['id'] as String;
+  final errand = api.seedTag(name: 'errand')['id'] as String;
+  final writing = api.seedTag(name: 'writing')['id'] as String;
+
+  // Overdue — a debt that must never look disabled.
   api.seedTask(
     title: 'Review contrast report',
     priority: 'urgent',
     isUrgent: true,
     dueAt: iso(now.subtract(const Duration(days: 1))),
+    projectId: launch,
+    tagIds: [design],
   );
+  // No date — captured, not yet planned.
+  api.seedTask(
+    title: 'Sketch onboarding ideas',
+    projectId: launch,
+    tagIds: [design],
+  );
+  api.seedTask(
+    title: 'Call the plumber about the leak',
+    projectId: reno,
+    tagIds: [errand],
+  );
+  // Today.
+  api.seedTask(
+    title: 'Ship the new Liquid Glass theme',
+    description: 'Final QA in light + dark, then tag v0.4.0.',
+    priority: 'high',
+    dueAt: day(0, 23, 0),
+    projectId: launch,
+    tagIds: [design],
+  );
+  api.seedTask(
+    title: 'Evening 5k run',
+    priority: 'low',
+    dueAt: day(0, 23, 30),
+    projectId: personal,
+    tagIds: [health],
+  );
+  // This week.
   api.seedTask(
     title: 'Water the plants',
     priority: 'low',
-    dueAt: iso(now.add(const Duration(days: 2))),
+    dueAt: day(2, 9, 0),
+    projectId: reno,
   );
   api.seedTask(
     title: 'Book dentist appointment',
     priority: 'medium',
-    dueAt: iso(now.add(const Duration(days: 4))),
+    dueAt: day(3, 10, 0),
+    projectId: personal,
+    tagIds: [health],
   );
-  api.seedTask(title: 'Sketch onboarding ideas');
+  // Next 30 days.
+  api.seedTask(
+    title: 'Draft the Q3 planning doc',
+    priority: 'medium',
+    dueAt: day(8, 12, 0),
+    projectId: launch,
+    tagIds: [writing],
+  );
+  api.seedTask(
+    title: 'Read “Shape Up”, chapter 4',
+    dueAt: day(15, 20, 0),
+    projectId: reading,
+    tagIds: [writing],
+  );
+
+  // Board-only colour: the in-progress / waiting / completed columns.
+  api.seedTask(
+    title: 'Wire up presigned uploads',
+    status: 'in_progress',
+    projectId: launch,
+    tagIds: [design],
+  );
+  api.seedTask(
+    title: 'Waiting on brand assets',
+    status: 'waiting',
+    projectId: launch,
+    tagIds: [design],
+  );
+  api.seedTask(
+    title: 'Set up the Cloudflare R2 bucket',
+    status: 'completed',
+    projectId: launch,
+  );
+  api.seedTask(
+    title: 'Pick a launch date',
+    status: 'completed',
+    projectId: personal,
+  );
+
+  // Notes.
+  api.seedNote(
+    title: 'Launch checklist',
+    plainText: 'Store copy, screenshots, press kit, changelog.',
+    projectId: launch,
+    isPinned: true,
+  );
+  api.seedNote(
+    title: 'Renovation measurements',
+    plainText: 'Kitchen 3.2 × 4.1 m · hallway 1.1 m wide.',
+    projectId: reno,
+  );
+
+  // Files: two folders, workspace uploads inside one, plus a project
+  // attachment so the Sources view has cross-target rows.
+  final documents = api.seedFolder(name: 'Documents')['id'] as String;
+  api.seedFolder(name: 'Invoices');
+  api.seedFile(
+    name: 'brand-guidelines.pdf',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    folderId: documents,
+    mime: 'application/pdf',
+    sizeBytes: 2400000,
+  );
+  api.seedFile(
+    name: 'floor-plan.png',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    folderId: documents,
+    mime: 'image/png',
+    sizeBytes: 840000,
+  );
+  api.seedFile(
+    name: 'hero-mockup.png',
+    targetType: 'project',
+    targetId: launch,
+    mime: 'image/png',
+    sizeBytes: 1200000,
+  );
+
   return api;
 }
 
@@ -150,7 +293,7 @@ Future<void> _shoot(
   required Size size,
   required Brightness brightness,
   required String name,
-  bool openSheet = false,
+  Future<void> Function(WidgetTester tester)? navigate,
 }) async {
   tester.view.physicalSize = size * 2;
   tester.view.devicePixelRatio = 2.0;
@@ -164,8 +307,8 @@ Future<void> _shoot(
   try {
     await tester.pumpWidget(await _signedInScreenshotApp(_seededApi()));
     await tester.pumpAndSettle();
-    if (openSheet) {
-      await tester.tap(find.byType(FloatingActionButton));
+    if (navigate != null) {
+      await navigate(tester);
       await tester.pumpAndSettle();
     }
     await expectLater(
@@ -175,6 +318,11 @@ Future<void> _shoot(
   } finally {
     debugDisableShadows = true;
   }
+}
+
+/// Tap a top-level nav destination by its label (NavigationRail on desktop).
+Future<void> _openSection(WidgetTester tester, String label) async {
+  await tester.tap(find.text(label).first);
 }
 
 void main() {
@@ -204,7 +352,7 @@ void main() {
       size: const Size(390, 844),
       brightness: Brightness.light,
       name: 'phone_sheet_light',
-      openSheet: true,
+      navigate: (t) => t.tap(find.byType(FloatingActionButton)),
     );
   });
 
@@ -214,7 +362,7 @@ void main() {
       size: const Size(390, 844),
       brightness: Brightness.dark,
       name: 'phone_sheet_dark',
-      openSheet: true,
+      navigate: (t) => t.tap(find.byType(FloatingActionButton)),
     );
   });
 
@@ -233,6 +381,40 @@ void main() {
       size: const Size(1280, 800),
       brightness: Brightness.dark,
       name: 'desktop_home_dark',
+    );
+  });
+
+  testWidgets('desktop board — light', skip: !_enabled, (tester) async {
+    await _shoot(
+      tester,
+      size: const Size(1280, 800),
+      brightness: Brightness.light,
+      name: 'desktop_board_light',
+      navigate: (t) => t.tap(find.text('board.viewBoard'.tr())),
+    );
+  });
+
+  testWidgets('desktop files — light', skip: !_enabled, (tester) async {
+    await _shoot(
+      tester,
+      size: const Size(1280, 800),
+      brightness: Brightness.light,
+      name: 'desktop_files_light',
+      navigate: (t) async {
+        await _openSection(t, AppSection.files.title);
+        await t.pumpAndSettle();
+        await t.tap(find.text('Documents')); // open the folder → file rows
+      },
+    );
+  });
+
+  testWidgets('desktop projects — light', skip: !_enabled, (tester) async {
+    await _shoot(
+      tester,
+      size: const Size(1280, 800),
+      brightness: Brightness.light,
+      name: 'desktop_projects_light',
+      navigate: (t) => _openSection(t, AppSection.projects.title),
     );
   });
 }
