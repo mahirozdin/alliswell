@@ -88,6 +88,17 @@ alliswell/
 └── ...
 ```
 
+## 🔎 Search, Board & Files (round 8)
+
+Every content screen searches **case- and Turkish-accent-insensitively**
+("cay" finds Çay, "isi" finds ısı) with title > tag > body ranking — locally,
+over the on-device replica, so it works offline (ADR-0013). Home has a
+**List | Board** toggle: the board lays tasks out as hideable, reorderable
+status columns with drag-and-drop AND an always-visible change-status path.
+The main nav's **Files** section is a simple file manager for the whole
+workspace: nestable folders for standalone uploads plus a source-labeled view
+of every attachment (ADR-0014).
+
 ## 📎 Attachments & file storage (optional)
 
 Attach images, videos — any file — to tasks, notes and projects, with a

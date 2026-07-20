@@ -145,12 +145,34 @@ with honest offline placeholders). Remaining: the manual device/web QA matrix
 (CORS reality pass, big files) — rides the Epic 12/13 device tour. Design:
 [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md), ADR-0011.
 
+## Toward v0.4.0
+
+### Phase 9 — Feedback round 8: flow speed, search, board, global files ✅ (code complete 2026-07-20)
+
+Eleven tasks (OPH-160…170), all shipped the same day the round landed:
+connecting Google Calendar now auto-selects the primary calendar and syncs
+immediately (the hidden second step died — OPH-160); a configurable default
+task time (23:59 factory); the Calendar tab retired in favor of a global
+**Files** section (folders ≤10 deep with counted recursive deletes, standalone
+workspace uploads, a Sources view of every attachment — ADR-0014); inline
+"+ Add project" in pickers; editable task descriptions with tappable links;
+a typeable tag system (`#chip` input, fold-matched suggestions, auto-create,
+manage sheet); **Turkish-fold local search** ranked title > tag > body across
+Home/Notes/Projects (neither SQLite nor MySQL folds `ı→i` — one app-owned
+fold, parity-fixtured across Dart and JS — ADR-0013); and a Home **Board**
+(kanban) view with user-managed status columns and a mandatory non-drag move
+path. Remaining for the release: a live pass with a real Google account and
+the standing device-tour matrix.
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:
 
 - Multi-user workspace sharing & roles UI (the schema already supports members).
-- Project documents (block editor); Kanban & timeline views; smart-list / filter DSL.
+- Project documents (block editor); timeline view; smart-list / filter DSL;
+  a single global search screen (per-screen search shipped in Phase 9);
+  search v2 (FTS5/bm25, server-side fold columns); OG link previews on task
+  descriptions; tag merge/usage counts; desktop drag-to-move into folders.
 - Attachments v2 (multipart >5 GB, thumbnails, quotas, offline binary cache — v1 shipped in Phase 8); import from Todoist / TickTick / Apple Reminders; ICS export.
 - CalDAV connector for iCloud ([design](docs/CALDAV.md)); the inbound half of the Apple mirror.
 - Metrics endpoint (Prometheus), audit-log UI, admin panel.
