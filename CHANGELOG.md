@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Planned (docs)
+
+- **Feedback round 8 → Epic 15 (Phase 9, v0.4.0) designed and documented**
+  (2026-07-20): auto-selected primary calendar with an immediate first sync on
+  Google connect (the hidden "pick a calendar" step dies — root cause traced),
+  a configurable default task time (23:59), the Calendar tab replaced by a
+  global **Files** section with folders (ADR-0014: `workspace` file target,
+  push-pull `folder` sync entity, counted recursive deletes), inline "+ New
+  project" in project pickers, an editable task description with tappable
+  links, a tag system you can actually type (`#tag` chip-input with
+  auto-create and a manage sheet), Turkish-fold local search ranked
+  title > tag > body (ADR-0013 — verified: neither SQLite FTS5 nor MySQL's
+  ai_ci collation folds `ı→i`, so folding is app-owned with a cross-stack
+  parity fixture), and a Home **Board** (Kanban) view with user-managed
+  columns and a mandatory non-drag "change status" path (researched against
+  Trello/Jira/GitHub mobile + NN/g). BLUEPRINT §12.10-12.12 + Phase 9 +
+  Risk 8, DESIGN §10 F7-F9 + §12/§13/§14, ARCHITECTURE §6c, ATTACHMENTS §14,
+  TASKS Epic 15 (OPH-160…170).
+
 ### Changed
 
 - **"Liquid Glass v2" visual refresh** (design round 8, ADR-0012): the whole

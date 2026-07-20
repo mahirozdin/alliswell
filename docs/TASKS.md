@@ -2542,11 +2542,227 @@ manual pass.**
 
 ---
 
+## Epic 15 — Feedback round 8: akış hızı, arama, pano, global dosyalar (Phase 9, v0.4.0)
+
+> Kaynak: kullanıcı testi round 8 (2026-07-20, 10 madde). Bağlayıcı dokümanlar: BLUEPRINT
+> §7.2/§12.1/§12.2/§12.4/§12.10-12.12/§4.4/§4.10-4.11/§14 Phase 9/§16 Risk 8, DESIGN §10
+> F7-F9/§12/§13/§14, ARCHITECTURE §6b-6c, ATTACHMENTS §14,
+> [ADR-0013](adr/0013-local-first-search.md) (arama), [ADR-0014](adr/0014-folders-and-global-files.md)
+> (klasörler). Sıra bağımlılık sırasıdır: bug önce, küçük kazanımlar, oluşturma akışı,
+> etiketler → arama (etiket tier'ı ister), pano, dosyalar (API → app).
+
+### OPH-160 — Google connect: otomatik primary takvim + anında ilk sync (bug, round 8 #1)
+
+Kök neden (2026-07-20 tanısı): OAuth callback yalnız token yazar, `default_calendar_id`
+NULL kalır; sync/watch/sweep üçü de NULL'da erken çıkar → bağlantı "başarılı" görünür ama
+hiçbir event çekilmez; kullanıcının ayrı bir "takvim seç" adımı attığı varsayılır (gizli
+ikinci adım). App tarafı da takvim seçildiğinde `syncNow()` çağırmaz (60 sn'lik pull'u bekler).
+
+- [ ] API: callback başarısında `listCalendars` ile `primary` takvimi bul,
+      `default_calendar_id`'ye yaz ve `enqueueSync` + `enqueueWatch` kuyruğla (PATCH
+      `calendarChanged` dalının birebir aynısı — `integrations-google.js:346-350`).
+      Primary bulunamazsa (teorik) mevcut davranışa düş: seçim kullanıcıya kalır.
+- [ ] API: callback HTML metni güncelle — "Sırada: varsayılan takvimi seç" yerine
+      "Takvimin bağlandı; etkinlikler senkronize ediliyor. Uygulamaya dönebilirsin."
+      (İstemeyen Ayarlar'dan takvimi değiştirir — o yol aynen durur.)
+- [ ] App: `chooseCalendar` sonrası ve `GoogleCalendarCard` onResume yolunda
+      `syncNow()` tetikle (status invalidate'e ek) — "bağla → dön → veriler aksın".
+- [ ] Unit test (fakegoogle `primary: true` hazır): callback sonrası hesap satırında
+      `default_calendar_id` dolu VE sync+watch job'ları kuyruklanmış.
+- [ ] App testi: takvim seçimi fake engine'de `syncNow` çağırıyor.
+- [ ] Docs: BLUEPRINT §7.2 (✅ bu commit'te revize), CHANGELOG, STATE.
+
+Acceptance: temiz bir hesapla bağlan → hiçbir ek adım atmadan Home'da etkinlikler
+(socket + syncNow ile saniyeler içinde) görünür.
+
+### OPH-161 — Varsayılan görev saati: 23:59 + Ayarlar tercihi (round 8 #6)
+
+- [ ] `defaultTaskTimeProvider`: `PersistedChoice('alliswell_default_task_time',
+      fallback: '23:59')` ("HH:mm"); parse + `DateTime applyDefaultTaskTime(day)` yardımcısı.
+- [ ] 4 sabit 09:00 sitesini helper'a bağla: `task_create_sheet.dart` (`_pickDateTime`
+      initialTime + fallback), `task_detail_screen.dart` `_DateRow` picker'ı,
+      `home_screen.dart` `_quickAdd` (`Duration(hours: 9)`), `home_shell.dart` FAB ön-dolumu.
+- [ ] Settings satırı (dil satırı idiomu): "Varsayılan görev saati" + `showTimePicker`;
+      alt yazıda seçili saat.
+- [ ] i18n: `settings.defaultTaskTime*` (en+tr).
+- [ ] Testler: helper unit (parse/fallback/geçersiz değer), quick-add seçili günle 23:59'a
+      düşüyor, ayar değişince yeni saat uygulanıyor.
+
+### OPH-162 — Takvim sekmesini kaldır; seçili gün ufku aşsın (round 8 #9)
+
+- [ ] `AppSection.calendar` enum girdisini sil; bağımlıları düzelt: `router.dart:83`
+      route switch'i, `home_shell.dart:96` FAB switch'i, `tour.dart:44` tur adımı
+      (adımı kaldır — tur akışı 1 kısalır).
+- [ ] `calendar_screen.dart`'ı sil (yalnız router kullanıyor); `selectedDayProvider` ve
+      ay ızgarası Home'da yaşamaya devam eder.
+- [ ] **Seçili gün ufku aşar:** ızgaradan +30 gün ötesi bir gün seçilince o günün görev ve
+      etkinlikleri seçili-gün grubunda gösterilir (BLUEPRINT §12.2 rev) — Takvim ekranının
+      tek gerçek işlevi Home'a taşınır.
+- [ ] i18n: `nav.calendar*` anahtarlarını kaldır/`calendar.*` kalanları koru (extraction
+      testine göre); etkilenen widget/tur testlerini güncelle.
+- [ ] Docs: BLUEPRINT §12.1/§12.2 (✅ revize), CHANGELOG, STATE.
+
+### OPH-163 — Proje seçicide "+ Proje ekle" (round 8 #2)
+
+- [ ] `project_picker.dart`: dropdown item listesinin sonuna sabit "+ Proje ekle" girdisi
+      (sentinel değer); seçilince `showProjectEditSheet(context)` aç, dönen projeyi alanın
+      değeri yap (sheet `Navigator.pop(project)` ile projeyi döndürür — gerekiyorsa
+      `ProjectEditSheet`'e dönüş değeri ekle).
+- [ ] İki kullanım yeri de kazanır: task create sheet + task detail proje alanı (aynı
+      builder). Dropdown kapanıp sheet açılırken state kaybolmaz (create sheet form değerleri
+      korunur).
+- [ ] i18n: `project.addFromPicker` (en+tr). Widget testi: picker'dan proje oluştur →
+      alan yeni projeyi seçili gösterir; task o projeyle kaydolur.
+
+### OPH-164 — Görev açıklaması: oluşturmada alan, detayda düzenlenebilir, linkify (round 8 #7)
+
+API hazır (`tasks.description` yazılabilir; sync `TASK_FIELDS.description` mevcut).
+
+- [ ] Create sheet: başlığın altında çok satırlı "Açıklama" alanı (opsiyonel, 3-6 satır
+      arası büyür); `store.create`'e `description` geçir.
+- [ ] Detail: salt-okunur description metnini düzenlenebilir yap — başlık gibi autosave
+      (odak kaybında/debounce'ta `store.update`); boşken "Açıklama ekle" placeholder'ı.
+- [ ] Linkify: görüntülemede URL'ler algılanır (http/https + www.), tıklanabilir
+      (`urlLauncherProvider`); düzenleme modunda düz metin. Saf `linkifySpans()` util +
+      unit testleri (TR karakterli URL, nokta/parantez sınırları).
+- [ ] OG link önizlemesi bilinçli v2 (parking lot — sunucu proxy'si ister).
+- [ ] i18n `task.description*`; widget testleri: create'te açıklama kaydolur, detayda
+      düzenleme sync'e patch atar, link tap launcher'ı çağırır (fake).
+
+### OPH-165 — Etiket sistemi: chip-input, #tag, otomatik oluşturma, yönetim (round 8 #4)
+
+Sunucu hazır: tags CRUD + `PUT /tasks/:id/tags` + sync push `tag` (slug'ı server türetir —
+`sync.js:391-393`); eksik olan tümüyle app.
+
+- [ ] `TagStore` (features/tags): `create(name, {colorRgb})` — drift'e optimistic satır
+      (geçici fold-tabanlı slug; server pull'da kendi slug'ıyla ezer) + outbox `tag create
+      {name}`; `rename`, `setColor`, `delete` (outbox update/delete).
+- [ ] `TagInputField` widget'ı (DESIGN §13): chip'ler `#ad` + renk noktası + ×; TextField
+      Tab/Enter/virgül commit; öneri satırı fold-duyarsız filtre (OPH-167'nin fold util'i
+      burada doğar — `core/fold.dart`); tam eşleşme yoksa ilk öneri "Oluştur: #ad";
+      baştaki '#' yutulur; boş commit no-op.
+- [ ] Create sheet'e Tags alanı (`tagIds` create payload'ında zaten destekli); detail
+      `_TagPicker` yerine aynı `TagInputField` (+ mevcut `setTags` replace-set).
+- [ ] "Etiketleri yönet" sheet'i (detay Tags kartından): listele, yeniden adlandır, palet
+      renk seç, sil (onay etkilenen görev sayısını söyler — `taskTagRows` count).
+- [ ] Liste satırlarında en çok 2 chip + "+N" taşması (DESIGN T4).
+- [ ] i18n `tag.*`; testler: commit-on-Enter/Tab, mevcut etikete fold eşleşmesi (yeni
+      YARATMAZ, olanı seçer), "Oluştur" yolu drift satırı + outbox, × çıkarma, yönetim
+      sheet'i rename/delete.
+
+### OPH-166 — Oluşturma sheet'inde ek seçimi (round 8 #3)
+
+- [ ] Create sheet'e "Ekler" bölümü: `filePickerProvider` ile seç → bekleyen liste
+      (ad + boyut; kaldır ×); henüz upload YOK (task yok).
+- [ ] Kaydet akışı: task create → dönen id ile seçimleri sırayla `uploads.start(targetType:
+      'task', targetId: id)` — mevcut UploadsNotifier makinesi; sheet kapanır, yüklemeler
+      detay/rozet akışında görünür (F2 zaten var).
+- [ ] Depo yapılandırılmamışsa bölüm dürüst kapalı görünür (F6 empty-state dili, seçtirmez).
+- [ ] i18n `task.attachOnCreate*`; testler: seç→kaydet→fake transport'ta doğru hedefle
+      upload başlar; storage-off durumda bölüm devre dışı.
+
+### OPH-167 — Arama: TR fold motoru + Home/Notlar/Projeler (round 8 #5, ADR-0013)
+
+- [ ] `core/fold.dart`: `foldSearchText()` — İ/I/ı→i ÖNCE, sonra lowercase, sonra Latin-1 +
+      Latin Extended-A açık harita (ç→c, ğ→g, ş→s, ö→o, ü→u, â→a, é→e …), boşluk sıkıştır.
+      **Parite fixture'ı** `fold_parity.json` (app asseti + API test fixture'ı) iki yönde
+      test edilir (flutter + vitest) — API'ye aynı fold'un JS aynası `src/lib/fold.js`.
+- [ ] Drift v6: `*_fold` gölge kolonları (tasks: title/description; notes: title/body;
+      projects: name/description; tags: name; external_events: summary/location) + migration
+      backfill (Dart'ta hesapla); `migration_test` v6 walk-back + beklentiler.
+- [ ] Yazım noktaları fold'u doldurur: feature store'lar (create/update) + `sync_applier`
+      (pull upsert) — applier testi her entity tipinde fold kolonlarını assert eder.
+- [ ] `SearchService` (tek SQL, tier UNION): tier 0 başlık/ad, tier 1 etiket (task_tags
+      join), tier 2 gövde/açıklama; çok kelime = AND; `MIN(tier)` + ekranın doğal sırası.
+- [ ] UI (DESIGN §12): paylaşılan `AwSearchField` — Home (görev + external event + Fikirler;
+      event'ler summary/location), Notlar (mevcut arama bu motora taşınır + gövde), Projeler.
+      Debounce 250 ms; ≥150 ms'de ilerleme satırı; sonuç satırında eşleşme bağlamı (snippet
+      veya #etiket). Boş sonuç `AwEmptyState`.
+- [ ] API paritesi (ikincil yol): tasks listesine `?q=` — mevcut `ft_tasks_title_description`
+      FULLTEXT (BOOLEAN MODE `q*`); fakedb MATCH taklidi zaten var. Ajv şema + unit test.
+      (Bilinen ı/i boşluğu ADR-0013'te belgeli — app yolu otoritedir.)
+- [ ] Testler: fold eş-sınıfları (cay↔Çay, ISI↔ısı, ULKU↔ülkü), tier sıralaması, çok
+      kelime AND, üç ekran widget testi (yaz→sonuç, temizle→eski liste), performans smoke
+      (1k satır <50 ms yerelde).
+
+### OPH-168 — Pano: Home Kanban görünümü (round 8 #8, DESIGN §14)
+
+- [ ] Home üstünde Liste|Pano segmented toggle; `PersistedChoice('alliswell_home_view')`.
+      Pano görev kümesi = Home'un görev kaynağı (external event'ler girmez).
+- [ ] Sütunlar = statuslar; görünürlük+sıra `PersistedChoice('alliswell_board_columns')`
+      (JSON liste); varsayılan görünür: open, in_progress, waiting, completed.
+      "Görünümü düzenle" sheet'i: `ReorderableListView` + görünürlük switch'leri.
+- [ ] Geniş ekran: yatay kaydırılabilir klasik sütunlar (sabit genişlik ~320); telefon:
+      `PageView` viewportFraction .90 + "2/5" konum etiketi.
+- [ ] Taşıma yol A: `LongPressDraggable`/`DragTarget` (sütun gövdesi komple hedef, delay
+      ~200 ms, haptik, feedback ~1.04 ölçek); kenar bölgesi hover ~400 ms → pager ilerlet;
+      dikeyde `EdgeDraggingAutoScroller`. Bırak → `store.update(status)` + geri-al snackbar.
+- [ ] Taşıma yol B (zorunlu): kart long-press-bırak → bağlam menüsü → "Durum değiştir"
+      bottom sheet (tüm statuslar, gizliler dahil, mevcut işaretli); detay ekranındaki
+      status alanı zaten üçüncü yol.
+- [ ] Boş sütun placeholder (drag'de "Buraya sürükleyin", değilse "+ Görev ekle" → o status
+      preset'li create sheet); Semantics etiketleri + taşıma sonrası announce (K5).
+- [ ] i18n `board.*`; testler: toggle kalıcı, sütun render + sayaçlar, sheet ile status
+      değişimi, drag simülasyonu (drag target accept), sütun gizleme kalıcı, boş sütun
+      affordance'ı. Kontrast: yeni yüzeyler token'lardan (gerekirse contrast.py çiftleri).
+
+### OPH-169 — Klasörler + workspace dosyaları: API (round 8 #10a, ADR-0014)
+
+- [ ] Migration `20260720…_create_folders_and_workspace_files.js`: `folders` tablosu
+      (ULID, workspace_id, parent_id nullable self-FK, name ≤255, revision, timestamps,
+      deleted_at; unique (workspace_id, parent_id, name)); `files.folder_id` nullable FK;
+      `files.target_type` enum'una `workspace` ekle (ALTER). `down` tam geri alır.
+- [ ] `routes/folders.js`: list (ağaç düz liste — client kurar), create, PATCH
+      (rename/move — derinlik ≤10, döngü reddi `FOLDER_CYCLE`), DELETE (alt ağaç: klasörler
+      + workspace dosyaları soft-delete + GC enqueue; cevap sayıları döner). Ajv şemalar,
+      `requireWorkspaceMember`, her yazım `recordSyncWrite`.
+- [ ] Files: init `targetType:'workspace'` kabul eder (`target_id`=workspace, `folderId`
+      opsiyonel — yalnız workspace hedefinde, aynı workspace klasörü); list
+      `?targetType=workspace&folderId=` (null=kök); serializer `folderId` taşır.
+- [ ] Sync: `folder` SNAPSHOT_LOADERS + ENTITIES (push-pull; FOLDER_FIELDS name/parentId;
+      guard: derinlik/döngü/isim çakışması `FOLDER_NAME_TAKEN`); file loader `folderId` içerir.
+- [ ] `cascadeDeleteFiles`: klasör alt-ağacı girişi; workspace silme kaskadı (varsa) kapsar.
+- [ ] fakedb: `folders` tablosu + unique index; unit testler (CRUD, döngü, derinlik, isim
+      çakışması ai_ci, kaskad sayıları, sync push/pull, workspace-target init/list);
+      entegrasyon: gerçek MinIO ile workspace dosyası yaşam döngüsü + klasör silme GC'si.
+
+### OPH-170 — Global "Dosyalar" bölümü: app (round 8 #10b)
+
+- [ ] Drift v6 (OPH-167'yle AYNI migration adımında birleşir — tek v6): `folders` tablosu +
+      `file_rows.folder_id`; applier `folder` entity + file folderId; `FolderStore`
+      (watchTree, create/rename/move/delete — optimistic + outbox).
+- [ ] `AppSection.files` (Takvim'in yerine, `nav.files`): `FilesScreen` — üstte
+      Klasörlerim (breadcrumb, klasör satırları F8, dosya satırları F1, mevcut sıralama
+      menüsü), altta/sekmede Kaynaklar (proje Files tab bileşenleri: kaynak rozetleri,
+      filtre çipleri, "kaynağa git" → ilgili detay ekranı).
+- [ ] Eylemler: klasör oluştur (ad diyaloğu), yeniden adlandır, taşı (hedef seçici sheet —
+      ağaç, mevcut konum devre dışı), sil (F9 onayı: içerik sayıları), dosya yükle
+      (aktif klasöre, `targetType:'workspace'`), dosya taşı (aynı sheet), dosya aç/indir/
+      yeniden adlandır/sil (mevcut aksiyonlar).
+- [ ] Depo yapılandırılmamışsa Klasörlerim dürüst boş durum; Kaynaklar yine listelenir.
+- [ ] Workspace-scope arama entegrasyonu değil (arama ekran-bazlı; Dosyalar'da ad sıralaması
+      + gelecekte q — parking not).
+- [ ] i18n `files.*`/`nav.files`; testler: ağaç render + breadcrumb gezinme, oluştur/taşı/
+      sil (onay sayıları), yükleme hedefi workspace+folder, Kaynaklar rozet+navigasyon,
+      storage-off durumu. Tur adımı: Dosyalar için kısa tanıtım adımı eklenir (tour listesi).
+
+**Epic 15 DoD:** her task kendi test+i18n+kontrast+analyze yeşiliyle kapanır; epic sonunda
+app+API tam süit, `check:no-ts`, `check:i18n`, `contrast.py FAILURES: 0`, CHANGELOG + STATE
++ README/ROADMAP dokunuşları (Dosyalar bölümü, arama, pano) → **v0.4.0**.
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
 - Project documents (block editor) — Phase 5 detail tasks to be expanded when reached.
-- Kanban & timeline views; smart lists/filters DSL; global search screen.
+- Timeline view; smart lists/filters DSL; global single-screen search (per-screen search
+  shipped in Epic 15; kanban shipped in Epic 15 — OPH-168).
+- Search v2: FTS5 external-content upgrade (bm25 ranking — ADR-0013 upgrade path),
+  server-side fold columns for a first-class API `?q=`, file-name search in Dosyalar.
+- Task description v2: OG link previews (needs a server-side unfurl proxy), rich formatting.
+- Tag management v2: merge tags, usage counts, tag colors in board/list filters.
+- Files v2: desktop drag-to-move into folders (target-picker sheet is v1), bulk move/delete.
 - Attachments v2: multipart >5 GB uploads, thumbnails/transcodes, quota enforcement, local
   binary cache for offline viewing, camera capture, inline video playback, public share links
   (v1 shipped in Epic 14 — ATTACHMENTS.md §11).

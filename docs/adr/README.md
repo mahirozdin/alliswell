@@ -18,5 +18,9 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0008](0008-external-calendar-events.md) | External calendar events as a read-only sync entity | Accepted |
 | [0009](0009-localization-i18n-architecture.md) | Localization (i18n): JSON locales, device detection, persisted override | Accepted |
 | [0010](0010-home-screen-widgets-architecture.md) | Home-screen / desktop widgets: native views over an App-Group snapshot | Accepted |
+| [0011](0011-attachments-r2-s3-storage.md) | Attachments: S3-compatible storage (R2), presigned direct transfer, pull-only sync entity | Accepted |
+| [0012](0012-liquid-glass-v2-visual-refresh.md) | "Liquid Glass v2" visual refresh (design round 8) | Accepted |
+| [0013](0013-local-first-search.md) | Local-first search with app-owned Turkish folding | Accepted |
+| [0014](0014-folders-and-global-files.md) | Folders and the global "Dosyalar" section | Accepted |
 
 Template: [template.md](template.md)

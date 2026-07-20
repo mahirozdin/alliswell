@@ -22,6 +22,8 @@
 | App: project Files tab (manager + usage footer) | ✅ done + tested (OPH-155/157) |
 | App: inline note images/videos + markdown parity | ✅ done + tested (OPH-156) |
 | Manual QA matrix — devices, web CORS reality, 100 MB files | ⏳ rides the Epic 12/13 device tour (OPH-157) |
+| **Round 8:** folders + `workspace` target (API) | 🔜 planned (OPH-169, §14, ADR-0014) |
+| **Round 8:** global "Dosyalar" section (app) | 🔜 planned (OPH-170, §14) |
 
 Everything below was written before implementation and then trued against it;
 deviations are called out inline and in TASKS.md acceptance notes.
@@ -357,3 +359,44 @@ Epic 14 lands behind config: self-hosters who set nothing see an app without
 attachment affordances (honest empty states where the tabs/sections live) and an
 API that answers `STORAGE_NOT_CONFIGURED`. Setting four env vars turns the
 feature on. Target release: **v0.3.0** (Phase 8).
+
+## 14. Folders & the global "Dosyalar" section (round 8 — OPH-169/170)
+
+_(Added 2026-07-20, feedback round 8. Decision record:
+[ADR-0014](adr/0014-folders-and-global-files.md); UX rules DESIGN.md §10 F7…F9;
+product surface BLUEPRINT §12.12, domain §4.10/§4.11.)_
+
+The user asked for a main-nav **file manager**: see every file in the workspace,
+upload standalone files (no project/task/note), organize with folders, sort —
+"Finder/Explorer simple". Design:
+
+- **Two layers, one anatomy.** *Klasörlerim* = user folders + `workspace`-target
+  files (the only foldered layer). *Kaynaklar* = the live aggregate of attached
+  files (project|task|note targets) with source badges and "go to source" — they
+  are NOT folderable; their lifecycle belongs to their owner entity (§5 cascades
+  unchanged).
+- **Schema.** New `folders` table (`id` ULID, `workspace_id`, `parent_id`
+  nullable self-ref, `name` ≤255, `revision`, timestamps, `deleted_at`; unique
+  `(workspace_id, parent_id, name)` — the ai_ci collation makes that case- and
+  accent-insensitive like Finder). `files` grows `target_type='workspace'`
+  (`target_id` = workspace id) and nullable `folder_id` (FK; API rejects
+  `folder_id` on non-workspace targets and cross-workspace folders). Depth cap
+  **10**; moves are cycle-checked (a folder cannot move into its own subtree).
+- **Sync.** `folder` joins the **push-pull** registry (like project/tag): pure
+  metadata, offline create/rename/move is safe and honest. Files stay pull-only
+  (§4) — uploading is online by nature. Replica: drift v6 adds `folders` +
+  `file_rows.folder_id`.
+- **API surface.** `POST/GET workspaces/:id/folders`, `PATCH /folders/:id`
+  (rename/move), `DELETE /folders/:id` (recursive; response reports counts);
+  files `init` accepts `targetType:'workspace'` + optional `folderId`; list
+  gains `?targetType=workspace&folderId=` (root = `folderId=null`) and the
+  existing aggregate shapes stay. Every write `recordSyncWrite`s.
+- **Deletion.** Folder delete soft-deletes the subtree in one transaction
+  (folders + workspace files, each with its own revision) and enqueues object
+  GC per file — the §5 no-orphaned-bytes guarantee extends unchanged. The app
+  confirm names the blast radius (DESIGN F9).
+- **App.** New nav section **Dosyalar** (replacing the removed Calendar slot):
+  breadcrumb navigation, folder rows (F8), upload-to-current-folder, move via
+  target-picker sheet, sort name/size/date, Kaynaklar filter chips reusing the
+  project Files tab components verbatim. Storage unconfigured ⇒ honest empty
+  state for Klasörlerim; Kaynaklar still lists (metadata is local).

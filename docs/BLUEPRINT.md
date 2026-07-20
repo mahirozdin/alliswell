@@ -239,6 +239,11 @@ Etiketler task ve notları bağlamsal olarak sınıflandırır.
 
 Örnek etiketler: Acil, Beklemede, Müşteri, Yazılım, Finans, 5dk, 30dk, Telefon, Mail, Araştırma.
 
+_(Rev. 2026-07-20, round 8 — OPH-165:)_ Etiketin doğum yeri kullanım anıdır: görev
+oluşturma/detay chip-input'unda yazılan ad yoksa etiket **otomatik oluşturulur** (ayrı bir
+"önce etiket yarat" ekranı dayatılmaz). UI'da `#ad` biçiminde gösterilir; ad '#'süz saklanır.
+Giriş kuralları §12.4, görsel kurallar DESIGN.md §13.
+
 ### 4.5 Notes
 
 Note, bağımsız veya task/proje bağlantılı bilgi birimidir.
@@ -304,10 +309,16 @@ File, bir task/not/projeye ekli ikili dosyadır (resim, video, **her tür** dosy
 allowlist'i yok). Metadata MySQL'de (`files` tablosu), bytes S3-uyumlu obje deposunda
 (birincil hedef **Cloudflare R2**; dev/CI'da MinIO).
 
-Alanlar: `id`, `workspace_id`, `target_type` (`project`|`task`|`note`), `target_id`,
-`uploaded_by`, `name` (görünen ad; yeniden adlandırılabilir), `mime`, `size_bytes`,
-`storage_key` (opak: `ws/{workspaceId}/{fileId}` — dosya adı içermez), `status`
-(`uploading`|`ready`), `revision`, `created_at`, `updated_at`, `deleted_at`.
+Alanlar: `id`, `workspace_id`, `target_type` (`project`|`task`|`note`|**`workspace`** —
+rev. round 8, OPH-169), `target_id`, `uploaded_by`, `name` (görünen ad; yeniden
+adlandırılabilir), `mime`, `size_bytes`, `storage_key` (opak: `ws/{workspaceId}/{fileId}` —
+dosya adı içermez), `status` (`uploading`|`ready`), **`folder_id` (nullable — yalnız
+`workspace` hedefli dosyalarda anlamlı; §4.11)**, `revision`, `created_at`, `updated_at`,
+`deleted_at`.
+
+_(Rev. 2026-07-20, round 8:)_ **`workspace` hedefi** dosyanın hiçbir entiteye değil doğrudan
+workspace'e ait olduğu anlamına gelir (`target_id` = workspace id) — global Dosyalar
+bölümünün (§12.12) "Klasörlerim" katmanı bunlardan oluşur.
 
 Temel kurallar:
 
@@ -322,6 +333,28 @@ Temel kurallar:
   kuyruklanır; 24 saati geçmiş `uploading` artıkları süpürülür. Arşivleme hiçbir şey silmez.
 - **Özellik opsiyoneldir:** `STORAGE_S3_*` env yoksa uçlar `STORAGE_NOT_CONFIGURED` döner,
   uygulama dürüst boş durumlar gösterir.
+
+### 4.11 Folder (klasör)
+
+_(Eklendi 2026-07-20, feedback round 8 — OPH-169; bağlayıcı plan
+[ATTACHMENTS.md](ATTACHMENTS.md) §14, karar [ADR-0014](adr/0014-folders-and-global-files.md).)_
+
+Folder, global Dosyalar bölümünde (§12.12) `workspace` hedefli dosyaları örgütleyen
+kullanıcı klasörüdür — Finder/Explorer zihin modeli, iç içe geçebilir.
+
+Alanlar: `id`, `workspace_id`, `parent_id` (nullable — null = kök), `name`, `revision`,
+`created_at`, `updated_at`, `deleted_at`.
+
+Kurallar:
+
+- Aynı üst klasör içinde ad benzersizdir (collation gereği büyük/küçük + aksan duyarsız);
+  derinlik sınırı 10 (API'de zorlanır); taşıma döngü yaratamaz (kendi alt ağacına taşınamaz).
+- **`folder` push-pull senkron varlığıdır** (proje/etiket gibi): klasör oluşturma/yeniden
+  adlandırma/taşıma saf metadata'dır, offline yapılabilir ve outbox'la akar. (Dosyaların
+  kendisi pull-only kalır — yükleme online'dır, §4.10.)
+- Klasör silme alt ağacı siler (alt klasörler + içindeki workspace dosyaları; onay içerik
+  sayısını açıkça söyler); dosya soft-delete + obje GC kuyruğu §4.10'daki kaskad kurallarını
+  aynen izler. Ekli (project/task/note hedefli) dosyalar klasörlere GİREMEZ.
 
 ## 5. Sistem mimarisi
 
@@ -492,14 +525,19 @@ CalDAV için: ICS UID mapping + ETag mapping.
 
 1. Kullanıcı Google hesabı bağlar.
 2. OAuth token encrypted saklanır.
-3. Kullanıcı default calendar seçer.
-4. İlk full sync yapılır.
-5. `nextSyncToken` saklanır.
-6. Push notification channel kurulur.
-7. Webhook geldiğinde ilgili account "dirty" yapılır.
-8. Worker incremental sync yapar.
-9. App-generated event'ler extended property ile eşleşir.
-10. Dışarıdan değiştirilen event task'a uygulanır.
+3. **Primary takvim OTOMATİK seçilir ve ilk full sync + watch anında kuyruklanır** (rev.
+   2026-07-20, feedback round 8 — OPH-160). "Bağlandı" demek "veri akıyor" demektir; gizli
+   ikinci adım yoktur. Kullanıcı isterse Ayarlar'dan farklı bir takvim seçer — seçim
+   değişikliği yeni bir full sync tetikler. (Eski akıştaki "kullanıcı default calendar seçer"
+   adımı, bağlanan hesabın hiç veri üretmeden 'bağlı' görünmesine yol açıyordu.)
+4. `nextSyncToken` saklanır.
+5. Push notification channel kurulur (webhook URL'i yoksa sweep poll'u devralır).
+6. Webhook geldiğinde ilgili account "dirty" yapılır.
+7. Worker incremental sync yapar; her external-event yazımı `sync:changed` soketini tetikler,
+   uygulama anında pull eder. Uygulama tarafı da bağlantı dönüşünde ve takvim değişiminde
+   `syncNow()` çağırır (OPH-160) — "bağla → Home'a dön → etkinlikler kendiliğinden akar".
+8. App-generated event'ler extended property ile eşleşir.
+9. Dışarıdan değiştirilen event task'a uygulanır.
 
 ### 7.3 Apple Calendar sync
 
@@ -752,10 +790,16 @@ değişiklikte DESIGN.md'ye işlenir (AGENTS.md sert kural 11).
 
 ### 12.1 Ana navigasyon
 
-Home • Inbox • Calendar • Projects • Notes • Search • Settings
+Home • Inbox • Projects • Notes • **Files** • Settings
+
+_(Revize 2026-07-20, feedback round 8 — OPH-162/170: **Calendar sekmesi KALDIRILDI** — Home
+zaten ay ızgarası + kronolojik listeyi tek görünümde taşıyor, ikinci bir takvim ekranı ölü
+ağırlıktı. Yerine **Files (Dosyalar)** geldi: workspace'in tüm dosyalarını gösteren global
+dosya yöneticisi, §12.12. "Search" ayrı bir sekme DEĞİLDİR — arama her içerik ekranının kendi
+gövdesinde yaşar (§12.10); tek global arama ekranı v2 parking-lot'ta durur.)_
 
 _(Revize 2026-07-14, feedback round 1: Today ve Upcoming ayrı sekmeler olmaktan çıktı —
-Home her şeyin göründüğü tek kronolojik görünüm; Calendar yalnızca ay görünümü.)_
+Home her şeyin göründüğü tek kronolojik görünüm.)_
 
 ### 12.2 Home (eski "Dashboard")
 
@@ -769,9 +813,12 @@ kaldırıldı.)_
 - **Gruplar ve sıra:** Geciken → **Tarihsiz** → Bugün → Yarın → Bu hafta → **Sonraki 30 gün**.
   Sınırlar: Bugün = yerel gün; Yarın = +1; Bu hafta = +2…+6; Sonraki 30 gün = +7…+30 (dahil).
 - **Ufuk 30 gündür; "Sonrası/Later" grubu YOK.** +30 günden ileri tarihli görevler ve takvim
-  etkinlikleri Home'a hiç girmez — Calendar sekmesinde yaşarlar. Böylece aylık/haftalık tekrar
-  eden bir toplantının sonsuz örnekleri listeyi doldurmaz ve önündeki işler rahat görünür.
-  (Ay ızgarasının noktaları ufuktan bağımsızdır — her tarihli gün işlenir.)
+  etkinlikleri Home'un kronolojik akışına girmez — böylece aylık/haftalık tekrar eden bir
+  toplantının sonsuz örnekleri listeyi doldurmaz ve önündeki işler rahat görünür. (Ay
+  ızgarasının noktaları ufuktan bağımsızdır — her tarihli gün işlenir.) **Seçili gün ufku
+  aşar (rev. 2026-07-20, round 8 — OPH-162):** Calendar sekmesi kalktığı için ızgaradan +30
+  ötesi bir gün seçilince o günün görev ve etkinlikleri seçili-gün grubunda GÖSTERİLİR —
+  uzak tarihlere bakma görevi artık ızgara + arama (§12.10) üzerindedir.
 - **Tarihsiz görevler listenin ÜSTÜNDE durur** (Geciken'in hemen altında, Bugün'ün üstünde) ve
   HİÇBİR ZAMAN sönük çizilmez: tarihi olmayan iş "her günün işi"dir; takvimden gün seçiliyken
   bile tam opaklıkta kalır. (Inbox yakalamaları bu gruba GİRMEZ — §12.6.)
@@ -783,12 +830,26 @@ kaldırıldı.)_
   rozet bulunur; içinde proje adı yazar (6 karakterden uzunsa ilk 6 karakter + "…"); üzerine
   gelince / uzun basınca tam ad tooltip'te görünür. Hangi görev hangi projenin, tek bakışta.
   Görsel kural: DESIGN.md §4 "Project badge".
+- **İki görünüm: Liste | Pano (rev. 2026-07-20, round 8 — OPH-168):** Home'un üstünde görünüm
+  anahtarı; **Liste varsayılandır** ve yukarıdaki kronolojik davranışın tamamı ona aittir.
+  **Pano** aynı görev kümesinin status-sütunlu Kanban görünümüdür (sürükle-bırak, sütun
+  gizle/sırala); tercih cihaz-yereldir ve kalıcıdır. Tam spec: §12.11 + DESIGN.md §14.
 
 Görev girişi (feedback round 2): listenin üstünde seri girişli quick-add — Enter sonrası alan
 temizlenir ve ODAK KORUNUR (yaz→Enter→yaz→Enter zinciri); gün seçiliyken eklenen görev o güne
-(09:00) düşer, seçim yokken tarihsiz eklenir. Sağ altta FAB, tarih/saat, hatırlatma, öncelik,
-proje ve urgent seçenekli tam oluşturma sheet'ini açar (seçili gün due'ya önceden dolar).
-Aynı seri-odak davranışı Inbox ve proje Tasks sekmesindeki quick-add'lerde de geçerlidir.
+**varsayılan görev saatinde** düşer, seçim yokken tarihsiz eklenir. **Varsayılan görev saati
+bir AYARDIR (rev. 2026-07-20, round 8 — OPH-161):** fabrika değeri **23:59** ("gün bitene
+kadar" anlamı; eski sabit 09:00 sabahın köründe alarm gibi davranıyordu), Ayarlar'dan
+kullanıcı değiştirir (cihaz-yerel tercih). Saat tek bir yardımcıdan okunur — quick-add, FAB
+ön-dolumu ve tarih seçicilerin saat fallback'i dahil hiçbir yüzey saat sabitlemez.
+
+Sağ altta FAB tam oluşturma sheet'ini açar (seçili gün due'ya önceden dolar). Sheet round 8
+ile büyüdü (OPH-163/164/165/166): tarih/saat, hatırlatma, öncelik, urgent'a ek olarak
+**açıklama alanı** (§12.4), **etiket girişi** (chip-input, §12.4), **ek seçimi** (dosyalar
+kaydetle birlikte yüklenir; depo yapılandırılmamışsa dürüst uyarı) ve proje seçicisinin
+sonunda **"+ Proje ekle"** (sheet'ten çıkmadan proje oluştur → otomatik seçilir; aynı seçici
+task detayında da bu affordance'ı taşır). Aynı seri-odak davranışı Inbox ve proje Tasks
+sekmesindeki quick-add'lerde de geçerlidir.
 
 ### 12.3 Project detail sekmeleri
 
@@ -812,9 +873,25 @@ OPH-108). Arşivli proje detayı "arşivli" bandı + Unarchive eylemi gösterir.
 
 ### 12.4 Task detail alanları
 
-Title (yerinde düzenlenebilir, otomatik kayıt), Project, Status, Priority, Tags, Due date,
-Reminder, Urgent toggle, Calendar mirror toggle, Notes, Checklist, **Attachments (Epic 14)**,
-Activity.
+Title (yerinde düzenlenebilir, otomatik kayıt), **Description (açıklama — rev. round 8)**,
+Project, Status, Priority, Tags, Due date, Reminder, Urgent toggle, Calendar mirror toggle,
+Notes, Checklist, **Attachments (Epic 14)**, Activity.
+
+_(Rev. 2026-07-20, feedback round 8 — OPH-164:)_ **Description** görevin kendi açıklama
+alanıdır — Notes İLİŞKİSİNDEN ayrıdır ve nota kaydolmaz: görevle ilgili bağlam, linkler,
+kısa detaylar burada yaşar. Hem oluşturma sheet'inde hem detayda düzenlenebilir (başlık gibi
+otomatik kayıt). Düz metin saklanır (`tasks.description`); görüntülemede **URL'ler otomatik
+algılanır ve tıklanabilir** (dokunma sistem tarayıcısında açar). Zengin biçimlendirme ve OG
+link önizlemesi bilinçli v2'dir (parking-lot) — görev açıklaması not editörü değildir; uzun
+içerik isteyen kullanıcıya doğru cevap bağlı Not'tur.
+
+_(Rev. 2026-07-20, feedback round 8 — OPH-165:)_ **Tags** bölümü artık bir seçici DEĞİL,
+giriş alanıdır: chip-input'a yaz, Tab/Enter/virgül chip'e çevirir; mevcut etiketler
+büyük/küçük harf ve Türkçe aksan duyarsız önerilir (§12.10 fold kuralı), **olmayan etiket
+otomatik OLUŞTURULUR** (workspace-scoped). Chip'ler `#ad` biçiminde görünür ('#' yalnız
+gösterimdir; ad '#'süz saklanır, kullanıcı '#' yazarsa yutulur). Chip'in ×'i görevden
+çıkarır; "Etiketleri yönet" ile ad/renk düzenleme + workspace'ten silme (onaylı) yapılır.
+Aynı chip-input oluşturma sheet'inde de vardır. Görsel kurallar: DESIGN.md §13.
 
 _(Rev. 2026-07-18, feedback round 7 — OPH-154:)_ **Attachments bölümü** checklist'in altında
 kendi kartında yaşar: ekle butonu (dosya seçici), yüklerken ilerleme çubuklu satır (iptal
@@ -946,6 +1023,76 @@ Uygulamada (ve aynı Flutter kodundan derlenen web'de) hardcoded metin bulunmaz.
   mesaja çevirir (`error.<CODE>`), yoksa sunucu `message`'ına düşer.
 - **RTL v1 kapsamı dışındadır** (en + tr LTR); mimari RTL'i engellemez (v2).
 
+### 12.10 Arama (feedback round 8 — OPH-167)
+
+_(Eklendi 2026-07-20; mimari karar [ADR-0013](adr/0013-local-first-search.md), görsel
+kurallar DESIGN.md §12.)_
+
+Arama ayrı bir ekran değil, her içerik ekranının kendi yeteneğidir — **Home** (görevler +
+bağlı takvim etkinlikleri + Fikirler yakalamaları), **Notlar** (başlık + gövde), **Projeler**
+(ad + açıklama). Notlar'daki mevcut arama alanı kalıbı (gövdede TextField, filtre çipleriyle
+AND) tüm ekranlara genellenir.
+
+- **Katmanlı sıralama:** başlık eşleşmesi > etiket eşleşmesi > gövde/açıklama eşleşmesi.
+  Eşleşmenin nerede olduğu satırın ikincil metninde dürüstçe gösterilir (ör. gövde snippet'i
+  veya `#etiket`).
+- **Fold kuralı (ürün sözü):** arama büyük/küçük harf VE Türkçe aksan duyarsızdır —
+  `ı/i/İ/I`, `ü/u`, `ö/o`, `ş/s`, `ç/c`, `ğ/g` eş sayılır; "cay" araması "Çay"ı, "ISI"
+  araması "ısı"yı bulur. Tek fold fonksiyonu hem sorguya hem metne uygulanır (ADR-0013);
+  kelime sırası dayatılmaz (çok kelimeli sorguda her kelime ayrı aranır, hepsi eşleşmeli —
+  AND semantiği).
+- **Yerel ve anlıktır:** tüm veri zaten cihaz replikasında olduğundan arama drift/SQLite
+  üzerinde koşar — offline çalışır, ağ beklemez. Debounce ~250 ms; sonuç gecikirse (büyük
+  korpus) spinner değil ilerleme göstergesi satırı görünür. Sunucu paritesi: `?q=` parametresi
+  API listelerinde de yaşar (notlar mevcut; görevler round 8'de eklenir — hazır bekleyen
+  `ft_tasks_title_description` FULLTEXT index'i kullanılır) — başka istemciler/entegrasyonlar
+  için; uygulama kendi aramasında REST'e ÇIKMAZ.
+- **Takvim etkinlikleri aramaya dahildir** (Home): `summary` + `location` alanları aynı fold
+  kuralıyla aranır; sonuç satırı normal event satırıdır (salt-okunur işaretiyle).
+
+### 12.11 Pano — Home Kanban görünümü (feedback round 8 — OPH-168)
+
+_(Eklendi 2026-07-20; etkileşim spec'i araştırma kaynaklarıyla DESIGN.md §14'te.)_
+
+Pano, Home'daki görev kümesinin status-sütunlu görünümüdür (sütun = `inbox…archived` status
+seti; takvim etkinlikleri Pano'ya girmez — onlar görev değildir). Temel kararlar:
+
+- **Sütun yönetimi kullanıcınındır:** "Görünümü düzenle" sheet'i sütun gizle/göster +
+  sırala sunar; tercih cihaz-yereldir ve kalıcıdır. Varsayılan görünür set: `open`,
+  `in_progress`, `waiting`, `completed` (yakalama kutusu `inbox` Fikirler'de yaşadığı,
+  `scheduled` Liste'nin kronolojisinde daha anlamlı olduğu için varsayılanda kapalı —
+  kullanıcı isterse açar).
+- **Taşıma iki eş yoldur:** sürükle-bırak (masaüstü/web: klasik çoklu sütun; telefonda
+  long-press) VE her kartın "Durum değiştir" eylemi (bottom sheet) — ikincisi ekran
+  okuyucu/erişilebilirlik yolu ve drag'in çalışmadığı her durumun sigortasıdır. Bırakınca
+  optimistic güncelleme + geri-al snackbar'ı.
+- **Telefonda pager:** tek sütun ≈ ekran genişliği, komşu sütunun ~%10'u görünür (peek);
+  sürükleme sırasında ekran kenarında bekletmek pager'ı bir sütun ilerletir.
+- Kart anatomisi görev satırıyla aynı DNA'yı taşır (öncelik bayrağı, proje rozeti, due).
+  Boş sütun asla sıfır-yükseklik çizilmez (bırakma hedefi + "+ Görev ekle" affordance'ı).
+
+### 12.12 Dosyalar — global dosya yöneticisi (feedback round 8 — OPH-169/170)
+
+_(Eklendi 2026-07-20; domain modeli §4.10/§4.11, bağlayıcı plan
+[ATTACHMENTS.md](ATTACHMENTS.md) §14, karar [ADR-0014](adr/0014-folders-and-global-files.md).)_
+
+Ana menüdeki **Files (Dosyalar)** bölümü workspace'in TÜM dosyalarını tek yerden gösterir —
+Finder/Explorer sadeliğinde, iki katmanlı:
+
+- **Klasörlerim:** hiçbir entiteye bağlı olmayan, doğrudan workspace'e yüklenmiş dosyalar +
+  kullanıcı klasörleri (iç içe, taşı/yeniden adlandır/sil). Yükleme buraya `workspace`
+  hedefiyle yapılır; klasörler YALNIZ bu katmanı örgütler.
+- **Kaynaklar:** projelere/görevlere/notlara ekli dosyaların canlı toplu görünümü (kaynak
+  rozetli, filtrelenebilir, "kaynağa git" navigasyonu). Ekli dosyalar klasöre TAŞINMAZ —
+  yaşam döngüleri sahiplerine bağlıdır (silme kaskadı §4.10); yöneticide görünmeleri
+  organizasyon değil erişim içindir.
+- Satır eylemleri proje Files sekmesiyle birebir aynı bileşenlerdir (aç/indir, yeniden
+  adlandır, sil onaylı; sıralama ad/boyut/tarih). Klasör silme içerik sayısını onayda açıkça
+  söyler ve alt ağacı (alt klasörler + dosyalar) siler — depo objeleri GC kuyruğuyla gider,
+  yetim bayt kuralı (§4.10) burada da geçerlidir.
+- Depo yapılandırılmamışsa bölüm dürüst boş durum gösterir (`STORAGE_NOT_CONFIGURED` —
+  spinner yalanı yok); **Kaynaklar** katmanı yine listelenir (metadata replikada).
+
 ## 13. Open-source repo kalitesi
 
 ### 13.1 README içeriği
@@ -998,6 +1145,12 @@ Tests:
   object storage, presigned direct upload/download, attachments on tasks, inline images/videos
   in notes, project "Files" tab as a simple file manager — Epic 14
   ([ATTACHMENTS.md](ATTACHMENTS.md), ADR-0011).
+- **Phase 9 — Feedback round 8: akış hızı, arama, pano, global dosyalar (v0.4.0):** Google
+  bağlantısında otomatik primary takvim + anında ilk sync (gizli adım ölür); varsayılan görev
+  saati ayarı (23:59); Calendar sekmesi yerine global **Files**; oluşturma sheet'inde inline
+  proje + açıklama + etiket chip-input + ek seçimi; görev açıklaması (linkify); TR-duyarsız
+  yerel arama (Home/Notlar/Projeler); Home **Pano** (Kanban) görünümü; klasörlü global dosya
+  yöneticisi — Epic 15 (ADR-0013 arama, ADR-0014 klasörler).
 
 ## 15. Kurumsal kalite gereksinimleri
 
@@ -1098,7 +1251,17 @@ yetim nesne riski (yarım upload, silinen entity) vardır. (c) Yanlış kimlik b
 bozulma üretebilir. *Mitigation:* özellik tamamen opsiyonel ve dürüst
 (`STORAGE_NOT_CONFIGURED` + UI boş durumları); ATTACHMENTS.md §8 CORS rehberi; 3-adımlı
 upload'da complete-time HeadObject doğrulaması; sweep + commit-sonrası silme kuyruğu yetim
-bırakmaz; entegrasyon testleri gerçek MinIO'ya karşı koşar (CI dahil).
+bırakmaz; entegrasyon testleri gerçek MinIO'ya karşı koşar (CI dahil). _(Round 8 ek:
+klasör silme alt-ağaç kaskadı aynı yetim-bayt garantisine bağlıdır — ADR-0014.)_
+
+**Risk 8 — Arama doğruluğu & ölçek (round 8).** Türkçe fold (ı/İ, ü, ö, ş, ç, ğ) standart
+kütüphane davranışlarının dışındadır — SQLite `LIKE` yalnız ASCII case-fold yapar, tokenizer
+fold'ları `ı→i`'yi kaçırabilir; yanlış katmanda çözülürse arama "bazı kelimeleri bulamayan"
+sessiz bir yalancıya döner. Büyük korpusta (on binlerce satır) naif taramalar da ana thread'i
+kilitleyebilir. *Mitigation:* tek fold fonksiyonu (uygulamada tek kaynak, hem sorgu hem
+metin; birim testli TR eş-sınıfları), strateji ve ölçüm eşikleri ADR-0013'te; arama
+sorguları drift'te async koşar, UI debounce + geç-loading gösterir; MySQL tarafı zaten
+accent/case-insensitive collation + FULLTEXT index'lerle uyumludur.
 
 ## 17. MVP kabul kriterleri
 
@@ -1137,6 +1300,7 @@ bırakmaz; entegrasyon testleri gerçek MinIO'ya karşı koşar (CI dahil).
 - **Epic 12 — Home-screen widgets:** OPH-130…OPH-136 (feedback round 5).
 - **Epic 13 — Alarm omurgası:** OPH-137…OPH-143 (feedback round 6).
 - **Epic 14 — Attachments & project files (R2/S3):** OPH-150…OPH-157 (feedback round 7).
+- **Epic 15 — Feedback round 8 (akış hızı, arama, pano, global dosyalar):** OPH-160…OPH-170.
 
 ## 19. Nihai hedef
 

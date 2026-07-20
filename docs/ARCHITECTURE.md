@@ -126,6 +126,24 @@ in-transaction and object deletion rides the queue runner (`jobKey = storage_key
 reaps stale uploads. Feature is optional config (`STORAGE_S3_*`): unset ⇒
 `STORAGE_NOT_CONFIGURED` and honest app empty states.
 
+_Round 8 (Epic 15, ADR-0014):_ `target_type` grows a **`workspace`** member (standalone
+files, `target_id` = workspace id) and files gain a nullable `folder_id` — only meaningful on
+workspace-target rows. New `folders` table (ULID, `parent_id` tree, unique name per parent,
+depth ≤ 10, cycle-checked moves); **`folder` is a push-pull sync entity** (pure metadata —
+offline create/rename/move is safe), files stay pull-only. Folder deletion cascades its
+subtree (sub-folders + workspace files) in-transaction with the same GC-queue guarantees.
+
+## 6c. Search (round 8 — Epic 15, ADR-0013)
+
+Search is **local-first**: every surface queries the drift replica (all synced entities are
+already on-device), so results are instant and offline-safe — screens never call REST to
+search. One shared Dart fold utility normalizes both query and text (casefold + Turkish
+equivalences `ı/i/İ/I, ü/u, ö/o, ş/s, ç/c, ğ/g` + combining-mark strip); tiered ranking
+(title > tag > body/description) is assembled in SQL per ADR-0013's storage strategy.
+Server parity: MySQL is already `utf8mb4_0900_ai_ci` (accent/case-insensitive) and holds
+FULLTEXT indexes (`ft_notes_plain_text` in use; `ft_tasks_title_description` gains a task
+`?q=` param in Epic 15) — for API consumers and future web-scale needs, not the app's path.
+
 ## 7. Flutter app design
 
 - **State:** Riverpod. **Navigation:** go_router with `StatefulShellRoute` (adaptive: glass rail

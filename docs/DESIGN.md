@@ -268,6 +268,119 @@ _(Added 2026-07-18, feedback round 7 — [ATTACHMENTS.md](ATTACHMENTS.md),
   MIME strings. Configuration problems speak product language ("File storage
   isn't set up on this server") with a docs pointer, in an `AwEmptyState`.
 
+_(Rules F7…F9 added 2026-07-20, feedback round 8 — the global Files section,
+[ADR-0014](adr/0014-folders-and-global-files.md).)_
+
+- **F7 — One anatomy everywhere, including the global manager.** The Files
+  section reuses F1 rows and F5 confirmations verbatim. Its two layers are
+  visually distinct but structurally identical lists: **Klasörlerim** (user
+  folders + workspace files) and **Kaynaklar** (attached files with F4 source
+  badges + a "go to source" affordance). No second file-row design exists.
+- **F8 — Folders are rows, location is a breadcrumb.** A folder row = leading
+  `folder` icon on the same soft tile as F1 kind icons + name + "N öğe" count
+  subtitle; tap descends, the current path renders as a breadcrumb line under
+  the header (root = "Dosyalar"). Moving uses an explicit target-picker sheet
+  (folder tree, current location disabled) — drag-to-move is desktop sugar for
+  v2, never the only path (same fallback philosophy as K3).
+- **F9 — Deleting a folder states its blast radius.** The confirm dialog names
+  the folder AND counts what dies with it ("3 klasör, 12 dosya silinecek") —
+  an F5 extension; empty folders still confirm but say "boş klasör". Cascades
+  must never surprise (G-honesty).
+
+## 12. Search (round 8 — OPH-167)
+
+_(Added 2026-07-20; engine architecture in
+[ADR-0013](adr/0013-local-first-search.md). Search is a per-screen capability
+— BLUEPRINT §12.10 — not a separate destination.)_
+
+- **S1 — One search field pattern.** A body-level `TextField` under the app
+  bar (the Notes screen shape): `search` prefix icon, clear (×) suffix when
+  non-empty, `AwRadius.m` filled field, placed above the screen's filter chips
+  and combining with them (AND). Never inside the glass app bar (G1 — glass is
+  chrome, fields are content). One shared widget serves Home, Notes, Projects.
+- **S2 — Folding is a product promise.** Case- and Turkish-diacritic-
+  insensitive matching everywhere (`ı/i/İ/I`, `ü/u`, `ö/o`, `ş/s`, `ç/c`,
+  `ğ/g`), via the single shared fold utility — a screen must never ship its own
+  matcher. Multi-word queries AND their words, order-free.
+- **S3 — Ranked tiers, honest match context.** Results order: title match >
+  tag match > body/description match (stable within tiers by the screen's
+  normal sort). When the hit is not in the title, the row's secondary line
+  shows WHERE it hit: a body snippet with the matched word emphasized
+  (`onSurface` w600 on the match, `onSurfaceVariant` around it) or the matched
+  `#tag`. Rows themselves stay the screen's normal rows — search restyles
+  nothing.
+- **S4 — Loading only when it's real.** Results update as you type (debounce
+  ~250 ms). A progress row appears only if the query takes ≥ 150 ms — no
+  spinner flash on every keystroke. Zero hits = `AwEmptyState` ("'x' için
+  sonuç yok") with a clear-search action; never a blank void.
+- **S5 — Search never mutates state.** Entering/leaving search changes no
+  filter, selection or view preference; clearing restores the exact prior
+  list. External events surface as their normal read-only rows (§4) — search
+  grants no new powers over them.
+
+## 13. Tag input (round 8 — OPH-165)
+
+_(Added 2026-07-20. The chip-input lives in the task create sheet and the task
+detail Tags card — BLUEPRINT §12.4.)_
+
+- **T1 — Type, commit, chip.** Tab / Enter / comma commits the typed text as a
+  chip; the field clears and keeps focus (the quick-add serial-entry DNA).
+  Chips render `#ad` with the tag's color as a leading dot (same dot idiom as
+  project pickers — hex never shown), delete-× on each chip, ≥ 44 px targets.
+- **T2 — Suggest first, create honestly.** While typing, existing tags match
+  fold-insensitively (S2) in a suggestion row under the field; the exact-match
+  suggestion is highlighted. If nothing matches, the first suggestion reads
+  **"Oluştur: #ad"** — creation is explicit-but-frictionless (one tap / plain
+  Enter), never a silent side effect the user can't see.
+- **T3 — '#' is presentation.** Names are stored bare; a typed leading '#' is
+  swallowed on commit. Tags keep their `colorRgb` (default neutral); recolor/
+  rename/delete live in a "Etiketleri yönet" sheet (name field + the standard
+  palette picker + delete with F5-style confirm naming affected task count).
+- **T4 — Same component, both surfaces.** The create sheet and the detail card
+  mount the identical widget — no divergent tag UIs. In lists, task rows show
+  at most 2 tag chips + "+N" overflow (tooltip lists the rest); chips never
+  wrap a list row taller than its card rhythm.
+
+## 14. Kanban board (round 8 — OPH-168)
+
+_(Added 2026-07-20. Interaction model synthesized from Trello/Jira/GitHub
+mobile patterns and NN/g drag-and-drop guidance — sources in the OPH-168 task
+entry; product decisions in BLUEPRINT §12.11.)_
+
+- **K1 — The board is a view, not a place.** Home's Liste | Pano segmented
+  toggle sits at the top; the choice is device-local and persistent. Board
+  columns = task statuses, rendered with the §4 card language (columns are
+  `surfaceContainer` wells at `AwRadius.l`; cards are the task-row DNA:
+  status icon, priority flag, project badge, due).
+- **K2 — Columns belong to the user.** "Görünümü düzenle" (app-bar action)
+  opens a sheet with visibility toggles + drag-reorder of statuses; hidden
+  columns stay reachable as move targets (K3). Default visible: open,
+  in_progress, waiting, completed. Column headers pin name + count while the
+  column scrolls.
+- **K3 — Two coequal move paths, always.** (a) Drag: desktop/web full
+  multi-column drag; phone long-press (~200 ms, haptic on lift) — feedback is
+  the card scaled ~1.04 at ~85% opacity, origin dims to a placeholder; the
+  WHOLE column body is the drop target (no precise slot demanded). (b) The
+  sheet: tap card → detail, or long-press-release-in-place → context menu →
+  "Durum değiştir" bottom sheet (all statuses, current checked, hidden ones
+  included). The sheet path is the accessibility contract — every move must be
+  completable with taps alone; drag is never the only way.
+- **K4 — Phone = pager with a peek.** One column ≈ 90% viewport width so the
+  neighbor peeks (~10%) as the "there's more" cue; a subtle "2/5" position
+  label under the header, dots secondary. While dragging, hovering a screen
+  edge (~48 dp zone, tinted `primary` at ~8%) for ~400 ms advances one column;
+  vertical auto-scroll near column ends. Framework primitives only
+  (`PageView` + `LongPressDraggable`/`DragTarget` + `EdgeDraggingAutoScroller`).
+- **K5 — Drops are honest and reversible.** Drop = optimistic status change +
+  snackbar with "Geri al"; a polite semantics announcement ("'X' → 'Yapılıyor'")
+  fires for screen readers. If the drag can't complete (gesture eaten, sort
+  active), the card snaps home visibly — never a silent no-op.
+- **K6 — Empty columns stay alive.** An empty visible column renders a dashed
+  `outlineVariant` placeholder well ("Buraya sürükleyin" while a drag is live,
+  else a "+ Görev ekle" affordance that opens the create sheet with that
+  status preset). Zero-height columns don't exist (drop targets must stay
+  droppable).
+
 ## 11. Alarm surfaces (Epic 13 — OPH-143)
 
 The urgent alarm has two in-app surfaces. Both obey rule G1 (glass is
