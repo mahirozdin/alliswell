@@ -177,6 +177,29 @@ void main() {
     );
   });
 
+  test('a selected day beyond the horizon still shows its items (OPH-162)', () {
+    // The Calendar tab is gone — picking a far-out day in the month grid is
+    // the product's way to look ahead, so selection must override the horizon.
+    final farDay = DateTime(2026, 9, 20); // +68 days, way past +30
+    final groups = groupTasksForHome(
+      [_task('uzak iş', dueAt: DateTime(2026, 9, 20, 23, 59))],
+      now: now,
+      selectedDay: farDay,
+      events: [
+        _event(
+          'uzak toplantı',
+          startsAt: DateTime(2026, 9, 20, 10),
+          endsAt: DateTime(2026, 9, 20, 11),
+        ),
+      ],
+    );
+
+    final selected = groups.single; // nothing else exists in this fixture
+    expect(selected.bucket, HomeBucket.selectedDay);
+    expect(selected.items, hasLength(2)); // the task AND the meeting
+    expect(selected.dimmed, isFalse);
+  });
+
   test('Overdue, No-date and Today stay lit while a day is selected', () {
     final groups = groupTasksForHome(
       [

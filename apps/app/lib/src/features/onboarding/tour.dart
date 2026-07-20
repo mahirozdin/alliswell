@@ -41,11 +41,6 @@ const List<TourStep> kTourSteps = [
     bodyKey: 'tour.inboxBody',
   ),
   TourStep(
-    section: AppSection.calendar,
-    titleKey: 'tour.calendarTitle',
-    bodyKey: 'tour.calendarBody',
-  ),
-  TourStep(
     section: AppSection.projects,
     titleKey: 'tour.projectsTitle',
     bodyKey: 'tour.projectsBody',

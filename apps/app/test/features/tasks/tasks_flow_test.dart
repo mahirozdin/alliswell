@@ -322,30 +322,14 @@ void main() {
     expect(api.tasks.single['status'], 'inbox');
   });
 
-  testWidgets('calendar tab lists the selected day', (tester) async {
-    final api = FakeApi()
-      ..seedTask(
-        title: 'Bugünün işi',
-        dueAt: isoAt(today.add(const Duration(hours: 16))),
-      );
-
-    await tester.pumpWidget(await signedInAppWith(api));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Calendar').last);
-    await tester.pumpAndSettle();
-
-    // Defaults to today when nothing is selected. "items", not "tasks": since
-    // OPH-083 the day also counts calendar events (there are none here).
-    expect(find.textContaining('· 1 item'), findsOneWidget);
-    expect(find.text('Bugünün işi'), findsOneWidget);
-  });
-
-  testWidgets('calendar tab shows the day’s meetings beside its tasks', (
+  testWidgets('home shows the day’s meetings beside its tasks (read-only)', (
     tester,
   ) async {
     // The gap the product lead found by connecting his real Google account:
-    // tasks alone cannot answer "what does my day look like".
+    // tasks alone cannot answer "what does my day look like". Since OPH-162
+    // removed the Calendar tab, Home IS the calendar surface — the meeting
+    // must ride the same chronological list as the task.
+    await wideSurface(tester);
     final api = FakeApi()
       ..seedTask(
         title: 'Bugünün işi',
@@ -361,10 +345,6 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Calendar').last);
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('· 2 items'), findsOneWidget);
     expect(find.text('Ekip toplantısı'), findsOneWidget);
     expect(find.text('Kadıköy'), findsOneWidget);
     expect(find.text('Bugünün işi'), findsOneWidget);

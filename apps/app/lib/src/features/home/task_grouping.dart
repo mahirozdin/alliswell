@@ -20,10 +20,12 @@ extension HomeBucketLabel on HomeBucket {
   String get label => 'home.bucket.$name'.tr();
 }
 
-/// How far ahead Home looks. Beyond this the list would fill with every future
-/// instance of a recurring calendar event and bury real work, so anything
-/// dated past `today + kHomeHorizonDays` lives on the Calendar tab instead
-/// (OPH-102). The month grid's dots are NOT bounded by this — only the list.
+/// How far ahead Home's chronological flow looks. Beyond this the list would
+/// fill with every future instance of a recurring calendar event and bury real
+/// work (OPH-102). Since the Calendar tab's removal (round 8, OPH-162) the way
+/// to reach further-out days is the month grid: a SELECTED day always shows its
+/// items, horizon or not. The grid's dots are NOT bounded by this — only the
+/// flow.
 const int kHomeHorizonDays = 30;
 
 /// One row of Home. §12 calls Home "the single chronological view where
@@ -83,8 +85,11 @@ DateTime dayOf(DateTime value) {
 /// This week → Next 30 days. Two rules make it honest to the user:
 ///
 /// - **A 30-day horizon; there is no open-ended "Later".** Anything dated more
-///   than [kHomeHorizonDays] days out — tasks AND events — is dropped from Home
-///   and lives on the Calendar tab, so recurring meetings can't bury real work.
+///   than [kHomeHorizonDays] days out — tasks AND events — is dropped from the
+///   chronological flow, so recurring meetings can't bury real work. The
+///   SELECTED day overrides the horizon (checked first below): picking a far
+///   day in the month grid shows that day's items — since OPH-162 removed the
+///   Calendar tab, this is the product's promised way to look far ahead.
 /// - **Dateless work sits at the top and is never dimmed.** A task with no date
 ///   is "every day's work": it renders directly under Overdue, above Today, and
 ///   stays full-opacity even while a calendar day is selected.

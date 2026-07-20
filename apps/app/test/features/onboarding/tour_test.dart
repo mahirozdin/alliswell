@@ -50,7 +50,7 @@ void main() {
 
   group('TourController (OPH-111)', () {
     test('the script is welcome + one step per section + farewell (≤7)', () {
-      expect(kTourSteps.length, 7);
+      expect(kTourSteps.length, 6); // welcome + 4 sections + done (OPH-162)
       expect(kTourSteps.first.section, isNull);
       expect(kTourSteps.last.section, isNull);
       for (final s in kTourSteps) {

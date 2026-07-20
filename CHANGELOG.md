@@ -24,6 +24,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   Risk 8, DESIGN §10 F7-F9 + §12/§13/§14, ARCHITECTURE §6c, ATTACHMENTS §14,
   TASKS Epic 15 (OPH-160…170).
 
+### Changed (round 8)
+
+- **The Calendar tab is gone** (OPH-162): Home already carries the month grid
+  and the chronological list, so a second calendar screen was dead weight.
+  Picking any day in the grid — even far beyond the 30-day flow horizon — now
+  shows that day's tasks and meetings in the highlighted selected-day group.
+  The onboarding tour is one card shorter. (The freed nav slot goes to the
+  upcoming global **Files** section.)
+
 ### Added
 
 - **Default task time is yours now** (OPH-161): tasks created for a day

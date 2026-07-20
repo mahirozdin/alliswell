@@ -2602,19 +2602,22 @@ analyze temiz; CHANGELOG; STATE.
 
 **DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
-### OPH-162 — Takvim sekmesini kaldır; seçili gün ufku aşsın (round 8 #9)
+### OPH-162 — Takvim sekmesini kaldır; seçili gün ufku aşsın (round 8 #9) ✅ 2026-07-20
 
-- [ ] `AppSection.calendar` enum girdisini sil; bağımlıları düzelt: `router.dart:83`
-      route switch'i, `home_shell.dart:96` FAB switch'i, `tour.dart:44` tur adımı
-      (adımı kaldır — tur akışı 1 kısalır).
-- [ ] `calendar_screen.dart`'ı sil (yalnız router kullanıyor); `selectedDayProvider` ve
-      ay ızgarası Home'da yaşamaya devam eder.
-- [ ] **Seçili gün ufku aşar:** ızgaradan +30 gün ötesi bir gün seçilince o günün görev ve
-      etkinlikleri seçili-gün grubunda gösterilir (BLUEPRINT §12.2 rev) — Takvim ekranının
-      tek gerçek işlevi Home'a taşınır.
-- [ ] i18n: `nav.calendar*` anahtarlarını kaldır/`calendar.*` kalanları koru (extraction
-      testine göre); etkilenen widget/tur testlerini güncelle.
-- [ ] Docs: BLUEPRINT §12.1/§12.2 (✅ revize), CHANGELOG, STATE.
+- [x] `AppSection.calendar` enum girdisi silindi; bağımlılar düzeltildi: router route
+      switch'i (+import), shell FAB switch'i + yorumu, tur adımı (akış 7→6 karta indi).
+- [x] `calendar_screen.dart` silindi; `selectedDayProvider` + ay ızgarası Home'da yaşıyor.
+- [x] **Seçili gün ufku aşar:** `groupTasksForHome` seçili-gün kontrolünü horizon'dan ÖNCE
+      yapıyormuş — davranış zaten doğruydu; bayat "Calendar tab" yorumları güncellendi ve
+      davranış +68 günlük seçimle test altına alındı (task + meeting seçili-gün grubunda).
+- [x] i18n: `nav.calendar/calendarDesc` + `tour.calendarTitle/Body` kaldırıldı (en+tr;
+      `calendar.*` ad alanı Google/Apple kartlarının — duruyor). Tur testi 6 adıma çekildi.
+- [x] Takvim-sekmesi widget testleri Home-tabanlı eşdeğere dönüştürüldü: "home shows the
+      day's meetings beside its tasks (read-only)" — event satırı + Checkbox'suz sözleşme
+      widget seviyesinde Home'da korunuyor (tek takvim yüzeyi artık Home).
+- [x] Docs: BLUEPRINT §12.1/§12.2 (docs commit'inde revize), CHANGELOG, STATE.
+
+**DoD met 2026-07-20:** app 326/326, analyze temiz; CHANGELOG; STATE.
 
 ### OPH-163 — Proje seçicide "+ Proje ekle" (round 8 #2)
 

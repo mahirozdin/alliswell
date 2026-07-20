@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'i18n/i18n.dart';
 
-/// Top-level navigation sections of the app shell (feedback round 1:
-/// Home replaces Today/Upcoming as the single chronological view, and
-/// Calendar gets its own tab).
+/// Top-level navigation sections of the app shell (feedback round 1: Home
+/// replaces Today/Upcoming as the single chronological view; round 8/OPH-162:
+/// the Calendar tab is GONE — Home's month grid + selected-day group carry its
+/// whole job, and a second calendar surface was dead weight).
 ///
 /// `title`/`description` are localized getters (OPH-122) — the enum stores i18n
 /// keys so the labels follow the active language.
@@ -22,13 +23,6 @@ enum AppSection {
     path: '/inbox',
     icon: Icons.inbox_outlined,
     selectedIcon: Icons.inbox,
-  ),
-  calendar(
-    titleKey: 'nav.calendar',
-    descriptionKey: 'nav.calendarDesc',
-    path: '/calendar',
-    icon: Icons.calendar_month_outlined,
-    selectedIcon: Icons.calendar_month,
   ),
   projects(
     titleKey: 'nav.projects',

@@ -71,7 +71,7 @@ class HomeShell extends ConsumerWidget {
   /// so Flutter positions it above the glass bottom bar. The section screens
   /// used to own these FABs, but as nested Scaffolds their FAB was painted
   /// behind the bar and could not be tapped (OPH-101). Sections with no create
-  /// action (Inbox, Calendar) get none.
+  /// action (Inbox) get none.
   Widget? _sectionFab(BuildContext context, WidgetRef ref) {
     return switch (AppSection.values[navigationShell.currentIndex]) {
       AppSection.home => FloatingActionButton(
@@ -98,7 +98,7 @@ class HomeShell extends ConsumerWidget {
         onPressed: () => context.go('/notes/new'),
         child: const Icon(Icons.add),
       ),
-      AppSection.inbox || AppSection.calendar => null,
+      AppSection.inbox => null,
     };
   }
 

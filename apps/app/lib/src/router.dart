@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
-import 'features/home/calendar_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/notes/ui/note_editor_screen.dart';
 import 'features/notes/ui/notes_screen.dart';
@@ -80,7 +79,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                   builder: (context, state) => switch (section) {
                     AppSection.home => const HomeScreen(),
                     AppSection.inbox => const InboxScreen(),
-                    AppSection.calendar => const CalendarScreen(),
                     AppSection.projects => const ProjectsScreen(),
                     AppSection.notes => const NotesScreen(),
                   },
