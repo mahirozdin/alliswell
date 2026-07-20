@@ -2767,25 +2767,35 @@ CHANGELOG; STATE.
 
 **DoD met 2026-07-20:** app 362/362 + analyze + check:i18n + kontrast yeşil; CHANGELOG; STATE.
 
-### OPH-169 — Klasörler + workspace dosyaları: API (round 8 #10a, ADR-0014)
+### OPH-169 — Klasörler + workspace dosyaları: API (round 8 #10a, ADR-0014) ✅ 2026-07-20
 
-- [ ] Migration `20260720…_create_folders_and_workspace_files.js`: `folders` tablosu
-      (ULID, workspace_id, parent_id nullable self-FK, name ≤255, revision, timestamps,
-      deleted_at; unique (workspace_id, parent_id, name)); `files.folder_id` nullable FK;
-      `files.target_type` enum'una `workspace` ekle (ALTER). `down` tam geri alır.
-- [ ] `routes/folders.js`: list (ağaç düz liste — client kurar), create, PATCH
-      (rename/move — derinlik ≤10, döngü reddi `FOLDER_CYCLE`), DELETE (alt ağaç: klasörler
-      + workspace dosyaları soft-delete + GC enqueue; cevap sayıları döner). Ajv şemalar,
-      `requireWorkspaceMember`, her yazım `recordSyncWrite`.
-- [ ] Files: init `targetType:'workspace'` kabul eder (`target_id`=workspace, `folderId`
-      opsiyonel — yalnız workspace hedefinde, aynı workspace klasörü); list
-      `?targetType=workspace&folderId=` (null=kök); serializer `folderId` taşır.
-- [ ] Sync: `folder` SNAPSHOT_LOADERS + ENTITIES (push-pull; FOLDER_FIELDS name/parentId;
-      guard: derinlik/döngü/isim çakışması `FOLDER_NAME_TAKEN`); file loader `folderId` içerir.
-- [ ] `cascadeDeleteFiles`: klasör alt-ağacı girişi; workspace silme kaskadı (varsa) kapsar.
-- [ ] fakedb: `folders` tablosu + unique index; unit testler (CRUD, döngü, derinlik, isim
-      çakışması ai_ci, kaskad sayıları, sync push/pull, workspace-target init/list);
-      entegrasyon: gerçek MinIO ile workspace dosyası yaşam döngüsü + klasör silme GC'si.
+- [x] Migration `20260720100000_create_folders_and_workspace_files.js`: `folders` (ULID,
+      parent_id self-FK, unique (ws,parent,name) — **NULL parent index'ten kaçar, kök
+      seviye API-guard'lı**), `files.folder_id` (bilinçli FK'sız — kaskad transaction'ında
+      tombstone sırası kilitlenmesin) + `workspace` enum üyesi (yerinde ALTER). `down`
+      workspace satırlarını düşürüp tam geri alır. Migrate edildi (Batch 2).
+- [x] `db/folders.js`: `depthUnder` (≤10), `wouldCycle`, `subtreeFolderIds` (BFS),
+      **`deleteFolderSubtree`** (tek transaction'da alt klasörler + workspace dosyaları
+      tombstone [her satır kendi revizyonu] + commit-sonrası obje GC; sayıları + kök
+      revizyonu döner) — REST ve sync push AYNI implementasyonu kullanır.
+- [x] `routes/folders.js`: list (düz ağaç), create, PATCH rename/move (`FOLDER_CYCLE`,
+      `FOLDER_TOO_DEEP`, `FOLDER_NAME_TAKEN`), DELETE (sayılı). **Ad benzersizliği fold
+      ile** (`lib/fold.js`) — collation'a değil app fold'una dayanır: fakedb'de de, ı/İ
+      için de doğru (Finder semantiği ADR-0013 fold'uyla).
+- [x] Files: init `workspace` hedefi (targetId == workspaceId şartı) + `folderId`
+      (yalnız workspace hedefi + canlı aynı-ws klasörü; sıra: şekil kuralları hedef
+      aramasından ÖNCE); list `?targetType=workspace[&folderId]` (folderId yok = kök
+      seviye); `fileSchema`/serializer `folderId`.
+- [x] Sync: `folder` SNAPSHOT_LOADERS + ENTITIES (FOLDER_FIELDS name/parentId; guard
+      döngü/derinlik/fold-ad; `customDelete` → `deleteFolderSubtree`, **kontrat: kök
+      revizyonu DÖNER** — framework mutation sonucuna yazar).
+- [x] fakedb: `folders` tablosu + defaults (`files.folder_id` default'u dahil); MATCH
+      taklidi zaten genel. Unit 4 senaryo ×281 toplam; **entegrasyon: gerçek MySQL+MinIO
+      — klasör sil → presigned GET ölür (BullMQ worker poll kalıbı)**, 37/37.
+      Crockford dersi yine tetiklendi ('FOLDER' O/L içerir → '01FDR…').
+
+**DoD met 2026-07-20:** unit 281/281, entegrasyon 37/37, lint+format+no-ts yeşil;
+CHANGELOG; STATE.
 
 ### OPH-170 — Global "Dosyalar" bölümü: app (round 8 #10b)
 

@@ -26,6 +26,9 @@ import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { serializeFile } from './files.js';
+import { serializeFolder } from './folders.js';
+import { foldSearchText } from '../lib/fold.js';
+import { FOLDER_MAX_DEPTH, deleteFolderSubtree, depthUnder, wouldCycle } from '../db/folders.js';
 import { PROJECT_STATUSES, COLOR_PATTERN, serializeProject } from './projects.js';
 import { serializeTag } from './tags.js';
 import { TASK_STATUSES, TASK_PRIORITIES, serializeTask, serializeChecklistItem } from './tasks.js';
@@ -90,6 +93,13 @@ const TAG_FIELDS = {
   name: { col: 'name', ok: str(100) },
   colorRgb: { col: 'color_rgb', ok: color },
   icon: { col: 'icon', ok: strOrNull(64) },
+};
+
+// Round 8 (OPH-169, ADR-0014): folders are pure metadata — the one file
+// entity a client may create OFFLINE (files themselves stay REST/pull-only).
+const FOLDER_FIELDS = {
+  name: { col: 'name', ok: str(255) },
+  parentId: { col: 'parent_id', ok: ulidOrNull },
 };
 
 const TASK_FIELDS = {
@@ -267,6 +277,11 @@ export default async function syncRoutes(app) {
     file: async (ids) => ({
       rows: await app.db('files').whereIn('id', ids).select(),
       serialize: serializeFile,
+    }),
+    // OPH-169 — folders (ADR-0014): push-pull, replicated like project/tag.
+    folder: async (ids) => ({
+      rows: await app.db('folders').whereIn('id', ids).select(),
+      serialize: serializeFolder,
     }),
   };
 
@@ -610,6 +625,60 @@ export default async function syncRoutes(app) {
       deletePatch: (row) => ({
         slug: `${row.slug}--deleted--${row.id.slice(-8).toLowerCase()}`,
       }),
+    },
+
+    folder: {
+      table: 'folders',
+      fields: FOLDER_FIELDS,
+      requiredOnCreate: ['name'],
+      workspaceOf: (row) => row.workspace_id,
+      async guard(ctx, patch, row) {
+        const workspaceId = ctx.workspaceId;
+        const parentId = 'parentId' in patch ? (patch.parentId ?? null) : (row?.parent_id ?? null);
+        const name = (patch.name ?? row?.name ?? '').trim();
+        if (!name) return 'FOLDER_NAME_REQUIRED';
+        if (parentId != null) {
+          const parent = await app
+            .db('folders')
+            .where({ id: parentId, workspace_id: workspaceId })
+            .whereNull('deleted_at')
+            .first('id');
+          if (!parent) return 'FOLDER_PARENT_NOT_FOUND';
+          if (
+            row &&
+            (parentId === row.id || (await wouldCycle(app.db, workspaceId, row.id, parentId)))
+          ) {
+            return 'FOLDER_CYCLE';
+          }
+        }
+        if ((await depthUnder(app.db, workspaceId, parentId)) > FOLDER_MAX_DEPTH) {
+          return 'FOLDER_TOO_DEEP';
+        }
+        let level = app.db('folders').where({ workspace_id: workspaceId }).whereNull('deleted_at');
+        level =
+          parentId == null ? level.whereNull('parent_id') : level.where({ parent_id: parentId });
+        const siblings = await level.select('id', 'name');
+        const folded = foldSearchText(name);
+        if (siblings.some((s) => s.id !== row?.id && foldSearchText(s.name) === folded)) {
+          return 'FOLDER_NAME_TAKEN';
+        }
+        return null;
+      },
+      insertRow: (ctx, mutation, rowPatch) => ({
+        id: mutation.entityId,
+        workspace_id: ctx.workspaceId,
+        parent_id: null,
+        ...rowPatch,
+      }),
+      // The counted recursive delete — REST parity (subtree + workspace
+      // files + object GC), one implementation (db/folders.js).
+      async customDelete(trx, ctx, row) {
+        const { rootRevision } = await deleteFolderSubtree(trx, app, {
+          workspaceId: ctx.workspaceId,
+          folderId: row.id,
+        });
+        return rootRevision;
+      },
     },
 
     task: {

@@ -35,6 +35,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Folders and standalone workspace files — API** (OPH-169, ADR-0014):
+  files can now belong directly to the workspace (no project/task/note), and
+  nestable folders (≤10 deep, cycle-safe moves, Finder-style name rules that
+  even fold Turkish ı/İ) organize them. Folder deletion is recursive and
+  counted — the response tells you how many folders and files went — with
+  every object removal riding the GC queue, so the no-orphaned-bytes
+  guarantee holds. Folders sync offline like projects and tags; the app
+  surface lands next (OPH-170).
+
 - **Home gains a Board view** (OPH-168): a List | Board toggle at the top of
   Home. The board lays your tasks out as status columns — including
   completed/cancelled columns the chronological list deliberately hides — with

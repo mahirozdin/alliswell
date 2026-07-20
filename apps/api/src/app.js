@@ -27,6 +27,7 @@ import reminderRoutes from './routes/reminders.js';
 import googleIntegrationRoutes from './routes/integrations-google.js';
 import storageRoutes from './routes/storage.js';
 import fileRoutes from './routes/files.js';
+import folderRoutes from './routes/folders.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -117,6 +118,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(googleIntegrationRoutes, { prefix: '/api/v1' });
   await app.register(storageRoutes, { prefix: '/api/v1' });
   await app.register(fileRoutes, { prefix: '/api/v1' });
+  await app.register(folderRoutes, { prefix: '/api/v1' });
 
   return app;
 }

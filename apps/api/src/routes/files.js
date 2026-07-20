@@ -24,7 +24,9 @@ import { storageKeyFor, softDeleteReadyFile } from '../db/files.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
-export const FILE_TARGET_TYPES = ['project', 'task', 'note'];
+// Round 8 (OPH-169, ADR-0014): `workspace` = a standalone file (target_id is
+// the workspace id itself) — the global Dosyalar section's Klasörlerim layer.
+export const FILE_TARGET_TYPES = ['project', 'task', 'note', 'workspace'];
 const TARGET_TABLES = { project: 'projects', task: 'tasks', note: 'notes' };
 
 const errorResponseSchema = {
@@ -49,6 +51,7 @@ export const fileSchema = {
     sizeBytes: { type: 'integer' },
     status: { type: 'string', enum: ['uploading', 'ready'] },
     uploadedBy: { type: ['string', 'null'] },
+    folderId: { type: ['string', 'null'] },
     revision: { type: 'integer' },
     createdAt: { type: 'string' },
     updatedAt: { type: 'string' },
@@ -66,6 +69,7 @@ export function serializeFile(row) {
     sizeBytes: Number(row.size_bytes),
     status: row.status,
     uploadedBy: row.uploaded_by ?? null,
+    folderId: row.folder_id ?? null,
     revision: Number(row.revision),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -130,6 +134,8 @@ export default async function fileRoutes(app) {
             name: { type: 'string', minLength: 1, maxLength: 1024 },
             sizeBytes: { type: 'integer', minimum: 1 },
             mime: { type: 'string', minLength: 1, maxLength: 255 },
+            // Only meaningful with targetType 'workspace' (ADR-0014).
+            folderId: { anyOf: [{ type: 'null' }, ULID_PARAM] },
           },
         },
         response: {
@@ -178,18 +184,52 @@ export default async function fileRoutes(app) {
         );
       }
 
+      // Folders organize ONLY standalone files (ADR-0014) and must be live
+      // folders of this workspace.
+      const folderId = request.body.folderId ?? null;
+      if (folderId != null) {
+        if (targetType !== 'workspace') {
+          throw coded(
+            app.httpErrors.badRequest('Only workspace files can live in folders'),
+            'FILE_FOLDER_NOT_ALLOWED',
+          );
+        }
+        const folder = await app
+          .db('folders')
+          .where({ id: folderId, workspace_id: workspaceId })
+          .whereNull('deleted_at')
+          .first('id');
+        if (!folder) {
+          throw coded(
+            app.httpErrors.badRequest('Folder not found in this workspace'),
+            'FILE_FOLDER_NOT_FOUND',
+          );
+        }
+      }
+
       // The target must be a live entity of THIS workspace — attachments never
       // dangle. (No FK on target_id: it is polymorphic — this check is the FK.)
-      const target = await app
-        .db(TARGET_TABLES[targetType])
-        .where({ id: targetId, workspace_id: workspaceId })
-        .whereNull('deleted_at')
-        .first('id');
-      if (!target) {
-        throw coded(
-          app.httpErrors.badRequest('Attachment target not found'),
-          'FILE_INVALID_TARGET',
-        );
+      // A `workspace` target IS the workspace: membership was already
+      // enforced, the id just has to match.
+      if (targetType === 'workspace') {
+        if (targetId !== workspaceId) {
+          throw coded(
+            app.httpErrors.badRequest('Attachment target not found'),
+            'FILE_INVALID_TARGET',
+          );
+        }
+      } else {
+        const target = await app
+          .db(TARGET_TABLES[targetType])
+          .where({ id: targetId, workspace_id: workspaceId })
+          .whereNull('deleted_at')
+          .first('id');
+        if (!target) {
+          throw coded(
+            app.httpErrors.badRequest('Attachment target not found'),
+            'FILE_INVALID_TARGET',
+          );
+        }
       }
 
       const id = newId();
@@ -204,6 +244,7 @@ export default async function fileRoutes(app) {
         size_bytes: sizeBytes,
         storage_key: storageKeyFor(workspaceId, id),
         status: 'uploading',
+        folder_id: folderId,
         revision: 0,
       };
       // Deliberately NO recordSyncWrite: an uploading row is invisible to
@@ -353,6 +394,9 @@ export default async function fileRoutes(app) {
             targetType: { type: 'string', enum: FILE_TARGET_TYPES },
             targetId: ULID_PARAM,
             projectId: ULID_PARAM,
+            // With targetType=workspace only: filter one folder level; omit
+            // for the ROOT level (folderless files) — ADR-0014.
+            folderId: ULID_PARAM,
           },
         },
         response: {
@@ -369,7 +413,13 @@ export default async function fileRoutes(app) {
     async (request) => {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
-      const { targetType, targetId, projectId } = request.query;
+      const { targetType, targetId, projectId, folderId } = request.query;
+      if (folderId && targetType !== 'workspace') {
+        throw coded(
+          app.httpErrors.badRequest('folderId only applies to workspace files'),
+          'FILE_FOLDER_NOT_ALLOWED',
+        );
+      }
 
       // ── One entity's attachments ──
       if (!projectId) {
@@ -379,12 +429,16 @@ export default async function fileRoutes(app) {
             'FILE_INVALID_TARGET',
           );
         }
-        const rows = await app
+        let query = app
           .db('files')
           .where({ workspace_id: workspaceId, target_type: targetType, target_id: targetId })
-          .whereNull('deleted_at')
-          .orderBy('created_at', 'desc')
-          .select();
+          .whereNull('deleted_at');
+        // Workspace listing is per folder LEVEL: named folder, or the root
+        // (folderless) when omitted — a tree browses one level at a time.
+        if (targetType === 'workspace') {
+          query = folderId ? query.where({ folder_id: folderId }) : query.whereNull('folder_id');
+        }
+        const rows = await query.orderBy('created_at', 'desc').select();
         return { files: rows.map(serializeFile) };
       }
 

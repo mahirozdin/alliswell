@@ -79,6 +79,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     calendar_event_links: [],
     calendar_external_events: [],
     files: [],
+    folders: [],
   };
 
   const columnDefaults = {
@@ -160,6 +161,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       last_synced_at: null,
       last_error: null,
     }),
+    folders: () => ({ parent_id: null, revision: 0, deleted_at: null }),
+    files: () => ({ folder_id: null, deleted_at: null }),
     calendar_event_links: () => ({
       provider_event_uid: null,
       etag: null,
