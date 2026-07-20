@@ -13,7 +13,8 @@ import '../../integrations/providers.dart';
 import '../../projects/data/project.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
-import '../../tags/tags.dart';
+import '../../tags/ui/tag_input.dart';
+import '../../tags/ui/tag_manage_sheet.dart';
 import '../data/task.dart';
 import '../data/task_store.dart';
 import '../providers.dart';
@@ -318,9 +319,13 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               const SizedBox(height: AwSpace.x3),
               _SectionCard(
                 title: 'task.tags'.tr(),
-                child: _TagPicker(
-                  task: task,
-                  onApply: (action) => _apply(action),
+                // OPH-165: not a picker anymore — type to assign, auto-create
+                // when missing, manage from the same card (DESIGN §13).
+                child: TagInputField(
+                  value: task.tagIds,
+                  onChanged: (tagIds) =>
+                      _apply((store, id) => store.setTags(id, tagIds)),
+                  onManage: () => showTagManageSheet(context),
                 ),
               ),
               const SizedBox(height: AwSpace.x3),
@@ -435,47 +440,6 @@ class _DateRow extends ConsumerWidget {
           );
         }
       },
-    );
-  }
-}
-
-class _TagPicker extends ConsumerWidget {
-  const _TagPicker({required this.task, required this.onApply});
-
-  final Task task;
-  final void Function(TaskAction) onApply;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tags = ref.watch(tagsProvider);
-    return tags.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (error, _) => Text('$error'),
-      data: (items) => items.isEmpty
-          ? Text(
-              'task.noTagsYet'.tr(),
-              style: Theme.of(context).textTheme.bodySmall,
-            )
-          : Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final tag in items)
-                  FilterChip(
-                    avatar: CircleAvatar(
-                      backgroundColor: colorFromRgbHex(tag.colorRgb),
-                      radius: 6,
-                    ),
-                    label: Text(tag.name),
-                    selected: task.tagIds.contains(tag.id),
-                    onSelected: (selected) {
-                      final next = {...task.tagIds};
-                      selected ? next.add(tag.id) : next.remove(tag.id);
-                      onApply((store, id) => store.setTags(id, next.toList()));
-                    },
-                  ),
-              ],
-            ),
     );
   }
 }

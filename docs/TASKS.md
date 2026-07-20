@@ -2657,26 +2657,33 @@ API hazır (`tasks.description` yazılabilir; sync `TASK_FIELDS.description` mev
 
 **DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
-### OPH-165 — Etiket sistemi: chip-input, #tag, otomatik oluşturma, yönetim (round 8 #4)
+### OPH-165 — Etiket sistemi: chip-input, #tag, otomatik oluşturma, yönetim (round 8 #4) ✅ 2026-07-20
 
 Sunucu hazır: tags CRUD + `PUT /tasks/:id/tags` + sync push `tag` (slug'ı server türetir —
 `sync.js:391-393`); eksik olan tümüyle app.
 
-- [ ] `TagStore` (features/tags): `create(name, {colorRgb})` — drift'e optimistic satır
-      (geçici fold-tabanlı slug; server pull'da kendi slug'ıyla ezer) + outbox `tag create
-      {name}`; `rename`, `setColor`, `delete` (outbox update/delete).
-- [ ] `TagInputField` widget'ı (DESIGN §13): chip'ler `#ad` + renk noktası + ×; TextField
-      Tab/Enter/virgül commit; öneri satırı fold-duyarsız filtre (OPH-167'nin fold util'i
-      burada doğar — `core/fold.dart`); tam eşleşme yoksa ilk öneri "Oluştur: #ad";
-      baştaki '#' yutulur; boş commit no-op.
-- [ ] Create sheet'e Tags alanı (`tagIds` create payload'ında zaten destekli); detail
-      `_TagPicker` yerine aynı `TagInputField` (+ mevcut `setTags` replace-set).
-- [ ] "Etiketleri yönet" sheet'i (detay Tags kartından): listele, yeniden adlandır, palet
-      renk seç, sil (onay etkilenen görev sayısını söyler — `taskTagRows` count).
-- [ ] Liste satırlarında en çok 2 chip + "+N" taşması (DESIGN T4).
-- [ ] i18n `tag.*`; testler: commit-on-Enter/Tab, mevcut etikete fold eşleşmesi (yeni
-      YARATMAZ, olanı seçer), "Oluştur" yolu drift satırı + outbox, × çıkarma, yönetim
-      sheet'i rename/delete.
+- [x] `TagStore` (`features/tags/data/tag_store.dart`): `create` (optimistic satır, geçici
+      fold-tabanlı slug — server pull'da kendi slug'ıyla ezer; outbox `tag create {name}`),
+      `rename`, `setColor`, `delete` (yerel `taskTagRows` da temizlenir — sarkan join satırı
+      chip'i hortlatmasın), `taskCount` (silme onayının etki alanı).
+- [x] `TagInputField` (DESIGN §13 T1…T4): chip'ler `#ad` + renk noktası + ×; Tab (Focus
+      onKeyEvent — boşken traversal'a bırakır) / Enter / virgül commit; fold-duyarsız öneri
+      satırı; tam eşleşme yoksa ilk öneri "Oluştur: #ad" (`tag-create-suggestion`); baştaki
+      '#' yutulur; seri giriş odağı korur. **`core/fold.dart` burada doğdu** (ADR-0013
+      fold'u — İ/I/ı→i önce, sonra lowercase + Latin-1/Ext-A açık harita; 5 test grubu).
+- [x] Create sheet'e Tags alanı (`tagIds` create/update body'sinde); detail `_TagPicker`
+      SİLİNDİ → aynı `TagInputField` + `setTags` replace-set + `onManage`.
+- [x] "Etiketleri yönet" sheet'i: listele, yeniden adlandır + palet (proje paleti — hex
+      asla görünmez), sil (onay görev sayısını söyler; error-renkli buton).
+- [x] Liste satırlarında ≤2 satır-içi etiket + "+N" (tooltip kalanları sayar) — tipografik
+      `_InlineTag` (satır ritmi büyümez). **Bulunan gerçek bug:** liste watch'ı `tagIds`
+      hydrate ETMİYORDU (yalnız watchDetail join'liyordu) → `_watchList` artık
+      `taskTagRows`'u combineLatest'le gruplayıp dolduruyor.
+- [x] i18n `tag.*` (12 anahtar, en+tr); testler: Enter+virgül commit & oto-oluşturma &
+      task'a binme, fold eşleşmesi duplicate yaratmıyor (cay↔Çay), detail atama + yönetim
+      sheet silme (sayılı onay, push'lanmış delete), satır ≤2+N. 9/9.
+
+**DoD met 2026-07-20:** app süiti + analyze + check:i18n yeşil; CHANGELOG; STATE.
 
 ### OPH-166 — Oluşturma sheet'inde ek seçimi (round 8 #3)
 

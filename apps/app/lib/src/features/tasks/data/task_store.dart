@@ -46,13 +46,27 @@ class TaskStore {
   Stream<List<Task>> _watchList(
     String workspaceId,
     Expression<bool> Function($TasksTable) filter,
-  ) =>
-      (_db.select(_db.tasks)
-            ..where(filter)
-            // ULIDs sort by creation time — newest first, like the server list.
-            ..orderBy([(t) => OrderingTerm.desc(t.id)]))
-          .watch()
-          .map((rows) => rows.map(_task).toList());
+  ) => combineLatest2(
+    (_db.select(_db.tasks)
+          ..where(filter)
+          // ULIDs sort by creation time — newest first, like the server list.
+          ..orderBy([(t) => OrderingTerm.desc(t.id)]))
+        .watch(),
+    // OPH-165: list rows carry inline tags (DESIGN T4), so lists hydrate
+    // tagIds too — previously only watchDetail joined them, which left every
+    // list Task with an empty set.
+    _db.select(_db.taskTagRows).watch(),
+    (rows, tagRows) {
+      final byTask = <String, List<String>>{};
+      for (final r in tagRows) {
+        byTask.putIfAbsent(r.taskId, () => []).add(r.tagId);
+      }
+      return [
+        for (final row in rows)
+          _task(row, tagIds: (byTask[row.id]?..sort()) ?? const []),
+      ];
+    },
+  );
 
   /// Detail = task row + tag joins + checklist, live on every part.
   Stream<Task> watchDetail(String taskId) => combineLatest3(

@@ -35,6 +35,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Tags you can actually type** (OPH-165): a chip-input on the new-task sheet
+  and the task detail — type a name, hit Enter/Tab/comma, it becomes a `#tag`
+  chip. Existing tags are suggested case- and Turkish-accent-insensitively
+  ("cay" finds #Çay); unknown names create the tag right there via an explicit
+  "Create: #x" suggestion. Task rows show up to two inline tags plus "+N", and
+  a "Manage tags" sheet renames, recolors (palette only) and deletes — the
+  delete confirm tells you how many tasks lose the tag.
+
 - **Tasks have a real description now** (OPH-164): a description field in the
   new-task sheet, and an edit-in-place description on task detail that
   autosaves like the title. URLs in it are detected and tappable — paste a

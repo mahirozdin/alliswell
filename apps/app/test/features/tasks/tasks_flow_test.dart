@@ -541,14 +541,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(api.tasks.single['isUrgent'], isTrue);
 
+      // OPH-165: tags assign through the chip-input now — typing an existing
+      // name fold-matches it instead of creating a duplicate.
       await tester.dragUntilVisible(
-        find.text('Focus'),
+        find.byKey(const Key('tag-input')),
         detailList,
         const Offset(0, -120),
       );
-      await tester.tap(find.text('Focus'));
+      await tester.enterText(find.byKey(const Key('tag-input')), 'focus');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
       expect(api.tasks.single['tagIds'], [tag['id']]);
+      expect(api.tags, hasLength(1)); // matched, not duplicated
 
       await tester.dragUntilVisible(
         find.text('Hazırlık'),

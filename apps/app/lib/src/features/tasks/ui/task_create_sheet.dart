@@ -7,6 +7,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
+import '../../tags/ui/tag_input.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../providers.dart';
@@ -47,6 +48,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   final _formKey = GlobalKey<FormState>();
   final _title = TextEditingController();
   final _description = TextEditingController();
+  List<String> _tagIds = const [];
   String? _projectId;
   String _priority = 'none';
   DateTime? _dueAt;
@@ -62,6 +64,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     if (task != null) {
       _title.text = task.title;
       _description.text = task.description ?? '';
+      _tagIds = List.of(task.tagIds);
       _projectId = task.projectId;
       _priority = task.priority;
       _dueAt = task.dueAt?.toLocal();
@@ -133,6 +136,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           'dueAt': _dueAt?.toUtc().toIso8601String(),
           'remindAt': _remindAt?.toUtc().toIso8601String(),
           'isUrgent': _isUrgent,
+          'tagIds': _tagIds,
         });
       } else {
         final workspaces = await ref.read(workspacesProvider.future);
@@ -145,6 +149,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           'dueAt': ?_dueAt?.toUtc().toIso8601String(),
           'remindAt': ?_remindAt?.toUtc().toIso8601String(),
           if (_isUrgent) 'isUrgent': true,
+          if (_tagIds.isNotEmpty) 'tagIds': _tagIds,
         });
       }
       if (mounted) {
@@ -205,6 +210,13 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                   labelText: 'task.descriptionLabel'.tr(),
                   hintText: 'task.descriptionHint'.tr(),
                 ),
+              ),
+              const SizedBox(height: 12),
+              // OPH-165: tags are born here — type, Enter, chip; unknown
+              // names auto-create (DESIGN §13).
+              TagInputField(
+                value: _tagIds,
+                onChanged: (tagIds) => setState(() => _tagIds = tagIds),
               ),
               const SizedBox(height: 12),
               Row(

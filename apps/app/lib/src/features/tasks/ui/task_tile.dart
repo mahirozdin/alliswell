@@ -7,6 +7,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_badge.dart';
+import '../../tags/tags.dart';
 import '../data/task.dart';
 import '../providers.dart';
 import 'task_visuals.dart';
@@ -69,6 +70,15 @@ class TaskTile extends ConsumerWidget {
     final project = (showProjectBadge && task.projectId != null)
         ? ref.watch(projectsByIdProvider)[task.projectId]
         : null;
+    // OPH-165 (DESIGN T4): at most 2 inline tags + "+N" — typographic, so the
+    // row never grows past its card rhythm.
+    final tagsById = task.tagIds.isEmpty
+        ? const <String, Tag>{}
+        : ref.watch(tagsByIdProvider);
+    final rowTags = [
+      for (final id in task.tagIds)
+        if (tagsById[id] case final Tag tag) tag,
+    ];
 
     final tile = Card(
       clipBehavior: Clip.antiAlias,
@@ -103,18 +113,42 @@ class TaskTile extends ConsumerWidget {
                 )
               : null,
         ),
-        subtitle: due == null
+        subtitle: (due == null && rowTags.isEmpty)
             ? null
-            : Text(
-                isOverdue
-                    ? 'task.overdueDue'.tr(args: {'date': _formatDue(due)})
-                    : 'task.dueOn'.tr(args: {'date': _formatDue(due)}),
-                style: isOverdue
-                    ? theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.error,
-                        fontWeight: FontWeight.w600,
-                      )
-                    : null,
+            : Wrap(
+                spacing: AwSpace.x2,
+                runSpacing: 2,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (due != null)
+                    Text(
+                      isOverdue
+                          ? 'task.overdueDue'.tr(
+                              args: {'date': _formatDue(due)},
+                            )
+                          : 'task.dueOn'.tr(args: {'date': _formatDue(due)}),
+                      style: isOverdue
+                          ? theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.error,
+                              fontWeight: FontWeight.w600,
+                            )
+                          : null,
+                    ),
+                  for (final tag in rowTags.take(2)) _InlineTag(tag: tag),
+                  if (rowTags.length > 2)
+                    Tooltip(
+                      message: [
+                        for (final tag in rowTags.skip(2)) '#${tag.name}',
+                      ].join('  '),
+                      child: Text(
+                        '+${rowTags.length - 2}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
               ),
         // The STATUS icon is always the rightmost element so it forms a
         // consistent scan column; the badge, priority flag and urgent marker
@@ -165,5 +199,33 @@ class TaskTile extends ConsumerWidget {
       child: tile,
     );
     return dimmed ? Opacity(opacity: 0.45, child: row) : row;
+  }
+}
+
+/// Compact inline tag for list rows (T4): color dot + `#name` in caption ink.
+/// Typography only — no pill container, so contrast and row height are the
+/// subtitle's own.
+class _InlineTag extends StatelessWidget {
+  const _InlineTag({required this.tag});
+
+  final Tag tag;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircleAvatar(backgroundColor: tag.color, radius: 4),
+        const SizedBox(width: 3),
+        Text(
+          '#${tag.name}',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 }

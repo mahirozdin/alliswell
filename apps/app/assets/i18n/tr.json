@@ -167,6 +167,20 @@
     "dueOn": "Bitiş {date}",
     "attachments": "Ekler"
   },
+  "tag": {
+    "inputHint": "Etiket ekle…",
+    "createSuggestion": "Oluştur: #{name}",
+    "manage": "Etiketleri yönet",
+    "manageTitle": "Etiketler",
+    "edit": "Etiketi düzenle",
+    "editTitle": "Etiketi düzenle",
+    "nameLabel": "Ad",
+    "deleteTitle": "#{name} silinsin mi?",
+    "deleteBody": "{count} görevden kaldırılacak. Bu geri alınamaz.",
+    "deleteBodyUnused": "Bu etiketi kullanan görev yok. Bu geri alınamaz.",
+    "emptyTitle": "Henüz etiket yok",
+    "emptyBody": "Görev oluştururken ya da düzenlerken bir etiket yaz — burada görünür."
+  },
   "inbox": {
     "captureHint": "Bir düşünce yakala…",
     "captureTitle": "Fikirler yakalamak içindir",

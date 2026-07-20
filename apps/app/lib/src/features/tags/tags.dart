@@ -1,11 +1,15 @@
+import 'dart:ui' show Color;
+
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
+import 'data/tag_store.dart';
 
-/// Mirrors the API's tag shape (apps/api routes/tags.js). Management UI is a
-/// later task — v1 needs tags for task labeling only.
+/// Mirrors the API's tag shape (apps/api routes/tags.js). Round 8 (OPH-165)
+/// gave tags a real UI: the chip-input creates/assigns them, the manage sheet
+/// renames/recolors/deletes.
 class Tag {
   const Tag({
     required this.id,
@@ -25,7 +29,25 @@ class Tag {
   final String name;
   final String slug;
   final String colorRgb;
+
+  /// `#RRGGBB` → paintable color (the project-dot idiom — hex never shown).
+  Color get color =>
+      Color(0xFF000000 | int.parse(colorRgb.substring(1), radix: 16));
 }
+
+/// Tags by id — list rows resolve their chips from this (OPH-165, T4).
+final tagsByIdProvider = Provider<Map<String, Tag>>((ref) {
+  final tags = ref.watch(tagsProvider).value ?? const <Tag>[];
+  return {for (final tag in tags) tag.id: tag};
+});
+
+/// Local-first tag writes (create/rename/recolor/delete) — OPH-165.
+final tagStoreProvider = Provider<TagStore>(
+  (ref) => TagStore(
+    ref.watch(databaseProvider),
+    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+  ),
+);
 
 /// Tags of the current workspace (sorted by name) — live from the local
 /// replica (OPH-054).

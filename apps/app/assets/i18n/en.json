@@ -168,6 +168,20 @@
     "dueOn": "Due {date}",
     "attachments": "Attachments"
   },
+  "tag": {
+    "inputHint": "Add tag…",
+    "createSuggestion": "Create: #{name}",
+    "manage": "Manage tags",
+    "manageTitle": "Tags",
+    "edit": "Edit tag",
+    "editTitle": "Edit tag",
+    "nameLabel": "Name",
+    "deleteTitle": "Delete #{name}?",
+    "deleteBody": "It will be removed from {count} task(s). This cannot be undone.",
+    "deleteBodyUnused": "No tasks use this tag. This cannot be undone.",
+    "emptyTitle": "No tags yet",
+    "emptyBody": "Type a tag while creating or editing a task — it appears here."
+  },
   "inbox": {
     "captureHint": "Capture a thought…",
     "captureTitle": "Inbox is for capturing",
