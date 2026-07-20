@@ -32,6 +32,7 @@ class FakeFilesApi extends FilesApi {
     required String name,
     required int sizeBytes,
     String? mime,
+    String? folderId,
   }) async {
     final failure = failInitWith;
     if (failure != null) throw failure;

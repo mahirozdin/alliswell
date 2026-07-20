@@ -20,6 +20,7 @@ class UploadJob {
     required this.targetId,
     required this.name,
     required this.sizeBytes,
+    this.folderId,
     this.progress = 0,
     this.phase = UploadPhase.running,
     this.errorCode,
@@ -27,6 +28,9 @@ class UploadJob {
 
   final String localId;
   final String workspaceId;
+
+  /// Destination folder — workspace-target uploads only (OPH-170).
+  final String? folderId;
   final String targetType;
   final String targetId;
   final String name;
@@ -71,6 +75,7 @@ class UploadsNotifier extends Notifier<List<UploadJob>> {
     required String workspaceId,
     required String targetType,
     required String targetId,
+    String? folderId,
   }) async {
     final picked = await ref.read(filePickerProvider)();
     for (final source in picked) {
@@ -78,6 +83,7 @@ class UploadsNotifier extends Notifier<List<UploadJob>> {
         workspaceId: workspaceId,
         targetType: targetType,
         targetId: targetId,
+        folderId: folderId,
         source: source,
       );
     }
@@ -90,6 +96,7 @@ class UploadsNotifier extends Notifier<List<UploadJob>> {
     required String workspaceId,
     required String targetType,
     required String targetId,
+    String? folderId,
     required PickedUpload source,
   }) {
     final job = UploadJob(
@@ -97,6 +104,7 @@ class UploadsNotifier extends Notifier<List<UploadJob>> {
       workspaceId: workspaceId,
       targetType: targetType,
       targetId: targetId,
+      folderId: folderId,
       name: source.name,
       sizeBytes: source.sizeBytes,
     );
@@ -132,6 +140,7 @@ class UploadsNotifier extends Notifier<List<UploadJob>> {
         workspaceId: job.workspaceId,
         targetType: job.targetType,
         targetId: job.targetId,
+        folderId: job.folderId,
         name: job.name,
         sizeBytes: job.sizeBytes,
         mime: source.mime ?? mimeForName(job.name),

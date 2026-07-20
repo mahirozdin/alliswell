@@ -11,6 +11,7 @@ class FakeApi {
   final List<Map<String, dynamic>> projects = [];
   final List<Map<String, dynamic>> tasks = [];
   final List<Map<String, dynamic>> tags = [];
+  final List<Map<String, dynamic>> folders = [];
   final List<Map<String, dynamic>> notes = [];
   final List<String> requests = [];
 
@@ -64,6 +65,7 @@ class FakeApi {
     required String name,
     required String targetType,
     required String targetId,
+    String? folderId,
     String mime = 'application/octet-stream',
     int sizeBytes = 2048,
   }) {
@@ -73,6 +75,7 @@ class FakeApi {
       'workspaceId': workspaceId,
       'targetType': targetType,
       'targetId': targetId,
+      'folderId': folderId,
       'name': name,
       'mime': mime,
       'sizeBytes': sizeBytes,
@@ -85,6 +88,20 @@ class FakeApi {
     files.add(file);
     _bump();
     return file;
+  }
+
+  Map<String, dynamic> seedFolder({required String name, String? parentId}) {
+    _seq += 1;
+    final folder = {
+      'id': 'FDR$_seq'.padRight(26, '0'),
+      'workspaceId': workspaceId,
+      'parentId': parentId,
+      'name': name,
+      'revision': 1,
+    };
+    folders.add(folder);
+    _bump();
+    return folder;
   }
 
   Map<String, dynamic> seedTag({required String name}) {
@@ -604,6 +621,9 @@ class FakeApi {
       for (final t in tags) {
         snapshot('tag', t);
       }
+      for (final f in folders) {
+        snapshot('folder', f);
+      }
       for (final t in tasks) {
         snapshot('task', t);
         for (final item in (t['checklist'] as List? ?? const [])) {
@@ -679,18 +699,26 @@ class FakeApi {
       'task' => tasks,
       'note' => notes,
       'tag' => tags,
+      'folder' => folders,
       _ => null,
     };
 
     switch (m['entityType']) {
       case 'checklist_item':
         _applyChecklistMutation(entityId, operation, patch);
-      case 'project' || 'task' || 'note' || 'tag':
+      case 'project' || 'task' || 'note' || 'tag' || 'folder':
         final index = collection!.indexWhere((e) => e['id'] == entityId);
         if (operation == 'create') {
           if (index >= 0) return;
           collection.add(switch (m['entityType']) {
             'project' => _project({...patch, 'id': entityId}),
+            'folder' => {
+              'id': entityId,
+              'workspaceId': workspaceId,
+              'parentId': patch['parentId'],
+              'name': patch['name'],
+              'revision': 1,
+            },
             'task' => _task({...patch, 'id': entityId}),
             'note' => {
               'links': const [],
@@ -819,6 +847,7 @@ class FakeApi {
         'workspaceId': workspaceId,
         'targetType': body?['targetType'],
         'targetId': body?['targetId'],
+        'folderId': body?['folderId'],
         'name': body?['name'],
         'mime': mime,
         'sizeBytes': body?['sizeBytes'],
@@ -874,7 +903,13 @@ class FakeApi {
           );
         case 'PATCH':
           if (index < 0) return _notFound('FILE_NOT_FOUND');
-          files[index]['name'] = body?['name'];
+          if (body?.containsKey('name') ?? false) {
+            files[index]['name'] = body?['name'];
+          }
+          // OPH-170: move between folders (workspace files).
+          if (body?.containsKey('folderId') ?? false) {
+            files[index]['folderId'] = body?['folderId'];
+          }
           files[index]['revision'] = revision + 1;
           _bump();
           return Future.value(jsonBody(200, {'file': files[index]}));

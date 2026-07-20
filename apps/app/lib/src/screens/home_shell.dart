@@ -98,7 +98,7 @@ class HomeShell extends ConsumerWidget {
         onPressed: () => context.go('/notes/new'),
         child: const Icon(Icons.add),
       ),
-      AppSection.inbox => null,
+      AppSection.inbox || AppSection.files => null,
     };
   }
 

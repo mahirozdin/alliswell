@@ -6,6 +6,7 @@ import '../../sync/providers.dart';
 import '../auth/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/file_attachment.dart';
+import 'data/folder_store.dart';
 import 'data/files_api.dart';
 import 'data/pick_files.dart';
 import 'data/picked_upload.dart';
@@ -171,4 +172,51 @@ final workspaceFilesUsageProvider =
       final workspace = ref.watch(currentWorkspaceProvider).value;
       if (workspace == null) return null;
       return ref.watch(filesApiProvider).usage(workspace.id);
+    });
+
+/// OPH-170 — the Dosyalar section's local-first folder machinery (ADR-0014).
+final folderStoreProvider = Provider<FolderStore>(
+  (ref) => FolderStore(
+    ref.watch(databaseProvider),
+    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+  ),
+);
+
+/// The workspace's whole live folder tree, name-ordered.
+final foldersProvider = StreamProvider<List<Folder>>((ref) async* {
+  ref.watch(syncEngineProvider);
+  final workspaces = await ref.watch(workspacesProvider.future);
+  if (workspaces.isEmpty) {
+    yield const [];
+    return;
+  }
+  yield* ref.read(folderStoreProvider).watchAll(workspaces.first.id);
+});
+
+/// One folder level of workspace files (null = root).
+final workspaceLevelFilesProvider = StreamProvider.autoDispose
+    .family<List<FileAttachment>, String?>((ref, folderId) async* {
+      ref.watch(syncEngineProvider);
+      final workspaces = await ref.watch(workspacesProvider.future);
+      if (workspaces.isEmpty) {
+        yield const [];
+        return;
+      }
+      yield* ref
+          .read(fileStoreProvider)
+          .watchWorkspaceLevel(workspaces.first.id, folderId: folderId);
+    });
+
+/// Every attached file in the workspace, source-labeled (Kaynaklar).
+final workspaceAttachedFilesProvider =
+    StreamProvider.autoDispose<List<ProjectFileEntry>>((ref) async* {
+      ref.watch(syncEngineProvider);
+      final workspaces = await ref.watch(workspacesProvider.future);
+      if (workspaces.isEmpty) {
+        yield const [];
+        return;
+      }
+      yield* ref
+          .read(fileStoreProvider)
+          .watchWorkspaceAttached(workspaces.first.id);
     });

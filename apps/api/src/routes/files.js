@@ -540,7 +540,7 @@ export default async function fileRoutes(app) {
     },
   );
 
-  // ── Rename (metadata only — the object never moves) ───────────────────────
+  // ── Rename / move-to-folder (metadata only — the object never moves) ─────
 
   app.patch(
     '/files/:fileId',
@@ -551,8 +551,12 @@ export default async function fileRoutes(app) {
         body: {
           type: 'object',
           additionalProperties: false,
-          required: ['name'],
-          properties: { name: { type: 'string', minLength: 1, maxLength: 1024 } },
+          minProperties: 1,
+          properties: {
+            name: { type: 'string', minLength: 1, maxLength: 1024 },
+            // OPH-170: move a WORKSPACE file between folders (null = root).
+            folderId: { anyOf: [{ type: 'null' }, ULID_PARAM] },
+          },
         },
         response: {
           200: { type: 'object', properties: { file: fileSchema } },
@@ -572,9 +576,39 @@ export default async function fileRoutes(app) {
           'FILE_NOT_READY',
         );
       }
-      const name = sanitizeFileName(request.body.name);
-      if (!name) {
-        throw coded(app.httpErrors.badRequest('Invalid file name'), 'FILE_NAME_INVALID');
+      const patch = {};
+      const changedFields = [];
+      if ('name' in request.body) {
+        const name = sanitizeFileName(request.body.name);
+        if (!name) {
+          throw coded(app.httpErrors.badRequest('Invalid file name'), 'FILE_NAME_INVALID');
+        }
+        patch.name = name;
+        changedFields.push('name');
+      }
+      if ('folderId' in request.body) {
+        if (row.target_type !== 'workspace') {
+          throw coded(
+            app.httpErrors.badRequest('Only workspace files can live in folders'),
+            'FILE_FOLDER_NOT_ALLOWED',
+          );
+        }
+        const folderId = request.body.folderId ?? null;
+        if (folderId != null) {
+          const folder = await app
+            .db('folders')
+            .where({ id: folderId, workspace_id: row.workspace_id })
+            .whereNull('deleted_at')
+            .first('id');
+          if (!folder) {
+            throw coded(
+              app.httpErrors.badRequest('Folder not found in this workspace'),
+              'FILE_FOLDER_NOT_FOUND',
+            );
+          }
+        }
+        patch.folder_id = folderId;
+        changedFields.push('folderId');
       }
 
       let fresh;
@@ -584,9 +618,11 @@ export default async function fileRoutes(app) {
           entityType: 'file',
           entityId: row.id,
           operation: 'update',
-          changedFields: ['name'],
+          changedFields,
         });
-        await trx('files').where({ id: row.id }).update({ name, revision, updated_at: new Date() });
+        await trx('files')
+          .where({ id: row.id })
+          .update({ ...patch, revision, updated_at: new Date() });
         fresh = await trx('files').where({ id: row.id }).first();
       });
       return { file: serializeFile(fresh) };

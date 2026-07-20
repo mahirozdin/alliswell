@@ -71,6 +71,7 @@ class FilesApi {
     required String name,
     required int sizeBytes,
     String? mime,
+    String? folderId,
   }) => _run(() async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/api/v1/workspaces/$workspaceId/files',
@@ -80,6 +81,7 @@ class FilesApi {
         'name': name,
         'sizeBytes': sizeBytes,
         'mime': ?mime,
+        'folderId': ?folderId,
       },
     );
     final file = res.data!['file'] as Map<String, dynamic>;
@@ -106,6 +108,14 @@ class FilesApi {
     return FileDownload(
       url: url,
       expiresAt: expires == null ? null : DateTime.tryParse(expires),
+    );
+  });
+
+  /// Move a WORKSPACE file into [folderId] (null = root) — OPH-170.
+  Future<void> move(String fileId, String? folderId) => _run(() async {
+    await _dio.patch<Map<String, dynamic>>(
+      '/api/v1/files/$fileId',
+      data: {'folderId': folderId},
     );
   });
 

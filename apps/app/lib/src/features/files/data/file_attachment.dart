@@ -19,6 +19,7 @@ class FileAttachment {
     required this.sizeBytes,
     this.uploadedBy,
     this.createdAt,
+    this.folderId,
   });
 
   final String id;
@@ -32,6 +33,9 @@ class FileAttachment {
   final int sizeBytes;
   final String? uploadedBy;
   final DateTime? createdAt;
+
+  /// Folder membership — workspace-target files only (OPH-170).
+  final String? folderId;
 
   bool get isImage => mime.startsWith('image/');
   bool get isVideo => mime.startsWith('video/');
@@ -123,6 +127,62 @@ class FileStore {
     );
   }
 
+  /// One folder LEVEL of the Dosyalar tree: workspace-target files whose
+  /// folder is [folderId] (null = the root level). Newest first.
+  Stream<List<FileAttachment>> watchWorkspaceLevel(
+    String workspaceId, {
+    String? folderId,
+  }) =>
+      (_db.select(_db.fileRows)
+            ..where(
+              (f) =>
+                  f.workspaceId.equals(workspaceId) &
+                  f.targetType.equals('workspace') &
+                  (folderId == null
+                      ? f.folderId.isNull()
+                      : f.folderId.equals(folderId)),
+            )
+            ..orderBy([(f) => OrderingTerm.desc(f.createdAt)]))
+          .watch()
+          .map((rows) => rows.map(_attachment).toList());
+
+  /// The Kaynaklar layer (DESIGN F7): every ATTACHED file in the workspace
+  /// (project|task|note targets) with its source named — the project Files
+  /// tab's union, workspace-wide.
+  Stream<List<ProjectFileEntry>> watchWorkspaceAttached(String workspaceId) {
+    final query = _db.customSelect(
+      '''
+      SELECT f.*, 'project' AS source_type, p.id AS source_id,
+             p.name AS source_title
+        FROM file_rows f JOIN projects p ON p.id = f.target_id
+       WHERE f.target_type = 'project' AND f.workspace_id = ?1
+      UNION ALL
+      SELECT f.*, 'task', t.id, t.title
+        FROM file_rows f JOIN tasks t ON t.id = f.target_id
+       WHERE f.target_type = 'task' AND f.workspace_id = ?1
+      UNION ALL
+      SELECT f.*, 'note', n.id, n.title
+        FROM file_rows f JOIN notes n ON n.id = f.target_id
+       WHERE f.target_type = 'note' AND f.workspace_id = ?1
+      ORDER BY created_at DESC
+      ''',
+      variables: [Variable.withString(workspaceId)],
+      readsFrom: {_db.fileRows, _db.projects, _db.tasks, _db.notes},
+    );
+    return query.watch().map(
+      (rows) => rows
+          .map(
+            (row) => ProjectFileEntry(
+              file: _fromRow(row),
+              sourceType: row.read<String>('source_type'),
+              sourceId: row.read<String>('source_id'),
+              sourceTitle: row.read<String>('source_title'),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   static FileAttachment _attachment(FileRecord r) => FileAttachment(
     id: r.id,
     workspaceId: r.workspaceId,
@@ -133,6 +193,7 @@ class FileStore {
     sizeBytes: r.sizeBytes,
     uploadedBy: r.uploadedBy,
     createdAt: r.createdAt,
+    folderId: r.folderId,
   );
 
   static FileAttachment _fromRow(QueryRow row) => FileAttachment(
@@ -145,5 +206,6 @@ class FileStore {
     sizeBytes: row.read<int>('size_bytes'),
     uploadedBy: row.readNullable<String>('uploaded_by'),
     createdAt: row.readNullable<DateTime>('created_at'),
+    folderId: row.readNullable<String>('folder_id'),
   );
 }

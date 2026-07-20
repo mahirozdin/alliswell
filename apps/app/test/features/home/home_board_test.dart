@@ -65,29 +65,30 @@ void main() {
     expect(find.text('Biten iş'), findsOneWidget);
   });
 
-  testWidgets('the explicit move path changes status and offers undo (K3b/K5)', (
-    tester,
-  ) async {
-    await wideSurface(tester);
-    final api = FakeApi()..seedTask(title: 'Taşınacak iş');
-    await tester.pumpWidget(await app(api));
-    await tester.pumpAndSettle();
-    await openBoard(tester);
+  testWidgets(
+    'the explicit move path changes status and offers undo (K3b/K5)',
+    (tester) async {
+      await wideSurface(tester);
+      final api = FakeApi()..seedTask(title: 'Taşınacak iş');
+      await tester.pumpWidget(await app(api));
+      await tester.pumpAndSettle();
+      await openBoard(tester);
 
-    final taskId = api.tasks.single['id'] as String;
-    await tester.tap(find.byKey(Key('board-move-button-$taskId')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('board-move-in_progress')));
-    await tester.pumpAndSettle();
+      final taskId = api.tasks.single['id'] as String;
+      await tester.tap(find.byKey(Key('board-move-button-$taskId')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('board-move-in_progress')));
+      await tester.pumpAndSettle();
 
-    expect(api.tasks.single['status'], 'in_progress');
-    expect(find.text('Undo'), findsOneWidget); // the snackbar action
+      expect(api.tasks.single['status'], 'in_progress');
+      expect(find.text('Undo'), findsOneWidget); // the snackbar action
 
-    // Undo restores the previous status through the same store path.
-    await tester.tap(find.text('Undo'));
-    await tester.pumpAndSettle();
-    expect(api.tasks.single['status'], 'open');
-  });
+      // Undo restores the previous status through the same store path.
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+      expect(api.tasks.single['status'], 'open');
+    },
+  );
 
   testWidgets('long-press drag onto another column drops the card there '
       '(K3a)', (tester) async {

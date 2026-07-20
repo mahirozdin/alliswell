@@ -139,6 +139,26 @@ class FileRows extends Table {
   /// shape mirrors the server serializer field-for-field.
   TextColumn get status => text()();
   TextColumn get uploadedBy => text().nullable()();
+
+  /// Folder membership — workspace-target files only (v7, ADR-0014).
+  TextColumn get folderId => text().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// User folders for the global Dosyalar section (OPH-170, ADR-0014) —
+/// push-pull like projects/tags: pure metadata, offline create/rename/move.
+/// Added in schema v7.
+@DataClassName('FolderRecord')
+class Folders extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get parentId => text().nullable()();
+  TextColumn get name => text()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -293,6 +313,7 @@ class AppleEventLinks extends Table {
     ExternalEvents,
     AppleEventLinks,
     FileRows,
+    Folders,
     PendingMutations,
     SyncStates,
   ],
@@ -306,8 +327,9 @@ class AwDatabase extends _$AwDatabase {
   /// v3 → v4 (OPH-078): apple_event_links (device-local Apple mirror map).
   /// v4 → v5 (OPH-153): file_rows (attachment metadata, pull-only).
   /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
+  /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -352,6 +374,17 @@ class AwDatabase extends _$AwDatabase {
           await m.addColumn(externalEvents, externalEvents.locationFold);
         }
         await backfillSearchFolds(this);
+      }
+      // v7 (OPH-170, ADR-0014): the folder tree + file membership. New table
+      // + one nullable column — existing rows untouched, the next pull fills.
+      if (from < 7) {
+        await m.createTable(folders);
+        // file_rows only exists for installs that were ≥ v5; older ones just
+        // got it CREATED with the current definition (folder_id included) —
+        // the v6 external_events lesson, same shape.
+        if (from >= 5) {
+          await m.addColumn(fileRows, fileRows.folderId);
+        }
       }
     },
   );

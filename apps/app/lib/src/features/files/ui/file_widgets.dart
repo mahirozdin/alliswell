@@ -82,10 +82,14 @@ class FileLeadingThumb extends ConsumerWidget {
 /// One ready attachment row (F1). [badge] is the Files-tab source chip (F4);
 /// task/note lists leave it null.
 class FileRowTile extends ConsumerWidget {
-  const FileRowTile({super.key, required this.file, this.badge});
+  const FileRowTile({super.key, required this.file, this.badge, this.onMore});
 
   final FileAttachment file;
   final Widget? badge;
+
+  /// Overrides the default tap-through to the actions sheet (OPH-170: the
+  /// Dosyalar section injects extra actions like move / go-to-source).
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -113,6 +117,13 @@ class FileRowTile extends ConsumerWidget {
   }
 
   Future<void> _onTap(BuildContext context, WidgetRef ref) async {
+    // A caller-supplied handler wins for EVERY kind — the Dosyalar surfaces
+    // route taps through their sheet (extra actions incl. the viewer's own
+    // open action), images included.
+    if (onMore != null) {
+      onMore!();
+      return;
+    }
     if (file.isImage) {
       await showFileImageViewer(context, ref, file);
       return;
@@ -207,8 +218,11 @@ String _errorText(String? code, String fallback) {
 Future<void> showFileActionsSheet(
   BuildContext context,
   WidgetRef ref,
-  FileAttachment file,
-) {
+  FileAttachment file, {
+  // OPH-170: callers inject context actions (move-to-folder, go-to-source).
+  List<({IconData icon, String label, VoidCallback onTap})> extraActions =
+      const [],
+}) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -226,6 +240,15 @@ Future<void> showFileActionsSheet(
             subtitle: Text(formatBytes(file.sizeBytes)),
           ),
           const Divider(height: 1),
+          for (final action in extraActions)
+            ListTile(
+              leading: Icon(action.icon),
+              title: Text(action.label),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                action.onTap();
+              },
+            ),
           ListTile(
             leading: const Icon(Icons.open_in_new),
             title: Text('file.openDownload'.tr()),
@@ -504,6 +527,60 @@ class AttachmentsSection extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Folder rows lead with the same soft tile as file kind icons (F8).
+class FolderLeadingTile extends StatelessWidget {
+  const FolderLeadingTile({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AwRadius.s),
+      ),
+      child: Icon(Icons.folder_outlined, color: scheme.onSurfaceVariant),
+    );
+  }
+}
+
+/// Source badge for aggregated rows (F4/F7) — public twin of the project
+/// Files tab's badge so the Dosyalar section reuses one anatomy.
+class SourceBadge extends StatelessWidget {
+  const SourceBadge({super.key, required this.type, required this.title});
+
+  final String type;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final label = switch (type) {
+      'project' => 'file.sourceProject'.tr(args: {'name': title}),
+      'task' => 'file.sourceTask'.tr(args: {'name': title}),
+      _ => 'file.sourceNote'.tr(args: {'name': title}),
+    };
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+      ),
     );
   }
 }

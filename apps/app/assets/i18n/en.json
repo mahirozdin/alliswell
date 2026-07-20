@@ -30,7 +30,9 @@
     "projects": "Projects",
     "projectsDesc": "Projects with colors, tasks, notes and documents.",
     "notes": "Notes",
-    "notesDesc": "Rich notes, linkable to tasks and projects."
+    "notesDesc": "Rich notes, linkable to tasks and projects.",
+    "files": "Files",
+    "filesDesc": "Every file in your space — folders, uploads, attachments"
   },
   "auth": {
     "signInTitle": "Sign in to your space",
@@ -351,7 +353,9 @@
     "notesTitle": "Notes",
     "notesBody": "Rich notes you can pin, archive, and link to tasks and projects.",
     "doneTitle": "You’re all set",
-    "doneBody": "Reopen this tour anytime from Settings → App tour."
+    "doneBody": "Reopen this tour anytime from Settings → App tour.",
+    "filesTitle": "Files",
+    "filesBody": "Your whole space’s files: personal folders plus everything attached to projects, tasks and notes."
   },
   "error": {
     "unknown": "Something went wrong. Please try again.",
@@ -439,6 +443,31 @@
     "insertVideo": "Insert video",
     "attachedNotEmbedded": "Uploaded as an attachment — this file type doesn't embed inline",
     "mediaUnavailable": "Attachment unavailable",
-    "usage": "{count} files · {size} used"
+    "usage": "{count} files · {size} used",
+    "notConfiguredTitle": "File storage is off",
+    "sourceProject": "Project · {name}",
+    "sourceTask": "Task · {name}",
+    "sourceNote": "Note · {name}"
+  },
+  "files": {
+    "myFolders": "My folders",
+    "sources": "Sources",
+    "newFolder": "New folder",
+    "folderName": "Name",
+    "renameFolder": "Rename folder",
+    "moveFolder": "Move folder",
+    "folderActions": "Folder actions",
+    "folderSubtitle": "{count} item(s)",
+    "moveTo": "Move to…",
+    "rootFolder": "Files (top level)",
+    "deleteFolderTitle": "Delete “{name}”?",
+    "deleteFolderBody": "{folders} folder(s) and {files} file(s) will be deleted. This cannot be undone.",
+    "deleteFolderEmpty": "The folder is empty. This cannot be undone.",
+    "emptyTitle": "Nothing here yet",
+    "emptyBody": "Create a folder or upload a file — this level is empty.",
+    "noSourcesTitle": "No attachments yet",
+    "noSourcesBody": "Files attached to projects, tasks and notes appear here.",
+    "goToSource": "Go to source",
+    "couldNotMove": "Could not move the file."
   }
 }

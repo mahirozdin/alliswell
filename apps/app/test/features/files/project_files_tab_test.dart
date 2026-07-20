@@ -51,7 +51,8 @@ Future<void> openFilesTab(WidgetTester tester, String projectName) async {
   await tester.pumpAndSettle();
   await tester.tap(find.text(projectName));
   await tester.pumpAndSettle();
-  await tester.tap(find.text('Files'));
+  // 'Files' is ALSO the new nav destination (OPH-170) — scope to the Tab.
+  await tester.tap(find.widgetWithText(Tab, 'Files'));
   await tester.pumpAndSettle();
 }
 

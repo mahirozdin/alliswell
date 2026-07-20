@@ -2797,25 +2797,38 @@ CHANGELOG; STATE.
 **DoD met 2026-07-20:** unit 281/281, entegrasyon 37/37, lint+format+no-ts yeşil;
 CHANGELOG; STATE.
 
-### OPH-170 — Global "Dosyalar" bölümü: app (round 8 #10b)
+### OPH-170 — Global "Dosyalar" bölümü: app (round 8 #10b) ✅ 2026-07-20
 
-- [ ] Drift v6 (OPH-167'yle AYNI migration adımında birleşir — tek v6): `folders` tablosu +
-      `file_rows.folder_id`; applier `folder` entity + file folderId; `FolderStore`
-      (watchTree, create/rename/move/delete — optimistic + outbox).
-- [ ] `AppSection.files` (Takvim'in yerine, `nav.files`): `FilesScreen` — üstte
-      Klasörlerim (breadcrumb, klasör satırları F8, dosya satırları F1, mevcut sıralama
-      menüsü), altta/sekmede Kaynaklar (proje Files tab bileşenleri: kaynak rozetleri,
-      filtre çipleri, "kaynağa git" → ilgili detay ekranı).
-- [ ] Eylemler: klasör oluştur (ad diyaloğu), yeniden adlandır, taşı (hedef seçici sheet —
-      ağaç, mevcut konum devre dışı), sil (F9 onayı: içerik sayıları), dosya yükle
-      (aktif klasöre, `targetType:'workspace'`), dosya taşı (aynı sheet), dosya aç/indir/
-      yeniden adlandır/sil (mevcut aksiyonlar).
-- [ ] Depo yapılandırılmamışsa Klasörlerim dürüst boş durum; Kaynaklar yine listelenir.
-- [ ] Workspace-scope arama entegrasyonu değil (arama ekran-bazlı; Dosyalar'da ad sıralaması
-      + gelecekte q — parking not).
-- [ ] i18n `files.*`/`nav.files`; testler: ağaç render + breadcrumb gezinme, oluştur/taşı/
-      sil (onay sayıları), yükleme hedefi workspace+folder, Kaynaklar rozet+navigasyon,
-      storage-off durumu. Tur adımı: Dosyalar için kısa tanıtım adımı eklenir (tour listesi).
+- [x] Drift **v7** (v6 aramanındı — plan tek-v6 dedi ama 167 önce kapandı): `folders` +
+      `file_rows.folder_id` (`from >= 5` guard'ı — v5 createTable dersinin aynısı);
+      applier `folder` snapshot+tombstone + file folderId; migration_test v7.
+      `FolderStore` (watchAll, create/rename/move — optimistic+outbox; `subtreeCounts`
+      F9 onayı için; delete = yerel alt-ağaç + TEK kök outbox delete — server kaskadıyla
+      bire bir). **API eki:** `PATCH /files/:id` artık `folderId` da alır (dosya taşıma —
+      169'da atlanmıştı) + FakeApi paritesi.
+- [x] `AppSection.files` (**en sonda** — BLUEPRINT §12.1 sırası; Takvim'in bıraktığı boşluk
+      sayıca dolduruldu): FilesScreen — Klasörlerim | Kaynaklar SegmentedButton;
+      Klasörlerim: breadcrumb (ActionChip'ler), klasör satırları (F8 `FolderLeadingTile` +
+      "N öğe" — sayaçlar WATCH'la; autoDispose family'yi `ref.read`'lemek onu akış
+      ortasında söker, UnmountedRef dersi), üst aksiyon satırı (Yeni klasör + Dosya yükle
+      → aktif klasöre `targetType:'workspace'`+folderId — upload zinciri uçtan uca folderId
+      taşıyor). Kaynaklar: workspace-geneli ekli dosya UNION'ı (yeni `watchWorkspaceAttached`)
+      + `SourceBadge` (public) + "Kaynağa git" navigasyonu.
+- [x] Eylemler: klasör oluştur/yeniden adlandır (ad diyaloğu), taşı (hedef seçici sheet —
+      girintili ağaç, kendi alt ağacı hariç), sil (F9: `deleteFolderTitle/Body` sayılı onay;
+      içindeysen breadcrumb dışarı adımlar), dosya taşı (aynı seçici → `FilesApi.move` +
+      syncNow), aç/indir/yeniden adlandır/sil (mevcut sheet + `extraActions` seam'i;
+      `onMore` verildiğinde görsel dahil HER tür sheet'ten geçer).
+- [x] Depo kapalıysa Klasörlerim dürüst boş durum (`file.notConfiguredTitle`); Kaynaklar
+      yine listelenir (metadata replikada). Dosyalar'da q araması parking'te.
+- [x] i18n `nav.files` + `files.*` (18 anahtar) + `file.source*` + tur adımı (7 kart).
+      Testler 4/4: breadcrumb seviyeli gezinme, oluştur+aktif klasöre yükleme (FakeApi
+      folderId kanıtı), F9 sayılı silme (+push delete), Kaynaklar rozet+kaynağa-git.
+      **Ders:** yeni nav etiketi 'Files' proje sekmesiyle çakıştı — testler Tab-scoped
+      finder'a geçti.
+
+**DoD met 2026-07-20:** app **366/366** + analyze + check:i18n + kontrast (FAILURES: 0)
+yeşil; API unit 281 + entegrasyon 37 (169'la birlikte); CHANGELOG; STATE.
 
 **Epic 15 DoD:** her task kendi test+i18n+kontrast+analyze yeşiliyle kapanır; epic sonunda
 app+API tam süit, `check:no-ts`, `check:i18n`, `contrast.py FAILURES: 0`, CHANGELOG + STATE

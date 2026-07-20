@@ -50,6 +50,11 @@ const List<TourStep> kTourSteps = [
     titleKey: 'tour.notesTitle',
     bodyKey: 'tour.notesBody',
   ),
+  TourStep(
+    section: AppSection.files,
+    titleKey: 'tour.filesTitle',
+    bodyKey: 'tour.filesBody',
+  ),
   TourStep(titleKey: 'tour.doneTitle', bodyKey: 'tour.doneBody'),
 ];
 

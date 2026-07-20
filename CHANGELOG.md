@@ -35,6 +35,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A Files section in the main nav** (OPH-170): the whole workspace's files
+  in one place, Finder-simple. **My folders** holds standalone uploads
+  organized into nestable folders — browse by breadcrumb, create, rename,
+  move (folders and files alike, via a tree picker), and delete with the
+  blast radius spelled out before anything dies. **Sources** lists every file
+  attached to a project, task or note with a source badge and one-tap
+  "go to source". Browsing works fully offline; the onboarding tour gained a
+  Files card.
+
 - **Folders and standalone workspace files — API** (OPH-169, ADR-0014):
   files can now belong directly to the workspace (no project/task/note), and
   nestable folders (≤10 deep, cycle-safe moves, Finder-style name rules that

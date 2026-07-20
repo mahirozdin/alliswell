@@ -13,7 +13,6 @@ import '../projects/fake_api.dart';
 import 'test_support.dart';
 import '../../support/sync_overrides.dart';
 
-
 /// Wide two-pane surface: these shell tests assert CONTENT presence, not
 /// phone sliver economics (the narrow Home keeps search+calendar in the
 /// scroll — OPH-167/168).

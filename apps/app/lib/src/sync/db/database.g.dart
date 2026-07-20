@@ -7061,6 +7061,17 @@ class $FileRowsTable extends FileRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<String> folderId = GeneratedColumn<String>(
+    'folder_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -7106,6 +7117,7 @@ class $FileRowsTable extends FileRows
     sizeBytes,
     status,
     uploadedBy,
+    folderId,
     revision,
     createdAt,
     updatedAt,
@@ -7192,6 +7204,12 @@ class $FileRowsTable extends FileRows
         uploadedBy.isAcceptableOrUnknown(data['uploaded_by']!, _uploadedByMeta),
       );
     }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -7255,6 +7273,10 @@ class $FileRowsTable extends FileRows
         DriftSqlType.string,
         data['${effectivePrefix}uploaded_by'],
       ),
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}folder_id'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -7291,6 +7313,9 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
   /// shape mirrors the server serializer field-for-field.
   final String status;
   final String? uploadedBy;
+
+  /// Folder membership — workspace-target files only (v7, ADR-0014).
+  final String? folderId;
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -7304,6 +7329,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     required this.sizeBytes,
     required this.status,
     this.uploadedBy,
+    this.folderId,
     required this.revision,
     this.createdAt,
     this.updatedAt,
@@ -7321,6 +7347,9 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     map['status'] = Variable<String>(status);
     if (!nullToAbsent || uploadedBy != null) {
       map['uploaded_by'] = Variable<String>(uploadedBy);
+    }
+    if (!nullToAbsent || folderId != null) {
+      map['folder_id'] = Variable<String>(folderId);
     }
     map['revision'] = Variable<int>(revision);
     if (!nullToAbsent || createdAt != null) {
@@ -7345,6 +7374,9 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       uploadedBy: uploadedBy == null && nullToAbsent
           ? const Value.absent()
           : Value(uploadedBy),
+      folderId: folderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(folderId),
       revision: Value(revision),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
@@ -7370,6 +7402,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
       status: serializer.fromJson<String>(json['status']),
       uploadedBy: serializer.fromJson<String?>(json['uploadedBy']),
+      folderId: serializer.fromJson<String?>(json['folderId']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -7388,6 +7421,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       'sizeBytes': serializer.toJson<int>(sizeBytes),
       'status': serializer.toJson<String>(status),
       'uploadedBy': serializer.toJson<String?>(uploadedBy),
+      'folderId': serializer.toJson<String?>(folderId),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -7404,6 +7438,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     int? sizeBytes,
     String? status,
     Value<String?> uploadedBy = const Value.absent(),
+    Value<String?> folderId = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -7417,6 +7452,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     sizeBytes: sizeBytes ?? this.sizeBytes,
     status: status ?? this.status,
     uploadedBy: uploadedBy.present ? uploadedBy.value : this.uploadedBy,
+    folderId: folderId.present ? folderId.value : this.folderId,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -7438,6 +7474,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       uploadedBy: data.uploadedBy.present
           ? data.uploadedBy.value
           : this.uploadedBy,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -7456,6 +7493,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           ..write('sizeBytes: $sizeBytes, ')
           ..write('status: $status, ')
           ..write('uploadedBy: $uploadedBy, ')
+          ..write('folderId: $folderId, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -7474,6 +7512,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     sizeBytes,
     status,
     uploadedBy,
+    folderId,
     revision,
     createdAt,
     updatedAt,
@@ -7491,6 +7530,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           other.sizeBytes == this.sizeBytes &&
           other.status == this.status &&
           other.uploadedBy == this.uploadedBy &&
+          other.folderId == this.folderId &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -7506,6 +7546,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
   final Value<int> sizeBytes;
   final Value<String> status;
   final Value<String?> uploadedBy;
+  final Value<String?> folderId;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
@@ -7520,6 +7561,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     this.sizeBytes = const Value.absent(),
     this.status = const Value.absent(),
     this.uploadedBy = const Value.absent(),
+    this.folderId = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -7535,6 +7577,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     required int sizeBytes,
     required String status,
     this.uploadedBy = const Value.absent(),
+    this.folderId = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -7557,6 +7600,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     Expression<int>? sizeBytes,
     Expression<String>? status,
     Expression<String>? uploadedBy,
+    Expression<String>? folderId,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -7572,6 +7616,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
       if (sizeBytes != null) 'size_bytes': sizeBytes,
       if (status != null) 'status': status,
       if (uploadedBy != null) 'uploaded_by': uploadedBy,
+      if (folderId != null) 'folder_id': folderId,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -7589,6 +7634,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     Value<int>? sizeBytes,
     Value<String>? status,
     Value<String?>? uploadedBy,
+    Value<String?>? folderId,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -7604,6 +7650,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
       sizeBytes: sizeBytes ?? this.sizeBytes,
       status: status ?? this.status,
       uploadedBy: uploadedBy ?? this.uploadedBy,
+      folderId: folderId ?? this.folderId,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -7641,6 +7688,9 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     if (uploadedBy.present) {
       map['uploaded_by'] = Variable<String>(uploadedBy.value);
     }
+    if (folderId.present) {
+      map['folder_id'] = Variable<String>(folderId.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -7668,6 +7718,475 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
           ..write('sizeBytes: $sizeBytes, ')
           ..write('status: $status, ')
           ..write('uploadedBy: $uploadedBy, ')
+          ..write('folderId: $folderId, ')
+          ..write('revision: $revision, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $FoldersTable extends Folders
+    with TableInfo<$FoldersTable, FolderRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FoldersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parentIdMeta = const VerificationMeta(
+    'parentId',
+  );
+  @override
+  late final GeneratedColumn<String> parentId = GeneratedColumn<String>(
+    'parent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    parentId,
+    name,
+    revision,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'folders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FolderRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(
+        _parentIdMeta,
+        parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
+      );
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FolderRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FolderRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      parentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parent_id'],
+      ),
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $FoldersTable createAlias(String alias) {
+    return $FoldersTable(attachedDatabase, alias);
+  }
+}
+
+class FolderRecord extends DataClass implements Insertable<FolderRecord> {
+  final String id;
+  final String workspaceId;
+  final String? parentId;
+  final String name;
+  final int revision;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  const FolderRecord({
+    required this.id,
+    required this.workspaceId,
+    this.parentId,
+    required this.name,
+    required this.revision,
+    this.createdAt,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    if (!nullToAbsent || parentId != null) {
+      map['parent_id'] = Variable<String>(parentId);
+    }
+    map['name'] = Variable<String>(name);
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  FoldersCompanion toCompanion(bool nullToAbsent) {
+    return FoldersCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      parentId: parentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(parentId),
+      name: Value(name),
+      revision: Value(revision),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory FolderRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FolderRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      parentId: serializer.fromJson<String?>(json['parentId']),
+      name: serializer.fromJson<String>(json['name']),
+      revision: serializer.fromJson<int>(json['revision']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'parentId': serializer.toJson<String?>(parentId),
+      'name': serializer.toJson<String>(name),
+      'revision': serializer.toJson<int>(revision),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  FolderRecord copyWith({
+    String? id,
+    String? workspaceId,
+    Value<String?> parentId = const Value.absent(),
+    String? name,
+    int? revision,
+    Value<DateTime?> createdAt = const Value.absent(),
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => FolderRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    parentId: parentId.present ? parentId.value : this.parentId,
+    name: name ?? this.name,
+    revision: revision ?? this.revision,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  FolderRecord copyWithCompanion(FoldersCompanion data) {
+    return FolderRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      name: data.name.present ? data.name.value : this.name,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FolderRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('parentId: $parentId, ')
+          ..write('name: $name, ')
+          ..write('revision: $revision, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    parentId,
+    name,
+    revision,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FolderRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.parentId == this.parentId &&
+          other.name == this.name &&
+          other.revision == this.revision &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class FoldersCompanion extends UpdateCompanion<FolderRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String?> parentId;
+  final Value<String> name;
+  final Value<int> revision;
+  final Value<DateTime?> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const FoldersCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FoldersCompanion.insert({
+    required String id,
+    required String workspaceId,
+    this.parentId = const Value.absent(),
+    required String name,
+    this.revision = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       name = Value(name);
+  static Insertable<FolderRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? parentId,
+    Expression<String>? name,
+    Expression<int>? revision,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (parentId != null) 'parent_id': parentId,
+      if (name != null) 'name': name,
+      if (revision != null) 'revision': revision,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FoldersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String?>? parentId,
+    Value<String>? name,
+    Value<int>? revision,
+    Value<DateTime?>? createdAt,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return FoldersCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      parentId: parentId ?? this.parentId,
+      name: name ?? this.name,
+      revision: revision ?? this.revision,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<String>(parentId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FoldersCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('parentId: $parentId, ')
+          ..write('name: $name, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -8653,6 +9172,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     this,
   );
   late final $FileRowsTable fileRows = $FileRowsTable(this);
+  late final $FoldersTable folders = $FoldersTable(this);
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
   );
@@ -8673,6 +9193,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     externalEvents,
     appleEventLinks,
     fileRows,
+    folders,
     pendingMutations,
     syncStates,
   ];
@@ -11977,6 +12498,7 @@ typedef $$FileRowsTableCreateCompanionBuilder =
       required int sizeBytes,
       required String status,
       Value<String?> uploadedBy,
+      Value<String?> folderId,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -11993,6 +12515,7 @@ typedef $$FileRowsTableUpdateCompanionBuilder =
       Value<int> sizeBytes,
       Value<String> status,
       Value<String?> uploadedBy,
+      Value<String?> folderId,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -12050,6 +12573,11 @@ class $$FileRowsTableFilterComposer
 
   ColumnFilters<String> get uploadedBy => $composableBuilder(
     column: $table.uploadedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get folderId => $composableBuilder(
+    column: $table.folderId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12123,6 +12651,11 @@ class $$FileRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get folderId => $composableBuilder(
+    column: $table.folderId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -12181,6 +12714,9 @@ class $$FileRowsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get folderId =>
+      $composableBuilder(column: $table.folderId, builder: (column) => column);
+
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
 
@@ -12231,6 +12767,7 @@ class $$FileRowsTableTableManager
                 Value<int> sizeBytes = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> uploadedBy = const Value.absent(),
+                Value<String?> folderId = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -12245,6 +12782,7 @@ class $$FileRowsTableTableManager
                 sizeBytes: sizeBytes,
                 status: status,
                 uploadedBy: uploadedBy,
+                folderId: folderId,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -12261,6 +12799,7 @@ class $$FileRowsTableTableManager
                 required int sizeBytes,
                 required String status,
                 Value<String?> uploadedBy = const Value.absent(),
+                Value<String?> folderId = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -12275,6 +12814,7 @@ class $$FileRowsTableTableManager
                 sizeBytes: sizeBytes,
                 status: status,
                 uploadedBy: uploadedBy,
+                folderId: folderId,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -12300,6 +12840,243 @@ typedef $$FileRowsTableProcessedTableManager =
       $$FileRowsTableUpdateCompanionBuilder,
       (FileRecord, BaseReferences<_$AwDatabase, $FileRowsTable, FileRecord>),
       FileRecord,
+      PrefetchHooks Function()
+    >;
+typedef $$FoldersTableCreateCompanionBuilder =
+    FoldersCompanion Function({
+      required String id,
+      required String workspaceId,
+      Value<String?> parentId,
+      required String name,
+      Value<int> revision,
+      Value<DateTime?> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$FoldersTableUpdateCompanionBuilder =
+    FoldersCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String?> parentId,
+      Value<String> name,
+      Value<int> revision,
+      Value<DateTime?> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$FoldersTableFilterComposer
+    extends Composer<_$AwDatabase, $FoldersTable> {
+  $$FoldersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parentId => $composableBuilder(
+    column: $table.parentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FoldersTableOrderingComposer
+    extends Composer<_$AwDatabase, $FoldersTable> {
+  $$FoldersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parentId => $composableBuilder(
+    column: $table.parentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FoldersTableAnnotationComposer
+    extends Composer<_$AwDatabase, $FoldersTable> {
+  $$FoldersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get parentId =>
+      $composableBuilder(column: $table.parentId, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$FoldersTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $FoldersTable,
+          FolderRecord,
+          $$FoldersTableFilterComposer,
+          $$FoldersTableOrderingComposer,
+          $$FoldersTableAnnotationComposer,
+          $$FoldersTableCreateCompanionBuilder,
+          $$FoldersTableUpdateCompanionBuilder,
+          (
+            FolderRecord,
+            BaseReferences<_$AwDatabase, $FoldersTable, FolderRecord>,
+          ),
+          FolderRecord,
+          PrefetchHooks Function()
+        > {
+  $$FoldersTableTableManager(_$AwDatabase db, $FoldersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FoldersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FoldersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FoldersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String?> parentId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FoldersCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                parentId: parentId,
+                name: name,
+                revision: revision,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                Value<String?> parentId = const Value.absent(),
+                required String name,
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FoldersCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                parentId: parentId,
+                name: name,
+                revision: revision,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FoldersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $FoldersTable,
+      FolderRecord,
+      $$FoldersTableFilterComposer,
+      $$FoldersTableOrderingComposer,
+      $$FoldersTableAnnotationComposer,
+      $$FoldersTableCreateCompanionBuilder,
+      $$FoldersTableUpdateCompanionBuilder,
+      (FolderRecord, BaseReferences<_$AwDatabase, $FoldersTable, FolderRecord>),
+      FolderRecord,
       PrefetchHooks Function()
     >;
 typedef $$PendingMutationsTableCreateCompanionBuilder =
@@ -12818,6 +13595,8 @@ class $AwDatabaseManager {
       $$AppleEventLinksTableTableManager(_db, _db.appleEventLinks);
   $$FileRowsTableTableManager get fileRows =>
       $$FileRowsTableTableManager(_db, _db.fileRows);
+  $$FoldersTableTableManager get folders =>
+      $$FoldersTableTableManager(_db, _db.folders);
   $$PendingMutationsTableTableManager get pendingMutations =>
       $$PendingMutationsTableTableManager(_db, _db.pendingMutations);
   $$SyncStatesTableTableManager get syncStates =>

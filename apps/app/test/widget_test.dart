@@ -32,7 +32,6 @@ Future<ProviderScope> signedInApp() async {
   );
 }
 
-
 /// Wide two-pane surface: these shell tests assert CONTENT presence, not
 /// phone sliver economics (the narrow Home keeps search+calendar in the
 /// scroll — OPH-167/168).

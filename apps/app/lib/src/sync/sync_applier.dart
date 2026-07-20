@@ -70,6 +70,8 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.externalEvents)..where((e) => e.id.equals(id))).go();
     case 'file':
       await (db.delete(db.fileRows)..where((f) => f.id.equals(id))).go();
+    case 'folder':
+      await (db.delete(db.folders)..where((f) => f.id.equals(id))).go();
   }
 }
 
@@ -111,6 +113,8 @@ Future<void> _applySnapshot(
           .insertOnConflictUpdate(externalEventCompanion(data));
     case 'file':
       await db.into(db.fileRows).insertOnConflictUpdate(fileCompanion(data));
+    case 'folder':
+      await db.into(db.folders).insertOnConflictUpdate(folderCompanion(data));
   }
 }
 
@@ -224,6 +228,7 @@ FileRowsCompanion fileCompanion(Map<String, dynamic> d) =>
       sizeBytes: (d['sizeBytes'] as num?)?.toInt() ?? 0,
       status: (d['status'] as String?) ?? 'ready',
       uploadedBy: Value(d['uploadedBy'] as String?),
+      folderId: Value(d['folderId'] as String?),
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),
@@ -312,6 +317,18 @@ RemindersCompanion reminderCompanion(Map<String, dynamic> d) =>
       snoozedUntil: _dateValue(d['snoozedUntil']),
       deliveredAt: _dateValue(d['deliveredAt']),
       acknowledgedAt: _dateValue(d['acknowledgedAt']),
+      revision: Value((d['revision'] as int?) ?? 0),
+      createdAt: _dateValue(d['createdAt']),
+      updatedAt: _dateValue(d['updatedAt']),
+    );
+
+/// OPH-170 — folders (ADR-0014): push-pull metadata, replicated like tags.
+FoldersCompanion folderCompanion(Map<String, dynamic> d) =>
+    FoldersCompanion.insert(
+      id: d['id'] as String,
+      workspaceId: d['workspaceId'] as String,
+      parentId: Value(d['parentId'] as String?),
+      name: d['name'] as String,
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),

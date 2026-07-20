@@ -37,6 +37,13 @@ enum AppSection {
     path: '/notes',
     icon: Icons.description_outlined,
     selectedIcon: Icons.description,
+  ),
+  files(
+    titleKey: 'nav.files',
+    descriptionKey: 'nav.filesDesc',
+    path: '/files',
+    icon: Icons.folder_copy_outlined,
+    selectedIcon: Icons.folder_copy,
   );
 
   const AppSection({

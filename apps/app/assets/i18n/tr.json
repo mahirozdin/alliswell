@@ -29,7 +29,9 @@
     "projects": "Projeler",
     "projectsDesc": "Renkli projeler; görevler, notlar ve dokümanlar.",
     "notes": "Notlar",
-    "notesDesc": "Görevlere ve projelere bağlanabilen zengin notlar."
+    "notesDesc": "Görevlere ve projelere bağlanabilen zengin notlar.",
+    "files": "Dosyalar",
+    "filesDesc": "Alanındaki her dosya — klasörler, yüklemeler, ekler"
   },
   "auth": {
     "signInTitle": "Alanına giriş yap",
@@ -350,7 +352,9 @@
     "notesTitle": "Notlar",
     "notesBody": "Sabitleyebileceğin, arşivleyebileceğin ve görev/projelere bağlayabileceğin zengin notlar.",
     "doneTitle": "Hazırsın",
-    "doneBody": "Bu turu Ayarlar → Uygulama turu'ndan istediğin an tekrar aç."
+    "doneBody": "Bu turu Ayarlar → Uygulama turu'ndan istediğin an tekrar aç.",
+    "filesTitle": "Dosyalar",
+    "filesBody": "Alanının tüm dosyaları: kişisel klasörler artı projelere, görevlere ve notlara ekli her şey."
   },
   "error": {
     "unknown": "Bir şeyler ters gitti. Lütfen tekrar dene.",
@@ -438,6 +442,31 @@
     "insertVideo": "Video ekle",
     "attachedNotEmbedded": "Ek olarak yüklendi — bu dosya türü satır içinde gösterilmez",
     "mediaUnavailable": "Ek şu an açılamıyor",
-    "usage": "{count} dosya · {size} kullanımda"
+    "usage": "{count} dosya · {size} kullanımda",
+    "notConfiguredTitle": "Dosya deposu kapalı",
+    "sourceProject": "Proje · {name}",
+    "sourceTask": "Görev · {name}",
+    "sourceNote": "Not · {name}"
+  },
+  "files": {
+    "myFolders": "Klasörlerim",
+    "sources": "Kaynaklar",
+    "newFolder": "Yeni klasör",
+    "folderName": "Ad",
+    "renameFolder": "Klasörü yeniden adlandır",
+    "moveFolder": "Klasörü taşı",
+    "folderActions": "Klasör eylemleri",
+    "folderSubtitle": "{count} öğe",
+    "moveTo": "Şuraya taşı…",
+    "rootFolder": "Dosyalar (üst düzey)",
+    "deleteFolderTitle": "“{name}” silinsin mi?",
+    "deleteFolderBody": "{folders} klasör ve {files} dosya silinecek. Bu geri alınamaz.",
+    "deleteFolderEmpty": "Klasör boş. Bu geri alınamaz.",
+    "emptyTitle": "Henüz bir şey yok",
+    "emptyBody": "Klasör oluştur ya da dosya yükle — bu seviye boş.",
+    "noSourcesTitle": "Henüz ek yok",
+    "noSourcesBody": "Projelere, görevlere ve notlara eklenen dosyalar burada görünür.",
+    "goToSource": "Kaynağa git",
+    "couldNotMove": "Dosya taşınamadı."
   }
 }
