@@ -13,6 +13,16 @@ import '../projects/fake_api.dart';
 import 'test_support.dart';
 import '../../support/sync_overrides.dart';
 
+
+/// Wide two-pane surface: these shell tests assert CONTENT presence, not
+/// phone sliver economics (the narrow Home keeps search+calendar in the
+/// scroll — OPH-167/168).
+Future<void> wideSurface(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(1280, 900);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   // Every platform boundary is faked: auth HTTP via the handler, the
   // authenticated API via an empty FakeApi (the shell fetches /me + tasks
@@ -37,6 +47,7 @@ void main() {
   }
 
   testWidgets('boots to the login screen when signed out', (tester) async {
+    await wideSurface(tester);
     await tester.pumpWidget(
       appWith((options, body) async => fail('no request expected')),
     );
@@ -47,6 +58,7 @@ void main() {
   });
 
   testWidgets('logging in navigates into the app shell', (tester) async {
+    await wideSurface(tester);
     await tester.pumpWidget(
       appWith((options, body) async {
         expect(options.path, '/api/v1/auth/login');
@@ -71,6 +83,7 @@ void main() {
   });
 
   testWidgets('wrong credentials show a friendly inline error', (tester) async {
+    await wideSurface(tester);
     await tester.pumpWidget(
       appWith(
         (options, body) async => jsonBody(401, {
@@ -102,6 +115,7 @@ void main() {
   testWidgets('register flow: validation, then account creation', (
     tester,
   ) async {
+    await wideSurface(tester);
     await tester.pumpWidget(
       appWith((options, body) async {
         expect(options.path, '/api/v1/auth/register');

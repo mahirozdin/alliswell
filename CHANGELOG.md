@@ -35,6 +35,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Home gains a Board view** (OPH-168): a List | Board toggle at the top of
+  Home. The board lays your tasks out as status columns — including
+  completed/cancelled columns the chronological list deliberately hides — with
+  drag-and-drop between columns (long-press to lift on phones, edge-hover
+  advances the column pager) AND an always-visible "change status" button on
+  every card, so moving never requires a drag. Hide and reorder columns from
+  "Edit view"; every move is undoable from the snackbar. Your view choice and
+  column setup persist on the device.
+
 - **Search that speaks Turkish** (OPH-167, ADR-0013): every content screen
   can now search — Home covers tasks, captures AND your connected calendar;
   Notes searches titles and full note bodies; Projects filters as you type.

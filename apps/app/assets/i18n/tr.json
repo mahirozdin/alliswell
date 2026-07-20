@@ -105,6 +105,18 @@
     "searchEmptyTitle": "Sonuç yok",
     "searchEmptyBody": "“{query}” ile eşleşen bir şey yok."
   },
+  "board": {
+    "viewList": "Liste",
+    "viewBoard": "Pano",
+    "editColumns": "Görünümü düzenle",
+    "editColumnsHint": "Durum sütunlarını aç/kapat ve sırala. Gizli durumlara kart taşırken yine ulaşılır.",
+    "move": "Durum değiştir",
+    "moveTitle": "Durum değiştir",
+    "moved": "“{title}” → {status}",
+    "undo": "Geri al",
+    "dropHere": "Buraya bırak",
+    "addTask": "Görev ekle"
+  },
   "task": {
     "status": {
       "inbox": "Fikir",

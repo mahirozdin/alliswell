@@ -106,6 +106,18 @@
     "searchEmptyTitle": "No results",
     "searchEmptyBody": "Nothing matches “{query}”."
   },
+  "board": {
+    "viewList": "List",
+    "viewBoard": "Board",
+    "editColumns": "Edit view",
+    "editColumnsHint": "Toggle and reorder the status columns. Hidden statuses stay reachable when moving a card.",
+    "move": "Change status",
+    "moveTitle": "Change status",
+    "moved": "“{title}” → {status}",
+    "undo": "Undo",
+    "dropHere": "Drop here",
+    "addTask": "Add task"
+  },
   "task": {
     "status": {
       "inbox": "Inbox",

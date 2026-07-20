@@ -32,8 +32,19 @@ Future<ProviderScope> signedInApp() async {
   );
 }
 
+
+/// Wide two-pane surface: these shell tests assert CONTENT presence, not
+/// phone sliver economics (the narrow Home keeps search+calendar in the
+/// scroll — OPH-167/168).
+Future<void> wideSurface(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(1280, 900);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
 void main() {
   testWidgets('app shell renders Home for a restored session', (tester) async {
+    await wideSurface(tester);
     await tester.pumpWidget(await signedInApp());
     await tester.pumpAndSettle();
 
@@ -44,6 +55,7 @@ void main() {
   });
 
   testWidgets('navigating to another section swaps the screen', (tester) async {
+    await wideSurface(tester);
     await tester.pumpWidget(await signedInApp());
     await tester.pumpAndSettle();
 

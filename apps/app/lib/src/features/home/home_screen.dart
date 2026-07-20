@@ -20,6 +20,7 @@ import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
 import '../tasks/ui/task_tile.dart';
 import '../workspaces/workspaces.dart';
+import 'home_board.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
 
@@ -65,6 +66,9 @@ class HomeScreen extends ConsumerWidget {
     // user's calendar in one ranked list. Never mutates the list state it
     // covers (S5). Watched at build top, NOT inside the async when-branch.
     final searching = ref.watch(homeSearchQueryProvider).trim().isNotEmpty;
+    // OPH-168 (K1): Liste | Pano — the board is a VIEW of the same task set,
+    // device-local and persistent. Search belongs to the list view.
+    final isBoard = ref.watch(homeViewProvider) == 'board';
     final searchField = Padding(
       padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x1, AwSpace.x4, 0),
       child: AwSearchField(
@@ -118,154 +122,199 @@ class HomeScreen extends ConsumerWidget {
               // Honest alarm-degradation banner (OPH-143): only shown when the
               // OS can't ring urgent alarms reliably; nothing otherwise.
               const AlarmDegradationBanner(),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 720;
-                    if (isWide) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              children: [
-                                quickAdd,
-                                searchField,
-                                Expanded(
-                                  child: searching
-                                      ? const _HomeSearchResults()
-                                      : _GroupedTaskList(groups: groups),
-                                ),
-                              ],
-                            ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AwSpace.x4,
+                  AwSpace.x1,
+                  AwSpace.x4,
+                  0,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SegmentedButton<String>(
+                        key: const Key('home-view-toggle'),
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(
+                            value: 'list',
+                            icon: const Icon(Icons.view_agenda_outlined),
+                            label: Text('board.viewList'.tr()),
                           ),
-                          SizedBox(
-                            width: 356,
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(
-                                AwSpace.x1,
-                                AwSpace.x2,
-                                AwSpace.x4,
-                                AwSpace.x4,
+                          ButtonSegment(
+                            value: 'board',
+                            icon: const Icon(Icons.view_kanban_outlined),
+                            label: Text('board.viewBoard'.tr()),
+                          ),
+                        ],
+                        selected: {isBoard ? 'board' : 'list'},
+                        onSelectionChanged: (selection) => ref
+                            .read(homeViewProvider.notifier)
+                            .set(selection.first),
+                      ),
+                    ),
+                    if (isBoard)
+                      IconButton(
+                        key: const Key('board-edit-columns'),
+                        tooltip: 'board.editColumns'.tr(),
+                        icon: const Icon(Icons.tune),
+                        onPressed: () => showBoardColumnsSheet(context, ref),
+                      ),
+                  ],
+                ),
+              ),
+              if (isBoard)
+                const Expanded(child: HomeBoard())
+              else
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth >= 720;
+                      if (isWide) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  quickAdd,
+                                  searchField,
+                                  Expanded(
+                                    child: searching
+                                        ? const _HomeSearchResults()
+                                        : _GroupedTaskList(groups: groups),
+                                  ),
+                                ],
                               ),
-                              child: Card(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(AwSpace.x3),
-                                  child: calendar,
+                            ),
+                            SizedBox(
+                              width: 356,
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AwSpace.x1,
+                                  AwSpace.x2,
+                                  AwSpace.x4,
+                                  AwSpace.x4,
+                                ),
+                                child: Card(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(AwSpace.x3),
+                                    child: calendar,
+                                  ),
                                 ),
                               ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      final calendarVisible = ref.watch(
+                        homeCalendarVisibleProvider,
+                      );
+                      // The calendar is the FIRST item of one scroll view, so it slides
+                      // off-screen as the list scrolls (OPH-103) instead of staying
+                      // pinned and eating half the screen. Quick add stays fixed above.
+                      // OPH-167: the search field rides the SAME scroll (phones
+                      // must not lose a fixed row of space — the OPH-103
+                      // philosophy); its sliver position is identical in search
+                      // mode, so the field never remounts mid-typing.
+                      return Column(
+                        children: [
+                          quickAdd,
+                          Expanded(
+                            child: CustomScrollView(
+                              key: const Key('home-scroll'),
+                              slivers: [
+                                SliverToBoxAdapter(child: searchField),
+                                if (searching)
+                                  const SliverFillRemaining(
+                                    child: _HomeSearchResults(),
+                                  ),
+                                if (!searching && calendarVisible)
+                                  SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AwSpace.x4,
+                                      ),
+                                      child: Card(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(
+                                            AwSpace.x2,
+                                          ),
+                                          child: calendar,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                if (!searching)
+                                  SliverToBoxAdapter(
+                                    child: Align(
+                                      alignment: Alignment.centerRight,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: AwSpace.x2,
+                                        ),
+                                        child: TextButton.icon(
+                                          key: const Key('toggle-calendar'),
+                                          onPressed: () {
+                                            // Hiding the calendar clears the
+                                            // selection: a filter you can no
+                                            // longer see must not keep dimming
+                                            // Home (feedback round 6).
+                                            if (calendarVisible) {
+                                              ref
+                                                  .read(
+                                                    selectedDayProvider
+                                                        .notifier,
+                                                  )
+                                                  .select(null);
+                                            }
+                                            ref
+                                                .read(
+                                                  homeCalendarVisibleProvider
+                                                      .notifier,
+                                                )
+                                                .toggle();
+                                          },
+                                          icon: Icon(
+                                            calendarVisible
+                                                ? Icons.expand_less
+                                                : Icons.expand_more,
+                                          ),
+                                          label: Text(
+                                            calendarVisible
+                                                ? 'home.hideCalendar'.tr()
+                                                : 'home.showCalendar'.tr(),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                if (!searching && groups.isEmpty)
+                                  const SliverFillRemaining(
+                                    hasScrollBody: false,
+                                    child: _HomeEmpty(),
+                                  ),
+                                if (!searching && groups.isNotEmpty)
+                                  SliverPadding(
+                                    padding: awListPadding(
+                                      context,
+                                      extraBottom: 72,
+                                    ),
+                                    sliver: SliverList(
+                                      delegate: SliverChildListDelegate(
+                                        buildHomeGroupRows(context, groups),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
                       );
-                    }
-
-                    final calendarVisible = ref.watch(
-                      homeCalendarVisibleProvider,
-                    );
-                    // The calendar is the FIRST item of one scroll view, so it slides
-                    // off-screen as the list scrolls (OPH-103) instead of staying
-                    // pinned and eating half the screen. Quick add stays fixed above.
-                    // OPH-167: the search field rides the SAME scroll (phones
-                    // must not lose a fixed row of space — the OPH-103
-                    // philosophy); its sliver position is identical in search
-                    // mode, so the field never remounts mid-typing.
-                    return Column(
-                      children: [
-                        quickAdd,
-                        Expanded(
-                          child: CustomScrollView(
-                            key: const Key('home-scroll'),
-                            slivers: [
-                              SliverToBoxAdapter(child: searchField),
-                              if (searching)
-                                const SliverFillRemaining(
-                                  child: _HomeSearchResults(),
-                                ),
-                              if (!searching && calendarVisible)
-                                SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: AwSpace.x4,
-                                    ),
-                                    child: Card(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(
-                                          AwSpace.x2,
-                                        ),
-                                        child: calendar,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              if (!searching)
-                                SliverToBoxAdapter(
-                                  child: Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        right: AwSpace.x2,
-                                      ),
-                                      child: TextButton.icon(
-                                        key: const Key('toggle-calendar'),
-                                        onPressed: () {
-                                          // Hiding the calendar clears the
-                                          // selection: a filter you can no
-                                          // longer see must not keep dimming
-                                          // Home (feedback round 6).
-                                          if (calendarVisible) {
-                                            ref
-                                                .read(
-                                                  selectedDayProvider.notifier,
-                                                )
-                                                .select(null);
-                                          }
-                                          ref
-                                              .read(
-                                                homeCalendarVisibleProvider
-                                                    .notifier,
-                                              )
-                                              .toggle();
-                                        },
-                                        icon: Icon(
-                                          calendarVisible
-                                              ? Icons.expand_less
-                                              : Icons.expand_more,
-                                        ),
-                                        label: Text(
-                                          calendarVisible
-                                              ? 'home.hideCalendar'.tr()
-                                              : 'home.showCalendar'.tr(),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              if (!searching && groups.isEmpty)
-                                const SliverFillRemaining(
-                                  hasScrollBody: false,
-                                  child: _HomeEmpty(),
-                                ),
-                              if (!searching && groups.isNotEmpty)
-                                SliverPadding(
-                                  padding: awListPadding(
-                                    context,
-                                    extraBottom: 72,
-                                  ),
-                                  sliver: SliverList(
-                                    delegate: SliverChildListDelegate(
-                                      buildHomeGroupRows(context, groups),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                    },
+                  ),
                 ),
-              ),
             ],
           );
         },

@@ -23,6 +23,7 @@ import 'task_visuals.dart';
 Future<void> showTaskCreateSheet(
   BuildContext context, {
   DateTime? initialDue,
+  String? initialStatus,
   Task? task,
 }) {
   return showModalBottomSheet<void>(
@@ -30,15 +31,28 @@ Future<void> showTaskCreateSheet(
     isScrollControlled: true,
     useSafeArea: true,
     constraints: const BoxConstraints(maxWidth: 560),
-    builder: (_) => TaskCreateSheet(initialDue: initialDue, task: task),
+    builder: (_) => TaskCreateSheet(
+      initialDue: initialDue,
+      initialStatus: initialStatus,
+      task: task,
+    ),
   );
 }
 
 class TaskCreateSheet extends ConsumerStatefulWidget {
-  const TaskCreateSheet({super.key, this.initialDue, this.task});
+  const TaskCreateSheet({
+    super.key,
+    this.initialDue,
+    this.initialStatus,
+    this.task,
+  });
 
   /// Prefilled due date (e.g. the day selected on the Home calendar).
   final DateTime? initialDue;
+
+  /// Status the new task is born with (the board's empty-column "+ Add task",
+  /// OPH-168). Create mode only.
+  final String? initialStatus;
 
   /// When set, the sheet EDITS this task ("Plan task" / "Save") instead of
   /// creating a new one — the Inbox triage flow (OPH-107).
@@ -157,6 +171,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
         final workspaceId = workspaces.first.id;
         final taskId = await ref.read(taskStoreProvider).create(workspaceId, {
           'title': _title.text.trim(),
+          'status': ?widget.initialStatus,
           'description': ?_descriptionOrNull,
           'projectId': ?_projectId,
           if (_priority != 'none') 'priority': _priority,

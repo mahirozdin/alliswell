@@ -30,6 +30,11 @@ class TaskStore {
     (t) => t.workspaceId.equals(workspaceId) & t.status.isIn(kPlanningStatuses),
   );
 
+  /// Every status — the Board's source (OPH-168): its columns include
+  /// terminal statuses the planning lists deliberately hide.
+  Stream<List<Task>> watchAll(String workspaceId) =>
+      _watchList(workspaceId, (t) => t.workspaceId.equals(workspaceId));
+
   Stream<List<Task>> watchInbox(String workspaceId) => _watchList(
     workspaceId,
     (t) => t.workspaceId.equals(workspaceId) & t.status.equals('inbox'),

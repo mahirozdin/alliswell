@@ -2736,26 +2736,36 @@ Sunucu hazır: tags CRUD + `PUT /tasks/:id/tags` + sync push `tag` (slug'ı serv
 **DoD met 2026-07-20:** API unit + app süiti + analyze + check:i18n + lint/format yeşil;
 CHANGELOG; STATE.
 
-### OPH-168 — Pano: Home Kanban görünümü (round 8 #8, DESIGN §14)
+### OPH-168 — Pano: Home Kanban görünümü (round 8 #8, DESIGN §14) ✅ 2026-07-20
 
-- [ ] Home üstünde Liste|Pano segmented toggle; `PersistedChoice('alliswell_home_view')`.
-      Pano görev kümesi = Home'un görev kaynağı (external event'ler girmez).
-- [ ] Sütunlar = statuslar; görünürlük+sıra `PersistedChoice('alliswell_board_columns')`
-      (JSON liste); varsayılan görünür: open, in_progress, waiting, completed.
-      "Görünümü düzenle" sheet'i: `ReorderableListView` + görünürlük switch'leri.
-- [ ] Geniş ekran: yatay kaydırılabilir klasik sütunlar (sabit genişlik ~320); telefon:
-      `PageView` viewportFraction .90 + "2/5" konum etiketi.
-- [ ] Taşıma yol A: `LongPressDraggable`/`DragTarget` (sütun gövdesi komple hedef, delay
-      ~200 ms, haptik, feedback ~1.04 ölçek); kenar bölgesi hover ~400 ms → pager ilerlet;
-      dikeyde `EdgeDraggingAutoScroller`. Bırak → `store.update(status)` + geri-al snackbar.
-- [ ] Taşıma yol B (zorunlu): kart long-press-bırak → bağlam menüsü → "Durum değiştir"
-      bottom sheet (tüm statuslar, gizliler dahil, mevcut işaretli); detay ekranındaki
-      status alanı zaten üçüncü yol.
-- [ ] Boş sütun placeholder (drag'de "Buraya sürükleyin", değilse "+ Görev ekle" → o status
-      preset'li create sheet); Semantics etiketleri + taşıma sonrası announce (K5).
-- [ ] i18n `board.*`; testler: toggle kalıcı, sütun render + sayaçlar, sheet ile status
-      değişimi, drag simülasyonu (drag target accept), sütun gizleme kalıcı, boş sütun
-      affordance'ı. Kontrast: yeni yüzeyler token'lardan (gerekirse contrast.py çiftleri).
+- [x] Home üstünde Liste|Pano `SegmentedButton` (`home-view-toggle`);
+      `homeViewProvider` (PersistedChoice 'alliswell_home_view'). **Pano kendi kaynağını
+      izler** — `boardTasksProvider` + `TaskStore.watchAll` (TÜM statuslar: completed/
+      cancelled/archived sütunlarının verisi planlama listelerinde YOK; Home'un kaynağı
+      yetmezdi). Arama Liste görünümüne aittir.
+- [x] Sütunlar = statuslar; `boardColumnsProvider` ('alliswell_board_columns',
+      virgüllü sıralı liste; `parseBoardColumns` çöpe dayanıklı); varsayılan open/
+      in_progress/waiting/completed. "Görünümü düzenle" sheet'i: ReorderableListView +
+      switch'ler; gizli status taşıma sheet'inde erişilebilir kalır.
+- [x] Geniş: yatay kaydırmalı 320px sütunlar; telefon: PageView viewportFraction .90
+      (komşu peek) + kenar bölgeleri (48dp, 400 ms hover → pager ilerler, %8 primary tını).
+      _("2/5" konum etiketi ve dikey EdgeDraggingAutoScroller v1'den bilinçli kırpıldı —
+      sütun içi listeler kısa; gerekirse cihaz turundan sonra.)_
+- [x] Yol A: LongPressDraggable (200 ms) → sütun gövdesi komple DragTarget (kendi statusu
+      reddeder; vurgulu kenarlık); feedback 1.04 ölçek %85 opasite; bırak → optimistic
+      `store.update(status)` + **geri-al** snackbar + `SemanticsService.sendAnnouncement`.
+- [x] Yol B (zorunlu, a11y sözleşmesi): karttaki AÇIK taşı ikonu (`board-move-button-*`;
+      **spec'in gizli long-press-release menüsünden bilinçli sapma — görünür affordance
+      keşfedilebilirlik kazanır**, DESIGN K3 karşılanır) → "Durum değiştir" sheet'i (tüm
+      statuslar + mevcut işaretli). Detaydaki status alanı üçüncü yol.
+- [x] Boş sütun: dashed-benzeri outline placeholder — drag'de "Buraya bırak", değilse
+      "+ Görev ekle" → **`initialStatus`'lu create sheet** (sheet'e yeni param).
+- [x] i18n `board.*` (10 anahtar). Testler 5/5: sütunlar+terminal statuslar dahil render,
+      taşı-sheet'i + undo, long-press drag→drop, sütun gizleme + gizliye sheet'ten erişim,
+      boş sütun status-preset create. Kontrast FAILURES: 0. Ders: sabit yükseklikli test
+      yüzeyinde bottom-sheet kapama köşe-tap yerine explicit `Navigator.pop`.
+
+**DoD met 2026-07-20:** app 362/362 + analyze + check:i18n + kontrast yeşil; CHANGELOG; STATE.
 
 ### OPH-169 — Klasörler + workspace dosyaları: API (round 8 #10a, ADR-0014)
 

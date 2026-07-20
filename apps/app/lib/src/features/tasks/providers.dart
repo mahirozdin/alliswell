@@ -29,6 +29,18 @@ final openTasksProvider = StreamProvider<List<Task>>((ref) async* {
   yield* ref.watch(taskStoreProvider).watchOpen(workspaces.first.id);
 });
 
+/// EVERY status — the Board's source (OPH-168): its columns can include the
+/// terminal statuses (completed/cancelled/archived) planning lists hide.
+final boardTasksProvider = StreamProvider<List<Task>>((ref) async* {
+  ref.watch(syncEngineProvider);
+  final workspaces = await ref.watch(workspacesProvider.future);
+  if (workspaces.isEmpty) {
+    yield const [];
+    return;
+  }
+  yield* ref.watch(taskStoreProvider).watchAll(workspaces.first.id);
+});
+
 /// The calendar day selected on Home/Calendar (shared so the selection is
 /// consistent across both tabs). Null = no selection.
 class SelectedDayController extends Notifier<DateTime?> {
