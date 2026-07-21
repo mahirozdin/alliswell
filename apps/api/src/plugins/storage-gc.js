@@ -21,11 +21,25 @@ const SWEEP_BATCH = 100;
 
 export default fp(
   async function storageGcPlugin(app) {
+    // Storage disabled (no STORAGE_S3_*): there is nothing to GC — and, crucially,
+    // this app must NOT start a `storage-delete` BullMQ worker. Test runs share one
+    // Redis, so a worker belonging to a storage-OFF app would otherwise pull a real
+    // deletion job off the shared queue and quietly no-op it (the handler bailed on
+    // `!enabled`), orphaning the object and flaking whichever storage-ON test
+    // enqueued it. A no-op decoration keeps callers (cascade deletes) working.
+    if (!app.storage.enabled) {
+      app.decorate('storageGc', {
+        enqueueRemove: () => {},
+        idle: async () => {},
+        sweepStaleUploads: async () => 0,
+      });
+      return;
+    }
+
     const runner = createJobRunner(app, {
       name: 'storage-delete',
       jobKey: (data) => data.storageKey,
       handler: async ({ storageKey }) => {
-        if (!app.storage.enabled) return; // feature turned off since enqueue
         await app.storage.remove(storageKey);
       },
     });
