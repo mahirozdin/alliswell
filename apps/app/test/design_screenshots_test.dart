@@ -126,24 +126,26 @@ FakeApi _seededApi() {
     DateTime(now.year, now.month, now.day, h, m).add(Duration(days: addDays)),
   );
 
-  final launch = api.seedProject(
-    name: 'Launch v1',
-    colorRgb: '#8E44EC',
-    isFavorite: true,
-  )['id'] as String;
-  final reno = api.seedProject(
-    name: 'Home renovation',
-    colorRgb: '#0C7D6C',
-  )['id'] as String;
-  final personal = api.seedProject(
-    name: 'Personal',
-    colorRgb: '#2563EB',
-    isFavorite: true,
-  )['id'] as String;
-  final reading = api.seedProject(
-    name: 'Reading list',
-    colorRgb: '#E8500A',
-  )['id'] as String;
+  final launch =
+      api.seedProject(
+            name: 'Launch v1',
+            colorRgb: '#8E44EC',
+            isFavorite: true,
+          )['id']
+          as String;
+  final reno =
+      api.seedProject(name: 'Home renovation', colorRgb: '#0C7D6C')['id']
+          as String;
+  final personal =
+      api.seedProject(
+            name: 'Personal',
+            colorRgb: '#2563EB',
+            isFavorite: true,
+          )['id']
+          as String;
+  final reading =
+      api.seedProject(name: 'Reading list', colorRgb: '#E8500A')['id']
+          as String;
 
   final design = api.seedTag(name: 'design')['id'] as String;
   final health = api.seedTag(name: 'health')['id'] as String;
