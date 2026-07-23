@@ -8,6 +8,7 @@ import '../features/workspaces/workspaces.dart';
 import '../router.dart';
 import '../sync/providers.dart';
 import 'actions.dart';
+import 'alarmkit.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
 import 'reminder_store.dart';
@@ -17,6 +18,14 @@ import 'scheduler.dart';
 /// touches platform channels.
 final notificationsGatewayProvider = Provider<NotificationsGateway>(
   (_) => LocalNotificationsGateway(),
+);
+
+/// iOS 26+ AlarmKit bridge (OPH-141, the URGENT lane that rings through the
+/// mute switch). Tests override with a fake; the default talks to
+/// `MethodChannel('alliswell/alarmkit')` and reports unsupported everywhere
+/// else, so the scheduler keeps urgent alarms on notifications.
+final alarmKitHostProvider = Provider<AlarmKitHost>(
+  (_) => MethodChannelAlarmKitHost(),
 );
 
 /// OPH-064: lock-screen privacy — generic notification content instead of
@@ -59,24 +68,29 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
   final workspace = ref.watch(currentWorkspaceProvider).value;
   if (workspace == null) return null;
   final gateway = ref.watch(notificationsGatewayProvider);
+  final alarmKit = ref.watch(alarmKitHostProvider);
 
   final scheduler = NotificationScheduler(
     gateway: gateway,
+    alarmKit: alarmKit,
     alarms: ref.watch(reminderStoreProvider).watchAlarms(workspace.id),
     privacyMode: ref.watch(notificationPrivacyProvider),
   );
   unawaited(scheduler.start());
   ref.onDispose(scheduler.dispose);
 
-  final responses = gateway.events.listen(
-    (event) => handleNotificationEvent(
-      event,
-      tasks: ref.read(taskStoreProvider),
-      reminders: ref.read(reminderStoreProvider),
-      navigate: (location) => ref.read(routerProvider).push(location),
-    ),
+  // Taps/actions from EITHER lane route through the one handler — an AlarmKit
+  // "Onayla"/"Ertele" is the same acknowledge/snooze as a notification button.
+  void onEvent(NotificationEvent event) => handleNotificationEvent(
+    event,
+    tasks: ref.read(taskStoreProvider),
+    reminders: ref.read(reminderStoreProvider),
+    navigate: (location) => ref.read(routerProvider).push(location),
   );
+  final responses = gateway.events.listen(onEvent);
   ref.onDispose(responses.cancel);
+  final alarmKitResponses = alarmKit.events.listen(onEvent);
+  ref.onDispose(alarmKitResponses.cancel);
 
   return scheduler;
 });

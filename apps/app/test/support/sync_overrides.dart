@@ -7,6 +7,7 @@ import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/features/onboarding/tour.dart';
 import 'package:alliswell/src/features/widgets/widget_host.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
+import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -48,6 +49,9 @@ List<Override> syncTestOverrides({
   notificationsGatewayProvider.overrideWith(
     (ref) => FakeNotificationsGateway(),
   ),
+  // No platform channels: AlarmKit (OPH-141) reports unsupported, so the
+  // scheduler keeps urgent alarms on the (fake) notification lane.
+  alarmKitHostProvider.overrideWithValue(const UnsupportedAlarmKitHost()),
   // The first-run onboarding tour must never auto-start over a widget test
   // (OPH-111) — it would cover the UI the test is driving. Tests that assert
   // the tour opt back in with `tourAutoStart: true`.

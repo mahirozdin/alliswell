@@ -86,4 +86,79 @@ void main() {
     expect(gateway.scheduled, hasLength(schedulesBefore));
     expect(gateway.cancelled, isEmpty);
   });
+
+  group('AlarmKit lane (OPH-141)', () {
+    late FakeAlarmKitHost alarmKit;
+
+    NotificationScheduler build() => NotificationScheduler(
+      gateway: gateway,
+      alarmKit: alarmKit,
+      alarms: alarms.stream,
+      privacyMode: false,
+      clock: () => now,
+    );
+
+    setUp(() => alarmKit = FakeAlarmKitHost());
+
+    test(
+      'urgent → AlarmKit (single alarm), non-urgent → notifications',
+      () async {
+        scheduler = build();
+        await scheduler.start();
+        expect(alarmKit.authorizationRequested, isTrue);
+
+        alarms.add([alarm('R1'), alarm('R2', urgent: true)]);
+        await pump();
+
+        // Non-urgent stays a notification; urgent moves to AlarmKit as ONE alarm,
+        // not the 5-slot notification chain.
+        expect(gateway.scheduled, hasLength(1));
+        expect(alarmKit.scheduled, hasLength(1));
+        expect(alarmKit.scheduled.values.single.taskId, alarm('R2').taskId);
+      },
+    );
+
+    test('acknowledge cancels the AlarmKit alarm via the set-diff', () async {
+      scheduler = build();
+      await scheduler.start();
+      alarms.add([alarm('R2', urgent: true)]);
+      await pump();
+      final akId = alarmKit.scheduled.keys.single;
+
+      // The urgent reminder leaves the active set → desired AlarmKit set is
+      // empty → the alarm is cancelled (same convergence as notifications).
+      alarms.add(const []);
+      await pump();
+      expect(alarmKit.scheduled, isEmpty);
+      expect(alarmKit.cancelled, contains(akId));
+    });
+
+    test(
+      'unsupported AlarmKit → urgent stays the notification chain',
+      () async {
+        alarmKit = FakeAlarmKitHost(supported: false);
+        scheduler = build();
+        await scheduler.start();
+
+        alarms.add([alarm('R2', urgent: true)]);
+        await pump();
+        expect(gateway.scheduled, hasLength(kUrgentChainOffsets.length));
+        expect(alarmKit.scheduled, isEmpty);
+      },
+    );
+
+    test(
+      'declined AlarmKit also falls back — urgent is never dropped',
+      () async {
+        alarmKit = FakeAlarmKitHost(authorized: false);
+        scheduler = build();
+        await scheduler.start();
+
+        alarms.add([alarm('R2', urgent: true)]);
+        await pump();
+        expect(gateway.scheduled, hasLength(kUrgentChainOffsets.length));
+        expect(alarmKit.scheduled, isEmpty);
+      },
+    );
+  });
 }

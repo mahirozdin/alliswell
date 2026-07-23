@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 70;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -14,11 +14,11 @@
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
-		AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */ = {isa = PBXBuildFile; fileRef = AA414C4152414C41524D00F1 /* aw_alarm.caf */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A5CBB5F0300AD02700CE60FF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */; };
 		A5CBB5F2300AD02700CE60FF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */; };
 		A5CBB601300AD02800CE60FF /* AllisWellWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */ = {isa = PBXBuildFile; fileRef = AA414C4152414C41524D00F1 /* aw_alarm.caf */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		D767E2BD26C9FCED51D52539 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
@@ -85,7 +85,6 @@
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		97C146FB1CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA414C4152414C41524D00F1 /* aw_alarm.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; name = aw_alarm.caf; path = Resources/aw_alarm.caf; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1E645310745BD4734368576 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -94,11 +93,12 @@
 		A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		A5CBB60B300AD09400CE60FF /* AllisWellWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AllisWellWidgetExtension.entitlements; sourceTree = "<group>"; };
+		AA414C4152414C41524D00F1 /* aw_alarm.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; name = aw_alarm.caf; path = Resources/aw_alarm.caf; sourceTree = "<group>"; };
 		DD4116869764FEFFC46ADBD1 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		A5CBB606300AD02800CE60FF /* Exceptions for "AllisWellWidget" folder in "AllisWellWidgetExtension" target */ = {
+		A5CBB606300AD02800CE60FF /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -108,18 +108,7 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A5CBB5F3300AD02700CE60FF /* AllisWellWidget */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				A5CBB606300AD02800CE60FF /* Exceptions for "AllisWellWidget" folder in "AllisWellWidgetExtension" target */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = AllisWellWidget;
-			sourceTree = "<group>";
-		};
+		A5CBB5F3300AD02700CE60FF /* AllisWellWidget */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A5CBB606300AD02800CE60FF /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = AllisWellWidget; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -459,9 +448,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

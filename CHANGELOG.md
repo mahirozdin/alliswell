@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **iOS 26 AlarmKit lane for urgent alarms (OPH-141)** — on iOS 26+, urgent
+  task alarms ring through the mute switch and the current Focus via AlarmKit,
+  with no critical-alerts entitlement. A pure lane (`planAlarmKitAlarms`) routes
+  urgent alarms to a fakeable `AlarmKitHost`; the scheduler's set-diff cancels
+  them on acknowledge/complete/snooze exactly like notifications; iOS < 26 and
+  non-urgent reminders stay on time-sensitive delivery, and a declined/absent
+  AlarmKit falls back to the notification chain (never dropped). Dart lane
+  tested (app 377/377); the Swift bridge (`ios/Runner/AlarmKitBridge.swift`)
+  awaits its iOS 26 device build.
+
+### Fixed
+
+- **macOS signing** aligned to the publishing team — iOS and macOS now share
+  `WWRZ5CG3DW`, unblocking the macOS build and the macOS widget (OPH-134).
+
 ### Planned (docs)
 
 - **Feedback round 8 → Epic 15 (Phase 9, v0.4.0) designed and documented**

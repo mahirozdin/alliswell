@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../i18n/i18n.dart';
+import 'alarmkit.dart';
 import 'gateway.dart';
 
 /// What the planner needs to know about one alarm — a reminder row joined
@@ -54,11 +55,15 @@ List<PlannedNotification> planNotifications({
   required DateTime now,
   required bool privacyMode,
   int maxPending = 40,
+  bool routeUrgentToAlarmKit = false,
 }) {
   final planned = <PlannedNotification>[];
 
   for (final alarm in alarms) {
     if (!_activeStatuses.contains(alarm.status)) continue;
+    // On iOS 26+ the URGENT lane is AlarmKit ([planAlarmKitAlarms]); leaving it
+    // on notifications too would ring twice. Non-urgent reminders stay here.
+    if (routeUrgentToAlarmKit && alarm.urgent) continue;
     final base =
         (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
         alarm.remindAt;
@@ -103,6 +108,54 @@ List<PlannedNotification> planNotifications({
         ),
       );
     }
+  }
+
+  planned.sort((a, b) => a.fireAt.compareTo(b.fireAt));
+  return planned.length > maxPending ? planned.sublist(0, maxPending) : planned;
+}
+
+/// Pure AlarmKit lane (OPH-141, NOTIFICATIONS.md §2b): the URGENT alarms, one
+/// AlarmKit alarm each. AlarmKit rings-until-answered natively, so there is NO
+/// re-alert chain here — a single entry per reminder replaces the notification
+/// lane's 5 slots. Ids are content hashes in their OWN namespace (`|alarmkit|`)
+/// so the scheduler's set-diff cancels them on acknowledge, exactly like
+/// notifications. Non-urgent reminders never enter this lane. Windowed and
+/// past-skipped on the same rules as [planNotifications].
+List<AlarmKitAlarm> planAlarmKitAlarms({
+  required List<AlarmInput> alarms,
+  required DateTime now,
+  required bool privacyMode,
+  int maxPending = 40,
+}) {
+  final planned = <AlarmKitAlarm>[];
+
+  for (final alarm in alarms) {
+    if (!_activeStatuses.contains(alarm.status)) continue;
+    if (!alarm.urgent) continue; // AlarmKit is the URGENT surface only.
+
+    final base =
+        (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
+        alarm.remindAt;
+    final fireAt = base.toUtc();
+    if (!fireAt.isAfter(now)) continue;
+
+    final title = privacyMode ? 'AllisWell' : alarm.taskTitle;
+    final body = privacyMode
+        ? 'notif.privateBody'.tr()
+        : 'notif.urgentFirst'.tr();
+
+    planned.add(
+      AlarmKitAlarm(
+        id: notificationIdFor(
+          '${alarm.reminderId}|alarmkit|${fireAt.millisecondsSinceEpoch}|$title',
+        ),
+        title: title,
+        body: body,
+        fireAt: fireAt,
+        taskId: alarm.taskId,
+        reminderId: alarm.reminderId,
+      ),
+    );
   }
 
   planned.sort((a, b) => a.fireAt.compareTo(b.fireAt));

@@ -2054,10 +2054,11 @@ configures-once/saves-JSON/updates, and re-updates on a second publish. **Suite
       [.systemMedium, .systemLarge, .systemExtraLarge]`, `.containerBackground` behind
       `if #available(iOS 17)`, `.widgetURL(alliswell://open)`.
 - [x] Extension `Info.plist` + `AllisWellWidget.entitlements` (App Group) written.
-- [ ] **USER (Xcode, once):** create the Widget Extension target, add these files, add the App
-      Groups capability to Runner + extension, set min iOS 16, build. Step-by-step:
+- [x] **USER (Xcode, once) — DONE 2026-07-24:** Widget Extension target created + files added + App
+      Groups on Runner + extension (31 refs in `project.pbxproj`). Step-by-step:
       [ios/AllisWellWidget/SETUP.md](../apps/app/ios/AllisWellWidget/SETUP.md).
-- [ ] Verify a real `flutter build ios` + device: the widget renders in each size, updates on edit.
+- [x] **Verified on device 2026-07-24:** the widget renders and updates. (iOS signing moved to the
+      APILLON team `WWRZ5CG3DW`.)
 
 **Context:** ADR-0010 D6 size mapping; iPhone ceiling = `systemLarge`. `analyze` won't compile
 Swift — creating the Xcode target + the device pass is a GUI/hardware step that can't run here, so
@@ -2108,7 +2109,8 @@ app**, and confirm the change syncs (appears on another surface).
       `HomeWidgetBackgroundIntent` → the Dart `widgetCallback` → `TaskStore` — DEFERRED (shared with
       OPH-132; needs the background isolate + a device).
 - [ ] **WorkManager** midnight re-push — DEFERRED (the app's foreground push covers the common case).
-- [ ] **Device visual pass** — three sizes, light+dark on a real device/emulator.
+- [x] **Device visual pass — DONE 2026-07-24:** verified on a real Android device (Blocker 3). The
+      remaining `[ ]` above (interactivity + WorkManager) rides OPH-132's shared background isolate.
 
 Acceptance notes: **deviation — RemoteViews collection, not Jetpack Glance.** Glance pulls a heavy
 Compose dependency and is harder to compile-verify without a device; a `ListView` +
@@ -2231,18 +2233,30 @@ the configurable + accessory surfaces.
 **Context:** exact delivery can only be proven on devices (NOTIFICATIONS.md verification note).
 
 **DoD:** matrix recorded in STATE; regressions become tasks.
+**Status (2026-07-24):** device tour done — iOS Time-Sensitive capability added (`Runner.entitlements`
+now in the provisioning profile) + widget verified, Android verified, no issues (Blocker 2/3). The
+**muted-phone** urgent ring is now AlarmKit's job (OPH-141), whose Swift awaits its iOS 26 device
+build; the time-sensitive lane already covers the non-muted case.
 
-### OPH-141 — iOS 26 AlarmKit bridge: ring through the mute switch, no entitlement
-
-- [ ] Native bridge (plugin package like `alliswell_eventkit`, or Runner-side channel — decide at
-      implementation; AlarmKit needs a Live Activity presentation, which may force Runner):
-      `AlarmManager.requestAuthorization` + `NSAlarmKitUsageDescription`, schedule/cancel API for
-      URGENT alarms on iOS 26+, alert presentation with Onayla/Ertele mapping to the existing
-      action handlers. iOS < 26 and non-urgent stay on OPH-139 delivery.
-- [ ] The planner remains the single source of truth: the gateway grows an AlarmKit lane so the
-      content-hash diff cancels AlarmKit alarms on acknowledge/complete/snooze exactly like
-      notifications (NOTIFICATIONS.md §2b is the binding spec).
-- [ ] Real-device pass (Xcode target work — same constraints as Epic 12 natives).
+- [x] **Native bridge written** (Runner-side channel — AlarmKit's Live Activity presentation lives
+      in the app target): `ios/Runner/AlarmKitBridge.swift` (`MethodChannel('alliswell/alarmkit')`:
+      `isSupported`/`requestAuthorization`/`schedule`/`cancel`/`scheduledIds`, `@available(iOS 26)`,
+      `AlarmManager.shared`, fixed-date schedule + `AlarmPresentation.Alert` with **Onayla (stop)** /
+      **Ertele (countdown)** buttons, app-id stored in `AWAlarmMetadata` + a deterministic UUID so
+      `cancel` needs no table and `scheduledIds` survives relaunch; stop → `onAlarmAction:acknowledge`
+      back to Dart), registered in `AppDelegate.didInitializeImplicitFlutterEngine`,
+      `NSAlarmKitUsageDescription` in Info.plist. iOS < 26 / non-urgent stay on OPH-139.
+- [x] **Planner stays the single source of truth** (`lib/src/notifications/`): pure `AlarmKitHost`
+      seam (`alarmkit.dart`, `MethodChannelAlarmKitHost` + `UnsupportedAlarmKitHost`), pure
+      `planAlarmKitAlarms` (urgent → one AlarmKit alarm, no chain) + `routeUrgentToAlarmKit` on
+      `planNotifications` (so urgent never rings twice), and a second set-diff in
+      `NotificationScheduler` against the host so acknowledge/complete/snooze cancels the AlarmKit
+      alarm exactly like a notification. Declined/unsupported → urgent falls back to the notification
+      chain (never dropped). Onayla/Ertele route through the same `handleNotificationEvent`.
+- [ ] **USER (device, iOS 26):** real build + pass — AlarmKit only compiles against the iOS 26 SDK
+      on a real target (`analyze`/`test` never touch Swift). Confirm the exact AlarmKit value types
+      on first build, then: urgent alarm rings on a MUTED iOS 26 device, Onayla acknowledges, Ertele
+      snoozes.
 
 **Context:** research 2026-07-18 — Apple's AlarmKit alert "breaks through silent mode and the
 current Focus" with no special entitlement; critical alerts are effectively refused to task
@@ -2250,8 +2264,14 @@ managers (NOTIFICATIONS.md §2). This is the sanctioned way to never miss an urg
 muted iPhone.
 
 **Tests:** Dart lane logic device-free (fake AlarmKit host); Swift by real build + device pass.
+Shipped: `alarmkit_test.dart` (pure lane — urgent-only/no-chain, past-skip, snooze, privacy, id
+stability) + `scheduler_test.dart` AlarmKit group (urgent→AlarmKit/non-urgent→notifications,
+acknowledge cancels via diff, unsupported+declined fall back). `FakeAlarmKitHost` in test support;
+`syncTestOverrides` binds `UnsupportedAlarmKitHost` so full-app tests stay device-free.
 
 **DoD:** urgent alarm rings on a MUTED iOS 26 device with the app killed; STATE matrix updated.
+**Status: Dart lane DONE + tested (app 377/377, analyze+format clean); Swift bridge written and
+handed off for the iOS 26 device build (same shape as OPH-131).**
 
 ### OPH-142 — Critical-alerts entitlement application (user action; code is ready)
 
