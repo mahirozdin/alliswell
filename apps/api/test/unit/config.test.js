@@ -47,6 +47,31 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ DATABASE_PORT: '33o6' })).toThrow(/DATABASE_PORT/);
   });
 
+  // Behind a proxy every request reads as 127.0.0.1 unless this is on, which
+  // would collapse the per-IP rate limits into one shared bucket.
+  it('parses TRUST_PROXY, defaulting to off', () => {
+    expect(loadConfig({}).trustProxy).toBe(false);
+    expect(loadConfig({ TRUST_PROXY: 'false' }).trustProxy).toBe(false);
+    expect(loadConfig({ TRUST_PROXY: '0' }).trustProxy).toBe(false);
+    expect(loadConfig({ TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+    expect(loadConfig({ TRUST_PROXY: '1' }).trustProxy).toBe(1); // hop count
+    expect(loadConfig({ TRUST_PROXY: '127.0.0.1' }).trustProxy).toBe('127.0.0.1');
+    expect(loadConfig({ TRUST_PROXY: '127.0.0.1,10.0.0.0/8' }).trustProxy).toBe(
+      '127.0.0.1,10.0.0.0/8',
+    );
+  });
+
+  // The collation is interpolated into CREATE TABLE text (src/db/collation.js).
+  it('validates DATABASE_COLLATION as a bare identifier', () => {
+    expect(loadConfig({}).database.collation).toBeNull();
+    expect(loadConfig({ DATABASE_COLLATION: 'utf8mb4_unicode_ci' }).database.collation).toBe(
+      'utf8mb4_unicode_ci',
+    );
+    expect(() => loadConfig({ DATABASE_COLLATION: 'utf8mb4; DROP TABLE users' })).toThrow(
+      /DATABASE_COLLATION/,
+    );
+  });
+
   it('rejects out-of-range ports', () => {
     expect(() => loadConfig({ PORT: '0' })).toThrow(/out of range/);
     expect(() => loadConfig({ PORT: '70000' })).toThrow(/out of range/);

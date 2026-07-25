@@ -56,6 +56,14 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
     logger: logger ?? loggerOptions(config),
     requestIdHeader: 'x-request-id',
     genReqId: () => crypto.randomUUID(),
+    // Behind a reverse proxy (every production install: Apache/Nginx/Caddy in
+    // front of a loopback-bound API) EVERY request otherwise reads as
+    // 127.0.0.1, which collapses the per-IP rate limits into one shared bucket
+    // — the 10/min auth limit would then apply to the whole deployment, not
+    // per client — and puts the proxy's address in every log line. TRUST_PROXY
+    // makes Fastify read X-Forwarded-For instead. Off by default: trusting that
+    // header when the API is directly reachable would let anyone spoof an IP.
+    trustProxy: config.trustProxy,
   });
 
   app.decorate('config', config);

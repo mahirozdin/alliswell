@@ -22,6 +22,25 @@ function parseCorsOrigin(value) {
   return value.split(',').map((origin) => origin.trim());
 }
 
+/**
+ * `TRUST_PROXY` → Fastify's `trustProxy`. Off unless asked for, because
+ * trusting `X-Forwarded-For` on a directly reachable API lets any client spoof
+ * its address (and with it, the per-IP rate limits).
+ *
+ * Accepts `true`/`false`, a hop count, or a comma-separated list of trusted
+ * proxy addresses/subnets — `TRUST_PROXY=127.0.0.1` is the right answer for the
+ * usual "Apache/Nginx on the same box in front of a loopback API" deployment.
+ */
+function parseTrustProxy(value) {
+  if (value === undefined || value === null || value === '') return false;
+  const normalized = String(value).trim();
+  const lower = normalized.toLowerCase();
+  if (lower === 'false' || normalized === '0') return false;
+  if (lower === 'true') return true;
+  if (/^\d+$/.test(normalized)) return Number.parseInt(normalized, 10); // hop count
+  return normalized; // address / subnet list — proxy-addr parses it
+}
+
 function toBool(value, fallback, name) {
   if (value === undefined || value === null || value === '') return fallback;
   const normalized = String(value).trim().toLowerCase();
@@ -69,6 +88,7 @@ export function loadConfig(env = process.env) {
     port: toInt(env.PORT, 3000, 'PORT'),
     logLevel: env.LOG_LEVEL ?? 'info',
     corsOrigin: parseCorsOrigin(env.CORS_ORIGIN),
+    trustProxy: parseTrustProxy(env.TRUST_PROXY),
     rateLimitMax: toInt(env.RATE_LIMIT_MAX, 300, 'RATE_LIMIT_MAX'),
     rateLimitAuthMax: toInt(env.RATE_LIMIT_AUTH_MAX, 10, 'RATE_LIMIT_AUTH_MAX'),
     database: Object.freeze({
