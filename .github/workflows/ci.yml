@@ -98,6 +98,83 @@ jobs:
       - name: Integration tests
         run: npm run test:integration
 
+  # MariaDB is a supported deployment target (many shared hosts / aaPanel ship
+  # it instead of MySQL), and it has NO utf8mb4_0900_* collation — the schema
+  # resolves one per server (src/db/collation.js). That resolution, and the rest
+  # of the SQL surface (FULLTEXT, MATCH…AGAINST, enum MODIFY), can only stay
+  # correct if it is exercised: this job is that guarantee. Lint/unit/policy
+  # steps stay in the MySQL job — this one is purely schema + integration.
+  api-mariadb:
+    name: API on MariaDB (migrations, integration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      mariadb:
+        # 10.11 LTS — the conservative floor; newer MariaDB is a superset.
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci_root
+          MARIADB_DATABASE: alliswell
+          MARIADB_USER: alliswell
+          MARIADB_PASSWORD: alliswell_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 30
+
+    env:
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: '3306'
+      DATABASE_USER: alliswell
+      DATABASE_PASSWORD: alliswell_ci
+      DATABASE_NAME: alliswell
+      REDIS_URL: redis://127.0.0.1:6379
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migrations (fresh MariaDB)
+        run: npm run db:migrate
+
+      - name: Assert the schema fell back to utf8mb4_unicode_ci
+        run: |
+          mysql -h 127.0.0.1 -ualliswell -palliswell_ci alliswell -N -e \
+            "SELECT table_collation FROM information_schema.tables
+             WHERE table_schema='alliswell' AND table_name='users';" | grep -qx 'utf8mb4_unicode_ci'
+
+      - name: Rollback + re-apply migrations (down() paths work)
+        run: npm run db:rollback && npm run db:migrate
+
+      - name: Start MinIO (attachments storage)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=alliswell -e MINIO_ROOT_PASSWORD=alliswell_dev \
+            minio/minio:latest server /data
+
+      - name: Integration tests
+        run: npm run test:integration
+
   app:
     name: Flutter (analyze, tests)
     runs-on: ubuntu-latest

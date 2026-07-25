@@ -69,7 +69,10 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 
 ## 4. Data layer
 
-- MySQL 8.4, utf8mb4. IDs are **ULID** `CHAR(26)` (sortable, no coordination — ADR-0004).
+- MySQL 8.4 (development target) **or MariaDB 10.11+**, utf8mb4. The table collation is resolved
+  per server — `utf8mb4_0900_ai_ci` on MySQL, `utf8mb4_unicode_ci` on MariaDB, which has no
+  `*_0900_*` collation (`src/db/collation.js`, ADR-0004 §6); CI runs the schema + integration
+  suite on both. IDs are **ULID** `CHAR(26)` (sortable, no coordination — ADR-0004).
 - All timestamps `DATETIME(3)` in UTC; user timezones stored per user/task for alarm math.
 - Soft delete via `deleted_at`. Synced entities carry `revision BIGINT`.
 - FULLTEXT indexes on tasks(title, description) and notes(title, plain_text) for search.
@@ -140,7 +143,9 @@ already on-device), so results are instant and offline-safe — screens never ca
 search. One shared Dart fold utility normalizes both query and text (casefold + Turkish
 equivalences `ı/i/İ/I, ü/u, ö/o, ş/s, ç/c, ğ/g` + combining-mark strip); tiered ranking
 (title > tag > body/description) is assembled in SQL per ADR-0013's storage strategy.
-Server parity: MySQL is already `utf8mb4_0900_ai_ci` (accent/case-insensitive) and holds
+Server parity: the server collation is accent/case-insensitive on both engines
+(`utf8mb4_0900_ai_ci` on MySQL, `utf8mb4_unicode_ci` on MariaDB — neither folds `ı→i`, which is
+exactly why folding is app-owned) and it holds
 FULLTEXT indexes (`ft_notes_plain_text` in use; `ft_tasks_title_description` gains a task
 `?q=` param in Epic 15) — for API consumers and future web-scale needs, not the app's path.
 

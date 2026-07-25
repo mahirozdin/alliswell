@@ -63,6 +63,19 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **MariaDB desteği — collation sunucuya göre çözülüyor (2026-07-24, deploy sırasında çıktı):**
+  aaPanel'li sunucuda `npm run db:migrate` **"Unknown collation: 'utf8mb4_0900_ai_ci'"** ile
+  düştü — o collation YALNIZCA MySQL 8'de var, MariaDB'de yok. Envanter çıkarıldı: uyumsuz olan
+  TEK şey collation'dı (raw SQL'lerin hepsi — FULLTEXT, `MATCH…AGAINST`, enum `MODIFY` — ve tüm
+  kolon tipleri MariaDB uyumlu; window fn/CTE/JSON fn/SKIP LOCKED/CHECK hiç kullanılmıyor).
+  Çözüm: `src/db/collation.js` → `resolveCollation(knex)` (pin > `SHOW COLLATION LIKE` probu >
+  fallback), 9 migration `let COLLATION` + `up()` içinde resolve; `DATABASE_COLLATION` config'e
+  eklendi (DDL'e girdiği için bare-identifier regex'iyle doğrulanıyor) ve `knex.client.config`
+  üzerinden migration'lara taşınıyor (AGENTS.md §4: env'i yalnız config.js okur).
+  **Doğrulama: MySQL 8.4 37/37 (collation hâlâ 0900 — davranış değişmedi), MariaDB 10.11 37/37
+  + rollback/re-apply, MariaDB 11.4 37/37.** CI'a kalıcı `api-mariadb` job'ı eklendi (şema +
+  entegrasyon + "unicode_ci'ye düştü mü" assert'i). ADR-0004 §6, ARCHITECTURE §4, .env.example
+  güncellendi. Ders: bir collation adı taşınabilirlik sözleşmesidir — sunucuya sor, sabitleme.
 - **OPH-141 — iOS 26 AlarmKit lane (Dart done + tested; Swift handed off) + device blockers cleared
   (2026-07-24):** Mahir doğruladı — B1 Google canlı, B2 iOS widget + Time-Sensitive capability, B3
   Android; B4 macOS imza APILLON team `WWRZ5CG3DW`'ye hizalandı (yayın hesabı); B5 critical-alerts

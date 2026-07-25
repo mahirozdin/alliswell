@@ -4,8 +4,11 @@
  * OAuth token columns hold AES-256-GCM ciphertext (never plaintext — SECURITY.md).
  */
 
-const CHARSET = 'utf8mb4';
-const COLLATION = 'utf8mb4_0900_ai_ci';
+import { CHARSET, PREFERRED_COLLATION, resolveCollation } from '../src/db/collation.js';
+
+// Resolved against the live server in up(): MySQL 8 keeps utf8mb4_0900_ai_ci,
+// MariaDB has no *_0900_* collation and gets utf8mb4_unicode_ci instead.
+let COLLATION = PREFERRED_COLLATION;
 
 const PROVIDERS = ['google', 'apple_eventkit', 'apple_caldav', 'local_device'];
 
@@ -22,6 +25,7 @@ function timestamps(knex, table, { softDelete = true } = {}) {
 }
 
 export async function up(knex) {
+  COLLATION = await resolveCollation(knex);
   await knex.schema.createTable('calendar_accounts', (t) => {
     base(t);
     t.specificType('user_id', 'char(26)').notNullable();

@@ -17,6 +17,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   tested (app 377/377); the Swift bridge (`ios/Runner/AlarmKitBridge.swift`)
   awaits its iOS 26 device build.
 
+- **MariaDB support** — the schema now resolves its utf8mb4 collation per server
+  instead of hardcoding MySQL 8's `utf8mb4_0900_ai_ci`, which MariaDB does not
+  have (it failed `CREATE TABLE` outright). MySQL keeps the same collation it
+  always had; MariaDB gets `utf8mb4_unicode_ci`; `DATABASE_COLLATION` pins it
+  explicitly. Verified on MySQL 8.4 **and** MariaDB 10.11 + 11.4 (migrations,
+  rollback, and the full 37-test integration suite on each), and CI now runs a
+  dedicated MariaDB job so it stays that way.
+
 ### Fixed
 
 - **macOS signing** aligned to the publishing team — iOS and macOS now share

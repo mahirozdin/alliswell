@@ -23,5 +23,10 @@ export function buildKnexConfig(config) {
       directory: './migrations',
       tableName: 'knex_migrations',
     },
+    // Read by migrations through `resolveCollation` (src/db/collation.js) —
+    // knex exposes its config as `knex.client.config`, which is how a migration
+    // gets a deployment setting without reading the environment itself
+    // (AGENTS.md §4: config.js owns env). Null = auto-detect MySQL vs MariaDB.
+    alliswellCollation: config.database.collation,
   };
 }

@@ -77,6 +77,11 @@ export function loadConfig(env = process.env) {
       user: env.DATABASE_USER ?? 'alliswell',
       password: env.DATABASE_PASSWORD ?? 'alliswell_dev',
       name: env.DATABASE_NAME ?? 'alliswell',
+      // Optional pin for the schema's utf8mb4 collation. Null = auto-detect
+      // (MySQL 8 → utf8mb4_0900_ai_ci, MariaDB → utf8mb4_unicode_ci; see
+      // src/db/collation.js). Set it only to force something else, e.g.
+      // utf8mb4_uca1400_ai_ci on MariaDB 10.10+.
+      collation: env.DATABASE_COLLATION || null,
     }),
     redisUrl: env.REDIS_URL ?? 'redis://127.0.0.1:6379',
     // Namespaces this deployment's BullMQ keyspace. Two AllisWell instances
@@ -148,6 +153,11 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.calendar.tokenKey)) {
     throw new Error('CALENDAR_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  // The collation is interpolated into CREATE TABLE text, so it is validated as
+  // a bare identifier here rather than trusted from the environment.
+  if (config.database.collation && !/^[A-Za-z0-9_]+$/.test(config.database.collation)) {
+    throw new Error('DATABASE_COLLATION must be a bare collation name (letters, digits, _)');
   }
   if (config.calendar.watchTtlSec < 60 || config.calendar.sweepSec < 10) {
     throw new Error('CALENDAR_WATCH_TTL_SEC (≥60) and CALENDAR_SYNC_SWEEP_SEC (≥10) are too small');

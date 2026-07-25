@@ -107,7 +107,7 @@ Node.js API — Fastify, JavaScript only (no TypeScript)
   ├─ Notes / Files (presigned R2/S3)   ├─ Calendar sync workers (BullMQ)
   └─ Search (Turkish-fold)             └─ Local search + folders
       │
-      ├─ MySQL 8.4  (canonical data)
+      ├─ MySQL 8.4 / MariaDB 10.11+  (canonical data)
       ├─ Redis 8    (queues, Socket.IO fan-out, cache)
       ├─ Object storage: Cloudflare R2 / any S3 (attachments)
       └─ Calendar providers: Google Calendar API · Apple EventKit · CalDAV (v2)

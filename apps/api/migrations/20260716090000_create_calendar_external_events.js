@@ -15,10 +15,14 @@
  * Migrations are append-only (AGENTS.md rule 8).
  */
 
-const CHARSET = 'utf8mb4';
-const COLLATION = 'utf8mb4_0900_ai_ci';
+import { CHARSET, PREFERRED_COLLATION, resolveCollation } from '../src/db/collation.js';
+
+// Resolved against the live server in up(): MySQL 8 keeps utf8mb4_0900_ai_ci,
+// MariaDB has no *_0900_* collation and gets utf8mb4_unicode_ci instead.
+let COLLATION = PREFERRED_COLLATION;
 
 export async function up(knex) {
+  COLLATION = await resolveCollation(knex);
   await knex.schema.alterTable('calendar_accounts', (t) => {
     t.string('external_sync_token', 500).nullable();
   });

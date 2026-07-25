@@ -24,7 +24,13 @@ stay ordered and idempotent, and MySQL is the canonical store.
    `SET NULL` for optional relations (task.project_id, note.project_id, created_by/updated_by).
    Append-heavy log tables (`sync_revisions`, `client_mutations`) get indexes + workspace FK only
    (no per-entity FK) to stay cheap.
-6. **Charset:** `utf8mb4` / `utf8mb4_0900_ai_ci` explicitly on every table.
+6. **Charset:** `utf8mb4` explicitly on every table, with the collation **resolved per server**
+   (`src/db/collation.js`, added 2026-07-24): `utf8mb4_0900_ai_ci` on MySQL 8.0+ (the development
+   target), `utf8mb4_unicode_ci` on **MariaDB**, which has no `*_0900_*` collation at all — a
+   hardcoded one made `CREATE TABLE` fail outright there. Both are accent- and case-insensitive,
+   which is all the schema relies on (`uq_users_email`, `uq_tags_workspace_slug`); search is
+   unaffected because Turkish folding is app-owned (ADR-0013). `DATABASE_COLLATION` pins it
+   explicitly when a deployment wants something else (e.g. `utf8mb4_uca1400_ai_ci`).
 7. **Additions over BLUEPRINT §10** (needed by features already in scope):
    - `tasks.sort_order INT` — manual ordering in lists (Things/TickTick-style).
    - `tasks.snoozed_until DATETIME(3)` — cheap snooze queries without joining reminders.

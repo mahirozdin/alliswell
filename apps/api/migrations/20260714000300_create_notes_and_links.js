@@ -4,8 +4,11 @@
  * plain text for search (BLUEPRINT §9.1). note_links is polymorphic (§9.2).
  */
 
-const CHARSET = 'utf8mb4';
-const COLLATION = 'utf8mb4_0900_ai_ci';
+import { CHARSET, PREFERRED_COLLATION, resolveCollation } from '../src/db/collation.js';
+
+// Resolved against the live server in up(): MySQL 8 keeps utf8mb4_0900_ai_ci,
+// MariaDB has no *_0900_* collation and gets utf8mb4_unicode_ci instead.
+let COLLATION = PREFERRED_COLLATION;
 
 function base(table) {
   table.charset(CHARSET);
@@ -20,6 +23,7 @@ function timestamps(knex, table, { softDelete = true } = {}) {
 }
 
 export async function up(knex) {
+  COLLATION = await resolveCollation(knex);
   await knex.schema.createTable('notes', (t) => {
     base(t);
     t.specificType('workspace_id', 'char(26)').notNullable();

@@ -4,8 +4,11 @@
  * Migrations are append-only (AGENTS.md rule 8) — never edit this file after it has run.
  */
 
-const CHARSET = 'utf8mb4';
-const COLLATION = 'utf8mb4_0900_ai_ci';
+import { CHARSET, PREFERRED_COLLATION, resolveCollation } from '../src/db/collation.js';
+
+// Resolved against the live server in up(): MySQL 8 keeps utf8mb4_0900_ai_ci,
+// MariaDB has no *_0900_* collation and gets utf8mb4_unicode_ci instead.
+let COLLATION = PREFERRED_COLLATION;
 
 function base(table) {
   table.charset(CHARSET);
@@ -20,6 +23,7 @@ function timestamps(knex, table, { softDelete = true } = {}) {
 }
 
 export async function up(knex) {
+  COLLATION = await resolveCollation(knex);
   await knex.schema.createTable('users', (t) => {
     base(t);
     t.string('email', 255).notNullable();
