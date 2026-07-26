@@ -106,28 +106,22 @@ jobs:
           for bin in node npm pm2 mysqldump git; do
             command -v "$bin" >/dev/null || { echo "ERROR: '$bin' not found in PATH ($PATH)"; exit 1; }
           done
-          major=$(node -p "process.versions.node.split('.')[0]")
-          if [ "$major" -lt 22 ]; then
-            echo "ERROR: node $(node -v) is too old — the API requires >=22." >&2
-            echo "--- every node binary on this host ---" >&2
-            find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null \
-              | while read -r n; do echo "  $n → $("$n" -v 2>/dev/null)" >&2; done
-            echo "  (PATH) $(command -v -a node 2>/dev/null | tr '\n' ' ')" >&2
-            echo "--- what PM2 is running ---" >&2
-            pm2 list >&2 2>/dev/null || true
-            echo "Install Node >=22 (aaPanel ▸ App Store ▸ Node.js), or point the" >&2
-            echo "DEPLOY_NODE_PATH repository variable at a bin directory that has it." >&2
-            exit 1
-          fi
-          echo "node $(node -v) · npm $(npm -v) · pm2 $(pm2 -v 2>/dev/null | tail -1)"
-
-          # Resolve the PM2 process that actually runs THIS directory, so the
-          # deploy does not depend on what the panel happened to name it (and
-          # never restarts an unrelated app that shares the server).
-          if [ -n "${PM2_APP:-}" ] && pm2 describe "$PM2_APP" >/dev/null 2>&1; then
-            TARGET="$PM2_APP"
-          else
-            TARGET=$(pm2 jlist 2>/dev/null | node -e '
+          # PM2 keeps ONE daemon PER USER. Panels run app processes as `www`
+          # while an SSH root session talks to root's daemon — which is why a
+          # perfectly healthy app can be invisible to `pm2 list`. Look in every
+          # plausible account before concluding anything.
+          PM2_CANDIDATES="${DEPLOY_PM2_USER:-} $(id -un) www"
+          pm2_as() {
+            u="$1"; shift
+            if [ "$u" = "$(id -un)" ]; then
+              pm2 "$@"
+            else
+              sudo -n -u "$u" -H env PATH="$PATH" pm2 "$@"
+            fi
+          }
+          # Prints the process name whose script lives under $APP_DIR, if any.
+          pm2_match() {
+            node -e '
               let s = "";
               process.stdin.on("data", (d) => (s += d)).on("end", () => {
                 let list = [];
@@ -137,15 +131,52 @@ jobs:
                 const dir = process.argv[1].replace(/\/+$/, "") + "/";
                 const hit = list.find((p) => (p.pm2_env?.pm_exec_path || "").startsWith(dir));
                 process.stdout.write(hit ? String(hit.name) : "");
-              });' "$APP_DIR")
-          fi
+              });' "$APP_DIR"
+          }
+
+          echo "── environment ──"
+          echo "  ssh user: $(id -un) · node $(node -v) ($(command -v node)) · npm $(npm -v)"
+          for u in $PM2_CANDIDATES; do
+            summary=$(pm2_as "$u" jlist 2>/dev/null | node -e '
+              let s = "";
+              process.stdin.on("data", (d) => (s += d)).on("end", () => {
+                try { console.log(JSON.parse(s).map((p) => p.name).join(", ") || "(empty)"); }
+                catch { console.log("(no daemon)"); }
+              });' 2>/dev/null || echo "(unreachable)")
+            echo "  pm2[$u]: $summary"
+          done
+
+          PM2_USER=""; TARGET=""
+          for u in $PM2_CANDIDATES; do
+            [ -n "$u" ] || continue
+            json=$(pm2_as "$u" jlist 2>/dev/null || true)
+            [ -n "$json" ] || continue
+            if [ -n "${PM2_APP:-}" ] && printf '%s' "$json" | grep -q "\"name\":\"$PM2_APP\""; then
+              PM2_USER="$u"; TARGET="$PM2_APP"; break
+            fi
+            name=$(printf '%s' "$json" | pm2_match)
+            if [ -n "$name" ]; then PM2_USER="$u"; TARGET="$name"; break; fi
+          done
           if [ -z "$TARGET" ]; then
-            echo "ERROR: no PM2 process runs $APP_DIR. Current list:" >&2
-            pm2 list >&2 || true
-            echo "Set the DEPLOY_PM2_APP repository variable to the right name." >&2
+            echo "ERROR: no PM2 process (under any of: $PM2_CANDIDATES) runs $APP_DIR." >&2
+            echo "Set DEPLOY_PM2_APP and/or DEPLOY_PM2_USER, or check the list above." >&2
             exit 1
           fi
-          echo "pm2 target: $TARGET"
+          echo "pm2 target: $TARGET (user: $PM2_USER)"
+
+          # Engine gate LAST, so the report above is always printed: the API
+          # declares node >=22 and CI tests on 24 — installing under an older
+          # runtime would ship something nobody tested.
+          major=$(node -p "process.versions.node.split('.')[0]")
+          if [ "$major" -lt 22 ]; then
+            echo "ERROR: node $(node -v) is too old — the API requires >=22." >&2
+            echo "--- every node binary on this host ---" >&2
+            find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null \
+              | while read -r n; do echo "  $n → $("$n" -v 2>/dev/null)" >&2; done
+            echo "Install Node >=22 (aaPanel ▸ App Store ▸ Node.js), or point the" >&2
+            echo "DEPLOY_NODE_PATH repository variable at a bin directory that has it." >&2
+            exit 1
+          fi
 
           # Read DB credentials from the app's own .env (never duplicated into
           # CI secrets, so they cannot drift apart). Values are read line-wise
@@ -177,9 +208,10 @@ jobs:
           npm ci --omit=dev
           npm run db:migrate
 
-          # 4. Restart the API with the (unchanged) .env re-read.
-          pm2 restart "$TARGET" --update-env
-          pm2 save || true
+          # 4. Restart the API with the (unchanged) .env re-read, as whichever
+          #    account actually owns the process.
+          pm2_as "$PM2_USER" restart "$TARGET" --update-env
+          pm2_as "$PM2_USER" save || true
           REMOTE
 
       # Only now may the browser get the new bundle. --delete prunes the old
