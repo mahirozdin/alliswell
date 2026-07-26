@@ -1,0 +1,187 @@
+name: Deploy
+
+# Ship a released tag to the maintainer's own instance.
+#
+# Called by release.yml after a tag's tests, release and images are green, and
+# runnable by hand (Actions ▸ Deploy ▸ Run workflow) to redeploy an existing tag
+# without minting a version — the same path, so a manual redeploy is never a
+# different, less-tested procedure.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: The tag to deploy.
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag to deploy, e.g. v0.4.0
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # never interrupt a half-applied deploy
+
+jobs:
+  deploy:
+    name: Deploy to production
+    # Configured only on the upstream repo, so forks and clones can run
+    # everything else without ever touching someone's server.
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      APP_DIR: ${{ vars.DEPLOY_APP_DIR || '/www/wwwroot/alliswell' }}
+      WEB_DIR: ${{ vars.DEPLOY_WEB_DIR || '/www/wwwroot/alliswell.space' }}
+      PM2_APP: ${{ vars.DEPLOY_PM2_APP }}
+      SSH_PORT: ${{ vars.DEPLOY_SSH_PORT || '22' }}
+      API_URL: ${{ vars.DEPLOY_API_URL }}
+      DEPLOY_REF: ${{ inputs.ref }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+          cache: true
+
+      # The API base URL is compiled INTO the bundle, so production needs its
+      # own build — the release artifact is the generic one.
+      - name: Build the web bundle for production
+        working-directory: apps/app
+        run: |
+          test -n "$API_URL" || { echo "::error::vars.DEPLOY_API_URL is not set"; exit 1; }
+          flutter pub get
+          flutter build web --release --dart-define=ALLISWELL_API_URL="$API_URL"
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SSH_PORT" -H "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      # Everything that touches the server runs as ONE script, so a failure
+      # anywhere (set -e) stops before the next stage.
+      - name: Back up the database, migrate and restart the API
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' bash -euo pipefail" <<'REMOTE'
+          cd "$APP_DIR"
+
+          # A non-interactive SSH session sources no login profile, and panels
+          # (aaPanel et al.) keep several Node versions side by side outside the
+          # default PATH. Pick the NEWEST one — an old default silently installs
+          # against the wrong engine.
+          if [ -n "${DEPLOY_NODE_PATH:-}" ]; then
+            PATH="$DEPLOY_NODE_PATH:$PATH"
+          else
+            newest=$(ls -d /www/server/nodejs/v*/bin 2>/dev/null | sort -V | tail -1 || true)
+            [ -n "$newest" ] && PATH="$newest:$PATH"
+          fi
+          export PATH
+          for bin in node npm pm2 mysqldump git; do
+            command -v "$bin" >/dev/null || { echo "ERROR: '$bin' not found in PATH ($PATH)"; exit 1; }
+          done
+          major=$(node -p "process.versions.node.split('.')[0]")
+          if [ "$major" -lt 22 ]; then
+            echo "ERROR: node $(node -v) is too old — the API requires >=22." >&2
+            echo "Set the DEPLOY_NODE_PATH repository variable to the right bin directory." >&2
+            exit 1
+          fi
+          echo "node $(node -v) · npm $(npm -v) · pm2 $(pm2 -v 2>/dev/null | tail -1)"
+
+          # Resolve the PM2 process that actually runs THIS directory, so the
+          # deploy does not depend on what the panel happened to name it (and
+          # never restarts an unrelated app that shares the server).
+          if [ -n "${PM2_APP:-}" ] && pm2 describe "$PM2_APP" >/dev/null 2>&1; then
+            TARGET="$PM2_APP"
+          else
+            TARGET=$(pm2 jlist 2>/dev/null | node -e '
+              let s = "";
+              process.stdin.on("data", (d) => (s += d)).on("end", () => {
+                let list = [];
+                try { list = JSON.parse(s); } catch {}
+                // Trailing slash matters: /www/wwwroot/alliswell must not also
+                // match a process living in /www/wwwroot/alliswell.space.
+                const dir = process.argv[1].replace(/\/+$/, "") + "/";
+                const hit = list.find((p) => (p.pm2_env?.pm_exec_path || "").startsWith(dir));
+                process.stdout.write(hit ? String(hit.name) : "");
+              });' "$APP_DIR")
+          fi
+          if [ -z "$TARGET" ]; then
+            echo "ERROR: no PM2 process runs $APP_DIR. Current list:" >&2
+            pm2 list >&2 || true
+            echo "Set the DEPLOY_PM2_APP repository variable to the right name." >&2
+            exit 1
+          fi
+          echo "pm2 target: $TARGET"
+
+          # Read DB credentials from the app's own .env (never duplicated into
+          # CI secrets, so they cannot drift apart). Values are read line-wise
+          # rather than sourced: a `.env` is data, not a shell script.
+          env_get() { grep -E "^$1=" apps/api/.env | head -1 | cut -d= -f2-; }
+          DB_HOST=$(env_get DATABASE_HOST); DB_PORT=$(env_get DATABASE_PORT)
+          DB_USER=$(env_get DATABASE_USER); DB_PASS=$(env_get DATABASE_PASSWORD)
+          DB_NAME=$(env_get DATABASE_NAME)
+
+          # 1. Backup FIRST — migrations are forward-only; this is the undo.
+          BACKUP_DIR=/www/backup/alliswell
+          mkdir -p "$BACKUP_DIR"
+          stamp=$(date +%Y%m%d-%H%M%S)
+          MYSQL_PWD="$DB_PASS" mysqldump -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USER" \
+            --single-transaction --routines --triggers "$DB_NAME" \
+            | gzip > "$BACKUP_DIR/db-$stamp-pre-$TAG.sql.gz"
+          echo "backup: $BACKUP_DIR/db-$stamp-pre-$TAG.sql.gz ($(du -h "$BACKUP_DIR/db-$stamp-pre-$TAG.sql.gz" | cut -f1))"
+          # Keep the 10 most recent backups.
+          ls -1t "$BACKUP_DIR"/db-*.sql.gz 2>/dev/null | tail -n +11 | xargs -r rm --
+
+          # 2. Check out the EXACT released tag (detached HEAD on purpose — the
+          #    server runs a release, not "whatever main happens to be").
+          git fetch --tags --force --prune origin
+          git checkout -f "$TAG"
+          echo "checked out: $(git describe --tags --always)"
+
+          # 3. Dependencies + schema. knex/mysql2 are prod deps, so --omit=dev
+          #    still migrates. Migrations are append-only: data is preserved.
+          npm ci --omit=dev
+          npm run db:migrate
+
+          # 4. Restart the API with the (unchanged) .env re-read.
+          pm2 restart "$TARGET" --update-env
+          pm2 save || true
+          REMOTE
+
+      # Only now may the browser get the new bundle. --delete prunes the old
+      # Flutter hashes; .htaccess is server-owned (SPA routing) and must live.
+      - name: Publish the web bundle
+        run: |
+          rsync -az --delete --exclude='.htaccess' \
+            -e "ssh -i ~/.ssh/id_deploy -p $SSH_PORT" \
+            apps/app/build/web/ \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}:$WEB_DIR/"
+
+      # A deploy that "succeeded" while the API is down is the failure mode this
+      # whole pipeline exists to prevent.
+      - name: Verify the deployment is healthy
+        run: |
+          for attempt in $(seq 1 20); do
+            body=$(curl -fsS --max-time 10 "$API_URL/health/ready" || true)
+            echo "attempt $attempt: $body"
+            case "$body" in
+              *'"status":"ok"'*) echo "healthy"; exit 0 ;;
+            esac
+            sleep 5
+          done
+          echo "::error::/health/ready never reported ok — the API is degraded or down."
+          echo "Investigate on the server: pm2 logs --lines 50"
+          echo "The pre-deploy database backup is in /www/backup/alliswell/."
+          exit 1
