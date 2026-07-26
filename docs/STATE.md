@@ -63,6 +63,25 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **🚀 v0.4.0 CANLI + CI/CD zinciri uçtan uca yeşil (2026-07-26):** `git push --tags` →
+  testler (MySQL+MariaDB+Flutter) → GitHub Release (CHANGELOG'dan notlar) → GHCR imajları
+  (api+web, amd64/arm64) → sunucuya deploy. **Deploy 8 turda yeşile ulaştı; her tur gerçek bir
+  ortam gerçeğini ortaya çıkardı** (hiçbiri kod hatası değildi, hepsi kalıcı olarak çözüldü):
+  (1) PM2 adı yanlış varsayıldı → süreci ÇALIŞTIRDIĞI dizinden bul; (2) PATH'te Node 18 → tüm
+  kurulumları tarayıp en yükseğini seç; (3) `/www/server/nodejs` dışında Node yok → `find` ile
+  gerçek keşif + envanter raporu; (4) **PM2 kullanıcı başına daemon tutar** — app `www`
+  kullanıcısında `alliswellapi` adıyla, root'un listesinde görünmüyordu → çok-kullanıcılı arama
+  + `sudo -u www` ile restart; (5) sunucuda yalnız Node 18 var, sahibi bunu tercih etti → sert
+  kapı yerine `DEPLOY_MIN_NODE` (varsayılan 18) + her deploy'da uyarı; (6) **rsync "is your shell
+  clean?"** — SSH girişinde Telegram bildirimi stdout'a yazıyor → `tar | ssh` akışına geçildi
+  (yalnız uzak STDIN kullanır) + dizin swap'i (eski hash'leri de temizler, `.htaccess` taşınır,
+  başarısızsa eskisi geri konur); (7) **aaPanel `.user.ini`'yi `chattr +i` yapar** — root bile
+  silemiyor → `.user.ini` de taşınıyor, temizlik `chattr -R -i` + best-effort (yayın canlıyken
+  artık dosya deploy'u kırmıyor). Deploy artık her koşuda ortam raporu basıyor (node, her
+  kullanıcının pm2 listesi) — bir dahaki sorun tek turda teşhis edilebilir. **Kanıt:** yedek
+  16K alındı, `checked out: v0.4.0`, 46 dosya yayınlandı, `/health/ready` ilk denemede `ok`.
+  Ayrıca `deploy.yml` `workflow_dispatch` ile elle de tetiklenebiliyor (sürüm kesmeden yeniden
+  deploy). Ders: sunucu gerçekleri repoda görünmez — pipeline'ın ilk işi ortamı RAPORLAMAK olmalı.
 - **Docker dağıtımı + tag'le otomatik deploy (2026-07-26):** `release.yml` iki job kazandı —
   **`images`** (GHCR'a `alliswell-api` + `alliswell-web`, multi-arch amd64/arm64, semver+latest
   etiketleri; web'in Flutter aşaması `--platform=$BUILDPLATFORM` ile tek kez derleniyor, QEMU

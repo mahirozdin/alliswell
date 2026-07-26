@@ -191,6 +191,7 @@ both supported — the schema picks a compatible collation per server on its own
 | Everyone gets rate-limited at once | `TRUST_PROXY` is off behind a proxy (§3). |
 | `Unknown collation` on first start | The database is older than MySQL 8.0 / MariaDB 10.11. |
 | Uploads fail only in the browser | The bucket has no CORS rule for your web origin (§5). |
+| `rsync`/`scp` to the server fails with "is your shell clean?" | A login script or MOTD prints to stdout on every SSH session; silence it (`>/dev/null 2>&1`) or copy with `tar \| ssh` instead. |
 
 Check what the API thinks of itself at any time:
 
