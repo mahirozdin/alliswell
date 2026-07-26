@@ -223,14 +223,40 @@ jobs:
           pm2_as "$PM2_USER" save || true
           REMOTE
 
-      # Only now may the browser get the new bundle. --delete prunes the old
-      # Flutter hashes; .htaccess is server-owned (SPA routing) and must live.
+      # Only now may the browser get the new bundle — the API it talks to is
+      # already migrated and restarted.
+      #
+      # Deliberately NOT rsync: any remote login that prints something (an MOTD,
+      # a login-alert script) corrupts rsync's protocol stream — the infamous
+      # "protocol version mismatch -- is your shell clean?". A tar stream only
+      # uses the remote's STDIN, so a chatty login is harmless. The swap is
+      # directory-level, which also prunes the previous build's hashed assets
+      # without needing --delete.
       - name: Publish the web bundle
         run: |
-          rsync -az --delete --exclude='.htaccess' \
-            -e "ssh -i ~/.ssh/id_deploy -p $SSH_PORT" \
-            apps/app/build/web/ \
-            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}:$WEB_DIR/"
+          tar -C apps/app/build/web -czf - . \
+            | ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+                "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+                "rm -rf '$WEB_DIR.incoming' && mkdir -p '$WEB_DIR.incoming' && tar -xzf - -C '$WEB_DIR.incoming'"
+
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "WEB_DIR='$WEB_DIR' bash -euo pipefail" <<'REMOTE'
+          # .htaccess is server-owned (SPA routing) and not part of the build.
+          [ -f "$WEB_DIR/.htaccess" ] && cp -a "$WEB_DIR/.htaccess" "$WEB_DIR.incoming/" || true
+          # Inherit the live docroot's ownership so the web server keeps reading it.
+          chown -R --reference="$WEB_DIR" "$WEB_DIR.incoming" 2>/dev/null || true
+
+          rm -rf "$WEB_DIR.previous"
+          mv "$WEB_DIR" "$WEB_DIR.previous"
+          if ! mv "$WEB_DIR.incoming" "$WEB_DIR"; then
+            mv "$WEB_DIR.previous" "$WEB_DIR"   # never leave the site without a docroot
+            echo "ERROR: could not swap in the new bundle — restored the previous one." >&2
+            exit 1
+          fi
+          rm -rf "$WEB_DIR.previous"
+          echo "web bundle published to $WEB_DIR ($(find "$WEB_DIR" -type f | wc -l) files)"
+          REMOTE
 
       # A deploy that "succeeded" while the API is down is the failure mode this
       # whole pipeline exists to prevent.
