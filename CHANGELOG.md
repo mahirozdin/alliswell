@@ -5,6 +5,58 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.4.0] - 2026-07-26
+
+The first release since the MVP — everything from Phases 5 through 9, plus a
+self-hosting story that fits in one command.
+
+### Highlights
+
+- 🐳 **Self-hosting in one command.** Two published multi-arch images
+  (`alliswell-api`, `alliswell-web`) and a ready compose file: `docker compose
+  up -d` installs, `pull` + `up -d` upgrades, and your data never leaves its
+  volumes. The web image takes your API address at container start, so one
+  prebuilt bundle serves any domain — [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
+- 🔔 **The alarm backbone.** Urgent tasks ring **at their deadline**, with a real
+  28-second alarm bed, time-sensitive delivery that breaks through Focus, a
+  re-alert chain until you acknowledge, an in-app ring screen on every platform,
+  and honest banners when the OS is holding delivery back. On iOS 26 the urgent
+  lane moves to **AlarmKit**, which rings through the mute switch with no
+  entitlement.
+- 🔎 **Search that speaks Turkish.** Case- and accent-insensitive across Home,
+  Notes and Projects ("cay" finds Çay, "isi" finds ısı), ranked title > tag >
+  body, running locally over the on-device replica — so it works offline.
+- 🗂 **Board view + a real Files section.** Home flips between the chronological
+  list and a **Kanban board** with your own status columns; the retired Calendar
+  tab became a workspace-wide **Files** manager with nestable folders.
+- 📎 **Attachments anywhere.** Files on tasks, notes and projects, inline images
+  and video in notes, per-project Files tabs — stored in Cloudflare R2 or any
+  S3, with bytes going straight between client and bucket via presigned URLs.
+- 📅 **Calendar sync that just connects.** Linking Google now picks your primary
+  calendar and syncs immediately; the hidden second step is gone.
+- 🌍 **English + Turkish**, auto-detected, switchable in Settings — adding a
+  language is dropping in one JSON file.
+- 🖥 **Home-screen widgets** for iOS and Android, mirroring Home's buckets.
+- ✨ **"Liquid Glass v2"** visual refresh, WCAG-verified in light and dark.
+- 🐬 **MySQL 8 _or_ MariaDB 10.11+** — the schema picks a compatible collation
+  per server, and CI proves both on every commit.
+
+### Known limitations
+
+- The **iOS 26 AlarmKit** Swift bridge is written but awaits its on-device
+  build; until then urgent alarms use time-sensitive notifications, which a
+  hardware mute switch can still silence.
+- **Widget interactivity** (complete/quick-add without opening the app) and the
+  **macOS widget** are not shipped yet.
+- Desktop and web have no OS-level alarm guarantee: the in-app ring screen is
+  the surface there.
+- Attachments are single-PUT (≤ 5 GB, configurable per-file cap); multipart,
+  thumbnails and quotas are v2.
+
+### Development log
+
 ### Added
 
 - **Self-hosting with Docker** — every release now publishes two multi-arch
