@@ -63,6 +63,21 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **Docker dağıtımı + tag'le otomatik deploy (2026-07-26):** `release.yml` iki job kazandı —
+  **`images`** (GHCR'a `alliswell-api` + `alliswell-web`, multi-arch amd64/arm64, semver+latest
+  etiketleri; web'in Flutter aşaması `--platform=$BUILDPLATFORM` ile tek kez derleniyor, QEMU
+  altında iki kez değil) ve **`deploy`** (`vars.DEPLOY_ENABLED` ile korumalı: mysqldump yedeği →
+  `git checkout <tag>` → `npm ci --omit=dev` → `db:migrate` → `pm2 restart` → web rsync →
+  `/health/ready` "ok" değilse job DÜŞER). **Kilit ders:** non-interactive SSH profili yüklemez ve
+  aaPanel Node'u PATH dışına kurar → uzak script PATH'i kendisi kuruyor, yoksa `npm ci`de patlardı.
+  **Web imajı için runtime config:** `String.fromEnvironment` derleme anında gömdüğü için hazır
+  imaj başkasının domain'ine bağlanamıyordu → `core/runtime_config{,_web,_stub}.dart` +
+  `web/alliswell-config.js` + nginx entrypoint'i env'den yazıyor; `apiBaseUrlProvider` sırası
+  runtime → dart-define → localhost. **Doğrulama:** API imajı derlenip çalıştırıldı (entrypoint
+  migration'ları uyguladı, healthcheck `healthy`, 38005'te `/health/ready` ok), web imajının
+  nginx+entrypoint katmanı test edildi (config.js env'den üretildi, `no-store`, SPA `/projects`
+  200, tek Cache-Control), ve runtime override GERÇEK tarayıcıda kanıtlandı (login isteği
+  derleme varsayılanı 3000 yerine config'in dediği 8080'e gitti). Flutter 379/379, API 283/283.
 - **MariaDB desteği — collation sunucuya göre çözülüyor (2026-07-24, deploy sırasında çıktı):**
   aaPanel'li sunucuda `npm run db:migrate` **"Unknown collation: 'utf8mb4_0900_ai_ci'"** ile
   düştü — o collation YALNIZCA MySQL 8'de var, MariaDB'de yok. Envanter çıkarıldı: uyumsuz olan

@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Self-hosting with Docker** — every release now publishes two multi-arch
+  images (`ghcr.io/mahirozdin/alliswell-api` and `-web`, amd64 + arm64) plus a
+  ready `docker-compose.selfhost.yml`. `docker compose up -d` is the whole
+  install: the API applies its own migrations on start, and an upgrade is
+  `pull` + `up -d` with data untouched in named volumes. Guide:
+  [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
+- **Runtime API address for the web build** — the published web image reads
+  `ALLISWELL_API_URL` at *container start* (`web/alliswell-config.js` →
+  `window.ALLISWELL_API_URL`), so one prebuilt bundle serves any domain without
+  recompiling Flutter. The compile-time `--dart-define` remains the fallback and
+  the only mechanism on mobile/desktop.
+- **Tag-triggered deployment** — pushing `vX.Y.Z` now runs the full test suite,
+  publishes the release and the images, then (when configured) deploys to the
+  maintainer's server: database backup → migrate → restart → health check, and
+  the job fails if `/health/ready` does not come back `ok`.
 - **iOS 26 AlarmKit lane for urgent alarms (OPH-141)** — on iOS 26+, urgent
   task alarms ring through the mute switch and the current Focus via AlarmKit,
   with no critical-alerts entitlement. A pure lane (`planAlarmKitAlarms`) routes

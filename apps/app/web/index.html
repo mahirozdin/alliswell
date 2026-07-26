@@ -32,6 +32,16 @@
 
   <title>alliswell</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Runtime configuration (self-hosting): the published `alliswell-web` image
+    rewrites this file from ALLISWELL_API_URL at container start, so one
+    prebuilt bundle can serve any deployment. Loaded synchronously BEFORE
+    flutter_bootstrap so the value is there on the first frame; when the file
+    defines nothing, the compile-time --dart-define wins. See
+    lib/src/core/runtime_config_web.dart.
+  -->
+  <script src="alliswell-config.js"></script>
 </head>
 <body>
   <!--

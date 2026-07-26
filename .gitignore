@@ -7,7 +7,9 @@ coverage/
 # --- Environment / secrets ---
 .env
 .env.*
+# Templates are documentation, not secrets — every other .env.* stays ignored.
 !.env.example
+!.env.selfhost.example
 
 # --- macOS ---
 .DS_Store

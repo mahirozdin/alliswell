@@ -118,6 +118,33 @@ Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) • Design decisions: [doc
 </details>
 
 <details>
+<summary><h2>🐳 Self-hosting (Docker)</h2></summary>
+
+Two published images — the API and the web app — for `linux/amd64` and
+`linux/arm64`, tagged on every release:
+
+```bash
+curl -O https://raw.githubusercontent.com/mahirozdin/alliswell/main/docker-compose.selfhost.yml
+curl -o .env https://raw.githubusercontent.com/mahirozdin/alliswell/main/.env.selfhost.example
+
+echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)"  >> .env
+echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> .env
+nano .env   # your domains + database passwords
+
+docker compose -f docker-compose.selfhost.yml up -d
+```
+
+The API creates and migrates its own schema on start, so an upgrade is just
+`pull` + `up -d` — **your data lives in named volumes and is never touched**.
+The web image reads your API address at *container start*, so one prebuilt
+image serves any domain without rebuilding Flutter.
+
+Full guide — TLS/reverse proxy, upgrades & backups, Cloudflare R2 attachments,
+Google Calendar, troubleshooting: **[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)**.
+
+</details>
+
+<details>
 <summary><h2>🚀 Quickstart (development)</h2></summary>
 
 Prerequisites: **Node.js ≥ 22**, **Docker**, **Flutter ≥ 3.44** (for the app).
@@ -168,6 +195,7 @@ Google Calendar (`GOOGLE_*`), and file attachments via Cloudflare R2 / any S3 (`
 | --- | --- |
 | [docs/BLUEPRINT.md](docs/BLUEPRINT.md) | Product vision, domain model, full functional spec (TR) |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture, stack, sync & calendar design |
+| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) | Run your own instance with Docker: TLS, upgrades, backups, storage |
 | [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md) | File attachments: R2/S3 storage, presigned flow, CORS setup |
 | [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Exact-time / urgent alarm delivery research & plan |
 | [docs/WIDGETS.md](docs/WIDGETS.md) | Home-screen widget architecture |

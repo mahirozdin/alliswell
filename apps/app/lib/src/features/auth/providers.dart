@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/runtime_config.dart';
 import 'data/auth_api.dart';
 import 'data/auth_interceptor.dart';
 import 'data/auth_repository.dart';
@@ -9,13 +10,23 @@ import 'data/secret_store.dart';
 import 'data/secure_secret_store.dart';
 import 'data/token_storage.dart';
 
-/// Where the API lives. Override at build time:
-/// `flutter run --dart-define=ALLISWELL_API_URL=https://your-host`.
+/// Where the API lives.
+///
+/// Resolution order:
+/// 1. **Runtime** (web only) — `window.ALLISWELL_API_URL` from
+///    `web/alliswell-config.js`, which the published `alliswell-web` container
+///    rewrites from its `ALLISWELL_API_URL` env var. This is what lets ONE
+///    prebuilt image serve every self-hoster's own domain.
+/// 2. **Build time** — `flutter build web --dart-define=ALLISWELL_API_URL=…`
+///    (the only option on iOS/Android/desktop, which ship compiled binaries).
+/// 3. `http://localhost:3000` for local development.
 final apiBaseUrlProvider = Provider<String>(
-  (_) => const String.fromEnvironment(
-    'ALLISWELL_API_URL',
-    defaultValue: 'http://localhost:3000',
-  ),
+  (_) =>
+      readRuntimeApiBaseUrl() ??
+      const String.fromEnvironment(
+        'ALLISWELL_API_URL',
+        defaultValue: 'http://localhost:3000',
+      ),
 );
 
 /// Platform secret storage (OPH-025): Keychain/Keystore-backed on
