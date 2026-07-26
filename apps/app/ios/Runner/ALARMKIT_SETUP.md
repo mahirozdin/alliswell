@@ -23,6 +23,7 @@ SETUP.md`).
 
 3. **Register the bridge in `AppDelegate.swift`** — add the property and the two
    lines the comment marks:
+
    ```swift
    private var alarmKitBridge: AlarmKitBridge?
    // ...inside didInitializeImplicitFlutterEngine, after GeneratedPluginRegistrant:

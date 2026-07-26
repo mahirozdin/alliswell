@@ -1,0 +1,226 @@
+<!--
+  YAYINDAN ÖNCE YAPILMASI GEREKENLER:
+  1. privacy@alliswell.space kutusu HENÜZ YOK. Ya bu adresi açın ya da bu dosyadaki
+     ve PRIVACY.md'deki tüm geçtiği yerleri yeni adresle değiştirin.
+  2. Geliştiriciler için: metinde geçen 3 günlük bekleme süresi varsayılan değerdir
+     (ACCOUNT_DELETION_GRACE_DAYS, apps/api/src/config.js). Yayındaki kurulumda bu
+     değer değiştirilirse her iki politika dosyası da güncellenmelidir.
+-->
+
+# Gizlilik Politikası
+
+**Diller:** **Türkçe** · [English](PRIVACY.md)
+
+**Son güncelleme: 26.07.2026**
+
+Bu metin, AllisWell'in hangi verileri neden işlediğini ve bu konuda neler
+yapabileceğinizi anlatır. AllisWell uygulamaları ile <https://alliswell.space>
+adresindeki hizmet (API: `https://api.alliswell.space`) için geçerlidir.
+
+## Veri sorumlusu
+
+Hizmetin veri sorumlusu **APILLON BİLGİ TEKNOLOJİLERİ**'dir.
+
+Her türlü gizlilik sorusu ve başvurusu için: **privacy@alliswell.space**
+
+## Hangi verileri işliyoruz
+
+**Hesap bilgileriniz**
+
+- E-posta adresiniz
+- Parolanız — yalnızca argon2id ile özetlenmiş (hash) hâlde saklanır. Parolanızın
+  açık hâlini ne saklarız ne de görebiliriz.
+- Görünen adınız (isteğe bağlı)
+- Saat diliminiz ve dil tercihiniz — tarihlerin ve hatırlatıcıların size göre
+  doğru çalışması için
+
+**Oluşturduğunuz içerik**
+
+Görevler, projeler, notlar, etiketler, klasörler, hatırlatıcılar ve yüklediğiniz
+dosyalar. Bunlar size aittir. Size geri gösterebilmek ve cihazlarınız arasında
+eşitleyebilmek için saklarız. İçeriğinizi okumaz, ticari amaçla analiz etmez,
+herhangi bir yapay zekâ modelinin eğitiminde kullanmayız.
+
+**Cihazlarınız**
+
+Her kurulum için bir cihaz kimliği, platform bilgisi (iOS, Android, macOS,
+Windows, Linux, web) ve isteğe bağlı bir bildirim jetonu tutarız. Bunun tek
+amacı, hatırlatıcıların doğru cihazlara ulaşmasıdır.
+
+**Teknik kayıtlar**
+
+Sunucularımız, IP adresinizi de içeren istek kayıtları (log) tutar. Bu kayıtları
+hizmeti ayakta tutmak, kötüye kullanımı ve güvenlik sorunlarını incelemek için
+kullanırız. Ayrıca her oturum açma işleminin IP adresini, oturum kaydıyla
+birlikte tutarız; böylece bir oturumun ne zaman açıldığı belli olur.
+
+## İşleme amaçlarımız ve hukuki sebepler
+
+| Amaç                                             | Hukuki sebep (KVKK, 6698 s.)                                              | Hukuki sebep (GDPR)           |
+| ------------------------------------------------ | ------------------------------------------------------------------------- | ----------------------------- |
+| Hesabınızı işletmek, içeriğinizi eşitlemek       | Sözleşmenin kurulması/ifasıyla doğrudan doğruya ilgili olması, m. 5/2-(c) | Sözleşmenin ifası, m. 6(1)(b) |
+| Hizmeti güvende tutmak, kötüye kullanımı önlemek | Meşru menfaat, m. 5/2-(f)                                                 | Meşru menfaat, m. 6(1)(f)     |
+| Google Takvim bağlantısı                         | **Açık rıza**                                                             | Açık rıza, m. 6(1)(a)         |
+| Hukuki yükümlülüklerimizi yerine getirmek        | Hukuki yükümlülük, m. 5/2-(ç)                                             | Hukuki yükümlülük, m. 6(1)(c) |
+
+Google Takvim için verdiğiniz açık rızayı, bağlantıyı kaldırarak istediğiniz an
+geri alabilirsiniz. Bu, geri almadan önce hukuka uygun şekilde yaptığımız
+işlemleri etkilemez.
+
+## Yüklediğiniz dosyalar
+
+Dosyalar, S3 uyumlu bir nesne deposu olan **Cloudflare R2** üzerinde tutulur.
+Kova (bucket) herkese kapalıdır.
+
+Dosyalarınızın içeriği API sunucusundan hiç geçmez. Yükleme veya indirme
+yaparken sunucu, uygulamanıza kısa ömürlü bir imzalı bağlantı verir — tek dosya
+ve tek işlem için, yaklaşık **15 dakika** geçerli — ve dosya doğrudan cihazınızla
+depo arasında aktarılır. Barındırdığımız hizmette dosya başına sınır **10 MB**'tır.
+(Kendi sunucusunda çalıştıranlar bu iki değeri değiştirebilir.)
+
+## Hatırlatıcılar ve bildirimler
+
+Hatırlatıcılar ve alarmlar **cihazınızda, yerel olarak** planlanır ve çalar. Görev
+başlıklarınız ve içerikleriniz Apple'ın, Google'ın veya başka birinin bildirim
+servisine gönderilmez. Yukarıda anlatılan cihaz kaydı yalnızca hangi cihazların
+var olduğunu bilmemizi sağlar; bugün sunucularımızdan cihazlara herhangi bir
+push bildirimi gönderilmemektedir.
+
+## Google Takvim (isteğe bağlı)
+
+Yalnızca siz bağlarsanız devreye girer:
+
+- Google OAuth jetonlarınızı **AES-256-GCM ile şifreleyerek** saklarız. Jetonlar
+  sunucudan hiç çıkmaz, uygulamaya geri gönderilmez.
+- Görevleriniz, seçtiğiniz Google takvimine etkinlik olarak yansıtılır. Yani
+  görevin **başlığı ve açıklaması** Google'a aktarılır.
+- O takvimdeki etkinlikler geri okunur; böylece görevlerinizle yan yana
+  görebilirsiniz.
+
+Bağlantıyı kaldırdığınızda hepsi durur: jetonu iptal eder, sileriz ve Google
+etkinliklerinizin bizdeki kopyalarını sileriz. Daha önce Google takviminize
+yazılmış etkinlikler orada kalır; onları Google Takvim üzerinden silebilirsiniz.
+
+Google hesabınızdaki verilerin Google tarafından işlenmesi, Google'ın kendi
+gizlilik politikasına tabidir.
+
+## Apple Takvim (isteğe bağlı)
+
+Tamamen cihazınızda, Apple'ın EventKit altyapısı üzerinden çalışır. Apple
+takvimlerinizle ilgili hiçbir bilgi sunucularımıza gönderilmez; bu verileri
+göremeyiz.
+
+## Verilerinizi kimlerle paylaşıyoruz
+
+Hizmeti çalıştırmak için gereken altyapı dışında kimseyle. Açıkça belirtelim:
+
+- **Hiçbir üçüncü taraf analitik, reklam veya takip (tracking) SDK'sı
+  kullanmıyoruz.** Uygulamada da API'de de Firebase, Crashlytics, Sentry, reklam
+  ağı, atıf (attribution) veya parmak izi çıkarma aracı yok.
+- **Verilerinizi satmıyor, kiralamıyoruz**; reklam amacıyla kimseyle paylaşmıyoruz.
+- Hakkınızda profil çıkarmıyoruz ve sizin için hukuki sonuç doğuran ya da benzer
+  ölçüde etkili otomatik kararlar almıyoruz.
+
+Çalıştığımız veri işleyenler: sunucu ve veritabanı barındırma hizmetimiz,
+yüklediğiniz dosyalar için Cloudflare R2 ve — yalnızca bağlarsanız — takvim
+eşitlemesi için Google. Cloudflare ve Google uluslararası sağlayıcılar
+olduğundan, bu verilerin **yurt dışında** saklanması veya işlenmesi mümkündür.
+Bu aktarım, sözleşmenin ifası için gerekli olduğu ölçüde; Google Takvim
+bakımından ise açık rızanıza dayanılarak yapılır.
+
+## Verileri ne kadar süre saklıyoruz
+
+- **İçeriğiniz** — siz silene veya hesabınızı kapatana kadar.
+- **Oturumlar** — yenileme jetonları verildikten 30 gün sonra geçerliliğini
+  yitirir; onlarla birlikte saklanan oturum açma IP'si de o anda gider.
+- **İstek kayıtları** — hizmeti işletmek ve güvenliğini sağlamak için gerekli
+  olduğu süre boyunca.
+- **Google jetonları** — bağlantıyı kaldırdığınızda silinir.
+
+## Hesabınızı silmek
+
+Hesabınızı uygulama içinden kendiniz silebilirsiniz: **Ayarlar → hesabı sil**.
+
+Süreç tam olarak şöyle işler:
+
+1. Silme işlemi **3 günlük bekleme süresiyle** planlanır. O ana kadar hiçbir şey
+   silinmez.
+2. Fikrinizi değiştirirseniz bu 3 gün içinde giriş yapıp silme talebini iptal
+   edin; her şey kaldığı yerden devam eder. Tekrar silme talebi göndermek ilk
+   tarihi ileri atmaz.
+3. 3 gün dolduğunda hesabınız ve içeriği **kalıcı ve geri döndürülemez biçimde**
+   silinir: görevler, projeler, notlar, etiketler, klasörler, hatırlatıcılar ve
+   nesne deposundaki dosyalarınız. Geri yükleyebileceğimiz bir yedek kalmaz.
+
+Uygulama içindeki seçeneğe ulaşamıyorsanız **privacy@alliswell.space** adresine
+yazın; silme işlemini sizin adınıza yürütelim.
+
+Bilmenizde fayda olan bir sınır: sahibi olduğunuz çalışma alanları silinir. Bir
+dosyayı başkasının çalışma alanına yüklediyseniz, o dosya ilgili çalışma alanına
+bağlıdır ve onunla birlikte kalır.
+
+## Haklarınız
+
+**KVKK m. 11 uyarınca** şu haklara sahipsiniz:
+
+- kişisel verinizin işlenip işlenmediğini öğrenme;
+- işlenmişse buna ilişkin bilgi talep etme;
+- işlenme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme;
+- yurt içinde veya yurt dışında verilerin aktarıldığı üçüncü kişileri bilme;
+- eksik veya yanlış işlenmişse düzeltilmesini isteme;
+- KVKK m. 7'deki şartlar çerçevesinde silinmesini veya yok edilmesini isteme;
+- düzeltme ve silme işlemlerinin, verilerin aktarıldığı üçüncü kişilere
+  bildirilmesini isteme;
+- münhasıran otomatik sistemlerle yapılan analiz sonucu aleyhinize bir sonuç
+  doğmasına itiraz etme;
+- verilerinizin hukuka aykırı işlenmesi nedeniyle zarara uğrarsanız zararın
+  giderilmesini talep etme.
+
+**GDPR kapsamındaysanız** ayrıca verilerinize erişme, düzeltilmesini, silinmesini
+veya işlenmesinin kısıtlanmasını isteme, meşru menfaate dayanan işlemeye itiraz
+etme ve verilerinizi taşınabilir bir biçimde alma haklarınız vardır.
+
+Başvurularınızı **privacy@alliswell.space** adresine iletebilirsiniz. İşlem
+yapmadan önce, hesabın e-posta adresinin sizde olduğunu doğrulamanızı
+isteyebiliriz. Türkiye'de bulunanlar, ayrıca **Kişisel Verileri Koruma Kurumu**'na
+şikâyette bulunabilir; GDPR kapsamındakiler ise kendi ülkelerindeki denetim
+makamına başvurabilir.
+
+## Güvenlik
+
+Parolalar argon2id ile özetlenir. Oturumlarda kısa ömürlü jetonlar ve dönüşümlü
+yenileme jetonları kullanılır; yenileme jetonları da özetlenmiş hâlde saklanır ve
+biri yeniden kullanılırsa tüm oturum ailesi iptal edilir. Google OAuth jetonları
+AES-256-GCM ile şifrelenir. Dosyalar, yalnızca süresi dolan tek dosyalık imzalı
+bağlantılarla erişilebilen kapalı bir kovada durur. Tüm trafik HTTPS üzerinden
+akar.
+
+Hiçbir sistem yüzde yüz güvenli değildir; aksini iddia etmiyoruz. Bir güvenlik
+açığı bulursanız bildirim yolu için [SECURITY.md](../SECURITY.md) dosyasına
+bakın.
+
+## Çocuklar
+
+AllisWell 13 yaşın altındaki çocuklara yönelik bir hizmet değildir ve bu yaş
+grubundan bilerek kişisel veri toplamayız. 13 yaşın altında birinin hesap
+açtığını düşünüyorsanız **privacy@alliswell.space** adresine yazın; hesabı
+silelim.
+
+## Kendi sunucunuzda çalıştırma
+
+AllisWell **AGPL-3.0** lisanslı açık kaynaklı bir yazılımdır; dileyen kendi
+sunucusunda çalıştırabilir. **Bu politika yalnızca APILLON BİLGİ TEKNOLOJİLERİ
+tarafından alliswell.space üzerinde işletilen hizmeti kapsar.** Başka birinin
+kurduğu bir örneği kullanıyorsanız, veri sorumlusu o işletmecidir: bizim
+kurallarımız değil onunkiler geçerlidir ve biz o verilere erişemeyiz.
+
+## Bu politikadaki değişiklikler
+
+Politikayı güncellersek "Son güncelleme" tarihini değiştirir, yeni sürümü
+uygulamada ve bu depoda yayımlarız. Sizi önemli ölçüde etkileyen değişiklikleri,
+yürürlüğe girmeden önce uygulama içinde duyururuz. Her değişikliğin geçmişi,
+projenin Git kayıtlarında herkese açıktır.
+
+## İletişim
+
+**APILLON BİLGİ TEKNOLOJİLERİ** — **privacy@alliswell.space**

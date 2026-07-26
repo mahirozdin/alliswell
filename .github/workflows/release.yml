@@ -4,7 +4,7 @@ name: Release
 # The tag is the trigger AND the version — everything else is derived from it.
 on:
   push:
-    tags: ['v*.*.*']
+    tags: ["v*.*.*"]
 
 concurrency:
   group: release-${{ github.ref }}
@@ -42,9 +42,13 @@ jobs:
           version="${{ steps.version.outputs.version }}"
           api=$(node -p "require('./apps/api/package.json').version")
           app=$(grep -m1 '^version:' apps/app/pubspec.yaml | sed -E 's/version:[[:space:]]*([0-9.]+).*/\1/')
-          echo "tag=$version  api=$api  app=$app"
-          if [ "$api" != "$version" ] || [ "$app" != "$version" ]; then
-            echo "::error::Tag v$version does not match api ($api) / app ($app). Bump the versions first."
+          # The string the app SHOWS (Settings ▸ About). It sat at 0.1.0 for
+          # three releases because nothing checked it.
+          shown=$(grep -m1 "^const kAppVersion" apps/app/lib/src/core/app_version.dart \
+                  | sed -E "s/.*'([0-9.]+)'.*/\1/")
+          echo "tag=$version  api=$api  app=$app  shown=$shown"
+          if [ "$api" != "$version" ] || [ "$app" != "$version" ] || [ "$shown" != "$version" ]; then
+            echo "::error::Tag v$version does not match api ($api) / app ($app) / kAppVersion ($shown). Bump them first."
             exit 1
           fi
 

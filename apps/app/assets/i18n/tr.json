@@ -76,6 +76,17 @@
     "defaultTaskTime": {
       "title": "Varsayılan görev saati",
       "sub": "Yalnız gün seçilen görevler {time} saatine düşer"
+    },
+    "deleteAccount": {
+      "title": "Hesabı sil",
+      "sub": "Hesabını ve içindeki her şeyi kalıcı olarak siler.",
+      "confirmBody": "Hesabın, görevlerin, projelerin, notların ve dosyaların 3 günlük süre sonunda kalıcı olarak silinecek. Bu süre içinde giriş yapıp iptal edersen hiçbir şey kaybolmaz.",
+      "confirm": "Kalıcı olarak sil",
+      "pendingTitle": "Hesabın silinmek üzere",
+      "pendingBody": "{date} tarihinde her şey kalıcı olarak silinecek. O tarihe kadar iptal edersen hiçbir şey kaybolmaz.",
+      "keepAccount": "Hesabımı koru",
+      "cancelled": "Silme iptal edildi — hesabın güvende.",
+      "failed": "Sunucuya ulaşılamadı. Lütfen tekrar dene."
     }
   },
   "shell": {

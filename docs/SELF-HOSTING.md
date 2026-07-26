@@ -3,9 +3,9 @@
 Run your own AllisWell in a few minutes. Two published images, your own
 database, your own domain — no account with anyone, no data leaving your server.
 
-| Image | What it is |
-| --- | --- |
-| `ghcr.io/mahirozdin/alliswell-api` | The Node/Fastify API. Applies its own database migrations on start. |
+| Image                              | What it is                                                                                                           |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ghcr.io/mahirozdin/alliswell-api` | The Node/Fastify API. Applies its own database migrations on start.                                                  |
 | `ghcr.io/mahirozdin/alliswell-web` | The Flutter web app behind nginx. Reads your API address at **container start**, so one image fits every deployment. |
 
 Both are published on every release for `linux/amd64` and `linux/arm64`, tagged
@@ -43,7 +43,7 @@ proxy in front (§3).
 
 This is the only part people get wrong:
 
-- **`ALLISWELL_API_URL`** — where the *browser* reaches your API, e.g.
+- **`ALLISWELL_API_URL`** — where the _browser_ reaches your API, e.g.
   `https://api.alliswell.example`. It is injected into the web bundle at
   container start.
 - **`CORS_ORIGIN`** — where the web app is served from, e.g.
@@ -70,6 +70,7 @@ api.alliswell.example {
     reverse_proxy 127.0.0.1:3000
 }
 ```
+
 Caddy proxies WebSockets and sets `X-Forwarded-*` on its own.
 </details>
 
@@ -95,6 +96,7 @@ server {
     location / { proxy_pass http://127.0.0.1:8080; }
 }
 ```
+
 </details>
 
 <details>
@@ -110,6 +112,7 @@ RewriteRule ^/?(.*) ws://127.0.0.1:3000/$1 [P,L]
 ProxyPass        / http://127.0.0.1:3000/
 ProxyPassReverse / http://127.0.0.1:3000/
 ```
+
 </details>
 
 Keep `TRUST_PROXY=true` (the default in the compose file) so the API reads the
@@ -152,13 +155,16 @@ your server pays no bandwidth.
    a presigned URL the API mints for an authenticated member.
 3. Add a CORS rule so browsers may upload/download:
    ```json
-   [{ "AllowedOrigins": ["https://alliswell.example"],
-      "AllowedMethods": ["GET", "PUT"],
-      "AllowedHeaders": ["content-type"],
-      "MaxAgeSeconds": 3600 }]
+   [
+     {
+       "AllowedOrigins": ["https://alliswell.example"],
+       "AllowedMethods": ["GET", "PUT"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
    ```
-4. Fill `STORAGE_S3_*` in `.env` and restart. `STORAGE_MAX_UPLOAD_MB` (default
-   10) is enforced *before* an upload starts, and an upload that lies about its
+4. Fill `STORAGE_S3_*` in `.env` and restart. `STORAGE_MAX_UPLOAD_MB` (default 10) is enforced _before_ an upload starts, and an upload that lies about its
    size has its object deleted.
 
 Details: [ATTACHMENTS.md](ATTACHMENTS.md).
@@ -184,13 +190,13 @@ both supported — the schema picks a compatible collation per server on its own
 
 ## 8. Troubleshooting
 
-| Symptom | Cause |
-| --- | --- |
-| App loads, everything fails with a network error | `ALLISWELL_API_URL` / `CORS_ORIGIN` do not match your real domains (§2). |
-| Changes do not appear on other devices until reload | WebSocket upgrade is not passing through the proxy (§3). |
-| Everyone gets rate-limited at once | `TRUST_PROXY` is off behind a proxy (§3). |
-| `Unknown collation` on first start | The database is older than MySQL 8.0 / MariaDB 10.11. |
-| Uploads fail only in the browser | The bucket has no CORS rule for your web origin (§5). |
+| Symptom                                                       | Cause                                                                                                                           |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| App loads, everything fails with a network error              | `ALLISWELL_API_URL` / `CORS_ORIGIN` do not match your real domains (§2).                                                        |
+| Changes do not appear on other devices until reload           | WebSocket upgrade is not passing through the proxy (§3).                                                                        |
+| Everyone gets rate-limited at once                            | `TRUST_PROXY` is off behind a proxy (§3).                                                                                       |
+| `Unknown collation` on first start                            | The database is older than MySQL 8.0 / MariaDB 10.11.                                                                           |
+| Uploads fail only in the browser                              | The bucket has no CORS rule for your web origin (§5).                                                                           |
 | `rsync`/`scp` to the server fails with "is your shell clean?" | A login script or MOTD prints to stdout on every SSH session; silence it (`>/dev/null 2>&1`) or copy with `tar \| ssh` instead. |
 
 Check what the API thinks of itself at any time:

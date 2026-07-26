@@ -7,4 +7,5 @@
     <color name="aw_widget_secondary">#FF44536F</color>
     <color name="aw_widget_overdue">#FFD70015</color>
     <color name="aw_widget_accent">#FF0A5CFF</color>
+	<color name="ic_launcher_background">#4F63EF</color>
 </resources>

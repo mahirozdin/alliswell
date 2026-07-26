@@ -38,13 +38,13 @@
 
 ## 2. Monorepo layout
 
-| Path | What lives here |
-| --- | --- |
+| Path       | What lives here                                |
+| ---------- | ---------------------------------------------- |
 | `apps/api` | Fastify backend, knex migrations, Vitest tests |
-| `apps/app` | Flutter app for all six platforms |
-| `docs/` | Blueprint, this file, TASKS/STATE, ADRs |
-| `scripts/` | Repo tooling (policy checks) |
-| `.github/` | CI workflows, issue/PR templates |
+| `apps/app` | Flutter app for all six platforms              |
+| `docs/`    | Blueprint, this file, TASKS/STATE, ADRs        |
+| `scripts/` | Repo tooling (policy checks)                   |
+| `.github/` | CI workflows, issue/PR templates               |
 
 npm workspaces manage the JS side (`npm install` at root). The Flutter app is managed by its own
 `pubspec.yaml` (not part of npm workspaces).

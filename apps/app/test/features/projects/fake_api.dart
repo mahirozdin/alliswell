@@ -30,6 +30,10 @@ class FakeApi {
   /// none → the app renders kind icons (no Image.network in tests).
   final Map<String, String> downloadUrls = {};
 
+  /// Pending account deletion, as `GET /me` and the deletion endpoints report
+  /// it. Null = nothing scheduled.
+  String? deletionScheduledAt;
+
   /// Workspace revision + tombstones for the pull endpoint.
   int revision = 0;
   final List<Map<String, String>> deleted = [];
@@ -328,6 +332,19 @@ class FakeApi {
     final path = options.uri.path;
     requests.add('${options.method} $path');
 
+    // Account deletion (App Store 5.1.1(v) / Google Play): schedule + undo.
+    if (path == '/api/v1/me' && options.method == 'DELETE') {
+      deletionScheduledAt ??= DateTime.utc(2026, 8, 1, 12).toIso8601String();
+      return jsonBody(200, {
+        'deletionScheduledAt': deletionScheduledAt,
+        'graceDays': 3,
+      });
+    }
+    if (path == '/api/v1/me/deletion/cancel' && options.method == 'POST') {
+      deletionScheduledAt = null;
+      return jsonBody(200, {'deletionScheduledAt': null, 'graceDays': 3});
+    }
+
     if (path == '/api/v1/me') {
       return jsonBody(200, {
         'user': {
@@ -337,6 +354,7 @@ class FakeApi {
           'timezone': 'Europe/Istanbul',
           'locale': 'tr-TR',
           'createdAt': '2026-07-14T00:00:00.000Z',
+          'deletionScheduledAt': deletionScheduledAt,
         },
         'workspaces': [
           {

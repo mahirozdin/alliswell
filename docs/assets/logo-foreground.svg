@@ -1,0 +1,29 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AllisWell mark (adaptive icon foreground)">
+  <!--
+    Android adaptive-icon FOREGROUND: transparent, with the mark inside the
+    66% safe zone — the launcher masks and animates this layer, and anything
+    outside that circle can be cropped on some devices.
+  -->
+  <defs>
+    <linearGradient id="awf-check" x1="150" y1="180" x2="368" y2="356" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8F0FF"/>
+    </linearGradient>
+    <filter id="awf-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#152B73" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- 512-space artwork, centred in 1024 and scaled to ~55% so it sits well
+       inside the mask no matter which shape the launcher applies. -->
+  <g transform="translate(512 512) scale(1.1) translate(-256 -256)">
+    <path d="M150 258 L224 332 L360 176" fill="none" stroke="url(#awf-check)" stroke-width="48"
+          stroke-linecap="round" stroke-linejoin="round" filter="url(#awf-shadow)"/>
+    <path d="M372 132
+             C376 150 384 158 402 162
+             C384 166 376 174 372 192
+             C368 174 360 166 342 162
+             C360 158 368 150 372 132 Z"
+          fill="#FFFFFF" fill-opacity="0.95"/>
+  </g>
+</svg>

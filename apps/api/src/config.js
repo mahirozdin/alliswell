@@ -103,6 +103,16 @@ export function loadConfig(env = process.env) {
       // utf8mb4_uca1400_ai_ci on MariaDB 10.10+.
       collation: env.DATABASE_COLLATION || null,
     }),
+    // Grace period before a requested account deletion becomes irreversible
+    // (src/db/accounts.js). Both app stores require deletion to be reachable
+    // in-app; the delay is our own undo window.
+    accountDeletionGraceDays: toInt(
+      env.ACCOUNT_DELETION_GRACE_DAYS,
+      3,
+      'ACCOUNT_DELETION_GRACE_DAYS',
+    ),
+    // How often expired accounts are purged.
+    accountSweepSec: toInt(env.ACCOUNT_SWEEP_SEC, 3600, 'ACCOUNT_SWEEP_SEC'),
     redisUrl: env.REDIS_URL ?? 'redis://127.0.0.1:6379',
     // Namespaces this deployment's BullMQ keyspace. Two AllisWell instances
     // pointed at one Redis would otherwise consume each other's jobs — and
@@ -202,6 +212,12 @@ export function loadConfig(env = process.env) {
   // R2 refuses presigned URLs beyond 7 days; catch the config typo at boot.
   if (config.storage.presignTtlSec < 60 || config.storage.presignTtlSec > 604800) {
     throw new Error('STORAGE_PRESIGN_TTL_SEC must be between 60 and 604800 (7 days, the R2 cap)');
+  }
+  if (config.accountDeletionGraceDays < 0 || config.accountDeletionGraceDays > 90) {
+    throw new Error('ACCOUNT_DELETION_GRACE_DAYS must be between 0 and 90');
+  }
+  if (config.accountSweepSec < 10) {
+    throw new Error('ACCOUNT_SWEEP_SEC must be at least 10');
   }
   if (config.storage.sweepSec < 10) {
     throw new Error('STORAGE_SWEEP_SEC must be at least 10');

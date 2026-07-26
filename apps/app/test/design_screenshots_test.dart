@@ -327,6 +327,24 @@ Future<void> _openSection(WidgetTester tester, String label) async {
   await tester.tap(find.text(label).first);
 }
 
+/// Reused by `store_screenshots_test.dart` — the store shots must come from the
+/// same real app and the same seeded workspace, not a second implementation
+/// that can drift.
+Future<void> loadRealFontsForStore() => _loadRealFonts();
+
+Future<void> shootForStore(
+  WidgetTester tester, {
+  required Size size,
+  required String name,
+  bool openBoard = false,
+}) => _shoot(
+  tester,
+  size: size,
+  brightness: Brightness.light,
+  name: name,
+  navigate: openBoard ? (t) => t.tap(find.text('board.viewBoard'.tr())) : null,
+);
+
 void main() {
   setUpAll(_loadRealFonts);
 

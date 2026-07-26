@@ -24,6 +24,14 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Export compliance: the app only uses HTTPS/TLS, which is exempt. Declaring
+	     it here means App Store Connect stops asking on every single upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Attachments: picking an image or video for a task or note reads from the
+	     photo library. Without this key iOS terminates the app at the picker. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AllisWell needs access to your photos so you can attach them to tasks and notes.</string>
 	<key>NSAlarmKitUsageDescription</key>
 	<string>AllisWell uses alarms so your urgent tasks ring on time — even when your phone is on silent or in Focus.</string>
 	<key>LSRequiresIPhoneOS</key>

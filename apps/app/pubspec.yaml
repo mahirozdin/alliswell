@@ -2,7 +2,7 @@ name: alliswell
 description: "AllisWell — open-source, self-hosted productivity hub: tasks, projects, notes, calendar sync and reminders."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # The following defines the version and build number for your application.
 # A version number is three numbers separated by dots, like 1.2.43
@@ -62,9 +62,16 @@ dependencies:
   # Flutter's tooling wires the podspec for iOS AND macOS, so no pbxproj surgery.
   alliswell_eventkit:
     path: packages/alliswell_eventkit
-  file_picker: ^11.0.2
+  # 12.x (beta) is REQUIRED on AGP 9: 11.0.2 skips applying its own Kotlin
+  # plugin when it detects AGP 9, expecting Flutter to compile its Kotlin —
+  # which Flutter 3.44 does not, so the release build cannot find
+  # FilePickerPlugin. Reproduced on a bare `flutter create` app (2026-07-26).
+  file_picker: ^12.0.0-beta.7
 
 dev_dependencies:
+  # Generates the iOS AppIcon set + Android mipmaps/adaptive icons from
+  # assets/branding/ — run: dart run flutter_launcher_icons
+  flutter_launcher_icons: ^0.14.4
   flutter_test:
     sdk: flutter
 
@@ -82,7 +89,6 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
@@ -122,3 +128,16 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Launcher icons are GENERATED, not hand-placed: `dart run flutter_launcher_icons`
+# rebuilds every density from these two sources, so the app icon can never drift
+# from the brand mark in docs/assets/.
+flutter_launcher_icons:
+  image_path: assets/branding/icon.png
+  android: true
+  adaptive_icon_background: "#4F63EF"
+  adaptive_icon_foreground: assets/branding/icon-foreground.png
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: false

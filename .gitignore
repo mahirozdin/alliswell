@@ -26,3 +26,9 @@ coverage/
 # --- Build artifacts ---
 dist/
 build/
+
+# --- Android release signing (NEVER commit: losing control of these means
+# someone else can ship an update as you) ---
+apps/app/android/key.properties
+**/*.jks
+**/*.keystore

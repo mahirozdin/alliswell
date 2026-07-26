@@ -16,7 +16,7 @@ self-hosting story that fits in one command.
 
 - 🐳 **Self-hosting in one command.** Two published multi-arch images
   (`alliswell-api`, `alliswell-web`) and a ready compose file: `docker compose
-  up -d` installs, `pull` + `up -d` upgrades, and your data never leaves its
+up -d` installs, `pull` + `up -d` upgrades, and your data never leaves its
   volumes. The web image takes your API address at container start, so one
   prebuilt bundle serves any domain — [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 - 🔔 **The alarm backbone.** Urgent tasks ring **at their deadline**, with a real
@@ -66,7 +66,7 @@ self-hosting story that fits in one command.
   `pull` + `up -d` with data untouched in named volumes. Guide:
   [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 - **Runtime API address for the web build** — the published web image reads
-  `ALLISWELL_API_URL` at *container start* (`web/alliswell-config.js` →
+  `ALLISWELL_API_URL` at _container start_ (`web/alliswell-config.js` →
   `window.ALLISWELL_API_URL`), so one prebuilt bundle serves any domain without
   recompiling Flutter. The compile-time `--dart-define` remains the fallback and
   the only mechanism on mobile/desktop.
@@ -226,7 +226,7 @@ self-hosting story that fits in one command.
 - **Urgent alarms now ring inside the open app** (OPH-143, Epic 13): when an
   urgent task comes due while AllisWell is open, a full-screen alarm takes over
   with the task, an Acknowledge button and snooze presets (5/30 min, 1 hour) —
-  it must be answered, not swiped away. This is the *only* alarm surface on
+  it must be answered, not swiped away. This is the _only_ alarm surface on
   desktop and web, and the foreground companion to the phone's OS notification.
   A haptic pulse carries the insistence today (a looping sound is a follow-up;
   on mobile the OS alarm already plays it). Home also shows an honest banner

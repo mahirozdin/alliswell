@@ -77,6 +77,17 @@
     "defaultTaskTime": {
       "title": "Default task time",
       "sub": "Day-only tasks are due at {time}"
+    },
+    "deleteAccount": {
+      "title": "Delete account",
+      "sub": "Permanently erases your account and everything in it.",
+      "confirmBody": "Your account, tasks, projects, notes and files will be permanently deleted after a 3-day grace period. Sign in and cancel before then to keep everything.",
+      "confirm": "Delete permanently",
+      "pendingTitle": "Account scheduled for deletion",
+      "pendingBody": "Everything is erased for good on {date}. Cancel before then and nothing is lost.",
+      "keepAccount": "Keep my account",
+      "cancelled": "Deletion cancelled — your account is safe.",
+      "failed": "Could not reach the server. Please try again."
     }
   },
   "shell": {

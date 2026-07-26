@@ -25,7 +25,11 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql # ← your data lives here
     healthcheck:
-      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent']
+      test:
+        [
+          "CMD-SHELL",
+          'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent',
+        ]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -37,7 +41,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -48,7 +52,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_HOST: mysql
-      DATABASE_PORT: '3306'
+      DATABASE_PORT: "3306"
       DATABASE_USER: ${DATABASE_USER:-alliswell}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:?set DATABASE_PASSWORD in .env}
       DATABASE_NAME: ${DATABASE_NAME:-alliswell}
@@ -78,7 +82,7 @@ services:
       STORAGE_PRESIGN_TTL_SEC: ${STORAGE_PRESIGN_TTL_SEC:-900}
     ports:
       # Loopback only: put your TLS proxy in front of it.
-      - '${API_BIND:-127.0.0.1}:${API_PORT:-3000}:3000'
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-3000}:3000"
     depends_on:
       mysql:
         condition: service_healthy
@@ -92,7 +96,7 @@ services:
       # Injected into the bundle at container start — no rebuild needed.
       ALLISWELL_API_URL: ${ALLISWELL_API_URL:?e.g. https://api.alliswell.example}
     ports:
-      - '${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80'
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
     depends_on:
       - api
 

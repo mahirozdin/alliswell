@@ -8,10 +8,10 @@ import 'picked_upload.dart';
 /// at upload time — a video never has to fit in memory, and `open()` is
 /// naturally re-openable for retries.
 Future<List<PickedUpload>> pickUploads() async {
-  final result = await FilePicker.pickFiles(
-    allowMultiple: true,
-    withData: false,
-  );
+  // file_picker 12: `withData` is gone (bytes are pulled on demand via
+  // PlatformFile.readAsBytes) and multi-select is `pickFiles`' own behaviour —
+  // `pickFile` is the single-file call.
+  final result = await FilePicker.pickFiles();
   if (result == null) return const [];
   return [
     for (final f in result.files)

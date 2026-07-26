@@ -10,8 +10,8 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 
 [![CI](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml/badge.svg)](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-brightgreen)](LICENSE)
-[![Backend: JavaScript](https://img.shields.io/badge/Backend-Node.js_(JavaScript_only)-yellow)](AGENTS.md)
-[![App: Flutter](https://img.shields.io/badge/App-Flutter_(6_platforms)-02569B)](apps/app)
+[![Backend: JavaScript](<https://img.shields.io/badge/Backend-Node.js_(JavaScript_only)-yellow>)](AGENTS.md)
+[![App: Flutter](<https://img.shields.io/badge/App-Flutter_(6_platforms)-02569B>)](apps/app)
 [![Self-hosted](https://img.shields.io/badge/Self--hosted-your_MySQL-2563EB)](docker-compose.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-orange)](CONTRIBUTING.md)
 
@@ -40,7 +40,7 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 - 🗂 **Projects** — colors, favorites, status, archiving, a Notion-style README note, and per-project Tasks / Notes / Files tabs.
 - 🏷 **Tags & priorities** — type `#tags` inline (auto-create, colors, fold-matched suggestions) and set `none → urgent` priority.
 - 🔔 **Alarm-grade reminders** — exact-time delivery, **urgent alarms that break through Silent mode & Focus**, a re-alert-until-acknowledged chain, snooze presets (5 m / 30 m / 1 h / tomorrow / custom), and a privacy mode that hides task content on the lock screen.
-- 🔎 **Instant search** — case- **and Turkish-accent-insensitive** ("cay" finds *Çay*, "isi" finds *ısı*), ranked title → tag → body, running locally over the on-device replica, so it works **offline**.
+- 🔎 **Instant search** — case- **and Turkish-accent-insensitive** ("cay" finds _Çay_, "isi" finds _ısı_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**.
 - 📝 **Notes & documents** — rich-text (Quill Delta) notes with inline images/video, links to tasks & projects, and Markdown export.
 - 📅 **True two-way calendar sync** — **Google** (OAuth, encrypted tokens, push webhooks, incremental sync, etag-based conflict resolution) and **Apple Calendar** (EventKit bridge); your own external events flow back into Home.
 - 📎 **Attachments & Files** — attach any file to tasks, notes and projects, plus a global **Files** section with nestable folders — stored in **Cloudflare R2 / any S3** via presigned URLs (the API never proxies your bytes).
@@ -56,12 +56,12 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 
 <br>
 
-|  |  |
-| --- | --- |
-| **Board (kanban)** — status columns, drag-to-move | **Files** — folders + every attachment, one place |
+|                                                                                                                  |                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Board (kanban)** — status columns, drag-to-move                                                                | **Files** — folders + every attachment, one place                                                                          |
 | ![AllisWell kanban Board view with Open, In progress, Waiting and Completed columns](docs/screenshots/board.png) | ![AllisWell global Files section showing folders and uploaded files with type icons and sizes](docs/screenshots/files.png) |
-| **Projects** — colors, favorites, archive | **Home (dark)** — the same day, dark mode |
-| ![AllisWell Projects list with color-coded projects and favorite stars](docs/screenshots/projects.png) | ![AllisWell Home dashboard in dark mode](docs/screenshots/home-dark.png) |
+| **Projects** — colors, favorites, archive                                                                        | **Home (dark)** — the same day, dark mode                                                                                  |
+| ![AllisWell Projects list with color-coded projects and favorite stars](docs/screenshots/projects.png)           | ![AllisWell Home dashboard in dark mode](docs/screenshots/home-dark.png)                                                   |
 
 <p align="center"><em>On the phone — the same local-first app, from one Flutter codebase:</em></p>
 
@@ -82,13 +82,13 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 
 The tools we love, we can't fully own. AllisWell combines their best ideas — and adds what none of them give you: **open source, self-hosted, true two-way calendar sync, and a local-first realtime engine.**
 
-| Inspiration | What we take from it |
-| --- | --- |
-| **Apple Reminders** | Instant capture, date/time alarms, subtasks |
-| **Things 3** | Inbox / Today / Upcoming flow, projects & areas |
-| **Todoist** | Labels, priorities, filters, cross-platform discipline |
-| **TickTick** | Calendar-first planning, kanban board, rich task notes |
-| **Notion** | Project document pages, notes as a knowledge base |
+| Inspiration         | What we take from it                                   |
+| ------------------- | ------------------------------------------------------ |
+| **Apple Reminders** | Instant capture, date/time alarms, subtasks            |
+| **Things 3**        | Inbox / Today / Upcoming flow, projects & areas        |
+| **Todoist**         | Labels, priorities, filters, cross-platform discipline |
+| **TickTick**        | Calendar-first planning, kanban board, rich task notes |
+| **Notion**          | Project document pages, notes as a knowledge base      |
 
 > 🇹🇷 Bu proje Türkçe bir ürün vizyonuyla başladı — tam vizyon için [docs/BLUEPRINT.md](docs/BLUEPRINT.md).
 
@@ -136,7 +136,7 @@ docker compose -f docker-compose.selfhost.yml up -d
 
 The API creates and migrates its own schema on start, so an upgrade is just
 `pull` + `up -d` — **your data lives in named volumes and is never touched**.
-The web image reads your API address at *container start*, so one prebuilt
+The web image reads your API address at _container start_, so one prebuilt
 image serves any domain without rebuilding Flutter.
 
 Full guide — TLS/reverse proxy, upgrades & backups, Cloudflare R2 attachments,
@@ -176,35 +176,35 @@ Google Calendar (`GOOGLE_*`), and file attachments via Cloudflare R2 / any S3 (`
 
 ### Useful commands
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Start API with watch mode |
-| `npm test` | API unit tests (no infra needed) |
-| `npm run test:integration` | API integration tests (needs MySQL+Redis) |
-| `npm run lint` / `npm run format` | ESLint / Prettier |
-| `npm run db:migrate` / `db:rollback` | Knex migrations |
-| `npm run check:no-ts` | Enforce the JavaScript-only policy |
-| `npm run check:i18n` | Enforce no hardcoded UI strings (localization) |
+| Command                              | What it does                                   |
+| ------------------------------------ | ---------------------------------------------- |
+| `npm run dev`                        | Start API with watch mode                      |
+| `npm test`                           | API unit tests (no infra needed)               |
+| `npm run test:integration`           | API integration tests (needs MySQL+Redis)      |
+| `npm run lint` / `npm run format`    | ESLint / Prettier                              |
+| `npm run db:migrate` / `db:rollback` | Knex migrations                                |
+| `npm run check:no-ts`                | Enforce the JavaScript-only policy             |
+| `npm run check:i18n`                 | Enforce no hardcoded UI strings (localization) |
 
 </details>
 
 <details>
 <summary><h2>📚 Documentation</h2></summary>
 
-| Doc | Purpose |
-| --- | --- |
-| [docs/BLUEPRINT.md](docs/BLUEPRINT.md) | Product vision, domain model, full functional spec (TR) |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture, stack, sync & calendar design |
-| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) | Run your own instance with Docker: TLS, upgrades, backups, storage |
-| [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md) | File attachments: R2/S3 storage, presigned flow, CORS setup |
-| [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Exact-time / urgent alarm delivery research & plan |
-| [docs/WIDGETS.md](docs/WIDGETS.md) | Home-screen widget architecture |
-| [ROADMAP.md](ROADMAP.md) | Phase-by-phase roadmap: shipped, next, and v2 parking lot |
-| [docs/TASKS.md](docs/TASKS.md) | Backlog: every OPH-xxx task with acceptance criteria |
-| [docs/STATE.md](docs/STATE.md) | Live development state — what's done, what's next |
-| [CHANGELOG.md](CHANGELOG.md) | What changed, per release |
-| [docs/adr/](docs/adr/) | Architecture Decision Records (0001–0014) |
-| [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) | Workflow, contributing & security policy |
+| Doc                                                                                      | Purpose                                                            |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [docs/BLUEPRINT.md](docs/BLUEPRINT.md)                                                   | Product vision, domain model, full functional spec (TR)            |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                             | System architecture, stack, sync & calendar design                 |
+| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)                                             | Run your own instance with Docker: TLS, upgrades, backups, storage |
+| [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md)                                               | File attachments: R2/S3 storage, presigned flow, CORS setup        |
+| [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md)                                           | Exact-time / urgent alarm delivery research & plan                 |
+| [docs/WIDGETS.md](docs/WIDGETS.md)                                                       | Home-screen widget architecture                                    |
+| [ROADMAP.md](ROADMAP.md)                                                                 | Phase-by-phase roadmap: shipped, next, and v2 parking lot          |
+| [docs/TASKS.md](docs/TASKS.md)                                                           | Backlog: every OPH-xxx task with acceptance criteria               |
+| [docs/STATE.md](docs/STATE.md)                                                           | Live development state — what's done, what's next                  |
+| [CHANGELOG.md](CHANGELOG.md)                                                             | What changed, per release                                          |
+| [docs/adr/](docs/adr/)                                                                   | Architecture Decision Records (0001–0014)                          |
+| [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) | Workflow, contributing & security policy                           |
 
 </details>
 
@@ -214,7 +214,7 @@ Google Calendar (`GOOGLE_*`), and file attachments via Cloudflare R2 / any S3 (`
 This repository is designed for continuous development by AI coding agents:
 
 1. Open [docs/STATE.md](docs/STATE.md) → see the current epic and the **next task**.
-2. Say **"do the next task"** (Turkish: *"sıradaki işi yap"*).
+2. Say **"do the next task"** (Turkish: _"sıradaki işi yap"_).
 3. The agent follows [AGENTS.md](AGENTS.md): implement → test → update docs → check the box in [docs/TASKS.md](docs/TASKS.md) → update STATE → commit.
 
 The markdown files (STATE / TASKS / CHANGELOG) are the single source of truth — no external board required.

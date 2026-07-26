@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
+import '../core/app_version.dart';
 import '../core/persisted_prefs.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/onboarding/tour.dart';
+import '../features/settings/account_deletion.dart';
 import '../features/settings/account_locale.dart';
 import '../i18n/i18n.dart';
 import '../notifications/gateway.dart';
@@ -138,7 +141,9 @@ class SettingsScreen extends ConsumerWidget {
                     AboutListTile(
                       icon: const Icon(Icons.info_outline),
                       applicationName: 'AllisWell',
-                      applicationVersion: '0.1.0',
+                      // Read from the bundle, not retyped — a hardcoded string
+                      // here silently lied about the version for three releases.
+                      applicationVersion: ref.watch(appVersionProvider),
                       aboutBoxChildren: [Text('settings.aboutBody'.tr())],
                     ),
                   ],
@@ -167,12 +172,145 @@ class SettingsScreen extends ConsumerWidget {
                       ref.read(authControllerProvider.notifier).logout(),
                 ),
               ),
+              const SizedBox(height: AwSpace.x3),
+              // Deleting the account must be reachable from inside the app
+              // (App Store 5.1.1(v) / Google Play) — and reversible while the
+              // grace period lasts.
+              const _DeleteAccountCard(),
             ],
           ),
         ),
       ),
     );
   }
+}
+
+/// Account deletion (App Store 5.1.1(v) / Google Play): the request, the
+/// countdown while it is still undoable, and the way out of it.
+///
+/// The server owns the state — after every action the provider is invalidated
+/// and the row re-renders from what the server says, never from a local guess
+/// about whether the deletion "probably" went through.
+class _DeleteAccountCard extends ConsumerWidget {
+  const _DeleteAccountCard();
+
+  Future<void> _request(BuildContext context, WidgetRef ref) async {
+    final scheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('settings.deleteAccount.title'.tr()),
+        content: Text('settings.deleteAccount.confirmBody'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('common.cancel'.tr()),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: scheme.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('settings.deleteAccount.confirm'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(accountDeletionApiProvider).requestDeletion();
+      ref.invalidate(accountDeletionProvider);
+    } on Object {
+      messenger.showSnackBar(
+        SnackBar(content: Text('settings.deleteAccount.failed'.tr())),
+      );
+    }
+  }
+
+  Future<void> _cancel(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(accountDeletionApiProvider).cancelDeletion();
+      ref.invalidate(accountDeletionProvider);
+      messenger.showSnackBar(
+        SnackBar(content: Text('settings.deleteAccount.cancelled'.tr())),
+      );
+    } on Object {
+      messenger.showSnackBar(
+        SnackBar(content: Text('settings.deleteAccount.failed'.tr())),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final state = ref.watch(accountDeletionProvider);
+
+    // A pending deletion outranks everything: show the deadline and the undo.
+    final pending = state.value;
+    if (pending != null && pending.isPending) {
+      return Card(
+        color: scheme.errorContainer,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(
+                Icons.timer_outlined,
+                color: scheme.onErrorContainer,
+              ),
+              title: Text(
+                'settings.deleteAccount.pendingTitle'.tr(),
+                style: TextStyle(
+                  color: scheme.onErrorContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                'settings.deleteAccount.pendingBody'.tr(
+                  args: {'date': _formatDeadline(pending.scheduledAt!)},
+                ),
+                style: TextStyle(color: scheme.onErrorContainer),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AwSpace.x3,
+                0,
+                AwSpace.x3,
+                AwSpace.x3,
+              ),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => _cancel(context, ref),
+                  child: Text('settings.deleteAccount.keepAccount'.tr()),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Card(
+      child: ListTile(
+        leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
+        title: Text(
+          'settings.deleteAccount.title'.tr(),
+          style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text('settings.deleteAccount.sub'.tr()),
+        // Never block the action on a failed status read — the point of this
+        // row is that it always works.
+        onTap: state.isLoading ? null : () => _request(context, ref),
+      ),
+    );
+  }
+
+  static String _formatDeadline(DateTime at) =>
+      DateFormat.yMMMMd().add_Hm().format(at);
 }
 
 /// Feedback round 6: the alarm-permission status row. It reports what the OS

@@ -1,3 +1,19 @@
+import {
+  cancelAccountDeletion,
+  deletionDeadline,
+  scheduleAccountDeletion,
+} from '../db/accounts.js';
+
+const errorResponseSchema = {
+  type: 'object',
+  properties: {
+    statusCode: { type: 'integer' },
+    code: { type: 'string' },
+    error: { type: 'string' },
+    message: { type: 'string' },
+  },
+};
+
 const meResponseSchema = {
   type: 'object',
   required: ['user', 'workspaces'],
@@ -13,6 +29,9 @@ const meResponseSchema = {
         timezone: { type: 'string' },
         locale: { type: 'string' },
         createdAt: { type: 'string' },
+        // Non-null while a deletion is pending, so every client can surface the
+        // countdown and the way out of it.
+        deletionScheduledAt: { type: ['string', 'null'] },
       },
     },
     workspaces: {
@@ -40,7 +59,16 @@ async function loadMe(app, userId) {
     .db('users')
     .where({ id: userId })
     .whereNull('deleted_at')
-    .first('id', 'email', 'display_name', 'avatar_url', 'timezone', 'locale', 'created_at');
+    .first(
+      'id',
+      'email',
+      'display_name',
+      'avatar_url',
+      'timezone',
+      'locale',
+      'created_at',
+      'deletion_scheduled_at',
+    );
   if (!user) {
     // Valid JWT for a user that no longer exists (deleted account).
     const err = app.httpErrors.unauthorized('Account no longer exists');
@@ -72,6 +100,9 @@ async function loadMe(app, userId) {
       timezone: user.timezone,
       locale: user.locale,
       createdAt: new Date(user.created_at).toISOString(),
+      deletionScheduledAt: user.deletion_scheduled_at
+        ? new Date(user.deletion_scheduled_at).toISOString()
+        : null,
     },
     workspaces: workspaces.map((ws) => ({
       id: ws.id,
@@ -133,6 +164,53 @@ export default async function meRoutes(app) {
         throw err;
       }
       return loadMe(app, request.user.id);
+    },
+  );
+
+  // ── Account deletion (App Store 5.1.1(v) / Google Play) ───────────────────
+  // Required to be reachable IN the app, and required to actually erase the
+  // data — not just deactivate. The grace period is the undo: the account keeps
+  // working until it expires, so signing back in and cancelling restores it.
+
+  const deletionResponseSchema = {
+    type: 'object',
+    required: ['deletionScheduledAt', 'graceDays'],
+    properties: {
+      deletionScheduledAt: { type: ['string', 'null'] },
+      graceDays: { type: 'integer' },
+    },
+  };
+
+  app.delete(
+    '/me',
+    {
+      onRequest: [app.authenticate],
+      schema: { response: { 200: deletionResponseSchema, 401: errorResponseSchema } },
+    },
+    async (request) => {
+      const graceDays = app.config.accountDeletionGraceDays;
+      const deadline = deletionDeadline(new Date(), graceDays);
+      const scheduled = await scheduleAccountDeletion(app.db, request.user.id, deadline);
+      request.log.info({ userId: request.user.id, scheduled }, 'account deletion scheduled');
+      return { deletionScheduledAt: scheduled.toISOString(), graceDays };
+    },
+  );
+
+  // Undo. Deliberately its own route rather than a PATCH flag: cancelling is
+  // the one action a panicking user must be able to find and trust.
+  app.post(
+    '/me/deletion/cancel',
+    {
+      onRequest: [app.authenticate],
+      schema: { response: { 200: deletionResponseSchema, 401: errorResponseSchema } },
+    },
+    async (request) => {
+      await cancelAccountDeletion(app.db, request.user.id);
+      request.log.info({ userId: request.user.id }, 'account deletion cancelled');
+      return {
+        deletionScheduledAt: null,
+        graceDays: app.config.accountDeletionGraceDays,
+      };
     },
   );
 }

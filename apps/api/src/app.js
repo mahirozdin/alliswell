@@ -14,6 +14,7 @@ import mirrorPlugin from './plugins/mirror.js';
 import calendarSyncPlugin from './plugins/calendar-sync.js';
 import storagePlugin from './plugins/storage.js';
 import storageGcPlugin from './plugins/storage-gc.js';
+import accountGcPlugin from './plugins/account-gc.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -83,6 +84,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(redisPlugin, { redis });
   await app.register(storagePlugin, { storage });
   await app.register(storageGcPlugin);
+  await app.register(accountGcPlugin);
   await app.register(authPlugin);
   await app.register(socketPlugin);
   await app.register(mirrorPlugin);
