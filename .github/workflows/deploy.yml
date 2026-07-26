@@ -242,19 +242,32 @@ jobs:
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "WEB_DIR='$WEB_DIR' bash -euo pipefail" <<'REMOTE'
-          # .htaccess is server-owned (SPA routing) and not part of the build.
-          [ -f "$WEB_DIR/.htaccess" ] && cp -a "$WEB_DIR/.htaccess" "$WEB_DIR.incoming/" || true
+          # Docroot files the SERVER owns, not the build: SPA routing, and the
+          # .user.ini panels drop in every site root. Carry them across.
+          for keep in .htaccess .user.ini; do
+            [ -e "$WEB_DIR/$keep" ] && cp -a "$WEB_DIR/$keep" "$WEB_DIR.incoming/" 2>/dev/null || true
+          done
           # Inherit the live docroot's ownership so the web server keeps reading it.
           chown -R --reference="$WEB_DIR" "$WEB_DIR.incoming" 2>/dev/null || true
 
-          rm -rf "$WEB_DIR.previous"
+          # Best-effort cleanup helper: aaPanel marks .user.ini immutable
+          # (chattr +i), which even root cannot unlink until the flag is off.
+          drop_dir() {
+            [ -e "$1" ] || return 0
+            chattr -R -i "$1" 2>/dev/null || true
+            rm -rf "$1" 2>/dev/null || true
+          }
+
+          drop_dir "$WEB_DIR.previous"
           mv "$WEB_DIR" "$WEB_DIR.previous"
           if ! mv "$WEB_DIR.incoming" "$WEB_DIR"; then
             mv "$WEB_DIR.previous" "$WEB_DIR"   # never leave the site without a docroot
             echo "ERROR: could not swap in the new bundle — restored the previous one." >&2
             exit 1
           fi
-          rm -rf "$WEB_DIR.previous"
+          # From here the new bundle is LIVE. Tidying the old copy must never
+          # fail the deploy — leftovers cost disk, a false red costs trust.
+          drop_dir "$WEB_DIR.previous"
           echo "web bundle published to $WEB_DIR ($(find "$WEB_DIR" -type f | wc -l) files)"
           REMOTE
 
