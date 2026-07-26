@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Alliswell</string>
+	<string>AllisWell</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>alliswell</string>
+	<string>AllisWell</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -24,18 +24,18 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<!-- Export compliance: the app only uses HTTPS/TLS, which is exempt. Declaring
-	     it here means App Store Connect stops asking on every single upload. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<!-- Attachments: picking an image or video for a task or note reads from the
-	     photo library. Without this key iOS terminates the app at the picker. -->
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>AllisWell needs access to your photos so you can attach them to tasks and notes.</string>
-	<key>NSAlarmKitUsageDescription</key>
-	<string>AllisWell uses alarms so your urgent tasks ring on time — even when your phone is on silent or in Focus.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>AllisWell uses alarms so your urgent tasks ring on time — even when your phone is on silent or in Focus.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AllisWell needs access to your photos so you can attach them to tasks and notes.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -76,9 +76,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
-	<key>NSCalendarsUsageDescription</key>
-	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
 </dict>
 </plist>
