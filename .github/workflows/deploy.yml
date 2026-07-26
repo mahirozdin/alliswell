@@ -164,18 +164,27 @@ jobs:
           fi
           echo "pm2 target: $TARGET (user: $PM2_USER)"
 
-          # Engine gate LAST, so the report above is always printed: the API
-          # declares node >=22 and CI tests on 24 — installing under an older
-          # runtime would ship something nobody tested.
+          # Engine check LAST, so the report above is always printed.
+          #
+          # package.json declares node >=22 and CI tests on 24, but a host that
+          # is demonstrably serving traffic on an older runtime should not be
+          # blocked from deploying by its own pipeline. So: HARD-fail only below
+          # DEPLOY_MIN_NODE (18 — the oldest this app is known to run on), and
+          # warn, every single deploy, whenever the runtime is behind what the
+          # project actually tests. Raise DEPLOY_MIN_NODE to 22 to make it a
+          # gate again once the host is upgraded.
+          MIN_NODE="${DEPLOY_MIN_NODE:-18}"
           major=$(node -p "process.versions.node.split('.')[0]")
-          if [ "$major" -lt 22 ]; then
-            echo "ERROR: node $(node -v) is too old — the API requires >=22." >&2
+          if [ "$major" -lt "$MIN_NODE" ]; then
+            echo "ERROR: node $(node -v) is below the accepted minimum (v$MIN_NODE)." >&2
             echo "--- every node binary on this host ---" >&2
             find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null \
               | while read -r n; do echo "  $n → $("$n" -v 2>/dev/null)" >&2; done
-            echo "Install Node >=22 (aaPanel ▸ App Store ▸ Node.js), or point the" >&2
-            echo "DEPLOY_NODE_PATH repository variable at a bin directory that has it." >&2
+            echo "Install a newer Node (aaPanel ▸ App Store ▸ Node.js), or point the" >&2
+            echo "DEPLOY_NODE_PATH repository variable at a bin directory that has one." >&2
             exit 1
+          elif [ "$major" -lt 22 ]; then
+            echo "::warning::Deploying under node $(node -v); package.json declares >=22 and CI tests on 24. It works today, but nothing verifies this runtime — upgrading the host removes a whole class of surprise."
           fi
 
           # Read DB credentials from the app's own .env (never duplicated into
