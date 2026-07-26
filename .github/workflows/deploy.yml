@@ -92,6 +92,15 @@ jobs:
             m=$("$d/node" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
             if [ "$m" -gt "$best_major" ]; then best_major="$m"; best="$d"; fi
           done
+          # Still nothing new enough? Stop guessing at layouts and go find every
+          # node on the box — panels move these between versions, and a deploy
+          # should not break because a directory was renamed upstream.
+          if [ "$best_major" -lt 22 ]; then
+            for cand in $(find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null | head -40); do
+              m=$("$cand" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
+              if [ "$m" -gt "$best_major" ]; then best_major="$m"; best=$(dirname "$cand"); fi
+            done
+          fi
           [ -n "$best" ] && PATH="$best:$PATH"
           export PATH
           for bin in node npm pm2 mysqldump git; do
@@ -100,10 +109,14 @@ jobs:
           major=$(node -p "process.versions.node.split('.')[0]")
           if [ "$major" -lt 22 ]; then
             echo "ERROR: node $(node -v) is too old — the API requires >=22." >&2
-            echo "Node installations found on this host:" >&2
-            ls -d /www/server/nvm/versions/node/v*/bin /www/server/nodejs/v*/bin \
-                  "${HOME:-/root}"/.nvm/versions/node/v*/bin 2>/dev/null >&2 || true
-            echo "Set the DEPLOY_NODE_PATH repository variable to a bin directory with Node >=22." >&2
+            echo "--- every node binary on this host ---" >&2
+            find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null \
+              | while read -r n; do echo "  $n → $("$n" -v 2>/dev/null)" >&2; done
+            echo "  (PATH) $(command -v -a node 2>/dev/null | tr '\n' ' ')" >&2
+            echo "--- what PM2 is running ---" >&2
+            pm2 list >&2 2>/dev/null || true
+            echo "Install Node >=22 (aaPanel ▸ App Store ▸ Node.js), or point the" >&2
+            echo "DEPLOY_NODE_PATH repository variable at a bin directory that has it." >&2
             exit 1
           fi
           echo "node $(node -v) · npm $(npm -v) · pm2 $(pm2 -v 2>/dev/null | tail -1)"
