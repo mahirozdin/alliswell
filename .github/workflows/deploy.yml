@@ -78,15 +78,21 @@ jobs:
           cd "$APP_DIR"
 
           # A non-interactive SSH session sources no login profile, and panels
-          # (aaPanel et al.) keep several Node versions side by side outside the
-          # default PATH. Pick the NEWEST one — an old default silently installs
-          # against the wrong engine.
-          if [ -n "${DEPLOY_NODE_PATH:-}" ]; then
-            PATH="$DEPLOY_NODE_PATH:$PATH"
-          else
-            newest=$(ls -d /www/server/nodejs/v*/bin 2>/dev/null | sort -V | tail -1 || true)
-            [ -n "$newest" ] && PATH="$newest:$PATH"
-          fi
+          # keep several Node versions side by side in several places (aaPanel's
+          # own directory, its bundled nvm, a user nvm). Ask each candidate what
+          # version it IS and take the highest — picking by directory order
+          # silently installs against the wrong engine.
+          best=""; best_major=0
+          for d in ${DEPLOY_NODE_PATH:-} \
+                   /www/server/nvm/versions/node/v*/bin \
+                   /www/server/nodejs/v*/bin \
+                   "${HOME:-/root}"/.nvm/versions/node/v*/bin \
+                   "$(dirname "$(command -v node 2>/dev/null || echo /nonexistent/node)")"; do
+            [ -x "$d/node" ] || continue
+            m=$("$d/node" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
+            if [ "$m" -gt "$best_major" ]; then best_major="$m"; best="$d"; fi
+          done
+          [ -n "$best" ] && PATH="$best:$PATH"
           export PATH
           for bin in node npm pm2 mysqldump git; do
             command -v "$bin" >/dev/null || { echo "ERROR: '$bin' not found in PATH ($PATH)"; exit 1; }
@@ -94,7 +100,10 @@ jobs:
           major=$(node -p "process.versions.node.split('.')[0]")
           if [ "$major" -lt 22 ]; then
             echo "ERROR: node $(node -v) is too old — the API requires >=22." >&2
-            echo "Set the DEPLOY_NODE_PATH repository variable to the right bin directory." >&2
+            echo "Node installations found on this host:" >&2
+            ls -d /www/server/nvm/versions/node/v*/bin /www/server/nodejs/v*/bin \
+                  "${HOME:-/root}"/.nvm/versions/node/v*/bin 2>/dev/null >&2 || true
+            echo "Set the DEPLOY_NODE_PATH repository variable to a bin directory with Node >=22." >&2
             exit 1
           fi
           echo "node $(node -v) · npm $(npm -v) · pm2 $(pm2 -v 2>/dev/null | tail -1)"
