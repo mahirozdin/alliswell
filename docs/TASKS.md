@@ -2956,25 +2956,54 @@ Sıra bağlayıcı: **171→174 UI akışı** (API'siz, cihazsız) → **175→1
 dokunma hissi (iOS lastik bantı, Android stretch) cihaz turuna kaldı — testler
 gerçek jesti sürüyor ama cihaz dokusunu ölçemez._
 
-### OPH-172 — Home tek kaydırma katmanı: yalnız başlık + ayarlar sabit (round 9 #2)
+### OPH-172 — Home tek kaydırma katmanı: yalnız başlık + ayarlar sabit (round 9 #2) ✅ 2026-07-28
 
-- [ ] **Dar yerleşimde (telefon) `CustomScrollView`'e taşınacaklar** (sırayla, hepsi
+- [x] **Dar yerleşimde (telefon) `CustomScrollView`'e taşınacaklar** (sırayla, hepsi
       sliver): `AlarmDegradationBanner` → Liste\|Pano satırı (+ Pano'nun `tune`
       butonu) → `QuickAddBar` → arama alanı → takvim kartı → "Takvimi gizle/göster"
       → gruplu liste. **Sabit kalan tek şey `AppBar`** ("Anasayfa" + ayarlar) —
       kullanıcının cümlesi budur. Geniş yerleşim (≥720) DEĞİŞMEZ (takvim yan panel,
       şikâyet telefona ait).
-- [ ] **Pano modunda istisna (DESIGN §16 H3):** yatay `PageView` kaydırılamayacağı
+- [x] **Pano modunda istisna (DESIGN §16 H3):** yatay `PageView` kaydırılamayacağı
       için Liste\|Pano satırı Pano'da **sabit kalır** (aksi hâlde Liste'ye dönüş yolu
       kaybolur). Bilinçli sapma, gerekçesiyle DESIGN'a yazılır.
-- [ ] **Hızlı ekleme kaydırılınca yazdığını kaybetmesin:** `QuickAddBar`'ın
+- [x] **Hızlı ekleme kaydırılınca yazdığını kaybetmesin:** `QuickAddBar`'ın
       `TextEditingController`'ı ebeveyne taşınır (state hoisting; sliver cache
       extent dışına çıkınca widget dispose olur ve metin uçar), odak kazandığında
       `Scrollable.ensureVisible` ile geri getirilir. Test: metin yaz → 600 px kaydır
       → geri kaydır → metin yerinde.
-- [ ] Testler **4**: liste modunda toggle+quick-add viewport'tan çıkıyor (kaydırma
+- [x] Testler **5** (4 + devralınan arama sınırı): liste modunda toggle+quick-add viewport'tan çıkıyor (kaydırma
       offset'i ile); Pano'da toggle duruyor; quick-add metni kaydırmadan sağ çıkıyor;
       geniş yerleşim regresyonsuz. Kontrast + `flutter analyze` yeşil.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Yapı LayoutBuilder-önce oldu.** Banner + Liste|Pano satırı eskiden dış
+  `Column`'da, LayoutBuilder'ın DIŞINDAYDI — bu yüzden telefonda sabit kalıyorlardı.
+  Artık üç dal var: geniş (≥720, H2 — hiçbir şey değişmedi), **telefon+Pano**
+  (H3 — banner + toggle sabit, pager altta), **telefon+Liste** (H1 — tek
+  `CustomScrollView`, yalnız app bar sabit).
+- **`HomeScreen` artık `ConsumerStatefulWidget`.** Hızlı eklemenin
+  `TextEditingController`'ı + `FocusNode`'u ekranda yaşıyor; `QuickAddBar` ikisini
+  parametre olarak alıyor (vermeyen — Fikirler — kendi state'ini kurmaya devam eder,
+  **sahibi neyi yarattıysa onu dispose eder**). Odak gelince `Scrollable.ensureVisible`
+  (yalnız kaydırılabilir bir ata varsa) alanı geri getiriyor.
+- **Test dişli:** metin testi, -900 kaydırmadan sonra `home-quick-add` widget'ının
+  **ağaçtan silindiğini** de doğruluyor — yani metin ancak hoisted controller'da
+  hayatta kalabilmiş olur. (Kaydırma öncesi/sonrası eşitlik iddiası tek başına
+  cache extent'e takılıp yalancı-yeşil olabilirdi.)
+- **OPH-171'in bıraktığı sınır KAPANDI:** `_HomeSearchResults` artık **sliver
+  döndürüyor** (`SliverPadding`/`SliverFillRemaining`/`SliverToBoxAdapter`), yani
+  arama sonuçları Home'un tek kaydırma ağacının parçası → telefonda **arama modunda
+  da aşağı çekip yenileme çalışıyor** (yeni test bunu ölçüyor). Geniş yerleşimde
+  aynı sliver'a kendi `CustomScrollView`'i veriliyor.
+- Sağlayıcı okumaları build başına toplandı (`homeCalendarVisibleProvider` artık
+  LayoutBuilder callback'i içinde değil — layout geçişi provider'a abone olmasın).
+- Eski testin adı düzeltildi: "quick-add stays pinned" → **"the quick-add still
+  captures"** (sözleşme değişti; iddia değişmedi).
+
+**DoD met 2026-07-28:** app **402/402** (~19 skip) + `flutter analyze` temiz +
+`check:i18n` + `contrast.py FAILURES: 0`; CHANGELOG; STATE.
 
 ### OPH-173 — Detaylı ekleme: proje/öncelik hizası + "yarın" varsayılanı (round 9 #3, #4)
 

@@ -34,14 +34,63 @@ import 'task_grouping.dart';
 /// to a highlighted first group and dims the future groups (Overdue/Today/
 /// No-date stay lit); hiding the calendar drops the selection so an invisible
 /// filter can never keep dimming the list (feedback round 6).
-class HomeScreen extends ConsumerWidget {
+///
+/// **Round 9 (OPH-172, DESIGN §16):** on phones exactly ONE thing is pinned —
+/// the app bar. The degradation banner, the Liste | Pano toggle, quick add, the
+/// search field, the calendar and the calendar toggle are all slivers of the
+/// one scroll view, so chrome never narrows the list it sits above. Wide
+/// layouts keep their pinned chrome and side calendar (there is room), and the
+/// phone BOARD keeps its toggle pinned — a horizontal pager cannot scroll it
+/// away, and losing it would strand the user in the board (H3).
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// Quick add's text lives HERE, not in the bar (OPH-172/H4): the bar is a
+  /// sliver now, and a sliver scrolled past the cache extent is disposed —
+  /// which would silently eat what the user had typed.
+  final _quickAddController = TextEditingController();
+  final _quickAddFocus = FocusNode();
+  final _quickAddKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _quickAddFocus.addListener(_keepQuickAddVisible);
+  }
+
+  @override
+  void dispose() {
+    _quickAddFocus.removeListener(_keepQuickAddVisible);
+    _quickAddController.dispose();
+    _quickAddFocus.dispose();
+    super.dispose();
+  }
+
+  /// Focusing a bar that is half off the top edge (or about to sit behind the
+  /// keyboard) must not leave the user typing blind — scroll it back (H4).
+  void _keepQuickAddVisible() {
+    if (!_quickAddFocus.hasFocus) return;
+    final context = _quickAddKey.currentContext;
+    if (context == null) return; // wide layout: nothing can scroll it away
+    if (Scrollable.maybeOf(context) == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: AwMotion.base,
+      alignment: 0.1,
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   /// Quick add from Home: lands on the selected calendar day at the user's
   /// default task time (Settings; factory 23:59 — OPH-161) when one is picked,
   /// otherwise dateless — either way it appears in the list right away
   /// (feedback round 2).
-  Future<void> _quickAdd(WidgetRef ref, String title) async {
+  Future<void> _quickAdd(String title) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) throw StateError('No workspace available');
     final selectedDay = ref.read(selectedDayProvider);
@@ -58,7 +107,7 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final tasks = ref.watch(openTasksProvider);
     final selectedDay = ref.watch(selectedDayProvider);
     // A workspace with no calendar connected has none — not an error state.
@@ -72,12 +121,53 @@ class HomeScreen extends ConsumerWidget {
     // OPH-168 (K1): Liste | Pano — the board is a VIEW of the same task set,
     // device-local and persistent. Search belongs to the list view.
     final isBoard = ref.watch(homeViewProvider) == 'board';
+    // Watched here (not inside the LayoutBuilder) so a layout pass never
+    // subscribes providers.
+    final calendarVisible = ref.watch(homeCalendarVisibleProvider);
+
     final searchField = Padding(
       padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x1, AwSpace.x4, 0),
       child: AwSearchField(
         key: const Key('home-search'),
         hintText: 'home.searchHint'.tr(),
         onQuery: (q) => ref.read(homeSearchQueryProvider.notifier).set(q),
+      ),
+    );
+
+    // Liste | Pano (K1) + the board's column editor.
+    final viewToggle = Padding(
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x1, AwSpace.x4, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: SegmentedButton<String>(
+              key: const Key('home-view-toggle'),
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                  value: 'list',
+                  icon: const Icon(Icons.view_agenda_outlined),
+                  label: Text('board.viewList'.tr()),
+                ),
+                ButtonSegment(
+                  value: 'board',
+                  icon: const Icon(Icons.view_kanban_outlined),
+                  label: Text('board.viewBoard'.tr()),
+                ),
+              ],
+              selected: {isBoard ? 'board' : 'list'},
+              onSelectionChanged: (selection) =>
+                  ref.read(homeViewProvider.notifier).set(selection.first),
+            ),
+          ),
+          if (isBoard)
+            IconButton(
+              key: const Key('board-edit-columns'),
+              tooltip: 'board.editColumns'.tr(),
+              icon: const Icon(Icons.tune),
+              onPressed: () => showBoardColumnsSheet(context, ref),
+            ),
+        ],
       ),
     );
 
@@ -113,6 +203,9 @@ class HomeScreen extends ConsumerWidget {
 
           final quickAdd = QuickAddBar(
             key: const Key('home-quick-add'),
+            // Hoisted state (H4) — see [_quickAddController].
+            controller: _quickAddController,
+            focusNode: _quickAddFocus,
             hintText: selectedDay == null
                 ? 'home.quickAddHint'.tr()
                 : 'home.quickAddForDay'.tr(
@@ -121,64 +214,29 @@ class HomeScreen extends ConsumerWidget {
                           '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}-${selectedDay.day.toString().padLeft(2, '0')}',
                     },
                   ),
-            onAdd: (title) => _quickAdd(ref, title),
+            onAdd: _quickAdd,
           );
 
-          return Column(
-            children: [
-              // Honest alarm-degradation banner (OPH-143): only shown when the
-              // OS can't ring urgent alarms reliably; nothing otherwise.
-              const AlarmDegradationBanner(),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AwSpace.x4,
-                  AwSpace.x1,
-                  AwSpace.x4,
-                  0,
-                ),
-                child: Row(
+          // Honest alarm-degradation banner (OPH-143): only shown when the OS
+          // can't ring urgent alarms reliably; nothing otherwise.
+          const banner = AlarmDegradationBanner();
+
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 720;
+
+              // H2 — wide layouts are unchanged: there is room for pinned
+              // chrome, and the calendar is a side panel.
+              if (isWide) {
+                return Column(
                   children: [
-                    Expanded(
-                      child: SegmentedButton<String>(
-                        key: const Key('home-view-toggle'),
-                        showSelectedIcon: false,
-                        segments: [
-                          ButtonSegment(
-                            value: 'list',
-                            icon: const Icon(Icons.view_agenda_outlined),
-                            label: Text('board.viewList'.tr()),
-                          ),
-                          ButtonSegment(
-                            value: 'board',
-                            icon: const Icon(Icons.view_kanban_outlined),
-                            label: Text('board.viewBoard'.tr()),
-                          ),
-                        ],
-                        selected: {isBoard ? 'board' : 'list'},
-                        onSelectionChanged: (selection) => ref
-                            .read(homeViewProvider.notifier)
-                            .set(selection.first),
-                      ),
-                    ),
+                    banner,
+                    viewToggle,
                     if (isBoard)
-                      IconButton(
-                        key: const Key('board-edit-columns'),
-                        tooltip: 'board.editColumns'.tr(),
-                        icon: const Icon(Icons.tune),
-                        onPressed: () => showBoardColumnsSheet(context, ref),
-                      ),
-                  ],
-                ),
-              ),
-              if (isBoard)
-                const Expanded(child: HomeBoard())
-              else
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final isWide = constraints.maxWidth >= 720;
-                      if (isWide) {
-                        return Row(
+                      const Expanded(child: HomeBoard())
+                    else
+                      Expanded(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
@@ -194,7 +252,14 @@ class HomeScreen extends ConsumerWidget {
                                       onRefresh: () =>
                                           refreshSection(ref, AppSection.home),
                                       child: searching
-                                          ? const _HomeSearchResults()
+                                          // Search renders slivers (so phones
+                                          // can pull it too) — give them a
+                                          // scroll view of their own here.
+                                          ? const CustomScrollView(
+                                              physics:
+                                                  AlwaysScrollableScrollPhysics(),
+                                              slivers: [_HomeSearchResults()],
+                                            )
                                           : _GroupedTaskList(groups: groups),
                                     ),
                                   ),
@@ -219,132 +284,117 @@ class HomeScreen extends ConsumerWidget {
                               ),
                             ),
                           ],
-                        );
-                      }
+                        ),
+                      ),
+                  ],
+                );
+              }
 
-                      final calendarVisible = ref.watch(
-                        homeCalendarVisibleProvider,
-                      );
-                      // The calendar is the FIRST item of one scroll view, so it slides
-                      // off-screen as the list scrolls (OPH-103) instead of staying
-                      // pinned and eating half the screen. Quick add stays fixed above.
-                      // OPH-167: the search field rides the SAME scroll (phones
-                      // must not lose a fixed row of space — the OPH-103
-                      // philosophy); its sliver position is identical in search
-                      // mode, so the field never remounts mid-typing.
-                      return Column(
-                        children: [
-                          quickAdd,
-                          Expanded(
-                            // OPH-171: one indicator for the one scroll view —
-                            // it appears under the app bar, above the search
-                            // field, and slides up when the round is done.
-                            child: AwRefresh(
-                              indicatorKey: const Key('home-refresh'),
-                              onRefresh: () =>
-                                  refreshSection(ref, AppSection.home),
-                              child: CustomScrollView(
-                                key: const Key('home-scroll'),
-                                // A short list (or the empty state) must still
-                                // be pullable.
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                slivers: [
-                                  SliverToBoxAdapter(child: searchField),
-                                  if (searching)
-                                    const SliverFillRemaining(
-                                      child: _HomeSearchResults(),
-                                    ),
-                                  if (!searching && calendarVisible)
-                                    SliverToBoxAdapter(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: AwSpace.x4,
-                                        ),
-                                        child: Card(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(
-                                              AwSpace.x2,
-                                            ),
-                                            child: calendar,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  if (!searching)
-                                    SliverToBoxAdapter(
-                                      child: Align(
-                                        alignment: Alignment.centerRight,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: AwSpace.x2,
-                                          ),
-                                          child: TextButton.icon(
-                                            key: const Key('toggle-calendar'),
-                                            onPressed: () {
-                                              // Hiding the calendar clears the
-                                              // selection: a filter you can no
-                                              // longer see must not keep dimming
-                                              // Home (feedback round 6).
-                                              if (calendarVisible) {
-                                                ref
-                                                    .read(
-                                                      selectedDayProvider
-                                                          .notifier,
-                                                    )
-                                                    .select(null);
-                                              }
-                                              ref
-                                                  .read(
-                                                    homeCalendarVisibleProvider
-                                                        .notifier,
-                                                  )
-                                                  .toggle();
-                                            },
-                                            icon: Icon(
-                                              calendarVisible
-                                                  ? Icons.expand_less
-                                                  : Icons.expand_more,
-                                            ),
-                                            label: Text(
-                                              calendarVisible
-                                                  ? 'home.hideCalendar'.tr()
-                                                  : 'home.showCalendar'.tr(),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  if (!searching && groups.isEmpty)
-                                    const SliverFillRemaining(
-                                      hasScrollBody: false,
-                                      // Inside the scroll view already: its own
-                                      // scroll view must not eat the pull.
-                                      child: _HomeEmpty(
-                                        physics: NeverScrollableScrollPhysics(),
-                                      ),
-                                    ),
-                                  if (!searching && groups.isNotEmpty)
-                                    SliverPadding(
-                                      padding: awListPadding(
-                                        context,
-                                        extraBottom: 72,
-                                      ),
-                                      sliver: SliverList(
-                                        delegate: SliverChildListDelegate(
-                                          buildHomeGroupRows(context, groups),
-                                        ),
-                                      ),
-                                    ),
-                                ],
+              // H3 — phone + board: the board is a horizontal pager, so the
+              // toggle CANNOT ride a vertical scroll. It stays pinned, or the
+              // way back to Liste disappears.
+              if (isBoard) {
+                return Column(
+                  children: [
+                    banner,
+                    viewToggle,
+                    const Expanded(child: HomeBoard()),
+                  ],
+                );
+              }
+
+              // H1 — phone + list: ONE scroll view. Everything above the rows
+              // scrolls with them (OPH-103's philosophy, finished); only the
+              // app bar is pinned. The search field's sliver position is the
+              // same in both modes, so it never remounts mid-typing (OPH-167).
+              return AwRefresh(
+                indicatorKey: const Key('home-refresh'),
+                onRefresh: () => refreshSection(ref, AppSection.home),
+                child: CustomScrollView(
+                  key: const Key('home-scroll'),
+                  // A short list (or the empty state) must still be pullable.
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    const SliverToBoxAdapter(child: banner),
+                    SliverToBoxAdapter(child: viewToggle),
+                    SliverToBoxAdapter(
+                      // The key rides a KeyedSubtree so `ensureVisible` has a
+                      // context INSIDE the scroll view (H4).
+                      child: KeyedSubtree(key: _quickAddKey, child: quickAdd),
+                    ),
+                    SliverToBoxAdapter(child: searchField),
+                    if (searching) const _HomeSearchResults(),
+                    if (!searching && calendarVisible)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AwSpace.x4,
+                          ),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(AwSpace.x2),
+                              child: calendar,
+                            ),
+                          ),
+                        ),
+                      ),
+                    if (!searching)
+                      SliverToBoxAdapter(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: AwSpace.x2),
+                            child: TextButton.icon(
+                              key: const Key('toggle-calendar'),
+                              onPressed: () {
+                                // Hiding the calendar clears the selection: a
+                                // filter you can no longer see must not keep
+                                // dimming Home (feedback round 6).
+                                if (calendarVisible) {
+                                  ref
+                                      .read(selectedDayProvider.notifier)
+                                      .select(null);
+                                }
+                                ref
+                                    .read(homeCalendarVisibleProvider.notifier)
+                                    .toggle();
+                              },
+                              icon: Icon(
+                                calendarVisible
+                                    ? Icons.expand_less
+                                    : Icons.expand_more,
+                              ),
+                              label: Text(
+                                calendarVisible
+                                    ? 'home.hideCalendar'.tr()
+                                    : 'home.showCalendar'.tr(),
                               ),
                             ),
                           ),
-                        ],
-                      );
-                    },
-                  ),
+                        ),
+                      ),
+                    if (!searching && groups.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        // Inside the scroll view already: its own scroll view
+                        // must not eat the pull.
+                        child: _HomeEmpty(
+                          physics: NeverScrollableScrollPhysics(),
+                        ),
+                      ),
+                    if (!searching && groups.isNotEmpty)
+                      SliverPadding(
+                        padding: awListPadding(context, extraBottom: 72),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate(
+                            buildHomeGroupRows(context, groups),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-            ],
+              );
+            },
           );
         },
       ),
@@ -443,6 +493,10 @@ List<Widget> buildHomeGroupRows(BuildContext context, List<HomeGroup> groups) {
 /// captures) and calendar events — ordered by tier (title > tag > body),
 /// each row its screen-normal self (S3/S5). The context line under a row
 /// says WHERE a non-title hit matched.
+///
+/// **Returns a SLIVER** (OPH-172): search results are part of Home's one scroll
+/// view, so pull-to-refresh works over them on phones too — a nested scrollable
+/// would have swallowed the drag.
 class _HomeSearchResults extends ConsumerWidget {
   const _HomeSearchResults();
 
@@ -461,13 +515,19 @@ class _HomeSearchResults extends ConsumerWidget {
     final words = SearchService.queryWords(query);
 
     return results.when(
-      loading: () => const _DelayedProgress(),
-      error: (error, _) => AwErrorState(
-        message: localizedError(error),
-        onRetry: () => ref.invalidate(homeSearchResultsProvider),
+      loading: () => const SliverToBoxAdapter(child: _DelayedProgress()),
+      error: (error, _) => SliverFillRemaining(
+        hasScrollBody: false,
+        child: AwErrorState(
+          message: localizedError(error),
+          onRetry: () => ref.invalidate(homeSearchResultsProvider),
+          physics: const NeverScrollableScrollPhysics(),
+        ),
       ),
       data: (data) {
-        if (data == null) return const SizedBox.shrink();
+        if (data == null) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
         final rows = <(int, Widget)>[];
         for (final hit in data.tasks) {
           final task = tasksById[hit.id];
@@ -486,20 +546,24 @@ class _HomeSearchResults extends ConsumerWidget {
           ));
         }
         if (rows.isEmpty) {
-          return AwEmptyState(
-            icon: Icons.search_off,
-            title: 'home.searchEmptyTitle'.tr(),
-            message: 'home.searchEmptyBody'.tr(args: {'query': query}),
-            physics: const AlwaysScrollableScrollPhysics(),
+          return SliverFillRemaining(
+            hasScrollBody: false,
+            child: AwEmptyState(
+              icon: Icons.search_off,
+              title: 'home.searchEmptyTitle'.tr(),
+              message: 'home.searchEmptyBody'.tr(args: {'query': query}),
+              physics: const NeverScrollableScrollPhysics(),
+            ),
           );
         }
         // Stable merge by tier: tasks already tier-ordered, events too.
         rows.sort((a, b) => a.$1.compareTo(b.$1));
-        return ListView(
+        return SliverPadding(
           key: const Key('home-search-results'),
-          physics: const AlwaysScrollableScrollPhysics(),
           padding: awListPadding(context),
-          children: [for (final row in rows) row.$2],
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([for (final row in rows) row.$2]),
+          ),
         );
       },
     );

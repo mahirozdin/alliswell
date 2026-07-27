@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Home stops reserving the top of your phone screen** (OPH-172): the only
+  thing pinned is the app bar. The view switch, the quick-add field, the search
+  box and the month calendar now scroll away with the list instead of squeezing
+  it — and what you had half-typed into quick add is still there when you scroll
+  back. The board keeps its Liste | Pano switch in place (a sideways pager can't
+  scroll it away without stranding you), and wide screens keep their pinned
+  header and side calendar, where there's room for both.
 - **Pull to refresh, everywhere it belongs** (OPH-171): drag down on Home (list
   and board), Ideas, Projects, Notes or Files and the app syncs — the spinner
   appears right under that screen's filters, holds long enough to be seen, and

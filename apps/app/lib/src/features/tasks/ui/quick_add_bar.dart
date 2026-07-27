@@ -12,25 +12,39 @@ class QuickAddBar extends StatefulWidget {
     required this.hintText,
     required this.onAdd,
     this.autofocus = false,
+    this.controller,
+    this.focusNode,
   });
 
   final String hintText;
   final Future<void> Function(String title) onAdd;
   final bool autofocus;
 
+  /// Hand these in when the bar can be DISPOSED while the user is still using
+  /// it — on Home it scrolls with the list (OPH-172), and a sliver past the
+  /// cache extent is destroyed, so the text and focus must outlive the widget.
+  /// Owners dispose what they pass; Inbox passes nothing and keeps its own.
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+
   @override
   State<QuickAddBar> createState() => _QuickAddBarState();
 }
 
 class _QuickAddBarState extends State<QuickAddBar> {
-  final _controller = TextEditingController();
-  final _focus = FocusNode();
+  TextEditingController? _ownController;
+  FocusNode? _ownFocus;
   int _inFlight = 0;
+
+  TextEditingController get _controller =>
+      widget.controller ?? (_ownController ??= TextEditingController());
+  FocusNode get _focus => widget.focusNode ?? (_ownFocus ??= FocusNode());
 
   @override
   void dispose() {
-    _controller.dispose();
-    _focus.dispose();
+    // Only ever dispose what this widget created.
+    _ownController?.dispose();
+    _ownFocus?.dispose();
     super.dispose();
   }
 
