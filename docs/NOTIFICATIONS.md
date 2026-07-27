@@ -11,6 +11,18 @@
 > time, no alarm sound at all, and normal reminders at `.active` buried by
 > Focus. Fixed; §§1–2 now describe the shipped loudness model, the
 > critical-alerts reality, and the AlarmKit path (OPH-140…143).
+>
+> **Rev. 2026-07-27 (feedback round 9, Epic 16 — the first real "I used the
+> alarm" round):** the user armed an urgent task (due 22:45, remind 22:42) and
+> got: a notification at 22:42 with the DEFAULT ding, the alarm bed at 22:44,
+> **nothing at 22:45** (the task's own due time), a silent notification at
+> 22:47, and a silent re-ring after a 5-minute snooze. Diagnosis and the binding
+> answers: §2 (why a `timeSensitive` custom sound is not an alarm, and how it
+> degrades silently), §2b (**AlarmKit was never wired into any Xcode target —
+> the mute-switch-proof lane has never run on a device**), §2c (user-supplied
+> sounds), §2d (Apple Watch), §5 (the user-configurable chain, the loudness
+> contract, the 64-slot math), §6 (the alarm log — no more diagnosis from
+> memory). Tasks: OPH-175…183.
 
 ## 0. Delivery model (why local notifications are the primary channel)
 
@@ -114,7 +126,33 @@ aiff/wav/caf. Urgent alarms ship a 28 s ima4 caf
 (`ios/Runner/Resources/aw_alarm.caf`, wired into the pbxproj Resources
 phase); normal reminders keep the default sound. Normal/time-sensitive
 sounds play at RINGER volume and are silenced by the mute switch — only
-critical alerts (below) or AlarmKit (§5) get past hardware silence. [14]
+critical alerts (below) or AlarmKit (§2b) get past hardware silence. [14]
+
+**Round 9: the two silent-failure modes (2026-07-27).** The round-9 report
+("first quiet, then music, then silence") is not explainable from our payloads —
+every slot of an urgent chain ships the same content (`sound: aw_alarm.caf`,
+`interruptionLevel: .timeSensitive`, urgent category). Two documented OS
+behaviours can produce exactly that pattern, and both are now designed against:
+
+1. **The sound name may not resolve at delivery time.** `UNNotificationSound`
+   resolves a name against the app container's `Library/Sounds` folder first and
+   the app bundle second; when it resolves to nothing the system **substitutes
+   the default sound** (and there is a long tail of reports of this failing
+   intermittently after installs/upgrades). A 28 s custom bed silently becoming
+   a ding is exactly what the user described at 22:42. → OPH-176 verifies
+   resolvability at initialize and says so in Settings; it never assumes.
+2. **The mute switch / ringer volume silences the whole lane.** A
+   `timeSensitive` notification is *delivered* through Focus, but its sound is
+   still a notification sound: hardware silence wins. Nothing in the
+   notification lane can fix this — this is the entire reason AlarmKit (§2b)
+   is the primary iOS lane from round 9 on, not a nice-to-have.
+
+**The loudness contract (binding, round 9).** An urgent alarm's **every** slot —
+the first, each repeat, and every post-snooze re-ring — carries the alarm sound
+and the alarm-grade delivery of its platform. There is no "quiet first slot":
+that shape was never designed, and a user cannot be expected to model it. The
+only user-visible loudness distinction is urgent (alarm) vs normal reminder
+(reminder sound, §2c).
 
 **Critical alerts** (`com.apple.developer.usernotifications.critical-alerts`
 — bypasses the mute switch, DND and every Focus, at an app-chosen absolute
@@ -138,10 +176,11 @@ safety notifications; expect refusal, treat AlarmKit as the real path
 
 **Re-alert loop without background execution.** iOS gives no reliable
 background timer, so "re-alert until acknowledged" is **pre-scheduled as a
-chain**: fire at T, T+2m, T+5m, T+10m… (configurable, ≤5 slots per urgent
-reminder to respect the 64 cap). Acknowledge/complete/snooze cancels the
+chain**: fire at T, T+2m, T+5m, T+10m… Acknowledge/complete/snooze cancels the
 chain locally (and via sync on every other device — reminder status changes
-already replicate). Android uses the same chain model for symmetry.
+already replicate). Android uses the same chain model for symmetry. **Round 9:
+the chain's shape is no longer a constant — it is a user profile, and its cost
+against the 64 cap is stated in the UI (§5).**
 
 ## 2b. AlarmKit — the iOS 26+ answer to the mute switch (OPH-141)
 
@@ -160,6 +199,78 @@ lane on iOS 26+, the OPH-139 time-sensitive delivery stays as the < 26 and
 non-urgent lane, and the planner remains the single source of truth (the
 gateway diff must cancel AlarmKit alarms on acknowledge exactly like
 notifications). [16]
+
+**Round 9 status check — the lane has never run (2026-07-27).** The Dart lane
+(`planAlarmKitAlarms`, the host seam, the scheduler's second set-diff) and
+`ios/Runner/AlarmKitBridge.swift` exist and are unit-tested, `NSAlarmKitUsageDescription`
+is in `Info.plist` — but **the Swift file is in no Xcode target and `AppDelegate`
+never constructs the bridge** (`ios/Runner/ALARMKIT_SETUP.md` says so itself).
+So `isSupported()` throws `MissingPluginException` → `false` → every urgent alarm
+has been served by the notification lane, which cannot beat hardware silence.
+**This is the root cause of round 9 #8**, and OPH-182 is the fix.
+
+**What round-9 research added to the wiring plan** (sources [16][17][18]):
+
+- **A widget extension is effectively required.** AlarmKit renders its
+  countdown/paused/alert presentations through ActivityKit: the app needs a
+  widget extension exposing `ActivityConfiguration(for: AlarmAttributes<AWAlarmMetadata>.self)`
+  and **`NSSupportsLiveActivities = YES` in BOTH Info.plists** (app + extension);
+  without one, alarms can be dismissed unexpectedly by the system. AllisWell
+  already ships `ios/AllisWellWidget` (Epic 12) — the Live Activity goes there,
+  and the metadata type must compile into both targets.
+- **Custom sounds are supported** — `AlertConfiguration.AlertSound.named(...)`,
+  resolved from the app bundle or the container's `Library/Sounds` (§2c), so the
+  same installed ringtone serves both lanes. Early iOS 26 releases had reports of
+  container-hosted sounds not playing; verify on the device pass and fall back to
+  the bundled bed.
+- **Apple Watch and Standby are part of the deal** — Apple describes AlarmKit
+  alarms as reaching the Lock Screen, Dynamic Island, Standby **and Apple Watch**
+  (§2d).
+- **Alarm count is limited but undocumented** — keep the AlarmKit lane windowed
+  to the soonest N alarms (as the notification lane is) and log rejections (§6).
+
+## 2c. User-supplied sounds — what is actually possible (round 9, OPH-181)
+
+Round 9 asks for a user-selectable ringtone, uploadable through our own storage.
+The constraints are hard and platform-specific:
+
+- **iOS.** `UNNotificationSound(named:)` looks in `<app container>/Library/Sounds`
+  first, then the app bundle (an app-group container also works) — so a
+  **downloaded** file CAN be a notification sound: fetch it (presigned GET,
+  ADR-0011 pipeline), write it to `Library/Sounds/<hash>.caf`, reference it by
+  name. Format rules are unforgiving: **≤ 30 s**, aiff/wav/caf carrying Linear
+  PCM, MA4/IMA4, µLaw or aLaw. **mp3/m4a will not play** — an unusable upload
+  must be refused (with the reason) at upload time, or it becomes a silent alarm
+  at 03:00. Server-side transcoding (ffmpeg) is parked in the backlog.
+- **Android.** Notification channels are immutable after creation, so a sound
+  change means a **new channel per sound** (`urgent_alarms_v3_<hash>`), with
+  stale channels deleted and the count kept bounded. Sound is a `Uri` on the
+  channel, and `USAGE_ALARM` must stay for the alarm-stream/DND behaviour (§1).
+- **In-app bed (`AlarmFeedback`, OPH-180).** The foreground ring screen plays
+  through our own player, so it accepts any format the platform can decode and
+  is the honest home for an mp3 the OS lane would refuse.
+- **Selection storage.** The ringtone LIBRARY is workspace-wide (files, so every
+  device can pick the same file); the SELECTION is device-local, like
+  `notification_privacy` and the reminder profile (§5). A server-side settings
+  store is backlog.
+
+## 2d. Apple Watch (round 9, OPH-183)
+
+- **Mirroring is free and needs no watchOS target**: iPhone notifications are
+  forwarded to a paired, unlocked watch while the phone is locked. Sound/haptic
+  strength for our app is the **user's** setting (Watch app → Sounds & Haptics);
+  watchOS 26 also auto-adjusts alert volume to the surroundings, and the
+  "Prominent" haptic pre-announces alerts with an extra tap. So a watch owner
+  already gets a wrist tap for every alarm — worth SAYING in the app (a help
+  line in the reminder settings) instead of building anything.
+- **AlarmKit alarms are stated to reach the watch** (§2b) — this is the main
+  reason the watch story rides OPH-182's device pass rather than a separate
+  build.
+- **A watchOS companion target buys only three things**: a custom long-look
+  notification UI, `WKInterfaceDevice.play(.notification)` haptics we control,
+  and a complication. It also buys a second signing/review surface. Decision
+  rule (OPH-183): measure mirroring + AlarmKit on a real watch first; open a
+  companion epic only if that proves insufficient.
 
 ## 3. Other platforms
 
@@ -221,6 +332,65 @@ Verification note: exact-delivery behavior (Doze, alarm-clock icon,
 time-sensitive banners) can only be proven on devices/emulators — plan a
 device pass; unit tests cover the scheduler diffing and window logic.
 
+## 5. What the user owns: instants, chain, silence (round 9 — OPH-175…179)
+
+**(a) A task can have TWO alarm instants, and they are independent.** Until
+round 9 the model was `effectiveRemindAt = remind_at ?? (urgent ? due_at : null)`
+— one instant, with the reminder *replacing* the deadline. The user's rule is
+different and better: _"velevki hatırlatıcı kurdum — tam görev saatinde de alarm
+gibi çalmalı."_ So `alarmInstantsFor(task)` returns up to two, each its own
+reminder row (`reminders.kind` ∈ `remind` | `due`):
+
+| kind | when it exists | body |
+| ---- | -------------- | ---- |
+| `remind` | `remind_at` is set (any priority) | `notif.urgentFirst` / `notif.urgentRepeat` / `notif.afterSnooze` |
+| `due` | `is_urgent` **and** `due_at` is set — **even when a reminder exists** | `notif.dueNow` ("Görev saati geldi") |
+
+Identical instants collapse to one row (never ring twice for one moment). A
+muted task returns none. One seam still serves REST, sync push and the calendar
+job — `reconcileTaskReminder` simply loops over kinds, each row keeping its own
+revision and its own "remind moved → re-arm" rule.
+
+**(b) The chain is a device-local profile, and its OS cost is visible.**
+`ReminderProfile.slots` (minutes after the instant) replaces the
+`kUrgentChainOffsets` constant: sorted, deduplicated, **≥ 1 minute apart** (the
+user's own anti-collision rule — sub-minute steps are refused with a reason),
+first slot ≥ 0, at most **20**. Post-snooze re-rings run the same profile from
+`snoozed_until` and are labelled as a snooze round, not as a first alert.
+
+The cap arithmetic that the settings screen must show, because the OS enforces
+it silently: iOS keeps the **64 soonest pending** local notifications, we window
+at 40, so
+
+> `alarms_fully_covered ≈ floor(40 / slots_per_alarm)`
+
+— a 5-slot profile covers 8 concurrent alarms, a 20-slot profile covers 2. Beyond
+that the window drops the farthest slots (they re-fill as time passes, on every
+foreground/sync). AlarmKit does not multiply: one alarm = one entry, ring-until-
+answered is native — another reason §2b is the better lane.
+
+**(c) Silence is a state.** `tasks.alarms_muted_at` (null = live) makes
+"süresiz ertele" a real, syncing, reversible fact: instants become empty →
+`reconcileTaskReminder` cancels the rows → every device's chain dies. The task
+stays **open**; muting is not completing, and the UI keeps saying the alarm is
+off (DESIGN §11 A5). Un-muting re-arms through the ordinary create path, and if
+the instant is already in the past the app says so instead of pretending.
+
+## 6. Diagnostics: the alarm log (round 9 — OPH-176)
+
+Round 9 cost a whole evening to a question we could not answer — *which* lane
+fired, with *which* sound, at *which* slot. From now on the device keeps a local
+ring buffer (`alarm_events`, ~200 rows, never synced): instant, lane
+(`notification` | `alarmkit` | `inapp`), kind, slot index, urgent flag, sound
+name, interruption level, task/reminder id, and the event
+(`scheduled` | `cancelled` | `interacted` | `ring_shown` | `action`).
+
+Honest scope, stated in the UI: **iOS gives no callback for a notification the
+user never touches**, so the log proves what we SCHEDULED, what the user
+INTERACTED with, and what rang IN-APP — it must never claim "delivered". That is
+still enough to settle every round-9 question (was the slot scheduled? which
+sound name? which lane? was it cancelled early?).
+
 ## References
 
 1. Android — Schedule alarms (exact vs. inexact, Doze behavior, best practices):
@@ -264,4 +434,22 @@ device pass; unit tests cover the scheduler diffing and window logic.
     <https://developer.apple.com/forums/thread/690030>
 16. Apple — AlarmKit (iOS 26+, WWDC25 session 230 "Wake up to the AlarmKit
     API"): <https://developer.apple.com/documentation/alarmkit>,
-    <https://developer.apple.com/videos/play/wwdc2025/230/>
+    <https://developer.apple.com/videos/play/wwdc2025/230/>,
+    <https://developer.apple.com/documentation/AlarmKit/scheduling-an-alarm-with-alarmkit>
+17. AlarmKit in practice (round 9 research, 2026-07-27) — widget-extension /
+    `ActivityConfiguration` + `NSSupportsLiveActivities` requirement, custom
+    `AlertConfiguration.AlertSound.named`, Apple Watch/Standby reach:
+    WWDC25-230 notes <https://wwdcnotes.com/documentation/wwdc25-230-wake-up-to-the-alarmkit-api/>,
+    countdown-timer walkthrough <https://nilcoalescing.com/blog/CountdownTimerWithAlarmKit/>,
+    custom-sound threads <https://developer.apple.com/forums/thread/788836>,
+    <https://developer.apple.com/forums/thread/795417>
+18. Apple — `UNNotificationSound` name resolution order (app container
+    `Library/Sounds` → app group container → bundle) and the ≤30 s / aiff-wav-caf
+    format rules; the silent fall-back to the default sound when a name does not
+    resolve: <https://developer.apple.com/documentation/usernotifications/unnotificationsound>,
+    <https://developer.apple.com/forums/thread/49512>
+19. Apple — Apple Watch alert routing the user controls (Watch app → Sounds &
+    Haptics, "Prominent" haptic, watchOS 26 ambient volume) and notification
+    forwarding while the iPhone is locked:
+    <https://support.apple.com/guide/watch/choose-alert-sounds-and-haptics-apd58cffe6a4/watchos>,
+    <https://support.apple.com/en-us/108274>

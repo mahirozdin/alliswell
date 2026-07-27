@@ -11,6 +11,11 @@
 > Glass guidance (HIG Materials, Adopting Liquid Glass; sources in the ADR).
 > Code home: `apps/app/lib/src/theme/` (tokens + theme) and
 > `apps/app/lib/src/widgets/` (glass surfaces, shared states).
+>
+> **Rev. 2026-07-27 (feedback round 9, Epic 16):** §11 A3 rewritten (the alarm
+> ring screen must MAKE SOUND) + A5/A6 added (mute state, alarm log); new
+> §15 pull-to-refresh, §16 Home scroll layering, §17 date & time display,
+> §18 reminder system settings.
 
 ## 1. Design language in one paragraph
 
@@ -401,14 +406,144 @@ its text.
   back/ESC does nothing; only Onayla / snooze / complete / open clears it. This
   is the product's "insistent, must be acknowledged" rule (BLUEPRINT §8.2) made
   visual.
-- **A3 — Insistence is a seam.** Physical alerting (`AlarmFeedback`) is
-  injected: `HapticAlarmFeedback` (a haptic pulse loop) in production, silence
-  in tests. A looping audio bed is a follow-up behind the same seam — on mobile
-  the OS notification already carries it (OPH-139); desktop/web are best-effort
-  (NOTIFICATIONS.md §3).
+- **A3 — Insistence is a seam, and it MUST include sound (rev. round 9,
+  OPH-180).** Physical alerting (`AlarmFeedback`) is injected: production plays
+  a **looping audio bed + haptic pulse** (`AudioAlarmFeedback`), tests inject
+  silence. Round 9's device report proved the haptic-only version wrong: while
+  the app is open the ring screen was the loudest surface the user had, and it
+  made no sound at all. The bed uses the user's chosen alarm sound (§18 N6) and
+  the iOS `.playback` audio session so it is audible with the mute switch on
+  **while the app is in the foreground** — never a background audio session
+  (NOTIFICATIONS.md §2b rejects that trick). On web, autoplay may be blocked:
+  degrade to visual + haptic and offer an explicit "start sound" button — never
+  pretend it rang.
 - **A4 — Degradation banner is honest, at the top of Home.** When the OS can't
   ring reliably, `AlarmDegradationBanner` says so on `errorContainer`
   (`onErrorContainer` ink, `alarm_off` icon, radius `m`) with a one-tap fix —
   worst-problem-first (notifications off → exact-alarm denied), the same cascade
   as the Settings status row (OPH-139). Healthy delivery shows nothing: never
   nag a user whose alarms already work.
+- **A5 — Silencing is a state, not a disappearance (round 9, OPH-178).** An
+  alarm the user muted indefinitely ("Süresiz ertele") must keep saying so: the
+  task row carries a `notifications_off` chip with a one-tap "Geri aç", the
+  detail screen a switch, and the task stays **open** — muting is never
+  completing. Same rule for a snoozed alarm: the row says "Ertelendi — 22:52"
+  (OPH-177). An armed-looking task whose alarm is dead is the worst possible lie
+  in this product.
+- **A6 — The alarm log is a plain, honest list (round 9, OPH-176).** Settings →
+  "Alarm günlüğü" renders the local ring buffer as read-only rows (instant,
+  lane, slot, sound) plus one sentence of scope: iOS reports no "delivered"
+  event for an untouched notification, so the log shows what was **scheduled**,
+  what the user **interacted** with, and what rang **in-app** — it never claims
+  delivery it cannot observe. Copy-to-clipboard, no charts: this surface exists
+  to make the next device round evidence-based.
+
+## 15. Pull to refresh (round 9 — OPH-171)
+
+_(Added 2026-07-27. Round 9 #1: "Home, Fikirler, Projeler, Notlar, Dosyalar —
+hepsinde aşağı çekip yenileme istiyorum.")_
+
+- **R1 — One indicator, one place: between the pinned filters and the list.**
+  A single `AwRefresh` wrapper (`widgets/refreshable.dart`) wraps the screen's
+  **scrollable**, never the whole body — so the spinner is born under whatever
+  stays pinned (filter chips, segmented buttons) and above the first row, which
+  is exactly where the user looks. Track color `colorScheme.primary` on
+  `surfaceContainerHigh`, no shadow, no glass (G1: this is content chrome, and
+  it sits over content).
+- **R2 — Never blink.** The replica answers in milliseconds; a spinner that
+  appears and vanishes reads as "nothing happened". The gesture holds the
+  indicator for a **minimum ~450 ms**, then slides up. That is the whole
+  animation contract: pull → spin in place → release → slide up.
+- **R3 — Refresh means "sync now", per screen.** `syncNow()` plus the screen's
+  own external truth (Home: calendar events + alarm permission probe; Dosyalar:
+  storage status). It never re-mounts the list, never scrolls it, never clears a
+  filter or a search query (the S5 rule for search applies here too).
+- **R4 — Failure is a snackbar, not an empty screen.** A failed refresh leaves
+  the visible data exactly as it was and says why (`localizedError`). Offline is
+  not an error state in a local-first app.
+- **R5 — Pointer-only platforms get a button.** The wheel does not overscroll,
+  so on wide layouts (≥800 px) the section app bar carries a `refresh` action.
+  Same capability everywhere, expressed in each platform's idiom — never a phone
+  gesture the desktop user cannot perform.
+
+## 16. Home's scroll layering (round 9 — OPH-172)
+
+_(Added 2026-07-27. Round 9 #2 — the OPH-103 philosophy taken to its end:
+"sabit kalıp yukarıda listeyi daraltmamalı".)_
+
+- **H1 — On phones, exactly one thing is pinned: the app bar.** The section
+  title and the settings button stay; **everything else scrolls** — the
+  degradation banner, the Liste | Pano toggle, the quick-add field, the search
+  field, the month calendar and the calendar toggle are all slivers of the one
+  `home-scroll` view, in that order. Chrome does not get to eat a phone screen
+  it is not currently earning.
+- **H2 — Wide layouts are unchanged.** ≥720 px keeps the calendar side panel and
+  its own column; the complaint (and the fix) is about the phone.
+- **H3 — A view switch that scrolls away must still be reachable (deliberate
+  deviation).** In **Pano** the board is a horizontal pager filling the
+  viewport, so the Liste | Pano row stays pinned there — scrolling it away
+  would strand the user in the board with no way back. List mode scrolls it.
+- **H4 — A scrolling text field keeps its text.** Quick-add's controller lives
+  in the parent (a sliver scrolled past the cache extent is disposed), and
+  focusing it scrolls it back into view (`Scrollable.ensureVisible`). Typed text
+  surviving a scroll is a correctness requirement, not a nicety.
+
+## 17. Date & time display (round 9 — OPH-174)
+
+_(Added 2026-07-27. Round 9 #5: "format 31.12.2026 23:59 olacak … hatta
+ayarlardan kullanıcı seçebilecek".)_
+
+- **D1 — One formatter, no exceptions.** Every user-visible instant goes through
+  `core/date_format.dart`. `DateTime.toString()` in UI is a bug (round 9 found
+  "2026-07-31 23:59:00" in two sheets); hand-rolled `padLeft` formats are a bug
+  too — they cannot follow a preference or a locale.
+- **D2 — The setting shows results, never patterns.** The picker lists the same
+  sample instant rendered in each option (31.12.2026 23:59 · 31/12/2026 23:59 ·
+  31 Aralık 2026 23:59 …). A user never sees `dd.MM.yyyy` — the round-1 rule
+  (no technical concepts in end-user UI) applies to format strings exactly as it
+  applies to hex codes.
+- **D3 — "System" is the default and it is honest.** Factory setting follows the
+  app language (tr → 31.12.2026 23:59, en → 12/31/2026 11:59 PM). An explicit
+  pick overrides it everywhere — including the home-screen widget snapshot, or
+  the widget and the app would disagree in front of the user.
+- **D4 — Rows stay short.** List rows use the short form (no year inside the
+  current year, time always 24h/12h per the chosen format); detail rows and
+  pickers use the full form. Same source, two lengths.
+
+## 18. Reminder system settings (round 9 — OPH-179 / OPH-181)
+
+_(Added 2026-07-27. Round 9 #7: "kaç hatırlatıcı gelecek, sıklığı, zil sesi —
+kurumsal, adım adım tasarlanabilir bir alan".)_
+
+- **N1 — One destination: Settings → "Hatırlatıcı Sistemi Ayarları".** Chain,
+  sounds, snooze presets and the alarm log live behind one row, not scattered
+  across the settings list. Reachable from the alarm status row too (the user
+  who just found a problem is already looking there).
+- **N2 — Presets first, steps second.** Sakin (1 step) · Standart (5) · Israrcı
+  (10) as segmented choices; the step editor is the escape hatch, pre-filled
+  from the chosen preset. Most users must never touch a stepper.
+- **N3 — The chain is a step list, and it says when each step rings.** Each row
+  is "N. hatırlatma · +M dakika" with a minute stepper, delete, and "araya adım
+  ekle". Above it, a live timeline in the user's own date format
+  ("22:42 → 22:44 → 22:47 → 22:52") — the answer to "5 dk sonra ne olacak?" is
+  visible before it is experienced.
+- **N4 — No drag where drag is a lie (deliberate deviation).** The chain is
+  sorted by definition, so dragging step 3 above step 1 would be undone
+  instantly; the editor does not offer it (NN/g: never offer a gesture whose
+  result the system immediately reverses). Drag-to-reorder IS offered where
+  order is the user's to choose: the **snooze presets** shown on the alarm.
+- **N5 — Limits are stated, never enforced silently.** Minimum 1 minute between
+  steps (the user's own anti-collision rule) shown inline when violated; max 20
+  steps; and the live OS-capacity line ("bu profille aynı anda ~N alarm tam
+  kapsanır" — iOS keeps only the soonest 64 pending). A silently trimmed chain
+  would look like the product losing alarms.
+- **N6 — Sounds are chosen by hearing them.** Alarm sound and reminder sound are
+  separate rows, each with a preview play button, bundled options first, then the
+  workspace's uploaded ringtones. Upload says up front what a file can be used
+  for (≤30 s + caf/wav/aiff for OS notifications; anything else can still serve
+  the in-app bed) — an unusable file is refused with a reason at upload time,
+  not by silence at alarm time.
+- **N7 — The whole area obeys the alarm-honesty rules.** Every claim here is
+  checked against what the OS actually allows (§11 A4/A6): a profile the device
+  cannot deliver exactly, a sound iOS cannot resolve, or a mute switch that will
+  silence the lane must be said in words, on this screen.

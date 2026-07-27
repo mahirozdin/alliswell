@@ -325,12 +325,22 @@ class FakeApi {
     return null; // not a Google route — fall through to the rest
   }
 
+  /// Make the server unreachable: every request answers 503. Flip mid-test to
+  /// prove a failure path (OPH-171: a refresh that fails must SAY so).
+  bool offline = false;
+
   Future<ResponseBody> handle(
     RequestOptions options,
     Map<String, dynamic>? body,
   ) async {
     final path = options.uri.path;
     requests.add('${options.method} $path');
+    if (offline) {
+      return jsonBody(503, {
+        'code': 'SERVER_UNREACHABLE',
+        'message': 'The fake server is offline',
+      });
+    }
 
     // Account deletion (App Store 5.1.1(v) / Google Play): schedule + undo.
     if (path == '/api/v1/me' && options.method == 'DELETE') {

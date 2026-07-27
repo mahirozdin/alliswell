@@ -2856,6 +2856,413 @@ app+API tam süit, `check:no-ts`, `check:i18n`, `contrast.py FAILURES: 0`, CHANG
 
 ---
 
+## Epic 16 — Feedback round 9: yenileme, tarih biçimi, alarm sistemi (Phase 10, v0.5.0)
+
+_(Doğdu 2026-07-27 — Mahir'in 8 maddelik listesi; **ilk gerçek "alarmı kullandım" turu**.
+Bağlayıcı metinler: [DESIGN](DESIGN.md) §15–§18 + §11 A3/A5/A6, [NOTIFICATIONS](NOTIFICATIONS.md)
+rev. 2026-07-27 (§2/§2b/§2c/§2d/§5/§6), BLUEPRINT §4.9/§8.2/§8.4/§12.13/§14,
+[ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md).
+Sıra bağlayıcı: **171→174 UI akışı** (API'siz, cihazsız) → **175→181 alarm belkemiği**
+(API+app) → **182/183 cihaz turu**.)_
+
+**Round 9'un kök nedenleri — kodda doğrulandı (2026-07-27):**
+
+| # | Şikâyet | Kodda kanıt |
+| - | ------- | ----------- |
+| 1 | Hiçbir ekranda aşağı çekip yenileme yok | `grep -r RefreshIndicator apps/app/lib` → **0 sonuç**; yenileme yalnız otomatik sync'e bağlı |
+| 2 | Home'da yalnız arama + takvim kayıyor | `quickAdd` ve Liste\|Pano satırı `CustomScrollView`'in DIŞINDA, dış `Column`'da sabit — [home_screen.dart:120-165](../apps/app/lib/src/features/home/home_screen.dart#L120), [:221-224](../apps/app/lib/src/features/home/home_screen.dart#L221) |
+| 3 | Proje/öncelik aynı hizada değil | `task.noProjectsHint` **`helperText`** olarak proje alanına yükseklik ekliyor, `Row` da `crossAxisAlignment: center` → kutular kayıyor — [task_create_sheet.dart:337-377](../apps/app/lib/src/features/tasks/ui/task_create_sheet.dart#L337) |
+| 4 | Takvim bugünle açılıyor | `initialDate: current ?? now` — [task_create_sheet.dart:127](../apps/app/lib/src/features/tasks/ui/task_create_sheet.dart#L127); detayda aynısı [task_detail_screen.dart:432](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L432) |
+| 5 | Tarih biçimi bozuk | `value.toString().split('.').first` → "2026-07-31 23:59:00" — [task_create_sheet.dart:207](../apps/app/lib/src/features/tasks/ui/task_create_sheet.dart#L207), [task_detail_screen.dart:415](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L415); uygulamada **6 ayrı el yapımı biçim** var, kullanıcı ayarı yok |
+| 6.3 | 22:45'te (görev saati) hiçbir şey olmadı | `effectiveRemindAt = remind_at ?? (urgent ? due_at : null)` — [api/src/db/reminders.js:21](../apps/api/src/db/reminders.js#L21): **açık hatırlatıcı varsa görev saati hiç alarm üretmiyor** |
+| 6.4/8 | 1. bildirim normal ding, 2. müzik, 3. sessiz | Kodda dört teslimatın **payload'ı aynı** (acil ⇒ 28 sn `aw_alarm.caf` + `timeSensitive`) → fark OS tarafında. Bilinen mekanizma: `UNNotificationSound(named:)` sesi çözemezse iOS **sessizce varsayılan ding'e düşer**; ayrıca `timeSensitive` özel ses **zil ses seviyesinde** çalar ve **sessiz anahtarı onu tamamen susturur** (NOTIFICATIONS §2). Teşhis kaydı olmadığı için hangisi olduğu kanıtlanamıyor → OPH-176 |
+| 6.6 | Erteleme sonrası "yine 1. bildirim" | Zincir `snoozedUntil`'den **index 0'dan** yeniden kuruluyor → gövde tekrar `notif.urgentFirst` ("Acil hatırlatıcı — onay bekliyor") — [planner.dart:70-91](../apps/app/lib/src/notifications/planner.dart#L70) |
+| 6.7 | Süresiz erteleme yok | Reminder statusleri yalnız scheduled\|snoozed\|delivered\|acknowledged\|completed\|cancelled — susturma durumu **yok** |
+| 6/8 | Uygulama açıkken çan sesi yok | `AlarmFeedback` yalnız haptik: `HapticAlarmFeedback` — [alarm_overlay.dart:138-160](../apps/app/lib/src/notifications/alarm_overlay.dart#L138); **hiç ses çalar yok** (pubspec'te audio paketi yok) |
+| 7 | Hatırlatıcı sayısı/sıklığı/sesi ayarlanamıyor | `kUrgentChainOffsets = [0, +2, +5, +10, +30]` **sabit** — [planner.dart:38](../apps/app/lib/src/notifications/planner.dart#L38); ses de sabit tek dosya |
+| **8** | **Ekran kapalıyken/sessizde ses gelmiyor** | **AlarmKit hiç devreye girmedi:** `AlarmKitBridge.swift` **hiçbir Xcode hedefinde değil** ve `AppDelegate` onu kurmuyor ([ALARMKIT_SETUP.md](../apps/app/ios/Runner/ALARMKIT_SETUP.md) kendi uyarısı) → `MethodChannelAlarmKitHost.isSupported()` `MissingPluginException` → `false` → acil alarmlar `timeSensitive` bildirim hattında kalıyor; **o hat sessiz anahtarını aşamaz.** iPhone'un kendi alarm/sayaç davranışının (tam ekran, ertele/durdur, sessizi delen ses) tek meşru yolu AlarmKit'tir |
+
+> **Sürüm kararı:** 171–174 tek başına kullanıcıya hemen değer verir (v0.4.1 ara sürümü
+> olabilir); 175–181 birlikte "alarm belkemiği v2" (v0.5.0); 182/183 cihaz turuna biner.
+
+### OPH-171 — Aşağı çekip yenileme: Home, Fikirler, Projeler, Notlar, Dosyalar (round 9 #1) ✅ 2026-07-28
+
+- [x] **Tek paylaşılan sarmalayıcı** `apps/app/lib/src/widgets/refreshable.dart` →
+      `AwRefresh({required Future<void> Function() onRefresh, required Widget child,
+      double displacement, Key? indicatorKey})`: `RefreshIndicator` üstüne token'lı
+      giydirme (`colorScheme.primary` çizgi, `surfaceContainerHigh` zemin, `AwRadius`
+      gölge yok — DESIGN §15 R1). **Her ekran kendi listesini sarar, gövdeyi DEĞİL:**
+      spinner sabit filtre satırının ALTINDA, listenin üstünde doğsun (kullanıcının
+      tarifi: "üst filtrelerle arasında bir loading circle çıkar"). Home 172'den sonra
+      tek kaydırma olduğu için orada app bar'ın altında doğar.
+- [x] **Yenileme eylemi** `refreshSection(ref, AppSection)` (`sync/providers.dart`
+      yanında yeni `sync/refresh.dart`): `syncEngineProvider?.syncNow()` + bölüm ekstraları
+      (Home: `externalEventsProvider` + `alarmSupportProvider` invalidate; Dosyalar:
+      `storageStatusProvider`; Fikirler/Projeler/Notlar: yok). **Minimum 450 ms**
+      göster (`Future.wait([work, Future.delayed(450ms)])`) — yerel replika 20 ms'de
+      döner, spinner'ın çakıp kaybolması "çalışmadı" gibi görünür (R2). Hata →
+      `localizedError` snackbar, liste yerinde kalır (R4).
+- [x] **Boş liste de çekilebilir:** her sarılan scrollable'a
+      `physics: const AlwaysScrollableScrollPhysics()` — yoksa "Hepsi tamam" boş
+      durumunda jest hiç başlamaz (klasik tuzak). Home'un `SliverFillRemaining`
+      boş durumu dahil.
+- [x] **Beş yüzey:** Home Liste (`home-scroll` CustomScrollView) **ve Pano** (her
+      sütunun dikey `ListView`'ı aynı handler'ı alır; yatay `PageView` etkilenmez —
+      200 ms long-press drag ile çekme jesti çakışmaz, testle kanıtla),
+      Fikirler ([task_list_screen.dart:49](../apps/app/lib/src/features/tasks/ui/task_list_screen.dart#L49)),
+      Projeler ([:99](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L99)),
+      Notlar (**liste VE ızgara** — [:117](../apps/app/lib/src/features/notes/ui/notes_screen.dart#L117), [:220](../apps/app/lib/src/features/notes/ui/notes_screen.dart#L220)),
+      Dosyalar (**Klasörlerim VE Kaynaklar** — [:452](../apps/app/lib/src/features/files/ui/files_screen.dart#L452), [:532](../apps/app/lib/src/features/files/ui/files_screen.dart#L532)).
+- [x] **İşaretçi-only platformlar dürüstlük gereği:** `RefreshIndicator` fare
+      tekerleğiyle tetiklenmez → geniş yerleşimde (≥800 px) app bar'a `refresh`
+      IconButton'u ekle (`buildSectionAppBar`'a `onRefresh` parametresi; telefonda
+      gizli, çünkü orada jest var). Web/masaüstü ile mobil aynı yeteneğe sahip olur.
+- [x] i18n: `common.refresh`, `common.refreshFailed`. Testler **8/8**
+      (`test/features/refresh_test.dart`) — sayaç fake engine değil **FakeApi'nin
+      `/sync/pull` istekleri** (kullanıcının kanıtıyla aynı: "gidip baktı mı?"):
+      Home listesi; **boş** Fikirler kutusu; Projeler + Notlar; Dosyalar'ın iki
+      katmanı; Pano sütunu **+ long-press drag'in hâlâ status değiştirdiği
+      regresyonu**; çevrimdışı → snackbar + veri yerinde; geniş yerleşimde buton
+      çalışıyor, telefonda **yok**. Kontrast: FAILURES: 0.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **`SyncEngine.syncNow()` artık `Future<bool>` döner.** Eskiden hatayı yutup
+  backoff kuruyordu — bu yüzden UI kullanıcıya "yenilenemedi" diyemezdi (R4
+  imkânsızdı). Sözleşme: `true` = yakınsadı **veya yapacak iş yoktu** (durdurulmuş
+  motor, zaten süren tur); `false` = başarısız, retry kurulu. Arka plan çağıranların
+  hepsi dönüşü yok sayar; okuyan tek yer pull-to-refresh.
+- **Boş/hata durumları drag'i yutuyordu.** `AwEmptyState`/`AwErrorState` içlerinde
+  (taşma koruması için) kendi `SingleChildScrollView`'ini taşıyor; kaydırmayan bir
+  iç scroll view jesti yine de kapıyor → `AwRefresh` hiç tetiklenmiyor. Çözüm: iki
+  duruma `physics` parametresi + iki tarif (doğrudan `AwRefresh` altındaysa
+  **Always**, zaten kayan bir ebeveynin/sliver'ın içindeyse **Never**). Home'un
+  sliver içindeki boş durumu Never, geniş yerleşimdeki aynı durum Always.
+- **Bilinçli v1 sınırı:** telefonda **arama modunda** Home çekilemiyor — sonuç
+  listesi `SliverFillRemaining` içinde iç içe bir scrollable, bildirim `depth != 0`
+  ile geliyor ve `RefreshIndicator` onu görmezden geliyor. OPH-172 Home'u tek
+  sliver ağacına çevirirken düzelecek (arama sonuçları sliver olacak); Liste/Pano/
+  boş durum çekilebilir olduğu için kullanıcı akışı etkilenmiyor.
+- **Test dersi (yine `localKv`):** Pano testinin seçtiği `alliswell_home_view=board`
+  **global singleton üzerinden sonraki teste sızıp** Home'u Pano açıyordu (bu
+  yüzden `home-scroll` bulunamıyordu) → dosya başına `setUp` ile anahtar silinir.
+- **FakeApi'ye `offline` anahtarı** eklendi (her isteğe 503) — çevrimdışı yolunu
+  kanıtlamanın en sade hâli. Test sonunda `offline=false` + `pump(2s)`: motorun
+  kurduğu **1 sn'lik backoff timer'ı** ateşlenmezse flutter_test "pending timer"
+  ile düşer.
+
+**DoD met 2026-07-28:** app **397/397** (~19 skip) + `flutter analyze` temiz +
+`check:i18n` yeşil + `contrast.py FAILURES: 0`; CHANGELOG; STATE. _Cihazda
+dokunma hissi (iOS lastik bantı, Android stretch) cihaz turuna kaldı — testler
+gerçek jesti sürüyor ama cihaz dokusunu ölçemez._
+
+### OPH-172 — Home tek kaydırma katmanı: yalnız başlık + ayarlar sabit (round 9 #2)
+
+- [ ] **Dar yerleşimde (telefon) `CustomScrollView`'e taşınacaklar** (sırayla, hepsi
+      sliver): `AlarmDegradationBanner` → Liste\|Pano satırı (+ Pano'nun `tune`
+      butonu) → `QuickAddBar` → arama alanı → takvim kartı → "Takvimi gizle/göster"
+      → gruplu liste. **Sabit kalan tek şey `AppBar`** ("Anasayfa" + ayarlar) —
+      kullanıcının cümlesi budur. Geniş yerleşim (≥720) DEĞİŞMEZ (takvim yan panel,
+      şikâyet telefona ait).
+- [ ] **Pano modunda istisna (DESIGN §16 H3):** yatay `PageView` kaydırılamayacağı
+      için Liste\|Pano satırı Pano'da **sabit kalır** (aksi hâlde Liste'ye dönüş yolu
+      kaybolur). Bilinçli sapma, gerekçesiyle DESIGN'a yazılır.
+- [ ] **Hızlı ekleme kaydırılınca yazdığını kaybetmesin:** `QuickAddBar`'ın
+      `TextEditingController`'ı ebeveyne taşınır (state hoisting; sliver cache
+      extent dışına çıkınca widget dispose olur ve metin uçar), odak kazandığında
+      `Scrollable.ensureVisible` ile geri getirilir. Test: metin yaz → 600 px kaydır
+      → geri kaydır → metin yerinde.
+- [ ] Testler **4**: liste modunda toggle+quick-add viewport'tan çıkıyor (kaydırma
+      offset'i ile); Pano'da toggle duruyor; quick-add metni kaydırmadan sağ çıkıyor;
+      geniş yerleşim regresyonsuz. Kontrast + `flutter analyze` yeşil.
+
+### OPH-173 — Detaylı ekleme: proje/öncelik hizası + "yarın" varsayılanı (round 9 #3, #4)
+
+- [ ] **"Henüz proje yok" yazısı kalkar:** `helperText` kaldırılır, `task.noProjectsHint`
+      anahtarı **en.json + tr.json'dan silinir** (`npm run check:i18n` yetim anahtarı
+      yakalar). Gerekçe kullanıcının: liste açılınca proje olmadığı zaten görülür ve
+      picker'da "+ Proje ekle" (OPH-163) duruyor — o satır yalnız hizayı bozuyordu.
+- [ ] **Hiza garantisi:** `Row(crossAxisAlignment: CrossAxisAlignment.start)` + iki
+      `Expanded` → ileride bir alan `errorText` gösterse bile kutular aynı üst hizada
+      kalır (bugün merkezden hizalandığı için farklı yüksekliklerde kayıyorlar).
+      Aynı satır deseni detay ekranında da doğrulanır.
+- [ ] **Varsayılan tarih = YARIN:** yeni saf yardımcı
+      `DateTime awInitialPickerDate({DateTime? current, DateTime? anchor, required DateTime now})`
+      → `current ?? anchor ?? now + 1 gün` (`core/date_format.dart` içinde, 174 ile
+      aynı dosya). Bitiş tarihi: `anchor = null` → **yarın**. Hatırlatıcı: `anchor = _dueAt`
+      → bitişin GÜNÜ (bitiş 31'indeyse hatırlatıcı da 31'inde açılır, "yarın"da değil).
+      Detaydaki `_DateRow` aynı kuralı kullanır. Home FAB'ın seçili-gün prefill'i
+      (`initialDue`) her zaman kazanır. `firstDate` aynı kalır (geçmiş 365 gün).
+- [ ] Testler **4**: bitiş tile'ına dokun → date picker'ın seçili günü yarın; bitiş
+      doluyken hatırlatıcı picker'ı bitiş gününde açılıyor; seçili-gün prefill'i
+      bozulmadı; proje-öncelik satırı iki alanda eşit yükseklikte (golden yerine
+      `tester.getSize` karşılaştırması — piksel testi kırılgan).
+
+### OPH-174 — Tarih/saat gösterimi: tek kaynak + kullanıcı biçimi ayarı (round 9 #5)
+
+- [ ] **Tek biçimlendirici** `apps/app/lib/src/core/date_format.dart`:
+      `awFormatDateTime/awFormatDate/awFormatTime/awFormatShort(value, {format, locale})`.
+      Presetler (`kAwDateFormats`, hepsi aynı örnek anla önizlenir — 31.12.2026 23:59):
+      `system` (locale-duyarlı `DateFormat.yMd().add_Hm()`; tr'de zaten **31.12.2026 23:59**),
+      `dd.MM.yyyy HH:mm`, `dd/MM/yyyy HH:mm`, `MM/dd/yyyy h:mm a`, `yyyy-MM-dd HH:mm`,
+      `d MMMM yyyy HH:mm` (31 Aralık 2026 23:59), `EEE d MMM HH:mm` (kısa satır biçimi).
+      `awFormatShort` liste satırları için yılı **bu yılsa** atar (task_tile'ın bugünkü
+      davranışı korunur, ama biçimi ayardan gelir).
+- [ ] `dateFormatProvider = NotifierProvider<PersistedChoice,String>('alliswell_date_format',
+      fallback: 'system')`; bilinmeyen/bozuk değer → `system` (bozuk tercih hiçbir ekranı
+      düşürmez — `parseTaskTime` dersi).
+- [ ] **Bütün el yapımı biçimler buraya bağlanır (hiçbiri kalmaz):**
+      create sheet `_format` ([:207](../apps/app/lib/src/features/tasks/ui/task_create_sheet.dart#L207)),
+      detay `_DateRow` ([:415](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L415)),
+      `task_tile._formatDue` ([:19](../apps/app/lib/src/features/tasks/ui/task_tile.dart#L19)),
+      `notes_screen` tarih ([:18](../apps/app/lib/src/features/notes/ui/notes_screen.dart#L18)),
+      `file_widgets` `DateFormat.yMMMd` ([:100](../apps/app/lib/src/features/files/ui/file_widgets.dart#L100)),
+      `settings_screen._formatDeadline` ([:313](../apps/app/lib/src/screens/settings_screen.dart#L313)),
+      Home quick-add ipucundaki ISO gün ([:114](../apps/app/lib/src/features/home/home_screen.dart#L114)),
+      `external_event_tile` saat ([:19](../apps/app/lib/src/features/calendar/ui/external_event_tile.dart#L19)),
+      **ve `widget_snapshot`** ([:126/:130](../apps/app/lib/src/features/widgets/widget_snapshot.dart#L126)) —
+      seçilen biçim snapshot JSON'una yazılır, yoksa ana ekran widget'ı uygulamadan
+      farklı tarih gösterir.
+- [ ] Ayarlar → **"Tarih biçimi"** satırı: radio sheet, her seçenek aynı örnek anı
+      kendi biçiminde gösterir (DESIGN §17 D2 — kullanıcıya `dd.MM.yyyy` gibi teknik
+      dizge ASLA gösterilmez, yalnız sonucu). i18n `settings.dateFormat.*`.
+- [ ] Testler **5**: her preset örnek anı beklenen dizgeye çeviriyor; bozuk tercih →
+      system; tr/en locale'de `system` doğru; task_tile + create sheet ayarı izliyor;
+      widget snapshot biçimi taşıyor.
+
+### OPH-175 — "Görev saati de bir alarmdır": iki alarm örneği (round 9 #6.3) — API + app
+
+**Kullanıcının cümlesi:** _"velevki acil olarak işaretledim ama hatırlatıcı kurmadım —
+en azından tam task saatinde bu müzikli bildirim gelmeliydi, alarm gibi."_ Bugün tam
+tersi çalışıyor: hatırlatıcı KURULDUYSA görev saati sessiz geçiyor.
+
+- [ ] **Migration** `2026XXXXXXXXXX_add_reminder_kind.js` (append-only):
+      `reminders.kind` ENUM('remind','due') NOT NULL DEFAULT 'remind'. **Unique index
+      YOK** (terminal satırlar tarih olarak birikiyor; seçim "en yeni aktif satır"
+      kalıbıyla yapılır — mevcut kod da böyle). Backfill: `remind_at` null + görev
+      urgent+due ise `'due'`, değilse `'remind'`. `down` kolonu düşürür.
+- [ ] **`effectiveRemindAt` → `alarmInstantsFor(task)`** ([api/src/db/reminders.js](../apps/api/src/db/reminders.js)):
+      `[{kind:'remind', at: task.remind_at}, {kind:'due', at: task.due_at}]` — `due`
+      yalnız `is_urgent`; **iki an eşitse yalnız `remind` kalır** (tek an için iki kez
+      çalmak hata olur); görev susturulmuşsa (OPH-178) **boş liste**. Tek seam kalır:
+      REST + sync push + takvim job'ı hep bunu çağırır.
+- [ ] **`reconcileTaskReminder` tür başına döner:** her kind için upsert/terminalize,
+      her satır kendi revizyonu. "remind_at kaydıysa tam yeniden kur, değilse yalnız
+      görev alanlarını yansıt (erteleme korunur)" kuralı satır bazında aynen korunur —
+      başlık yaması hiçbir alarmı uyandırmaz.
+- [ ] **Sync + REST sözleşmesi:** `reminder` varlığına `kind` (sunucu-yazar, istemci
+      okur), serializer'lar (`routes/reminders.js`, `routes/sync.js`) alanı yayar.
+      `POST /tasks/:taskId/snooze` **opsiyonel `reminderId`** alır: verilirse yalnız o
+      alarm ertelenir (çalan alarm hangisiyse), verilmezse görevin tüm aktif alarmları
+      (geriye dönük uyumlu, app'in bugünkü çağrısı bozulmaz).
+- [ ] **App:** drift **v8** (`reminders.kind`, `from >= 7` guard'ı — v5/v7 dersi),
+      applier, `AlarmInput.kind`, `ReminderStore.watchAlarms` **her iki türü** sentezler
+      (sentetik id şeması `local:remind:<taskId>` / `local:due:<taskId>`;
+      `acknowledge()`'in çözücüsü türü ayrıştırıp aynı türden aktif satırı bulur —
+      bugünkü `local:<taskId>` şeması tek satır varsayıyor).
+- [ ] **Gövde:** görev-saati alarmı yeni anahtar `notif.dueNow` ("Görev saati geldi —
+      onay bekliyor"); zinciri profilden gelir (OPH-179), yüksekliği acil sözleşmesidir
+      (OPH-176). Hatırlatıcı alarmı bugünkü metinlerini korur.
+- [ ] Testler: API unit (`alarmInstantsFor` tablosu: yalnız remind / yalnız due /
+      ikisi / eşit an tekilleştirme / susturulmuş; reconcile iki satır kurar, `due_at`
+      kayarsa yalnız `due` yeniden kurulur, tamamlama ikisini de terminalize eder),
+      entegrasyon (REST create → 2 satır; sync pull `kind` taşıyor), app (watchAlarms
+      2 alarm, planner iki farklı gövde, acknowledge doğru satırı bulur).
+
+### OPH-176 — Tek yükseklik sözleşmesi + alarm günlüğü (round 9 #6.1, #6.4, #8 teşhisi)
+
+- [ ] **Sözleşme (NOTIFICATIONS §2 rev.):** bir acil alarmın **her slotu** — ilki,
+      tekrarları ve **her erteleme sonrası turu** — aynı yükseklikte çalar: Android'de
+      alarm kanalı (`USAGE_ALARM` + `FLAG_INSISTENT` + alarmClock), iOS'ta alarm sesi +
+      `timeSensitive` (critical grant varsa `.critical`/1.0). **Hiçbir slot "sade
+      bildirim" değildir.** Normal hatırlatıcılar kullanıcının seçtiği hatırlatıcı
+      sesini alır (OPH-181; varsayılan: OS sesi).
+- [ ] **Dürüst etiketler:** slot 1 `notif.urgentFirst`, slot n `notif.urgentRepeat(n)`,
+      **erteleme sonrası** yeni anahtar `notif.afterSnooze` ("Erteleme sonrası — onay
+      bekliyor ({round}. tur)"), görev saati `notif.dueNow`. Kullanıcının "yine 1.
+      bildirim gibi geldi" şikâyeti buradan kalkar.
+- [ ] **iOS ses çözümleme bekçisi:** `UNNotificationSound(named:)` dosyayı çözemezse
+      iOS **sessizce varsayılan ding'e düşer** (belgelenmiş davranış + yaygın hata).
+      Başlatmada sesin varlığını doğrula (bundle → app container `Library/Sounds`);
+      çözülemiyorsa günlüğe yaz + Ayarlar'daki alarm durum satırında söyle
+      ("özel ses bulunamadı — varsayılan sesle çalacak"). Sessiz düşüş yasak.
+- [ ] **Alarm günlüğü** (yerel, sync DIŞI): drift tablosu `alarm_events` (halka tampon
+      ~200 satır) — `scheduled | cancelled | interacted | ring_shown | action`; alan
+      seti: an, lane (`notification | alarmkit | inapp`), slot index, kind, urgent,
+      ses adı, interruption level, taskId/reminderId. Ayarlar → **"Alarm günlüğü"**
+      (salt-okunur liste + "kopyala"). **Dürüstlük notu ekranda:** iOS, kullanıcı
+      dokunmadığı bir bildirimin "teslim edildi" bilgisini vermez — günlük
+      PLANLANANI, ETKİLEŞİMİ ve uygulama-içi çalmayı kaydeder, "teslim edildi"
+      iddiasında bulunmaz.
+- [ ] Testler: planner gövde/slot tablosu (ilk/tekrar/erteleme/görev-saati),
+      scheduler günlüğe yazıyor, bekçinin degraded durumu Ayarlar satırına düşüyor.
+      **Bu task 6.4'ün kanıtını üretir** — sonraki cihaz turunda tahmin değil kayıt
+      konuşur.
+
+### OPH-177 — Erteleme netliği: ne olacağını söyle, göster, aynı yükseklikte çal (round 9 #6.5, #6.6)
+
+- [ ] **Ne olacağını söyle:** ring ekranındaki ve bildirimdeki erteleme seçenekleri
+      sonucu yazar ("5 dk sonra tekrar çalar"); erteledikten sonra snackbar
+      "22:52'de tekrar çalacak" (kullanıcının sorusu birebir: _"5 dk sonra ne olacak?"_).
+- [ ] **Göster:** görev satırında ve detayda `Ertelendi — 22:52` göstergesi
+      (`task.snoozedUntil` bugün hiçbir yerde görünmüyor); alarm ikonu ertelenmiş
+      tonda. Görev tamamlanmış gibi görünmez.
+- [ ] **Aynı yükseklikte çal:** erteleme sonrası tur profilin TAM zincirini kurar
+      (OPH-179) ve OPH-176 sözleşmesine uyar. Tur sayacı için `reminders.snooze_count`
+      (migration + REST/sync artırımı) — planner `notif.afterSnooze` içinde kullanır.
+- [ ] **Özel ertele** (BLUEPRINT §8.2'de yazılı, UI'da yok): tarih-saat seçici;
+      `POST /tasks/:id/snooze { snoozeUntil }` zaten var.
+- [ ] Testler: preset alt metinleri, snackbar, satırdaki ertelendi göstergesi,
+      erteleme sonrası planın slot sayısı + gövdesi, özel erteleme akışı.
+
+### OPH-178 — Süresiz erteleme / "alarmı sustur" (round 9 #6.7)
+
+**Kullanıcının cümlesi:** _"kullanıcı isterse acil olarak ayarladığı taski tamamla
+olarak işaretlemeden de tamamen susturabilmeli."_
+
+- [ ] **Migration:** `tasks.alarms_muted_at` TIMESTAMP NULL (null = alarmlar canlı).
+      Sync FIELD (`alarmsMutedAt`, isoOrNull) + REST PATCH alanı (yeni endpoint YOK).
+- [ ] **Motor:** `alarmInstantsFor` susturulmuş görevde boş döner → `reconcileTaskReminder`
+      aktif satırları `cancelled` yapar → **her cihazda zincir sync ile ölür**. Geri
+      açmak reconcile'ın normal "wants reminder" yolundan satırı yeniden kurar; anı
+      geçmişse app dürüstçe söyler ("saat geçti — yeni bir saat seç").
+- [ ] **Yüzeyler:** ring ekranında "Süresiz ertele" (birincil erteleme satırının
+      yanında, DESIGN §11 A5), bildirim aksiyonu `mute` (iOS acil kategorisine 5.
+      aksiyon — iOS yalnız ilk ~4'ünü gösterebilir, bu yüzden ring ekranı ve detay
+      birincil yoldur), detayda "Alarmı sustur" switch'i, görev satırında
+      `notifications_off` çipi + "Geri aç". **Görev açık kalır** — susturma tamamlama
+      değildir (dürüstlük kuralı).
+- [ ] Testler: unit (susturulmuşta boş an listesi, geri açınca yeniden kurulum),
+      entegrasyon (PATCH → satır cancelled), app (ring ekranından sustur → alarm
+      feed'den çıkıyor, çip görünüyor, görev hâlâ açık).
+
+### OPH-179 — Hatırlatıcı profili: kaç tane, kaç dakikada bir (round 9 #7) — "Hatırlatıcı Sistemi Ayarları"
+
+- [ ] **Saf model** `apps/app/lib/src/notifications/reminder_profile.dart`:
+      `ReminderProfile(slots: [0,2,5,10,30], repeatAfterSnooze: true)`;
+      `parseReminderProfile(String)` / `encode`. **Kurallar (doğrulama tablosu):**
+      artan sıra, tekilleştirme, **ardışık slotlar arası ≥ 1 dk** (kullanıcının koyduğu
+      çakışma kuralı — "30 sn sonra" isteği bu kurala takılır ve UI bunu söyler),
+      ilk slot ≥ 0, **en çok 20 slot**, bozuk değer → fabrika profili.
+- [ ] **Planner profili PARAMETRE olarak alır** (saf kalır): `kUrgentChainOffsets`
+      sabiti kalkar, `planNotifications(..., profile:)`. Cihaz-yerel tercih
+      `alliswell_reminder_profile`; scheduler profil değişince yeniden planlar
+      (privacy toggle'ın bugünkü kalıbı).
+- [ ] **64 slot gerçeği ekranda:** iOS bekleyen 64 bildirimi aşınca sessizce atar
+      (bugünkü pencere 40). Editörde canlı hesap: "Bu profille aynı anda ~N alarm tam
+      kapsanır" + 10 slotun üstünde uyarı. Sessiz kırpma yasak (NOTIFICATIONS §5).
+- [ ] **Ayarlar → "Hatırlatıcı Sistemi Ayarları"** yeni ekran
+      (`features/settings/reminder_settings_screen.dart`, DESIGN §18): hazır profiller
+      (**Sakin** 1 slot / **Standart** 5 / **Israrcı** 10), adım listesi (her adım
+      dakika stepper'ı + sil, "araya adım ekle"), **canlı zaman çizelgesi önizlemesi**
+      ("22:42 → 22:44 → 22:47 …" kullanıcının tarih biçimiyle), satır içi doğrulama
+      mesajları, fabrika ayarına dön.
+- [ ] **Sürükle-bırak kararı (bilinçli sapma, gerekçeli):** sıralı bir sayı zincirinde
+      "3. adımı 1. sıraya taşı" anlamsızdır — sistem hemen yeniden sıralar, jest boşa
+      gider (NN/g: sonucu geri alınacak jesti sunma). Bu yüzden zincir **adım adım
+      stepper** editörüdür; sürükle-bırak **anlamlı olduğu yerde** verilir: kullanıcının
+      alarm ekranında gördüğü **erteleme preset'lerinin sırası** (`ReorderableListView`).
+- [ ] Testler: doğrulama tablosu (sıra/1 dk/kap/bozuk), planner profili uyguluyor,
+      editör adım ekle-sil-değiştir + preset yeniden sıralama, kapasite uyarısı.
+
+### OPH-180 — Uygulama içi alarm sesi: `AlarmFeedback`'in ses yatağı (round 9 #6, #8)
+
+- [ ] **Yeni bağımlılık kategorisi** (AGENTS sert kural 6 → [ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md)):
+      ses çalar (`just_audio` + `audio_session`, alternatif `audioplayers`; seçim
+      ADR'de gerekçelenir). Gereksinimler: döngü, iOS `AVAudioSession` kategorisi
+      **`.playback`** (uygulama ÖNDEyken sessiz anahtarını meşru şekilde aşar — bu,
+      NOTIFICATIONS §2b'nin reddettiği *arka plan* audio hilesi DEĞİLDİR), Android
+      `USAGE_ALARM` attributes, masaüstü + web desteği.
+- [ ] **Mevcut seam'in içine:** `AudioAlarmFeedback implements AlarmFeedback`
+      (ses + haptik), testler `SilentAlarmFeedback`'te kalır (bekleyen timer/kanal
+      yok). Seçilen alarm sesini çalar (OPH-181), her aksiyonda ve dispose'ta susar.
+      **Masaüstü/web'in tek alarm yüzeyi budur** (NOTIFICATIONS §3).
+- [ ] **Web dürüstlüğü:** tarayıcı autoplay politikası kullanıcı jesti olmadan sesi
+      engelleyebilir → engellenirse görsel + (varsa) titreşimle devam et ve ring
+      ekranında "sesi başlat" düğmesi göster.
+- [ ] Testler: fake çalar start/stop çağrılarını doğruluyor; ring ekranı testleri
+      hâlâ sessiz ve timer sızdırmıyor.
+
+### OPH-181 — Zil sesi kütüphanesi + özel ses yükleme (round 9 #7 sesler)
+
+- [ ] **Paketli sesler:** `aw_alarm` (28 sn, var) + 2 kısa hatırlatıcı tonu (yeni
+      varlıklar: iOS `.caf` ≤30 sn + Android `res/raw` + Dart asset — üç yüzey aynı
+      dosyayı duyar).
+- [ ] **Özel yükleme mevcut boru hattını kullanır** (Epic 14/15): `targetType:'workspace'`
+      + ayrılmış **"Zil sesleri"** klasörü; seçim cihaz-yerel
+      (`alliswell_alarm_sound` / `alliswell_reminder_sound` = `bundled:aw_alarm` |
+      `file:<fileId>`) — dosya kütüphanesi çalışma alanı geneli olduğu için diğer
+      cihazlar aynı sesi seçebilir, sunucu tarafında yeni ayar deposu gerekmez.
+- [ ] **Cihaza kurulum (kritik ayrıntı):** iOS `UNNotificationSound(named:)` sesi
+      **önce app container'ın `Library/Sounds` klasöründe**, sonra bundle'da arar →
+      presigned GET ile indir, `Library/Sounds/<hash>.caf` olarak yaz, adıyla referans
+      ver. Android'de kanallar **değiştirilemez** → ses başına kanal
+      (`urgent_alarms_v3_<hash>`), eski/kullanılmayan kanalları sil (sınırlı sayıda tut).
+- [ ] **Format dürüstlüğü:** OS bildirim sesi ≤30 sn ve aiff/wav/caf (Linear PCM,
+      IMA4, µLaw, aLaw) olmak zorunda; **mp3/m4a iOS bildiriminde çalışmaz.** Yükleme
+      ekranı bunu yükleme anında söyler ve alternatif sunar ("yalnız uygulama içi alarm
+      sesi olarak kullan") — sessizce başarısız olmak yasak. Sunucu tarafı dönüştürme
+      (ffmpeg) **bilinçli olarak park edildi** (v2 kuyruğu).
+- [ ] **AlarmKit aynı dosyayı kullanır:** `AlertConfiguration.AlertSound.named(...)`
+      bundle/`Library/Sounds` kurallarına tabi → OPH-182'de aynı kurulu dosya beslenir;
+      erken iOS 26 sürümlerinde container seslerinin çalmadığı raporları var → cihaz
+      turunda doğrula, çalışmazsa paketli yatağa düş.
+- [ ] Ayarlar → Hatırlatıcı Sistemi Ayarları içinde "Alarm sesi" / "Hatırlatıcı sesi"
+      satırları + **önizleme** (OPH-180'in çaları) + "Ses yükle".
+- [ ] Testler: format/süre doğrulama tablosu, seçim kalıcılığı, gateway doğru ses adını
+      geçiyor, bayat kanal temizliği (fake üzerinde), desteklenmeyen format mesajı.
+
+### OPH-182 — iOS 26 AlarmKit'i GERÇEKTEN devreye al (round 9 #8'in çözümü) — cihaz
+
+**Bu task, "ekran kapalıyken/sessizde ses gelsin" isteğinin tek meşru cevabıdır ve
+iPhone'un kendi alarm arayüzünü (tam ekran, ertele/durdur) bize verir.**
+
+- [ ] `AlarmKitBridge.swift`'i **Runner hedefine ekle** + `AppDelegate`'te kur
+      ([ALARMKIT_SETUP.md](../apps/app/ios/Runner/ALARMKIT_SETUP.md) adım 2-3). Bugün
+      hiçbir hedefte olmadığı için hat ölü.
+- [ ] **Round 9 araştırmasının yeni bulgusu — Live Activity zorunluluğu:** AlarmKit,
+      `AlarmAttributes<AWAlarmMetadata>` okuyan bir **widget extension
+      `ActivityConfiguration`** ister ve **her iki Info.plist'te
+      `NSSupportsLiveActivities = YES`** olmalı; widget extension olmadan sistem
+      alarmları beklenmedik şekilde düşürebilir. Elimizde `AllisWellWidget` var →
+      Live Activity oraya eklenir, `AWAlarmMetadata` iki hedefte derlenir.
+- [ ] **Yerelleştirme + ses + ertele:** buton metinleri ("Onayla"/"Ertele") kanaldan
+      uygulamanın diliyle geçirilir (bugün Swift'te sabit); `sound:` parametresine
+      OPH-181'in kurulu sesi verilir; `secondaryButtonBehavior: .countdown` profilin
+      ilk erteleme değerine bağlanır; stop/snooze Dart'a `onAlarmAction` ile döner
+      (taslak hazır). SDK'nın gerçek tip adları ilk derlemede doğrulanır.
+- [ ] **Pencere + limit:** app başına alarm sayısı sistem sınırına tabi (belgesiz) →
+      AlarmKit lane'i en yakın N alarmla sınırla ve reddedilenleri alarm günlüğüne yaz.
+- [ ] **Cihaz DoD matrisi (iOS 26 gerçek cihaz):** sessiz anahtarı AÇIK + Uyku Odak
+      AÇIK + ekran KİLİTLİ → alarm tam ekran çalıyor; Onayla senkronize oluyor; Ertele
+      yeniden çalıyor; iOS < 26'da bildirim zincirine düşüş sağlam; günlük lane'i
+      doğru yazıyor. Sonuç STATE'e işlenir.
+
+### OPH-183 — Apple Watch: bedava olan ne, companion gerekli mi (round 9 #6 son paragraf)
+
+- [ ] **Bedavayı doğrula (varsayma):** iPhone bildirimleri telefon kilitliyken eşleşmiş
+      saate **aynalanır** (watchOS hedefi gerekmez); ses/haptik per-app kullanıcı
+      kontrolünde (Watch → Sesler ve Dokunuşlar; watchOS 26 ortama göre otomatik ses
+      seviyesi; **"Belirgin" haptik** bazı uyarıları ekstra dokunuşla önceden bildirir).
+      AlarmKit alarmlarının saatte de göründüğü Apple'ın kendi çerçevesinde belirtiliyor
+      → gerçek saatle doğrula.
+- [ ] **Karar ve gerekçesini yaz:** watchOS companion hedefi yalnız (a) özel long-look
+      bildirim arayüzü, (b) `WKInterfaceDevice.play(.notification)` haptikleri,
+      (c) complication için gerekir — kendi imza + review yüzeyi gelir. **Öneri:**
+      önce aynalamayı ve AlarmKit'i saatte ölç; yetersizse companion'ı ayrı bir epic
+      olarak aç (kapsam + risk bu task'ta yazılı kalır).
+- [ ] **Hedef gelmese bile teslim edilecek:** NOTIFICATIONS §2d (Apple Watch bölümü) +
+      Hatırlatıcı Sistemi Ayarları'nda tek satır yardım ("Apple Watch'ta ses/haptik:
+      Watch → Sesler ve Dokunuşlar").
+
+**Epic 16 DoD:** her task kendi test + `check:i18n` + kontrast (FAILURES: 0) + `analyze`
+yeşiliyle kapanır; epic sonunda app + API tam süit, `check:no-ts`, CHANGELOG + STATE +
+README/ROADMAP dokunuşları (yenileme, tarih biçimi, hatırlatıcı sistemi), **OPH-182/183
+cihaz matrisi STATE'e işlenmiş** → **v0.5.0**. 175/177/178 migration içerir → append-only
+kural + `down` zorunlu; 180 yeni bağımlılık kategorisi → ADR-0015 kabul edilmiş olmalı.
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
@@ -2870,6 +3277,12 @@ app+API tam süit, `check:no-ts`, `check:i18n`, `contrast.py FAILURES: 0`, CHANG
 - Attachments v2: multipart >5 GB uploads, thumbnails/transcodes, quota enforcement, local
   binary cache for offline viewing, camera capture, inline video playback, public share links
   (v1 shipped in Epic 14 — ATTACHMENTS.md §11).
+- **Round 9 park kuyruğu:** sunucu tarafı zil sesi dönüştürme (ffmpeg → ≤30 sn caf, mp3
+  yüklemelerini iOS bildiriminde kullanılabilir kılar — OPH-181 bilinçli olarak
+  doğrulama+dürüst mesajla yetiniyor); **watchOS companion hedefi** (özel long-look +
+  `WKInterfaceDevice` haptikleri + complication — kararı OPH-183 veriyor); cihazlar arası
+  **sunucu tarafı ayar deposu** (hatırlatıcı profili + tarih biçimi bugün cihaz-yerel,
+  `notification_privacy` kalıbıyla aynı); alarm günlüğünün sunucuya raporlanması.
 - Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).

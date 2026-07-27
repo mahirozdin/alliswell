@@ -300,6 +300,26 @@ tek yerde yaşar: API `effectiveRemindAt(task)` (`src/db/reminders.js`, tüm yaz
 (`ReminderStore.watchAlarms`) aynı kuralı aynalar — reminder satırı senkrondan önce de alarm
 kurulur, satır gelince devralır.
 
+**Rev. 2026-07-27 (feedback round 9, Epic 16 — bağlayıcı ayrıntı
+[ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md) + [NOTIFICATIONS.md](NOTIFICATIONS.md) §5):**
+round 6'nın "remind_at her zaman kazanır" kuralı **yanlıştı** — kullanıcı hem uyarı hem
+son teslim istiyor: _"velevki hatırlatıcı kurdum, tam görev saatinde de alarm gibi çalmalı."_
+
+- **Bir task'ın en çok İKİ alarm anı vardır ve bunlar birbirinden bağımsızdır:** `remind`
+  (`remind_at`) ve `due` (acil task'ın `due_at`'i, **hatırlatıcı olsa bile**). Her biri kendi
+  reminder satırıdır (`reminders.kind` ∈ `remind`|`due`); iki an aynıysa tek satıra iner
+  (tek an için iki kez çalmak hatadır). `effectiveRemindAt` yerini `alarmInstantsFor(task)`
+  alır; `reconcileTaskReminder` türler üzerinde döner, her satır kendi revizyonunu tutar.
+- **Susturma bir durumdur:** `tasks.alarms_muted_at` (null = canlı) "süresiz erteleme"yi
+  senkronlanan, geri alınabilir bir gerçeğe çevirir — anlar boşalır, satırlar iptal edilir,
+  **görev AÇIK kalır** (susturmak tamamlamak değildir) ve arayüz alarmın kapalı olduğunu
+  söylemeye devam eder.
+- **Tekrar zinciri kullanıcının profilidir** (cihaz-yerel: adım listesi, adımlar arası ≥ 1 dk,
+  ≤ 20 adım) ve erteleme sonrası turlar aynı profili aynı yükseklikte çalar; tur sayacı
+  `reminders.snooze_count`.
+- **Tek yükseklik sözleşmesi:** acil bir alarmın her slotu alarm sesi + alarm sınıfı
+  teslimat taşır; "sessiz ilk slot" diye bir şey yoktur.
+
 ### 4.10 File / Attachment
 
 _(Eklendi 2026-07-18, feedback round 7 — Epic 14; bağlayıcı plan
@@ -571,6 +591,28 @@ zinciri. Normal hatırlatıcılar da `timeSensitive` (kullanıcının saat verdi
 gereği zamana duyarlıdır; `.active` her Odak modunda sessizce gömülüyordu). iOS'ta sessiz
 anahtarını yalnız Apple onaylı **Critical Alerts** (kod yolu hazır, entitlement gate'li —
 görev uygulamalarına fiilen verilmiyor) veya **AlarmKit** (iOS 26+, OPH-141) aşar.
+
+**Rev. 2026-07-27 (feedback round 9 — ilk gerçek alarm turu; bağlayıcı:
+[NOTIFICATIONS.md](NOTIFICATIONS.md) §2/§2b/§5, [ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md)):**
+
+- **iOS'ta birincil hat artık AlarmKit'tir** (iOS 26+). Sebebi teoriden değil sahadan:
+  `timeSensitive` bildirim sesi hâlâ bir *bildirim* sesidir — sessiz anahtarı ve zil ses
+  seviyesi onu susturur. **Round 9'da anlaşıldı ki AlarmKit hattı hiç çalışmamış:**
+  `AlarmKitBridge.swift` hiçbir Xcode hedefinde değildi (OPH-182 bunu bağlar). AlarmKit
+  bize iPhone'un kendi alarm davranışını verir: tam ekran uyarı, kilit ekranı/Dynamic
+  Island, native ertele/durdur, sessiz + Odak modunu delen ses, **entitlement gerekmez**
+  (yalnız kullanıcı izni) ve **Apple Watch'a da ulaşır**. iOS < 26 ve izin verilmemiş
+  durumlar bildirim zincirine düşer — düşüş dürüstçe söylenir.
+- **Erteleme seçenekleri ne yapacağını söyler** ("5 dk sonra tekrar çalar"), erteleme
+  görev satırında görünür ("Ertelendi — 22:52") ve **süresiz erteleme** (§4.9) bir seçenektir.
+- **Sesler kullanıcının:** acil alarm sesi ve hatırlatıcı sesi ayrı seçilir; kullanıcı kendi
+  zil sesini yükleyebilir (R2 → cihazda iOS `Library/Sounds` / Android ses-başına-kanal;
+  ≤30 sn + caf/wav/aiff kuralı yükleme anında dürüstçe söylenir). Uygulama içi ring
+  ekranı da ses çalar (önplan `.playback` oturumu).
+- **Ayarlanabilirlik ve dürüstlük birlikte:** hatırlatıcı sayısı/sıklığı Ayarlar →
+  "Hatırlatıcı Sistemi Ayarları"nda; iOS'un 64 bekleyen bildirim sınırının seçilen profile
+  maliyeti aynı ekranda yazılır (sessiz kırpma yok). Her alarm olayı yerel **alarm
+  günlüğüne** yazılır — bir daha "hangi ses çaldı?" sorusu hafızayla tartışılmaz.
 
 ### 8.3 Gizlilik
 
@@ -1093,6 +1135,34 @@ Finder/Explorer sadeliğinde, iki katmanlı:
 - Depo yapılandırılmamışsa bölüm dürüst boş durum gösterir (`STORAGE_NOT_CONFIGURED` —
   spinner yalanı yok); **Kaynaklar** katmanı yine listelenir (metadata replikada).
 
+### 12.13 Yenileme, tarih biçimi ve hatırlatıcı ayarları (feedback round 9 — OPH-171…181)
+
+_(Eklendi 2026-07-27; bağlayıcı tasarım [DESIGN.md](DESIGN.md) §15–§18 ve §11 A3/A5/A6.)_
+
+- **Aşağı çekip yenileme beş bölümde birden vardır** (Home — Liste ve Pano —, Fikirler,
+  Projeler, Notlar, Dosyalar). Yenileme = "şimdi senkronize et" + o ekranın dış gerçeği
+  (Home: takvim etkinlikleri + alarm izni; Dosyalar: depo durumu). Gösterge sabit filtre
+  satırının ALTINDA doğar, en az ~450 ms görünür (replika milisaniyede döner; çakıp kaybolan
+  spinner "olmadı" demektir), listeyi yerinden oynatmaz, aramayı/filtreyi bozmaz. Fare
+  tekerleği overscroll yapmadığı için geniş yerleşimde app bar'a bir "Yenile" eylemi eklenir —
+  aynı yetenek, her platformun kendi deyimiyle.
+- **Telefonda Home'da SABİT kalan tek şey app bar'dır** (bölüm başlığı + ayarlar). Uyarı
+  bandı, Liste|Pano anahtarı, hızlı ekleme, arama, takvim ve "takvimi gizle" — hepsi tek
+  kaydırmanın parçasıdır (OPH-103 felsefesinin sonuna kadar götürülmesi). Tek istisna:
+  Pano'da yatay pager kaydırılamayacağı için Liste|Pano anahtarı sabit kalır, yoksa Liste'ye
+  dönüş yolu kaybolur.
+- **Tarih/saat gösterimi tek biçimlendiriciden gelir ve kullanıcı seçer.** Varsayılan
+  "sistem" (uygulama diline uyar; tr → **31.12.2026 23:59**), yanında en sık kullanılan
+  presetler. Ayar ekranı **biçim dizgesi değil sonucu** gösterir (round 1 kuralı: son
+  kullanıcıya teknik kavram yok) ve seçim ana ekran widget'ına da taşınır — widget ile
+  uygulama kullanıcının önünde çelişemez.
+- **"Hatırlatıcı Sistemi Ayarları" tek adrestir:** hazır profiller (Sakin/Standart/Israrcı),
+  adım adım zincir editörü (dakika stepper'ı, araya adım ekleme, canlı zaman çizelgesi),
+  erteleme presetlerinin sırası (burada sürükle-bırak anlamlıdır — sıralı zincirde değil),
+  alarm/hatırlatıcı sesi + özel zil sesi yükleme (önizlemeli), süresiz erteleme davranışı ve
+  alarm günlüğü. Sınırlar sessizce uygulanmaz, ekranda söylenir (adımlar arası ≥ 1 dk;
+  iOS'un 64 bekleyen bildirim bütçesinin seçilen profile maliyeti).
+
 ## 13. Open-source repo kalitesi
 
 ### 13.1 README içeriği
@@ -1151,6 +1221,16 @@ Tests:
   proje + açıklama + etiket chip-input + ek seçimi; görev açıklaması (linkify); TR-duyarsız
   yerel arama (Home/Notlar/Projeler); Home **Pano** (Kanban) görünümü; klasörlü global dosya
   yöneticisi — Epic 15 (ADR-0013 arama, ADR-0014 klasörler).
+- **Phase 10 — Feedback round 9: yenileme, tarih biçimi, alarm sistemi (v0.5.0):** beş bölümde
+  aşağı çekip yenileme; telefonda Home'un tek kaydırma katmanı (yalnız app bar sabit); detaylı
+  ekleme sheet'inde hiza + "yarın" varsayılanı; tek kaynaktan tarih/saat biçimi + kullanıcı
+  ayarı; **alarm belkemiği v2** — görev saati kendi alarmı (`reminders.kind`), tek yükseklik
+  sözleşmesi + alarm günlüğü, erteleme netliği, **süresiz erteleme** (`tasks.alarms_muted_at`),
+  kullanıcı hatırlatıcı profili + "Hatırlatıcı Sistemi Ayarları", zil sesi kütüphanesi + özel
+  ses yükleme, uygulama içi alarm sesi, **iOS 26 AlarmKit'in gerçekten devreye alınması** ve
+  Apple Watch davranışının doğrulanması — Epic 16
+  ([ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md), NOTIFICATIONS §2b/§5/§6,
+  DESIGN §15–§18).
 
 ## 15. Kurumsal kalite gereksinimleri
 
@@ -1232,6 +1312,20 @@ conflict UI.
 davranışlarını kısıtlayabilir. *Mitigation:* local scheduled notification; push only as
 supplement; foreground resync; kullanıcıya permission health screen.
 
+**Risk 4b — Bildirim hattı bir alarm değildir (round 9'da gerçekleşti).** iOS'ta
+`timeSensitive` özel ses **zil seviyesinde** çalar, sessiz anahtarı onu tamamen susturur ve
+`UNNotificationSound` adı çözülemezse sistem sessizce varsayılan sese düşer — yani "alarm"
+sözü verilip ding çıkması ya da hiç ses çıkmaması mümkündür (round 9'da üçü de yaşandı).
+Üstüne, hangi hattın hangi sesle çaldığına dair **hiçbir kaydımız yoktu**. *Mitigation:*
+iOS 26+ için birincil hat **AlarmKit** (entitlement gerekmez, sessiz+Odak'ı deler, native tam
+ekran; OPH-182) ve bu hattın gerçekten derlendiğini kanıtlayan cihaz DoD'si; tek yükseklik
+sözleşmesi (her slot alarm sınıfı); ses çözümleme bekçisi + Ayarlar'da dürüst durum;
+yerel **alarm günlüğü** (OPH-176) — teşhis bir daha hafızayla yapılmaz; iOS'un 64 bekleyen
+bildirim bütçesi kullanıcı profiline karşı ekranda hesaplanır (sessiz kırpma yok).
+**Kalıcı ders:** native bir dosyanın repoda olması onun derlendiği anlamına gelmez —
+`flutter analyze`/`test` Swift/Kotlin derlemez; hedef üyeliği olmayan bir köprü sessizce
+"desteklenmiyor" döner (AlarmKit round 6'dan beri yazılıydı, round 9'a kadar hiç çalışmadı).
+
 **Risk 5 — Widget platform sınırları & tazelik bütçesi.** (a) iPhone'da 4×4 üstü ana ekran
 widget'ı yoktur → "4×6/tam ekran" iPhone'da karşılanamaz (iPad/macOS `systemExtraLarge`, Android
 4×6). (b) WidgetKit yenileme bütçesi (40-70/gün) arka planda kısıtlıdır. (c) Widget ayrı sandbox
@@ -1301,6 +1395,7 @@ accent/case-insensitive collation + FULLTEXT index'lerle uyumludur.
 - **Epic 13 — Alarm omurgası:** OPH-137…OPH-143 (feedback round 6).
 - **Epic 14 — Attachments & project files (R2/S3):** OPH-150…OPH-157 (feedback round 7).
 - **Epic 15 — Feedback round 8 (akış hızı, arama, pano, global dosyalar):** OPH-160…OPH-170.
+- **Epic 16 — Feedback round 9 (yenileme, tarih biçimi, alarm sistemi):** OPH-171…OPH-183.
 
 ## 19. Nihai hedef
 

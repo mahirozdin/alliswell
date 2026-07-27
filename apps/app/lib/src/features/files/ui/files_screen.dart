@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
+import '../../../sections.dart';
+import '../../../sync/refresh.dart';
+import '../../../widgets/refreshable.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -245,8 +248,9 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    Future<bool> refresh() => refreshSection(ref, AppSection.files);
     return Scaffold(
-      appBar: buildSectionAppBar(context, 'nav.files'.tr()),
+      appBar: buildSectionAppBar(context, 'nav.files'.tr(), onRefresh: refresh),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -279,9 +283,11 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
             ),
           ),
           Expanded(
+            // OPH-171: both layers pull — Klasörlerim and Kaynaklar (§15).
             child: _showSources
-                ? const _SourcesLayer()
+                ? _SourcesLayer(onRefresh: refresh)
                 : _FoldersLayer(
+                    onRefresh: refresh,
                     path: _path,
                     onDescend: (folder) => setState(() => _path.add(folder)),
                     onCrumb: (index) => setState(
@@ -335,6 +341,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
 /// Klasörlerim: breadcrumb + this level's folders and files + actions.
 class _FoldersLayer extends ConsumerWidget {
   const _FoldersLayer({
+    required this.onRefresh,
     required this.path,
     required this.onDescend,
     required this.onCrumb,
@@ -345,6 +352,7 @@ class _FoldersLayer extends ConsumerWidget {
     required this.onMoveFile,
   });
 
+  final Future<bool> Function() onRefresh;
   final List<Folder> path;
   final void Function(Folder) onDescend;
   final void Function(int index) onCrumb;
@@ -432,81 +440,88 @@ class _FoldersLayer extends ConsumerWidget {
           ),
         ),
         Expanded(
-          child:
-              (level.isEmpty &&
-                  files.isEmpty &&
-                  uploads.isEmpty &&
-                  path.isEmpty &&
-                  !storageOn)
-              ? AwEmptyState(
-                  icon: Icons.cloud_off_outlined,
-                  title: 'file.notConfiguredTitle'.tr(),
-                  message: 'file.notConfigured'.tr(),
-                )
-              : (level.isEmpty && files.isEmpty && uploads.isEmpty)
-              ? AwEmptyState(
-                  icon: Icons.folder_open_outlined,
-                  title: 'files.emptyTitle'.tr(),
-                  message: 'files.emptyBody'.tr(),
-                )
-              : ListView(
-                  padding: awListPadding(context),
-                  children: [
-                    for (final folder in level)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Card(
-                          clipBehavior: Clip.antiAlias,
-                          child: ListTile(
-                            key: Key('folder-row-${folder.id}'),
-                            leading: const FolderLeadingTile(),
-                            title: Text(
-                              folder.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              'files.folderSubtitle'.tr(
-                                args: {
-                                  // Direct child folders + that level's files
-                                  // — WATCHED so the family stays alive
-                                  // (ref.read of an autoDispose family tears
-                                  // it down mid-stream).
-                                  'count':
-                                      '${folders.where((f) => f.parentId == folder.id).length + (ref.watch(workspaceLevelFilesProvider(folder.id)).value?.length ?? 0)}',
-                                },
+          child: AwRefresh(
+            indicatorKey: const Key('files-refresh'),
+            onRefresh: onRefresh,
+            child:
+                (level.isEmpty &&
+                    files.isEmpty &&
+                    uploads.isEmpty &&
+                    path.isEmpty &&
+                    !storageOn)
+                ? AwEmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: 'file.notConfiguredTitle'.tr(),
+                    message: 'file.notConfigured'.tr(),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                  )
+                : (level.isEmpty && files.isEmpty && uploads.isEmpty)
+                ? AwEmptyState(
+                    icon: Icons.folder_open_outlined,
+                    title: 'files.emptyTitle'.tr(),
+                    message: 'files.emptyBody'.tr(),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                  )
+                : ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: awListPadding(context),
+                    children: [
+                      for (final folder in level)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Card(
+                            clipBehavior: Clip.antiAlias,
+                            child: ListTile(
+                              key: Key('folder-row-${folder.id}'),
+                              leading: const FolderLeadingTile(),
+                              title: Text(
+                                folder.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              style: theme.textTheme.bodySmall,
+                              subtitle: Text(
+                                'files.folderSubtitle'.tr(
+                                  args: {
+                                    // Direct child folders + that level's files
+                                    // — WATCHED so the family stays alive
+                                    // (ref.read of an autoDispose family tears
+                                    // it down mid-stream).
+                                    'count':
+                                        '${folders.where((f) => f.parentId == folder.id).length + (ref.watch(workspaceLevelFilesProvider(folder.id)).value?.length ?? 0)}',
+                                  },
+                                ),
+                                style: theme.textTheme.bodySmall,
+                              ),
+                              trailing: IconButton(
+                                key: Key('folder-menu-${folder.id}'),
+                                icon: const Icon(Icons.more_horiz),
+                                tooltip: 'files.folderActions'.tr(),
+                                onPressed: () => onFolderActions(folder),
+                              ),
+                              onTap: () => onDescend(folder),
                             ),
-                            trailing: IconButton(
-                              key: Key('folder-menu-${folder.id}'),
-                              icon: const Icon(Icons.more_horiz),
-                              tooltip: 'files.folderActions'.tr(),
-                              onPressed: () => onFolderActions(folder),
-                            ),
-                            onTap: () => onDescend(folder),
                           ),
                         ),
-                      ),
-                    for (final job in uploads) UploadRowTile(job: job),
-                    for (final file in files)
-                      FileRowTile(
-                        file: file,
-                        onMore: () => showFileActionsSheet(
-                          context,
-                          ref,
-                          file,
-                          extraActions: [
-                            (
-                              icon: Icons.drive_file_move_outlined,
-                              label: 'files.moveTo'.tr(),
-                              onTap: () => onMoveFile(file),
-                            ),
-                          ],
+                      for (final job in uploads) UploadRowTile(job: job),
+                      for (final file in files)
+                        FileRowTile(
+                          file: file,
+                          onMore: () => showFileActionsSheet(
+                            context,
+                            ref,
+                            file,
+                            extraActions: [
+                              (
+                                icon: Icons.drive_file_move_outlined,
+                                label: 'files.moveTo'.tr(),
+                                onTap: () => onMoveFile(file),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
-                ),
+                    ],
+                  ),
+          ),
         ),
       ],
     );
@@ -515,45 +530,52 @@ class _FoldersLayer extends ConsumerWidget {
 
 /// Kaynaklar: attached files, source-labeled, tap-through to the owner.
 class _SourcesLayer extends ConsumerWidget {
-  const _SourcesLayer();
+  const _SourcesLayer({required this.onRefresh});
+
+  final Future<bool> Function() onRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final entries =
         ref.watch(workspaceAttachedFilesProvider).value ??
         const <ProjectFileEntry>[];
-    if (entries.isEmpty) {
-      return AwEmptyState(
-        icon: Icons.attachment_outlined,
-        title: 'files.noSourcesTitle'.tr(),
-        message: 'files.noSourcesBody'.tr(),
-      );
-    }
-    return ListView(
-      padding: awListPadding(context),
-      children: [
-        for (final entry in entries)
-          FileRowTile(
-            key: Key('source-file-${entry.file.id}'),
-            file: entry.file,
-            badge: SourceBadge(
-              type: entry.sourceType,
-              title: entry.sourceTitle,
-            ),
-            onMore: () => showFileActionsSheet(
-              context,
-              ref,
-              entry.file,
-              extraActions: [
-                (
-                  icon: Icons.open_in_new,
-                  label: 'files.goToSource'.tr(),
-                  onTap: () => _goToSource(context, entry),
-                ),
+    return AwRefresh(
+      indicatorKey: const Key('sources-refresh'),
+      onRefresh: onRefresh,
+      child: entries.isEmpty
+          ? AwEmptyState(
+              icon: Icons.attachment_outlined,
+              title: 'files.noSourcesTitle'.tr(),
+              message: 'files.noSourcesBody'.tr(),
+              physics: const AlwaysScrollableScrollPhysics(),
+            )
+          : ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: awListPadding(context),
+              children: [
+                for (final entry in entries)
+                  FileRowTile(
+                    key: Key('source-file-${entry.file.id}'),
+                    file: entry.file,
+                    badge: SourceBadge(
+                      type: entry.sourceType,
+                      title: entry.sourceTitle,
+                    ),
+                    onMore: () => showFileActionsSheet(
+                      context,
+                      ref,
+                      entry.file,
+                      extraActions: [
+                        (
+                          icon: Icons.open_in_new,
+                          label: 'files.goToSource'.tr(),
+                          onTap: () => _goToSource(context, entry),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
-          ),
-      ],
     );
   }
 

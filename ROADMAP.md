@@ -164,6 +164,41 @@ fold, parity-fixtured across Dart and JS — ADR-0013); and a Home **Board**
 path. Remaining for the release: a live pass with a real Google account and
 the standing device-tour matrix.
 
+## Toward v0.5.0
+
+### Phase 10 — Feedback round 9: refresh, date format, the alarm system ⏳ (planned 2026-07-27)
+
+Thirteen tasks (OPH-171…183) from the first round of feedback written by someone
+who had actually **used** an alarm. Two halves:
+
+**Flow (OPH-171…174, app-only).** Pull to refresh in all five sections (Home —
+list and board —, Ideas, Projects, Notes, Files); on phones Home keeps exactly
+one thing pinned, the app bar, so the view toggle and the quick-add field scroll
+away with the search field and the calendar instead of squeezing the list; the
+detailed create sheet stops misaligning project and priority and opens its date
+picker on **tomorrow** (you tap for today, you plan for tomorrow); and every
+date in the app comes from one formatter with a user-chosen display format
+(31.12.2026 23:59 by default in Turkish) that also reaches the home-screen
+widget.
+
+**The alarm backbone v2 (OPH-175…183).** An urgent task's own due time becomes
+its own alarm even when a reminder exists (a reminder is a nudge *before* the
+deadline, not a replacement for it); one loudness contract — every repeat and
+every post-snooze re-ring is as loud as the first, with honest labels; snooze
+says what it will do and shows when it will return; a true **indefinite silence**
+that never pretends the task is done; a user-owned reminder profile (how many
+alerts, how far apart, minimum one minute) behind a "Reminder system settings"
+screen that states the OS budget it is spending instead of trimming silently;
+a ringtone library with **your own uploaded sound** (installed where each OS can
+actually play it); sound in the in-app ring screen at last; a local **alarm log**
+so the next report is evidence rather than memory; and the fix behind all of it —
+**iOS 26 AlarmKit is finally wired into the build** (the bridge existed since
+round 6 but was in no Xcode target, so the one lane designed to ring through
+silent mode and Focus had never run), plus a verified answer for Apple Watch.
+Design: [ADR-0015](docs/adr/0015-alarm-delivery-and-reminder-profiles.md),
+[NOTIFICATIONS.md](docs/NOTIFICATIONS.md) §2b/§5/§6,
+[DESIGN.md](docs/DESIGN.md) §15–§18.
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:

@@ -22,5 +22,6 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0012](0012-liquid-glass-v2-visual-refresh.md) | "Liquid Glass v2" visual refresh (design round 8) | Accepted |
 | [0013](0013-local-first-search.md) | Local-first search with app-owned Turkish folding | Accepted |
 | [0014](0014-folders-and-global-files.md) | Folders and the global "Dosyalar" section | Accepted |
+| [0015](0015-alarm-delivery-and-reminder-profiles.md) | Alarm delivery: AlarmKit-first, two alarm instants, user-owned reminder profiles | Accepted |
 
 Template: [template.md](template.md)

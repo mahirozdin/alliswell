@@ -5,7 +5,9 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../sections.dart';
+import '../../../sync/refresh.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/refreshable.dart';
 import '../../../widgets/status_views.dart';
 import '../../notes/providers.dart';
 import '../../workspaces/workspaces.dart';
@@ -23,8 +25,13 @@ class InboxScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tasks = ref.watch(inboxTasksProvider);
+    Future<bool> refresh() => refreshSection(ref, AppSection.inbox);
     return Scaffold(
-      appBar: buildSectionAppBar(context, AppSection.inbox.title),
+      appBar: buildSectionAppBar(
+        context,
+        AppSection.inbox.title,
+        onRefresh: refresh,
+      ),
       body: Column(
         children: [
           QuickAddBar(
@@ -34,24 +41,33 @@ class InboxScreen extends ConsumerWidget {
                 ref.read(inboxTasksProvider.notifier).quickAdd(title),
           ),
           Expanded(
-            child: tasks.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => AwErrorState(
-                message: localizedError(error),
-                onRetry: () => ref.invalidate(inboxTasksProvider),
+            // OPH-171: the capture box is pullable — including its empty and
+            // error states, which become the scrollable themselves (§15).
+            child: AwRefresh(
+              indicatorKey: const Key('inbox-refresh'),
+              onRefresh: refresh,
+              child: tasks.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => AwErrorState(
+                  message: localizedError(error),
+                  onRetry: () => ref.invalidate(inboxTasksProvider),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                ),
+                data: (items) => items.isEmpty
+                    ? AwEmptyState(
+                        icon: Icons.inbox_outlined,
+                        title: 'inbox.captureTitle'.tr(),
+                        message: 'inbox.captureBody'.tr(),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: awListPadding(context),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) =>
+                            _CaptureTile(task: items[index]),
+                      ),
               ),
-              data: (items) => items.isEmpty
-                  ? AwEmptyState(
-                      icon: Icons.inbox_outlined,
-                      title: 'inbox.captureTitle'.tr(),
-                      message: 'inbox.captureBody'.tr(),
-                    )
-                  : ListView.builder(
-                      padding: awListPadding(context),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) =>
-                          _CaptureTile(task: items[index]),
-                    ),
             ),
           ),
         ],

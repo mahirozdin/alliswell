@@ -6,8 +6,11 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../search/providers.dart';
+import '../../../sections.dart';
+import '../../../sync/refresh.dart';
 import '../../../widgets/search_field.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/refreshable.dart';
 import '../../../widgets/status_views.dart';
 import '../data/project.dart';
 import '../providers.dart';
@@ -24,9 +27,14 @@ class ProjectsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final projects = ref.watch(projectsControllerProvider);
     final showArchived = ref.watch(projectsShowArchivedProvider);
+    Future<bool> refresh() => refreshSection(ref, AppSection.projects);
     // FAB hoisted to HomeShell (OPH-101).
     return Scaffold(
-      appBar: buildSectionAppBar(context, 'nav.projects'.tr()),
+      appBar: buildSectionAppBar(
+        context,
+        'nav.projects'.tr(),
+        onRefresh: refresh,
+      ),
       body: Column(
         children: [
           // OPH-167 (DESIGN §12): fold-insensitive search, ANDs with the
@@ -61,48 +69,57 @@ class ProjectsScreen extends ConsumerWidget {
             ),
           ),
           Expanded(
-            child: projects.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => AwErrorState(
-                message: localizedError(error),
-                onRetry: () => ref.invalidate(projectsControllerProvider),
-              ),
-              data: (all) {
-                var items = [
-                  for (final p in all)
-                    if ((p.status == 'archived') == showArchived) p,
-                ];
-                final hits = ref.watch(projectsSearchResultsProvider).value;
-                if (hits != null) {
-                  // Ranked ids from the fold engine: name hits first (S3).
-                  final order = {
-                    for (final (i, hit) in hits.indexed) hit.id: i,
-                  };
-                  items = [
-                    for (final p in items)
-                      if (order.containsKey(p.id)) p,
-                  ]..sort((a, b) => order[a.id]!.compareTo(order[b.id]!));
-                }
-                if (items.isEmpty) {
-                  return AwEmptyState(
-                    icon: showArchived
-                        ? Icons.archive_outlined
-                        : Icons.folder_open,
-                    title: showArchived
-                        ? 'project.noArchived'.tr()
-                        : 'project.empty'.tr(),
-                    message: showArchived
-                        ? 'project.archivedHere'.tr()
-                        : 'project.createFirst'.tr(),
+            // OPH-171: the indicator is born right under the filter chips —
+            // this wraps the list, not the body (§15 R1).
+            child: AwRefresh(
+              indicatorKey: const Key('projects-refresh'),
+              onRefresh: refresh,
+              child: projects.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => AwErrorState(
+                  message: localizedError(error),
+                  onRetry: () => ref.invalidate(projectsControllerProvider),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                ),
+                data: (all) {
+                  var items = [
+                    for (final p in all)
+                      if ((p.status == 'archived') == showArchived) p,
+                  ];
+                  final hits = ref.watch(projectsSearchResultsProvider).value;
+                  if (hits != null) {
+                    // Ranked ids from the fold engine: name hits first (S3).
+                    final order = {
+                      for (final (i, hit) in hits.indexed) hit.id: i,
+                    };
+                    items = [
+                      for (final p in items)
+                        if (order.containsKey(p.id)) p,
+                    ]..sort((a, b) => order[a.id]!.compareTo(order[b.id]!));
+                  }
+                  if (items.isEmpty) {
+                    return AwEmptyState(
+                      icon: showArchived
+                          ? Icons.archive_outlined
+                          : Icons.folder_open,
+                      title: showArchived
+                          ? 'project.noArchived'.tr()
+                          : 'project.empty'.tr(),
+                      message: showArchived
+                          ? 'project.archivedHere'.tr()
+                          : 'project.createFirst'.tr(),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                    );
+                  }
+                  return ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: awListPadding(context, extraBottom: 72),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) =>
+                        _ProjectTile(project: items[index]),
                   );
-                }
-                return ListView.builder(
-                  padding: awListPadding(context, extraBottom: 72),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) =>
-                      _ProjectTile(project: items[index]),
-                );
-              },
+                },
+              ),
             ),
           ),
         ],

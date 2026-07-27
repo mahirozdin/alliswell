@@ -19,7 +19,9 @@
     "yes": "Evet",
     "no": "Hayır",
     "greeting": "Merhaba, {name}",
-    "clear": "Temizle"
+    "clear": "Temizle",
+    "refresh": "Yenile",
+    "refreshFailed": "Yenilenemedi — son eşitlenen veriyi görüyorsun."
   },
   "nav": {
     "home": "Ana Sayfa",

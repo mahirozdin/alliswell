@@ -121,17 +121,28 @@ class SyncEngine {
 
   /// Runs one push+pull convergence round. Serialized: a call while a round
   /// is in flight queues exactly one follow-up round.
-  Future<void> syncNow() async {
-    if (_stopped) return;
+  ///
+  /// Returns whether there is nothing to report: true when the round converged
+  /// (or when there was nothing to do), false when it failed and a backoff
+  /// retry is armed — the outbox is durable, so nothing is lost either way.
+  /// Pull-to-refresh (OPH-171) is the only caller that reads this: a user who
+  /// just asked for a refresh must be told when it did not happen (DESIGN §15
+  /// R4). Every background caller keeps ignoring it.
+  Future<bool> syncNow() async {
+    // Being torn down (workspace switch / sign-out) is not a failure.
+    if (_stopped) return true;
     if (_running) {
+      // A round IS in flight; its own caller reports its outcome.
       _rerunWanted = true;
-      return;
+      return true;
     }
     _running = true;
+    var converged = false;
     try {
       await _pushPending();
       await _pullAll();
       _consecutiveFailures = 0;
+      converged = true;
     } catch (_) {
       // Offline or a server hiccup: retry the whole round with backoff. The
       // outbox is durable, so nothing is lost while we wait.
@@ -142,8 +153,9 @@ class SyncEngine {
     }
     if (_rerunWanted && !_stopped) {
       _rerunWanted = false;
-      await syncNow();
+      return syncNow();
     }
+    return converged;
   }
 
   void _scheduleRetry() {

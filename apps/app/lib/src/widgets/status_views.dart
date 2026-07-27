@@ -11,12 +11,22 @@ class AwEmptyState extends StatelessWidget {
     required this.title,
     required this.message,
     this.action,
+    this.physics,
   });
 
   final IconData icon;
   final String title;
   final String message;
   final Widget? action;
+
+  /// Physics for this state's own scroll view (it has one so tight layouts
+  /// never overflow). Two recipes matter (OPH-171, DESIGN §15):
+  /// - directly inside an [AwRefresh] → `AlwaysScrollableScrollPhysics()`, so
+  ///   the pull gesture overscrolls THIS view and the indicator appears;
+  /// - already inside a scrolling parent (a sliver) →
+  ///   `NeverScrollableScrollPhysics()`, so the drag reaches that parent
+  ///   instead of dying here.
+  final ScrollPhysics? physics;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +35,7 @@ class AwEmptyState extends StatelessWidget {
     // overflow — the state simply scrolls instead.
     return Center(
       child: SingleChildScrollView(
+        physics: physics,
         padding: const EdgeInsets.all(AwSpace.x6),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -71,16 +82,25 @@ class AwEmptyState extends StatelessWidget {
 
 /// Shared error state with a retry path (never a dead end).
 class AwErrorState extends StatelessWidget {
-  const AwErrorState({super.key, required this.message, this.onRetry});
+  const AwErrorState({
+    super.key,
+    required this.message,
+    this.onRetry,
+    this.physics,
+  });
 
   final String message;
   final VoidCallback? onRetry;
+
+  /// See [AwEmptyState.physics] — same two recipes.
+  final ScrollPhysics? physics;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
       child: SingleChildScrollView(
+        physics: physics,
         padding: const EdgeInsets.all(AwSpace.x6),
         child: Column(
           mainAxisSize: MainAxisSize.min,

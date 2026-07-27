@@ -19,6 +19,7 @@ import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass.dart';
+import '../widgets/refreshable.dart';
 
 /// Adaptive shell: floating Liquid Glass chrome — a glass rail panel on wide
 /// layouts (desktop/web/tablet), a glass capsule bottom bar on narrow ones
@@ -288,10 +289,20 @@ class HomeShell extends ConsumerWidget {
 }
 
 /// Shared app bar for section screens with quick access to Settings.
-AppBar buildSectionAppBar(BuildContext context, String title) {
+///
+/// [onRefresh] adds the pointer-only refresh action (OPH-171, DESIGN §15 R5):
+/// phones pull the list, but a mouse wheel cannot overscroll — so wide layouts
+/// get the same capability as a button. Same handler as the gesture.
+AppBar buildSectionAppBar(
+  BuildContext context,
+  String title, {
+  Future<bool> Function()? onRefresh,
+}) {
+  final wide = MediaQuery.sizeOf(context).width >= 800;
   return AppBar(
     title: Text(title),
     actions: [
+      if (onRefresh != null && wide) AwRefreshAction(onRefresh: onRefresh),
       IconButton(
         icon: const Icon(Icons.settings_outlined),
         tooltip: 'shell.settingsTooltip'.tr(),

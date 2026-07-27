@@ -5,7 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sections.dart';
+import '../../../sync/refresh.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/refreshable.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/providers.dart';
@@ -42,11 +45,16 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     final isGrid = viewMode == 'grid';
     final projects = ref.watch(projectsControllerProvider).value ?? const [];
     final projectNames = {for (final p in projects) p.id: p.name};
+    Future<bool> refresh() => refreshSection(ref, AppSection.notes);
+    // Notes builds its own app bar (the view toggle lives there), so it carries
+    // the pointer-only refresh action itself (§15 R5).
+    final wide = MediaQuery.sizeOf(context).width >= 800;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('nav.notes'.tr()),
         actions: [
+          if (wide) AwRefreshAction(onRefresh: refresh),
           IconButton(
             key: const Key('notes-view-toggle'),
             tooltip: isGrid ? 'note.listView'.tr() : 'note.cardView'.tr(),
@@ -104,24 +112,34 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             ),
           ),
           Expanded(
-            child: notes.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => AwErrorState(
-                message: localizedError(error),
-                onRetry: () => ref.invalidate(notesListProvider),
-              ),
-              data: (items) => items.isEmpty
-                  ? _EmptyNotes(archived: query.filter == NotesFilter.archived)
-                  : isGrid
-                  ? _NotesGrid(notes: items, projectNames: projectNames)
-                  : ListView.builder(
-                      padding: awListPadding(context, extraBottom: 72),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) => NoteTile(
-                        note: items[index],
-                        projectName: projectNames[items[index].projectId],
+            // OPH-171: both views pull (§15) — the grid is a scrollable too.
+            child: AwRefresh(
+              indicatorKey: const Key('notes-refresh'),
+              onRefresh: refresh,
+              child: notes.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => AwErrorState(
+                  message: localizedError(error),
+                  onRetry: () => ref.invalidate(notesListProvider),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                ),
+                data: (items) => items.isEmpty
+                    ? _EmptyNotes(
+                        archived: query.filter == NotesFilter.archived,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                      )
+                    : isGrid
+                    ? _NotesGrid(notes: items, projectNames: projectNames)
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: awListPadding(context, extraBottom: 72),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) => NoteTile(
+                          note: items[index],
+                          projectName: projectNames[items[index].projectId],
+                        ),
                       ),
-                    ),
+              ),
             ),
           ),
         ],
@@ -218,6 +236,7 @@ class _NotesGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return GridView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 220,
@@ -306,9 +325,10 @@ class _NotesGrid extends ConsumerWidget {
 }
 
 class _EmptyNotes extends StatelessWidget {
-  const _EmptyNotes({required this.archived});
+  const _EmptyNotes({required this.archived, this.physics});
 
   final bool archived;
+  final ScrollPhysics? physics;
 
   @override
   Widget build(BuildContext context) {
@@ -316,6 +336,7 @@ class _EmptyNotes extends StatelessWidget {
       icon: archived ? Icons.archive_outlined : Icons.description,
       title: archived ? 'note.archiveEmpty'.tr() : 'note.empty'.tr(),
       message: archived ? 'note.archivedHere'.tr() : 'note.captureFirst'.tr(),
+      physics: physics,
     );
   }
 }

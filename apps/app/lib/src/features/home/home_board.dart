@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
+import '../../sections.dart';
+import '../../sync/refresh.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/refreshable.dart';
 import '../tasks/data/task.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/task_create_sheet.dart';
@@ -37,6 +40,10 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
     _pager?.dispose();
     super.dispose();
   }
+
+  /// Pull-to-refresh inside a column (OPH-171): the board is a VIEW of Home, so
+  /// it refreshes exactly what Home refreshes.
+  Future<bool> _refresh() => refreshSection(ref, AppSection.home);
 
   Future<void> _setStatus(Task task, String status) async {
     if (status == task.status) return;
@@ -153,6 +160,7 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
                         tasks: byStatus[status] ?? const [],
                         onDropped: _setStatus,
                         onMoveRequested: _showMoveSheet,
+                        onRefresh: _refresh,
                       ),
                     ),
                   ),
@@ -185,6 +193,7 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
                             tasks: byStatus[status] ?? const [],
                             onDropped: _setStatus,
                             onMoveRequested: _showMoveSheet,
+                            onRefresh: _refresh,
                           ),
                         ),
                     ],
@@ -222,12 +231,14 @@ class _BoardColumn extends StatelessWidget {
     required this.tasks,
     required this.onDropped,
     required this.onMoveRequested,
+    required this.onRefresh,
   });
 
   final String status;
   final List<Task> tasks;
   final void Function(Task task, String status) onDropped;
   final void Function(Task task) onMoveRequested;
+  final Future<bool> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -281,19 +292,27 @@ class _BoardColumn extends StatelessWidget {
                 ),
               ),
               Expanded(
+                // OPH-171: each column's card list pulls to refresh (§15). The
+                // horizontal pager is untouched, and a quick drag down beats
+                // the card's 200 ms long-press drag, so both gestures live.
                 child: tasks.isEmpty
                     ? _EmptyColumn(status: status, dragging: highlighted)
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(
-                          AwSpace.x2,
-                          AwSpace.x1,
-                          AwSpace.x2,
-                          AwSpace.x2,
-                        ),
-                        itemCount: tasks.length,
-                        itemBuilder: (context, index) => _BoardCard(
-                          task: tasks[index],
-                          onMoveRequested: onMoveRequested,
+                    : AwRefresh(
+                        indicatorKey: Key('board-refresh-$status'),
+                        onRefresh: onRefresh,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(
+                            AwSpace.x2,
+                            AwSpace.x1,
+                            AwSpace.x2,
+                            AwSpace.x2,
+                          ),
+                          itemCount: tasks.length,
+                          itemBuilder: (context, index) => _BoardCard(
+                            task: tasks[index],
+                            onMoveRequested: onMoveRequested,
+                          ),
                         ),
                       ),
               ),

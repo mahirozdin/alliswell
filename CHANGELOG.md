@@ -5,7 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Pull to refresh, everywhere it belongs** (OPH-171): drag down on Home (list
+  and board), Ideas, Projects, Notes or Files and the app syncs — the spinner
+  appears right under that screen's filters, holds long enough to be seen, and
+  slides away. Empty screens are pullable too (a fresh install could not refresh
+  before), the list is never re-mounted or scrolled under you, your search and
+  filters survive, and a refresh that fails says so instead of pretending. On
+  desktop and web — where a mouse wheel cannot overscroll — the same capability
+  is a Refresh button in the section bar.
+
+### Planned
+
+- **Feedback round 9 → Epic 16 (OPH-171…183, toward v0.5.0)** — planning only, no
+  behaviour change yet. The binding documents were written first, as the project
+  requires: pull to refresh in all five sections; Home pinning nothing but its app
+  bar on phones; aligned create-sheet fields with a **tomorrow** default date; one
+  date formatter with a user-selectable display format; and the alarm backbone v2 —
+  a task's own due time as its own alarm, one loudness contract for every repeat and
+  post-snooze ring, honest snooze feedback, indefinite silencing that never fakes
+  completion, a user-owned reminder profile, a ringtone library including uploaded
+  sounds, sound in the in-app ring screen, a local alarm log, **iOS 26 AlarmKit
+  actually wired into the build** (it had been in no Xcode target since round 6, so
+  the mute-switch-proof lane had never once run), and a verified Apple Watch answer.
+  See [ADR-0015](docs/adr/0015-alarm-delivery-and-reminder-profiles.md),
+  `docs/NOTIFICATIONS.md` §2b/§5/§6, `docs/DESIGN.md` §15–§18, `docs/TASKS.md` Epic 16.
 
 ## [0.4.1] - 2026-07-26
 

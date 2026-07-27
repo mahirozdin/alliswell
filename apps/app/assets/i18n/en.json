@@ -20,7 +20,9 @@
     "no": "No",
     "help": "Help",
     "greeting": "Hi, {name}",
-    "clear": "Clear"
+    "clear": "Clear",
+    "refresh": "Refresh",
+    "refreshFailed": "Couldn't refresh — you're seeing the last synced data."
   },
   "nav": {
     "home": "Home",
