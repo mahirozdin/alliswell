@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'dart:async';
 
+import '../../../core/date_format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
@@ -115,7 +116,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     setState(() => _pendingFiles.addAll(picked));
   }
 
-  Future<DateTime?> _pickDateTime(DateTime? current) async {
+  /// [anchor]: the date this field lives next to — see [awInitialPickerDate].
+  Future<DateTime?> _pickDateTime(DateTime? current, {DateTime? anchor}) async {
     final now = DateTime.now();
     // The user's default task time backs both the picker's starting position
     // and the "picked a date, dismissed the clock" fallback (OPH-161).
@@ -124,7 +126,12 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     );
     final date = await showDatePicker(
       context: context,
-      initialDate: current ?? now,
+      // Round 9 #4: an empty field opens on TOMORROW (OPH-173).
+      initialDate: awInitialPickerDate(
+        current: current,
+        anchor: anchor,
+        now: now,
+      ),
       firstDate: now.subtract(const Duration(days: 365)),
       lastDate: now.add(const Duration(days: 365 * 5)),
     );
@@ -334,7 +341,13 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 ),
                 const SizedBox(height: 12),
               ],
+              // Round 9 #3: `start` alignment, so a helper/error line under one
+              // field can never shove the other one out of line. The "no
+              // projects yet" hint that used to do exactly that is GONE — the
+              // picker already carries "+ Add project" (OPH-163), and an empty
+              // list explains itself the moment you open it.
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: ProjectPickerField(
@@ -343,12 +356,6 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                       value: _projectId,
                       decoration: InputDecoration(
                         labelText: 'task.project'.tr(),
-                        // With no projects the picker still carries "+ Add
-                        // project" (OPH-163) — the hint tells first-timers
-                        // why the list is otherwise empty (OPH-106).
-                        helperText: projects.isEmpty
-                            ? 'task.noProjectsHint'.tr()
-                            : null,
                       ),
                       onChanged: (v) => setState(() => _projectId = v),
                     ),
@@ -399,7 +406,9 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 clearTooltip: 'task.clearReminder'.tr(),
                 onClear: () => setState(() => _remindAt = null),
                 onTap: () async {
-                  final picked = await _pickDateTime(_remindAt);
+                  // A reminder belongs near its deadline, so it opens on the
+                  // due day when there is one (OPH-173).
+                  final picked = await _pickDateTime(_remindAt, anchor: _dueAt);
                   setState(() => _remindAt = picked);
                 },
               ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
@@ -292,6 +293,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       label: 'task.scheduledField'.tr(),
                       icon: Icons.event_outlined,
                       value: task.scheduledStartAt,
+                      anchor: task.dueAt,
                       onPicked: (picked) => _apply(
                         (store, id) => store.update(id, {
                           'scheduledStartAt': picked?.toUtc().toIso8601String(),
@@ -307,6 +309,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       label: 'task.remind'.tr(),
                       icon: Icons.alarm,
                       value: task.remindAt,
+                      anchor: task.dueAt,
                       onPicked: (picked) => _apply(
                         (store, id) => store.update(id, {
                           'remindAt': picked?.toUtc().toIso8601String(),
@@ -395,12 +398,18 @@ class _DateRow extends ConsumerWidget {
     required this.icon,
     required this.value,
     required this.onPicked,
+    this.anchor,
     super.key,
   });
 
   final String label;
   final IconData icon;
   final DateTime? value;
+
+  /// The date this row lives next to — see [awInitialPickerDate]. The deadline
+  /// row has none (it opens on tomorrow); a reminder or a planned block opens
+  /// on the deadline's day when there is one (OPH-173).
+  final DateTime? anchor;
   final void Function(DateTime?) onPicked;
 
   @override
@@ -429,7 +438,12 @@ class _DateRow extends ConsumerWidget {
         final now = DateTime.now();
         final picked = await showDatePicker(
           context: context,
-          initialDate: local ?? now,
+          // Round 9 #4: an empty field opens on TOMORROW (OPH-173).
+          initialDate: awInitialPickerDate(
+            current: local,
+            anchor: anchor?.toLocal(),
+            now: now,
+          ),
           firstDate: now.subtract(const Duration(days: 365)),
           lastDate: now.add(const Duration(days: 365 * 5)),
         );

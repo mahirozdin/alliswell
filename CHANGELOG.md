@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **The detailed task sheet lines up, and its date picker opens on tomorrow**
+  (OPH-173): project and priority sit on the same line again — the "No projects
+  yet" helper line under the project field was pushing them out of alignment, and
+  it is gone (the picker still offers "+ Add project", and an empty list explains
+  itself). Picking a deadline now opens on **tomorrow** rather than today: you tap
+  for today, you plan for tomorrow. A reminder opens on its task's due day
+  instead, because a nudge belongs next to its deadline.
+
 ### Added
 
 - **Home stops reserving the top of your phone screen** (OPH-172): the only

@@ -603,7 +603,7 @@ void main() {
   });
 
   testWidgets(
-    'create sheet explains when there are no projects yet (OPH-106)',
+    'with no projects the picker stays, WITHOUT a hint line (round 9 #3)',
     (tester) async {
       await wideSurface(tester);
       final api = FakeApi();
@@ -613,14 +613,110 @@ void main() {
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
 
-      // The picker stays visible (not hidden) with a hint pointing to Projects.
+      // The picker is still there (OPH-106) and still carries "+ Add project"
+      // (OPH-163) — but the old helper line is gone: it added height to ONE
+      // field and knocked the project/priority pair out of line.
       expect(find.byKey(const Key('task-sheet-project')), findsOneWidget);
       expect(
         find.text('No projects yet — create one in the Projects tab'),
-        findsOneWidget,
+        findsNothing,
       );
+
+      // Round 9 #3: the two fields read as one row — same height, same top.
+      final project = tester.getRect(
+        find.byKey(const Key('task-sheet-project')),
+      );
+      final priority = tester.getRect(
+        find.byKey(const Key('task-sheet-priority')),
+      );
+      expect(project.top, priority.top);
+      expect(project.height, priority.height);
     },
   );
+
+  // ── OPH-173: an empty date field opens on TOMORROW (round 9 #4) ────────────
+
+  testWidgets('the due picker opens on tomorrow, not today', (tester) async {
+    await wideSurface(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('task-sheet-title')),
+      'Yarına iş',
+    );
+    // Accept both pickers untouched: whatever they OPENED on is what lands.
+    await tester.tap(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
+
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final due = DateTime.parse(api.tasks.single['dueAt'] as String).toLocal();
+    expect(
+      DateTime(due.year, due.month, due.day),
+      tomorrow,
+      reason: 'you tap for today; you plan for tomorrow',
+    );
+    // …at the user's default task time (23:59 factory, OPH-161).
+    expect(due.hour, 23);
+    expect(due.minute, 59);
+  });
+
+  testWidgets('the reminder picker opens on the DUE day, not tomorrow', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('task-sheet-title')),
+      'Hatırlatıcılı iş',
+    );
+
+    // A due date three days out…
+    final now = DateTime.now();
+    final target = DateTime(now.year, now.month, now.day + 3);
+    await tester.tap(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('${target.day}').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    // …and the reminder picker, accepted untouched, lands on THAT day.
+    await tester.tap(find.byKey(const Key('task-sheet-remind')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
+
+    final remind = DateTime.parse(
+      api.tasks.single['remindAt'] as String,
+    ).toLocal();
+    expect(
+      DateTime(remind.year, remind.month, remind.day),
+      target,
+      reason: 'a nudge belongs next to its deadline, not next to today',
+    );
+  });
 
   testWidgets('an inbox capture stays off Home and has no checkbox (OPH-107)', (
     tester,

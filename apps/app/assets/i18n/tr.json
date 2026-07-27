@@ -173,7 +173,6 @@
     "project": "Proje",
     "priorityLabel": "Öncelik",
     "statusLabel": "Durum",
-    "noProjectsHint": "Henüz proje yok — Projeler sekmesinden oluştur",
     "notSet": "Ayarlanmadı",
     "due": "Bitiş",
     "clearDue": "Bitiş tarihini temizle",

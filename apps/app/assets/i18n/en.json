@@ -174,7 +174,6 @@
     "project": "Project",
     "priorityLabel": "Priority",
     "statusLabel": "Status",
-    "noProjectsHint": "No projects yet — create one in the Projects tab",
     "notSet": "Not set",
     "due": "Due",
     "clearDue": "Clear due date",

@@ -3005,27 +3005,53 @@ gerçek jesti sürüyor ama cihaz dokusunu ölçemez._
 **DoD met 2026-07-28:** app **402/402** (~19 skip) + `flutter analyze` temiz +
 `check:i18n` + `contrast.py FAILURES: 0`; CHANGELOG; STATE.
 
-### OPH-173 — Detaylı ekleme: proje/öncelik hizası + "yarın" varsayılanı (round 9 #3, #4)
+### OPH-173 — Detaylı ekleme: proje/öncelik hizası + "yarın" varsayılanı (round 9 #3, #4) ✅ 2026-07-28
 
-- [ ] **"Henüz proje yok" yazısı kalkar:** `helperText` kaldırılır, `task.noProjectsHint`
+- [x] **"Henüz proje yok" yazısı kalkar:** `helperText` kaldırılır, `task.noProjectsHint`
       anahtarı **en.json + tr.json'dan silinir** (`npm run check:i18n` yetim anahtarı
       yakalar). Gerekçe kullanıcının: liste açılınca proje olmadığı zaten görülür ve
       picker'da "+ Proje ekle" (OPH-163) duruyor — o satır yalnız hizayı bozuyordu.
-- [ ] **Hiza garantisi:** `Row(crossAxisAlignment: CrossAxisAlignment.start)` + iki
+- [x] **Hiza garantisi:** `Row(crossAxisAlignment: CrossAxisAlignment.start)` + iki
       `Expanded` → ileride bir alan `errorText` gösterse bile kutular aynı üst hizada
       kalır (bugün merkezden hizalandığı için farklı yüksekliklerde kayıyorlar).
       Aynı satır deseni detay ekranında da doğrulanır.
-- [ ] **Varsayılan tarih = YARIN:** yeni saf yardımcı
+- [x] **Varsayılan tarih = YARIN:** yeni saf yardımcı
       `DateTime awInitialPickerDate({DateTime? current, DateTime? anchor, required DateTime now})`
       → `current ?? anchor ?? now + 1 gün` (`core/date_format.dart` içinde, 174 ile
       aynı dosya). Bitiş tarihi: `anchor = null` → **yarın**. Hatırlatıcı: `anchor = _dueAt`
       → bitişin GÜNÜ (bitiş 31'indeyse hatırlatıcı da 31'inde açılır, "yarın"da değil).
       Detaydaki `_DateRow` aynı kuralı kullanır. Home FAB'ın seçili-gün prefill'i
       (`initialDue`) her zaman kazanır. `firstDate` aynı kalır (geçmiş 365 gün).
-- [ ] Testler **4**: bitiş tile'ına dokun → date picker'ın seçili günü yarın; bitiş
+- [x] Testler **4**: bitiş tile'ına dokun → date picker'ın seçili günü yarın; bitiş
       doluyken hatırlatıcı picker'ı bitiş gününde açılıyor; seçili-gün prefill'i
       bozulmadı; proje-öncelik satırı iki alanda eşit yükseklikte (golden yerine
       `tester.getSize` karşılaştırması — piksel testi kırılgan).
+
+**Uygulamada ortaya çıkanlar (2026-07-28):**
+
+- Yeni saf yardımcı **`awInitialPickerDate({current, anchor, now})`**
+  (`core/date_format.dart` — 174 aynı dosyayı biçimlendiricilerle dolduracak):
+  `current ?? anchor ?? yarın`. Gün aritmetiği **constructor ile** yapılıyor
+  (`DateTime(y, m, d + 1)`), `add(Duration(days: 1))` ile değil — DST'li bir
+  bölgede 24 saat eklemek takvim gününü kaydırabilir; birim testi bunu da tutuyor.
+- `anchor` üç yerde bağlandı: create sheet'te hatırlatıcı → `_dueAt`; detayda
+  **hatırlatıcı ve "Planlanan"** satırları → `task.dueAt`; bitiş satırı anchor'suz
+  (yarın). Home FAB'ın seçili-gün prefill'i `current` olarak geldiği için kazanmaya
+  devam ediyor.
+- `Row(crossAxisAlignment: start)` + `helperText`'in kalkması hizayı çözdü;
+  **test bunu piksel karşılaştırmasıyla** kanıtlıyor (`getRect().top` ve `.height`
+  eşit) — golden'a gerek yok, kırılgan da değil.
+- **Mevcut test yeni sözleşmeye çevrildi:** "create sheet explains when there are
+  no projects yet (OPH-106)" → "with no projects the picker stays, WITHOUT a hint
+  line"; artık ipucunun **olmadığını** ve iki alanın aynı hizada olduğunu doğruluyor.
+  (OPH-106'nın asıl niyeti — picker gizlenmesin — korunuyor.)
+- Tarih testleri **davranışsal**: picker'ları dokunmadan onaylayıp **oluşan görevin
+  `dueAt`/`remindAt`'ini** ölçüyor; picker'ın iç metnine bakmadıkları için
+  OPH-174'ün biçim değişikliğinden etkilenmeyecekler.
+
+**DoD met 2026-07-28:** app **409/409** (~19 skip; +3 davranış testi, +5 birim) +
+`analyze` temiz + `check:i18n` yeşil (yetim anahtar yok — `task.noProjectsHint`
+en+tr'den silindi) + kontrast FAILURES: 0; CHANGELOG; STATE.
 
 ### OPH-174 — Tarih/saat gösterimi: tek kaynak + kullanıcı biçimi ayarı (round 9 #5)
 
