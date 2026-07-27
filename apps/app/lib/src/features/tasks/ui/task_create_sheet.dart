@@ -211,13 +211,16 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     }
   }
 
-  String _format(DateTime? value) =>
-      value == null ? 'task.notSet'.tr() : value.toString().split('.').first;
+  /// One formatter, the user's chosen format (OPH-174 — DESIGN §17 D1).
+  String _format(DateTime? value, String dateFormat) => value == null
+      ? 'task.notSet'.tr()
+      : awFormatDateTime(value, format: dateFormat);
 
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.of(context).viewInsets;
     final projects = ref.watch(projectsControllerProvider).value ?? const [];
+    final dateFormat = ref.watch(dateFormatProvider);
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
@@ -387,7 +390,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 tileKey: const Key('task-sheet-due'),
                 icon: Icons.flag_outlined,
                 title: 'task.due'.tr(),
-                subtitle: _format(_dueAt),
+                subtitle: _format(_dueAt, dateFormat),
                 isSet: _dueAt != null,
                 clearTooltip: 'task.clearDue'.tr(),
                 onClear: () => setState(() => _dueAt = null),
@@ -401,7 +404,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 tileKey: const Key('task-sheet-remind'),
                 icon: Icons.alarm,
                 title: 'task.remind'.tr(),
-                subtitle: _format(_remindAt),
+                subtitle: _format(_remindAt, dateFormat),
                 isSet: _remindAt != null,
                 clearTooltip: 'task.clearReminder'.tr(),
                 onClear: () => setState(() => _remindAt = null),

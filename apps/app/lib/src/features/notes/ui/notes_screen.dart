@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
@@ -15,11 +16,9 @@ import '../../projects/providers.dart';
 import '../data/note.dart';
 import '../providers.dart';
 
-String _shortDate(DateTime? value) {
-  if (value == null) return '—';
-  final local = value.toLocal();
-  return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}';
-}
+/// Note metadata dates in the user's chosen format (OPH-174, DESIGN §17).
+String _shortDate(DateTime? value, String dateFormat) =>
+    value == null ? '—' : awFormatDate(value, format: dateFormat);
 
 /// Notes section (OPH-043 + feedback round 1): search, All/Pinned/Archived
 /// chips, list ↔ A4-card grid view toggle (persisted), quick pin stars and
@@ -158,9 +157,10 @@ class NoteTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final dateFormat = ref.watch(dateFormatProvider);
     final meta = [
-      'note.edited'.tr(args: {'date': _shortDate(note.updatedAt)}),
-      'note.created'.tr(args: {'date': _shortDate(note.createdAt)}),
+      'note.edited'.tr(args: {'date': _shortDate(note.updatedAt, dateFormat)}),
+      'note.created'.tr(args: {'date': _shortDate(note.createdAt, dateFormat)}),
       ?projectName,
     ].join(' · ');
 
@@ -235,6 +235,7 @@ class _NotesGrid extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final dateFormat = ref.watch(dateFormatProvider);
     return GridView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
@@ -303,7 +304,9 @@ class _NotesGrid extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Text(
                     'note.edited'.tr(
-                          args: {'date': _shortDate(note.updatedAt)},
+                          args: {
+                            'date': _shortDate(note.updatedAt, dateFormat),
+                          },
                         ) +
                         (projectNames[note.projectId] != null
                             ? ' · ${projectNames[note.projectId]}'

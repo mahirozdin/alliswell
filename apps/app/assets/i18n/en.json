@@ -98,6 +98,10 @@
       "short": "Server: {server}",
       "useDefault": "Use the default",
       "invalid": "That does not look like a server address."
+    },
+    "dateFormat": {
+      "title": "Date format",
+      "system": "Follow the app language"
     }
   },
   "shell": {

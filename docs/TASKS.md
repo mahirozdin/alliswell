@@ -3053,9 +3053,9 @@ gerçek jesti sürüyor ama cihaz dokusunu ölçemez._
 `analyze` temiz + `check:i18n` yeşil (yetim anahtar yok — `task.noProjectsHint`
 en+tr'den silindi) + kontrast FAILURES: 0; CHANGELOG; STATE.
 
-### OPH-174 — Tarih/saat gösterimi: tek kaynak + kullanıcı biçimi ayarı (round 9 #5)
+### OPH-174 — Tarih/saat gösterimi: tek kaynak + kullanıcı biçimi ayarı (round 9 #5) ✅ 2026-07-28
 
-- [ ] **Tek biçimlendirici** `apps/app/lib/src/core/date_format.dart`:
+- [x] **Tek biçimlendirici** `apps/app/lib/src/core/date_format.dart`:
       `awFormatDateTime/awFormatDate/awFormatTime/awFormatShort(value, {format, locale})`.
       Presetler (`kAwDateFormats`, hepsi aynı örnek anla önizlenir — 31.12.2026 23:59):
       `system` (locale-duyarlı `DateFormat.yMd().add_Hm()`; tr'de zaten **31.12.2026 23:59**),
@@ -3063,10 +3063,10 @@ en+tr'den silindi) + kontrast FAILURES: 0; CHANGELOG; STATE.
       `d MMMM yyyy HH:mm` (31 Aralık 2026 23:59), `EEE d MMM HH:mm` (kısa satır biçimi).
       `awFormatShort` liste satırları için yılı **bu yılsa** atar (task_tile'ın bugünkü
       davranışı korunur, ama biçimi ayardan gelir).
-- [ ] `dateFormatProvider = NotifierProvider<PersistedChoice,String>('alliswell_date_format',
+- [x] `dateFormatProvider = NotifierProvider<PersistedChoice,String>('alliswell_date_format',
       fallback: 'system')`; bilinmeyen/bozuk değer → `system` (bozuk tercih hiçbir ekranı
       düşürmez — `parseTaskTime` dersi).
-- [ ] **Bütün el yapımı biçimler buraya bağlanır (hiçbiri kalmaz):**
+- [x] **Bütün el yapımı biçimler buraya bağlanır (hiçbiri kalmaz):**
       create sheet `_format` ([:207](../apps/app/lib/src/features/tasks/ui/task_create_sheet.dart#L207)),
       detay `_DateRow` ([:415](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L415)),
       `task_tile._formatDue` ([:19](../apps/app/lib/src/features/tasks/ui/task_tile.dart#L19)),
@@ -3078,12 +3078,41 @@ en+tr'den silindi) + kontrast FAILURES: 0; CHANGELOG; STATE.
       **ve `widget_snapshot`** ([:126/:130](../apps/app/lib/src/features/widgets/widget_snapshot.dart#L126)) —
       seçilen biçim snapshot JSON'una yazılır, yoksa ana ekran widget'ı uygulamadan
       farklı tarih gösterir.
-- [ ] Ayarlar → **"Tarih biçimi"** satırı: radio sheet, her seçenek aynı örnek anı
+- [x] Ayarlar → **"Tarih biçimi"** satırı: radio sheet, her seçenek aynı örnek anı
       kendi biçiminde gösterir (DESIGN §17 D2 — kullanıcıya `dd.MM.yyyy` gibi teknik
       dizge ASLA gösterilmez, yalnız sonucu). i18n `settings.dateFormat.*`.
-- [ ] Testler **5**: her preset örnek anı beklenen dizgeye çeviriyor; bozuk tercih →
+- [x] Testler **5**: her preset örnek anı beklenen dizgeye çeviriyor; bozuk tercih →
       system; tr/en locale'de `system` doğru; task_tile + create sheet ayarı izliyor;
       widget snapshot biçimi taşıyor.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Presetler ICU kalıbı değil, `id` ile saklanıyor** (`system`, `dmy_dot`,
+  `dmy_slash`, `mdy_12h`, `iso`, `dmy_long`) — depolama intl kalıplarına
+  bağlanmasın; `awDateFormatSpec` bilinmeyen/emekli id'yi **system**'e düşürür
+  (`parseTaskTime` dersinin aynısı). Spec üç parça taşır: `date`, `time`,
+  **`short`** (liste satırı, yılsız — D4).
+- **Sağlayıcı mı global mi:** i18n gibi bir singleton yerine **`dateFormatProvider`**
+  (PersistedChoice, `core/persisted_prefs.dart`) seçildi; biçimlendiriciler saf
+  kaldı (`format` + `locale` parametre). Bunun bedeli tek yerde ödendi:
+  `external_event_tile` düz `StatelessWidget`'tan `ConsumerWidget`'a çevrildi.
+- **`system` gerçekten sistemi izliyor:** `DateFormat.jm(locale)` → tr 24 saat
+  (`23:59`), **en 12 saat** (`11:59 PM`). Bu, İngilizce'de görev satırlarının ve
+  **ana ekran widget'ının** saat biçimini bilinçli olarak değiştirdi (DESIGN §17
+  D3 böyle yazılmıştı); 24 saat isteyen `dmy_dot`/`iso` seçiyor.
+- **Widget snapshot'ı biçimi taşıyor:** `buildWidgetSnapshot(..., dateFormat:)` +
+  `widgetSyncProvider` tercihi **watch** ediyor → biçim değişince snapshot
+  yeniden yayınlanıyor. Aksi hâlde widget ile uygulama aynı ekranda çelişirdi.
+- **Test dersi (CLDR):** `DateFormat.jm` AM/PM'den önce **narrow no-break space
+  (U+202F)** koyuyor; `'11:30 AM'` beklentisi görünmez bir farkla düşüyordu →
+  o iki testte parça bazlı (`contains`) doğrulama yapılıyor. Açık `h:mm a`
+  kalıbında normal boşluk kalıyor, orada tam eşitlik tutuluyor.
+- **Eski ham biçimler kalmadı:** `calendar_mirror_test`'teki son
+  `toString().split('.')` beklentisi de biçimlendiriciye çevrildi (round 9'un
+  şikâyet ettiği dizgenin kendisiydi).
+
+**DoD met 2026-07-28:** app **417/417** (~19 skip; +11 birim, +2 widget) +
+`analyze` temiz + `check:i18n` yeşil + kontrast FAILURES: 0; CHANGELOG; STATE.
 
 ### OPH-175 — "Görev saati de bir alarmdır": iki alarm örneği (round 9 #6.3) — API + app
 

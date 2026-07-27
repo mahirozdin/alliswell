@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/date_format.dart';
 import '../../core/error_messages.dart';
 import '../../core/fold.dart';
 import '../../core/persisted_prefs.dart';
@@ -124,6 +125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Watched here (not inside the LayoutBuilder) so a layout pass never
     // subscribes providers.
     final calendarVisible = ref.watch(homeCalendarVisibleProvider);
+    final dateFormat = ref.watch(dateFormatProvider);
 
     final searchField = Padding(
       padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x1, AwSpace.x4, 0),
@@ -210,8 +212,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ? 'home.quickAddHint'.tr()
                 : 'home.quickAddForDay'.tr(
                     args: {
-                      'date':
-                          '${selectedDay.year}-${selectedDay.month.toString().padLeft(2, '0')}-${selectedDay.day.toString().padLeft(2, '0')}',
+                      'date': awFormatDate(selectedDay, format: dateFormat),
                     },
                   ),
             onAdd: _quickAdd,

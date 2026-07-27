@@ -97,6 +97,10 @@
       "short": "Sunucu: {server}",
       "useDefault": "Varsayılanı kullan",
       "invalid": "Bu bir sunucu adresine benzemiyor."
+    },
+    "dateFormat": {
+      "title": "Tarih biçimi",
+      "system": "Uygulama diline uy"
     }
   },
   "shell": {

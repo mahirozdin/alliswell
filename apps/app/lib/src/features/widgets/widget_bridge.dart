@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/date_format.dart';
+import '../../core/persisted_prefs.dart';
 import '../projects/providers.dart';
 import '../tasks/data/task.dart';
 import '../tasks/providers.dart';
@@ -24,6 +26,7 @@ class WidgetBridge {
     List<Task> tasks, {
     required DateTime now,
     Map<String, String> projectColorById = const {},
+    String dateFormat = kAwSystemDateFormat,
   }) async {
     if (!_configured) {
       await _host.configure();
@@ -33,6 +36,7 @@ class WidgetBridge {
       tasks,
       now: now,
       projectColorById: projectColorById,
+      dateFormat: dateFormat,
     );
     await _host.save(kWidgetSnapshotKey, jsonEncode(snapshot.toJson()));
     await _host.requestUpdate();
@@ -69,8 +73,16 @@ final widgetSyncProvider = Provider<void>((ref) {
   final colors = {
     for (final entry in projects.entries) entry.key: entry.value.colorRgb,
   };
+  // Watched, not read: changing the date format republishes the snapshot, so
+  // the widget never shows yesterday's format (OPH-174).
+  final dateFormat = ref.watch(dateFormatProvider);
   // Fire-and-forget: a widget push must never block the UI.
   ref
       .read(widgetBridgeProvider)
-      .publish(tasks, now: DateTime.now(), projectColorById: colors);
+      .publish(
+        tasks,
+        now: DateTime.now(),
+        projectColorById: colors,
+        dateFormat: dateFormat,
+      );
 });

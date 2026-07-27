@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import '../../../core/date_format.dart';
+import '../../../core/persisted_prefs.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../i18n/i18n.dart' show AwI18n, AwTr;
@@ -97,7 +98,8 @@ class FileRowTile extends ConsumerWidget {
     final when = file.createdAt;
     final subtitle = [
       formatBytes(file.sizeBytes),
-      if (when != null) DateFormat.yMMMd().format(when.toLocal()),
+      if (when != null)
+        awFormatDate(when, format: ref.watch(dateFormatProvider)),
     ].join(' · ');
 
     return Card(

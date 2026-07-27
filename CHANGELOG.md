@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **Dates look the way you want them to** (OPH-174): every date and time in the
+  app now comes from one formatter, so the broken `2026-07-31 23:59:00` in the
+  task sheet is gone. Settings → **Date format** lets you pin the shape you
+  prefer — 31.12.2026 23:59, 31/12/2026, 2026-12-31, 31 Aralık 2026, or the US
+  12-hour form — each option previewed with the same sample date, so you pick a
+  result rather than a pattern. The factory setting follows the app language, and
+  your choice reaches the home-screen widget too, so the two never disagree.
 - **The detailed task sheet lines up, and its date picker opens on tomorrow**
   (OPH-173): project and priority sit on the same line again — the "No projects
   yet" helper line under the project field was pushing them out of alignment, and

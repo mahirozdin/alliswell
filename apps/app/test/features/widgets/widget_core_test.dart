@@ -86,7 +86,13 @@ void main() {
       expect(snap.buckets.single.key, 'today');
       expect(snap.buckets.single.label, 'Today');
       expect(snap.buckets.single.count, 1);
-      expect(snap.buckets.single.items.single.time, '11:30');
+      // OPH-174: the widget speaks the app's format. Following the language
+      // means English gets its own 12h clock (Turkish stays 24h, below).
+      // CLDR separates the AM/PM marker with a narrow no-break space, so match
+      // the parts instead of pinning invisible whitespace.
+      final enTime = snap.buckets.single.items.single.time!;
+      expect(enTime, contains('11:30'));
+      expect(enTime, contains('AM'));
       expect(snap.strings['allCaughtUp'], 'All caught up');
 
       AwI18n.instance.setActiveCached(const Locale('tr'));
@@ -96,6 +102,7 @@ void main() {
       expect(tr.date.weekday, 'Cuma');
       expect(tr.date.month, 'Temmuz');
       expect(tr.buckets.single.label, 'Bugün');
+      expect(tr.buckets.single.items.single.time, '11:30');
     });
 
     test('truncates a bucket to rowsPerBucket with a "+N more" count', () {

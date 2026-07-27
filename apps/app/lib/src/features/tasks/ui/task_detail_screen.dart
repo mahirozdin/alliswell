@@ -421,7 +421,9 @@ class _DateRow extends ConsumerWidget {
       leading: Icon(icon),
       title: Text(label),
       subtitle: Text(
-        local == null ? 'task.notSet'.tr() : local.toString().split('.').first,
+        local == null
+            ? 'task.notSet'.tr()
+            : awFormatDateTime(local, format: ref.watch(dateFormatProvider)),
         style: TextStyle(
           color: local == null ? scheme.onSurfaceVariant : scheme.onSurface,
           fontWeight: local == null ? null : FontWeight.w600,

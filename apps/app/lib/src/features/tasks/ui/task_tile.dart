@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-
+import '../../../core/date_format.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../projects/providers.dart';
@@ -12,18 +12,11 @@ import '../data/task.dart';
 import '../providers.dart';
 import 'task_visuals.dart';
 
-/// Locale-aware short date + 24h time (OPH-123). English renders identically to
-/// the old hand-rolled format ("Jul 15, 09:30"); other locales get their own
-/// month name and ordering via `intl` (date data initialized in `main()` /
-/// `flutter_test_config.dart`).
-String _formatDue(DateTime due) {
-  final date = DateFormat.MMMd(
-    AwI18n.instance.locale.toLanguageTag(),
-  ).format(due);
-  final time =
-      '${due.hour.toString().padLeft(2, '0')}:${due.minute.toString().padLeft(2, '0')}';
-  return '$date, $time';
-}
+/// The row form of the user's chosen format (OPH-174, DESIGN §17 D4): short
+/// date + time, no year — "Jul 15, 09:30" in English, "15 Tem 09:30" in Turkish,
+/// and whatever the user picked when they picked one.
+String _formatDue(DateTime due, String dateFormat) =>
+    awFormatShort(due, format: dateFormat);
 
 /// Shared task row: a rounded surface card with checkbox (complete/reopen),
 /// due date (overdue turns red), colored priority flag, status icon and
@@ -63,6 +56,7 @@ class TaskTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final dateFormat = ref.watch(dateFormatProvider);
     final due = task.dueAt?.toLocal();
     final isOverdue =
         due != null && !task.isCompleted && due.isBefore(DateTime.now());
@@ -124,9 +118,11 @@ class TaskTile extends ConsumerWidget {
                     Text(
                       isOverdue
                           ? 'task.overdueDue'.tr(
-                              args: {'date': _formatDue(due)},
+                              args: {'date': _formatDue(due, dateFormat)},
                             )
-                          : 'task.dueOn'.tr(args: {'date': _formatDue(due)}),
+                          : 'task.dueOn'.tr(
+                              args: {'date': _formatDue(due, dateFormat)},
+                            ),
                       style: isOverdue
                           ? theme.textTheme.bodyMedium?.copyWith(
                               color: scheme.error,

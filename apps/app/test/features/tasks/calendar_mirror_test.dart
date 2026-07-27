@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/date_format.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -222,11 +223,15 @@ void main() {
       await tester.dragUntilVisible(row, list, const Offset(0, -120));
 
       expect(find.text('Scheduled'), findsOneWidget);
+      // OPH-174: rows render through the one formatter now — the old
+      // `2030-06-05 17:00:00` was the raw `toString()` round 9 complained about.
       final local = DateTime.utc(2030, 6, 5, 14).toLocal();
       expect(
         find.descendant(
           of: row,
-          matching: find.text(local.toString().split('.').first),
+          matching: find.text(
+            awFormatDateTime(local, format: kAwSystemDateFormat),
+          ),
         ),
         findsOneWidget,
       );

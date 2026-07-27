@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-
 import '../core/app_version.dart';
+import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
@@ -103,6 +102,27 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => showLanguagePicker(context),
+                    ),
+                    // OPH-174 (DESIGN §17): how dates are DISPLAYED. The row and
+                    // the picker show results, never patterns — nobody should
+                    // have to read `dd.MM.yyyy` to choose how their app looks.
+                    Builder(
+                      builder: (context) {
+                        final format = ref.watch(dateFormatProvider);
+                        return ListTile(
+                          key: const Key('settings-date-format'),
+                          leading: const Icon(Icons.event_note_outlined),
+                          title: Text('settings.dateFormat.title'.tr()),
+                          subtitle: Text(
+                            awFormatDateTime(
+                              kAwDateFormatSample,
+                              format: format,
+                            ),
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => showDateFormatPicker(context),
+                        );
+                      },
                     ),
                     // OPH-161: where a day-only task lands. One source of
                     // truth for quick-add, the FAB prefill and date pickers.
@@ -269,7 +289,12 @@ class _DeleteAccountCard extends ConsumerWidget {
               ),
               subtitle: Text(
                 'settings.deleteAccount.pendingBody'.tr(
-                  args: {'date': _formatDeadline(pending.scheduledAt!)},
+                  args: {
+                    'date': _formatDeadline(
+                      pending.scheduledAt!,
+                      ref.watch(dateFormatProvider),
+                    ),
+                  },
                 ),
                 style: TextStyle(color: scheme.onErrorContainer),
               ),
@@ -309,8 +334,8 @@ class _DeleteAccountCard extends ConsumerWidget {
     );
   }
 
-  static String _formatDeadline(DateTime at) =>
-      DateFormat.yMMMMd().add_Hm().format(at);
+  static String _formatDeadline(DateTime at, String dateFormat) =>
+      awFormatDateTime(at, format: dateFormat);
 }
 
 /// Feedback round 6: the alarm-permission status row. It reports what the OS
@@ -387,6 +412,67 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
           onTap: _request,
         );
       },
+    );
+  }
+}
+
+/// OPH-174 (DESIGN §17 D2): the date-format picker. Every row is the SAME sample
+/// instant rendered in that option, because a result is what the user is
+/// choosing — a pattern like `dd.MM.yyyy` is a technical concept and those never
+/// reach end-user UI (round 1's rule, the same one that banned hex codes).
+Future<void> showDateFormatPicker(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    constraints: const BoxConstraints(maxWidth: 560),
+    builder: (context) => const _DateFormatPickerSheet(),
+  );
+}
+
+class _DateFormatPickerSheet extends ConsumerWidget {
+  const _DateFormatPickerSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(dateFormatProvider);
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              AwSpace.x1,
+              AwSpace.x4,
+              AwSpace.x2,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'settings.dateFormat.title'.tr(),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+          for (final spec in kAwDateFormats)
+            ListTile(
+              key: Key('date-format-${spec.id}'),
+              // The result IS the label; the system option says what it follows
+              // (otherwise, in Turkish, it would look like a duplicate row).
+              title: Text(
+                awFormatDateTime(kAwDateFormatSample, format: spec.id),
+              ),
+              subtitle: spec.id == kAwSystemDateFormat
+                  ? Text('settings.dateFormat.system'.tr())
+                  : null,
+              trailing: spec.id == current ? const Icon(Icons.check) : null,
+              onTap: () async {
+                await ref.read(dateFormatProvider.notifier).set(spec.id);
+                if (context.mounted) Navigator.of(context).pop();
+              },
+            ),
+        ],
+      ),
     );
   }
 }

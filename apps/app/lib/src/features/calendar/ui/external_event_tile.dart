@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_format.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/external_event.dart';
@@ -9,19 +12,17 @@ import '../data/external_event.dart';
 /// Visually a different species from [TaskTile] on purpose: no checkbox, no tap
 /// target that implies editing, a leading time rail instead of a status icon.
 /// You cannot complete a meeting, and the row should not suggest you can.
-class ExternalEventTile extends StatelessWidget {
+class ExternalEventTile extends ConsumerWidget {
   const ExternalEventTile({required this.event, super.key});
 
   final ExternalEvent event;
 
-  static String _hhmm(DateTime at) {
-    final local = at.toLocal();
-    return '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // The time rail follows the user's chosen clock (OPH-174 — a 12h format
+    // must not leave meetings reading 23:00).
+    final dateFormat = ref.watch(dateFormatProvider);
+    String hhmm(DateTime at) => awFormatTime(at, format: dateFormat);
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     // "Not busy" (Google's `transparent`) is background noise — birthdays,
@@ -49,14 +50,14 @@ class ExternalEventTile extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          _hhmm(event.startsAt),
+                          hhmm(event.startsAt),
                           style: text.labelLarge?.copyWith(
                             color: accent,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         Text(
-                          _hhmm(event.endsAt),
+                          hhmm(event.endsAt),
                           style: text.labelSmall?.copyWith(
                             color: scheme.onSurfaceVariant,
                           ),

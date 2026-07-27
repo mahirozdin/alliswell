@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'date_format.dart';
 import 'kv/local_kv.dart';
 
 /// UI preferences that survive restarts (feedback round 1): synchronous state
@@ -92,6 +93,14 @@ List<String> parseBoardColumns(String value, List<String> allStatuses) {
       ? const ['open', 'in_progress', 'waiting', 'completed']
       : parsed;
 }
+
+/// How dates and times are DISPLAYED (round 9, OPH-174 — DESIGN §17). One of
+/// [kAwDateFormats]' ids; the factory default follows the app language, and junk
+/// resolves back to it (`awDateFormatSpec`). Device-local, like every other
+/// display preference here.
+final dateFormatProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_date_format', fallback: kAwSystemDateFormat),
+);
 
 /// The time-of-day a task lands on when the user picked only a DAY
 /// (round 8, OPH-161 — quick-add on a selected day, FAB prefill, date-picker

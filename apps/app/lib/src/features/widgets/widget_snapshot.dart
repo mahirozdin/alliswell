@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import '../../core/date_format.dart';
+
 import '../../i18n/i18n.dart';
 import '../tasks/data/task.dart';
 import 'widget_grouping.dart';
@@ -118,21 +120,32 @@ class WidgetSnapshot {
   };
 }
 
-String? _timeLabel(Task task, WidgetBucket bucket, String localeTag) {
+String? _timeLabel(
+  Task task,
+  WidgetBucket bucket,
+  String localeTag,
+  String dateFormat,
+) {
   final due = task.dueAt;
   if (due == null) return null;
-  final local = due.toLocal();
+  // OPH-174: the widget speaks the SAME format as the app — a widget and an app
+  // disagreeing about a date, side by side on one screen, is indefensible.
   if (bucket == WidgetBucket.today) {
-    return '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
+    return awFormatTime(due, format: dateFormat, locale: localeTag);
   }
   // Overdue / this week / this month: a short date says more than a bare time.
-  return DateFormat.MMMd(localeTag).format(local);
+  return awFormatShort(
+    due,
+    format: dateFormat,
+    locale: localeTag,
+    withTime: false,
+  );
 }
 
 WidgetTaskRow _rowFor(
   Task task,
   WidgetBucket bucket,
+  String dateFormat,
   String localeTag,
   Map<String, String> projectColorById,
 ) {
@@ -144,7 +157,7 @@ WidgetTaskRow _rowFor(
     title: task.title,
     done: task.status == 'completed',
     priority: task.priority,
-    time: _timeLabel(task, bucket, localeTag),
+    time: _timeLabel(task, bucket, localeTag, dateFormat),
     projectColor: color,
   );
 }
@@ -159,6 +172,10 @@ WidgetSnapshot buildWidgetSnapshot(
   required DateTime now,
   Map<String, String> projectColorById = const {},
   int rowsPerBucket = kWidgetRowsPerBucket,
+
+  /// The user's display format (OPH-174). Defaults to "follow the language" so
+  /// unit tests and any future caller stay honest without extra ceremony.
+  String dateFormat = kAwSystemDateFormat,
 }) {
   final localeTag = AwI18n.instance.locale.toLanguageTag();
   final groups = groupTasksForWidget(tasks, now: now);
@@ -171,7 +188,13 @@ WidgetSnapshot buildWidgetSnapshot(
         count: group.tasks.length,
         items: [
           for (final task in group.tasks.take(rowsPerBucket))
-            _rowFor(task, group.bucket, localeTag, projectColorById),
+            _rowFor(
+              task,
+              group.bucket,
+              dateFormat,
+              localeTag,
+              projectColorById,
+            ),
         ],
         more: group.tasks.length > rowsPerBucket
             ? group.tasks.length - rowsPerBucket
