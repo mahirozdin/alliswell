@@ -88,6 +88,14 @@
       "keepAccount": "Keep my account",
       "cancelled": "Deletion cancelled — your account is safe.",
       "failed": "Could not reach the server. Please try again."
+    },
+    "serverUrl": {
+      "title": "Server",
+      "body": "AllisWell is open source — you can run your own server. Point this app at it here. Changing the server signs you out.",
+      "label": "Server address",
+      "short": "Server: {server}",
+      "useDefault": "Use the default",
+      "invalid": "That does not look like a server address."
     }
   },
   "shell": {

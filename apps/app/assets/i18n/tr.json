@@ -87,6 +87,14 @@
       "keepAccount": "Hesabımı koru",
       "cancelled": "Silme iptal edildi — hesabın güvende.",
       "failed": "Sunucuya ulaşılamadı. Lütfen tekrar dene."
+    },
+    "serverUrl": {
+      "title": "Sunucu",
+      "body": "AllisWell açık kaynak — kendi sunucunu çalıştırabilirsin. Uygulamayı buradan ona yönlendir. Sunucuyu değiştirmek oturumunu kapatır.",
+      "label": "Sunucu adresi",
+      "short": "Sunucu: {server}",
+      "useDefault": "Varsayılanı kullan",
+      "invalid": "Bu bir sunucu adresine benzemiyor."
     }
   },
   "shell": {

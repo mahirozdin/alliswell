@@ -12,6 +12,7 @@ import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/onboarding/tour.dart';
 import '../features/settings/account_deletion.dart';
 import '../features/settings/account_locale.dart';
+import '../features/settings/server_url_sheet.dart';
 import '../i18n/i18n.dart';
 import '../notifications/gateway.dart';
 import '../notifications/providers.dart';
@@ -52,11 +53,10 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                     ),
                     const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
-                    ListTile(
-                      leading: const Icon(Icons.dns_outlined),
-                      title: Text('settings.server'.tr()),
-                      subtitle: Text(ref.watch(apiBaseUrlProvider)),
-                    ),
+                    // Self-hosting: the address is a setting, not a fact —
+                    // changing it signs the user out (tokens belong to the
+                    // server that issued them).
+                    const ServerUrlTile(),
                     // OPH-064: lock-screen privacy — generic notification
                     // content ("Bir hatırlatıcın var") instead of task titles.
                     SwitchListTile(

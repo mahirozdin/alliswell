@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/tokens.dart';
 import '../../../widgets/brand_mark.dart';
+import '../../settings/server_url_sheet.dart';
 
 /// Shared centered-card layout for the login/register screens: the brand
 /// mark and form float on a solid card over the aurora wash. The card is
@@ -51,6 +52,11 @@ class AuthScaffold extends StatelessWidget {
                     ),
                     const SizedBox(height: AwSpace.x6),
                     ...children,
+                    const SizedBox(height: 8),
+                    // Which server am I signing in to? Self-hosters must be
+                    // able to answer — and change it — before they have an
+                    // account to open Settings with.
+                    const ServerUrlTile(dense: true),
                   ],
                 ),
               ),

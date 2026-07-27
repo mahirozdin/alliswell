@@ -7,6 +7,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 _Nothing yet._
 
+## [0.4.1] - 2026-07-26
+
+### Fixed
+
+- **The mobile app could not reach any server.** The API address was a
+  compile-time constant defaulting to `http://localhost:3000`, and an Xcode
+  archive passes no `--dart-define` — so the first TestFlight build shipped
+  pointing at the tester's own phone. Release builds now default to
+  `https://api.alliswell.space` (debug keeps localhost, so local development
+  needs no flags).
+
+### Added
+
+- **Choose your own server.** AllisWell is self-hostable, so the address is now
+  a setting rather than a fact baked into the binary: tap it on the sign-in
+  screen — before you have an account — or in Settings. Typing a bare host is
+  enough (`my.server.com` becomes `https://my.server.com`), paths are allowed,
+  plain `http` is kept for LAN installs, and the choice survives restarts.
+  Changing servers signs you out, because tokens belong to the server that
+  issued them.
+
 ## [0.4.0] - 2026-07-26
 
 The first release since the MVP — everything from Phases 5 through 9, plus a
