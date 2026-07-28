@@ -30,8 +30,11 @@ class FakeNotificationsGateway implements NotificationsGateway {
   Future<Set<int>> pendingIds() async => scheduled.keys.toSet();
 
   @override
-  Future<void> schedule(PlannedNotification notification) async {
+  Future<ScheduledDelivery> schedule(PlannedNotification notification) async {
     scheduled[notification.id] = notification;
+    // The same pure decision the real gateway makes (OPH-176), so tests see the
+    // loudness contract rather than a stub.
+    return awDeliveryFor(urgent: notification.urgent, criticalEnabled: false);
   }
 
   @override

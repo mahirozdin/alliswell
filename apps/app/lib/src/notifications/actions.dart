@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../features/tasks/data/task_store.dart';
+import 'alarm_log.dart';
 import 'gateway.dart';
 import 'reminder_store.dart';
 
@@ -22,6 +23,7 @@ Future<void> handleNotificationEvent(
   required TaskStore tasks,
   required ReminderStore reminders,
   required void Function(String location) navigate,
+  AlarmLog? log,
 }) async {
   final raw = event.payload;
   if (raw == null || raw.isEmpty) return;
@@ -36,6 +38,16 @@ Future<void> handleNotificationEvent(
   if (taskId == null) return;
 
   final action = event.actionId ?? '';
+  // A touched notification is the ONLY delivery proof iOS ever gives us
+  // (OPH-176) — record it, and never claim more than that.
+  await log?.record(
+    event: action.isEmpty ? AlarmLogEvent.interacted : AlarmLogEvent.action,
+    lane: AlarmLogLane.notification,
+    slotIndex: payload['chainIndex'] as int?,
+    taskId: taskId,
+    reminderId: reminderId,
+    detail: action.isEmpty ? null : action,
+  );
   if (action.isEmpty) {
     navigate('/tasks/$taskId');
     return;

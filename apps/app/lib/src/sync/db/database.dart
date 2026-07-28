@@ -252,6 +252,46 @@ class Reminders extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// The local alarm log (OPH-176, DESIGN §11 A6). Device-only — NEVER synced and
+/// never pushed: it exists so a delivery question ("which sound? which lane?
+/// was it even scheduled?") is answered by a record instead of a memory. Kept to
+/// [kAlarmLogLimit] newest rows.
+class AlarmEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// When we recorded it (UTC).
+  DateTimeColumn get at => dateTime()();
+
+  /// `scheduled` | `cancelled` | `interacted` | `action` | `ring_shown` |
+  /// `degraded`.
+  TextColumn get event => text()();
+
+  /// `notification` | `alarmkit` | `inapp`.
+  TextColumn get lane => text()();
+
+  /// The alarm's kind (`remind`/`due`) where one is known.
+  TextColumn get kind => text().nullable()();
+
+  /// Which slot of the re-alert chain, 0-based.
+  IntColumn get slotIndex => integer().nullable()();
+  BoolColumn get urgent => boolean().withDefault(const Constant(false))();
+
+  /// What we ASKED the OS for (see `ScheduledDelivery`).
+  TextColumn get sound => text().nullable()();
+  TextColumn get level => text().nullable()();
+
+  /// The instant the alarm was scheduled to fire (UTC), when applicable.
+  DateTimeColumn get fireAt => dateTime().nullable()();
+  TextColumn get taskId => text().nullable()();
+  TextColumn get reminderId => text().nullable()();
+
+  /// Free-form extra (an action id, a degradation reason).
+  TextColumn get detail => text().nullable()();
+}
+
+/// How many alarm-log rows the device keeps (a ring buffer, newest first).
+const int kAlarmLogLimit = 200;
+
 /// The offline outbox (OPH-055, BLUEPRINT §6.3): one row per local write, in
 /// creation order. `id` doubles as the server-visible `clientMutationId`, so
 /// retries stay idempotent end to end.
@@ -319,6 +359,7 @@ class AppleEventLinks extends Table {
     AppleEventLinks,
     FileRows,
     Folders,
+    AlarmEvents,
     PendingMutations,
     SyncStates,
   ],
@@ -334,7 +375,7 @@ class AwDatabase extends _$AwDatabase {
   /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
   /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -397,6 +438,10 @@ class AwDatabase extends _$AwDatabase {
       // written as a reminder row by the old `remind_at ?? due_at` rule, and the
       // server's own backfill re-labels those on the next pull.
       if (from < 8) await m.addColumn(reminders, reminders.kind);
+      // v9 (OPH-176): the local alarm log. A brand new device-only table, so
+      // nothing existing is touched and there is nothing to backfill — the log
+      // starts the moment this version runs.
+      if (from < 9) await m.createTable(alarmEvents);
     },
   );
 }

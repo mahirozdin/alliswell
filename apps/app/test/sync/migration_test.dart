@@ -40,6 +40,7 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
+    await db.customStatement('DROP TABLE alarm_events'); // v9
     await db.customStatement('ALTER TABLE reminders DROP COLUMN kind'); // v8
     await db.customStatement('DROP TABLE folders'); // v7
     await db.customStatement(
@@ -109,6 +110,8 @@ void main() {
       // v6 (OPH-167): the backfill folded the pre-existing row's text —
       // Turkish 'iş' matched by a plain 'is' query is the whole point.
       expect(task.titleFold, 'v1 tarihinden kalma is');
+      // v9 (OPH-176): the device-only alarm log, created empty.
+      expect(await db.select(db.alarmEvents).get(), isEmpty);
       // v8 (OPH-175): a reminder row from before the split reads as the nudge.
       await db
           .into(db.reminders)
@@ -128,7 +131,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 8);
+      expect(version.data['user_version'], 9);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -163,7 +166,7 @@ void main() {
       expect(task.calendarMirrorEnabled, isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 8);
+      expect(version.data['user_version'], 9);
       await db.close();
     },
   );

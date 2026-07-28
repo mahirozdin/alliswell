@@ -51,6 +51,19 @@ const kUrgentChainOffsets = [
 
 const _activeStatuses = {'scheduled', 'snoozed', 'delivered'};
 
+/// What the FIRST slot of an urgent alarm says. Honest about which alarm it is
+/// (OPH-175) and about being a post-snooze round rather than a fresh alert
+/// (OPH-176, round 9 #6.6 — the user read "still waiting for acknowledgement"
+/// five minutes after snoozing and reasonably called it "the 1st again").
+String _firstBody(AlarmInput alarm) {
+  if (alarm.status == 'snoozed') return 'notif.afterSnooze'.tr();
+  if (alarm.kind == 'due') return 'notif.dueNow'.tr();
+  return 'notif.urgentFirst'.tr();
+}
+
+String _repeatBody(int index) =>
+    'notif.urgentRepeat'.tr(args: {'count': '${index + 1}'});
+
 /// Pure planning (OPH-061/063/064): alarms in, desired OS notifications out.
 /// Windowed to [maxPending] soonest fire-times — iOS silently drops beyond 64
 /// pending requests, so we keep well under (NOTIFICATIONS.md §2) and re-fill
@@ -89,15 +102,7 @@ List<PlannedNotification> planNotifications({
       final body = privacyMode
           ? 'notif.privateBody'.tr()
           : (alarm.urgent
-                ? (index == 0
-                      // OPH-175: the deadline alarm says WHY it is ringing —
-                      // "the time you gave this task is now", not "a reminder".
-                      ? (alarm.kind == 'due'
-                            ? 'notif.dueNow'.tr()
-                            : 'notif.urgentFirst'.tr())
-                      : 'notif.urgentRepeat'.tr(
-                          args: {'count': '${index + 1}'},
-                        ))
+                ? (index == 0 ? _firstBody(alarm) : _repeatBody(index))
                 : 'notif.reminder'.tr());
 
       final payload = jsonEncode({
@@ -115,6 +120,11 @@ List<PlannedNotification> planNotifications({
           fireAt: fireAt,
           urgent: alarm.urgent,
           payload: payload,
+          // Diagnostics only (OPH-176): what the alarm log names this slot.
+          kind: alarm.kind,
+          slotIndex: index,
+          taskId: alarm.taskId,
+          reminderId: alarm.reminderId,
         ),
       );
     }
@@ -150,11 +160,7 @@ List<AlarmKitAlarm> planAlarmKitAlarms({
     if (!fireAt.isAfter(now)) continue;
 
     final title = privacyMode ? 'AllisWell' : alarm.taskTitle;
-    final body = privacyMode
-        ? 'notif.privateBody'.tr()
-        : (alarm.kind == 'due'
-              ? 'notif.dueNow'.tr()
-              : 'notif.urgentFirst'.tr());
+    final body = privacyMode ? 'notif.privateBody'.tr() : _firstBody(alarm);
 
     planned.add(
       AlarmKitAlarm(

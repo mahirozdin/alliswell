@@ -400,6 +400,7 @@
     "urgentFirst": "Acil hatırlatıcı — onay bekliyor",
     "urgentRepeat": "Hâlâ onay bekliyor ({count}. hatırlatma)",
     "dueNow": "Görev saati geldi — onay bekliyor",
+    "afterSnooze": "Erteleme sonrası — hâlâ onay bekliyor",
     "reminder": "Hatırlatıcı",
     "action": {
       "complete": "Tamamla",
@@ -426,6 +427,23 @@
       "notificationsOff": "Bildirimler kapalı — uyarılmayacaksın. Açmak için dokun.",
       "exactOff": "Alarmlar geç gelebilir — \"Alarmlar ve hatırlatıcılar\" iznini ver. Düzeltmek için dokun.",
       "fix": "Düzelt"
+    }
+  },
+  "alarmLog": {
+    "title": "Alarm günlüğü",
+    "sub": "Bu cihaz alarmlar için ne yaptı",
+    "scope": "Burada uygulamanın YAPTIĞI şeyler var: kurduğu alarmlar, geri aldıkları, dokunduğun bildirimler ve uygulama içi alarm ekranının çaldığı anlar. iOS, dokunmadığın bir bildirim hakkında hiçbir şey bildirmez — bu yüzden günlük \"teslim edildi\" demez.",
+    "copy": "Günlüğü kopyala",
+    "copied": "Günlük kopyalandı",
+    "emptyTitle": "Henüz kayıt yok",
+    "emptyBody": "Bir alarm kur, burada görünecek.",
+    "event": {
+      "scheduled": "Kuruldu",
+      "cancelled": "Geri alındı",
+      "interacted": "Sen açtın",
+      "action": "Bir düğmeye bastın",
+      "ringShown": "Uygulamada çaldı",
+      "degraded": "Sistem teslimatı kısıtlıyor"
     }
   },
   "widget": {

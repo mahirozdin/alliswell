@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../core/app_version.dart';
 import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
@@ -72,6 +73,16 @@ class SettingsScreen extends ConsumerWidget {
                     // product's backbone — can the alarm actually ring on
                     // this device? Tapping re-runs the permission flow.
                     const _AlarmStatusTile(),
+                    // OPH-176 (DESIGN §11 A6): what this device DID about
+                    // alarms. Round 9 was argued from memory; it won't be again.
+                    ListTile(
+                      key: const Key('settings-alarm-log'),
+                      leading: const Icon(Icons.history_outlined),
+                      title: Text('alarmLog.title'.tr()),
+                      subtitle: Text('alarmLog.sub'.tr()),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/settings/alarm-log'),
+                    ),
                     // OPH-111: replay the first-run tour on demand. Start it,
                     // then pop back to the shell where the overlay lives.
                     ListTile(

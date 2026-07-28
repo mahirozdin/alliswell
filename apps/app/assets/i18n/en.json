@@ -401,6 +401,7 @@
     "urgentFirst": "Urgent reminder — waiting for acknowledgement",
     "urgentRepeat": "Still waiting for acknowledgement (alert {count})",
     "dueNow": "The time you set is here — waiting for you",
+    "afterSnooze": "Snoozed round — still waiting for acknowledgement",
     "reminder": "Reminder",
     "action": {
       "complete": "Complete",
@@ -427,6 +428,23 @@
       "notificationsOff": "Notifications are off — you won't be alerted. Tap to turn them on.",
       "exactOff": "Alarms may arrive late — allow \"Alarms & reminders\". Tap to fix.",
       "fix": "Fix"
+    }
+  },
+  "alarmLog": {
+    "title": "Alarm log",
+    "sub": "What this device did about alarms",
+    "scope": "This is what the app DID: alarms it scheduled, ones it took back, the ones you touched, and the times the in-app alarm screen rang. iOS reports nothing about a notification you never touch, so the log never claims one was delivered.",
+    "copy": "Copy the log",
+    "copied": "Log copied",
+    "emptyTitle": "Nothing logged yet",
+    "emptyBody": "Arm an alarm and it will show up here.",
+    "event": {
+      "scheduled": "Scheduled",
+      "cancelled": "Withdrawn",
+      "interacted": "You opened it",
+      "action": "You pressed a button",
+      "ringShown": "Rang in the app",
+      "degraded": "Delivery limited by the system"
     }
   },
   "widget": {

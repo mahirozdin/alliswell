@@ -383,7 +383,20 @@ fired, with *which* sound, at *which* slot. From now on the device keeps a local
 ring buffer (`alarm_events`, ~200 rows, never synced): instant, lane
 (`notification` | `alarmkit` | `inapp`), kind, slot index, urgent flag, sound
 name, interruption level, task/reminder id, and the event
-(`scheduled` | `cancelled` | `interacted` | `ring_shown` | `action`).
+(`scheduled` | `cancelled` | `interacted` | `action` | `ring_shown` |
+`degraded` — the last one written when the permission probe says delivery is
+limited).
+
+**Shipped 2026-07-28 (OPH-176).** `alarm_events` (drift v9) + `AlarmLog`, written
+by the scheduler (both lanes), the notification action router, the in-app ring
+screen and the permission probe; read by Settings → "Alarm günlüğü" (read-only,
+scope sentence ABOVE the data, copy-to-clipboard). Two rules the implementation
+enforces: the **loudness decision is one pure function** (`awDeliveryFor`) whose
+result the gateway both applies and reports, so the log records what was actually
+asked for; and **the log can never break what it observes** — every write is
+guarded and fire-and-forget (during the work an unguarded write made the probe
+fail on a surface with no database, and a device with alarms OFF briefly looked
+healthy — precisely the lie this section exists to prevent).
 
 Honest scope, stated in the UI: **iOS gives no callback for a notification the
 user never touches**, so the log proves what we SCHEDULED, what the user

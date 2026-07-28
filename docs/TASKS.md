@@ -3187,24 +3187,24 @@ tersi çalışıyor: hatırlatıcı KURULDUYSA görev saati sessiz geçiyor.
 migration uygulandı, `down` + yeniden `up` denendi)** + lint/format/no-ts yeşil;
 app **425/425** + analyze + `check:i18n` + kontrast yeşil; CHANGELOG; STATE.
 
-### OPH-176 — Tek yükseklik sözleşmesi + alarm günlüğü (round 9 #6.1, #6.4, #8 teşhisi)
+### OPH-176 — Tek yükseklik sözleşmesi + alarm günlüğü (round 9 #6.1, #6.4, #8 teşhisi) ✅ 2026-07-28
 
-- [ ] **Sözleşme (NOTIFICATIONS §2 rev.):** bir acil alarmın **her slotu** — ilki,
+- [x] **Sözleşme (NOTIFICATIONS §2 rev.):** bir acil alarmın **her slotu** — ilki,
       tekrarları ve **her erteleme sonrası turu** — aynı yükseklikte çalar: Android'de
       alarm kanalı (`USAGE_ALARM` + `FLAG_INSISTENT` + alarmClock), iOS'ta alarm sesi +
       `timeSensitive` (critical grant varsa `.critical`/1.0). **Hiçbir slot "sade
       bildirim" değildir.** Normal hatırlatıcılar kullanıcının seçtiği hatırlatıcı
       sesini alır (OPH-181; varsayılan: OS sesi).
-- [ ] **Dürüst etiketler:** slot 1 `notif.urgentFirst`, slot n `notif.urgentRepeat(n)`,
+- [x] **Dürüst etiketler:** slot 1 `notif.urgentFirst`, slot n `notif.urgentRepeat(n)`,
       **erteleme sonrası** yeni anahtar `notif.afterSnooze` ("Erteleme sonrası — onay
       bekliyor ({round}. tur)"), görev saati `notif.dueNow`. Kullanıcının "yine 1.
       bildirim gibi geldi" şikâyeti buradan kalkar.
-- [ ] **iOS ses çözümleme bekçisi:** `UNNotificationSound(named:)` dosyayı çözemezse
+- [~] **iOS ses çözümleme bekçisi — OPH-181'e TAŞINDI (gerekçeli):** `UNNotificationSound(named:)` dosyayı çözemezse
       iOS **sessizce varsayılan ding'e düşer** (belgelenmiş davranış + yaygın hata).
       Başlatmada sesin varlığını doğrula (bundle → app container `Library/Sounds`);
       çözülemiyorsa günlüğe yaz + Ayarlar'daki alarm durum satırında söyle
       ("özel ses bulunamadı — varsayılan sesle çalacak"). Sessiz düşüş yasak.
-- [ ] **Alarm günlüğü** (yerel, sync DIŞI): drift tablosu `alarm_events` (halka tampon
+- [x] **Alarm günlüğü** (yerel, sync DIŞI): drift tablosu `alarm_events` (halka tampon
       ~200 satır) — `scheduled | cancelled | interacted | ring_shown | action`; alan
       seti: an, lane (`notification | alarmkit | inapp`), slot index, kind, urgent,
       ses adı, interruption level, taskId/reminderId. Ayarlar → **"Alarm günlüğü"**
@@ -3212,10 +3212,47 @@ app **425/425** + analyze + `check:i18n` + kontrast yeşil; CHANGELOG; STATE.
       dokunmadığı bir bildirimin "teslim edildi" bilgisini vermez — günlük
       PLANLANANI, ETKİLEŞİMİ ve uygulama-içi çalmayı kaydeder, "teslim edildi"
       iddiasında bulunmaz.
-- [ ] Testler: planner gövde/slot tablosu (ilk/tekrar/erteleme/görev-saati),
+- [x] Testler: planner gövde/slot tablosu (ilk/tekrar/erteleme/görev-saati),
       scheduler günlüğe yazıyor, bekçinin degraded durumu Ayarlar satırına düşüyor.
       **Bu task 6.4'ün kanıtını üretir** — sonraki cihaz turunda tahmin değil kayıt
       konuşur.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Yükseklik kararı SAF bir fonksiyona çıktı:** `awDeliveryFor({urgent,
+  criticalEnabled})` → `ScheduledDelivery(sound, level)` (`gateway.dart`).
+  `gateway_local` artık kararı vermiyor, **taşıyor**; `schedule()` bu tanımı
+  **döndürüyor**, böylece alarm günlüğü "ne istendi"yi kararı veren katmandan
+  alıyor (tahminden değil). Sözleşme testle çivilendi: bir zincirin **her** slotu
+  `urgent` ve aynı `sound/level` çiftine çözülüyor — "sessiz ilk slot" diye bir şey
+  yok.
+- **Erteleme etiketi `status == 'snoozed'` ile geliyor** — yeni kolon gerekmedi;
+  `notif.afterSnooze` ("Erteleme sonrası — hâlâ onay bekliyor"). **Tur sayacı
+  (`{count}. tur`) OPH-177'ye kaldı**: `reminders.snooze_count` orada gelecek,
+  o zaman metin sayılı varyanta geçer (planner'da tek satır).
+- **iOS ses bekçisi neden 181'e taşındı:** bundle içeriğini Dart'tan doğrulamak
+  **yeni bir native kanal** ister; `flutter analyze`/`test` Swift derlemediği için
+  burada yazılıp doğrulanamayan bir köprü olurdu (AlarmKit dersi). 176'da tek
+  ses **paketli** `aw_alarm` ve varlığı pbxproj'dan biliniyor; asıl risk
+  **kullanıcı sesi**yle doğuyor → probe, dosya boru hattının kurulduğu OPH-181'e
+  eklendi. 176 bu arada sesin **adını ve seviyesini günlüğe yazıyor**, yani
+  sonraki cihaz turunda "hangi ses istendi?" sorusu kayıttan cevaplanıyor.
+- **Teşhis, teşhis ettiği şeyi bozamaz:** `alarmSupportProvider` içindeki günlük
+  yazımı ilk denemede probe'u yutuyordu — veritabanı olmayan bir yüzeyde
+  (odaklı widget testi) probe komple `catch`'e düşüyor ve **alarmları KAPALI bir
+  cihaz sağlıklı görünüyordu**. Tam olarak A6'nın engellemek için var olduğu yalan.
+  Artık `unawaited` + kendi `try/catch`'i var; `AlarmLog.record` de kendi içinde
+  yutuyor (test: kapalı veritabanında `record` yine `completes`).
+- **Günlük halka tamponu** (`alarm_events`, drift **v9**, 200 satır) **sync DIŞI**:
+  ne entity, ne outbox. Yazanlar: scheduler (kuruldu/geri alındı, iki lane),
+  aksiyon yönlendiricisi (dokunuldu/düğme), ring ekranı (uygulamada çaldı),
+  izin probu (kısıtlı teslimat). Ekran: Ayarlar → "Alarm günlüğü" (salt-okunur,
+  **kapsam cümlesi verinin ÜSTÜNDE**, panoya kopyala). Satırın alt metni
+  kasıtlı olarak **veri** (`sound=… level=… slot …`) — hata raporuna birebir gider.
+
+**DoD met 2026-07-28:** app **437/437** (~19 skip; +12 yeni test) + `analyze` temiz +
+`check:i18n` + kontrast FAILURES: 0; API dokunulmadı (288 + 39 hâlâ yeşil);
+CHANGELOG; STATE.
 
 ### OPH-177 — Erteleme netliği: ne olacağını söyle, göster, aynı yükseklikte çal (round 9 #6.5, #6.6)
 
@@ -3316,6 +3353,14 @@ olarak işaretlemeden de tamamen susturabilmeli."_
       presigned GET ile indir, `Library/Sounds/<hash>.caf` olarak yaz, adıyla referans
       ver. Android'de kanallar **değiştirilemez** → ses başına kanal
       (`urgent_alarms_v3_<hash>`), eski/kullanılmayan kanalları sil (sınırlı sayıda tut).
+- [ ] **iOS ses çözümleme bekçisi (OPH-176'dan taşındı):** `UNNotificationSound`
+      adı çözülemezse iOS **sessizce varsayılan ding'e** düşer — özel ses boru
+      hattı burada kurulduğu için probe da buraya ait. Native tarafta dosyanın
+      (bundle → container `Library/Sounds`) varlığını doğrula, çözülemiyorsa
+      **alarm günlüğüne `degraded` yaz** + Ayarlar'ın alarm durum satırında söyle
+      ("özel ses bulunamadı — varsayılan sesle çalacak"). Sessiz düşüş yasak.
+      _(176'da yazılmadı: yeni bir native kanal `flutter analyze`/`test` ile
+      doğrulanamaz, AlarmKit dersi.)_
 - [ ] **Format dürüstlüğü:** OS bildirim sesi ≤30 sn ve aiff/wav/caf (Linear PCM,
       IMA4, µLaw, aLaw) olmak zorunda; **mp3/m4a iOS bildiriminde çalışmaz.** Yükleme
       ekranı bunu yükleme anında söyler ve alternatif sunar ("yalnız uygulama içi alarm

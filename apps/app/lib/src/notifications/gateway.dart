@@ -14,6 +14,10 @@ class PlannedNotification {
     required this.fireAt,
     required this.urgent,
     required this.payload,
+    this.kind,
+    this.slotIndex,
+    this.taskId,
+    this.reminderId,
   });
 
   final int id;
@@ -27,6 +31,14 @@ class PlannedNotification {
   /// JSON: {taskId, reminderId, chainIndex} — never task content beyond what
   /// the rendered notification itself shows (privacy mode empties even that).
   final String payload;
+
+  /// Diagnostics for the alarm log (OPH-176). NOT part of the content hash: the
+  /// id already covers everything the OS renders, and a log label must never
+  /// cause a reschedule.
+  final String? kind;
+  final int? slotIndex;
+  final String? taskId;
+  final String? reminderId;
 }
 
 /// A user interaction with a delivered notification (tap or action button).
@@ -58,6 +70,45 @@ class AlarmSupport {
   final bool? exactAlarmsEnabled;
 }
 
+/// What the OS was actually asked for (OPH-176) — the loudness half of the
+/// alarm log. Recorded straight from the layer that decided it, so a device
+/// report never has to be argued from memory again (DESIGN §11 A6).
+class ScheduledDelivery {
+  const ScheduledDelivery({required this.sound, required this.level});
+
+  /// The sound NAME we asked for: the bundled alarm bed, or the OS default.
+  final String sound;
+
+  /// iOS interruption level. Android's equivalent is the channel, which is
+  /// implied by the event's `urgent` flag (alarm channel vs reminders channel).
+  final String level;
+}
+
+/// The bundled 28 s alarm bed's name in the log (the file itself is per
+/// platform: `aw_alarm.caf` on iOS, `res/raw/aw_alarm` on Android).
+const kAwAlarmSoundName = 'aw_alarm';
+
+/// The OS's own notification sound — what a non-urgent reminder gets until the
+/// user picks one (OPH-181).
+const kOsDefaultSoundName = 'os-default';
+
+/// **The loudness contract** (round 9, NOTIFICATIONS §2): an urgent alarm's
+/// EVERY slot — the first, each repeat, and every post-snooze round — asks for
+/// the alarm bed and alarm-grade delivery. There is no "quiet first slot": that
+/// shape was never designed, and no user can be expected to model it.
+///
+/// Pure on purpose: the decision is unit-tested here, and `gateway_local` only
+/// carries it to the plugin.
+ScheduledDelivery awDeliveryFor({
+  required bool urgent,
+  required bool criticalEnabled,
+}) => ScheduledDelivery(
+  sound: urgent ? kAwAlarmSoundName : kOsDefaultSoundName,
+  // Critical is upgraded ONLY when Apple's entitlement + the user's grant are
+  // both real (checked, never assumed — NOTIFICATIONS §2).
+  level: urgent && criticalEnabled ? 'critical' : 'timeSensitive',
+);
+
 abstract class NotificationsGateway {
   /// Idempotent; safe to call before every use.
   Future<void> initialize();
@@ -71,7 +122,9 @@ abstract class NotificationsGateway {
 
   Future<Set<int>> pendingIds();
 
-  Future<void> schedule(PlannedNotification notification);
+  /// Schedules [notification] and reports what it asked the OS for, for the
+  /// alarm log (OPH-176).
+  Future<ScheduledDelivery> schedule(PlannedNotification notification);
 
   Future<void> cancel(int id);
 

@@ -251,8 +251,13 @@ class LocalNotificationsGateway implements NotificationsGateway {
   Future<void> cancel(int id) => _plugin.cancel(id: id);
 
   @override
-  Future<void> schedule(PlannedNotification notification) async {
+  Future<ScheduledDelivery> schedule(PlannedNotification notification) async {
     final urgent = notification.urgent;
+    // One decision, made in one pure place (OPH-176): the loudness contract.
+    final delivery = awDeliveryFor(
+      urgent: urgent,
+      criticalEnabled: _criticalEnabled,
+    );
 
     final androidActions = urgent
         ? <AndroidNotificationAction>[
@@ -324,7 +329,7 @@ class LocalNotificationsGateway implements NotificationsGateway {
     // iOS: critical delivery ONLY when the entitlement + user grant exist —
     // an unentitled critical-sound payload degrades to standard delivery and
     // can lose the sound outright, so it is never sent blind.
-    final critical = urgent && _criticalEnabled;
+    final critical = delivery.level == 'critical';
     final iosDetails = DarwinNotificationDetails(
       categoryIdentifier: urgent ? _urgentCategoryId : _normalCategoryId,
       sound: urgent ? _iosAlarmSound : null,
@@ -358,5 +363,6 @@ class LocalNotificationsGateway implements NotificationsGateway {
           : AndroidScheduleMode.exactAllowWhileIdle,
       payload: notification.payload,
     );
+    return delivery;
   }
 }

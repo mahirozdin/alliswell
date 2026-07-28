@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/tasks/providers.dart';
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
+import 'alarm_log.dart';
 import 'alarm_overlay.dart';
 import 'planner.dart';
 import 'providers.dart';
@@ -47,6 +48,18 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     final feedback = ref.read(alarmFeedbackProvider);
     _feedback = feedback;
     feedback.start();
+    // The one alarm surface we can prove rang (OPH-176): this screen.
+    ref
+        .read(alarmLogProvider)
+        .record(
+          event: AlarmLogEvent.ringShown,
+          lane: AlarmLogLane.inapp,
+          kind: widget.alarm.kind,
+          urgent: widget.alarm.urgent,
+          fireAt: alarmFireAt(widget.alarm),
+          taskId: widget.alarm.taskId,
+          reminderId: widget.alarm.reminderId,
+        );
   }
 
   @override

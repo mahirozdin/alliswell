@@ -14,6 +14,7 @@ import 'features/projects/ui/projects_screen.dart';
 import 'features/tasks/ui/task_detail_screen.dart';
 import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
+import 'notifications/alarm_log_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
 import 'sections.dart';
@@ -114,6 +115,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      // OPH-176: the alarm log — a diagnostic surface, pushed from Settings.
+      GoRoute(
+        path: '/settings/alarm-log',
+        builder: (context, state) => const AlarmLogScreen(),
       ),
       // Pushed on top of whichever list opened it (Inbox/Today/Upcoming/…).
       GoRoute(

@@ -8244,6 +8244,751 @@ class FoldersCompanion extends UpdateCompanion<FolderRecord> {
   }
 }
 
+class $AlarmEventsTable extends AlarmEvents
+    with TableInfo<$AlarmEventsTable, AlarmEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AlarmEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<DateTime> at = GeneratedColumn<DateTime>(
+    'at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventMeta = const VerificationMeta('event');
+  @override
+  late final GeneratedColumn<String> event = GeneratedColumn<String>(
+    'event',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _laneMeta = const VerificationMeta('lane');
+  @override
+  late final GeneratedColumn<String> lane = GeneratedColumn<String>(
+    'lane',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _slotIndexMeta = const VerificationMeta(
+    'slotIndex',
+  );
+  @override
+  late final GeneratedColumn<int> slotIndex = GeneratedColumn<int>(
+    'slot_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _urgentMeta = const VerificationMeta('urgent');
+  @override
+  late final GeneratedColumn<bool> urgent = GeneratedColumn<bool>(
+    'urgent',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("urgent" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _soundMeta = const VerificationMeta('sound');
+  @override
+  late final GeneratedColumn<String> sound = GeneratedColumn<String>(
+    'sound',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<String> level = GeneratedColumn<String>(
+    'level',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fireAtMeta = const VerificationMeta('fireAt');
+  @override
+  late final GeneratedColumn<DateTime> fireAt = GeneratedColumn<DateTime>(
+    'fire_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reminderIdMeta = const VerificationMeta(
+    'reminderId',
+  );
+  @override
+  late final GeneratedColumn<String> reminderId = GeneratedColumn<String>(
+    'reminder_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _detailMeta = const VerificationMeta('detail');
+  @override
+  late final GeneratedColumn<String> detail = GeneratedColumn<String>(
+    'detail',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    at,
+    event,
+    lane,
+    kind,
+    slotIndex,
+    urgent,
+    sound,
+    level,
+    fireAt,
+    taskId,
+    reminderId,
+    detail,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'alarm_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AlarmEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    } else if (isInserting) {
+      context.missing(_atMeta);
+    }
+    if (data.containsKey('event')) {
+      context.handle(
+        _eventMeta,
+        event.isAcceptableOrUnknown(data['event']!, _eventMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventMeta);
+    }
+    if (data.containsKey('lane')) {
+      context.handle(
+        _laneMeta,
+        lane.isAcceptableOrUnknown(data['lane']!, _laneMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_laneMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('slot_index')) {
+      context.handle(
+        _slotIndexMeta,
+        slotIndex.isAcceptableOrUnknown(data['slot_index']!, _slotIndexMeta),
+      );
+    }
+    if (data.containsKey('urgent')) {
+      context.handle(
+        _urgentMeta,
+        urgent.isAcceptableOrUnknown(data['urgent']!, _urgentMeta),
+      );
+    }
+    if (data.containsKey('sound')) {
+      context.handle(
+        _soundMeta,
+        sound.isAcceptableOrUnknown(data['sound']!, _soundMeta),
+      );
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+        _levelMeta,
+        level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    }
+    if (data.containsKey('fire_at')) {
+      context.handle(
+        _fireAtMeta,
+        fireAt.isAcceptableOrUnknown(data['fire_at']!, _fireAtMeta),
+      );
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    }
+    if (data.containsKey('reminder_id')) {
+      context.handle(
+        _reminderIdMeta,
+        reminderId.isAcceptableOrUnknown(data['reminder_id']!, _reminderIdMeta),
+      );
+    }
+    if (data.containsKey('detail')) {
+      context.handle(
+        _detailMeta,
+        detail.isAcceptableOrUnknown(data['detail']!, _detailMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AlarmEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AlarmEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      at: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}at'],
+      )!,
+      event: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event'],
+      )!,
+      lane: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lane'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      ),
+      slotIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}slot_index'],
+      ),
+      urgent: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}urgent'],
+      )!,
+      sound: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sound'],
+      ),
+      level: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}level'],
+      ),
+      fireAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fire_at'],
+      ),
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      ),
+      reminderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reminder_id'],
+      ),
+      detail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detail'],
+      ),
+    );
+  }
+
+  @override
+  $AlarmEventsTable createAlias(String alias) {
+    return $AlarmEventsTable(attachedDatabase, alias);
+  }
+}
+
+class AlarmEvent extends DataClass implements Insertable<AlarmEvent> {
+  final int id;
+
+  /// When we recorded it (UTC).
+  final DateTime at;
+
+  /// `scheduled` | `cancelled` | `interacted` | `action` | `ring_shown` |
+  /// `degraded`.
+  final String event;
+
+  /// `notification` | `alarmkit` | `inapp`.
+  final String lane;
+
+  /// The alarm's kind (`remind`/`due`) where one is known.
+  final String? kind;
+
+  /// Which slot of the re-alert chain, 0-based.
+  final int? slotIndex;
+  final bool urgent;
+
+  /// What we ASKED the OS for (see `ScheduledDelivery`).
+  final String? sound;
+  final String? level;
+
+  /// The instant the alarm was scheduled to fire (UTC), when applicable.
+  final DateTime? fireAt;
+  final String? taskId;
+  final String? reminderId;
+
+  /// Free-form extra (an action id, a degradation reason).
+  final String? detail;
+  const AlarmEvent({
+    required this.id,
+    required this.at,
+    required this.event,
+    required this.lane,
+    this.kind,
+    this.slotIndex,
+    required this.urgent,
+    this.sound,
+    this.level,
+    this.fireAt,
+    this.taskId,
+    this.reminderId,
+    this.detail,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['at'] = Variable<DateTime>(at);
+    map['event'] = Variable<String>(event);
+    map['lane'] = Variable<String>(lane);
+    if (!nullToAbsent || kind != null) {
+      map['kind'] = Variable<String>(kind);
+    }
+    if (!nullToAbsent || slotIndex != null) {
+      map['slot_index'] = Variable<int>(slotIndex);
+    }
+    map['urgent'] = Variable<bool>(urgent);
+    if (!nullToAbsent || sound != null) {
+      map['sound'] = Variable<String>(sound);
+    }
+    if (!nullToAbsent || level != null) {
+      map['level'] = Variable<String>(level);
+    }
+    if (!nullToAbsent || fireAt != null) {
+      map['fire_at'] = Variable<DateTime>(fireAt);
+    }
+    if (!nullToAbsent || taskId != null) {
+      map['task_id'] = Variable<String>(taskId);
+    }
+    if (!nullToAbsent || reminderId != null) {
+      map['reminder_id'] = Variable<String>(reminderId);
+    }
+    if (!nullToAbsent || detail != null) {
+      map['detail'] = Variable<String>(detail);
+    }
+    return map;
+  }
+
+  AlarmEventsCompanion toCompanion(bool nullToAbsent) {
+    return AlarmEventsCompanion(
+      id: Value(id),
+      at: Value(at),
+      event: Value(event),
+      lane: Value(lane),
+      kind: kind == null && nullToAbsent ? const Value.absent() : Value(kind),
+      slotIndex: slotIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(slotIndex),
+      urgent: Value(urgent),
+      sound: sound == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sound),
+      level: level == null && nullToAbsent
+          ? const Value.absent()
+          : Value(level),
+      fireAt: fireAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fireAt),
+      taskId: taskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskId),
+      reminderId: reminderId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderId),
+      detail: detail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detail),
+    );
+  }
+
+  factory AlarmEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AlarmEvent(
+      id: serializer.fromJson<int>(json['id']),
+      at: serializer.fromJson<DateTime>(json['at']),
+      event: serializer.fromJson<String>(json['event']),
+      lane: serializer.fromJson<String>(json['lane']),
+      kind: serializer.fromJson<String?>(json['kind']),
+      slotIndex: serializer.fromJson<int?>(json['slotIndex']),
+      urgent: serializer.fromJson<bool>(json['urgent']),
+      sound: serializer.fromJson<String?>(json['sound']),
+      level: serializer.fromJson<String?>(json['level']),
+      fireAt: serializer.fromJson<DateTime?>(json['fireAt']),
+      taskId: serializer.fromJson<String?>(json['taskId']),
+      reminderId: serializer.fromJson<String?>(json['reminderId']),
+      detail: serializer.fromJson<String?>(json['detail']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'at': serializer.toJson<DateTime>(at),
+      'event': serializer.toJson<String>(event),
+      'lane': serializer.toJson<String>(lane),
+      'kind': serializer.toJson<String?>(kind),
+      'slotIndex': serializer.toJson<int?>(slotIndex),
+      'urgent': serializer.toJson<bool>(urgent),
+      'sound': serializer.toJson<String?>(sound),
+      'level': serializer.toJson<String?>(level),
+      'fireAt': serializer.toJson<DateTime?>(fireAt),
+      'taskId': serializer.toJson<String?>(taskId),
+      'reminderId': serializer.toJson<String?>(reminderId),
+      'detail': serializer.toJson<String?>(detail),
+    };
+  }
+
+  AlarmEvent copyWith({
+    int? id,
+    DateTime? at,
+    String? event,
+    String? lane,
+    Value<String?> kind = const Value.absent(),
+    Value<int?> slotIndex = const Value.absent(),
+    bool? urgent,
+    Value<String?> sound = const Value.absent(),
+    Value<String?> level = const Value.absent(),
+    Value<DateTime?> fireAt = const Value.absent(),
+    Value<String?> taskId = const Value.absent(),
+    Value<String?> reminderId = const Value.absent(),
+    Value<String?> detail = const Value.absent(),
+  }) => AlarmEvent(
+    id: id ?? this.id,
+    at: at ?? this.at,
+    event: event ?? this.event,
+    lane: lane ?? this.lane,
+    kind: kind.present ? kind.value : this.kind,
+    slotIndex: slotIndex.present ? slotIndex.value : this.slotIndex,
+    urgent: urgent ?? this.urgent,
+    sound: sound.present ? sound.value : this.sound,
+    level: level.present ? level.value : this.level,
+    fireAt: fireAt.present ? fireAt.value : this.fireAt,
+    taskId: taskId.present ? taskId.value : this.taskId,
+    reminderId: reminderId.present ? reminderId.value : this.reminderId,
+    detail: detail.present ? detail.value : this.detail,
+  );
+  AlarmEvent copyWithCompanion(AlarmEventsCompanion data) {
+    return AlarmEvent(
+      id: data.id.present ? data.id.value : this.id,
+      at: data.at.present ? data.at.value : this.at,
+      event: data.event.present ? data.event.value : this.event,
+      lane: data.lane.present ? data.lane.value : this.lane,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      slotIndex: data.slotIndex.present ? data.slotIndex.value : this.slotIndex,
+      urgent: data.urgent.present ? data.urgent.value : this.urgent,
+      sound: data.sound.present ? data.sound.value : this.sound,
+      level: data.level.present ? data.level.value : this.level,
+      fireAt: data.fireAt.present ? data.fireAt.value : this.fireAt,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      reminderId: data.reminderId.present
+          ? data.reminderId.value
+          : this.reminderId,
+      detail: data.detail.present ? data.detail.value : this.detail,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlarmEvent(')
+          ..write('id: $id, ')
+          ..write('at: $at, ')
+          ..write('event: $event, ')
+          ..write('lane: $lane, ')
+          ..write('kind: $kind, ')
+          ..write('slotIndex: $slotIndex, ')
+          ..write('urgent: $urgent, ')
+          ..write('sound: $sound, ')
+          ..write('level: $level, ')
+          ..write('fireAt: $fireAt, ')
+          ..write('taskId: $taskId, ')
+          ..write('reminderId: $reminderId, ')
+          ..write('detail: $detail')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    at,
+    event,
+    lane,
+    kind,
+    slotIndex,
+    urgent,
+    sound,
+    level,
+    fireAt,
+    taskId,
+    reminderId,
+    detail,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AlarmEvent &&
+          other.id == this.id &&
+          other.at == this.at &&
+          other.event == this.event &&
+          other.lane == this.lane &&
+          other.kind == this.kind &&
+          other.slotIndex == this.slotIndex &&
+          other.urgent == this.urgent &&
+          other.sound == this.sound &&
+          other.level == this.level &&
+          other.fireAt == this.fireAt &&
+          other.taskId == this.taskId &&
+          other.reminderId == this.reminderId &&
+          other.detail == this.detail);
+}
+
+class AlarmEventsCompanion extends UpdateCompanion<AlarmEvent> {
+  final Value<int> id;
+  final Value<DateTime> at;
+  final Value<String> event;
+  final Value<String> lane;
+  final Value<String?> kind;
+  final Value<int?> slotIndex;
+  final Value<bool> urgent;
+  final Value<String?> sound;
+  final Value<String?> level;
+  final Value<DateTime?> fireAt;
+  final Value<String?> taskId;
+  final Value<String?> reminderId;
+  final Value<String?> detail;
+  const AlarmEventsCompanion({
+    this.id = const Value.absent(),
+    this.at = const Value.absent(),
+    this.event = const Value.absent(),
+    this.lane = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.slotIndex = const Value.absent(),
+    this.urgent = const Value.absent(),
+    this.sound = const Value.absent(),
+    this.level = const Value.absent(),
+    this.fireAt = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.reminderId = const Value.absent(),
+    this.detail = const Value.absent(),
+  });
+  AlarmEventsCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime at,
+    required String event,
+    required String lane,
+    this.kind = const Value.absent(),
+    this.slotIndex = const Value.absent(),
+    this.urgent = const Value.absent(),
+    this.sound = const Value.absent(),
+    this.level = const Value.absent(),
+    this.fireAt = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.reminderId = const Value.absent(),
+    this.detail = const Value.absent(),
+  }) : at = Value(at),
+       event = Value(event),
+       lane = Value(lane);
+  static Insertable<AlarmEvent> custom({
+    Expression<int>? id,
+    Expression<DateTime>? at,
+    Expression<String>? event,
+    Expression<String>? lane,
+    Expression<String>? kind,
+    Expression<int>? slotIndex,
+    Expression<bool>? urgent,
+    Expression<String>? sound,
+    Expression<String>? level,
+    Expression<DateTime>? fireAt,
+    Expression<String>? taskId,
+    Expression<String>? reminderId,
+    Expression<String>? detail,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (at != null) 'at': at,
+      if (event != null) 'event': event,
+      if (lane != null) 'lane': lane,
+      if (kind != null) 'kind': kind,
+      if (slotIndex != null) 'slot_index': slotIndex,
+      if (urgent != null) 'urgent': urgent,
+      if (sound != null) 'sound': sound,
+      if (level != null) 'level': level,
+      if (fireAt != null) 'fire_at': fireAt,
+      if (taskId != null) 'task_id': taskId,
+      if (reminderId != null) 'reminder_id': reminderId,
+      if (detail != null) 'detail': detail,
+    });
+  }
+
+  AlarmEventsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? at,
+    Value<String>? event,
+    Value<String>? lane,
+    Value<String?>? kind,
+    Value<int?>? slotIndex,
+    Value<bool>? urgent,
+    Value<String?>? sound,
+    Value<String?>? level,
+    Value<DateTime?>? fireAt,
+    Value<String?>? taskId,
+    Value<String?>? reminderId,
+    Value<String?>? detail,
+  }) {
+    return AlarmEventsCompanion(
+      id: id ?? this.id,
+      at: at ?? this.at,
+      event: event ?? this.event,
+      lane: lane ?? this.lane,
+      kind: kind ?? this.kind,
+      slotIndex: slotIndex ?? this.slotIndex,
+      urgent: urgent ?? this.urgent,
+      sound: sound ?? this.sound,
+      level: level ?? this.level,
+      fireAt: fireAt ?? this.fireAt,
+      taskId: taskId ?? this.taskId,
+      reminderId: reminderId ?? this.reminderId,
+      detail: detail ?? this.detail,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<DateTime>(at.value);
+    }
+    if (event.present) {
+      map['event'] = Variable<String>(event.value);
+    }
+    if (lane.present) {
+      map['lane'] = Variable<String>(lane.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (slotIndex.present) {
+      map['slot_index'] = Variable<int>(slotIndex.value);
+    }
+    if (urgent.present) {
+      map['urgent'] = Variable<bool>(urgent.value);
+    }
+    if (sound.present) {
+      map['sound'] = Variable<String>(sound.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<String>(level.value);
+    }
+    if (fireAt.present) {
+      map['fire_at'] = Variable<DateTime>(fireAt.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (reminderId.present) {
+      map['reminder_id'] = Variable<String>(reminderId.value);
+    }
+    if (detail.present) {
+      map['detail'] = Variable<String>(detail.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AlarmEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('at: $at, ')
+          ..write('event: $event, ')
+          ..write('lane: $lane, ')
+          ..write('kind: $kind, ')
+          ..write('slotIndex: $slotIndex, ')
+          ..write('urgent: $urgent, ')
+          ..write('sound: $sound, ')
+          ..write('level: $level, ')
+          ..write('fireAt: $fireAt, ')
+          ..write('taskId: $taskId, ')
+          ..write('reminderId: $reminderId, ')
+          ..write('detail: $detail')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingMutationsTable extends PendingMutations
     with TableInfo<$PendingMutationsTable, PendingMutation> {
   @override
@@ -9221,6 +9966,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   );
   late final $FileRowsTable fileRows = $FileRowsTable(this);
   late final $FoldersTable folders = $FoldersTable(this);
+  late final $AlarmEventsTable alarmEvents = $AlarmEventsTable(this);
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
   );
@@ -9242,6 +9988,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     appleEventLinks,
     fileRows,
     folders,
+    alarmEvents,
     pendingMutations,
     syncStates,
   ];
@@ -13146,6 +13893,351 @@ typedef $$FoldersTableProcessedTableManager =
       FolderRecord,
       PrefetchHooks Function()
     >;
+typedef $$AlarmEventsTableCreateCompanionBuilder =
+    AlarmEventsCompanion Function({
+      Value<int> id,
+      required DateTime at,
+      required String event,
+      required String lane,
+      Value<String?> kind,
+      Value<int?> slotIndex,
+      Value<bool> urgent,
+      Value<String?> sound,
+      Value<String?> level,
+      Value<DateTime?> fireAt,
+      Value<String?> taskId,
+      Value<String?> reminderId,
+      Value<String?> detail,
+    });
+typedef $$AlarmEventsTableUpdateCompanionBuilder =
+    AlarmEventsCompanion Function({
+      Value<int> id,
+      Value<DateTime> at,
+      Value<String> event,
+      Value<String> lane,
+      Value<String?> kind,
+      Value<int?> slotIndex,
+      Value<bool> urgent,
+      Value<String?> sound,
+      Value<String?> level,
+      Value<DateTime?> fireAt,
+      Value<String?> taskId,
+      Value<String?> reminderId,
+      Value<String?> detail,
+    });
+
+class $$AlarmEventsTableFilterComposer
+    extends Composer<_$AwDatabase, $AlarmEventsTable> {
+  $$AlarmEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get event => $composableBuilder(
+    column: $table.event,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lane => $composableBuilder(
+    column: $table.lane,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get slotIndex => $composableBuilder(
+    column: $table.slotIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get urgent => $composableBuilder(
+    column: $table.urgent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sound => $composableBuilder(
+    column: $table.sound,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fireAt => $composableBuilder(
+    column: $table.fireAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reminderId => $composableBuilder(
+    column: $table.reminderId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AlarmEventsTableOrderingComposer
+    extends Composer<_$AwDatabase, $AlarmEventsTable> {
+  $$AlarmEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get event => $composableBuilder(
+    column: $table.event,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lane => $composableBuilder(
+    column: $table.lane,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get slotIndex => $composableBuilder(
+    column: $table.slotIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get urgent => $composableBuilder(
+    column: $table.urgent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sound => $composableBuilder(
+    column: $table.sound,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fireAt => $composableBuilder(
+    column: $table.fireAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reminderId => $composableBuilder(
+    column: $table.reminderId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AlarmEventsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $AlarmEventsTable> {
+  $$AlarmEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+
+  GeneratedColumn<String> get event =>
+      $composableBuilder(column: $table.event, builder: (column) => column);
+
+  GeneratedColumn<String> get lane =>
+      $composableBuilder(column: $table.lane, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<int> get slotIndex =>
+      $composableBuilder(column: $table.slotIndex, builder: (column) => column);
+
+  GeneratedColumn<bool> get urgent =>
+      $composableBuilder(column: $table.urgent, builder: (column) => column);
+
+  GeneratedColumn<String> get sound =>
+      $composableBuilder(column: $table.sound, builder: (column) => column);
+
+  GeneratedColumn<String> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fireAt =>
+      $composableBuilder(column: $table.fireAt, builder: (column) => column);
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get reminderId => $composableBuilder(
+    column: $table.reminderId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get detail =>
+      $composableBuilder(column: $table.detail, builder: (column) => column);
+}
+
+class $$AlarmEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $AlarmEventsTable,
+          AlarmEvent,
+          $$AlarmEventsTableFilterComposer,
+          $$AlarmEventsTableOrderingComposer,
+          $$AlarmEventsTableAnnotationComposer,
+          $$AlarmEventsTableCreateCompanionBuilder,
+          $$AlarmEventsTableUpdateCompanionBuilder,
+          (
+            AlarmEvent,
+            BaseReferences<_$AwDatabase, $AlarmEventsTable, AlarmEvent>,
+          ),
+          AlarmEvent,
+          PrefetchHooks Function()
+        > {
+  $$AlarmEventsTableTableManager(_$AwDatabase db, $AlarmEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AlarmEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AlarmEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AlarmEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> at = const Value.absent(),
+                Value<String> event = const Value.absent(),
+                Value<String> lane = const Value.absent(),
+                Value<String?> kind = const Value.absent(),
+                Value<int?> slotIndex = const Value.absent(),
+                Value<bool> urgent = const Value.absent(),
+                Value<String?> sound = const Value.absent(),
+                Value<String?> level = const Value.absent(),
+                Value<DateTime?> fireAt = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
+                Value<String?> reminderId = const Value.absent(),
+                Value<String?> detail = const Value.absent(),
+              }) => AlarmEventsCompanion(
+                id: id,
+                at: at,
+                event: event,
+                lane: lane,
+                kind: kind,
+                slotIndex: slotIndex,
+                urgent: urgent,
+                sound: sound,
+                level: level,
+                fireAt: fireAt,
+                taskId: taskId,
+                reminderId: reminderId,
+                detail: detail,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime at,
+                required String event,
+                required String lane,
+                Value<String?> kind = const Value.absent(),
+                Value<int?> slotIndex = const Value.absent(),
+                Value<bool> urgent = const Value.absent(),
+                Value<String?> sound = const Value.absent(),
+                Value<String?> level = const Value.absent(),
+                Value<DateTime?> fireAt = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
+                Value<String?> reminderId = const Value.absent(),
+                Value<String?> detail = const Value.absent(),
+              }) => AlarmEventsCompanion.insert(
+                id: id,
+                at: at,
+                event: event,
+                lane: lane,
+                kind: kind,
+                slotIndex: slotIndex,
+                urgent: urgent,
+                sound: sound,
+                level: level,
+                fireAt: fireAt,
+                taskId: taskId,
+                reminderId: reminderId,
+                detail: detail,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AlarmEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $AlarmEventsTable,
+      AlarmEvent,
+      $$AlarmEventsTableFilterComposer,
+      $$AlarmEventsTableOrderingComposer,
+      $$AlarmEventsTableAnnotationComposer,
+      $$AlarmEventsTableCreateCompanionBuilder,
+      $$AlarmEventsTableUpdateCompanionBuilder,
+      (AlarmEvent, BaseReferences<_$AwDatabase, $AlarmEventsTable, AlarmEvent>),
+      AlarmEvent,
+      PrefetchHooks Function()
+    >;
 typedef $$PendingMutationsTableCreateCompanionBuilder =
     PendingMutationsCompanion Function({
       required String id,
@@ -13664,6 +14756,8 @@ class $AwDatabaseManager {
       $$FileRowsTableTableManager(_db, _db.fileRows);
   $$FoldersTableTableManager get folders =>
       $$FoldersTableTableManager(_db, _db.folders);
+  $$AlarmEventsTableTableManager get alarmEvents =>
+      $$AlarmEventsTableTableManager(_db, _db.alarmEvents);
   $$PendingMutationsTableTableManager get pendingMutations =>
       $$PendingMutationsTableTableManager(_db, _db.pendingMutations);
   $$SyncStatesTableTableManager get syncStates =>

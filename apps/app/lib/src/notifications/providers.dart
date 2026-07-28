@@ -6,8 +6,10 @@ import '../core/persisted_prefs.dart';
 import '../features/tasks/providers.dart';
 import '../features/workspaces/workspaces.dart';
 import '../router.dart';
+import '../sync/db/database.dart';
 import '../sync/providers.dart';
 import 'actions.dart';
+import 'alarm_log.dart';
 import 'alarmkit.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
@@ -34,6 +36,17 @@ final notificationPrivacyProvider = NotifierProvider<PersistedToggle, bool>(
   () => PersistedToggle('notification_privacy', fallback: false),
 );
 
+/// The device's alarm record (OPH-176, DESIGN §11 A6). Local only — it lives in
+/// the replica database but is neither synced nor pushed.
+final alarmLogProvider = Provider<AlarmLog>(
+  (ref) => AlarmLog(ref.watch(databaseProvider)),
+);
+
+/// The log's newest rows, for the diagnostic screen.
+final alarmLogRowsProvider = StreamProvider<List<AlarmEvent>>(
+  (ref) => ref.watch(alarmLogProvider).watchRecent(),
+);
+
 final reminderStoreProvider = Provider<ReminderStore>(
   (ref) => ReminderStore(
     ref.watch(databaseProvider),
@@ -50,7 +63,33 @@ final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
   final gateway = ref.watch(notificationsGatewayProvider);
   try {
     await gateway.initialize();
-    return await gateway.alarmSupport();
+    final support = await gateway.alarmSupport();
+    // Never fail silently (NOTIFICATIONS §1): a device that cannot ring properly
+    // says so on Home and in Settings — and now leaves a record too (OPH-176),
+    // so "it didn't go off" can be checked against what the OS allowed.
+    if (!support.notificationsEnabled || support.exactAlarmsEnabled == false) {
+      // Fire-and-forget behind its OWN guard: a diagnostic must never change
+      // what the probe reports. (It did once, in the making — an unavailable
+      // database made the whole probe fail, so a device with alarms OFF looked
+      // healthy. That is the exact lie A6 exists to prevent.)
+      try {
+        unawaited(
+          ref
+              .read(alarmLogProvider)
+              .record(
+                event: AlarmLogEvent.degraded,
+                lane: AlarmLogLane.notification,
+                detail:
+                    'notifications=${support.notificationsEnabled} '
+                    'exactAlarms=${support.exactAlarmsEnabled} '
+                    'critical=${support.criticalAlertsEnabled}',
+              ),
+        );
+      } on Object {
+        // No log available (no database on this surface) — the probe stands.
+      }
+    }
+    return support;
   } catch (_) {
     // Web / no platform channel: assume permissive so we never nag falsely.
     return const AlarmSupport(
@@ -75,6 +114,7 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
     alarmKit: alarmKit,
     alarms: ref.watch(reminderStoreProvider).watchAlarms(workspace.id),
     privacyMode: ref.watch(notificationPrivacyProvider),
+    log: ref.watch(alarmLogProvider),
   );
   unawaited(scheduler.start());
   ref.onDispose(scheduler.dispose);
@@ -86,6 +126,7 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
     tasks: ref.read(taskStoreProvider),
     reminders: ref.read(reminderStoreProvider),
     navigate: (location) => ref.read(routerProvider).push(location),
+    log: ref.read(alarmLogProvider),
   );
   final responses = gateway.events.listen(onEvent);
   ref.onDispose(responses.cancel);

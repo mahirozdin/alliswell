@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'alarm_log.dart';
 import 'alarmkit.dart';
 import 'planner.dart';
 import 'gateway.dart';
@@ -16,6 +17,7 @@ class NotificationScheduler {
     required this.alarms,
     required this.privacyMode,
     this.alarmKit,
+    this.log,
     this.maxPending = 40,
     DateTime Function()? clock,
   }) : _now = clock ?? (() => DateTime.now().toUtc());
@@ -23,6 +25,10 @@ class NotificationScheduler {
   final NotificationsGateway gateway;
   final Stream<List<AlarmInput>> alarms;
   final bool privacyMode;
+
+  /// The device's alarm record (OPH-176). Optional so a pure scheduler test can
+  /// leave it out; production always passes one.
+  final AlarmLog? log;
 
   /// iOS 26+ URGENT lane (OPH-141). Null (or unsupported/declined) leaves urgent
   /// alarms on the notification lane. When active, urgent alarms move here and
@@ -90,9 +96,24 @@ class NotificationScheduler {
 
       for (final id in pending.difference(desiredById.keys.toSet())) {
         await gateway.cancel(id);
+        await log?.record(
+          event: AlarmLogEvent.cancelled,
+          lane: AlarmLogLane.notification,
+          detail: 'id=$id',
+        );
       }
       for (final id in desiredById.keys.toSet().difference(pending)) {
-        await gateway.schedule(desiredById[id]!);
+        final notification = desiredById[id]!;
+        final delivery = await gateway.schedule(notification);
+        await log?.recordScheduled(
+          notification,
+          lane: AlarmLogLane.notification,
+          delivery: delivery,
+          kind: notification.kind,
+          slotIndex: notification.slotIndex,
+          taskId: notification.taskId,
+          reminderId: notification.reminderId,
+        );
       }
 
       // The AlarmKit lane (OPH-141): identical set-diff against its own host,
@@ -110,9 +131,27 @@ class NotificationScheduler {
 
         for (final id in scheduled.difference(desiredAkById.keys.toSet())) {
           await alarmKit!.cancel(id);
+          await log?.record(
+            event: AlarmLogEvent.cancelled,
+            lane: AlarmLogLane.alarmkit,
+            detail: 'id=$id',
+          );
         }
         for (final id in desiredAkById.keys.toSet().difference(scheduled)) {
-          await alarmKit!.schedule(desiredAkById[id]!);
+          final alarm = desiredAkById[id]!;
+          await alarmKit!.schedule(alarm);
+          await log?.record(
+            event: AlarmLogEvent.scheduled,
+            lane: AlarmLogLane.alarmkit,
+            urgent: true,
+            // AlarmKit rings until answered natively: one entry, no chain, and
+            // the OS owns the sound presentation.
+            sound: kAwAlarmSoundName,
+            level: 'alarmkit',
+            fireAt: alarm.fireAt,
+            taskId: alarm.taskId,
+            reminderId: alarm.reminderId,
+          );
         }
       }
     } catch (_) {

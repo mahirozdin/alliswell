@@ -22,6 +22,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   for today, you plan for tomorrow. A reminder opens on its task's due day
   instead, because a nudge belongs next to its deadline.
 
+### Added
+
+- **An alarm log, and one loudness rule** (OPH-176). Every alert of an urgent
+  alarm — the first, each repeat, and every ring after a snooze — now asks for the
+  same alarm sound and the same alarm-grade delivery; there is no quieter first
+  alert, and a post-snooze ring says it is one instead of pretending to be a fresh
+  alarm. And Settings → **Alarm log** finally answers "why didn't it go off?": it
+  lists what this device scheduled, what it took back, what you touched and when
+  the in-app alarm screen rang, with the sound and priority it asked for, ready to
+  copy into a bug report. It is honest about its limits — iOS reports nothing about
+  a notification you never touch, so the log never claims one was delivered.
+
 ### Fixed
 
 - **An urgent task's own deadline rings again** (OPH-175). Setting a reminder used
