@@ -187,6 +187,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
     }
 
+    // The ring screen scrolls (four snooze presets + custom + silence), and on
+    // the 800x600 test surface this button sits right at the fold: it happened
+    // to be tappable with macOS font metrics and was off-screen with Linux ones,
+    // so this test passed locally and failed on CI. Scroll to it like the
+    // silence test below does, instead of trusting where it lands.
+    await tester.ensureVisible(find.byKey(const Key('alarm-snooze-custom')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('alarm-snooze-custom')));
     await settleDialog();
     // Accept both pickers untouched (tomorrow at now + 30 min).
