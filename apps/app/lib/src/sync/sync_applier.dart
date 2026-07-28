@@ -307,6 +307,7 @@ RemindersCompanion reminderCompanion(Map<String, dynamic> d) =>
       id: d['id'] as String,
       taskId: d['taskId'] as String,
       kind: Value((d['kind'] as String?) ?? 'remind'),
+      snoozeCount: Value((d['snoozeCount'] as int?) ?? 0),
       remindAt: _date(d['remindAt'])!,
       timezone: Value((d['timezone'] as String?) ?? 'Europe/Istanbul'),
       alarmLevel: Value((d['alarmLevel'] as String?) ?? 'normal'),

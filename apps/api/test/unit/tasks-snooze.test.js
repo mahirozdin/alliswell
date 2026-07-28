@@ -200,3 +200,36 @@ describe('snoozing a task with TWO alarms (OPH-175, round 9)', () => {
     expect(byKind.due.snoozed_until).toBeFalsy();
   });
 });
+
+describe('snooze rounds are counted (OPH-177, round 9 #6.6)', () => {
+  const activeAlarms = () =>
+    tables.reminders.filter((r) => ['scheduled', 'snoozed', 'delivered'].includes(r.status));
+
+  it('each snooze increments the round, so the alert can name it', async () => {
+    const task = await createTask({ title: 'Sayılı erteleme', remindAt: REMIND_AT });
+    expect(activeAlarms()[0].snooze_count).toBe(0);
+
+    await snooze(task.id, { preset: '5_min' });
+    expect(activeAlarms()[0].snooze_count).toBe(1);
+    await snooze(task.id, { preset: '5_min' });
+    expect(activeAlarms()[0].snooze_count).toBe(2);
+  });
+
+  it('re-arming the alarm resets the round: a moved time is a NEW alarm', async () => {
+    const task = await createTask({ title: 'Kayan alarm', remindAt: REMIND_AT });
+    await snooze(task.id, { preset: '30_min' });
+    expect(activeAlarms()[0].snooze_count).toBe(1);
+
+    const moved = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/tasks/${task.id}`,
+      headers: owner.headers,
+      payload: { remindAt: '2026-07-21T08:30:00.000Z' },
+    });
+    expect(moved.statusCode).toBe(200);
+    const alarm = activeAlarms()[0];
+    expect(alarm.snooze_count).toBe(0);
+    expect(alarm.status).toBe('scheduled');
+    expect(alarm.snoozed_until).toBeFalsy();
+  });
+});

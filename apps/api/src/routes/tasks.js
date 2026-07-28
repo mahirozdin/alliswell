@@ -723,14 +723,18 @@ export default async function taskRoutes(app) {
             entityType: 'reminder',
             entityId: alarm.id,
             operation: 'update',
-            changedFields: ['status', 'snoozed_until'],
+            changedFields: ['status', 'snoozed_until', 'snooze_count'],
           });
-          await trx('reminders').where({ id: alarm.id }).update({
-            status: 'snoozed',
-            snoozed_until: until,
-            revision: reminderRevision,
-            updated_at: new Date(),
-          });
+          await trx('reminders')
+            .where({ id: alarm.id })
+            .update({
+              status: 'snoozed',
+              snoozed_until: until,
+              // Which round the next ring is (OPH-177) — the alert says so.
+              snooze_count: Number(alarm.snooze_count ?? 0) + 1,
+              revision: reminderRevision,
+              updated_at: new Date(),
+            });
         }
       });
 

@@ -3254,21 +3254,53 @@ app **425/425** + analyze + `check:i18n` + kontrast yeşil; CHANGELOG; STATE.
 `check:i18n` + kontrast FAILURES: 0; API dokunulmadı (288 + 39 hâlâ yeşil);
 CHANGELOG; STATE.
 
-### OPH-177 — Erteleme netliği: ne olacağını söyle, göster, aynı yükseklikte çal (round 9 #6.5, #6.6)
+### OPH-177 — Erteleme netliği: ne olacağını söyle, göster, aynı yükseklikte çal (round 9 #6.5, #6.6) ✅ 2026-07-28
 
-- [ ] **Ne olacağını söyle:** ring ekranındaki ve bildirimdeki erteleme seçenekleri
+- [x] **Ne olacağını söyle:** ring ekranındaki ve bildirimdeki erteleme seçenekleri
       sonucu yazar ("5 dk sonra tekrar çalar"); erteledikten sonra snackbar
       "22:52'de tekrar çalacak" (kullanıcının sorusu birebir: _"5 dk sonra ne olacak?"_).
-- [ ] **Göster:** görev satırında ve detayda `Ertelendi — 22:52` göstergesi
+- [x] **Göster:** görev satırında ve detayda `Ertelendi — 22:52` göstergesi
       (`task.snoozedUntil` bugün hiçbir yerde görünmüyor); alarm ikonu ertelenmiş
       tonda. Görev tamamlanmış gibi görünmez.
-- [ ] **Aynı yükseklikte çal:** erteleme sonrası tur profilin TAM zincirini kurar
+- [x] **Aynı yükseklikte çal:** erteleme sonrası tur profilin TAM zincirini kurar
       (OPH-179) ve OPH-176 sözleşmesine uyar. Tur sayacı için `reminders.snooze_count`
       (migration + REST/sync artırımı) — planner `notif.afterSnooze` içinde kullanır.
-- [ ] **Özel ertele** (BLUEPRINT §8.2'de yazılı, UI'da yok): tarih-saat seçici;
+- [x] **Özel ertele** (BLUEPRINT §8.2'de yazılı, UI'da yok): tarih-saat seçici;
       `POST /tasks/:id/snooze { snoozeUntil }` zaten var.
-- [ ] Testler: preset alt metinleri, snackbar, satırdaki ertelendi göstergesi,
+- [x] Testler: preset alt metinleri, snackbar, satırdaki ertelendi göstergesi,
       erteleme sonrası planın slot sayısı + gövdesi, özel erteleme akışı.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Preset butonları artık iki satır:** "5 dk" + **"22:47'de çalar"** — sorunun
+  ("5 dk sonra ne olacak?") cevabı butonun üstünde duruyor; ertelenince de
+  snackbar **"22:52'de tekrar çalacak"** diyor. Bildirim aksiyon düğmelerinin
+  metni OS'ta kısa kalmak zorunda, o yüzden bu netlik **ring ekranında** yaşıyor.
+- **`reminders.snooze_count`** migration (gerçek MySQL'de uygulandı) + REST
+  ertelemede **ve** sync push aynasında artırım; `reconcileTaskReminder`'ın tam
+  yeniden kurma yaması **0'a çekiyor** — kayan bir an yeni alarmdır, "7. tur"
+  değil. Planner `notif.afterSnooze`'u **sayılı** varyanta geçti; sayacı olmayan
+  (yükseltmeden kalma) satırlar dürüstçe "1. tur" okunuyor.
+- **Sync aynasındaki aynı hata düzeltildi:** `applyReminderSnooze` da yalnız "en
+  yeni aktif satırı" erteliyordu → çevrimdışı erteleme iki alarmlı bir görevde
+  ikinci alarmı canlı bırakıyordu (OPH-175'te REST'te düzelttiğim hatanın ikizi).
+- **Erteleme artık GÖRÜNÜYOR:** görev satırında ve detayda `snooze` ikonu +
+  **"Ertelendi — 22:52"**. `task.snoozedUntil` bugüne kadar hiçbir yüzeyde
+  görünmüyordu; susturulmuş bir görev kurulu görünüyordu (A5'in yasakladığı yalan).
+  Görev **açık** kalıyor.
+- **Özel ertele** (BLUEPRINT §8.2'de yazılıydı, UI'da yoktu): ring ekranında
+  "Saat seç…" → tarih+saat seçici → `snooze(until:)`; geçmiş bir an sessizce
+  reddediliyor.
+- **Test dersleri:** ring ekranı sonsuz nabız animasyonu taşıdığı için
+  `pumpAndSettle` **asla** durmaz (DESIGN A1) — yeni testler açık `pump(süre)`
+  ile sürülüyor; snackbar'ın 4 sn'lik kendi timer'ı teardown'da "pending timer"
+  patlatıyor → sonda `pump(6s)`. Ayrıca ring ekranı testi artık `Scaffold`
+  içinde pump ediliyor (üretimde de shell'in Scaffold'u mount'ta — snackbar
+  onsuz gösterilemez).
+
+**DoD met 2026-07-28:** app **441/441** + API **290 unit + 39 entegrasyon (gerçek
+MySQL, migration uygulandı)** + analyze + lint + format + `check:i18n` + kontrast
+FAILURES: 0; CHANGELOG; STATE.
 
 ### OPH-178 — Süresiz erteleme / "alarmı sustur" (round 9 #6.7)
 

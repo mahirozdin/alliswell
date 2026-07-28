@@ -150,6 +150,7 @@ class ReminderStore {
     taskId: task.id,
     taskTitle: task.title,
     kind: reminder.kind,
+    snoozeRound: reminder.snoozeCount,
     remindAt: reminder.remindAt.toUtc(),
     status: reminder.status,
     urgent: reminder.alarmLevel == 'urgent',

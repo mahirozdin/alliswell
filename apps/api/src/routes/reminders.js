@@ -21,6 +21,7 @@ const reminderSchema = {
     id: { type: 'string' },
     taskId: { type: 'string' },
     kind: { type: 'string' },
+    snoozeCount: { type: 'integer' },
     remindAt: { type: 'string' },
     timezone: { type: 'string' },
     alarmLevel: { type: 'string' },

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/date_format.dart';
+import 'package:alliswell/src/features/tasks/data/task_store.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/sync/db/database.dart';
@@ -77,7 +79,12 @@ void main() {
         container: container,
         child: MaterialApp(
           theme: _theme,
-          home: AlarmRingScreen(alarm: theAlarm(), onHandled: handled.add),
+          // A Scaffold has to be mounted somewhere for the snooze confirmation
+          // snackbar (OPH-177) — in the app the ring screen is layered over the
+          // shell's Scaffold, so this mirrors production.
+          home: Scaffold(
+            body: AlarmRingScreen(alarm: theAlarm(), onHandled: handled.add),
+          ),
         ),
       ),
     );
@@ -132,5 +139,68 @@ void main() {
       db.tasks,
     )..where((t) => t.id.equals(id('T1')))).getSingle();
     expect(task.snoozedUntil, isNotNull);
+  });
+
+  // ── OPH-177: "5 dk sonra ne olacak?" must not be a question ────────────────
+
+  testWidgets('each preset shows the instant it will ring at', (tester) async {
+    await seed();
+    await pumpRing(tester);
+    // The offset AND the clock time it lands on.
+    expect(find.text('5 min'), findsOneWidget);
+    final expected = awFormatTime(
+      TaskStore.snoozeUntilFor('5_min'),
+      format: kAwSystemDateFormat,
+    );
+    expect(
+      find.textContaining(expected),
+      findsWidgets,
+      reason: 'the button says when the alarm comes back',
+    );
+  });
+
+  testWidgets('snoozing confirms when it will ring again', (tester) async {
+    await seed();
+    await pumpRing(tester);
+    await tester.tap(find.byKey(const Key('alarm-snooze-5_min')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.textContaining('Rings again at'), findsOneWidget);
+    // Let the snackbar's own dismiss timer (and the session's) run out, or the
+    // test tears down with a pending timer.
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('a custom snooze picks an exact time', (tester) async {
+    await seed();
+    await pumpRing(tester);
+    expect(find.byKey(const Key('alarm-snooze-custom')), findsOneWidget);
+
+    // The ring screen pulses forever (DESIGN §11 A1), so this file drives it
+    // with pump(), never pumpAndSettle.
+    Future<void> settleDialog() async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    await tester.tap(find.byKey(const Key('alarm-snooze-custom')));
+    await settleDialog();
+    // Accept both pickers untouched (tomorrow at now + 30 min).
+    await tester.tap(find.text('OK'));
+    await settleDialog();
+    await tester.tap(find.text('OK'));
+    await settleDialog();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final row = await db.select(db.tasks).getSingle();
+    expect(
+      row.snoozedUntil,
+      isNotNull,
+      reason: 'BLUEPRINT §8.2 promised a custom snooze; now it exists',
+    );
+    expect(row.snoozedUntil!.isAfter(DateTime.now().toUtc()), isTrue);
+    await tester.pump(const Duration(seconds: 6));
   });
 }

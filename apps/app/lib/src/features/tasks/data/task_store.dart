@@ -354,18 +354,28 @@ class TaskStore {
           updatedAt: Value(DateTime.now().toUtc()),
         ),
       );
-      await (_db.update(_db.reminders)..where(
-            (r) =>
-                r.taskId.equals(taskId) &
-                r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
-          ))
-          .write(
-            RemindersCompanion(
-              status: const Value('snoozed'),
-              snoozedUntil: Value(snoozeUntil),
-              updatedAt: Value(DateTime.now().toUtc()),
-            ),
-          );
+      // Every active alarm of the task (a reminder AND a deadline, OPH-175),
+      // each carrying its own round count (OPH-177) — read first, because the
+      // count is per row.
+      final active =
+          await (_db.select(_db.reminders)..where(
+                (r) =>
+                    r.taskId.equals(taskId) &
+                    r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
+              ))
+              .get();
+      for (final alarm in active) {
+        await (_db.update(
+          _db.reminders,
+        )..where((r) => r.id.equals(alarm.id))).write(
+          RemindersCompanion(
+            status: const Value('snoozed'),
+            snoozedUntil: Value(snoozeUntil),
+            snoozeCount: Value(alarm.snoozeCount + 1),
+            updatedAt: Value(DateTime.now().toUtc()),
+          ),
+        );
+      }
       await enqueueMutation(
         _db,
         workspaceId: record.workspaceId,

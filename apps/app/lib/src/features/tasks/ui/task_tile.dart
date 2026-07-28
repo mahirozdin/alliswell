@@ -58,6 +58,11 @@ class TaskTile extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final dateFormat = ref.watch(dateFormatProvider);
     final due = task.dueAt?.toLocal();
+    // OPH-177: a snoozed alarm must SAY it is snoozed. Until now `snoozedUntil`
+    // was invisible everywhere, so a silenced task looked like an armed one.
+    final snoozedUntil = task.snoozedUntil?.toLocal();
+    final snoozed =
+        snoozedUntil != null && snoozedUntil.isAfter(DateTime.now());
     final isOverdue =
         due != null && !task.isCompleted && due.isBefore(DateTime.now());
     final priorityColor = taskPriorityColorOf(context, task.priority);
@@ -107,13 +112,39 @@ class TaskTile extends ConsumerWidget {
                 )
               : null,
         ),
-        subtitle: (due == null && rowTags.isEmpty)
+        subtitle: (due == null && rowTags.isEmpty && !snoozed)
             ? null
             : Wrap(
                 spacing: AwSpace.x2,
                 runSpacing: 2,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  if (snoozed)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.snooze,
+                          size: 16,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'task.snoozedUntil'.tr(
+                            args: {
+                              'time': awFormatTime(
+                                snoozedUntil,
+                                format: dateFormat,
+                              ),
+                            },
+                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   if (due != null)
                     Text(
                       isOverdue

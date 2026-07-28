@@ -103,6 +103,8 @@ async function reconcileOne(trx, { workspaceId, task, kind, remindAt }) {
     snoozed_until: null,
     delivered_at: null,
     acknowledged_at: null,
+    // A moved instant is a fresh alarm, not "round seven" (OPH-177).
+    snooze_count: 0,
   };
 
   if (active) {

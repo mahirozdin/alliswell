@@ -13,11 +13,13 @@ AlarmInput alarm({
   DateTime? snoozedUntil,
   String title = 'Görev',
   String kind = 'remind',
+  int snoozeRound = 0,
 }) => AlarmInput(
   reminderId: id.padRight(26, '0'),
   taskId: 'T$id'.padRight(26, '0'),
   taskTitle: title,
   kind: kind,
+  snoozeRound: snoozeRound,
   remindAt: remindAt ?? now.add(const Duration(hours: 1)),
   status: status,
   urgent: urgent,
@@ -166,5 +168,38 @@ void main() {
     );
     expect(plan.single.title, 'AllisWell');
     expect(plan.single.body, isNot(contains('time you set')));
+  });
+
+  // OPH-177: the post-snooze ring names its ROUND, so "it came like the 1st
+  // notification again" cannot happen twice.
+  test('a post-snooze ring says which round it is', () {
+    final plan = planNotifications(
+      alarms: [
+        alarm(
+          urgent: true,
+          requiresAck: true,
+          status: 'snoozed',
+          snoozeRound: 3,
+          snoozedUntil: now.add(const Duration(minutes: 5)),
+        ),
+      ],
+      now: now,
+      privacyMode: false,
+    );
+    expect(plan.first.body, contains('round 3'));
+    // An un-counted snooze (a row from before the counter) still reads honestly.
+    final legacy = planNotifications(
+      alarms: [
+        alarm(
+          urgent: true,
+          requiresAck: true,
+          status: 'snoozed',
+          snoozedUntil: now.add(const Duration(minutes: 5)),
+        ),
+      ],
+      now: now,
+      privacyMode: false,
+    );
+    expect(legacy.first.body, contains('round 1'));
   });
 }

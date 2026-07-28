@@ -128,6 +128,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       status: 'scheduled',
       // OPH-175: 'remind' is the column default; a deadline alarm says so.
       kind: 'remind',
+      // OPH-177: snooze rounds, so a re-ring can say which one it is.
+      snooze_count: 0,
       revision: 0,
     }),
     client_mutations: () => ({ user_id: null, result_revision: null, error_code: null }),

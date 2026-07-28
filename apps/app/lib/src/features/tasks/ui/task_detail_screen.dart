@@ -257,6 +257,42 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         (store, id) => store.update(id, {'isUrgent': v}),
                       ),
                     ),
+                    // OPH-177: a snoozed alarm says so here too — the task is
+                    // still open, it is just quiet until then.
+                    if (task.snoozedUntil != null &&
+                        task.snoozedUntil!.toLocal().isAfter(DateTime.now()))
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AwSpace.x2),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.snooze,
+                              size: 18,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: AwSpace.x3),
+                            Text(
+                              'task.snoozedUntil'.tr(
+                                args: {
+                                  'time': awFormatTime(
+                                    task.snoozedUntil!,
+                                    format: ref.watch(dateFormatProvider),
+                                  ),
+                                },
+                              ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
                     // OPH-081: opt-in mirroring (BLUEPRINT §12). Enabling it
                     // early is fine — the event appears the moment the task
                     // gets a time — so say that instead of blocking the switch.

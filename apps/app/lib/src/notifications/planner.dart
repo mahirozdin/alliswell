@@ -16,6 +16,7 @@ class AlarmInput {
     required this.urgent,
     required this.requiresAcknowledgement,
     this.kind = 'remind',
+    this.snoozeRound = 0,
     this.snoozedUntil,
   });
 
@@ -27,6 +28,10 @@ class AlarmInput {
   /// OPH-175). It only changes what the notification SAYS — a deadline alarm is
   /// as loud as any other urgent alarm.
   final String kind;
+
+  /// How many times this alarm has been snoozed (OPH-177): a post-snooze ring
+  /// names its round instead of impersonating a first alert.
+  final int snoozeRound;
   final DateTime remindAt;
 
   /// scheduled | snoozed | delivered (anything else never reaches the planner,
@@ -56,7 +61,11 @@ const _activeStatuses = {'scheduled', 'snoozed', 'delivered'};
 /// (OPH-176, round 9 #6.6 — the user read "still waiting for acknowledgement"
 /// five minutes after snoozing and reasonably called it "the 1st again").
 String _firstBody(AlarmInput alarm) {
-  if (alarm.status == 'snoozed') return 'notif.afterSnooze'.tr();
+  if (alarm.status == 'snoozed') {
+    return 'notif.afterSnooze'.tr(
+      args: {'count': '${alarm.snoozeRound > 0 ? alarm.snoozeRound : 1}'},
+    );
+  }
   if (alarm.kind == 'due') return 'notif.dueNow'.tr();
   return 'notif.urgentFirst'.tr();
 }

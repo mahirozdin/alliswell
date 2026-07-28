@@ -24,6 +24,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Snoozing tells you what it will do, and shows that it did it** (OPH-177). Each
+  snooze option on the alarm screen now says the time it will ring at ("5 min ·
+  rings at 22:47"), snoozing confirms it ("Rings again at 22:52"), and the task row
+  and detail carry a "Snoozed — 22:52" line — until now a silenced task looked
+  exactly like an armed one. The ring after a snooze names its round instead of
+  impersonating a first alert, and there is finally a **custom snooze**: pick the
+  exact time instead of choosing from four presets.
 - **An alarm log, and one loudness rule** (OPH-176). Every alert of an urgent
   alarm — the first, each repeat, and every ring after a snooze — now asks for the
   same alarm sound and the same alarm-grade delivery; there is no quieter first

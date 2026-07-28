@@ -208,7 +208,8 @@
     "removeItem": "Remove item",
     "overdueDue": "Overdue — {date}",
     "dueOn": "Due {date}",
-    "attachments": "Attachments"
+    "attachments": "Attachments",
+    "snoozedUntil": "Snoozed — {time}"
   },
   "tag": {
     "inputHint": "Add tag…",
@@ -401,7 +402,7 @@
     "urgentFirst": "Urgent reminder — waiting for acknowledgement",
     "urgentRepeat": "Still waiting for acknowledgement (alert {count})",
     "dueNow": "The time you set is here — waiting for you",
-    "afterSnooze": "Snoozed round — still waiting for acknowledgement",
+    "afterSnooze": "Snoozed round {count} — still waiting for acknowledgement",
     "reminder": "Reminder",
     "action": {
       "complete": "Complete",
@@ -428,7 +429,10 @@
       "notificationsOff": "Notifications are off — you won't be alerted. Tap to turn them on.",
       "exactOff": "Alarms may arrive late — allow \"Alarms & reminders\". Tap to fix.",
       "fix": "Fix"
-    }
+    },
+    "snoozeRingsAt": "rings at {time}",
+    "snoozeConfirmed": "Rings again at {time}",
+    "snoozeCustom": "Pick a time…"
   },
   "alarmLog": {
     "title": "Alarm log",

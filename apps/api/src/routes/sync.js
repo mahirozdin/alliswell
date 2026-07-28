@@ -163,6 +163,8 @@ export function serializeReminder(row) {
     // Which alarm this is (OPH-175): the reminder, or the deadline itself.
     // Server-owned — clients read it, they never push it.
     kind: row.kind ?? 'remind',
+    // How many snooze rounds this alarm has been through (OPH-177).
+    snoozeCount: Number(row.snooze_count ?? 0),
     remindAt: toIso(row.remind_at),
     timezone: row.timezone,
     alarmLevel: row.alarm_level,
@@ -529,30 +531,39 @@ export default async function syncRoutes(app) {
    * the same transaction. Call AFTER reconcileTaskReminder with the fresh row.
    */
   async function applyReminderSnooze(trx, workspaceId, task) {
+    // EVERY active alarm, not just the newest: a task can own a reminder AND a
+    // deadline alarm (OPH-175), and silencing one while the other fires three
+    // minutes later is exactly what the user reported.
     const active = await trx('reminders')
       .where({ task_id: task.id })
       .whereNull('deleted_at')
       .whereIn('status', ['scheduled', 'snoozed', 'delivered'])
       .orderBy('created_at', 'desc')
-      .first();
-    if (!active) return;
+      .select();
+    if (active.length === 0) return;
 
     const snoozed = task.snoozed_until != null;
-    const patch = snoozed
-      ? { status: 'snoozed', snoozed_until: new Date(task.snoozed_until) }
-      : { status: 'scheduled', snoozed_until: null };
-    if (!snoozed && active.status !== 'snoozed') return; // nothing to clear
+    for (const alarm of active) {
+      const patch = snoozed
+        ? {
+            status: 'snoozed',
+            snoozed_until: new Date(task.snoozed_until),
+            snooze_count: Number(alarm.snooze_count ?? 0) + 1,
+          }
+        : { status: 'scheduled', snoozed_until: null };
+      if (!snoozed && alarm.status !== 'snoozed') continue; // nothing to clear
 
-    const revision = await recordSyncWrite(trx, {
-      workspaceId,
-      entityType: 'reminder',
-      entityId: active.id,
-      operation: 'update',
-      changedFields: ['status', 'snoozed_until'],
-    });
-    await trx('reminders')
-      .where({ id: active.id })
-      .update({ ...patch, revision, updated_at: new Date() });
+      const revision = await recordSyncWrite(trx, {
+        workspaceId,
+        entityType: 'reminder',
+        entityId: alarm.id,
+        operation: 'update',
+        changedFields: Object.keys(patch),
+      });
+      await trx('reminders')
+        .where({ id: alarm.id })
+        .update({ ...patch, revision, updated_at: new Date() });
+    }
   }
 
   async function replaceTaskTags(trx, taskId, tagIds) {

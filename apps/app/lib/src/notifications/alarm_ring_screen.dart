@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/date_format.dart';
+import '../core/persisted_prefs.dart';
+import '../features/tasks/data/task_store.dart';
 import '../features/tasks/providers.dart';
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
@@ -83,10 +86,66 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     () => ref.read(reminderStoreProvider).acknowledge(widget.alarm.reminderId),
   );
 
-  void _snooze(String preset) => _run(
-    () =>
-        ref.read(taskStoreProvider).snooze(widget.alarm.taskId, preset: preset),
-  );
+  void _snooze(String preset) {
+    // Say what will happen, in the moment it happens (OPH-177, round 9 #6.5:
+    // "5 dk sonra ne olacak?" should not be a question the user has to ask).
+    final until = TaskStore.snoozeUntilFor(preset);
+    _confirm(until);
+    _run(
+      () => ref
+          .read(taskStoreProvider)
+          .snooze(widget.alarm.taskId, preset: preset),
+    );
+  }
+
+  /// Round 9's "Özel ertele" (BLUEPRINT §8.2, unimplemented until now): pick the
+  /// exact minute instead of picking from four presets.
+  Future<void> _snoozeCustom() async {
+    final now = DateTime.now();
+    final format = ref.read(dateFormatProvider);
+    final date = await showDatePicker(
+      context: context,
+      initialDate: awInitialPickerDate(anchor: now, now: now),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 30))),
+    );
+    if (!mounted) return;
+    final until = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time?.hour ?? now.hour,
+      time?.minute ?? now.minute,
+    );
+    if (!until.isAfter(DateTime.now())) return; // a past snooze is not a snooze
+    _confirm(until, format: format);
+    _run(
+      () =>
+          ref.read(taskStoreProvider).snooze(widget.alarm.taskId, until: until),
+    );
+  }
+
+  void _confirm(DateTime until, {String? format}) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(
+          'alarm.snoozeConfirmed'.tr(
+            args: {
+              'time': awFormatTime(
+                until,
+                format: format ?? ref.read(dateFormatProvider),
+              ),
+            },
+          ),
+        ),
+      ),
+    );
+  }
 
   void _complete() =>
       _run(() => ref.read(taskStoreProvider).complete(widget.alarm.taskId));
@@ -103,6 +162,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     final scheme = Theme.of(context).colorScheme;
     final tokens = context.awTokens;
     final text = Theme.of(context).textTheme;
+    final dateFormat = ref.watch(dateFormatProvider);
     final fireAt = alarmFireAt(widget.alarm).toLocal();
     final time = MaterialLocalizations.of(
       context,
@@ -233,8 +293,33 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                           OutlinedButton(
                             key: Key('alarm-snooze-$preset'),
                             onPressed: _busy ? null : () => _snooze(preset),
-                            child: Text(labelKey.tr()),
+                            // The offset AND the instant it lands on: "5 dk"
+                            // alone made the user ask what happens next.
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(labelKey.tr()),
+                                Text(
+                                  'alarm.snoozeRingsAt'.tr(
+                                    args: {
+                                      'time': awFormatTime(
+                                        TaskStore.snoozeUntilFor(preset),
+                                        format: dateFormat,
+                                      ),
+                                    },
+                                  ),
+                                  style: text.labelSmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                        OutlinedButton(
+                          key: const Key('alarm-snooze-custom'),
+                          onPressed: _busy ? null : _snoozeCustom,
+                          child: Text('alarm.snoozeCustom'.tr()),
+                        ),
                       ],
                     ),
                     const SizedBox(height: AwSpace.x4),

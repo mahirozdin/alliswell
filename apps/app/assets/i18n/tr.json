@@ -207,7 +207,8 @@
     "removeItem": "Öğeyi kaldır",
     "overdueDue": "Gecikti — {date}",
     "dueOn": "Bitiş {date}",
-    "attachments": "Ekler"
+    "attachments": "Ekler",
+    "snoozedUntil": "Ertelendi — {time}"
   },
   "tag": {
     "inputHint": "Etiket ekle…",
@@ -400,7 +401,7 @@
     "urgentFirst": "Acil hatırlatıcı — onay bekliyor",
     "urgentRepeat": "Hâlâ onay bekliyor ({count}. hatırlatma)",
     "dueNow": "Görev saati geldi — onay bekliyor",
-    "afterSnooze": "Erteleme sonrası — hâlâ onay bekliyor",
+    "afterSnooze": "Erteleme {count}. tur — hâlâ onay bekliyor",
     "reminder": "Hatırlatıcı",
     "action": {
       "complete": "Tamamla",
@@ -427,7 +428,10 @@
       "notificationsOff": "Bildirimler kapalı — uyarılmayacaksın. Açmak için dokun.",
       "exactOff": "Alarmlar geç gelebilir — \"Alarmlar ve hatırlatıcılar\" iznini ver. Düzeltmek için dokun.",
       "fix": "Düzelt"
-    }
+    },
+    "snoozeRingsAt": "{time}’de çalar",
+    "snoozeConfirmed": "{time}’de tekrar çalacak",
+    "snoozeCustom": "Saat seç…"
   },
   "alarmLog": {
     "title": "Alarm günlüğü",

@@ -233,6 +233,11 @@ class Reminders extends Table {
   /// `due` (an urgent task's own deadline). Server-owned; a task can hold one
   /// active row of each.
   TextColumn get kind => text().withDefault(const Constant('remind'))();
+
+  /// How many snooze rounds this alarm has been through (OPH-177) — the
+  /// post-snooze alert says WHICH round it is. Reset when the alarm is re-armed
+  /// to a new instant: a moved deadline is a new alarm.
+  IntColumn get snoozeCount => integer().withDefault(const Constant(0))();
   DateTimeColumn get remindAt => dateTime()();
   TextColumn get timezone =>
       text().withDefault(const Constant('Europe/Istanbul'))();
@@ -375,7 +380,7 @@ class AwDatabase extends _$AwDatabase {
   /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
   /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -442,6 +447,10 @@ class AwDatabase extends _$AwDatabase {
       // nothing existing is touched and there is nothing to backfill — the log
       // starts the moment this version runs.
       if (from < 9) await m.createTable(alarmEvents);
+      // v10 (OPH-177): snooze rounds. Existing rows take 0 — an alarm that was
+      // already snoozed simply starts counting from its next round, which is
+      // honest: we cannot know how many rounds it had before we counted.
+      if (from < 10) await m.addColumn(reminders, reminders.snoozeCount);
     },
   );
 }
