@@ -5,6 +5,61 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-28
+
+The alarm release. Round 9 was the first time AllisWell was used *as an alarm
+clock*, and it failed the way only a real user can reveal — so this version is
+mostly about a reminder that behaves like one.
+
+### Highlights
+
+- ⏰ **A real alarm on iOS 26.** Urgent tasks ring through the silent switch and
+  through a Focus, full-screen on the Lock Screen, using the phone's own alarm
+  interface (Apple's AlarmKit — no special entitlement). This lane had been
+  written weeks ago and had **never run once**: its Swift file was in no Xcode
+  target, so the app built green while the only path that can outrun a hardware
+  mute switch was dead. It is wired now.
+- 🎯 **A task's deadline is its own alarm.** A reminder no longer swallows the
+  due time — "warn me at 22:42 **and** hold me to 22:45" is two alarms, and both
+  ring.
+- 🎛 **You own the nagging.** Reminder system settings let you build the re-alert
+  chain (Calm · Standard · Insistent, or your own steps), pick your snooze
+  buttons and their order, and see on screen how many alarms your chain actually
+  covers.
+- 🔊 **Pick your alarm sound, or upload your own** — a small library plus your
+  own files, honest about which formats iOS notifications can and cannot play.
+  The in-app ring screen now makes noise too, which on desktop and web is the
+  first alarm sound there has ever been.
+- 🤫 **Silence a task's alarms without lying about it.** "Snooze indefinitely"
+  keeps the task open instead of forcing you to complete it to make it stop.
+- 🧾 **An alarm log.** The device keeps a local record of what was scheduled,
+  with which sound, on which lane, and what you pressed — so "it didn't go off"
+  is answerable instead of a memory exercise.
+- 💬 **A snooze says what it will do** ("5 dk · 22:47'de çalar") and the task row
+  shows "Snoozed — 22:52" afterwards.
+- 🔄 **Pull to refresh** in all five sections, and Home stops pinning half the
+  phone screen — only the app bar stays put.
+- 📅 **One date formatter, and your choice of format** in Settings; the task
+  sheet's date pickers open on tomorrow.
+
+### Known limitations
+
+- **The iOS 26 AlarmKit device matrix is not yet verified.** The lane compiles
+  and links against the iOS 26.2 SDK and is wired into both targets, but the
+  silent-switch + Focus + locked-screen pass on real hardware is still pending
+  (OPH-182). If AlarmKit is unavailable or you decline its permission, urgent
+  alarms fall back to time-sensitive notifications, which a mute switch silences.
+- **Apple Watch** is documented, not measured — mirroring is free and needs no
+  watchOS app, but the companion-target decision waits for a real watch (OPH-183).
+- On Android, an **uploaded** sound cannot be a notification-channel sound
+  without a FileProvider, so it plays in the in-app alarm instead — stated in the
+  picker rather than hidden.
+- **Widget interactivity** and the **macOS widget** are still not shipped.
+- Desktop and web have no OS-level alarm guarantee; the in-app ring screen is the
+  surface there.
+
+### Development log
+
 ### Changed
 
 - **Dates look the way you want them to** (OPH-174): every date and time in the
