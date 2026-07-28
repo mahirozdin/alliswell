@@ -4461,9 +4461,9 @@ yüzen düğmenin dokunuş hissi cihazda gözle doğrulanır ama DoD'yi kilitlem
 | 4 | Silinen hedefin kısayolu **sunucuda kaskadla ölür** | Silme motoru alt-ağaç + ek kaskadını zaten aynı transaction'da yapıyor (OPH-184 context'i) — `quick_links` aynı kalıba katılır; arşivli hedef ise **yaşar ve soluk görünür** (arşiv geri dönüşlüdür) |
 | 5 | Emoji + renk **kişiselleştirmedir, anlam değildir** | DESIGN G5 (renk tek başına anlam taşımaz) → tür ikonu her zaman erişilebilir; renk yalnız vurgu noktası, proje paleti kalıbıyla ve kontrast ölçümüyle |
 
-### OPH-196 — UX araştırma dosyası + tasarım kalibrasyonu (kod yazmaz)
+### OPH-196 — UX araştırma dosyası + tasarım kalibrasyonu (kod yazmaz) ✅ 2026-07-29
 
-- [ ] **Kaynaklı araştırma pası (OPH-168'in NN/g kalıbı):** (a) **yüzen düğme**
+- [x] **Kaynaklı araştırma pası (OPH-168'in NN/g kalıbı):** (a) **yüzen düğme**
       deyimleri — iOS AssistiveTouch (kenara yapışma, boşta yarı gömülme + soluklaşma
       davranışının gerçek süre/oranları), Messenger chat heads (çoklu kenar fiziği),
       Material'ın FAB/overlay kuralları (yüzen kalıcı düğme ile sağ-alt quick-add
@@ -4471,18 +4471,18 @@ yüzen düğmenin dokunuş hissi cihazda gözle doğrulanır ama DoD'yi kilitlem
       sidebar (Favorites bölümü, hover menü, sürükleyerek sıra), Slack (özel
       bölümler), Things/Todoist (sabit akıllı listeler — bizimkinden farkı).
       Bulgular kısa karşılaştırma tablosuyla bu taskın altına işlenir (kalıcı referans).
-- [ ] **DESIGN §23 kalibre edilir:** planlama turunda yazılan Q1–Q8 kurallarının
+- [x] **DESIGN §23 kalibre edilir:** planlama turunda yazılan Q1–Q8 kurallarının
       sayısal varsayılanları (56 px çap, 3 sn boşta gecikmesi, ~%55 soluklaşma,
       %35 fabrika yüksekliği, yarı gömülme miktarı) araştırmayla ya doğrulanır ya
       **§23 içinde** revize edilir — değer başka yerde değişmez (sapma DESIGN'a
       yazılır, AGENTS sert kural 11).
-- [ ] **ADR-0018 son okuma:** kaskad + kullanıcı-filtresi kararı implementasyon
+- [x] **ADR-0018 son okuma:** kaskad + kullanıcı-filtresi kararı implementasyon
       gözüyle yeniden okunur; değişiklik gerekirse süpersede kuralıyla yapılır
       (sessiz düzeltme yok).
-- [ ] **Erişilebilirlik ön kontrolü:** VoiceOver/TalkBack'te sürüklenen overlay
+- [x] **Erişilebilirlik ön kontrolü:** VoiceOver/TalkBack'te sürüklenen overlay
       düğmelerin bilinen davranışları (odak sırası, gizlenen öğenin anonsu)
       araştırılır; OPH-200'ün Semantics planı buna göre netleşir.
-- [ ] **Park listesi kesinleşir:** Android sistem-geneli overlay (SYSTEM_ALERT_WINDOW —
+- [x] **Park listesi kesinleşir:** Android sistem-geneli overlay (SYSTEM_ALERT_WINDOW —
       ayrı izin, istila edici, ayrı tur), iOS'ta uygulama dışı overlay (OS izin
       vermez — yazılı sınır), kısayol klasörleri/iç içe liste, OG başlık çekme
       (unfurl proxy'ye bağlı), workspace-paylaşımlı ekip listesi, emoji-picker
@@ -4492,6 +4492,31 @@ yüzen düğmenin dokunuş hissi cihazda gözle doğrulanır ama DoD'yi kilitlem
 metinler (BLUEPRINT §4.12/§12.15, DESIGN §23, ADR-0018) planlama turunda (2026-07-29)
 yazıldı; bu task onları kaynaklı araştırmayla sınar ve sayıları sabitler. Sonraki altı
 task o metinlere atıf yapar, yeniden karar VERMEZ.
+
+#### OPH-196 bulguları — yüzen düğme deyimleri (kalıcı referans)
+
+| Ürün | Ne yapıyor | Bizde karşılığı |
+| ---- | ---------- | --------------- |
+| **iOS AssistiveTouch** ([Apple/AbilityNet](https://mcmw.abilitynet.org.uk/how-to-control-your-device-using-assistivetouch-in-ios-26-on-your-iphone-or-ipad)) | Düğme sürüklenir, ekranın herhangi bir kenarına park eder; **"birkaç saniye" sonra %40 opaklığa soluklaşır** (Ayarlar'da **Idle Opacity** slider'ı, kullanıcı %15–%100 arası seçer). Mahir'in "o beyaz nokta" dediği tam bu. | Q4 **%55 → %40** olarak revize edildi (platformun kendi varsayılanı). 3 sn gecikme "birkaç saniye"nin içinde kalır ve ölçülebilir bir sayıdır → korundu. Kullanıcıya opaklık slider'ı **verilmiyor** (tek anahtar yeter, ayar enflasyonu yok) — istenirse park kuyruğundan gelir. |
+| **Messenger chat heads** ([ishadeed teardown](https://ishadeed.com/article/facebook-messenger-chat-component/), [brutella/chatheads](https://github.com/brutella/chatheads)) | Bırakınca **en yakın sol/sağ kenara yaylanarak** yapışır; ekranın **bir kısmı dışarıda** kalır ki alanı kaplamasın; kapatma için alttaki X hedefine sürüklenir. | Kenar yapışma + yarı gömülme birebir alındı (Q4/Q4a). **X kapatma hedefi ALINMADI**: bizim düğmemiz sohbet değil kalıcı bir gezinme rayı; kapatma yolu Ayarlar anahtarıdır (Q5) — kazara sürükleyip yok etmek geri alınamaz bir kayıp hissi verirdi. Android 11'de Messenger'ın kendisi de chat head'i **Bubbles API**'sine taşıdı; sistem-geneli overlay ayrı bir dünya (park). |
+| **Material 3 FAB** ([m3.material.io](https://m3.material.io/components/floating-action-button/guidelines)) | "Ekran başına **tek** FAB önerilir" — FAB ekranın **en önemli tek eylemini** temsil eder. | Hızlı erişim düğmesi bir FAB **değildir** (eylem değil gezinme) → Q4c yazıldı: sağ-alt quick-add FAB'ı yerinde kalır, bubble karşı tarafta yaşar, modal açıkken ikisi birden görünmez. |
+| **Notion sidebar Favorites** ([Notion Help](https://www.notion.com/help/navigate-with-the-sidebar)) | Sayfanın üstündeki ⭐ ile eklenir/çıkarılır; bölüm başlığına tıklayınca **katlanır**; içindeki sayfalar **sürüklenerek sıralanır**; ad/emoji **sayfanın kendisinden** gelir — kısayola özel değildir. | Toggle + katlama + sürükleme aynen (Q1, OPH-199). **Ayrıldığımız yer:** bizde ad/emoji/renk **kısayola aittir** (BLUEPRINT §4.12) — hedefin adı değişince kısayol adı değişmez, satır farkı gösterir ve tek dokunuşla eşitlenir. Gerekçe: liste proje/görev/not/dosya/link karışımı; hedef adları uzun ve teknik olabiliyor. |
+| **Slack özel bölümler** ([Slack Help](https://slack.com/help/articles/360043207674-Organize-your-sidebar-with-custom-sections)) | Bölümler **yalnız kullanıcıya görünür** ("won't affect what your coworkers see"), emoji verilebilir, katlanır; sayı sınırı yok ama pratik öneri 3–5. | ADR-0018'in kullanıcı-kapsamlılığını doğrular (aynı workspace, kişisel liste). Bizde tek bölüm var; **kısayol klasörleri park** — 50'lik tek liste için ikinci bir hiyerarşi seviyesi karmaşa katardı (Slack'in kendi önerisi de "az bölüm"). |
+| **Things/Todoist sabit listeler** | Kenar çubuğu **ürünün tanımladığı** akıllı listelerdir (Bugün/Yaklaşan/Filtreler); kullanıcı yeniden sıralayabilir ama karışık-varlık kısayolu ekleyemez. | Bizim yüzeyimizin **farkı** budur: gezinme hedefleri zaten `AppSection` destination'ları; Hızlı Erişim onların altında, tamamen kullanıcı-derlemesi bir bölümdür ve **destination değildir** (seçili sekme state'i bozulmaz). |
+
+#### OPH-196 bulguları — erişilebilirlik
+
+- **Sürükleme tek yol olamaz.** Ekran okuyucu kullanıcısı sürüklemeyi nişanlayamaz; literatürün
+  standart cevabı **paralel yol**: satır başına "Yukarı taşı / Aşağı taşı" eylemleri + yeni
+  konumun canlı bölge ile duyurulması ([Smashing: Dragon Drop](https://www.smashingmagazine.com/2018/01/dragon-drop-accessible-list-reordering/),
+  [React Spectrum: Taming the dragon](https://react-spectrum.adobe.com/blog/drag-and-drop.html)).
+  → **DESIGN §23 Q9** yazıldı; OPH-199/200 her iki yolu da taşır (`quick.moveUp`/`quick.moveDown`).
+- **Yüzen düğmenin etiketi.** FAB'ların %93'ünün içerik açıklaması yok (denetim bulgusu) — bizim
+  düğme `Semantics(button: true, label: quick.title)` taşır; sürükleme **erişilebilir bir gereklilik
+  değildir** (konum bir tercihtir, işlev panelin kendisidir), bu yüzden ekran okuyucuda düğme tek
+  odak durağıdır ve tüm eylemler panelin menülerinde tekrar sunulur.
+- **Odak sırası:** overlay Navigator'ın üstünde yaşadığı için varsayılan gezinme sırasında en sona
+  düşer; `accessibilityTraversal*` benzeri müdahaleler "yalnız zorunluysa" öneriliyor → müdahale yok.
 
 ### OPH-197 — API: `quick_links` migration + CRUD + sync varlığı
 
@@ -4991,11 +5016,19 @@ kapalı olduğu bu epic'in değişmezidir — gevşetme ancak yeni ADR'yle.
   Tamamlananlar ekranında arama + `cancelled`/`archived` sekmesi; Pano kartlarında
   kaydırarak silme (yatay pager jest çakışması); sunucu tarafı "tamamlananlar" ucu
   (bugün tamamen yerel replikadan okunuyor).
-- **Round 11 park kuyruğu — Hızlı Erişim (kararı OPH-196 kesinleştirir):** Android
-  sistem-geneli overlay düğmesi (SYSTEM_ALERT_WINDOW — ayrı izin ve istila, kendi turu);
-  iOS'ta uygulama dışı yüzen düğme (OS üçüncü partiye izin vermez — yazılı sınır);
-  kısayol klasörleri / iç içe liste; dış linklerde OG başlık çekme (unfurl proxy'ye
-  bağlı); workspace-paylaşımlı ekip kısayol listesi; emoji-picker paketi (tam ızgara).
+- **Round 11 park kuyruğu — Hızlı Erişim (OPH-196'da kesinleşti, 2026-07-29):** Android
+  sistem-geneli overlay düğmesi (SYSTEM_ALERT_WINDOW — ayrı izin ve istila, kendi turu;
+  Messenger bile chat head'i Android 11'de Bubbles API'sine taşıdı, yani "uygulama dışı
+  yüzen düğme" artık OS'un kendi kanalı üzerinden yapılan bir iştir); iOS'ta uygulama dışı
+  yüzen düğme (OS üçüncü partiye izin vermez — yazılı sınır); kısayol klasörleri / iç içe
+  liste (tek 50'lik liste için ikinci hiyerarşi seviyesi; Slack'in kendi önerisi de "3–5
+  bölüm"); dış linklerde OG başlık çekme (unfurl proxy'ye bağlı); workspace-paylaşımlı ekip
+  kısayol listesi (ADR-0018 "shared team list" alternatifi — additive, v2); emoji-picker
+  paketi (tam ızgara — ADR gerektirir, gerekçesi yok); **kısayol renginde sınırsız palet**
+  (`_ColorGridDialog`'un tüm `Colors.primaries` seti — DESIGN §23 Q8a: sınırsız fille
+  kontrast garanti edilemiyor, kısayolda yalnız 10'luk palet sunuluyor); **yüzen düğme
+  opaklık slider'ı** (AssistiveTouch'ta var; bizde tek anahtar + %40 sabiti yeterli sayıldı);
+  kısayol satırından hedefi yeniden adlandırma (kısayol adı hedefin adı değildir — §4.12).
 - **Round 11 park kuyruğu — AI (gerekçeler TASKS Epic 19 + [AI.md](AI.md)):**
   abonelik-OAuth entegrasyonu (üç sağlayıcıda da kapalı/bekleme listesi — üç ayda bir
   yeniden bakılır; `auth_mode='oauth_subscription'` rezerve); sohbette yazma araçları

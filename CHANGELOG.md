@@ -5,6 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed — Epic 18 in progress
+
+- **Quick Access design calibrated against the real idioms (OPH-196, docs only).**
+  The floating button's idle dim moves from a guessed 55 % to the platform's own
+  **40 %** (AssistiveTouch's documented default), the half-recede becomes a
+  paint-only effect so the 44 px tap target survives, and the shortcut's colour
+  dot gains a 1 px ring — because 5 of the 10 palette colours cannot clear 3:1 as
+  a bare fill, and the palette is reused verbatim by design. Dragging is now
+  explicitly never the only way to reorder (per-row move up/down actions).
+  DESIGN §23 Q4/Q4a–Q4c/Q8a/Q9, ADR-0018 consequences, BLUEPRINT §4.12
+  (`color` → `color_rgb`, emoji cap is graphemes-in-16-chars, not bytes).
+
 ### Planned — request round 11 (2026-07-29, docs only; no code yet)
 
 - **Epic 18 — Quick Access (OPH-196…203, toward v0.7.0).** A Notion-style personal

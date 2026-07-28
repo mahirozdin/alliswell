@@ -83,6 +83,23 @@ user-filtered** — the first user-scoped entity in the protocol.
   clause, but it is **protocol precedent**: entity handlers may scope rows by
   user. The integration suite gains a two-user isolation test (member A's link
   never reaches member B's pull) that pins the behavior forever.
+- **The filter is two edits, not one (added 2026-07-29, OPH-196's implementation
+  read).** Filtering inside the snapshot loader alone would leak: the pull turns
+  any id whose snapshot is missing into a tombstone, so member B would receive a
+  stream of `operation: 'delete'` rows carrying member A's quick-link ULIDs and
+  write timings. Rows a caller may not see are therefore **dropped from the
+  change list entirely**, tombstones included. Cursor safety is unaffected —
+  `toRevision` and `hasMore` are derived from the raw revision window before
+  snapshots load, so a batch that is entirely another member's writes returns
+  no changes and still advances the client past them.
+- **Quick links are only ever soft-deleted, and that is now load-bearing (same
+  read).** Because invisible rows are dropped rather than tombstoned, a hard
+  delete would swallow the *owner's* tombstone too and strand the row on their
+  other devices. Every delete path — user action, target cascade, sync push —
+  writes `deleted_at` (and nulls `target_id`, freeing the uniqueness slot so the
+  same target can be re-added). The single exception is account purge, where the
+  FK cascade removes rows whose owner no longer exists and whose absence was
+  already invisible to every surviving member.
 - Delete paths for five entities gain a `quick_links` cleanup join — the same
   pattern as the attachment cascade, and covered by the same transaction tests.
 - The replica gains a small table (drift v13) and every client a

@@ -738,8 +738,9 @@ Two consequences, binding on every future task:
 
 _(Added 2026-07-29, request round 11 #1: "Notion'daki sol menü gibi… mobilde iPhone'un
 o beyaz noktası gibi sürüklenip bırakılan, tıklayınca aynı listeyi açan bir düğme."
-Entity: BLUEPRINT §4.12; sync decision: ADR-0018. OPH-196's research pass calibrates
-the numeric defaults below and may revise them — in this file, never ad hoc.)_
+Entity: BLUEPRINT §4.12; sync decision: ADR-0018. **Calibrated 2026-07-29 by OPH-196's
+research pass** — the revised numbers and the three resolved conflicts are marked
+"(OPH-196)" below; sources sit under OPH-196 in TASKS.md.)_
 
 - **Q1 — One list, three surfaces.** The extended rail section (≥1160), the narrow
   rail's popover and the phone's floating-button panel render the **same store in
@@ -763,10 +764,30 @@ the numeric defaults below and may revise them — in this file, never ad hoc.)_
   device-locally as edge + height fraction, clamped inside safe areas and above
   the keyboard inset. Factory position: right edge, 35 % height — deliberately far
   from the quick-add FAB's corner. After 3 s idle it half-recedes into the edge and
-  dims to ~55 % opacity (the AssistiveTouch idiom); any touch restores it fully.
-  While a modal route (dialog, sheet) is open, and on auth/onboarding screens, the
-  bubble is hidden entirely — a floating control over a modal is two competing
-  surfaces.
+  dims to **40 % opacity — the platform's own default, not a taste call (OPH-196:
+  AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
+  any touch restores it fully. While a modal route (dialog, sheet) is open, and on
+  auth/onboarding screens, the bubble is hidden entirely — a floating control over
+  a modal is two competing surfaces.
+- **Q4a — The recede is paint, never the hit box (OPH-196).** Q4's two clauses
+  fight: a 56 px control translated half off-screen leaves a 28 px target and
+  breaks §5's 44 px floor. So the gesture/`Semantics` box stays fully on-screen at
+  56×56 and never moves; only the painted circle inside it slides toward the edge
+  and is clipped by it. This is what AssistiveTouch and Messenger's chat heads
+  actually do ("partially moved outside of the screen", snap-with-bounce on
+  release) and it keeps the target legal while the button still looks parked.
+- **Q4b — The 40 % dim is a named exception to §20 C3 (OPH-196).** C3 bans
+  `Opacity` for calm because dimmed text stops being measurable. The receded
+  bubble carries no text anyone is asked to read and returns to full strength on
+  first touch, so it is the one place an opacity animation is correct. Its own
+  colour pair (glyph on container) is contrast-checked at **full** opacity in
+  `scripts/design/contrast.py`; the exception is written in the code that
+  implements it, never re-derived.
+- **Q4c — The bubble is not a FAB (OPH-196).** Material's rule is one FAB per
+  screen for the screen's single most important action; the quick-add FAB owns
+  that slot and does not move. The bubble is a persistent *navigation* control,
+  which is why it must live on the opposite side of the screen, must be
+  switch-off-able (Q5), and must never render while a FAB-bearing modal is up.
 - **Q5 — The bubble is optional and never the only way.** Settings owns a toggle
   (factory: on). The bubble only appears when the list is non-empty. When the
   toggle is off — or on platforms without the bubble — the entry point is a `bolt`
@@ -783,8 +804,28 @@ the numeric defaults below and may revise them — in this file, never ad hoc.)_
 - **Q8 — Color is an accent, never a text color.** The user's color renders as a
   10 px dot (and the panel row's leading tint at most); titles and subtitles keep
   their normal `onSurface` roles so the ≥4.5:1 floor never depends on user input.
-  The dot must clear 3:1 against the surface in both themes; the swatch set is the
-  project palette, reused verbatim — no second palette is invented.
+  The swatch set is the project palette, reused verbatim — no second palette is
+  invented.
+- **Q8a — The dot carries its contrast in a ring, not in its fill (OPH-196).**
+  "≥3:1 against the surface" and "the project palette verbatim" cannot both hold
+  for a bare fill: measured against the real surfaces, **5 of the 10 palette
+  colours fail in light** (#F59E0B 2.15, #14B8A6 2.49, #10B981 2.54, #0EA5E9 2.77,
+  #F97316 2.80 on `#FFFFFF`; worse on glass) — and project colour is not even
+  bounded to the palette, since the full grid offers any `Colors.primaries` shade.
+  So the dot is the user's colour filled, with a 1 px `outline`-token ring
+  (`#63789E` light 4.46:1, `#7186B5` dark — both already guarded). WCAG 1.4.11
+  measures the *boundary* of a non-text control, and the ring is that boundary;
+  the fill stays honest to what the user picked. Quick Access therefore offers the
+  10-swatch palette only — the unbounded grid stays in the parking lot, because
+  no ring can rescue a fill nobody bounded.
+- **Q9 — Dragging is never the only way to reorder (OPH-196).** Drag-and-drop is
+  the one interaction a screen-reader user cannot aim: the accessibility
+  literature's standing answer is a parallel path — per-row "Move up" / "Move
+  down" actions plus a live-region announcement of the new position. Every Quick
+  Access surface therefore carries both: the pointer/touch drag handle **and**
+  `quick.moveUp` / `quick.moveDown` in the row's own menu. Same rule, same reason
+  as §19 D2 and the K3 board lesson; the bubble's *position* needs no such twin,
+  because position is a preference and the panel is the function.
 
 ## 24. AI surfaces: the FAB, the bubble, the confirm card (round 11 — Epic 19)
 

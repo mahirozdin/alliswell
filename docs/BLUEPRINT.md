@@ -409,8 +409,13 @@ klasör, dosya veya dış URL. Notion'ın kenar çubuğu favorileri zihin modeli
 
 Alanlar: `id`, `workspace_id`, `user_id`, `kind` (`project|task|note|folder|file|url`),
 `target_id` (nullable — yalnız varlık kind'larında), `url` (nullable — yalnız `url`
-kind'ında, `http/https`), `title`, `emoji` (nullable, tek grafem), `color` (nullable,
-proje paleti), `sort_order`, `revision`, `created_at`, `updated_at`, `deleted_at`.
+kind'ında, `http/https`), `title` (≤200), `emoji` (nullable, **tek grafem**;
+kolon `varchar(16)` — MySQL karakter sayar, yani ZWJ dizileri de sığar), `color_rgb`
+(nullable, proje paleti — üç kardeş tablodaki adla aynı), `sort_order`, `revision`,
+`created_at`, `updated_at`, `deleted_at`.
+_(Kolon adı ve emoji sınırı 2026-07-29'da OPH-196'da netleşti: planlama turunda `color` ve
+"≤16 bayt" yazılmıştı; `projects/tags.color_rgb` ile hizalandı ve bayt→karakter düzeltildi —
+bir aile emojisi tek grafem ama 25 bayttır.)_
 
 Kurallar:
 
