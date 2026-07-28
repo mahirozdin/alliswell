@@ -16,6 +16,15 @@
 > ring screen must MAKE SOUND) + A5/A6 added (mute state, alarm log); new
 > §15 pull-to-refresh, §16 Home scroll layering, §17 date & time display,
 > §18 reminder system settings.
+>
+> **Rev. 2026-07-28 (feedback round 10, Epic 17):** §4 "Backgrounds" **changed**
+> (a route is opaque to the route beneath it — the old single-wash rule shipped
+> the transition ghosting bug) and §8 W6 tightened + W9 added (widget date header
+> + today's open count); §17 D5 added (one date *input* path — editing must not
+> rewrite the time), §18 N6 extended (a preview must be stoppable, and every
+> choosable sound is previewable); new **§19 destructive actions & swipe to
+> delete**, **§20 completed work**, **§21 screen transitions**, **§22
+> reachability**.
 
 ## 1. Design language in one paragraph
 
@@ -130,9 +139,15 @@ Tabular figures for day numbers and timers.
   chrome-only (G1) — never under body text, never glass-on-glass.
 - **App bars:** transparent over the wash, title left, `titleLarge` w700,
   no elevation/tint.
-- **Backgrounds:** `AuroraBackground` is painted ONCE in `app.dart`
-  (`MaterialApp.builder`); scaffolds use the translucent `veil` token.
-  Never stack another wash inside a screen.
+- **Backgrounds** _(rev. 2026-07-28, feedback round 10 #10 — OPH-194; this rule
+  changed, see §21):_ every route paints its **own opaque backing** (aurora +
+  `veil`, composited by the shared `AwPageBackground`). The wash still appears
+  exactly once per screen — never stack a second one inside a screen — but it is
+  **no longer painted below the Navigator**. The old rule (one `AuroraBackground`
+  in `MaterialApp.builder` + translucent `veil` scaffolds) shipped a visible bug:
+  the veil is ~50 % opaque, so during any push/pop the outgoing route showed
+  through the incoming one and read as a stuck, ghosting screen. **A route must
+  never be see-through to the route beneath it.**
 - **Overdue** dates render in `error` color w600 with the word "Overdue".
 - **Stars (favorite/pin)** use `AwTokens.warning`, never `Colors.amber`.
 - **Project badge (task rows — added 2026-07-17, feedback round 4, OPH-104):**
@@ -215,6 +230,20 @@ still *read as AllisWell*. Rules:
   the "Project badge" (§4) so it stays ≥ 4.5:1.
 - **W6 — Date header** (large/extraLarge): weekday **name** + big **day number**,
   tabular figures, mirroring the Apple-Calendar reference and DESIGN §3.3.
+  _(Rev. 2026-07-28, feedback round 10 #4A/#4B — OPH-187:)_ the day number and the
+  weekday/month stack are **optically centred on each other**, not baseline-aligned:
+  aligning a 34 pt number's baseline to a 14 pt label's baseline leaves the month
+  line hanging below and reads as a typo. **iOS and Android must draw this header
+  identically** (W1's parity rule applied to layout, not just color) — the two
+  platforms disagreed for a whole release because nobody compared them side by side.
+  The header's right edge carries **today's open count** (see W9); at 0 the badge
+  is hidden, because a badge reading "0" is noise, not information.
+- **W9 — One number, and it is the honest one.** The count next to the date is
+  "what is on me today" = **overdue + due today**, including snoozed and muted
+  tasks (they are still open work). Dateless tasks are excluded — they belong to
+  every day, so they would inflate every day. The number is computed in the Dart
+  snapshot (pure + unit-tested), never in native code, and its label ships
+  pre-localized in `strings` like every other widget word.
 - **W7 — Density per size** (WIDGETS.md §5): 4×2 = header + 3–4 rows, no bucket
   labels; 4×4 = bucketed scroll ~8–10 rows + labels/counts; extraLarge/4×6 =
   richest, optional week strip. Truncate with an honest "+N more", never silently.
@@ -509,6 +538,15 @@ ayarlardan kullanıcı seçebilecek".)_
 - **D4 — Rows stay short.** List rows use the short form (no year inside the
   current year, time always 24h/12h per the chosen format); detail rows and
   pickers use the full form. Same source, two lengths.
+- **D5 — One date *input* path, the way there is one date *formatter*** _(added
+  2026-07-28, feedback round 10 #6 — OPH-191):_ any field that STORES a time must
+  ASK for a time. Every such field calls the shared `awPickDateTime` helper
+  (date picker → time picker; empty field opens on tomorrow per OPH-173; a
+  dismissed clock falls back to the user's default task time per OPH-161).
+  Round 10 found the create sheet asking for date+time while the detail screen
+  asked for date only and then **silently rewrote 14:30 to 23:59** — the same
+  field, two behaviours, and the destructive one was invisible. **Editing a value
+  must never change a part of it the user did not touch.**
 
 ## 18. Reminder system settings (round 9 — OPH-179 / OPH-181)
 
@@ -543,7 +581,145 @@ kurumsal, adım adım tasarlanabilir bir alan".)_
   for (≤30 s + caf/wav/aiff for OS notifications; anything else can still serve
   the in-app bed) — an unusable file is refused with a reason at upload time,
   not by silence at alarm time.
+  _(Rev. 2026-07-28, feedback round 10 #5 — OPH-190:)_ **hearing it means being
+  able to stop it.** A preview MUST be stoppable by the control that offers it
+  (a stop icon that is disabled is worse than no icon), tapping another sound
+  MUST switch immediately rather than queue behind the first, and leaving the
+  screen MUST silence it — audio that outlives the surface that started it is the
+  one outcome this section forbids. **Every sound the user can choose is
+  previewable, including their own uploads** — a library you can only audition
+  half of is not a library.
 - **N7 — The whole area obeys the alarm-honesty rules.** Every claim here is
   checked against what the OS actually allows (§11 A4/A6): a profile the device
   cannot deliver exactly, a sound iOS cannot resolve, or a mute switch that will
   silence the lane must be said in words, on this screen.
+
+## 19. Destructive actions & swipe to delete (round 10 — OPH-184)
+
+_(Added 2026-07-28. Round 10 #1: "Task silme? Yok. Sağa kaydırma, listeden ya da
+detayın en altında — ikisinde de olmalı … ayrıca eklemesi düzenlemesi olan ama
+silinmesi unutulmuş başka bişey var mı, iyice bakılması lazım".)_
+
+The audit that produced this section found the delete **engine** complete —
+optimistic local delete, outbox mutation, server subtree tombstone, attachment
+cascade, reminder reconcile — and **no button anywhere on a task row**. That is
+the failure mode this section exists to prevent: a capability nobody can reach is
+not a shipped capability.
+
+- **D1 — Every list row that can be created can be deleted, from the list.**
+  Reaching a detail screen to delete is a fallback, not the path. Deletion is
+  offered by a **swipe from the trailing edge that half-opens and waits** — the
+  Apple idiom the user described: the swipe reveals a `Sil` button, and the
+  button is what deletes. A single fling must not destroy anything.
+- **D2 — Gestures are never the only way.** Every swipe action also exists as a
+  visible control: the row's overflow menu, the detail screen's app-bar action,
+  or a long-press equivalent. Mice do not swipe (the §15 R5 lesson) and neither
+  do switch-control users. A destructive action reachable **only** by gesture is
+  an accessibility defect, not a design choice.
+- **D3 — Two grades of confirmation, chosen by consequence.** A leaf delete
+  (task, note) uses **no dialog**: the row leaves and an **Undo** snackbar takes
+  its place. A delete that **cascades or cannot be reasoned about from the row**
+  (project, folder, tag) keeps its confirmation dialog, because the cascade
+  question must never be skipped (the OPH-110 rule generalized).
+- **D4 — Undo is real, not cosmetic.** "Undo" means the mutation has not
+  happened yet: the row is hidden optimistically and the actual delete commits
+  when the snackbar closes or the screen is left. If the app dies in between,
+  **nothing was deleted** — the safe direction. An "Undo" that must re-create the
+  record is not offered, because it cannot restore identity.
+- **D5 — Destructive visuals are the error role, everywhere.** The revealed
+  action pane uses `colorScheme.error` / `onError`, the confirm button is the
+  error-colored `FilledButton` of §4, and both are contrast-checked in light and
+  dark like any other surface.
+- **D6 — Deliberate exception: horizontally paged surfaces.** Board cards live
+  inside a horizontal `PageView` that owns the horizontal gesture; a swipe action
+  there would either fight the pager or kill the way back to the List. The board
+  offers delete in the card's status sheet instead — stated here so the gap is a
+  decision, not an oversight.
+
+## 20. Completed work: it stays, then it moves (round 10 — OPH-185 / OPH-186)
+
+_(Added 2026-07-28. Round 10 #2 and #3: "tamamlandı olarak işaretlediğimde
+kayboluyor — hayır, aynı gün içinde aynı gününde gözükmeli … tüm tamamlananları
+bir yerden görmek gibi bişey olabilmeli".)_
+
+- **C1 — Completing is feedback, not disappearance.** A task completed today
+  stays in its own group for the rest of the local day, sorted to the **end** of
+  that group. Vanishing at the instant of the tap makes the user doubt what they
+  just did, removes the only natural undo (tap it again) and hides the day's
+  progress. At the next local midnight it leaves the planning lists.
+- **C2 — Done work is quiet, not dead.** The whole row calms down together:
+  `surfaceContainerLow` card, struck-through title in `onSurfaceVariant`, muted
+  date/subtitle, and the alarm chips (urgent marker, snoozed, muted) **removed** —
+  a finished task has no alarms, so showing them would be a false claim (§11 A5),
+  not just noise. The check circle keeps its **full-strength** `success` fill:
+  muting it toward the surface was measured and drops the check glyph to ~2.3:1,
+  under the §5 floor. The calm comes from the row, not from weakening the one
+  mark that says "done" — which is also how Apple Reminders reads.
+- **C3 — Calm is built from tokens, never from `Opacity`.** An opacity wrapper
+  makes contrast unmeasurable and silently voids the §5 floors (≥ 4.5:1 text,
+  ≥ 3:1 icons). Every muted value is an explicit token pair that `contrast.py`
+  checks — the completed row contributes eight of them (title/body ink and the
+  success fill + its glyph, in both themes). The completed treatment must also
+  stay visually distinct from the selected-day `dimmed` treatment — two
+  different meanings may not share one look.
+- **C4 — Yesterday's work has an address.** Everything completed lives in
+  **Settings → Tamamlananlar**: a reverse-chronological timeline, day-headed,
+  paged as the user scrolls, sorted by **the task's own date when it has one and
+  by its completion time when it does not**. It reads from the local replica —
+  the data is already there, and an archive that needs the network is an archive
+  you cannot trust. Its scope is stated above the data (v1: `completed` only),
+  the way the alarm log states its own.
+- **C5 — The widget agrees with the app.** The same day-long persistence and the
+  same muted row apply to the home-screen widget (§8 W6/W9). A task the app shows
+  as done today and the widget shows as gone is the contradiction §17 D3 already
+  rules out for dates.
+
+## 21. Screen transitions (round 10 — OPH-194)
+
+_(Added 2026-07-28. Round 10 #10: "sola doğru kayarak başka sayfaya geçerken
+önceki sayfanın silueti kalıyor, 1 sn sonra siliniyor — donma takılma gibi
+duruyor". It was not a performance problem; it was this design system's own
+background rule.)_
+
+- **T1 — A route is opaque to the route beneath it.** During a push or pop both
+  routes are mounted; if the incoming screen's background is translucent, the
+  outgoing screen shows through it and reads as lag. Screen backgrounds are
+  therefore composited **per route** (§4 "Backgrounds"), not inherited from a
+  single wash under the Navigator. This is testable and must be tested: pump a
+  transition halfway and assert the outgoing screen's content is **not** on
+  screen.
+- **T2 — One transition family, all platforms.** `pageTransitionsTheme` is set
+  explicitly, at `AwMotion.base` (220 ms). Leaving it unset means Android gets
+  Zoom, iOS gets a Cupertino slide and desktop gets a third thing — three
+  different products wearing one design system. Reduced-motion settings are
+  respected.
+- **T3 — Tabs are not a stack.** Switching sections in the shell
+  (`StatefulShellRoute.indexedStack`) is instant and animation-free; sections are
+  places, not pages you travel between (OPH-108). Only pushed routes — detail,
+  settings, editor — animate.
+- **T4 — Glass is measured during motion, not only at rest.** `BackdropFilter`
+  samples whatever is painted behind it, so a transition is where blur costs the
+  most and where it can sample the wrong thing. Any change to the glass chrome or
+  the background composition is profiled mid-transition on a real device.
+
+## 22. Reachability: the rule this round exists because of
+
+_(Added 2026-07-28, feedback round 10 #9.)_
+
+**A field in the schema, a method on the store or an endpoint on the server is
+not a feature until a person can reach it.** Round 10 was mostly not about
+missing code: task deletion, subtasks (`parent_task_id`, cascading server-side),
+manual ordering (`sort_order`), task color (`color_rgb`) and widget
+interactivity were all built, wired and tested at the layers below the UI — and
+invisible above it.
+
+Two consequences, binding on every future task:
+
+- **R1 — Every task that adds a capability names its surface.** "Where does the
+  user touch this, on phone and on desktop?" is part of Definition of Done, not
+  a follow-up. If the answer is "nowhere yet", that is written down in the task
+  and in the parking lot — never left implied.
+- **R2 — CRUD is audited as a matrix, not per feature.** Entities × {create,
+  read, update, **delete**, undo, empty state, error state, offline} is walked
+  deliberately (OPH-195). Delete is the cell that goes missing, because it is the
+  only one no happy-path demo ever exercises.

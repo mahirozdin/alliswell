@@ -62,6 +62,11 @@ List<WidgetGroup> groupTasksForWidget(
   }
 
   int chronologically(Task a, Task b) {
+    // OPH-185 (DESIGN §20 C5): the widget and the app agree — today's finished
+    // work is still visible, at the bottom of its bucket. `openTasksProvider`
+    // now carries it, so without this line the widget would sort a done task
+    // above a waiting one.
+    if (a.isCompleted != b.isCompleted) return a.isCompleted ? 1 : -1;
     final da = a.dueAt, db = b.dueAt;
     if (da == null && db == null) return a.sortOrder.compareTo(b.sortOrder);
     if (da == null) return 1;

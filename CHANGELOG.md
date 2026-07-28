@@ -5,6 +5,45 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **Delete, from the list** (OPH-184). Swipe a row from the trailing edge and it
+  half-opens to reveal a red **Delete** — the button is what deletes, so one
+  careless flick can never destroy anything. It is on tasks, captures, notes,
+  projects and files, plus the task detail screen, the notes and projects row
+  menus, the note card grid (which had no actions menu at all) and the board's
+  move sheet. Deleting a task or a note shows an **Undo** that works by not
+  having written anything yet: nothing reaches the database or the outbox until
+  the undo window closes, so if the app dies in between, nothing was deleted.
+  Deletes that cascade — projects, folders, files — keep their confirmation
+  dialog; the swipe is a shortcut *to* that question, never past it.
+  ([ADR-0017](docs/adr/0017-swipe-to-delete-package.md), DESIGN §19.)
+- **Settings ▸ Completed** (OPH-186): everything you have ever finished, newest
+  first, grouped by day and paged as you scroll — sorted by the task's own date
+  when it has one and by when you finished it when it does not. It reads the
+  local replica, so it works offline, and each row can be reopened or deleted.
+
+### Changed
+
+- **Completing a task no longer makes it vanish** (OPH-185). It stays in its own
+  group for the rest of the day — filled circle, struck through, calmly muted —
+  and drops off at the next local midnight, which now happens on its own instead
+  of waiting for the app to be reopened. The row is its own undo: tap the circle
+  again. Alarm chips (urgent, snoozed, silenced) disappear once a task is done,
+  because a finished task has no alarms and showing them was a false claim. The
+  home-screen widget follows the same rule, and calendar dots ignore finished
+  work. The muted look is built from tokens rather than an opacity wrapper, so
+  its contrast is measured like everything else (eight new pairs in the guard).
+- The projects list no longer prints a raw English status (`paused`) into a
+  Turkish UI; the only state a person recognises is archived, and it has a
+  localized label. The rest of that cleanup is OPH-193.
+
+### Fixed
+
+- A deferred delete could silently never happen: the commit closure captured a
+  widget's `WidgetRef`, and by the time the timer fired the row had left the
+  list and its element was disposed. Found by a test, not by a user.
+
 ## [0.5.0] - 2026-07-28
 
 The alarm release. Round 9 was the first time AllisWell was used *as an alarm

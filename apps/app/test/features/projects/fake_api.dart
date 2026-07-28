@@ -15,6 +15,11 @@ class FakeApi {
   final List<Map<String, dynamic>> notes = [];
   final List<String> requests = [];
 
+  /// Every mutation the client actually pushed, in order. Request paths alone
+  /// cannot answer "was the delete written?" — the outbox pushes on its own
+  /// schedule, so OPH-184's undo window needs the mutation, not the call.
+  final List<Map<String, dynamic>> pushedMutations = [];
+
   // ── Attachments (Epic 14, OPH-154+) ──────────────────────────────────────
   /// Is STORAGE_S3_* configured on the fake server? Flip to false to test the
   /// honest not-configured surfaces (F6).
@@ -134,6 +139,11 @@ class FakeApi {
     String? dueAt,
     String? scheduledStartAt,
     String? scheduledEndAt,
+
+    /// When a seeded task was finished. The server stamps this on the
+    /// transition, so a `status: 'completed'` seed without it is a row that
+    /// cannot exist in production — and OPH-185's day boundary reads it.
+    String? completedAt,
     bool calendarMirrorEnabled = false,
     List<String> tagIds = const [],
     List<Map<String, dynamic>> checklist = const [],
@@ -143,6 +153,9 @@ class FakeApi {
       'description': description,
       'projectId': projectId,
       'status': status,
+      'completedAt':
+          completedAt ??
+          (status == 'completed' ? '2026-07-14T12:00:00.000Z' : null),
       'priority': priority,
       'isUrgent': isUrgent,
       'dueAt': dueAt,
@@ -701,6 +714,7 @@ class FakeApi {
         .cast<Map<String, dynamic>>();
     final results = <Map<String, dynamic>>[];
     for (final m in mutations) {
+      pushedMutations.add(m);
       _bump();
       _applyMutation(m);
       results.add({
@@ -991,7 +1005,7 @@ class FakeApi {
       'estimatedMinutes': null,
       'actualMinutes': null,
       'sortOrder': 0,
-      'completedAt': null,
+      'completedAt': body['completedAt'],
       'revision': 1,
       'createdAt': '2026-07-14T10:00:00.000Z',
       'updatedAt': '2026-07-14T10:00:00.000Z',

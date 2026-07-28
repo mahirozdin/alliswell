@@ -136,6 +136,17 @@ void main() {
       // v11 (OPH-178): every existing task keeps its alarms — silence is asked
       // for, never inherited.
       expect(task.alarmsMutedAt, equals(null));
+      // v12 (OPH-186): the Completed archive's index exists after the upgrade.
+      // Asserted from sqlite's own catalogue, not from the migration code —
+      // an index the migration "ran" but SQLite never created is the failure
+      // mode worth catching.
+      final indexes = await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            "AND name = 'idx_tasks_completed'",
+          )
+          .get();
+      expect(indexes, hasLength(1));
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -143,7 +154,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 11);
+      expect(version.data['user_version'], 12);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -177,8 +188,19 @@ void main() {
       )..where((t) => t.id.equals('T2'.padRight(26, '0')))).getSingle();
       expect(task.calendarMirrorEnabled, isTrue);
 
+      // A fresh install gets the ad-hoc index too: drift's `createAll` only
+      // builds tables, so `onCreate` has to create it explicitly — otherwise
+      // new users would silently be the only ones on the full-scan path.
+      final indexes = await db
+          .customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'index' "
+            "AND name = 'idx_tasks_completed'",
+          )
+          .get();
+      expect(indexes, hasLength(1));
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 11);
+      expect(version.data['user_version'], 12);
       await db.close();
     },
   );

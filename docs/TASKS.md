@@ -2075,6 +2075,13 @@ device pass.**
 
 ### OPH-132 — iOS interactivity: quick-complete + quick-add (App Intents)
 
+> **Superseded 2026-07-28 by [OPH-188](#oph-188--widgettan-tamamlama-ios-app-intents--android-geri-çağırma-round-10-4c--cihaz)**
+> (feedback round 10 #4C — the user hit exactly this gap on the device). Round 9's
+> OPH-182 has since built the reusable pieces this task was missing: shared App Intents
+> compiled into **both** targets (`ios/Shared/AWAlarmShared.swift`) and an App Group
+> action queue that survives a cold app (`AWAlarmActionQueue` + `drainPendingActions`).
+> Do the work there; this box stays for history.
+
 - [ ] iOS 17+ `Button(intent:)` / `Toggle(isOn:intent:)` + a shared `AppIntent` that is a member of
       **BOTH** the Runner and Widget Extension targets → `HomeWidgetBackgroundWorker.run(url:
       appGroup:)` (`alliswell://complete?id=…` / `alliswell://add`).
@@ -2106,8 +2113,10 @@ app**, and confirm the change syncs (appears on another surface).
 - [x] **Tap → opens the app** via `HomeWidgetLaunchIntent` (`alliswell://open`) — deep-link floor.
 - [x] **Verified a real `flutter build apk`** (Kotlin + resources + manifest compile + link).
 - [ ] **Interactivity** (tap-to-complete / quick-add without opening the app) — `actionRunCallback`/
-      `HomeWidgetBackgroundIntent` → the Dart `widgetCallback` → `TaskStore` — DEFERRED (shared with
-      OPH-132; needs the background isolate + a device).
+      `HomeWidgetBackgroundIntent` → the Dart `widgetCallback` → `TaskStore` — **moved to
+      [OPH-188](#oph-188--widgettan-tamamlama-ios-app-intents--android-geri-çağırma-round-10-4c--cihaz)**
+      (round 10 #4C). Prerequisite found there: `TasksRemoteViewsFactory`'s `Row` record
+      **drops the task id**, so today no per-row action or per-row deep link is even possible.
 - [ ] **WorkManager** midnight re-push — DEFERRED (the app's foreground push covers the common case).
 - [x] **Device visual pass — DONE 2026-07-24:** verified on a real Android device (Blocker 3). The
       remaining `[ ]` above (interactivity + WorkManager) rides OPH-132's shared background isolate.
@@ -3615,6 +3624,582 @@ kural + `down` zorunlu; 180 yeni bağımlılık kategorisi → ADR-0015 kabul ed
 
 ---
 
+## Epic 17 — Feedback round 10: silme, tamamlananlar, widget, geçişler (Phase 11, v0.6.0)
+
+_(Doğdu 2026-07-28 — Mahir'in 10 maddelik listesi + istediği **kapsamlı UX taraması**.
+v0.5.0 canlıya alındıktan sonraki ilk "günlük kullanım" turu. Bağlayıcı metinler:
+[DESIGN](DESIGN.md) §19–§22 (yeni) + §4/§8/§17/§18 revizyonları,
+[WIDGETS](WIDGETS.md) §3.1/§4, BLUEPRINT §4.2/§4.3/§12.2/§12.4/§12.8/§12.14/§14 Phase 11,
+**yeni [ADR-0016](adr/0016-in-app-url-routing-and-widget-actions.md)**.
+Sıra bağlayıcı: **184→186 liste UX çekirdeği** → **191→194 tekil düzeltmeler** →
+**187→189 widget hattı** → **195 tarama**. 188 cihaz ister; kalan her şey cihazsız.)_
+
+> **Turun tek cümlesi:** bu round'da bulunan hataların çoğu "yazılmamış kod" değil,
+> **yazılmış ama yüzeye çıkarılmamış** yetenek. Silme motoru (store + outbox + API +
+> kaskad) tamamen hazırdı ve hiçbir görev satırında düğmesi yoktu; `parentTaskId`,
+> `sortOrder`, `colorRgb` aynı durumda. OPH-195 bunun sistematik taramasıdır.
+
+**Round 10'un kök nedenleri — kodda doğrulandı (2026-07-28):**
+
+| # | Şikâyet | Kodda kanıt |
+| - | ------- | ----------- |
+| 1 | Task silme yok | `TaskStore.delete` [task_store.dart:429](../apps/app/lib/src/features/tasks/data/task_store.dart#L429) + `DELETE /tasks/:id` [tasks.js:752](../apps/api/src/routes/tasks.js#L752) (alt ağaç + ek kaskadı) **hazır**; tek çağıran [task_list_screen.dart:150](../apps/app/lib/src/features/tasks/ui/task_list_screen.dart#L150) — yani **yalnız Fikirler satırında**. Task detayının app bar'ında silme **yok** ([task_detail_screen.dart:117](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L117) sadece tamamla/geri aç). `grep -r Dismissible apps/app/lib` → **0 sonuç**: uygulamada hiçbir yerde kaydırarak silme yok |
+| 1b | "Başka ne unutulmuş?" | **Not silme** yalnız editörde ([note_editor_screen.dart:253](../apps/app/lib/src/features/notes/ui/note_editor_screen.dart#L253)) — liste menüsünde yalnız arşivle ([notes_screen.dart:203](../apps/app/lib/src/features/notes/ui/notes_screen.dart#L203)). **Proje silme** yalnız detayda ([project_detail_screen.dart:115](../apps/app/lib/src/features/projects/ui/project_detail_screen.dart#L115)) — liste menüsünde düzenle+arşivle ([projects_screen.dart:188](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L188)) |
+| 2 | Tamamlanan görev kayboluyor | `watchOpen` = `status.isIn(kPlanningStatuses)` [task_store.dart:28](../apps/app/lib/src/features/tasks/data/task_store.dart#L28); `kPlanningStatuses` terminal statüleri dışlar [:14](../apps/app/lib/src/features/tasks/data/task_store.dart#L14) → satır **aynı karede** listeden düşüyor. `TaskTile`'ın tamamlanmış görünümü (üstü çizili + gri) [task_tile.dart:110](../apps/app/lib/src/features/tasks/ui/task_tile.dart#L110) bu yüzden Home'da **hiç görünmüyor** — yalnız Pano'nun completed sütununda. Tamamlamanın geri alması da yok (`SnackBarAction` yalnız Pano'da) |
+| 3 | Tamamlananları bir yerden görme yok | Ayarlar'da böyle bir satır yok; `completedAt` drift'te saklı ([database.dart:89](../apps/app/lib/src/sync/db/database.dart#L89)) ve pull hiçbir statüyü filtrelemiyor → **veri zaten replikada**, ekran yok |
+| 4A | Widget'ta gün/ay yazısı kayık | iOS `HStack(alignment: .firstTextBaseline)` — 34 pt gün sayısının **taban çizgisi** 14 pt hafta gününün taban çizgisine hizalanıyor, ay satırı altta sarkıyor ([AllisWellWidget.swift:123](../apps/app/ios/AllisWellWidget/AllisWellWidget.swift#L123)). Android aynı başlığı `gravity="center_vertical"` ile **ortalıyor** ([tasks_widget.xml:18](../apps/app/android/app/src/main/res/layout/tasks_widget.xml#L18)) → iki platform zaten birbirinden farklı çiziyor (W1 ihlali) |
+| 4B | Günün açık görev sayısı yok | Başlığın sağı `Spacer()` ([AllisWellWidget.swift:131](../apps/app/ios/AllisWellWidget/AllisWellWidget.swift#L131)); snapshot'ta **toplam sayı alanı yok** — yalnız kova başına `count` var ([widget_snapshot.dart:113](../apps/app/lib/src/features/widgets/widget_snapshot.dart#L113)) |
+| 4C | Widget'tan tamamlanamıyor | iOS satırındaki daire `Image(systemName:)` — statik, `Button(intent:)` değil ([AllisWellWidget.swift:140](../apps/app/ios/AllisWellWidget/AllisWellWidget.swift#L140)). Android satırı `TextView` "○"/"●" ([TasksWidgetService.kt:52](../apps/app/android/app/src/main/kotlin/com/alliswell/alliswell/TasksWidgetService.kt#L52)) ve `Row` **görev id'sini hiç taşımıyor** [:18](../apps/app/android/app/src/main/kotlin/com/alliswell/alliswell/TasksWidgetService.kt#L18). Zaten açık: **OPH-132** + OPH-133'ün son iki kutusu |
+| 4D | "No route for alliswell://open/" | Uygulama `alliswell://` şemasını **hiç kaydetmiyor**: `Info.plist`'te `CFBundleURLTypes` **yok**, `AndroidManifest.xml`'de deep-link `intent-filter` **yok**; ham URL go_router'ın konum eşleyicisine düşüyor. Hata sayfasındaki "Home" go_router'ın **varsayılan** hata ekranından geliyor (`errorBuilder` tanımlı değil) ve `/`'a gidiyor — **`/` diye bir rota yok**, bölümler `/home`, `/inbox`, … ([router.dart:63](../apps/app/lib/src/router.dart#L63), [sections.dart:16](../apps/app/lib/src/sections.dart#L16)) → ikinci hata |
+| 5 | Alarm önizlemesinde durdurma çalışmıyor | Üç ayrı kusur, hepsi [sound_picker_sheet.dart:65-80](../apps/app/lib/src/features/settings/sound_picker_sheet.dart#L65): (a) çalar **metodun içinde** yaratılıyor, state'te tutulmuyor → başka kimse durduramaz; (b) `onPressed: _previewing != null ? null : …` [:224](../apps/app/lib/src/features/settings/sound_picker_sheet.dart#L224) — ikon "stop"a dönüyor ama **düğme devre dışı**, basmak hiçbir şey yapmıyor ve **diğer sesler de kilitleniyor**; (c) `dispose()` **yok** → sheet kapansa bile `Future.delayed` süresi dolana kadar ses çalmaya devam ediyor. Ayrıca **yüklenen seslerin önizlemesi hiç yok** [:250](../apps/app/lib/src/features/settings/sound_picker_sheet.dart#L250) — DESIGN §18 N6 "sesi DUYARAK seçersin" der |
+| 6 | Düzenlerken saat seçimi gelmiyor | Detaydaki `_DateRow.onTap` yalnız `showDatePicker` çağırıyor, sonra **varsayılan görev saatini uyguluyor** ([task_detail_screen.dart:493-511](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L493)) → 14:30'luk bir görevin gününü değiştirmek saati **sessizce 23:59 yapıyor**. Oluşturma sheet'i ise date+time soruyor ([task_create_sheet.dart:120-152](../apps/app/lib/src/features/tasks/ui/task_create_sheet.dart#L120)). Detaydaki **üç satır da** (bitiş, planlanan, hatırlatma) aynı hatalı yolu kullanıyor |
+| 7 | "Planlanan tarih" nedir? | `_DateRow(key: 'scheduled-row')` yalnız detayda var ([task_detail_screen.dart:345](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L345)); BLUEPRINT §12.4'ün alan listesinde **hiç yok**. Ama alan ölü değil: `desiredEventForTask` takvim bloğunu **önce `scheduled_start_at`'ten** türetiyor ([mirror.js:21](../apps/api/src/lib/mirror.js#L21)) ve kullanıcı Google'da etkinliği sürüklediğinde inbound **`due_at`'i değil `scheduled_*`'ı yazıyor** ([inbound.js:15](../apps/api/src/lib/inbound.js#L15)) → satırı düz silmek, kullanıcının göremediği bir alanın takvim etkinliğini kilitlemesi demek |
+| 8 | Proje düzenlemede "durum" | `if (_isEdit)` dropdown'ı ([project_edit_sheet.dart:176](../apps/app/lib/src/features/projects/ui/project_edit_sheet.dart#L176)) — **yalnız düzenlemede var, eklemede yok**. Üstelik `Text(status)` ile **ham İngilizce enum** basıyor (`active`/`paused`/`completed`), aynı sızıntı iki yerde daha: [project_detail_screen.dart:197](../apps/app/lib/src/features/projects/ui/project_detail_screen.dart#L197), [projects_screen.dart:161](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L161). Arşivleme zaten ayrı bir akış (OPH-110) |
+| 10 | Geçişte önceki ekranın hayaleti | **`scaffoldBackgroundColor: tokens.veil`** ([theme.dart:147](../apps/app/lib/src/theme/theme.dart#L147)) ve veil **yarı saydam**: açık `0x94F5F9FF` = **%58**, koyu `0x7A0A102A` = **%48** ([tokens.dart:153](../apps/app/lib/src/theme/tokens.dart#L153)). `AuroraBackground` ise **Navigator'ın ALTINDA**, `MaterialApp.builder`'da tek sefer boyanıyor ([app.dart:47](../apps/app/lib/src/app.dart#L47)) → push/pop sırasında iki rota da ağaçtayken **gelen ekranın saydam zemininden giden ekran görünüyor**; geçiş bitip eski rota ağaçtan silinince hayalet kayboluyor. Tam olarak tarif edilen davranış. Ayrıca `pageTransitionsTheme` tanımlı değil → platform varsayılanları (Android Zoom, iOS Cupertino kaydırma) |
+
+> **Sürüm kararı:** 184–186 + 190–194 tek başına kullanıcıya hemen değer verir ve
+> tamamen cihazsızdır (**v0.5.1 ara sürümü olabilir**); 187–189 widget hattını
+> bütünler; 188 gerçek cihaz ister. Epic tamamlanınca **v0.6.0**.
+
+### OPH-184 — Silme her yerde: kaydırarak sil + detayda sil (round 10 #1) ✅ 2026-07-28
+
+- [x] **Karar + ADR (ilk iş):** "yarım açılır, sonra Sil'e basılır" Apple deyimini
+      Flutter'da veren yol seçilir. `Dismissible` **bunu vermez** (tek jestte siler);
+      seçenekler (a) `flutter_slidable` paketi, (b) elle `Stack` + sürükleme fiziği.
+      **Öneri: (a)** — geri açılma fiziği, RTL, klavye/erişilebilirlik ve fling eşiği
+      elle yazılınca sessizce yanlış olur ve bu ilkel **uygulamanın bütün yıkıcı
+      eylemlerini** taşıyacak. Yeni bağımlılık ⇒ AGENTS sert kural 6 ⇒ **ADR-0017**
+      (paket seçilirse). Görsel taraf tamamen bizim: eylem paneli `AwTokens` ile
+      giydirilir, cam kuralları (G1) geçerli.
+- [x] **Tek paylaşılan sarmalayıcı** `apps/app/lib/src/widgets/swipe_actions.dart` →
+      `AwSwipeToDelete({required Widget child, required Future<void> Function() onDelete,
+      String? confirmTitle, String? confirmBody, Key? actionKey})`: sağdan sola kaydırma
+      **yarı açılır** ve `error` renkli "Sil" düğmesini gösterir; düğmeye basmak siler.
+      Tap hedefi ≥ 44 px (DESIGN §5), `Semantics(button: true)` + `onLongPress` yedeği
+      (jest yapamayan kullanıcı için — erişilebilirlik yolu **zorunlu**, K3 dersi).
+- [x] **Geri alma modeli (bilinçli tasarım):** yıkıcı ama kaskadsız silmelerde
+      (**görev, not**) dialog YOK → satır anında gizlenir + **"Geri al" snackbar'ı**;
+      gerçek `store.delete()` snackbar kapanınca (≈5 sn) veya ekrandan çıkılınca
+      **ertelenmiş commit** olarak koşar. Uygulama arada öldürülürse silme HİÇ olmaz —
+      güvenli yön budur. Kaskadlı/kalıcı olanlar (**proje, klasör, etiket**) mevcut
+      onay dialog'unu korur (kaskad sorusu atlanamaz).
+- [x] **Kaydırarak silmenin ineceği yüzeyler:** `TaskTile` (Home Liste, proje Görevler
+      sekmesi, arama sonuçları), Fikirler `_CaptureTile` (bugünkü üç ikon kalabalığı
+      kaydırmaya devredilir), Notlar **liste VE ızgara**, Projeler listesi, Dosyalar
+      satırları (bugün eylem sayfasında — kaydırma kısayol olur, sayfa kalır).
+      **Bilinçli istisna: Pano kartları** — yatay `PageView` yatay jesti sahipleniyor,
+      çakışırsa sütun gezinmesi ölür; Pano'da silme kartın status sheet'ine eklenir.
+- [x] **Detay yüzeyleri:** `TaskDetailScreen` app bar'ına silme eylemi (not editörü ve
+      proje detayındaki kalıbın aynısı — üçü de aynı görünsün). Sildikten sonra
+      `context.pop()` + snackbar.
+- [x] **Liste menülerindeki boşluklar:** Notlar `_NoteMenu`'ye ve Projeler
+      `PopupMenuButton`'ına **Sil** girer (kaydırma jestinin menüdeki karşılığı; masaüstü/
+      web'de fare ile kaydırma yoktur — OPH-171'in R5 dersi birebir geçerli).
+- [x] i18n: `common.delete` var; yeni `common.deleted`, `common.undo`,
+      `task.deleteTitle`, `task.deleteBody`, `note.deleteFromList`, `swipe.deleteHint`
+      (en+tr).
+- [x] Testler: jest ile yarı açma → düğme görünür → basınca satır gider (görev, not,
+      proje, dosya); **"Geri al" satırı geri getirir ve outbox'a HİÇBİR ŞEY yazılmaz**;
+      snackbar süresi dolunca outbox'ta tek `delete` mutasyonu; Pano'da long-press
+      sürükleme regresyonu; detaydan silince listeye dönüş; erişilebilirlik yolu
+      (long-press) aynı akışı açıyor.
+
+**Context:** Silme motorunun tamamı hazır (store hard-delete + outbox `delete`, API alt
+ağaç tombstone'u + `cascadeDeleteFiles` + reminder reconcile). Bu task **yalnız
+kullanıcı arayüzü** ekler — hiçbir API/migration değişikliği yok.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Paket alındı: `flutter_slidable` 4.0.3 → [ADR-0017](adr/0017-swipe-to-delete-package.md).**
+  Belirleyici olan "kolay olsun" değil, **hangi 150 satırı yazacağımız**: geri açılma
+  fiziği, fling eşiği, kaydırınca kapanma, kardeş satır açılınca kapanma ve yatay
+  `PageView`'la jest arenası paylaşımı — aylarca ince ince yanlış kalan şeyler bunlar.
+  Paketin **sıfır transitif bağımlılığı** var (`dependencies: [flutter]`). Görünen her
+  şey bizde kaldı: `AwSwipeToDelete` paneli token'larla giydiriyor.
+- **Otomatik kapanma tek satırla çözüldü:** `groupTag` yalnız bir
+  `SlidableAutoCloseBehavior` atası altında çalışıyor ve o bir bildirim (notification)
+  atası → `app.dart`'ta router'ın üstüne **bir tane** konunca uygulamadaki bütün
+  listeler kapsandı; liste başına kablolama gerekmedi.
+- **Gizleme, jestin değil sarmalayıcının işi oldu.** `AwSwipeToDelete` id'si beklemedeyse
+  `SizedBox.shrink()` dönüyor → "satır gitti ama hiçbir şey yazılmadı" davranışı liste
+  başına muhasebe istemedi. **İki yerde yetmedi ve testler ikisini de yakaladı:**
+  (1) Home grupları ham listeden hesaplandığı için `awWithoutPending` filtresi
+  gruplamadan ÖNCE gerekti (yoksa "Tomorrow · 1" başlığı boşluğun üstünde kalıyordu);
+  (2) **Pano kartları bilinçli olarak sarmalanmadığı için (D6) hiçbir şey onları
+  gizlemiyordu** — taşıma sayfasından silinen görev pencere kapanana kadar sütunda
+  duruyordu; filtre `home_board.dart`'a da girdi.
+- **GERÇEK BUG, testin bulduğu:** commit closure'ı widget'ın `WidgetRef`'ini
+  kapatıyordu. Commit ~5 sn sonra bir timer'dan koşuyor ve o an satır listeden
+  düşmüş, element dispose olmuş oluyor → `Bad state: Using "ref" when a widget is
+  about to or has been unmounted` ve **silme hiç gerçekleşmiyordu**. Çözüm: store
+  hâlâ mount'luyken çözülüyor (`final store = ref.read(taskStoreProvider)`), closure
+  yalnız onu taşıyor. (Repo bunu daha önce OPH-170'te görmüştü — UnmountedRef dersi.)
+- **İki dereceli onay uygulandı:** görev/not → dialog yok, "Geri al" snackbar'ı;
+  proje/klasör/dosya → **mevcut onay dialog'u korunuyor** (kaskad sorusu atlanamaz;
+  dosya silme her cihazda objeyi öldürüyor). Kaydırma, dialog'a **kısayol**, dialog'un
+  **etrafından dolaşma yolu değil** — test bunu ayrıca doğruluyor.
+- **Fikirler satırı sadeleşti:** silme onay dialog'u kalktı (artık geri alınabiliyor),
+  ikon **kaldı** — D2 gereği (fare kaydırmaz). Aynı gerekçeyle Notlar ve Projeler
+  liste menülerine "Sil" girdi ve **not ızgarasına hiç olmayan eylem menüsü** eklendi
+  (orada arşivleme bile yoktu).
+- **Bonus, aynı denetimden:** proje satırı `Text(project.status)` ile ham İngilizce
+  enum basıyordu ("paused") — kaldırıldı, arşivli olan kendi yerelleştirilmiş
+  etiketini gösteriyor. OPH-193 kalanını temizleyecek.
+- **Test dersleri:** `pumpAndSettle` kare üretimi bitene kadar ilerlediği için
+  **kısa** bir geri-alma penceresi test edilemez hâle geliyor (settle penceresi
+  atlıyor) → gerçek `kAwUndoWindow` kullanılıp `pump(window + 1 sn)` ile atlanıyor;
+  `scrollUntilVisible` widget'ı VAR ETMEKLE yetiniyor, telefonda yüzen alt barın
+  altında bırakıyor → `ensureVisible` şart (OPH-181 idiomu); grup başlığı sayı
+  taşıyor ("Tomorrow · 1"), `find.text('Tomorrow')` bulmaz.
+
+**DoD met 2026-07-28:** app **520/520** (+27 test; 9'u bu task) + `analyze` temiz +
+`check:i18n` + kontrast **FAILURES: 0** (kırmızı eylem paneli iki temada ölçüldü);
+DESIGN §19 + [ADR-0017](adr/0017-swipe-to-delete-package.md); CHANGELOG; STATE.
+
+### OPH-185 — Tamamlanan görev aynı gün listede kalır, soluk olur (round 10 #2) ✅ 2026-07-28
+
+- [x] **Kural (BLUEPRINT §12.2'ye yazılır):** bir görev tamamlandığında **o yerel gün
+      boyunca kendi grubunda kalır**, sonraki yerel gece yarısında listeden düşer ve
+      artık yalnız Tamamlananlar'da (OPH-186) yaşar. Grubu değişmez ("aynı gününde
+      gözükmeli") ama **grubunun sonuna** sıralanır — bitmiş iş, bekleyen işin üstünde
+      durmaz.
+- [x] **Sorgu:** `watchOpen(workspaceId, {DateTime? completedSince})` →
+      `status IN kPlanningStatuses OR (status = 'completed' AND completedAt >= completedSince)`.
+      Aynı kural `watchProjectTasks` için de geçerli. `boardTasksProvider` (watchAll)
+      değişmez.
+- [x] **Gün sınırı canlı olmalı:** yeni `dayBoundaryProvider` — bir sonraki yerel gece
+      yarısına kurulmuş timer + `AppLifecycleState.resumed`'da yeniden hesap (uyuyan
+      cihaz, saat/DST değişimi, uçak modu). Sınır değişince sağlayıcı yeniden
+      yayınlanır ve dünün tamamlananları **kendiliğinden** düşer. Test: sahte saatle
+      23:59 → 00:01 geçişi.
+- [x] **Görsel (DESIGN §20'ye yazılır):** tamamlanmış satır bir bütün olarak sakinleşir —
+      kart yüzeyi `surfaceContainerLow`, başlık üstü çizili + `onSurfaceVariant`
+      (bugün var), alt satır/rozet/bayrak da soluk tona iner, onay dairesi **parlak
+      yeşil değil sakin (muted) success** tonuyla dolar. **`Opacity` KULLANILMAZ** —
+      opaklık sarmalayıcısı kontrastı ölçülemez hâle getirir ve DESIGN §5'in
+      ≥ 4.5:1 garantisini kırar; her renk açık token olur ve `contrast.py` çiftleri
+      öğrenir. Seçili-gün `dimmed` görünümüyle karışmaması için tonlar ayrışır.
+- [x] **Onay kutusu tamamlamanın geri alması olur:** satır durduğu için ayrı bir "geri
+      al" snackbar'ına gerek kalmaz (bugün Home'da tamamlamanın hiçbir dönüşü yok).
+      Tamamlama anında hafif bir hareket (`AwMotion.fast`) satırın yerinde kaldığını
+      anlatır — kaybolma sanılmasın.
+- [x] **Takvim noktaları ve widget:** `daysWithTasks` tamamlananları nokta saymaz
+      (bitmiş gün "dolu gün" değildir); widget aynı kuralı kullanır (uygulama ile
+      widget kullanıcının önünde çelişemez — §17 D1'in ruhu) → snapshot kaynağı
+      OPH-187 ile birlikte gözden geçirilir.
+- [x] Testler: bugün tamamlanan görev Home'da kalıyor **ve grubunun sonunda**; dün
+      tamamlanan görev listede yok; gece yarısı geçişi satırı düşürüyor; proje Görevler
+      sekmesinde aynısı; tamamlanmış satırın kontrastı iki temada geçiyor; onay kutusu
+      geri açıyor.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Sorgu tek yerden değişti:** `watchOpen(ws, {completedSince})` +
+  `watchProjectTasks(..., {completedSince})`. Sınır **null geçilince eski davranış
+  aynen duruyor** (terminal statüler gizli) — Pano'nun `watchAll`'ı ve gün-kapsamlı
+  olmayan çağıranlar etkilenmedi. `cancelled`/`archived` sınır ne olursa olsun
+  geri gelmiyor (test var).
+- **Sınır canlı: `dayBoundaryProvider`.** Gece yarısına kurulu timer **+ 1 sn pay**
+  (erken ateşleyen timer "dün"ü hesaplayıp geçmiş bir sınıra yeniden kurabilirdi) ve
+  `AppLifecycleState.resumed` dinleyicisi — askıya alınmış uygulamanın timer'ı
+  ateşlemez, cihaz gece yarısını uyuyarak geçebilir. Saat/saat dilimi değişimi de
+  aynı iki yoldan geçiyor, çünkü her tick `DateTime.now()`'dan yeniden hesaplıyor.
+  Saat enjekte edilebilir (`nowProvider`) — OPH-143'ün "fake clock" idiomu.
+- **Sıralama kuralı gruplamaya girdi:** tamamlanan satır kendi grubunda kalıyor ama
+  **grubun sonuna** iniyor; saat olarak önde olsa bile bekleyen işin üstünde durmuyor.
+  Aynı satır widget'ın snapshot'ında da uygulandı — uygulama ile widget aynı sırayı
+  gösteriyor (C5, test var).
+- **KONTRAST GERÇEĞİ tasarımı değiştirdi (DESIGN §20 C2 revize edildi):** onay
+  dairesinin dolgusunu yüzeye doğru soldurmak ölçüldü ve tik glifini **~2.3:1**'e
+  düşürüyor — §5'in 3:1 tabanının altı. Karar: **dolgu tam güçte `success` kalıyor**,
+  sakinlik satırdan geliyor (kart `surfaceContainerLow`, başlık üstü çizili +
+  `onSurfaceVariant`, tarih soluk). Apple Reminders de böyle okur. `Opacity`
+  kullanılmadı (C3) → sekiz yeni çift `contrast.py`'a girdi ve ölçülebilir kaldı.
+- **Bitmiş görevin alarm çipleri kalktı** (acil işareti, ertelendi, susturuldu):
+  terminal statüde `alarmInstantsFor` zaten boş liste döndürüyor, yani o çipler
+  **yanlış bir iddiaydı** — §11 A5'in yasakladığı türden. Gürültü değil, doğruluk.
+- **Bedava gelen:** widget köprüsü `openTasksProvider`'ı izlediği için C5 ek kod
+  istemedi; takvim noktaları (`daysWithTasks`) tamamlananları saymıyor.
+
+**DoD met 2026-07-28:** app **520/520** (13'ü saf sorgu/gruplama testi) + `analyze` +
+`check:i18n` + kontrast **FAILURES: 0** (8 yeni çift); DESIGN §20 C2/C3 revize +
+BLUEPRINT §12.2/§4.3; CHANGELOG; STATE.
+
+### OPH-186 — Tamamlananlar: Ayarlar'da sonsuz kaydırmalı zaman çizelgesi (round 10 #3) ✅ 2026-07-28
+
+- [x] **Yer:** Ayarlar → "Tamamlananlar" satırı (dil/tarih biçimi satırlarının deyimi),
+      rota `/settings/completed`. Ana gezinmeye **sekme eklenmez** — round 1'in
+      "tek zengin Home, az sekme" kuralı korunur.
+- [x] **Sıralama (kullanıcının kuralı, birebir):** `dueAt ?? completedAt` üzerinden
+      **yeniden eskiye**. Gün başlıklarıyla bölünmüş zaman çizelgesi (bugün / dün /
+      tarih), satırlar `TaskTile`'ın tamamlanmış görünümünü kullanır.
+- [x] **Sayfalı yükleme:** yerel replikadan `LIMIT/OFFSET` ile 50'şer sayfa, sona
+      yaklaşınca sonrakini çeker (`ScrollController` eşiği); yükleme göstergesi listenin
+      **sonunda**; `AwRefresh` üstte. Sunucuya yeni uç **gerekmez** — pull hiçbir statüyü
+      filtrelemiyor, tamamlananlar zaten replikada.
+- [x] **drift v12: `tasks(status, completedAt)` indeksi** — sayfalı sorgu tarama
+      yapmasın. Migration append-only kuralı + `from >=` guard'ı (OPH-167 dersi).
+- [x] **Satır eylemleri:** dokun → görev detayı; kaydır → sil (OPH-184'ün ilkeli);
+      satır içi **"Geri aç"** (görevi `open`'a döndürür ve listeden düşer — anında
+      kaybolması burada DOĞRU davranıştır, çünkü ekranın sözleşmesi "tamamlananlar").
+- [x] **Boş durum + kapsam cümlesi:** `AwEmptyState` ("Henüz tamamlanan bir görev yok")
+      ve verinin üstünde tek satır kapsam metni (alarm günlüğünün deyimi): **yalnız
+      `completed`** listelenir; `cancelled`/`archived` **v1'de yok** ve bu ekranda yazılı.
+- [x] i18n: `completed.title/sub/empty/scope/reopen/todayHeader/yesterdayHeader` (en+tr).
+- [x] Testler: sıralama kuralı saf fonksiyon olarak (tarihi olan/olmayan karışık küme);
+      50'nin üstünde görevle ikinci sayfanın kaydırınca geldiği; "Geri aç" satırı
+      düşürüyor **ve** Home'a geri koyuyor; boş durum; kaydırarak silme.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **`watchCompleted` bilinçli olarak `_watchList`'i KULLANMIYOR** ve gerekçesi
+  ölçülebilir: `_watchList` etiket tablosuna join atıyor, **join'li bir ifadede
+  `LIMIT` JOIN'LENMİŞ satırları sayar** → 3 etiketli bir görev sayfanın üç slotunu
+  yerdi ve sayfa boyu kullanıcının etiketleme alışkanlığına bağlı olurdu. Sayfa
+  görev satırları üzerinden alınıyor, o sayfanın etiketleri sonra okunuyor.
+  **Bedeli saklanmadı, yazıldı:** bu akış görev değişiminde yeniden yayınlıyor, etiket
+  yeniden adlandırmasında değil — arşiv için kabul edilebilir, canlı liste için yanlış.
+  Test bunu doğrudan sınıyor (3 etiketli görev sayfanın TEK satırı).
+- **Sıralama kullanıcının cümlesi:** `COALESCE(due_at, completed_at)` DESC + **kararlı
+  eşitlik bozucu** (`id` DESC, ULID). Eşitlik bozucu olmadan sayfa sınırında satır
+  tekrarlanabilir veya atlanabilirdi. Test tarihi olan ve olmayanı karıştırıp
+  bitirme sırasını sıralamadan FARKLI kuruyor — tek anlı bir test iki kuralı da geçerdi.
+- **Sayfalama sayfa EKLEMİYOR, pencereyi büyütüyor** (`completedTasksProvider(pages)`
+  → `limit: pages * 50`): iki listeyi birleştirmek sınırlarda tekrar/atlama üretir;
+  tek sorgu büyüdüğü için kullanıcının okuduğu önek asla yeniden dizilmiyor (test).
+  Sona gelmeden 400 px önce büyüyor ve **son sayfa DOLU değilse büyümüyor** — yoksa
+  değişmeyen bir sonuca karşı sorgu sonsuza kadar yeniden koşardı.
+- **drift v12 = yalnız indeks** (`idx_tasks_completed`), kolon/veri değişikliği yok.
+  `Migrator`'da `customStatement` yok → `onUpgrade` içinde veritabanının kendi
+  `customStatement`'ı kullanıldı; ayrıca **`onCreate`'e de eklendi**, çünkü drift'in
+  `createAll`'ı tabloları yaratır, ad-hoc indeksleri değil — yeni kullanıcılar sessizce
+  tam-tarama yolunda kalırdı. Testler indeksin varlığını **sqlite'ın kendi
+  kataloğundan** doğruluyor (migration "koştu" ama indeks yok senaryosu yakalanır).
+- **Sekme eklenmedi:** Ayarlar → Tamamlananlar. Round 1'in "tek zengin Home, az sekme"
+  kuralı korundu; kapsam cümlesi verinin ÜSTÜNDE (alarm günlüğü deyimi), v1 yalnız
+  `completed`.
+- **"Geri aç" satırı ekrandan düşürüyor ve bu doğru davranış** — ekranın sözleşmesi
+  "tamamlananlar" ve görev artık tamamlanmış değil. Test hem düşmeyi hem Home'a
+  dönmeyi doğruluyor.
+- **Test altyapısında bulunan boşluk:** `FakeApi.seedTask(status: 'completed')`
+  `completedAt` yazmıyordu — üretimde var olamayacak bir satır (sunucu geçişte
+  damgalıyor) ve OPH-185'in gün sınırı tam da onu okuyor. `seedTask`'a `completedAt`
+  parametresi eklendi, `status: 'completed'` için varsayılanı dolduruluyor.
+
+**DoD met 2026-07-28:** app **520/520** (+5 ekran testi) + `analyze` + `check:i18n` +
+kontrast FAILURES: 0; drift v12 migration testi (yükseltme + taze kurulum);
+DESIGN §20 C4 + BLUEPRINT §12.14; CHANGELOG; STATE.
+
+### OPH-187 — Widget başlığı: hizalama + günün açık görev sayısı (round 10 #4A, #4B)
+
+- [ ] **Hizalama (4A):** iOS'ta `HStack(alignment: .firstTextBaseline)` bırakılır;
+      gün sayısı ile hafta günü/ay bloğu **optik olarak ortalanır** (Android'in bugünkü
+      `center_vertical` davranışı doğru referanstır) ve iki platform **aynı** çizer
+      (WIDGETS W1). Ay satırı gün sayısının altına sarkmaz.
+- [ ] **Sayı (4B):** başlığın sağ ucuna, gün/ay bloğunun hizasına **bugünün açık görev
+      sayısı**. Tanım (kullanıcının cümlesi): **geciken + bugün** — yani "tarihi bugün
+      olanlar" değil, bugün ilgilenilmesi gereken toplam. **Kayıt altına alınan karar:
+      tarihsiz görevler bu sayıya DAHİL DEĞİL** (kullanıcı "ertelenmiş / gecikmiş /
+      tarihi geçmiş + bugün" dedi); tek alanlık bir karar, istenirse bir satırda döner.
+      Susturulmuş/ertelenmiş görevler **sayılır** (hâlâ açık iştir).
+- [ ] **Snapshot sözleşmesi (WIDGETS §3.1):** `openToday` (int) alanı eklenir, saf
+      `buildWidgetSnapshot` içinde hesaplanır; `kWidgetSnapshotVersion` **2** olur.
+      **Native taraf eksik alana toleranslı** olmalı (eski uygulama + yeni widget ve
+      tersi bir süre yan yana yaşar) — yoksa güncelleme sırasında widget boşalır.
+- [ ] **Yerelleştirme:** sayının etiketi de snapshot'ın `strings`'inden gelir
+      (`openToday` → "3 açık" / "3 open") — native tarafta çeviri yok (W-kuralı).
+      Sıfır durumunda sayı **gizlenir** (0 yazan bir rozet gürültüdür).
+- [ ] **Tamamlanan satırlar:** OPH-185'in kuralı widget'a da uygulanır (bugün
+      tamamlanan görev gün sonuna kadar `done: true` olarak görünür) — uygulama ile
+      widget aynı şeyi göstermek zorunda.
+- [ ] Testler: `buildWidgetSnapshot` saf testleri (geciken 2 + bugün 3 → `openToday` 5;
+      tarihsiz sayılmıyor; hepsi tamamlanmışsa 0 → alan gizli); JSON şeması v2;
+      `flutter build ios` + `flutter build apk`. **Cihazda görsel doğrulama** (iki tema,
+      medium/large) OPH-188'in cihaz turuna biner.
+
+**DoD:** Dart testleri + iki build yeşil; WIDGETS §3.1 + DESIGN §8 güncel; ekran
+görüntüleri cihaz turunda; CHANGELOG + STATE.
+
+### OPH-188 — Widget'tan tamamlama: iOS App Intents + Android geri çağırma (round 10 #4C) — cihaz
+
+**Bu task, açık duran [OPH-132](#oph-132--ios-interactivity-quick-complete--quick-add-app-intents)
+ile OPH-133'ün son iki kutusunu DEVRALIR** (ikisi de burada kapanır; oradaki kutulara
+"→ OPH-188" notu düşülür).
+
+- [ ] **Hazır kalıbı yeniden kullan (round 9'un kazancı):** OPH-182 zaten
+      `ios/Shared/AWAlarmShared.swift`'te **iki hedefte derlenen** App Intent'ler +
+      **App Group kuyruğu** (`AWAlarmActionQueue`, uygulama kapalıyken basılan düğmeleri
+      biriktirip `drainPendingActions` ile boşaltır) kurdu. Widget tamamlama intent'i
+      **aynı yolu** kullanır — sıfırdan bir mekanizma yazılmaz.
+- [ ] **iOS 17+:** satırdaki daire `Button(intent: AWCompleteTaskIntent(taskId:))` olur;
+      `@available(iOS 17, *)` ile kapılır, iOS 16 bugünkü deep-link'te kalır. Dokunma
+      hedefi cömert (Reminders dersi, DESIGN W4), satır tamamlanınca ~1–2 sn sonra
+      yerinde soluklaşır (OPH-185'in görünümü).
+- [ ] **Android:** `RemoteViews.setOnClickFillInIntent` **onay dairesine ayrı** bağlanır
+      (satırın kendisi görevi açar) → `HomeWidgetBackgroundIntent` → Dart
+      `@pragma('vm:entry-point') widgetCallback(Uri?)`. **Önce eksik veriyi kapat:**
+      `TasksRemoteViewsFactory`'nin `Row` kaydı bugün **görev id'sini taşımıyor** —
+      snapshot'ta id var, factory atıyor; eklenmeden ne tamamlama ne satır bağlantısı
+      mümkün.
+- [ ] **Dart tarafı tek yol:** `widgetCallback` → `TaskStore.complete()` (UI'nin
+      kullandığı **aynı** iyimser satır + outbox yolu → sunucuya senkronlanır) →
+      `HomeWidget.updateWidget(...)`. `HomeWidget.registerInteractivityCallback` `main()`'de.
+      **Çevrimdışı tamamlama kaybolmaz** (outbox zaten çevrimdışı çalışıyor).
+- [ ] **Satır → görev detayı:** her satır `alliswell://task/{id}` taşır (OPH-189'un
+      yönlendirmesi olmadan bu adım anlamsız → sıra bağlayıcı).
+- [ ] **Cihaz DoD matrisi:** iPhone (iOS 17+) ve Android telefonda: uygulamayı
+      **açmadan** tamamla → widget yerinde güncelleniyor; uygulama açılınca satır
+      tamamlanmış; başka bir cihazda/senkronda görünüyor; **uçak modunda** tamamla →
+      ağ gelince senkronlanıyor; satıra dokunma doğru görevi açıyor; iOS 16 cihaz/simülatör
+      deep-link'e düşüyor.
+
+**Context:** ADR-0010 D4 + WIDGETS §4; `flutter analyze`/`test` Swift/Kotlin derlemez —
+round 9'un kalıcı dersi: **native bağlantı kaynak ağacından değil üründen doğrulanır.**
+
+**DoD:** `flutter build ios` + `flutter build apk` yeşil; Dart `widgetCallback` testleri
+sahte store'a karşı; cihaz matrisi STATE'e işlenmiş; OPH-132/133 kutuları kapanmış;
+WIDGETS §0 durum tablosu dürüst; CHANGELOG + STATE.
+
+### OPH-189 — `alliswell://` yönlendirmesi + yönlendiricinin hata çıkışı (round 10 #4D)
+
+- [ ] **Şemayı OS'a kaydet:** iOS `Runner/Info.plist` → `CFBundleURLTypes` /
+      `CFBundleURLSchemes: [alliswell]`; Android `AndroidManifest.xml` →
+      `<intent-filter>` + `<data android:scheme="alliswell"/>` (`android:autoVerify` yok —
+      özel şema, App Links değil). macOS Runner'a da aynısı.
+- [ ] **Saf URL çözücü:** `lib/src/core/deep_link.dart` →
+      `String? awRouteForUri(Uri)` — tamamen saf, birim testli:
+      `alliswell://open` → `/home` · `alliswell://task/{ulid}` → `/tasks/{ulid}` ·
+      `alliswell://file/{ulid}` → `/files` (+ seçim) · bilinmeyen → `null`.
+      **Bozuk/uydurma id'ler reddedilir** (ULID biçim kontrolü) — dışarıdan gelen URL
+      güvenilmez veridir. `alliswell://complete?id=` **rota değildir**: onu OPH-188'in
+      arka plan geri çağırması yer, yönlendiriciye hiç ulaşmaz.
+- [ ] **go_router'a bağla:** gelen ham URL, konum eşleyiciye girmeden önce çözülür
+      (`GoRouter.onException` + `redirect` ikilisi). Kimlik doğrulama redirect'i
+      **korunur**: oturum kapalıyken gelen derin bağlantı `/login`'e gider ve giriş
+      sonrası **hedefe devam eder** (bekleyen hedef `pendingDeepLinkProvider`'da).
+- [ ] **İki ölü uç kapanır:** (a) **`/` rotası** eklenir → oturum varsa `/home`, yoksa
+      `/login`'e yönlendirir; (b) `GoRouter.errorBuilder` yazılır → `AwErrorState`
+      (DESIGN §4) + **gerçekten çalışan** "Ana sayfaya dön" (`AppSection.home.path`,
+      asla `/`) + hatalı konumu küçük punto gösterir. Bugünkü ekran go_router'ın
+      varsayılanı ve düğmesi `/`'a gidiyor — yani hata sayfasının kendisi hata veriyor.
+- [ ] **ADR-0016 — uygulama içi URL sözleşmesi:** `alliswell://` şeması bugüne kadar
+      yalnız takvim eşlemesinin işaretiydi (ADR-0003); bu ADR onu **gerçek bir
+      gezinme yüzeyine** çeviriyor: host/yol tablosu, kim üretir (widget, bildirim,
+      takvim etkinliği, not gömmesi), kim tüketir, bilinmeyen URL politikası ve
+      güvenlik notu (dışarıdan gelen bağlantı yalnız NAVİGASYON yapar — hiçbir zaman
+      veri yazmaz; yazan tek yol imzalı App Intent kuyruğudur).
+- [ ] Testler: `awRouteForUri` tablo testi (geçerli/geçersiz/eksik id/fazla segment);
+      router redirect testine derin bağlantı senaryoları (oturum açık/kapalı);
+      `errorBuilder` bilinmeyen konumda görünüyor ve düğmesi Home'a gidiyor;
+      `/` → `/home` yönlendirmesi.
+
+**DoD:** app süiti + `analyze` + `check:i18n`; ADR-0016 yazılmış; WIDGETS/NOTIFICATIONS
+deep-link cümleleri güncel; iOS/Android manifest değişikliği build'lerle doğrulanmış;
+CHANGELOG + STATE. _Gerçek cihazda widget'a dokunup doğru ekrana düşme OPH-188'in cihaz
+turunda._
+
+### OPH-190 — Ses önizlemesi: durdur gerçekten durdursun (round 10 #5)
+
+- [ ] **Çalar state'e taşınır:** `_SoundPickerSheetState._player` (tek örnek, tembel
+      yaratılır) ve **`dispose()` onu durdurup serbest bırakır**. Bugün çalar metodun
+      içinde doğuyor, sheet kapansa bile `Future.delayed` bitene kadar ses devam ediyor.
+- [ ] **Durdur düğmesi çalışır:** `onPressed` asla `null` olmaz →
+      `_previewing == sound.id ? _stopPreview : () => _preview(sound)`. İkon ne
+      gösteriyorsa onu yapar (bugün "stop" gösterip devre dışı duruyor).
+- [ ] **Başka bir sese basmak anında geçer:** yeni önizleme öncekini **durdurup**
+      hemen başlar; "önceki bitene kadar bekle" davranışı kalkar (bugün tüm düğmeler
+      birlikte kilitleniyor).
+- [ ] **Sheet kapanınca / ekrandan çıkınca susar** — `dispose` + `PopScope`/route
+      gözlemi; ayrıca **gerçek bir alarm çalmaya başlarsa önizleme susar** (ring ekranı
+      önizlemenin üstüne binmez).
+- [ ] **Yüklenen seslerin önizlemesi gelir** (bugün yok — DESIGN §18 N6 "sesi DUYARAK
+      seçersin" der ama kendi yüklediğin sesi seçmeden duyamıyorsun): satırda aynı
+      önizleme düğmesi; ses indirilir + çalınır, indirilemezse **dürüst hata**
+      (sessizce hiçbir şey olmaması yasak).
+- [ ] **Süre:** önizleme paketli sesin kendi uzunluğu kadar (≤ 4 sn tavanı korunur) ve
+      **kendiliğinden durunca ikon geri döner** — durum tek yerden (`_previewing`)
+      okunur.
+- [ ] Testler: sahte `AlarmSoundPlayer` ile çağrı sırası (`loop` → `stop`); durdur
+      düğmesi `stop` çağırıyor; ikinci sese basmak `stop`+`loop` üretiyor; sheet
+      dispose'unda `stop`+`dispose`; yüklenen ses önizlemesinin indirme hatası mesaj
+      gösteriyor.
+
+**Context:** DESIGN §18 N6 revize edilir ("önizleme durdurulabilir olmak ZORUNDADIR;
+duyulabilir hiçbir ses kullanıcının kapatamayacağı bir yerde çalamaz").
+
+**DoD:** app süiti + `analyze` + `check:i18n`; DESIGN §18 güncel; CHANGELOG + STATE.
+
+### OPH-191 — Düzenlerken de saat seçilir: tek tarih-saat giriş yolu (round 10 #6)
+
+- [ ] **Tek yol (DESIGN §17'ye D5 olarak yazılır):** tarih **ve saat** saklayan her
+      alanın girişi tek paylaşılan yardımcıdan gelir —
+      `awPickDateTime(context, ref, {DateTime? current, DateTime? anchor})`
+      (`core/date_format.dart`'ın yanında): `showDatePicker` → `showTimePicker`,
+      boş alanda **yarın** (OPH-173) + kullanıcının varsayılan saati (OPH-161),
+      saat seçici kapatılırsa varsayılan saate düşer. Tarih **biçimi** nasıl tek
+      kaynaktan geliyorsa (OPH-174), tarih **girişi** de tek kaynaktan gelir.
+- [ ] **Çağrı yerleri:** `task_create_sheet.dart`'ın `_pickDateTime`'ı bu yardımcıya
+      devreder; `task_detail_screen.dart`'ın **üç `_DateRow`'u** (bitiş, hatırlatma ve
+      OPH-192'den sonra koşullu planlanan) artık date+time sorar; `alarm_ring_screen`'in
+      özel ertelemesi zaten date+time — aynı yardımcıya taşınır.
+- [ ] **Regresyon adıyla yazılır:** bugün 14:30'luk bir görevin **sadece gününü**
+      değiştirmek saati sessizce 23:59 yapıyor; testin cümlesi budur.
+- [ ] Testler: mevcut saatli görevin gününü değiştir → **saat korunuyor**; boş alanda
+      yarın + varsayılan saat; saat seçici iptal → varsayılan saat; üç satır için de
+      aynı davranış; create ve detay aynı sonucu üretiyor (aynı görev, iki yol).
+
+**DoD:** app süiti + `analyze`; DESIGN §17 D5 yazılmış; CHANGELOG + STATE.
+
+### OPH-192 — "Planlanan tarih" satırı: sabit alan olmaktan çıkar, koşullu olur (round 10 #7)
+
+> **Kullanıcıya açıklanacak (istediği gibi — "anlayamamışsam uyar, sebebini anlat"):**
+> alan ölü değil. Takvim bloğu **önce `scheduled_start_at`'ten** türetiliyor
+> ([mirror.js:21](../apps/api/src/lib/mirror.js#L21)) ve kullanıcı Google Takvim'de
+> AllisWell etkinliğini **sürüklediğinde** sunucu `due_at`'i değil `scheduled_*`'ı
+> yazıyor ([inbound.js:15](../apps/api/src/lib/inbound.js#L15)) — çünkü bloğu taşımak
+> "bunu o saatte yapacağım" demektir, "son tarih değişti" değil. Satırı **düz silmek**
+> şu tuzağı kurar: bir kez sürüklenmiş görevde takvim etkinliği o noktaya **çakılı
+> kalır**, bitiş tarihi değişse bile yerinden oynamaz ve kullanıcının bunu görecek ya
+> da temizleyecek hiçbir yolu kalmaz.
+
+- [ ] **Karar (öneri): sabit alan gider, koşullu satır gelir.** Detayın olağan alan
+      listesinden `scheduled-row` **çıkarılır** (BLUEPRINT §12.4'ün alan listesinde
+      zaten yoktu — OPH-076'nın eklediği bir sapmaydı). Yerine **yalnız
+      `scheduledStartAt != null` iken** görünen bir bilgi satırı: "Takvimde taşındı —
+      {tarih saat}", alt satırında ne anlama geldiği tek cümleyle, sağında
+      **"Sıfırla"** (alanı temizler → etkinlik yeniden bitiş tarihine döner).
+      Sürüklemeyen kullanıcı bu satırı **hiç görmez** — şikâyet birebir çözülür;
+      sürükleyen kullanıcı sessiz bir sürprizle değil, açıklamayla karşılaşır.
+- [ ] **Alternatif (kullanıcı ısrar ederse):** satır tamamen kalkar ve inbound sürükleme
+      `scheduled_*` yerine `due_at` yazar. Bu **sunucu davranışı + ADR-0007 değişikliği**
+      demektir ve "bloğu taşımak son tarihi değiştirmez" ilkesinden vazgeçmektir;
+      buraya seçenek olarak yazılır, varsayılan **değildir**.
+- [ ] i18n: `task.movedInCalendar`, `task.movedInCalendarSub`, `task.resetSchedule`
+      (en+tr). `task.scheduledField` anahtarı kalkar.
+- [ ] Testler: `scheduledStartAt == null` görevde satır **yok** (widget ağaçtan silinmiş —
+      OPH-172'nin "testin dişi" dersi); dolu görevde satır var ve tarihi doğru biçimde
+      yazıyor; "Sıfırla" alanı null'lıyor ve outbox'a `scheduledStartAt: null` +
+      `scheduledEndAt: null` gidiyor.
+
+**DoD:** app süiti + `analyze` + `check:i18n`; BLUEPRINT §12.4 + §7.1 çapraz referansı
+güncel; CHANGELOG + STATE.
+
+### OPH-193 — Proje düzenlemede "durum" seçimi kalkar (round 10 #8)
+
+- [ ] **Dropdown silinir** (`project_edit_sheet.dart`'taki `if (_isEdit)` bloğu) ve
+      `_status` state'i ile `kProjectStatuses` sabiti ölür. Ekleme ve düzenleme
+      sheet'leri **aynı alanları** gösterir (bugünkü asimetri şikâyetin kendisi).
+      Kaydetme gövdesinden `status` çıkar.
+- [ ] **Ürün kuralı (BLUEPRINT §4.2'ye yazılır):** kullanıcının gördüğü iki proje
+      durumu vardır — **açık** ve **arşivli**. Arşiv, kaskad sorusuyla birlikte
+      **kendi akışıdır** (OPH-110) ve tek giriş noktasıdır. `paused`/`completed`
+      sunucu enum'unda **kalır** (migration yok, geriye uyum bozulmaz) ama arayüz
+      onları üretmez; var olan satırlar "açık" gibi davranır.
+- [ ] **Ham enum sızıntısı kapanır (bonus, gerçek i18n hatası):** kullanıcıya ham
+      İngilizce statü basan **üç yer** düzeltilir — `Text(project.status)`
+      ([projects_screen.dart:161](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L161),
+      [project_detail_screen.dart:197](../apps/app/lib/src/features/projects/ui/project_detail_screen.dart#L197))
+      ve dropdown öğesi. Arşivli proje zaten kendi banner'ı/rozetiyle anlatılıyor →
+      statü metni **tamamen kalkar**; arşivli olmayan hiçbir şey yazmaz.
+      (`check:i18n` bunları yakalayamıyordu çünkü değişken basılıyor — bu, kontrolün
+      bilinen kör noktası; OPH-195'e not düşülür.)
+- [ ] i18n: `project.status` anahtarı kalkar (kullanılmıyorsa `check:i18n` temizliği).
+- [ ] Testler: düzenleme sheet'inde durum alanı **yok**; kaydetme gövdesinde `status`
+      **yok**; `paused` statülü mevcut bir proje listede/detayda ham metin göstermiyor
+      ve normal davranıyor; arşivle/arşivden çıkar akışı regresyonsuz.
+
+**DoD:** app süiti + `analyze` + `check:i18n`; BLUEPRINT §4.2 güncel; CHANGELOG + STATE.
+
+### OPH-194 — Sayfa geçişlerinde önceki ekranın hayaleti (round 10 #10)
+
+- [ ] **Kök neden yazılı hâle gelir:** ekran zemini `tokens.veil` ve veil **yarı
+      saydam** (açık %58, koyu %48); `AuroraBackground` ise **Navigator'ın altında**
+      tek sefer boyanıyor. Push/pop sırasında iki rota da ağaçtayken gelen ekranın
+      zemininden **giden ekran görünüyor**. Yani hayalet bir animasyon hatası değil,
+      **tasarım sisteminin bir kuralının sonucu** — DESIGN §4 "Backgrounds" maddesi
+      bu round'da değişir.
+- [ ] **Çözüm (öneri): zemin rota başına opak olur.** Paylaşılan `AwPageBackground`
+      (aurora + veil, **opak**) rota sayfalarının altına girer; `MaterialApp.builder`
+      yalnız kenar/boşluk durumları için kalır (ya da tamamen kalkar). Kabul ölçütü
+      basit ve ölçülebilir: **hiçbir rota, altındaki rotayı göstermez.**
+      Değerlendirilecek alternatifler ve neden reddedildikleri ADR/DESIGN'a yazılır:
+      (b) veil'i aurora üzerine önceden karıştırıp opak tek renk yapmak — aurora
+      gradyanını öldürür; (c) geçiş süresince araya opak katman koymak — semptomu
+      örter, kökü durur.
+- [ ] **Geçiş dilinin kendisi tanımlanır (DESIGN §21):** bugün `pageTransitionsTheme`
+      **hiç tanımlı değil** → Android'de Zoom, iOS'ta Cupertino kaydırma, masaüstünde
+      başka bir şey. Tek bir geçiş ailesi seçilir (`AwMotion.base` 220 ms; öneri:
+      fade-through + hafif kayma, her platformda aynı) ve tema üzerinden kurulur.
+      Sekme değişimi (`StatefulShellRoute.indexedStack`) **anlık** kalır — sekmeler
+      yığın değildir (OPH-108).
+- [ ] **Cam yüzeyler yeniden ölçülür:** `GlassSurface`'in `BackdropFilter`'ı geçiş
+      sırasında ne örneklediği kontrol edilir (giden rotayı bulandırmamalı);
+      gerekirse `RepaintBoundary`. Blur maliyeti geçişte en görünür yerdedir —
+      profil çekilir.
+- [ ] **Kontrast yeniden koşar:** zemin bileşimi değişiyorsa `contrast.py`
+      **FAILURES: 0** yeniden kanıtlanır (veil'in üstündeki her metin çifti).
+- [ ] Testler: rota geçişinin ortasında (`pump` ile yarı yolda) giden ekranın
+      metninin **görünmediği** widget testi — bu, hatanın birebir testidir; sekme
+      değişiminde regresyon yok; `flutter run --profile` ile telefonda gözle + kare
+      süresi notu.
+
+**Context:** DESIGN §4 "Backgrounds" ve ADR-0005/ADR-0012 bu değişiklikten etkilenir;
+sapma **aynı değişiklikte** DESIGN'a yazılır (AGENTS sert kural 11).
+
+**DoD:** app süiti + `analyze` + kontrast FAILURES: 0; DESIGN §4 revize + §21 yeni;
+cihazda/tarayıcıda gözle doğrulama notu STATE'te; CHANGELOG.
+
+### OPH-195 — Kapsamlı UX taraması: "eklenmiş ama silinmesi/gösterilmesi unutulmuş" ne varsa (round 10 #9)
+
+**Bu task açık uçlu bir "bir bak" değildir:** aşağıdaki bulgular bu round'un
+denetiminde **zaten doğrulandı**; task bunları karara bağlar ve ardından matrisi
+sistematik olarak kapatır.
+
+- [ ] **Bulgu 1 — modelde var, arayüzde yok (kolonlar yalan söylüyor):**
+      `tasks.parent_task_id` (alt görevler — drift + API + **kaskadlı silme** hazır,
+      **sıfır** arayüz), `tasks.color_rgb` (widget'ta kullanılıyor, seçtirilmiyor),
+      `tasks.sort_order` (sıralamada kullanılıyor, **elle sıralama yok**),
+      `tasks.repeat_rule` · `estimated_minutes` · `actual_minutes` · `start_at` ·
+      `requires_acknowledgement`, `projects.icon` · `start_at` · `due_at`.
+      BLUEPRINT §4.3 "recurring task"ı bir görev tipi olarak sayıyor — bugün yok.
+      **Her biri için karar:** yüzeye çıkar (yeni task) **veya** park kuyruğuna
+      gerekçesiyle yazılır. Ulaşılamayan kolon, modelde duran bir yalandır.
+- [ ] **Bulgu 2 — `check:i18n`'in kör noktası:** kontrol yalnız düz metin sabitlerini
+      görüyor; `Text(değişken)` ile basılan ham enum'lar (OPH-193'ün üç yeri) elinden
+      kaçtı. Kontrole "bilinen enum alanlarını doğrudan basma" kuralı eklenir veya
+      lint kuralına dönüştürülür.
+- [ ] **Bulgu 3 — geri alınabilirlik:** Pano dışında hiçbir yıkıcı/dönüşü zor eylemde
+      geri alma yok. OPH-184 (silme) ve OPH-185 (tamamlama) bunu kapatıyor; kalanlar
+      taranır: arşivle, etiket sil, klasör sil, ses seçimi değiştir.
+- [ ] **Bulgu 4 — masaüstü/web paritesi:** OPH-171'in R5 dersi (fare kaydırmaz →
+      düğme gerekir) yeni gelen her jest için tekrar sorulur; OPH-184'ün kaydırma
+      jesti bunun ilk sınavı.
+- [ ] **Sistematik geçiş — matris:** {görev, proje, not, etiket, dosya, klasör,
+      checklist öğesi, pano sütunu, hatırlatıcı zinciri adımı, zil sesi} ×
+      {oluştur, gör, düzenle, **sil**, geri al, boş durum, hata durumu, çevrimdışı
+      davranışı}. Her hücre: ✅ / ❌ / park. Matris TASKS'a yazılır, ❌'ler ya bu
+      epic'te kapanır ya da gerekçeli olarak park kuyruğuna gider — **sessiz boşluk
+      bırakılmaz.**
+- [ ] **Çıktı:** matris + kararlar TASKS'a; kapanmayanlar park kuyruğuna tek tek;
+      yeni doğan işler bir sonraki epic'e OPH numaralarıyla.
+
+**Context:** Kullanıcının cümlesi: "en basiti task ekleme düzenleme her şey var, silme
+eklenmemiş — bunun gibi büyük UX hataları var her yerde". Bu task o cümleyi bir
+yönteme çeviriyor.
+
+**DoD:** matris TASKS'ta; her ❌ için karar yazılı; park kuyruğu güncel; STATE'e
+özet. _Bu task kod değişikliği içermeyebilir — çıktısı karardır._
+
+**Epic 17 DoD:** her task kendi testi + `check:i18n` + kontrast (FAILURES: 0) +
+`analyze` yeşiliyle kapanır; epic sonunda app + API tam süit + `check:no-ts`,
+CHANGELOG + STATE + README/ROADMAP dokunuşları (silme, tamamlananlar, widget sayacı,
+derin bağlantılar), **OPH-188 cihaz matrisi STATE'e işlenmiş** → **v0.6.0**.
+186 drift migration'ı içerir → append-only + `from >=` guard'ı zorunlu; 184 paket
+seçerse ADR-0017, 189 ADR-0016 kabul edilmiş olmalı; 194 DESIGN §4'ü değiştirdiği
+için ADR-0005/0012 çapraz referansları güncellenir.
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
@@ -3635,6 +4220,15 @@ kural + `down` zorunlu; 180 yeni bağımlılık kategorisi → ADR-0015 kabul ed
   `WKInterfaceDevice` haptikleri + complication — kararı OPH-183 veriyor); cihazlar arası
   **sunucu tarafı ayar deposu** (hatırlatıcı profili + tarih biçimi bugün cihaz-yerel,
   `notification_privacy` kalıbıyla aynı); alarm günlüğünün sunucuya raporlanması.
+- **Round 10 park kuyruğu (kararı OPH-195 verir):** alt görevler (`parent_task_id` —
+  şema, API ve kaskadlı silme hazır, arayüz yok), **tekrarlayan görevler**
+  (`repeat_rule`; BLUEPRINT §4.3 bir görev tipi olarak sayıyor), görev rengi
+  (`tasks.color_rgb` — widget kullanıyor, kullanıcı seçemiyor), **elle sıralama**
+  (`sort_order` sıralamada kullanılıyor ama sürükleme yok), süre alanları
+  (`estimated_minutes`/`actual_minutes`), proje ikonu/başlangıç-bitiş tarihi;
+  Tamamlananlar ekranında arama + `cancelled`/`archived` sekmesi; Pano kartlarında
+  kaydırarak silme (yatay pager jest çakışması); sunucu tarafı "tamamlananlar" ucu
+  (bugün tamamen yerel replikadan okunuyor).
 - Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).

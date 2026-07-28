@@ -7,6 +7,7 @@ import '../../../core/api_exception.dart';
 import '../../../i18n/i18n.dart' show AwI18n, AwTr;
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/swipe_actions.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../providers.dart';
 
@@ -102,18 +103,26 @@ class FileRowTile extends ConsumerWidget {
         awFormatDate(when, format: ref.watch(dateFormatProvider)),
     ].join(' · ');
 
-    return Card(
-      child: ListTile(
-        leading: FileLeadingThumb(file: file),
-        title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          subtitle,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+    // OPH-184: the same swipe every other list has. A file delete removes the
+    // OBJECT from storage on every device, so it keeps its confirmation dialog
+    // (DESIGN §19 D3) — the swipe is a shortcut to that question, not past it.
+    return AwSwipeToDelete(
+      id: file.id,
+      semanticLabel: 'file.deleteConfirm'.tr(args: {'name': file.name}),
+      onDelete: () => confirmFileDelete(context, ref, file),
+      child: Card(
+        child: ListTile(
+          leading: FileLeadingThumb(file: file),
+          title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            subtitle,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
+          trailing: badge,
+          onTap: () => _onTap(context, ref),
         ),
-        trailing: badge,
-        onTap: () => _onTap(context, ref),
       ),
     );
   }

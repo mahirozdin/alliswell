@@ -132,6 +132,27 @@ the widget extension has a ~30 MB budget). Serialize only what renders, with
 }
 ```
 
+**Rev. 2026-07-28 (feedback round 10 #4B — OPH-187): schema `v: 2`.** One field is
+added at the top level:
+
+```jsonc
+  "openToday": 5,                 // overdue + due-today, open tasks only; omitted/0 → hide
+```
+
+- **What it counts, exactly:** tasks that are **overdue** plus tasks **due today**,
+  in a planning status. Snoozed and muted tasks **count** (they are still open
+  work). Dateless tasks do **not** (they belong to every day, so they would inflate
+  every day). Completed-today rows do not count — they are done.
+- **Why it is a field and not a native sum:** the native side must never carry
+  product logic; the rule above is decided once, in the pure Dart snapshot builder,
+  and unit-tested there (DESIGN §8 W9).
+- **The native side must tolerate its absence.** During an app update a v1 snapshot
+  and a v2 widget (and the reverse) coexist for a while; a missing `openToday` hides
+  the badge rather than blanking the widget.
+- **Row `id` is not optional decoration.** It is already in the contract above, but
+  the Android factory dropped it — without it there is no per-row completion and no
+  per-row deep link. Any consumer that discards `id` is a bug (OPH-188).
+
 - **N per bucket is per-size** (§5): medium shows few, large ~8–10, extraLarge
   more. Truncation is honest — show a "+N more" affordance, never silently drop
   (the "no silent caps" ethos).
@@ -181,6 +202,28 @@ Future<void> widgetCallback(Uri? uri) async {
   `@available(iOS 17, *)`. UX lesson from Reminders: the complete hit-target is
   easy to fumble — make it **generous and deliberate**, and animate the row away
   after ~1–2 s so the tap feels acknowledged.
+
+_(Rev. 2026-07-28, feedback round 10 #4C/#4D — OPH-188/189. Two corrections that came
+out of using the shipped widget:)_
+
+- **The mechanism already exists; do not build a second one.** Round 9's OPH-182 put
+  App Intents into `ios/Shared/AWAlarmShared.swift` compiled into **both** targets and
+  added an **App Group action queue** (`AWAlarmActionQueue`, capped, drained by Dart on
+  handler registration and on every foreground). That queue is what makes a button work
+  while the app is **cold** — pushing straight at a method channel drops exactly the
+  press that matters most. Widget completion rides the same rails.
+- **Writes do NOT travel as URLs.** The sketch above shows `uri?.host == 'complete'`;
+  that shape is fine *inside* the background-intent bridge, where the URL is minted by
+  our own signed intent, and forbidden as a **routable** URL. `alliswell://complete?id=…`
+  must never appear in the app's URL table — a scheme URL can arrive from a synced
+  calendar event or a note written by another device, and a tapped link must never be
+  able to mutate data. Contract:
+  [ADR-0016](adr/0016-in-app-url-routing-and-widget-actions.md).
+- **Tapping through has to land somewhere.** Until round 10 the scheme was registered
+  with neither OS (no `CFBundleURLTypes`, no deep-link `intent-filter`) and the app had
+  no resolver, so the shipped tap produced `No route for alliswell://open/`. Registration
+  + a pure resolver + a real `/` route + our own `errorBuilder` are prerequisites for
+  interactivity, not polish (OPH-189 precedes OPH-188).
 
 ## 5. Content per size
 

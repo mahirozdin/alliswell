@@ -22,7 +22,8 @@
     "greeting": "Hi, {name}",
     "clear": "Clear",
     "refresh": "Refresh",
-    "refreshFailed": "Couldn't refresh — you're seeing the last synced data."
+    "refreshFailed": "Couldn't refresh — you're seeing the last synced data.",
+    "undo": "Undo"
   },
   "nav": {
     "home": "Home",
@@ -214,7 +215,10 @@
     "alarmsMutedSub": "No alerts for this task until you turn them back on",
     "unmuteAlarms": "Turn alarms back on",
     "alarmsBackOn": "Alarms are back on",
-    "alarmTimePassed": "That time has passed — give the task a new one"
+    "alarmTimePassed": "That time has passed — give the task a new one",
+    "deleteTooltip": "Delete task",
+    "deleteSemantic": "Delete {title}",
+    "deleted": "“{title}” deleted"
   },
   "tag": {
     "inputHint": "Add tag…",
@@ -241,7 +245,8 @@
     "movedToNotes": "Moved to Notes",
     "deleteTitle": "Delete capture?",
     "deleteBody": "“{title}” will be removed.",
-    "plan": "Plan"
+    "plan": "Plan",
+    "deleted": "“{title}” deleted"
   },
   "project": {
     "notFound": "Project not found",
@@ -305,7 +310,8 @@
     "unarchiveMenu": "Unarchive…",
     "archiveMenu": "Archive…",
     "tabFiles": "Files",
-    "searchHint": "Search projects…"
+    "searchHint": "Search projects…",
+    "deleteMenu": "Delete"
   },
   "note": {
     "untitled": "Untitled",
@@ -334,7 +340,9 @@
     "archiveEmpty": "Archive is empty",
     "empty": "No notes here",
     "archivedHere": "Archived notes land here for safekeeping.",
-    "captureFirst": "Capture the first one with the + button."
+    "captureFirst": "Capture the first one with the + button.",
+    "deleted": "“{title}” deleted",
+    "deleteFromList": "Delete"
   },
   "calendar": {
     "google": "Google Calendar",
@@ -574,5 +582,17 @@
     "noSourcesBody": "Files attached to projects, tasks and notes appear here.",
     "goToSource": "Go to source",
     "couldNotMove": "Could not move the file."
+  },
+  "completed": {
+    "title": "Completed",
+    "sub": "Everything you have finished",
+    "scope": "Completed tasks, newest first — by the task’s own date when it has one, otherwise by when you finished it.",
+    "emptyTitle": "Nothing completed yet",
+    "emptyBody": "Tasks you finish show up here, newest first.",
+    "reopen": "Reopen",
+    "reopened": "“{title}” reopened",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "completedAt": "Completed {time}"
   }
 }

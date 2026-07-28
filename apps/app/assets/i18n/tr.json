@@ -21,7 +21,8 @@
     "greeting": "Merhaba, {name}",
     "clear": "Temizle",
     "refresh": "Yenile",
-    "refreshFailed": "Yenilenemedi — son eşitlenen veriyi görüyorsun."
+    "refreshFailed": "Yenilenemedi — son eşitlenen veriyi görüyorsun.",
+    "undo": "Geri al"
   },
   "nav": {
     "home": "Ana Sayfa",
@@ -213,7 +214,10 @@
     "alarmsMutedSub": "Sen geri açana dek bu görev için uyarı gelmez",
     "unmuteAlarms": "Alarmı geri aç",
     "alarmsBackOn": "Alarmlar geri açıldı",
-    "alarmTimePassed": "O saat geçti — göreve yeni bir saat ver"
+    "alarmTimePassed": "O saat geçti — göreve yeni bir saat ver",
+    "deleteTooltip": "Görevi sil",
+    "deleteSemantic": "{title} görevini sil",
+    "deleted": "“{title}” silindi"
   },
   "tag": {
     "inputHint": "Etiket ekle…",
@@ -240,7 +244,8 @@
     "movedToNotes": "Notlar'a taşındı",
     "deleteTitle": "Yakalama silinsin mi?",
     "deleteBody": "“{title}” kaldırılacak.",
-    "plan": "Planla"
+    "plan": "Planla",
+    "deleted": "“{title}” silindi"
   },
   "project": {
     "notFound": "Proje bulunamadı",
@@ -304,7 +309,8 @@
     "unarchiveMenu": "Arşivden çıkar…",
     "archiveMenu": "Arşivle…",
     "tabFiles": "Dosyalar",
-    "searchHint": "Projelerde ara…"
+    "searchHint": "Projelerde ara…",
+    "deleteMenu": "Sil"
   },
   "note": {
     "untitled": "Başlıksız",
@@ -333,7 +339,9 @@
     "archiveEmpty": "Arşiv boş",
     "empty": "Burada not yok",
     "archivedHere": "Arşivlenen notlar güvende burada durur.",
-    "captureFirst": "İlkini + düğmesiyle yakala."
+    "captureFirst": "İlkini + düğmesiyle yakala.",
+    "deleted": "“{title}” silindi",
+    "deleteFromList": "Sil"
   },
   "calendar": {
     "google": "Google Takvim",
@@ -573,5 +581,17 @@
     "noSourcesBody": "Projelere, görevlere ve notlara eklenen dosyalar burada görünür.",
     "goToSource": "Kaynağa git",
     "couldNotMove": "Dosya taşınamadı."
+  },
+  "completed": {
+    "title": "Tamamlananlar",
+    "sub": "Bitirdiğin her şey",
+    "scope": "Tamamlanan görevler, yeniden eskiye — görevin kendi tarihi varsa ona, yoksa tamamlanma zamanına göre.",
+    "emptyTitle": "Henüz tamamlanan yok",
+    "emptyBody": "Bitirdiğin görevler burada, en yeniden en eskiye doğru birikir.",
+    "reopen": "Geri aç",
+    "reopened": "“{title}” yeniden açıldı",
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "completedAt": "{time} tamamlandı"
   }
 }

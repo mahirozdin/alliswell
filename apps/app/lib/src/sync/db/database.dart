@@ -383,8 +383,9 @@ class AwDatabase extends _$AwDatabase {
   /// v4 → v5 (OPH-153): file_rows (attachment metadata, pull-only).
   /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
   /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
+  /// v11 → v12 (OPH-186): `idx_tasks_completed` for the Completed archive.
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -397,7 +398,13 @@ class AwDatabase extends _$AwDatabase {
   /// OPH-081 migration plan in docs/TASKS.md.)
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) => m.createAll(),
+    onCreate: (m) async {
+      await m.createAll();
+      // Ad-hoc indexes are not part of the generated schema, so a fresh install
+      // has to create them explicitly — `createAll` alone would leave new users
+      // on the scan path the v12 step exists to remove.
+      await _createCompletedIndex();
+    },
     onUpgrade: (m, from, to) async {
       // v2 (OPH-081): opt-in calendar mirroring. ADD COLUMN with a NOT NULL
       // default — existing rows take `false`, nothing is rewritten.
@@ -458,7 +465,19 @@ class AwDatabase extends _$AwDatabase {
       // v11 (OPH-178): "sustur". Nullable, so every existing task keeps its
       // alarms — silence has to be asked for.
       if (from < 11) await m.addColumn(tasks, tasks.alarmsMutedAt);
+      // v12 (OPH-186): the Completed archive pages over `status` and sorts by
+      // `COALESCE(due_at, completed_at)`. Without an index that is a full scan
+      // per page, on the one list that only ever grows. Index only — no column,
+      // no data change, nothing to backfill.
+      if (from < 12) await _createCompletedIndex();
     },
+  );
+
+  /// `IF NOT EXISTS` so the two callers (fresh install, upgrade) can never
+  /// collide, and a re-run is a no-op.
+  Future<void> _createCompletedIndex() => customStatement(
+    'CREATE INDEX IF NOT EXISTS idx_tasks_completed '
+    'ON tasks (workspace_id, status, completed_at)',
   );
 }
 

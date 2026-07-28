@@ -206,6 +206,15 @@ Project, task ve notların bağlandığı ana iş alanıdır.
   transaction); arşivden çıkarma aynı soruyu tersine sorar. Arşivli projeler proje listesinde
   varsayılan GİZLİDİR (yalnız "Archived" filtresiyle görünür) ve görev oluşturma/detay proje
   seçicilerine çıkmazlar.
+- **Kullanıcının gördüğü iki durum vardır: AÇIK ve ARŞİVLİ (rev. 2026-07-28, feedback
+  round 10 #8 — OPH-193).** Proje düzenleme ekranında statü seçtiren dropdown KALKAR:
+  yalnız düzenlemede beliriyordu (eklemede yoktu — aynı nesnenin iki farklı formu),
+  kullanıcıya ham İngilizce enum basıyordu ve arşivin kaskad sorusunu atlatan ikinci bir
+  yol öneriyordu. Bir projenin durumu **arşiv akışıyla** değişir, başka hiçbir yerden.
+  `paused`/`completed` sunucu enum'unda KALIR (migration yok, geriye uyum bozulmaz) ama
+  arayüz onları ne üretir ne gösterir; arşivli olmayan her proje "açık" davranır.
+  Genel kural: **son kullanıcıya iç durum makinesi gösterilmez** — round 1'in "teknik
+  kavram yok" kuralının statü enum'larına uygulanması.
 
 ### 4.3 Task / TODO
 
@@ -221,6 +230,18 @@ Task, sistemin en kritik domainidir.
   atılanlar plan listelerinde (Home dahil) GÖRÜNMEZ — yakalama henüz iş değildir. Görev tarih
   YA DA proje kazandığında statü otomatik `open`'a yükselir (triyaj tamamlanmış sayılır);
   ayrıntı §12.6.
+- **`completed` ANINDA kaybolmaz (rev. 2026-07-28, feedback round 10 #2 — OPH-185):**
+  tamamlanan görev **o yerel gün boyunca** kendi grubunda, grubunun sonunda, soluk
+  görünümüyle kalır; sonraki yerel gece yarısında plan listelerinden düşer ve
+  Tamamlananlar'da (§12.14) yaşamaya devam eder. Gerekçe: tıklamanın anında yok olması
+  kullanıcıyı "ne oldu?" diye bıraktığı gibi, tek doğal geri alma yolunu (aynı kutuya
+  tekrar dokunmak) ve günün ilerleme hissini de siler.
+- **Silme kullanıcının erişebildiği bir eylemdir (rev. 2026-07-28, feedback round 10 #1 —
+  OPH-184):** görev silme motoru (yerel iyimser silme + outbox + sunucuda alt ağaç
+  tombstone'u + ek kaskadı) v1'den beri hazırdı ama **hiçbir görev satırında düğmesi
+  yoktu**. Kural: oluşturulabilen her kayıt, **listesinden** silinebilir (kaydırma) ve
+  detayından silinebilir; jest tek yol olamaz (menü/app bar karşılığı zorunlu); yaprak
+  silmeler dialog yerine **geri alınabilir** snackbar kullanır. Ayrıntı: DESIGN §19.
 - Priority: `none`, `low`, `medium`, `high`, `urgent`.
 - Color (optional), tags.
 - Due date, start date, scheduled start/end, reminder time (hepsi optional).
@@ -864,6 +885,14 @@ kaldırıldı.)_
 - **Tarihsiz görevler listenin ÜSTÜNDE durur** (Geciken'in hemen altında, Bugün'ün üstünde) ve
   HİÇBİR ZAMAN sönük çizilmez: tarihi olmayan iş "her günün işi"dir; takvimden gün seçiliyken
   bile tam opaklıkta kalır. (Inbox yakalamaları bu gruba GİRMEZ — §12.6.)
+- **Bugün tamamlananlar listede kalır (rev. 2026-07-28, round 10 #2 — OPH-185):** tamamlanan
+  görev anında kaybolmaz; **kendi grubunda, grubunun en sonunda**, sakin görünümüyle (dolu
+  onay dairesi + üstü çizili + soluk ton) gün bitene kadar durur. Sonraki yerel gece
+  yarısında düşer — sınır **canlıdır** (gece yarısına kurulu zamanlayıcı + uygulama öne
+  gelince yeniden hesap), yani ekran açık kalsa bile liste kendini yeniler. Ay ızgarasının
+  noktaları tamamlananları saymaz (bitmiş gün "dolu gün" değildir). Aynı kural ana ekran
+  widget'ında da geçerlidir — widget ile uygulama kullanıcının önünde çelişemez.
+  Görsel kurallar: DESIGN §20.
 - **Mobilde takvim listeyle birlikte kayar:** ay ızgarası kayan içeriğin İLK öğesidir, sabit
   (sticky) başlık DEĞİLDİR — liste yukarı kaydırılınca takvim ekrandan çıkar, en üste dönünce
   geri gelir. "Hide calendar" düğmesi ve kalıcı tercihi (local storage) aynen durur. Quick-add
@@ -917,7 +946,25 @@ OPH-108). Arşivli proje detayı "arşivli" bandı + Unarchive eylemi gösterir.
 
 Title (yerinde düzenlenebilir, otomatik kayıt), **Description (açıklama — rev. round 8)**,
 Project, Status, Priority, Tags, Due date, Reminder, Urgent toggle, Calendar mirror toggle,
-Notes, Checklist, **Attachments (Epic 14)**, Activity.
+Notes, Checklist, **Attachments (Epic 14)**, Activity, **Sil (rev. round 10)**.
+
+_(Rev. 2026-07-28, feedback round 10 #1/#6/#7 — OPH-184/191/192:)_ Üç kural:
+
+1. **Silme app bar'dadır.** Not editörü ve proje detayı zaten böyle; görev detayı bu
+   eylemden yoksundu, yani uygulamanın en çok kullanılan nesnesi tek silinemeyen nesneydi.
+2. **Tarih alanları saat de sorar.** Detaydaki tarih satırları yalnız takvim açıp saati
+   varsayılana çekiyordu: 14:30'luk bir görevin gününü değiştirmek saati sessizce 23:59
+   yapıyordu. Oluşturma sheet'i ile detay **aynı** giriş yolunu kullanır (DESIGN §17 D5) —
+   düzenleme, kullanıcının dokunmadığı bir parçayı değiştiremez.
+3. **"Planlanan tarih" sabit bir alan değildir; koşullu bir açıklamadır.** Alan listesinde
+   hiç yer almamıştı — OPH-076 takvim sürüklemesi için eklemişti ve kullanıcı için
+   anlamsız bir üçüncü tarih olarak duruyordu. Bundan sonra **yalnız `scheduled_start_at`
+   doluyken** görünür ve ne olduğunu söyler ("Takvimde taşındı — {tarih}"), yanında
+   "Sıfırla" ile temizlenir. Tamamen silinemez, çünkü §7.1 takvim bloğunu **önce**
+   `scheduled_*`'tan türetir ve kullanıcı etkinliği takvimde sürüklediğinde sunucu
+   `due_at`'i değil `scheduled_*`'ı yazar (bloğu taşımak "o saatte yapacağım" demektir,
+   "son tarih değişti" değil) — görünmeyen bir alan, takvim etkinliğini sessizce yerine
+   çivilerdi.
 
 _(Rev. 2026-07-20, feedback round 8 — OPH-164:)_ **Description** görevin kendi açıklama
 alanıdır — Notes İLİŞKİSİNDEN ayrıdır ve nota kaydolmaz: görevle ilgili bağlam, linkler,
@@ -1044,6 +1091,33 @@ tamamlayabilmelidir — Apple Reminders + Apple Takvim widget'larının birleşi
 - **Gizlilik:** "Private widget" seçeneği (OPH-064 ruhu) açıkken widget başlık yerine sayı/yer
   tutucu gösterir. Cihaz-yerel ayar.
 
+_(Rev. 2026-07-28, feedback round 10 #4 — OPH-187/188/189. İlk gerçek "widget'ı kullandım"
+turu; dördü de aynı ekranda çıktı:)_
+
+- **E) Başlıktaki sayı: "bugün üzerimde kaç iş var".** Tarih başlığının sağ hizasında
+  **geciken + bugün** toplamı yazar (ertelenmiş/susturulmuş görevler dahil — hâlâ açık iştir;
+  tarihsiz görevler **hariç** — onlar her günün işi olduğu için her günü şişirirdi). Sıfırsa
+  rozet gizlenir. Sayı Dart snapshot'ında hesaplanır (saf + birim testli), native tarafta
+  değil; etiketi de diğer bütün widget kelimeleri gibi çevrilmiş olarak gelir.
+- **F) Tarih başlığı iki platformda AYNI çizilir.** Gün sayısı ile gün adı/ay bloğu birbirine
+  göre **optik olarak ortalanır**; taban çizgisine hizalamak 34 punto sayının yanında ay
+  satırını sarkıtır ve dizgi hatası gibi okunur. iOS ile Android bir sürüm boyunca bu başlığı
+  farklı çizdi — DESIGN §8 W1'in "token paritesi" kuralı **yerleşime de** uygulanır.
+- **G) Widget'tan tamamlama artık kapsamdadır ve yolu round 9'da açıldı.** OPH-182, App
+  Intent'leri iki hedefte derleyen ve **uygulama kapalıyken basılan düğmeleri App Group
+  kuyruğunda bekleten** altyapıyı kurdu; widget tamamlaması aynı hattı kullanır — sıfırdan
+  mekanizma yazılmaz. Android tarafında önce eksik veri kapatılır: widget satır kaydı bugün
+  **görev id'sini taşımıyor**, dolayısıyla ne tamamlama ne satır bağlantısı mümkün.
+- **H) Widget'a dokunmak bir yere gitmelidir.** `alliswell://` şeması bugün iOS
+  `Info.plist`'te ve Android manifest'inde **kayıtlı değil** ve uygulamada hiçbir yönlendirme
+  yok → dokunuş "No route for alliswell://open/" hatasıyla karşılanıyor, hata ekranının
+  "Home" düğmesi de var olmayan `/` rotasına gidiyor. Şema kaydedilir, saf bir çözücü
+  (`alliswell://open` → Home, `alliswell://task/{id}` → görev detayı,
+  `alliswell://file/{id}` → Dosyalar) yönlendirmeyi yapar, `/` gerçek bir rotaya bağlanır ve
+  yönlendiricinin hata ekranı kendi yazdığımız, çalışan çıkışı olan ekran olur. Sözleşme:
+  **[ADR-0016](adr/0016-in-app-url-routing-and-widget-actions.md)** — dışarıdan gelen bağlantı
+  yalnız GEZİNİR, asla veri yazmaz; yazan tek yol imzalı App Intent kuyruğudur.
+
 ### 12.9 Uygulama dili ve yerelleştirme (i18n)
 
 _(Eklendi 2026-07-17, feedback round 5 — Epic 11. Karar [ADR-0009](adr/0009-localization-i18n-architecture.md);
@@ -1163,6 +1237,30 @@ _(Eklendi 2026-07-27; bağlayıcı tasarım [DESIGN.md](DESIGN.md) §15–§18 v
   alarm günlüğü. Sınırlar sessizce uygulanmaz, ekranda söylenir (adımlar arası ≥ 1 dk;
   iOS'un 64 bekleyen bildirim bütçesinin seçilen profile maliyeti).
 
+### 12.14 Silme, tamamlananlar ve erişilebilirlik (feedback round 10 — OPH-184…195)
+
+_(Eklendi 2026-07-28; bağlayıcı tasarım [DESIGN.md](DESIGN.md) §19–§22.)_
+
+- **Silme bir liste eylemidir.** Oluşturulabilen her kayıt satırından silinebilir: satır
+  sağdan sola çekilince **yarı açılır** ve kırmızı "Sil" düğmesini gösterir — tek bir
+  savurmayla hiçbir şey yok olmaz. Aynı eylem her zaman görünür bir karşılıkla da vardır
+  (satır menüsü / detay app bar'ı): fare kaydırmaz, anahtar-kontrol kullanıcısı hiç
+  kaydırmaz. Yaprak silmeler (görev, not) onay dialog'u yerine **"Geri al" snackbar'ı**
+  kullanır ve gerçek silme snackbar kapanana kadar **hiç yazılmaz** — uygulama arada
+  ölürse kayıp olmaz. Kaskadlı silmeler (proje, klasör, etiket) onayını korur.
+- **Tamamlananların bir adresi vardır.** Gün içinde tamamlanan iş Home'da kalır (§12.2);
+  geçmişin tamamı **Ayarlar → Tamamlananlar**'da yaşar: yeniden eskiye, gün başlıklı,
+  kaydırdıkça yüklenen bir zaman çizelgesi. Sıralama anahtarı **görevin kendi tarihi
+  varsa o, yoksa tamamlanma zamanı**. Tamamen yerel replikadan okunur — arşiv, ağ
+  gerektiriyorsa güvenilmez. Kapsamı verinin üstünde yazılıdır (v1: yalnız `completed`).
+- **Erişilebilirlik = ulaşılabilirlik.** Şemada duran bir alan, store'da duran bir metot
+  veya sunucuda duran bir uç, bir insan ona dokunamıyorsa **özellik değildir**. Round 10'un
+  bulgularının çoğu eksik kod değil, yüzeye çıkarılmamış yetenekti (görev silme, alt
+  görevler, elle sıralama, görev rengi, widget etkileşimi). Bundan sonra her task **hangi
+  ekranda, telefonda ve masaüstünde nereye dokunulacağını** yazar; cevabı "henüz hiçbir
+  yerde" ise bu, park kuyruğuna açıkça yazılır. CRUD bir matris olarak denetlenir —
+  eksilen hücre her zaman **silme**dir, çünkü hiçbir demo onu göstermez (DESIGN §22).
+
 ## 13. Open-source repo kalitesi
 
 ### 13.1 README içeriği
@@ -1231,6 +1329,19 @@ Tests:
   Apple Watch davranışının doğrulanması — Epic 16
   ([ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md), NOTIFICATIONS §2b/§5/§6,
   DESIGN §15–§18).
+- **Phase 11 — Feedback round 10: silme, tamamlananlar, widget, geçişler (v0.6.0):** ilk
+  "günlük kullanım" turunun ürettiği liste. **Kaydırarak silme + her listede ve her detayda
+  silme** (motor v1'den beri hazırdı, düğmesi hiç konmamıştı) geri alınabilir snackbar'la;
+  **tamamlanan görev gün sonuna kadar listede kalır** ve sakin görünüme geçer; **Ayarlar →
+  Tamamlananlar** sonsuz kaydırmalı zaman çizelgesi; widget'ta **tarih başlığı hizası + günün
+  açık görev sayısı** ve **widget'tan tamamlama** (round 9'un App Intent + App Group
+  altyapısı üstünde); **`alliswell://` derin bağlantı yönlendirmesi** + yönlendiricinin
+  gerçek hata çıkışı; **ses önizlemesinin durdurulabilmesi**; **düzenlerken de saat
+  seçimi** (tek tarih-giriş yolu); "planlanan tarih" koşullu açıklamaya dönüşür; proje
+  durumu dropdown'ı kalkar; **sayfa geçişlerindeki hayalet** (yarı saydam ekran zemininin
+  altındaki rotayı göstermesi) tasarım sistemi kuralı değiştirilerek çözülür; ve
+  **kapsamlı CRUD/UX matrisi taraması** — Epic 17
+  ([ADR-0016](adr/0016-in-app-url-routing-and-widget-actions.md), DESIGN §19–§22).
 
 ## 15. Kurumsal kalite gereksinimleri
 

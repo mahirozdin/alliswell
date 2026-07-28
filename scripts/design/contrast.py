@@ -85,6 +85,23 @@ PAIRS = [
     ('L variant text on glass', '#44536F', '#EEF4FF', 4.5),
     ('D text on glass chrome', '#EAF0FD', '#111A3A', 4.5),
     ('D variant text on glass', '#AAB6D6', '#111A3A', 4.5),
+    # ── Completed rows (OPH-185, DESIGN §20 C2/C3). The calm treatment is
+    # built from tokens precisely so it can be measured here; an `Opacity`
+    # wrapper would have made these four pairs impossible to state.
+    ('L done title on done row', '#44536F', '#F6F9FF', 4.5),
+    ('L done body on done row', '#0F1B2E', '#F6F9FF', 4.5),
+    ('D done title on done row', '#AAB6D6', '#121B36', 4.5),
+    ('D done body on done row', '#EAF0FD', '#121B36', 4.5),
+    # The filled check circle keeps its full-strength success fill: muting it
+    # toward the surface would drop the check glyph below 3:1 (measured), and a
+    # done row that cannot be read as done is not calm, it is broken.
+    ('L check glyph on success fill', '#FFFFFF', '#0D7A33', 3.0),
+    ('D check glyph on success fill', '#052E1B', '#30D158', 3.0),
+    ('L success fill on done row', '#0D7A33', '#F6F9FF', 3.0),
+    ('D success fill on done row', '#30D158', '#121B36', 3.0),
+    # ── Swipe-to-delete action pane (OPH-184, DESIGN §19 D5)
+    ('L delete label on error pane', '#FFFFFF', '#D70015', 4.5),
+    ('D delete label on error pane', '#450603', '#FF5147', 4.5),
 ]
 
 

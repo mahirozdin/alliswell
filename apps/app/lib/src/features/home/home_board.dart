@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/pending_deletes.dart';
 import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
 import '../../sections.dart';
@@ -13,6 +14,10 @@ import '../tasks/providers.dart';
 import '../tasks/ui/task_create_sheet.dart';
 import '../tasks/ui/task_tile.dart';
 import '../tasks/ui/task_visuals.dart';
+
+/// Sentinel the move sheet returns for "delete" — not a status, so it can
+/// never be mistaken for one by `_setStatus`.
+const String _kDeleteAction = '__delete__';
 
 /// Home's Pano (kanban) view — round 8, OPH-168, DESIGN §14 K1…K6.
 ///
@@ -114,11 +119,34 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
                     : null,
                 onTap: () => Navigator.of(sheetContext).pop(status),
               ),
+            // OPH-184 (DESIGN §19 D6): the board is the one list with no swipe,
+            // so delete has to be reachable from here or the board would be the
+            // one place a task cannot be deleted.
+            const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
+            ListTile(
+              key: const Key('board-delete'),
+              leading: Icon(
+                Icons.delete_outline,
+                color: Theme.of(sheetContext).colorScheme.error,
+              ),
+              title: Text(
+                'common.delete'.tr(),
+                style: TextStyle(
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+              ),
+              onTap: () => Navigator.of(sheetContext).pop(_kDeleteAction),
+            ),
           ],
         ),
       ),
     );
-    if (picked != null) await _setStatus(task, picked);
+    if (picked == null || !mounted) return;
+    if (picked == _kDeleteAction) {
+      await deleteTaskWithUndo(context, ref, task);
+      return;
+    }
+    await _setStatus(task, picked);
   }
 
   @override
@@ -129,7 +157,16 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
     );
     // The board's own source: every status, not just the planning set —
     // completed/cancelled/archived columns must have data to show.
-    final tasks = ref.watch(boardTasksProvider).value ?? const <Task>[];
+    //
+    // OPH-184: filtered here, not by the card. Board cards are deliberately
+    // NOT wrapped in `AwSwipeToDelete` (D6), so they have nothing that hides
+    // them while a delete is undoable — a task deleted from the move sheet
+    // would sit in its column until the window closed.
+    final tasks = awWithoutPending(
+      ref.watch(boardTasksProvider).value ?? const <Task>[],
+      ref.watch(pendingDeletesProvider),
+      (t) => t.id,
+    );
     final byStatus = <String, List<Task>>{for (final s in columns) s: []};
     for (final task in tasks) {
       byStatus[task.status]?.add(task);
@@ -339,7 +376,11 @@ class _BoardCard extends StatelessWidget {
         // No project badge on the board: a 320-px status column has no room
         // for it beside the title + status icons, and the column is already a
         // status grouping. (The move affordance sits where the badge would.)
-        TaskTile(task: task, showProjectBadge: false),
+        //
+        // No swipe-to-delete either (OPH-184, DESIGN §19 D6): the horizontal
+        // gesture belongs to the phone pager, and a 200 ms long-press drag
+        // already competes for this card. Delete lives in the move sheet.
+        TaskTile(task: task, showProjectBadge: false, swipeToDelete: false),
         PositionedDirectional(
           top: 10,
           end: AwSpace.x1,

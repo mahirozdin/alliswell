@@ -11,6 +11,7 @@ import 'features/notes/ui/note_editor_screen.dart';
 import 'features/notes/ui/notes_screen.dart';
 import 'features/projects/ui/project_detail_screen.dart';
 import 'features/projects/ui/projects_screen.dart';
+import 'features/tasks/ui/completed_screen.dart';
 import 'features/tasks/ui/task_detail_screen.dart';
 import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
@@ -126,6 +127,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/reminders',
         builder: (context, state) => const ReminderSettingsScreen(),
+      ),
+      // OPH-186 (DESIGN §20 C4): everything you have finished. Behind Settings
+      // rather than a sixth tab — round 1's "one rich Home, few tabs" holds.
+      GoRoute(
+        path: '/settings/completed',
+        builder: (context, state) => const CompletedScreen(),
       ),
       // Pushed on top of whichever list opened it (Inbox/Today/Upcoming/…).
       GoRoute(

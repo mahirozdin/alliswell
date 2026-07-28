@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'i18n/i18n.dart';
 import 'router.dart';
@@ -44,8 +45,12 @@ class AllisWellApp extends ConsumerWidget {
         ],
         // The aurora wash paints once here, under every route; scaffolds use a
         // translucent veil over it (see theme.dart / docs/DESIGN.md).
-        builder: (context, child) =>
-            AuroraBackground(child: child ?? const SizedBox.shrink()),
+        // `SlidableAutoCloseBehavior` is a group-notification ancestor, so ONE
+        // of them above the router makes every swipe-to-delete row in the app
+        // close when another one opens (OPH-184) — no per-list wiring.
+        builder: (context, child) => SlidableAutoCloseBehavior(
+          child: AuroraBackground(child: child ?? const SizedBox.shrink()),
+        ),
         routerConfig: router,
       ),
     );

@@ -12,6 +12,7 @@ import '../../../widgets/search_field.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/refreshable.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/swipe_actions.dart';
 import '../data/project.dart';
 import '../providers.dart';
 import 'project_archive.dart';
@@ -139,68 +140,107 @@ class _ProjectTile extends ConsumerWidget {
     final archived = project.status == 'archived';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          contentPadding: const EdgeInsets.fromLTRB(
-            AwSpace.x4,
-            0,
-            AwSpace.x2,
-            0,
-          ),
-          leading: Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(
-              color: project.color,
-              shape: BoxShape.circle,
-              border: Border.all(color: tokens.hairline),
+      // OPH-184: a project could only be deleted from inside its detail screen.
+      // A project delete CASCADES, so it keeps its confirmation dialog and does
+      // NOT use the undo path (DESIGN §19 D3) — the swipe is a shortcut to that
+      // dialog, not a shortcut past it.
+      child: AwSwipeToDelete(
+        id: project.id,
+        semanticLabel: 'project.deleteTooltip'.tr(),
+        onDelete: () => deleteProjectConfirmed(context, ref, project),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            contentPadding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              0,
+              AwSpace.x2,
+              0,
             ),
-          ),
-          title: Text(project.name),
-          subtitle: project.status == 'active' ? null : Text(project.status),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: project.isFavorite
-                    ? 'project.removeFavorite'.tr()
-                    : 'project.markFavorite'.tr(),
-                icon: Icon(
-                  project.isFavorite ? Icons.star : Icons.star_border,
-                  color: project.isFavorite ? tokens.warning : null,
-                ),
-                onPressed: () => ref
-                    .read(projectsControllerProvider.notifier)
-                    .toggleFavorite(project),
+            leading: Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: project.color,
+                shape: BoxShape.circle,
+                border: Border.all(color: tokens.hairline),
               ),
-              PopupMenuButton<String>(
-                key: Key('project-menu-${project.id}'),
-                tooltip: 'project.actions'.tr(),
-                onSelected: (action) {
-                  if (action == 'edit') {
-                    showProjectEditSheet(context, project: project);
-                  } else if (action == 'archive' || action == 'unarchive') {
-                    showProjectArchiveDialog(context, project);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(value: 'edit', child: Text('common.edit'.tr())),
-                  PopupMenuItem(
-                    value: archived ? 'unarchive' : 'archive',
-                    child: Text(
-                      archived
-                          ? 'project.unarchiveMenu'.tr()
-                          : 'project.archiveMenu'.tr(),
-                    ),
+            ),
+            title: Text(project.name),
+            // OPH-193 will retire the free-form status entirely; until then the
+            // one state a user recognises is the archived banner, not a raw
+            // `paused`/`completed` enum printed in English.
+            subtitle: archived ? Text('project.filterArchived'.tr()) : null,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: project.isFavorite
+                      ? 'project.removeFavorite'.tr()
+                      : 'project.markFavorite'.tr(),
+                  icon: Icon(
+                    project.isFavorite ? Icons.star : Icons.star_border,
+                    color: project.isFavorite ? tokens.warning : null,
                   ),
-                ],
-              ),
-            ],
+                  onPressed: () => ref
+                      .read(projectsControllerProvider.notifier)
+                      .toggleFavorite(project),
+                ),
+                PopupMenuButton<String>(
+                  key: Key('project-menu-${project.id}'),
+                  tooltip: 'project.actions'.tr(),
+                  onSelected: (action) {
+                    if (action == 'edit') {
+                      showProjectEditSheet(context, project: project);
+                    } else if (action == 'archive' || action == 'unarchive') {
+                      showProjectArchiveDialog(context, project);
+                    } else if (action == 'delete') {
+                      deleteProjectConfirmed(context, ref, project);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text('common.edit'.tr()),
+                    ),
+                    PopupMenuItem(
+                      value: archived ? 'unarchive' : 'archive',
+                      child: Text(
+                        archived
+                            ? 'project.unarchiveMenu'.tr()
+                            : 'project.archiveMenu'.tr(),
+                      ),
+                    ),
+                    // D2: the swipe's visible equivalent.
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text('project.deleteMenu'.tr()),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            onTap: () => context.go('/projects/${project.id}'),
           ),
-          onTap: () => context.go('/projects/${project.id}'),
         ),
       ),
     );
   }
+}
+
+/// Delete a project after its confirmation dialog (OPH-184, DESIGN §19 D3).
+/// Shared by the list swipe, the list menu and the detail screen's app bar so
+/// the cascade question can never be skipped by taking a different route.
+Future<void> deleteProjectConfirmed(
+  BuildContext context,
+  WidgetRef ref,
+  Project project,
+) async {
+  final confirmed = await awConfirmDelete(
+    context,
+    title: 'project.deleteTitle'.tr(),
+    body: 'project.deleteBody'.tr(args: {'name': project.name}),
+  );
+  if (!confirmed) return;
+  await ref.read(projectsControllerProvider.notifier).deleteProject(project.id);
 }

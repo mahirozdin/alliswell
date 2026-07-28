@@ -94,6 +94,16 @@ class SettingsScreen extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.push('/settings/alarm-log'),
                     ),
+                    // OPH-186 (DESIGN §20 C4): the archive of finished work.
+                    // Home keeps today's; everything older lives here.
+                    ListTile(
+                      key: const Key('settings-completed'),
+                      leading: const Icon(Icons.check_circle_outline),
+                      title: Text('completed.title'.tr()),
+                      subtitle: Text('completed.sub'.tr()),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/settings/completed'),
+                    ),
                     // OPH-111: replay the first-run tour on demand. Start it,
                     // then pop back to the shell where the overlay lives.
                     ListTile(

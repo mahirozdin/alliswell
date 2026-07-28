@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/date_format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sections.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/linkified_text.dart';
 import '../../../widgets/status_views.dart';
@@ -19,6 +21,7 @@ import '../../tags/ui/tag_manage_sheet.dart';
 import '../data/task.dart';
 import '../data/task_store.dart';
 import '../providers.dart';
+import 'task_tile.dart' show deleteTaskWithUndo;
 import 'task_visuals.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
@@ -126,6 +129,25 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               (store, id) =>
                   task.isCompleted ? store.reopen(id) : store.complete(id),
             ),
+          ),
+          // OPH-184: the detail screen's delete, the same one the note editor
+          // and project detail already had. The task was the app's most-used
+          // object and the only one that could not be deleted anywhere.
+          IconButton(
+            key: const Key('task-delete'),
+            tooltip: 'task.deleteTooltip'.tr(),
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () async {
+              final router = GoRouter.of(context);
+              await deleteTaskWithUndo(context, ref, task);
+              // Pop first: the row is already hidden everywhere, and staying on
+              // the detail of a deleted task would strand the user.
+              if (router.canPop()) {
+                router.pop();
+              } else {
+                router.go(AppSection.home.path);
+              }
+            },
           ),
           const SizedBox(width: 4),
         ],

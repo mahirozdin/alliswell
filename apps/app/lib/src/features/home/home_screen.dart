@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/date_format.dart';
 import '../../core/error_messages.dart';
 import '../../core/fold.dart';
+import '../../core/pending_deletes.dart';
 import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
 import '../../notifications/alarm_banner.dart';
@@ -188,7 +189,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           message: localizedError(error),
           onRetry: () => ref.invalidate(openTasksProvider),
         ),
-        data: (items) {
+        data: (rawItems) {
+          // OPH-184: rows hide themselves while undoable, but the GROUPING is
+          // computed from the raw list — without this a group whose only task
+          // was just deleted would render a header above nothing.
+          final items = awWithoutPending(
+            rawItems,
+            ref.watch(pendingDeletesProvider),
+            (t) => t.id,
+          );
           final groups = groupTasksForHome(
             items,
             now: DateTime.now(),

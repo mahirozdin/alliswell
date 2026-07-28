@@ -160,7 +160,14 @@ List<HomeGroup> groupTasksForHome(
     if (bucket != null) byBucket[bucket]!.add(EventItem(event));
   }
 
+  bool isDone(HomeItem item) => item is TaskItem && item.task.isCompleted;
+
   int chronologically(HomeItem a, HomeItem b) {
+    // OPH-185 (DESIGN §20 C1): today's finished work stays in its group but
+    // sinks to the BOTTOM of it — done work must never sit above work that is
+    // still waiting, whatever the clock says.
+    final [da, db] = [isDone(a), isDone(b)];
+    if (da != db) return da ? 1 : -1;
     final [ta, tb] = [a.at, b.at];
     if (ta == null && tb == null) {
       // Dateless tasks only — keep their manual order.
@@ -202,10 +209,14 @@ List<HomeGroup> groupTasksForHome(
   ];
 }
 
-/// Which local days have at least one open task due — feeds the calendar dots.
+/// Which local days have at least one OPEN task due — feeds the calendar dots.
+///
+/// Completed tasks are excluded even while they linger on today's list
+/// (OPH-185, DESIGN §20 C1): a dot means "there is work on this day", and a
+/// finished day is not a full day.
 Set<DateTime> daysWithTasks(List<Task> tasks) => {
   for (final task in tasks)
-    if (task.dueAt != null) dayOf(task.dueAt!),
+    if (task.dueAt != null && !task.isCompleted) dayOf(task.dueAt!),
 };
 
 // ── The user's own calendar (OPH-083, ADR-0008) ────────────────────────────

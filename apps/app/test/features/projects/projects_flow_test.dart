@@ -36,7 +36,7 @@ Future<void> openProjects(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('projects list renders items with status and favorites', (
+  testWidgets('projects list renders items and favorites, never a raw status', (
     tester,
   ) async {
     final api = FakeApi()
@@ -49,7 +49,10 @@ void main() {
 
     expect(find.text('Website'), findsOneWidget);
     expect(find.text('Ev İşleri'), findsOneWidget);
-    expect(find.text('paused'), findsOneWidget); // non-active status shown
+    // OPH-184/193: the row used to print `project.status` verbatim, so a user
+    // read the English enum "paused" in a Turkish app. The only state a person
+    // recognises is archived, and that has its own localized label.
+    expect(find.text('paused'), findsNothing);
     expect(find.byIcon(Icons.star), findsOneWidget); // favorite filled
     expect(find.byIcon(Icons.star_border), findsOneWidget);
   });

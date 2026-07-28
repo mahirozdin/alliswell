@@ -12,6 +12,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/refreshable.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/swipe_actions.dart';
 import '../../projects/providers.dart';
 import '../data/note.dart';
 import '../providers.dart';
@@ -166,31 +167,61 @@ class NoteTile extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
-          leading: IconButton(
-            key: Key('pin-${note.id}'),
-            tooltip: note.isPinned ? 'note.unpin'.tr() : 'note.pin'.tr(),
-            icon: Icon(
-              note.isPinned ? Icons.star : Icons.star_border,
-              color: note.isPinned ? context.awTokens.warning : null,
+      // OPH-184: a note could only be deleted from inside its editor — the
+      // list offered archive and nothing else.
+      child: AwSwipeToDelete(
+        id: note.id,
+        semanticLabel: 'note.deleteTooltip'.tr(),
+        onDelete: () => deleteNoteWithUndo(context, ref, note),
+        child: Card(
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+            leading: IconButton(
+              key: Key('pin-${note.id}'),
+              tooltip: note.isPinned ? 'note.unpin'.tr() : 'note.pin'.tr(),
+              icon: Icon(
+                note.isPinned ? Icons.star : Icons.star_border,
+                color: note.isPinned ? context.awTokens.warning : null,
+              ),
+              onPressed: () => toggleNotePinned(ref, note),
             ),
-            onPressed: () => toggleNotePinned(ref, note),
+            title: Text(
+              note.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(
+              note.snippet.isEmpty ? meta : '${note.snippet}\n$meta',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: _NoteMenu(note: note),
+            onTap: () => context.go('/notes/${note.id}'),
           ),
-          title: Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text(
-            note.snippet.isEmpty ? meta : '${note.snippet}\n$meta',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          trailing: _NoteMenu(note: note),
-          onTap: () => context.go('/notes/${note.id}'),
         ),
       ),
     );
   }
+}
+
+/// Delete a note the recoverable way (OPH-184) — shared by the row swipe, the
+/// row menu and the grid card, so all three behave identically.
+Future<void> deleteNoteWithUndo(
+  BuildContext context,
+  WidgetRef ref,
+  NoteRow note,
+) {
+  // Resolved while mounted — the commit fires from a timer long after this row
+  // has left the list (see the note on [deleteTaskWithUndo]).
+  final store = ref.read(noteStoreProvider);
+  return awDeleteWithUndo(
+    context,
+    ref,
+    id: note.id,
+    message: 'note.deleted'.tr(args: {'title': note.title}),
+    commit: () => store.delete(note.id),
+  );
 }
 
 class _NoteMenu extends ConsumerWidget {
@@ -201,9 +232,11 @@ class _NoteMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
+      key: Key('note-menu-${note.id}'),
       tooltip: 'note.actions'.tr(),
       onSelected: (action) {
         if (action == 'archive') setNoteArchived(ref, note, !note.isArchived);
+        if (action == 'delete') deleteNoteWithUndo(context, ref, note);
       },
       itemBuilder: (context) => [
         PopupMenuItem(
@@ -218,6 +251,15 @@ class _NoteMenu extends ConsumerWidget {
             title: Text(
               note.isArchived ? 'note.unarchive'.tr() : 'note.archive'.tr(),
             ),
+          ),
+        ),
+        // DESIGN §19 D2: the swipe's visible equivalent — a mouse never swipes.
+        PopupMenuItem(
+          value: 'delete',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.delete_outline),
+            title: Text('note.deleteFromList'.tr()),
           ),
         ),
       ],
@@ -285,6 +327,10 @@ class _NotesGrid extends ConsumerWidget {
                               : null,
                         ),
                       ),
+                      // The card grid had NO actions menu at all — no archive,
+                      // no delete. A horizontal swipe is ambiguous inside a
+                      // grid, so the menu is this view's affordance (D2).
+                      _NoteMenu(note: note),
                     ],
                   ),
                   const SizedBox(height: 2),

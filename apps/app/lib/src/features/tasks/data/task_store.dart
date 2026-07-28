@@ -25,9 +25,20 @@ class TaskStore {
 
   // ── Reads ──────────────────────────────────────────────────────────────────
 
-  Stream<List<Task>> watchOpen(String workspaceId) => _watchList(
+  /// The planning set — plus, since OPH-185, whatever was completed on or
+  /// after [completedSince] (the current local day's start).
+  ///
+  /// DESIGN §20 C1: completing is feedback, not disappearance. Passing null
+  /// keeps the old behaviour (terminal statuses hidden outright), which is what
+  /// callers that are not a day-scoped planning list want.
+  Stream<List<Task>> watchOpen(
+    String workspaceId, {
+    DateTime? completedSince,
+  }) => _watchList(
     workspaceId,
-    (t) => t.workspaceId.equals(workspaceId) & t.status.isIn(kPlanningStatuses),
+    (t) =>
+        t.workspaceId.equals(workspaceId) &
+        (t.status.isIn(kPlanningStatuses) | _completedSince(t, completedSince)),
   );
 
   /// Every status — the Board's source (OPH-168): its columns include
@@ -40,14 +51,79 @@ class TaskStore {
     (t) => t.workspaceId.equals(workspaceId) & t.status.equals('inbox'),
   );
 
-  Stream<List<Task>> watchProjectTasks(String workspaceId, String projectId) =>
-      _watchList(
-        workspaceId,
-        (t) =>
-            t.workspaceId.equals(workspaceId) &
-            t.status.isIn(kPlanningStatuses) &
-            t.projectId.equals(projectId),
-      );
+  Stream<List<Task>> watchProjectTasks(
+    String workspaceId,
+    String projectId, {
+    DateTime? completedSince,
+  }) => _watchList(
+    workspaceId,
+    (t) =>
+        t.workspaceId.equals(workspaceId) &
+        t.projectId.equals(projectId) &
+        (t.status.isIn(kPlanningStatuses) | _completedSince(t, completedSince)),
+  );
+
+  /// "Completed on or after this instant" — or nothing at all when the caller
+  /// passed no boundary. A constant false keeps the two branches of the OR
+  /// symmetrical instead of forcing every caller to build two queries.
+  Expression<bool> _completedSince($TasksTable t, DateTime? since) =>
+      since == null
+      ? const Constant(false)
+      : t.status.equals('completed') &
+            t.completedAt.isBiggerOrEqualValue(since.toUtc());
+
+  /// The Completed archive (OPH-186, DESIGN §20 C4), newest first.
+  ///
+  /// Ordering is the user's own rule: **the task's own date when it has one,
+  /// otherwise when they finished it** — `COALESCE(due_at, completed_at)`. Read
+  /// from the local replica; the data is already here, and an archive that
+  /// needs the network is an archive you cannot trust.
+  ///
+  /// Deliberately NOT built on [_watchList]: that one joins the tag table, and
+  /// a `LIMIT` on a joined statement counts JOINED rows — a task with three
+  /// tags would eat three slots of the page and page sizes would depend on how
+  /// many tags the user happens to use. So the page is taken over task rows and
+  /// the tags for exactly that page are read afterwards. The cost of that
+  /// choice, stated rather than hidden: this stream re-emits on task changes,
+  /// not on a tag rename — acceptable for an archive, wrong for a live list.
+  Stream<List<Task>> watchCompleted(
+    String workspaceId, {
+    required int limit,
+    int offset = 0,
+  }) {
+    final page = _db.select(_db.tasks)
+      ..where(
+        (t) => t.workspaceId.equals(workspaceId) & t.status.equals('completed'),
+      )
+      ..orderBy([
+        (t) => OrderingTerm(
+          expression: CustomExpression<DateTime>(
+            'COALESCE(due_at, completed_at)',
+          ),
+          mode: OrderingMode.desc,
+        ),
+        // A stable tiebreaker: ULIDs sort by creation, so two tasks with
+        // the same sort instant keep a deterministic order across pages.
+        // Without it a page boundary can repeat or skip a row.
+        (t) => OrderingTerm.desc(t.id),
+      ])
+      ..limit(limit, offset: offset);
+    return page.watch().asyncMap((records) async {
+      if (records.isEmpty) return const <Task>[];
+      final ids = [for (final record in records) record.id];
+      final tagRows = await (_db.select(
+        _db.taskTagRows,
+      )..where((r) => r.taskId.isIn(ids))).get();
+      final tagsByTask = <String, List<String>>{};
+      for (final row in tagRows) {
+        tagsByTask.putIfAbsent(row.taskId, () => []).add(row.tagId);
+      }
+      return [
+        for (final record in records)
+          _task(record, tagIds: (tagsByTask[record.id]?..sort()) ?? const []),
+      ];
+    });
+  }
 
   /// One WATCHED JOIN, not two combined streams: lists hydrate tagIds
   /// (OPH-165, DESIGN T4) while keeping the single-stream emission semantics

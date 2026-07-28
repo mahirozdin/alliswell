@@ -199,6 +199,56 @@ Design: [ADR-0015](docs/adr/0015-alarm-delivery-and-reminder-profiles.md),
 [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) §2b/§5/§6,
 [DESIGN.md](docs/DESIGN.md) §15–§18.
 
+## Toward v0.6.0
+
+### Phase 11 — Feedback round 10: delete, completed work, the widget, transitions ⏳ (planned 2026-07-28)
+
+Twelve tasks (OPH-184…195) from the first round of feedback written after living
+with the app for a while. The theme of the round is uncomfortable and worth
+stating plainly: **most of it was not missing code — it was code nobody could
+reach.**
+
+**Delete, and the things like it (OPH-184, OPH-195).** A task could be created,
+edited, scheduled, tagged, attached to, mirrored to a calendar and alarmed — and
+not deleted. The engine was complete from day one (optimistic local delete,
+outbox mutation, server-side subtree tombstone, attachment cascade); the button
+was never placed on a row. Round 10 adds **swipe-to-delete** across every list —
+the half-open-then-tap idiom, never a single destructive fling — plus a delete
+action on task detail, delete in the notes and projects list menus, and an
+**Undo** snackbar that works by not committing yet. Then a deliberate CRUD ×
+entity audit, because delete is the cell no happy-path demo ever exercises, and
+it was not the only one: subtasks, manual ordering and task color are all wired
+below the UI and invisible above it.
+
+**Work you finished should look finished (OPH-185, OPH-186).** Completing a task
+made it vanish mid-tap. Now it stays in its own group for the rest of the day —
+filled circle, struck through, calmly muted (with real tokens, not an opacity
+wrapper that would void the contrast floors) — and everything older lives in
+**Settings → Completed**: a reverse-chronological, day-headed timeline that pages
+as you scroll, sorted by the task's own date when it has one and by its completion
+time when it does not.
+
+**The widget grows up (OPH-187, OPH-188, OPH-189).** Its date header was
+misaligned on iOS and drawn differently on Android; it now shows **how many open
+tasks today actually holds** (overdue + due today) and both platforms draw it the
+same. Its circles become buttons that complete a task without opening the app,
+riding the App Intent + App Group queue round 9 built for AlarmKit. And tapping
+it stops producing `No route for alliswell://open/`: the scheme gets registered,
+a tested resolver routes it, `/` becomes a real route, and the router's error
+screen becomes ours with a recovery button that works. Contract:
+[ADR-0016](docs/adr/0016-in-app-url-routing-and-widget-actions.md).
+
+**Things that were quietly wrong (OPH-190…194).** A sound preview whose stop
+button was disabled and which kept playing after you closed the sheet; a date
+editor that silently rewrote 14:30 to 23:59 when you changed only the day; a
+mysterious third date field ("planned") that exists for calendar drags and now
+explains itself only when it applies; a project status dropdown that appeared
+only when editing and printed raw English enum values; and the ghost of the
+previous screen during navigation — which turned out not to be a performance
+problem at all, but this design system's own rule that every scaffold is ~50 %
+transparent over a single wash painted below the navigator. Design:
+[DESIGN.md](docs/DESIGN.md) §19–§22.
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:

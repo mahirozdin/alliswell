@@ -5,6 +5,7 @@ import '../../../core/date_format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/swipe_actions.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_badge.dart';
 import '../../tags/tags.dart';
@@ -29,6 +30,8 @@ class TaskTile extends ConsumerWidget {
     this.dimmed = false,
     this.highlighted = false,
     this.showProjectBadge = true,
+    this.swipeToDelete = true,
+    this.trailingAction,
   });
 
   final Task task;
@@ -38,6 +41,14 @@ class TaskTile extends ConsumerWidget {
   /// Whether to show the project badge at the row's far right (OPH-104).
   /// Off inside a project's own Tasks tab, where every row is that project.
   final bool showProjectBadge;
+
+  /// OPH-184: the swipe-to-delete affordance. Off on the board, whose
+  /// horizontal pager owns the horizontal gesture (DESIGN §19 D6).
+  final bool swipeToDelete;
+
+  /// An extra control before the status icon — the Completed screen's
+  /// "Reopen", for instance. Rows without one are unchanged.
+  final Widget? trailingAction;
 
   Future<void> _toggle(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -58,14 +69,21 @@ class TaskTile extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final dateFormat = ref.watch(dateFormatProvider);
     final due = task.dueAt?.toLocal();
+    // OPH-185 (DESIGN §20 C2): a completed row stays, but it goes quiet — the
+    // whole row, not just the title. Everything below reads this flag.
+    final completed = task.isCompleted;
     // OPH-177: a snoozed alarm must SAY it is snoozed. Until now `snoozedUntil`
     // was invisible everywhere, so a silenced task looked like an armed one.
+    // A finished task has no alarms at all (`alarmInstantsFor` returns none for
+    // terminal statuses), so these chips would be claims that are not true.
     final snoozedUntil = task.snoozedUntil?.toLocal();
     final snoozed =
-        snoozedUntil != null && snoozedUntil.isAfter(DateTime.now());
+        !completed &&
+        snoozedUntil != null &&
+        snoozedUntil.isAfter(DateTime.now());
     // OPH-178: silenced-for-good says so, and offers the way back. An armed
     // looking task whose alarms are dead is the lie A5 forbids.
-    final muted = task.alarmsMutedAt != null;
+    final muted = !completed && task.alarmsMutedAt != null;
     final isOverdue =
         due != null && !task.isCompleted && due.isBefore(DateTime.now());
     final priorityColor = taskPriorityColorOf(context, task.priority);
@@ -89,6 +107,12 @@ class TaskTile extends ConsumerWidget {
               scheme.primaryContainer.withValues(alpha: 0.45),
               scheme.surface,
             )
+          // C3: the calm treatment is a TOKEN, never an `Opacity` wrapper —
+          // opacity makes contrast unmeasurable and silently voids §5's floors.
+          // It is also deliberately distinct from `dimmed` (selected-day), so
+          // two different meanings never share one look.
+          : completed
+          ? scheme.surfaceContainerLow
           : null,
       shape: highlighted
           ? RoundedRectangleBorder(
@@ -194,6 +218,10 @@ class TaskTile extends ConsumerWidget {
                               color: scheme.error,
                               fontWeight: FontWeight.w600,
                             )
+                          : completed
+                          ? theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            )
                           : null,
                     ),
                   for (final tag in rowTags.take(2)) _InlineTag(tag: tag),
@@ -233,13 +261,20 @@ class TaskTile extends ConsumerWidget {
               ),
               const SizedBox(width: AwSpace.x2),
             ],
-            if (task.isUrgent) ...[
+            // Hidden once done: the urgent marker is an ALARM state, and a
+            // completed task has no alarms — leaving it on would be the kind of
+            // claim DESIGN §11 A5 forbids, not just visual noise.
+            if (task.isUrgent && !completed) ...[
               Icon(
                 Icons.notification_important,
                 size: 18,
                 color: scheme.error,
                 semanticLabel: 'task.urgent'.tr(),
               ),
+              const SizedBox(width: AwSpace.x2),
+            ],
+            if (trailingAction != null) ...[
+              trailingAction!,
               const SizedBox(width: AwSpace.x2),
             ],
             Icon(
@@ -256,12 +291,48 @@ class TaskTile extends ConsumerWidget {
       ),
     );
 
+    // OPH-184: the row's own delete affordance. `AwSwipeToDelete` also hides
+    // the row while its delete is undoable, so every list agrees at once.
+    final swipeable = swipeToDelete
+        ? AwSwipeToDelete(
+            id: task.id,
+            semanticLabel: 'task.deleteSemantic'.tr(
+              args: {'title': task.title},
+            ),
+            onDelete: () => deleteTaskWithUndo(context, ref, task),
+            child: tile,
+          )
+        : tile;
+
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
-      child: tile,
+      child: swipeable,
     );
     return dimmed ? Opacity(opacity: 0.45, child: row) : row;
   }
+}
+
+/// Delete a task the recoverable way (OPH-184, DESIGN §19 D3/D4) — shared by
+/// the row swipe, the Inbox capture row and the detail screen's app bar, so
+/// all three behave identically.
+Future<void> deleteTaskWithUndo(
+  BuildContext context,
+  WidgetRef ref,
+  Task task,
+) {
+  // Resolve the store NOW, while this widget is still mounted. The commit runs
+  // ~5 s later from a timer, and by then the row is gone from the list and its
+  // element is disposed — a captured `WidgetRef` would throw "Using ref when a
+  // widget is about to or has been unmounted" and the delete would never
+  // happen. (The repo has met this before: OPH-170's UnmountedRef lesson.)
+  final store = ref.read(taskStoreProvider);
+  return awDeleteWithUndo(
+    context,
+    ref,
+    id: task.id,
+    message: 'task.deleted'.tr(args: {'title': task.title}),
+    commit: () => store.delete(task.id),
+  );
 }
 
 /// Compact inline tag for list rows (T4): color dot + `#name` in caption ink.
