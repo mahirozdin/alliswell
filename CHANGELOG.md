@@ -24,6 +24,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Choose your alarm's sound — or upload your own** (OPH-181). Reminder system
+  settings now has an Alarm sound and a Reminder sound row: the system's own
+  sound, the 28-second alarm bed, or two new short tones (Chime, Ping), each with
+  a play button so you pick by hearing. **Upload a sound** puts your own file in a
+  "Zil sesleri" folder — an ordinary, synced, deletable file — and selecting it
+  installs it for notifications. The rules are stated where you choose, not
+  discovered at 3 a.m.: a notification sound has to be under 30 seconds and a
+  .caf/.wav/.aiff file (mp3 and m4a play in the in-app alarm instead), and on
+  Android an uploaded sound plays in the in-app alarm while notifications keep a
+  built-in one. If an installed sound ever goes missing, the app records it and
+  falls back audibly rather than letting the system swap in a quiet default.
 - **The in-app alarm actually makes a sound** (OPH-180). When an urgent alarm
   comes due while the app is open, the ring screen now loops the 28-second alarm
   bed with a haptic pulse instead of buzzing silently — and on desktop and web,

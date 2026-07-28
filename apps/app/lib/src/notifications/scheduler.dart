@@ -4,6 +4,7 @@ import 'alarm_log.dart';
 import 'alarmkit.dart';
 import 'planner.dart';
 import 'gateway.dart';
+import 'alarm_sound.dart';
 import 'reminder_profile.dart';
 
 /// Keeps the OS notification schedule equal to the plan (OPH-061): every
@@ -20,6 +21,9 @@ class NotificationScheduler {
     this.alarmKit,
     this.log,
     this.profile = ReminderProfile.factory,
+    this.sounds,
+    this.alarmSound = const AwSoundChoice.bundled('aw_alarm'),
+    this.reminderSound = const AwSoundChoice.os(),
     this.maxPending = 40,
     DateTime Function()? clock,
   }) : _now = clock ?? (() => DateTime.now().toUtc());
@@ -35,6 +39,12 @@ class NotificationScheduler {
   /// The user's re-alert chain (OPH-179). The provider rebuilds the scheduler
   /// when it changes, so a new profile re-plans everything pending.
   final ReminderProfile profile;
+
+  /// Turns the two sound choices into what this platform can play (OPH-181).
+  /// Null keeps the OS defaults — a pure scheduler test needs no filesystem.
+  final AlarmSoundResolver? sounds;
+  final AwSoundChoice alarmSound;
+  final AwSoundChoice reminderSound;
 
   /// iOS 26+ URGENT lane (OPH-141). Null (or unsupported/declined) leaves urgent
   /// alarms on the notification lane. When active, urgent alarms move here and
@@ -81,6 +91,23 @@ class NotificationScheduler {
     unawaited(_subscription?.cancel());
   }
 
+  /// Resolves one lane's sound, recording a degradation rather than letting the
+  /// OS quietly substitute its own ding (OPH-176's guard, OPH-181's subject).
+  Future<AwResolvedSound> _resolve(AwSoundChoice choice) async {
+    final resolver = sounds;
+    if (resolver == null) return const AwResolvedSound();
+    final resolved = await resolver.resolve(choice);
+    final reason = resolved.degradedReason;
+    if (reason != null) {
+      await log?.record(
+        event: AlarmLogEvent.degraded,
+        lane: AlarmLogLane.notification,
+        detail: 'sound=${choice.encode()} $reason',
+      );
+    }
+    return resolved;
+  }
+
   Future<void> _apply() async {
     if (_stopped) return;
     if (_applying) {
@@ -90,6 +117,11 @@ class NotificationScheduler {
     _applying = true;
     try {
       final now = _now();
+      // Resolve the chosen sounds first: the name is part of each id's content
+      // hash, so a sound change reschedules instead of applying "from the next
+      // alarm on" (OPH-181).
+      final alarm = await _resolve(alarmSound);
+      final reminder = await _resolve(reminderSound);
       final desired = planNotifications(
         alarms: _latest,
         now: now,
@@ -97,6 +129,8 @@ class NotificationScheduler {
         maxPending: maxPending,
         routeUrgentToAlarmKit: _alarmKitActive,
         profile: profile,
+        alarmSoundName: alarm.name,
+        reminderSoundName: reminder.name,
       );
       final desiredById = {for (final n in desired) n.id: n};
       final pending = await gateway.pendingIds();

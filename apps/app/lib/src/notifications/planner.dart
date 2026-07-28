@@ -77,6 +77,10 @@ List<PlannedNotification> planNotifications({
   /// The user's re-alert chain (OPH-179). Defaults to what shipped before it
   /// was configurable, so a caller that does not care behaves as it always did.
   ReminderProfile profile = ReminderProfile.factory,
+
+  /// The resolved sound names for the two lanes (OPH-181). Null = OS default.
+  String? alarmSoundName,
+  String? reminderSoundName,
 }) {
   final planned = <PlannedNotification>[];
 
@@ -112,6 +116,7 @@ List<PlannedNotification> planNotifications({
                 ? (index == 0 ? _firstBody(alarm) : _repeatBody(index))
                 : 'notif.reminder'.tr());
 
+      final soundName = alarm.urgent ? alarmSoundName : reminderSoundName;
       final payload = jsonEncode({
         'taskId': alarm.taskId,
         'reminderId': alarm.reminderId,
@@ -120,7 +125,7 @@ List<PlannedNotification> planNotifications({
       planned.add(
         PlannedNotification(
           id: notificationIdFor(
-            '${alarm.reminderId}|$index|${fireAt.millisecondsSinceEpoch}|$title|$body|${alarm.urgent}',
+            '${alarm.reminderId}|$index|${fireAt.millisecondsSinceEpoch}|$title|$body|${alarm.urgent}|$soundName',
           ),
           title: title,
           body: body,
@@ -132,6 +137,7 @@ List<PlannedNotification> planNotifications({
           slotIndex: index,
           taskId: alarm.taskId,
           reminderId: alarm.reminderId,
+          soundName: soundName,
         ),
       );
     }

@@ -6,6 +6,7 @@ import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
 import '../../notifications/providers.dart';
 import '../../notifications/reminder_profile.dart';
+import 'sound_picker_sheet.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
 
@@ -232,6 +233,37 @@ class ReminderSettingsScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
+                ),
+              ),
+              const SizedBox(height: AwSpace.x3),
+
+              // N6 — sounds are chosen by HEARING them.
+              Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      key: const Key('sound-row-alarm'),
+                      leading: const Icon(Icons.notifications_active_outlined),
+                      title: Text('sound.alarmTitle'.tr()),
+                      subtitle: Text(
+                        soundChoiceLabel(ref.watch(alarmSoundChoiceProvider)),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => showSoundPicker(context, SoundLane.alarm),
+                    ),
+                    ListTile(
+                      key: const Key('sound-row-reminder'),
+                      leading: const Icon(Icons.notifications_outlined),
+                      title: Text('sound.reminderTitle'.tr()),
+                      subtitle: Text(
+                        soundChoiceLabel(
+                          ref.watch(reminderSoundChoiceProvider),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => showSoundPicker(context, SoundLane.reminder),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: AwSpace.x3),

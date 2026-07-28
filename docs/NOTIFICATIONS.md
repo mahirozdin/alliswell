@@ -254,6 +254,23 @@ The constraints are hard and platform-specific:
   `notification_privacy` and the reminder profile (§5). A server-side settings
   store is backlog.
 
+**Shipped 2026-07-28 (OPH-181).** Catalogue: the 28 s bed (bundled in the iOS
+app since round 6) plus two short tones, each existing as a Flutter asset (the
+in-app bed), a `res/raw` resource (Android channels) and a `.caf` (iOS). The
+`.caf` files are **installed into `Library/Sounds` at runtime**, which is the
+whole trick: iOS resolves the container first, so adding a sound — ours or the
+user's — needs no Xcode work. Uploaded sounds are ordinary workspace files in a
+reserved "Zil sesleri" folder, downloaded and installed when selected; the
+resolution guard OPH-176 deferred lives here, checking the installed file really
+exists and recording a `degraded` event instead of letting iOS silently
+substitute its default ding. The chosen sound name is part of each
+notification's content hash, so changing a sound RESCHEDULES rather than
+applying to the next alarm only, and each (lane, sound) pair gets its own
+Android channel because channels are immutable. Android's one honest boundary:
+an uploaded file cannot be a channel sound without a FileProvider (backlog), so
+there it plays in the in-app bed while notifications keep a bundled sound — said
+in the picker.
+
 ## 2d. Apple Watch (round 9, OPH-183)
 
 - **Mirroring is free and needs no watchOS target**: iPhone notifications are

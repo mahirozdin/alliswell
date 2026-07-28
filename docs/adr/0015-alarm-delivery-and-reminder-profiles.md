@@ -114,6 +114,16 @@ Platform constraints that shape any fix (sources in
    anything else may still serve the in-app bed. Server-side transcoding is
    deliberately out of scope.
 
+   **Shipped 2026-07-28 (OPH-181) with one platform boundary and one discovery.**
+   Discovery: because `UNNotificationSound` resolves the container BEFORE the
+   bundle, *no Xcode work is needed at all* — both the extra bundled tones and
+   uploaded sounds are installed into `Library/Sounds` at runtime. Boundary:
+   Android notification channels can only point at a `res/raw` resource or a
+   `content://` URI, and exposing an app-private file needs a FileProvider
+   (native config). So on Android an uploaded sound plays in the in-app bed while
+   notifications keep a bundled one — stated in the picker, not swallowed.
+   FileProvider support is backlog.
+
 7. **A new dependency category: an audio player.** Chosen on the implementation
    pass (2026-07-28, OPH-180): **`audioplayers`**. One package covers every
    target we ship — including Windows/Linux, where `just_audio` needs a

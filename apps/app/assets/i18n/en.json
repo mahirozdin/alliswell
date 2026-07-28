@@ -486,6 +486,26 @@
     "snoozeOrderSub": "Drag to reorder — this is the order the ringing alarm shows",
     "reset": "Back to Standard"
   },
+  "sound": {
+    "alarmTitle": "Alarm sound",
+    "reminderTitle": "Reminder sound",
+    "osDefault": "The system’s own sound",
+    "bundled": {
+      "aw_alarm": "Alarm bed (28 s)",
+      "chime": "Chime",
+      "ping": "Ping"
+    },
+    "preview": "Play it",
+    "yours": "Your sounds",
+    "noneYet": "Nothing uploaded yet.",
+    "upload": "Upload a sound",
+    "installFailed": "Could not install that sound — the system sound stays.",
+    "uploadFailed": "Could not upload that file.",
+    "inAppOnlyBadge": "In-app alarm only",
+    "inAppOnlyPicked": "Picked — but iOS notifications can’t play this format, so they keep the system sound.",
+    "inAppOnlyUpload": "This format can’t be an iOS notification sound; it will play in the in-app alarm.",
+    "rules": "A notification sound must be under 30 seconds and a .caf, .wav or .aiff file — mp3 and m4a can only play in the in-app alarm. On Android, an uploaded sound plays in the in-app alarm; notifications keep a built-in one."
+  },
   "widget": {
     "bucket": {
       "overdue": "Overdue",

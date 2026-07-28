@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/persisted_prefs.dart';
@@ -10,11 +12,13 @@ import '../sync/db/database.dart';
 import '../sync/providers.dart';
 import 'actions.dart';
 import 'alarm_log.dart';
+import 'alarm_sound.dart';
 import 'alarmkit.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
 import 'reminder_profile.dart';
 import 'reminder_store.dart';
+import 'sound_store.dart';
 import 'scheduler.dart';
 
 /// The OS adapter. Widget tests override this with a fake — the default
@@ -55,6 +59,34 @@ final snoozePresetOrderRawProvider = NotifierProvider<PersistedChoice, String>(
 
 final snoozePresetOrderProvider = Provider<List<String>>(
   (ref) => parseSnoozePresetOrder(ref.watch(snoozePresetOrderRawProvider)),
+);
+
+/// Which sound each lane plays (OPH-181). Device-local: the sound file lives on
+/// THIS device, and the library it can be chosen from is the workspace's.
+final alarmSoundRawProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_alarm_sound', fallback: 'bundled:aw_alarm'),
+);
+
+/// Ordinary reminders keep the OS sound until the user says otherwise.
+final reminderSoundRawProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_reminder_sound', fallback: 'os'),
+);
+
+final alarmSoundChoiceProvider = Provider<AwSoundChoice>(
+  (ref) => AwSoundChoice.parse(ref.watch(alarmSoundRawProvider)),
+);
+
+final reminderSoundChoiceProvider = Provider<AwSoundChoice>(
+  (ref) => AwSoundChoice.parse(ref.watch(reminderSoundRawProvider)),
+);
+
+/// Resolves a choice into what this platform's notification lane can play.
+final alarmSoundResolverProvider = Provider<AlarmSoundResolver>(
+  (ref) => AlarmSoundResolver(
+    store: soundStore,
+    isIos: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
+    isAndroid: !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
+  ),
 );
 
 /// OPH-064: lock-screen privacy — generic notification content instead of
@@ -143,6 +175,9 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
     privacyMode: ref.watch(notificationPrivacyProvider),
     log: ref.watch(alarmLogProvider),
     profile: ref.watch(reminderProfileProvider),
+    sounds: ref.watch(alarmSoundResolverProvider),
+    alarmSound: ref.watch(alarmSoundChoiceProvider),
+    reminderSound: ref.watch(reminderSoundChoiceProvider),
   );
   unawaited(scheduler.start());
   ref.onDispose(scheduler.dispose);

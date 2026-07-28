@@ -485,6 +485,26 @@
     "snoozeOrderSub": "Sürükleyip sırala — çalan alarm bu sırayla gösterir",
     "reset": "Standart’a dön"
   },
+  "sound": {
+    "alarmTitle": "Alarm sesi",
+    "reminderTitle": "Hatırlatıcı sesi",
+    "osDefault": "Sistemin kendi sesi",
+    "bundled": {
+      "aw_alarm": "Alarm yatağı (28 sn)",
+      "chime": "Çan",
+      "ping": "Ping"
+    },
+    "preview": "Çal",
+    "yours": "Kendi seslerin",
+    "noneYet": "Henüz ses yüklenmedi.",
+    "upload": "Ses yükle",
+    "installFailed": "O ses kurulamadı — sistem sesi kalıyor.",
+    "uploadFailed": "Dosya yüklenemedi.",
+    "inAppOnlyBadge": "Yalnız uygulama içi alarm",
+    "inAppOnlyPicked": "Seçildi — ama iOS bildirimleri bu biçimi çalamaz, orada sistem sesi kalır.",
+    "inAppOnlyUpload": "Bu biçim iOS bildirim sesi olamaz; uygulama içi alarmda çalar.",
+    "rules": "Bildirim sesi 30 saniyeden kısa ve .caf, .wav veya .aiff olmalı — mp3 ve m4a yalnız uygulama içi alarmda çalar. Android’de yüklediğin ses uygulama içi alarmda çalar; bildirimler paketli bir sesle devam eder."
+  },
   "widget": {
     "bucket": {
       "overdue": "Gecikmiş",

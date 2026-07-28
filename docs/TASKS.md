@@ -3457,22 +3457,22 @@ kontrast FAILURES: 0; ADR-0015 §7 + DESIGN §11 A3 + NOTIFICATIONS §3 güncell
 CHANGELOG; STATE. _Cihazda gerçek ses (sessiz anahtarı açıkken duyulması) cihaz
 turuna kaldı — `flutter test` audio plugin'i çalıştırmaz._
 
-### OPH-181 — Zil sesi kütüphanesi + özel ses yükleme (round 9 #7 sesler)
+### OPH-181 — Zil sesi kütüphanesi + özel ses yükleme (round 9 #7 sesler) ✅ 2026-07-28
 
-- [ ] **Paketli sesler:** `aw_alarm` (28 sn, var) + 2 kısa hatırlatıcı tonu (yeni
+- [x] **Paketli sesler:** `aw_alarm` (28 sn, var) + 2 kısa hatırlatıcı tonu (yeni
       varlıklar: iOS `.caf` ≤30 sn + Android `res/raw` + Dart asset — üç yüzey aynı
       dosyayı duyar).
-- [ ] **Özel yükleme mevcut boru hattını kullanır** (Epic 14/15): `targetType:'workspace'`
+- [x] **Özel yükleme mevcut boru hattını kullanır** (Epic 14/15): `targetType:'workspace'`
       + ayrılmış **"Zil sesleri"** klasörü; seçim cihaz-yerel
       (`alliswell_alarm_sound` / `alliswell_reminder_sound` = `bundled:aw_alarm` |
       `file:<fileId>`) — dosya kütüphanesi çalışma alanı geneli olduğu için diğer
       cihazlar aynı sesi seçebilir, sunucu tarafında yeni ayar deposu gerekmez.
-- [ ] **Cihaza kurulum (kritik ayrıntı):** iOS `UNNotificationSound(named:)` sesi
+- [x] **Cihaza kurulum (kritik ayrıntı):** iOS `UNNotificationSound(named:)` sesi
       **önce app container'ın `Library/Sounds` klasöründe**, sonra bundle'da arar →
       presigned GET ile indir, `Library/Sounds/<hash>.caf` olarak yaz, adıyla referans
       ver. Android'de kanallar **değiştirilemez** → ses başına kanal
       (`urgent_alarms_v3_<hash>`), eski/kullanılmayan kanalları sil (sınırlı sayıda tut).
-- [ ] **iOS ses çözümleme bekçisi (OPH-176'dan taşındı):** `UNNotificationSound`
+- [x] **iOS ses çözümleme bekçisi (OPH-176'dan taşındı):** `UNNotificationSound`
       adı çözülemezse iOS **sessizce varsayılan ding'e** düşer — özel ses boru
       hattı burada kurulduğu için probe da buraya ait. Native tarafta dosyanın
       (bundle → container `Library/Sounds`) varlığını doğrula, çözülemiyorsa
@@ -3480,19 +3480,60 @@ turuna kaldı — `flutter test` audio plugin'i çalıştırmaz._
       ("özel ses bulunamadı — varsayılan sesle çalacak"). Sessiz düşüş yasak.
       _(176'da yazılmadı: yeni bir native kanal `flutter analyze`/`test` ile
       doğrulanamaz, AlarmKit dersi.)_
-- [ ] **Format dürüstlüğü:** OS bildirim sesi ≤30 sn ve aiff/wav/caf (Linear PCM,
+- [x] **Format dürüstlüğü:** OS bildirim sesi ≤30 sn ve aiff/wav/caf (Linear PCM,
       IMA4, µLaw, aLaw) olmak zorunda; **mp3/m4a iOS bildiriminde çalışmaz.** Yükleme
       ekranı bunu yükleme anında söyler ve alternatif sunar ("yalnız uygulama içi alarm
       sesi olarak kullan") — sessizce başarısız olmak yasak. Sunucu tarafı dönüştürme
       (ffmpeg) **bilinçli olarak park edildi** (v2 kuyruğu).
-- [ ] **AlarmKit aynı dosyayı kullanır:** `AlertConfiguration.AlertSound.named(...)`
+- [x] **AlarmKit aynı dosyayı kullanır:** `AlertConfiguration.AlertSound.named(...)`
       bundle/`Library/Sounds` kurallarına tabi → OPH-182'de aynı kurulu dosya beslenir;
       erken iOS 26 sürümlerinde container seslerinin çalmadığı raporları var → cihaz
       turunda doğrula, çalışmazsa paketli yatağa düş.
-- [ ] Ayarlar → Hatırlatıcı Sistemi Ayarları içinde "Alarm sesi" / "Hatırlatıcı sesi"
+- [x] Ayarlar → Hatırlatıcı Sistemi Ayarları içinde "Alarm sesi" / "Hatırlatıcı sesi"
       satırları + **önizleme** (OPH-180'in çaları) + "Ses yükle".
-- [ ] Testler: format/süre doğrulama tablosu, seçim kalıcılığı, gateway doğru ses adını
+- [x] Testler: format/süre doğrulama tablosu, seçim kalıcılığı, gateway doğru ses adını
       geçiyor, bayat kanal temizliği (fake üzerinde), desteklenmeyen format mesajı.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Paketli tonlar üretildi** (`aw_chime` 1.6 sn, `aw_ping` 0.9 sn — Python'la
+  sinüs + zarf, `afconvert` ile ima4 `.caf` + aac `.m4a`). Üç yüzey üç dosya
+  istiyor: **in-app** için Flutter asset (`assets/audio/*.m4a`), **Android
+  kanalı** için `res/raw` (kanal yalnız raw kaynağa veya content:// URI'ye
+  bakabilir), **iOS** için `.caf`.
+- **pbxproj'a DOKUNULMADI (önemli bulgu):** `UNNotificationSound` adı önce app
+  container'ın `Library/Sounds` klasöründe arıyor → yeni sesler **çalışma anında
+  oraya kuruluyor** (`sound_store.dart`, `LocalKv`'nin io/web seam kalıbı).
+  Yani Xcode'a girmeden hem paketli ton eklenebiliyor hem kullanıcının yüklediği
+  ses kullanılabiliyor. `aw_alarm.caf` round 6'da pbxproj'a girdiği için bundle'dan
+  geliyor.
+- **Ses adı artık plan içeriğinin parçası:** `PlannedNotification.soundName` id
+  seed'ine giriyor → sesi değiştirmek **yeniden planlıyor** (aksi hâlde değişiklik
+  yalnız sonraki alarmda görünürdü). Android kanalı da ses başına
+  (`urgent_alarms_v2_<ses>`) çünkü **kanallar değişmez**.
+- **Bekçi (OPH-176'dan taşınan) burada gerçekleşti:** özel ses seçildiğinde
+  indirilip kuruluyor; alarm planlanırken `installed()` ile **gerçekten var mı**
+  diye bakılıyor. Yoksa `degraded` günlüğe yazılıyor ve OS sesine düşülüyor —
+  iOS'un sessiz "varsayılan ding" ikamesi artık kayda geçiyor.
+- **Bilinçli platform sınırı (Android):** kanal sesi `res/raw` veya `content://`
+  ister; app-private bir dosya sistem UI'ı tarafından okunamaz ve onu açmak
+  **FileProvider** (native yapılandırma) demek. Bu yüzden Android'de **yüklenen
+  ses uygulama içi alarmda** çalıyor, bildirim paketli sesle devam ediyor —
+  picker'da ve ADR'de yazılı, sessizce yutulmuyor. FileProvider yolu park kuyruğuna.
+- **Format dürüstlüğü yükleme anında:** `soundUsability(ad)` → `.caf/.wav/.aiff`
+  her yerde, **mp3/m4a yalnız uygulama içi** (iOS bildirimi çalamaz). Hem yükleme
+  hem seçim anında söyleniyor + picker'ın altında kural metni.
+- **Zil sesleri sıradan dosyalar:** ayrılmış **"Zil sesleri"** klasörüne workspace
+  yüklemesi olarak gidiyorlar → Dosyalar'da görünür, senkronlanır, silinebilir;
+  gizli bir depo yok. Seçim cihaz-yerel (`alliswell_alarm_sound` /
+  `alliswell_reminder_sound`), bozuk değer **OS sesine** düşer (sessizliğe değil).
+- **Flutter API dersi:** `RadioListTile.groupValue/onChanged` deprecate olmuş →
+  liste `RadioGroup<String>` ile sarıldı, seçim tek yerde yorumlanıyor.
+
+**DoD met 2026-07-28:** app **485/485** (+13 test) + analyze temiz + `check:i18n` +
+kontrast FAILURES: 0; ADR-0015 §6 + NOTIFICATIONS §2c güncellendi; CHANGELOG;
+STATE. _Gerçek cihazda "yüklenen ses bildirimde çaldı mı" doğrulaması OPH-182
+cihaz turunda (iOS 26 pass'iyle aynı oturum)._
 
 ### OPH-182 — iOS 26 AlarmKit'i GERÇEKTEN devreye al (round 9 #8'in çözümü) — cihaz
 

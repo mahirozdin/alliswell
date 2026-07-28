@@ -18,6 +18,7 @@ class PlannedNotification {
     this.slotIndex,
     this.taskId,
     this.reminderId,
+    this.soundName,
   });
 
   final int id;
@@ -39,6 +40,12 @@ class PlannedNotification {
   final int? slotIndex;
   final String? taskId;
   final String? reminderId;
+
+  /// The platform sound name to play (OPH-181): a bundle/`Library/Sounds` file
+  /// on iOS, a `res/raw` resource on Android, null for the OS's own sound. Part
+  /// of the id seed — changing the sound must reschedule, not silently apply to
+  /// the next alarm only.
+  final String? soundName;
 }
 
 /// A user interaction with a delivered notification (tap or action button).
@@ -102,8 +109,11 @@ const kOsDefaultSoundName = 'os-default';
 ScheduledDelivery awDeliveryFor({
   required bool urgent,
   required bool criticalEnabled,
+
+  /// The user's chosen sound for this lane (OPH-181); null = the OS's own.
+  String? soundName,
 }) => ScheduledDelivery(
-  sound: urgent ? kAwAlarmSoundName : kOsDefaultSoundName,
+  sound: soundName ?? (urgent ? kAwAlarmSoundName : kOsDefaultSoundName),
   // Critical is upgraded ONLY when Apple's entitlement + the user's grant are
   // both real (checked, never assumed — NOTIFICATIONS §2).
   level: urgent && criticalEnabled ? 'critical' : 'timeSensitive',

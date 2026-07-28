@@ -12,17 +12,16 @@ import 'gateway.dart';
 const _normalCategoryId = 'aw_reminder';
 const _urgentCategoryId = 'aw_urgent';
 
-/// Bundled alarm bed (28 s — under iOS's 30 s cap, past which the system
-/// falls back to the default sound). iOS: `Runner/Resources/aw_alarm.caf`
-/// (ima4, in the pbxproj); Android: `res/raw/aw_alarm.m4a`.
-const _iosAlarmSound = 'aw_alarm.caf';
-const _androidAlarmSound = 'aw_alarm';
+/// The bundled alarm bed and the two short tones now come from the sound
+/// catalogue (`alarm_sound.dart`) and arrive per-notification as
+/// [PlannedNotification.soundName] — the scheduler resolves the user's choice
+/// (OPH-181) before planning, so this layer only carries it to the plugin.
 
-/// The urgent channel is VERSIONED: Android channels are immutable after
-/// creation (sound/attributes can never change), so shipping the real alarm
-/// sound + alarm audio usage required a new id. v1 (`urgent_alarms`) is
-/// deleted at initialize; do NOT reuse old ids — recreating a deleted id
-/// resurrects its frozen settings.
+/// The urgent channel is VERSIONED **and per-sound**: Android channels are
+/// immutable after creation (sound/attributes can never change), so a new sound
+/// means a new id (OPH-181) — `urgent_alarms_v2_<sound>`. v1 (`urgent_alarms`)
+/// and the soundless v2 are deleted at initialize; do NOT reuse an old id —
+/// recreating a deleted one resurrects its frozen settings.
 const _urgentChannelId = 'urgent_alarms_v2';
 const _legacyUrgentChannelId = 'urgent_alarms';
 
@@ -261,7 +260,14 @@ class LocalNotificationsGateway implements NotificationsGateway {
     final delivery = awDeliveryFor(
       urgent: urgent,
       criticalEnabled: _criticalEnabled,
+      soundName: notification.soundName,
     );
+    // Android channels are IMMUTABLE (NOTIFICATIONS §1 [12]): a different sound
+    // needs a different channel id, or the old sound plays forever. One channel
+    // per (lane, sound); stale ones are pruned below.
+    final channelId = urgent
+        ? '${_urgentChannelId}_${notification.soundName ?? 'default'}'
+        : 'reminders_${notification.soundName ?? 'default'}';
 
     final androidActions = urgent
         ? <AndroidNotificationAction>[
@@ -305,7 +311,7 @@ class LocalNotificationsGateway implements NotificationsGateway {
           ];
 
     final android = AndroidNotificationDetails(
-      urgent ? _urgentChannelId : 'reminders',
+      channelId,
       urgent
           ? 'notif.channel.urgentName'.tr()
           : 'notif.channel.remindersName'.tr(),
@@ -320,9 +326,9 @@ class LocalNotificationsGateway implements NotificationsGateway {
       // USAGE_ALARM routes the sound to the alarm stream — it rings at alarm
       // volume even when the ringer is muted, and default DND lets alarms
       // through (AOSP ZenModeFiltering; NOTIFICATIONS.md §1).
-      sound: urgent
-          ? const RawResourceAndroidNotificationSound(_androidAlarmSound)
-          : null,
+      sound: notification.soundName == null
+          ? null
+          : RawResourceAndroidNotificationSound(notification.soundName!),
       audioAttributesUsage: urgent
           ? AudioAttributesUsage.alarm
           : AudioAttributesUsage.notification,
@@ -341,7 +347,7 @@ class LocalNotificationsGateway implements NotificationsGateway {
     final critical = delivery.level == 'critical';
     final iosDetails = DarwinNotificationDetails(
       categoryIdentifier: urgent ? _urgentCategoryId : _normalCategoryId,
-      sound: urgent ? _iosAlarmSound : null,
+      sound: notification.soundName,
       criticalSoundVolume: critical ? 1.0 : null,
       interruptionLevel: critical
           ? InterruptionLevel.critical

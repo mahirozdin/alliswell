@@ -10,6 +10,7 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/notifications/providers.dart';
+import 'package:alliswell/src/notifications/alarm_sound.dart';
 import 'package:alliswell/src/notifications/reminder_profile.dart';
 
 import '../auth/test_support.dart';
@@ -41,6 +42,8 @@ void main() {
     // localKv is a global singleton whose cache outlives a test.
     await localKv.remove('alliswell_reminder_profile');
     await localKv.remove('alliswell_snooze_presets');
+    await localKv.remove('alliswell_alarm_sound');
+    await localKv.remove('alliswell_reminder_sound');
   });
 
   Future<ProviderContainer> open(WidgetTester tester) async {
@@ -185,5 +188,64 @@ void main() {
     await tester.tap(toggle);
     await tester.pumpAndSettle();
     expect(container.read(reminderProfileProvider).repeatAfterSnooze, isFalse);
+  });
+
+  // ── OPH-181: sounds are chosen by hearing them (N6) ────────────────────────
+
+  testWidgets('the sound rows open a picker with the OS sound and the bundled '
+      'ones, and remember the choice', (tester) async {
+    final container = await open(tester);
+    expect(
+      container.read(alarmSoundChoiceProvider).bundledId,
+      'aw_alarm',
+      reason: 'the alarm bed is the factory alarm sound',
+    );
+    expect(
+      container.read(reminderSoundChoiceProvider).isOsDefault,
+      isTrue,
+      reason: 'ordinary reminders keep the OS sound until asked otherwise',
+    );
+
+    final row = find.byKey(const Key('sound-row-alarm'));
+    await tester.scrollUntilVisible(
+      row,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+
+    // Every shipped option is offered, and so is the OS's own sound.
+    expect(find.byKey(const Key('sound-os')), findsOneWidget);
+    for (final sound in kBundledSounds) {
+      expect(find.byKey(Key('sound-bundled-${sound.id}')), findsOneWidget);
+    }
+    // …with a play button each: you pick a sound by hearing it.
+    expect(find.byKey(const Key('sound-preview-chime')), findsOneWidget);
+    // The platform truth is stated where the decision is made.
+    expect(find.textContaining('under 30 seconds'), findsOneWidget);
+    expect(find.byKey(const Key('sound-upload')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('sound-bundled-chime')));
+    await tester.pumpAndSettle();
+    expect(container.read(alarmSoundChoiceProvider).bundledId, 'chime');
+  });
+
+  testWidgets('picking the OS sound is a real choice, not an empty one', (
+    tester,
+  ) async {
+    final container = await open(tester);
+    final row = find.byKey(const Key('sound-row-alarm'));
+    await tester.scrollUntilVisible(
+      row,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('sound-os')));
+    await tester.pumpAndSettle();
+    expect(container.read(alarmSoundChoiceProvider).isOsDefault, isTrue);
   });
 }
