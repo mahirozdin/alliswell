@@ -253,3 +253,56 @@ describe('urgent tasks alarm at their deadline (feedback round 6)', () => {
     expect(tables.reminders.at(-1).status).toBe('cancelled');
   });
 });
+
+describe('silencing a task without completing it (OPH-178, round 9 #6.7)', () => {
+  const DUE_AT = '2026-07-22T14:00:00.000Z';
+
+  const activeReminders = () =>
+    tables.reminders.filter((r) => ['scheduled', 'snoozed', 'delivered'].includes(r.status));
+
+  const mute = (taskId, at) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/api/v1/tasks/${taskId}`,
+      headers: owner.headers,
+      payload: { alarmsMutedAt: at },
+    });
+
+  it('muting cancels every alarm and leaves the task OPEN', async () => {
+    const task = (
+      await createTask({
+        title: 'Sustur beni',
+        dueAt: DUE_AT,
+        remindAt: REMIND_AT,
+        isUrgent: true,
+      })
+    ).json();
+    expect(activeReminders()).toHaveLength(2);
+
+    const res = await mute(task.id, '2026-07-21T10:00:00.000Z');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().alarmsMutedAt).toBe('2026-07-21T10:00:00.000Z');
+
+    // No alarm survives…
+    expect(activeReminders()).toHaveLength(0);
+    expect(tables.reminders.every((r) => r.status === 'cancelled')).toBe(true);
+    // …and the task is still an open task with its dates intact.
+    expect(res.json().status).toBe('open');
+    expect(res.json().dueAt).toBe(DUE_AT);
+    expect(res.json().remindAt).toBe(REMIND_AT);
+  });
+
+  it('un-muting re-arms the alarms it silenced', async () => {
+    const task = (await createTask({ title: 'Geri aç', dueAt: DUE_AT, isUrgent: true })).json();
+    await mute(task.id, '2026-07-21T10:00:00.000Z');
+    expect(activeReminders()).toHaveLength(0);
+
+    const back = await mute(task.id, null);
+    expect(back.statusCode).toBe(200);
+    expect(back.json().alarmsMutedAt).toBeNull();
+    const alarms = activeReminders();
+    expect(alarms).toHaveLength(1);
+    expect(alarms[0].kind).toBe('due');
+    expect(new Date(alarms[0].remind_at).toISOString()).toBe(DUE_AT);
+  });
+});

@@ -208,7 +208,12 @@
     "overdueDue": "Gecikti — {date}",
     "dueOn": "Bitiş {date}",
     "attachments": "Ekler",
-    "snoozedUntil": "Ertelendi — {time}"
+    "snoozedUntil": "Ertelendi — {time}",
+    "alarmsMuted": "Alarm susturuldu",
+    "alarmsMutedSub": "Sen geri açana dek bu görev için uyarı gelmez",
+    "unmuteAlarms": "Alarmı geri aç",
+    "alarmsBackOn": "Alarmlar geri açıldı",
+    "alarmTimePassed": "O saat geçti — göreve yeni bir saat ver"
   },
   "tag": {
     "inputHint": "Etiket ekle…",
@@ -410,7 +415,8 @@
       "snooze30m": "30 dk",
       "snooze1h": "1 saat",
       "snoozeTomorrow": "Yarın sabah",
-      "open": "Aç"
+      "open": "Aç",
+      "mute": "Sustur"
     },
     "channel": {
       "urgentName": "Acil alarmlar",
@@ -431,7 +437,8 @@
     },
     "snoozeRingsAt": "{time}’de çalar",
     "snoozeConfirmed": "{time}’de tekrar çalacak",
-    "snoozeCustom": "Saat seç…"
+    "snoozeCustom": "Saat seç…",
+    "silence": "Süresiz ertele"
   },
   "alarmLog": {
     "title": "Alarm günlüğü",

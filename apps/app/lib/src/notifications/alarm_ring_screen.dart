@@ -150,6 +150,16 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   void _complete() =>
       _run(() => ref.read(taskStoreProvider).complete(widget.alarm.taskId));
 
+  /// Silence this task's alarms for good (OPH-178). The task stays OPEN, and the
+  /// snackbar says what just happened — a silent silence would be the worst of
+  /// both worlds.
+  void _silence() {
+    ScaffoldMessenger.maybeOf(
+      context,
+    )?.showSnackBar(SnackBar(content: Text('task.alarmsMuted'.tr())));
+    _run(() => ref.read(taskStoreProvider).muteAlarms(widget.alarm.taskId));
+  }
+
   void _open() {
     final router = GoRouter.of(context);
     final taskId = widget.alarm.taskId;
@@ -319,6 +329,14 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                           key: const Key('alarm-snooze-custom'),
                           onPressed: _busy ? null : _snoozeCustom,
                           child: Text('alarm.snoozeCustom'.tr()),
+                        ),
+                        // OPH-178: the way out that does NOT require lying
+                        // about the task being done.
+                        OutlinedButton.icon(
+                          key: const Key('alarm-silence'),
+                          onPressed: _busy ? null : _silence,
+                          icon: const Icon(Icons.notifications_off, size: 18),
+                          label: Text('alarm.silence'.tr()),
                         ),
                       ],
                     ),

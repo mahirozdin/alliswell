@@ -1733,6 +1733,18 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _alarmsMutedAtMeta = const VerificationMeta(
+    'alarmsMutedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> alarmsMutedAt =
+      GeneratedColumn<DateTime>(
+        'alarms_muted_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _timezoneMeta = const VerificationMeta(
     'timezone',
   );
@@ -1919,6 +1931,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     scheduledEndAt,
     remindAt,
     snoozedUntil,
+    alarmsMutedAt,
     timezone,
     isUrgent,
     requiresAcknowledgement,
@@ -2054,6 +2067,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         snoozedUntil.isAcceptableOrUnknown(
           data['snoozed_until']!,
           _snoozedUntilMeta,
+        ),
+      );
+    }
+    if (data.containsKey('alarms_muted_at')) {
+      context.handle(
+        _alarmsMutedAtMeta,
+        alarmsMutedAt.isAcceptableOrUnknown(
+          data['alarms_muted_at']!,
+          _alarmsMutedAtMeta,
         ),
       );
     }
@@ -2228,6 +2250,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}snoozed_until'],
       ),
+      alarmsMutedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}alarms_muted_at'],
+      ),
       timezone: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}timezone'],
@@ -2309,6 +2335,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
   final DateTime? scheduledEndAt;
   final DateTime? remindAt;
   final DateTime? snoozedUntil;
+
+  /// Silenced indefinitely since this instant (OPH-178); null = alarms live.
+  /// A muted task keeps its dates and stays OPEN — silence is not completion.
+  final DateTime? alarmsMutedAt;
   final String timezone;
   final bool isUrgent;
   final bool requiresAcknowledgement;
@@ -2339,6 +2369,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     this.scheduledEndAt,
     this.remindAt,
     this.snoozedUntil,
+    this.alarmsMutedAt,
     required this.timezone,
     required this.isUrgent,
     required this.requiresAcknowledgement,
@@ -2391,6 +2422,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     }
     if (!nullToAbsent || snoozedUntil != null) {
       map['snoozed_until'] = Variable<DateTime>(snoozedUntil);
+    }
+    if (!nullToAbsent || alarmsMutedAt != null) {
+      map['alarms_muted_at'] = Variable<DateTime>(alarmsMutedAt);
     }
     map['timezone'] = Variable<String>(timezone);
     map['is_urgent'] = Variable<bool>(isUrgent);
@@ -2462,6 +2496,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       snoozedUntil: snoozedUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(snoozedUntil),
+      alarmsMutedAt: alarmsMutedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(alarmsMutedAt),
       timezone: Value(timezone),
       isUrgent: Value(isUrgent),
       requiresAcknowledgement: Value(requiresAcknowledgement),
@@ -2518,6 +2555,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       scheduledEndAt: serializer.fromJson<DateTime?>(json['scheduledEndAt']),
       remindAt: serializer.fromJson<DateTime?>(json['remindAt']),
       snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
+      alarmsMutedAt: serializer.fromJson<DateTime?>(json['alarmsMutedAt']),
       timezone: serializer.fromJson<String>(json['timezone']),
       isUrgent: serializer.fromJson<bool>(json['isUrgent']),
       requiresAcknowledgement: serializer.fromJson<bool>(
@@ -2557,6 +2595,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       'scheduledEndAt': serializer.toJson<DateTime?>(scheduledEndAt),
       'remindAt': serializer.toJson<DateTime?>(remindAt),
       'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
+      'alarmsMutedAt': serializer.toJson<DateTime?>(alarmsMutedAt),
       'timezone': serializer.toJson<String>(timezone),
       'isUrgent': serializer.toJson<bool>(isUrgent),
       'requiresAcknowledgement': serializer.toJson<bool>(
@@ -2592,6 +2631,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     Value<DateTime?> scheduledEndAt = const Value.absent(),
     Value<DateTime?> remindAt = const Value.absent(),
     Value<DateTime?> snoozedUntil = const Value.absent(),
+    Value<DateTime?> alarmsMutedAt = const Value.absent(),
     String? timezone,
     bool? isUrgent,
     bool? requiresAcknowledgement,
@@ -2626,6 +2666,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
         : this.scheduledEndAt,
     remindAt: remindAt.present ? remindAt.value : this.remindAt,
     snoozedUntil: snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
+    alarmsMutedAt: alarmsMutedAt.present
+        ? alarmsMutedAt.value
+        : this.alarmsMutedAt,
     timezone: timezone ?? this.timezone,
     isUrgent: isUrgent ?? this.isUrgent,
     requiresAcknowledgement:
@@ -2677,6 +2720,9 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       snoozedUntil: data.snoozedUntil.present
           ? data.snoozedUntil.value
           : this.snoozedUntil,
+      alarmsMutedAt: data.alarmsMutedAt.present
+          ? data.alarmsMutedAt.value
+          : this.alarmsMutedAt,
       timezone: data.timezone.present ? data.timezone.value : this.timezone,
       isUrgent: data.isUrgent.present ? data.isUrgent.value : this.isUrgent,
       requiresAcknowledgement: data.requiresAcknowledgement.present
@@ -2726,6 +2772,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ..write('scheduledEndAt: $scheduledEndAt, ')
           ..write('remindAt: $remindAt, ')
           ..write('snoozedUntil: $snoozedUntil, ')
+          ..write('alarmsMutedAt: $alarmsMutedAt, ')
           ..write('timezone: $timezone, ')
           ..write('isUrgent: $isUrgent, ')
           ..write('requiresAcknowledgement: $requiresAcknowledgement, ')
@@ -2761,6 +2808,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     scheduledEndAt,
     remindAt,
     snoozedUntil,
+    alarmsMutedAt,
     timezone,
     isUrgent,
     requiresAcknowledgement,
@@ -2795,6 +2843,7 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           other.scheduledEndAt == this.scheduledEndAt &&
           other.remindAt == this.remindAt &&
           other.snoozedUntil == this.snoozedUntil &&
+          other.alarmsMutedAt == this.alarmsMutedAt &&
           other.timezone == this.timezone &&
           other.isUrgent == this.isUrgent &&
           other.requiresAcknowledgement == this.requiresAcknowledgement &&
@@ -2827,6 +2876,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
   final Value<DateTime?> scheduledEndAt;
   final Value<DateTime?> remindAt;
   final Value<DateTime?> snoozedUntil;
+  final Value<DateTime?> alarmsMutedAt;
   final Value<String> timezone;
   final Value<bool> isUrgent;
   final Value<bool> requiresAcknowledgement;
@@ -2858,6 +2908,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.scheduledEndAt = const Value.absent(),
     this.remindAt = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
+    this.alarmsMutedAt = const Value.absent(),
     this.timezone = const Value.absent(),
     this.isUrgent = const Value.absent(),
     this.requiresAcknowledgement = const Value.absent(),
@@ -2890,6 +2941,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.scheduledEndAt = const Value.absent(),
     this.remindAt = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
+    this.alarmsMutedAt = const Value.absent(),
     this.timezone = const Value.absent(),
     this.isUrgent = const Value.absent(),
     this.requiresAcknowledgement = const Value.absent(),
@@ -2924,6 +2976,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Expression<DateTime>? scheduledEndAt,
     Expression<DateTime>? remindAt,
     Expression<DateTime>? snoozedUntil,
+    Expression<DateTime>? alarmsMutedAt,
     Expression<String>? timezone,
     Expression<bool>? isUrgent,
     Expression<bool>? requiresAcknowledgement,
@@ -2956,6 +3009,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       if (scheduledEndAt != null) 'scheduled_end_at': scheduledEndAt,
       if (remindAt != null) 'remind_at': remindAt,
       if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
+      if (alarmsMutedAt != null) 'alarms_muted_at': alarmsMutedAt,
       if (timezone != null) 'timezone': timezone,
       if (isUrgent != null) 'is_urgent': isUrgent,
       if (requiresAcknowledgement != null)
@@ -2992,6 +3046,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Value<DateTime?>? scheduledEndAt,
     Value<DateTime?>? remindAt,
     Value<DateTime?>? snoozedUntil,
+    Value<DateTime?>? alarmsMutedAt,
     Value<String>? timezone,
     Value<bool>? isUrgent,
     Value<bool>? requiresAcknowledgement,
@@ -3024,6 +3079,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       scheduledEndAt: scheduledEndAt ?? this.scheduledEndAt,
       remindAt: remindAt ?? this.remindAt,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
+      alarmsMutedAt: alarmsMutedAt ?? this.alarmsMutedAt,
       timezone: timezone ?? this.timezone,
       isUrgent: isUrgent ?? this.isUrgent,
       requiresAcknowledgement:
@@ -3091,6 +3147,9 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     }
     if (snoozedUntil.present) {
       map['snoozed_until'] = Variable<DateTime>(snoozedUntil.value);
+    }
+    if (alarmsMutedAt.present) {
+      map['alarms_muted_at'] = Variable<DateTime>(alarmsMutedAt.value);
     }
     if (timezone.present) {
       map['timezone'] = Variable<String>(timezone.value);
@@ -3162,6 +3221,7 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
           ..write('scheduledEndAt: $scheduledEndAt, ')
           ..write('remindAt: $remindAt, ')
           ..write('snoozedUntil: $snoozedUntil, ')
+          ..write('alarmsMutedAt: $alarmsMutedAt, ')
           ..write('timezone: $timezone, ')
           ..write('isUrgent: $isUrgent, ')
           ..write('requiresAcknowledgement: $requiresAcknowledgement, ')
@@ -10795,6 +10855,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<DateTime?> scheduledEndAt,
       Value<DateTime?> remindAt,
       Value<DateTime?> snoozedUntil,
+      Value<DateTime?> alarmsMutedAt,
       Value<String> timezone,
       Value<bool> isUrgent,
       Value<bool> requiresAcknowledgement,
@@ -10828,6 +10889,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<DateTime?> scheduledEndAt,
       Value<DateTime?> remindAt,
       Value<DateTime?> snoozedUntil,
+      Value<DateTime?> alarmsMutedAt,
       Value<String> timezone,
       Value<bool> isUrgent,
       Value<bool> requiresAcknowledgement,
@@ -10925,6 +10987,11 @@ class $$TasksTableFilterComposer extends Composer<_$AwDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get snoozedUntil => $composableBuilder(
     column: $table.snoozedUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get alarmsMutedAt => $composableBuilder(
+    column: $table.alarmsMutedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11082,6 +11149,11 @@ class $$TasksTableOrderingComposer extends Composer<_$AwDatabase, $TasksTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get alarmsMutedAt => $composableBuilder(
+    column: $table.alarmsMutedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get timezone => $composableBuilder(
     column: $table.timezone,
     builder: (column) => ColumnOrderings(column),
@@ -11219,6 +11291,11 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get alarmsMutedAt => $composableBuilder(
+    column: $table.alarmsMutedAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get timezone =>
       $composableBuilder(column: $table.timezone, builder: (column) => column);
 
@@ -11319,6 +11396,7 @@ class $$TasksTableTableManager
                 Value<DateTime?> scheduledEndAt = const Value.absent(),
                 Value<DateTime?> remindAt = const Value.absent(),
                 Value<DateTime?> snoozedUntil = const Value.absent(),
+                Value<DateTime?> alarmsMutedAt = const Value.absent(),
                 Value<String> timezone = const Value.absent(),
                 Value<bool> isUrgent = const Value.absent(),
                 Value<bool> requiresAcknowledgement = const Value.absent(),
@@ -11350,6 +11428,7 @@ class $$TasksTableTableManager
                 scheduledEndAt: scheduledEndAt,
                 remindAt: remindAt,
                 snoozedUntil: snoozedUntil,
+                alarmsMutedAt: alarmsMutedAt,
                 timezone: timezone,
                 isUrgent: isUrgent,
                 requiresAcknowledgement: requiresAcknowledgement,
@@ -11383,6 +11462,7 @@ class $$TasksTableTableManager
                 Value<DateTime?> scheduledEndAt = const Value.absent(),
                 Value<DateTime?> remindAt = const Value.absent(),
                 Value<DateTime?> snoozedUntil = const Value.absent(),
+                Value<DateTime?> alarmsMutedAt = const Value.absent(),
                 Value<String> timezone = const Value.absent(),
                 Value<bool> isUrgent = const Value.absent(),
                 Value<bool> requiresAcknowledgement = const Value.absent(),
@@ -11414,6 +11494,7 @@ class $$TasksTableTableManager
                 scheduledEndAt: scheduledEndAt,
                 remindAt: remindAt,
                 snoozedUntil: snoozedUntil,
+                alarmsMutedAt: alarmsMutedAt,
                 timezone: timezone,
                 isUrgent: isUrgent,
                 requiresAcknowledgement: requiresAcknowledgement,

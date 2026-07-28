@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../data/task.dart';
+import '../providers.dart';
 
 /// Standard task visuals (feedback round 3): statuses get ICONS, priorities
 /// get COLORS — consistent across lists, detail dropdowns and create sheets.
@@ -101,4 +104,25 @@ class PriorityLabel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Give a silenced task its alarms back (OPH-178) — and be honest when the
+/// instant it would have rung at is already behind us, instead of quietly
+/// restoring an alarm that will never fire.
+Future<void> unmuteTaskAlarms(
+  BuildContext context,
+  WidgetRef ref,
+  Task task,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  await ref.read(taskStoreProvider).unmuteAlarms(task.id);
+  final next = task.remindAt ?? task.dueAt;
+  final passed = next != null && !next.isAfter(DateTime.now().toUtc());
+  messenger.showSnackBar(
+    SnackBar(
+      content: Text(
+        passed ? 'task.alarmTimePassed'.tr() : 'task.alarmsBackOn'.tr(),
+      ),
+    ),
+  );
 }

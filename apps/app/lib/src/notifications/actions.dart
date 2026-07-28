@@ -10,6 +10,10 @@ import 'reminder_store.dart';
 /// where every date control lives.
 const kActionComplete = 'complete';
 const kActionAcknowledge = 'acknowledge';
+
+/// Silence this task's alarms indefinitely (OPH-178) — straight from the
+/// notification, without opening the app and without completing the task.
+const kActionMute = 'mute';
 const kActionSnoozePrefix = 'snooze:';
 
 String snoozeActionId(String preset) => '$kActionSnoozePrefix$preset';
@@ -54,6 +58,10 @@ Future<void> handleNotificationEvent(
   }
   if (action == kActionComplete) {
     await tasks.complete(taskId);
+    return;
+  }
+  if (action == kActionMute) {
+    await tasks.muteAlarms(taskId);
     return;
   }
   if (action == kActionAcknowledge) {

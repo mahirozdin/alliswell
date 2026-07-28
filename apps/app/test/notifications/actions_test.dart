@@ -88,6 +88,20 @@ void main() {
     expect(pokes, 1);
   });
 
+  // OPH-178: the notification's own way out that isn't "done".
+  test('mute action silences the task without completing it', () async {
+    await handle(kActionMute);
+
+    final task = await db.select(db.tasks).getSingle();
+    expect(task.alarmsMutedAt, isNotNull);
+    expect(task.status, 'open');
+    expect(task.completedAt, equals(null));
+
+    final outbox = await db.select(db.pendingMutations).get();
+    expect(outbox.single.patchJson, contains('alarmsMutedAt'));
+    expect(pokes, 1);
+  });
+
   test('snooze action moves the task AND its alarm, then enqueues', () async {
     await handle(snoozeActionId('30_min'));
 

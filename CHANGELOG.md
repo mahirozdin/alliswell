@@ -24,6 +24,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Silence an alarm without pretending the task is done** (OPH-178). "Silence
+  indefinitely" is now a real option — on the ringing alarm, on the notification
+  itself, and as a switch in the task detail. The task stays open with its dates
+  intact; the row says "Alarm silenced" and offers to turn them back on, so a
+  quiet task can never masquerade as an armed one. Turning them back on is honest
+  too: if the time has already passed, it says so instead of restoring an alarm
+  that will never ring.
 - **Snoozing tells you what it will do, and shows that it did it** (OPH-177). Each
   snooze option on the alarm screen now says the time it will ring at ("5 min ·
   rings at 22:47"), snoozing confirms it ("Rings again at 22:52"), and the task row

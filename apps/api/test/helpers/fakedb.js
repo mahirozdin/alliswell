@@ -104,6 +104,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       requires_acknowledgement: false,
       sort_order: 0,
       calendar_mirror_enabled: false,
+      // OPH-178: null = this task's alarms are live.
+      alarms_muted_at: null,
       revision: 0,
       project_id: null,
       parent_task_id: null,

@@ -257,6 +257,24 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         (store, id) => store.update(id, {'isUrgent': v}),
                       ),
                     ),
+                    // OPH-178: silence this task's alarms for good, without
+                    // completing it. The subtitle says what silence means; the
+                    // task keeps its dates and its status.
+                    SwitchListTile(
+                      key: const Key('mute-alarms-switch'),
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.notifications_off_outlined),
+                      title: Text('task.alarmsMuted'.tr()),
+                      subtitle: Text('task.alarmsMutedSub'.tr()),
+                      value: task.alarmsMutedAt != null,
+                      onChanged: (mute) async {
+                        if (mute) {
+                          await ref.read(taskStoreProvider).muteAlarms(task.id);
+                        } else {
+                          await unmuteTaskAlarms(context, ref, task);
+                        }
+                      },
+                    ),
                     // OPH-177: a snoozed alarm says so here too — the task is
                     // still open, it is just quiet until then.
                     if (task.snoozedUntil != null &&

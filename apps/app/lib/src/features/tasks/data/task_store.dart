@@ -278,6 +278,13 @@ class TaskStore {
         scheduledEndAt: _dateValue(effective, 'scheduledEndAt'),
       );
     }
+    // OPH-178: silence (or give back) this task's alarms. A marker, not a
+    // schedule — the engine reads it and cancels every alarm the task owns.
+    if (effective.containsKey('alarmsMutedAt')) {
+      companion = companion.copyWith(
+        alarmsMutedAt: _dateValue(effective, 'alarmsMutedAt'),
+      );
+    }
     if (effective.containsKey('sortOrder')) {
       companion = companion.copyWith(
         sortOrder: Value(effective['sortOrder'] as int),
@@ -337,6 +344,19 @@ class TaskStore {
         throw ArgumentError.value(preset, 'preset');
     }
   }
+
+  /// Silence this task's alarms indefinitely (OPH-178, round 9 #6.7) — WITHOUT
+  /// completing it. Marking a task done to make it shut up would be a lie in the
+  /// data; this is a reversible, replicated fact the engine reads
+  /// (`alarmInstantsFor` → no alarms → the rows are cancelled everywhere).
+  Future<void> muteAlarms(String taskId) => update(taskId, {
+    'alarmsMutedAt': DateTime.now().toUtc().toIso8601String(),
+  });
+
+  /// Give the alarms back. Whether one still fires depends on its instant —
+  /// the caller tells the user when it has already passed.
+  Future<void> unmuteAlarms(String taskId) =>
+      update(taskId, {'alarmsMutedAt': null});
 
   /// Offline-first snooze (OPH-062): the task AND its active alarm move
   /// locally in one transaction; the outbox patch replays the same semantics
@@ -540,6 +560,7 @@ class TaskStore {
     scheduledEndAt: r.scheduledEndAt,
     remindAt: r.remindAt,
     snoozedUntil: r.snoozedUntil,
+    alarmsMutedAt: r.alarmsMutedAt,
     completedAt: r.completedAt,
     timezone: r.timezone,
     isUrgent: r.isUrgent,

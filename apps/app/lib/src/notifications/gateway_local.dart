@@ -107,6 +107,10 @@ class LocalNotificationsGateway implements NotificationsGateway {
             '${kActionSnoozePrefix}30_min',
             'notif.action.snooze30m'.tr(),
           ),
+          // OPH-178: silence for good, without completing the task. Last on
+          // purpose — iOS surfaces the first few actions and this is the
+          // heaviest one; the ring screen and the task detail carry it too.
+          DarwinNotificationAction.plain(kActionMute, 'notif.action.mute'.tr()),
         ],
       ),
     ];
@@ -274,6 +278,11 @@ class LocalNotificationsGateway implements NotificationsGateway {
             AndroidNotificationAction(
               '${kActionSnoozePrefix}30_min',
               'notif.action.snooze30m'.tr(),
+              showsUserInterface: true,
+            ),
+            AndroidNotificationAction(
+              kActionMute,
+              'notif.action.mute'.tr(),
               showsUserInterface: true,
             ),
           ]

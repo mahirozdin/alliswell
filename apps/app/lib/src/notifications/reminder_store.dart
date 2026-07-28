@@ -36,10 +36,13 @@ String syntheticReminderId(String kind, String taskId) =>
 /// - `due` when the task is URGENT and has a deadline — **even alongside a
 ///   reminder** (round 9's correction: a nudge does not replace a deadline);
 /// - both equal → only `remind`, because one moment must never ring twice;
-/// - a task in a terminal state has none.
+/// - a task in a terminal state — or one the user silenced (OPH-178) — has none.
 List<({String kind, DateTime at})> taskAlarmInstants(TaskRecord task) {
   const silenced = {'completed', 'cancelled', 'archived'};
   if (silenced.contains(task.status)) return const [];
+  // OPH-178: silenced indefinitely — the task is still open, it just has no
+  // alarms until the user gives them back.
+  if (task.alarmsMutedAt != null) return const [];
   final instants = <({String kind, DateTime at})>[];
   final remindAt = task.remindAt;
   final dueAt = task.dueAt;
@@ -106,6 +109,7 @@ class ReminderStore {
                     'cancelled',
                     'archived',
                   ]) &
+                  t.alarmsMutedAt.isNull() &
                   (t.remindAt.isNotNull() |
                       (t.isUrgent.equals(true) & t.dueAt.isNotNull())),
             ))

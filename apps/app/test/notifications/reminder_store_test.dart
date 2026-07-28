@@ -35,6 +35,7 @@ void main() {
     bool urgent = false,
     String status = 'open',
     DateTime? snoozedUntil,
+    DateTime? alarmsMutedAt,
   }) => db
       .into(db.tasks)
       .insert(
@@ -48,6 +49,7 @@ void main() {
           remindAt: Value(remindAt),
           dueAt: Value(dueAt),
           snoozedUntil: Value(snoozedUntil),
+          alarmsMutedAt: Value(alarmsMutedAt),
         ),
       );
 
@@ -269,5 +271,46 @@ void main() {
         expect(alarms.map((a) => a.kind), ['due']);
       },
     );
+  });
+
+  // ── OPH-178 (round 9 #6.7): silence without completing ─────────────────────
+
+  group('silenced tasks', () {
+    test('a muted task synthesizes no alarms at all', () async {
+      await seedTask(
+        remindAt: DateTime.utc(2030, 6, 5, 21, 42),
+        dueAt: DateTime.utc(2030, 6, 5, 21, 45),
+        urgent: true,
+        alarmsMutedAt: DateTime.utc(2030, 6, 1),
+      );
+      expect(await store.watchAlarms(ws).first, isEmpty);
+    });
+
+    test('giving the alarms back brings them straight back', () async {
+      await seedTask(
+        remindAt: DateTime.utc(2030, 6, 5, 21, 42),
+        urgent: true,
+        alarmsMutedAt: DateTime.utc(2030, 6, 1),
+      );
+      expect(await store.watchAlarms(ws).first, isEmpty);
+
+      await (db.update(db.tasks)..where((t) => t.id.equals(id('T1')))).write(
+        const TasksCompanion(alarmsMutedAt: Value(null)),
+      );
+      final alarms = await store.watchAlarms(ws).first;
+      expect(alarms.map((a) => a.kind), ['remind']);
+    });
+
+    test('a muted task stays a normal, open task', () async {
+      await seedTask(
+        remindAt: DateTime.utc(2030, 6, 5, 21, 42),
+        alarmsMutedAt: DateTime.utc(2030, 6, 1),
+      );
+      final task = await db.select(db.tasks).getSingle();
+      // Silence is not completion (DESIGN §11 A5): the row keeps its status and
+      // its times, it just has no alarms.
+      expect(task.status, 'open');
+      expect(task.remindAt, isNotNull);
+    });
   });
 }

@@ -209,7 +209,12 @@
     "overdueDue": "Overdue — {date}",
     "dueOn": "Due {date}",
     "attachments": "Attachments",
-    "snoozedUntil": "Snoozed — {time}"
+    "snoozedUntil": "Snoozed — {time}",
+    "alarmsMuted": "Alarm silenced",
+    "alarmsMutedSub": "No alerts for this task until you turn them back on",
+    "unmuteAlarms": "Turn alarms back on",
+    "alarmsBackOn": "Alarms are back on",
+    "alarmTimePassed": "That time has passed — give the task a new one"
   },
   "tag": {
     "inputHint": "Add tag…",
@@ -411,7 +416,8 @@
       "snooze30m": "30 min",
       "snooze1h": "1 hour",
       "snoozeTomorrow": "Tomorrow morning",
-      "open": "Open"
+      "open": "Open",
+      "mute": "Silence"
     },
     "channel": {
       "urgentName": "Urgent alarms",
@@ -432,7 +438,8 @@
     },
     "snoozeRingsAt": "rings at {time}",
     "snoozeConfirmed": "Rings again at {time}",
-    "snoozeCustom": "Pick a time…"
+    "snoozeCustom": "Pick a time…",
+    "silence": "Silence indefinitely"
   },
   "alarmLog": {
     "title": "Alarm log",

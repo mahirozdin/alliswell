@@ -23,6 +23,7 @@ class Task {
     this.scheduledEndAt,
     this.remindAt,
     this.snoozedUntil,
+    this.alarmsMutedAt,
     this.completedAt,
     this.tagIds = const [],
     this.checklist = const [],
@@ -44,6 +45,7 @@ class Task {
     scheduledEndAt: _date(json['scheduledEndAt']),
     remindAt: _date(json['remindAt']),
     snoozedUntil: _date(json['snoozedUntil']),
+    alarmsMutedAt: _date(json['alarmsMutedAt']),
     completedAt: _date(json['completedAt']),
     timezone: json['timezone'] as String,
     isUrgent: json['isUrgent'] as bool,
@@ -76,6 +78,10 @@ class Task {
   final DateTime? scheduledEndAt;
   final DateTime? remindAt;
   final DateTime? snoozedUntil;
+
+  /// Silenced indefinitely since then (OPH-178); null = alarms live. The task
+  /// stays open — muting is not completing (DESIGN §11 A5).
+  final DateTime? alarmsMutedAt;
   final DateTime? completedAt;
 
   /// What §7.1 would build an event from — nothing to mirror without one.

@@ -41,6 +41,9 @@ void main() {
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
     await db.customStatement(
+      'ALTER TABLE tasks DROP COLUMN alarms_muted_at', // v11
+    );
+    await db.customStatement(
       'ALTER TABLE reminders DROP COLUMN snooze_count', // v10
     );
     await db.customStatement('DROP TABLE alarm_events'); // v9
@@ -130,6 +133,9 @@ void main() {
       // v10 (OPH-177): rounds start counting from zero — we cannot invent how
       // many an already-snoozed alarm had before we counted.
       expect(reminder.snoozeCount, 0);
+      // v11 (OPH-178): every existing task keeps its alarms — silence is asked
+      // for, never inherited.
+      expect(task.alarmsMutedAt, equals(null));
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -137,7 +143,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 10);
+      expect(version.data['user_version'], 11);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -172,7 +178,7 @@ void main() {
       expect(task.calendarMirrorEnabled, isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 10);
+      expect(version.data['user_version'], 11);
       await db.close();
     },
   );

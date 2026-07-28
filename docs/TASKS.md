@@ -3302,26 +3302,51 @@ CHANGELOG; STATE.
 MySQL, migration uygulandı)** + analyze + lint + format + `check:i18n` + kontrast
 FAILURES: 0; CHANGELOG; STATE.
 
-### OPH-178 — Süresiz erteleme / "alarmı sustur" (round 9 #6.7)
+### OPH-178 — Süresiz erteleme / "alarmı sustur" (round 9 #6.7) ✅ 2026-07-28
 
 **Kullanıcının cümlesi:** _"kullanıcı isterse acil olarak ayarladığı taski tamamla
 olarak işaretlemeden de tamamen susturabilmeli."_
 
-- [ ] **Migration:** `tasks.alarms_muted_at` TIMESTAMP NULL (null = alarmlar canlı).
+- [x] **Migration:** `tasks.alarms_muted_at` TIMESTAMP NULL (null = alarmlar canlı).
       Sync FIELD (`alarmsMutedAt`, isoOrNull) + REST PATCH alanı (yeni endpoint YOK).
-- [ ] **Motor:** `alarmInstantsFor` susturulmuş görevde boş döner → `reconcileTaskReminder`
+- [x] **Motor:** `alarmInstantsFor` susturulmuş görevde boş döner → `reconcileTaskReminder`
       aktif satırları `cancelled` yapar → **her cihazda zincir sync ile ölür**. Geri
       açmak reconcile'ın normal "wants reminder" yolundan satırı yeniden kurar; anı
       geçmişse app dürüstçe söyler ("saat geçti — yeni bir saat seç").
-- [ ] **Yüzeyler:** ring ekranında "Süresiz ertele" (birincil erteleme satırının
+- [x] **Yüzeyler:** ring ekranında "Süresiz ertele" (birincil erteleme satırının
       yanında, DESIGN §11 A5), bildirim aksiyonu `mute` (iOS acil kategorisine 5.
       aksiyon — iOS yalnız ilk ~4'ünü gösterebilir, bu yüzden ring ekranı ve detay
       birincil yoldur), detayda "Alarmı sustur" switch'i, görev satırında
       `notifications_off` çipi + "Geri aç". **Görev açık kalır** — susturma tamamlama
       değildir (dürüstlük kuralı).
-- [ ] Testler: unit (susturulmuşta boş an listesi, geri açınca yeniden kurulum),
+- [x] Testler: unit (susturulmuşta boş an listesi, geri açınca yeniden kurulum),
       entegrasyon (PATCH → satır cancelled), app (ring ekranından sustur → alarm
       feed'den çıkıyor, çip görünüyor, görev hâlâ açık).
+
+**Uygulamada ortaya çıkanlar (2026-07-28):**
+
+- **Motor tarafı gerçekten hazırdı:** `alarmInstantsFor` OPH-175'te ileriye dönük
+  yazıldığı için kolon gelince sunucuda **tek satır** değişmedi — susturma
+  anında iki alarm satırı da `cancelled` oluyor ve her cihaza sync ile gidiyor.
+  Uygulamada aynı kontrol `taskAlarmInstants`'a düştü; **sentetik alarm sorgusu
+  da** `alarmsMutedAt.isNull()` filtresi aldı (yoksa satır iptal olsa bile
+  görevden sentetik alarm doğardı).
+- **Yeni endpoint yok:** `alarmsMutedAt` sıradan bir task alanı (REST PATCH +
+  sync FIELD + serializer). Böylece çevrimdışı susturma da bedelsiz çalışıyor:
+  outbox yaması normal task update'i.
+- **Dört yüzey:** ring ekranında **"Süresiz ertele"** (snackbar "Alarm
+  susturuldu"), **bildirim aksiyonu `mute`** (iOS acil kategorisinin sonunda —
+  iOS ilk birkaç aksiyonu gösterir, bu en ağırı; Android'de de var), detayda
+  switch (alt metin ne demek olduğunu söylüyor), **görev satırında
+  `notifications_off` çipi + "Alarmı geri aç"**.
+- **Geri açmak dürüst:** `unmuteTaskAlarms` an geçmişse "O saat geçti — göreve
+  yeni bir saat ver" diyor, sessizce hiç çalmayacak bir alarmı geri kurmuyor.
+- **Görev AÇIK kalıyor** (A5): testler bunu ayrıca doğruluyor — `status == 'open'`,
+  `completedAt == null`, tarihler yerinde. Susturmak tamamlamak değildir.
+
+**DoD met 2026-07-28:** app **446/446** + API **292 unit + 39 entegrasyon (gerçek
+MySQL, migration uygulandı)** + analyze + lint + format + `check:i18n` + kontrast
+FAILURES: 0; CHANGELOG; STATE.
 
 ### OPH-179 — Hatırlatıcı profili: kaç tane, kaç dakikada bir (round 9 #7) — "Hatırlatıcı Sistemi Ayarları"
 

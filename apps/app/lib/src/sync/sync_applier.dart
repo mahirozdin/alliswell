@@ -250,6 +250,7 @@ TasksCompanion taskCompanion(Map<String, dynamic> d) => TasksCompanion.insert(
   scheduledEndAt: _dateValue(d['scheduledEndAt']),
   remindAt: _dateValue(d['remindAt']),
   snoozedUntil: _dateValue(d['snoozedUntil']),
+  alarmsMutedAt: _dateValue(d['alarmsMutedAt']),
   timezone: Value((d['timezone'] as String?) ?? 'Europe/Istanbul'),
   isUrgent: Value((d['isUrgent'] as bool?) ?? false),
   requiresAcknowledgement: Value(

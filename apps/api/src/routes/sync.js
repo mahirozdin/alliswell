@@ -129,6 +129,9 @@ const TASK_FIELDS = {
   // accepts past instants — a queued mutation may arrive after the moment
   // passed, and dropping a user's snooze would be worse. Update-only.
   snoozedUntil: { col: 'snoozed_until', ok: isoOrNull, date: true, updateOnly: true },
+  // Round 9 (OPH-178): silencing a task's alarms works offline like every other
+  // task write — and past instants are fine, it is a marker, not a schedule.
+  alarmsMutedAt: { col: 'alarms_muted_at', ok: isoOrNull, date: true },
 };
 
 // Devices may acknowledge an alarm offline (OPH-063). Everything else about

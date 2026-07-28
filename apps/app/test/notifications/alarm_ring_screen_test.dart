@@ -203,4 +203,28 @@ void main() {
     expect(row.snoozedUntil!.isAfter(DateTime.now().toUtc()), isTrue);
     await tester.pump(const Duration(seconds: 6));
   });
+
+  testWidgets('silencing from the alarm mutes the task but keeps it open', (
+    tester,
+  ) async {
+    await seed();
+    await pumpRing(tester);
+
+    await tester.tap(find.byKey(const Key('alarm-silence')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Says what it did…
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.textContaining('Alarm silenced'), findsOneWidget);
+
+    final task = await db.select(db.tasks).getSingle();
+    expect(task.alarmsMutedAt, isNotNull);
+    // …and did NOT quietly complete the task to shut it up (round 9 #6.7).
+    expect(task.status, 'open');
+    expect(task.completedAt, equals(null));
+    // The alarm surface is dismissed like any other answered alarm.
+    expect(handled, contains(id('R1')));
+    await tester.pump(const Duration(seconds: 6));
+  });
 }

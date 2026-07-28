@@ -56,6 +56,7 @@ const taskSchema = {
     scheduledEndAt: { type: ['string', 'null'] },
     remindAt: { type: ['string', 'null'] },
     snoozedUntil: { type: ['string', 'null'] },
+    alarmsMutedAt: { type: ['string', 'null'] },
     timezone: { type: 'string' },
     isUrgent: { type: 'boolean' },
     requiresAcknowledgement: { type: 'boolean' },
@@ -132,6 +133,9 @@ const writableProps = {
   sortOrder: { type: 'integer', minimum: -1000000, maximum: 1000000 },
   // Epic 08: opt this task into calendar mirroring (BLUEPRINT §7.1).
   calendarMirrorEnabled: { type: 'boolean' },
+  // Round 9 (OPH-178): silence this task's alarms indefinitely without
+  // completing it. A timestamp mutes, null gives them back.
+  alarmsMutedAt: { type: ['string', 'null'], format: 'date-time' },
 };
 
 const CAMEL_TO_SNAKE = {
@@ -155,6 +159,7 @@ const CAMEL_TO_SNAKE = {
   actualMinutes: 'actual_minutes',
   sortOrder: 'sort_order',
   calendarMirrorEnabled: 'calendar_mirror_enabled',
+  alarmsMutedAt: 'alarms_muted_at',
 };
 
 const DATE_FIELDS = new Set([
@@ -163,6 +168,7 @@ const DATE_FIELDS = new Set([
   'scheduled_start_at',
   'scheduled_end_at',
   'remind_at',
+  'alarms_muted_at',
 ]);
 
 function toRowPatch(body) {
@@ -193,6 +199,7 @@ export function serializeTask(row) {
     scheduledEndAt: toIso(row.scheduled_end_at),
     remindAt: toIso(row.remind_at),
     snoozedUntil: toIso(row.snoozed_until),
+    alarmsMutedAt: toIso(row.alarms_muted_at),
     timezone: row.timezone,
     isUrgent: Boolean(row.is_urgent),
     requiresAcknowledgement: Boolean(row.requires_acknowledgement),

@@ -63,6 +63,9 @@ class TaskTile extends ConsumerWidget {
     final snoozedUntil = task.snoozedUntil?.toLocal();
     final snoozed =
         snoozedUntil != null && snoozedUntil.isAfter(DateTime.now());
+    // OPH-178: silenced-for-good says so, and offers the way back. An armed
+    // looking task whose alarms are dead is the lie A5 forbids.
+    final muted = task.alarmsMutedAt != null;
     final isOverdue =
         due != null && !task.isCompleted && due.isBefore(DateTime.now());
     final priorityColor = taskPriorityColorOf(context, task.priority);
@@ -112,13 +115,45 @@ class TaskTile extends ConsumerWidget {
                 )
               : null,
         ),
-        subtitle: (due == null && rowTags.isEmpty && !snoozed)
+        subtitle: (due == null && rowTags.isEmpty && !snoozed && !muted)
             ? null
             : Wrap(
                 spacing: AwSpace.x2,
                 runSpacing: 2,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  if (muted)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.notifications_off,
+                          size: 16,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'task.alarmsMuted'.tr(),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        TextButton(
+                          key: Key('unmute-${task.id}'),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AwSpace.x2,
+                            ),
+                            minimumSize: const Size(0, 32),
+                          ),
+                          onPressed: () => unmuteTaskAlarms(context, ref, task),
+                          child: Text('task.unmuteAlarms'.tr()),
+                        ),
+                      ],
+                    ),
                   if (snoozed)
                     Row(
                       mainAxisSize: MainAxisSize.min,

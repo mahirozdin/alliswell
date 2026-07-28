@@ -69,6 +69,10 @@ class Tasks extends Table {
   DateTimeColumn get scheduledEndAt => dateTime().nullable()();
   DateTimeColumn get remindAt => dateTime().nullable()();
   DateTimeColumn get snoozedUntil => dateTime().nullable()();
+
+  /// Silenced indefinitely since this instant (OPH-178); null = alarms live.
+  /// A muted task keeps its dates and stays OPEN — silence is not completion.
+  DateTimeColumn get alarmsMutedAt => dateTime().nullable()();
   TextColumn get timezone =>
       text().withDefault(const Constant('Europe/Istanbul'))();
   BoolColumn get isUrgent => boolean().withDefault(const Constant(false))();
@@ -380,7 +384,7 @@ class AwDatabase extends _$AwDatabase {
   /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
   /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -451,6 +455,9 @@ class AwDatabase extends _$AwDatabase {
       // already snoozed simply starts counting from its next round, which is
       // honest: we cannot know how many rounds it had before we counted.
       if (from < 10) await m.addColumn(reminders, reminders.snoozeCount);
+      // v11 (OPH-178): "sustur". Nullable, so every existing task keeps its
+      // alarms — silence has to be asked for.
+      if (from < 11) await m.addColumn(tasks, tasks.alarmsMutedAt);
     },
   );
 }
