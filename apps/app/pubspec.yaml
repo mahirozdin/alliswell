@@ -67,6 +67,14 @@ dependencies:
   # which Flutter 3.44 does not, so the release build cannot find
   # FilePickerPlugin. Reproduced on a bare `flutter create` app (2026-07-26).
   file_picker: ^12.0.0-beta.7
+  # The in-app alarm bed (OPH-180, ADR-0015 §7). Chosen over just_audio because
+  # ONE package covers every target we ship (incl. Windows/Linux, where
+  # just_audio needs a community backend) and exposes the two platform knobs the
+  # alarm actually needs: the iOS AVAudioSession category `.playback` (audible
+  # with the mute switch ON while the app is in the FOREGROUND — not the
+  # background-audio trick NOTIFICATIONS §2b rejects) and Android's
+  # `USAGE_ALARM` audio attributes.
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   # Generates the iOS AppIcon set + Android mipmaps/adaptive icons from
@@ -98,6 +106,10 @@ flutter:
   # register its Locale in lib/src/i18n/i18n.dart (ADR-0009).
   assets:
     - assets/i18n/
+    # The 28 s alarm bed the in-app ring screen loops (OPH-180). The same sound
+    # the OS notification carries, as a Flutter asset so every platform — incl.
+    # desktop and web, where there is no OS alarm — can play it.
+    - assets/audio/
 
   # To add more assets to your application, add them to this section, like this:
   #   - images/a_dot_burr.jpeg

@@ -262,6 +262,23 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                         ),
                       ],
                     ),
+                    // OPH-180: when the platform refused to make noise (a
+                    // browser's autoplay policy, no audio device), say so and
+                    // offer to start it — never pretend the room is loud.
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _feedback!.soundBlocked,
+                      builder: (context, blocked, _) => blocked
+                          ? Padding(
+                              padding: const EdgeInsets.only(top: AwSpace.x4),
+                              child: OutlinedButton.icon(
+                                key: const Key('alarm-start-sound'),
+                                onPressed: () => _feedback?.start(),
+                                icon: const Icon(Icons.volume_up, size: 18),
+                                label: Text('alarm.startSound'.tr()),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                     const SizedBox(height: AwSpace.x6),
                     SizedBox(
                       width: double.infinity,

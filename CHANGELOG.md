@@ -24,6 +24,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The in-app alarm actually makes a sound** (OPH-180). When an urgent alarm
+  comes due while the app is open, the ring screen now loops the 28-second alarm
+  bed with a haptic pulse instead of buzzing silently — and on desktop and web,
+  where there is no OS alarm at all, this is finally a real alarm. On iPhone it
+  plays through the audio category that is audible even with the mute switch on,
+  while you are looking at the screen. If a platform refuses to play (a browser
+  blocking autoplay), the screen says so and offers a "Start the sound" button
+  rather than looking like it is ringing.
 - **You decide how insistent an alarm is** (OPH-179). Settings → **Reminder
   system** is one place for the whole chain: pick Calm (one alert), Standard
   (five) or Insistent (ten), or build your own — each alert has a minute stepper,

@@ -438,7 +438,8 @@
     "snoozeRingsAt": "{time}’de çalar",
     "snoozeConfirmed": "{time}’de tekrar çalacak",
     "snoozeCustom": "Saat seç…",
-    "silence": "Süresiz ertele"
+    "silence": "Süresiz ertele",
+    "startSound": "Sesi başlat"
   },
   "alarmLog": {
     "title": "Alarm günlüğü",

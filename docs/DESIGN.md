@@ -406,7 +406,7 @@ its text.
   back/ESC does nothing; only Onayla / snooze / complete / open clears it. This
   is the product's "insistent, must be acknowledged" rule (BLUEPRINT §8.2) made
   visual.
-- **A3 — Insistence is a seam, and it MUST include sound (rev. round 9,
+- **A3 — Insistence is a seam, and it MUST include sound (shipped round 9,
   OPH-180).** Physical alerting (`AlarmFeedback`) is injected: production plays
   a **looping audio bed + haptic pulse** (`AudioAlarmFeedback`), tests inject
   silence. Round 9's device report proved the haptic-only version wrong: while

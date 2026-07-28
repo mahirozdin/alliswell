@@ -27,6 +27,10 @@ List<Override> syncTestOverrides({
   bool alarmOverlayAutoShow = false,
   Future<List<PickedUpload>> Function()? filePicker,
   UploadTransport? uploadTransport,
+
+  /// Swap in a real (or recording) feedback to test the audible half — OPH-180.
+  /// Default: silence, so no audio plugin or haptic timer outlives a test.
+  AlarmFeedback? alarmFeedback,
 }) => [
   databaseProvider.overrideWith((ref) {
     // closeStreamsSynchronously: drift otherwise keeps a Timer.run alive per
@@ -61,7 +65,9 @@ List<Override> syncTestOverrides({
   // `alarmOverlayAutoShow: true`. Feedback is silenced so no haptic timer
   // outlives the test body.
   alarmOverlayAutoShowProvider.overrideWithValue(alarmOverlayAutoShow),
-  alarmFeedbackProvider.overrideWithValue(const SilentAlarmFeedback()),
+  alarmFeedbackProvider.overrideWithValue(
+    alarmFeedback ?? const SilentAlarmFeedback(),
+  ),
   // No platform channels: the home-screen widget bridge (OPH-130), watched by
   // HomeShell, pushes to an in-memory fake instead of home_widget.
   widgetHostProvider.overrideWithValue(FakeWidgetHost()),

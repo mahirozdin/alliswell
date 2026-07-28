@@ -286,9 +286,15 @@ The constraints are hard and platform-specific:
   driven by `AlarmOverlayController` (watches the replica's alarm feed + a
   foreground timer wheel armed to the next urgent fire). It is the ONLY alarm
   surface on desktop/web, and the foreground companion to the OS notification on
-  mobile. Insistence is a seam (`AlarmFeedback`): haptic today, a looping audio
-  bed is the follow-up (on mobile the OS notification already carries the 28 s
-  bed). An `AlarmDegradationBanner` on Home surfaces the "never fail silently"
+  mobile. Insistence is a seam (`AlarmFeedback`): **shipped 2026-07-28
+  (OPH-180)** as a looping audio bed + haptic pulse. The bed is the bundled 28 s
+  asset played through `audioplayers` with the iOS `AVAudioSession` category
+  `.playback` — audible with the mute switch ON **while the app is in the
+  foreground**, which is legitimate exactly there and is NOT the background
+  audio-session trick §2b rejects — and Android `USAGE_ALARM` attributes. When a
+  platform refuses to play (a browser's autoplay policy), the ring screen SAYS
+  so and offers a manual "start the sound": a silent alarm that looks like it is
+  ringing is the one outcome this section forbids. An `AlarmDegradationBanner` on Home surfaces the "never fail silently"
   rule when notifications are off or Android exact alarms are denied.
 
 ## 4. Implementation plan (OPH-061…064) — SHIPPED 2026-07-15

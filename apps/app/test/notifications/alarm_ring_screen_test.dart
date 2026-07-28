@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/date_format.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
+import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
+import 'package:alliswell/src/notifications/alarm_sound.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -231,4 +233,46 @@ void main() {
     expect(handled, contains(id('R1')));
     await tester.pump(const Duration(seconds: 6));
   });
+
+  // OPH-180: when the platform refuses to make noise, the screen SAYS so and
+  // offers to start it — the honest alternative to a silent alarm that looks
+  // like it is ringing.
+  testWidgets('a blocked sound offers a manual start', (tester) async {
+    final sound = _RefusingSound();
+    final feedback = AudioAlarmFeedback(sound);
+    addTearDown(feedback.dispose);
+    container = ProviderContainer(
+      overrides: syncTestOverrides(alarmFeedback: feedback),
+    );
+    addTearDown(container.dispose);
+    await seed();
+    await pumpRing(tester);
+    await tester.pump();
+
+    expect(find.byKey(const Key('alarm-start-sound')), findsOneWidget);
+
+    // A retry that succeeds hides the fallback again.
+    sound.refuse = false;
+    await tester.tap(find.byKey(const Key('alarm-start-sound')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.byKey(const Key('alarm-start-sound')), findsNothing);
+    feedback.stop();
+  });
+}
+
+/// Refuses to play, the way a browser's autoplay policy does.
+class _RefusingSound implements AlarmSoundPlayer {
+  bool refuse = true;
+
+  @override
+  Future<void> loop(String asset) async {
+    if (refuse) throw StateError('blocked');
+  }
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> dispose() async {}
 }

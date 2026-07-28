@@ -114,10 +114,14 @@ Platform constraints that shape any fix (sources in
    anything else may still serve the in-app bed. Server-side transcoding is
    deliberately out of scope.
 
-7. **A new dependency category: an audio player** (`just_audio` +
-   `audio_session`, or `audioplayers` — chosen on the first implementation pass
-   against these requirements: loop, iOS `AVAudioSession` `.playback`, Android
-   `USAGE_ALARM` attributes, macOS/Windows/Linux/web support, fakeable in tests).
+7. **A new dependency category: an audio player.** Chosen on the implementation
+   pass (2026-07-28, OPH-180): **`audioplayers`**. One package covers every
+   target we ship — including Windows/Linux, where `just_audio` needs a
+   community backend — and it exposes both platform knobs the alarm actually
+   needs: the iOS `AVAudioSession` category `.playback` (audible with the mute
+   switch ON while the app is in the FOREGROUND) and Android's `USAGE_ALARM`
+   audio attributes (alarm stream, alarm volume). `just_audio` + `audio_session`
+   would have been two packages for the same two knobs plus a third for desktop.
    It sits behind the existing `AlarmFeedback` seam, so tests stay silent and
    timer-free. It plays only while the ring screen is in the **foreground** —
    the background-audio-session trick that pre-iOS-26 alarm apps use stays

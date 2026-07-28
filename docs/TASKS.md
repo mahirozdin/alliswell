@@ -3410,23 +3410,52 @@ FAILURES: 0; CHANGELOG; STATE.
 **DoD met 2026-07-28:** app **466/466** (+20 yeni test) + API 292 (dokunulmadı) +
 analyze temiz + `check:i18n` + kontrast FAILURES: 0; CHANGELOG; STATE.
 
-### OPH-180 — Uygulama içi alarm sesi: `AlarmFeedback`'in ses yatağı (round 9 #6, #8)
+### OPH-180 — Uygulama içi alarm sesi: `AlarmFeedback`'in ses yatağı (round 9 #6, #8) ✅ 2026-07-28
 
-- [ ] **Yeni bağımlılık kategorisi** (AGENTS sert kural 6 → [ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md)):
+- [x] **Yeni bağımlılık kategorisi** (AGENTS sert kural 6 → [ADR-0015](adr/0015-alarm-delivery-and-reminder-profiles.md)):
       ses çalar (`just_audio` + `audio_session`, alternatif `audioplayers`; seçim
       ADR'de gerekçelenir). Gereksinimler: döngü, iOS `AVAudioSession` kategorisi
       **`.playback`** (uygulama ÖNDEyken sessiz anahtarını meşru şekilde aşar — bu,
       NOTIFICATIONS §2b'nin reddettiği *arka plan* audio hilesi DEĞİLDİR), Android
       `USAGE_ALARM` attributes, masaüstü + web desteği.
-- [ ] **Mevcut seam'in içine:** `AudioAlarmFeedback implements AlarmFeedback`
+- [x] **Mevcut seam'in içine:** `AudioAlarmFeedback implements AlarmFeedback`
       (ses + haptik), testler `SilentAlarmFeedback`'te kalır (bekleyen timer/kanal
       yok). Seçilen alarm sesini çalar (OPH-181), her aksiyonda ve dispose'ta susar.
       **Masaüstü/web'in tek alarm yüzeyi budur** (NOTIFICATIONS §3).
-- [ ] **Web dürüstlüğü:** tarayıcı autoplay politikası kullanıcı jesti olmadan sesi
+- [x] **Web dürüstlüğü:** tarayıcı autoplay politikası kullanıcı jesti olmadan sesi
       engelleyebilir → engellenirse görsel + (varsa) titreşimle devam et ve ring
       ekranında "sesi başlat" düğmesi göster.
-- [ ] Testler: fake çalar start/stop çağrılarını doğruluyor; ring ekranı testleri
+- [x] Testler: fake çalar start/stop çağrılarını doğruluyor; ring ekranı testleri
       hâlâ sessiz ve timer sızdırmıyor.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Paket seçimi: `audioplayers`** (ADR-0015 §7 buna göre güncellendi).
+  `just_audio` + `audio_session` aynı iki düğme için iki paket, Windows/Linux
+  için de üçüncü bir topluluk backend'i isteyecekti; `audioplayers` tek paketle
+  hepsini veriyor **ve** ihtiyacım olan iki platform düğmesini açıyor: iOS
+  `AVAudioSession` kategorisi **`.playback`** (uygulama ÖNDEyken sessiz
+  anahtarına rağmen duyulur) + Android **`USAGE_ALARM`** (alarm akışı, alarm
+  sesi seviyesi).
+- **Ses yatağı artık bir Flutter varlığı:** `assets/audio/aw_alarm.m4a` (Android
+  raw dosyasının kopyası — 28 sn, aac). OS hatları kendi platform kaynaklarını
+  kullanmaya devam ediyor; bu varlık **masaüstü ve web'in tek alarm sesi**.
+- **Seam korundu:** `AudioAlarmFeedback implements AlarmFeedback` (ses + haptik),
+  `HapticAlarmFeedback` sessiz platformlar için duruyor, testler
+  `SilentAlarmFeedback`'te. `syncTestOverrides`'a **`alarmFeedback` parametresi**
+  eklendi (aynı provider'ı iki kez override etmek Riverpod'da hata — dosyanın
+  mevcut `filePicker`/`uploadTransport` kalıbıyla aynı çözüm).
+- **Dürüst düşüş seam'e girdi:** `AlarmFeedback.soundBlocked` (`ValueListenable<bool>`)
+  → ring ekranı **"Sesi başlat"** düğmesini gösteriyor. Tarayıcı autoplay'i
+  engellediğinde çalan gibi görünen sessiz bir alarm — bu bölümün yasakladığı tek
+  sonuç — olmuyor; haptik devam ediyor ve elle başlatma çalışıyor (test var).
+- **Arka plan audio hilesi hâlâ reddedildi** (NOTIFICATIONS §2b): ses yalnız
+  ring ekranı ÖNDEyken çalıyor.
+
+**DoD met 2026-07-28:** app **472/472** (+6 test) + analyze temiz + `check:i18n` +
+kontrast FAILURES: 0; ADR-0015 §7 + DESIGN §11 A3 + NOTIFICATIONS §3 güncellendi;
+CHANGELOG; STATE. _Cihazda gerçek ses (sessiz anahtarı açıkken duyulması) cihaz
+turuna kaldı — `flutter test` audio plugin'i çalıştırmaz._
 
 ### OPH-181 — Zil sesi kütüphanesi + özel ses yükleme (round 9 #7 sesler)
 

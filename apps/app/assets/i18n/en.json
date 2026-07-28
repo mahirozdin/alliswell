@@ -439,7 +439,8 @@
     "snoozeRingsAt": "rings at {time}",
     "snoozeConfirmed": "Rings again at {time}",
     "snoozeCustom": "Pick a time…",
-    "silence": "Silence indefinitely"
+    "silence": "Silence indefinitely",
+    "startSound": "Start the sound"
   },
   "alarmLog": {
     "title": "Alarm log",

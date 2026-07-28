@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/workspaces/workspaces.dart';
+import 'alarm_sound.dart';
 import 'planner.dart';
 import 'providers.dart';
 
@@ -132,16 +134,27 @@ final alarmOverlayControllerProvider =
     );
 
 /// Physical "insistence" for a ringing alarm — a seam so tests inject silence
-/// (no pending timers, no platform channels). Today: haptic pulses. A looping
-/// AUDIO bed rides the device audio tour (no in-Dart player yet — on mobile the
-/// OS notification already carries the 28 s bed; NOTIFICATIONS.md §3).
+/// (no pending timers, no platform channels). Production is a looping audio bed
+/// PLUS haptic pulses (OPH-180, DESIGN §11 A3); on desktop and web this is the
+/// only alarm surface there is (NOTIFICATIONS §3).
 abstract class AlarmFeedback {
   void start();
   void stop();
+
+  /// True when the audible half could NOT be started — a browser's autoplay
+  /// policy, a missing plugin, a platform without audio. The ring screen offers
+  /// a manual start instead of pretending the room is loud.
+  ValueListenable<bool> get soundBlocked;
 }
 
+/// Haptics only. Kept as the fallback for surfaces with no audio, and as the
+/// simplest possible implementation of the seam.
 class HapticAlarmFeedback implements AlarmFeedback {
   Timer? _timer;
+  final ValueNotifier<bool> _blocked = ValueNotifier(false);
+
+  @override
+  ValueListenable<bool> get soundBlocked => _blocked;
 
   @override
   void start() {
@@ -159,8 +172,53 @@ class HapticAlarmFeedback implements AlarmFeedback {
   }
 }
 
+/// The real thing: the 28 s bed on repeat, plus the haptic pulse (OPH-180).
+class AudioAlarmFeedback implements AlarmFeedback {
+  AudioAlarmFeedback(this._sound, {this.asset = kAlarmSoundAsset});
+
+  final AlarmSoundPlayer _sound;
+  final String asset;
+  final HapticAlarmFeedback _haptics = HapticAlarmFeedback();
+  final ValueNotifier<bool> _blocked = ValueNotifier(false);
+
+  @override
+  ValueListenable<bool> get soundBlocked => _blocked;
+
+  @override
+  void start() {
+    _haptics.start();
+    unawaited(_startSound());
+  }
+
+  Future<void> _startSound() async {
+    try {
+      await _sound.loop(asset);
+      _blocked.value = false;
+    } on Object {
+      // Honest degradation: haptics keep going, the screen offers "start
+      // sound", and we never claim an alarm was audible when it was not.
+      _blocked.value = true;
+    }
+  }
+
+  @override
+  void stop() {
+    _haptics.stop();
+    unawaited(_sound.stop());
+  }
+
+  Future<void> dispose() async {
+    stop();
+    _blocked.dispose();
+    await _sound.dispose();
+  }
+}
+
 class SilentAlarmFeedback implements AlarmFeedback {
   const SilentAlarmFeedback();
+
+  @override
+  ValueListenable<bool> get soundBlocked => _never;
 
   @override
   void start() {}
@@ -169,8 +227,14 @@ class SilentAlarmFeedback implements AlarmFeedback {
   void stop() {}
 }
 
+/// A const-friendly "never blocked" listenable for [SilentAlarmFeedback].
+final ValueNotifier<bool> _never = ValueNotifier<bool>(false);
+
+/// How the alarm makes noise. Tests override with [SilentAlarmFeedback] (see
+/// `test/support/sync_overrides.dart`) so no audio plugin or haptic timer
+/// outlives a test body.
 final alarmFeedbackProvider = Provider<AlarmFeedback>((ref) {
-  final feedback = HapticAlarmFeedback();
-  ref.onDispose(feedback.stop);
+  final feedback = AudioAlarmFeedback(AudioPlayersAlarmSound());
+  ref.onDispose(() => unawaited(feedback.dispose()));
   return feedback;
 });
