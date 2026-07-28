@@ -140,11 +140,16 @@ class ReminderProfile {
   }
 }
 
+/// What the first snooze is before the user reorders anything — also the one
+/// the OS-level AlarmKit alert offers, since it has room for a single snooze
+/// button (OPH-182).
+const String kDefaultSnoozePreset = '5_min';
+
 /// The snooze presets the alarm screen offers, in the user's own order (N4 —
 /// the one list where dragging means something: a sorted numeric chain would
 /// just re-sort itself).
 const List<String> kSnoozePresetIds = [
-  '5_min',
+  kDefaultSnoozePreset,
   '30_min',
   '1_hour',
   'tomorrow_morning',

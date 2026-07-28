@@ -19,6 +19,15 @@ import 'package:flutter/services.dart';
 
 import 'gateway.dart';
 
+/// How many alarms the AlarmKit lane may hold at once (OPH-182).
+///
+/// Apple does not document a per-app ceiling, and `AlarmManager` answers a
+/// `maximumLimitReached` error rather than a number. So we stay well under any
+/// plausible limit with the NEAREST few urgent alarms, let the rest keep the
+/// notification chain, and write both facts to the alarm log — the real ceiling
+/// is something the log will tell us before a user does.
+const int kMaxAlarmKitAlarms = 8;
+
 /// One AlarmKit alarm we want to exist on iOS 26+. Unlike the notification
 /// chain, an AlarmKit alarm is a SINGLE entry per reminder — AlarmKit does the
 /// ring-until-answered presentation natively, so there is no pre-scheduled
@@ -32,6 +41,10 @@ class AlarmKitAlarm {
     required this.fireAt,
     required this.taskId,
     required this.reminderId,
+    this.stopLabel = '',
+    this.snoozeLabel = '',
+    this.snoozePreset = '',
+    this.soundName,
   });
 
   final int id;
@@ -43,6 +56,22 @@ class AlarmKitAlarm {
   final String taskId;
   final String reminderId;
 
+  /// The alert's two buttons, already in the user's language (OPH-182). The
+  /// bridge cannot localize: it has no access to the app's translations, and a
+  /// Swift-side literal is how the alert ended up Turkish-only for everyone.
+  final String stopLabel;
+  final String snoozeLabel;
+
+  /// Which snooze the secondary button applies, as a preset id — the FIRST of
+  /// the user's own snooze order (OPH-179 N4). The press comes back as
+  /// `snooze:<preset>`, so the model, the task row and every other device learn
+  /// about it exactly as they would from the in-app ring screen.
+  final String snoozePreset;
+
+  /// The installed iOS sound file (OPH-181), or null for the system alarm sound.
+  /// Part of the id seed, so changing the sound reschedules.
+  final String? soundName;
+
   Map<String, Object?> toArgs() => {
     'id': id,
     'title': title,
@@ -50,7 +79,25 @@ class AlarmKitAlarm {
     'fireAtMs': fireAt.toUtc().millisecondsSinceEpoch,
     'taskId': taskId,
     'reminderId': reminderId,
+    'stopLabel': stopLabel,
+    'snoozeLabel': snoozeLabel,
+    'snoozePreset': snoozePreset,
+    'soundName': soundName,
   };
+}
+
+/// What the native side made of a [AlarmKitHost.schedule] call. A failure is
+/// never silent: the scheduler writes [reason] to the alarm log, and the alarm
+/// keeps its notification chain instead of being quietly dropped.
+class AlarmKitScheduleResult {
+  const AlarmKitScheduleResult.ok() : reason = null;
+  const AlarmKitScheduleResult.failed(this.reason);
+
+  /// Null when the alarm was accepted. `limit_reached` is the undocumented
+  /// per-app ceiling; anything else is the platform error verbatim.
+  final String? reason;
+
+  bool get ok => reason == null;
 }
 
 /// The seam between the AlarmKit LANE logic (pure, tested) and the native iOS
@@ -68,7 +115,7 @@ abstract class AlarmKitHost {
 
   Future<Set<int>> scheduledIds();
 
-  Future<void> schedule(AlarmKitAlarm alarm);
+  Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm);
 
   Future<void> cancel(int id);
 
@@ -94,7 +141,8 @@ class UnsupportedAlarmKitHost implements AlarmKitHost {
   Future<Set<int>> scheduledIds() async => const <int>{};
 
   @override
-  Future<void> schedule(AlarmKitAlarm alarm) async {}
+  Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) async =>
+      const AlarmKitScheduleResult.ok();
 
   @override
   Future<void> cancel(int id) async {}
@@ -110,6 +158,22 @@ class MethodChannelAlarmKitHost implements AlarmKitHost {
   MethodChannelAlarmKitHost({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('alliswell/alarmkit') {
     _channel.setMethodCallHandler(_onNativeCall);
+    // Onayla/Ertele work while the app is NOT running: iOS performs the alert's
+    // intent in a background launch, which parks the action in the shared app
+    // group. Ask for it the moment a handler exists — otherwise the first thing
+    // this lane loses is the acknowledgement of the alarm that actually woke
+    // someone up.
+    unawaited(_drainPendingActions());
+  }
+
+  Future<void> _drainPendingActions() async {
+    try {
+      await _channel.invokeMethod<void>('drainPendingActions');
+    } on MissingPluginException {
+      // No bridge here (iOS < 26 build, or another platform).
+    } on PlatformException {
+      // Transient; the next foreground drains again.
+    }
   }
 
   final MethodChannel _channel;
@@ -160,13 +224,17 @@ class MethodChannelAlarmKitHost implements AlarmKitHost {
   }
 
   @override
-  Future<void> schedule(AlarmKitAlarm alarm) async {
+  Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) async {
     try {
       await _channel.invokeMethod<void>('schedule', alarm.toArgs());
+      return const AlarmKitScheduleResult.ok();
     } on MissingPluginException {
       // no AlarmKit here — the notification lane already covers this alarm.
-    } on PlatformException {
-      // transient; the next replica change re-applies.
+      return const AlarmKitScheduleResult.failed('missing-plugin');
+    } on PlatformException catch (error) {
+      // `limit_reached` is the undocumented per-app ceiling; everything else is
+      // transient and the next replica change re-applies.
+      return AlarmKitScheduleResult.failed(error.code);
     }
   }
 

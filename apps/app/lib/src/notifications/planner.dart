@@ -72,7 +72,12 @@ List<PlannedNotification> planNotifications({
   required DateTime now,
   required bool privacyMode,
   int maxPending = 40,
-  bool routeUrgentToAlarmKit = false,
+
+  /// The reminders AlarmKit has taken over (OPH-182). Was a bare "urgent alarms
+  /// live elsewhere" flag; it has to be a SET, because the AlarmKit lane is
+  /// capped — an urgent alarm that did not fit there must keep its notification
+  /// chain instead of falling between the two lanes.
+  Set<String> alarmKitReminderIds = const {},
 
   /// The user's re-alert chain (OPH-179). Defaults to what shipped before it
   /// was configurable, so a caller that does not care behaves as it always did.
@@ -87,8 +92,9 @@ List<PlannedNotification> planNotifications({
   for (final alarm in alarms) {
     if (!_activeStatuses.contains(alarm.status)) continue;
     // On iOS 26+ the URGENT lane is AlarmKit ([planAlarmKitAlarms]); leaving it
-    // on notifications too would ring twice. Non-urgent reminders stay here.
-    if (routeUrgentToAlarmKit && alarm.urgent) continue;
+    // on notifications too would ring twice. Non-urgent reminders stay here, and
+    // so does any urgent alarm AlarmKit did not take.
+    if (alarmKitReminderIds.contains(alarm.reminderId)) continue;
     final base =
         (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
         alarm.remindAt;
@@ -154,13 +160,31 @@ List<PlannedNotification> planNotifications({
 /// so the scheduler's set-diff cancels them on acknowledge, exactly like
 /// notifications. Non-urgent reminders never enter this lane. Windowed and
 /// past-skipped on the same rules as [planNotifications].
+///
+/// Capped at [maxAlarms] NEAREST alarms (OPH-182): the per-app AlarmKit ceiling
+/// is undocumented, so the far future is left to the notification chain rather
+/// than gambling on a limit we cannot read. Whatever this returns is what the
+/// scheduler then EXCLUDES from the notification lane — an alarm that does not
+/// fit here keeps its chain, so the cap degrades delivery instead of losing it.
 List<AlarmKitAlarm> planAlarmKitAlarms({
   required List<AlarmInput> alarms,
   required DateTime now,
   required bool privacyMode,
-  int maxPending = 40,
+  int maxAlarms = kMaxAlarmKitAlarms,
+
+  /// Which snooze the alert's secondary button applies — the first of the user's
+  /// own snooze order (OPH-179 N4). Its label becomes the button's text, so the
+  /// button says what it will do ("30 dk"), the way OPH-177 made the in-app
+  /// buttons say it.
+  String snoozePreset = kDefaultSnoozePreset,
+  String? soundName,
 }) {
   final planned = <AlarmKitAlarm>[];
+  // Localized HERE, not in Swift: the bridge has no translations, and a
+  // hard-coded "Onayla" is how the alert ended up Turkish-only for every user.
+  final stopLabel = 'notif.action.acknowledge'.tr();
+  final snoozeLabelKey = kSnoozePresetLabels[snoozePreset];
+  final snoozeLabel = (snoozeLabelKey ?? 'alarm.ringing.snooze').tr();
 
   for (final alarm in alarms) {
     if (!_activeStatuses.contains(alarm.status)) continue;
@@ -178,17 +202,22 @@ List<AlarmKitAlarm> planAlarmKitAlarms({
     planned.add(
       AlarmKitAlarm(
         id: notificationIdFor(
-          '${alarm.reminderId}|alarmkit|${fireAt.millisecondsSinceEpoch}|$title',
+          '${alarm.reminderId}|alarmkit|${fireAt.millisecondsSinceEpoch}|$title'
+          '|$soundName',
         ),
         title: title,
         body: body,
         fireAt: fireAt,
         taskId: alarm.taskId,
         reminderId: alarm.reminderId,
+        stopLabel: stopLabel,
+        snoozeLabel: snoozeLabel,
+        snoozePreset: snoozePreset,
+        soundName: soundName,
       ),
     );
   }
 
   planned.sort((a, b) => a.fireAt.compareTo(b.fireAt));
-  return planned.length > maxPending ? planned.sublist(0, maxPending) : planned;
+  return planned.length > maxAlarms ? planned.sublist(0, maxAlarms) : planned;
 }

@@ -3540,26 +3540,54 @@ cihaz turunda (iOS 26 pass'iyle aynı oturum)._
 **Bu task, "ekran kapalıyken/sessizde ses gelsin" isteğinin tek meşru cevabıdır ve
 iPhone'un kendi alarm arayüzünü (tam ekran, ertele/durdur) bize verir.**
 
-- [ ] `AlarmKitBridge.swift`'i **Runner hedefine ekle** + `AppDelegate`'te kur
-      ([ALARMKIT_SETUP.md](../apps/app/ios/Runner/ALARMKIT_SETUP.md) adım 2-3). Bugün
-      hiçbir hedefte olmadığı için hat ölü.
-- [ ] **Round 9 araştırmasının yeni bulgusu — Live Activity zorunluluğu:** AlarmKit,
-      `AlarmAttributes<AWAlarmMetadata>` okuyan bir **widget extension
-      `ActivityConfiguration`** ister ve **her iki Info.plist'te
-      `NSSupportsLiveActivities = YES`** olmalı; widget extension olmadan sistem
-      alarmları beklenmedik şekilde düşürebilir. Elimizde `AllisWellWidget` var →
-      Live Activity oraya eklenir, `AWAlarmMetadata` iki hedefte derlenir.
-- [ ] **Yerelleştirme + ses + ertele:** buton metinleri ("Onayla"/"Ertele") kanaldan
-      uygulamanın diliyle geçirilir (bugün Swift'te sabit); `sound:` parametresine
-      OPH-181'in kurulu sesi verilir; `secondaryButtonBehavior: .countdown` profilin
-      ilk erteleme değerine bağlanır; stop/snooze Dart'a `onAlarmAction` ile döner
-      (taslak hazır). SDK'nın gerçek tip adları ilk derlemede doğrulanır.
-- [ ] **Pencere + limit:** app başına alarm sayısı sistem sınırına tabi (belgesiz) →
-      AlarmKit lane'i en yakın N alarmla sınırla ve reddedilenleri alarm günlüğüne yaz.
+- [x] `AlarmKitBridge.swift`'i **Runner hedefine ekle** + `AppDelegate`'te kur
+      ([ALARMKIT_SETUP.md](../apps/app/ios/Runner/ALARMKIT_SETUP.md)). Wiring
+      **betiğe alındı** (`ios/scripts/wire_alarmkit.rb`, idempotent) — proje yeniden
+      üretilirse Xcode'suz geri bağlanır.
+- [x] **Round 9 araştırmasının yeni bulgusu — Live Activity zorunluluğu:**
+      `AWAlarmLiveActivity` (widget extension'da `ActivityConfiguration(for:
+      AlarmAttributes<AWAlarmMetadata>.self)`) + her iki Info.plist'te
+      `NSSupportsLiveActivities`. `AWAlarmMetadata` **iki hedefte de** derleniyor
+      (`ios/Shared/AWAlarmShared.swift`). **Kaynak ağacından değil, ÜRÜNDEN
+      doğrulandı:** app dylib'i ve `.appex` `AlarmKit.framework`'e weak link veriyor,
+      ikisinde de `Metadata.appintents` var.
+- [x] **Yerelleştirme + ses + ertele:** buton metinleri artık **Dart'ta** üretiliyor
+      (`planAlarmKitAlarms` → `stopLabel`/`snoozeLabel`), `sound:` OPH-181'in kurulu
+      dosyasını alıyor (ses adı id tohumunda → ses değişince yeniden planlanıyor),
+      erteleme **kullanıcının sıralamasındaki ilk preset**. **Bilinçli sapma:**
+      `secondaryButtonBehavior` `.countdown` DEĞİL **`.custom`** — planner zaten
+      ertelenen hatırlatıcıyı yeniden kuruyor, `.countdown` tek ertelemeyi İKİ alarma
+      çevirirdi ve OS'un sahiplendiği erteleme görev satırına ve diğer cihazlara hiç
+      ulaşmazdı (ADR-0015 karar 9, NOTIFICATIONS §2b.1).
+- [x] **SDK gerçeği** (ilk derlemede çıktı, hepsi tasarımı değiştirdi): `AlarmAttributes`
+      /`AlarmConfiguration` **generic**; `Alarm`'da **`attributes` YOK** → id↔UUID gidiş
+      dönüşü tek kurtarma yolu; `State`'te **`.stopped` YOK** → düğmeler
+      **`LiveActivityIntent`** ile geliyor; `alarms` throwing property (async değil);
+      `@available(obsoleted:)` ile overload Swift'te derlenmiyor.
+- [x] **Uygulama kapalıyken de çalışan düğmeler:** intent'ler App Group kuyruğuna
+      yazıyor (`AWAlarmActionQueue`, 32 satır tavan), Dart handler'ı kurulur kurulmaz
+      ve her öne gelişte `drainPendingActions` ile boşaltıyor — kanala doğrudan
+      itmek, tam da en çok önemsenen onayı (soğuk uygulamada 03:00'te çalan alarm)
+      düşürürdü.
+- [x] **Pencere + limit:** lane en yakın **8** alarmla sınırlı (`kMaxAlarmKitAlarms`);
+      sığmayan **bildirim zincirini koruyor** (bu yüzden planner'a bayrak değil
+      **kapsanan reminder id KÜMESİ** gidiyor — bayrak olsa limit üstü acil alarm iki
+      lane'in arasına düşerdi) ve hem taşma hem `limit_reached` reddi alarm günlüğüne
+      yazılıyor; **reddedilen alarm `degraded`, asla `scheduled` değil.**
 - [ ] **Cihaz DoD matrisi (iOS 26 gerçek cihaz):** sessiz anahtarı AÇIK + Uyku Odak
-      AÇIK + ekran KİLİTLİ → alarm tam ekran çalıyor; Onayla senkronize oluyor; Ertele
-      yeniden çalıyor; iOS < 26'da bildirim zincirine düşüş sağlam; günlük lane'i
-      doğru yazıyor. Sonuç STATE'e işlenir.
+      AÇIK + ekran KİLİTLİ → alarm tam ekran çalıyor; Onayla senkronize oluyor (bir kez
+      de **uygulama kapalıyken**); Ertele yeniden çalıyor; iOS < 26'da bildirim
+      zincirine düşüş sağlam; günlük lane'i doğru yazıyor. Adımlar:
+      [ALARMKIT_SETUP.md](../apps/app/ios/Runner/ALARMKIT_SETUP.md) "Device DoD".
+      Sonuç STATE'e işlenir.
+
+**Kodsal DoD met 2026-07-28:** app **493/493** (+8 test) + `analyze` temiz +
+`check:i18n` + kontrast FAILURES: 0; `flutter build ios` **iOS 26.2 SDK'sına karşı
+GEÇTİ** ve AlarmKit bağlantısı ürün ikililerinden doğrulandı. NOTIFICATIONS §2b.1
+(yeni) + §2d, ADR-0015 karar 9, ALARMKIT_SETUP.md yeniden yazıldı (hand-off →
+kayıt + cihaz DoD'si). Yan kazanç: `Podfile.lock` OPH-180'in `audioplayers`
+bağımlılığını nihayet aldı — iOS'ta pod install hiç koşmamıştı. **Kalan: yalnız
+cihaz matrisi** (yukarıdaki tek kutu) — kod tarafında yapılacak iş yok.
 
 ### OPH-183 — Apple Watch: bedava olan ne, companion gerekli mi (round 9 #6 son paragraf)
 
@@ -3569,14 +3597,15 @@ iPhone'un kendi alarm arayüzünü (tam ekran, ertele/durdur) bize verir.**
       seviyesi; **"Belirgin" haptik** bazı uyarıları ekstra dokunuşla önceden bildirir).
       AlarmKit alarmlarının saatte de göründüğü Apple'ın kendi çerçevesinde belirtiliyor
       → gerçek saatle doğrula.
-- [ ] **Karar ve gerekçesini yaz:** watchOS companion hedefi yalnız (a) özel long-look
+- [x] **Karar ve gerekçesini yaz:** watchOS companion hedefi yalnız (a) özel long-look
       bildirim arayüzü, (b) `WKInterfaceDevice.play(.notification)` haptikleri,
-      (c) complication için gerekir — kendi imza + review yüzeyi gelir. **Öneri:**
-      önce aynalamayı ve AlarmKit'i saatte ölç; yetersizse companion'ı ayrı bir epic
-      olarak aç (kapsam + risk bu task'ta yazılı kalır).
-- [ ] **Hedef gelmese bile teslim edilecek:** NOTIFICATIONS §2d (Apple Watch bölümü) +
-      Hatırlatıcı Sistemi Ayarları'nda tek satır yardım ("Apple Watch'ta ses/haptik:
-      Watch → Sesler ve Dokunuşlar").
+      (c) complication için gerekir — kendi imza + review yüzeyi gelir. **Karar:
+      companion AÇILMIYOR**; NOTIFICATIONS §2d'de karar kuralı yazılı (önce aynalamayı
+      ve AlarmKit'i gerçek saatte ölç, yetersizse ayrı epic). Ölçüm cihaz turunda.
+- [x] **Hedef gelmese bile teslim edilecek:** NOTIFICATIONS §2d güncellendi +
+      Hatırlatıcı Sistemi Ayarları'nda Apple Watch yardım satırı
+      (`reminderSettings.watchTitle/watchSub`, en+tr) — aynalama bedava, ses/haptik
+      Watch → Sesler ve Dokunuşlar'da.
 
 **Epic 16 DoD:** her task kendi test + `check:i18n` + kontrast (FAILURES: 0) + `analyze`
 yeşiliyle kapanır; epic sonunda app + API tam süit, `check:no-ts`, CHANGELOG + STATE +

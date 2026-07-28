@@ -60,6 +60,10 @@ class FakeAlarmKitHost implements AlarmKitHost {
   final Map<int, AlarmKitAlarm> scheduled = {};
   final List<int> cancelled = [];
   bool authorizationRequested = false;
+
+  /// Set to make the next `schedule` calls fail the way the OS does when the
+  /// undocumented per-app ceiling is hit (OPH-182).
+  String? scheduleFailure;
   final _events = StreamController<NotificationEvent>.broadcast(sync: true);
 
   @override
@@ -75,8 +79,11 @@ class FakeAlarmKitHost implements AlarmKitHost {
   Future<Set<int>> scheduledIds() async => scheduled.keys.toSet();
 
   @override
-  Future<void> schedule(AlarmKitAlarm alarm) async {
+  Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) async {
+    final failure = scheduleFailure;
+    if (failure != null) return AlarmKitScheduleResult.failed(failure);
     scheduled[alarm.id] = alarm;
+    return const AlarmKitScheduleResult.ok();
   }
 
   @override

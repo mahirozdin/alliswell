@@ -1,26 +1,37 @@
 import 'dart:async';
 
+// `show` on purpose: drift exports its own `isNotNull` expression builder,
+// which would shadow the matcher of the same name.
+import 'package:drift/drift.dart' show DatabaseConnection;
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/notifications/alarm_log.dart';
+import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/reminder_profile.dart';
 import 'package:alliswell/src/notifications/scheduler.dart';
+import 'package:alliswell/src/sync/db/database.dart';
 
 import '../support/fake_notifications.dart';
 
 final now = DateTime.utc(2026, 7, 15, 12);
 
-AlarmInput alarm(String id, {bool urgent = false, String title = 'Görev'}) =>
-    AlarmInput(
-      reminderId: id.padRight(26, '0'),
-      taskId: 'T$id'.padRight(26, '0'),
-      taskTitle: title,
-      remindAt: now.add(const Duration(hours: 1)),
-      status: 'scheduled',
-      urgent: urgent,
-      requiresAcknowledgement: urgent,
-      snoozedUntil: null,
-    );
+AlarmInput alarm(
+  String id, {
+  bool urgent = false,
+  String title = 'Görev',
+  Duration after = const Duration(hours: 1),
+}) => AlarmInput(
+  reminderId: id.padRight(26, '0'),
+  taskId: 'T$id'.padRight(26, '0'),
+  taskTitle: title,
+  remindAt: now.add(after),
+  status: 'scheduled',
+  urgent: urgent,
+  requiresAcknowledgement: urgent,
+  snoozedUntil: null,
+);
 
 void main() {
   late FakeNotificationsGateway gateway;
@@ -173,5 +184,96 @@ void main() {
         expect(alarmKit.scheduled, isEmpty);
       },
     );
+  });
+
+  group('AlarmKit lane limits and refusals (OPH-182)', () {
+    late FakeAlarmKitHost alarmKit;
+    late AwDatabase db;
+    late AlarmLog log;
+
+    NotificationScheduler build() => NotificationScheduler(
+      gateway: gateway,
+      alarmKit: alarmKit,
+      alarms: alarms.stream,
+      privacyMode: false,
+      log: log,
+      clock: () => now,
+    );
+
+    setUp(() {
+      alarmKit = FakeAlarmKitHost();
+      db = AwDatabase(
+        DatabaseConnection(
+          NativeDatabase.memory(),
+          closeStreamsSynchronously: true,
+        ),
+      );
+      log = AlarmLog(db);
+    });
+
+    tearDown(() => db.close());
+
+    test('past the cap, urgent alarms keep the notification chain', () async {
+      scheduler = build();
+      await scheduler.start();
+
+      alarms.add([
+        for (var i = 0; i < kMaxAlarmKitAlarms + 2; i++)
+          alarm('R$i', urgent: true, after: Duration(hours: i + 1)),
+      ]);
+      await pump();
+
+      expect(alarmKit.scheduled, hasLength(kMaxAlarmKitAlarms));
+      // The two that did not fit ring the OLD way rather than not at all.
+      expect(
+        gateway.scheduled,
+        hasLength(2 * ReminderProfile.factory.offsets.length),
+      );
+
+      final rows = await log.recent();
+      final overflow = rows.where(
+        (e) =>
+            e.lane == AlarmLogLane.alarmkit &&
+            e.event == AlarmLogEvent.degraded &&
+            (e.detail ?? '').contains('over-limit'),
+      );
+      expect(overflow, hasLength(2));
+    });
+
+    test('a refused alarm is logged as degraded, not as scheduled', () async {
+      alarmKit.scheduleFailure = 'limit_reached';
+      scheduler = build();
+      await scheduler.start();
+
+      alarms.add([alarm('R1', urgent: true)]);
+      await pump();
+
+      final rows = await log.recent();
+      final akRows = rows.where((e) => e.lane == AlarmLogLane.alarmkit);
+      expect(akRows, isNotEmpty);
+      // The whole point of OPH-176's log: never claim a delivery the OS refused.
+      expect(akRows.where((e) => e.event == AlarmLogEvent.scheduled), isEmpty);
+      expect(
+        akRows.singleWhere((e) => e.event == AlarmLogEvent.degraded).detail,
+        'limit_reached',
+      );
+    });
+
+    test('the log records the sound the alarm actually carries', () async {
+      scheduler = build();
+      await scheduler.start();
+
+      alarms.add([alarm('R1', urgent: true)]);
+      await pump();
+
+      final rows = await log.recent();
+      final scheduled = rows.singleWhere(
+        (e) =>
+            e.lane == AlarmLogLane.alarmkit &&
+            e.event == AlarmLogEvent.scheduled,
+      );
+      expect(scheduled.level, 'alarmkit');
+      expect(scheduled.sound, isNotNull);
+    });
   });
 }

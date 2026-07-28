@@ -484,6 +484,9 @@
     "repeatAfterSnoozeSub": "Off: a snoozed alarm rings once when it comes back",
     "snoozeOrder": "Snooze buttons, in your order",
     "snoozeOrderSub": "Drag to reorder — this is the order the ringing alarm shows",
+    "snoozeOrderFirst": "The alarm on your iPhone's Lock Screen has room for one snooze button: \"{preset}\".",
+    "watchTitle": "Apple Watch",
+    "watchSub": "While your phone is locked, alerts mirror to a paired watch — no separate app needed. Its sound and haptics are a watch setting: Watch → Sounds & Haptics.",
     "reset": "Back to Standard"
   },
   "sound": {

@@ -270,6 +270,20 @@ class ReminderSettingsScreen extends ConsumerWidget {
 
               // N4 — the ONE list where dragging means something.
               const _SnoozeOrderCard(),
+              const SizedBox(height: AwSpace.x3),
+
+              // OPH-183: what a paired Apple Watch does with all of this, and
+              // the one switch that is NOT ours. Mirroring is free — no watchOS
+              // target — but its sound and haptics are a Watch setting, so
+              // "my watch stayed silent" is answerable here instead of by us.
+              Card(
+                child: ListTile(
+                  key: const Key('apple-watch-help'),
+                  leading: const Icon(Icons.watch_outlined),
+                  title: Text('reminderSettings.watchTitle'.tr()),
+                  subtitle: Text('reminderSettings.watchSub'.tr()),
+                ),
+              ),
             ],
           ),
         ),
@@ -406,6 +420,18 @@ class _SnoozeOrderCard extends ConsumerWidget {
                     title: Text((_labels[id] ?? id).tr()),
                   ),
               ],
+            ),
+            const SizedBox(height: 4),
+            // OPH-182: the iOS alarm alert has room for exactly one snooze
+            // button, so this order decides that too. Said here rather than
+            // discovered at 03:00.
+            Text(
+              'reminderSettings.snoozeOrderFirst'.tr(
+                args: {'preset': (_labels[order.first] ?? order.first).tr()},
+              ),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

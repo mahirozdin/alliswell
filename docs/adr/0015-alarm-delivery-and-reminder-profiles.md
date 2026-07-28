@@ -144,6 +144,28 @@ Platform constraints that shape any fix (sources in
    in Settings. Round 9 proved that a delivery bug with no evidence trail costs
    more than the feature it hides.
 
+9. **The AlarmKit alert's snooze is `.custom`, and the planner still owns the
+   schedule** (added 2026-07-28, when OPH-182 met the real SDK). AlarmKit offers
+   `secondaryButtonBehavior: .countdown`, which re-presents the alarm itself
+   after a duration — the plan asked for it, and it is wrong here. Our planner
+   re-schedules a snoozed reminder from the replica, so a native countdown would
+   make ONE snooze produce TWO alerts; and a snooze the OS owns never reaches
+   `tasks.snoozed_until`, so the task row (OPH-177's "Ertelendi — 22:52") and
+   every other device would disagree with the phone. `.custom` + a
+   `LiveActivityIntent` keeps one source of truth. The cost is stated plainly:
+   if the intent does not run, that alarm does not come back on its own — which
+   the alarm log makes visible, because an intent press is recorded as an
+   `action` event.
+
+   Two consequences fall out of the same principle. The alert's buttons carry
+   **pre-localized text from Dart** (the bridge has no translations), and its
+   single snooze button applies the **first preset in the user's snooze order**
+   (§5b/N4) — the OS alert and the in-app ring screen therefore offer the same
+   thing first. And because AlarmKit's per-app ceiling is undocumented, the lane
+   is capped at the 8 nearest alarms with the overflow **kept on the notification
+   chain** — so the planner takes a set of AlarmKit-covered reminder ids rather
+   than a boolean, and no urgent alarm can fall between the two lanes.
+
 ## Alternatives considered
 
 - **Keep pushing on critical alerts.** Round 6 already researched this: Apple

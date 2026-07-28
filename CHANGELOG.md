@@ -24,6 +24,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **On iOS 26, an urgent alarm is now a real alarm** (OPH-182). Urgent tasks ring
+  through the silent switch and through a Focus, full-screen on the Lock Screen,
+  with the phone's own alarm interface — Apple's AlarmKit, no special entitlement.
+  This is the answer to "nothing came through while my screen was off". The
+  alert's buttons are in your language, its snooze is whichever one you put first
+  in your snooze order (and says so), and it plays the ringtone you chose.
+  Acknowledging or snoozing from the Lock Screen reaches your other devices even
+  if the app was not running. On iOS below 26, or if you decline the permission,
+  urgent alarms keep the notification chain exactly as before.
+
+  The honest part of the story: this lane was written weeks ago and had **never
+  run once** — the Swift file was in no Xcode target, so the app built green
+  while the one path that can outrun the mute switch was dead. It is wired now,
+  and verified from the built app rather than from the source tree.
+- **Apple Watch, explained rather than built** (OPH-183). Reminder system settings
+  now say what a paired watch already does — alerts mirror to it while your phone
+  is locked, no extra app — and where its sound and haptics live (Watch → Sounds
+  & Haptics), which is a watch setting rather than one of ours.
 - **Choose your alarm's sound — or upload your own** (OPH-181). Reminder system
   settings now has an Alarm sound and a Reminder sound row: the system's own
   sound, the 28-second alarm bed, or two new short tones (Chime, Ping), each with

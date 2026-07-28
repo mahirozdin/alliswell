@@ -2,9 +2,10 @@
 //  AllisWellWidgetBundle.swift
 //  AllisWellWidget
 //
-//  The extension's @main. We ship only the home-screen widget for now — the
-//  Control (iOS 18 Control Center) and Live Activity templates were removed
-//  (OPH-131). They can come back as their own tasks.
+//  The extension's @main. Two members: the home-screen widget (OPH-131) and the
+//  Live Activity AlarmKit's alarms are presented through (OPH-182). The Control
+//  (iOS 18 Control Center) template was removed and can come back as its own
+//  task.
 //
 
 import SwiftUI
@@ -14,5 +15,10 @@ import WidgetKit
 struct AllisWellWidgetBundle: WidgetBundle {
   var body: some Widget {
     AllisWellWidget()
+    #if canImport(AlarmKit)
+      if #available(iOS 26.0, *) {
+        AWAlarmLiveActivity()
+      }
+    #endif
   }
 }

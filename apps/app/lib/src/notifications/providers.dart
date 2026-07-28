@@ -178,6 +178,9 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
     sounds: ref.watch(alarmSoundResolverProvider),
     alarmSound: ref.watch(alarmSoundChoiceProvider),
     reminderSound: ref.watch(reminderSoundChoiceProvider),
+    // The AlarmKit alert has room for ONE snooze button (OPH-182), so it offers
+    // whichever the user put first in their own order.
+    snoozePreset: ref.watch(snoozePresetOrderProvider).first,
   );
   unawaited(scheduler.start());
   ref.onDispose(scheduler.dispose);

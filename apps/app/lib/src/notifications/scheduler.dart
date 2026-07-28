@@ -24,6 +24,7 @@ class NotificationScheduler {
     this.sounds,
     this.alarmSound = const AwSoundChoice.bundled('aw_alarm'),
     this.reminderSound = const AwSoundChoice.os(),
+    this.snoozePreset = kDefaultSnoozePreset,
     this.maxPending = 40,
     DateTime Function()? clock,
   }) : _now = clock ?? (() => DateTime.now().toUtc());
@@ -45,6 +46,11 @@ class NotificationScheduler {
   final AlarmSoundResolver? sounds;
   final AwSoundChoice alarmSound;
   final AwSoundChoice reminderSound;
+
+  /// The snooze the AlarmKit alert's secondary button applies — the first of the
+  /// user's own snooze order (OPH-179 N4), so the OS alert and the in-app ring
+  /// screen offer the same thing first.
+  final String snoozePreset;
 
   /// iOS 26+ URGENT lane (OPH-141). Null (or unsupported/declined) leaves urgent
   /// alarms on the notification lane. When active, urgent alarms move here and
@@ -122,12 +128,28 @@ class NotificationScheduler {
       // alarm on" (OPH-181).
       final alarm = await _resolve(alarmSound);
       final reminder = await _resolve(reminderSound);
+
+      // The AlarmKit lane is planned FIRST, because it decides what the
+      // notification lane must NOT schedule. It is capped (OPH-182), so this is
+      // a set of reminder ids rather than "all urgent alarms": whatever did not
+      // fit keeps its notification chain.
+      final desiredAk = _alarmKitActive && alarmKit != null
+          ? planAlarmKitAlarms(
+              alarms: _latest,
+              now: now,
+              privacyMode: privacyMode,
+              snoozePreset: snoozePreset,
+              soundName: alarm.name,
+            )
+          : const <AlarmKitAlarm>[];
+      final alarmKitReminderIds = {for (final a in desiredAk) a.reminderId};
+
       final desired = planNotifications(
         alarms: _latest,
         now: now,
         privacyMode: privacyMode,
         maxPending: maxPending,
-        routeUrgentToAlarmKit: _alarmKitActive,
+        alarmKitReminderIds: alarmKitReminderIds,
         profile: profile,
         alarmSoundName: alarm.name,
         reminderSoundName: reminder.name,
@@ -161,12 +183,6 @@ class NotificationScheduler {
       // so acknowledge/complete/snooze cancels an AlarmKit alarm exactly like a
       // notification (the row leaves the active set → the desired set shrinks).
       if (_alarmKitActive && alarmKit != null) {
-        final desiredAk = planAlarmKitAlarms(
-          alarms: _latest,
-          now: now,
-          privacyMode: privacyMode,
-          maxPending: maxPending,
-        );
         final desiredAkById = {for (final a in desiredAk) a.id: a};
         final scheduled = await alarmKit!.scheduledIds();
 
@@ -180,18 +196,45 @@ class NotificationScheduler {
         }
         for (final id in desiredAkById.keys.toSet().difference(scheduled)) {
           final alarm = desiredAkById[id]!;
-          await alarmKit!.schedule(alarm);
+          final outcome = await alarmKit!.schedule(alarm);
           await log?.record(
-            event: AlarmLogEvent.scheduled,
+            // A refused alarm is a degradation, not a schedule — saying
+            // "scheduled" for something the OS threw away is precisely the lie
+            // OPH-176 built this log to catch.
+            event: outcome.ok
+                ? AlarmLogEvent.scheduled
+                : AlarmLogEvent.degraded,
             lane: AlarmLogLane.alarmkit,
             urgent: true,
-            // AlarmKit rings until answered natively: one entry, no chain, and
-            // the OS owns the sound presentation.
-            sound: kAwAlarmSoundName,
+            // AlarmKit rings until answered natively: one entry, no chain.
+            sound: alarm.soundName ?? kAwAlarmSoundName,
             level: 'alarmkit',
             fireAt: alarm.fireAt,
             taskId: alarm.taskId,
             reminderId: alarm.reminderId,
+            detail: outcome.reason,
+          );
+        }
+
+        // Urgent alarms the cap pushed back onto the notification chain. Said
+        // out loud, because "why did this one sound different?" is unanswerable
+        // otherwise.
+        final overflow = _latest
+            .where(
+              (a) =>
+                  a.urgent &&
+                  !alarmKitReminderIds.contains(a.reminderId) &&
+                  desiredById.values.any((n) => n.reminderId == a.reminderId),
+            )
+            .toList();
+        for (final a in overflow) {
+          await log?.record(
+            event: AlarmLogEvent.degraded,
+            lane: AlarmLogLane.alarmkit,
+            urgent: true,
+            taskId: a.taskId,
+            reminderId: a.reminderId,
+            detail: 'over-limit (max $kMaxAlarmKitAlarms) — notification chain',
           );
         }
       }

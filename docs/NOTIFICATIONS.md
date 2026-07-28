@@ -200,7 +200,7 @@ non-urgent lane, and the planner remains the single source of truth (the
 gateway diff must cancel AlarmKit alarms on acknowledge exactly like
 notifications). [16]
 
-**Round 9 status check — the lane has never run (2026-07-27).** The Dart lane
+**Round 9 status check — the lane had never run (2026-07-27).** The Dart lane
 (`planAlarmKitAlarms`, the host seam, the scheduler's second set-diff) and
 `ios/Runner/AlarmKitBridge.swift` exist and are unit-tested, `NSAlarmKitUsageDescription`
 is in `Info.plist` — but **the Swift file is in no Xcode target and `AppDelegate`
@@ -228,6 +228,57 @@ has been served by the notification lane, which cannot beat hardware silence.
   (§2d).
 - **Alarm count is limited but undocumented** — keep the AlarmKit lane windowed
   to the soonest N alarms (as the notification lane is) and log rejections (§6).
+
+### 2b.1 Wired — what the iOS 26.2 SDK actually looks like (2026-07-28, OPH-182)
+
+The lane is **connected and compiled**: `AlarmKitBridge.swift` is in the Runner
+target, `AppDelegate` constructs it, `ios/Shared/AWAlarmShared.swift` compiles
+into BOTH the app and the widget extension, `ios/AllisWellWidget/AWAlarmLiveActivity.swift`
+provides the `ActivityConfiguration(for: AlarmAttributes<AWAlarmMetadata>.self)`,
+and `NSSupportsLiveActivities` is in both Info.plists. Verified from the build
+products, not from the source tree — the round-9 lesson, applied to its own fix:
+`Runner.debug.dylib` and the `.appex` both weak-link `AlarmKit.framework`, and
+both carry an `AppIntents` metadata bundle.
+
+The bridge had been written against the WWDC-shaped API. Five things differ in
+the shipping SDK, and each one changed the design:
+
+| Draft assumed | iOS 26.2 SDK | Consequence |
+| --- | --- | --- |
+| `AlarmAttributes(...)`, `AlarmConfiguration(...)` | both **generic** over `Metadata: AlarmMetadata` | the metadata type must be nameable in every target that builds or renders an alarm |
+| `alarm.attributes.metadata` recovers our id | `Alarm` exposes only `id`, `schedule`, `countdownDuration`, `state` | the deterministic **id ↔ UUID round trip is the only recovery path**; `scheduledIds` decodes the namespace-tagged UUID back to an integer |
+| `alarm.state == .stopped` signals Onayla | `State` is `scheduled / countdown / paused / alerting` — a stopped alarm simply disappears | button presses must arrive as **`LiveActivityIntent`s**, not by watching state |
+| `await AlarmManager.shared.alarms` | a **throwing property**, not async | — |
+| one method per OS, split by `@available` | Swift rejects overloads that differ only by availability | one implementation per channel method, `if #available` **inside** it |
+
+**Buttons work while the app is dead**, which is the whole point of the lane and
+the sharpest constraint on it: iOS performs the alert's intent in a background
+launch, long before (or entirely without) a Flutter engine. So `AWAlarmStopIntent`
+/ `AWAlarmSnoozeIntent` write into an **App Group queue** (`AWAlarmActionQueue`,
+capped at 32 so a cold launch cannot replay a year of alarms), and Dart asks for
+it (`drainPendingActions`) as soon as it has a handler and again on every
+foreground. Pushing straight down the channel would drop precisely the
+acknowledgement that matters — the alarm that woke someone at 03:00.
+
+**Snooze is `.custom`, not `.countdown`** — a deliberate deviation from the
+OPH-182 plan, for two reasons (ADR-0015 decision 9): a native countdown would re-present
+an alarm the planner ALSO reschedules (two alerts for one snooze), and a snooze
+the OS owns is invisible to the task row (OPH-177's "Ertelendi — 22:52") and to
+every other device. The alert's one snooze button is the **first preset in the
+user's own snooze order** (OPH-179 N4) and is labelled with it, so the button
+says what it will do; the reminder settings screen states this.
+
+**Everything crossing the channel is pre-localized by Dart** — button text
+included. A Swift-side `"Onayla"` literal is the round-9 bug in miniature.
+
+**The cap is 8** (`kMaxAlarmKitAlarms`), the nearest alarms first. Since the
+ceiling is undocumented and the API answers `maximumLimitReached` rather than a
+number, the log is how we will learn the real one. What does not fit **keeps its
+notification chain** — which is why the planner takes a SET of AlarmKit-covered
+reminder ids rather than a "urgent lives elsewhere" flag; a bare flag would let
+an over-limit urgent alarm fall between the two lanes. Both the overflow and any
+`limit_reached` refusal are written to the alarm log, and a refusal is recorded
+as `degraded`, never as `scheduled` (§6).
 
 ## 2c. User-supplied sounds — what is actually possible (round 9, OPH-181)
 
@@ -288,6 +339,11 @@ in the picker.
   and a complication. It also buys a second signing/review surface. Decision
   rule (OPH-183): measure mirroring + AlarmKit on a real watch first; open a
   companion epic only if that proves insufficient.
+- **Shipped 2026-07-28**: the help line is in the reminder settings screen
+  (`reminderSettings.watchTitle/watchSub`) — mirroring is free, the sound and
+  haptics are a Watch setting. That is the whole deliverable that does not need
+  hardware; the measurement, and therefore the companion decision, waits for a
+  real watch on OPH-182's device pass.
 
 ## 3. Other platforms
 

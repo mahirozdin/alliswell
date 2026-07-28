@@ -1,60 +1,72 @@
-# iOS 26 AlarmKit — Xcode setup (OPH-141)
+# iOS 26 AlarmKit — wiring (OPH-141 wrote it, OPH-182 connected it)
 
-The AlarmKit URGENT lane's Dart side is done and tested (`lib/src/notifications/
-alarmkit.dart`, `planner.dart`, `scheduler.dart` — app 377/377). The native
-bridge `AlarmKitBridge.swift` is written and sitting in this folder, and
-`NSAlarmKitUsageDescription` is already in `Info.plist`. What's left **must be
-done once in Xcode on an iOS 26 machine**, because AlarmKit only compiles
-against the iOS 26 SDK on a real target — `flutter analyze`/`test` never touch
-Swift, so this is a device step (exactly like the widget, `AllisWellWidget/
-SETUP.md`).
+**Status: connected and compiled (2026-07-28).** This file used to be a hand-off
+("do these steps once in Xcode"). It is now a record of what is wired and a
+checklist for the one part that still needs hardware.
 
-> The committed app builds fine today: `AlarmKitBridge.swift` is NOT yet in any
-> target and `AppDelegate` does NOT reference it, so nothing here affects the
-> build until you wire it below.
+Round 6 wrote `AlarmKitBridge.swift` and left it in no target. `flutter analyze`
+and `flutter test` never touch Swift, so nothing failed — the app built green for
+five weeks while the only lane that can outrun the iOS mute switch had never run
+once. That is round 9 #8, and the lesson is worth keeping: **a `.swift` file in
+the repo is not a compiled file.**
 
-## Steps (≈10 min, once, needs Xcode 26 / iOS 26 SDK)
+## What is wired
 
-1. **Open the workspace:** `open apps/app/ios/Runner.xcworkspace`
+| Piece | Where | Target(s) |
+| --- | --- | --- |
+| Method-channel bridge | `ios/Runner/AlarmKitBridge.swift` | Runner |
+| Bridge registration | `ios/Runner/AppDelegate.swift` | Runner |
+| Alarm metadata + the alert's App Intents | `ios/Shared/AWAlarmShared.swift` | Runner **and** AllisWellWidgetExtension |
+| Live Activity (`ActivityConfiguration`) | `ios/AllisWellWidget/AWAlarmLiveActivity.swift` | AllisWellWidgetExtension |
+| `NSSupportsLiveActivities` | `ios/Runner/Info.plist`, `ios/AllisWellWidget/Info.plist` | both |
+| `NSAlarmKitUsageDescription` | `ios/Runner/Info.plist` | Runner |
 
-2. **Add the file to the Runner target:** drag `ios/Runner/AlarmKitBridge.swift`
-   into the **Runner** group and check **Runner** in Target Membership. (It's
-   iOS-only; do not add it to the widget or test targets.)
+`ios/AllisWellWidget/` is a **folder-synchronized group** (Xcode 16+), so a new
+file dropped there joins the extension target automatically. `ios/Runner/` and
+`ios/Shared/` are not — files there need explicit membership. The wiring is
+scripted and idempotent, so a regenerated project can be re-wired without Xcode:
 
-3. **Register the bridge in `AppDelegate.swift`** — add the property and the two
-   lines the comment marks:
+```bash
+ruby apps/app/ios/scripts/wire_alarmkit.rb
+```
 
-   ```swift
-   private var alarmKitBridge: AlarmKitBridge?
-   // ...inside didInitializeImplicitFlutterEngine, after GeneratedPluginRegistrant:
-   if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AlarmKitBridge") {
-     alarmKitBridge = AlarmKitBridge(messenger: registrar.messenger())
-   }
-   ```
+## Verify it is still connected (no device needed)
 
-4. **Confirm the AlarmKit API shapes against the SDK.** The bridge uses the
-   documented WWDC25 surface (`AlarmManager.shared`, `AlarmPresentation.Alert`
-   with a stop + countdown button, `AlarmManager.AlarmConfiguration`,
-   `AlarmMetadata`, `alarmUpdates`). If a type/initializer name differs in the
-   shipping SDK, fix it in `AlarmKitBridge.swift` — the channel contract and the
-   id↔UUID mapping are final; only the AlarmKit value types may need a nudge.
+The point is to check the BUILD PRODUCTS, not the source tree:
 
-5. **Build & run on a real iOS 26 device** (min deployment stays iOS 16; the
-   AlarmKit code is all behind `if #available(iOS 26.0, *)`).
+```bash
+cd apps/app && flutter build ios --debug --no-codesign
+```
 
-## Verify (DoD)
+```bash
+otool -L apps/app/build/ios/iphoneos/Runner.app/Runner.debug.dylib | grep -i alarmkit
+```
 
-6. Make an **urgent** task due in a minute, **mute the phone** and turn on a
-   Focus. At the due time the AlarmKit alert should ring/vibrate through both.
-7. **Onayla** acknowledges the task (check another surface — it syncs).
-   **Ertele** snoozes it (AlarmKit re-presents; the reschedule flows back
-   through the planner).
-8. On iOS < 26 (or if you deny authorization) confirm urgent alarms still arrive
-   as the time-sensitive notification chain (OPH-139) — the fallback.
+Both the app dylib and `PlugIns/AllisWellWidgetExtension.appex/*.debug.dylib`
+must weak-link `AlarmKit.framework`, and both bundles must contain a
+`Metadata.appintents` directory. If AlarmKit is missing from that list, the lane
+is dead again no matter what the Swift says.
 
-## Commit
+## Device DoD (iOS 26 hardware — the remaining part)
 
-9. Commit what Xcode changed: `ios/Runner.xcodeproj/project.pbxproj` (now
-   includes `AlarmKitBridge.swift`) and `AppDelegate.swift`. Record the device
-   pass in `docs/STATE.md` (the alarm matrix), and check OPH-141's last box in
-   `docs/TASKS.md`.
+Arm an **urgent** task due in a minute, then:
+
+1. **Silent switch ON + Sleep Focus ON + screen LOCKED** → the alarm takes over
+   the full screen and rings. (This single scenario is the whole reason the lane
+   exists.)
+2. **Onayla** acknowledges the reminder — check another device or another surface;
+   it syncs. Do this once with the app **force-quit** as well: the press is
+   parked in the app group and replayed on the next launch.
+3. **Ertele** snoozes by the first preset in the user's snooze order, the task row
+   shows "Ertelendi — HH:mm", and the alarm comes back at that time.
+4. **iOS < 26** (or authorization denied) → urgent alarms still arrive as the
+   time-sensitive notification chain (OPH-139).
+5. **Settings ▸ Alarm log** shows `lane=alarmkit` rows: `scheduled` with the
+   sound name, and an `action` row for each button press. An empty alarmkit lane
+   means the alarm never left the notification path.
+6. If more than 8 urgent alarms are pending, the far ones are logged
+   `degraded … over-limit` and keep their notification chain — expected, not a
+   bug.
+
+Record the result in `docs/STATE.md` (the alarm matrix) and tick OPH-182's last
+box in `docs/TASKS.md`.

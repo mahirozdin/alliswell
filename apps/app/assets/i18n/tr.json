@@ -483,6 +483,9 @@
     "repeatAfterSnoozeSub": "Kapalı: ertelenen alarm geri döndüğünde bir kez çalar",
     "snoozeOrder": "Erteleme düğmeleri, senin sıranla",
     "snoozeOrderSub": "Sürükleyip sırala — çalan alarm bu sırayla gösterir",
+    "snoozeOrderFirst": "iPhone’un kilit ekranındaki alarmda tek erteleme düğmesi var: “{preset}”.",
+    "watchTitle": "Apple Watch",
+    "watchSub": "Telefon kilitliyken uyarılar eşleşmiş saate aynalanır — ayrı bir uygulama gerekmez. Ses ve dokunuşları saatten ayarla: Watch → Sesler ve Dokunuşlar.",
     "reset": "Standart’a dön"
   },
   "sound": {
