@@ -205,6 +205,19 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **🚀 v0.6.0 CANLI (2026-07-29):** `git push origin v0.6.0` → gate (Flutter +
+  MySQL + MariaDB) → GitHub Release (prerelease, workflow'un 1.x-olmayan kuralı)
+  → GHCR imajları (api + web, amd64/arm64) → prod deploy. Kanıt:
+  `https://api.alliswell.space/` → `"version":"0.6.0"`, `/health/ready` →
+  mysql+redis up. **Migration YOK** — bu turun tek şema değişikliği istemci
+  tarafında (drift v12, yalnız indeks). **Gate ilk turda bir kez düştü ve bu bir
+  ders değil bir flake:** MariaDB işinde `files-upload` entegrasyon süiti
+  kaydolmada 500 verdi (17/18 dosya yeşildi, MySQL işi tamamen yeşildi) ve
+  `git diff v0.5.0..HEAD -- apps/api` **yalnız sürüm satırını** gösteriyor —
+  yani API'ye bu turda dokunulmadı. `gh run rerun --failed` ile ikinci turda
+  49 sn'de yeşil. Kalıcı not: bu iş paralel container'larla argon2id'li kayıt
+  koşuyor; tekrar ederse süitin izolasyonuna bakılmalı, koda değil.
+
 - **🚀 v0.5.0 CANLI (2026-07-28):** `git push origin v0.5.0` → gate (Flutter + MySQL +
   MariaDB) → GitHub Release → GHCR imajları (api+web, amd64/arm64) → prod deploy, **tek
   turda yeşil**. Kanıt: yedek `db-20260728-065331-pre-v0.5.0.sql.gz` (20K), `checked out:
