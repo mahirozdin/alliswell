@@ -168,15 +168,75 @@ describe('urgent tasks alarm at their deadline (feedback round 6)', () => {
     expect(tables.reminders).toHaveLength(0);
   });
 
-  it('an explicit remindAt wins over the deadline', async () => {
+  // ── Round 9 (OPH-175): a reminder is a nudge BEFORE the deadline, never a
+  // replacement for it. Round 6's `remind_at ?? due_at` is reversed here.
+  it('an explicit remindAt does NOT swallow the deadline alarm', async () => {
     await createTask({
       title: 'Önden haber ver',
       dueAt: DUE_AT,
       remindAt: REMIND_AT,
       isUrgent: true,
     });
-    expect(activeReminders()).toHaveLength(1);
-    expect(new Date(activeReminders()[0].remind_at).toISOString()).toBe(REMIND_AT);
+
+    const alarms = activeReminders();
+    expect(alarms).toHaveLength(2);
+    const byKind = Object.fromEntries(alarms.map((a) => [a.kind, a]));
+    expect(new Date(byKind.remind.remind_at).toISOString()).toBe(REMIND_AT);
+    expect(new Date(byKind.due.remind_at).toISOString()).toBe(DUE_AT);
+    // Both are the urgent lane: the deadline of an urgent task IS an alarm.
+    expect(byKind.due.alarm_level).toBe('urgent');
+  });
+
+  it('one instant never rings twice: an equal remindAt collapses to `remind`', async () => {
+    await createTask({
+      title: 'Aynı an',
+      dueAt: DUE_AT,
+      remindAt: DUE_AT,
+      isUrgent: true,
+    });
+    const alarms = activeReminders();
+    expect(alarms).toHaveLength(1);
+    expect(alarms[0].kind).toBe('remind');
+  });
+
+  it('a non-urgent task with both times gets only its reminder', async () => {
+    await createTask({ title: 'Sakin ama hatırlat', dueAt: DUE_AT, remindAt: REMIND_AT });
+    const alarms = activeReminders();
+    expect(alarms).toHaveLength(1);
+    expect(alarms[0].kind).toBe('remind');
+    expect(alarms[0].alarm_level).toBe('normal');
+  });
+
+  it('the two rows move independently, and completing terminalizes both', async () => {
+    const task = (
+      await createTask({
+        title: 'İki alarmlı',
+        dueAt: DUE_AT,
+        remindAt: REMIND_AT,
+        isUrgent: true,
+      })
+    ).json();
+
+    // Moving the deadline re-arms ONLY the deadline row.
+    const later = '2026-07-23T09:00:00.000Z';
+    const remindRevisionBefore = activeReminders().find((a) => a.kind === 'remind').revision;
+    await patchTask(task.id, { dueAt: later });
+    const afterMove = Object.fromEntries(activeReminders().map((a) => [a.kind, a]));
+    expect(new Date(afterMove.due.remind_at).toISOString()).toBe(later);
+    expect(new Date(afterMove.remind.remind_at).toISOString()).toBe(REMIND_AT);
+    expect(afterMove.remind.revision).toBe(remindRevisionBefore);
+
+    // Dropping urgency kills the deadline alarm and leaves the reminder.
+    await patchTask(task.id, { isUrgent: false });
+    expect(activeReminders().map((a) => a.kind)).toEqual(['remind']);
+
+    // Completing the task terminalizes what is left.
+    await app.inject({
+      method: 'POST',
+      url: `/api/v1/tasks/${task.id}/complete`,
+      headers: owner.headers,
+    });
+    expect(activeReminders()).toHaveLength(0);
   });
 
   it('moving the deadline moves the alarm; dropping urgency cancels it', async () => {

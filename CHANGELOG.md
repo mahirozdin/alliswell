@@ -22,6 +22,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   for today, you plan for tomorrow. A reminder opens on its task's due day
   instead, because a nudge belongs next to its deadline.
 
+### Fixed
+
+- **An urgent task's own deadline rings again** (OPH-175). Setting a reminder used
+  to REPLACE the deadline alarm: a task due at 22:45 with a 22:42 nudge alerted at
+  22:42 and then let 22:45 pass in silence. A reminder is a nudge *before* the
+  deadline, never a substitute for it — so an urgent task now carries both alarms
+  independently, each with its own text ("the time you set is here" vs "waiting for
+  acknowledgement"), and both at alarm loudness. Identical times still ring once.
+  Answering one no longer silences the other, while a plain "not now" snoozes the
+  whole task — previously it silenced one alarm and left the other to fire minutes
+  later.
+
 ### Added
 
 - **Home stops reserving the top of your phone screen** (OPH-172): the only

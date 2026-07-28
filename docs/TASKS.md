@@ -3114,44 +3114,78 @@ en+tr'den silindi) + kontrast FAILURES: 0; CHANGELOG; STATE.
 **DoD met 2026-07-28:** app **417/417** (~19 skip; +11 birim, +2 widget) +
 `analyze` temiz + `check:i18n` yeşil + kontrast FAILURES: 0; CHANGELOG; STATE.
 
-### OPH-175 — "Görev saati de bir alarmdır": iki alarm örneği (round 9 #6.3) — API + app
+### OPH-175 — "Görev saati de bir alarmdır": iki alarm örneği (round 9 #6.3) — API + app ✅ 2026-07-28
 
 **Kullanıcının cümlesi:** _"velevki acil olarak işaretledim ama hatırlatıcı kurmadım —
 en azından tam task saatinde bu müzikli bildirim gelmeliydi, alarm gibi."_ Bugün tam
 tersi çalışıyor: hatırlatıcı KURULDUYSA görev saati sessiz geçiyor.
 
-- [ ] **Migration** `2026XXXXXXXXXX_add_reminder_kind.js` (append-only):
+- [x] **Migration** `2026XXXXXXXXXX_add_reminder_kind.js` (append-only):
       `reminders.kind` ENUM('remind','due') NOT NULL DEFAULT 'remind'. **Unique index
       YOK** (terminal satırlar tarih olarak birikiyor; seçim "en yeni aktif satır"
       kalıbıyla yapılır — mevcut kod da böyle). Backfill: `remind_at` null + görev
       urgent+due ise `'due'`, değilse `'remind'`. `down` kolonu düşürür.
-- [ ] **`effectiveRemindAt` → `alarmInstantsFor(task)`** ([api/src/db/reminders.js](../apps/api/src/db/reminders.js)):
+- [x] **`effectiveRemindAt` → `alarmInstantsFor(task)`** ([api/src/db/reminders.js](../apps/api/src/db/reminders.js)):
       `[{kind:'remind', at: task.remind_at}, {kind:'due', at: task.due_at}]` — `due`
       yalnız `is_urgent`; **iki an eşitse yalnız `remind` kalır** (tek an için iki kez
       çalmak hata olur); görev susturulmuşsa (OPH-178) **boş liste**. Tek seam kalır:
       REST + sync push + takvim job'ı hep bunu çağırır.
-- [ ] **`reconcileTaskReminder` tür başına döner:** her kind için upsert/terminalize,
+- [x] **`reconcileTaskReminder` tür başına döner:** her kind için upsert/terminalize,
       her satır kendi revizyonu. "remind_at kaydıysa tam yeniden kur, değilse yalnız
       görev alanlarını yansıt (erteleme korunur)" kuralı satır bazında aynen korunur —
       başlık yaması hiçbir alarmı uyandırmaz.
-- [ ] **Sync + REST sözleşmesi:** `reminder` varlığına `kind` (sunucu-yazar, istemci
+- [x] **Sync + REST sözleşmesi:** `reminder` varlığına `kind` (sunucu-yazar, istemci
       okur), serializer'lar (`routes/reminders.js`, `routes/sync.js`) alanı yayar.
       `POST /tasks/:taskId/snooze` **opsiyonel `reminderId`** alır: verilirse yalnız o
       alarm ertelenir (çalan alarm hangisiyse), verilmezse görevin tüm aktif alarmları
       (geriye dönük uyumlu, app'in bugünkü çağrısı bozulmaz).
-- [ ] **App:** drift **v8** (`reminders.kind`, `from >= 7` guard'ı — v5/v7 dersi),
+- [x] **App:** drift **v8** (`reminders.kind`, `from >= 7` guard'ı — v5/v7 dersi),
       applier, `AlarmInput.kind`, `ReminderStore.watchAlarms` **her iki türü** sentezler
       (sentetik id şeması `local:remind:<taskId>` / `local:due:<taskId>`;
       `acknowledge()`'in çözücüsü türü ayrıştırıp aynı türden aktif satırı bulur —
       bugünkü `local:<taskId>` şeması tek satır varsayıyor).
-- [ ] **Gövde:** görev-saati alarmı yeni anahtar `notif.dueNow` ("Görev saati geldi —
+- [x] **Gövde:** görev-saati alarmı yeni anahtar `notif.dueNow` ("Görev saati geldi —
       onay bekliyor"); zinciri profilden gelir (OPH-179), yüksekliği acil sözleşmesidir
       (OPH-176). Hatırlatıcı alarmı bugünkü metinlerini korur.
-- [ ] Testler: API unit (`alarmInstantsFor` tablosu: yalnız remind / yalnız due /
+- [x] Testler: API unit (`alarmInstantsFor` tablosu: yalnız remind / yalnız due /
       ikisi / eşit an tekilleştirme / susturulmuş; reconcile iki satır kurar, `due_at`
       kayarsa yalnız `due` yeniden kurulur, tamamlama ikisini de terminalize eder),
       entegrasyon (REST create → 2 satır; sync pull `kind` taşıyor), app (watchAlarms
       2 alarm, planner iki farklı gövde, acknowledge doğru satırı bulur).
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **`alarmInstantsFor` tek karar noktası oldu:** "görev canlı mı" kontrolü de
+  (silinmiş/tamamlanmış/iptal/arşiv **ve** ileride `alarms_muted_at`) buraya taşındı,
+  böylece sunucu ile uygulamanın aynaladığı **tek** kural var. `reconcileTaskReminder`
+  artık `ALARM_KINDS` üzerinde dönen ince bir sarmalayıcı + tür başına `reconcileOne`;
+  "remind_at kaydıysa tam yeniden kur, yoksa yalnız alanları yansıt" kuralı satır
+  bazında korundu (test: bitiş kayarken hatırlatıcı satırının **revizyonu artmıyor**).
+- **`alarms_muted_at` şimdiden tolere ediliyor** (`task.alarms_muted_at != null`
+  kontrolü kolon yokken `undefined` olduğu için sessizce geçer) — OPH-178 kolonu
+  eklediğinde motor tarafında değişiklik gerekmeyecek.
+- **Erteleme sözleşmesi düzeltildi:** eskiden yalnız "en yeni aktif satır"
+  erteleniyordu; iki alarmlı bir görevde bu, kullanıcı erteledikten 3 dakika sonra
+  ikinci alarmın çalması demekti. Artık `reminderId` verilmezse **hepsi**, verilirse
+  **yalnız o** ertelenir (çalan alarm kendi id'sini biliyor).
+- **Sentetik id şeması `local:<kind>:<taskId>`** (`syntheticReminderId` /
+  `parseSyntheticReminderId`); eski `local:<taskId>` biçimi **hâlâ çözülüyor**
+  (yükseltmeden sağ çıkan bir id 'remind' sayılır). `acknowledge` artık **aynı türden**
+  satırı arıyor: 21:42 uyarısını onaylamak 21:45 alarmını susturmaz (test var).
+- **Round 6'nın testi tersine çevrildi:** "an explicit remindAt wins over the
+  deadline" → "**does NOT swallow** the deadline alarm". Bilinçli sözleşme değişikliği;
+  eski niyet (bir an iki kez çalmasın) eşit-an tekilleştirmesiyle korunuyor.
+- **Gerçek MySQL dersi:** `ORDER BY kind` bir ENUM'da **alfabetik değil, tanım
+  sırasıyla** sıralar (`remind`, `due`) — entegrasyon testi bu yüzden JS'te sıralıyor.
+  fakedb bunu gösteremezdi; entegrasyon testi tam bu yüzden var.
+- **Ortam notu (dikkat):** bu repoda `npm run db:rollback` = `knex migrate:rollback
+  **--all**` → 13 migration geri alınır ve **yerel dev veritabanı boşalır**. `down`u
+  doğrulamak için koştum; yerel demo verisi gitti (prod'a dokunulmadı). Bir dahaki
+  sefere tek migration için `npx knex migrate:down`.
+
+**DoD met 2026-07-28:** API unit **288/288** + **entegrasyon 39/39 (gerçek MySQL —
+migration uygulandı, `down` + yeniden `up` denendi)** + lint/format/no-ts yeşil;
+app **425/425** + analyze + `check:i18n` + kontrast yeşil; CHANGELOG; STATE.
 
 ### OPH-176 — Tek yükseklik sözleşmesi + alarm günlüğü (round 9 #6.1, #6.4, #8 teşhisi)
 

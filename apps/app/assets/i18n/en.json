@@ -400,6 +400,7 @@
     "privateBody": "You have a reminder",
     "urgentFirst": "Urgent reminder — waiting for acknowledgement",
     "urgentRepeat": "Still waiting for acknowledgement (alert {count})",
+    "dueNow": "The time you set is here — waiting for you",
     "reminder": "Reminder",
     "action": {
       "complete": "Complete",

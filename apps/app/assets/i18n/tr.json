@@ -399,6 +399,7 @@
     "privateBody": "Bir hatırlatıcın var",
     "urgentFirst": "Acil hatırlatıcı — onay bekliyor",
     "urgentRepeat": "Hâlâ onay bekliyor ({count}. hatırlatma)",
+    "dueNow": "Görev saati geldi — onay bekliyor",
     "reminder": "Hatırlatıcı",
     "action": {
       "complete": "Tamamla",

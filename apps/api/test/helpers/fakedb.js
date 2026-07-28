@@ -126,6 +126,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       alarm_level: 'normal',
       requires_acknowledgement: false,
       status: 'scheduled',
+      // OPH-175: 'remind' is the column default; a deadline alarm says so.
+      kind: 'remind',
       revision: 0,
     }),
     client_mutations: () => ({ user_id: null, result_revision: null, error_code: null }),

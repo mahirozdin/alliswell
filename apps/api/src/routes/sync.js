@@ -160,6 +160,9 @@ export function serializeReminder(row) {
   return {
     id: row.id,
     taskId: row.task_id,
+    // Which alarm this is (OPH-175): the reminder, or the deadline itself.
+    // Server-owned — clients read it, they never push it.
+    kind: row.kind ?? 'remind',
     remindAt: toIso(row.remind_at),
     timezone: row.timezone,
     alarmLevel: row.alarm_level,

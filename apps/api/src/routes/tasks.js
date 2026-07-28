@@ -647,6 +647,11 @@ export default async function taskRoutes(app) {
           properties: {
             preset: { type: 'string', enum: SNOOZE_PRESETS },
             snoozeUntil: { type: 'string', format: 'date-time' },
+            // OPH-175: which alarm is being snoozed. A ringing alarm knows its
+            // own id, so it silences only itself; omitted (the app's older
+            // call, and every task-level "not now") snoozes ALL of the task's
+            // active alarms.
+            reminderId: ULID_PARAM,
           },
           // Exactly one of the two: with both present, both branches match and
           // oneOf fails; with neither, neither matches.
@@ -703,22 +708,24 @@ export default async function taskRoutes(app) {
           updated_at: new Date(),
         });
 
-        // Silence the live alarm until the same moment.
-        const active = await trx('reminders')
+        // Silence the live alarm(s) until the same moment. A task can own two
+        // (reminder + deadline, OPH-175): snooze the one that asked, or all of
+        // them when nobody named one.
+        const query = trx('reminders')
           .where({ task_id: row.id })
           .whereNull('deleted_at')
-          .whereIn('status', ['scheduled', 'snoozed', 'delivered'])
-          .orderBy('created_at', 'desc')
-          .first();
-        if (active) {
+          .whereIn('status', ['scheduled', 'snoozed', 'delivered']);
+        if (request.body.reminderId) query.where({ id: request.body.reminderId });
+        const active = await query.orderBy('created_at', 'desc').select();
+        for (const alarm of active) {
           const reminderRevision = await recordSyncWrite(trx, {
             workspaceId: row.workspace_id,
             entityType: 'reminder',
-            entityId: active.id,
+            entityId: alarm.id,
             operation: 'update',
             changedFields: ['status', 'snoozed_until'],
           });
-          await trx('reminders').where({ id: active.id }).update({
+          await trx('reminders').where({ id: alarm.id }).update({
             status: 'snoozed',
             snoozed_until: until,
             revision: reminderRevision,

@@ -15,12 +15,18 @@ class AlarmInput {
     required this.status,
     required this.urgent,
     required this.requiresAcknowledgement,
+    this.kind = 'remind',
     this.snoozedUntil,
   });
 
   final String reminderId;
   final String taskId;
   final String taskTitle;
+
+  /// `remind` (the nudge the user asked for) or `due` (the task's own deadline,
+  /// OPH-175). It only changes what the notification SAYS — a deadline alarm is
+  /// as loud as any other urgent alarm.
+  final String kind;
   final DateTime remindAt;
 
   /// scheduled | snoozed | delivered (anything else never reaches the planner,
@@ -84,7 +90,11 @@ List<PlannedNotification> planNotifications({
           ? 'notif.privateBody'.tr()
           : (alarm.urgent
                 ? (index == 0
-                      ? 'notif.urgentFirst'.tr()
+                      // OPH-175: the deadline alarm says WHY it is ringing —
+                      // "the time you gave this task is now", not "a reminder".
+                      ? (alarm.kind == 'due'
+                            ? 'notif.dueNow'.tr()
+                            : 'notif.urgentFirst'.tr())
                       : 'notif.urgentRepeat'.tr(
                           args: {'count': '${index + 1}'},
                         ))
@@ -142,7 +152,9 @@ List<AlarmKitAlarm> planAlarmKitAlarms({
     final title = privacyMode ? 'AllisWell' : alarm.taskTitle;
     final body = privacyMode
         ? 'notif.privateBody'.tr()
-        : 'notif.urgentFirst'.tr();
+        : (alarm.kind == 'due'
+              ? 'notif.dueNow'.tr()
+              : 'notif.urgentFirst'.tr());
 
     planned.add(
       AlarmKitAlarm(

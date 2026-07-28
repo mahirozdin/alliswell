@@ -5115,6 +5115,16 @@ class $RemindersTable extends Reminders
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('remind'),
+  );
   static const VerificationMeta _remindAtMeta = const VerificationMeta(
     'remindAt',
   );
@@ -5258,6 +5268,7 @@ class $RemindersTable extends Reminders
   List<GeneratedColumn> get $columns => [
     id,
     taskId,
+    kind,
     remindAt,
     timezone,
     alarmLevel,
@@ -5295,6 +5306,12 @@ class $RemindersTable extends Reminders
       );
     } else if (isInserting) {
       context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
     }
     if (data.containsKey('remind_at')) {
       context.handle(
@@ -5399,6 +5416,10 @@ class $RemindersTable extends Reminders
         DriftSqlType.string,
         data['${effectivePrefix}task_id'],
       )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
       remindAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}remind_at'],
@@ -5459,6 +5480,11 @@ class $RemindersTable extends Reminders
 class Reminder extends DataClass implements Insertable<Reminder> {
   final String id;
   final String taskId;
+
+  /// Which alarm this is (OPH-175): `remind` (the nudge the user asked for) or
+  /// `due` (an urgent task's own deadline). Server-owned; a task can hold one
+  /// active row of each.
+  final String kind;
   final DateTime remindAt;
   final String timezone;
   final String alarmLevel;
@@ -5474,6 +5500,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
   const Reminder({
     required this.id,
     required this.taskId,
+    required this.kind,
     required this.remindAt,
     required this.timezone,
     required this.alarmLevel,
@@ -5492,6 +5519,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['task_id'] = Variable<String>(taskId);
+    map['kind'] = Variable<String>(kind);
     map['remind_at'] = Variable<DateTime>(remindAt);
     map['timezone'] = Variable<String>(timezone);
     map['alarm_level'] = Variable<String>(alarmLevel);
@@ -5523,6 +5551,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     return RemindersCompanion(
       id: Value(id),
       taskId: Value(taskId),
+      kind: Value(kind),
       remindAt: Value(remindAt),
       timezone: Value(timezone),
       alarmLevel: Value(alarmLevel),
@@ -5558,6 +5587,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     return Reminder(
       id: serializer.fromJson<String>(json['id']),
       taskId: serializer.fromJson<String>(json['taskId']),
+      kind: serializer.fromJson<String>(json['kind']),
       remindAt: serializer.fromJson<DateTime>(json['remindAt']),
       timezone: serializer.fromJson<String>(json['timezone']),
       alarmLevel: serializer.fromJson<String>(json['alarmLevel']),
@@ -5580,6 +5610,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'taskId': serializer.toJson<String>(taskId),
+      'kind': serializer.toJson<String>(kind),
       'remindAt': serializer.toJson<DateTime>(remindAt),
       'timezone': serializer.toJson<String>(timezone),
       'alarmLevel': serializer.toJson<String>(alarmLevel),
@@ -5600,6 +5631,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
   Reminder copyWith({
     String? id,
     String? taskId,
+    String? kind,
     DateTime? remindAt,
     String? timezone,
     String? alarmLevel,
@@ -5615,6 +5647,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
   }) => Reminder(
     id: id ?? this.id,
     taskId: taskId ?? this.taskId,
+    kind: kind ?? this.kind,
     remindAt: remindAt ?? this.remindAt,
     timezone: timezone ?? this.timezone,
     alarmLevel: alarmLevel ?? this.alarmLevel,
@@ -5635,6 +5668,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     return Reminder(
       id: data.id.present ? data.id.value : this.id,
       taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      kind: data.kind.present ? data.kind.value : this.kind,
       remindAt: data.remindAt.present ? data.remindAt.value : this.remindAt,
       timezone: data.timezone.present ? data.timezone.value : this.timezone,
       alarmLevel: data.alarmLevel.present
@@ -5667,6 +5701,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
     return (StringBuffer('Reminder(')
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
+          ..write('kind: $kind, ')
           ..write('remindAt: $remindAt, ')
           ..write('timezone: $timezone, ')
           ..write('alarmLevel: $alarmLevel, ')
@@ -5687,6 +5722,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
   int get hashCode => Object.hash(
     id,
     taskId,
+    kind,
     remindAt,
     timezone,
     alarmLevel,
@@ -5706,6 +5742,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
       (other is Reminder &&
           other.id == this.id &&
           other.taskId == this.taskId &&
+          other.kind == this.kind &&
           other.remindAt == this.remindAt &&
           other.timezone == this.timezone &&
           other.alarmLevel == this.alarmLevel &&
@@ -5723,6 +5760,7 @@ class Reminder extends DataClass implements Insertable<Reminder> {
 class RemindersCompanion extends UpdateCompanion<Reminder> {
   final Value<String> id;
   final Value<String> taskId;
+  final Value<String> kind;
   final Value<DateTime> remindAt;
   final Value<String> timezone;
   final Value<String> alarmLevel;
@@ -5739,6 +5777,7 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
   const RemindersCompanion({
     this.id = const Value.absent(),
     this.taskId = const Value.absent(),
+    this.kind = const Value.absent(),
     this.remindAt = const Value.absent(),
     this.timezone = const Value.absent(),
     this.alarmLevel = const Value.absent(),
@@ -5756,6 +5795,7 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
   RemindersCompanion.insert({
     required String id,
     required String taskId,
+    this.kind = const Value.absent(),
     required DateTime remindAt,
     this.timezone = const Value.absent(),
     this.alarmLevel = const Value.absent(),
@@ -5775,6 +5815,7 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
   static Insertable<Reminder> custom({
     Expression<String>? id,
     Expression<String>? taskId,
+    Expression<String>? kind,
     Expression<DateTime>? remindAt,
     Expression<String>? timezone,
     Expression<String>? alarmLevel,
@@ -5792,6 +5833,7 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (taskId != null) 'task_id': taskId,
+      if (kind != null) 'kind': kind,
       if (remindAt != null) 'remind_at': remindAt,
       if (timezone != null) 'timezone': timezone,
       if (alarmLevel != null) 'alarm_level': alarmLevel,
@@ -5812,6 +5854,7 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
   RemindersCompanion copyWith({
     Value<String>? id,
     Value<String>? taskId,
+    Value<String>? kind,
     Value<DateTime>? remindAt,
     Value<String>? timezone,
     Value<String>? alarmLevel,
@@ -5829,6 +5872,7 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     return RemindersCompanion(
       id: id ?? this.id,
       taskId: taskId ?? this.taskId,
+      kind: kind ?? this.kind,
       remindAt: remindAt ?? this.remindAt,
       timezone: timezone ?? this.timezone,
       alarmLevel: alarmLevel ?? this.alarmLevel,
@@ -5854,6 +5898,9 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     }
     if (taskId.present) {
       map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
     }
     if (remindAt.present) {
       map['remind_at'] = Variable<DateTime>(remindAt.value);
@@ -5904,6 +5951,7 @@ class RemindersCompanion extends UpdateCompanion<Reminder> {
     return (StringBuffer('RemindersCompanion(')
           ..write('id: $id, ')
           ..write('taskId: $taskId, ')
+          ..write('kind: $kind, ')
           ..write('remindAt: $remindAt, ')
           ..write('timezone: $timezone, ')
           ..write('alarmLevel: $alarmLevel, ')
@@ -11582,6 +11630,7 @@ typedef $$RemindersTableCreateCompanionBuilder =
     RemindersCompanion Function({
       required String id,
       required String taskId,
+      Value<String> kind,
       required DateTime remindAt,
       Value<String> timezone,
       Value<String> alarmLevel,
@@ -11600,6 +11649,7 @@ typedef $$RemindersTableUpdateCompanionBuilder =
     RemindersCompanion Function({
       Value<String> id,
       Value<String> taskId,
+      Value<String> kind,
       Value<DateTime> remindAt,
       Value<String> timezone,
       Value<String> alarmLevel,
@@ -11631,6 +11681,11 @@ class $$RemindersTableFilterComposer
 
   ColumnFilters<String> get taskId => $composableBuilder(
     column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11714,6 +11769,11 @@ class $$RemindersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get remindAt => $composableBuilder(
     column: $table.remindAt,
     builder: (column) => ColumnOrderings(column),
@@ -11789,6 +11849,9 @@ class $$RemindersTableAnnotationComposer
 
   GeneratedColumn<String> get taskId =>
       $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
 
   GeneratedColumn<DateTime> get remindAt =>
       $composableBuilder(column: $table.remindAt, builder: (column) => column);
@@ -11869,6 +11932,7 @@ class $$RemindersTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> taskId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
                 Value<DateTime> remindAt = const Value.absent(),
                 Value<String> timezone = const Value.absent(),
                 Value<String> alarmLevel = const Value.absent(),
@@ -11885,6 +11949,7 @@ class $$RemindersTableTableManager
               }) => RemindersCompanion(
                 id: id,
                 taskId: taskId,
+                kind: kind,
                 remindAt: remindAt,
                 timezone: timezone,
                 alarmLevel: alarmLevel,
@@ -11903,6 +11968,7 @@ class $$RemindersTableTableManager
               ({
                 required String id,
                 required String taskId,
+                Value<String> kind = const Value.absent(),
                 required DateTime remindAt,
                 Value<String> timezone = const Value.absent(),
                 Value<String> alarmLevel = const Value.absent(),
@@ -11919,6 +11985,7 @@ class $$RemindersTableTableManager
               }) => RemindersCompanion.insert(
                 id: id,
                 taskId: taskId,
+                kind: kind,
                 remindAt: remindAt,
                 timezone: timezone,
                 alarmLevel: alarmLevel,

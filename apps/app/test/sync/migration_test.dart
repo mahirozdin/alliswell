@@ -40,6 +40,7 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
+    await db.customStatement('ALTER TABLE reminders DROP COLUMN kind'); // v8
     await db.customStatement('DROP TABLE folders'); // v7
     await db.customStatement(
       'ALTER TABLE file_rows DROP COLUMN folder_id', // v7
@@ -108,6 +109,18 @@ void main() {
       // v6 (OPH-167): the backfill folded the pre-existing row's text —
       // Turkish 'iş' matched by a plain 'is' query is the whole point.
       expect(task.titleFold, 'v1 tarihinden kalma is');
+      // v8 (OPH-175): a reminder row from before the split reads as the nudge.
+      await db
+          .into(db.reminders)
+          .insert(
+            RemindersCompanion.insert(
+              id: 'R1'.padRight(26, '0'),
+              taskId: 'T1',
+              remindAt: DateTime.utc(2026, 7, 20, 8, 30),
+            ),
+          );
+      final reminder = await db.select(db.reminders).getSingle();
+      expect(reminder.kind, 'remind');
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -115,7 +128,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 7);
+      expect(version.data['user_version'], 8);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -150,7 +163,7 @@ void main() {
       expect(task.calendarMirrorEnabled, isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 7);
+      expect(version.data['user_version'], 8);
       await db.close();
     },
   );

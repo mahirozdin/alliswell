@@ -106,4 +106,54 @@ describe.runIf(enabled)('integration: reminder lifecycle follows the task', () =
     // 09:00 on the task's wall clock (default Europe/Istanbul = UTC+3).
     expect(until.toISOString()).toMatch(/T06:00:00/);
   });
+
+  // OPH-175 (round 9): against real MySQL — the enum column, the backfill's
+  // shape and the two independent rows. Unit tests prove the logic on fakedb;
+  // this proves the SCHEMA (enum values, no unique index in the way).
+  it('an urgent task with both times owns two reminder rows, and sync carries the kind', async () => {
+    const remindAt = '2026-07-24T18:42:00.000Z';
+    const dueAt = '2026-07-24T18:45:00.000Z';
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${owner.workspace.id}/tasks`,
+      headers: owner.headers,
+      payload: { title: 'İki alarmlı entegrasyon', remindAt, dueAt, isUrgent: true },
+    });
+    expect(created.statusCode).toBe(201);
+    const task = created.json();
+
+    const rows = await app.db('reminders').where({ task_id: task.id }).select();
+    // Sorted in JS on purpose: MySQL orders an ENUM by its DECLARATION index
+    // (remind, due), not alphabetically — a real-schema detail fakedb cannot show.
+    expect(rows.map((r) => r.kind).sort()).toEqual(['due', 'remind']);
+    const byKind = Object.fromEntries(rows.map((r) => [r.kind, r]));
+    expect(new Date(byKind.remind.remind_at).toISOString()).toBe(remindAt);
+    expect(new Date(byKind.due.remind_at).toISOString()).toBe(dueAt);
+    expect(byKind.due.alarm_level).toBe('urgent');
+
+    // The replica has to be able to tell them apart.
+    const pull = await app.inject({
+      method: 'GET',
+      url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=0&limit=500`,
+      headers: owner.headers,
+    });
+    expect(pull.statusCode).toBe(200);
+    const kinds = pull
+      .json()
+      .changes.filter((c) => c.entityType === 'reminder' && c.data?.taskId === task.id)
+      .map((c) => c.data.kind)
+      .sort();
+    expect(kinds).toEqual(['due', 'remind']);
+
+    // Snoozing the task silences BOTH; naming one silences only it.
+    const snoozed = await app.inject({
+      method: 'POST',
+      url: `/api/v1/tasks/${task.id}/snooze`,
+      headers: owner.headers,
+      payload: { preset: '30_min' },
+    });
+    expect(snoozed.statusCode).toBe(200);
+    const afterSnooze = await app.db('reminders').where({ task_id: task.id }).select();
+    expect(afterSnooze.every((r) => r.status === 'snoozed')).toBe(true);
+  });
 });

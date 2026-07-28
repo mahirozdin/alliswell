@@ -12,10 +12,12 @@ AlarmInput alarm({
   DateTime? remindAt,
   DateTime? snoozedUntil,
   String title = 'Görev',
+  String kind = 'remind',
 }) => AlarmInput(
   reminderId: id.padRight(26, '0'),
   taskId: 'T$id'.padRight(26, '0'),
   taskTitle: title,
+  kind: kind,
   remindAt: remindAt ?? now.add(const Duration(hours: 1)),
   status: status,
   urgent: urgent,
@@ -121,5 +123,48 @@ void main() {
     ).map((n) => n.id).toList();
     expect(ids(false), ids(false)); // deterministic
     expect(ids(false), isNot(ids(true))); // content change → new identity
+  });
+
+  // OPH-175: the deadline alarm says WHY it rings. Same loudness, different
+  // sentence — "the time you gave this task is now", not "a reminder".
+  test('a deadline alarm reads differently from a reminder', () {
+    final plan = planNotifications(
+      alarms: [
+        alarm(id: 'R1', urgent: true, requiresAck: true, kind: 'remind'),
+        alarm(
+          id: 'R2',
+          urgent: true,
+          requiresAck: true,
+          kind: 'due',
+          remindAt: now.add(const Duration(hours: 1, minutes: 3)),
+        ),
+      ],
+      now: now,
+      privacyMode: false,
+    );
+
+    final firstOfEach = {
+      for (final n in plan)
+        if (n.payload.contains('"chainIndex":0')) n.title + n.body: n,
+    };
+    final bodies = firstOfEach.values.map((n) => n.body).toList();
+    expect(bodies, hasLength(2));
+    expect(bodies.where((b) => b.contains('time you set')), hasLength(1));
+    expect(
+      bodies.where((b) => b.contains('waiting for acknowledgement')),
+      hasLength(1),
+    );
+    // Repeats stay the shared "still waiting" wording for both.
+    expect(plan.where((n) => n.body.contains('alert 2')), hasLength(2));
+  });
+
+  test('privacy mode hides which alarm it is, for both kinds', () {
+    final plan = planNotifications(
+      alarms: [alarm(urgent: true, kind: 'due')],
+      now: now,
+      privacyMode: true,
+    );
+    expect(plan.single.title, 'AllisWell');
+    expect(plan.single.body, isNot(contains('time you set')));
   });
 }

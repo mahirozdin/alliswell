@@ -228,6 +228,11 @@ class NoteLinkRows extends Table {
 class Reminders extends Table {
   TextColumn get id => text()();
   TextColumn get taskId => text()();
+
+  /// Which alarm this is (OPH-175): `remind` (the nudge the user asked for) or
+  /// `due` (an urgent task's own deadline). Server-owned; a task can hold one
+  /// active row of each.
+  TextColumn get kind => text().withDefault(const Constant('remind'))();
   DateTimeColumn get remindAt => dateTime()();
   TextColumn get timezone =>
       text().withDefault(const Constant('Europe/Istanbul'))();
@@ -329,7 +334,7 @@ class AwDatabase extends _$AwDatabase {
   /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
   /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -386,6 +391,12 @@ class AwDatabase extends _$AwDatabase {
           await m.addColumn(fileRows, fileRows.folderId);
         }
       }
+      // v8 (OPH-175): a task can own TWO alarms — the reminder and, when it is
+      // urgent, its deadline. Existing rows take the column default (`remind`),
+      // which is right for every one of them: the deadline-only case was
+      // written as a reminder row by the old `remind_at ?? due_at` rule, and the
+      // server's own backfill re-labels those on the next pull.
+      if (from < 8) await m.addColumn(reminders, reminders.kind);
     },
   );
 }

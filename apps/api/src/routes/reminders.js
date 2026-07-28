@@ -20,6 +20,7 @@ const reminderSchema = {
   properties: {
     id: { type: 'string' },
     taskId: { type: 'string' },
+    kind: { type: 'string' },
     remindAt: { type: 'string' },
     timezone: { type: 'string' },
     alarmLevel: { type: 'string' },

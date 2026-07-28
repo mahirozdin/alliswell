@@ -158,3 +158,45 @@ describe('POST /tasks/:id/snooze (OPH-035)', () => {
     expect(tables.reminders[0].snoozed_until).toBeNull();
   });
 });
+
+describe('snoozing a task with TWO alarms (OPH-175, round 9)', () => {
+  const DUE_AT = '2026-07-22T14:00:00.000Z';
+
+  const activeAlarms = () =>
+    tables.reminders.filter((r) => ['scheduled', 'snoozed', 'delivered'].includes(r.status));
+
+  it('with no reminderId, "not now" silences every alarm of the task', async () => {
+    const task = await createTask({
+      title: 'İki alarmlı',
+      dueAt: DUE_AT,
+      remindAt: REMIND_AT,
+      isUrgent: true,
+    });
+    expect(activeAlarms()).toHaveLength(2);
+
+    const res = await snooze(task.id, { preset: '30_min' });
+    expect(res.statusCode).toBe(200);
+    // Both, because the user said "not now" about the TASK — leaving the
+    // deadline alarm armed would ring 30 seconds after they snoozed.
+    expect(activeAlarms().map((a) => a.status)).toEqual(['snoozed', 'snoozed']);
+    expect(activeAlarms().every((a) => a.snoozed_until != null)).toBe(true);
+  });
+
+  it('a ringing alarm can snooze only ITSELF', async () => {
+    const task = await createTask({
+      title: 'Yalnız o çalsın',
+      dueAt: DUE_AT,
+      remindAt: REMIND_AT,
+      isUrgent: true,
+    });
+    const reminder = activeAlarms().find((a) => a.kind === 'remind');
+
+    const res = await snooze(task.id, { preset: '5_min', reminderId: reminder.id });
+    expect(res.statusCode).toBe(200);
+
+    const byKind = Object.fromEntries(activeAlarms().map((a) => [a.kind, a]));
+    expect(byKind.remind.status).toBe('snoozed');
+    expect(byKind.due.status).toBe('scheduled');
+    expect(byKind.due.snoozed_until).toBeFalsy();
+  });
+});

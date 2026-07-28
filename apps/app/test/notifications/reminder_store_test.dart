@@ -56,6 +56,7 @@ void main() {
     String tid = 'T1',
     required DateTime remindAt,
     String status = 'scheduled',
+    String kind = 'remind',
   }) => db
       .into(db.reminders)
       .insert(
@@ -63,6 +64,7 @@ void main() {
           id: id(rid),
           taskId: id(tid),
           remindAt: remindAt,
+          kind: Value(kind),
           status: Value(status),
           alarmLevel: const Value('urgent'),
           requiresAcknowledgement: const Value(true),
@@ -77,7 +79,7 @@ void main() {
 
       final alarms = await store.watchAlarms(ws).first;
       expect(alarms, hasLength(1));
-      expect(alarms.single.reminderId, '$kSyntheticReminderPrefix${id('T1')}');
+      expect(alarms.single.reminderId, syntheticReminderId('remind', id('T1')));
       expect(alarms.single.remindAt, at);
       expect(alarms.single.status, 'scheduled');
       expect(alarms.single.urgent, isFalse);
@@ -157,7 +159,7 @@ void main() {
       await seedTask(remindAt: at, urgent: true);
       await seedReminder(remindAt: at);
 
-      await store.acknowledge('$kSyntheticReminderPrefix${id('T1')}');
+      await store.acknowledge(syntheticReminderId('remind', id('T1')));
 
       final row = await db.select(db.reminders).getSingle();
       expect(row.status, 'acknowledged');
@@ -171,9 +173,101 @@ void main() {
     () async {
       await seedTask(dueAt: DateTime.utc(2030, 6, 2, 14), urgent: true);
 
-      await store.acknowledge('$kSyntheticReminderPrefix${id('T1')}');
+      await store.acknowledge(syntheticReminderId('remind', id('T1')));
 
       expect(await db.select(db.pendingMutations).get(), isEmpty);
     },
   );
+
+  // ── OPH-175 (round 9 #6.3): a reminder does NOT replace the deadline ───────
+
+  group('two alarm kinds', () {
+    test('an urgent task with BOTH times yields two alarms', () async {
+      final remind = DateTime.utc(2030, 6, 5, 21, 42);
+      final due = DateTime.utc(2030, 6, 5, 21, 45);
+      await seedTask(remindAt: remind, dueAt: due, urgent: true);
+
+      final alarms = await store.watchAlarms(ws).first;
+      expect(alarms, hasLength(2));
+      final byKind = {for (final a in alarms) a.kind: a};
+      expect(byKind['remind']!.remindAt, remind);
+      expect(byKind['due']!.remindAt, due);
+      // The deadline alarm is urgent too — round 9's whole point.
+      expect(byKind['due']!.urgent, isTrue);
+      expect(byKind['due']!.reminderId, syntheticReminderId('due', id('T1')));
+    });
+
+    test('one instant never rings twice (equal times collapse)', () async {
+      final at = DateTime.utc(2030, 6, 5, 21, 45);
+      await seedTask(remindAt: at, dueAt: at, urgent: true);
+
+      final alarms = await store.watchAlarms(ws).first;
+      expect(alarms, hasLength(1));
+      expect(alarms.single.kind, 'remind');
+    });
+
+    test('a non-urgent task never gets a deadline alarm', () async {
+      await seedTask(
+        remindAt: DateTime.utc(2030, 6, 5, 21, 42),
+        dueAt: DateTime.utc(2030, 6, 5, 21, 45),
+      );
+      final alarms = await store.watchAlarms(ws).first;
+      expect(alarms.map((a) => a.kind), ['remind']);
+    });
+
+    test('a synced row replaces only ITS kind, not the other', () async {
+      final remind = DateTime.utc(2030, 6, 5, 21, 42);
+      final due = DateTime.utc(2030, 6, 5, 21, 45);
+      await seedTask(remindAt: remind, dueAt: due, urgent: true);
+      // Only the reminder row has arrived from the server.
+      await seedReminder(rid: 'R1', remindAt: remind, kind: 'remind');
+
+      final alarms = await store.watchAlarms(ws).first;
+      expect(alarms, hasLength(2));
+      final byKind = {for (final a in alarms) a.kind: a};
+      expect(byKind['remind']!.reminderId, id('R1')); // canonical
+      expect(
+        byKind['due']!.reminderId,
+        syntheticReminderId('due', id('T1')),
+      ); // still synthetic
+    });
+
+    test('acknowledging the nudge leaves the deadline alarm armed', () async {
+      final remind = DateTime.utc(2030, 6, 5, 21, 42);
+      final due = DateTime.utc(2030, 6, 5, 21, 45);
+      await seedTask(remindAt: remind, dueAt: due, urgent: true);
+      await seedReminder(rid: 'R1', remindAt: remind, kind: 'remind');
+      await seedReminder(rid: 'R2', remindAt: due, kind: 'due');
+
+      await store.acknowledge(syntheticReminderId('remind', id('T1')));
+
+      final rows = await db.select(db.reminders).get();
+      final byKind = {for (final r in rows) r.kind: r};
+      expect(byKind['remind']!.status, 'acknowledged');
+      expect(
+        byKind['due']!.status,
+        'scheduled',
+        reason:
+            'answering the 21:42 nudge says nothing about the 21:45 deadline',
+      );
+    });
+
+    test(
+      'an acknowledged kind does not come back as a synthetic twin',
+      () async {
+        final remind = DateTime.utc(2030, 6, 5, 21, 42);
+        final due = DateTime.utc(2030, 6, 5, 21, 45);
+        await seedTask(remindAt: remind, dueAt: due, urgent: true);
+        await seedReminder(
+          rid: 'R1',
+          remindAt: remind,
+          kind: 'remind',
+          status: 'acknowledged',
+        );
+
+        final alarms = await store.watchAlarms(ws).first;
+        expect(alarms.map((a) => a.kind), ['due']);
+      },
+    );
+  });
 }
