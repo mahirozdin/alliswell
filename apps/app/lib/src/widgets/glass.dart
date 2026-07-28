@@ -68,6 +68,26 @@ class AuroraBackground extends StatelessWidget {
   }
 }
 
+/// One route's opaque backing (OPH-194, DESIGN §4 "Backgrounds" + §21 T1).
+///
+/// The wash used to be painted ONCE below the Navigator, with every scaffold
+/// laid over it in the ~50 %-opaque `veil`. That shipped a visible bug: during
+/// a push or pop both routes are mounted, so the outgoing screen showed
+/// straight through the incoming one and read as a stuck, ghosting screen —
+/// exactly the "önceki sayfanın silueti kalıyor" of round 10 #10.
+///
+/// So each route carries its own wash and is opaque to whatever is beneath it.
+/// The scaffold's translucent veil still sits on top of THIS route's aurora, so
+/// nothing about the look changes; only the layer it belongs to does.
+class AwPageBackground extends StatelessWidget {
+  const AwPageBackground({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AuroraBackground(child: child);
+}
+
 /// Which edge of a glass panel touches content (gets the lensing stroke).
 /// [all] is the Liquid Glass default for floating chrome.
 enum GlassEdge { top, right, all }

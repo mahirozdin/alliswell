@@ -34,4 +34,18 @@ void main() {
     expect(redirect(loggedIn: true, at: '/home'), isNull);
     expect(redirect(loggedIn: true, at: '/settings'), isNull);
   });
+
+  group('the router error exit (OPH-189)', () {
+    test(
+      '/ is a real route now, not the dead end the error page linked to',
+      () {
+        // go_router's DEFAULT error page sends the user to '/'. Until OPH-189
+        // that was not a route either, so the recovery button produced a SECOND
+        // error ("no routes for location: /") — the error screen's own way out
+        // was broken. The redirect below is what the route resolves to.
+        expect(redirect(loggedIn: true, at: '/'), isNull);
+        expect(redirect(at: '/'), '/login');
+      },
+    );
+  });
 }

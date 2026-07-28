@@ -112,6 +112,36 @@ enum AWAlarmActionQueue {
     }
   }
 
+  /// The home-screen widget's completion circle (OPH-188).
+  ///
+  /// It rides the SAME rails round 9 built for the alarm buttons rather than a
+  /// second mechanism: WidgetKit runs `perform()` in the background with no
+  /// Flutter engine guaranteed, so the press is parked in the app-group queue
+  /// and drained the moment Dart is listening. `actionId` is the app's existing
+  /// `complete`, which already routes into `TaskStore.complete` — the same
+  /// optimistic + outbox write the UI uses, so a completion from the widget
+  /// syncs like any other and works offline.
+  @available(iOS 17.0, *)
+  struct AWCompleteTaskIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "Complete task"
+    static var description = IntentDescription("Marks an AllisWell task done.")
+    static var isDiscoverable: Bool = false
+    static var openAppWhenRun: Bool = false
+
+    @Parameter(title: "Task") var taskId: String
+
+    init() {}
+
+    init(taskId: String) {
+      self.taskId = taskId
+    }
+
+    func perform() async throws -> some IntentResult {
+      AWAlarmActionQueue.enqueue(actionId: "complete", taskId: taskId, reminderId: "")
+      return .result()
+    }
+  }
+
   /// "Ertele" on the AlarmKit alert. AlarmKit re-presents the alarm itself
   /// (`.countdown`); this only records the same snooze in our model so the task
   /// row, the other devices and the notification lane agree with what the phone

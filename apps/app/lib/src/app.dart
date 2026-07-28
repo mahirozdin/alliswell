@@ -7,7 +7,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'i18n/i18n.dart';
 import 'router.dart';
 import 'theme/theme.dart';
-import 'widgets/glass.dart';
+import 'theme/tokens.dart';
 
 export 'theme/theme.dart' show kSeedColor;
 
@@ -43,13 +43,19 @@ class AllisWellApp extends ConsumerWidget {
           GlobalCupertinoLocalizations.delegate,
           ...FlutterQuillLocalizations.localizationsDelegates,
         ],
-        // The aurora wash paints once here, under every route; scaffolds use a
-        // translucent veil over it (see theme.dart / docs/DESIGN.md).
-        // `SlidableAutoCloseBehavior` is a group-notification ancestor, so ONE
-        // of them above the router makes every swipe-to-delete row in the app
-        // close when another one opens (OPH-184) — no per-list wiring.
+        // OPH-194: the aurora is NO LONGER painted here. A single wash below the
+        // Navigator plus ~50 %-opaque scaffolds meant every route was
+        // see-through to the route beneath it, which is what made transitions
+        // look stuck. Each route paints its own now (`AwPageBackground` in
+        // router.dart); what stays here is a solid floor so a transition can
+        // never flash black, and `SlidableAutoCloseBehavior` — a group
+        // notification ancestor, so ONE above the router makes every
+        // swipe-to-delete row in the app close when another opens (OPH-184).
         builder: (context, child) => SlidableAutoCloseBehavior(
-          child: AuroraBackground(child: child ?? const SizedBox.shrink()),
+          child: ColoredBox(
+            color: context.awTokens.auroraTop,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
         routerConfig: router,
       ),

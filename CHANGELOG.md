@@ -5,8 +5,67 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-29
+
+The round-10 release, and the theme is uncomfortable enough to say plainly:
+**most of what was wrong was not missing code — it was code nobody could reach.**
+Task deletion, subtasks, manual ordering and widget interactivity were all built,
+wired and tested at the layers below the UI, and invisible above it.
+
+### Highlights
+
+- 🗑 **Delete, from the list.** Swipe a row from the trailing edge; it half-opens
+  and waits, and the red **Delete** is what deletes — one careless flick can
+  never destroy anything. Tasks, captures, notes, projects and files, plus the
+  task detail screen, the row menus, the note card grid (which had no actions
+  menu at all) and the board's move sheet. **Undo** works by not having written
+  yet: if the app dies inside the window, nothing was deleted.
+- ✅ **Completing a task stops being disappearance.** It stays in its group for
+  the rest of the day, struck through and calm, then leaves at the next local
+  midnight — on its own, without the app being reopened.
+- 🗄 **Settings ▸ Completed** — everything you ever finished, newest first, day
+  headers, paged as you scroll, sorted by the task's own date when it has one and
+  by when you finished it when it does not. Read from the on-device replica, so
+  it works offline.
+- ⏰ **Editing a date keeps its time.** Changing the day of a 14:30 task used to
+  move it to 23:59, silently. One input path now, everywhere.
+- 🔗 **Tapping the widget goes somewhere.** `alliswell://` is registered with both
+  operating systems and routed by a tested table; the router's error screen is
+  ours and its way out works. Previously the tap produced `No route for
+  alliswell://open/` and the recovery button produced a second error.
+- 🔢 **The widget says how many tasks today actually holds** (overdue + due
+  today), and iOS 17+/Android can tick one off **without opening the app** —
+  through the same optimistic + outbox write the UI uses, so it syncs and works
+  offline.
+- 🎞 **Navigation stopped looking stuck.** The "ghost of the previous screen" was
+  not a performance problem: every scaffold was ~50 % transparent over a single
+  wash painted below the navigator, so both pages were visible through each
+  other during a push. Each route carries its own background now, and one
+  transition family replaces the three Flutter was handing out per platform.
+- 🔊 **The alarm sound preview can be stopped** — its stop button did nothing,
+  one playing sound disabled every other preview button, and closing the picker
+  left it playing. Your own uploaded ringtones can be previewed now too.
+- 🧹 **Two things that leaked at the user:** the project status picker (edit-only,
+  printing raw English enum values, and a second route around the archive flow's
+  cascade question) and the mystery "planned date" field — which is now an
+  explanation that appears **only** when a calendar drag actually happened.
+
+### Known limitations
+
+- **Widget interactivity is not device-verified.** The code compiles and the Dart
+  side is tested, but "tick a task off the home screen without opening the app"
+  has not been run on real hardware yet (OPH-188).
+- **Round 9's AlarmKit device matrix is still open** — unchanged by this release.
+- Subtasks, recurring tasks, manual ordering and task color remain schema-only,
+  now with written decisions rather than silence (docs/TASKS.md OPH-195).
+
 ### Added
 
+- **The widget shows today's open count** and, on iOS 17+/Android, its circles
+  complete a task in the background (OPH-187/188) — through `TaskStore`, the same
+  optimistic + outbox write the UI uses, so a completion from the home screen
+  syncs and works offline. Its date header is also drawn identically on both
+  platforms now; iOS had been baseline-aligning a 34 pt number to a 14 pt label.
 - **Delete, from the list** (OPH-184). Swipe a row from the trailing edge and it
   half-opens to reveal a red **Delete** — the button is what deletes, so one
   careless flick can never destroy anything. It is on tasks, captures, notes,
@@ -58,6 +117,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **Navigation no longer leaves a ghost of the previous screen** (OPH-194). It
+  read as lag and was not: every scaffold is ~50 % transparent and the wash was
+  painted once below the navigator, so during a push both routes were visible
+  through each other. Each route paints its own background now, and one
+  transition family (220 ms) replaces the three Flutter handed out per platform.
+- **Tapping the home-screen widget lands somewhere** (OPH-189). `alliswell://`
+  was registered with neither operating system and the app had no resolver, so
+  the tap produced `No route for alliswell://open/` — and the error screen's own
+  "Home" button pointed at `/`, which was not a route either. Both are fixed, and
+  the routing table is a tested pure function that refuses malformed ids.
 - **The alarm sound preview can be stopped** (OPH-190). Its stop button did not
   stop — the icon changed but the control was disabled — and while one sound
   played every other preview button was disabled too, so tapping a second sound

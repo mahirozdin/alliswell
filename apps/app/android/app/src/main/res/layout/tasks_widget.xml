@@ -29,7 +29,8 @@
             android:text="•" />
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:orientation="vertical">
@@ -49,6 +50,19 @@
                 android:textColor="@color/aw_widget_secondary"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <!-- OPH-187 #4B: today's open count (overdue + due today), right of the
+             date and on its line. Text and number both come pre-localized from
+             the app snapshot; GONE at zero. -->
+        <TextView
+            android:id="@+id/aw_open_today"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textColor="@color/aw_widget_secondary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
     </LinearLayout>
 
     <ListView

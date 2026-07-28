@@ -686,9 +686,16 @@ void main() {
       'Hatırlatıcılı iş',
     );
 
-    // A due date three days out…
+    // A due date a few days from today, but kept INSIDE the month the picker
+    // opens on: the day cells are plain numbers, so tapping "1" while July is
+    // displayed picks July 1, not August 1. This test spent a day green and
+    // failed the moment the clock rolled to the 29th — the assertion was fine,
+    // the tap was ambiguous.
     final now = DateTime.now();
-    final target = DateTime(now.year, now.month, now.day + 3);
+    final lastOfMonth = DateTime(now.year, now.month + 1, 0).day;
+    final target = now.day + 3 <= lastOfMonth
+        ? DateTime(now.year, now.month, now.day + 3)
+        : DateTime(now.year, now.month, now.day - 3);
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('${target.day}').last);

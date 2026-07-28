@@ -87,10 +87,23 @@ class AwErrorState extends StatelessWidget {
     required this.message,
     this.onRetry,
     this.physics,
+    this.retryLabel,
+    this.retryIcon,
+    this.detail,
   });
 
   final String message;
   final VoidCallback? onRetry;
+
+  /// Overrides the action's wording and icon. "Retry" is right for a failed
+  /// load; it is wrong for a dead end, where the way out is "go home"
+  /// (OPH-189).
+  final String? retryLabel;
+  final IconData? retryIcon;
+
+  /// Small print under the message — the offending location, an error code:
+  /// useful in a bug report, ignorable by everyone else.
+  final String? detail;
 
   /// See [AwEmptyState.physics] — same two recipes.
   final ScrollPhysics? physics;
@@ -135,12 +148,25 @@ class AwErrorState extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
+            if (detail != null) ...[
+              const SizedBox(height: AwSpace.x2),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Text(
+                  detail!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
             if (onRetry != null) ...[
               const SizedBox(height: AwSpace.x4),
               OutlinedButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh),
-                label: Text('common.retry'.tr()),
+                icon: Icon(retryIcon ?? Icons.refresh),
+                label: Text(retryLabel ?? 'common.retry'.tr()),
               ),
             ],
           ],

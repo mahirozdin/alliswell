@@ -199,9 +199,9 @@ Design: [ADR-0015](docs/adr/0015-alarm-delivery-and-reminder-profiles.md),
 [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) §2b/§5/§6,
 [DESIGN.md](docs/DESIGN.md) §15–§18.
 
-## Toward v0.6.0
+## v0.6.0 — feedback round 10 ✅ (code complete 2026-07-29)
 
-### Phase 11 — Feedback round 10: delete, completed work, the widget, transitions ⏳ (planned 2026-07-28)
+### Phase 11 — Feedback round 10: delete, completed work, the widget, transitions ✅
 
 Twelve tasks (OPH-184…195) from the first round of feedback written after living
 with the app for a while. The theme of the round is uncomfortable and worth
@@ -248,6 +248,14 @@ previous screen during navigation — which turned out not to be a performance
 problem at all, but this design system's own rule that every scaffold is ~50 %
 transparent over a single wash painted below the navigator. Design:
 [DESIGN.md](docs/DESIGN.md) §19–§22.
+
+**Shipped 2026-07-29.** Twelve of twelve tasks are code-complete; the one thing a
+laptop cannot answer is open and named: **widget interactivity on real hardware**
+(OPH-188's device matrix), alongside round 9's still-pending AlarmKit device pass.
+OPH-195's audit turned the round's uncomfortable finding into a rule — DESIGN §22:
+*a field in the schema, a method on the store or an endpoint on the server is not
+a feature until a person can reach it* — and parked subtasks, recurring tasks,
+manual ordering and task color with written reasons instead of silence.
 
 ## v2 parking lot 💤
 

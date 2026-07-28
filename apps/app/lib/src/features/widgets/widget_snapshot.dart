@@ -9,7 +9,12 @@ import 'widget_grouping.dart';
 /// The JSON snapshot the app writes to the shared container for the native
 /// widgets to render (OPH-130, WIDGETS.md §3.1). Kept SMALL and pre-localized —
 /// the native side does no i18n and no DB access, it just draws this.
-const int kWidgetSnapshotVersion = 1;
+///
+/// **v2 (OPH-187):** adds `openToday`. The native side must tolerate its
+/// absence — during an app update a v1 snapshot and a v2 widget (and the
+/// reverse) live side by side for a while, and a widget that blanks out because
+/// one field is missing is worse than one that hides a badge.
+const int kWidgetSnapshotVersion = 2;
 
 /// How many rows per bucket the snapshot carries; the native layer trims further
 /// per widget size. The largest tier shows the most, so keep this generous.
@@ -98,6 +103,7 @@ class WidgetSnapshot {
     required this.date,
     required this.buckets,
     required this.strings,
+    required this.openToday,
   });
 
   final int version;
@@ -105,6 +111,12 @@ class WidgetSnapshot {
   final String locale;
   final WidgetDateHeader date;
   final List<WidgetBucketData> buckets;
+
+  /// What is on the user TODAY: overdue + due today, open tasks only
+  /// (OPH-187, DESIGN §8 W9). Snoozed and muted tasks count — they are still
+  /// open work. Dateless ones do not: they belong to every day, so they would
+  /// inflate every day. Zero means the badge is hidden, not drawn as "0".
+  final int openToday;
 
   /// Pre-localized chrome the native widget needs (empty state, quick-add label)
   /// so it carries no translations of its own.
@@ -116,6 +128,7 @@ class WidgetSnapshot {
     'locale': locale,
     'date': date.toJson(),
     'strings': strings,
+    if (openToday > 0) 'openToday': openToday,
     'buckets': [for (final bucket in buckets) bucket.toJson()],
   };
 }
@@ -202,8 +215,23 @@ WidgetSnapshot buildWidgetSnapshot(
       ),
   ];
 
+  // Counted from the SAME grouping the widget draws, so the number and the
+  // rows can never disagree — and counted here, in pure Dart, because the
+  // native layer must never carry product logic (W9).
+  var openToday = 0;
+  for (final group in groups) {
+    if (group.bucket != WidgetBucket.overdue &&
+        group.bucket != WidgetBucket.today) {
+      continue;
+    }
+    for (final task in group.tasks) {
+      if (!task.isCompleted) openToday++;
+    }
+  }
+
   return WidgetSnapshot(
     version: kWidgetSnapshotVersion,
+    openToday: openToday,
     generatedAt: now.toUtc().toIso8601String(),
     locale: AwI18n.instance.locale.languageCode,
     date: WidgetDateHeader(
@@ -214,6 +242,9 @@ WidgetSnapshot buildWidgetSnapshot(
     strings: {
       'allCaughtUp': 'widget.allCaughtUp'.tr(),
       'addTask': 'widget.addTask'.tr(),
+      // Pre-localized like every other widget word — the native side owns no
+      // translations (W-rule).
+      'openToday': 'widget.openToday'.tr(args: {'count': '$openToday'}),
     },
     buckets: buckets,
   );

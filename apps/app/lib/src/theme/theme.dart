@@ -141,9 +141,20 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
     extensions: <ThemeExtension<dynamic>>[tokens],
     visualDensity: VisualDensity.standard,
     materialTapTargetSize: MaterialTapTargetSize.padded,
+    // OPH-194 (DESIGN §21 T2): ONE transition family, every platform. Leaving
+    // this unset gave Android a Zoom, iOS a Cupertino slide and desktop a third
+    // thing — three products wearing one design system.
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        for (final platform in TargetPlatform.values)
+          platform: const AwPageTransitionsBuilder(),
+      },
+    ),
     splashFactory: InkSparkle.splashFactory,
-    // Screens float on the aurora wash (painted once in app.dart); the veil
-    // keeps effective text contrast identical to a solid background.
+    // Screens float on the aurora wash — painted PER ROUTE since OPH-194
+    // (`AwPageBackground`), not once under the Navigator, so a route is never
+    // see-through to the one beneath it. The veil keeps effective text contrast
+    // identical to a solid background.
     scaffoldBackgroundColor: tokens.veil,
     canvasColor: scheme.surface,
     dividerTheme: DividerThemeData(
@@ -437,4 +448,58 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
     highlightColor: scheme.primary.withValues(alpha: 0.08),
     splashColor: scheme.primary.withValues(alpha: 0.10),
   );
+}
+
+/// The app's one page transition (OPH-194, DESIGN §21 T2).
+///
+/// Deliberately hand-rolled rather than borrowed: Flutter's own
+/// `FadeForwardsPageTransitionsBuilder` is the closest match but runs 450 ms,
+/// which breaks this system's own motion rule (G8: 150–320 ms). This is the
+/// same shape at [AwMotion.base] — the incoming page fades in over a short
+/// slide, the outgoing one fades and slides the other way — using the tokens'
+/// enter/exit curves so navigation feels like the rest of the app.
+///
+/// It does NOT try to hide a see-through route. That was the actual round-10
+/// bug and it is fixed where it belongs, in the background layer
+/// (`AwPageBackground`, §21 T1); a transition that has to paper over
+/// translucent pages is a transition covering for a broken layer.
+class AwPageTransitionsBuilder extends PageTransitionsBuilder {
+  const AwPageTransitionsBuilder();
+
+  @override
+  Duration get transitionDuration => AwMotion.base;
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T>? route,
+    BuildContext? context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget? child,
+  ) {
+    const slide = 0.03; // ~12 px on a phone: motion, not travel.
+    final incoming = CurvedAnimation(parent: animation, curve: AwMotion.enter);
+    final outgoing = CurvedAnimation(
+      parent: secondaryAnimation,
+      curve: AwMotion.exit,
+    );
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(slide, 0),
+        end: Offset.zero,
+      ).animate(incoming),
+      child: FadeTransition(
+        opacity: incoming,
+        // The page being covered drifts the other way and dims — with opaque
+        // routes this is mostly felt rather than seen, which is the point.
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: Offset.zero,
+            end: const Offset(-slide, 0),
+          ).animate(outgoing),
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
+    );
+  }
 }

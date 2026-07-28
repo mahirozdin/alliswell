@@ -5,6 +5,7 @@
 //
 // The snapshot schema mirrors WidgetSnapshot.toJson() in widget_snapshot.dart.
 
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -22,11 +23,16 @@ struct AWSnapshot: Codable {
   let locale: String
   let date: AWDate
   let strings: [String: String]?
+  // OPH-187: optional ON PURPOSE. During an app update a v1 snapshot and a v2
+  // widget coexist; a non-optional field would fail decoding and blank the
+  // widget entirely rather than hide one badge.
+  let openToday: Int?
   let buckets: [AWBucket]
 
   static let empty = AWSnapshot(
-    v: 1, generatedAt: "", locale: "en",
-    date: AWDate(weekday: "", day: "", month: ""), strings: nil, buckets: [])
+    v: 2, generatedAt: "", locale: "en",
+    date: AWDate(weekday: "", day: "", month: ""), strings: nil, openToday: nil,
+    buckets: [])
 }
 
 struct AWDate: Codable {
@@ -105,6 +111,17 @@ private func awColor(hex: String?) -> Color? {
     blue: Double(value & 0xFF) / 255)
 }
 
+/// The header badge's text, or nil when there is nothing to say. The COUNT and
+/// its wording both come from the app (W9): native code carries no product rule
+/// and no translations.
+func awOpenTodayLabel(_ snap: AWSnapshot) -> String? {
+  guard let count = snap.openToday, count > 0 else { return nil }
+  if let label = snap.strings?["openToday"], !label.isEmpty { return label }
+  // A v1 snapshot from an older app has the string table but not the phrase —
+  // show the bare number rather than nothing.
+  return "\(count)"
+}
+
 private func priorityColor(_ p: String) -> Color? {
   switch p {
   case "urgent": return Color(red: 0.86, green: 0.15, blue: 0.15)
@@ -119,8 +136,15 @@ private func priorityColor(_ p: String) -> Color? {
 
 struct AWDateHeader: View {
   let date: AWDate
+  let openToday: String?
+
   var body: some View {
-    HStack(alignment: .firstTextBaseline, spacing: 8) {
+    // OPH-187 (round 10 #4A): `.firstTextBaseline` aligned a 34 pt number's
+    // baseline to a 14 pt label's, which left the month line hanging below and
+    // read as a typo. Optically centred instead — and Android draws the same
+    // header the same way now (DESIGN §8 W6 applies W1's parity rule to LAYOUT,
+    // not just color; the two platforms disagreed for a whole release).
+    HStack(alignment: .center, spacing: 8) {
       Text(date.day)
         .font(.system(size: 34, weight: .bold, design: .rounded))
         .monospacedDigit()
@@ -129,6 +153,14 @@ struct AWDateHeader: View {
         Text(date.month).font(.caption).foregroundStyle(.secondary)
       }
       Spacer()
+      // #4B: what is on you today — overdue + due today. Pre-localized by the
+      // app; hidden at zero, because a badge reading "0" is noise (W9).
+      if let openToday {
+        Text(openToday)
+          .font(.caption.weight(.semibold))
+          .monospacedDigit()
+          .foregroundStyle(.secondary)
+      }
     }
   }
 }
@@ -137,9 +169,26 @@ struct AWTaskRowView: View {
   let row: AWTaskRow
   var body: some View {
     HStack(spacing: 8) {
-      Image(systemName: row.done ? "largecircle.fill.circle" : "circle")
-        .foregroundStyle(row.done ? Color.green : Color.secondary)
-        .imageScale(.medium)
+      // OPH-188: the circle is a BUTTON on iOS 17+. WidgetKit performs the
+      // intent in the background — no app launch — and the press lands in the
+      // app-group queue OPH-182 already built. iOS 16 keeps the deep-link floor
+      // (the row opens the task), which is why this is gated rather than
+      // replaced. Generous hit target: the stock Reminders widget's loudest
+      // complaint is completing the wrong thing by accident (DESIGN W4).
+      if #available(iOS 17.0, *), !row.done {
+        Button(intent: AWCompleteTaskIntent(taskId: row.id)) {
+          Image(systemName: "circle")
+            .foregroundStyle(Color.secondary)
+            .imageScale(.medium)
+            .frame(width: 28, height: 28)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+      } else {
+        Image(systemName: row.done ? "largecircle.fill.circle" : "circle")
+          .foregroundStyle(row.done ? Color.green : Color.secondary)
+          .imageScale(.medium)
+      }
       if let flag = priorityColor(row.priority) {
         Circle().fill(flag).frame(width: 6, height: 6)
       }
@@ -155,6 +204,9 @@ struct AWTaskRowView: View {
         Circle().fill(color).frame(width: 8, height: 8)
       }
     }
+    // OPH-188/189: the row opens ITS task, not just the app. Needs the routing
+    // OPH-189 added — before that this URL produced "No route for …".
+    .widgetURL(URL(string: "alliswell://task/\(row.id)"))
   }
 }
 
@@ -194,7 +246,7 @@ struct AllisWellWidgetEntryView: View {
     let snap = entry.snapshot
     VStack(alignment: .leading, spacing: 8) {
       if family != .systemMedium {
-        AWDateHeader(date: snap.date)
+        AWDateHeader(date: snap.date, openToday: awOpenTodayLabel(snap))
       }
       if snap.buckets.isEmpty {
         Spacer()

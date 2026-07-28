@@ -1,7 +1,7 @@
 # ADR-0016 — In-app URL routing (`alliswell://`) and how widgets act on data
 
-- **Status:** Proposed
-- **Date:** 2026-07-28
+- **Status:** Accepted
+- **Date:** 2026-07-28 (accepted 2026-07-29, implemented in OPH-188/189)
 - **Related task:** OPH-189 (routing), OPH-188 (widget actions) — feedback round 10 #4D/#4C
 - **Related:** [ADR-0003](0003-product-name-and-blueprint-deviations.md) (the scheme was
   minted there, for calendar mapping), [ADR-0010](0010-home-screen-widgets-architecture.md)
@@ -117,6 +117,14 @@ drops the task id — OPH-188 fixes that first).
   drained is a bug worth logging.
 - `alliswell://complete` becoming tempting is a real risk. It is written here as forbidden
   so a future task has to argue with this ADR rather than quietly add it.
+
+**What implementation changed.** One correction to the sketch above: go_router
+accepts **either** `onException` **or** `errorBuilder`, never both — the first
+attempt wired both and the assertion took the whole app down (every widget test
+failed, because the router provider itself threw). `onException` is the one that
+survives, since it is the only one that can redirect; genuinely unroutable
+locations are sent to a real `/not-found` route, which is also what gives the
+"error page" a working way out.
 
 **Follow-ups.** Universal/App Links for shareable links (v2). A `alliswell://note/{id}`
 row when notes gain external producers. Deciding whether an unknown-but-well-formed URL

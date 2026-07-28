@@ -34,6 +34,15 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- OPH-189 (ADR-0016): alliswell:// deep links — the widget's tap,
+                 calendar events, note embeds. A custom scheme, so no
+                 android:autoVerify (that is for App Links over https). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="alliswell"/>
+            </intent-filter>
         </activity>
         <!-- flutter_local_notifications: exact-alarm delivery + reboot
              rescheduling (docs/NOTIFICATIONS.md §1). -->

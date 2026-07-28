@@ -23,7 +23,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0013](0013-local-first-search.md) | Local-first search with app-owned Turkish folding | Accepted |
 | [0014](0014-folders-and-global-files.md) | Folders and the global "Dosyalar" section | Accepted |
 | [0015](0015-alarm-delivery-and-reminder-profiles.md) | Alarm delivery: AlarmKit-first, two alarm instants, user-owned reminder profiles | Accepted |
-| [0016](0016-in-app-url-routing-and-widget-actions.md) | In-app URL routing (`alliswell://`) — navigation only; widget writes go through App Intents | Proposed |
+| [0016](0016-in-app-url-routing-and-widget-actions.md) | In-app URL routing (`alliswell://`) — navigation only; widget writes go through App Intents | Accepted |
 | [0017](0017-swipe-to-delete-package.md) | `flutter_slidable` for the reveal-then-tap delete affordance | Accepted |
 
 Template: [template.md](template.md)

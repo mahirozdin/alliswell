@@ -403,7 +403,9 @@
     "AUTH_INVALID_CREDENTIALS": "Email or password is incorrect.",
     "AUTH_EMAIL_TAKEN": "An account with this email already exists.",
     "NETWORK_ERROR": "Could not reach the server. Check your connection and the server address.",
-    "server": "Unexpected server response."
+    "server": "Unexpected server response.",
+    "routeNotFound": "That link does not lead anywhere in this version of AllisWell.",
+    "goHome": "Go to Home"
   },
   "sync": {
     "noteConflict": "Note edited elsewhere — your version was kept as a conflicted copy.",
@@ -529,7 +531,8 @@
       "thisMonth": "This month"
     },
     "allCaughtUp": "All caught up",
-    "addTask": "Add task"
+    "addTask": "Add task",
+    "openToday": "{count} open"
   },
   "file": {
     "add": "Add file",

@@ -1,5 +1,6 @@
 package com.alliswell.alliswell
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
@@ -7,6 +8,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
+import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
 import org.json.JSONObject
@@ -21,6 +23,40 @@ import org.json.JSONObject
  * Snapshot key must match widget_host.dart (`aw_widget_snapshot`).
  */
 class TasksWidgetProvider : HomeWidgetProvider() {
+
+  companion object {
+    const val ACTION_ROW = "com.alliswell.alliswell.WIDGET_ROW"
+  }
+
+  /// A row tap. "open" launches the app at that task; "complete" runs the Dart
+  /// callback in the background — the SAME `TaskStore.complete` the UI uses, so
+  /// the write is an ordinary outbox mutation and syncs like any other
+  /// (WIDGETS §4: the widget must not have its own write path).
+  override fun onReceive(context: Context, intent: Intent) {
+    if (intent.action == ACTION_ROW) {
+      val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
+      if (taskId.isNotEmpty()) {
+        when (intent.getStringExtra(EXTRA_ACTION)) {
+          "complete" -> {
+            HomeWidgetBackgroundIntent.getBroadcast(
+              context,
+              Uri.parse("alliswell://complete?id=" + taskId),
+            ).send()
+            return
+          }
+          else -> {
+            context.startActivity(
+              Intent(context, MainActivity::class.java)
+                .setData(Uri.parse("alliswell://task/" + taskId))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            return
+          }
+        }
+      }
+    }
+    super.onReceive(context, intent)
+  }
 
   override fun onUpdate(
     context: Context,
@@ -44,6 +80,20 @@ class TasksWidgetProvider : HomeWidgetProvider() {
           // Localized empty state (shown by setEmptyView when the list is empty).
           val empty = snap.optJSONObject("strings")?.optString("allCaughtUp")
           if (!empty.isNullOrEmpty()) views.setTextViewText(R.id.aw_empty, empty)
+          // OPH-187 #4B: today's open count. `optInt` returns 0 for a v1
+          // snapshot that has no such field — which is also the "hide it"
+          // value, so an older app degrades to exactly the old header.
+          val openToday = snap.optInt("openToday", 0)
+          val openLabel = snap.optJSONObject("strings")?.optString("openToday")
+          if (openToday > 0) {
+            views.setTextViewText(
+              R.id.aw_open_today,
+              if (openLabel.isNullOrEmpty()) openToday.toString() else openLabel,
+            )
+            views.setViewVisibility(R.id.aw_open_today, View.VISIBLE)
+          } else {
+            views.setViewVisibility(R.id.aw_open_today, View.GONE)
+          }
         } catch (_: Exception) {
           views.setViewVisibility(R.id.aw_header, View.GONE)
         }
@@ -59,15 +109,25 @@ class TasksWidgetProvider : HomeWidgetProvider() {
       views.setRemoteAdapter(R.id.aw_list, serviceIntent)
       views.setEmptyView(R.id.aw_list, R.id.aw_empty)
 
-      // Tapping the widget (or a row) opens the app (deep-link floor; row-level
-      // routing lands with interactivity in OPH-132/135).
+      // Tapping the header opens the app at Home (deep-link floor).
       val open = HomeWidgetLaunchIntent.getActivity(
         context,
         MainActivity::class.java,
         Uri.parse("alliswell://open"),
       )
       views.setOnClickPendingIntent(R.id.aw_header, open)
-      views.setPendingIntentTemplate(R.id.aw_list, open)
+      // OPH-188: rows go through a BROADCAST template so a tap can either open
+      // that task or complete it without launching anything. Which one is
+      // decided by the fill-in extras the factory attaches per row.
+      views.setPendingIntentTemplate(
+        R.id.aw_list,
+        PendingIntent.getBroadcast(
+          context,
+          0,
+          Intent(context, TasksWidgetProvider::class.java).setAction(ACTION_ROW),
+          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+        ),
+      )
 
       appWidgetManager.updateAppWidget(widgetId, views)
       appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.aw_list)

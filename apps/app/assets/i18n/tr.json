@@ -402,7 +402,9 @@
     "AUTH_INVALID_CREDENTIALS": "E-posta veya parola yanlış.",
     "AUTH_EMAIL_TAKEN": "Bu e-postayla bir hesap zaten var.",
     "NETWORK_ERROR": "Sunucuya ulaşılamadı. Bağlantını ve sunucu adresini kontrol et.",
-    "server": "Beklenmeyen sunucu yanıtı."
+    "server": "Beklenmeyen sunucu yanıtı.",
+    "routeNotFound": "Bu bağlantı AllisWell’in bu sürümünde bir yere gitmiyor.",
+    "goHome": "Ana sayfaya dön"
   },
   "sync": {
     "noteConflict": "Not başka yerde düzenlendi — senin sürümün çakışan kopya olarak saklandı.",
@@ -528,7 +530,8 @@
       "thisMonth": "Bu ay"
     },
     "allCaughtUp": "Her şey tamam",
-    "addTask": "Görev ekle"
+    "addTask": "Görev ekle",
+    "openToday": "{count} açık"
   },
   "file": {
     "add": "Dosya ekle",

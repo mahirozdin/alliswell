@@ -10,6 +10,10 @@ import es.antonborri.home_widget.HomeWidgetPlugin
 import org.json.JSONObject
 
 /** Backs the widget's scrollable bucketed task list (OPH-133). */
+/// Extras the row's fill-in intent carries to the provider (OPH-188).
+const val EXTRA_ACTION = "aw_action"
+const val EXTRA_TASK_ID = "aw_task_id"
+
 class TasksWidgetService : RemoteViewsService() {
   override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
     TasksRemoteViewsFactory(applicationContext)
@@ -17,6 +21,9 @@ class TasksWidgetService : RemoteViewsService() {
 
 private data class Row(
   val section: String?, // bucket label, only on the first row of a bucket
+  // OPH-188: the id was DROPPED here, which made per-row completion and
+  // per-row deep links impossible even though the snapshot always carried it.
+  val id: String,
   val title: String,
   val time: String?,
   val done: Boolean,
@@ -68,8 +75,21 @@ class TasksRemoteViewsFactory(
       views.setViewVisibility(R.id.aw_dot, View.GONE)
     }
 
-    // Fill-in intent → the provider's PendingIntent template opens the app.
-    views.setOnClickFillInIntent(R.id.aw_row, Intent())
+    // OPH-188/189: two DIFFERENT fill-in intents on one row. The row opens its
+    // own task; the circle completes it in the background. Both flow through
+    // the provider's PendingIntent template, which is why the data has to be
+    // an intent-extra rather than a second PendingIntent (RemoteViews can hold
+    // only one template per collection).
+    views.setOnClickFillInIntent(
+      R.id.aw_row,
+      Intent().putExtra(EXTRA_ACTION, "open").putExtra(EXTRA_TASK_ID, row.id),
+    )
+    if (!row.done) {
+      views.setOnClickFillInIntent(
+        R.id.aw_check,
+        Intent().putExtra(EXTRA_ACTION, "complete").putExtra(EXTRA_TASK_ID, row.id),
+      )
+    }
     return views
   }
 
@@ -88,6 +108,7 @@ class TasksRemoteViewsFactory(
           out.add(
             Row(
               section = if (i == 0) label else null,
+              id = task.optString("id"),
               title = task.optString("title"),
               time = task.optString("time"),
               done = task.optBoolean("done", false),
@@ -96,7 +117,7 @@ class TasksRemoteViewsFactory(
           )
         }
         val more = bucket.optInt("more", 0)
-        if (more > 0) out.add(Row(null, "+$more", null, false, null))
+        if (more > 0) out.add(Row(null, "", "+$more", null, false, null))
       }
       out
     } catch (_: Exception) {

@@ -37,7 +37,7 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 
 - ⚡ **Fast capture** — add a task in seconds with or without a date; a dedicated **Inbox** keeps unplanned thoughts out of your day until you're ready.
 - 🏠 **Home, your way** — one chronological view (overdue · today · this week · next 30 days) with an Apple-style month calendar, **or** flip to a **Board (kanban)** with your own hideable, reorderable status columns and drag-to-move.
-- 🗂 **Projects** — colors, favorites, status, archiving, a Notion-style README note, and per-project Tasks / Notes / Files tabs.
+- 🗂 **Projects** — colors, favorites, archiving, a Notion-style README note, and per-project Tasks / Notes / Files tabs.
 - 🏷 **Tags & priorities** — type `#tags` inline (auto-create, colors, fold-matched suggestions) and set `none → urgent` priority.
 - 🔔 **Alarm-grade reminders** — exact-time delivery, **urgent alarms that break through Silent mode & Focus**, a re-alert-until-acknowledged chain, snooze presets (5 m / 30 m / 1 h / tomorrow / custom), and a privacy mode that hides task content on the lock screen.
 - 🔎 **Instant search** — case- **and Turkish-accent-insensitive** ("cay" finds _Çay_, "isi" finds _ısı_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**.
@@ -45,7 +45,9 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 - 📅 **True two-way calendar sync** — **Google** (OAuth, encrypted tokens, push webhooks, incremental sync, etag-based conflict resolution) and **Apple Calendar** (EventKit bridge); your own external events flow back into Home.
 - 📎 **Attachments & Files** — attach any file to tasks, notes and projects, plus a global **Files** section with nestable folders — stored in **Cloudflare R2 / any S3** via presigned URLs (the API never proxies your bytes).
 - 🔄 **Local-first realtime sync** — offline by default: a mutation outbox, a revision log, idempotent push with field-level last-write-wins, and a Socket.IO channel that fans changes to every device within a round-trip.
-- 🖥 **Home-screen widgets** — iOS, Android & macOS widgets that mirror your Home buckets (in final device QA).
+- ✅ **Finish things visibly** — a completed task stays on today's list, struck through and calm, until the next midnight; everything older lives in **Settings ▸ Completed**, a day-headed timeline you can scroll back through. Nothing vanishes mid-tap.
+- 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
+- 🖥 **Home-screen widgets** — iOS, Android & macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
 - 🌐 **Localization** — English + Turkish out of the box, auto-detected; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted & private** — your MySQL, your server, one `docker compose up`. AGPL-3.0.
 
