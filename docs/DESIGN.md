@@ -733,3 +733,106 @@ Two consequences, binding on every future task:
   read, update, **delete**, undo, empty state, error state, offline} is walked
   deliberately (OPH-195). Delete is the cell that goes missing, because it is the
   only one no happy-path demo ever exercises.
+
+## 23. Quick Access: the sidebar section and the floating button (round 11 — Epic 18)
+
+_(Added 2026-07-29, request round 11 #1: "Notion'daki sol menü gibi… mobilde iPhone'un
+o beyaz noktası gibi sürüklenip bırakılan, tıklayınca aynı listeyi açan bir düğme."
+Entity: BLUEPRINT §4.12; sync decision: ADR-0018. OPH-196's research pass calibrates
+the numeric defaults below and may revise them — in this file, never ad hoc.)_
+
+- **Q1 — One list, three surfaces.** The extended rail section (≥1160), the narrow
+  rail's popover and the phone's floating-button panel render the **same store in
+  the same order**. A shortcut added on the desktop appears in the phone bubble
+  after sync, in the same position. The surfaces may differ in chrome, never in
+  content or order.
+- **Q2 — Quick Access is not the favorite star.** The warning-colored star
+  (projects, notes) sorts a list in place; Quick Access composes a personal,
+  cross-entity navigation list. Distinct affordance, distinct glyph: Quick Access
+  uses `bolt` everywhere (menu items, rail header, app-bar fallback), never the
+  star, never `AwTokens.warning` as its identity color.
+- **Q3 — Rows read left to right: identity, name, hints.** Emoji if set, else the
+  kind icon (project → the project's folder glyph tinted by project color, task →
+  check circle, note → description, folder → folder, file → file, url → link);
+  then the user's title; then, when applicable, a color dot and — for `url` rows —
+  an external-link glyph. The glyph is mandatory for external links (G5: color
+  alone never carries meaning; leaving the app is meaning).
+- **Q4 — Bubble physics (phone).** The button drags freely under the finger and,
+  on release, snaps to the nearest vertical edge with `AwMotion.base` and the
+  standard emphasized curve. Diameter 56 px (≥44 px target, §5). Position persists
+  device-locally as edge + height fraction, clamped inside safe areas and above
+  the keyboard inset. Factory position: right edge, 35 % height — deliberately far
+  from the quick-add FAB's corner. After 3 s idle it half-recedes into the edge and
+  dims to ~55 % opacity (the AssistiveTouch idiom); any touch restores it fully.
+  While a modal route (dialog, sheet) is open, and on auth/onboarding screens, the
+  bubble is hidden entirely — a floating control over a modal is two competing
+  surfaces.
+- **Q5 — The bubble is optional and never the only way.** Settings owns a toggle
+  (factory: on). The bubble only appears when the list is non-empty. When the
+  toggle is off — or on platforms without the bubble — the entry point is a `bolt`
+  icon in the Home app bar. A gesture-only or overlay-only feature would repeat
+  the mistake §19 D2 exists to prevent.
+- **Q6 — Empty states are micro, not monumental.** The rail section shows a single
+  hint line ("add from any ⚡ menu" in spirit), not an `AwEmptyState` card; the
+  phone panel may use the standard empty state since it owns the whole sheet.
+- **Q7 — Emoji is input, not a dependency.** The picker is: recents (device-local)
+  + a curated ~48 grid + a free single-grapheme text field (the system keyboard's
+  emoji page is the real picker; the field also serves desktop). No emoji-picker
+  package — that dependency would need an ADR it cannot justify. "Remove" returns
+  the row to its kind icon.
+- **Q8 — Color is an accent, never a text color.** The user's color renders as a
+  10 px dot (and the panel row's leading tint at most); titles and subtitles keep
+  their normal `onSurface` roles so the ≥4.5:1 floor never depends on user input.
+  The dot must clear 3:1 against the surface in both themes; the swatch set is the
+  project palette, reused verbatim — no second palette is invented.
+
+## 24. AI surfaces: the FAB, the bubble, the confirm card (round 11 — Epic 19)
+
+_(Added 2026-07-29, request round 11 #2. Architecture: [AI.md](AI.md) + ADR-0019;
+spec: BLUEPRINT §12.16. The owner's rule that shaped the gesture: "when the bubble
+opens I can lift my finger and it stays open.")_
+
+- **AI1 — Two FABs, two corners, forever.** The quick-create FAB stays bottom-right;
+  the AI FAB lives bottom-left. Neither moves, neither replaces the other, and no
+  screen shows a third floating action. On rail layouts the AI entry sits at the
+  rail's bottom; desktop gets click-to-talk plus a keyboard shortcut.
+- **AI2 — The gesture machine is fixed:** press-and-hold (≥250 ms) opens the bubble
+  and records with a live partial transcript; dragging left ≥80 px cancels (haptic);
+  **releasing the finger locks recording and keeps the bubble open** — lift-to-lock,
+  the owner's rule. Stop, or 2 s of silence (VAD), finalizes. A plain tap opens the
+  bubble in text + mic-toggle mode — the hold gesture is never the only path (§19 D2,
+  the K3 lesson).
+- **AI3 — The bubble is an opaque content surface.** Streamed answers, transcripts
+  and cards render on opaque panels; glass stays chrome-only (G1). All bubble text
+  meets the §5 floors in both themes like any other surface.
+- **AI4 — Every state has a face, and no state lies.** Listening (waveform),
+  thinking (indicator), streaming (tokens + a live Stop), error (the
+  `status_views.dart` idiom + retry), offline/unconfigured (honest copy + "save to
+  Inbox" — voice capture works with zero AI). Latency budgets: partials <300 ms
+  cadence, finalize ≤500 ms, first token <2 s, full card <4 s; exceeding them shows
+  progress, never a frozen surface.
+- **AI5 — Proposals are cards, commits are human.** Extraction output renders as a
+  confirm card reusing the create sheet's field rows (one date-input path — §17 D5),
+  one row per proposed task, each independently toggleable, with the model's source
+  phrase ("yarın 15:00") shown beside the resolved value. Nothing writes until the
+  user accepts; accepted tasks go through the store's optimistic+outbox path and get
+  the §19 undo idiom. Auto-commit does not exist in v1.
+- **AI6 — AI output is text, not surface.** Answers render as plain text / limited
+  markdown — no HTML, no auto-opened links, no embedded webviews; `alliswell://`
+  links route through the ADR-0016 resolver (navigation-only by construction).
+- **AI7 — Provenance is visible.** Every AI message carries a context chip that
+  expands to exactly what was packed and sent (T0/T1/T2 tiers, AI.md §7); shared-in
+  text is visually framed as quoted external content. Trust is a UI feature.
+- **AI8 — Consent is a screen, not a checkbox.** Per provider, before first use:
+  what leaves the device, where the key lives, the provider's retention/training
+  stance in one honest sentence — and an amber warning where the truth is
+  uncomfortable (Gemini free tier trains on data). No AI surface is reachable
+  pre-consent.
+- **AI9 — Voice respects language.** STT locale follows the app language with a
+  per-utterance override chip; the transcript is always editable before anything is
+  sent; extraction is told the transcript language so titles stay in the user's
+  words ("Ahmet projesine…" is never translated).
+- **AI10 — Accessibility parity.** VoiceOver/TalkBack users get the tap path, typed
+  input, labeled states and 44 px targets; press-and-hold, swipe-to-cancel and VAD
+  are conveniences, never requirements; the bubble spring has a reduced-motion
+  variant.

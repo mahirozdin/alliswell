@@ -5,6 +5,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Planned — request round 11 (2026-07-29, docs only; no code yet)
+
+- **Epic 18 — Quick Access (OPH-196…203, toward v0.7.0).** A Notion-style personal
+  shortcut list (projects, tasks, notes, folders, files, external links; emoji +
+  color + manual order, capped at 50): a sidebar section on wide layouts, a popover
+  on narrow rails, and a draggable AssistiveTouch-style floating button on phones —
+  never gesture-only (Settings toggle + app-bar fallback). Ships the protocol's
+  first **user-scoped sync entity** (`quick_link` — stored per workspace, pulled
+  only by its owner) with server-side cascade when a target is deleted.
+  [ADR-0018](docs/adr/0018-quick-links-user-scoped-sync-entity.md),
+  BLUEPRINT §4.12/§12.15, DESIGN §23.
+- **Epic 19 — AI (OPH-204…216, toward v0.8.0).** Two tracks, because the researched
+  reality is that no provider permits third-party use of consumer subscriptions in
+  mid-2026: **Track A** — an AllisWell remote MCP server ("add AllisWell to your
+  Claude/ChatGPT", where your subscription pays for the intelligence); **Track B** —
+  embedded AI with your own API key (Anthropic / OpenAI / Gemini / OpenRouter /
+  Ollama; thin fetch adapters, encrypted keys). In-app surfaces: an SSE-streamed AI
+  bubble, a left-side hold-to-talk FAB (lift-to-lock), on-device speech recognition,
+  single-schema task extraction with a **mandatory confirm card** committing through
+  the local-first task store, an OS share target, per-provider consent screens, and
+  an architectural injection defense (no model tools in v1; deletion permanently out
+  of AI reach; red-team corpus in CI). [docs/AI.md](docs/AI.md),
+  [ADR-0019](docs/adr/0019-ai-provider-architecture.md), BLUEPRINT §4.13/§12.16,
+  DESIGN §24.
+
 ## [0.6.0] - 2026-07-29
 
 The round-10 release, and the theme is uncomfortable enough to say plainly:

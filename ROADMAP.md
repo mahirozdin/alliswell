@@ -257,6 +257,57 @@ OPH-195's audit turned the round's uncomfortable finding into a rule — DESIGN 
 a feature until a person can reach it* — and parked subtasks, recurring tasks,
 manual ordering and task color with written reasons instead of silence.
 
+## Toward v0.7.0
+
+### Phase 12 — Request round 11 #1: Quick Access ⏳ (planned 2026-07-29)
+
+Eight tasks (OPH-196…203). A Notion-style **personal** shortcut list — projects,
+tasks, notes, folders, files and external links, each with an optional emoji,
+color and a hand-picked order — synced to every device as the protocol's **first
+user-scoped entity** ([ADR-0018](docs/adr/0018-quick-links-user-scoped-sync-entity.md)):
+stored per workspace, pulled only by its owner, capped at 50, and cleaned up
+server-side in the same transaction that deletes a link's target. On wide layouts
+it lives as a **"Quick access" section of the navigation rail** (collapsible,
+hover-and-keyboard row menus, drag to reorder); on narrow rails as a popover
+behind a `bolt` icon; on phones as a **draggable floating button** in the
+AssistiveTouch idiom — snaps to the nearest edge, half-recedes when idle,
+position remembered, hidden behind modals, and never the only way in (a Settings
+toggle plus a Home app-bar fallback keep the feature reachable without the
+gesture). Internal shortcuts store `kind + target id`, never route strings —
+renames survive, and the navigation-only URL rule of
+[ADR-0016](docs/adr/0016-in-app-url-routing-and-widget-actions.md) stays intact.
+Spec: BLUEPRINT §4.12/§12.15, [DESIGN §23](docs/DESIGN.md).
+
+## Toward v0.8.0
+
+### Phase 13 — Request round 11 #2: AI — MCP connector, BYOK chat, voice capture ⏳ (planned 2026-07-29)
+
+Thirteen tasks (OPH-204…216), planned on top of a dedicated max-effort research
+pass whose evidence lives in [docs/AI.md](docs/AI.md). The uncomfortable finding
+first: the requested "connect your Claude/ChatGPT/Gemini subscription, no API
+key" is **not permitted by any provider in mid-2026** (Anthropic bans it, Google
+enforces bans, OpenAI gates a preview behind an interest form) — what Cloudflare
+and Notion actually ship is the reverse direction. So the epic runs **two
+tracks**. Track A: an **AllisWell remote MCP server** — add AllisWell to your own
+Claude or ChatGPT as a connector, where your subscription pays for the
+intelligence; every self-hosted instance is its own connector URL, and the hosted
+instance applies to both directories. Track B: **embedded AI with your own API
+key** (Anthropic / OpenAI / Gemini / OpenRouter, plus Ollama for fully-offline
+self-hosts; thin fetch adapters, no SDKs —
+[ADR-0019](docs/adr/0019-ai-provider-architecture.md)) powering the in-app
+surfaces: an SSE-streamed **AI bubble**, a left-side **hold-to-talk FAB**
+(lift-to-lock — release your finger and the bubble stays), on-device speech
+recognition with live partials (Turkish included), a single JSON-schema **task
+extraction** contract ("Ahmet projesine yarın şu iki işi ekle" → a multi-task
+confirm card with fold-matched projects and the workspace's default task time),
+an OS **share target** that opens any shared text in the bubble, and a
+**mandatory confirm card** that commits through the local-first task store —
+the AI proposes, the proven write path writes, deletion stays permanently out of
+AI reach. Consent screens state each provider's real data policy (including
+Gemini's free-tier training, in amber); a red-team injection corpus runs in CI;
+the prod deploy checklist proves SSE streams through Apache with a curl. Spec:
+BLUEPRINT §4.13/§12.16, [DESIGN §24](docs/DESIGN.md), [docs/AI.md](docs/AI.md).
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:

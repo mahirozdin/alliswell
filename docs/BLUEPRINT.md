@@ -397,6 +397,70 @@ Kurallar:
   sayısını açıkça söyler); dosya soft-delete + obje GC kuyruğu §4.10'daki kaskad kurallarını
   aynen izler. Ekli (project/task/note hedefli) dosyalar klasörlere GİREMEZ.
 
+### 4.12 Quick Link (hızlı erişim öğesi)
+
+_(Eklendi 2026-07-29, istek turu 11 — Epic 18; karar
+[ADR-0018](adr/0018-quick-links-user-scoped-sync-entity.md), yüzeyler §12.15,
+görsel kurallar DESIGN §23.)_
+
+Quick Link, kullanıcının kendi seçtiği bir gezinme kısayoludur: proje, görev, not,
+klasör, dosya veya dış URL. Notion'ın kenar çubuğu favorileri zihin modeli — ama
+**kişiseldir**: aynı workspace'in iki üyesi birbirinin kısayollarını asla görmez.
+
+Alanlar: `id`, `workspace_id`, `user_id`, `kind` (`project|task|note|folder|file|url`),
+`target_id` (nullable — yalnız varlık kind'larında), `url` (nullable — yalnız `url`
+kind'ında, `http/https`), `title`, `emoji` (nullable, tek grafem), `color` (nullable,
+proje paleti), `sort_order`, `revision`, `created_at`, `updated_at`, `deleted_at`.
+
+Kurallar:
+
+- **İlk kullanıcı-kapsamlı senkron varlık (ADR-0018):** workspace'te saklanır,
+  pull yalnız sahibine döndürür, push sahiplik doğrular. Revision düzeni aynen
+  workspace-monoton kalır.
+- Aynı hedef aynı kullanıcıda tekildir; kullanıcı+workspace başına **50 sınırı**
+  (`QUICK_LINK_LIMIT`). Dahili hedef `kind + target_id` olarak saklanır — rota
+  dizesi veya `alliswell://` ASLA saklanmaz (ADR-0016: URL yalnız gezinir).
+- Hedef **hard-delete** edilirse kısayol sunucuda aynı transaction'da kaskadla
+  silinir; **arşiv** kısayola dokunmaz (arşiv geri dönüşlüdür; satır soluk çizilir).
+- `title` hedeften önerilir ama kullanıcınındır: hedef yeniden adlanınca kısayol
+  adı kendiliğinden değişmez; arayüz farkı gösterir ve tek dokunuşla eşitletir.
+- Emoji ve renk kişiselleştirmedir, anlam değildir (DESIGN G5): tür ikonu her
+  zaman erişilebilir kalır, renk yalnız vurgudur ve metne girmez.
+
+### 4.13 AI Connection (yapay zeka bağlantısı)
+
+_(Eklendi 2026-07-29, istek turu 11 — Epic 19; bağlayıcı plan [AI.md](AI.md), karar
+[ADR-0019](adr/0019-ai-provider-architecture.md), yüzeyler §12.16 + DESIGN §24.)_
+
+AI Connection, kullanıcının kendi yapay zeka erişimini AllisWell'e bağlamasıdır.
+**İki hat vardır (ADR-0019):** Hat A — AllisWell'in uzak MCP sunucusunu kullanıcının
+kendi Claude/ChatGPT hesabına bağlayıcı olarak eklemesi (aboneliğiyle çalışır; sunucuda
+anahtar durmaz); Hat B — uygulama içi AI için **BYOK** (kendi API anahtarı:
+Anthropic/OpenAI/Gemini/OpenRouter; self-host için Ollama base-URL). Tüketici
+abonelik-OAuth'u üç sağlayıcıda da üçüncü partilere kapalıdır (kanıt AI.md §1);
+`auth_mode='oauth_subscription'` ileride açılırsa diye **rezervedir**.
+
+Tablolar: `ai_connections` (`user_id`, `workspace_id`, `provider`, `auth_mode
+api_key|instance_env|oauth_subscription`, `encrypted_key` — ADR-0006 AES-256-GCM kalıbı,
+`AI_TOKEN_KEY`; serializer'dan asla çıkmaz, arayüz `…son4` görür —, `base_url`,
+`default_chat_model`, `default_fast_model`, `status`, `last_used_at`);
+`ai_usage_events` (istek başına tür/model/token/süre — **içerik asla**);
+`ai_action_log` (AI önerisi + kullanıcı onayı denetim izi).
+
+Kurallar:
+
+- **AI önerir, kanıtlanmış yazma yolu commit'ler:** gömülü AI'nın v1'de yazma aracı
+  YOKTUR; onaylanan öneri `TaskStore` outbox'ından geçer (ikinci yazma yolu yok —
+  ADR-0016 ilkesi). MCP araçları domain katmanını REST'le aynı Ajv+authz+revision
+  yolundan çağırır. **Silme AI'ya kalıcı olarak kapalıdır.**
+- Sohbet geçmişi cihaz-yereldir (drift `ai_messages`); senkron `conversation`
+  varlığı bilinçli olarak parktadır (gizlilik duruşu değişikliği).
+- `AI_ENABLED=false` instance'ta özelliği dürüstçe kapatır (yüzeyler çekilir);
+  hiç bağlantı yokken `AI_NOT_CONFIGURED` boş durumları (`STORAGE_NOT_CONFIGURED`
+  kalıbı). Instance-env anahtarında kullanıcı-başı günlük token tavanı.
+- Onamsız hiçbir AI yüzeyi açılmaz; onam ekranı sağlayıcının saklama/eğitim duruşunu
+  tek dürüst cümleyle söyler (Gemini ücretsiz katmanın veriyle eğittiği açık uyarıdır).
+
 ## 5. Sistem mimarisi
 
 ### 5.1 Yüksek seviye mimari
@@ -1261,6 +1325,81 @@ _(Eklendi 2026-07-28; bağlayıcı tasarım [DESIGN.md](DESIGN.md) §19–§22.)
   yerde" ise bu, park kuyruğuna açıkça yazılır. CRUD bir matris olarak denetlenir —
   eksilen hücre her zaman **silme**dir, çünkü hiçbir demo onu göstermez (DESIGN §22).
 
+### 12.15 Hızlı Erişim (istek turu 11 — Epic 18, OPH-196…203)
+
+_(Eklendi 2026-07-29. Varlık: §4.12; karar: [ADR-0018](adr/0018-quick-links-user-scoped-sync-entity.md);
+görsel/davranış kuralları: DESIGN §23. Kullanıcının tarifi: "Notion'daki sol menü gibi —
+istediğini ekleyeceksin; mobilde AssistiveTouch gibi sürüklenen bir düğme, tıklayınca
+aynı liste.")_
+
+Tek liste, üç yüzey — hepsi aynı `QuickAccessStore`'u okur:
+
+- **Geniş ekran (≥1160, extended rail):** navigasyon hedeflerinin altında "Hızlı erişim"
+  bölümü — başlık + "+" (dış link ekle) + katlama; satırlar: emoji (yoksa tür ikonu) +
+  ad + renk noktası + dış-link glifi. Satır menüsü (hover VE klavye odağı): yeniden
+  adlandır · emoji · renk · kaldır. Fare ile sürükleyerek sıralama.
+- **Dar rail (800–1160):** hedeflerin altında `bolt` ikonu → çıpalı popover, aynı liste.
+  Kısayollar bir navigasyon destination'ı DEĞİLDİR — seçili sekme state'i bozulmaz.
+- **Telefon:** **yüzen düğme** (bubble) — uygulama içi overlay, sürüklenir, en yakın
+  dikey kenara yapışır, konumu cihaz-yerel kalıcıdır, boşta kenara yarı gömülür.
+  Dokun → bottom sheet paneli: aynı liste + düzenleme modu (sıralama kulpu) + "+".
+  Ayarlar'da açma/kapama anahtarı (fabrika: açık); kapalıyken Home app bar'ına
+  `bolt` ikonu girer — özellik jeste mahkûm edilmez (DESIGN §19 D2'nin genel ilkesi).
+  Düğme modal rota (dialog/sheet) açıkken ve auth/onboarding'de görünmez; liste
+  boşken de görünmez (ilk öğe menülerden eklenir, tek seferlik tooltip tanıtır).
+
+Davranış:
+
+- **Ekleme yolları:** proje/not/görev/klasör/dosya menülerinde "Hızlı erişime ekle ⇄
+  kaldır" toggle'ı; panel ve rail'de "+" ile dış link dialog'u (http/https doğrulama,
+  boş ad → host adı). OG başlık çekme v1'de yok (unfurl proxy parking-lot'ta).
+- **Gezinme:** varlık kısayolları go_router rotalarına gider (project → detay,
+  task → görev detayı, note → editör, folder → Dosyalar o klasörde, file → dosya
+  eylem sayfası); `url` kısayolu **dış tarayıcıda** açılır (uygulama içi webview yok).
+- **Kırık/arşivli hedef:** silinmiş hedefin satırı soluk + "kaynak silinmiş" alt
+  metni ve kaldırma teklifi (sunucu kaskadı zaten temizler — bu yalnız yarış
+  penceresi); arşivli hedef soluk ama tıklanır.
+- **Kişiselleştirme:** emoji (son kullanılanlar + kürasyonlu ızgara + serbest tek
+  grafem alanı — paket yok), renk (proje paletinin aynı swatch bileşeni + "yok"),
+  ad (200 karakter; boşaltınca hedef adına döner).
+- **Sınır:** kullanıcı+workspace başına 50; aşımda dürüst mesaj.
+
+### 12.16 Yapay zeka yüzeyleri (istek turu 11 — Epic 19, OPH-204…216)
+
+_(Eklendi 2026-07-29. Mimari: [AI.md](AI.md) + [ADR-0019](adr/0019-ai-provider-architecture.md);
+görsel/davranış kuralları: DESIGN §24. Kullanıcının tarifi: "solda ikinci FAB'a basılı
+tutup konuşayım, 'Ahmet projesine şu işleri yarın hatırlat' deyince todo kendiliğinden
+eklensin; bubble açılınca elimi kaldırabileyim, kapanmasın; paylaştığım metin bubble'da
+açılsın.")_
+
+- **AI FAB (sol alt):** mevcut oluşturma FAB'ı sağ altta YERİNDE kalır; sol alttaki AI
+  FAB'ına **basılı tut → konuş** (bubble açılır, canlı transkript), **parmağı kaldır →
+  kayıt kilitli sürer, bubble açık kalır**; sola kaydır → iptal. Tek dokunuş bubble'ı
+  metin+mikrofon modunda açar (jest asla tek yol değil). Geniş ekranda giriş rail'in
+  altındadır; masaüstünde tıkla-konuş + klavye kısayolu.
+- **Bubble:** opak içerik yüzeyi (cam yalnız krom); durumlar: dinliyor (dalga formu),
+  düşünüyor, **akış** (token'lar canlı, durdur düğmesi), hata, çevrimdışı. Cevaplar
+  bubble'da **stream** edilir. Her mesajda "bağlam çipi" neyin gönderildiğini açar.
+  Çevrimdışı/AI'sız: transkript tek dokunuşla **Inbox yakalaması** olur — sesle
+  yakalama sıfır AI ile bile çalışır (§12.6 semantiği).
+- **Sesle görev:** cihaz-üstü STT (v1) → hızlı-sınıf modelde niyet+çıkarım tek
+  yolculukta → **onay kartı** (oluşturma sheet'inin alan satırları; çok görevli söz →
+  çok satırlı kart; proje eşleme ADR-0013 fold'uyla BİZDE; "yarın" çıplaksa
+  yarın@varsayılan görev saati). Onaysız commit yok (v1 değişmezi); kabul edilen görev
+  `TaskStore` outbox'ından geçer, çevrimdışı da çalışır.
+- **Paylaşım hedefi:** herhangi bir uygulamadan metin/URL paylaş → bubble "paylaşılan
+  içerik" bloğuyla açılır → çipler: **Görev yap · Not al · Özetle · Soru sor**.
+  iOS Share Extension yalnız App Group'a yazar (ağ/AI işi yapmaz); soğuk başlangıç
+  auth restore'u bekler. Oturumsuz/AI'sız: "Inbox'a kaydet" her zaman vardır.
+- **Sohbet (verinle konuş):** bağlam cihazda paketlenir (T0 proje adları/sayımlar,
+  T1 bugün+geciken dilimleri, T2 fold-arama alıntıları; ~4–8K token bütçe, görünür
+  kırpma). Ek baytları, presigned URL'ler, başka üyenin verisi asla gönderilmez.
+- **Ayarlar → Yapay zeka:** sağlayıcı bağla (BYOK, `…son4`), model seçimi, kullanım
+  sayacı, sağlayıcı-başına onam; **MCP bölümü**: "AllisWell'i Claude'a/ChatGPT'ye
+  ekle" — instance'ın `/mcp` URL'i ve kurulum yönergesi.
+- **Quick-add binicisi:** uzun metni yapıştır → "✨ ayrıştır" → aynı çıkarım + aynı
+  onay kartı.
+
 ## 13. Open-source repo kalitesi
 
 ### 13.1 README içeriği
@@ -1342,6 +1481,22 @@ Tests:
   altındaki rotayı göstermesi) tasarım sistemi kuralı değiştirilerek çözülür; ve
   **kapsamlı CRUD/UX matrisi taraması** — Epic 17
   ([ADR-0016](adr/0016-in-app-url-routing-and-widget-actions.md), DESIGN §19–§22).
+- **Phase 12 — İstek turu 11 #1: Hızlı Erişim (v0.7.0):** Notion tarzı kişisel kısayol
+  listesi — proje/görev/not/klasör/dosya/dış link; emoji + renk + elle sıra; geniş
+  ekranda rail bölümü, dar rail'de popover, telefonda **sürüklenen yüzen düğme** +
+  panel; **ilk kullanıcı-kapsamlı senkron varlık** (`quick_link`) ve hedef silmede
+  sunucu kaskadı — Epic 18
+  ([ADR-0018](adr/0018-quick-links-user-scoped-sync-entity.md), §4.12/§12.15, DESIGN §23).
+- **Phase 13 — İstek turu 11 #2: Yapay zeka (v0.8.0):** iki hat — **AllisWell uzak MCP
+  bağlayıcısı** ("Claude'una/ChatGPT'ne ekle"; abonelik-OAuth üç sağlayıcıda da üçüncü
+  partiye kapalı, kanıt AI.md §1) + **uygulama içi BYOK AI** (Anthropic/OpenAI/Gemini/
+  OpenRouter/Ollama, fetch adaptörleri, SDK yok); SSE akışlı bubble, sol FAB **basılı
+  tut-konuş** (kaldır-kilitle), cihaz-üstü STT, tek şemalı görev çıkarımı + zorunlu onay
+  kartı → `TaskStore` outbox commit'i, paylaşım hedefi (Share Extension App Group
+  el-değiştirmesi), enjeksiyon savunması (v1'de modele araç yok; silme kalıcı kapalı),
+  onam + kullanım sayacı — Epic 19
+  ([AI.md](AI.md), [ADR-0019](adr/0019-ai-provider-architecture.md), §4.13/§12.16,
+  DESIGN §24).
 
 ## 15. Kurumsal kalite gereksinimleri
 
@@ -1468,6 +1623,22 @@ metin; birim testli TR eş-sınıfları), strateji ve ölçüm eşikleri ADR-001
 sorguları drift'te async koşar, UI debounce + geç-loading gösterir; MySQL tarafı zaten
 accent/case-insensitive collation + FULLTEXT index'lerle uyumludur.
 
+**Risk 9 — AI: sağlayıcı politikası, enjeksiyon, akış ve anahtar emaneti (round 11).**
+(a) Sağlayıcı programları oynaktır: abonelik-OAuth 2026'da üç kez politika değiştirdi ve
+bugün üçünde de kapalı — üstüne kurulan her UX bir gecede kırılabilir. (b) Görev/not
+başlıkları modele giren **güvenilmez girdidir** (OWASP LLM01) — araçlı bir modele "hepsini
+sil" yazan bir not eylem üretebilir. (c) Prod'daki Apache reverse proxy SSE'yi
+tamponlayabilir — tamponlanan akış kullanıcıya "AI takıldı" gibi görünür. (d) BYOK
+anahtarları sunucuda durur — sızması kullanıcının faturasıdır; paylaşılan self-host'ta tek
+kullanıcı instance anahtarını yakabilir. *Mitigation:* (a) iki hatlı mimari + rezerve
+`auth_mode` + üç aylık politika kontrolü (ADR-0019); README iddiaları gerçekle denetlenir
+(OPH-216). (b) v1'de modele **hiç yazma aracı verilmez**; öneri→Ajv→**onay kartı**→
+`TaskStore`; silme AI'ya kalıcı kapalı; provenance çitleri + CI'da düşman korpusu
+(OPH-215). (c) deploy kontrol listesi + **prod'a karşı curl artımlı-akış kanıtı** DoD'de;
+Socket.IO tek-dikiş yedek transport (web'de birincil). (d) ADR-0006 şifreleme kalıbı +
+`AI_TOKEN_KEY`, anahtar serializer'dan çıkmaz, kullanıcı-başı hız sınırı + instance-env'de
+günlük token tavanı + `ai_usage_events` isnat izi.
+
 ## 17. MVP kabul kriterleri
 
 - Kullanıcı kayıt/giriş yapabilir; workspace oluşur.
@@ -1507,6 +1678,9 @@ accent/case-insensitive collation + FULLTEXT index'lerle uyumludur.
 - **Epic 14 — Attachments & project files (R2/S3):** OPH-150…OPH-157 (feedback round 7).
 - **Epic 15 — Feedback round 8 (akış hızı, arama, pano, global dosyalar):** OPH-160…OPH-170.
 - **Epic 16 — Feedback round 9 (yenileme, tarih biçimi, alarm sistemi):** OPH-171…OPH-183.
+- **Epic 17 — Feedback round 10 (silme, tamamlananlar, widget, geçişler):** OPH-184…OPH-195.
+- **Epic 18 — İstek turu 11 #1 (Hızlı Erişim):** OPH-196…OPH-203.
+- **Epic 19 — İstek turu 11 #2 (Yapay zeka — MCP + BYOK):** OPH-204…OPH-216.
 
 ## 19. Nihai hedef
 
