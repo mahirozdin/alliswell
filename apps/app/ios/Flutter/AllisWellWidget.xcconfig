@@ -1,0 +1,13 @@
+// Base configuration for the AllisWellWidget extension.
+//
+// It exists for one reason: App Store validation rejects an upload whose app
+// extension does not carry the SAME version as its containing app, and the
+// extension target shipped with Xcode's template defaults (1.0 / 1) while the
+// app followed pubspec.yaml. Including Flutter's generated settings makes
+// `FLUTTER_BUILD_NAME` / `FLUTTER_BUILD_NUMBER` resolve here too, so the
+// extension's MARKETING_VERSION and CURRENT_PROJECT_VERSION can point at the
+// same single source (pubspec.yaml) the app uses.
+//
+// Deliberately NOT including `Pods-Runner.*.xcconfig`: those belong to the app
+// target, and the extension links its own frameworks.
+#include "Generated.xcconfig"
