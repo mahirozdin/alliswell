@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../i18n/i18n.dart';
 import 'alarmkit.dart';
 import 'gateway.dart';
+import 'reminder_profile.dart';
 
 /// What the planner needs to know about one alarm — a reminder row joined
 /// with its task (title for rendering, urgency for the chain).
@@ -42,18 +43,6 @@ class AlarmInput {
   final DateTime? snoozedUntil;
 }
 
-/// Re-alert offsets for urgent alarms (NOTIFICATIONS.md §2): iOS has no
-/// background timers, so "ring until acknowledged" is pre-scheduled as a
-/// chain and cancelled on acknowledge — Android uses the same shape for
-/// symmetry. 5 slots per alarm respects iOS's 64-pending cap.
-const kUrgentChainOffsets = [
-  Duration.zero,
-  Duration(minutes: 2),
-  Duration(minutes: 5),
-  Duration(minutes: 10),
-  Duration(minutes: 30),
-];
-
 const _activeStatuses = {'scheduled', 'snoozed', 'delivered'};
 
 /// What the FIRST slot of an urgent alarm says. Honest about which alarm it is
@@ -84,6 +73,10 @@ List<PlannedNotification> planNotifications({
   required bool privacyMode,
   int maxPending = 40,
   bool routeUrgentToAlarmKit = false,
+
+  /// The user's re-alert chain (OPH-179). Defaults to what shipped before it
+  /// was configurable, so a caller that does not care behaves as it always did.
+  ReminderProfile profile = ReminderProfile.factory,
 }) {
   final planned = <PlannedNotification>[];
 
@@ -95,9 +88,14 @@ List<PlannedNotification> planNotifications({
     final base =
         (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
         alarm.remindAt;
-    final chain = alarm.urgent && alarm.requiresAcknowledgement
-        ? kUrgentChainOffsets
-        : const [Duration.zero];
+    // The user's chain, with two honest exceptions: an alarm that needs no
+    // acknowledgement rings once, and a post-snooze round rings once when the
+    // user asked for that (OPH-179).
+    final repeats =
+        alarm.urgent &&
+        alarm.requiresAcknowledgement &&
+        (alarm.status != 'snoozed' || profile.repeatAfterSnooze);
+    final chain = repeats ? profile.offsets : const [Duration.zero];
 
     for (final (index, offset) in chain.indexed) {
       final fireAt = base.add(offset).toUtc();

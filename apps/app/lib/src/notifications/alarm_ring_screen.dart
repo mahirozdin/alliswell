@@ -9,6 +9,7 @@ import '../features/tasks/providers.dart';
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
 import 'alarm_log.dart';
+import 'reminder_profile.dart';
 import 'alarm_overlay.dart';
 import 'planner.dart';
 import 'providers.dart';
@@ -295,11 +296,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                       spacing: AwSpace.x2,
                       runSpacing: AwSpace.x2,
                       children: [
-                        for (final (preset, labelKey) in const [
-                          ('5_min', 'notif.action.snooze5m'),
-                          ('30_min', 'notif.action.snooze30m'),
-                          ('1_hour', 'notif.action.snooze1h'),
-                        ])
+                        // The user's own order (OPH-179 N4).
+                        for (final preset in ref.watch(
+                          snoozePresetOrderProvider,
+                        ))
                           OutlinedButton(
                             key: Key('alarm-snooze-$preset'),
                             onPressed: _busy ? null : () => _snooze(preset),
@@ -308,7 +308,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(labelKey.tr()),
+                                Text(kSnoozePresetLabels[preset]!.tr()),
                                 Text(
                                   'alarm.snoozeRingsAt'.tr(
                                     args: {

@@ -73,6 +73,17 @@ class SettingsScreen extends ConsumerWidget {
                     // product's backbone — can the alarm actually ring on
                     // this device? Tapping re-runs the permission flow.
                     const _AlarmStatusTile(),
+                    // OPH-179 (DESIGN §18 N1): one destination for how
+                    // insistent alarms are — chain, snooze order, and (from
+                    // OPH-181) the sounds.
+                    ListTile(
+                      key: const Key('settings-reminder-system'),
+                      leading: const Icon(Icons.notifications_active_outlined),
+                      title: Text('reminderSettings.title'.tr()),
+                      subtitle: Text('reminderSettings.sub'.tr()),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/settings/reminders'),
+                    ),
                     // OPH-176 (DESIGN §11 A6): what this device DID about
                     // alarms. Round 9 was argued from memory; it won't be again.
                     ListTile(

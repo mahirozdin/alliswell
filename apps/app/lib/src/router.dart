@@ -14,6 +14,7 @@ import 'features/projects/ui/projects_screen.dart';
 import 'features/tasks/ui/task_detail_screen.dart';
 import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
+import 'features/settings/reminder_settings_screen.dart';
 import 'notifications/alarm_log_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
@@ -120,6 +121,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/alarm-log',
         builder: (context, state) => const AlarmLogScreen(),
+      ),
+      // OPH-179: how insistent alarms are — one destination (DESIGN §18 N1).
+      GoRoute(
+        path: '/settings/reminders',
+        builder: (context, state) => const ReminderSettingsScreen(),
       ),
       // Pushed on top of whichever list opened it (Inbox/Today/Upcoming/…).
       GoRoute(

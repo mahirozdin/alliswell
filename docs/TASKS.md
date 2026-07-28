@@ -3348,34 +3348,67 @@ olarak işaretlemeden de tamamen susturabilmeli."_
 MySQL, migration uygulandı)** + analyze + lint + format + `check:i18n` + kontrast
 FAILURES: 0; CHANGELOG; STATE.
 
-### OPH-179 — Hatırlatıcı profili: kaç tane, kaç dakikada bir (round 9 #7) — "Hatırlatıcı Sistemi Ayarları"
+### OPH-179 — Hatırlatıcı profili: kaç tane, kaç dakikada bir (round 9 #7) — "Hatırlatıcı Sistemi Ayarları" ✅ 2026-07-28
 
-- [ ] **Saf model** `apps/app/lib/src/notifications/reminder_profile.dart`:
+- [x] **Saf model** `apps/app/lib/src/notifications/reminder_profile.dart`:
       `ReminderProfile(slots: [0,2,5,10,30], repeatAfterSnooze: true)`;
       `parseReminderProfile(String)` / `encode`. **Kurallar (doğrulama tablosu):**
       artan sıra, tekilleştirme, **ardışık slotlar arası ≥ 1 dk** (kullanıcının koyduğu
       çakışma kuralı — "30 sn sonra" isteği bu kurala takılır ve UI bunu söyler),
       ilk slot ≥ 0, **en çok 20 slot**, bozuk değer → fabrika profili.
-- [ ] **Planner profili PARAMETRE olarak alır** (saf kalır): `kUrgentChainOffsets`
+- [x] **Planner profili PARAMETRE olarak alır** (saf kalır): `kUrgentChainOffsets`
       sabiti kalkar, `planNotifications(..., profile:)`. Cihaz-yerel tercih
       `alliswell_reminder_profile`; scheduler profil değişince yeniden planlar
       (privacy toggle'ın bugünkü kalıbı).
-- [ ] **64 slot gerçeği ekranda:** iOS bekleyen 64 bildirimi aşınca sessizce atar
+- [x] **64 slot gerçeği ekranda:** iOS bekleyen 64 bildirimi aşınca sessizce atar
       (bugünkü pencere 40). Editörde canlı hesap: "Bu profille aynı anda ~N alarm tam
       kapsanır" + 10 slotun üstünde uyarı. Sessiz kırpma yasak (NOTIFICATIONS §5).
-- [ ] **Ayarlar → "Hatırlatıcı Sistemi Ayarları"** yeni ekran
+- [x] **Ayarlar → "Hatırlatıcı Sistemi Ayarları"** yeni ekran
       (`features/settings/reminder_settings_screen.dart`, DESIGN §18): hazır profiller
       (**Sakin** 1 slot / **Standart** 5 / **Israrcı** 10), adım listesi (her adım
       dakika stepper'ı + sil, "araya adım ekle"), **canlı zaman çizelgesi önizlemesi**
       ("22:42 → 22:44 → 22:47 …" kullanıcının tarih biçimiyle), satır içi doğrulama
       mesajları, fabrika ayarına dön.
-- [ ] **Sürükle-bırak kararı (bilinçli sapma, gerekçeli):** sıralı bir sayı zincirinde
+- [x] **Sürükle-bırak kararı (bilinçli sapma, gerekçeli):** sıralı bir sayı zincirinde
       "3. adımı 1. sıraya taşı" anlamsızdır — sistem hemen yeniden sıralar, jest boşa
       gider (NN/g: sonucu geri alınacak jesti sunma). Bu yüzden zincir **adım adım
       stepper** editörüdür; sürükle-bırak **anlamlı olduğu yerde** verilir: kullanıcının
       alarm ekranında gördüğü **erteleme preset'lerinin sırası** (`ReorderableListView`).
-- [ ] Testler: doğrulama tablosu (sıra/1 dk/kap/bozuk), planner profili uyguluyor,
+- [x] Testler: doğrulama tablosu (sıra/1 dk/kap/bozuk), planner profili uyguluyor,
       editör adım ekle-sil-değiştir + preset yeniden sıralama, kapasite uyarısı.
+
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **`kUrgentChainOffsets` sabiti SİLİNDİ.** Zincir artık
+  `planNotifications(..., profile:)` parametresi; varsayılan
+  `ReminderProfile.factory` (eski `[0,2,5,10,30]`), yani yükseltmede hiçbir
+  kullanıcının alarmı değişmiyor. Saklama JSON (`{"slots":[...],
+  "repeatAfterSnooze":bool}`), bozuk/eksik/gelecek-sürüm değeri **fabrikaya**
+  düşüyor ve **asla boş zincir** üretilmiyor (sıfır kez çalan alarm alarm değil).
+- **`repeatAfterSnooze`** eklendi (spec'te yoktu, editörde bariz bir soru olarak
+  çıktı): kapalıyken ertelenen alarm geri döndüğünde **bir kez** çalıyor. Planner
+  bunu `status == 'snoozed'` ile birleştiriyor.
+- **Presetler:** Sakin [0] · Standart [0,2,5,10,30] · **Israrcı
+  [0,1,2,3,5,8,12,17,25,40]** (10 uyarı — 20 slot sınırının yarısı, kapasite
+  uyarısının altında kalıyor). El yapımı zincir "Senin" segmenti olarak **gerçek
+  bir durum**, boş bir seçim değil.
+- **1 dk kuralı düzenlerken uygulanıyor, kaydederken değil:** stepper'ın alt/üst
+  sınırı komşu adımlardan geliyor (`minSlotAfter`), yani kullanıcı kuralı ihlal
+  edemiyor — `normalizeSlots` yalnız depodan gelen çöp için emniyet ağı.
+- **64 slot ekranda:** "Bu zincirle aynı anda yaklaşık N alarm tam kapsanır"
+  (`40 ~/ slot`) + **10 uyarının üstünde** dürüst uyarı bandı. Sessiz kırpma yok.
+- **Sürükle-bırak (N4) sadece erteleme düğmelerinde:** sıralı sayı zinciri
+  kendini yeniden sıralayacağı için orada jest anlamsız olurdu. Erteleme sırası
+  `alliswell_snooze_presets` olarak saklanıyor ve **ring ekranı bu sırayı
+  uyguluyor** (dört preset de görünüyor artık — "yarın sabah" dahil).
+- **Test dersleri:** `ReorderableListView`'in varsayılan tutamakları mobil
+  hedefte **gecikmeli** sürükleme kullanıyor → test uzun basıp taşımak zorunda
+  (düz `drag` hiçbir şey yapmıyor); ring ekranı artık daha uzun olduğu için
+  susturma düğmesi testinde `ensureVisible` gerekiyor; `onReorder` deprecate
+  olmuş → `onReorderItem` (indeksi kendisi düzeltiyor).
+
+**DoD met 2026-07-28:** app **466/466** (+20 yeni test) + API 292 (dokunulmadı) +
+analyze temiz + `check:i18n` + kontrast FAILURES: 0; CHANGELOG; STATE.
 
 ### OPH-180 — Uygulama içi alarm sesi: `AlarmFeedback`'in ses yatağı (round 9 #6, #8)
 

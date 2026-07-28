@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/notifications/planner.dart';
+import 'package:alliswell/src/notifications/reminder_profile.dart';
 
 final now = DateTime.utc(2026, 7, 15, 12);
 
@@ -47,10 +48,10 @@ void main() {
       now: now,
       privacyMode: false,
     );
-    expect(plan, hasLength(kUrgentChainOffsets.length));
+    expect(plan, hasLength(ReminderProfile.factory.offsets.length));
     final base = now.add(const Duration(hours: 1));
     expect(plan.map((n) => n.fireAt), [
-      for (final offset in kUrgentChainOffsets) base.add(offset),
+      for (final offset in ReminderProfile.factory.offsets) base.add(offset),
     ]);
     expect(plan.first.body, contains('waiting for acknowledgement'));
     expect(plan.last.body, contains('alert 5'));

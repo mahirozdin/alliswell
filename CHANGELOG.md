@@ -24,6 +24,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **You decide how insistent an alarm is** (OPH-179). Settings → **Reminder
+  system** is one place for the whole chain: pick Calm (one alert), Standard
+  (five) or Insistent (ten), or build your own — each alert has a minute stepper,
+  and a live timeline shows exactly when a 22:42 alarm would ring. The limits are
+  stated rather than silently applied: alerts stay at least a minute apart, up to
+  twenty, and the screen tells you how many alarms the chain fully covers at once
+  (iOS only keeps the 64 soonest, and we refuse to trim yours quietly). You can
+  also turn off "repeat the whole chain after a snooze", and drag the snooze
+  buttons into the order you actually use — the ringing alarm follows it.
 - **Silence an alarm without pretending the task is done** (OPH-178). "Silence
   indefinitely" is now a real option — on the ringing alarm, on the notification
   itself, and as a switch in the task detail. The task stays open with its dates

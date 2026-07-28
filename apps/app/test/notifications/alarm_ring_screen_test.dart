@@ -210,6 +210,10 @@ void main() {
     await seed();
     await pumpRing(tester);
 
+    // The ring screen scrolls (four snooze presets + custom + silence), so make
+    // sure the button is on screen before tapping it.
+    await tester.ensureVisible(find.byKey(const Key('alarm-silence')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('alarm-silence')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));

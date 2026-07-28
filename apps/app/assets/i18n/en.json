@@ -458,6 +458,33 @@
       "degraded": "Delivery limited by the system"
     }
   },
+  "reminderSettings": {
+    "title": "Reminder system",
+    "sub": "How many alerts, how far apart, and their order",
+    "presets": "Ready-made",
+    "preset": {
+      "calm": "Calm",
+      "standard": "Standard",
+      "insistent": "Insistent",
+      "custom": "Yours"
+    },
+    "chain": "The alerts",
+    "step": "Alert {index}",
+    "atInstant": "+{minutes} min",
+    "immediately": "on time",
+    "addStep": "Add an alert",
+    "removeStep": "Remove this alert",
+    "timeline": "An alarm at {time} would ring:",
+    "capacity": "This chain fully covers about {count} alarms at once.",
+    "capacityWarning": "Long chains spend the system’s notification budget: beyond ~10 alerts, distant ones may be dropped until earlier ones pass.",
+    "minGap": "Alerts stay at least {minutes} minute apart, so two never collide.",
+    "maxSteps": "Up to {count} alerts.",
+    "repeatAfterSnooze": "Repeat the whole chain after a snooze",
+    "repeatAfterSnoozeSub": "Off: a snoozed alarm rings once when it comes back",
+    "snoozeOrder": "Snooze buttons, in your order",
+    "snoozeOrderSub": "Drag to reorder — this is the order the ringing alarm shows",
+    "reset": "Back to Standard"
+  },
   "widget": {
     "bucket": {
       "overdue": "Overdue",

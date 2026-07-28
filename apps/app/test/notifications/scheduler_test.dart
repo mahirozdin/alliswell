@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/notifications/planner.dart';
+import 'package:alliswell/src/notifications/reminder_profile.dart';
 import 'package:alliswell/src/notifications/scheduler.dart';
 
 import '../support/fake_notifications.dart';
@@ -51,14 +52,20 @@ void main() {
     alarms.add([alarm('R1'), alarm('R2', urgent: true)]);
     await pump();
     // 1 normal + 5-slot urgent chain.
-    expect(gateway.scheduled, hasLength(1 + kUrgentChainOffsets.length));
+    expect(
+      gateway.scheduled,
+      hasLength(1 + ReminderProfile.factory.offsets.length),
+    );
 
     // The urgent alarm gets acknowledged → its rows leave the active set →
     // the whole chain is cancelled, the normal reminder stays.
     alarms.add([alarm('R1')]);
     await pump();
     expect(gateway.scheduled, hasLength(1));
-    expect(gateway.cancelled, hasLength(kUrgentChainOffsets.length));
+    expect(
+      gateway.cancelled,
+      hasLength(ReminderProfile.factory.offsets.length),
+    );
   });
 
   test('content changes reschedule under a new identity', () async {
@@ -142,7 +149,10 @@ void main() {
 
         alarms.add([alarm('R2', urgent: true)]);
         await pump();
-        expect(gateway.scheduled, hasLength(kUrgentChainOffsets.length));
+        expect(
+          gateway.scheduled,
+          hasLength(ReminderProfile.factory.offsets.length),
+        );
         expect(alarmKit.scheduled, isEmpty);
       },
     );
@@ -156,7 +166,10 @@ void main() {
 
         alarms.add([alarm('R2', urgent: true)]);
         await pump();
-        expect(gateway.scheduled, hasLength(kUrgentChainOffsets.length));
+        expect(
+          gateway.scheduled,
+          hasLength(ReminderProfile.factory.offsets.length),
+        );
         expect(alarmKit.scheduled, isEmpty);
       },
     );

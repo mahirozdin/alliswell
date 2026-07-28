@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/planner.dart';
+import 'package:alliswell/src/notifications/reminder_profile.dart';
 
 final now = DateTime.utc(2026, 7, 15, 12);
 
@@ -104,7 +105,7 @@ void main() {
         now: now,
         privacyMode: false,
       );
-      expect(out, hasLength(kUrgentChainOffsets.length));
+      expect(out, hasLength(ReminderProfile.factory.offsets.length));
     });
   });
 }

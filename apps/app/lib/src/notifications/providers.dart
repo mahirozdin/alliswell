@@ -13,6 +13,7 @@ import 'alarm_log.dart';
 import 'alarmkit.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
+import 'reminder_profile.dart';
 import 'reminder_store.dart';
 import 'scheduler.dart';
 
@@ -28,6 +29,32 @@ final notificationsGatewayProvider = Provider<NotificationsGateway>(
 /// else, so the scheduler keeps urgent alarms on notifications.
 final alarmKitHostProvider = Provider<AlarmKitHost>(
   (_) => MethodChannelAlarmKitHost(),
+);
+
+/// The user's re-alert chain (OPH-179, DESIGN §18). Device-local, like every
+/// other delivery preference: each device schedules its own notifications, so
+/// each device owns how insistent they are.
+final reminderProfileRawProvider = NotifierProvider<PersistedChoice, String>(
+  // Empty parses to the factory chain, so an upgrade changes nothing.
+  () => PersistedChoice('alliswell_reminder_profile', fallback: ''),
+);
+
+/// The parsed profile — junk resolves to [ReminderProfile.factory].
+final reminderProfileProvider = Provider<ReminderProfile>(
+  (ref) => ReminderProfile.parse(ref.watch(reminderProfileRawProvider)),
+);
+
+/// The order the snooze presets appear in on the alarm screen (N4 — the one
+/// list where dragging is meaningful).
+final snoozePresetOrderRawProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice(
+    'alliswell_snooze_presets',
+    fallback: '5_min,30_min,1_hour,tomorrow_morning',
+  ),
+);
+
+final snoozePresetOrderProvider = Provider<List<String>>(
+  (ref) => parseSnoozePresetOrder(ref.watch(snoozePresetOrderRawProvider)),
 );
 
 /// OPH-064: lock-screen privacy — generic notification content instead of
@@ -115,6 +142,7 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
     alarms: ref.watch(reminderStoreProvider).watchAlarms(workspace.id),
     privacyMode: ref.watch(notificationPrivacyProvider),
     log: ref.watch(alarmLogProvider),
+    profile: ref.watch(reminderProfileProvider),
   );
   unawaited(scheduler.start());
   ref.onDispose(scheduler.dispose);

@@ -4,6 +4,7 @@ import 'alarm_log.dart';
 import 'alarmkit.dart';
 import 'planner.dart';
 import 'gateway.dart';
+import 'reminder_profile.dart';
 
 /// Keeps the OS notification schedule equal to the plan (OPH-061): every
 /// replica change re-plans (window ≤[maxPending], urgent chains) and the diff
@@ -18,6 +19,7 @@ class NotificationScheduler {
     required this.privacyMode,
     this.alarmKit,
     this.log,
+    this.profile = ReminderProfile.factory,
     this.maxPending = 40,
     DateTime Function()? clock,
   }) : _now = clock ?? (() => DateTime.now().toUtc());
@@ -29,6 +31,10 @@ class NotificationScheduler {
   /// The device's alarm record (OPH-176). Optional so a pure scheduler test can
   /// leave it out; production always passes one.
   final AlarmLog? log;
+
+  /// The user's re-alert chain (OPH-179). The provider rebuilds the scheduler
+  /// when it changes, so a new profile re-plans everything pending.
+  final ReminderProfile profile;
 
   /// iOS 26+ URGENT lane (OPH-141). Null (or unsupported/declined) leaves urgent
   /// alarms on the notification lane. When active, urgent alarms move here and
@@ -90,6 +96,7 @@ class NotificationScheduler {
         privacyMode: privacyMode,
         maxPending: maxPending,
         routeUrgentToAlarmKit: _alarmKitActive,
+        profile: profile,
       );
       final desiredById = {for (final n in desired) n.id: n};
       final pending = await gateway.pendingIds();

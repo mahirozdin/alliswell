@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:alliswell/src/notifications/alarm_log.dart';
 import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/planner.dart';
+import 'package:alliswell/src/notifications/reminder_profile.dart';
 import 'package:alliswell/src/notifications/scheduler.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 
@@ -69,7 +70,7 @@ void main() {
         now: now,
         privacyMode: false,
       );
-      expect(plan, hasLength(kUrgentChainOffsets.length));
+      expect(plan, hasLength(ReminderProfile.factory.offsets.length));
       expect(plan.every((n) => n.urgent), isTrue);
       // …so every slot resolves to the same delivery.
       final deliveries = plan
@@ -217,7 +218,7 @@ void main() {
       final scheduled = rows
           .where((r) => r.event == AlarmLogEvent.scheduled)
           .toList();
-      expect(scheduled, hasLength(kUrgentChainOffsets.length));
+      expect(scheduled, hasLength(ReminderProfile.factory.offsets.length));
       expect(scheduled.every((r) => r.urgent), isTrue);
       expect(scheduled.every((r) => r.sound == kAwAlarmSoundName), isTrue);
       expect(
@@ -227,7 +228,7 @@ void main() {
       expect(scheduled.every((r) => r.kind == 'due'), isTrue);
       // Which slot each one was — the question round 9 could not answer.
       expect(scheduled.map((r) => r.slotIndex).toSet(), {
-        for (var i = 0; i < kUrgentChainOffsets.length; i++) i,
+        for (var i = 0; i < ReminderProfile.factory.offsets.length; i++) i,
       });
     });
 

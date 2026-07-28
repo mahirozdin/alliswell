@@ -457,6 +457,33 @@
       "degraded": "Sistem teslimatı kısıtlıyor"
     }
   },
+  "reminderSettings": {
+    "title": "Hatırlatıcı sistemi",
+    "sub": "Kaç uyarı, kaç dakika arayla ve hangi sırada",
+    "presets": "Hazır",
+    "preset": {
+      "calm": "Sakin",
+      "standard": "Standart",
+      "insistent": "Israrcı",
+      "custom": "Senin"
+    },
+    "chain": "Uyarılar",
+    "step": "{index}. uyarı",
+    "atInstant": "+{minutes} dk",
+    "immediately": "tam saatinde",
+    "addStep": "Uyarı ekle",
+    "removeStep": "Bu uyarıyı kaldır",
+    "timeline": "{time} alarmı şu saatlerde çalar:",
+    "capacity": "Bu zincirle aynı anda yaklaşık {count} alarm tam kapsanır.",
+    "capacityWarning": "Uzun zincirler sistemin bildirim bütçesini harcar: ~10 uyarının ötesinde uzak olanlar, öncekiler geçene dek düşebilir.",
+    "minGap": "Uyarılar arasında en az {minutes} dakika kalır, böylece ikisi çakışmaz.",
+    "maxSteps": "En çok {count} uyarı.",
+    "repeatAfterSnooze": "Ertelemeden sonra zincir baştan çalsın",
+    "repeatAfterSnoozeSub": "Kapalı: ertelenen alarm geri döndüğünde bir kez çalar",
+    "snoozeOrder": "Erteleme düğmeleri, senin sıranla",
+    "snoozeOrderSub": "Sürükleyip sırala — çalan alarm bu sırayla gösterir",
+    "reset": "Standart’a dön"
+  },
   "widget": {
     "bucket": {
       "overdue": "Gecikmiş",
