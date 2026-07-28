@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-28 (**Epic 16 KODSAL OLARAK KAPANDI — OPH-171…183.** Son iş
+**Last updated:** 2026-07-28 (**v0.5.0 CANLI; Epic 16 KODSAL OLARAK KAPANDI — OPH-171…183.** Son iş
 OPH-182'ydi ve round 9'un kök nedenini gerçekten ortadan kaldırdı: AlarmKit hattı artık
 Xcode hedeflerinde, `AppDelegate`'te kurulu, Live Activity'siyle birlikte derleniyor ve
 bağlantı **ürün ikililerinden** doğrulandı. Epic 16'da kalan tek şey **cihaz
@@ -104,6 +104,25 @@ against real MySQL 8.4 and all unit+integration tests pass.
 
 ## Recently completed
 
+- **🚀 v0.5.0 CANLI (2026-07-28):** `git push origin v0.5.0` → gate (Flutter + MySQL +
+  MariaDB) → GitHub Release → GHCR imajları (api+web, amd64/arm64) → prod deploy, **tek
+  turda yeşil**. Kanıt: yedek `db-20260728-065331-pre-v0.5.0.sql.gz` (20K), `checked out:
+  v0.5.0`, **Batch 2: 4 migration** (Epic 16'nın üçü + bekleyen `add_account_deletion`),
+  `https://api.alliswell.space/` → `"version":"0.5.0"`, `/health/ready` → mysql+redis up.
+  Release **prerelease** işaretli — workflow'un kendi kuralı (1.x olmayan her şey).
+  **Tag iki kez atıldı ve bu bir ders:** ilk tag gate'te düştü çünkü CI **OPH-181'den beri
+  kırmızıydı** — `alarm_ring_screen_test.dart` "a custom snooze picks an exact time"
+  macOS'ta geçip Linux'ta düşüyordu (ring ekranı kayıyor, custom-snooze butonu 800×600
+  yüzeyde tam katlanma noktasında: `Offset(400, 616)`). Isıka tıklama dialog açmıyor,
+  sonraki `find.text('OK')` boş dönüyor ve hata bir picker bug'ı gibi okunuyor. Çözüm
+  dosyanın kendi idiomu (`ensureVisible`); yüzey 380 px'e indirilip ekran dışı durum
+  ZORLANARAK doğrulandı. Hiçbir şey yayınlanmamış olduğu için tag güvenle taşındı.
+  **Kalıcı ders: yerelde yeşil ≠ CI'da yeşil; piksel-sınırındaki bir widget'a `tap`
+  atmadan önce `ensureVisible`.** İkinci ders (archive'ı submission'da patlatacaktı):
+  **app extension'ın sürümü uygulamayla eşleşmek zorunda** — widget extension Xcode
+  template varsayılanında (1.0/1) kalmıştı, artık `$(FLUTTER_BUILD_NAME/NUMBER)`'a bağlı.
+  Üçüncü: sürüm yükseltince `flutter clean && pub get && pod install` — `Generated.xcconfig`
+  eski sürümü cache'liyor ve Xcode Archive onu gömüyor.
 - **🚀 v0.4.0 CANLI + CI/CD zinciri uçtan uca yeşil (2026-07-26):** `git push --tags` →
   testler (MySQL+MariaDB+Flutter) → GitHub Release (CHANGELOG'dan notlar) → GHCR imajları
   (api+web, amd64/arm64) → sunucuya deploy. **Deploy 8 turda yeşile ulaştı; her tur gerçek bir
