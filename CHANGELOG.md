@@ -25,6 +25,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **Editing a date keeps its time** (OPH-191). The detail screen used to ask
+  only for a day and then stamp your default task time on it, so changing the
+  date of a 14:30 task silently moved it to 23:59. Every task date field now
+  goes through one input path — date, then time, starting from the value you
+  are editing.
+- **"Planned date" is gone from the task detail** (OPH-192) — it was a third
+  date nobody asked for and it was never in the spec's field list. It exists for
+  one real reason: dragging a task's event in Google Calendar writes it (moving
+  a block means "I'll do it then", not "the deadline moved"). So instead of
+  deleting it and pinning the event forever with no way to see it, the row now
+  appears **only when that has actually happened**, says so — "Moved in your
+  calendar — …" — and offers Reset.
+- **Project editing no longer has a status picker** (OPH-193). It appeared only
+  when editing, printed the raw server enum (`active`, `paused`) at you in
+  whatever language you were reading, and offered a second way to change a
+  project's state that skipped the archive flow's cascade question. A project is
+  open or archived; archiving is its own flow. Existing `paused`/`completed`
+  rows are untouched and behave as open — no migration, nothing lost.
 - **Completing a task no longer makes it vanish** (OPH-185). It stays in its own
   group for the rest of the day — filled circle, struck through, calmly muted —
   and drops off at the next local midnight, which now happens on its own instead
@@ -40,6 +58,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **The alarm sound preview can be stopped** (OPH-190). Its stop button did not
+  stop — the icon changed but the control was disabled — and while one sound
+  played every other preview button was disabled too, so tapping a second sound
+  did nothing until the first ran out. Closing the picker left the sound
+  playing. All three came from the same shape: the player was created inside the
+  method that started it, where nothing else could reach it. Your own uploaded
+  ringtones can be previewed now as well; they never could before.
 - A deferred delete could silently never happen: the commit closure captured a
   widget's `WidgetRef`, and by the time the timer fired the row had left the
   list and its element was disposed. Found by a test, not by a user.

@@ -204,7 +204,7 @@ void main() {
       expect(api.tasks.single['calendarMirrorEnabled'], isTrue);
     });
 
-    testWidgets('a scheduled block arriving from the calendar is visible', (
+    testWidgets('a scheduled block arriving from the calendar EXPLAINS itself', (
       tester,
     ) async {
       await wideSurface(tester);
@@ -222,14 +222,18 @@ void main() {
       final row = find.byKey(const Key('scheduled-row'));
       await tester.dragUntilVisible(row, list, const Offset(0, -120));
 
-      expect(find.text('Scheduled'), findsOneWidget);
-      // OPH-174: rows render through the one formatter now — the old
+      // OPH-192: this is no longer a permanent field labelled "Scheduled" — a
+      // third date nobody asked for. It appears only when a drag actually
+      // happened, and then it says what happened.
+      expect(find.text('Scheduled'), findsNothing);
+      expect(find.textContaining('Moved in your calendar'), findsOneWidget);
+      // OPH-174: rendered through the one formatter — the old
       // `2030-06-05 17:00:00` was the raw `toString()` round 9 complained about.
       final local = DateTime.utc(2030, 6, 5, 14).toLocal();
       expect(
         find.descendant(
           of: row,
-          matching: find.text(
+          matching: find.textContaining(
             awFormatDateTime(local, format: kAwSystemDateFormat),
           ),
         ),

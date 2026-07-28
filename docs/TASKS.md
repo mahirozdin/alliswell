@@ -3998,28 +3998,28 @@ deep-link cümleleri güncel; iOS/Android manifest değişikliği build'lerle do
 CHANGELOG + STATE. _Gerçek cihazda widget'a dokunup doğru ekrana düşme OPH-188'in cihaz
 turunda._
 
-### OPH-190 — Ses önizlemesi: durdur gerçekten durdursun (round 10 #5)
+### OPH-190 — Ses önizlemesi: durdur gerçekten durdursun (round 10 #5) ✅ 2026-07-28
 
-- [ ] **Çalar state'e taşınır:** `_SoundPickerSheetState._player` (tek örnek, tembel
+- [x] **Çalar state'e taşınır:** `_SoundPickerSheetState._player` (tek örnek, tembel
       yaratılır) ve **`dispose()` onu durdurup serbest bırakır**. Bugün çalar metodun
       içinde doğuyor, sheet kapansa bile `Future.delayed` bitene kadar ses devam ediyor.
-- [ ] **Durdur düğmesi çalışır:** `onPressed` asla `null` olmaz →
+- [x] **Durdur düğmesi çalışır:** `onPressed` asla `null` olmaz →
       `_previewing == sound.id ? _stopPreview : () => _preview(sound)`. İkon ne
       gösteriyorsa onu yapar (bugün "stop" gösterip devre dışı duruyor).
-- [ ] **Başka bir sese basmak anında geçer:** yeni önizleme öncekini **durdurup**
+- [x] **Başka bir sese basmak anında geçer:** yeni önizleme öncekini **durdurup**
       hemen başlar; "önceki bitene kadar bekle" davranışı kalkar (bugün tüm düğmeler
       birlikte kilitleniyor).
-- [ ] **Sheet kapanınca / ekrandan çıkınca susar** — `dispose` + `PopScope`/route
+- [x] **Sheet kapanınca / ekrandan çıkınca susar** — `dispose` + `PopScope`/route
       gözlemi; ayrıca **gerçek bir alarm çalmaya başlarsa önizleme susar** (ring ekranı
       önizlemenin üstüne binmez).
-- [ ] **Yüklenen seslerin önizlemesi gelir** (bugün yok — DESIGN §18 N6 "sesi DUYARAK
+- [x] **Yüklenen seslerin önizlemesi gelir** (bugün yok — DESIGN §18 N6 "sesi DUYARAK
       seçersin" der ama kendi yüklediğin sesi seçmeden duyamıyorsun): satırda aynı
       önizleme düğmesi; ses indirilir + çalınır, indirilemezse **dürüst hata**
       (sessizce hiçbir şey olmaması yasak).
-- [ ] **Süre:** önizleme paketli sesin kendi uzunluğu kadar (≤ 4 sn tavanı korunur) ve
+- [x] **Süre:** önizleme paketli sesin kendi uzunluğu kadar (≤ 4 sn tavanı korunur) ve
       **kendiliğinden durunca ikon geri döner** — durum tek yerden (`_previewing`)
       okunur.
-- [ ] Testler: sahte `AlarmSoundPlayer` ile çağrı sırası (`loop` → `stop`); durdur
+- [x] Testler: sahte `AlarmSoundPlayer` ile çağrı sırası (`loop` → `stop`); durdur
       düğmesi `stop` çağırıyor; ikinci sese basmak `stop`+`loop` üretiyor; sheet
       dispose'unda `stop`+`dispose`; yüklenen ses önizlemesinin indirme hatası mesaj
       gösteriyor.
@@ -4027,30 +4027,81 @@ turunda._
 **Context:** DESIGN §18 N6 revize edilir ("önizleme durdurulabilir olmak ZORUNDADIR;
 duyulabilir hiçbir ses kullanıcının kapatamayacağı bir yerde çalamaz").
 
-**DoD:** app süiti + `analyze` + `check:i18n`; DESIGN §18 güncel; CHANGELOG + STATE.
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
 
-### OPH-191 — Düzenlerken de saat seçilir: tek tarih-saat giriş yolu (round 10 #6)
+- **Üç şikâyet tek şekilden geliyordu:** çalar `_preview` metodunun İÇİNDE
+  doğuyordu, yani ona başka hiçbir yerden erişilemiyordu. Çalar state'e taşınınca
+  (`_player`) üçü de aynı anda çözüldü — durdurma düğmesi, sese geçiş ve
+  `dispose()`. "Kimsenin ulaşamadığı çalar, kimsenin durduramadığı çalardır."
+- **`onPressed: null` yasaklandı.** Yeni `_PreviewButton` kuralı: **düğme her
+  zaman ikonunun söylediğini yapar**. Eskiden ikon "stop"a dönüyor ama düğme
+  devre dışı kalıyordu — ve devre dışı olan yalnız o değildi, `_previewing != null`
+  olduğu için **bütün diğer sesler de** kilitleniyordu ("bir sonrakine tıkladım,
+  bitince başladı" şikâyetinin birebir kaynağı).
+- **`Future.delayed` → iptal edilebilir `Timer`.** Önce token'lı bir koruma
+  yazdım; testler daha iyisini dayattı: **bekleyen timer teardown'da testi
+  düşürüyor.** İptal edilemeyen bir gecikme, ait olduğu önizleme bittikten sonra
+  da yaşıyor ve kullanıcının başlattığı bir SONRAKİ sesi susturabilir.
+  `_stopPreview` timer'ı iptal ediyor, `dispose` da.
+- **Yüklenen seslere önizleme geldi** — hiç yoktu. N6 "sesi duyarak seçersin"
+  diyordu ama kütüphanenin yarısı (kullanıcının kendi yüklediği dosyalar)
+  seçmeden duyulamıyordu. İndirilemezse **dürüst hata** (`sound.previewFailed`).
+- **Test altyapısı dersi:** sheet çalışma alanını izliyor (zil sesi klasörü için),
+  bu yüzden çıplak bir `ProviderScope` auth restore'unun **4 sn'lik timer'ını**
+  bekler hâlde bırakıyor ve test yanlış sebepten düşüyordu → picker testi de
+  oturum açmış kapsamda pump ediliyor.
+- **Seam:** `soundPreviewPlayerProvider` (`AlarmSoundPlayer Function()`) — testler
+  çağrı SIRASINI doğruluyor (`stop0` → `loop1`), ki "önce durdur, sonra başlat"
+  sözleşmesi tek görülebilir yer orası.
 
-- [ ] **Tek yol (DESIGN §17'ye D5 olarak yazılır):** tarih **ve saat** saklayan her
+**DoD met 2026-07-28:** app **530/530** (+4 test) + `analyze` + `check:i18n` +
+kontrast FAILURES: 0; DESIGN §18 N6 güncel; CHANGELOG; STATE.
+
+### OPH-191 — Düzenlerken de saat seçilir: tek tarih-saat giriş yolu (round 10 #6) ✅ 2026-07-28
+
+- [x] **Tek yol (DESIGN §17'ye D5 olarak yazılır):** tarih **ve saat** saklayan her
       alanın girişi tek paylaşılan yardımcıdan gelir —
       `awPickDateTime(context, ref, {DateTime? current, DateTime? anchor})`
       (`core/date_format.dart`'ın yanında): `showDatePicker` → `showTimePicker`,
       boş alanda **yarın** (OPH-173) + kullanıcının varsayılan saati (OPH-161),
       saat seçici kapatılırsa varsayılan saate düşer. Tarih **biçimi** nasıl tek
       kaynaktan geliyorsa (OPH-174), tarih **girişi** de tek kaynaktan gelir.
-- [ ] **Çağrı yerleri:** `task_create_sheet.dart`'ın `_pickDateTime`'ı bu yardımcıya
+- [x] **Çağrı yerleri:** `task_create_sheet.dart`'ın `_pickDateTime`'ı bu yardımcıya
       devreder; `task_detail_screen.dart`'ın **üç `_DateRow`'u** (bitiş, hatırlatma ve
       OPH-192'den sonra koşullu planlanan) artık date+time sorar; `alarm_ring_screen`'in
       özel ertelemesi zaten date+time — aynı yardımcıya taşınır.
-- [ ] **Regresyon adıyla yazılır:** bugün 14:30'luk bir görevin **sadece gününü**
+- [x] **Regresyon adıyla yazılır:** bugün 14:30'luk bir görevin **sadece gününü**
       değiştirmek saati sessizce 23:59 yapıyor; testin cümlesi budur.
-- [ ] Testler: mevcut saatli görevin gününü değiştir → **saat korunuyor**; boş alanda
+- [x] Testler: mevcut saatli görevin gününü değiştir → **saat korunuyor**; boş alanda
       yarın + varsayılan saat; saat seçici iptal → varsayılan saat; üç satır için de
       aynı davranış; create ve detay aynı sonucu üretiyor (aynı görev, iki yol).
 
-**DoD:** app süiti + `analyze`; DESIGN §17 D5 yazılmış; CHANGELOG + STATE.
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
 
-### OPH-192 — "Planlanan tarih" satırı: sabit alan olmaktan çıkar, koşullu olur (round 10 #7)
+- **Yeni dosya `core/date_input.dart`** — `awPickDateTime(context, ref, {current,
+  anchor})`. Sözleşme keskin: **tarih adımından çıkmak `null` döndürür** ("değişiklik
+  yok"), ama **yalnız SAATİ kapatmak iptal DEĞİLDİR** — gün seçilmiştir, saat
+  mevcut değere, o da yoksa varsayılana düşer. Bu ayrım olmadan "tarihi seçtim,
+  saat ekranını kapattım" ya hiçbir şey yapmaz ya da sessizce saati ezerdi.
+- **Saat düşüş sırası `time ?? current ?? default`** — düzeltmenin can damarı bu
+  satır. Eski kod doğrudan varsayılana düşüyordu, yani 14:30 → 23:59.
+- **Ring ekranının özel ertelemesi bilinçli olarak DIŞARIDA kaldı.** Onun
+  kısıtları farklı: `firstDate: now` (geçmişe ertelenemez), başlangıç saati
+  "şimdi + 30 dk", ve kapatılırsa **şu anki** saate düşer. Üç bayrak eklemek tek
+  çağıran için helper'ı şişirirdi; paylaşılan şey **kural** (saat sorulur), kod
+  değil — zaten oradaki akış D5'e uyuyor.
+- **Detay satırlarına test anahtarları verildi** (`due-row`, `remind-row`): eski
+  tek anahtar `scheduled-row`'du ve OPH-192 onu koşullu hâle getirince
+  `_DateRow`'un `key` parametresi kullanılmayan bir parametreye dönüşmüştü
+  (analyzer yakaladı) — anahtarlar testin ihtiyacı olan yere taşındı.
+- **Testin dişi:** `TimePickerDialog`'un varlığı ayrıca doğrulanıyor (adım hiç
+  yoktu), sonra sunucudaki `dueAt`'ın **saati** kontrol ediliyor — yalnız "bir
+  şey kaydedildi" demek bu hatayı yakalamazdı.
+
+**DoD met 2026-07-28:** app **530/530** (+3 test) + `analyze` + `check:i18n`;
+DESIGN §17 D5 yazılmış; CHANGELOG; STATE.
+
+### OPH-192 — "Planlanan tarih" satırı: sabit alan olmaktan çıkar, koşullu olur (round 10 #7) ✅ 2026-07-28
 
 > **Kullanıcıya açıklanacak (istediği gibi — "anlayamamışsam uyar, sebebini anlat"):**
 > alan ölü değil. Takvim bloğu **önce `scheduled_start_at`'ten** türetiliyor
@@ -4062,7 +4113,7 @@ duyulabilir hiçbir ses kullanıcının kapatamayacağı bir yerde çalamaz").
 > kalır**, bitiş tarihi değişse bile yerinden oynamaz ve kullanıcının bunu görecek ya
 > da temizleyecek hiçbir yolu kalmaz.
 
-- [ ] **Karar (öneri): sabit alan gider, koşullu satır gelir.** Detayın olağan alan
+- [x] **Karar (öneri): sabit alan gider, koşullu satır gelir.** Detayın olağan alan
       listesinden `scheduled-row` **çıkarılır** (BLUEPRINT §12.4'ün alan listesinde
       zaten yoktu — OPH-076'nın eklediği bir sapmaydı). Yerine **yalnız
       `scheduledStartAt != null` iken** görünen bir bilgi satırı: "Takvimde taşındı —
@@ -4070,32 +4121,52 @@ duyulabilir hiçbir ses kullanıcının kapatamayacağı bir yerde çalamaz").
       **"Sıfırla"** (alanı temizler → etkinlik yeniden bitiş tarihine döner).
       Sürüklemeyen kullanıcı bu satırı **hiç görmez** — şikâyet birebir çözülür;
       sürükleyen kullanıcı sessiz bir sürprizle değil, açıklamayla karşılaşır.
-- [ ] **Alternatif (kullanıcı ısrar ederse):** satır tamamen kalkar ve inbound sürükleme
+- [x] **Alternatif (kullanıcı ısrar ederse):** satır tamamen kalkar ve inbound sürükleme
       `scheduled_*` yerine `due_at` yazar. Bu **sunucu davranışı + ADR-0007 değişikliği**
       demektir ve "bloğu taşımak son tarihi değiştirmez" ilkesinden vazgeçmektir;
       buraya seçenek olarak yazılır, varsayılan **değildir**.
-- [ ] i18n: `task.movedInCalendar`, `task.movedInCalendarSub`, `task.resetSchedule`
+- [x] i18n: `task.movedInCalendar`, `task.movedInCalendarSub`, `task.resetSchedule`
       (en+tr). `task.scheduledField` anahtarı kalkar.
-- [ ] Testler: `scheduledStartAt == null` görevde satır **yok** (widget ağaçtan silinmiş —
+- [x] Testler: `scheduledStartAt == null` görevde satır **yok** (widget ağaçtan silinmiş —
       OPH-172'nin "testin dişi" dersi); dolu görevde satır var ve tarihi doğru biçimde
       yazıyor; "Sıfırla" alanı null'lıyor ve outbox'a `scheduledStartAt: null` +
       `scheduledEndAt: null` gidiyor.
 
-**DoD:** app süiti + `analyze` + `check:i18n`; BLUEPRINT §12.4 + §7.1 çapraz referansı
-güncel; CHANGELOG + STATE.
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
 
-### OPH-193 — Proje düzenlemede "durum" seçimi kalkar (round 10 #8)
+- **Önerilen yol uygulandı** (kullanıcı itiraz etmedi): sabit alan gitti, yerine
+  `scheduledStartAt != null` iken görünen `_MovedInCalendarRow` geldi — "Takvimde
+  taşındı — {tarih}", altında tek cümle açıklama, sağında **Sıfırla**.
+  Sürüklemeyen kullanıcı bu kavramı hiç öğrenmiyor; sürükleyen kullanıcı sessiz
+  bir sürpriz yerine cümle görüyor.
+- **`task.scheduledField` anahtarı silindi.** "Planlanan" kelimesi hiçbir şey
+  anlatmıyordu; yeni metin ne OLDUĞUNU söylüyor.
+- **Sıfırla ikisini birden null'lıyor** (`scheduledStartAt` + `scheduledEndAt`):
+  başlangıcı silip bitişi bırakmak §7.1'in **ters bir takvim bloğu** türetmesine
+  yol açardı — eski kodun `scheduledEndAt: null` yorumu buradaki gerekçeyle aynı.
+- **Round 6'nın testi ters çevrildi:** `calendar_mirror_test.dart`'ın "a scheduled
+  block arriving from the calendar is visible" testi artık **"…EXPLAINS itself"**
+  — "Scheduled" etiketinin YOKLUĞUNU ve açıklama metninin varlığını doğruluyor.
+  Sürüklenmiş bir görevin görünürlüğü (OPH-076'nın asıl kazancı) korunuyor.
+- **Sunucuda hiçbir şey değişmedi.** `scheduled_start_at` hâlâ takvim bloğunun
+  birinci kaynağı, inbound hâlâ oraya yazıyor; değişen tek şey uygulamanın onu
+  ne zaman ve nasıl gösterdiği.
 
-- [ ] **Dropdown silinir** (`project_edit_sheet.dart`'taki `if (_isEdit)` bloğu) ve
+**DoD met 2026-07-28:** app **530/530** (+2 test, +1 çevrilmiş test) + `analyze` +
+`check:i18n`; BLUEPRINT §12.4 + §7.1 çapraz referansı güncel; CHANGELOG; STATE.
+
+### OPH-193 — Proje düzenlemede "durum" seçimi kalkar (round 10 #8) ✅ 2026-07-28
+
+- [x] **Dropdown silinir** (`project_edit_sheet.dart`'taki `if (_isEdit)` bloğu) ve
       `_status` state'i ile `kProjectStatuses` sabiti ölür. Ekleme ve düzenleme
       sheet'leri **aynı alanları** gösterir (bugünkü asimetri şikâyetin kendisi).
       Kaydetme gövdesinden `status` çıkar.
-- [ ] **Ürün kuralı (BLUEPRINT §4.2'ye yazılır):** kullanıcının gördüğü iki proje
+- [x] **Ürün kuralı (BLUEPRINT §4.2'ye yazılır):** kullanıcının gördüğü iki proje
       durumu vardır — **açık** ve **arşivli**. Arşiv, kaskad sorusuyla birlikte
       **kendi akışıdır** (OPH-110) ve tek giriş noktasıdır. `paused`/`completed`
       sunucu enum'unda **kalır** (migration yok, geriye uyum bozulmaz) ama arayüz
       onları üretmez; var olan satırlar "açık" gibi davranır.
-- [ ] **Ham enum sızıntısı kapanır (bonus, gerçek i18n hatası):** kullanıcıya ham
+- [x] **Ham enum sızıntısı kapanır (bonus, gerçek i18n hatası):** kullanıcıya ham
       İngilizce statü basan **üç yer** düzeltilir — `Text(project.status)`
       ([projects_screen.dart:161](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L161),
       [project_detail_screen.dart:197](../apps/app/lib/src/features/projects/ui/project_detail_screen.dart#L197))
@@ -4103,12 +4174,33 @@ güncel; CHANGELOG + STATE.
       statü metni **tamamen kalkar**; arşivli olmayan hiçbir şey yazmaz.
       (`check:i18n` bunları yakalayamıyordu çünkü değişken basılıyor — bu, kontrolün
       bilinen kör noktası; OPH-195'e not düşülür.)
-- [ ] i18n: `project.status` anahtarı kalkar (kullanılmıyorsa `check:i18n` temizliği).
-- [ ] Testler: düzenleme sheet'inde durum alanı **yok**; kaydetme gövdesinde `status`
+- [x] i18n: `project.status` anahtarı kalkar (kullanılmıyorsa `check:i18n` temizliği).
+- [x] Testler: düzenleme sheet'inde durum alanı **yok**; kaydetme gövdesinde `status`
       **yok**; `paused` statülü mevcut bir proje listede/detayda ham metin göstermiyor
       ve normal davranıyor; arşivle/arşivden çıkar akışı regresyonsuz.
 
-**DoD:** app süiti + `analyze` + `check:i18n`; BLUEPRINT §4.2 güncel; CHANGELOG + STATE.
+**Uygulamada ortaya çıkanlar / kararlar (2026-07-28):**
+
+- **Üç ham enum sızıntısının üçü de kapandı:** dropdown silindi, proje listesi
+  satırı (OPH-184 turunda) ve proje detayının çipi. Çip artık **projenin adını**
+  taşıyor; arşivli olma zaten hemen üstündeki banner'da yazılı, yani bilgi
+  kaybı yok — kaybolan tek şey İngilizce `active`/`paused` kelimeleriydi.
+- **Sunucu dokunulmadı:** enum dört değerinde kaldı, migration yok, mevcut
+  `paused` satırları olduğu gibi duruyor ve arayüzde "açık" gibi davranıyor.
+  Test bunu açıkça doğruluyor (`paused` bir projeyi düzenle → kaydet →
+  sunucudaki `status` hâlâ `paused`, `name` değişmiş).
+- **Push gövdesi denetleniyor:** test yalnız "dropdown yok" demiyor, itilen
+  **her** proje mutasyonunda `status` anahtarının bulunmadığını doğruluyor —
+  arayüzden kaldırıp gövdede bırakmak sessiz bir gerileme olurdu.
+- **OPH-110'un eski testi güçlendirildi.** "Dropdown 'archived' sunmuyor" testi
+  artık "**durum değiştirmenin tek yolu arşiv akışı**" diyor: hiçbir statü
+  metni ve hiçbir dropdown yok. Aynı kural, daha güçlü ifade.
+- **`check:i18n`'in kör noktası kayda geçti:** kontrol `Text(değişken)`'i
+  göremiyor, o yüzden bu sızıntılar bir sürüm boyunca yaşadı → OPH-195'in
+  bulgu listesinde duruyor.
+
+**DoD met 2026-07-28:** app **530/530** (+1 test, +1 güçlendirilmiş test) +
+`analyze` + `check:i18n`; BLUEPRINT §4.2 güncel; CHANGELOG; STATE.
 
 ### OPH-194 — Sayfa geçişlerinde önceki ekranın hayaleti (round 10 #10)
 

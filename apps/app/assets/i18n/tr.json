@@ -183,7 +183,6 @@
     "clearDue": "Bitiş tarihini temizle",
     "remind": "Hatırlat",
     "clearReminder": "Hatırlatıcıyı temizle",
-    "scheduledField": "Planlanan",
     "clearField": "{field} temizle",
     "urgentAlarm": "Acil alarm",
     "urgentAlarmSub": "Onaylanması gereken ısrarlı hatırlatıcı",
@@ -217,7 +216,10 @@
     "alarmTimePassed": "O saat geçti — göreve yeni bir saat ver",
     "deleteTooltip": "Görevi sil",
     "deleteSemantic": "{title} görevini sil",
-    "deleted": "“{title}” silindi"
+    "deleted": "“{title}” silindi",
+    "movedInCalendar": "Takvimde taşındı — {date}",
+    "movedInCalendarSub": "Bu görevin etkinliğini takvimde sürüklediğin için bitiş tarihini izlemek yerine o saatte duruyor.",
+    "resetSchedule": "Sıfırla"
   },
   "tag": {
     "inputHint": "Etiket ekle…",
@@ -275,7 +277,6 @@
     "noNotesBody": "Bu projeye bağlı henüz not yok",
     "name": "Ad",
     "nameRequired": "Projeye bir ad ver",
-    "status": "Durum",
     "saveChanges": "Değişiklikleri kaydet",
     "create": "Proje oluştur",
     "edit": "Projeyi düzenle",
@@ -514,7 +515,9 @@
     "inAppOnlyBadge": "Yalnız uygulama içi alarm",
     "inAppOnlyPicked": "Seçildi — ama iOS bildirimleri bu biçimi çalamaz, orada sistem sesi kalır.",
     "inAppOnlyUpload": "Bu biçim iOS bildirim sesi olamaz; uygulama içi alarmda çalar.",
-    "rules": "Bildirim sesi 30 saniyeden kısa ve .caf, .wav veya .aiff olmalı — mp3 ve m4a yalnız uygulama içi alarmda çalar. Android’de yüklediğin ses uygulama içi alarmda çalar; bildirimler paketli bir sesle devam eder."
+    "rules": "Bildirim sesi 30 saniyeden kısa ve .caf, .wav veya .aiff olmalı — mp3 ve m4a yalnız uygulama içi alarmda çalar. Android’de yüklediğin ses uygulama içi alarmda çalar; bildirimler paketli bir sesle devam eder.",
+    "stopPreview": "Durdur",
+    "previewFailed": "Bu ses çalınamadı"
   },
   "widget": {
     "bucket": {

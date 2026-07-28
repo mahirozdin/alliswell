@@ -57,6 +57,47 @@ void main() {
     expect(find.byIcon(Icons.star_border), findsOneWidget);
   });
 
+  testWidgets('the edit sheet has no status picker, and never sends one', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Düzenlenecek', status: 'paused');
+
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+
+    await tester.tap(
+      find.byKey(Key('project-menu-${api.projects.first['id']}')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+
+    // OPH-193: the picker existed ONLY in edit mode — the same object had two
+    // different forms — and it printed the raw server enum at the user.
+    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    expect(find.text('paused'), findsNothing);
+
+    await tester.enterText(find.byType(TextFormField).first, 'Yeni ad');
+    await tester.tap(find.text('Save changes'));
+    await tester.pumpAndSettle();
+
+    final pushed = api.pushedMutations.where(
+      (m) => m['entityType'] == 'project',
+    );
+    expect(pushed, isNotEmpty);
+    for (final mutation in pushed) {
+      expect(
+        (mutation['patch'] as Map).containsKey('status'),
+        isFalse,
+        reason: 'a project changes state through the archive flow only',
+      );
+    }
+    // The status the row already had is untouched — no migration, nothing lost.
+    expect(api.projects.first['status'], 'paused');
+    expect(api.projects.first['name'], 'Yeni ad');
+  });
+
   testWidgets('FAB create flow syncs to the API and refreshes the list', (
     tester,
   ) async {
@@ -261,7 +302,7 @@ void main() {
   );
 
   testWidgets(
-    'the edit sheet no longer offers "archived" as a status (OPH-110)',
+    'archiving is the ONLY way to change a project\'s state (OPH-110/193)',
     (tester) async {
       final api = FakeApi()..seedProject(name: 'Düzenlenecek');
       await tester.pumpWidget(await signedInAppWith(api));
@@ -273,11 +314,13 @@ void main() {
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();
 
-      // Open the status dropdown; archiving is a dedicated flow, not a plain pick.
-      await tester.tap(find.text('active').last);
-      await tester.pumpAndSettle();
+      // OPH-110 kept 'archived' out of the dropdown so its cascade question
+      // could never be skipped. OPH-193 finished the thought: there is no
+      // dropdown at all, so no status is reachable except through the flow.
+      expect(find.text('active'), findsNothing);
+      expect(find.text('paused'), findsNothing);
       expect(find.text('archived'), findsNothing);
-      expect(find.text('paused'), findsWidgets);
+      expect(find.byType(DropdownButtonFormField<String>), findsNothing);
     },
   );
 }

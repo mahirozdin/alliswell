@@ -192,9 +192,14 @@ class _OverviewTab extends ConsumerWidget {
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            // OPH-193: the chip carries the project's NAME + color, not its
+            // raw server enum. `Text(project.status)` printed "active" /
+            // "paused" at the user in whatever language they were reading —
+            // and the one state that means something, archived, already has
+            // its own banner right above this row.
             Chip(
               avatar: CircleAvatar(backgroundColor: project.color, radius: 8),
-              label: Text(project.status),
+              label: Text(project.name),
             ),
             if (project.isFavorite)
               Chip(

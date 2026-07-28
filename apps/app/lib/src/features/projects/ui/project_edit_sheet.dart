@@ -22,10 +22,17 @@ const kProjectPalette = [
   '#64748B',
 ];
 
-// 'archived' is intentionally NOT selectable here (OPH-110): archiving goes
-// through the dedicated flow so its cascade question is never skipped. An
-// already-archived project keeps its value in the dropdown (see build).
-const kProjectStatuses = ['active', 'paused', 'completed'];
+// OPH-193 (round 10 #8): there is no status picker here any more.
+//
+// It existed only in EDIT mode — the same object had two different forms — and
+// it printed the raw server enum ('active' / 'paused' / 'completed') at the
+// user in whatever language they were reading. It also offered a second way to
+// change a project's state that skipped the archive flow's cascade question.
+//
+// A user has two project states: OPEN and ARCHIVED, and archiving is its own
+// flow (OPH-110). `paused`/`completed` stay valid in the server enum — no
+// migration, nothing breaks — but the app neither produces nor shows them, and
+// anything not archived simply behaves as open (BLUEPRINT §4.2).
 
 String _hexOf(Color color) =>
     '#${color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
@@ -55,7 +62,6 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late String _colorHex;
-  late String _status;
   bool _saving = false;
   String? _error;
 
@@ -66,7 +72,6 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
     super.initState();
     _name = TextEditingController(text: widget.project?.name ?? '');
     _colorHex = widget.project?.colorRgb.toUpperCase() ?? kProjectPalette.first;
-    _status = widget.project?.status ?? 'active';
   }
 
   @override
@@ -90,11 +95,8 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
       _error = null;
     });
     final controller = ref.read(projectsControllerProvider.notifier);
-    final body = {
-      'name': _name.text.trim(),
-      'colorRgb': _colorHex,
-      if (_isEdit) 'status': _status,
-    };
+    // No `status`: a project's state changes through the archive flow only.
+    final body = {'name': _name.text.trim(), 'colorRgb': _colorHex};
     try {
       String? createdId;
       if (_isEdit) {
@@ -173,22 +175,6 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                   ),
                 ],
               ),
-              if (_isEdit) ...[
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: _status,
-                  decoration: InputDecoration(labelText: 'project.status'.tr()),
-                  items: [
-                    for (final status in [
-                      ...kProjectStatuses,
-                      if (!kProjectStatuses.contains(_status)) _status,
-                    ])
-                      DropdownMenuItem(value: status, child: Text(status)),
-                  ],
-                  onChanged: (v) => setState(() => _status = v ?? _status),
-                ),
-              ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 AwInlineError(

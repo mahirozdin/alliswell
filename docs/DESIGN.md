@@ -540,13 +540,19 @@ ayarlardan kullanıcı seçebilecek".)_
   pickers use the full form. Same source, two lengths.
 - **D5 — One date *input* path, the way there is one date *formatter*** _(added
   2026-07-28, feedback round 10 #6 — OPH-191):_ any field that STORES a time must
-  ASK for a time. Every such field calls the shared `awPickDateTime` helper
-  (date picker → time picker; empty field opens on tomorrow per OPH-173; a
-  dismissed clock falls back to the user's default task time per OPH-161).
-  Round 10 found the create sheet asking for date+time while the detail screen
-  asked for date only and then **silently rewrote 14:30 to 23:59** — the same
+  ASK for a time. Task date fields call the shared `awPickDateTime`
+  (`core/date_input.dart`): date picker → time picker; an empty field opens on
+  tomorrow (OPH-173); backing out of the DATE step changes nothing, while
+  dismissing only the CLOCK is not a cancel — the day was chosen, so the time
+  falls back to **the existing value first**, then the user's default task time
+  (OPH-161). That fallback order is the fix itself: round 10 found the create
+  sheet asking for date+time while the detail screen asked for a date and then
+  stamped the default on it, **silently rewriting 14:30 to 23:59**. The same
   field, two behaviours, and the destructive one was invisible. **Editing a value
-  must never change a part of it the user did not touch.**
+  must never change a part of it the user did not touch.** The rule is what is
+  shared, not necessarily the function: the alarm ring screen's custom snooze
+  keeps its own picker because its constraints differ (no past instants, "+30
+  min" default) — it already asks for a time, which is what D5 requires.
 
 ## 18. Reminder system settings (round 9 — OPH-179 / OPH-181)
 
@@ -582,13 +588,17 @@ kurumsal, adım adım tasarlanabilir bir alan".)_
   the in-app bed) — an unusable file is refused with a reason at upload time,
   not by silence at alarm time.
   _(Rev. 2026-07-28, feedback round 10 #5 — OPH-190:)_ **hearing it means being
-  able to stop it.** A preview MUST be stoppable by the control that offers it
-  (a stop icon that is disabled is worse than no icon), tapping another sound
-  MUST switch immediately rather than queue behind the first, and leaving the
-  screen MUST silence it — audio that outlives the surface that started it is the
-  one outcome this section forbids. **Every sound the user can choose is
-  previewable, including their own uploads** — a library you can only audition
-  half of is not a library.
+  able to stop it.** Three rules, each one a defect round 10 hit: a preview MUST
+  be stoppable by the control that offers it — **a control always does what its
+  icon says**, and an icon showing "stop" while `onPressed` is null is a lie;
+  tapping another sound MUST switch immediately rather than queue behind the
+  first (one preview may never disable the others); and leaving the screen MUST
+  silence it — audio that outlives the surface that started it is the one outcome
+  this section forbids. That last one has a mechanical consequence worth stating:
+  the auto-stop is a **cancellable timer**, never an awaited delay, or it keeps
+  running after the preview it belongs to is gone. **Every sound the user can
+  choose is previewable, including their own uploads** — a library you can only
+  audition half of is not a library.
 - **N7 — The whole area obeys the alarm-honesty rules.** Every claim here is
   checked against what the OS actually allows (§11 A4/A6): a profile the device
   cannot deliver exactly, a sound iOS cannot resolve, or a mute switch that will

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/date_format.dart';
+import '../../../core/date_input.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sections.dart';
@@ -352,6 +353,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       ),
                     ),
                     _DateRow(
+                      key: const Key('due-row'),
                       label: 'task.due'.tr(),
                       icon: Icons.flag_outlined,
                       value: task.dueAt,
@@ -361,27 +363,36 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         }),
                       ),
                     ),
-                    // When you'll actually do it — and where a dragged calendar
-                    // event lands (OPH-076). Without this row the two-way sync
-                    // would be invisible in the app.
-                    _DateRow(
-                      key: const Key('scheduled-row'),
-                      label: 'task.scheduledField'.tr(),
-                      icon: Icons.event_outlined,
-                      value: task.scheduledStartAt,
-                      anchor: task.dueAt,
-                      onPicked: (picked) => _apply(
-                        (store, id) => store.update(id, {
-                          'scheduledStartAt': picked?.toUtc().toIso8601String(),
-                          // The end belongs to the block: clearing the start
-                          // clears it, and a moved start must never be left
-                          // behind an end (§7.1 would derive a backwards
-                          // block). Null → the derivation uses 30 minutes.
-                          'scheduledEndAt': null,
-                        }),
+                    // OPH-192 (round 10 #7): NOT a third date field any more.
+                    // "Planlanan" was never in BLUEPRINT §12.4's field list —
+                    // OPH-076 added it so a calendar drag would be visible — and
+                    // as a permanent, empty, unexplained row it read as clutter.
+                    //
+                    // It cannot simply be deleted either: §7.1 derives the
+                    // calendar block from `scheduled_start_at` FIRST, and
+                    // dragging our event in Google writes exactly that (never
+                    // `due_at` — moving a block says "I'll do it then", not "the
+                    // deadline moved"). A hidden field would pin the event in
+                    // place forever with no way to see or clear it.
+                    //
+                    // So: invisible until it applies, and when it applies it
+                    // says what it is and offers the way out.
+                    if (task.scheduledStartAt != null)
+                      _MovedInCalendarRow(
+                        key: const Key('scheduled-row'),
+                        at: task.scheduledStartAt!,
+                        onReset: () => _apply(
+                          (store, id) => store.update(id, {
+                            'scheduledStartAt': null,
+                            // The end belongs to the block: clearing the start
+                            // clears it, and a start left behind an end would
+                            // make §7.1 derive a backwards block.
+                            'scheduledEndAt': null,
+                          }),
+                        ),
                       ),
-                    ),
                     _DateRow(
+                      key: const Key('remind-row'),
                       label: 'task.remind'.tr(),
                       icon: Icons.alarm,
                       value: task.remindAt,
@@ -468,6 +479,52 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
+/// The calendar-drag explanation (OPH-192). Only ever built when the task
+/// actually carries a `scheduledStartAt`, so a user who never drags an event in
+/// their calendar never learns this concept exists — which is the point.
+class _MovedInCalendarRow extends ConsumerWidget {
+  const _MovedInCalendarRow({
+    required this.at,
+    required this.onReset,
+    super.key,
+  });
+
+  final DateTime at;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.event_available_outlined),
+      title: Text(
+        'task.movedInCalendar'.tr(
+          args: {
+            'date': awFormatDateTime(
+              at.toLocal(),
+              format: ref.watch(dateFormatProvider),
+            ),
+          },
+        ),
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        'task.movedInCalendarSub'.tr(),
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      isThreeLine: true,
+      trailing: TextButton(
+        key: const Key('reset-schedule'),
+        onPressed: onReset,
+        child: Text('task.resetSchedule'.tr()),
+      ),
+    );
+  }
+}
+
 class _DateRow extends ConsumerWidget {
   const _DateRow({
     required this.label,
@@ -512,25 +569,18 @@ class _DateRow extends ConsumerWidget {
               icon: const Icon(Icons.close),
               onPressed: () => onPicked(null),
             ),
+      // OPH-191 (DESIGN §17 D5): the SAME input path the create sheet uses —
+      // date AND time. This row used to ask for a date only and then stamp the
+      // default task time on it, so editing the day of a 14:30 task silently
+      // moved it to 23:59.
       onTap: () async {
-        final now = DateTime.now();
-        final picked = await showDatePicker(
-          context: context,
-          // Round 9 #4: an empty field opens on TOMORROW (OPH-173).
-          initialDate: awInitialPickerDate(
-            current: local,
-            anchor: anchor?.toLocal(),
-            now: now,
-          ),
-          firstDate: now.subtract(const Duration(days: 365)),
-          lastDate: now.add(const Duration(days: 365 * 5)),
+        final picked = await awPickDateTime(
+          context,
+          ref,
+          current: local,
+          anchor: anchor?.toLocal(),
         );
-        if (picked != null) {
-          // Day-only pick lands on the user's default task time (OPH-161).
-          onPicked(
-            applyDefaultTaskTime(picked, ref.read(defaultTaskTimeProvider)),
-          );
-        }
+        if (picked != null) onPicked(picked);
       },
     );
   }

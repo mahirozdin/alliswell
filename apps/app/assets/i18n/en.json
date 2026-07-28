@@ -184,7 +184,6 @@
     "clearDue": "Clear due date",
     "remind": "Remind",
     "clearReminder": "Clear reminder",
-    "scheduledField": "Scheduled",
     "clearField": "Clear {field}",
     "urgentAlarm": "Urgent alarm",
     "urgentAlarmSub": "Insistent reminder that must be acknowledged",
@@ -218,7 +217,10 @@
     "alarmTimePassed": "That time has passed — give the task a new one",
     "deleteTooltip": "Delete task",
     "deleteSemantic": "Delete {title}",
-    "deleted": "“{title}” deleted"
+    "deleted": "“{title}” deleted",
+    "movedInCalendar": "Moved in your calendar — {date}",
+    "movedInCalendarSub": "You dragged this task’s event, so it stays at that time instead of following the deadline.",
+    "resetSchedule": "Reset"
   },
   "tag": {
     "inputHint": "Add tag…",
@@ -276,7 +278,6 @@
     "noNotesBody": "No notes attached to this project yet",
     "name": "Name",
     "nameRequired": "Give the project a name",
-    "status": "Status",
     "saveChanges": "Save changes",
     "create": "Create project",
     "edit": "Edit project",
@@ -515,7 +516,9 @@
     "inAppOnlyBadge": "In-app alarm only",
     "inAppOnlyPicked": "Picked — but iOS notifications can’t play this format, so they keep the system sound.",
     "inAppOnlyUpload": "This format can’t be an iOS notification sound; it will play in the in-app alarm.",
-    "rules": "A notification sound must be under 30 seconds and a .caf, .wav or .aiff file — mp3 and m4a can only play in the in-app alarm. On Android, an uploaded sound plays in the in-app alarm; notifications keep a built-in one."
+    "rules": "A notification sound must be under 30 seconds and a .caf, .wav or .aiff file — mp3 and m4a can only play in the in-app alarm. On Android, an uploaded sound plays in the in-app alarm; notifications keep a built-in one.",
+    "stopPreview": "Stop",
+    "previewFailed": "Could not play that sound"
   },
   "widget": {
     "bucket": {

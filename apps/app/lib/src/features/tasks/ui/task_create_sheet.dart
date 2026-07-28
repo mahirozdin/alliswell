@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 
 import '../../../core/date_format.dart';
+import '../../../core/date_input.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
@@ -117,39 +118,15 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   }
 
   /// [anchor]: the date this field lives next to — see [awInitialPickerDate].
-  Future<DateTime?> _pickDateTime(DateTime? current, {DateTime? anchor}) async {
-    final now = DateTime.now();
-    // The user's default task time backs both the picker's starting position
-    // and the "picked a date, dismissed the clock" fallback (OPH-161).
-    final (defHour, defMinute) = parseTaskTime(
-      ref.read(defaultTaskTimeProvider),
-    );
-    final date = await showDatePicker(
-      context: context,
-      // Round 9 #4: an empty field opens on TOMORROW (OPH-173).
-      initialDate: awInitialPickerDate(
-        current: current,
-        anchor: anchor,
-        now: now,
-      ),
-      firstDate: now.subtract(const Duration(days: 365)),
-      lastDate: now.add(const Duration(days: 365 * 5)),
-    );
-    if (date == null || !mounted) return current;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: current != null
-          ? TimeOfDay.fromDateTime(current)
-          : TimeOfDay(hour: defHour, minute: defMinute),
-    );
-    return DateTime(
-      date.year,
-      date.month,
-      date.day,
-      time?.hour ?? defHour,
-      time?.minute ?? defMinute,
-    );
-  }
+  /// OPH-191: the picking itself now lives in one place (`core/date_input.dart`)
+  /// so the detail screen cannot drift away from it again; backing out keeps the
+  /// current value.
+  Future<DateTime?> _pickDateTime(
+    DateTime? current, {
+    DateTime? anchor,
+  }) async =>
+      await awPickDateTime(context, ref, current: current, anchor: anchor) ??
+      current;
 
   Future<void> _create() async {
     if (!_formKey.currentState!.validate()) return;
