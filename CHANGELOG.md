@@ -7,6 +7,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 18 in progress
 
+- **Quick access in the sidebar (OPH-199).** Wide layouts get a "Quick access"
+  section under the navigation destinations: shortcut rows with their emoji or
+  kind icon, the user's own name, a colour dot and — for external links — an
+  explicit glyph, plus drag-to-reorder and a collapsible header. Between 800
+  and 1160 px the rail shows a single ⚡ button that opens the same list in an
+  anchored popover. Every row also offers "move up"/"move down" in its menu,
+  because dragging is the one gesture a screen-reader user cannot aim.
+  Clicking a shortcut navigates: projects, notes, tasks, folders (a new
+  `/files/folder/:id` entry point) and files, with external links opening in
+  the real browser.
+
 - **Quick links on the device (OPH-198).** drift **v13** adds the `quick_links`
   replica and a `QuickAccessStore`: add, rename, emoji, colour, remove and a
   whole-rail reorder, each an optimistic local write plus one outbox mutation,

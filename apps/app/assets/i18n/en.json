@@ -103,7 +103,9 @@
     "dateFormat": {
       "title": "Date format",
       "system": "Follow the app language"
-    }
+    },
+    "quickBubble": "Floating quick-access button",
+    "quickBubbleSub": "Drag it anywhere; tap to open your shortcuts"
   },
   "shell": {
     "fabNewTask": "New task with options",
@@ -600,5 +602,40 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "completedAt": "Completed {time}"
+  },
+  "quick": {
+    "title": "Quick access",
+    "add": "Add",
+    "addLink": "Add link",
+    "rename": "Rename",
+    "emoji": "Emoji",
+    "color": "Color",
+    "remove": "Remove from quick access",
+    "empty": "Add a project, note or link from any ⚡ menu",
+    "externalHint": "Opens in your browser",
+    "addTo": "Add to quick access",
+    "removeFrom": "Remove from quick access",
+    "linkUrl": "Address",
+    "linkTitle": "Name",
+    "limitReached": "50-shortcut limit — remove one first",
+    "added": "Added to quick access",
+    "actions": "Shortcut actions",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "useTargetName": "Use the source's name",
+    "targetRenamed": "Now: {name}",
+    "broken": "Source deleted",
+    "brokenBody": "This shortcut's source no longer exists.",
+    "emojiRecents": "Recently used",
+    "emojiCustom": "Or type one",
+    "invalidEmoji": "One emoji, please",
+    "noColor": "No color",
+    "invalidUrl": "Enter an http or https address",
+    "offlineLink": "You're offline — the link can't open",
+    "emptyPanelTitle": "No shortcuts yet",
+    "emptyPanelBody": "Add a project, note, file or link from its ⚡ menu.",
+    "bubbleIntro": "Your shortcuts live here. Drag it anywhere."
   }
 }

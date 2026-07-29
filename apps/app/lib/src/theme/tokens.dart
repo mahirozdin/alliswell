@@ -31,6 +31,13 @@ abstract final class AwRadius {
   static const double pill = 32;
 }
 
+/// Layout breakpoints (OPH-199). Three surfaces hang off these two numbers —
+/// the phone bottom bar below [kAwWideBreakpoint], the icon rail between them,
+/// the extended rail above [kAwExtendedRailBreakpoint] — so they live here
+/// rather than being retyped at every layout site.
+const double kAwWideBreakpoint = 800;
+const double kAwExtendedRailBreakpoint = 1160;
+
 /// Motion tokens: quick, physical, never decorative-slow.
 abstract final class AwMotion {
   static const Duration fast = Duration(milliseconds: 150);

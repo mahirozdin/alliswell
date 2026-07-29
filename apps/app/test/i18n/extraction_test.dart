@@ -32,6 +32,31 @@ void main() {
     });
   });
 
+  // OPH-199: `check:i18n` is line-based and cannot see strings that reach a
+  // widget as an argument (`title:`, `label:`) — the Quick Access surfaces are
+  // full of those, so their keys are asserted here instead of trusted.
+  group('quick access strings', () {
+    test('resolve in English by default', () {
+      expect('quick.title'.tr(), 'Quick access');
+      expect('quick.addTo'.tr(), 'Add to quick access');
+      expect('quick.broken'.tr(), 'Source deleted');
+      expect('quick.moveUp'.tr(), 'Move up');
+      expect(
+        'quick.targetRenamed'.tr(args: {'name': 'Ahmet'}),
+        contains('Ahmet'),
+      );
+    });
+
+    test('follow the active language', () {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect('quick.title'.tr(), 'Hızlı erişim');
+      expect('quick.addTo'.tr(), 'Hızlı erişime ekle');
+      expect('quick.removeFrom'.tr(), 'Hızlı erişimden kaldır');
+      expect('quick.limitReached'.tr(), contains('50'));
+      expect('settings.quickBubble'.tr(), 'Yüzen hızlı erişim düğmesi');
+    });
+  });
+
   group('shared error state', () {
     testWidgets('renders English by default', (tester) async {
       await tester.pumpWidget(

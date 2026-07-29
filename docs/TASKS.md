@@ -4596,27 +4596,43 @@ almadan; **outbox mutasyonu YOK** çünkü sunucu kaskadı zaten duyuruyor ve ik
 "kullanıcı kaldırdı" yalanı olurdu; (6) dosya silme istemcide REST + pull olduğu için yerel
 kaskad gerektirmiyor (satır pull'da düşüyor).
 
-### OPH-199 — Geniş ekran: rail'de "Hızlı erişim" bölümü (web/masaüstü)
+### OPH-199 — Geniş ekran: rail'de "Hızlı erişim" bölümü (web/masaüstü) ✅ 2026-07-29
 
-- [ ] **Extended rail (≥1160):** bölüm başlığı ("Hızlı erişim" + `bolt` ikonu + "+"
+- [x] **Extended rail (≥1160):** bölüm başlığı ("Hızlı erişim" + `bolt` ikonu + "+"
       düğmesi), altında kısayol satırları — emoji (yoksa tür ikonu) + ad + renk
       noktası (varsa) + dış-link glifi (`kind=url`, G5 gereği renkten bağımsız işaret).
       Tıkla → gezin (OPH-203 tablosu). Satır sonu "⋯" menüsü: **Yeniden adlandır ·
       Emoji · Renk · Kaldır** (hover'da belirir AMA klavye odağında da görünür —
       D2 analoğu). Bölüm başlığı tıklayınca katlanır; tercih cihaz-yerel.
-- [ ] **Dar rail (<1160):** destinations altına `bolt` ikon düğmesi → çıpalı popover
+- [x] **Dar rail (<1160):** destinations altına `bolt` ikon düğmesi → çıpalı popover
       aynı listeyi açar (menüler dahil). Rail'in seçili-bölüm durumuna KARIŞMAZ
       (kısayol bir destination değildir — go_router sekme state'i bozulmaz).
-- [ ] **Sürükleyerek sıralama (fare):** `ReorderableListView` kalıbı rail bölümünde;
+- [x] **Sürükleyerek sıralama (fare):** `ReorderableListView` kalıbı rail bölümünde;
       bırakınca `store.reorder`. Pano'nun D6 dersi burada geçerli değil (dikey liste,
       yatay pager yok) — yine de test edilir.
-- [ ] **Boş durum:** tek satır ipucu ("Menülerdeki ⚡ ile proje, not veya link ekleyin"
+- [x] **Boş durum:** tek satır ipucu ("Menülerdeki ⚡ ile proje, not veya link ekleyin"
       üslubunda, `AwEmptyState` değil — rail'de mikro boş durum, DESIGN §23 Q6).
-- [ ] i18n: `quick.title`, `quick.add`, `quick.addLink`, `quick.rename`, `quick.emoji`,
+- [x] i18n: `quick.title`, `quick.add`, `quick.addLink`, `quick.rename`, `quick.emoji`,
       `quick.color`, `quick.remove`, `quick.empty`, `quick.externalHint` (en+tr).
-- [ ] Testler: extended/dar kırılımda doğru yüzey; satır tıklaması doğru rotaya
+- [x] Testler: extended/dar kırılımda doğru yüzey; satır tıklaması doğru rotaya
       gidiyor; menü eylemleri store'a düşüyor; sıralama mutasyonu; boş durum;
       kontrast (renk noktası + soluk satır çiftleri iki temada).
+
+**OPH-199 uygulama notları:** (1) kırılımlar `kAwWideBreakpoint`/`kAwExtendedRailBreakpoint`
+token'ı oldu (dört çıplak sayı gitti); (2) bölüm `NavigationRail.trailing`'te + `scrollable: true`
++ genişliği sabitlenmiş `SizedBox` — destination olsaydı `selectedIndex` ile `AppSection.values`
+eşlemesi bozulurdu, `SizedBox` olmasaydı uzun bir kısayol adı tüm rail'i genişletirdi;
+(3) **popover'da iki tuzak koddan öğrenildi:** `MenuAnchor` menüsünün **intrinsic yüksekliğini
+ölçüyor** → shrink-wrap viewport bunu cevaplayamıyor (sabit yükseklik verildi) ve iç liste
+`PrimaryScrollController`'ı paylaşınca Scrollbar assert'i patlıyor (`primary: false`);
+(4) **gezinme tablosu bu taskta yazıldı** (satır tıklaması olmadan bölüm yarım kalırdı):
+`quick_access_navigation.dart` saf `quickDestinationFor` + tek "kirli" `openQuickDestination`;
+klasör hedefi için **yeni rota** `/files/folder/:folderId` (+ `FilesScreen.initialFolderId`,
+breadcrumb replikadan kuruluyor) ve dosya hedefi rota değil `showFileActionsSheet`.
+OPH-203 bu tabloyu **devralır**: kırık/arşivli/çevrimdışı davranışlarının testleri ve
+sürüm dokunuşları orada; (5) menüde **emoji/renk maddeleri görünüyor ama seçiciler
+OPH-202'de** geliyor (menü tek yerde tanımlansın diye); (6) DESIGN §23 Q9 gereği her satırda
+"yukarı/aşağı taşı" var — sürükleme yalnız hızlandırıcı.
 
 ### OPH-200 — Telefon: yüzen düğme (bubble) + panel
 

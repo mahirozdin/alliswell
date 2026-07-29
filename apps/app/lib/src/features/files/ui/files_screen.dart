@@ -25,7 +25,12 @@ import 'file_widgets.dart';
 ///   labeled with "go to source" (F4/F7). Never folderable: their lifecycle
 ///   belongs to their owner.
 class FilesScreen extends ConsumerStatefulWidget {
-  const FilesScreen({super.key});
+  const FilesScreen({super.key, this.initialFolderId});
+
+  /// Opens straight inside a folder (OPH-199, `/files/folder/:id`) — the
+  /// entry point a Quick Access shortcut uses. Browsing from there on is
+  /// ordinary local state; only the ENTRY has an address.
+  final String? initialFolderId;
 
   @override
   ConsumerState<FilesScreen> createState() => _FilesScreenState();
@@ -35,6 +40,7 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
   /// Breadcrumb path of folder ids; empty = root ("Dosyalar").
   final List<Folder> _path = [];
   bool _showSources = false;
+  bool _seededPath = false;
 
   String? get _currentFolderId => _path.isEmpty ? null : _path.last.id;
 
@@ -246,8 +252,32 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
     }
   }
 
+  /// Walks the replica's folder tree up from [FilesScreen.initialFolderId] so
+  /// the breadcrumb reads the same as if the user had clicked their way in.
+  /// Runs once, and only when the tree is loaded — a shortcut opened offline
+  /// before the first pull simply lands at the root.
+  void _seedPathFromRoute(List<Folder> folders) {
+    final target = widget.initialFolderId;
+    if (_seededPath || target == null || folders.isEmpty) return;
+    final byId = {for (final folder in folders) folder.id: folder};
+    final chain = <Folder>[];
+    var cursor = byId[target];
+    while (cursor != null && !chain.any((f) => f.id == cursor!.id)) {
+      chain.insert(0, cursor);
+      cursor = cursor.parentId == null ? null : byId[cursor.parentId];
+    }
+    if (chain.isEmpty) return;
+    _seededPath = true;
+    _path
+      ..clear()
+      ..addAll(chain);
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.initialFolderId != null && !_seededPath) {
+      _seedPathFromRoute(ref.watch(foldersProvider).value ?? const []);
+    }
     Future<bool> refresh() => refreshSection(ref, AppSection.files);
     return Scaffold(
       appBar: buildSectionAppBar(context, 'nav.files'.tr(), onRefresh: refresh),

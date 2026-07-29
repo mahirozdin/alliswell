@@ -13,6 +13,10 @@ class FakeApi {
   final List<Map<String, dynamic>> tags = [];
   final List<Map<String, dynamic>> folders = [];
   final List<Map<String, dynamic>> notes = [];
+
+  /// OPH-199: the signed-in user's quick access rail. User-scoped on the real
+  /// server (ADR-0018); the fake has one user, so the list IS the rail.
+  final List<Map<String, dynamic>> quickLinks = [];
   final List<String> requests = [];
 
   /// Every mutation the client actually pushed, in order. Request paths alone
@@ -111,6 +115,33 @@ class FakeApi {
     folders.add(folder);
     _bump();
     return folder;
+  }
+
+  Map<String, dynamic> seedQuickLink({
+    required String kind,
+    required String title,
+    String? targetId,
+    String? url,
+    String? emoji,
+    String? colorRgb,
+  }) {
+    _seq += 1;
+    final link = {
+      'id': 'QCK$_seq'.padRight(26, '0'),
+      'workspaceId': workspaceId,
+      'userId': 'user-1',
+      'kind': kind,
+      'targetId': targetId,
+      'url': url,
+      'title': title,
+      'emoji': emoji,
+      'colorRgb': colorRgb,
+      'sortOrder': quickLinks.length * 1024,
+      'revision': 1,
+    };
+    quickLinks.add(link);
+    _bump();
+    return link;
   }
 
   Map<String, dynamic> seedTag({required String name}) {
@@ -666,6 +697,9 @@ class FakeApi {
       }
       for (final f in folders) {
         snapshot('folder', f);
+      }
+      for (final q in quickLinks) {
+        snapshot('quick_link', q);
       }
       for (final t in tasks) {
         snapshot('task', t);

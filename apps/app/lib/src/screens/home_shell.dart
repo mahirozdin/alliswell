@@ -7,6 +7,7 @@ import '../features/calendar/apple/providers.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
+import '../features/quick_access/ui/quick_access_rail_section.dart';
 import '../features/tasks/providers.dart';
 import '../features/tasks/ui/task_create_sheet.dart';
 import '../features/widgets/widget_bridge.dart';
@@ -161,7 +162,8 @@ class HomeShell extends ConsumerWidget {
 
     final shell = LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 800;
+        final isWide = constraints.maxWidth >= kAwWideBreakpoint;
+        final extendedRail = constraints.maxWidth >= kAwExtendedRailBreakpoint;
         if (isWide) {
           return Scaffold(
             backgroundColor: Colors.transparent,
@@ -183,14 +185,27 @@ class HomeShell extends ConsumerWidget {
                     child: SafeArea(
                       right: false,
                       child: NavigationRail(
-                        extended: constraints.maxWidth >= 1160,
-                        labelType: constraints.maxWidth >= 1160
+                        extended: extendedRail,
+                        labelType: extendedRail
                             ? NavigationRailLabelType.none
                             : NavigationRailLabelType.all,
                         selectedIndex: navigationShell.currentIndex,
                         onDestinationSelected: _goBranch,
                         minWidth: 84,
                         groupAlignment: -0.9,
+                        // OPH-199: the shortcut section sits right under the
+                        // destinations. `scrollable` is not optional — a full
+                        // rail on a short window would otherwise overflow.
+                        scrollable: true,
+                        trailing: SizedBox(
+                          // The rail lives in an unbounded Row, and
+                          // `minExtendedWidth` is only a floor, so a long
+                          // shortcut title would otherwise widen the whole rail.
+                          width: extendedRail ? 256 : 84,
+                          child: extendedRail
+                              ? const QuickAccessRailSection()
+                              : const QuickAccessRailButton(),
+                        ),
                         destinations: [
                           for (final section in AppSection.values)
                             NavigationRailDestination(
@@ -298,7 +313,7 @@ AppBar buildSectionAppBar(
   String title, {
   Future<bool> Function()? onRefresh,
 }) {
-  final wide = MediaQuery.sizeOf(context).width >= 800;
+  final wide = MediaQuery.sizeOf(context).width >= kAwWideBreakpoint;
   return AppBar(
     title: Text(title),
     actions: [

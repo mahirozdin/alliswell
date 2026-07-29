@@ -54,6 +54,12 @@ PAIRS = [
     ('L prio high flag', '#E8500A', '#FFFFFF', 3.0),
     ('L prio urgent flag', '#E3261A', '#FFFFFF', 3.0),
     ('L warning star', '#C77700', '#FFFFFF', 3.0),
+    # OPH-199/DESIGN §23 Q8a — the quick-access colour dot carries its contrast
+    # in a 1 px `outline` ring, because half the palette cannot clear 3:1 as a
+    # bare fill and project colour is not even bounded to the palette. These
+    # two pairs are the ring, on the surfaces the rail actually sits on.
+    ('L quick dot ring on surface', '#63789E', '#FFFFFF', 3.0),
+    ('L quick dot ring on glass', '#63789E', '#D6E5FF', 3.0),
     ('L tertiary dot', '#0C7D6C', '#FFFFFF', 3.0),
     ('L primary icon on surface', '#0A5CFF', '#FFFFFF', 3.0),
     # ── Dark ── text (>= 4.5)
@@ -79,6 +85,8 @@ PAIRS = [
     ('D prio high flag', '#FF8A1E', '#151F3C', 3.0),
     ('D prio urgent flag', '#FF453A', '#151F3C', 3.0),
     ('D warning star', '#FFC400', '#151F3C', 3.0),
+    ('D quick dot ring on surface', '#7186B5', '#151F3C', 3.0),
+    ('D quick dot ring on glass', '#7186B5', '#111A38', 3.0),
     ('D tertiary dot', '#35D6C2', '#151F3C', 3.0),
     # ── Glass chrome (effective blends over the wash)
     ('L text on glass chrome', '#0F1B2E', '#EEF4FF', 4.5),

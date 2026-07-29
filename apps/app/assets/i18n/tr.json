@@ -102,7 +102,9 @@
     "dateFormat": {
       "title": "Tarih biçimi",
       "system": "Uygulama diline uy"
-    }
+    },
+    "quickBubble": "Yüzen hızlı erişim düğmesi",
+    "quickBubbleSub": "İstediğiniz yere sürükleyin; dokununca kısayollar açılır"
   },
   "shell": {
     "fabNewTask": "Seçeneklerle yeni görev",
@@ -599,5 +601,40 @@
     "today": "Bugün",
     "yesterday": "Dün",
     "completedAt": "{time} tamamlandı"
+  },
+  "quick": {
+    "title": "Hızlı erişim",
+    "add": "Ekle",
+    "addLink": "Bağlantı ekle",
+    "rename": "Yeniden adlandır",
+    "emoji": "Emoji",
+    "color": "Renk",
+    "remove": "Hızlı erişimden kaldır",
+    "empty": "Menülerdeki ⚡ ile proje, not veya bağlantı ekleyin",
+    "externalHint": "Tarayıcıda açılır",
+    "addTo": "Hızlı erişime ekle",
+    "removeFrom": "Hızlı erişimden kaldır",
+    "linkUrl": "Adres",
+    "linkTitle": "Ad",
+    "limitReached": "50 kısayol sınırı — önce birini kaldırın",
+    "added": "Hızlı erişime eklendi",
+    "actions": "Kısayol işlemleri",
+    "collapse": "Katla",
+    "expand": "Aç",
+    "moveUp": "Yukarı taşı",
+    "moveDown": "Aşağı taşı",
+    "useTargetName": "Kaynağın adını al",
+    "targetRenamed": "Şimdi: {name}",
+    "broken": "Kaynak silinmiş",
+    "brokenBody": "Bu kısayolun kaynağı artık yok.",
+    "emojiRecents": "Son kullanılanlar",
+    "emojiCustom": "Ya da bir tane yazın",
+    "invalidEmoji": "Tek bir emoji girin",
+    "noColor": "Renk yok",
+    "invalidUrl": "http ya da https adresi girin",
+    "offlineLink": "Çevrimdışısınız — bağlantı açılamıyor",
+    "emptyPanelTitle": "Henüz kısayol yok",
+    "emptyPanelBody": "Proje, not, dosya ya da bağlantıyı ⚡ menüsünden ekleyin.",
+    "bubbleIntro": "Kısayolların burada. İstediğin yere sürükle."
   }
 }

@@ -186,6 +186,22 @@ final routerProvider = Provider<GoRouter>((ref) {
                     AppSection.notes => const NotesScreen(),
                   },
                   routes: [
+                    // OPH-199: a folder shortcut needs an ADDRESS, not a
+                    // provider — tapping the Files tab calls
+                    // `goBranch(initialLocation: true)`, which resets the
+                    // location but would not reset lifted state, so a shortcut
+                    // would keep re-opening its folder after the user asked
+                    // for the section root (OPH-108's rule). The route is the
+                    // entry point, not an address per breadcrumb level.
+                    if (section == AppSection.files)
+                      GoRoute(
+                        path: 'folder/:folderId',
+                        builder: (context, state) => _page(
+                          FilesScreen(
+                            initialFolderId: state.pathParameters['folderId']!,
+                          ),
+                        ),
+                      ),
                     if (section == AppSection.projects)
                       GoRoute(
                         path: ':projectId',
