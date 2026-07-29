@@ -62,6 +62,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed — Epic 19 in progress
 
+- **Finishing something late clears it out of your way (OPH-211).** A task
+  completed today used to stay on the list until midnight no matter what — so a
+  task that was already overdue sat under a red "Geciken" header, struck
+  through, still counted. Now the day-long stay applies only when the task is
+  due **today** or has no date at all; an overdue one leaves the planning lists
+  the moment it is done and lives in Settings ▸ Completed. The group counts and
+  the widget follow for free, because the row is simply not in the list.
+
 - **Every task is on your calendar now, and it is not a setting (OPH-210).**
   The "show in calendar" switch is gone. A dated task becomes a 30-minute block
   at its own time — clamped so it cannot cross midnight, which is why the

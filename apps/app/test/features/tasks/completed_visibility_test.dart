@@ -33,6 +33,92 @@ void main() {
     return id;
   }
 
+  /// Same, plus a due date — the round 12 rule turns on it.
+  Future<String> completedWithDue(
+    String title,
+    DateTime when,
+    DateTime? due,
+  ) async {
+    final id = await store.create(ws, {
+      'title': title,
+      if (due != null) 'dueAt': due.toUtc().toIso8601String(),
+    });
+    await store.complete(id);
+    await (db.update(db.tasks)..where((t) => t.id.equals(id))).write(
+      TasksCompanion(completedAt: Value(when.toUtc())),
+    );
+    return id;
+  }
+
+  group('overdue work leaves the moment it is done (OPH-211, §20 C1)', () {
+    final now = DateTime(2026, 7, 28, 14, 30);
+    final dayStart = awStartOfDay(now);
+
+    test(
+      'a task due YESTERDAY, completed today, is gone from the list',
+      () async {
+        await completedWithDue(
+          'Geciken bitti',
+          now,
+          dayStart.subtract(const Duration(hours: 5)),
+        );
+
+        final open = await store.watchOpen(ws, completedSince: dayStart).first;
+        expect(open.map((t) => t.title), isNot(contains('Geciken bitti')));
+
+        // …but it is in the archive, which is its address from that instant.
+        final archive = await store.watchCompleted(ws, limit: 20).first;
+        expect(archive.map((t) => t.title), contains('Geciken bitti'));
+      },
+    );
+
+    test(
+      'a task due TODAY, completed today, stays (OPH-185 regression)',
+      () async {
+        await completedWithDue('Bugün bitti', now, now);
+        final open = await store.watchOpen(ws, completedSince: dayStart).first;
+        expect(open.map((t) => t.title), contains('Bugün bitti'));
+      },
+    );
+
+    test(
+      'a DATELESS completed task stays — it belongs to no overdue group',
+      () async {
+        await completedWithDue('Tarihsiz bitti', now, null);
+        final open = await store.watchOpen(ws, completedSince: dayStart).first;
+        expect(open.map((t) => t.title), contains('Tarihsiz bitti'));
+      },
+    );
+
+    test('the same rule holds inside a project list', () async {
+      const project = 'P1';
+      final overdueId = await completedWithDue(
+        'Proje gecikeni',
+        now,
+        dayStart.subtract(const Duration(days: 2)),
+      );
+      final todayId = await completedWithDue('Proje bugünü', now, now);
+      for (final id in [overdueId, todayId]) {
+        await (db.update(db.tasks)..where((t) => t.id.equals(id))).write(
+          const TasksCompanion(projectId: Value(project)),
+        );
+      }
+
+      final rows = await store
+          .watchProjectTasks(ws, project, completedSince: dayStart)
+          .first;
+      expect(rows.map((t) => t.title), contains('Proje bugünü'));
+      expect(rows.map((t) => t.title), isNot(contains('Proje gecikeni')));
+    });
+
+    test('at the next midnight even today’s completed work is gone', () async {
+      await completedWithDue('Bugün bitti', now, now);
+      final tomorrow = awStartOfDay(now.add(const Duration(days: 1)));
+      final open = await store.watchOpen(ws, completedSince: tomorrow).first;
+      expect(open, isEmpty);
+    });
+  });
+
   group('watchOpen', () {
     test(
       'keeps a task completed today, drops one completed yesterday',

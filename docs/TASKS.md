@@ -5193,20 +5193,28 @@ kuyruğunda.**
 
 ### OPH-211 — Geciken grubunda tamamlanmış satır kalmaz (round 12 #3)
 
-- [ ] **Kural revizyonu (BLUEPRINT §12.2 + DESIGN §20 C1 — bu turda yazıldı):**
+- [x] **Kural revizyonu (BLUEPRINT §12.2 + DESIGN §20 C1 — bu turda yazıldı):**
       tamamlanan görev gün sonuna kadar YALNIZ vadesi bugün olan (veya tarihsiz)
       ise listede kalır; **vadesi geçmiş görev tamamlanınca planlama listelerinden
       ANINDA düşer** — doğrudan Tamamlananlar'a (OPH-186). "Geciken" başlığının
       altında üstü çizili satır bir bilgi vermiyor; kullanıcının cümlesi kuraldır.
-- [ ] Sorgu: `watchOpen`/`watchProjectTasks`'ın `completedSince` dalına vade sınırı
+- [x] Sorgu: `watchOpen`/`watchProjectTasks`'ın `completedSince` dalına vade sınırı
       eklenir (`completed AND (dueAt IS NULL OR dueAt >= bugünBaşlangıcı)`); grup
       sayaçları ("Geciken · N") tamamlananları saymaz; `dayBoundaryProvider` canlılığı
       aynen (OPH-185 altyapısı).
-- [ ] Widget aynı kuralı alır (snapshot kaynağı `openTasksProvider` — bedava ama test
+- [x] Widget aynı kuralı alır (snapshot kaynağı `openTasksProvider` — bedava ama test
       edilir); Pano'nun completed sütunu ETKİLENMEZ (o ekranın sözleşmesi farklı).
-- [ ] Testler: dün vadeli + bugün tamamlanan → listede YOK, Tamamlananlar'da VAR;
+- [x] Testler: dün vadeli + bugün tamamlanan → listede YOK, Tamamlananlar'da VAR;
       bugün vadeli + tamamlanan → grubunun sonunda kalır (OPH-185 regresyonu);
       tarihsiz + tamamlanan → kalır; gece yarısı geçişi; grup sayacı.
+
+**Uygulama notu (2026-07-29):** düzeltme **tek satır** oldu — `_completedSince`e
+`AND (dueAt IS NULL OR dueAt >= günBaşlangıcı)`. `watchOpen` ve `watchProjectTasks`
+aynı `_watchList`ten geçtiği için ikisi birden düzeldi; grup sayaçları ve widget
+`openTasksProvider` üzerinden **bedavaya** doğru oldu (satır listeye hiç girmiyor,
+sayaç da onu saymıyor). 5 yeni sorgu testi: dün vadeli+tamamlanan listede YOK ve
+arşivde VAR, bugün vadeli KALIR (OPH-185 regresyonu), tarihsiz KALIR, proje listesinde
+aynı kural, gece yarısında bugünkü de düşer. **App 648 test.**
 
 ### OPH-212 — Proje düzenle sheet'i menünün altında açılıyor (round 12 #4)
 

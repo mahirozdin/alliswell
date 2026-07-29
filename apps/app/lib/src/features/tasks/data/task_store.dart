@@ -65,14 +65,24 @@ class TaskStore {
         (t.status.isIn(kPlanningStatuses) | _completedSince(t, completedSince)),
   );
 
-  /// "Completed on or after this instant" — or nothing at all when the caller
-  /// passed no boundary. A constant false keeps the two branches of the OR
-  /// symmetrical instead of forcing every caller to build two queries.
+  /// "Completed on or after this instant, AND still worth showing today" — or
+  /// nothing at all when the caller passed no boundary. A constant false keeps
+  /// the two branches of the OR symmetrical instead of forcing every caller to
+  /// build two queries.
+  ///
+  /// The due bound is round 12 #3 (OPH-211, DESIGN §20 C1 as revised):
+  /// completing a task is feedback, so it stays put for the rest of the day —
+  /// but only when its due date is TODAY, or it has none. A task that was
+  /// already overdue leaves the planning lists the moment it is done: a
+  /// struck-through row under a red "Geciken" header tells the user nothing
+  /// they do not know, and inflates the one count that should mean "still owed".
+  /// Its address from that instant is the Completed archive (§20 C4).
   Expression<bool> _completedSince($TasksTable t, DateTime? since) =>
       since == null
       ? const Constant(false)
       : t.status.equals('completed') &
-            t.completedAt.isBiggerOrEqualValue(since.toUtc());
+            t.completedAt.isBiggerOrEqualValue(since.toUtc()) &
+            (t.dueAt.isNull() | t.dueAt.isBiggerOrEqualValue(since.toUtc()));
 
   /// The Completed archive (OPH-186, DESIGN §20 C4), newest first.
   ///
