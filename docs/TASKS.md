@@ -5091,29 +5091,54 @@ analyze + i18n + kontrast (FAILURES: 0) + format + lint temiz.
 
 ### OPH-209 — Takvim araştırması: aynanın seçeneksizleşmesi + Google Tasks / Apple Reminders değerlendirmesi + ADR-0021 (kod yazmaz)
 
-- [ ] **Mevcut davranışın yazılı dökümü (kanıt üstte):** `calendar_mirror_enabled`
+- [x] **Mevcut davranışın yazılı dökümü (kanıt üstte):** `calendar_mirror_enabled`
       opt-in + §7.1'in "scheduled/urgent" şartı → hangi görev bugün takvime gidiyor,
       hangisi gitmiyor; switch'in tarihçesi (OPH-081) ve ölümünün etkileri.
-- [ ] **Senkron todo-app incelemesi (≥3):** Todoist, TickTick, Any.do — Google
+- [x] **Senkron todo-app incelemesi (≥3):** Todoist, TickTick, Any.do — Google
       tarafına **event mi yazıyorlar, Google Tasks'a todo mu**; iki yönlü mü; silme/
       tamamlama nasıl yansıyor. Bulgular tabloyla.
-- [ ] **Doğrudan todo eşlemesi değerlendirmesi (Mahir'in tercihi "destekliyorsa
+- [x] **Doğrudan todo eşlemesi değerlendirmesi (Mahir'in tercihi "destekliyorsa
       birebir öyle"):** **Google Tasks API** (sınırları yazılır — ör. due'nun saat
       hassasiyeti, liste modeli, push bildirimi var mı) ve **Apple EKReminder**
       (EventKit'in Reminders yakası — ayrı izin, cihaz-yerel). Karar + faz planı:
       v1'de ne (event bloğu herkese), v-next'te ne (todo eşlemesi hangi koşulla) —
       ADR-0021'e.
-- [ ] **Blok kuralı netleşir (planlama varsayılanı):** tarihli görev = görev saatinde
+- [x] **Blok kuralı netleşir (planlama varsayılanı):** tarihli görev = görev saatinde
       başlayan **30 dk blok**; blok gece yarısını taşacaksa güne kenetlenir → 23:59
       vadeli (saatsiz) görev **23:29–23:59** olur (Mahir'in verdiği aralık, varsayılan
       saatin sonucu); **tarihsiz görev ekleniş gününe** aynı kuralla girer (Mahir'in
       açık kuralı: "ekleniş tarihi baz alınır"). Tamamlanan görevin bloğunun kaderi
       (kalır+işaretlenir / silinir) araştırmada kararlaştırılıp ADR'ye yazılır.
-- [ ] **Hacim/kota analizi:** tüm görevlerin aynalanması = mevcut davranışın kat kat
+- [x] **Hacim/kota analizi:** tüm görevlerin aynalanması = mevcut davranışın kat kat
       üstünde Google API çağrısı (backfill + günlük akış); mirror kuyruğunun rate
       limit stratejisi ve büyük workspace senaryosu ADR'de.
-- [ ] Gizlilik/onam: "tüm görevlerin takvime yazılması" bağlantı ekranının metnine
+- [x] Gizlilik/onam: "tüm görevlerin takvime yazılması" bağlantı ekranının metnine
       girer (kullanıcı Google'a neyin akacağını bilir).
+
+**Kararlar (2026-07-29) — [ADR-0021](adr/0021-calendar-mirror-v2.md):**
+
+**Todo eşlemesi REDDEDİLDİ (kullanıcı kararı bana bırakmıştı), gerekçe kaynaklı:**
+
+| Aday | Belirleyici bulgu | Sonuç |
+| --- | --- | --- |
+| **Google Tasks** | API referansı: `due` için *"Only date information is recorded; the time portion of the timestamp is discarded"* ve *"It isn't possible to read or write the time that a task is scheduled for using the API."* | **RET.** AllisWell'in HER görevinin bir saati var (varsayılan 23:59, alarmlar o saatte çalıyor, 30 dk blok ondan türüyor). Saati sessizce düşüren bir eşleme, §11 A4'ün yasakladığı yalanın ta kendisi. |
+| **Google Tasks (değişiklik bildirimi)** | Calendar/Gmail/Drive'ın watch kanalı var, **Tasks'ın yok** — kendi rehberi yoklamayı söylüyor | Artımlı Calendar hattının yanına yalnız-yoklama ikinci bir hat: daha kayıplı bir temsil için koca bir alt sistem. |
+| **Apple EKReminder** | iOS 17'den beri **ayrı izin** (`NSRemindersFullAccessUsageDescription` / `requestFullAccessToReminders`), tamamen **cihaz-yerel** | Sunucunun uzlaştıramayacağı bir yazım; ikinci izin diyaloğu cabası. |
+
+**Yeniden değerlendirme koşulu ADR'de yazılı:** Google Tasks bir gün *saat taşıyabilir*
+**ve** değişiklik sinyali verebilirse. O güne kadar event bloğu bir taviz değil, **saati
+koruyan tek temsil** — saat de ürünün kendisi.
+
+**Sabitlenen kararlar:** switch ölür (kolon **makine bastırma bayrağı** olarak kalır —
+`lib/inbound.js`'in "kullanıcı Google'da sildi" dalının tek kayıt yeri); blok kuralı
+`scheduled_*` → 30 dk → gece yarısı kenetlemesi (23:29–23:59) → tarihsiz ekleniş günü;
+**tamamlanan görevin bloğu KALIR, başlığı `✓` alır** (iptal/arşiv/silinen hâlâ siliniyor);
+backfill penceresi **-30 gün → +12 ay**; **429/Retry-After + eşzamanlılık tavanı
+backfill'den ÖNCE** yazılır; onam metni "tüm görevler takvime yazılır" der.
+
+**Kaynaklar:** [Google Tasks API — Tasks resource](https://developers.google.com/workspace/tasks/reference/rest/v1/tasks) ·
+[Google Tasks API limits](https://developers.google.com/workspace/tasks/limits) ·
+[Apple — EventKit reminders access](https://developer.apple.com/documentation/eventkit/ekeventstore/requestfullaccesstoreminders(completion:))
 
 ### OPH-210 — Takvim aynası v2: her görev takvimde, hiçbir yerde seçenek yok
 

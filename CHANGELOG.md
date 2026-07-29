@@ -62,6 +62,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed — Epic 19 in progress
 
+- **The calendar mirror's shape is decided, and the native-todo mapping is
+  refused with a reason (OPH-209, docs only).** The owner asked for a direct
+  Google Tasks / Apple Reminders mapping *if the provider supports it properly*.
+  It does not: the Tasks API records only the DATE — *"It isn't possible to read
+  or write the time that a task is scheduled for using the API"* — and every
+  AllisWell task has a time (the default is 23:59, the alarms fire on it, the
+  30-minute block derives from it). It also has no push channel, unlike
+  Calendar; and Apple's `EKReminder` is a separate iOS permission with no server
+  side at all. So the event block is not a compromise, it is the only
+  representation that keeps the time. ADR-0021 records the condition for
+  revisiting, plus the rest of v2: the opt-in switch dies (the column survives
+  as a machine suppression flag, because the inbound side needs somewhere to
+  record "the user deleted this event in Google"), completed tasks KEEP their
+  block with a `✓`, the backfill is bounded to −30 days → +12 months, and
+  429/Retry-After handling lands *before* the backfill rather than after it.
+
 - **The recurrence rule model is decided, and it clamps (OPH-204, docs only).**
   A sourced round across RFC 5545, RFC 7529, Google Calendar, Outlook, Todoist,
   TickTick and Apple Reminders settled the question the feature turns on: the same
