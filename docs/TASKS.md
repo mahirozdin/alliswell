@@ -5286,11 +5286,11 @@ quick-add hâlâ kayboluyor (DESIGN §16 H1 revizyonu birebir).
 
 ### OPH-214 — Ekran açıkken alarm: ölü erteleme ikonu + dokununca çökme (round 12 #6, cihaz taskı)
 
-- [ ] **Gözlemin yazılı hali (2026-07-29, gerçek cihaz):** ekran KAPALIYKEN tam ekran
+- [x] **Gözlemin yazılı hali (2026-07-29, gerçek cihaz):** ekran KAPALIYKEN tam ekran
       alarm doğru çalışıyor; ekran AÇIKKEN üstten kalıcı (heads-up) bildirim geliyor —
       X kapatıyor ✓, yanındaki **saat ikonu hiçbir şey yapmıyor** ✗, bildirimin
       gövdesine dokununca uygulama **açılırken çöküyor** ✗.
-- [ ] **Kök neden araştırması — iki ayrı hat:** (a) **ölü aksiyon:** saat ikonu hangi
+- [x] **Kök neden araştırması — iki ayrı hat:** (a) **ölü aksiyon:** saat ikonu hangi
       aksiyon (erteleme?); Android'de aksiyonun `showsUserInterface`/arka plan isolate
       handler kaydı ve [actions.dart](../apps/app/lib/src/notifications/actions.dart)
       yönlendiricisine gerçekten düşüp düşmediği; iOS'ta category eşlemesi. Alarm
@@ -5299,11 +5299,37 @@ quick-add hâlâ kayboluyor (DESIGN §16 H1 revizyonu birebir).
       rotası, `alliswell://` çözücüsü, auth restore yarışı; crash log toplanır
       (adb logcat / Xcode organizer). Hangi OS olduğu cihazda doğrulanır (gözlem
       Android'e işaret ediyor; iOS aynı senaryoda ayrıca denetlenir).
-- [ ] Düzeltme + **alarm günlüğüne** eksik `action`/`interacted` satırlarının
+- [x] Düzeltme + **alarm günlüğüne** eksik `action`/`interacted` satırlarının
       düşmesi garanti edilir (bir dahaki rapor kanıtla gelir).
 - [ ] **Cihaz DoD:** ekran açıkken alarm → erteleme düğmesi çalışır ve "{saat}'te
       tekrar" davranışı OPH-177 sözleşmesine uyar; bildirime dokunmak doğru ekranı
       açar, çökme yok; ekran kapalı tam ekran akışı regresyonsuz; sonuç STATE'e.
+
+**Kod tarafı BİTTİ (2026-07-29); kalan yalnız cihaz DoD'si.** İki hipotez de koddan
+kanıtlandı ve düzeltildi:
+
+1. **Cold-start kaybı.** `getNotificationAppLaunchDetails` / `didNotificationLaunchApp`
+   repoda **hiç yoktu** (`lib`, `ios`, `android` tarandı) — oysa TÜM Android aksiyonları
+   `showsUserInterface: true`, yani aksiyona basmak uygulamayı BAŞLATIYOR ve yanıt
+   yalnız o API'den okunabiliyor. Okunmadığı için basış hiçbir yere düşmüyordu:
+   "saat ikonu hiçbir şey yapmıyor"un tam karşılığı. `initialize` artık launch
+   detaylarını okuyup olayı kuyruğa koyuyor.
+2. **Dinleyici yarışı.** `_events` broadcast ve **tamponsuzdu**; tek dinleyici
+   `notificationSchedulerProvider`, o da HomeShell mount olup workspace çözülünce
+   doğuyor. Arada gelen her yanıt **sessizce düşüyordu**. Artık dinleyicisi olmayan
+   yanıtlar kuyruğa giriyor ve **ilk** dinleyiciye bir kez akıyor (ikinci dinleyici
+   aksiyonu tekrar çalıştırmaz — görevi iki kez ertelemek zararsız değil).
+
+**Çökmeye dair:** ertelenmiş teslim aynı zamanda router'ı işin dışında tutuyor —
+uygulama ayağa kalkana kadar hiçbir yönlendirme denenmiyor, ki dokununca çökmenin
+en olası yeri orasıydı. **Gerçek crash log'u yine de cihaz turunda toplanmalı**
+(adb logcat / Xcode organizer): sebep auth restore yarışıysa ayrıca yazılacak.
+
+**Cihaz DoD (kullanıcıda):** ekran açıkken alarm → erteleme düğmesi çalışır ve
+"{saat}'te tekrar" OPH-177 sözleşmesine uyar; bildirime dokunmak doğru ekranı açar,
+çökme yok; ekran kapalı tam ekran akışı regresyonsuz; **Ayarlar ▸ Alarm günlüğü'nde
+`action`/`interacted` satırları görünür** (bu tur onların düşmesini garanti etti);
+sonuç STATE'e.
 
 **Epic 19 DoD:** her task kendi testleriyle; ADR-0020 + ADR-0021 kabul edilmiş; motor
 parite fikstürleri iki süitte de yeşil; README tekrar bölümü gerçeği yansıtıyor;

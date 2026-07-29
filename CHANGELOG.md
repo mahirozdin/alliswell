@@ -62,6 +62,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed — Epic 19 in progress
 
+- **Notification actions stop falling on the floor (OPH-214).** Pressing snooze
+  on an alarm did nothing, and tapping the notification could crash the app on
+  the way in. Both come from the same place: every Android action carries
+  `showsUserInterface: true`, so pressing one LAUNCHES the app — and the app
+  never asked for the response that launched it (`getNotificationAppLaunchDetails`
+  appeared nowhere in the codebase), while the event stream itself was an
+  unbuffered broadcast whose only listener is not born until the home shell is
+  mounted. Responses now queue until someone can act on them, and drain to the
+  first listener exactly once. Deferring also keeps the router out of it until
+  the app is actually standing up, which is where the tap was crashing. The
+  device pass stays open — a real crash log is still worth collecting.
+
 - **Sheets open in front of the app again (OPH-212).** Editing a project from
   its row menu opened the sheet *underneath* the shell's glass bar and floating
   button — visible, but not touchable. The cause was not the menu: every

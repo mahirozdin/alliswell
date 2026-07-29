@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -51,12 +51,59 @@ class LocalNotificationsGateway implements NotificationsGateway {
   final _events = StreamController<NotificationEvent>.broadcast();
   bool _initialized = false;
 
+  /// Responses that arrived before anyone was listening (OPH-214).
+  ///
+  /// The only listener is `notificationSchedulerProvider`, which is not born
+  /// until HomeShell is mounted and the workspace has resolved — but a press on
+  /// a notification action LAUNCHES the app, so the response is ready long
+  /// before that. A plain broadcast controller drops anything sent to nobody,
+  /// which is precisely how the snooze button came to do nothing: the work was
+  /// computed, then thrown away.
+  ///
+  /// So they queue here and drain to the first listener. Deferring rather than
+  /// dropping also keeps the router out of it until the app is actually
+  /// standing up, which is where a tap-to-open was crashing.
+  final _pending = <NotificationEvent>[];
+  bool _delivered = false;
+
   /// Cached critical-alerts grant (iOS/macOS). Refreshed on initialize and
   /// on every permission request; consulted per-schedule.
   bool _criticalEnabled = false;
 
   @override
-  Stream<NotificationEvent> get events => _events.stream;
+  Stream<NotificationEvent> get events {
+    // `onListen` fires on EVERY new subscriber; only the first one gets the
+    // backlog, or a second listener would re-run actions that already ran.
+    _events.onListen = () {
+      if (_delivered) return;
+      _delivered = true;
+      final queued = [..._pending];
+      _pending.clear();
+      // Microtask: the subscription is not wired up until this callback
+      // returns, so emitting synchronously would still hit nobody.
+      scheduleMicrotask(() {
+        for (final event in queued) {
+          if (!_events.isClosed) _events.add(event);
+        }
+      });
+    };
+    return _events.stream;
+  }
+
+  /// Feeds a response through the real queue-or-send path, for tests that must
+  /// prove a press arriving BEFORE the app is listening still lands (OPH-214).
+  @visibleForTesting
+  void debugEmit(NotificationEvent event) => _emit(event);
+
+  /// Every response goes through here, so "queue it or send it" is decided in
+  /// exactly one place.
+  void _emit(NotificationEvent event) {
+    if (_events.hasListener) {
+      _events.add(event);
+    } else {
+      _pending.add(event);
+    }
+  }
 
   @override
   Future<void> initialize() async {
@@ -131,13 +178,29 @@ class LocalNotificationsGateway implements NotificationsGateway {
           defaultActionName: 'notif.action.open'.tr(),
         ),
       ),
-      onDidReceiveNotificationResponse: (response) => _events.add(
+      onDidReceiveNotificationResponse: (response) => _emit(
         NotificationEvent(
           actionId: response.actionId,
           payload: response.payload,
         ),
       ),
     );
+
+    // OPH-214: the response that STARTED the app. `initialize`'s callback only
+    // covers presses while the process is alive; a cold start hands the
+    // response over here, and nothing in this repo was ever asking for it —
+    // which is why an action pressed on a killed app did nothing at all, in
+    // silence. Queued like any other, so it lands when the app can act on it.
+    final launch = await _plugin.getNotificationAppLaunchDetails();
+    final response = launch?.notificationResponse;
+    if (launch?.didNotificationLaunchApp == true && response != null) {
+      _emit(
+        NotificationEvent(
+          actionId: response.actionId,
+          payload: response.payload,
+        ),
+      );
+    }
 
     // The soundless v1 channel must not linger next to v2 in system settings.
     await _android?.deleteNotificationChannel(
