@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 18 in progress
 
+- **Quick links on the device (OPH-198).** drift **v13** adds the `quick_links`
+  replica and a `QuickAccessStore`: add, rename, emoji, colour, remove and a
+  whole-rail reorder, each an optimistic local write plus one outbox mutation,
+  so the rail works offline. Rows are joined to their targets in a single
+  watched query, so renaming a project updates the rail live and a target that
+  is gone reads as broken rather than vanishing. Deleting a task, project, note
+  or folder drops its shortcut locally at once — the server's cascade is what
+  the other devices see.
+
 - **Quick links, server side (OPH-197).** `quick_links` is the sync protocol's
   first **user-scoped** entity: stored per workspace, handed out only to its
   owner. `GET/POST /workspaces/:id/quick-links`, `PATCH/DELETE /quick-links/:id`

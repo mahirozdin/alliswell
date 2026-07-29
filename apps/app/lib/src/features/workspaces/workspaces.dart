@@ -57,3 +57,12 @@ final currentWorkspaceProvider = Provider<AsyncValue<WorkspaceSummary?>>(
       .watch(workspacesProvider)
       .whenData((list) => list.isEmpty ? null : list.first),
 );
+
+/// The signed-in user's id, or null while signed out / restoring (OPH-198).
+///
+/// Quick Access is the protocol's first user-scoped entity (ADR-0018), so it
+/// is the first feature that needs to know WHO is signed in: the replica
+/// outlives a sign-out, and one device can serve two people.
+final currentUserIdProvider = Provider<String?>(
+  (ref) => ref.watch(authControllerProvider).value?.user.id,
+);

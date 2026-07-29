@@ -63,8 +63,9 @@ describe('quick links (OPH-197, ADR-0018)', () => {
 
     const items = (await list()).json().items;
     expect(items.map((i) => i.title)).toEqual(['Ahmet', 'Site']);
-    // The wire never carries the owner id — it is always the caller (ADR-0018).
-    expect(items[0].userId).toBeUndefined();
+    // The owner id IS on the wire — always the caller's own — so the replica
+    // can filter its local rail after a user switch (ADR-0018).
+    expect(items.every((i) => i.userId === owner.user.id)).toBe(true);
   });
 
   it('refuses a missing, deleted or foreign-workspace target', async () => {

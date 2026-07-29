@@ -72,6 +72,8 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.fileRows)..where((f) => f.id.equals(id))).go();
     case 'folder':
       await (db.delete(db.folders)..where((f) => f.id.equals(id))).go();
+    case 'quick_link':
+      await (db.delete(db.quickLinks)..where((q) => q.id.equals(id))).go();
   }
 }
 
@@ -115,6 +117,10 @@ Future<void> _applySnapshot(
       await db.into(db.fileRows).insertOnConflictUpdate(fileCompanion(data));
     case 'folder':
       await db.into(db.folders).insertOnConflictUpdate(folderCompanion(data));
+    case 'quick_link':
+      await db
+          .into(db.quickLinks)
+          .insertOnConflictUpdate(quickLinkCompanion(data));
   }
 }
 
@@ -320,6 +326,26 @@ RemindersCompanion reminderCompanion(Map<String, dynamic> d) =>
       snoozedUntil: _dateValue(d['snoozedUntil']),
       deliveredAt: _dateValue(d['deliveredAt']),
       acknowledgedAt: _dateValue(d['acknowledgedAt']),
+      revision: Value((d['revision'] as int?) ?? 0),
+      createdAt: _dateValue(d['createdAt']),
+      updatedAt: _dateValue(d['updatedAt']),
+    );
+
+/// OPH-198 — quick links (ADR-0018): user-scoped push-pull metadata. The
+/// server only ever sends the caller's own rows; `userId` rides along so the
+/// replica can filter locally after a user switch on a shared device.
+QuickLinksCompanion quickLinkCompanion(Map<String, dynamic> d) =>
+    QuickLinksCompanion.insert(
+      id: d['id'] as String,
+      workspaceId: d['workspaceId'] as String,
+      userId: d['userId'] as String,
+      kind: d['kind'] as String,
+      targetId: Value(d['targetId'] as String?),
+      url: Value(d['url'] as String?),
+      title: d['title'] as String,
+      emoji: Value(d['emoji'] as String?),
+      colorRgb: Value(d['colorRgb'] as String?),
+      sortOrder: Value((d['sortOrder'] as int?) ?? 0),
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),

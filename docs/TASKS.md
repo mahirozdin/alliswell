@@ -4564,24 +4564,37 @@ anchor `orderedIds.first`, N satır → N revision, `client_mutations` anchor'ı
 (7) dosya kısayolları `softDeleteReadyFile` boğazından, klasör kısayolları
 `deleteFolderSubtree`'den kaskad ediyor → REST ve push tek yoldan.
 
-### OPH-198 — App: drift replikası + `QuickAccessStore`
+### OPH-198 — App: drift replikası + `QuickAccessStore` ✅ 2026-07-29
 
-- [ ] drift **v13**: `quick_links` tablosu (append-only migration + `from >=` guard —
+- [x] drift **v13**: `quick_links` tablosu (append-only migration + `from >=` guard —
       OPH-167/186 dersi; `onCreate`'e de eklenir, OPH-186'nın indeks dersi).
-- [ ] `features/quick_access/data/quick_access_store.dart` — Epic 06 deseninin aynısı:
+- [x] `features/quick_access/data/quick_access_store.dart` — Epic 06 deseninin aynısı:
       `watchMine(workspaceId)` (sort_order sıralı, deleted filtreli), `add(kind, …)`,
       `rename`, `setEmoji`, `setColor`, `reorder(orderedIds)`, `remove` — hepsi
       optimistic satır + outbox mutasyonu tek transaction, sonra engine dürtme.
       `reorder` outbox'ta TEK mutasyon taşır (id listesi) — 50 ayrı update değil.
-- [ ] **Hedef çözümü replikadan:** panelde her satır hedefinin canlı durumunu bilir —
+- [x] **Hedef çözümü replikadan:** panelde her satır hedefinin canlı durumunu bilir —
       `watchMine` hedef tablolarla LEFT JOIN'lenir (proje adı/rengi, görev başlığı +
       tamamlanmışlık, not başlığı, klasör adı, dosya adı; url satırı kendi başına).
       Hedef replikada yoksa satır **"kırık"** işaretlenir (sunucu kaskadı birazdan
       düşürecektir; OPH-203 davranışı). JOIN'li izlemede `LIMIT` tuzağı yok — liste
       ≤50 ve LIMIT kullanılmıyor (OPH-186'nın dersi not düşüldü).
-- [ ] Testler: store CRUD + outbox gövdeleri (push'a giden mutasyon şekli), reorder'ın
+- [x] Testler: store CRUD + outbox gövdeleri (push'a giden mutasyon şekli), reorder'ın
       tek mutasyonu, iki workspace'te izolasyon, kırık hedef bayrağı, `sync_overrides`
       ile pump edilen widget testlerinin hazırlığı.
+
+**OPH-198 uygulama notları:** (1) `userId` **wire'a girdi** — sunucu zaten yalnız
+sahibinin satırlarını gönderiyor ama replika oturum kapanışını hayatta kalıyor, bu yüzden
+`watchMine` yerelde de süzüyor (ortak cihaz); (2) `QuickAccessRow` beş LEFT JOIN'li tek
+`customSelect`'ten geliyor — `readsFrom` seti eksik olsaydı hedef yeniden adlandığında
+rail **sessizce donardı**, testi var; (3) `add` çift eklemede yeni satır değil MEVCUT id'yi
+döndürüyor (menü toggle'ı için doğru davranış) ve 50 sınırında `null` — çevrimdışı da
+dürüst; (4) `reorder` tek mutasyon: anchor `orderedIds.first`, patch `{'orderedIds': [...]}`
+(sunucunun virtual alanı); (5) `forgetQuickLinksFor` **serbest fonksiyon** — görev/proje/not/
+klasör store'ları kendi silme transaction'larından çağırıyor, Quick Access'e bağımlılık
+almadan; **outbox mutasyonu YOK** çünkü sunucu kaskadı zaten duyuruyor ve ikinci bir delete
+"kullanıcı kaldırdı" yalanı olurdu; (6) dosya silme istemcide REST + pull olduğu için yerel
+kaskad gerektirmiyor (satır pull'da düşüyor).
 
 ### OPH-199 — Geniş ekran: rail'de "Hızlı erişim" bölümü (web/masaüstü)
 

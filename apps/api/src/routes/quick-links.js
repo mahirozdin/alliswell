@@ -28,10 +28,11 @@ const errorResponseSchema = {
 
 const quickLinkSchema = {
   type: 'object',
-  required: ['id', 'workspaceId', 'kind', 'title', 'sortOrder', 'revision'],
+  required: ['id', 'workspaceId', 'userId', 'kind', 'title', 'sortOrder', 'revision'],
   properties: {
     id: { type: 'string' },
     workspaceId: { type: 'string' },
+    userId: { type: 'string' },
     kind: { type: 'string' },
     targetId: { type: ['string', 'null'] },
     url: { type: ['string', 'null'] },
@@ -46,14 +47,15 @@ const quickLinkSchema = {
 };
 
 /**
- * The wire shape deliberately omits `user_id`: a caller only ever sees their
- * own rows (ADR-0018), so shipping the column would leak nothing useful and
- * would tempt a client into trusting it.
+ * `userId` IS on the wire, even though a caller only ever receives their own
+ * rows: the replica outlives a sign-out, so the client filters its local rail
+ * by user again (ADR-0018). It leaks nothing — it is always the caller's id.
  */
 export function serializeQuickLink(row) {
   return {
     id: row.id,
     workspaceId: row.workspace_id,
+    userId: row.user_id,
     kind: row.kind,
     targetId: row.target_id ?? null,
     url: row.url ?? null,

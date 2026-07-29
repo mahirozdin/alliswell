@@ -171,6 +171,39 @@ class Folders extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// The user's personal shortcut rail (OPH-198, ADR-0018, BLUEPRINT §4.12) —
+/// push-pull like folders, but USER-scoped: the server only ever sends rows
+/// belonging to the signed-in user, and `watchMine` filters by [userId] again
+/// locally, because one device can outlive a sign-out. Added in schema v13.
+///
+/// There is no `deletedAt` here, deliberately: no replica table has one. A
+/// tombstone deletes the row (sync_applier), which is also what makes the
+/// server's "drop invisible rows" rule safe.
+@DataClassName('QuickLinkRecord')
+class QuickLinks extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get userId => text()();
+
+  /// `project | task | note | folder | file | url`.
+  TextColumn get kind => text()();
+
+  /// The entity this points at — null for `url` rows. Stored as an id, never
+  /// as a route string (ADR-0016: routes are a client concern).
+  TextColumn get targetId => text().nullable()();
+  TextColumn get url => text().nullable()();
+  TextColumn get title => text()();
+  TextColumn get emoji => text().nullable()();
+  TextColumn get colorRgb => text().nullable()();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class TaskTagRows extends Table {
   TextColumn get taskId => text()();
   TextColumn get tagId => text()();
@@ -368,6 +401,7 @@ class AppleEventLinks extends Table {
     AppleEventLinks,
     FileRows,
     Folders,
+    QuickLinks,
     AlarmEvents,
     PendingMutations,
     SyncStates,
@@ -384,8 +418,9 @@ class AwDatabase extends _$AwDatabase {
   /// v5 → v6 (OPH-167): `*_fold` search shadows (ADR-0013) + Dart backfill.
   /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
   /// v11 → v12 (OPH-186): `idx_tasks_completed` for the Completed archive.
+  /// v12 → v13 (OPH-198): quick_links, the personal shortcut rail (ADR-0018).
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -470,6 +505,11 @@ class AwDatabase extends _$AwDatabase {
       // per page, on the one list that only ever grows. Index only — no column,
       // no data change, nothing to backfill.
       if (from < 12) await _createCompletedIndex();
+      // v13 (OPH-198, ADR-0018): the quick access rail. A brand new table, so
+      // no `from >=` guard is needed — that guard exists for COLUMNS added to
+      // a table this same migration may have just created with them included.
+      // The next pull fills it; nothing existing is touched.
+      if (from < 13) await m.createTable(quickLinks);
     },
   );
 

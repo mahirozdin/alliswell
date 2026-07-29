@@ -6,6 +6,8 @@ import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
 import '../../../sync/streams.dart';
 import '../../../sync/sync_applier.dart';
+import '../../quick_access/data/quick_access_store.dart';
+import '../../quick_access/data/quick_link.dart';
 import 'task.dart';
 
 /// Statuses that appear on planning lists (Home, project Tasks). Inbox captures
@@ -513,6 +515,14 @@ class TaskStore {
       await (_db.delete(
         _db.checklistItems,
       )..where((c) => c.taskId.equals(taskId))).go();
+      // A shortcut to a task that no longer exists would render as broken
+      // until the server's cascade comes back (OPH-197/198).
+      await forgetQuickLinksFor(
+        _db,
+        workspaceId: record.workspaceId,
+        kind: QuickKind.task,
+        targetIds: [taskId],
+      );
       await enqueueMutation(
         _db,
         workspaceId: record.workspaceId,

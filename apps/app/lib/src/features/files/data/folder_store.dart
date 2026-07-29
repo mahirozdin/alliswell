@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
+import '../../quick_access/data/quick_access_store.dart';
+import '../../quick_access/data/quick_link.dart';
 
 /// A folder as the Dosyalar tree sees it.
 class Folder {
@@ -169,6 +171,14 @@ class FolderStore {
           ))
           .go();
       await (_db.delete(_db.folders)..where((f) => f.id.isIn(ids))).go();
+      // Shortcuts to any folder in the subtree go with it (the server does the
+      // same in one transaction — OPH-197); their FILES converge on the pull.
+      await forgetQuickLinksFor(
+        _db,
+        workspaceId: workspaceId,
+        kind: QuickKind.folder,
+        targetIds: ids,
+      );
       await enqueueMutation(
         _db,
         workspaceId: workspaceId,

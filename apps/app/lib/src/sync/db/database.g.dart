@@ -8359,6 +8359,758 @@ class FoldersCompanion extends UpdateCompanion<FolderRecord> {
   }
 }
 
+class $QuickLinksTable extends QuickLinks
+    with TableInfo<$QuickLinksTable, QuickLinkRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QuickLinksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetIdMeta = const VerificationMeta(
+    'targetId',
+  );
+  @override
+  late final GeneratedColumn<String> targetId = GeneratedColumn<String>(
+    'target_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _urlMeta = const VerificationMeta('url');
+  @override
+  late final GeneratedColumn<String> url = GeneratedColumn<String>(
+    'url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _emojiMeta = const VerificationMeta('emoji');
+  @override
+  late final GeneratedColumn<String> emoji = GeneratedColumn<String>(
+    'emoji',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _colorRgbMeta = const VerificationMeta(
+    'colorRgb',
+  );
+  @override
+  late final GeneratedColumn<String> colorRgb = GeneratedColumn<String>(
+    'color_rgb',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    userId,
+    kind,
+    targetId,
+    url,
+    title,
+    emoji,
+    colorRgb,
+    sortOrder,
+    revision,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'quick_links';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<QuickLinkRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('target_id')) {
+      context.handle(
+        _targetIdMeta,
+        targetId.isAcceptableOrUnknown(data['target_id']!, _targetIdMeta),
+      );
+    }
+    if (data.containsKey('url')) {
+      context.handle(
+        _urlMeta,
+        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('emoji')) {
+      context.handle(
+        _emojiMeta,
+        emoji.isAcceptableOrUnknown(data['emoji']!, _emojiMeta),
+      );
+    }
+    if (data.containsKey('color_rgb')) {
+      context.handle(
+        _colorRgbMeta,
+        colorRgb.isAcceptableOrUnknown(data['color_rgb']!, _colorRgbMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QuickLinkRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QuickLinkRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      targetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_id'],
+      ),
+      url: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}url'],
+      ),
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      emoji: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emoji'],
+      ),
+      colorRgb: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color_rgb'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $QuickLinksTable createAlias(String alias) {
+    return $QuickLinksTable(attachedDatabase, alias);
+  }
+}
+
+class QuickLinkRecord extends DataClass implements Insertable<QuickLinkRecord> {
+  final String id;
+  final String workspaceId;
+  final String userId;
+
+  /// `project | task | note | folder | file | url`.
+  final String kind;
+
+  /// The entity this points at — null for `url` rows. Stored as an id, never
+  /// as a route string (ADR-0016: routes are a client concern).
+  final String? targetId;
+  final String? url;
+  final String title;
+  final String? emoji;
+  final String? colorRgb;
+  final int sortOrder;
+  final int revision;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  const QuickLinkRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.userId,
+    required this.kind,
+    this.targetId,
+    this.url,
+    required this.title,
+    this.emoji,
+    this.colorRgb,
+    required this.sortOrder,
+    required this.revision,
+    this.createdAt,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['user_id'] = Variable<String>(userId);
+    map['kind'] = Variable<String>(kind);
+    if (!nullToAbsent || targetId != null) {
+      map['target_id'] = Variable<String>(targetId);
+    }
+    if (!nullToAbsent || url != null) {
+      map['url'] = Variable<String>(url);
+    }
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || emoji != null) {
+      map['emoji'] = Variable<String>(emoji);
+    }
+    if (!nullToAbsent || colorRgb != null) {
+      map['color_rgb'] = Variable<String>(colorRgb);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  QuickLinksCompanion toCompanion(bool nullToAbsent) {
+    return QuickLinksCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      userId: Value(userId),
+      kind: Value(kind),
+      targetId: targetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetId),
+      url: url == null && nullToAbsent ? const Value.absent() : Value(url),
+      title: Value(title),
+      emoji: emoji == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emoji),
+      colorRgb: colorRgb == null && nullToAbsent
+          ? const Value.absent()
+          : Value(colorRgb),
+      sortOrder: Value(sortOrder),
+      revision: Value(revision),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory QuickLinkRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QuickLinkRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      userId: serializer.fromJson<String>(json['userId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      targetId: serializer.fromJson<String?>(json['targetId']),
+      url: serializer.fromJson<String?>(json['url']),
+      title: serializer.fromJson<String>(json['title']),
+      emoji: serializer.fromJson<String?>(json['emoji']),
+      colorRgb: serializer.fromJson<String?>(json['colorRgb']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      revision: serializer.fromJson<int>(json['revision']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'userId': serializer.toJson<String>(userId),
+      'kind': serializer.toJson<String>(kind),
+      'targetId': serializer.toJson<String?>(targetId),
+      'url': serializer.toJson<String?>(url),
+      'title': serializer.toJson<String>(title),
+      'emoji': serializer.toJson<String?>(emoji),
+      'colorRgb': serializer.toJson<String?>(colorRgb),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'revision': serializer.toJson<int>(revision),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  QuickLinkRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? userId,
+    String? kind,
+    Value<String?> targetId = const Value.absent(),
+    Value<String?> url = const Value.absent(),
+    String? title,
+    Value<String?> emoji = const Value.absent(),
+    Value<String?> colorRgb = const Value.absent(),
+    int? sortOrder,
+    int? revision,
+    Value<DateTime?> createdAt = const Value.absent(),
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => QuickLinkRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    userId: userId ?? this.userId,
+    kind: kind ?? this.kind,
+    targetId: targetId.present ? targetId.value : this.targetId,
+    url: url.present ? url.value : this.url,
+    title: title ?? this.title,
+    emoji: emoji.present ? emoji.value : this.emoji,
+    colorRgb: colorRgb.present ? colorRgb.value : this.colorRgb,
+    sortOrder: sortOrder ?? this.sortOrder,
+    revision: revision ?? this.revision,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  QuickLinkRecord copyWithCompanion(QuickLinksCompanion data) {
+    return QuickLinkRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      targetId: data.targetId.present ? data.targetId.value : this.targetId,
+      url: data.url.present ? data.url.value : this.url,
+      title: data.title.present ? data.title.value : this.title,
+      emoji: data.emoji.present ? data.emoji.value : this.emoji,
+      colorRgb: data.colorRgb.present ? data.colorRgb.value : this.colorRgb,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuickLinkRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('userId: $userId, ')
+          ..write('kind: $kind, ')
+          ..write('targetId: $targetId, ')
+          ..write('url: $url, ')
+          ..write('title: $title, ')
+          ..write('emoji: $emoji, ')
+          ..write('colorRgb: $colorRgb, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('revision: $revision, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    userId,
+    kind,
+    targetId,
+    url,
+    title,
+    emoji,
+    colorRgb,
+    sortOrder,
+    revision,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QuickLinkRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.userId == this.userId &&
+          other.kind == this.kind &&
+          other.targetId == this.targetId &&
+          other.url == this.url &&
+          other.title == this.title &&
+          other.emoji == this.emoji &&
+          other.colorRgb == this.colorRgb &&
+          other.sortOrder == this.sortOrder &&
+          other.revision == this.revision &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class QuickLinksCompanion extends UpdateCompanion<QuickLinkRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> userId;
+  final Value<String> kind;
+  final Value<String?> targetId;
+  final Value<String?> url;
+  final Value<String> title;
+  final Value<String?> emoji;
+  final Value<String?> colorRgb;
+  final Value<int> sortOrder;
+  final Value<int> revision;
+  final Value<DateTime?> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const QuickLinksCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.targetId = const Value.absent(),
+    this.url = const Value.absent(),
+    this.title = const Value.absent(),
+    this.emoji = const Value.absent(),
+    this.colorRgb = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  QuickLinksCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String userId,
+    required String kind,
+    this.targetId = const Value.absent(),
+    this.url = const Value.absent(),
+    required String title,
+    this.emoji = const Value.absent(),
+    this.colorRgb = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       userId = Value(userId),
+       kind = Value(kind),
+       title = Value(title);
+  static Insertable<QuickLinkRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? userId,
+    Expression<String>? kind,
+    Expression<String>? targetId,
+    Expression<String>? url,
+    Expression<String>? title,
+    Expression<String>? emoji,
+    Expression<String>? colorRgb,
+    Expression<int>? sortOrder,
+    Expression<int>? revision,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (userId != null) 'user_id': userId,
+      if (kind != null) 'kind': kind,
+      if (targetId != null) 'target_id': targetId,
+      if (url != null) 'url': url,
+      if (title != null) 'title': title,
+      if (emoji != null) 'emoji': emoji,
+      if (colorRgb != null) 'color_rgb': colorRgb,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (revision != null) 'revision': revision,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  QuickLinksCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? userId,
+    Value<String>? kind,
+    Value<String?>? targetId,
+    Value<String?>? url,
+    Value<String>? title,
+    Value<String?>? emoji,
+    Value<String?>? colorRgb,
+    Value<int>? sortOrder,
+    Value<int>? revision,
+    Value<DateTime?>? createdAt,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return QuickLinksCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      userId: userId ?? this.userId,
+      kind: kind ?? this.kind,
+      targetId: targetId ?? this.targetId,
+      url: url ?? this.url,
+      title: title ?? this.title,
+      emoji: emoji ?? this.emoji,
+      colorRgb: colorRgb ?? this.colorRgb,
+      sortOrder: sortOrder ?? this.sortOrder,
+      revision: revision ?? this.revision,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (targetId.present) {
+      map['target_id'] = Variable<String>(targetId.value);
+    }
+    if (url.present) {
+      map['url'] = Variable<String>(url.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (emoji.present) {
+      map['emoji'] = Variable<String>(emoji.value);
+    }
+    if (colorRgb.present) {
+      map['color_rgb'] = Variable<String>(colorRgb.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QuickLinksCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('userId: $userId, ')
+          ..write('kind: $kind, ')
+          ..write('targetId: $targetId, ')
+          ..write('url: $url, ')
+          ..write('title: $title, ')
+          ..write('emoji: $emoji, ')
+          ..write('colorRgb: $colorRgb, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('revision: $revision, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AlarmEventsTable extends AlarmEvents
     with TableInfo<$AlarmEventsTable, AlarmEvent> {
   @override
@@ -10081,6 +10833,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   );
   late final $FileRowsTable fileRows = $FileRowsTable(this);
   late final $FoldersTable folders = $FoldersTable(this);
+  late final $QuickLinksTable quickLinks = $QuickLinksTable(this);
   late final $AlarmEventsTable alarmEvents = $AlarmEventsTable(this);
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
@@ -10103,6 +10856,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     appleEventLinks,
     fileRows,
     folders,
+    quickLinks,
     alarmEvents,
     pendingMutations,
     syncStates,
@@ -14050,6 +14804,360 @@ typedef $$FoldersTableProcessedTableManager =
       FolderRecord,
       PrefetchHooks Function()
     >;
+typedef $$QuickLinksTableCreateCompanionBuilder =
+    QuickLinksCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String userId,
+      required String kind,
+      Value<String?> targetId,
+      Value<String?> url,
+      required String title,
+      Value<String?> emoji,
+      Value<String?> colorRgb,
+      Value<int> sortOrder,
+      Value<int> revision,
+      Value<DateTime?> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$QuickLinksTableUpdateCompanionBuilder =
+    QuickLinksCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> userId,
+      Value<String> kind,
+      Value<String?> targetId,
+      Value<String?> url,
+      Value<String> title,
+      Value<String?> emoji,
+      Value<String?> colorRgb,
+      Value<int> sortOrder,
+      Value<int> revision,
+      Value<DateTime?> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$QuickLinksTableFilterComposer
+    extends Composer<_$AwDatabase, $QuickLinksTable> {
+  $$QuickLinksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get colorRgb => $composableBuilder(
+    column: $table.colorRgb,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$QuickLinksTableOrderingComposer
+    extends Composer<_$AwDatabase, $QuickLinksTable> {
+  $$QuickLinksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetId => $composableBuilder(
+    column: $table.targetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get url => $composableBuilder(
+    column: $table.url,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get colorRgb => $composableBuilder(
+    column: $table.colorRgb,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$QuickLinksTableAnnotationComposer
+    extends Composer<_$AwDatabase, $QuickLinksTable> {
+  $$QuickLinksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get targetId =>
+      $composableBuilder(column: $table.targetId, builder: (column) => column);
+
+  GeneratedColumn<String> get url =>
+      $composableBuilder(column: $table.url, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get emoji =>
+      $composableBuilder(column: $table.emoji, builder: (column) => column);
+
+  GeneratedColumn<String> get colorRgb =>
+      $composableBuilder(column: $table.colorRgb, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$QuickLinksTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $QuickLinksTable,
+          QuickLinkRecord,
+          $$QuickLinksTableFilterComposer,
+          $$QuickLinksTableOrderingComposer,
+          $$QuickLinksTableAnnotationComposer,
+          $$QuickLinksTableCreateCompanionBuilder,
+          $$QuickLinksTableUpdateCompanionBuilder,
+          (
+            QuickLinkRecord,
+            BaseReferences<_$AwDatabase, $QuickLinksTable, QuickLinkRecord>,
+          ),
+          QuickLinkRecord,
+          PrefetchHooks Function()
+        > {
+  $$QuickLinksTableTableManager(_$AwDatabase db, $QuickLinksTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QuickLinksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QuickLinksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QuickLinksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String?> targetId = const Value.absent(),
+                Value<String?> url = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> emoji = const Value.absent(),
+                Value<String?> colorRgb = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuickLinksCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                userId: userId,
+                kind: kind,
+                targetId: targetId,
+                url: url,
+                title: title,
+                emoji: emoji,
+                colorRgb: colorRgb,
+                sortOrder: sortOrder,
+                revision: revision,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String userId,
+                required String kind,
+                Value<String?> targetId = const Value.absent(),
+                Value<String?> url = const Value.absent(),
+                required String title,
+                Value<String?> emoji = const Value.absent(),
+                Value<String?> colorRgb = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => QuickLinksCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                userId: userId,
+                kind: kind,
+                targetId: targetId,
+                url: url,
+                title: title,
+                emoji: emoji,
+                colorRgb: colorRgb,
+                sortOrder: sortOrder,
+                revision: revision,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$QuickLinksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $QuickLinksTable,
+      QuickLinkRecord,
+      $$QuickLinksTableFilterComposer,
+      $$QuickLinksTableOrderingComposer,
+      $$QuickLinksTableAnnotationComposer,
+      $$QuickLinksTableCreateCompanionBuilder,
+      $$QuickLinksTableUpdateCompanionBuilder,
+      (
+        QuickLinkRecord,
+        BaseReferences<_$AwDatabase, $QuickLinksTable, QuickLinkRecord>,
+      ),
+      QuickLinkRecord,
+      PrefetchHooks Function()
+    >;
 typedef $$AlarmEventsTableCreateCompanionBuilder =
     AlarmEventsCompanion Function({
       Value<int> id,
@@ -14913,6 +16021,8 @@ class $AwDatabaseManager {
       $$FileRowsTableTableManager(_db, _db.fileRows);
   $$FoldersTableTableManager get folders =>
       $$FoldersTableTableManager(_db, _db.folders);
+  $$QuickLinksTableTableManager get quickLinks =>
+      $$QuickLinksTableTableManager(_db, _db.quickLinks);
   $$AlarmEventsTableTableManager get alarmEvents =>
       $$AlarmEventsTableTableManager(_db, _db.alarmEvents);
   $$PendingMutationsTableTableManager get pendingMutations =>

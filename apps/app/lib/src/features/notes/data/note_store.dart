@@ -6,6 +6,8 @@ import '../../../core/fold.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
+import '../../quick_access/data/quick_access_store.dart';
+import '../../quick_access/data/quick_link.dart';
 import '../../../sync/streams.dart';
 import 'note.dart';
 
@@ -265,6 +267,12 @@ class NoteStore {
       await (_db.delete(
         _db.noteLinkRows,
       )..where((l) => l.noteId.equals(noteId))).go();
+      await forgetQuickLinksFor(
+        _db,
+        workspaceId: record.workspaceId,
+        kind: QuickKind.note,
+        targetIds: [noteId],
+      );
       await enqueueMutation(
         _db,
         workspaceId: record.workspaceId,

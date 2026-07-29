@@ -4,6 +4,8 @@ import '../../../core/fold.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
+import '../../quick_access/data/quick_access_store.dart';
+import '../../quick_access/data/quick_link.dart';
 import 'project.dart';
 
 /// Local-first project access (OPH-054): watch queries over the replica,
@@ -142,6 +144,12 @@ class ProjectStore {
       await (_db.delete(
         _db.projects,
       )..where((p) => p.id.equals(projectId))).go();
+      await forgetQuickLinksFor(
+        _db,
+        workspaceId: record.workspaceId,
+        kind: QuickKind.project,
+        targetIds: [projectId],
+      );
       await enqueueMutation(
         _db,
         workspaceId: record.workspaceId,
