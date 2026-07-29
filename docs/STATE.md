@@ -3,7 +3,9 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-29 (**ROUND 13 — kullanıcının 6 maddelik düzeltme listesi
+**Last updated:** 2026-07-29 (**ROUND 13 YAYINLANDI — v0.8.1.** Altı düzeltme
+etiketlendi ve prod'a gitti; sürüm dört kaynakta `0.8.1` (pubspec `0.8.1+10`). Önceki
+satır:) (**ROUND 13 — kullanıcının 6 maddelik düzeltme listesi
 YAPILDI** (task numarası verilmedi, TASKS'ta Epic 19'un altında "Round 13" başlığında).
 **İki maddenin kökü beklenenden derindi:** (2) dosya/klasör silme onayı **vardı**,
 görünmüyordu — OPH-212 sheet'leri kök navigator'a almıştı ama `showDialog` dokunulmamıştı;
@@ -12,8 +14,7 @@ değildi, **kural gerçekten değişmiyordu**; artık kapsamlı bir tarih düzen
 taşıyor (`ruleFollowingDay` — belirsiz kurallar hariç). Diğerleri: takvim koparma düğmesi
 (Google+Apple, onaylı), geri al 5 sn → **3 sn**, kart boşlukları tek ritme (**6 px**),
 arama **app bar'a** (`AwSearchAction`, Home/Notlar/Projeler; kapanış sorguyu temizler).
-**App 654 test, API 393 unit + 47 entegrasyon**, tüm kapılar temiz. **Bunlar henüz
-etiketlenmedi** — prod hâlâ v0.8.0; 0.8.1 kesilirse deploy zinciri kendiliğinden koşar.) — Önceki: 2026-07-29 (**EPIC 19 KODSAL OLARAK KAPANDI — v0.8.0: TEKRARLI GÖREVLER
+**App 654 test, API 393 unit + 47 entegrasyon**, tüm kapılar temiz. (Etiketlendi: **v0.8.1**.)) — Önceki: 2026-07-29 (**EPIC 19 KODSAL OLARAK KAPANDI — v0.8.0: TEKRARLI GÖREVLER
 + TAKVİM HER ZAMAN.** OPH-204…214'ün on biri de bitti; sürüm dört kaynakta **0.8.0**
 (pubspec `0.8.0+9`, `kAppVersion`, iki package.json). **Turun kalıcı dersleri:**
 (1) **planı kod düzeltir, tersi değil** — üç yerde: "yalnız bu" occurrence'ı DETACH

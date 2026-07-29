@@ -5,6 +5,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Planned — request round 11 #2 (2026-07-29; Epics 18 and 19 shipped as 0.7.0 / 0.8.x below)
+
+- **Epic 20 — AI (OPH-215…227, toward v0.9.0; renumbered from OPH-204…216 when
+  round 12 slotted Epic 19 in).** Two tracks, because the researched
+  reality is that no provider permits third-party use of consumer subscriptions in
+  mid-2026: **Track A** — an AllisWell remote MCP server ("add AllisWell to your
+  Claude/ChatGPT", where your subscription pays for the intelligence); **Track B** —
+  embedded AI with your own API key (Anthropic / OpenAI / Gemini / OpenRouter /
+  Ollama; thin fetch adapters, encrypted keys). In-app surfaces: an SSE-streamed AI
+  bubble, a left-side hold-to-talk FAB (lift-to-lock), on-device speech recognition,
+  single-schema task extraction with a **mandatory confirm card** committing through
+  the local-first task store, an OS share target, per-provider consent screens, and
+  an architectural injection defense (no model tools in v1; deletion permanently out
+  of AI reach; red-team corpus in CI). [docs/AI.md](docs/AI.md),
+  [ADR-0019](docs/adr/0019-ai-provider-architecture.md), BLUEPRINT §4.13/§12.16,
+  DESIGN §24.
+
+
+## [0.8.1] - 2026-07-29
+
+Six things the owner hit while using v0.8.0. Two of them were not what they
+looked like: the file and folder delete confirmations existed all along and were
+rendering under the app's own toolbar, and the repeat sentence was not stale —
+the rule genuinely had not moved when the task's date did.
+
 ### Fixed
 
 - **You can unlink a calendar again — and it asks first.** Google's disconnect
@@ -33,24 +58,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   had just said which day you wanted. Unambiguous patterns now move with the
   date (including "the 2nd Tuesday" becoming whichever ordinal the new date is);
   patterns with several days keep theirs and take only the new time.
-
-### Planned — request round 11 #2 (2026-07-29; Epics 18 and 19 shipped as 0.7.0 and 0.8.0 below)
-
-- **Epic 20 — AI (OPH-215…227, toward v0.9.0; renumbered from OPH-204…216 when
-  round 12 slotted Epic 19 in).** Two tracks, because the researched
-  reality is that no provider permits third-party use of consumer subscriptions in
-  mid-2026: **Track A** — an AllisWell remote MCP server ("add AllisWell to your
-  Claude/ChatGPT", where your subscription pays for the intelligence); **Track B** —
-  embedded AI with your own API key (Anthropic / OpenAI / Gemini / OpenRouter /
-  Ollama; thin fetch adapters, encrypted keys). In-app surfaces: an SSE-streamed AI
-  bubble, a left-side hold-to-talk FAB (lift-to-lock), on-device speech recognition,
-  single-schema task extraction with a **mandatory confirm card** committing through
-  the local-first task store, an OS share target, per-provider consent screens, and
-  an architectural injection defense (no model tools in v1; deletion permanently out
-  of AI reach; red-team corpus in CI). [docs/AI.md](docs/AI.md),
-  [ADR-0019](docs/adr/0019-ai-provider-architecture.md), BLUEPRINT §4.13/§12.16,
-  DESIGN §24.
-
 
 ## [0.8.0] - 2026-07-29
 
