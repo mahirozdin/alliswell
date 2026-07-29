@@ -15,6 +15,7 @@ import calendarSyncPlugin from './plugins/calendar-sync.js';
 import storagePlugin from './plugins/storage.js';
 import storageGcPlugin from './plugins/storage-gc.js';
 import accountGcPlugin from './plugins/account-gc.js';
+import seriesGcPlugin from './plugins/series-gc.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -30,6 +31,7 @@ import storageRoutes from './routes/storage.js';
 import fileRoutes from './routes/files.js';
 import folderRoutes from './routes/folders.js';
 import quickLinkRoutes from './routes/quick-links.js';
+import taskSeriesRoutes from './routes/task-series.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -86,6 +88,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(storagePlugin, { storage });
   await app.register(storageGcPlugin);
   await app.register(accountGcPlugin);
+  await app.register(seriesGcPlugin);
   await app.register(authPlugin);
   await app.register(socketPlugin);
   await app.register(mirrorPlugin);
@@ -131,6 +134,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(fileRoutes, { prefix: '/api/v1' });
   await app.register(folderRoutes, { prefix: '/api/v1' });
   await app.register(quickLinkRoutes, { prefix: '/api/v1' });
+  await app.register(taskSeriesRoutes, { prefix: '/api/v1' });
 
   return app;
 }

@@ -54,6 +54,14 @@ const UNIQUE_INDEXES = {
       cols: ['workspace_id', 'user_id', 'kind', 'target_id'],
     },
   ],
+  // OPH-205: what makes materialization idempotent. Ordinary tasks carry NULL
+  // in both columns and are skipped, exactly as MySQL skips them.
+  tasks: [
+    {
+      name: 'tasks.uq_tasks_series_occurrence',
+      cols: ['series_id', 'occurrence_date'],
+    },
+  ],
 };
 
 const OPS = {
@@ -89,6 +97,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     files: [],
     folders: [],
     quick_links: [],
+    task_series: [],
   };
 
   const columnDefaults = {
@@ -120,7 +129,11 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       parent_task_id: null,
       description: null,
       completed_at: null,
+      // OPH-205: NULL on every ordinary task — an occurrence fills both.
+      series_id: null,
+      occurrence_date: null,
     }),
+    task_series: () => ({ timezone: 'Europe/Istanbul', created_by: null, revision: 0 }),
     checklist_items: () => ({ is_done: false, sort_order: 0, revision: 0 }),
     notes: () => ({
       project_id: null,

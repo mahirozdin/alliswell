@@ -4900,26 +4900,51 @@ bastırıyorum bir daha" — maksimum esneklik hedefi; karar netliği bu yüzden
 
 ### OPH-205 — API: `task_series` + materyalizasyon motoru + kayan 12 ay penceresi
 
-- [ ] Migration: `task_series` (`id, workspace_id, rule JSON, timezone, anchor_at,
+- [x] Migration: `task_series` (`id, workspace_id, rule JSON, timezone, anchor_at,
       until_at NULL, count NULL, created/updated/deleted_at, revision`) +
       `tasks.series_id` (FK'sız ULID, index) + `tasks.occurrence_date`; seri de
       senkron varlıktır (push-pull — düzenleme dialog'u her cihazda aynı kuralı
       göstermeli).
-- [ ] Seri CRUD uçları (Ajv şeması OPH-204'ün JSON modeli) + **materyalizasyon tek
+- [x] Seri CRUD uçları (Ajv şeması OPH-204'ün JSON modeli) + **materyalizasyon tek
       transaction'da**: seri yaratılınca/değişince gelecek pencere üretilir;
       **idempotent** (aynı seri + aynı pencere ikinci kez satır üretmez —
       `(series_id, occurrence_date)` tekilliği).
-- [ ] **Günlük süpürme:** BullMQ repeatable job — pencereye yeni giren occurrence'ları
+- [x] **Günlük süpürme:** BullMQ repeatable job — pencereye yeni giren occurrence'ları
       ekler, `recordSyncWrite` ile duyurur; işlem hacmi log'lanır. Sunucusuz self-host
       (compose) için de aynı kuyruk zaten çalışıyor (mevcut sweep emsalleri).
-- [ ] Davranış kuralları: occurrence tamamlamak seriyi ve kardeşleri ETKİLEMEZ;
+- [x] Davranış kuralları: occurrence tamamlamak seriyi ve kardeşleri ETKİLEMEZ;
       occurrence silme yalnız o satırı siler (seri kapsam sorusu OPH-206'nın işi);
       seri silme = gelecekteki materyalize satırların alt-ağaç tombstone'u (geçmiş +
       tamamlanmışlar kalır — tarih dürüstlüğü).
-- [ ] Testler (tablo-güdümlü, OPH-204 fikstürleri): 31 → 30/29/28 kırpması; "ayın 2.
+- [x] Testler (tablo-güdümlü, OPH-204 fikstürleri): 31 → 30/29/28 kırpması; "ayın 2.
       Salı'sı"; "22 sonrası ilk Pazartesi"; "ayın son günü"; DST + yıl sınırı; pencere
       kayması (sahte saat); idempotens; kural değişiminde geçmişe dokunulmadığı;
       revision yayınları.
+
+**Uygulamada üç sapma (2026-07-29, gerekçeleri ADR-0020'de):**
+
+1. **Süpürme BullMQ repeatable DEĞİL** — ev kalıbı `setInterval + unref() +
+   env!=='test' + app.decorate('seriesGc')` (`plugins/series-gc.js`; emsal
+   account-gc/storage-gc/calendar-sync). `createJobRunner` repeatable API'si
+   sunmuyor, self-host Redis'siz de koşmak zorunda, çok replikada güvenlik
+   `jobKey` dedupe + idempotens'ten geliyor. Ayar: `SERIES_SWEEP_SEC` (86400).
+2. **`until_at`/`count` kolonu yok** — bitiş koşulu `rule.end`in içinde. Dialog
+   kuralı bir bütün olarak gidip geliyor; iki yazarı olan tek bir değer er geç
+   çelişir. Filtre gerektiren bir sorgu da yok (süpürme canlı serileri yürüyor).
+3. **`template` JSON kolonu eklendi** (backlog'da yoktu): occurrence'ın
+   damgalandığı alanlar (başlık, proje, öncelik, etiketler, hatırlatma ofseti).
+   Alternatif "tohum görevden klonla" idi — tohum silinince seri anlamını
+   kaybediyordu.
+
+**Ayrıca eklendi:** `fromTaskId` — switch'in üstünde açıldığı görev, günü
+desene DÜŞÜYORSA seri tarafından **sahiplenilir** (`series_id`+`occurrence_date`
+yazılır), yoksa dokunulmaz. Bu olmadan kullanıcı "tekrarla" der demez görevinin
+yanında bir kopyasını görecekti.
+
+**Doğrulama (2026-07-29):** API 374 unit (yeni: 29 motor + 15 seri + 7 sync) +
+47 entegrasyon **gerçek MySQL'de** (JSON gidiş-dönüşü, DATE kolonu, tekil
+indeksin kopyayı reddedişi, süpürmenin idempotensi); `db:rollback && db:migrate`
+CI sırasıyla yeşil; lint + format + no-ts temiz.
 
 ### OPH-206 — Seri düzenleme semantiği: bu / bu ve gelecektekiler / tümü
 

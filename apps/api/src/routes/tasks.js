@@ -6,6 +6,7 @@ import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
+import { occurrenceDayOf } from '../db/task-series.js';
 import { COLOR_PATTERN } from './projects.js';
 
 // Snooze presets (BLUEPRINT §4.9): fixed offsets in minutes, plus
@@ -62,6 +63,8 @@ const taskSchema = {
     isUrgent: { type: 'boolean' },
     requiresAcknowledgement: { type: 'boolean' },
     repeatRule: { type: ['string', 'null'] },
+    seriesId: { type: ['string', 'null'] },
+    occurrenceDate: { type: ['string', 'null'] },
     estimatedMinutes: { type: ['integer', 'null'] },
     actualMinutes: { type: ['integer', 'null'] },
     sortOrder: { type: 'integer' },
@@ -128,7 +131,11 @@ const writableProps = {
   timezone: { type: 'string', minLength: 1, maxLength: 64 },
   isUrgent: { type: 'boolean' },
   requiresAcknowledgement: { type: 'boolean' },
-  repeatRule: { type: ['string', 'null'], maxLength: 2000 },
+  // `repeatRule` is gone from the write path as of OPH-205 (ADR-0020 §7):
+  // recurrence lives in `task_series`, and this column was a live wire with no
+  // human end — REST wrote it, sync wrote it, db/reminders.js copied it onto
+  // reminder rows, and no surface ever produced a value. The column stays
+  // (migrations are append-only) and still serializes as null.
   estimatedMinutes: { type: ['integer', 'null'], minimum: 0, maximum: 60000 },
   actualMinutes: { type: ['integer', 'null'], minimum: 0, maximum: 60000 },
   sortOrder: { type: 'integer', minimum: -1000000, maximum: 1000000 },
@@ -155,7 +162,6 @@ const CAMEL_TO_SNAKE = {
   timezone: 'timezone',
   isUrgent: 'is_urgent',
   requiresAcknowledgement: 'requires_acknowledgement',
-  repeatRule: 'repeat_rule',
   estimatedMinutes: 'estimated_minutes',
   actualMinutes: 'actual_minutes',
   sortOrder: 'sort_order',
@@ -205,6 +211,10 @@ export function serializeTask(row) {
     isUrgent: Boolean(row.is_urgent),
     requiresAcknowledgement: Boolean(row.requires_acknowledgement),
     repeatRule: row.repeat_rule ?? null,
+    // OPH-205: which series produced this task, and which day of it this is.
+    // Server-owned — clients read them, they never push them.
+    seriesId: row.series_id ?? null,
+    occurrenceDate: occurrenceDayOf(row.occurrence_date),
     estimatedMinutes: row.estimated_minutes ?? null,
     actualMinutes: row.actual_minutes ?? null,
     sortOrder: row.sort_order,

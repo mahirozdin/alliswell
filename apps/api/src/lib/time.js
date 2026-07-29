@@ -3,7 +3,12 @@
  * libraries — Node's ICU data is the source of truth.
  */
 
-function wallClockParts(instant, timeZone) {
+/**
+ * The wall-clock reading a timezone shows for an instant. Exported for the
+ * recurrence materializer (OPH-205), which needs both the calendar day and the
+ * time of day a series anchor lands on.
+ */
+export function wallClockParts(instant, timeZone) {
   const fmt = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     hourCycle: 'h23',

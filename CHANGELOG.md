@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added — Epic 19 in progress
+
+- **Recurring tasks, server side (OPH-205).** A new `task_series` entity holds
+  the rule and the template; every occurrence it produces is an **ordinary task
+  row** carrying `series_id` + `occurrence_date`, materialized into a rolling
+  **12-month window** and kept fresh by a daily sweep. That is the whole trick:
+  the widget, search, the alarm planner and the calendar mirror handle recurring
+  tasks correctly without learning what recurrence is. The engine
+  (`src/lib/recurrence.js`) is pure calendar math with the ADR-0020 clamping, and
+  is pinned to its Dart preview port by a parity fixture both suites assert.
+  Series sync like any other entity, so a repeating task created offline arrives
+  complete with its occurrences. Flipping Repeat on an existing task **adopts**
+  that task as its own occurrence instead of duplicating it; a rule change
+  rebuilds the future and never touches the past or anything completed; stopping
+  a series keeps every occurrence that already happened.
+  `tasks.repeat_rule` left the write path in the same change.
+
 ### Changed — Epic 19 in progress
 
 - **The recurrence rule model is decided, and it clamps (OPH-204, docs only).**

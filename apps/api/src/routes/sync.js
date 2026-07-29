@@ -28,6 +28,16 @@ import { cascadeDeleteFiles } from '../db/files.js';
 import { serializeFile } from './files.js';
 import { serializeFolder } from './folders.js';
 import { serializeQuickLink } from './quick-links.js';
+import { serializeTaskSeries } from './task-series.js';
+import {
+  materializeSeries,
+  normalizeTemplate,
+  parseJsonColumn,
+  plannedDays,
+  rebuildFuture,
+  softDeleteSeries,
+  validateSeriesInput,
+} from '../db/task-series.js';
 import { foldSearchText } from '../lib/fold.js';
 import { FOLDER_MAX_DEPTH, deleteFolderSubtree, depthUnder, wouldCycle } from '../db/folders.js';
 import {
@@ -127,7 +137,10 @@ const TASK_FIELDS = {
   timezone: { col: 'timezone', ok: str(64) },
   isUrgent: { col: 'is_urgent', ok: bool },
   requiresAcknowledgement: { col: 'requires_acknowledgement', ok: bool },
-  repeatRule: { col: 'repeat_rule', ok: strOrNull(2000) },
+  // `repeatRule` USED to be here. It is frozen as of OPH-205 (ADR-0020 §7):
+  // recurrence lives in `task_series`, and a column no surface can reach is a
+  // lie the schema keeps telling (DESIGN §22). The column stays — migrations
+  // are append-only — but nothing writes it any more.
   estimatedMinutes: { col: 'estimated_minutes', ok: intOrNull(0, 60000) },
   actualMinutes: { col: 'actual_minutes', ok: intOrNull(0, 60000) },
   sortOrder: { col: 'sort_order', ok: intIn(-1000000, 1000000) },
@@ -173,6 +186,22 @@ const QUICK_LINK_FIELDS = {
   // afterUpdate writes every row; the LWW name is the column it really moves,
   // so two concurrent reorders overlap on `sort_order` and resolve wholesale.
   orderedIds: { col: 'sort_order', ok: ulidArray, virtual: true, updateOnly: true },
+};
+
+// Round 12 (OPH-205, ADR-0020): the recurrence rule and the occurrence template
+// are pushed WHOLE — they are single values the dialog round-trips, not a set of
+// independently editable fields, so LWW resolves them as one. There is no
+// occurrence field here at all: `series_id`/`occurrence_date` are server-owned,
+// and the client learns them from the pull.
+const TASK_SERIES_FIELDS = {
+  rule: { col: 'rule', ok: (v) => v != null && typeof v === 'object' && !Array.isArray(v) },
+  template: { col: 'template', ok: (v) => v != null && typeof v === 'object' && !Array.isArray(v) },
+  timezone: { col: 'timezone', ok: str(64) },
+  anchorAt: {
+    col: 'anchor_at',
+    ok: (v) => typeof v === 'string' && !Number.isNaN(Date.parse(v)),
+    date: true,
+  },
 };
 
 const CHECKLIST_FIELDS = {
@@ -293,6 +322,13 @@ export default async function syncRoutes(app) {
     checklist_item: async (ids) => ({
       rows: await app.db('checklist_items').whereIn('id', ids).select(),
       serialize: serializeChecklistItem,
+    }),
+    // Round 12 (OPH-205, ADR-0020): the rule itself syncs so the edit dialog
+    // shows the same thing on every device. The occurrences ride along as
+    // ordinary tasks — there is nothing else to teach the client.
+    task_series: async (ids) => ({
+      rows: await app.db('task_series').whereIn('id', ids).select(),
+      serialize: serializeTaskSeries,
     }),
     reminder: async (ids) => ({
       rows: await app.db('reminders').whereIn('id', ids).select(),
@@ -474,6 +510,10 @@ export default async function syncRoutes(app) {
           rowPatch.completed_at = null;
           intent.cols.push('completed_at');
         }
+      }
+      if (entityKey === 'task_series' && (key === 'rule' || key === 'template')) {
+        // JSON columns take a string, exactly like a note's delta.
+        rowPatch[spec.col] = JSON.stringify(key === 'template' ? normalizeTemplate(value) : value);
       }
       if (entityKey === 'note' && key === 'contentDelta') {
         rowPatch.content_delta = value === null ? null : JSON.stringify(value);
@@ -698,6 +738,62 @@ export default async function syncRoutes(app) {
       deletePatch: (row) => ({
         slug: `${row.slug}--deleted--${row.id.slice(-8).toLowerCase()}`,
       }),
+    },
+
+    // Round 12 (OPH-205, ADR-0020): a series is metadata; the occurrences are
+    // tasks. Every write therefore ends in the materializer, inside the same
+    // transaction — a rule that syncs without its rows would be a rule nobody
+    // can see. `guard` refuses an impossible rule BEFORE the transaction opens,
+    // so a too-dense pattern comes back as a rejected mutation, not a 500.
+    task_series: {
+      table: 'task_series',
+      fields: TASK_SERIES_FIELDS,
+      requiredOnCreate: ['rule', 'template', 'timezone', 'anchorAt'],
+      workspaceOf: (row) => row.workspace_id,
+      guard(ctx, patch, row) {
+        const merged = {
+          rule: patch.rule ?? parseJsonColumn(row?.rule),
+          template: patch.template ?? parseJsonColumn(row?.template) ?? {},
+          timezone: patch.timezone ?? row?.timezone,
+          anchorAt: patch.anchorAt ?? row?.anchor_at,
+        };
+        const problem = validateSeriesInput(merged);
+        if (problem) return problem.code;
+        try {
+          plannedDays({
+            rule: merged.rule,
+            template: merged.template,
+            timezone: merged.timezone,
+            anchor_at: merged.anchorAt,
+          });
+        } catch (err) {
+          return err.code ?? 'TASK_SERIES_RULE_INVALID';
+        }
+        return null;
+      },
+      insertRow: (ctx, mutation, rowPatch) => ({
+        id: mutation.entityId,
+        workspace_id: ctx.workspaceId,
+        ...rowPatch,
+        created_by: ctx.userId,
+      }),
+      async afterCreate(trx, ctx, mutation) {
+        const series = await trx('task_series').where({ id: mutation.entityId }).first();
+        await materializeSeries(trx, { workspaceId: ctx.workspaceId, series });
+      },
+      async afterUpdate(trx, ctx, mutation) {
+        const series = await trx('task_series').where({ id: mutation.entityId }).first();
+        await rebuildFuture(trx, { workspaceId: ctx.workspaceId, series });
+      },
+      // Stopping a series removes its future and keeps its past (DESIGN §25 R7),
+      // so the delete cannot be the generic soft-delete patch.
+      async customDelete(trx, ctx, row) {
+        const { revision } = await softDeleteSeries(trx, {
+          workspaceId: ctx.workspaceId,
+          series: row,
+        });
+        return revision;
+      },
     },
 
     folder: {

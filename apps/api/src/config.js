@@ -113,6 +113,9 @@ export function loadConfig(env = process.env) {
     ),
     // How often expired accounts are purged.
     accountSweepSec: toInt(env.ACCOUNT_SWEEP_SEC, 3600, 'ACCOUNT_SWEEP_SEC'),
+    // How often the recurring-task window rolls forward (OPH-205, ADR-0020 §5).
+    // Daily by default: the window is 12 months, so nothing is urgent about it.
+    seriesSweepSec: toInt(env.SERIES_SWEEP_SEC, 86400, 'SERIES_SWEEP_SEC'),
     redisUrl: env.REDIS_URL ?? 'redis://127.0.0.1:6379',
     // Namespaces this deployment's BullMQ keyspace. Two AllisWell instances
     // pointed at one Redis would otherwise consume each other's jobs — and
@@ -215,6 +218,9 @@ export function loadConfig(env = process.env) {
   }
   if (config.accountDeletionGraceDays < 0 || config.accountDeletionGraceDays > 90) {
     throw new Error('ACCOUNT_DELETION_GRACE_DAYS must be between 0 and 90');
+  }
+  if (config.seriesSweepSec < 10) {
+    throw new Error('SERIES_SWEEP_SEC must be at least 10');
   }
   if (config.accountSweepSec < 10) {
     throw new Error('ACCOUNT_SWEEP_SEC must be at least 10');
