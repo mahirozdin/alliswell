@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/deep_link.dart';
+import 'core/modal_observer.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
@@ -79,6 +80,12 @@ final pendingDeepLinkProvider = NotifierProvider<PendingDeepLink, String?>(
   PendingDeepLink.new,
 );
 
+/// The root navigator, exposed so surfaces that live ABOVE the router — the
+/// quick-access bubble (OPH-200) — can still open a sheet. They have no
+/// `Navigator` ancestor of their own; `Navigator.of` resolves this context to
+/// the navigator itself.
+final awRootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'aw-root');
+
 /// App navigation. The five main sections live in an indexed-stack shell so
 /// each keeps its own navigation state; Settings is pushed on top. Everything
 /// outside /login, /register and /splash requires a session (OPH-024).
@@ -89,6 +96,11 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(authChanged.dispose);
 
   final router = GoRouter(
+    navigatorKey: awRootNavigatorKey,
+    // ONE observer, on the root only: go_router merges root observers into
+    // every branch navigator, so this sees dialogs (root) and section sheets
+    // (branch) alike — which is what lets the bubble hide behind modals.
+    observers: [ref.watch(awModalObserverProvider)],
     initialLocation: '/splash',
     refreshListenable: authChanged,
     redirect: (context, state) {

@@ -7,6 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 18 in progress
 
+- **The floating quick-access button (OPH-200).** On phones a draggable ⚡
+  button floats above the app — park it on either edge at any height, and it
+  stays there across launches; after three idle seconds it half-recedes into
+  the edge at 40 % (the platform's own AssistiveTouch default) and any touch
+  brings it back. Tapping opens a panel with the same shortcuts the sidebar
+  shows. It steps aside whenever a dialog or sheet is open, never appears on
+  the sign-in screens, over the tour or over a ringing alarm, and can be
+  switched off in Settings — in which case Home's app bar carries the ⚡ entry
+  instead, because a feature must never depend on a gesture alone.
+
 - **Quick access in the sidebar (OPH-199).** Wide layouts get a "Quick access"
   section under the navigation destinations: shortcut rows with their emoji or
   kind icon, the user's own name, a colour dot and — for external links — an

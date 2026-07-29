@@ -43,6 +43,15 @@ void phone(WidgetTester tester) {
 Future<void> openCompleted(WidgetTester tester) async {
   await tester.tap(find.byIcon(Icons.settings_outlined).last);
   await tester.pumpAndSettle();
+  // Settings grows over time (OPH-200 added the quick-access toggle), so the
+  // archive row is not necessarily on screen: scroll to it rather than tapping
+  // where it used to be.
+  await tester.scrollUntilVisible(
+    find.byKey(const Key('settings-completed')),
+    240,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('settings-completed')));
   await tester.pumpAndSettle();
 }

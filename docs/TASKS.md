@@ -4634,32 +4634,48 @@ sürüm dokunuşları orada; (5) menüde **emoji/renk maddeleri görünüyor ama
 OPH-202'de** geliyor (menü tek yerde tanımlansın diye); (6) DESIGN §23 Q9 gereği her satırda
 "yukarı/aşağı taşı" var — sürükleme yalnız hızlandırıcı.
 
-### OPH-200 — Telefon: yüzen düğme (bubble) + panel
+### OPH-200 — Telefon: yüzen düğme (bubble) + panel ✅ 2026-07-29
 
-- [ ] **Yerleşim:** kabuğun kök `Overlay`'inde, Navigator'ın ÜSTÜNDE ama dialog/sheet
+- [x] **Yerleşim:** kabuğun kök `Overlay`'inde, Navigator'ın ÜSTÜNDE ama dialog/sheet
       açıkken **gizlenir** (modal rota dinleyicisi) — panel/diyalogla çakışan bir
       yüzen düğme iki kez dokunulmaz hedef üretir. Auth/onboarding rotalarında yok.
-- [ ] **Fizik (DESIGN §23 Q4):** parmakla serbest sürüklenir; bırakınca en yakın
+- [x] **Fizik (DESIGN §23 Q4):** parmakla serbest sürüklenir; bırakınca en yakın
       **dikey kenara** yaylanarak yapışır (`AwMotion` token'ları); konum
       (kenar + yükseklik oranı) cihaz-yerel kalıcıdır (pano tercihi kalıbı);
       3 sn boşta → kenara yarı gömülür + soluklaşır (AssistiveTouch davranışı),
       dokununca tam geri gelir. Safe area + klavye inset'ine saygı; sağ-alt FAB
       bölgesine VARSAYILAN konum verilmez (fabrika konumu: sağ kenar, %35 yükseklik).
-- [ ] **Görünürlük kuralı (DESIGN §23 Q5):** düğme yalnız liste doluyken VE ayar
+- [x] **Görünürlük kuralı (DESIGN §23 Q5):** düğme yalnız liste doluyken VE ayar
       açıkken görünür. Ayarlar → "Yüzen hızlı erişim düğmesi" (fabrika: açık).
       Ayar kapalıyken telefonda giriş yolu **Home app bar'ındaki `bolt` ikonu**dur —
       özellik jeste/overlay'e mahkûm edilmez (D2). İlk kısayol eklendiğinde tek
       seferlik tooltip düğmeyi tanıtır.
-- [ ] **Panel:** dokun → bottom sheet; aynı liste, aynı satır menüleri (long-press),
+- [x] **Panel:** dokun → bottom sheet; aynı liste, aynı satır menüleri (long-press),
       başlıkta "+" (dış link ekle) ve "Düzenle" (sıralama modu — sürükleme kulpu
       `ReorderableListView`; erişilebilirlik yolu: kulp yerine yukarı/aşağı taşı
       menü eylemleri). Satıra dokun → panel kapanır + gezinilir.
-- [ ] **Erişilebilirlik:** düğme `Semantics(button, label: quick.title)`; sürükleme
+- [x] **Erişilebilirlik:** düğme `Semantics(button, label: quick.title)`; sürükleme
       TalkBack/VoiceOver'da zorunlu değil (konum bir tercihtir, işlev panelin
       kendisidir); panel tüm eylemleri menüyle sunar. Tap hedefi ≥ 44 px.
-- [ ] Testler: sürükle-bırak yapışma matematiği saf fonksiyon olarak (kenar seçimi +
+- [x] Testler: sürükle-bırak yapışma matematiği saf fonksiyon olarak (kenar seçimi +
       oran sıkıştırma); konum kalıcılığı; modal açılınca gizlenme; ayar kapalıyken
       app bar girişinin belirmesi; boş listede düğmenin yokluğu; panelden gezinme.
+
+**OPH-200 uygulama notları:** (1) düğme `MaterialApp.builder`'da (`QuickAccessBubbleHost`),
+kapılar ucuzdan pahalıya: genişlik → oturum → ayar → tur/alarm → **ancak sonra** liste akışı;
+(2) **rota dinleme DENENDİ ve geri alındı** — `MaterialApp.builder` içinden router delegate'i
+dinlemek router'ın kendi build'i sırasında rebuild demek (`'!_dirty': is not true`) ve
+`GoRouter.state` ilk karede boş eşleşme listesiyle `Bad state: No element` atıyor; auth
+ekranlarının tanımı zaten "oturum yok" olduğu için kapı **oturuma** bağlandı; (3) modal
+gizlemesi `AwModalRouteObserver` (`PopupRoute` sayar, `ValueNotifier` — `didPush` build
+sırasında ateşleyebilir); testte hem `showDialog` (root navigator) hem panelin kendisi
+kanıtlanıyor; (4) panel `awRootNavigatorKey.currentContext` ile açılıyor (builder katmanının
+`Navigator` atası yok) ve aynı sebeple tanıtım ipucu `Tooltip` DEĞİL kendi balonu;
+(5) yarı gömülme `AnimatedSlide` + `AnimatedOpacity` ile **yalnız boya**, kutu 56 px
+(testte `getSize` ile doğrulanıyor); (6) sürükleme testi `startGesture`+`moveBy` ister —
+tek `drag()` çağrısı pan tanıyıcıyı ara karesiz bırakıyor; (7) yan etki: Ayarlar listesi bir
+satır uzadı ve `completed_screen_test`in yardımcı fonksiyonu ekran dışında kalan satıra
+dokunuyordu → `scrollUntilVisible` eklendi (test bakımı, davranış değişmedi).
 
 ### OPH-201 — Ekleme yolları: her varlık menüsünde "Hızlı erişime ekle" + dış link
 

@@ -312,11 +312,13 @@ AppBar buildSectionAppBar(
   BuildContext context,
   String title, {
   Future<bool> Function()? onRefresh,
+  List<Widget> leadingActions = const [],
 }) {
   final wide = MediaQuery.sizeOf(context).width >= kAwWideBreakpoint;
   return AppBar(
     title: Text(title),
     actions: [
+      ...leadingActions,
       if (onRefresh != null && wide) AwRefreshAction(onRefresh: onRefresh),
       IconButton(
         icon: const Icon(Icons.settings_outlined),

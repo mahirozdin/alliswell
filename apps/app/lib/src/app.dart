@@ -4,6 +4,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import 'features/quick_access/ui/quick_access_bubble_host.dart';
 import 'i18n/i18n.dart';
 import 'router.dart';
 import 'theme/theme.dart';
@@ -51,10 +52,18 @@ class AllisWellApp extends ConsumerWidget {
         // never flash black, and `SlidableAutoCloseBehavior` — a group
         // notification ancestor, so ONE above the router makes every
         // swipe-to-delete row in the app close when another opens (OPH-184).
+        // OPH-200: the quick-access bubble hangs HERE, the one layer above
+        // every route — the shell's own Stack sits inside a route, so a button
+        // there would disappear on task detail and settings, which is exactly
+        // where a navigation shortcut is worth having. The host gates itself
+        // (phone width, setting on, list non-empty, no modal) and otherwise
+        // returns the child untouched.
         builder: (context, child) => SlidableAutoCloseBehavior(
           child: ColoredBox(
             color: context.awTokens.auroraTop,
-            child: child ?? const SizedBox.shrink(),
+            child: QuickAccessBubbleHost(
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         ),
         routerConfig: router,

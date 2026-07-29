@@ -12,6 +12,8 @@ import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/onboarding/tour.dart';
 import '../features/settings/account_deletion.dart';
 import '../features/settings/account_locale.dart';
+import '../features/quick_access/ui/quick_access_bubble.dart';
+import '../features/quick_access/ui/quick_access_row.dart';
 import '../features/settings/server_url_sheet.dart';
 import '../i18n/i18n.dart';
 import '../notifications/gateway.dart';
@@ -67,6 +69,20 @@ class SettingsScreen extends ConsumerWidget {
                       value: ref.watch(notificationPrivacyProvider),
                       onChanged: (_) => ref
                           .read(notificationPrivacyProvider.notifier)
+                          .toggle(),
+                    ),
+                    // OPH-200 (DESIGN §23 Q5): the floating shortcut button
+                    // is optional, and turning it off does not remove the
+                    // feature — the Home app bar grows a ⚡ entry instead. A
+                    // gesture is never the only path.
+                    SwitchListTile(
+                      key: const Key('quick-bubble-toggle'),
+                      secondary: const Icon(kQuickAccessIcon),
+                      title: Text('settings.quickBubble'.tr()),
+                      subtitle: Text('settings.quickBubbleSub'.tr()),
+                      value: ref.watch(quickBubbleEnabledProvider),
+                      onChanged: (_) => ref
+                          .read(quickBubbleEnabledProvider.notifier)
                           .toggle(),
                     ),
                     // Feedback round 6: an honest status row for the

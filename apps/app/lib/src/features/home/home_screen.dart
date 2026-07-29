@@ -17,6 +17,7 @@ import '../../widgets/status_views.dart';
 import '../../search/providers.dart';
 import '../../search/search.dart';
 import '../../widgets/search_field.dart';
+import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
 import '../tags/tags.dart';
@@ -182,6 +183,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         context,
         'nav.home'.tr(),
         onRefresh: () => refreshSection(ref, AppSection.home),
+        // OPH-200: the entry point when the floating button is switched off —
+        // the widget hides itself everywhere else (DESIGN §23 Q5).
+        leadingActions: const [QuickAccessAppBarButton()],
       ),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),

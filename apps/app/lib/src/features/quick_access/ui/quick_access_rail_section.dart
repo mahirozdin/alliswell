@@ -5,7 +5,9 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../providers.dart';
+import 'quick_access_bubble.dart';
 import 'quick_access_list.dart';
+import 'quick_access_panel.dart';
 import 'quick_access_row.dart';
 
 /// Collapsed state of the rail's Quick Access section — device-local, like
@@ -185,6 +187,31 @@ class QuickAccessRailButton extends ConsumerWidget {
               controller.isOpen ? controller.close() : controller.open(),
         ),
       ),
+    );
+  }
+}
+
+/// The phone's non-gesture entry point (DESIGN §23 Q5).
+///
+/// Shown only where the bubble is not: a narrow layout with the floating
+/// button switched off. Turning the bubble off is a request for the icon, not
+/// a request to lose the feature — so this appears even with an empty rail,
+/// which is also the only way a phone user could add their first link.
+class QuickAccessAppBarButton extends ConsumerWidget {
+  const QuickAccessAppBarButton({super.key, this.onOpen});
+
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final narrow = MediaQuery.sizeOf(context).width < kAwWideBreakpoint;
+    final bubbleOn = ref.watch(quickBubbleEnabledProvider);
+    if (!narrow || bubbleOn) return const SizedBox.shrink();
+    return IconButton(
+      key: const Key('quick-appbar-button'),
+      icon: const Icon(kQuickAccessIcon),
+      tooltip: 'quick.title'.tr(),
+      onPressed: onOpen ?? () => showQuickAccessPanel(context),
     );
   }
 }
