@@ -216,7 +216,8 @@ describe.runIf(enabled)('integration: google inbound sync over BullMQ', () => {
     await vi.waitFor(
       async () => {
         const task = await app.db('tasks').where({ id: taskId }).first();
-        expect(Boolean(task.calendar_mirror_enabled)).toBe(false);
+        // OPH-210: suppression has its own column now.
+        expect(task.calendar_mirror_suppressed_at).toBeTruthy();
       },
       { timeout: 10000, interval: 100 },
     );

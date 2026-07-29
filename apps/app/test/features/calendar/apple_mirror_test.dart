@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +21,7 @@ Task _task(
   DateTime? scheduledEnd,
   DateTime? due,
   DateTime? remind,
+  DateTime? created,
 }) => Task(
   id: id,
   workspaceId: 'W1',
@@ -34,6 +38,7 @@ Task _task(
   scheduledEndAt: scheduledEnd,
   dueAt: due,
   remindAt: remind,
+  createdAt: created,
 );
 
 /// Records what the engine asked EventKit to do, and hands back canned ids —
@@ -97,23 +102,34 @@ void main() {
       expect(e.end, DateTime.utc(2030, 6, 1, 10, 30));
     });
 
-    test('falls back: due slot, then urgent reminder, both 30 min', () {
-      final due = desiredAppleEvent(
-        _task('T', due: DateTime.utc(2030, 6, 1, 12)),
-      )!;
-      expect(due.start, DateTime.utc(2030, 6, 1, 12));
-      expect(due.end, DateTime.utc(2030, 6, 1, 12, 30));
+    test('a dated task gets a 30-minute block, and midnight is a wall', () {
+      // Round 12 (ADR-0021 §1): no opt-in and no urgent-only rule — a time is
+      // enough. Local, because the device's clock IS the user's wall clock.
+      final due = desiredAppleEvent(_task('T', due: DateTime(2030, 6, 1, 12)))!;
+      expect(due.start, DateTime(2030, 6, 1, 12));
+      expect(due.end, DateTime(2030, 6, 1, 12, 30));
 
-      final urgent = desiredAppleEvent(
-        _task('T', urgent: true, remind: DateTime.utc(2030, 6, 1, 8)),
+      final lateNight = desiredAppleEvent(
+        _task('T', due: DateTime(2030, 6, 1, 23, 59)),
       )!;
-      expect(urgent.start, DateTime.utc(2030, 6, 1, 8));
+      expect(lateNight.start, DateTime(2030, 6, 1, 23, 29));
+      expect(lateNight.end, DateTime(2030, 6, 1, 23, 59));
+    });
 
-      // A non-urgent reminder alone is not a calendar block.
-      expect(
-        desiredAppleEvent(_task('T', remind: DateTime.utc(2030, 6, 1, 8))),
-        isNull,
-      );
+    test('an undated task sits on the day it was created', () {
+      final e = desiredAppleEvent(
+        _task('T', created: DateTime(2030, 5, 20, 9, 15)),
+      )!;
+      expect(e.start, DateTime(2030, 5, 20, 9, 15));
+      expect(e.end, DateTime(2030, 5, 20, 9, 45));
+    });
+
+    test('a completed task keeps its block, marked (ADR-0021 §2)', () {
+      final e = desiredAppleEvent(
+        _task('T', status: 'completed', due: DateTime(2030, 6, 1, 12)),
+      )!;
+      expect(e.title, '✓ [Task] İş');
+      expect(e.start, DateTime(2030, 6, 1, 12));
     });
 
     test('a backwards scheduled end falls back to the default slot', () {
@@ -127,20 +143,47 @@ void main() {
       expect(e.end, DateTime.utc(2030, 6, 1, 14, 30));
     });
 
-    test('no event without opt-in, a time, or a live task', () {
-      expect(desiredAppleEvent(_task('T')), isNull); // no time
-      expect(
-        desiredAppleEvent(
-          _task('T', mirror: false, due: DateTime.utc(2030, 6, 1, 12)),
-        ),
-        isNull,
-      );
-      for (final s in ['completed', 'cancelled', 'archived']) {
+    test('no event for withdrawn work, or a task with no time at all', () {
+      expect(desiredAppleEvent(_task('T')), isNull); // no date, no created_at
+      // `completed` left this list in round 12 — done work keeps its block.
+      for (final s in ['cancelled', 'archived']) {
         expect(
           desiredAppleEvent(
             _task('T', status: s, due: DateTime.utc(2030, 6, 1, 12)),
           ),
           isNull,
+        );
+      }
+    });
+
+    test('matches the server block rule, case by case (ADR-0021)', () {
+      // The same fixture apps/api/test/unit/google-mirror.test.js asserts: two
+      // mirrors that disagree in front of the user is what §17 D1 forbids.
+      final fixture =
+          jsonDecode(
+                File(
+                  'test/fixtures/calendar_block_parity.json',
+                ).readAsStringSync(),
+              )
+              as Map<String, dynamic>;
+      String wall(DateTime d) =>
+          '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}T'
+          '${d.hour.toString().padLeft(2, '0')}:'
+          '${d.minute.toString().padLeft(2, '0')}';
+      for (final raw in (fixture['cases'] as List)) {
+        final testCase = raw as Map<String, dynamic>;
+        final block = appleBlockFor(DateTime.parse(testCase['at'] as String));
+        expect(
+          wall(block.$1),
+          testCase['start'],
+          reason: testCase['name'] as String,
+        );
+        expect(
+          wall(block.$2),
+          testCase['end'],
+          reason: testCase['name'] as String,
         );
       }
     });
@@ -282,12 +325,21 @@ void main() {
       expect(gateway.saved.last.eventId, 'ev-1'); // update in place
     });
 
-    test('completing a task removes its event', () async {
+    test('completing a task marks its event; cancelling removes it', () async {
       await engine().reconcileTask(
         _task('T1', due: DateTime.utc(2030, 6, 1, 12)),
       );
+      // Round 12 (ADR-0021 §2): done work keeps its block, marked — the event
+      // is UPDATED, not deleted, and the mapping survives.
       await engine().reconcileTask(
         _task('T1', status: 'completed', due: DateTime.utc(2030, 6, 1, 12)),
+      );
+      expect(gateway.deleted, isEmpty);
+      expect(await links.get('T1'), isNotNull);
+
+      // Withdrawn work is different.
+      await engine().reconcileTask(
+        _task('T1', status: 'cancelled', due: DateTime.utc(2030, 6, 1, 12)),
       );
       expect(gateway.deleted, ['ev-1']);
       expect(await links.get('T1'), isNull);

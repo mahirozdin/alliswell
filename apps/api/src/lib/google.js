@@ -18,13 +18,79 @@ export class GoogleApiError extends Error {
   }
 }
 
+/**
+ * Outbound throttle (OPH-210, ADR-0021 §5).
+ *
+ * Round 12 made EVERY task mirror, and one recurring series can own ~366 of
+ * them — so the first large backfill would have walked straight into Google's
+ * quota with nothing but BullMQ's five retries behind it. Two mechanisms, both
+ * deliberately small:
+ *
+ * 1. a concurrency gate, so a backfill cannot open fifty sockets at once;
+ * 2. 429/5xx retries that OBEY `Retry-After` when Google sends one and fall
+ *    back to exponential backoff (with jitter) when it does not.
+ *
+ * A process-wide gate is the right scope here: quota is per project, not per
+ * job, and every caller in this file shares the same credentials.
+ */
+const MAX_CONCURRENT = 6;
+const MAX_ATTEMPTS = 4;
+const BASE_BACKOFF_MS = 500;
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+let inFlight = 0;
+const waiting = [];
+
+function acquire() {
+  if (inFlight < MAX_CONCURRENT) {
+    inFlight += 1;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => waiting.push(resolve));
+}
+
+function release() {
+  const next = waiting.shift();
+  if (next) {
+    next();
+    return;
+  }
+  inFlight -= 1;
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** `Retry-After` is seconds or an HTTP date; both are worth obeying. */
+function retryAfterMs(header, attempt) {
+  if (header) {
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 60000);
+    const when = Date.parse(header);
+    if (!Number.isNaN(when)) return Math.max(0, Math.min(when - Date.now(), 60000));
+  }
+  // Full jitter: a fleet of retries that all wake together is a second spike.
+  return Math.round(BASE_BACKOFF_MS * 2 ** attempt * (0.5 + Math.random() / 2));
+}
+
 async function request(url, options) {
-  const res = await fetch(url, options);
-  if (res.status === 204) return null;
-  const text = await res.text();
-  const body = text ? JSON.parse(text) : null;
-  if (!res.ok) throw new GoogleApiError(res.status, body);
-  return body;
+  await acquire();
+  try {
+    for (let attempt = 0; ; attempt += 1) {
+      const res = await fetch(url, options);
+      if (RETRY_STATUSES.has(res.status) && attempt < MAX_ATTEMPTS - 1) {
+        await res.text().catch(() => null); // drain, so the socket is reusable
+        await sleep(retryAfterMs(res.headers?.get?.('retry-after'), attempt));
+        continue;
+      }
+      if (res.status === 204) return null;
+      const text = await res.text();
+      const body = text ? JSON.parse(text) : null;
+      if (!res.ok) throw new GoogleApiError(res.status, body);
+      return body;
+    }
+  } finally {
+    release();
+  }
 }
 
 const form = (fields) => new URLSearchParams(fields).toString();

@@ -1,0 +1,47 @@
+{
+  "_comment": "ADR-0021 — the calendar block rule exists twice: the server writes Google events (apps/api/src/lib/mirror.js) and the device writes Apple events (apps/app/lib/src/features/calendar/apple/apple_mirror.dart). Two mirrors that disagree in front of the user is what DESIGN §17 D1 forbids, so both suites assert this file. Times are WALL clock with no zone attached: the server evaluates them against the task's timezone, the device against its own, and the arithmetic must land on the same wall time either way.",
+  "cases": [
+    {
+      "name": "an ordinary time gets a plain 30-minute block",
+      "at": "2030-06-01T12:00",
+      "start": "2030-06-01T12:00",
+      "end": "2030-06-01T12:30"
+    },
+    {
+      "name": "the default 23:59 due time is pulled back, not spilled into tomorrow",
+      "at": "2030-06-01T23:59",
+      "start": "2030-06-01T23:29",
+      "end": "2030-06-01T23:59"
+    },
+    {
+      "name": "23:30 exactly still fits the day",
+      "at": "2030-06-01T23:29",
+      "start": "2030-06-01T23:29",
+      "end": "2030-06-01T23:59"
+    },
+    {
+      "name": "23:40 is clamped back to the last half hour",
+      "at": "2030-06-01T23:40",
+      "start": "2030-06-01T23:29",
+      "end": "2030-06-01T23:59"
+    },
+    {
+      "name": "midnight belongs to the day that starts, not the one that ended",
+      "at": "2030-06-02T00:00",
+      "start": "2030-06-02T00:00",
+      "end": "2030-06-02T00:30"
+    },
+    {
+      "name": "the last day of a month does not leak into the next one",
+      "at": "2030-06-30T23:50",
+      "start": "2030-06-30T23:29",
+      "end": "2030-06-30T23:59"
+    },
+    {
+      "name": "the last day of a year does not leak into the next one",
+      "at": "2030-12-31T23:59",
+      "start": "2030-12-31T23:29",
+      "end": "2030-12-31T23:59"
+    }
+  ]
+}

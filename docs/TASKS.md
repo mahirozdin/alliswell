@@ -5142,24 +5142,54 @@ backfill'den ÖNCE** yazılır; onam metni "tüm görevler takvime yazılır" de
 
 ### OPH-210 — Takvim aynası v2: her görev takvimde, hiçbir yerde seçenek yok
 
-- [ ] **Switch ölür:** [task_detail_screen.dart:341](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L341)
+- [x] **Switch ölür:** [task_detail_screen.dart:341](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L341)
       satırı ve `task.showInCalendar*` i18n anahtarları kalkar; API
       `calendarMirrorEnabled` alanını kabul etmeye devam eder ama YAZAN yüzey kalmaz
       (kolonun kaderi ADR-0021'de; migration append-only).
-- [ ] **§7.1 yeni kural (BLUEPRINT'te bu turda yazıldı):** tarihli her görev →
+- [x] **§7.1 yeni kural (BLUEPRINT'te bu turda yazıldı):** tarihli her görev →
       OPH-209'un blok kuralıyla event; tarihsiz görev → ekleniş gününe; `scheduled_*`
       önceliği (OPH-192 davranışı) korunur — kullanıcı Google'da sürüklediyse blok
       oradan gelir.
-- [ ] **İki ayna da geçer:** Google server-side mirror (mevcut mapping + echo
+- [x] **İki ayna da geçer:** Google server-side mirror (mevcut mapping + echo
       suppression + tombstone düzeni aynen) ve Apple EventKit cihaz aynası aynı kural
       setine bağlanır — iki platform kullanıcının önünde çelişemez (§17 D1 ruhu).
-- [ ] **Backfill:** mevcut tüm görevler için blok üretimi kuyruklu ve rate-limit'li
+- [x] **Backfill:** mevcut tüm görevler için blok üretimi kuyruklu ve rate-limit'li
       (OPH-209 stratejisi); idempotent (mapping tablosu olan atlanır); ilerleme
       log'lanır.
-- [ ] Testler: blok kuralı birim testleri (saatli / 23:59 / tarihsiz-ekleniş-günü /
+- [x] Testler: blok kuralı birim testleri (saatli / 23:59 / tarihsiz-ekleniş-günü /
       gece yarısı kenetlemesi); switch'siz mirror kararının tablo testi; backfill
       idempotensi; inbound echo regresyonu; **canlı pass** (gerçek Google hesabı +
       Apple cihaz) STATE cihaz kuyruğuna.
+
+**Uygulama notları (2026-07-29):**
+
+- **Bastırma kolonu YENİ:** planda `calendar_mirror_enabled`i bastırma bayrağına
+  çevirecektik — **imkânsız**: kolon `false` varsayılanlı, yani anlamı ters çevrildiği
+  an MEVCUT HER GÖREV "bastırılmış" okunurdu. Migration
+  `20260729200000_add_task_calendar_suppression.js` `calendar_mirror_suppressed_at`
+  ekliyor; tek yazan `lib/inbound.js` (kullanıcı event'i Google'da silince). Eski kolon
+  yerinde duruyor (append-only), ölü ama dürüst.
+- **Sıra ADR'deki gibi:** önce `lib/google.js`'e eşzamanlılık kapısı (6) +
+  429/5xx yeniden denemesi (`Retry-After`'a **uyar**, yoksa tam-jitter üstel geri
+  çekilme), sonra kural, sonra backfill.
+- **Blok kuralı** `blockForTask` olarak dışa açıldı; gece yarısı kenetlemesi
+  `zonedWallTimeToUtc` ile görevin KENDİ diliminde yapılıyor (gece yarısı bir yere
+  aittir). Apple yakasında aynı aritmetik cihazın yerel saatinde (`appleBlockFor`).
+- **İki ayna tek fikstürle bağlandı:** `apps/app/test/fixtures/calendar_block_parity.json`
+  — 7 vaka, iki süit de koşuyor (§17 D1).
+- **Backfill penceresi** `enqueueWorkspaceMirrorSweep(app, workspaceId, now)`:
+  -30g → +12ay, `due_at`/`scheduled_start_at` ya da (ikisi de yoksa) `created_at`
+  üzerinden; bastırılmışlar atlanıyor; sayı log'lanıyor.
+- **Testlerin güncellenmesi bilgi taşıyor:** mirror/inbound süitlerindeki 8 beklenti
+  ESKİ kuralı yazıyordu (opt-in şart, tamamlanınca event silinir). Hepsi yeni kurala
+  çevrildi ve *neden* değiştiği yorumda duruyor — "tamamlanan artık bloğunu koruyor,
+  iptal edilen kaybediyor".
+- **Onam metni** bağlantı kartında, düğmenin ÜSTÜNDE (`google-consent`).
+
+**Doğrulama (2026-07-29):** API **390 unit + 47 entegrasyon** (gerçek MySQL; tamamlanan
+görevin `✓` bloğu ve iptalde silinmesi kuyruktan uçtan uca), app **643 test**,
+analyze + i18n + kontrast + lint + format temiz. **Canlı Google/Apple passi cihaz
+kuyruğunda.**
 
 ### OPH-211 — Geciken grubunda tamamlanmış satır kalmaz (round 12 #3)
 

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadConfig } from '../../src/config.js';
 import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { startFakeGoogle, fakeGoogleEnv } from '../helpers/fakegoogle.js';
-import { desiredEventForTask } from '../../src/lib/mirror.js';
+import { blockForTask, desiredEventForTask } from '../../src/lib/mirror.js';
+import { readFileSync } from 'node:fs';
 import { encryptSecret } from '../../src/lib/crypto.js';
 import { newId } from '../../src/lib/ids.js';
 
@@ -58,38 +59,87 @@ describe('lib/mirror desiredEventForTask (OPH-072, §7.1)', () => {
     expect(event.end.dateTime).toBe('2030-06-01T14:30:00.000Z');
   });
 
-  it('falls back: due slot, then urgent reminder block, both 30 minutes', () => {
+  it('gives a dated task a 30-minute block, opt-in or not (round 12)', () => {
     const due = desiredEventForTask({ ...base, due_at: '2030-06-01T12:00:00.000Z' });
     expect(due.start.dateTime).toBe('2030-06-01T12:00:00.000Z');
     expect(due.end.dateTime).toBe('2030-06-01T12:30:00.000Z');
 
-    const urgent = desiredEventForTask({
+    // The switch is gone: a task nobody opted in still mirrors (ADR-0021 §1).
+    const notOptedIn = desiredEventForTask({
       ...base,
-      is_urgent: true,
-      remind_at: '2030-06-01T08:00:00.000Z',
+      calendar_mirror_enabled: false,
+      due_at: '2030-06-01T12:00:00.000Z',
     });
-    expect(urgent.start.dateTime).toBe('2030-06-01T08:00:00.000Z');
-
-    // A non-urgent reminder alone is NOT a calendar block (§7.1).
-    expect(desiredEventForTask({ ...base, remind_at: '2030-06-01T08:00:00.000Z' })).toBeNull();
+    expect(notOptedIn.start.dateTime).toBe('2030-06-01T12:00:00.000Z');
   });
 
-  it('wants no event without opt-in, time, or a live task', () => {
-    expect(desiredEventForTask({ ...base })).toBeNull(); // no time source
-    expect(
-      desiredEventForTask({
-        ...base,
-        calendar_mirror_enabled: false,
-        due_at: '2030-06-01T12:00:00.000Z',
-      }),
-    ).toBeNull();
-    for (const status of ['completed', 'cancelled', 'archived']) {
+  it('clamps a block that would cross midnight (23:59 → 23:29–23:59)', () => {
+    const event = desiredEventForTask({
+      ...base,
+      timezone: 'UTC',
+      due_at: '2030-06-01T23:59:00.000Z',
+    });
+    expect(event.start.dateTime).toBe('2030-06-01T23:29:00.000Z');
+    expect(event.end.dateTime).toBe('2030-06-01T23:59:00.000Z');
+  });
+
+  it('puts an UNDATED task on the day it was created', () => {
+    const event = desiredEventForTask({
+      ...base,
+      timezone: 'UTC',
+      created_at: '2030-05-20T09:15:00.000Z',
+    });
+    expect(event.start.dateTime).toBe('2030-05-20T09:15:00.000Z');
+    expect(event.end.dateTime).toBe('2030-05-20T09:45:00.000Z');
+  });
+
+  it('keeps a completed task’s block and marks it (ADR-0021 §2)', () => {
+    const event = desiredEventForTask({
+      ...base,
+      status: 'completed',
+      due_at: '2030-06-01T12:00:00.000Z',
+    });
+    expect(event.summary).toBe('✓ [Task] Sunum hazırla');
+    expect(event.start.dateTime).toBe('2030-06-01T12:00:00.000Z');
+  });
+
+  it('matches the Apple mirror block rule, case by case (ADR-0021)', () => {
+    // The same fixture apps/app/test/features/calendar/apple_mirror_test.dart
+    // asserts. Two mirrors that disagree in front of the user is what DESIGN
+    // §17 D1 forbids, so neither side may change this arithmetic alone.
+    const fixture = JSON.parse(
+      readFileSync(
+        new URL('../../../app/test/fixtures/calendar_block_parity.json', import.meta.url),
+        'utf8',
+      ),
+    );
+    const wall = (date) => date.toISOString().slice(0, 16);
+    for (const testCase of fixture.cases) {
+      const block = blockForTask(
+        { ...base, timezone: 'UTC', due_at: `${testCase.at}:00.000Z` },
+        'UTC',
+      );
+      expect(wall(block.start), testCase.name).toBe(testCase.start);
+      expect(wall(block.end), testCase.name).toBe(testCase.end);
+    }
+  });
+
+  it('wants no event for withdrawn work, a deleted task, or a suppressed one', () => {
+    for (const status of ['cancelled', 'archived']) {
       expect(
         desiredEventForTask({ ...base, status, due_at: '2030-06-01T12:00:00.000Z' }),
       ).toBeNull();
     }
     expect(
       desiredEventForTask({ ...base, deleted_at: new Date(), due_at: '2030-06-01T12:00:00.000Z' }),
+    ).toBeNull();
+    // The user deleted our event in Google; we do not put it back (§3).
+    expect(
+      desiredEventForTask({
+        ...base,
+        calendar_mirror_suppressed_at: new Date(),
+        due_at: '2030-06-01T12:00:00.000Z',
+      }),
     ).toBeNull();
   });
 });
@@ -176,16 +226,26 @@ describe('mirror worker end to end (OPH-072/073)', () => {
     expect(primaryEvents()[0].summary).toBe('[Task] Takvimli iş v2');
     expect(primaryEvents()[0].start.dateTime).toBe('2030-06-02T09:00:00.000Z');
 
-    // Completing removes the event and the link.
+    // Round 12 (ADR-0021 §2): completing KEEPS the block and marks it — the
+    // calendar is where "what did I actually do that week" gets answered. This
+    // used to assert the event and its link disappeared.
     await api('POST', `/api/v1/tasks/${taskId}/complete`);
     await app.mirror.idle();
-    expect(primaryEvents()).toHaveLength(0);
-    expect(tables.calendar_event_links).toHaveLength(0);
+    expect(primaryEvents()).toHaveLength(1);
+    expect(primaryEvents()[0].summary).toBe('✓ [Task] Takvimli iş v2');
+    expect(tables.calendar_event_links).toHaveLength(1);
 
-    // Reopening brings it back as a fresh event.
+    // Reopening drops the mark, on the same event.
     await api('POST', `/api/v1/tasks/${taskId}/reopen`);
     await app.mirror.idle();
     expect(primaryEvents()).toHaveLength(1);
+    expect(primaryEvents()[0].summary).toBe('[Task] Takvimli iş v2');
+
+    // Cancelling is different: work withdrawn loses its block.
+    await api('PATCH', `/api/v1/tasks/${taskId}`, { status: 'cancelled' });
+    await app.mirror.idle();
+    expect(primaryEvents()).toHaveLength(0);
+    expect(tables.calendar_event_links).toHaveLength(0);
   });
 
   it('re-links to an existing foreign event instead of duplicating (OPH-073)', async () => {
@@ -232,15 +292,14 @@ describe('mirror worker end to end (OPH-072/073)', () => {
     expect(primaryEvents()).toHaveLength(1);
     expect(primaryEvents()[0].id).not.toBe(firstId);
 
-    // A plain task (no opt-in) never reaches Google.
-    const callsBefore = google.state.seq;
+    // Round 12 (ADR-0021 §1): a plain task with no opt-in reaches Google too —
+    // that is the whole change. This used to assert the opposite.
     await api('POST', `/api/v1/workspaces/${owner.workspace.id}/tasks`, {
       title: 'Sade iş',
       dueAt: '2030-06-01T15:00:00.000Z',
     });
     await app.mirror.idle();
-    expect(google.state.eventsIn('primary').size).toBe(1);
-    expect(google.state.seq).toBe(callsBefore);
+    expect(google.state.eventsIn('primary').size).toBe(2);
   });
 
   it('choosing a default calendar backfills mirror-enabled tasks (sweep)', async () => {

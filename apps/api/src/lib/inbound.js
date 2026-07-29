@@ -109,7 +109,10 @@ export function reconcileProviderEvent({ event, link, task, alreadyLinked = fals
     if (!wanted) return outcome('drop-link', { reason: 'converged-delete' });
     return outcome('stop-mirror', {
       conflictStatus: CONFLICT.PROVIDER_DELETED,
-      taskPatch: { calendar_mirror_enabled: false },
+      // OPH-210 (ADR-0021 §3): suppression moved to its own column — the old
+      // `calendar_mirror_enabled` defaults to false, so writing it here would
+      // have been indistinguishable from "never opted in".
+      taskPatch: { calendar_mirror_suppressed_at: new Date() },
       reason: 'provider-deleted',
     });
   }

@@ -27,6 +27,10 @@ class Task {
     this.snoozedUntil,
     this.alarmsMutedAt,
     this.completedAt,
+    // OPH-210: an undated task's calendar block sits on the day it was created
+    // (BLUEPRINT §7.1) — so the Apple mirror needs this, and it was simply
+    // never carried across before.
+    this.createdAt,
     this.tagIds = const [],
     this.checklist = const [],
   });
@@ -54,6 +58,9 @@ class Task {
     requiresAcknowledgement: json['requiresAcknowledgement'] as bool,
     calendarMirrorEnabled: (json['calendarMirrorEnabled'] as bool?) ?? false,
     seriesId: json['seriesId'] as String?,
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.parse(json['createdAt'] as String),
     occurrenceDate: json['occurrenceDate'] as String?,
     sortOrder: json['sortOrder'] as int,
     revision: json['revision'] as int,
@@ -111,6 +118,7 @@ class Task {
   bool get isRecurring => seriesId != null;
   final int sortOrder;
   final int revision;
+  final DateTime? createdAt;
   final List<String> tagIds;
   final List<ChecklistItem> checklist;
 

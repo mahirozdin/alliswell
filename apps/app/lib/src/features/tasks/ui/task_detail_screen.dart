@@ -377,24 +377,10 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                           ],
                         ),
                       ),
-                    // OPH-081: opt-in mirroring (BLUEPRINT §12). Enabling it
-                    // early is fine — the event appears the moment the task
-                    // gets a time — so say that instead of blocking the switch.
-                    SwitchListTile(
-                      key: const Key('calendar-mirror-switch'),
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('task.showInCalendar'.tr()),
-                      subtitle: Text(
-                        task.hasCalendarTime
-                            ? 'task.showInCalendarOnSub'.tr()
-                            : 'task.showInCalendarOffSub'.tr(),
-                      ),
-                      value: task.calendarMirrorEnabled,
-                      onChanged: (v) => _apply(
-                        (store, id) =>
-                            store.update(id, {'calendarMirrorEnabled': v}),
-                      ),
-                    ),
+                    // OPH-210 (ADR-0021 §1): the "show in calendar" switch is
+                    // GONE. Every task is on the calendar now — it was never a
+                    // choice the user should have had to find, and the default
+                    // being off meant an ordinary dated task never got there.
                     _DateRow(
                       key: const Key('due-row'),
                       label: 'task.due'.tr(),

@@ -159,49 +159,21 @@ void main() {
         .toUtc()
         .toIso8601String();
 
-    testWidgets('the switch reaches the server and explains itself', (
+    testWidgets('the switch is GONE — every task is on the calendar now', (
       tester,
     ) async {
+      // Round 12 (OPH-210, ADR-0021 §1): "show in calendar" stopped being a
+      // choice. These two tests used to assert the switch reached the server
+      // and explained itself; the honest replacement is that it does not exist.
       await wideSurface(tester);
       final api = FakeApi();
       api.seedTask(title: 'Takvimli iş', dueAt: soon);
       await tester.pumpWidget(await signedInAppWith(api));
       await tester.pumpAndSettle();
 
-      final list = await openDetail(tester, 'Takvimli iş');
-      final toggle = find.byKey(const Key('calendar-mirror-switch'));
-      await tester.dragUntilVisible(toggle, list, const Offset(0, -120));
-
-      // The task has a due date, so it has something to put on a calendar.
-      expect(
-        find.text('Adds a block to your connected calendar'),
-        findsOneWidget,
-      );
-
-      await tester.tap(toggle);
-      await tester.pumpAndSettle();
-      expect(api.tasks.single['calendarMirrorEnabled'], isTrue);
-    });
-
-    testWidgets('a task with no dates says why nothing will show up', (
-      tester,
-    ) async {
-      await wideSurface(tester);
-      final api = FakeApi();
-      api.seedTask(title: 'Tarihsiz iş');
-      await tester.pumpWidget(await signedInAppWith(api));
-      await tester.pumpAndSettle();
-
-      final list = await openDetail(tester, 'Tarihsiz iş');
-      final toggle = find.byKey(const Key('calendar-mirror-switch'));
-      await tester.dragUntilVisible(toggle, list, const Offset(0, -120));
-
-      // Honest instead of silently doing nothing — and still switchable, since
-      // adding a date later starts the mirror on its own.
-      expect(find.text('Add a date below and it will appear'), findsOneWidget);
-      await tester.tap(toggle);
-      await tester.pumpAndSettle();
-      expect(api.tasks.single['calendarMirrorEnabled'], isTrue);
+      await openDetail(tester, 'Takvimli iş');
+      expect(find.byKey(const Key('calendar-mirror-switch')), findsNothing);
+      expect(find.textContaining('connected calendar'), findsNothing);
     });
 
     testWidgets('a scheduled block arriving from the calendar EXPLAINS itself', (

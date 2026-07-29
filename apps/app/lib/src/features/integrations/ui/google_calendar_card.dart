@@ -152,6 +152,22 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
         title: Text('calendar.google'.tr()),
         subtitle: Text('calendar.googleBlurb'.tr()),
       ),
+      // OPH-210 (ADR-0021 §7): "every task" now includes tasks the user never
+      // thought of as calendar items, so the consent has to say so BEFORE the
+      // connect button, not in a help page afterwards.
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AwSpace.x4,
+          0,
+          AwSpace.x4,
+          AwSpace.x3,
+        ),
+        child: Text(
+          'calendar.googleConsent'.tr(),
+          key: const Key('google-consent'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ),
       Padding(
         padding: const EdgeInsets.fromLTRB(
           AwSpace.x4,

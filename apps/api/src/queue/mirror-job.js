@@ -111,19 +111,46 @@ async function mirrorTaskToAccount(app, account, task) {
   });
 }
 
+/** The backfill window (ADR-0021 §4): −30 days → +12 months. */
+export const BACKFILL_BACK_DAYS = 30;
+export const BACKFILL_FORWARD_DAYS = 365;
+
 /**
- * Backfill sweep (§7.2 step 4, outbound half): enqueue a mirror pass for
- * every mirror-enabled task of the workspace — used right after an account
+ * Backfill sweep (§7.2 step 4, outbound half): enqueue a mirror pass for every
+ * task of the workspace inside the window — used right after an account
  * connects or its default calendar changes.
+ *
+ * Round 12 removed the `calendar_mirror_enabled: true` filter, because there is
+ * no opt-in left to filter on (ADR-0021 §1). What replaces it is a WINDOW, not
+ * "everything": an unbounded backfill on a large workspace is tens of thousands
+ * of API calls for events nobody will scroll back to, and +12 months is where
+ * recurrence stops producing rows anyway. Tasks are matched on any of their
+ * dates — a task dragged in the calendar (`scheduled_start_at`) belongs to the
+ * window it was dragged into, not to the day it was created.
  */
-export async function enqueueWorkspaceMirrorSweep(app, workspaceId) {
+export async function enqueueWorkspaceMirrorSweep(app, workspaceId, now = new Date()) {
+  const from = new Date(now.getTime() - BACKFILL_BACK_DAYS * 86400000);
+  const to = new Date(now.getTime() + BACKFILL_FORWARD_DAYS * 86400000);
   const tasks = await app
     .db('tasks')
-    .where({ workspace_id: workspaceId, calendar_mirror_enabled: true })
+    .where({ workspace_id: workspaceId })
     .whereNull('deleted_at')
+    .whereNull('calendar_mirror_suppressed_at')
+    .where((q) =>
+      q
+        .whereBetween('due_at', [from, to])
+        .orWhereBetween('scheduled_start_at', [from, to])
+        .orWhere((inner) =>
+          inner
+            .whereNull('due_at')
+            .whereNull('scheduled_start_at')
+            .whereBetween('created_at', [from, to]),
+        ),
+    )
     .select('id');
   for (const task of tasks) {
     app.mirror.enqueue({ workspaceId, taskId: task.id });
   }
+  app.log?.info?.({ workspaceId, tasks: tasks.length }, 'calendar backfill queued');
   return tasks.length;
 }

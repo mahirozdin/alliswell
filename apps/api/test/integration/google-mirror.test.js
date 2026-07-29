@@ -103,11 +103,29 @@ describe.runIf(enabled)('integration: calendar mirror over BullMQ', () => {
     expect(event).toBeTruthy();
     expect(event.summary).toBe('[Task] BullMQ ile aynalanan');
 
-    // Completing drains back out through the same queue.
+    // Round 12 (ADR-0021 §2): completing MARKS the block; cancelling removes
+    // it. Both drain back out through the same queue.
     await app.inject({
       method: 'POST',
       url: `/api/v1/tasks/${taskId}/complete`,
       headers: owner.headers,
+    });
+    await vi.waitFor(
+      async () => {
+        const events = [...google.state.eventsIn('primary').values()].filter(
+          (e) => e.extendedProperties?.private?.alliswell_task_id === taskId,
+        );
+        expect(events).toHaveLength(1);
+        expect(events[0].summary.startsWith('✓ ')).toBe(true);
+      },
+      { timeout: 8000, interval: 100 },
+    );
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/tasks/${taskId}`,
+      headers: owner.headers,
+      payload: { status: 'cancelled' },
     });
     await vi.waitFor(
       async () => {

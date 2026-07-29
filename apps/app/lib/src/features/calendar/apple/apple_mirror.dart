@@ -10,7 +10,9 @@ import '../../tasks/data/task.dart';
 /// EventKit (device).
 
 const _slot = Duration(minutes: 30);
-const _goneStatuses = {'completed', 'cancelled', 'archived'};
+
+/// Work withdrawn loses its block; work DONE keeps it, marked (ADR-0021 §2).
+const _goneStatuses = {'cancelled', 'archived'};
 
 /// The custom-scheme marker Apple events carry in their URL field (ADR-0003) —
 /// the recovery key when EventKit's own identifier goes stale.
@@ -41,11 +43,21 @@ class DesiredAppleEvent {
       '$title|${start.toUtc().toIso8601String()}|${end.toUtc().toIso8601String()}';
 }
 
-/// §7.1: a task earns a calendar block when it opts in AND has a time — the
-/// scheduled block first, then the due slot, then an urgent reminder block.
-/// Finished/cancelled/archived tasks earn nothing (their event is removed).
+/// §7.1 as rewritten in round 12 (ADR-0021): EVERY task earns a block — the
+/// scheduled block first, then a 30-minute slot at its own time, and for an
+/// undated task the same slot on the day it was created. A block that would
+/// cross midnight is clamped to the day (23:59 → 23:29–23:59).
+///
+/// Completed tasks KEEP their block, marked `✓`; cancelled and archived ones
+/// lose it. The opt-in switch is gone.
+///
+/// This is the SECOND implementation of that rule (the server's is
+/// `apps/api/src/lib/mirror.js`), so the two are pinned to each other by
+/// `test/fixtures/calendar_block_parity.json`, which both suites assert — two
+/// mirrors disagreeing in front of the user is what DESIGN §17 D1 forbids.
+/// Times here are the DEVICE's local clock, which is the user's wall clock;
+/// the server does the same arithmetic against the task's stored timezone.
 DesiredAppleEvent? desiredAppleEvent(Task task) {
-  if (!task.calendarMirrorEnabled) return null;
   if (_goneStatuses.contains(task.status)) return null;
 
   DateTime start;
@@ -59,22 +71,31 @@ DesiredAppleEvent? desiredAppleEvent(Task task) {
     end = (scheduledEnd != null && scheduledEnd.isAfter(start))
         ? scheduledEnd
         : start.add(_slot);
-  } else if (task.dueAt != null) {
-    start = task.dueAt!;
-    end = start.add(_slot);
-  } else if (task.isUrgent && task.remindAt != null) {
-    start = task.remindAt!;
-    end = start.add(_slot);
   } else {
-    return null;
+    final anchor = task.dueAt ?? task.createdAt;
+    if (anchor == null) return null;
+    final block = appleBlockFor(anchor);
+    start = block.$1;
+    end = block.$2;
   }
 
+  final done = task.status == 'completed';
   return DesiredAppleEvent(
-    title: '[Task] ${task.title}',
+    title: '${done ? '✓ ' : ''}[Task] ${task.title}',
     url: appleTaskUrl(task.id),
     start: start,
     end: end,
   );
+}
+
+/// A 30-minute block that cannot spill into tomorrow. Exported for the parity
+/// fixture — a block on the wrong day is a task on the wrong day.
+(DateTime, DateTime) appleBlockFor(DateTime instant) {
+  final local = instant.toLocal();
+  final endOfDay = DateTime(local.year, local.month, local.day, 23, 59);
+  final naturalEnd = local.add(_slot);
+  if (!naturalEnd.isAfter(endOfDay)) return (local, naturalEnd);
+  return (endOfDay.subtract(_slot), endOfDay);
 }
 
 /// What the engine should do about one task, given what EventKit already holds

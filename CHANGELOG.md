@@ -62,6 +62,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed — Epic 19 in progress
 
+- **Every task is on your calendar now, and it is not a setting (OPH-210).**
+  The "show in calendar" switch is gone. A dated task becomes a 30-minute block
+  at its own time — clamped so it cannot cross midnight, which is why the
+  default 23:59 due time reads 23:29–23:59 — and an **undated** task lands on
+  the day you added it. A block you dragged in Google still wins over ours.
+  Completing a task now **keeps** its block and marks it `✓`, so the calendar
+  answers "what did I actually do that week"; cancelling or archiving still
+  takes it away. Suppression moved to its own column, because the old flag
+  defaulted to off and flipping its meaning would have suppressed every task
+  that already existed — the one thing that column now records is "the user
+  deleted this event in Google themselves", which we never override. The
+  backfill is bounded to −30 days → +12 months, and the Google client finally
+  has 429/`Retry-After` handling and a concurrency cap, added **before** the
+  backfill that needs them. The Apple and Google mirrors are pinned to each
+  other by a shared block fixture both suites assert.
+
 - **The calendar mirror's shape is decided, and the native-todo mapping is
   refused with a reason (OPH-209, docs only).** The owner asked for a direct
   Google Tasks / Apple Reminders mapping *if the provider supports it properly*.

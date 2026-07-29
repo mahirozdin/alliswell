@@ -198,9 +198,6 @@
     "prioritySemantic": "{priority} öncelik",
     "statusSemantic": "Durum: {status}",
     "details": "Ayrıntılar",
-    "showInCalendar": "Takvimde göster",
-    "showInCalendarOnSub": "Bağlı takvimine bir blok ekler",
-    "showInCalendarOffSub": "Aşağıya bir tarih ekle, görünsün",
     "tags": "Etiketler",
     "noTagsYet": "Bu çalışma alanında henüz etiket yok.",
     "checklist": "Kontrol listesi",
@@ -356,7 +353,7 @@
     "reauthLong": "Google tekrar giriş yapmanı istiyor. Bağlantıyı kes ve yeniden bağlan.",
     "networkError": "Sunucuya ulaşılamadı. Bağlantını kontrol et.",
     "couldNotCheckGoogle": "Takvim bağlantın kontrol edilemedi.",
-    "googleBlurb": "Görevlerini blok olarak göster ve orada yaptığın değişiklikleri gör",
+    "googleBlurb": "Her görev takviminde bir blok olarak görünür, orada yaptığın değişiklikler geri gelir",
     "connect": "Bağlan",
     "refresh": "Yenile",
     "googleSignedOut": "Google seni çıkış yaptırdı. Bağlantıyı kes ve tekrar bağlan.",
@@ -375,7 +372,8 @@
     "accessGranted": "Erişim verildi",
     "fromYourCalendar": "Takviminden",
     "previousMonth": "Önceki ay",
-    "nextMonth": "Sonraki ay"
+    "nextMonth": "Sonraki ay",
+    "googleConsent": "Bütün görevlerin seçtiğin takvime yazılır — tarihsiz olanlar dahil, onlar eklendikleri güne düşer."
   },
   "tour": {
     "skip": "Atla",

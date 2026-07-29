@@ -178,17 +178,21 @@ describe('lib/inbound reconcileProviderEvent (OPH-075/076, §7.2)', () => {
     expect(out).toMatchObject({
       decision: 'stop-mirror',
       conflictStatus: CONFLICT.PROVIDER_DELETED,
-      taskPatch: { calendar_mirror_enabled: false },
+      // OPH-210: suppression has its own column now — the old flag defaults
+      // to false, so writing it here would have meant "never opted in".
+      taskPatch: { calendar_mirror_suppressed_at: expect.any(Date) },
     });
   });
 
   it('drops the mapping when both sides already agree the event is gone', () => {
     // Our own delete: the task wants no event and Google says there is none.
+    // Round 12 changed WHICH statuses want no event — `completed` keeps its
+    // block now (ADR-0021 §2), so this case is `cancelled`.
     expect(
       reconcileProviderEvent({
         event: event({ status: 'cancelled' }),
         link: link(),
-        task: task({ status: 'completed' }),
+        task: task({ status: 'cancelled' }),
       }),
     ).toMatchObject({ decision: 'drop-link' });
   });
@@ -197,7 +201,7 @@ describe('lib/inbound reconcileProviderEvent (OPH-075/076, §7.2)', () => {
     const out = reconcileProviderEvent({
       event: event(moved),
       link: link(),
-      task: task({ status: 'completed' }),
+      task: task({ status: 'archived' }),
     });
     expect(out).toMatchObject({
       decision: 'remove-remote',
@@ -383,8 +387,9 @@ describe('inbound sync worker end to end (OPH-075/076)', () => {
     google.state.userDeletes('primary', eventId);
     await sync();
 
-    const task = await api('GET', `/api/v1/tasks/${taskId}`);
-    expect(task.json().calendarMirrorEnabled).toBe(false);
+    // The suppression is recorded on the row (OPH-210) — it is not on the
+    // wire, because no client has any business writing it.
+    expect(taskRow(taskId).calendar_mirror_suppressed_at).toBeTruthy();
     // The flagged link survives the mirror pass the task write triggers — it
     // is the record of WHY mirroring stopped, and there is nothing left to
     // delete remotely.
@@ -397,8 +402,8 @@ describe('inbound sync worker end to end (OPH-075/076)', () => {
     const { taskId, eventId } = await mirroredTask();
     await sync();
 
-    // A local opt-out whose mirror pass never landed…
-    taskRow(taskId).calendar_mirror_enabled = false;
+    // A local suppression whose mirror pass never landed…
+    taskRow(taskId).calendar_mirror_suppressed_at = new Date();
     // …while the event is edited in Google.
     google.state.userEdits('primary', eventId, { summary: 'Elle değiştirildi' });
     await sync();

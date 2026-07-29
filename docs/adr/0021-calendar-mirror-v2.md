@@ -142,3 +142,10 @@ selected calendar. Consent for a broader flow has to be broader consent.
 - The old opt-in behaviour disappears for existing users with the switch OFF: their
   tasks will appear on the calendar after the backfill. That is the intended change,
   and the connect-screen copy (§7) is where it is disclosed.
+- **Suppression needed its own column (added 2026-07-29, OPH-210's implementation
+  read).** §3 said `calendar_mirror_enabled` would carry the new meaning. It cannot:
+  the column defaults to `false`, so the moment "false" started meaning "do not
+  mirror", every task that already exists would have read as suppressed — the exact
+  opposite of the change. `tasks.calendar_mirror_suppressed_at` (nullable) carries it
+  instead, written only by `lib/inbound.js`; the old column stays where it is, dead
+  but harmless, because migrations are append-only.

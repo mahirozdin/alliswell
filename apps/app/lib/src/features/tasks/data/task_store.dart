@@ -654,6 +654,7 @@ class TaskStore {
     calendarMirrorEnabled: r.calendarMirrorEnabled,
     seriesId: r.seriesId,
     occurrenceDate: r.occurrenceDate,
+    createdAt: r.createdAt,
     sortOrder: r.sortOrder,
     revision: r.revision,
     tagIds: tagIds,
