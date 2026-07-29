@@ -17,6 +17,10 @@ import 'quick_access_row.dart';
 Future<void> showQuickAccessPanel(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+    // renders UNDER the shell's own glass bar and FAB — they are painted by
+    // the Scaffold that owns the branch, above its body.
+    useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
     useSafeArea: true,

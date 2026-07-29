@@ -471,6 +471,10 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
 Future<void> showDateFormatPicker(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+    // renders UNDER the shell's own glass bar and FAB — they are painted by
+    // the Scaffold that owns the branch, above its body.
+    useRootNavigator: true,
     showDragHandle: true,
     constraints: const BoxConstraints(maxWidth: 560),
     builder: (context) => const _DateFormatPickerSheet(),
@@ -531,6 +535,10 @@ class _DateFormatPickerSheet extends ConsumerWidget {
 Future<void> showLanguagePicker(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+    // renders UNDER the shell's own glass bar and FAB — they are painted by
+    // the Scaffold that owns the branch, above its body.
+    useRootNavigator: true,
     showDragHandle: true,
     builder: (context) => const _LanguagePickerSheet(),
   );

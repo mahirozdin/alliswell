@@ -5218,18 +5218,36 @@ aynı kural, gece yarısında bugünkü de düşer. **App 648 test.**
 
 ### OPH-212 — Proje düzenle sheet'i menünün altında açılıyor (round 12 #4)
 
-- [ ] **Kök neden doğrulanır:** [projects_screen.dart:192](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L192)
+- [x] **Kök neden doğrulanır:** [projects_screen.dart:192](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L192)
       `onSelected` içinden senkron `showProjectEditSheet` — menü rotası kapanışını
       bitirmeden modal sheet açılıyor (Mahir'in ekran görüntüsü gelince eklenir —
       task onu BEKLEMEZ, davranış koddan yeniden üretilebilir).
-- [ ] **Düzeltme tek kalıpla:** menü eylemi → rota kapanışı tamamlandıktan sonra aç
+- [x] **Düzeltme tek kalıpla:** menü eylemi → rota kapanışı tamamlandıktan sonra aç
       (post-frame/`Future` ertelemesi veya `showMenu` sonucunu bekleyen kalıp) — ve
       **aynı hata repo genelinde taranır** (Notlar menüleri, Dosyalar eylem sayfaları,
       görev menüleri, etiket yönetimi): OPH-195 disiplini — bulunan her eş vaka ya
       burada düzelir ya gerekçeyle yazılır.
-- [ ] Regresyon testi: menüden "Düzenle" → sheet önde ve etkileşilebilir (tap
+- [x] Regresyon testi: menüden "Düzenle" → sheet önde ve etkileşilebilir (tap
       hedefine gerçekten basılabildiği widget testiyle kanıtlanır); mevcut menü
       akışları regresyonsuz.
+
+**Kök neden TASKS'takinden farklı çıktı ve KANITLANDI (2026-07-29):** suç senkron
+`showProjectEditSheet` çağrısı değil — `showModalBottomSheet` **`useRootNavigator`
+verilmeden** çağrılıyordu (varsayılan `false`), yani sheet `StatefulShellBranch`
+navigator'ına push ediliyor ve HomeShell'in `extendBody: true` + `bottomNavigationBar`
+(GlassSurface) + FAB'ı **onun üstüne** boyanıyordu. Kanıt iki taraflı: (1) aynı
+fonksiyonu **root** context'ten çağıran Projeler FAB'ı hep doğru çalışıyordu;
+(2) yeni regresyon testi düzeltme geri alınınca **"would not hit test on the specified
+widget"** ile düşüyor — bildirilen belirtinin ta kendisi.
+
+**Düzeltme + tarama:** `useRootNavigator: true` **17 çağrı yerinin hepsine** verildi
+(sound picker, pano kolonları, görev create sheet, Apple/Google takvim kartları, proje
+düzenle, etiket yönetimi, not editörü, dosya eylemleri, klasörler, hızlı erişim paneli
+ve sheet'leri, ayarlar). OPH-207'nin dialog'ları zaten peşinen veriyordu.
+
+**Testin dişi:** `findsOneWidget` bu hatayı ÜÇ tur boyunca kaçırırdı — sheet ağaçtaydı,
+sadece dokunulamıyordu. Yeni test sheet'e **dokunuyor**: alana `tap` + `enterText` +
+"Save changes"e basıp sunucu satırını doğruluyor.
 
 ### OPH-213 — Home görünüm kontrolleri app bar'a taşınır (round 12 #5)
 

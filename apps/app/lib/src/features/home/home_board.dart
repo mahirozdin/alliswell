@@ -91,6 +91,10 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
   Future<void> _showMoveSheet(Task task) async {
     final picked = await showModalBottomSheet<String>(
       context: context,
+      // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+      // renders UNDER the shell's own glass bar and FAB — they are painted by
+      // the Scaffold that owns the branch, above its body.
+      useRootNavigator: true,
       showDragHandle: true,
       constraints: const BoxConstraints(maxWidth: 560),
       builder: (sheetContext) => SafeArea(
@@ -511,6 +515,10 @@ class _EdgeAdvanceZoneState extends State<_EdgeAdvanceZone> {
 Future<void> showBoardColumnsSheet(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet<void>(
     context: context,
+    // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+    // renders UNDER the shell's own glass bar and FAB — they are painted by
+    // the Scaffold that owns the branch, above its body.
+    useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
     constraints: const BoxConstraints(maxWidth: 560),

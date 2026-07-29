@@ -323,4 +323,43 @@ void main() {
       expect(find.byType(DropdownButtonFormField<String>), findsNothing);
     },
   );
+
+  testWidgets(
+    'the edit sheet opens IN FRONT of the shell, and can be typed into (OPH-212)',
+    (tester) async {
+      // Round 12 #4: the sheet appeared UNDER the popup menu — really, under
+      // the shell's own glass bar and FAB, because `showModalBottomSheet`
+      // defaults to the nearest navigator and every project surface lives
+      // inside a StatefulShellBranch. `findsOneWidget` would have passed the
+      // whole time it was broken, so this test TOUCHES the sheet: `tap` throws
+      // if the target is covered or off-screen, and `enterText` needs a real
+      // focus. That is the difference between "it is in the tree" and "the
+      // user can use it".
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final api = FakeApi()..seedProject(name: 'Düzenlenecek');
+      await tester.pumpWidget(await signedInAppWith(api));
+      await tester.pumpAndSettle();
+      await openProjects(tester);
+
+      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+
+      final nameField = find.byType(TextFormField).first;
+      await tester.tap(nameField); // would throw if something covered it
+      await tester.enterText(nameField, 'Yeni ad');
+      await tester.pumpAndSettle();
+      expect(find.text('Yeni ad'), findsOneWidget);
+
+      final save = find.widgetWithText(FilledButton, 'Save changes');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(api.projects.first['name'], 'Yeni ad');
+    },
+  );
 }

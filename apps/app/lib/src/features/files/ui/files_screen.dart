@@ -72,6 +72,10 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
   Future<void> _folderActions(Folder folder) async {
     final action = await showModalBottomSheet<String>(
       context: context,
+      // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+      // renders UNDER the shell's own glass bar and FAB — they are painted by
+      // the Scaffold that owns the branch, above its body.
+      useRootNavigator: true,
       showDragHandle: true,
       constraints: const BoxConstraints(maxWidth: 560),
       builder: (sheetContext) => SafeArea(
@@ -213,6 +217,10 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
 
     return showModalBottomSheet<({String? id})>(
       context: context,
+      // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+      // renders UNDER the shell's own glass bar and FAB — they are painted by
+      // the Scaffold that owns the branch, above its body.
+      useRootNavigator: true,
       showDragHandle: true,
       isScrollControlled: true,
       constraints: const BoxConstraints(maxWidth: 560),

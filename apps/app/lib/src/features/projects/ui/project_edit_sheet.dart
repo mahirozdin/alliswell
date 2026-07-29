@@ -43,6 +43,10 @@ String _hexOf(Color color) =>
 Future<String?> showProjectEditSheet(BuildContext context, {Project? project}) {
   return showModalBottomSheet<String>(
     context: context,
+    // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
+    // renders UNDER the shell's own glass bar and FAB — they are painted by
+    // the Scaffold that owns the branch, above its body.
+    useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
     constraints: const BoxConstraints(maxWidth: 560),

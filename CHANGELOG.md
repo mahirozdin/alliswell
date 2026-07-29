@@ -60,6 +60,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   a series keeps every occurrence that already happened.
   `tasks.repeat_rule` left the write path in the same change.
 
+### Fixed — Epic 19 in progress
+
+- **Sheets open in front of the app again (OPH-212).** Editing a project from
+  its row menu opened the sheet *underneath* the shell's glass bar and floating
+  button — visible, but not touchable. The cause was not the menu: every
+  `showModalBottomSheet` in the app used the nearest navigator, and every
+  project, note and file surface lives inside a shell branch whose Scaffold
+  paints its own bar and FAB above its body. All 17 call sites now open on the
+  root navigator. The regression test taps and types into the sheet rather than
+  just finding it — with the fix reverted it fails with "would not hit test",
+  which is exactly what the user saw.
+
 ### Changed — Epic 19 in progress
 
 - **Finishing something late clears it out of your way (OPH-211).** A task
