@@ -5,6 +5,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart';
+import 'quick_access_add.dart';
 import 'quick_access_list.dart';
 import 'quick_access_row.dart';
 
@@ -13,24 +14,19 @@ import 'quick_access_row.dart';
 /// Opened on the ROOT navigator: the bubble lives above the whole router and
 /// has no `Navigator` ancestor of its own, and opening on the root is also
 /// what lets the modal observer hide the bubble while the panel is up.
-Future<void> showQuickAccessPanel(
-  BuildContext context, {
-  VoidCallback? onAddLink,
-}) {
+Future<void> showQuickAccessPanel(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
     useSafeArea: true,
     constraints: const BoxConstraints(maxWidth: 560),
-    builder: (sheetContext) => QuickAccessPanel(onAddLink: onAddLink),
+    builder: (sheetContext) => const QuickAccessPanel(),
   );
 }
 
 class QuickAccessPanel extends ConsumerWidget {
-  const QuickAccessPanel({super.key, this.onAddLink});
-
-  final VoidCallback? onAddLink;
+  const QuickAccessPanel({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -58,13 +54,12 @@ class QuickAccessPanel extends ConsumerWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                 ),
-                if (onAddLink != null)
-                  IconButton(
-                    key: const Key('quick-panel-add'),
-                    icon: const Icon(Icons.add),
-                    tooltip: 'quick.addLink'.tr(),
-                    onPressed: onAddLink,
-                  ),
+                IconButton(
+                  key: const Key('quick-panel-add'),
+                  icon: const Icon(Icons.add),
+                  tooltip: 'quick.addLink'.tr(),
+                  onPressed: () => showQuickLinkDialog(context, ref),
+                ),
               ],
             ),
           ),
@@ -77,6 +72,12 @@ class QuickAccessPanel extends ConsumerWidget {
                 icon: kQuickAccessIcon,
                 title: 'quick.emptyPanelTitle'.tr(),
                 message: 'quick.emptyPanelBody'.tr(),
+                action: FilledButton.icon(
+                  key: const Key('quick-empty-add'),
+                  onPressed: () => showQuickLinkDialog(context, ref),
+                  icon: const Icon(Icons.add),
+                  label: Text('quick.addLink'.tr()),
+                ),
               ),
             )
           else

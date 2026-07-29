@@ -5,6 +5,8 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../quick_access/data/quick_link.dart';
+import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart' show UploadRowTile;
@@ -252,6 +254,26 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             icon: const Icon(Icons.delete_outline),
             onPressed: _delete,
           ),
+          // OPH-201: an overflow rather than a sixth icon — this app bar is
+          // already at the phone's limit. The existing icons stay put.
+          if (_noteId case final id?)
+            PopupMenuButton<String>(
+              key: const Key('note-quick-menu'),
+              tooltip: 'quick.actions'.tr(),
+              onSelected: (_) => toggleQuickAccess(
+                context,
+                ref,
+                kind: QuickKind.note,
+                targetId: id,
+                suggestedTitle: _title.text,
+              ),
+              itemBuilder: (context) => [
+                quickAccessMenuItem(
+                  value: 'quick',
+                  isSaved: isInQuickAccess(ref, QuickKind.note, id),
+                ),
+              ],
+            ),
         ],
       ),
       body: Column(

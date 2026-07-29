@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../quick_access/data/quick_link.dart';
+import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../sections.dart';
@@ -86,6 +88,12 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
               title: Text('files.moveFolder'.tr()),
               onTap: () => Navigator.of(sheetContext).pop('move'),
             ),
+            Consumer(
+              builder: (context, sheetRef, _) => quickAccessSheetTile(
+                isSaved: isInQuickAccess(sheetRef, QuickKind.folder, folder.id),
+                onTap: () => Navigator.of(sheetContext).pop('quick'),
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.delete_outline),
               title: Text('common.delete'.tr()),
@@ -97,6 +105,17 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
     );
     if (!mounted || action == null) return;
     final store = ref.read(folderStoreProvider);
+    if (action == 'quick') {
+      if (!mounted) return;
+      await toggleQuickAccess(
+        context,
+        ref,
+        kind: QuickKind.folder,
+        targetId: folder.id,
+        suggestedTitle: folder.name,
+      );
+      return;
+    }
     switch (action) {
       case 'rename':
         final name = await _promptName(

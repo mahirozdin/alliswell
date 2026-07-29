@@ -5,6 +5,7 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../providers.dart';
+import 'quick_access_add.dart';
 import 'quick_access_bubble.dart';
 import 'quick_access_list.dart';
 import 'quick_access_panel.dart';
@@ -22,9 +23,7 @@ final quickRailCollapsedProvider = NotifierProvider<PersistedToggle, bool>(
 /// 1:1 onto `AppSection.values`, so an extra entry there would corrupt the
 /// branch index. A shortcut navigates; it is not a place (BLUEPRINT §12.15).
 class QuickAccessRailSection extends ConsumerWidget {
-  const QuickAccessRailSection({super.key, this.onAddLink});
-
-  final VoidCallback? onAddLink;
+  const QuickAccessRailSection({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,13 +65,12 @@ class QuickAccessRailSection extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (onAddLink != null)
-                    IconButton(
-                      key: const Key('quick-rail-add'),
-                      icon: const Icon(Icons.add, size: 20),
-                      tooltip: 'quick.addLink'.tr(),
-                      onPressed: onAddLink,
-                    ),
+                  IconButton(
+                    key: const Key('quick-rail-add'),
+                    icon: const Icon(Icons.add, size: 20),
+                    tooltip: 'quick.addLink'.tr(),
+                    onPressed: () => showQuickLinkDialog(context, ref),
+                  ),
                   Icon(
                     collapsed ? Icons.expand_more : Icons.expand_less,
                     size: 18,
@@ -114,9 +112,7 @@ const double _kPopoverMaxHeight = 360;
 /// `PopupRoute` — and renders into the overlay, so the rail's `ClipRRect`
 /// cannot cut the panel off.
 class QuickAccessRailButton extends ConsumerWidget {
-  const QuickAccessRailButton({super.key, this.onAddLink});
-
-  final VoidCallback? onAddLink;
+  const QuickAccessRailButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -148,13 +144,12 @@ class QuickAccessRailButton extends ConsumerWidget {
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                       ),
-                      if (onAddLink != null)
-                        IconButton(
-                          key: const Key('quick-popover-add'),
-                          icon: const Icon(Icons.add, size: 20),
-                          tooltip: 'quick.addLink'.tr(),
-                          onPressed: onAddLink,
-                        ),
+                      IconButton(
+                        key: const Key('quick-popover-add'),
+                        icon: const Icon(Icons.add, size: 20),
+                        tooltip: 'quick.addLink'.tr(),
+                        onPressed: () => showQuickLinkDialog(context, ref),
+                      ),
                     ],
                   ),
                 ),

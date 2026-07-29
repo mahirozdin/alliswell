@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
+import '../../quick_access/data/quick_link.dart';
+import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sections.dart';
 import '../../../sync/refresh.dart';
@@ -237,8 +239,21 @@ class _NoteMenu extends ConsumerWidget {
       onSelected: (action) {
         if (action == 'archive') setNoteArchived(ref, note, !note.isArchived);
         if (action == 'delete') deleteNoteWithUndo(context, ref, note);
+        if (action == 'quick') {
+          toggleQuickAccess(
+            context,
+            ref,
+            kind: QuickKind.note,
+            targetId: note.id,
+            suggestedTitle: note.title,
+          );
+        }
       },
       itemBuilder: (context) => [
+        quickAccessMenuItem(
+          value: 'quick',
+          isSaved: isInQuickAccess(ref, QuickKind.note, note.id),
+        ),
         PopupMenuItem(
           value: 'archive',
           child: ListTile(

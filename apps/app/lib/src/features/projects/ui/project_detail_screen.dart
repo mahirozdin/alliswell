@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
+import '../../quick_access/data/quick_link.dart';
+import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
@@ -115,6 +117,23 @@ class _ProjectDetail extends ConsumerWidget {
               tooltip: 'project.deleteTooltip'.tr(),
               icon: const Icon(Icons.delete_outline),
               onPressed: () => _confirmDelete(context, ref),
+            ),
+            PopupMenuButton<String>(
+              key: const Key('project-quick-menu'),
+              tooltip: 'quick.actions'.tr(),
+              onSelected: (_) => toggleQuickAccess(
+                context,
+                ref,
+                kind: QuickKind.project,
+                targetId: project.id,
+                suggestedTitle: project.name,
+              ),
+              itemBuilder: (context) => [
+                quickAccessMenuItem(
+                  value: 'quick',
+                  isSaved: isInQuickAccess(ref, QuickKind.project, project.id),
+                ),
+              ],
             ),
           ],
           bottom: TabBar(

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
+import '../../quick_access/data/quick_link.dart';
+import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../search/providers.dart';
@@ -196,12 +198,28 @@ class _ProjectTile extends ConsumerWidget {
                       showProjectArchiveDialog(context, project);
                     } else if (action == 'delete') {
                       deleteProjectConfirmed(context, ref, project);
+                    } else if (action == 'quick') {
+                      toggleQuickAccess(
+                        context,
+                        ref,
+                        kind: QuickKind.project,
+                        targetId: project.id,
+                        suggestedTitle: project.name,
+                      );
                     }
                   },
                   itemBuilder: (context) => [
                     PopupMenuItem(
                       value: 'edit',
                       child: Text('common.edit'.tr()),
+                    ),
+                    quickAccessMenuItem(
+                      value: 'quick',
+                      isSaved: isInQuickAccess(
+                        ref,
+                        QuickKind.project,
+                        project.id,
+                      ),
                     ),
                     PopupMenuItem(
                       value: archived ? 'unarchive' : 'archive',

@@ -9,6 +9,8 @@ import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
+import '../../quick_access/data/quick_link.dart';
+import '../../quick_access/ui/quick_access_add.dart';
 import '../providers.dart';
 
 /// Shared attachment UI (OPH-154/155, DESIGN §10): one row anatomy for task
@@ -260,6 +262,24 @@ Future<void> showFileActionsSheet(
                 action.onTap();
               },
             ),
+          // OPH-201: inside the sheet rather than an injected extra action, so
+          // all five callers (folders, sources, project tabs, note media, the
+          // default tap) get it without touching a single call site.
+          Consumer(
+            builder: (context, sheetRef, _) => quickAccessSheetTile(
+              isSaved: isInQuickAccess(sheetRef, QuickKind.file, file.id),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                toggleQuickAccess(
+                  context,
+                  sheetRef,
+                  kind: QuickKind.file,
+                  targetId: file.id,
+                  suggestedTitle: file.name,
+                );
+              },
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.open_in_new),
             title: Text('file.openDownload'.tr()),

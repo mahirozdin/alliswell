@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 18 in progress
 
+- **Shortcuts are born where the thing lives (OPH-201).** Projects (list and
+  detail), notes (list, grid and editor), tasks, folders and files all carry a
+  ⚡ "Add to quick access" entry that flips to "Remove from quick access" once
+  it is there — there is no "add again". The rail, the popover and the phone
+  panel each grow a "+" for external links: a bare host becomes https, an
+  address we cannot open is refused out loud, and an empty name falls back to
+  the host. Hitting the 50-shortcut cap says so instead of failing quietly.
+
 - **The floating quick-access button (OPH-200).** On phones a draggable ⚡
   button floats above the app — park it on either edge at any height, and it
   stays there across launches; after three idle seconds it half-recedes into

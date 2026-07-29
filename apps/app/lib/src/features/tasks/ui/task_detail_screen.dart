@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../../core/date_format.dart';
 import '../../../core/date_input.dart';
 import '../../../core/persisted_prefs.dart';
+import '../../quick_access/data/quick_link.dart';
+import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sections.dart';
 import '../../../theme/tokens.dart';
@@ -149,6 +151,23 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 router.go(AppSection.home.path);
               }
             },
+          ),
+          PopupMenuButton<String>(
+            key: const Key('task-quick-menu'),
+            tooltip: 'quick.actions'.tr(),
+            onSelected: (_) => toggleQuickAccess(
+              context,
+              ref,
+              kind: QuickKind.task,
+              targetId: task.id,
+              suggestedTitle: task.title,
+            ),
+            itemBuilder: (context) => [
+              quickAccessMenuItem(
+                value: 'quick',
+                isSaved: isInQuickAccess(ref, QuickKind.task, task.id),
+              ),
+            ],
           ),
           const SizedBox(width: 4),
         ],

@@ -4677,23 +4677,39 @@ tek `drag()` çağrısı pan tanıyıcıyı ara karesiz bırakıyor; (7) yan etk
 satır uzadı ve `completed_screen_test`in yardımcı fonksiyonu ekran dışında kalan satıra
 dokunuyordu → `scrollUntilVisible` eklendi (test bakımı, davranış değişmedi).
 
-### OPH-201 — Ekleme yolları: her varlık menüsünde "Hızlı erişime ekle" + dış link
+### OPH-201 — Ekleme yolları: her varlık menüsünde "Hızlı erişime ekle" + dış link ✅ 2026-07-29
 
-- [ ] **Menü girişleri (toggle):** proje listesi menüsü + proje detay app bar menüsü;
+- [x] **Menü girişleri (toggle):** proje listesi menüsü + proje detay app bar menüsü;
       not listesi/ızgara menüleri + not editörü menüsü; görev detay menüsü (görev
       SATIRINA yeni jest girmez — kaydırma silmenin, D6 disiplini); Dosyalar'da klasör
       ve dosya eylem sayfaları. Ekliyse metin **"Hızlı erişimden kaldır"** olur
       (durum store'dan okunur) — ikinci kez ekleme diye bir yol yok.
-- [ ] **Dış link dialog'u:** panel/rail "+" → URL alanı (http/https doğrulama, şemasız
+- [x] **Dış link dialog'u:** panel/rail "+" → URL alanı (http/https doğrulama, şemasız
       girişe `https://` öneki), ad alanı (boşsa host adı önerilir), emoji + renk
       opsiyonel. OG başlık çekme YOK (v1 — park, unfurl proxy'ye bağlı).
-- [ ] **Sınır davranışı:** 50'de ekleme reddi dürüst snackbar'la ("50 kısayol sınırı —
+- [x] **Sınır davranışı:** 50'de ekleme reddi dürüst snackbar'la ("50 kısayol sınırı —
       önce birini kaldırın" üslubu); sunucu 422'si aynı mesaja çözülür.
-- [ ] i18n: `quick.addTo`, `quick.removeFrom`, `quick.linkUrl`, `quick.linkTitle`,
+- [x] i18n: `quick.addTo`, `quick.removeFrom`, `quick.linkUrl`, `quick.linkTitle`,
       `quick.limitReached`, `quick.added` (en+tr).
-- [ ] Testler: her menüde toggle'ın iki yönü (ekle → kaldır); dış link doğrulaması
+- [x] Testler: her menüde toggle'ın iki yönü (ekle → kaldır); dış link doğrulaması
       (geçersiz şema reddi, öneki tamamlama); limit reddi; eklenen satırın panelde
       belirmesi (uçtan uca store akışı).
+
+**OPH-201 uygulama notları:** (1) tek eylem `toggleQuickAccess` + iki kabuk
+(`quickAccessMenuItem`, `quickAccessSheetTile`) — etiket ile davranış ayrı yerlerde
+yaşarsa çelişir; (2) dosya sheet'ine madde **`showFileActionsSheet`in İÇİNE** kondu →
+beş çağıran (Klasörlerim, Kaynaklar, proje sekmeleri, not medyası, varsayılan dokunuş)
+tek düzenlemeyle kazandı; (3) not editörü/görev detayı/proje detayına mevcut ikonlar
+korunarak **tek maddelik overflow** eklendi (app bar zaten telefonda sınırda; mevcut
+testler kıpırdamadı); (4) **testin bulduğu üç gerçek hata:** dış link dialog'u
+controller'larını `showDialog` döndükten hemen sonra dispose ediyordu — rota hâlâ
+animasyonla kapanırken alanlar yeniden build ediliyor ("A TextEditingController was used
+after being disposed") → dialog artık kendi controller'larının sahibi; `quickLinkUri`
+şemalı girdiye `https://` ekliyordu (`mailto:a@b.c` → `https://mailto:a@b.c` kabul
+ediliyordu) → şema varsa olduğu gibi değerlendirilir; ve FakeApi'nin id üretimi
+`'QCK1'.padRight(26,'0')` ile `'QCK10'.padRight(26,'0')`i AYNI dizeye çeviriyordu, bu
+yüzden 50 tohumlanan satırın yalnız 46'sı replikaya iniyordu (limit testi yakaladı) →
+`padLeft`.
 
 ### OPH-202 — Kişiselleştirme: emoji, renk, ad
 

@@ -126,8 +126,11 @@ class FakeApi {
     String? colorRgb,
   }) {
     _seq += 1;
+    // padLeft, not padRight: 'QCK1'.padRight(26, '0') and 'QCK10'.padRight(26,
+    // '0') are the SAME string, so ten-plus seeded rows silently collapsed
+    // into fewer ids (found by the 50-shortcut limit test).
     final link = {
-      'id': 'QCK$_seq'.padRight(26, '0'),
+      'id': 'QCK${_seq.toString().padLeft(23, '0')}',
       'workspaceId': workspaceId,
       'userId': 'user-1',
       'kind': kind,
