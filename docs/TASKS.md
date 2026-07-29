@@ -5251,25 +5251,38 @@ sadece dokunulamıyordu. Yeni test sheet'e **dokunuyor**: alana `tap` + `enterTe
 
 ### OPH-213 — Home görünüm kontrolleri app bar'a taşınır (round 12 #5)
 
-- [ ] **Liste|Pano `SegmentedButton` satırı ölür** → app bar'da tek ikon toggle
+- [x] **Liste|Pano `SegmentedButton` satırı ölür** → app bar'da tek ikon toggle
       (Notlar kalıbı: [notes_screen.dart:56](../apps/app/lib/src/features/notes/ui/notes_screen.dart#L56));
       ikon mevcut görünümün TERSİNİ değil KENDİNİ değil — karar: ikon **geçilecek
       görünümü** gösterir (Notlar'daki davranışın aynısı; tooltip yazar), tercih
       kalıcılığı (`homeViewProvider`) aynen.
-- [ ] **Takvim göster/gizle** kayan düğmesi ölür → app bar'da takvim ikonu (açık/
+- [x] **Takvim göster/gizle** kayan düğmesi ölür → app bar'da takvim ikonu (açık/
       kapalı durumu ikon varyantıyla, `calendar_month`/üstü çizili; tooltip);
       tercih (`homeCalendarVisibleProvider`) aynen. İki ikon da **ayarlar
       düğmesinin solunda** (kullanıcının yerleşimi).
-- [ ] **DESIGN §16 revizyonu bu turda yazıldı:** H1 sliver listesi iki satır kaybeder;
+- [x] **DESIGN §16 revizyonu bu turda yazıldı:** H1 sliver listesi iki satır kaybeder;
       H3'ün "Pano'da toggle sabit" sapması KENDİLİĞİNDEN çözülür (app bar zaten tek
       sabit — OPH-172'nin kuralı güçlenir). Geniş ekran aynı ikonları app bar'da
       taşır (kalıp tek).
-- [ ] i18n: `home.viewList/viewBoard/showCalendar/hideCalendar` tooltip'leri (mevcut
+- [x] i18n: `home.viewList/viewBoard/showCalendar/hideCalendar` tooltip'leri (mevcut
       anahtarlar yeniden kullanılır/taşınır); kontrast: app bar ikon durumları iki
       temada.
-- [ ] Testler: toggle app bar'dan çalışır (Liste↔Pano), satırların yokluğu, takvim
+- [x] Testler: toggle app bar'dan çalışır (Liste↔Pano), satırların yokluğu, takvim
       ikonunun tercihi koruması, telefon+geniş ekran iki kırılımda, arama modunda
       ikonların davranışı.
+
+**Uygulama notları (2026-07-29):** `buildSectionAppBar`a **`trailingActions`** eklendi
+(ikinci bir AppBar kalıbı doğurmadan; ikonlar ayarların solunda). Liste|Pano tek ikon,
+**geçilecek görünümü** gösteriyor (Notlar kalıbı); pano kolon düzenleyicisi yanında,
+takvim ikonu yalnız liste görünümünde (panoda takvim zaten yok). Üç yerleşimden de
+(geniş, telefon-pano, telefon-liste) eski satırlar kalktı.
+
+**Testin öğrettiği iki şey:** (1) **ikon bir TOGGLE, segment ise idempotent'ti** —
+`localKv` global önbelleği bir önceki testin tercihini taşıdığı için `openBoard()`
+bazen panodan LİSTEYE geçiyordu; yardımcı artık zaten panodaysa dokunmuyor ve
+`alliswell_home_view` `app()`te temizleniyor. (2) `home_scroll_test`in H1 testi artık
+**tersini** doğruluyor: toggle kaydırmayla KAYBOLMUYOR, çünkü app bar'a taşındı —
+quick-add hâlâ kayboluyor (DESIGN §16 H1 revizyonu birebir).
 
 ### OPH-214 — Ekran açıkken alarm: ölü erteleme ikonu + dokununca çökme (round 12 #6, cihaz taskı)
 

@@ -313,6 +313,11 @@ AppBar buildSectionAppBar(
   String title, {
   Future<bool> Function()? onRefresh,
   List<Widget> leadingActions = const [],
+
+  /// Section-specific controls, immediately left of the settings button
+  /// (OPH-213, DESIGN §16 H1): the app bar earns its pin by carrying the view
+  /// controls, instead of a second pinned row eating the phone screen.
+  List<Widget> trailingActions = const [],
 }) {
   final wide = MediaQuery.sizeOf(context).width >= kAwWideBreakpoint;
   return AppBar(
@@ -320,6 +325,7 @@ AppBar buildSectionAppBar(
     actions: [
       ...leadingActions,
       if (onRefresh != null && wide) AwRefreshAction(onRefresh: onRefresh),
+      ...trailingActions,
       IconButton(
         icon: const Icon(Icons.settings_outlined),
         tooltip: 'shell.settingsTooltip'.tr(),

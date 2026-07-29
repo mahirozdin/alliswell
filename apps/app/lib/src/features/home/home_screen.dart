@@ -138,42 +138,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
 
-    // Liste | Pano (K1) + the board's column editor.
-    final viewToggle = Padding(
-      padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x1, AwSpace.x4, 0),
-      child: Row(
-        children: [
-          Expanded(
-            child: SegmentedButton<String>(
-              key: const Key('home-view-toggle'),
-              showSelectedIcon: false,
-              segments: [
-                ButtonSegment(
-                  value: 'list',
-                  icon: const Icon(Icons.view_agenda_outlined),
-                  label: Text('board.viewList'.tr()),
-                ),
-                ButtonSegment(
-                  value: 'board',
-                  icon: const Icon(Icons.view_kanban_outlined),
-                  label: Text('board.viewBoard'.tr()),
-                ),
-              ],
-              selected: {isBoard ? 'board' : 'list'},
-              onSelectionChanged: (selection) =>
-                  ref.read(homeViewProvider.notifier).set(selection.first),
-            ),
-          ),
-          if (isBoard)
-            IconButton(
-              key: const Key('board-edit-columns'),
-              tooltip: 'board.editColumns'.tr(),
-              icon: const Icon(Icons.tune),
-              onPressed: () => showBoardColumnsSheet(context, ref),
-            ),
-        ],
+    // OPH-213 (DESIGN §16 H1, revised): the view controls left the scroll and
+    // became app-bar icons — the Notes pattern. An icon shows the view it will
+    // SWITCH TO, so what you tap is what you get. The board's column editor
+    // stays beside it, since it only means anything in the board.
+    final viewActions = <Widget>[
+      IconButton(
+        key: const Key('home-view-toggle'),
+        tooltip: isBoard ? 'board.viewList'.tr() : 'board.viewBoard'.tr(),
+        icon: Icon(
+          isBoard ? Icons.view_agenda_outlined : Icons.view_kanban_outlined,
+        ),
+        onPressed: () =>
+            ref.read(homeViewProvider.notifier).set(isBoard ? 'list' : 'board'),
       ),
-    );
+      if (isBoard)
+        IconButton(
+          key: const Key('board-edit-columns'),
+          tooltip: 'board.editColumns'.tr(),
+          icon: const Icon(Icons.tune),
+          onPressed: () => showBoardColumnsSheet(context, ref),
+        ),
+      if (!isBoard)
+        IconButton(
+          key: const Key('toggle-calendar'),
+          tooltip: calendarVisible
+              ? 'home.hideCalendar'.tr()
+              : 'home.showCalendar'.tr(),
+          icon: Icon(
+            calendarVisible
+                ? Icons.calendar_month
+                : Icons.calendar_month_outlined,
+          ),
+          onPressed: () {
+            // Hiding the calendar clears the selection: a filter you can no
+            // longer see must not keep dimming Home (feedback round 6).
+            if (calendarVisible) {
+              ref.read(selectedDayProvider.notifier).select(null);
+            }
+            ref.read(homeCalendarVisibleProvider.notifier).toggle();
+          },
+        ),
+    ];
 
     // The create FAB is rendered by HomeShell's own Scaffold (OPH-101), so it
     // clears the glass bottom bar; this screen only supplies the list + quick
@@ -186,6 +192,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // OPH-200: the entry point when the floating button is switched off —
         // the widget hides itself everywhere else (DESIGN §23 Q5).
         leadingActions: const [QuickAccessAppBarButton()],
+        // OPH-213: the view + calendar controls, left of settings.
+        trailingActions: viewActions,
       ),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -245,7 +253,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 return Column(
                   children: [
                     banner,
-                    viewToggle,
                     if (isBoard)
                       const Expanded(child: HomeBoard())
                     else
@@ -311,7 +318,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 return Column(
                   children: [
                     banner,
-                    viewToggle,
                     const Expanded(child: HomeBoard()),
                   ],
                 );
@@ -330,7 +336,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     const SliverToBoxAdapter(child: banner),
-                    SliverToBoxAdapter(child: viewToggle),
                     SliverToBoxAdapter(
                       // The key rides a KeyedSubtree so `ensureVisible` has a
                       // context INSIDE the scroll view (H4).
@@ -348,41 +353,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             child: Padding(
                               padding: const EdgeInsets.all(AwSpace.x2),
                               child: calendar,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (!searching)
-                      SliverToBoxAdapter(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: AwSpace.x2),
-                            child: TextButton.icon(
-                              key: const Key('toggle-calendar'),
-                              onPressed: () {
-                                // Hiding the calendar clears the selection: a
-                                // filter you can no longer see must not keep
-                                // dimming Home (feedback round 6).
-                                if (calendarVisible) {
-                                  ref
-                                      .read(selectedDayProvider.notifier)
-                                      .select(null);
-                                }
-                                ref
-                                    .read(homeCalendarVisibleProvider.notifier)
-                                    .toggle();
-                              },
-                              icon: Icon(
-                                calendarVisible
-                                    ? Icons.expand_less
-                                    : Icons.expand_more,
-                              ),
-                              label: Text(
-                                calendarVisible
-                                    ? 'home.hideCalendar'.tr()
-                                    : 'home.showCalendar'.tr(),
-                              ),
                             ),
                           ),
                         ),

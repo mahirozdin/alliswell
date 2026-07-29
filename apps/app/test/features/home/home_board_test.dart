@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
@@ -16,6 +17,7 @@ import '../../support/sync_overrides.dart';
 /// OPH-168 — the Pano (kanban) view: DESIGN §14 K1…K6.
 Future<Widget> app(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
+  await localKv.remove('alliswell_home_view');
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
@@ -37,9 +39,16 @@ Future<void> wideSurface(WidgetTester tester) async {
   addTearDown(tester.view.reset);
 }
 
+/// OPH-213: the view switch is an app-bar ICON now, not a labelled segment —
+/// which makes it a TOGGLE rather than an idempotent "set to board". `localKv`
+/// is a global singleton whose cache outlives a test, so the preference the
+/// previous test left behind decides which way the tap goes. Hence: clear it,
+/// then tap.
 Future<void> openBoard(WidgetTester tester) async {
-  await tester.tap(find.text('Board'));
-  await tester.pumpAndSettle();
+  if (find.byKey(const Key('board-column-open')).evaluate().isEmpty) {
+    await tester.tap(find.byKey(const Key('home-view-toggle')));
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {

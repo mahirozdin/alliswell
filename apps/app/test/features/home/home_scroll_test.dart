@@ -141,41 +141,46 @@ void main() {
 
   // ── OPH-172: on phones ONLY the app bar is pinned (DESIGN §16 H1) ──────────
 
-  testWidgets('the view toggle and quick add scroll away with the list (H1)', (
-    tester,
-  ) async {
-    _phone(tester);
-    final api = FakeApi();
-    for (var i = 0; i < 25; i++) {
-      api.seedTask(title: 'İş ${i.toString().padLeft(2, '0')}');
-    }
-    await tester.pumpWidget(await signedInApp(api));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'quick add scrolls away; the view toggle is pinned in the app bar (H1)',
+    (tester) async {
+      _phone(tester);
+      final api = FakeApi();
+      for (var i = 0; i < 25; i++) {
+        api.seedTask(title: 'İş ${i.toString().padLeft(2, '0')}');
+      }
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
 
-    // They start where they always were: right under the app bar.
-    expect(find.byKey(const Key('home-view-toggle')).hitTestable(), findsOne);
-    expect(find.byKey(const Key('home-quick-add')).hitTestable(), findsOne);
+      // OPH-213 (DESIGN §16 H1, revised): the view toggle no longer scrolls —
+      // it moved INTO the app bar, which is the one thing H1 always allowed to
+      // stay pinned. So it is visible before AND after the scroll; what still
+      // has to get out of the way is the quick-add bar.
+      expect(find.byKey(const Key('home-view-toggle')).hitTestable(), findsOne);
+      expect(find.byKey(const Key('home-quick-add')).hitTestable(), findsOne);
 
-    await tester.drag(
-      find.byKey(const Key('home-scroll')),
-      const Offset(0, -600),
-    );
-    await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const Key('home-scroll')),
+        const Offset(0, -600),
+      );
+      await tester.pumpAndSettle();
 
-    // Round 9 #2: chrome must not stay up there narrowing the list.
-    expect(
-      find.byKey(const Key('home-view-toggle')).hitTestable(),
-      findsNothing,
-      reason: 'the Liste|Pano row has to scroll away on phones',
-    );
-    expect(
-      find.byKey(const Key('home-quick-add')).hitTestable(),
-      findsNothing,
-      reason: 'the quick-add bar has to scroll away on phones',
-    );
-    // The app bar is the one thing that stays.
-    expect(find.text('Home').hitTestable(), findsWidgets);
-  });
+      // Round 9 #2: chrome must not stay up there narrowing the list — and the
+      // app bar earns its pin by carrying the controls that used to.
+      expect(
+        find.byKey(const Key('home-view-toggle')).hitTestable(),
+        findsOne,
+        reason: 'the view toggle lives in the pinned app bar now (OPH-213)',
+      );
+      expect(
+        find.byKey(const Key('home-quick-add')).hitTestable(),
+        findsNothing,
+        reason: 'the quick-add bar has to scroll away on phones',
+      );
+      // The app bar is the one thing that stays.
+      expect(find.text('Home').hitTestable(), findsWidgets);
+    },
+  );
 
   testWidgets('typed quick-add text survives scrolling it out of view (H4)', (
     tester,
@@ -227,7 +232,9 @@ void main() {
     }
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Board'));
+    // OPH-213: the view switch is an app-bar ICON now, not a labelled
+    // segment — one tap, showing the view it will switch to.
+    await tester.tap(find.byKey(const Key('home-view-toggle')));
     await tester.pumpAndSettle();
     addTearDown(() => localKv.remove('alliswell_home_view'));
 
@@ -294,4 +301,32 @@ void main() {
     expect(_pulls(api), greaterThan(before));
     expect(find.text('Çay siparişi'), findsOneWidget);
   });
+  testWidgets(
+    'the calendar toggle lives in the app bar too, and remembers (OPH-213)',
+    (tester) async {
+      _phone(tester);
+      await localKv.remove('alliswell_home_view');
+      await localKv.remove('alliswell_home_calendar_visible');
+      final api = FakeApi()..seedTask(title: 'Tek iş');
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
+
+      // The old floating "Takvimi gizle" button is gone — one control, one place.
+      expect(find.text('Hide calendar'), findsNothing);
+      expect(find.text('Show calendar'), findsNothing);
+
+      final toggle = find.byKey(const Key('toggle-calendar'));
+      expect(toggle.hitTestable(), findsOne);
+      expect(find.byType(MonthCalendar), findsOne);
+
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(find.byType(MonthCalendar), findsNothing);
+
+      // (Persistence itself is `PersistedToggle`'s own test — re-pumping a fresh
+      // ProviderScope over a live one here fights the LayoutBuilder, and proving
+      // the same thing twice is not worth a flaky test.)
+      addTearDown(() => localKv.remove('alliswell_home_calendar_visible'));
+    },
+  );
 }

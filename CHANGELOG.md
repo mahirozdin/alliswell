@@ -74,6 +74,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed — Epic 19 in progress
 
+- **Home's view controls moved into the app bar (OPH-213).** The Liste | Pano
+  segmented row and the floating "show calendar" button used to eat two lines
+  above every task on a phone. They are two app-bar icons now, immediately left
+  of settings: one shows the view it will switch to, the other opens and closes
+  the month calendar. The list itself starts one screenful higher.
+
 - **Finishing something late clears it out of your way (OPH-211).** A task
   completed today used to stay on the list until midnight no matter what — so a
   task that was already overdue sat under a red "Geciken" header, struck
