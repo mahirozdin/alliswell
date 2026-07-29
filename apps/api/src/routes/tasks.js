@@ -6,7 +6,7 @@ import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
-import { occurrenceDayOf } from '../db/task-series.js';
+import { SERIES_SCOPES, occurrenceDayOf, propagateSeriesScope } from '../db/task-series.js';
 import { COLOR_PATTERN } from './projects.js';
 
 // Snooze presets (BLUEPRINT §4.9): fixed offsets in minutes, plus
@@ -535,7 +535,12 @@ export default async function taskRoutes(app) {
           type: 'object',
           additionalProperties: false,
           minProperties: 1,
-          properties: writableProps,
+          properties: {
+            ...writableProps,
+            // OPH-206: how far this edit reaches when the task is one
+            // occurrence of a series. Absent means `this` — a plain task edit.
+            seriesScope: { type: 'string', enum: SERIES_SCOPES },
+          },
         },
         response: {
           200: taskDetailSchema,
@@ -585,6 +590,16 @@ export default async function taskRoutes(app) {
           });
         const fresh = await trx('tasks').where({ id: row.id }).first();
         await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
+        // …and, when the user answered the scope question with more than
+        // "just this one", the rest of the series follows in the SAME
+        // transaction (OPH-206) — a half-applied scope would be a lie.
+        await propagateSeriesScope(trx, {
+          workspaceId: row.workspace_id,
+          task: fresh,
+          patch: body,
+          scope: body.seriesScope,
+          userId: request.user.id,
+        });
       });
 
       return taskDetail(row.id);

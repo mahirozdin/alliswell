@@ -287,6 +287,232 @@ export async function adoptTaskIntoSeries(trx, { workspaceId, series, taskId, no
   return task.id;
 }
 
+// ── Editing scope: this / this and future / all (OPH-206) ───────────────────
+
+export const SERIES_SCOPES = ['this', 'future', 'all'];
+
+/**
+ * Task fields a scoped edit carries to the other occurrences. Dates are absent
+ * on purpose: each occurrence owns its own day, and what a scoped date edit
+ * really means is "move the time of day" — handled separately below. Status and
+ * completion never propagate; a sibling's history is not this edit's business.
+ */
+const PROPAGATED_FIELDS = {
+  title: 'title',
+  description: 'description',
+  projectId: 'project_id',
+  priority: 'priority',
+  colorRgb: 'color_rgb',
+  isUrgent: 'is_urgent',
+  requiresAcknowledgement: 'requires_acknowledgement',
+  estimatedMinutes: 'estimated_minutes',
+};
+
+/** The column patch + the template patch a scoped edit implies. */
+function scopedPatches(patch) {
+  const row = {};
+  const template = {};
+  for (const [camel, col] of Object.entries(PROPAGATED_FIELDS)) {
+    if (patch[camel] === undefined) continue;
+    row[col] = patch[camel];
+    template[camel] = patch[camel];
+  }
+  return { row, template };
+}
+
+/** Live, unfinished occurrences of a series — the rows an edit may still move. */
+function movableOccurrences(trx, { workspaceId, seriesId, fromDay = null, excludeId = null }) {
+  let query = trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: seriesId })
+    .whereNull('deleted_at')
+    .whereNotIn('status', ['completed', 'cancelled']);
+  if (fromDay) query = query.where('occurrence_date', '>=', fromDay);
+  if (excludeId) query = query.whereNot('id', excludeId);
+  return query.select();
+}
+
+async function writeOccurrence(trx, { workspaceId, row, patch, userId }) {
+  const revision = await recordSyncWrite(trx, {
+    workspaceId,
+    entityType: 'task',
+    entityId: row.id,
+    operation: 'update',
+    changedFields: Object.keys(patch),
+  });
+  await trx('tasks')
+    .where({ id: row.id })
+    .update({
+      ...patch,
+      revision,
+      updated_by: userId ?? row.updated_by ?? null,
+      updated_at: new Date(),
+    });
+  const fresh = await trx('tasks').where({ id: row.id }).first();
+  await reconcileTaskReminder(trx, { workspaceId, task: fresh });
+}
+
+/**
+ * Propagates a task edit to the rest of its series (OPH-206, DESIGN §25 R8).
+ *
+ * The caller has already written the row the user edited; this decides what the
+ * OTHER occurrences do about it.
+ *
+ * - `this` (and any task without a series): nothing. The row keeps its
+ *   `series_id` — it is still that occurrence, and the slot it holds is what
+ *   stops the next sweep from recreating the day underneath it. (The backlog
+ *   called for detaching the row instead; that frees the slot and the sliding
+ *   window promptly materializes a duplicate beside it. The link stays.)
+ * - `future`: the series SPLITS. The old one gets an `until` at the previous
+ *   day, a new series is born carrying the edit, and the edited row is adopted
+ *   into it — so the task the user is looking at keeps its id instead of being
+ *   replaced by a fresh row with the same title.
+ * - `all`: the template changes and every live occurrence follows, past ones
+ *   included (it is the same task, renamed) — but never their status or
+ *   completion, which is history.
+ *
+ * A `dueAt` in the patch propagates as a TIME OF DAY only: the days keep coming
+ * from the rule, while "make it 14:00 from now on" moves the series anchor and
+ * every affected row's hour.
+ *
+ * @returns {Promise<{scope: string, touched: number, newSeriesId: string|null}>}
+ */
+export async function propagateSeriesScope(
+  trx,
+  { workspaceId, task, patch, scope, now = new Date(), userId = null },
+) {
+  const none = { scope: scope ?? 'this', touched: 0, newSeriesId: null };
+  if (!task?.series_id || !scope || scope === 'this') return none;
+  if (!SERIES_SCOPES.includes(scope)) return none;
+
+  const series = await trx('task_series')
+    .where({ id: task.series_id, workspace_id: workspaceId })
+    .whereNull('deleted_at')
+    .first();
+  if (!series) return none;
+
+  const { row: rowPatch, template: templatePatch } = scopedPatches(patch);
+  const time = patch.dueAt ? wallClockParts(new Date(patch.dueAt), series.timezone) : null;
+  if (Object.keys(rowPatch).length === 0 && !time) return { ...none, scope };
+
+  const timeFor = (day) => {
+    const { year, month, day: dayOfMonth } = parseDay(day);
+    return zonedWallTimeToUtc(
+      { year, month, day: dayOfMonth, hour: time.hour, minute: time.minute },
+      series.timezone,
+    );
+  };
+
+  const template = { ...(parseJsonColumn(series.template) ?? {}), ...templatePatch };
+  const fromDay = occurrenceDayOf(task.occurrence_date);
+
+  if (scope === 'all') {
+    const rows = await movableOccurrences(trx, {
+      workspaceId,
+      seriesId: series.id,
+      excludeId: task.id,
+    });
+    for (const row of rows) {
+      const day = occurrenceDayOf(row.occurrence_date);
+      await writeOccurrence(trx, {
+        workspaceId,
+        row,
+        patch: { ...rowPatch, ...(time ? { due_at: timeFor(day) } : {}) },
+        userId,
+      });
+    }
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task_series',
+      entityId: series.id,
+      operation: 'update',
+      changedFields: time ? ['template', 'anchor_at'] : ['template'],
+    });
+    await trx('task_series')
+      .where({ id: series.id })
+      .update({
+        template: JSON.stringify(normalizeTemplate(template)),
+        ...(time ? { anchor_at: timeFor(wallDay(series.anchor_at, series.timezone)) } : {}),
+        revision,
+        updated_at: new Date(),
+      });
+    return { scope, touched: rows.length, newSeriesId: null };
+  }
+
+  // ── future: split the series in two ───────────────────────────────────────
+  const rule = parseJsonColumn(series.rule);
+  const previousDay = addWallDays(fromDay, -1);
+
+  // Everything from this day on, except the row the user is editing, leaves the
+  // old series; the past and anything finished stay exactly where they are.
+  const moving = await movableOccurrences(trx, {
+    workspaceId,
+    seriesId: series.id,
+    fromDay,
+    excludeId: task.id,
+  });
+  for (const row of moving) {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'delete',
+    });
+    await trx('tasks')
+      .where({ id: row.id })
+      .update({ deleted_at: new Date(), revision, updated_at: new Date() });
+  }
+
+  const oldRevision = await recordSyncWrite(trx, {
+    workspaceId,
+    entityType: 'task_series',
+    entityId: series.id,
+    operation: 'update',
+    changedFields: ['rule'],
+  });
+  await trx('task_series')
+    .where({ id: series.id })
+    .update({
+      rule: JSON.stringify({ ...rule, end: { type: 'until', until: previousDay } }),
+      revision: oldRevision,
+      updated_at: new Date(),
+    });
+
+  const nextSeriesId = newId();
+  const anchorAt = time ? timeFor(fromDay) : (task.due_at ?? series.anchor_at);
+  const newRevision = await recordSyncWrite(trx, {
+    workspaceId,
+    entityType: 'task_series',
+    entityId: nextSeriesId,
+    operation: 'create',
+  });
+  await trx('task_series').insert({
+    id: nextSeriesId,
+    workspace_id: workspaceId,
+    rule: JSON.stringify(rule),
+    template: JSON.stringify(normalizeTemplate(template)),
+    timezone: series.timezone,
+    anchor_at: anchorAt,
+    created_by: userId ?? series.created_by ?? null,
+    revision: newRevision,
+  });
+  const fresh = await trx('task_series').where({ id: nextSeriesId }).first();
+
+  // The edited row joins the new series in place, keeping its id and its day.
+  const adoptRevision = await recordSyncWrite(trx, {
+    workspaceId,
+    entityType: 'task',
+    entityId: task.id,
+    operation: 'update',
+    changedFields: ['series_id'],
+  });
+  await trx('tasks')
+    .where({ id: task.id })
+    .update({ series_id: nextSeriesId, revision: adoptRevision, updated_at: new Date() });
+
+  const { created } = await materializeSeries(trx, { workspaceId, series: fresh, now });
+  return { scope, touched: moving.length + created, newSeriesId: nextSeriesId };
+}
+
 /**
  * MySQL hands a DATE column back as a Date (parsed as UTC — the connection sets
  * `timezone: 'Z'`), the in-memory test db keeps the string it was given. Both

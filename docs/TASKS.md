@@ -4948,23 +4948,50 @@ CI sırasıyla yeşil; lint + format + no-ts temiz.
 
 ### OPH-206 — Seri düzenleme semantiği: bu / bu ve gelecektekiler / tümü
 
-- [ ] **Google modeli, kullanıcının istediği otomatiklikle:** materyalize bir
+- [x] **Google modeli, kullanıcının istediği otomatiklikle:** materyalize bir
       occurrence düzenlenince kapsam sorusu — "Yalnız bu" / "**Bu ve gelecektekiler**
       (varsayılan)" / "Tümü". Mahir'in cümlesi ("birinden değiştirilince
       gelecektekilerin hepsini değiştir otomatik olmalı") → varsayılan seçenek budur,
       tek dokunuşla geçer.
-- [ ] Kapsam mekaniği: "gelecektekiler" **seriyi böler** (eski seri `until` alır, yeni
+- [x] Kapsam mekaniği: "gelecektekiler" **seriyi böler** (eski seri `until` alır, yeni
       seri doğar — Google'ın kalıbı); "tümü" seri metadata'sını günceller, geçmiş
       occurrence'ların tamamlanmışlığına dokunmaz; "yalnız bu" occurrence'ı ayırır
       (detached — seri bağı düşer, satır sıradan görev olur; rozeti kalkar).
-- [ ] Alan-bazlı istisna yazılır: tek occurrence'ın tarihini sürüklemek/değiştirmek
+- [x] Alan-bazlı istisna yazılır: tek occurrence'ın tarihini sürüklemek/değiştirmek
       varsayılanı "yalnız bu"dur (bir randevuyu kaydırmak seriyi kaydırmak değildir);
       başlık/açıklama/öncelik değişimi varsayılanı "bu ve gelecektekiler"dir.
-- [ ] API: kapsamlı update ucu (`scope: this|future|all`) tek transaction; app: store
+- [x] API: kapsamlı update ucu (`scope: this|future|all`) tek transaction; app: store
       + kapsam dialog'u; senkron: bölünme iki seri satırı + görev güncellemeleri
       olarak akar.
-- [ ] Testler: üç kapsamın her biri (satır sayıları + revision'lar); bölünme sonrası
+- [x] Testler: üç kapsamın her biri (satır sayıları + revision'lar); bölünme sonrası
       iki serinin bağımsız süpürülmesi; detached occurrence'ın serbestliği.
+
+**"Yalnız bu" DETACH ETMİYOR — kod bunu düzeltti (2026-07-29):** yukarıdaki plan
+occurrence'ı seriden koparıyordu (`series_id = NULL`). Uygulamada bu bir hata:
+`(series_id, occurrence_date)` **slot'u** serbest kalır ve kayan pencerenin bir
+sonraki süpürmesi aynı güne **ikinci bir satır** üretir — kullanıcı "yalnız bunu
+değiştirdim" der, ertesi gün yanında kopyası belirir. Doğru model Google'ın
+"değiştirilmiş instance"ı: **satır seride kalır**, `occurrence_date` serinin
+slot'unu tutmaya devam eder, `due_at` gerçekten ne zaman olduğunu söyler. Rozet de
+kalır (satır GERÇEKTEN o serinin bir occurrence'ı). ADR-0020'nin sonuçlarına
+tarihli not olarak işlendi; DESIGN §25 R8 aynı cümleyi taşıyor.
+
+**Tarih düzenlemesinin kapsamı = SAAT (yeni kural, DESIGN §25 R8):** `future`/`all`
+kapsamıyla gelen bir `dueAt` günleri değiştirmez (günler kuraldan gelir) — **günün
+saatini** taşır: seri anchor'ı ve etkilenen satırlar yeni saate kayar ("bundan sonra
+14:00'te olsun"). `this` kapsamında yalnız o satırın `due_at`'i oynar.
+
+**Alan-bazlı varsayılanlar UI'ye ait:** API hangi kapsam geldiyse onu uygular; "tarih
+değişimi → yalnız bu, başlık/öncelik → bu ve gelecektekiler" varsayılanı dialog'da
+yaşıyor (OPH-207) — sunucuya varsayılan gömmek, ikinci bir istemcinin farklı
+davranmasına sessizce izin verirdi.
+
+**Kapsam dialog'u OPH-207'ye taşındı** (app store'u orada doğuyor; store'suz dialog
+yazılamaz). Bu taskın app tarafı: yok — sözleşme + motor burada bitti.
+
+**Doğrulama (2026-07-29):** API 385 unit (yeni: 12 kapsam testi — üç kapsamın satır
+etkileri, slot'un korunması, bölünmeden sonra iki serinin bağımsız süpürülmesi,
+tamamlananın dokunulmazlığı, saat taşıma, sync push'la offline kapsam) + 47 entegrasyon.
 
 ### OPH-207 — App: tekrar dialog'u — switch, otomatik açılış, özet + Değiştir
 

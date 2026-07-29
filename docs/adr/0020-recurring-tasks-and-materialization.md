@@ -213,6 +213,19 @@ lie ends here.
 - **The scope question is unavoidable UI.** Because occurrences are independent rows,
   editing one is ambiguous by construction — hence OPH-206's "this / this and future / all"
   and the field-based default (moving one date means *this*; renaming means *future*).
+- **"Just this" does NOT detach the row (added 2026-07-29, OPH-206's implementation
+  read).** The backlog called for cutting the edited occurrence loose from its series.
+  That is wrong here for a mechanical reason: the row's `(series_id, occurrence_date)`
+  pair is the **slot** that stops materialization from re-creating that day, so
+  detaching frees the slot and the next sweep quietly produces a duplicate beside the
+  edit. The row therefore stays in the series — which is also the honest description
+  (it *is* that occurrence, modified) and matches Google's modified-instance model.
+  The two columns divide the work: `occurrence_date` says *which* occurrence this is
+  and never moves; `due_at` says when it actually happens and is free to.
+- **A scoped date edit propagates as a time of day, not as a date.** Days come from the
+  rule; "make it 14:00 from now on" moves the series anchor and the affected rows'
+  hour. Propagating a whole date across occurrences would land every occurrence on the
+  same day, which is not a series at all.
 - Deleting a series tombstones its **future** materialised rows only; past and completed
   occurrences stay, because a finished task is a historical fact (DESIGN §20 C4).
 - The app gains drift **v14** (`task_series` + two task columns) and a `SeriesStore`.

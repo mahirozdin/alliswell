@@ -30,10 +30,12 @@ import { serializeFolder } from './folders.js';
 import { serializeQuickLink } from './quick-links.js';
 import { serializeTaskSeries } from './task-series.js';
 import {
+  SERIES_SCOPES,
   materializeSeries,
   normalizeTemplate,
   parseJsonColumn,
   plannedDays,
+  propagateSeriesScope,
   rebuildFuture,
   softDeleteSeries,
   validateSeriesInput,
@@ -154,6 +156,16 @@ const TASK_FIELDS = {
   // Round 9 (OPH-178): silencing a task's alarms works offline like every other
   // task write — and past instants are fine, it is a marker, not a schedule.
   alarmsMutedAt: { col: 'alarms_muted_at', ok: isoOrNull, date: true },
+  // Round 12 (OPH-206): how far this edit reaches across the series. Virtual —
+  // it changes no column of its own; `afterUpdate` applies it to the siblings.
+  // Update-only: a task is born outside a series or as one of its occurrences,
+  // never with a scope.
+  seriesScope: {
+    col: 'series_scope',
+    ok: oneOf(SERIES_SCOPES),
+    virtual: true,
+    updateOnly: true,
+  },
 };
 
 // Devices may acknowledge an alarm offline (OPH-063). Everything else about
@@ -955,6 +967,19 @@ export default async function syncRoutes(app) {
         await reconcileTaskReminder(trx, { workspaceId: ctx.workspaceId, task: fresh });
         if (keptIntents.some((i) => i.name === 'snoozed_until')) {
           await applyReminderSnooze(trx, ctx.workspaceId, fresh);
+        }
+        // OPH-206: the scope question, answered offline. It rides an ordinary
+        // `update` because the protocol has no room for a fourth verb — the
+        // `orderedIds` idiom, and the same LWW rule: if the scope intent lost,
+        // the edit stays local to this occurrence.
+        if (keptIntents.some((i) => i.name === 'series_scope')) {
+          await propagateSeriesScope(trx, {
+            workspaceId: ctx.workspaceId,
+            task: fresh,
+            patch: mutation.patch,
+            scope: mutation.patch.seriesScope,
+            userId: ctx.userId,
+          });
         }
       },
       // Soft delete cascades through the subtree, one revision per task, and

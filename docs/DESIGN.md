@@ -942,7 +942,12 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   middle option preselected — the user's own rule ("birinden değiştirilince
   gelecektekilerin hepsi"). One exception, stated in the dialog: **moving a single
   date defaults to "Yalnız bu"**, because rescheduling one appointment is not
-  rescheduling the series.
+  rescheduling the series. Two things the answer means, decided in code
+  (OPH-206) and visible to the user: **"Yalnız bu" keeps the row inside the
+  series** — it stays a modified occurrence, badge and all, rather than
+  becoming a loose task — and a date edit under the wider scopes moves **the
+  time of day**, never the pattern ("bundan sonra 14:00'te"), because the days
+  belong to the rule.
 - **R9 — Accessibility parity.** The whole dialog is reachable by keyboard and screen
   reader: presets are radio semantics, the advanced builders are labelled fields (never
   bare dropdown glyphs), the preview is readable as text rather than as a chart, and

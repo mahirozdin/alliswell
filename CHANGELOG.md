@@ -7,6 +7,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 19 in progress
 
+- **Editing one occurrence asks how far it reaches (OPH-206).** A task edit can
+  now carry `seriesScope`: **just this** (the default — nothing else moves),
+  **this and future** (the series splits: the old one gets an `until`, a new one
+  is born, and the row you were editing keeps its id instead of being replaced),
+  or **all** (the template and every live occurrence follow, past ones included —
+  but never their status or completion, which is history). It rides an ordinary
+  `update` mutation, so it works offline like everything else. Two rules the
+  implementation settled: "just this" **keeps** the row in its series (cutting it
+  loose would free the slot and let the next sweep duplicate the day), and a
+  scoped date edit moves **the time of day**, never the pattern.
+
 - **Recurring tasks, server side (OPH-205).** A new `task_series` entity holds
   the rule and the template; every occurrence it produces is an **ordinary task
   row** carrying `series_id` + `occurrence_date`, materialized into a rolling
