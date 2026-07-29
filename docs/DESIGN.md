@@ -840,7 +840,7 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   as §19 D2 and the K3 board lesson; the bubble's *position* needs no such twin,
   because position is a preference and the panel is the function.
 
-## 24. AI surfaces: the FAB, the bubble, the confirm card (round 11 — Epic 19)
+## 24. AI surfaces: the FAB, the bubble, the confirm card (round 11 — Epic 20)
 
 _(Added 2026-07-29, request round 11 #2. Architecture: [AI.md](AI.md) + ADR-0019;
 spec: BLUEPRINT §12.16. The owner's rule that shaped the gesture: "when the bubble
@@ -890,3 +890,61 @@ opens I can lift my finger and it stays open.")_
   input, labeled states and 44 px targets; press-and-hold, swipe-to-cancel and VAD
   are conveniences, never requirements; the bubble spring has a reduced-motion
   variant.
+
+## 25. Recurrence: the switch, the dialog, the sentence (round 12 — Epic 19)
+
+_(Added 2026-07-29, feedback round 12 #1: "çok detaylı configure edilebilir olmalı…
+maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materialization:
+[ADR-0020](adr/0020-recurring-tasks-and-materialization.md); product spec: BLUEPRINT
+§12.17. The dialog the user pointed at is Google Calendar's custom-recurrence sheet.)_
+
+- **R1 — The switch opens the dialog exactly once.** "Tekrarla" is a `SwitchListTile`
+  in the detailed create sheet and in task detail, in the same Column as the other
+  switches (urgent, mute alarms). Turning it **on for the first time opens the
+  configuration dialog immediately** — a switch that can leave a half-configured rule
+  behind is a lie about state (§11 A4). Cancelling the dialog turns the switch back
+  off; there is no "on but unconfigured". Turning it off later is R7, not a silent
+  reset.
+- **R2 — A configured rule reads as a sentence, not as a form summary.** Under the
+  switch sits one line — "Her ayın 22'sinden sonraki ilk Pazartesi · bitiş yok" — with
+  **Değiştir** beside it. The sentence is **generated from the rule per language**, not
+  assembled from translated fragments: Turkish and English build their own word order
+  from the same object. i18n has no plural machinery (ADR-0009), so every count form is
+  its own key (`repeat.everyNWeeks.one` / `.other`), never a runtime `+ 's'`.
+- **R3 — Presets first, "Gelişmiş" second.** The dialog opens on five presets (her gün /
+  her hafta / her ay / her yıl / hafta içi). Everything the three scenario classes need
+  lives one disclosure deeper: **day of month** (with the clamp stated in plain words —
+  "kısa aylarda ayın son gününe çekilir"), **Nth weekday** (1..5 + "son"), **"ayın
+  X'inden sonraki ilk {gün}"** and **first/last {weekday}**, plus the end condition
+  (asla / tarihe kadar / N kez). The advanced section is a disclosure, never a second
+  screen — the user must see the preview change as they build the rule.
+- **R4 — "Sonraki 5" is the proof, and it is never hidden.** The dialog shows the next
+  five real dates, recomputed on every edit from the Dart engine port (ADR-0020 §6), and
+  it shows **clamping and skipped months truthfully**: pick the 31st and February reads
+  28/29. This preview is the only place a user can confirm the system did not quietly
+  break their rule, so it stays visible above the fold — no scrolling to reach the
+  answer, on the narrowest supported width.
+- **R5 — The dialog owns its controllers.** Round 11 shipped this bug three times: a
+  `TextEditingController` disposed the instant `showDialog` returned, while the route
+  was still animating out, rebuilds the field and throws. Any dialog with a field owns
+  its controllers for its whole lifetime.
+- **R6 — The badge is quiet and everywhere the task is.** A recurring occurrence carries
+  a small ↻ next to its metadata in list rows, task detail and the board card — same
+  weight as the other row chips, never a colour of its own, with the rule sentence as
+  its tooltip/semantics label. It disappears in the completed treatment along with the
+  alarm chips (§20 C2): a finished occurrence does not repeat.
+- **R7 — Stopping is honest about the past.** "Tekrarı durdur" removes the **future**
+  occurrences and keeps every past and completed one, and says so in the confirm copy.
+  A finished task is a historical fact (§20 C4); deleting history to tidy a rule would
+  rewrite what the user actually did.
+- **R8 — Scope is a question with a default, and the default follows the field.**
+  Editing an occurrence asks "Yalnız bu / **Bu ve gelecektekiler** / Tümü" with the
+  middle option preselected — the user's own rule ("birinden değiştirilince
+  gelecektekilerin hepsi"). One exception, stated in the dialog: **moving a single
+  date defaults to "Yalnız bu"**, because rescheduling one appointment is not
+  rescheduling the series.
+- **R9 — Accessibility parity.** The whole dialog is reachable by keyboard and screen
+  reader: presets are radio semantics, the advanced builders are labelled fields (never
+  bare dropdown glyphs), the preview is readable as text rather than as a chart, and
+  every control clears the 44 px floor. Contrast is checked in both themes like any
+  other surface — the dialog introduces no new colour.

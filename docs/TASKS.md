@@ -4820,21 +4820,21 @@ Google Tasks/EKReminder değerlendirmesi). Sıra bağlayıcı: **204 araştırma
 
 ### OPH-204 — Tekrar araştırması + kural modeli + materyalizasyon kararı + ADR-0020 (kod yazmaz)
 
-- [ ] **≥3 ürün derin incelemesi (Mahir'in şartı):** Google Calendar özel tekrar
+- [x] **≥3 ürün derin incelemesi (Mahir'in şartı):** Google Calendar özel tekrar
       dialog'u (kullanıcının referansı), Todoist (doğal dil + "every!"), TickTick;
       bonus: Apple Reminders/Fantastical. Her biri için ifade gücü tablosu — üç
       senaryo sınıfı özellikle: **(A)** "her ayın 31'i" kısa ayda ne oluyor (kırpma mı
       atlama mı), **(B)** "N. haftanın Salı'sı" / "ayın 2. Salı'sı", **(C)** "ayın
       22'sinden sonraki ilk Pazartesi", "ayın ilk/son Cuma'sı". Bulgular tabloyla bu
       taskın altına işlenir (kalıcı referans; OPH-168'in kaynaklı araştırma kalıbı).
-- [ ] **Kural modeli kararı (ADR-0020):** RFC 5545 RRULE alt kümesi + RFC 7529
+- [x] **Kural modeli kararı (ADR-0020):** RFC 5545 RRULE alt kümesi + RFC 7529
       `SKIP=BACKWARD` (kırpma) semantiği, **yapılandırılmış JSON** olarak saklanır
       (Ajv'lenebilir; ham RRULE dizesi DEĞİL): `freq (daily|weekly|monthly|yearly)`,
       `interval`, `byWeekday[]` (ordinal 1..5 + last), `byMonthDay[]` (-1 = son gün;
       kısa ayda **geriye kırp** — 31 → 30/29/28), `bySetPos`, **`afterDay` + ilk-gün**
       (senaryo C: "22'sinden sonraki ilk Pazartesi"), bitiş (`asla | until | count`).
       A/B/C senaryolarının üçü de bu modelde tek tek ifade edilip test vektörü olur.
-- [ ] **Materyalizasyon kararı (Mahir bana bıraktı — ADR-0020'ye yazılır):**
+- [x] **Materyalizasyon kararı (Mahir bana bıraktı — ADR-0020'ye yazılır):**
       occurrence'lar **gerçek görev satırlarıdır** (`task_series` tablosu +
       `tasks.series_id` + `occurrence_date`); pencere **bugünden +12 ay** (kullanıcının
       kuralı: "12 aydan fazlası eklenmemeli, biri geçince sıradaki eklenir");
@@ -4847,14 +4847,53 @@ Google Tasks/EKReminder değerlendirmesi). Sıra bağlayıcı: **204 araştırma
       genişletme (her yüzeye — widget dahil — motor gerektirir, local-first'e ters),
       yalnız-sonraki-occurrence (Todoist modeli; "önümüzdeki 12 ay takvimde görünsün"
       isteğini karşılayamaz).
-- [ ] **Motor iki dilde, tek gerçek:** saf JS (sunucu — üretimin tek kaynağı) + saf
+- [x] **Motor iki dilde, tek gerçek:** saf JS (sunucu — üretimin tek kaynağı) + saf
       Dart portu (dialog önizlemesi) + **ortak parite fikstürleri** (ADR-0013 fold
       kalıbı): kırpma, artık yıl, DST sınırı, yıl devri, 5. hafta yokluğu vakaları.
-- [ ] **DESIGN §25 yazılır:** dialog anatomisi (switch → otomatik açılış, özet satırı +
+- [x] **DESIGN §25 yazılır:** dialog anatomisi (switch → otomatik açılış, özet satırı +
       Değiştir), kuralın **insan cümlesi** dili (TR/EN), "Sonraki 5" önizleme kuralı,
       erişilebilirlik.
-- [ ] `tasks.repeat_rule` kolonunun kaderi ADR'de (ölür / `task_series`'e taşınır) —
+- [x] `tasks.repeat_rule` kolonunun kaderi ADR'de (ölür / `task_series`'e taşınır) —
       ulaşılamayan kolon yalanı (DESIGN §22) bu epic'te biter.
+
+**Bulgular — ifade gücü matrisi (2026-07-29, kaynaklı):**
+
+| Ürün / spec | (A) "her ayın 31'i" kısa ayda | (B) "ayın 2. Salı'sı" | (C) "22'sinden sonraki ilk Pazartesi" | Bitiş |
+| --- | --- | --- | --- | --- |
+| **RFC 5545 (çıplak)** | **ATLAR** — geçersiz instance "MUST be ignored and MUST NOT be counted as part of the recurrence set" | `BYDAY=2TU`; sayısal önek **yalnız** MONTHLY/YEARLY'de | `BYDAY=MO;BYMONTHDAY=23…29` — BYDAY sınırlayıcıdır ("Limit if BYMONTHDAY is present"); spec'in kendi örneği "first Tuesday after a Monday"yi 7 günlük pencereyle kuruyor | `UNTIL` / `COUNT` |
+| **RFC 7529** | `SKIP=BACKWARD` → "changed to the previous (valid) day-of-month" (31 Şub → 28/29). **Ama:** "MUST NOT be present unless RSCALE is present" | — | — | — |
+| **Google Calendar** | **ATLAR** (yalnız 31 çeken aylarda); "ayın son günü" UI'da yok, özel RRULE import'u ister; Outlook'un "son gün" kuralı için *"cannot be edited in Google Calendar"* uyarısı veriyor | var ("Monthly on the second Tuesday") | **UI'da yok** | Never / tarihe kadar / N kez |
+| **Outlook** | **KIRPAR** — "on the last day of every month" birinci sınıf; Google'a taşınınca yukarıdaki uyarı çıkıyor | var | UI'da yok | var |
+| **Todoist** | doğal dil; `every last day` birinci sınıf; **31 davranışı dokümante edilmemiş** | `every 3rd fri`, `every last workday` var | **YOK** (yardım sayfası desteklenmeyenleri sayarken bu deseni hiç anmıyor) | `ending aug 3`, `for 3 weeks`, `starting …` |
+| **TickTick** | Custom Repeat; günlükte "workday/skip" seçenekleri | var | yok (aylıkta workday/son-iş-günü hâlâ açık kullanıcı talebi) | var |
+| **Apple Reminders** | Custom → "On the" ile hafta/gün deseni ("last weekday of each month") | var | yok | var |
+| **→ AllisWell (karar)** | **KIRPAR** (Outlook okuması, RFC 7529 semantiği); `byMonthDay:[-1]` = "ayın son günü" birinci sınıf değer | `byWeekday:[{day:'TU',ordinal:2}]` | `byWeekday:[{day:'MO'}] + byMonthDay:[23…29]` — RFC'nin kendi kesişim deyimi, yeni alan yok | `never` / `until` / `count` |
+
+**Turun üç belirleyici bulgusu:**
+
+1. **"Atla" ile "kırp" arasındaki fark bir standart tercihi değil, ürün tercihi.**
+   Aynı niyet Google'da Şubat'ı atlıyor, Outlook'ta ayın son gününe çekiliyor. Görev
+   yöneticisinde "31'i" demek **ay sonu** demektir (kira, rapor) → kırpma seçildi.
+2. **Senaryo C'nin yeni bir alana ihtiyacı yok.** RFC 5545 `BYDAY`i `BYMONTHDAY`in
+   sınırlayıcısı yapıyor ve spec'in kendi örneği tam olarak bu deyimi kuruyor →
+   motor üç ilkelle (gün kümesi, ordinal'li gün-adı kümesi, kesişim) yetiniyor.
+3. **Kırpılmış bir kural Google'a "tekrar eden etkinlik" olarak anlatılamaz** —
+   `SKIP` `RSCALE` olmadan yasak ve Google böyle kuralı düzenlemeyi reddediyor.
+   Bu, materyalizasyon kararının (occurrence başına tek etkinlik) bağımsız ikinci
+   gerekçesi oldu; ADR-0020 §2'de yazılı.
+
+**Kaynaklar:** [RFC 5545 §3.3.10](https://icalendar.org/iCalendar-RFC-5545/3-3-10-recurrence-rule.html) ·
+[RFC 7529](https://www.rfc-editor.org/rfc/rfc7529) ·
+[Todoist — Introduction to recurring dates](https://www.todoist.com/help/articles/introduction-to-recurring-dates-YUYVJJAV) ·
+[TickTick — Set Up Recurring Tasks](https://help.ticktick.com/articles/7055782206349770752) ·
+[Google Workspace — Events in Outlook Calendar (31'i/son gün farkı)](https://support.google.com/a/users/answer/156467?hl=en) ·
+[Apple — Add dates or locations to reminders](https://support.apple.com/guide/reminders/add-dates-or-locations-to-reminders-remnd4b206fb/mac)
+
+**Kararların yeri:** [ADR-0020](adr/0020-recurring-tasks-and-materialization.md)
+(kural JSON'u, kırpma, kesişim, +12 ay materyalizasyon, süpürme sapması,
+`repeat_rule`'ın dondurulması) + **DESIGN §25** (switch → dialog, cümle, "Sonraki 5",
+kapsam sorusu, erişilebilirlik). Parite fikstürü sözleşmesi ADR-0020 §6'da; dosyanın
+kendisi JS tarafında OPH-205'te, Dart tarafında OPH-207'de doğuyor.
 
 **Context:** OPH-195'in en büyük parkı canlanıyor. Mahir: "bu sistem çok önemli,
 bastırıyorum bir daha" — maksimum esneklik hedefi; karar netliği bu yüzden koddan önce.

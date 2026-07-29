@@ -5,6 +5,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed — Epic 19 in progress
+
+- **The recurrence rule model is decided, and it clamps (OPH-204, docs only).**
+  A sourced round across RFC 5545, RFC 7529, Google Calendar, Outlook, Todoist,
+  TickTick and Apple Reminders settled the question the feature turns on: the same
+  intent ("the 31st of every month") **skips** February in Google and RFC 5545 —
+  where an invalid instance "MUST be ignored" — and **clamps** to the last day in
+  Outlook. AllisWell clamps, because for a task "the 31st" means month end, and
+  `byMonthDay: [-1]` ("the last day") is a first-class value rather than a
+  workaround. Two more findings shaped the design: "the first Monday after the
+  22nd" needs **no new field** (RFC 5545 makes `BYDAY` a limiter on `BYMONTHDAY`,
+  and the spec's own example builds exactly this from a seven-day window), and a
+  clamped rule **cannot be expressed to Google as a recurring event** at all —
+  which independently justifies materializing occurrences as real rows and sending
+  one event each. [ADR-0020](docs/adr/0020-recurring-tasks-and-materialization.md),
+  DESIGN §25 (switch → auto-opening dialog, generated sentence, the "next 5"
+  preview, scope defaults), tables and sources under OPH-204 in docs/TASKS.md.
+
 ### Planned — request rounds 11 + 12 (2026-07-29; Epic 18 shipped as 0.7.0 below)
 
 - **Epic 19 — Recurring tasks, calendar always, flow fixes (OPH-204…214, toward

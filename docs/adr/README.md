@@ -27,5 +27,6 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0017](0017-swipe-to-delete-package.md) | `flutter_slidable` for the reveal-then-tap delete affordance | Accepted |
 | [0018](0018-quick-links-user-scoped-sync-entity.md) | Quick Links: the first user-scoped sync entity | Accepted |
 | [0019](0019-ai-provider-architecture.md) | AI provider architecture: two tracks (MCP connector + BYOK), adapters not SDKs | Accepted |
+| [0020](0020-recurring-tasks-and-materialization.md) | Recurring tasks: a clamped RRULE subset, materialized as real rows | Accepted |
 
 Template: [template.md](template.md)
