@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added — Epic 18 in progress
+
+- **Quick links, server side (OPH-197).** `quick_links` is the sync protocol's
+  first **user-scoped** entity: stored per workspace, handed out only to its
+  owner. `GET/POST /workspaces/:id/quick-links`, `PATCH/DELETE /quick-links/:id`
+  and `PUT /workspaces/:id/quick-links/order`, all revision-stamped, plus the
+  push/pull registrations. Deleting a project, task (whole subtree), note,
+  folder subtree or file removes every member's shortcut to it in the same
+  transaction; archiving deliberately does not. 50 shortcuts per user, machine
+  readable refusals (`QUICK_LINK_LIMIT`, `QUICK_LINK_DUPLICATE`,
+  `QUICK_LINK_TARGET_NOT_FOUND`, `QUICK_LINK_NOT_YOURS`,
+  `QUICK_LINK_ORDER_INCOMPLETE`).
+
 ### Changed — Epic 18 in progress
 
 - **Quick Access design calibrated against the real idioms (OPH-196, docs only).**

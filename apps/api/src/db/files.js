@@ -1,4 +1,5 @@
 import { recordSyncWrite } from './sync.js';
+import { cascadeDeleteQuickLinks } from './quick-links.js';
 
 /**
  * File metadata helpers (Epic 14, ATTACHMENTS.md §§3+5).
@@ -29,6 +30,12 @@ export async function softDeleteReadyFile(trx, { workspaceId, fileId }) {
   await trx('files')
     .where({ id: fileId })
     .update({ deleted_at: new Date(), revision, updated_at: new Date() });
+  // This function is the choke point for EVERY file death (REST delete, the
+  // entity cascade below, folder subtrees), so the quick-link cascade lives
+  // here rather than at three call sites (OPH-197). Uploading files are hard
+  // deleted without passing here — they never synced, so no shortcut can
+  // legitimately point at one.
+  await cascadeDeleteQuickLinks(trx, { workspaceId, targets: [{ type: 'file', id: fileId }] });
   return revision;
 }
 

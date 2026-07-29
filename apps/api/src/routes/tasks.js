@@ -5,6 +5,7 @@ import { nextMorningIn } from '../lib/time.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
+import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
 import { COLOR_PATTERN } from './projects.js';
 
 // Snooze presets (BLUEPRINT §4.9): fixed offsets in minutes, plus
@@ -791,8 +792,13 @@ export default async function taskRoutes(app) {
           frontier = children.map((c) => c.id).filter((id) => !seen.has(id));
           for (const id of frontier) seen.add(id);
         }
-        // Every task in the subtree takes its attachments with it (Epic 14).
+        // Every task in the subtree takes its attachments with it (Epic 14)
+        // and every member's shortcut to it (OPH-197) — subtasks included.
         await cascadeDeleteFiles(trx, app, {
+          workspaceId: row.workspace_id,
+          targets: [...seen].map((id) => ({ type: 'task', id })),
+        });
+        await cascadeDeleteQuickLinks(trx, {
           workspaceId: row.workspace_id,
           targets: [...seen].map((id) => ({ type: 'task', id })),
         });

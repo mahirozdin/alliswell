@@ -5,6 +5,7 @@ import { slugify } from '../lib/slug.js';
 import { deltaToMarkdown, deltaToPlainText, embedFileIds, isValidDelta } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { cascadeDeleteFiles } from '../db/files.js';
+import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 const SNIPPET_LENGTH = 160;
@@ -453,8 +454,12 @@ export default async function noteRoutes(app) {
           updated_at: new Date(),
         });
         // A deleted note takes its attachments (inline embeds included) with
-        // it — Epic 14, ATTACHMENTS.md §5.
+        // it — Epic 14, ATTACHMENTS.md §5 — and its shortcuts (OPH-197).
         await cascadeDeleteFiles(trx, app, {
+          workspaceId: row.workspace_id,
+          targets: [{ type: 'note', id: row.id }],
+        });
+        await cascadeDeleteQuickLinks(trx, {
           workspaceId: row.workspace_id,
           targets: [{ type: 'note', id: row.id }],
         });

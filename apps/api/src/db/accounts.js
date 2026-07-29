@@ -59,10 +59,15 @@ export async function accountsDueForPurge(db, now, limit = 50) {
  * Order matters: `workspaces.owner_id` is ON DELETE RESTRICT, so an owner
  * cannot be removed while their workspaces exist. Deleting the workspaces
  * first lets the schema's CASCADEs do the real work (projects, tasks, notes,
- * tags, folders, files, reminders, revisions…), and deleting the user then
- * cascades what hangs off the person (sessions, memberships, notification
- * devices, calendar accounts). Workspaces owned by SOMEONE ELSE survive; only
+ * tags, folders, files, quick links, reminders, revisions…), and deleting the
+ * user then cascades what hangs off the person (sessions, memberships,
+ * notification devices, calendar accounts, and their quick links inside
+ * workspaces they do not own). Workspaces owned by SOMEONE ELSE survive; only
  * this user's membership in them goes.
+ *
+ * Quick links are the one entity purged by hard delete rather than tombstone
+ * (ADR-0018): the owner is gone, and their rows were invisible to every
+ * surviving member anyway, so there is nobody left to notify.
  *
  * Storage keys are collected inside the transaction and queued for deletion
  * only AFTER it commits — a rolled-back purge must not have destroyed bytes.

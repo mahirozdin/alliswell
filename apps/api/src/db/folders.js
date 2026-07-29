@@ -1,5 +1,6 @@
 import { recordSyncWrite } from './sync.js';
 import { softDeleteReadyFile } from './files.js';
+import { cascadeDeleteQuickLinks } from './quick-links.js';
 
 /**
  * Folder tree helpers (OPH-169, ADR-0014). Depth is capped and moves are
@@ -113,6 +114,13 @@ export async function deleteFolderSubtree(trx, app, { workspaceId, folderId }) {
       .where({ id })
       .update({ deleted_at: new Date(), revision, updated_at: new Date() });
   }
+
+  // Shortcuts to any folder in the subtree die with it (OPH-197); shortcuts to
+  // the deleted FILES were already handled by softDeleteReadyFile above.
+  await cascadeDeleteQuickLinks(trx, {
+    workspaceId,
+    targets: folderIds.map((id) => ({ type: 'folder', id })),
+  });
 
   (trx.executionPromise ?? Promise.resolve())
     .then(() => {

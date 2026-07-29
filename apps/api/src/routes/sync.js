@@ -27,8 +27,17 @@ import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { serializeFile } from './files.js';
 import { serializeFolder } from './folders.js';
+import { serializeQuickLink } from './quick-links.js';
 import { foldSearchText } from '../lib/fold.js';
 import { FOLDER_MAX_DEPTH, deleteFolderSubtree, depthUnder, wouldCycle } from '../db/folders.js';
+import {
+  QUICK_LINK_KINDS,
+  cascadeDeleteQuickLinks,
+  checkCreatable,
+  nextSortOrder,
+  validateOrder,
+  writeQuickLinkOrder,
+} from '../db/quick-links.js';
 import { PROJECT_STATUSES, COLOR_PATTERN, serializeProject } from './projects.js';
 import { serializeTag } from './tags.js';
 import { TASK_STATUSES, TASK_PRIORITIES, serializeTask, serializeChecklistItem } from './tasks.js';
@@ -147,6 +156,23 @@ const NOTE_FIELDS = {
   projectId: { col: 'project_id', ok: ulidOrNull },
   isPinned: { col: 'is_pinned', ok: bool },
   isArchived: { col: 'is_archived', ok: bool },
+};
+
+// Round 11 (OPH-197, ADR-0018): the first user-scoped entity. `kind`,
+// `targetId` and `url` are create-only — a shortcut's target is immutable, and
+// re-pointing one is remove + add. There is deliberately NO `sortOrder` field:
+// order is only ever expressed as the whole list, through `orderedIds`.
+const QUICK_LINK_FIELDS = {
+  kind: { col: 'kind', ok: oneOf(QUICK_LINK_KINDS), createOnly: true },
+  targetId: { col: 'target_id', ok: ulidOrNull, createOnly: true },
+  url: { col: 'url', ok: strOrNull(2048), createOnly: true },
+  title: { col: 'title', ok: str(200) },
+  emoji: { col: 'emoji', ok: strOrNull(16) },
+  colorRgb: { col: 'color_rgb', ok: colorOrNull },
+  // The whole rail's order in ONE mutation (OPH-198). Virtual: the entity's
+  // afterUpdate writes every row; the LWW name is the column it really moves,
+  // so two concurrent reorders overlap on `sort_order` and resolve wholesale.
+  orderedIds: { col: 'sort_order', ok: ulidArray, virtual: true, updateOnly: true },
 };
 
 const CHECKLIST_FIELDS = {
@@ -291,6 +317,19 @@ export default async function syncRoutes(app) {
       rows: await app.db('folders').whereIn('id', ids).select(),
       serialize: serializeFolder,
     }),
+    // OPH-197 — quick links (ADR-0018): the first USER-scoped entity. A loader
+    // may declare itself user-scoped and take the pull context; rows it does
+    // not return are dropped from the response entirely (see below) rather
+    // than degraded to tombstones — an id and a write timestamp are private
+    // too. Note the absence of a deleted_at filter: the caller's OWN tombstone
+    // must still come through.
+    quick_link: {
+      userScoped: true,
+      load: async (ids, { userId }) => ({
+        rows: await app.db('quick_links').whereIn('id', ids).where({ user_id: userId }).select(),
+        serialize: serializeQuickLink,
+      }),
+    },
   };
 
   app.get(
@@ -364,27 +403,38 @@ export default async function syncRoutes(app) {
       }
 
       const snapshots = new Map(); // `${type}:${id}` → serialized data | null
+      const invisible = new Set(); // `${type}:${id}` this caller may not see
       for (const [type, ids] of byType) {
-        const loader = SNAPSHOT_LOADERS[type];
-        if (!loader) continue; // unknown/legacy types come through as tombstones
-        const { rows, serialize } = await loader(ids);
+        const entry = SNAPSHOT_LOADERS[type];
+        if (!entry) continue; // unknown/legacy types come through as tombstones
+        const load = typeof entry === 'function' ? entry : entry.load;
+        const { rows, serialize } = await load(ids, { userId: request.user.id });
         for (const row of rows) {
           snapshots.set(`${type}:${row.id}`, row.deleted_at != null ? null : serialize(row));
         }
+        if (entry.userScoped) {
+          // ADR-0018: rows another member owns are not "deleted for me", they
+          // are none of my business. Dropping them cannot stall the cursor —
+          // toRevision/hasMore come from the raw revision window above.
+          const visible = new Set(rows.map((r) => r.id));
+          for (const id of ids) if (!visible.has(id)) invisible.add(`${type}:${id}`);
+        }
       }
 
-      const changes = kept.map((row) => {
-        const data = snapshots.get(`${row.entity_type}:${row.entity_id}`) ?? null;
-        return {
-          revision: Number(row.revision),
-          entityType: row.entity_type,
-          entityId: row.entity_id,
-          // A snapshot that is gone (or soft-deleted) is a tombstone, whatever
-          // the logged operation was — the delete row may sit past the window.
-          operation: data === null ? 'delete' : row.operation,
-          data,
-        };
-      });
+      const changes = kept
+        .filter((row) => !invisible.has(`${row.entity_type}:${row.entity_id}`))
+        .map((row) => {
+          const data = snapshots.get(`${row.entity_type}:${row.entity_id}`) ?? null;
+          return {
+            revision: Number(row.revision),
+            entityType: row.entity_type,
+            entityId: row.entity_id,
+            // A snapshot that is gone (or soft-deleted) is a tombstone, whatever
+            // the logged operation was — the delete row may sit past the window.
+            operation: data === null ? 'delete' : row.operation,
+            data,
+          };
+        });
 
       return { workspaceId, fromRevision: sinceRevision, toRevision, hasMore, changes };
     },
@@ -614,6 +664,11 @@ export default async function syncRoutes(app) {
           workspaceId: ctx.workspaceId,
           targets: [{ type: 'project', id: row.id }],
         });
+        // …and every member's shortcut to it (OPH-197, ADR-0018).
+        await cascadeDeleteQuickLinks(trx, {
+          workspaceId: ctx.workspaceId,
+          targets: [{ type: 'project', id: row.id }],
+        });
       },
     },
 
@@ -621,6 +676,7 @@ export default async function syncRoutes(app) {
       table: 'tags',
       fields: TAG_FIELDS,
       requiredOnCreate: ['name'],
+      duplicateCode: 'TAG_SLUG_TAKEN',
       workspaceOf: (row) => row.workspace_id,
       async guard(ctx, patch, row) {
         if (patch.name !== undefined) {
@@ -698,6 +754,72 @@ export default async function syncRoutes(app) {
       },
     },
 
+    // OPH-197 — quick links (ADR-0018). The only entity whose rows belong to a
+    // user rather than to the workspace, hence `ownershipOk`; note it is the
+    // one hook `applyDelete` also honours, which is why ownership lives there
+    // and not in `guard` (guard never runs on delete).
+    quick_link: {
+      table: 'quick_links',
+      fields: QUICK_LINK_FIELDS,
+      requiredOnCreate: ['kind', 'title'],
+      duplicateCode: 'QUICK_LINK_DUPLICATE',
+      workspaceOf: (row) => row.workspace_id,
+      ownershipOk: (ctx, row) => row.user_id === ctx.userId || 'QUICK_LINK_NOT_YOURS',
+      async guard(ctx, patch, row) {
+        if ('orderedIds' in patch) {
+          // A reorder travels alone: mixing it with a rename would make one
+          // mutation mean two things and muddy the LWW intent.
+          if (Object.keys(patch).length > 1) return 'SYNC_INVALID_PATCH';
+          if (!patch.orderedIds.includes(row.id)) return 'QUICK_LINK_ORDER_INCOMPLETE';
+          return validateOrder(app.db, {
+            workspaceId: ctx.workspaceId,
+            userId: ctx.userId,
+            orderedIds: patch.orderedIds,
+          });
+        }
+        if (row) return null; // kind/targetId/url are create-only
+        return checkCreatable(app.db, {
+          workspaceId: ctx.workspaceId,
+          userId: ctx.userId,
+          kind: patch.kind,
+          targetId: patch.targetId ?? null,
+          url: patch.url ?? null,
+        });
+      },
+      insertRow: (ctx, mutation, rowPatch) => ({
+        id: mutation.entityId,
+        workspace_id: ctx.workspaceId,
+        // Stamped server-side, never from the payload (there is no `userId`
+        // field, so sending one is SYNC_UNKNOWN_FIELD).
+        user_id: ctx.userId,
+        target_id: null,
+        url: null,
+        ...rowPatch,
+      }),
+      // The tail offset needs a query and insertRow is synchronous; the pull
+      // serializes the CURRENT row, so a follow-up update inside the same
+      // transaction is invisible to everyone and owes no second revision.
+      async afterCreate(trx, ctx, mutation) {
+        const sortOrder = await nextSortOrder(trx, {
+          workspaceId: ctx.workspaceId,
+          userId: ctx.userId,
+        });
+        await trx('quick_links').where({ id: mutation.entityId }).update({ sort_order: sortOrder });
+      },
+      async afterUpdate(trx, ctx, mutation, row, keptIntents) {
+        // Only when the order intent survived LWW (cf. the task tag idiom).
+        if (!keptIntents.some((i) => i.name === 'sort_order')) return;
+        await writeQuickLinkOrder(trx, {
+          workspaceId: ctx.workspaceId,
+          userId: ctx.userId,
+          orderedIds: mutation.patch.orderedIds,
+          skipRevisionFor: row.id, // the anchor already holds this revision
+        });
+      },
+      // Free the uniqueness slot, exactly like the REST delete (db/quick-links).
+      deletePatch: () => ({ target_id: null }),
+    },
+
     task: {
       table: 'tasks',
       fields: TASK_FIELDS,
@@ -770,8 +892,13 @@ export default async function syncRoutes(app) {
           frontier = children.map((c) => c.id).filter((id) => !seen.has(id));
           for (const id of frontier) seen.add(id);
         }
-        // Every task in the subtree takes its attachments with it (Epic 14).
+        // Every task in the subtree takes its attachments with it (Epic 14)
+        // and every member's shortcut to it (OPH-197) — subtasks included.
         await cascadeDeleteFiles(trx, app, {
+          workspaceId: ctx.workspaceId,
+          targets: [...seen].map((id) => ({ type: 'task', id })),
+        });
+        await cascadeDeleteQuickLinks(trx, {
           workspaceId: ctx.workspaceId,
           targets: [...seen].map((id) => ({ type: 'task', id })),
         });
@@ -808,9 +935,13 @@ export default async function syncRoutes(app) {
       updateExtra: (ctx) => ({ updated_by: ctx.userId }),
       deleteExtra: (ctx) => ({ updated_by: ctx.userId }),
       // A deleted note takes its attachments — inline embeds included — with
-      // it (Epic 14, ATTACHMENTS.md §5).
+      // it (Epic 14, ATTACHMENTS.md §5) and its shortcuts (OPH-197).
       async afterDelete(trx, ctx, row) {
         await cascadeDeleteFiles(trx, app, {
+          workspaceId: ctx.workspaceId,
+          targets: [{ type: 'note', id: row.id }],
+        });
+        await cascadeDeleteQuickLinks(trx, {
           workspaceId: ctx.workspaceId,
           targets: [{ type: 'note', id: row.id }],
         });
@@ -904,6 +1035,20 @@ export default async function syncRoutes(app) {
     });
   }
 
+  /**
+   * Row-level ownership, honoured by BOTH update and delete (`guard` is never
+   * called on delete). `ownershipOk` may return `true`, `false` — the historic
+   * shape, still `SYNC_ENTITY_NOT_FOUND` — or a specific error code, which is
+   * how a user-scoped entity (ADR-0018) reports `QUICK_LINK_NOT_YOURS`.
+   * Returns an outcome to send back, or null when the caller may proceed.
+   */
+  async function checkOwnership(ctx, row, entity) {
+    if (!entity.ownershipOk) return null;
+    const verdict = await entity.ownershipOk(ctx, row);
+    if (verdict === true) return null;
+    return rejected(typeof verdict === 'string' ? verdict : 'SYNC_ENTITY_NOT_FOUND');
+  }
+
   async function applyCreate(ctx, mutation, entity) {
     if (!ULID_RE.test(mutation.entityId)) return rejected('SYNC_INVALID_ENTITY_ID');
     for (const required of entity.requiredOnCreate) {
@@ -941,9 +1086,8 @@ export default async function syncRoutes(app) {
     if (entity.workspaceOf && entity.workspaceOf(row) !== ctx.workspaceId) {
       return rejected('SYNC_ENTITY_NOT_FOUND'); // cross-workspace: do not leak
     }
-    if (entity.ownershipOk && !(await entity.ownershipOk(ctx, row))) {
-      return rejected('SYNC_ENTITY_NOT_FOUND');
-    }
+    const ownership = await checkOwnership(ctx, row, entity);
+    if (ownership) return ownership;
     if (row.deleted_at != null) return rejected('SYNC_ENTITY_DELETED');
 
     const patch = { ...mutation.patch };
@@ -1009,9 +1153,8 @@ export default async function syncRoutes(app) {
     if (entity.workspaceOf && entity.workspaceOf(row) !== ctx.workspaceId) {
       return rejected('SYNC_ENTITY_NOT_FOUND');
     }
-    if (entity.ownershipOk && !(await entity.ownershipOk(ctx, row))) {
-      return rejected('SYNC_ENTITY_NOT_FOUND');
-    }
+    const ownership = await checkOwnership(ctx, row, entity);
+    if (ownership) return ownership;
     if (entity.deleteRoles && !entity.deleteRoles.includes(ctx.role)) {
       return rejected('AUTH_WORKSPACE_FORBIDDEN');
     }
@@ -1101,7 +1244,7 @@ export default async function syncRoutes(app) {
       // index): trust the recorded result / report the entity conflict.
       const recorded = await findRecorded(ctx, mutation);
       if (recorded) return { clientMutationId: mutation.clientMutationId, ...recorded };
-      outcome = rejected(mutation.entityType === 'tag' ? 'TAG_SLUG_TAKEN' : 'SYNC_ENTITY_EXISTS');
+      outcome = rejected(ENTITIES[mutation.entityType]?.duplicateCode ?? 'SYNC_ENTITY_EXISTS');
       await recordRow(app.db, ctx, mutation, outcome);
     }
 

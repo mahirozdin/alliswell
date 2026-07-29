@@ -46,6 +46,14 @@ const UNIQUE_INDEXES = {
     },
   ],
   files: [{ name: 'files.uq_files_storage_key', cols: ['storage_key'] }],
+  // NULL columns are skipped below, exactly like MySQL — which is what leaves
+  // `kind = 'url'` rows (target_id NULL) deliberately un-deduped (OPH-197).
+  quick_links: [
+    {
+      name: 'quick_links.uq_quick_links_user_target',
+      cols: ['workspace_id', 'user_id', 'kind', 'target_id'],
+    },
+  ],
 };
 
 const OPS = {
@@ -80,6 +88,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     calendar_external_events: [],
     files: [],
     folders: [],
+    quick_links: [],
   };
 
   const columnDefaults = {
@@ -169,6 +178,15 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     }),
     folders: () => ({ parent_id: null, revision: 0, deleted_at: null }),
     files: () => ({ folder_id: null, deleted_at: null }),
+    quick_links: () => ({
+      target_id: null,
+      url: null,
+      emoji: null,
+      color_rgb: null,
+      sort_order: 0,
+      revision: 0,
+      deleted_at: null,
+    }),
     calendar_event_links: () => ({
       provider_event_uid: null,
       etag: null,
