@@ -3,13 +3,15 @@
 - **Status:** Accepted
 - **Date:** 2026-07-29 (planning, request round 11 — researched by a dedicated
   max-effort pass; evidence links in [AI.md](../AI.md) §1)
-- **Related task:** Epic 19 (OPH-204…OPH-216) — request round 11 #2
+- **Related task:** Epic 20 (OPH-215…OPH-227; renumbered from OPH-204…216 when
+  feedback round 12 inserted Epic 19) — request round 11 #2
 - **Related:** [ADR-0006](0006-google-oauth-token-crypto-and-mirror-queue.md) (token
   crypto + the no-SDK precedent this generalizes),
   [ADR-0013](0013-local-first-search.md) (the fold matching extraction reuses),
   [ADR-0016](0016-in-app-url-routing-and-widget-actions.md) (the "no second write
   path" principle), BLUEPRINT §4.13/§12.16, DESIGN §24. Follow-ups at implementation
-  time: ADR-0020 (MCP server), ADR-0021 (STT + share-intent dependencies).
+  time: ADR-0022 (MCP server), ADR-0023 (STT + share-intent dependencies) —
+  0020/0021 were claimed by round 12 (recurrence engine, calendar mirror v2).
 
 ## Context
 

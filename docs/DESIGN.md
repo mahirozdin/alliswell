@@ -505,13 +505,21 @@ _(Added 2026-07-27. Round 9 #2 — the OPH-103 philosophy taken to its end:
   degradation banner, the Liste | Pano toggle, the quick-add field, the search
   field, the month calendar and the calendar toggle are all slivers of the one
   `home-scroll` view, in that order. Chrome does not get to eat a phone screen
-  it is not currently earning.
+  it is not currently earning. _Rev. 2026-07-29 (round 12 #5 — OPH-213): the
+  view toggle and the calendar show/hide leave the scroll entirely — they become
+  **app-bar icons** (the Notes pattern), placed left of settings, on phones and
+  wide layouts alike. The sliver order becomes: banner, quick-add, search, month
+  calendar. H1 gets stronger: the app bar earns its pin by carrying the view
+  controls._
 - **H2 — Wide layouts are unchanged.** ≥720 px keeps the calendar side panel and
   its own column; the complaint (and the fix) is about the phone.
 - **H3 — A view switch that scrolls away must still be reachable (deliberate
   deviation).** In **Pano** the board is a horizontal pager filling the
   viewport, so the Liste | Pano row stays pinned there — scrolling it away
   would strand the user in the board with no way back. List mode scrolls it.
+  _Rev. 2026-07-29 (OPH-213): dissolved — the switch now lives in the
+  always-pinned app bar, so there is nothing left for this deviation to
+  protect._
 - **H4 — A scrolling text field keeps its text.** Quick-add's controller lives
   in the parent (a sliver scrolled past the cache extent is disposed), and
   focusing it scrolls it back into view (`Scrollable.ensureVisible`). Typed text
@@ -657,6 +665,11 @@ bir yerden görmek gibi bişey olabilmeli".)_
   that group. Vanishing at the instant of the tap makes the user doubt what they
   just did, removes the only natural undo (tap it again) and hides the day's
   progress. At the next local midnight it leaves the planning lists.
+  _Rev. 2026-07-29 (round 12 #3 — OPH-211): the stay applies **only when the
+  task's due date is today, or it has none**. An overdue task completed today
+  leaves the planning lists immediately — "Geciken" holding a struck-through row
+  says nothing ("the task was late, and now it is done" is the archive's
+  sentence, not the planner's). Its address is §C4 from the moment of the tap._
 - **C2 — Done work is quiet, not dead.** The whole row calms down together:
   `surfaceContainerLow` card, struck-through title in `onSurfaceVariant`, muted
   date/subtitle, and the alarm chips (urgent marker, snoozed, muted) **removed** —

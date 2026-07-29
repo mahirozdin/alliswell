@@ -30,7 +30,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   DESIGN §23 Q4/Q4a–Q4c/Q8a/Q9, ADR-0018 consequences, BLUEPRINT §4.12
   (`color` → `color_rgb`, emoji cap is graphemes-in-16-chars, not bytes).
 
-### Planned — request round 11 (2026-07-29, docs only; no code yet)
+### Planned — request rounds 11 + 12 (2026-07-29, docs only; no code yet)
 
 - **Epic 18 — Quick Access (OPH-196…203, toward v0.7.0).** A Notion-style personal
   shortcut list (projects, tasks, notes, folders, files, external links; emoji +
@@ -41,7 +41,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   only by its owner) with server-side cascade when a target is deleted.
   [ADR-0018](docs/adr/0018-quick-links-user-scoped-sync-entity.md),
   BLUEPRINT §4.12/§12.15, DESIGN §23.
-- **Epic 19 — AI (OPH-204…216, toward v0.8.0).** Two tracks, because the researched
+- **Epic 19 — Recurring tasks, calendar always, flow fixes (OPH-204…214, toward
+  v0.8.0; round 12, slotted in between at the owner's request).** Recurring tasks
+  at last — the `repeat_rule` column has sat empty since v1: a structured rule
+  model on an RFC 5545 subset with RFC 7529 clamping ("the 31st" lands on a short
+  month's last day), Nth-weekday and after-day patterns ("the first Monday after
+  the 22nd"), a config dialog that opens automatically with the Repeat switch, a
+  live "next 5" preview, a **rolling 12-month window** of materialized real task
+  rows kept fresh by a daily sweep, and Google-style edit scopes (default:
+  this-and-future). Plus: the calendar mirror loses its opt-in switch (every dated
+  task becomes a 30-minute block, 23:29–23:59 when timeless; dateless tasks land
+  on their creation day; Google Tasks / Apple Reminders native-todo mapping
+  evaluated); overdue tasks completed today stop haunting the Overdue group; the
+  project-edit sheet stops opening under the popup menu; Home's view and calendar
+  toggles move into the app bar; and the screen-on alarm's dead snooze button +
+  tap-to-crash get a device investigation. BLUEPRINT §7.1/§12.2/§12.17,
+  DESIGN §16/§20/§25, ADR-0020/0021 at implementation.
+- **Epic 20 — AI (OPH-215…227, toward v0.9.0; renumbered from OPH-204…216 when
+  round 12 slotted Epic 19 in).** Two tracks, because the researched
   reality is that no provider permits third-party use of consumer subscriptions in
   mid-2026: **Track A** — an AllisWell remote MCP server ("add AllisWell to your
   Claude/ChatGPT", where your subscription pays for the intelligence); **Track B** —

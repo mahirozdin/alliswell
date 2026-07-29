@@ -4699,6 +4699,290 @@ pull izolasyon testi yeşil; telefon + geniş ekran + masaüstü yüzeylerinin �
 
 ---
 
+## Epic 19 — Feedback round 12: tekrarlı görevler, takvim her zaman, akış düzeltmeleri (Phase 13, v0.8.0)
+
+_(Doğdu 2026-07-29 — Mahir'in 6 maddelik listesi; round 11'in aynı günü. Kullanıcının
+sıralamasıyla araya girdi: **bu epic Epic 18'den sonra, yapay zekadan (Epic 20) önce
+koşar.** İki büyük özellik (tekrarlı görevler + takvim aynasının seçeneksizleşmesi) ve
+dört düzeltme. Bağlayıcı metinler: BLUEPRINT **§12.17** (yeni — tekrar) + **§7.1
+revize** (takvim) + **§12.2 revize** (geciken×tamamlanan, app bar kontrolleri),
+DESIGN **§16/§20 revize** + **§25** (OPH-204 yazar); implementasyonda
+**ADR-0020** (tekrar motoru + materyalizasyon) ve **ADR-0021** (takvim aynası v2 +
+Google Tasks/EKReminder değerlendirmesi). Sıra bağlayıcı: **204 araştırma** →
+**205→208 tekrar hattı** → **209→210 takvim hattı** → **211→213 düzeltmeler** →
+**214 alarm (cihaz)**. Cihaz isteyenler: 214 (+210'un gerçek Google/Apple canlı passi).)_
+
+> **Turun tek cümlesi:** iki büyük madde de "eksik özellik" değil **eksik yüzey +
+> yanlış varsayılan**: `tasks.repeat_rule` kolonu v1'den beri şemada boş duruyor
+> (OPH-195 Bulgu 1'in en büyük parkı) ve takvim aynası **opt-in bir switch'in
+> arkasında** — kullanıcının beklentisi tam tersi: "eklenen HER task takvimde
+> gözükmeli, bu bir seçenek bile olmamalı."
+
+**Round 12'nin kanıtları — kodda doğrulandı (2026-07-29):**
+
+| # | Madde | Kanıt / kök neden |
+| - | ----- | ----------------- |
+| 1 | Tekrarlı task yok | `tasks.repeat_rule` şemada var, **hiçbir yüzey yazmıyor/okumuyor** (OPH-195 matrisinde gerekçeli park — "en büyük eksik özellik; alarm planlayıcısı ve takvim aynası tekrar üretimini bilmiyor"); BLUEPRINT §4.3 tekrarı bir görev tipi olarak sayıyor |
+| 2 | "Takvimde göster" switch'i | [task_detail_screen.dart:341](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L341) `calendar-mirror-switch` (OPH-081 opt-in) → [mirror.js:16](../apps/api/src/lib/mirror.js#L16) `if (!task.calendar_mirror_enabled) return null`; üstüne §7.1 "scheduled start/end İÇERİYORSA" şartı → bugün **sıradan tarihli görev takvime hiç gitmiyor**. Kullanıcının kuralı: switch ölür, her şey takvimde |
+| 3 | Geciken'de tamamlanmış satır | OPH-185 kuralı "kendi grubunda kalır" — dün vadeli görev bugün tamamlanınca grubu **Geciken** olduğu için gün sonuna kadar "Geciken · 1"in altında üstü çizili duruyor. Kullanıcının düzeltmesi: vade geçmişse tamamlanan LİSTEDEN düşer (arşiv zaten OPH-186'da) |
+| 4 | Proje düzenle sheet'i menünün altında | [projects_screen.dart:192](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L192) `onSelected` içinden **senkron** `showProjectEditSheet` — menü rotası kapanış animasyonunu bitirmeden modal sheet açılıyor (görsel: sheet menünün ALTINDA; Mahir ekran görüntüsü gönderecek — task bloklamaz) |
+| 5 | Liste\|Pano + takvim düğmesi satır yiyor | [home_screen.dart:146](../apps/app/lib/src/features/home/home_screen.dart#L146) `SegmentedButton` satırı + [:363](../apps/app/lib/src/features/home/home_screen.dart#L363) gizle/göster düğmesi; Notlar zaten app bar ikon kalıbını kullanıyor ([notes_screen.dart:56](../apps/app/lib/src/features/notes/ui/notes_screen.dart#L56)) — kullanıcının istediği kalıp repoda mevcut |
+| 6 | Ekran açıkken alarm bildirimi | Gözlem (cihaz, 2026-07-29): ekran kapalıyken tam ekran ✓; ekran açıkken heads-up geliyor — X çalışıyor, **saat ikonu (erteleme) hiçbir şey yapmıyor**, bildirime dokununca uygulama açılırken **çöküyor**. Snooze aksiyon id'leri kodda var ([actions.dart:17](../apps/app/lib/src/notifications/actions.dart#L17)) — kablolama/arka plan handler ve launch-payload çökmesi 214'te kök nedenlenir |
+
+### OPH-204 — Tekrar araştırması + kural modeli + materyalizasyon kararı + ADR-0020 (kod yazmaz)
+
+- [ ] **≥3 ürün derin incelemesi (Mahir'in şartı):** Google Calendar özel tekrar
+      dialog'u (kullanıcının referansı), Todoist (doğal dil + "every!"), TickTick;
+      bonus: Apple Reminders/Fantastical. Her biri için ifade gücü tablosu — üç
+      senaryo sınıfı özellikle: **(A)** "her ayın 31'i" kısa ayda ne oluyor (kırpma mı
+      atlama mı), **(B)** "N. haftanın Salı'sı" / "ayın 2. Salı'sı", **(C)** "ayın
+      22'sinden sonraki ilk Pazartesi", "ayın ilk/son Cuma'sı". Bulgular tabloyla bu
+      taskın altına işlenir (kalıcı referans; OPH-168'in kaynaklı araştırma kalıbı).
+- [ ] **Kural modeli kararı (ADR-0020):** RFC 5545 RRULE alt kümesi + RFC 7529
+      `SKIP=BACKWARD` (kırpma) semantiği, **yapılandırılmış JSON** olarak saklanır
+      (Ajv'lenebilir; ham RRULE dizesi DEĞİL): `freq (daily|weekly|monthly|yearly)`,
+      `interval`, `byWeekday[]` (ordinal 1..5 + last), `byMonthDay[]` (-1 = son gün;
+      kısa ayda **geriye kırp** — 31 → 30/29/28), `bySetPos`, **`afterDay` + ilk-gün**
+      (senaryo C: "22'sinden sonraki ilk Pazartesi"), bitiş (`asla | until | count`).
+      A/B/C senaryolarının üçü de bu modelde tek tek ifade edilip test vektörü olur.
+- [ ] **Materyalizasyon kararı (Mahir bana bıraktı — ADR-0020'ye yazılır):**
+      occurrence'lar **gerçek görev satırlarıdır** (`task_series` tablosu +
+      `tasks.series_id` + `occurrence_date`); pencere **bugünden +12 ay** (kullanıcının
+      kuralı: "12 aydan fazlası eklenmemeli, biri geçince sıradaki eklenir");
+      pencereyi **günlük süpürme kaydırır** (BullMQ repeatable — Redis zaten var);
+      kural değişince gelecek pencere tek transaction'da yeniden kurulur, geçmişe
+      dokunulmaz; **istemci hiç occurrence üretmez** — satırlar normal sync'le akar,
+      yani widget/arama/takvim/alarm planlayıcı **bedavaya doğru** (yeni motor yok).
+      Seri başına materyalizasyon tavanı (günlük×12 ay ≈ 366 → tavan ~400, aşan
+      kural dürüst mesajla reddedilir). Alternatifler ve retleri ADR'de: sanal
+      genişletme (her yüzeye — widget dahil — motor gerektirir, local-first'e ters),
+      yalnız-sonraki-occurrence (Todoist modeli; "önümüzdeki 12 ay takvimde görünsün"
+      isteğini karşılayamaz).
+- [ ] **Motor iki dilde, tek gerçek:** saf JS (sunucu — üretimin tek kaynağı) + saf
+      Dart portu (dialog önizlemesi) + **ortak parite fikstürleri** (ADR-0013 fold
+      kalıbı): kırpma, artık yıl, DST sınırı, yıl devri, 5. hafta yokluğu vakaları.
+- [ ] **DESIGN §25 yazılır:** dialog anatomisi (switch → otomatik açılış, özet satırı +
+      Değiştir), kuralın **insan cümlesi** dili (TR/EN), "Sonraki 5" önizleme kuralı,
+      erişilebilirlik.
+- [ ] `tasks.repeat_rule` kolonunun kaderi ADR'de (ölür / `task_series`'e taşınır) —
+      ulaşılamayan kolon yalanı (DESIGN §22) bu epic'te biter.
+
+**Context:** OPH-195'in en büyük parkı canlanıyor. Mahir: "bu sistem çok önemli,
+bastırıyorum bir daha" — maksimum esneklik hedefi; karar netliği bu yüzden koddan önce.
+
+### OPH-205 — API: `task_series` + materyalizasyon motoru + kayan 12 ay penceresi
+
+- [ ] Migration: `task_series` (`id, workspace_id, rule JSON, timezone, anchor_at,
+      until_at NULL, count NULL, created/updated/deleted_at, revision`) +
+      `tasks.series_id` (FK'sız ULID, index) + `tasks.occurrence_date`; seri de
+      senkron varlıktır (push-pull — düzenleme dialog'u her cihazda aynı kuralı
+      göstermeli).
+- [ ] Seri CRUD uçları (Ajv şeması OPH-204'ün JSON modeli) + **materyalizasyon tek
+      transaction'da**: seri yaratılınca/değişince gelecek pencere üretilir;
+      **idempotent** (aynı seri + aynı pencere ikinci kez satır üretmez —
+      `(series_id, occurrence_date)` tekilliği).
+- [ ] **Günlük süpürme:** BullMQ repeatable job — pencereye yeni giren occurrence'ları
+      ekler, `recordSyncWrite` ile duyurur; işlem hacmi log'lanır. Sunucusuz self-host
+      (compose) için de aynı kuyruk zaten çalışıyor (mevcut sweep emsalleri).
+- [ ] Davranış kuralları: occurrence tamamlamak seriyi ve kardeşleri ETKİLEMEZ;
+      occurrence silme yalnız o satırı siler (seri kapsam sorusu OPH-206'nın işi);
+      seri silme = gelecekteki materyalize satırların alt-ağaç tombstone'u (geçmiş +
+      tamamlanmışlar kalır — tarih dürüstlüğü).
+- [ ] Testler (tablo-güdümlü, OPH-204 fikstürleri): 31 → 30/29/28 kırpması; "ayın 2.
+      Salı'sı"; "22 sonrası ilk Pazartesi"; "ayın son günü"; DST + yıl sınırı; pencere
+      kayması (sahte saat); idempotens; kural değişiminde geçmişe dokunulmadığı;
+      revision yayınları.
+
+### OPH-206 — Seri düzenleme semantiği: bu / bu ve gelecektekiler / tümü
+
+- [ ] **Google modeli, kullanıcının istediği otomatiklikle:** materyalize bir
+      occurrence düzenlenince kapsam sorusu — "Yalnız bu" / "**Bu ve gelecektekiler**
+      (varsayılan)" / "Tümü". Mahir'in cümlesi ("birinden değiştirilince
+      gelecektekilerin hepsini değiştir otomatik olmalı") → varsayılan seçenek budur,
+      tek dokunuşla geçer.
+- [ ] Kapsam mekaniği: "gelecektekiler" **seriyi böler** (eski seri `until` alır, yeni
+      seri doğar — Google'ın kalıbı); "tümü" seri metadata'sını günceller, geçmiş
+      occurrence'ların tamamlanmışlığına dokunmaz; "yalnız bu" occurrence'ı ayırır
+      (detached — seri bağı düşer, satır sıradan görev olur; rozeti kalkar).
+- [ ] Alan-bazlı istisna yazılır: tek occurrence'ın tarihini sürüklemek/değiştirmek
+      varsayılanı "yalnız bu"dur (bir randevuyu kaydırmak seriyi kaydırmak değildir);
+      başlık/açıklama/öncelik değişimi varsayılanı "bu ve gelecektekiler"dir.
+- [ ] API: kapsamlı update ucu (`scope: this|future|all`) tek transaction; app: store
+      + kapsam dialog'u; senkron: bölünme iki seri satırı + görev güncellemeleri
+      olarak akar.
+- [ ] Testler: üç kapsamın her biri (satır sayıları + revision'lar); bölünme sonrası
+      iki serinin bağımsız süpürülmesi; detached occurrence'ın serbestliği.
+
+### OPH-207 — App: tekrar dialog'u — switch, otomatik açılış, özet + Değiştir
+
+- [ ] **Giriş yüzeyi (kullanıcının tarifi birebir):** detaylı ekleme VE düzenleme
+      sheet'lerine "Tekrarla" switch'i; switch İLK açıldığında dialog **otomatik**
+      açılır; dialog iptal edilirse switch kapanır (yarım kural kalmaz). Kural
+      varken satırın altında **özet cümlesi** ("Her ayın son iş günü değil — örn.
+      'Her ayın 22'sinden sonraki ilk Pazartesi · bitiş yok'") + sağında **Değiştir**.
+- [ ] **Dialog:** hızlı preset'ler (her gün / hafta / ay / yıl / hafta içi) +
+      **Gelişmiş** bölümü — üç senaryo sınıfı ayrı ayrı kurulabilir: (A) ayın günü
+      (kısa ay kırpması açıklama metniyle: "kısa aylarda son güne çekilir"),
+      (B) N. hafta + gün (1..5 + "son"), (C) "ayın X'inden sonraki ilk {gün}" ve
+      "ayın ilk/son {gün}ü"; bitiş: asla / tarihe kadar / N kez.
+- [ ] **Canlı önizleme: "Sonraki 5"** — Dart motor portundan hesaplanır (OPH-204
+      paritesi); kural her değişiminde güncellenir; kırpma davranışı önizlemede
+      GÖRÜNÜR (31 seçiliyken Şubat satırı 28/29 gösterir — kullanıcı sistemi
+      bozulmamış görür).
+- [ ] Kuralın insan cümlesi tek yardımcıdan (TR/EN ayrı üretim — çeviri değil kural
+      bazlı cümle kurma; i18n `repeat.*`); erişilebilirlik: dialog tam klavye/okuyucu
+      yolu.
+- [ ] Testler: switch→dialog otomatiği; iptal→switch kapanır; A/B/C kurallarının
+      cümleleri (TR+EN snapshot); önizleme kırpma vakası; kural gidiş-dönüşü (dialog →
+      JSON → dialog).
+
+### OPH-208 — App: seri görünürlüğü, yüzey etkileri + README tanıtımı
+
+- [ ] Satır ve detayda **tekrar rozeti** (↻ + kısa özet tooltip'te); Tamamlananlar'da
+      occurrence sıradan satır (zaten OPH-186 sözleşmesi); Pano kartında rozet.
+- [ ] **Yüzeyler test edilir, varsayılmaz:** takvim noktaları, widget snapshot'ı,
+      arama, alarm planlayıcı — occurrence'lar gerçek satır olduğu için çalışmalı;
+      her biri için birer doğrulama testi (özellikle widget: 12 aylık pencerede
+      bugünün occurrence'ı `openToday`'e sayılır).
+- [ ] Silme akışları: satırdan kaydırarak silme kapsam sorusuna bağlanır (OPH-184
+      jesti + OPH-206 kapsamı); seri detayından "Tekrarı durdur" (gelecekler silinir,
+      geçmiş kalır — dürüst metin).
+- [ ] **README "öve öve" bölümü (Mahir'in isteği):** tekrar sistemi örnekleriyle
+      tanıtılır — "her ayın son günü", "ayın 2. Salı'sı", "22'sinden sonraki ilk
+      Pazartesi" — ve **değişik senaryolu görev listesinin ekran görüntüsü** (demo
+      workspace'te kurulmuş liste). ROADMAP + STORE-LISTING dokunuşları.
+- [ ] Kapanış: tam süit + `check:i18n` + kontrast + `analyze`.
+
+### OPH-209 — Takvim araştırması: aynanın seçeneksizleşmesi + Google Tasks / Apple Reminders değerlendirmesi + ADR-0021 (kod yazmaz)
+
+- [ ] **Mevcut davranışın yazılı dökümü (kanıt üstte):** `calendar_mirror_enabled`
+      opt-in + §7.1'in "scheduled/urgent" şartı → hangi görev bugün takvime gidiyor,
+      hangisi gitmiyor; switch'in tarihçesi (OPH-081) ve ölümünün etkileri.
+- [ ] **Senkron todo-app incelemesi (≥3):** Todoist, TickTick, Any.do — Google
+      tarafına **event mi yazıyorlar, Google Tasks'a todo mu**; iki yönlü mü; silme/
+      tamamlama nasıl yansıyor. Bulgular tabloyla.
+- [ ] **Doğrudan todo eşlemesi değerlendirmesi (Mahir'in tercihi "destekliyorsa
+      birebir öyle"):** **Google Tasks API** (sınırları yazılır — ör. due'nun saat
+      hassasiyeti, liste modeli, push bildirimi var mı) ve **Apple EKReminder**
+      (EventKit'in Reminders yakası — ayrı izin, cihaz-yerel). Karar + faz planı:
+      v1'de ne (event bloğu herkese), v-next'te ne (todo eşlemesi hangi koşulla) —
+      ADR-0021'e.
+- [ ] **Blok kuralı netleşir (planlama varsayılanı):** tarihli görev = görev saatinde
+      başlayan **30 dk blok**; blok gece yarısını taşacaksa güne kenetlenir → 23:59
+      vadeli (saatsiz) görev **23:29–23:59** olur (Mahir'in verdiği aralık, varsayılan
+      saatin sonucu); **tarihsiz görev ekleniş gününe** aynı kuralla girer (Mahir'in
+      açık kuralı: "ekleniş tarihi baz alınır"). Tamamlanan görevin bloğunun kaderi
+      (kalır+işaretlenir / silinir) araştırmada kararlaştırılıp ADR'ye yazılır.
+- [ ] **Hacim/kota analizi:** tüm görevlerin aynalanması = mevcut davranışın kat kat
+      üstünde Google API çağrısı (backfill + günlük akış); mirror kuyruğunun rate
+      limit stratejisi ve büyük workspace senaryosu ADR'de.
+- [ ] Gizlilik/onam: "tüm görevlerin takvime yazılması" bağlantı ekranının metnine
+      girer (kullanıcı Google'a neyin akacağını bilir).
+
+### OPH-210 — Takvim aynası v2: her görev takvimde, hiçbir yerde seçenek yok
+
+- [ ] **Switch ölür:** [task_detail_screen.dart:341](../apps/app/lib/src/features/tasks/ui/task_detail_screen.dart#L341)
+      satırı ve `task.showInCalendar*` i18n anahtarları kalkar; API
+      `calendarMirrorEnabled` alanını kabul etmeye devam eder ama YAZAN yüzey kalmaz
+      (kolonun kaderi ADR-0021'de; migration append-only).
+- [ ] **§7.1 yeni kural (BLUEPRINT'te bu turda yazıldı):** tarihli her görev →
+      OPH-209'un blok kuralıyla event; tarihsiz görev → ekleniş gününe; `scheduled_*`
+      önceliği (OPH-192 davranışı) korunur — kullanıcı Google'da sürüklediyse blok
+      oradan gelir.
+- [ ] **İki ayna da geçer:** Google server-side mirror (mevcut mapping + echo
+      suppression + tombstone düzeni aynen) ve Apple EventKit cihaz aynası aynı kural
+      setine bağlanır — iki platform kullanıcının önünde çelişemez (§17 D1 ruhu).
+- [ ] **Backfill:** mevcut tüm görevler için blok üretimi kuyruklu ve rate-limit'li
+      (OPH-209 stratejisi); idempotent (mapping tablosu olan atlanır); ilerleme
+      log'lanır.
+- [ ] Testler: blok kuralı birim testleri (saatli / 23:59 / tarihsiz-ekleniş-günü /
+      gece yarısı kenetlemesi); switch'siz mirror kararının tablo testi; backfill
+      idempotensi; inbound echo regresyonu; **canlı pass** (gerçek Google hesabı +
+      Apple cihaz) STATE cihaz kuyruğuna.
+
+### OPH-211 — Geciken grubunda tamamlanmış satır kalmaz (round 12 #3)
+
+- [ ] **Kural revizyonu (BLUEPRINT §12.2 + DESIGN §20 C1 — bu turda yazıldı):**
+      tamamlanan görev gün sonuna kadar YALNIZ vadesi bugün olan (veya tarihsiz)
+      ise listede kalır; **vadesi geçmiş görev tamamlanınca planlama listelerinden
+      ANINDA düşer** — doğrudan Tamamlananlar'a (OPH-186). "Geciken" başlığının
+      altında üstü çizili satır bir bilgi vermiyor; kullanıcının cümlesi kuraldır.
+- [ ] Sorgu: `watchOpen`/`watchProjectTasks`'ın `completedSince` dalına vade sınırı
+      eklenir (`completed AND (dueAt IS NULL OR dueAt >= bugünBaşlangıcı)`); grup
+      sayaçları ("Geciken · N") tamamlananları saymaz; `dayBoundaryProvider` canlılığı
+      aynen (OPH-185 altyapısı).
+- [ ] Widget aynı kuralı alır (snapshot kaynağı `openTasksProvider` — bedava ama test
+      edilir); Pano'nun completed sütunu ETKİLENMEZ (o ekranın sözleşmesi farklı).
+- [ ] Testler: dün vadeli + bugün tamamlanan → listede YOK, Tamamlananlar'da VAR;
+      bugün vadeli + tamamlanan → grubunun sonunda kalır (OPH-185 regresyonu);
+      tarihsiz + tamamlanan → kalır; gece yarısı geçişi; grup sayacı.
+
+### OPH-212 — Proje düzenle sheet'i menünün altında açılıyor (round 12 #4)
+
+- [ ] **Kök neden doğrulanır:** [projects_screen.dart:192](../apps/app/lib/src/features/projects/ui/projects_screen.dart#L192)
+      `onSelected` içinden senkron `showProjectEditSheet` — menü rotası kapanışını
+      bitirmeden modal sheet açılıyor (Mahir'in ekran görüntüsü gelince eklenir —
+      task onu BEKLEMEZ, davranış koddan yeniden üretilebilir).
+- [ ] **Düzeltme tek kalıpla:** menü eylemi → rota kapanışı tamamlandıktan sonra aç
+      (post-frame/`Future` ertelemesi veya `showMenu` sonucunu bekleyen kalıp) — ve
+      **aynı hata repo genelinde taranır** (Notlar menüleri, Dosyalar eylem sayfaları,
+      görev menüleri, etiket yönetimi): OPH-195 disiplini — bulunan her eş vaka ya
+      burada düzelir ya gerekçeyle yazılır.
+- [ ] Regresyon testi: menüden "Düzenle" → sheet önde ve etkileşilebilir (tap
+      hedefine gerçekten basılabildiği widget testiyle kanıtlanır); mevcut menü
+      akışları regresyonsuz.
+
+### OPH-213 — Home görünüm kontrolleri app bar'a taşınır (round 12 #5)
+
+- [ ] **Liste|Pano `SegmentedButton` satırı ölür** → app bar'da tek ikon toggle
+      (Notlar kalıbı: [notes_screen.dart:56](../apps/app/lib/src/features/notes/ui/notes_screen.dart#L56));
+      ikon mevcut görünümün TERSİNİ değil KENDİNİ değil — karar: ikon **geçilecek
+      görünümü** gösterir (Notlar'daki davranışın aynısı; tooltip yazar), tercih
+      kalıcılığı (`homeViewProvider`) aynen.
+- [ ] **Takvim göster/gizle** kayan düğmesi ölür → app bar'da takvim ikonu (açık/
+      kapalı durumu ikon varyantıyla, `calendar_month`/üstü çizili; tooltip);
+      tercih (`homeCalendarVisibleProvider`) aynen. İki ikon da **ayarlar
+      düğmesinin solunda** (kullanıcının yerleşimi).
+- [ ] **DESIGN §16 revizyonu bu turda yazıldı:** H1 sliver listesi iki satır kaybeder;
+      H3'ün "Pano'da toggle sabit" sapması KENDİLİĞİNDEN çözülür (app bar zaten tek
+      sabit — OPH-172'nin kuralı güçlenir). Geniş ekran aynı ikonları app bar'da
+      taşır (kalıp tek).
+- [ ] i18n: `home.viewList/viewBoard/showCalendar/hideCalendar` tooltip'leri (mevcut
+      anahtarlar yeniden kullanılır/taşınır); kontrast: app bar ikon durumları iki
+      temada.
+- [ ] Testler: toggle app bar'dan çalışır (Liste↔Pano), satırların yokluğu, takvim
+      ikonunun tercihi koruması, telefon+geniş ekran iki kırılımda, arama modunda
+      ikonların davranışı.
+
+### OPH-214 — Ekran açıkken alarm: ölü erteleme ikonu + dokununca çökme (round 12 #6, cihaz taskı)
+
+- [ ] **Gözlemin yazılı hali (2026-07-29, gerçek cihaz):** ekran KAPALIYKEN tam ekran
+      alarm doğru çalışıyor; ekran AÇIKKEN üstten kalıcı (heads-up) bildirim geliyor —
+      X kapatıyor ✓, yanındaki **saat ikonu hiçbir şey yapmıyor** ✗, bildirimin
+      gövdesine dokununca uygulama **açılırken çöküyor** ✗.
+- [ ] **Kök neden araştırması — iki ayrı hat:** (a) **ölü aksiyon:** saat ikonu hangi
+      aksiyon (erteleme?); Android'de aksiyonun `showsUserInterface`/arka plan isolate
+      handler kaydı ve [actions.dart](../apps/app/lib/src/notifications/actions.dart)
+      yönlendiricisine gerçekten düşüp düşmediği; iOS'ta category eşlemesi. Alarm
+      günlüğü (OPH-176) burada kanıt kaynağı — aksiyon satırı düşmüyorsa kablolama
+      kopuk. (b) **dokunuş çökmesi:** launch/payload işleme — soğuk başlatmada payload
+      rotası, `alliswell://` çözücüsü, auth restore yarışı; crash log toplanır
+      (adb logcat / Xcode organizer). Hangi OS olduğu cihazda doğrulanır (gözlem
+      Android'e işaret ediyor; iOS aynı senaryoda ayrıca denetlenir).
+- [ ] Düzeltme + **alarm günlüğüne** eksik `action`/`interacted` satırlarının
+      düşmesi garanti edilir (bir dahaki rapor kanıtla gelir).
+- [ ] **Cihaz DoD:** ekran açıkken alarm → erteleme düğmesi çalışır ve "{saat}'te
+      tekrar" davranışı OPH-177 sözleşmesine uyar; bildirime dokunmak doğru ekranı
+      açar, çökme yok; ekran kapalı tam ekran akışı regresyonsuz; sonuç STATE'e.
+
+**Epic 19 DoD:** her task kendi testleriyle; ADR-0020 + ADR-0021 kabul edilmiş; motor
+parite fikstürleri iki süitte de yeşil; README tekrar bölümü gerçeği yansıtıyor;
+BLUEPRINT §7.1/§12.2/§12.17 + DESIGN §16/§20/§25 tutarlı; cihaz işleri (214 + 210'un
+canlı Google/Apple passi) STATE kuyruğunda; epic sonunda app + API tam süit +
+`check:i18n` + kontrast FAILURES: 0 + `lint`/`format:check`/`check:no-ts` → **v0.8.0**.
+
+---
+
 ## Epic 20 — İstek turu 11 #2: Yapay zeka — MCP bağlayıcısı, kendi anahtarınla sohbet, sesle görev (Phase 14, v0.9.0)
 
 _(Doğdu 2026-07-29 — istek turu 11, madde #2; Mahir'in "üstüne 10 kere bastığı" iş.
@@ -5028,8 +5312,9 @@ kapalı olduğu bu epic'in değişmezidir — gevşetme ancak yeni ADR'yle.
   **sunucu tarafı ayar deposu** (hatırlatıcı profili + tarih biçimi bugün cihaz-yerel,
   `notification_privacy` kalıbıyla aynı); alarm günlüğünün sunucuya raporlanması.
 - **Round 10 park kuyruğu (kararı OPH-195 verir):** alt görevler (`parent_task_id` —
-  şema, API ve kaskadlı silme hazır, arayüz yok), **tekrarlayan görevler**
-  (`repeat_rule`; BLUEPRINT §4.3 bir görev tipi olarak sayıyor), görev rengi
+  şema, API ve kaskadlı silme hazır, arayüz yok), ~~**tekrarlayan görevler**~~
+  (**park bitti — round 12'de Epic 19 oldu**, OPH-204…208; `repeat_rule` kolonunun
+  kaderi ADR-0020'de), görev rengi
   (`tasks.color_rgb` — widget kullanıyor, kullanıcı seçemiyor), **elle sıralama**
   (`sort_order` sıralamada kullanılıyor ama sürükleme yok), süre alanları
   (`estimated_minutes`/`actual_minutes`), proje ikonu/başlangıç-bitiş tarihi;
@@ -5049,7 +5334,7 @@ kapalı olduğu bu epic'in değişmezidir — gevşetme ancak yeni ADR'yle.
   kontrast garanti edilemiyor, kısayolda yalnız 10'luk palet sunuluyor); **yüzen düğme
   opaklık slider'ı** (AssistiveTouch'ta var; bizde tek anahtar + %40 sabiti yeterli sayıldı);
   kısayol satırından hedefi yeniden adlandırma (kısayol adı hedefin adı değildir — §4.12).
-- **Round 11 park kuyruğu — AI (gerekçeler TASKS Epic 19 + [AI.md](AI.md)):**
+- **Round 11 park kuyruğu — AI (gerekçeler TASKS Epic 20 + [AI.md](AI.md)):**
   abonelik-OAuth entegrasyonu (üç sağlayıcıda da kapalı/bekleme listesi — üç ayda bir
   yeniden bakılır; `auth_mode='oauth_subscription'` rezerve); sohbette yazma araçları
   v1.5 (`complete_task`/`reschedule_task` onay-kapılı; **silme kalıcı olarak hariç**);

@@ -434,7 +434,8 @@ Kurallar:
 
 ### 4.13 AI Connection (yapay zeka bağlantısı)
 
-_(Eklendi 2026-07-29, istek turu 11 — Epic 19; bağlayıcı plan [AI.md](AI.md), karar
+_(Eklendi 2026-07-29, istek turu 11 — Epic 20 (round 12 araya Epic 19'u soktu);
+bağlayıcı plan [AI.md](AI.md), karar
 [ADR-0019](adr/0019-ai-provider-architecture.md), yüzeyler §12.16 + DESIGN §24.)_
 
 AI Connection, kullanıcının kendi yapay zeka erişimini AllisWell'e bağlamasıdır.
@@ -608,11 +609,25 @@ Conflict durumları: `local_changed_provider_changed`, `provider_deleted_local_e
 
 ### 7.1 Calendar event üretim kuralı
 
-Task şu koşullarda calendar event'e mirror edilir:
+_(Rev. 2026-07-29, feedback round 12 #2 — OPH-209/210, karar ADR-0021'e yazılır.
+Eski kural `calendar_mirror_enabled` opt-in switch'i + scheduled/urgent şartıydı —
+sonuç: sıradan tarihli görev takvime HİÇ gitmiyordu. Kullanıcının kuralı: "eklenen
+her task takvimde gözükmeli; bu bir seçenek bile değil." Switch ve onu yazan her
+yüzey OPH-210'da ölür.)_
 
-- `calendar_mirror_enabled = true`, ve
-- task scheduled start/end içeriyor, veya
-- urgent reminder calendar block olarak gösterilmek isteniyor.
+**Her görev takvime mirror edilir — seçenek yok:**
+
+- `scheduled_start/end` doluysa blok ODUR (takvimden sürükleme kazanır — OPH-192
+  davranışı aynen).
+- Değilse, tarihli görev = görev saatinde başlayan **30 dakikalık blok**; blok gece
+  yarısını aşacaksa güne kenetlenir → 23:59 vadeli (saatsiz) görev **23:29–23:59**.
+- Tarihsiz görev = **ekleniş gününe** aynı yarım-saat kuralıyla girer ("ekleniş
+  tarihi baz alınır" — kullanıcının açık kuralı).
+- Tamamlanan görevin bloğunun kaderi (işaretlenir mi silinir mi) OPH-209
+  araştırmasının kararıdır (ADR-0021).
+- Sağlayıcının **doğal todo yüzeyi** (Google Tasks, Apple Reminders/EKReminder)
+  birebir todo eşlemesine izin veriyorsa tercih ODUR — değerlendirme OPH-209'da;
+  v1 garantisi event bloğudur.
 
 Event title: `[Task] {task.title}`
 
@@ -961,17 +976,24 @@ kaldırıldı.)_
   gelince yeniden hesap), yani ekran açık kalsa bile liste kendini yeniler. Ay ızgarasının
   noktaları tamamlananları saymaz (bitmiş gün "dolu gün" değildir). Aynı kural ana ekran
   widget'ında da geçerlidir — widget ile uygulama kullanıcının önünde çelişemez.
-  Görsel kurallar: DESIGN §20.
+  Görsel kurallar: DESIGN §20. **Rev. 2026-07-29 (round 12 #3 — OPH-211):** bu
+  kalıcılık YALNIZ vadesi bugün olan veya tarihsiz görevler içindir; **vadesi geçmiş
+  görev tamamlanınca planlama listelerinden anında düşer** — "Geciken" başlığının
+  altında üstü çizili satır bir bilgi taşımıyor; bitmiş işin adresi Tamamlananlar'dır
+  (§12.14).
 - **Mobilde takvim listeyle birlikte kayar:** ay ızgarası kayan içeriğin İLK öğesidir, sabit
   (sticky) başlık DEĞİLDİR — liste yukarı kaydırılınca takvim ekrandan çıkar, en üste dönünce
-  geri gelir. "Hide calendar" düğmesi ve kalıcı tercihi (local storage) aynen durur. Quick-add
-  çubuğu kaymaz (seri giriş her an elde). Geniş ekranda takvim sağ panelde sabittir (değişmedi).
+  geri gelir. Takvim göster/gizle **app bar'da bir ikondur** (rev. 2026-07-29, round 12
+  #5 — OPH-213; eski kayan düğme öldü) ve kalıcı tercihi (local storage) aynen durur.
+  Quick-add çubuğu kaymaz (seri giriş her an elde). Geniş ekranda takvim sağ panelde sabittir (değişmedi).
 - **Proje rozeti:** projeye bağlı her görev satırının sağ ucunda projenin renginde DOLU bir
   rozet bulunur; içinde proje adı yazar (6 karakterden uzunsa ilk 6 karakter + "…"); üzerine
   gelince / uzun basınca tam ad tooltip'te görünür. Hangi görev hangi projenin, tek bakışta.
   Görsel kural: DESIGN.md §4 "Project badge".
-- **İki görünüm: Liste | Pano (rev. 2026-07-20, round 8 — OPH-168):** Home'un üstünde görünüm
-  anahtarı; **Liste varsayılandır** ve yukarıdaki kronolojik davranışın tamamı ona aittir.
+- **İki görünüm: Liste | Pano (rev. 2026-07-20, round 8 — OPH-168):** görünüm anahtarı
+  **app bar'da tek ikondur** (rev. 2026-07-29, round 12 #5 — OPH-213; eski satır-içi
+  Liste|Pano SegmentedButton'ı öldü — Notlar'ın app bar ikon kalıbı, ayarların solunda);
+  **Liste varsayılandır** ve yukarıdaki kronolojik davranışın tamamı ona aittir.
   **Pano** aynı görev kümesinin status-sütunlu Kanban görünümüdür (sürükle-bırak, sütun
   gizle/sırala); tercih cihaz-yereldir ve kalıcıdır. Tam spec: §12.11 + DESIGN.md §14.
 
@@ -1014,7 +1036,9 @@ OPH-108). Arşivli proje detayı "arşivli" bandı + Unarchive eylemi gösterir.
 ### 12.4 Task detail alanları
 
 Title (yerinde düzenlenebilir, otomatik kayıt), **Description (açıklama — rev. round 8)**,
-Project, Status, Priority, Tags, Due date, Reminder, Urgent toggle, Calendar mirror toggle,
+Project, Status, Priority, Tags, Due date, Reminder, Urgent toggle, ~~Calendar mirror
+toggle~~ _(kalkar — rev. 2026-07-29, round 12 #2 / OPH-210: ayna artık herkes için ve
+her zaman açık, §7.1; "takvimde göster" bir seçenek olarak hiçbir yerde sunulmaz)_,
 Notes, Checklist, **Attachments (Epic 14)**, Activity, **Sil (rev. round 10)**.
 
 _(Rev. 2026-07-28, feedback round 10 #1/#6/#7 — OPH-184/191/192:)_ Üç kural:
@@ -1369,7 +1393,7 @@ Davranış:
   ad (200 karakter; boşaltınca hedef adına döner).
 - **Sınır:** kullanıcı+workspace başına 50; aşımda dürüst mesaj.
 
-### 12.16 Yapay zeka yüzeyleri (istek turu 11 — Epic 19, OPH-204…216)
+### 12.16 Yapay zeka yüzeyleri (istek turu 11 — Epic 20, OPH-215…227)
 
 _(Eklendi 2026-07-29. Mimari: [AI.md](AI.md) + [ADR-0019](adr/0019-ai-provider-architecture.md);
 görsel/davranış kuralları: DESIGN §24. Kullanıcının tarifi: "solda ikinci FAB'a basılı
@@ -1404,6 +1428,43 @@ açılsın.")_
   ekle" — instance'ın `/mcp` URL'i ve kurulum yönergesi.
 - **Quick-add binicisi:** uzun metni yapıştır → "✨ ayrıştır" → aynı çıkarım + aynı
   onay kartı.
+
+### 12.17 Tekrarlı görevler (feedback round 12 — Epic 19, OPH-204…208)
+
+_(Eklendi 2026-07-29. Kullanıcının şartı: "çok detaylı configure edilebilir olmalı…
+maksimum esneklik… belkemiği özelliklerimizden biri." §4.3'ün v1'den beri saydığı ama
+hiç var olmayan görev tipi (OPH-195 Bulgu 1'in en büyük parkı) burada doğar. Kural
+modeli + materyalizasyon kararı: ADR-0020; dialog/dil kuralları: DESIGN §25.)_
+
+- **Kural modeli:** RFC 5545 RRULE alt kümesi + RFC 7529 `SKIP=BACKWARD` (kırpma)
+  semantiği, yapılandırılmış JSON olarak (`task_series.rule`, Ajv'li). İfade gücü —
+  üç sınıf ÖZELLİKLE karşılanır: **(A)** "her ayın 31'i" → kısa ayda **ayın son
+  gününe kırpılır** (30/29/28; sistem bozulmaz), "ayın son günü" birinci sınıf
+  değerdir; **(B)** "ayın N. haftasındaki {gün}" / "ayın 2. Salı'sı" (1..5 + son);
+  **(C)** "ayın X'inden sonraki ilk {gün}" ("22'sinden sonraki ilk Pazartesi") ve
+  "ayın ilk/son {gün}ü". Bitiş: asla / tarihe kadar / N kez.
+- **Materyalizasyon (ADR-0020):** occurrence'lar **gerçek görev satırlarıdır**
+  (`series_id` + `occurrence_date`); pencere **bugünden +12 ay** — fazlası asla
+  üretilmez, biri geçince günlük süpürme sıradakini ekler (kayan pencere). Kural
+  değişimi gelecek pencereyi yeniden kurar, **geçmişe ve tamamlanmışlara dokunmaz**.
+  İstemci occurrence üretmez — satırlar normal sync'le akar; widget, arama, takvim
+  aynası ve alarm planlayıcı tekrar kavramını bilmeden doğru çalışır.
+- **Düzenleme kapsamı (Google modeli):** occurrence düzenlenince soru — "Yalnız bu /
+  **Bu ve gelecektekiler (varsayılan)** / Tümü". Kullanıcının kuralı: gruptan birini
+  değiştirmek gelecektekilerin hepsini otomatik değiştirmelidir → varsayılan budur.
+  Tarih kaydırma istisnası "yalnız bu"dur (randevu kaydırmak seriyi kaydırmak
+  değildir). "Gelecektekiler" seriyi böler; "yalnız bu" occurrence'ı serbest bırakır.
+- **Arayüz:** detaylı ekleme VE düzenlemede "Tekrarla" switch'i; ilk açılışta
+  yapılandırma dialog'u **otomatik** açılır; kural varken altında özet cümlesi +
+  **Değiştir**. Dialog: hızlı preset'ler + Gelişmiş (A/B/C kurucuları) + **"Sonraki
+  5" canlı önizlemesi** (kırpma önizlemede görünür). Kural insan cümlesine tek
+  yardımcıyla çevrilir (TR/EN kural bazlı üretim, çeviri değil).
+- **Görünürlük:** satır/detay/Pano kartında ↻ rozeti; tamamlamak kardeşleri
+  etkilemez; silme kapsam sorusuna bağlanır; "Tekrarı durdur" gelecekleri siler,
+  geçmişi bırakır.
+- **README sözü:** özellik örnekleriyle tanıtılır ("her ayın son günü", "ayın 2.
+  Salı'sı", "22'sinden sonraki ilk Pazartesi") + değişik senaryolu listenin ekran
+  görüntüsü (OPH-208).
 
 ## 13. Open-source repo kalitesi
 
@@ -1492,14 +1553,28 @@ Tests:
   panel; **ilk kullanıcı-kapsamlı senkron varlık** (`quick_link`) ve hedef silmede
   sunucu kaskadı — Epic 18
   ([ADR-0018](adr/0018-quick-links-user-scoped-sync-entity.md), §4.12/§12.15, DESIGN §23).
-- **Phase 13 — İstek turu 11 #2: Yapay zeka (v0.8.0):** iki hat — **AllisWell uzak MCP
+- **Phase 13 — Feedback round 12: tekrarlı görevler, takvim her zaman, akış düzeltmeleri
+  (v0.8.0):** **tekrarlı görevler** — RFC 5545 alt kümesi + kırpma (`SKIP=BACKWARD`)
+  semantiğiyle yapılandırılmış JSON kural modeli ("her ayın 31'i" kısa ayda son güne
+  çekilir, "ayın 2. Salı'sı", "22'sinden sonraki ilk Pazartesi"), switch → otomatik
+  dialog + özet + Değiştir, "Sonraki 5" canlı önizleme, **+12 aylık kayan
+  materyalizasyon** (occurrence'lar gerçek görev satırı; günlük süpürme pencereyi
+  kaydırır), bu/gelecek/tümü düzenleme kapsamı (varsayılan: bu ve gelecektekiler) —
+  §12.17, ADR-0020; **takvim aynası v2** — "takvimde göster" switch'i ölür, tarihli
+  her görev 30-dk blok (saatsiz → 23:29–23:59), tarihsiz görev ekleniş gününe,
+  Google Tasks / Apple Reminders birebir todo eşlemesi değerlendirmesi — §7.1 revize,
+  ADR-0021; geciken×tamamlanan kuralı (vadesi geçmiş tamamlanan listeden anında düşer),
+  proje-düzenle sheet'inin menü altında açılması, Home görünüm kontrollerinin app
+  bar'a taşınması, ekran açıkken alarmın ölü erteleme düğmesi + dokunuş çökmesi —
+  Epic 19 (OPH-204…214).
+- **Phase 14 — İstek turu 11 #2: Yapay zeka (v0.9.0):** iki hat — **AllisWell uzak MCP
   bağlayıcısı** ("Claude'una/ChatGPT'ne ekle"; abonelik-OAuth üç sağlayıcıda da üçüncü
   partiye kapalı, kanıt AI.md §1) + **uygulama içi BYOK AI** (Anthropic/OpenAI/Gemini/
   OpenRouter/Ollama, fetch adaptörleri, SDK yok); SSE akışlı bubble, sol FAB **basılı
   tut-konuş** (kaldır-kilitle), cihaz-üstü STT, tek şemalı görev çıkarımı + zorunlu onay
   kartı → `TaskStore` outbox commit'i, paylaşım hedefi (Share Extension App Group
   el-değiştirmesi), enjeksiyon savunması (v1'de modele araç yok; silme kalıcı kapalı),
-  onam + kullanım sayacı — Epic 19
+  onam + kullanım sayacı — Epic 20 (OPH-215…227)
   ([AI.md](AI.md), [ADR-0019](adr/0019-ai-provider-architecture.md), §4.13/§12.16,
   DESIGN §24).
 
@@ -1637,12 +1712,25 @@ tamponlayabilir — tamponlanan akış kullanıcıya "AI takıldı" gibi görün
 anahtarları sunucuda durur — sızması kullanıcının faturasıdır; paylaşılan self-host'ta tek
 kullanıcı instance anahtarını yakabilir. *Mitigation:* (a) iki hatlı mimari + rezerve
 `auth_mode` + üç aylık politika kontrolü (ADR-0019); README iddiaları gerçekle denetlenir
-(OPH-216). (b) v1'de modele **hiç yazma aracı verilmez**; öneri→Ajv→**onay kartı**→
+(OPH-227). (b) v1'de modele **hiç yazma aracı verilmez**; öneri→Ajv→**onay kartı**→
 `TaskStore`; silme AI'ya kalıcı kapalı; provenance çitleri + CI'da düşman korpusu
-(OPH-215). (c) deploy kontrol listesi + **prod'a karşı curl artımlı-akış kanıtı** DoD'de;
+(OPH-226). (c) deploy kontrol listesi + **prod'a karşı curl artımlı-akış kanıtı** DoD'de;
 Socket.IO tek-dikiş yedek transport (web'de birincil). (d) ADR-0006 şifreleme kalıbı +
 `AI_TOKEN_KEY`, anahtar serializer'dan çıkmaz, kullanıcı-başı hız sınırı + instance-env'de
 günlük token tavanı + `ai_usage_events` isnat izi.
+
+**Risk 10 — Tekrar motoru: takvim aritmetiği ve pencere disiplini (round 12).**
+(a) Kırpma/kural aritmetiği (31 → kısa ay, "5. hafta" yokluğu, DST, artık yıl, yıl
+devri) sessizce yanlış üretirse kullanıcı **yanlış güne alarm** alır — en pahalı hata
+sınıfı. (b) Kayan +12 ay penceresi bozulursa iki kötü uç var: pencere üretmezse
+"takvimim boşaldı", çift üretirse mükerrer görevler. (c) Materyalizasyon hacmi
+(günlük seri × 12 ay) sync/pull yükünü büyütür. *Mitigation:* (a) motor saf ve iki
+dilde (JS üretim + Dart önizleme) **ortak parite fikstürleriyle** (ADR-0013 kalıbı);
+A/B/C senaryoları + sınır vakaları tablo-güdümlü test; önizleme kullanıcıya kırpmayı
+GÖSTERİR. (b) `(series_id, occurrence_date)` tekilliği + idempotent üretim + sahte
+saatli pencere-kayması testleri; süpürme hacmi log'lanır. (c) seri başına ~400
+occurrence tavanı (dürüst mesajla), pull zaten artımlı — ilk materyalizasyon tek
+revision dalgası. Karar ve alternatifler: ADR-0020.
 
 ## 17. MVP kabul kriterleri
 
@@ -1685,7 +1773,8 @@ günlük token tavanı + `ai_usage_events` isnat izi.
 - **Epic 16 — Feedback round 9 (yenileme, tarih biçimi, alarm sistemi):** OPH-171…OPH-183.
 - **Epic 17 — Feedback round 10 (silme, tamamlananlar, widget, geçişler):** OPH-184…OPH-195.
 - **Epic 18 — İstek turu 11 #1 (Hızlı Erişim):** OPH-196…OPH-203.
-- **Epic 19 — İstek turu 11 #2 (Yapay zeka — MCP + BYOK):** OPH-204…OPH-216.
+- **Epic 19 — Feedback round 12 (tekrarlı görevler, takvim her zaman, düzeltmeler):** OPH-204…OPH-214.
+- **Epic 20 — İstek turu 11 #2 (Yapay zeka — MCP + BYOK):** OPH-215…OPH-227.
 
 ## 19. Nihai hedef
 

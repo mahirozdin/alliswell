@@ -280,9 +280,38 @@ Spec: BLUEPRINT §4.12/§12.15, [DESIGN §23](docs/DESIGN.md).
 
 ## Toward v0.8.0
 
-### Phase 13 — Request round 11 #2: AI — MCP connector, BYOK chat, voice capture ⏳ (planned 2026-07-29)
+### Phase 13 — Feedback round 12: recurring tasks, calendar always, flow fixes ⏳ (planned 2026-07-29)
 
-Thirteen tasks (OPH-204…216), planned on top of a dedicated max-effort research
+Eleven tasks (OPH-204…214), slotted between Quick Access and the AI epic at the
+owner's request. The headline is **recurring tasks** — the column that sat empty
+in the schema since v1 (`repeat_rule`, the biggest item OPH-195 parked) finally
+becomes a feature, and a deliberately flexible one: a structured-JSON rule model
+on an RFC 5545 subset with RFC 7529 clamping ("the 31st of every month" lands on
+the 30th/29th/28th in short months instead of breaking), Nth-weekday patterns
+("the 2nd Tuesday"), and after-day patterns ("the first Monday after the 22nd");
+a config dialog that opens automatically the first time the Repeat switch turns
+on, then lives behind a summary + Change button; a live "next 5" preview computed
+by a Dart port of the same engine that materializes on the server (shared parity
+fixtures, the search-fold precedent); a **rolling 12-month window** of real task
+rows kept fresh by a daily sweep — clients, widgets, search and alarms never
+learn what recurrence is; and Google-style edit scopes (this / this-and-future
+as the default / all). Design: BLUEPRINT §12.17, ADR-0020 at implementation.
+Alongside it: the **calendar mirror loses its opt-in switch** — every dated task
+becomes a 30-minute block (23:29–23:59 when it has no explicit time), dateless
+tasks land on their creation day, and Google Tasks / Apple Reminders are
+evaluated for native todo mapping (BLUEPRINT §7.1 revised, ADR-0021); an overdue
+task completed today now leaves the list immediately instead of haunting
+"Geciken" (DESIGN §20 C1 revised); the project-edit sheet stops opening under
+the popup menu; Home's view and calendar toggles move into the app bar (DESIGN
+§16 revised); and the screen-on alarm notification gets its dead snooze button
+and tap-to-crash investigated on device.
+
+## Toward v0.9.0
+
+### Phase 14 — Request round 11 #2: AI — MCP connector, BYOK chat, voice capture ⏳ (planned 2026-07-29)
+
+Thirteen tasks (OPH-215…227; renumbered from OPH-204…216 when round 12 slotted
+Epic 19 in between), planned on top of a dedicated max-effort research
 pass whose evidence lives in [docs/AI.md](docs/AI.md). The uncomfortable finding
 first: the requested "connect your Claude/ChatGPT/Gemini subscription, no API
 key" is **not permitted by any provider in mid-2026** (Anthropic bans it, Google

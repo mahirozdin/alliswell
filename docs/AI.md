@@ -1,6 +1,7 @@
 # AI — the two-track integration design
 
-> Binding design for Epic 19 (OPH-204…216). Decision record:
+> Binding design for Epic 20 (OPH-215…227 — renumbered from OPH-204…216 when
+> feedback round 12 slotted Epic 19 in between). Decision record:
 > [ADR-0019](adr/0019-ai-provider-architecture.md); entity: BLUEPRINT §4.13; surfaces:
 > BLUEPRINT §12.16 + DESIGN §24; backlog: TASKS Epic 19. Researched 2026-07-29 by a
 > dedicated max-effort research pass (provider programs, store policies, STT, MCP,
@@ -145,7 +146,7 @@ press-and-hold is never the only way.
 
 ## 6. Share-to-AI
 
-`receive_sharing_intent` (ADR-0021 with the share-extension target): Android
+`receive_sharing_intent` (ADR-0023 with the share-extension target): Android
 `ACTION_SEND` for `text/plain`/`text/html`; the iOS Share Extension does **no network
 and no AI work** — it writes the payload to the App Group and opens the host app
 (extensions have hard memory/time ceilings). The bubble opens pre-loaded with the
