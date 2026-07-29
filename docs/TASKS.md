@@ -4746,31 +4746,45 @@ controller'ının sahibi; (5) hedef yeniden adlandığında satırın canlı gü
 testinde, satırın NE YAPTIĞI (kendi adını korur + farkı gösterir + tek dokunuşla eşitler)
 widget testinde — periyodik pull testlerde kapalı olduğu için ikisi ayrı yerde kanıtlanıyor.
 
-### OPH-203 — Davranış + kapanış: gezinme, kırık/arşivli hedef, sürüm dokunuşları
+### OPH-203 — Davranış + kapanış: gezinme, kırık/arşivli hedef, sürüm dokunuşları ✅ 2026-07-29
 
-- [ ] **Gezinme tablosu (tek yerde, test edilir saf fonksiyon):** project →
+- [x] **Gezinme tablosu (tek yerde, test edilir saf fonksiyon):** project →
       `/projects/:id`; task → görev detayı; note → not editörü; folder → Dosyalar
       (klasör açık); file → dosya eylem sayfası; url → `url_launcher` dış tarayıcı
       (uygulama içi webview YOK — karar yazılı; OPH-164'ün linkify davranışıyla aynı).
       Panelden gezinme paneli kapatır; rail'den gezinme bölüm state'ini bozmaz.
-- [ ] **Kırık hedef:** hedef replikada yoksa satır soluk + "kaynak silinmiş" alt metni;
+- [x] **Kırık hedef:** hedef replikada yoksa satır soluk + "kaynak silinmiş" alt metni;
       dokununca gezinme yerine kaldırma teklifi (snackbar + Kaldır). Sunucu kaskadı
       (OPH-197) satırı zaten düşürür — bu yalnız yarış penceresinin dürüst hâlidir.
-- [ ] **Arşivli hedef:** satır soluk ama TIKLANIR (arşiv geri dönüşlü); proje detayı
+- [x] **Arşivli hedef:** satır soluk ama TIKLANIR (arşiv geri dönüşlü); proje detayı
       kendi arşiv banner'ını zaten gösterir — ekstra açıklama eklenmez.
-- [ ] **Çevrimdışı:** tüm CRUD outbox'la çalışır (198'in doğası); dış link açma
+- [x] **Çevrimdışı:** tüm CRUD outbox'la çalışır (198'in doğası); dış link açma
       çevrimdışıysa OS'nin kendi hatasına bırakılmaz — "çevrimdışı" snackbar'ı.
-- [ ] **Sürüm dokunuşları:** README özellik listesine bir satır + ROADMAP Phase 12
+- [x] **Sürüm dokunuşları:** README özellik listesine bir satır + ROADMAP Phase 12
       işareti; BLUEPRINT §12.15 "uygulandı" notları; STATE + CHANGELOG.
-- [ ] Testler: gezinme tablosu (kind × hedef → rota) tablo-testli; kırık hedef akışı;
+- [x] Testler: gezinme tablosu (kind × hedef → rota) tablo-testli; kırık hedef akışı;
       arşivli hedef gezinmesi; çevrimdışı dış link mesajı; **epic kapanış süiti** —
       app + API tam süit, `check:i18n`, kontrast FAILURES: 0, `lint`/`format:check`/
       `check:no-ts`.
 
-**Epic 18 DoD:** her task kendi testleriyle; OPH-196'nın üç dokümanı (DESIGN §23,
-ADR-0018, BLUEPRINT §4.12/§12.15) kabul edilmiş; drift v13 append-only; iki kullanıcılı
-pull izolasyon testi yeşil; telefon + geniş ekran + masaüstü yüzeylerinin üçü de gerçek
-(DESIGN §22 R1); park listesi güncel → **v0.7.0**.
+**OPH-203 uygulama notları:** (1) gezinme tablosu OPH-199'da yazılmıştı; burada tablo-testi
+(6 kind × {canlı, arşivli, kırık}) + kırık/arşivli/çevrimdışı akış testleri geldi;
+(2) **`url_launcher`'ın `bool` dönüşü uygulamada İLK KEZ kontrol ediliyor** — çevrimdışıda
+`false` dönüyor ve OS hiçbir şey söylemiyordu → `quick.offlineLink`; (3) `deep_link.dart`in
+"Files has no per-file route yet" yorumu artık KARARI anlatıyor (dosyanın "sayfası" bu
+uygulamada eylem sheet'idir); (4) **FakeApi push'ta `quick_link`i hiç uygulamıyordu** →
+silinen satır bir sonraki pull'da geri geliyordu; kırık-hedef testi yakaladı, fake artık
+create/update/delete + `orderedIds` sıralamasını uyguluyor; (5) sürüm dört kaynakta
+**0.7.0** (pubspec `0.7.0+8`, `kAppVersion`, iki package.json).
+
+**Epic 18 DoD ✅ (2026-07-29):** sekiz taskın sekizi kendi testleriyle kapandı;
+OPH-196'nın üç dokümanı kalibre edildi (DESIGN §23 Q4/Q4a/Q4b/Q4c/Q8a/Q9 revizyonlarıyla);
+drift **v13** append-only; iki kullanıcılı pull izolasyon testi gerçek MySQL'de yeşil;
+üç yüzey de gerçek (DESIGN §22 R1: rail bölümü, dar-rail popover'ı, telefon bubble+panel —
+üçü de tek store'u aynı sırayla okuyor); park listesi güncel. **App 603/603, API 323 unit +
+43 entegrasyon**, analyze + i18n + kontrast (FAILURES: 0) + lint/format/no-ts temiz →
+**v0.7.0**. Cihaz kuyruğu bu epic'e HİÇBİR şey eklemedi (yüzen düğmenin dokunuş hissi
+gerçek telefonda göze bakılır ama DoD'yi kilitlemiyordu).
 
 ---
 

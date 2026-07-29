@@ -787,6 +787,8 @@ class FakeApi {
     switch (m['entityType']) {
       case 'checklist_item':
         _applyChecklistMutation(entityId, operation, patch);
+      case 'quick_link':
+        _applyQuickLinkMutation(entityId, operation, patch);
       case 'project' || 'task' || 'note' || 'tag' || 'folder':
         final index = collection!.indexWhere((e) => e['id'] == entityId);
         if (operation == 'create') {
@@ -842,6 +844,61 @@ class FakeApi {
           });
         }
     }
+  }
+
+  /// Quick links (OPH-197/203): create, patch, delete, and the whole-rail
+  /// reorder that arrives as an ordinary `update` carrying `orderedIds`.
+  void _applyQuickLinkMutation(
+    String entityId,
+    String operation,
+    Map<String, dynamic> patch,
+  ) {
+    final index = quickLinks.indexWhere((q) => q['id'] == entityId);
+    if (operation == 'create') {
+      if (index >= 0) return;
+      quickLinks.add({
+        'id': entityId,
+        'workspaceId': workspaceId,
+        'userId': 'user-1',
+        'kind': patch['kind'],
+        'targetId': patch['targetId'],
+        'url': patch['url'],
+        'title': patch['title'],
+        'emoji': patch['emoji'],
+        'colorRgb': patch['colorRgb'],
+        'sortOrder': quickLinks.length * 1024,
+        'revision': 1,
+      });
+      return;
+    }
+    if (operation == 'delete') {
+      if (index < 0) return;
+      quickLinks.removeAt(index);
+      deleted.add({'entityType': 'quick_link', 'entityId': entityId});
+      return;
+    }
+    if (operation != 'update') return;
+    if (patch['orderedIds'] case final List<dynamic> ordered) {
+      for (final (position, id) in ordered.indexed) {
+        final row = quickLinks.firstWhere(
+          (q) => q['id'] == id,
+          orElse: () => <String, dynamic>{},
+        );
+        if (row.isEmpty) continue;
+        row['sortOrder'] = position * 1024;
+        row['revision'] = (row['revision'] as int) + 1;
+      }
+      quickLinks.sort(
+        (a, b) => (a['sortOrder'] as int).compareTo(b['sortOrder'] as int),
+      );
+      return;
+    }
+    if (index < 0) return;
+    quickLinks[index] = {
+      ...quickLinks[index],
+      ...patch,
+      'revision': (quickLinks[index]['revision'] as int) + 1,
+    };
   }
 
   void _applyChecklistMutation(

@@ -50,7 +50,9 @@ String? awRouteForUri(Uri uri) {
       return '/tasks/${segments[1]}';
     case 'file':
       if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
-      // Files has no per-file route yet; the section is the honest destination.
+      // Files has no per-file route BY DECISION (OPH-199/203): a file's
+      // "page" in this app is its action sheet, not a screen, so the section
+      // is the honest destination for a link that arrives from outside.
       return '/files';
     default:
       return null;

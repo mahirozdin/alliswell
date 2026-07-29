@@ -257,9 +257,9 @@ OPH-195's audit turned the round's uncomfortable finding into a rule — DESIGN 
 a feature until a person can reach it* — and parked subtasks, recurring tasks,
 manual ordering and task color with written reasons instead of silence.
 
-## Toward v0.7.0
+## v0.7.0
 
-### Phase 12 — Request round 11 #1: Quick Access ⏳ (planned 2026-07-29)
+### Phase 12 — Request round 11 #1: Quick Access ✅ (shipped 2026-07-29, v0.7.0)
 
 Eight tasks (OPH-196…203). A Notion-style **personal** shortcut list — projects,
 tasks, notes, folders, files and external links, each with an optional emoji,
@@ -277,6 +277,11 @@ gesture). Internal shortcuts store `kind + target id`, never route strings —
 renames survive, and the navigation-only URL rule of
 [ADR-0016](docs/adr/0016-in-app-url-routing-and-widget-actions.md) stays intact.
 Spec: BLUEPRINT §4.12/§12.15, [DESIGN §23](docs/DESIGN.md).
+
+**Shipped** with two calibrations the build insisted on: the idle dim is the
+platform's own 40 % (not a guessed 55 %) and the recede is paint-only so the
+56 px target survives, and the colour dot carries its contrast in a 1 px ring
+because half the palette cannot clear 3:1 as a bare fill.
 
 ## Toward v0.8.0
 

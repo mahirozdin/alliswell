@@ -1354,12 +1354,17 @@ _(Eklendi 2026-07-28; bağlayıcı tasarım [DESIGN.md](DESIGN.md) §19–§22.)
   yerde" ise bu, park kuyruğuna açıkça yazılır. CRUD bir matris olarak denetlenir —
   eksilen hücre her zaman **silme**dir, çünkü hiçbir demo onu göstermez (DESIGN §22).
 
-### 12.15 Hızlı Erişim (istek turu 11 — Epic 18, OPH-196…203)
+### 12.15 Hızlı Erişim (istek turu 11 — Epic 18, OPH-196…203) — **UYGULANDI (v0.7.0)**
 
 _(Eklendi 2026-07-29. Varlık: §4.12; karar: [ADR-0018](adr/0018-quick-links-user-scoped-sync-entity.md);
 görsel/davranış kuralları: DESIGN §23. Kullanıcının tarifi: "Notion'daki sol menü gibi —
 istediğini ekleyeceksin; mobilde AssistiveTouch gibi sürüklenen bir düğme, tıklayınca
 aynı liste.")_
+
+_(Uygulama notları 2026-07-29: sayılar OPH-196'da kalibre edildi — boşta soluklaşma
+**%40** (AssistiveTouch'ın kendi varsayılanı), yarı gömülme **yalnız boya** (56 px hedef
+kalır), renk noktası **dolgu + 1 px halka** (DESIGN §23 Q4/Q4a/Q8a). Klasör kısayolu için
+`/files/folder/:folderId` rotası eklendi; dosya kısayolu rota değil eylem sheet'i açar.)_
 
 Tek liste, üç yüzey — hepsi aynı `QuickAccessStore`'u okur:
 
