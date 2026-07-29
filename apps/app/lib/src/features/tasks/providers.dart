@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/day_boundary.dart';
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
+import 'data/series_store.dart';
 import 'data/task.dart';
 import 'data/task_store.dart';
 
@@ -17,6 +18,23 @@ final taskStoreProvider = Provider<TaskStore>(
     () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
   ),
 );
+
+/// The series store (OPH-207): rules are local-first like everything else, but
+/// the OCCURRENCES are server-owned — the client never generates one.
+final seriesStoreProvider = Provider<SeriesStore>(
+  (ref) => SeriesStore(
+    ref.watch(databaseProvider),
+    () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+  ),
+);
+
+/// One series' rule, live from the replica — what the Repeat row's sentence and
+/// the dialog's initial state read.
+final taskSeriesProvider = StreamProvider.autoDispose
+    .family<TaskSeriesModel?, String>((ref, seriesId) {
+      ref.watch(syncEngineProvider);
+      return ref.watch(seriesStoreProvider).watch(seriesId);
+    });
 
 /// Every open task of the workspace — feeds Home and the widget. Live from the
 /// local replica; watching it keeps background sync running.

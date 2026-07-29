@@ -637,5 +637,88 @@
     "emptyPanelTitle": "No shortcuts yet",
     "emptyPanelBody": "Add a project, note, file or link from its ⚡ menu.",
     "bubbleIntro": "Your shortcuts live here. Drag it anywhere."
+  },
+  "repeat": {
+    "switchTitle": "Repeat",
+    "switchSubtitle": "Create this task again on a schedule",
+    "change": "Change",
+    "dialogTitle": "Repeat",
+    "presets": "How often",
+    "advanced": "Advanced",
+    "preset": {
+      "daily": "Every day",
+      "weekly": "Every week",
+      "monthly": "Every month",
+      "yearly": "Every year",
+      "weekdays": "Weekdays"
+    },
+    "mode": {
+      "monthDay": "Day of the month",
+      "nthWeekday": "Nth weekday",
+      "afterDay": "First weekday after a day"
+    },
+    "monthDayLabel": "Day",
+    "clampHint": "In short months this moves to the last day",
+    "afterDayHint": "In a short month the window can fall outside it — check the preview",
+    "ordinalLabel": "Which one",
+    "weekdayLabel": "Day",
+    "intervalLabel": "Every",
+    "next5": "Next 5",
+    "endLabel": "Ends",
+    "end": {
+      "never": "Never",
+      "until": "On a date",
+      "count": "After a number of times",
+      "neverSentence": "no end",
+      "untilSentence": "until {date}",
+      "countSentence": "{count} times"
+    },
+    "endCountLabel": "Times",
+    "endUntilLabel": "End date",
+    "stop": "Stop repeating",
+    "stopConfirm": "Future occurrences are removed. Everything already done stays in your history.",
+    "badgeTooltip": "Repeats",
+    "every": {
+      "daily": "Every day",
+      "dailyN": "Every {n} days",
+      "weekly": "Every week on",
+      "weeklyN": "Every {n} weeks on",
+      "monthly": "Every month on",
+      "monthlyN": "Every {n} months on",
+      "yearly": "Every year in",
+      "yearlyN": "Every {n} years in"
+    },
+    "on": {
+      "weekdays": "weekdays",
+      "monthDay": "day {day}",
+      "lastDay": "the last day",
+      "nthWeekday": "the {ordinal} {weekday}",
+      "lastWeekday": "the last {weekday}",
+      "afterDay": "the first {weekday} after day {day}"
+    },
+    "ordinal": {
+      "1": "first",
+      "2": "second",
+      "3": "third",
+      "4": "fourth",
+      "5": "fifth"
+    },
+    "weekday": {
+      "mo": "Monday",
+      "tu": "Tuesday",
+      "we": "Wednesday",
+      "th": "Thursday",
+      "fr": "Friday",
+      "sa": "Saturday",
+      "su": "Sunday"
+    },
+    "scope": {
+      "title": "This task repeats",
+      "question": "Which occurrences should change?",
+      "this": "Only this one",
+      "future": "This and future ones",
+      "all": "All of them",
+      "apply": "Apply"
+    }
   }
 }

@@ -652,6 +652,8 @@ class TaskStore {
     isUrgent: r.isUrgent,
     requiresAcknowledgement: r.requiresAcknowledgement,
     calendarMirrorEnabled: r.calendarMirrorEnabled,
+    seriesId: r.seriesId,
+    occurrenceDate: r.occurrenceDate,
     sortOrder: r.sortOrder,
     revision: r.revision,
     tagIds: tagIds,

@@ -74,6 +74,10 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.folders)..where((f) => f.id.equals(id))).go();
     case 'quick_link':
       await (db.delete(db.quickLinks)..where((q) => q.id.equals(id))).go();
+    case 'task_series':
+      // The occurrences arrive as their own task tombstones — the server
+      // decides which of them go (OPH-206), so nothing cascades here.
+      await (db.delete(db.taskSeries)..where((s) => s.id.equals(id))).go();
   }
 }
 
@@ -121,6 +125,10 @@ Future<void> _applySnapshot(
       await db
           .into(db.quickLinks)
           .insertOnConflictUpdate(quickLinkCompanion(data));
+    case 'task_series':
+      await db
+          .into(db.taskSeries)
+          .insertOnConflictUpdate(taskSeriesCompanion(data));
   }
 }
 
@@ -264,6 +272,9 @@ TasksCompanion taskCompanion(Map<String, dynamic> d) => TasksCompanion.insert(
   ),
   calendarMirrorEnabled: Value((d['calendarMirrorEnabled'] as bool?) ?? false),
   repeatRule: Value(d['repeatRule'] as String?),
+  // OPH-205: which series produced this task, and which day of it this is.
+  seriesId: Value(d['seriesId'] as String?),
+  occurrenceDate: Value(d['occurrenceDate'] as String?),
   estimatedMinutes: Value(d['estimatedMinutes'] as int?),
   actualMinutes: Value(d['actualMinutes'] as int?),
   sortOrder: Value((d['sortOrder'] as int?) ?? 0),
@@ -346,6 +357,22 @@ QuickLinksCompanion quickLinkCompanion(Map<String, dynamic> d) =>
       emoji: Value(d['emoji'] as String?),
       colorRgb: Value(d['colorRgb'] as String?),
       sortOrder: Value((d['sortOrder'] as int?) ?? 0),
+      revision: Value((d['revision'] as int?) ?? 0),
+      createdAt: _dateValue(d['createdAt']),
+      updatedAt: _dateValue(d['updatedAt']),
+    );
+
+/// OPH-205 — task series (ADR-0020): the recurrence rule and the template its
+/// occurrences are stamped with. The rule and template are stored as JSON TEXT
+/// because they are read and written whole, never field by field.
+TaskSeriesCompanion taskSeriesCompanion(Map<String, dynamic> d) =>
+    TaskSeriesCompanion.insert(
+      id: d['id'] as String,
+      workspaceId: d['workspaceId'] as String,
+      ruleJson: jsonEncode(d['rule'] ?? const {}),
+      templateJson: jsonEncode(d['template'] ?? const {}),
+      timezone: Value((d['timezone'] as String?) ?? 'Europe/Istanbul'),
+      anchorAt: DateTime.parse(d['anchorAt'] as String).toUtc(),
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),

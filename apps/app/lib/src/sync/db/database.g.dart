@@ -1798,6 +1798,28 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _seriesIdMeta = const VerificationMeta(
+    'seriesId',
+  );
+  @override
+  late final GeneratedColumn<String> seriesId = GeneratedColumn<String>(
+    'series_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _occurrenceDateMeta = const VerificationMeta(
+    'occurrenceDate',
+  );
+  @override
+  late final GeneratedColumn<String> occurrenceDate = GeneratedColumn<String>(
+    'occurrence_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _estimatedMinutesMeta = const VerificationMeta(
     'estimatedMinutes',
   );
@@ -1936,6 +1958,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
     isUrgent,
     requiresAcknowledgement,
     repeatRule,
+    seriesId,
+    occurrenceDate,
     estimatedMinutes,
     actualMinutes,
     sortOrder,
@@ -2106,6 +2130,21 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         repeatRule.isAcceptableOrUnknown(data['repeat_rule']!, _repeatRuleMeta),
       );
     }
+    if (data.containsKey('series_id')) {
+      context.handle(
+        _seriesIdMeta,
+        seriesId.isAcceptableOrUnknown(data['series_id']!, _seriesIdMeta),
+      );
+    }
+    if (data.containsKey('occurrence_date')) {
+      context.handle(
+        _occurrenceDateMeta,
+        occurrenceDate.isAcceptableOrUnknown(
+          data['occurrence_date']!,
+          _occurrenceDateMeta,
+        ),
+      );
+    }
     if (data.containsKey('estimated_minutes')) {
       context.handle(
         _estimatedMinutesMeta,
@@ -2270,6 +2309,14 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRecord> {
         DriftSqlType.string,
         data['${effectivePrefix}repeat_rule'],
       ),
+      seriesId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}series_id'],
+      ),
+      occurrenceDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}occurrence_date'],
+      ),
       estimatedMinutes: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}estimated_minutes'],
@@ -2342,7 +2389,17 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
   final String timezone;
   final bool isUrgent;
   final bool requiresAcknowledgement;
+
+  /// Frozen since OPH-205 (ADR-0020 §7): recurrence lives in [TaskSeries] now.
+  /// The column stays because the server's does; nothing reads or writes it.
   final String? repeatRule;
+
+  /// Which series produced this task, and which day of it this is (v14,
+  /// OPH-205). Server-owned: the client never writes them, it learns them from
+  /// the pull. `occurrenceDate` is the series SLOT (`YYYY-MM-DD`, immutable) —
+  /// `dueAt` is when the occurrence actually happens and may be moved.
+  final String? seriesId;
+  final String? occurrenceDate;
   final int? estimatedMinutes;
   final int? actualMinutes;
   final int sortOrder;
@@ -2374,6 +2431,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     required this.isUrgent,
     required this.requiresAcknowledgement,
     this.repeatRule,
+    this.seriesId,
+    this.occurrenceDate,
     this.estimatedMinutes,
     this.actualMinutes,
     required this.sortOrder,
@@ -2431,6 +2490,12 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     map['requires_acknowledgement'] = Variable<bool>(requiresAcknowledgement);
     if (!nullToAbsent || repeatRule != null) {
       map['repeat_rule'] = Variable<String>(repeatRule);
+    }
+    if (!nullToAbsent || seriesId != null) {
+      map['series_id'] = Variable<String>(seriesId);
+    }
+    if (!nullToAbsent || occurrenceDate != null) {
+      map['occurrence_date'] = Variable<String>(occurrenceDate);
     }
     if (!nullToAbsent || estimatedMinutes != null) {
       map['estimated_minutes'] = Variable<int>(estimatedMinutes);
@@ -2505,6 +2570,12 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       repeatRule: repeatRule == null && nullToAbsent
           ? const Value.absent()
           : Value(repeatRule),
+      seriesId: seriesId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(seriesId),
+      occurrenceDate: occurrenceDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(occurrenceDate),
       estimatedMinutes: estimatedMinutes == null && nullToAbsent
           ? const Value.absent()
           : Value(estimatedMinutes),
@@ -2562,6 +2633,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
         json['requiresAcknowledgement'],
       ),
       repeatRule: serializer.fromJson<String?>(json['repeatRule']),
+      seriesId: serializer.fromJson<String?>(json['seriesId']),
+      occurrenceDate: serializer.fromJson<String?>(json['occurrenceDate']),
       estimatedMinutes: serializer.fromJson<int?>(json['estimatedMinutes']),
       actualMinutes: serializer.fromJson<int?>(json['actualMinutes']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
@@ -2602,6 +2675,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
         requiresAcknowledgement,
       ),
       'repeatRule': serializer.toJson<String?>(repeatRule),
+      'seriesId': serializer.toJson<String?>(seriesId),
+      'occurrenceDate': serializer.toJson<String?>(occurrenceDate),
       'estimatedMinutes': serializer.toJson<int?>(estimatedMinutes),
       'actualMinutes': serializer.toJson<int?>(actualMinutes),
       'sortOrder': serializer.toJson<int>(sortOrder),
@@ -2636,6 +2711,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     bool? isUrgent,
     bool? requiresAcknowledgement,
     Value<String?> repeatRule = const Value.absent(),
+    Value<String?> seriesId = const Value.absent(),
+    Value<String?> occurrenceDate = const Value.absent(),
     Value<int?> estimatedMinutes = const Value.absent(),
     Value<int?> actualMinutes = const Value.absent(),
     int? sortOrder,
@@ -2674,6 +2751,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     requiresAcknowledgement:
         requiresAcknowledgement ?? this.requiresAcknowledgement,
     repeatRule: repeatRule.present ? repeatRule.value : this.repeatRule,
+    seriesId: seriesId.present ? seriesId.value : this.seriesId,
+    occurrenceDate: occurrenceDate.present
+        ? occurrenceDate.value
+        : this.occurrenceDate,
     estimatedMinutes: estimatedMinutes.present
         ? estimatedMinutes.value
         : this.estimatedMinutes,
@@ -2731,6 +2812,10 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
       repeatRule: data.repeatRule.present
           ? data.repeatRule.value
           : this.repeatRule,
+      seriesId: data.seriesId.present ? data.seriesId.value : this.seriesId,
+      occurrenceDate: data.occurrenceDate.present
+          ? data.occurrenceDate.value
+          : this.occurrenceDate,
       estimatedMinutes: data.estimatedMinutes.present
           ? data.estimatedMinutes.value
           : this.estimatedMinutes,
@@ -2777,6 +2862,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           ..write('isUrgent: $isUrgent, ')
           ..write('requiresAcknowledgement: $requiresAcknowledgement, ')
           ..write('repeatRule: $repeatRule, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('occurrenceDate: $occurrenceDate, ')
           ..write('estimatedMinutes: $estimatedMinutes, ')
           ..write('actualMinutes: $actualMinutes, ')
           ..write('sortOrder: $sortOrder, ')
@@ -2813,6 +2900,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
     isUrgent,
     requiresAcknowledgement,
     repeatRule,
+    seriesId,
+    occurrenceDate,
     estimatedMinutes,
     actualMinutes,
     sortOrder,
@@ -2848,6 +2937,8 @@ class TaskRecord extends DataClass implements Insertable<TaskRecord> {
           other.isUrgent == this.isUrgent &&
           other.requiresAcknowledgement == this.requiresAcknowledgement &&
           other.repeatRule == this.repeatRule &&
+          other.seriesId == this.seriesId &&
+          other.occurrenceDate == this.occurrenceDate &&
           other.estimatedMinutes == this.estimatedMinutes &&
           other.actualMinutes == this.actualMinutes &&
           other.sortOrder == this.sortOrder &&
@@ -2881,6 +2972,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
   final Value<bool> isUrgent;
   final Value<bool> requiresAcknowledgement;
   final Value<String?> repeatRule;
+  final Value<String?> seriesId;
+  final Value<String?> occurrenceDate;
   final Value<int?> estimatedMinutes;
   final Value<int?> actualMinutes;
   final Value<int> sortOrder;
@@ -2913,6 +3006,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.isUrgent = const Value.absent(),
     this.requiresAcknowledgement = const Value.absent(),
     this.repeatRule = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.occurrenceDate = const Value.absent(),
     this.estimatedMinutes = const Value.absent(),
     this.actualMinutes = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -2946,6 +3041,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     this.isUrgent = const Value.absent(),
     this.requiresAcknowledgement = const Value.absent(),
     this.repeatRule = const Value.absent(),
+    this.seriesId = const Value.absent(),
+    this.occurrenceDate = const Value.absent(),
     this.estimatedMinutes = const Value.absent(),
     this.actualMinutes = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -2981,6 +3078,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Expression<bool>? isUrgent,
     Expression<bool>? requiresAcknowledgement,
     Expression<String>? repeatRule,
+    Expression<String>? seriesId,
+    Expression<String>? occurrenceDate,
     Expression<int>? estimatedMinutes,
     Expression<int>? actualMinutes,
     Expression<int>? sortOrder,
@@ -3015,6 +3114,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       if (requiresAcknowledgement != null)
         'requires_acknowledgement': requiresAcknowledgement,
       if (repeatRule != null) 'repeat_rule': repeatRule,
+      if (seriesId != null) 'series_id': seriesId,
+      if (occurrenceDate != null) 'occurrence_date': occurrenceDate,
       if (estimatedMinutes != null) 'estimated_minutes': estimatedMinutes,
       if (actualMinutes != null) 'actual_minutes': actualMinutes,
       if (sortOrder != null) 'sort_order': sortOrder,
@@ -3051,6 +3152,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     Value<bool>? isUrgent,
     Value<bool>? requiresAcknowledgement,
     Value<String?>? repeatRule,
+    Value<String?>? seriesId,
+    Value<String?>? occurrenceDate,
     Value<int?>? estimatedMinutes,
     Value<int?>? actualMinutes,
     Value<int>? sortOrder,
@@ -3085,6 +3188,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
       requiresAcknowledgement:
           requiresAcknowledgement ?? this.requiresAcknowledgement,
       repeatRule: repeatRule ?? this.repeatRule,
+      seriesId: seriesId ?? this.seriesId,
+      occurrenceDate: occurrenceDate ?? this.occurrenceDate,
       estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
       actualMinutes: actualMinutes ?? this.actualMinutes,
       sortOrder: sortOrder ?? this.sortOrder,
@@ -3165,6 +3270,12 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
     if (repeatRule.present) {
       map['repeat_rule'] = Variable<String>(repeatRule.value);
     }
+    if (seriesId.present) {
+      map['series_id'] = Variable<String>(seriesId.value);
+    }
+    if (occurrenceDate.present) {
+      map['occurrence_date'] = Variable<String>(occurrenceDate.value);
+    }
     if (estimatedMinutes.present) {
       map['estimated_minutes'] = Variable<int>(estimatedMinutes.value);
     }
@@ -3226,6 +3337,8 @@ class TasksCompanion extends UpdateCompanion<TaskRecord> {
           ..write('isUrgent: $isUrgent, ')
           ..write('requiresAcknowledgement: $requiresAcknowledgement, ')
           ..write('repeatRule: $repeatRule, ')
+          ..write('seriesId: $seriesId, ')
+          ..write('occurrenceDate: $occurrenceDate, ')
           ..write('estimatedMinutes: $estimatedMinutes, ')
           ..write('actualMinutes: $actualMinutes, ')
           ..write('sortOrder: $sortOrder, ')
@@ -9111,6 +9224,583 @@ class QuickLinksCompanion extends UpdateCompanion<QuickLinkRecord> {
   }
 }
 
+class $TaskSeriesTable extends TaskSeries
+    with TableInfo<$TaskSeriesTable, TaskSeriesRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskSeriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ruleJsonMeta = const VerificationMeta(
+    'ruleJson',
+  );
+  @override
+  late final GeneratedColumn<String> ruleJson = GeneratedColumn<String>(
+    'rule_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _templateJsonMeta = const VerificationMeta(
+    'templateJson',
+  );
+  @override
+  late final GeneratedColumn<String> templateJson = GeneratedColumn<String>(
+    'template_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timezoneMeta = const VerificationMeta(
+    'timezone',
+  );
+  @override
+  late final GeneratedColumn<String> timezone = GeneratedColumn<String>(
+    'timezone',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Europe/Istanbul'),
+  );
+  static const VerificationMeta _anchorAtMeta = const VerificationMeta(
+    'anchorAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> anchorAt = GeneratedColumn<DateTime>(
+    'anchor_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    ruleJson,
+    templateJson,
+    timezone,
+    anchorAt,
+    revision,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_series';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskSeriesRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('rule_json')) {
+      context.handle(
+        _ruleJsonMeta,
+        ruleJson.isAcceptableOrUnknown(data['rule_json']!, _ruleJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ruleJsonMeta);
+    }
+    if (data.containsKey('template_json')) {
+      context.handle(
+        _templateJsonMeta,
+        templateJson.isAcceptableOrUnknown(
+          data['template_json']!,
+          _templateJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_templateJsonMeta);
+    }
+    if (data.containsKey('timezone')) {
+      context.handle(
+        _timezoneMeta,
+        timezone.isAcceptableOrUnknown(data['timezone']!, _timezoneMeta),
+      );
+    }
+    if (data.containsKey('anchor_at')) {
+      context.handle(
+        _anchorAtMeta,
+        anchorAt.isAcceptableOrUnknown(data['anchor_at']!, _anchorAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_anchorAtMeta);
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TaskSeriesRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskSeriesRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      ruleJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rule_json'],
+      )!,
+      templateJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template_json'],
+      )!,
+      timezone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}timezone'],
+      )!,
+      anchorAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}anchor_at'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $TaskSeriesTable createAlias(String alias) {
+    return $TaskSeriesTable(attachedDatabase, alias);
+  }
+}
+
+class TaskSeriesRecord extends DataClass
+    implements Insertable<TaskSeriesRecord> {
+  final String id;
+  final String workspaceId;
+
+  /// The ADR-0020 rule object, stored as JSON text (drift has no JSON column
+  /// and the rule is read and written whole — never field by field).
+  final String ruleJson;
+
+  /// Task fields every occurrence inherits (title, project, priority…), JSON.
+  final String templateJson;
+  final String timezone;
+
+  /// Seed instant: the pattern's first candidate day and the time of day every
+  /// occurrence inherits.
+  final DateTime anchorAt;
+  final int revision;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  const TaskSeriesRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.ruleJson,
+    required this.templateJson,
+    required this.timezone,
+    required this.anchorAt,
+    required this.revision,
+    this.createdAt,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['rule_json'] = Variable<String>(ruleJson);
+    map['template_json'] = Variable<String>(templateJson);
+    map['timezone'] = Variable<String>(timezone);
+    map['anchor_at'] = Variable<DateTime>(anchorAt);
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  TaskSeriesCompanion toCompanion(bool nullToAbsent) {
+    return TaskSeriesCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      ruleJson: Value(ruleJson),
+      templateJson: Value(templateJson),
+      timezone: Value(timezone),
+      anchorAt: Value(anchorAt),
+      revision: Value(revision),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory TaskSeriesRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskSeriesRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      ruleJson: serializer.fromJson<String>(json['ruleJson']),
+      templateJson: serializer.fromJson<String>(json['templateJson']),
+      timezone: serializer.fromJson<String>(json['timezone']),
+      anchorAt: serializer.fromJson<DateTime>(json['anchorAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'ruleJson': serializer.toJson<String>(ruleJson),
+      'templateJson': serializer.toJson<String>(templateJson),
+      'timezone': serializer.toJson<String>(timezone),
+      'anchorAt': serializer.toJson<DateTime>(anchorAt),
+      'revision': serializer.toJson<int>(revision),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  TaskSeriesRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? ruleJson,
+    String? templateJson,
+    String? timezone,
+    DateTime? anchorAt,
+    int? revision,
+    Value<DateTime?> createdAt = const Value.absent(),
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => TaskSeriesRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    ruleJson: ruleJson ?? this.ruleJson,
+    templateJson: templateJson ?? this.templateJson,
+    timezone: timezone ?? this.timezone,
+    anchorAt: anchorAt ?? this.anchorAt,
+    revision: revision ?? this.revision,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  TaskSeriesRecord copyWithCompanion(TaskSeriesCompanion data) {
+    return TaskSeriesRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      ruleJson: data.ruleJson.present ? data.ruleJson.value : this.ruleJson,
+      templateJson: data.templateJson.present
+          ? data.templateJson.value
+          : this.templateJson,
+      timezone: data.timezone.present ? data.timezone.value : this.timezone,
+      anchorAt: data.anchorAt.present ? data.anchorAt.value : this.anchorAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskSeriesRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('ruleJson: $ruleJson, ')
+          ..write('templateJson: $templateJson, ')
+          ..write('timezone: $timezone, ')
+          ..write('anchorAt: $anchorAt, ')
+          ..write('revision: $revision, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    ruleJson,
+    templateJson,
+    timezone,
+    anchorAt,
+    revision,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskSeriesRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.ruleJson == this.ruleJson &&
+          other.templateJson == this.templateJson &&
+          other.timezone == this.timezone &&
+          other.anchorAt == this.anchorAt &&
+          other.revision == this.revision &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TaskSeriesCompanion extends UpdateCompanion<TaskSeriesRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> ruleJson;
+  final Value<String> templateJson;
+  final Value<String> timezone;
+  final Value<DateTime> anchorAt;
+  final Value<int> revision;
+  final Value<DateTime?> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const TaskSeriesCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.ruleJson = const Value.absent(),
+    this.templateJson = const Value.absent(),
+    this.timezone = const Value.absent(),
+    this.anchorAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskSeriesCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String ruleJson,
+    required String templateJson,
+    this.timezone = const Value.absent(),
+    required DateTime anchorAt,
+    this.revision = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       ruleJson = Value(ruleJson),
+       templateJson = Value(templateJson),
+       anchorAt = Value(anchorAt);
+  static Insertable<TaskSeriesRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? ruleJson,
+    Expression<String>? templateJson,
+    Expression<String>? timezone,
+    Expression<DateTime>? anchorAt,
+    Expression<int>? revision,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (ruleJson != null) 'rule_json': ruleJson,
+      if (templateJson != null) 'template_json': templateJson,
+      if (timezone != null) 'timezone': timezone,
+      if (anchorAt != null) 'anchor_at': anchorAt,
+      if (revision != null) 'revision': revision,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskSeriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? ruleJson,
+    Value<String>? templateJson,
+    Value<String>? timezone,
+    Value<DateTime>? anchorAt,
+    Value<int>? revision,
+    Value<DateTime?>? createdAt,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return TaskSeriesCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      ruleJson: ruleJson ?? this.ruleJson,
+      templateJson: templateJson ?? this.templateJson,
+      timezone: timezone ?? this.timezone,
+      anchorAt: anchorAt ?? this.anchorAt,
+      revision: revision ?? this.revision,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (ruleJson.present) {
+      map['rule_json'] = Variable<String>(ruleJson.value);
+    }
+    if (templateJson.present) {
+      map['template_json'] = Variable<String>(templateJson.value);
+    }
+    if (timezone.present) {
+      map['timezone'] = Variable<String>(timezone.value);
+    }
+    if (anchorAt.present) {
+      map['anchor_at'] = Variable<DateTime>(anchorAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskSeriesCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('ruleJson: $ruleJson, ')
+          ..write('templateJson: $templateJson, ')
+          ..write('timezone: $timezone, ')
+          ..write('anchorAt: $anchorAt, ')
+          ..write('revision: $revision, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AlarmEventsTable extends AlarmEvents
     with TableInfo<$AlarmEventsTable, AlarmEvent> {
   @override
@@ -10834,6 +11524,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $FileRowsTable fileRows = $FileRowsTable(this);
   late final $FoldersTable folders = $FoldersTable(this);
   late final $QuickLinksTable quickLinks = $QuickLinksTable(this);
+  late final $TaskSeriesTable taskSeries = $TaskSeriesTable(this);
   late final $AlarmEventsTable alarmEvents = $AlarmEventsTable(this);
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
@@ -10857,6 +11548,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     fileRows,
     folders,
     quickLinks,
+    taskSeries,
     alarmEvents,
     pendingMutations,
     syncStates,
@@ -11614,6 +12306,8 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<bool> isUrgent,
       Value<bool> requiresAcknowledgement,
       Value<String?> repeatRule,
+      Value<String?> seriesId,
+      Value<String?> occurrenceDate,
       Value<int?> estimatedMinutes,
       Value<int?> actualMinutes,
       Value<int> sortOrder,
@@ -11648,6 +12342,8 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<bool> isUrgent,
       Value<bool> requiresAcknowledgement,
       Value<String?> repeatRule,
+      Value<String?> seriesId,
+      Value<String?> occurrenceDate,
       Value<int?> estimatedMinutes,
       Value<int?> actualMinutes,
       Value<int> sortOrder,
@@ -11766,6 +12462,16 @@ class $$TasksTableFilterComposer extends Composer<_$AwDatabase, $TasksTable> {
 
   ColumnFilters<String> get repeatRule => $composableBuilder(
     column: $table.repeatRule,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get occurrenceDate => $composableBuilder(
+    column: $table.occurrenceDate,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -11928,6 +12634,16 @@ class $$TasksTableOrderingComposer extends Composer<_$AwDatabase, $TasksTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get seriesId => $composableBuilder(
+    column: $table.seriesId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get occurrenceDate => $composableBuilder(
+    column: $table.occurrenceDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get estimatedMinutes => $composableBuilder(
     column: $table.estimatedMinutes,
     builder: (column) => ColumnOrderings(column),
@@ -12066,6 +12782,14 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get seriesId =>
+      $composableBuilder(column: $table.seriesId, builder: (column) => column);
+
+  GeneratedColumn<String> get occurrenceDate => $composableBuilder(
+    column: $table.occurrenceDate,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get estimatedMinutes => $composableBuilder(
     column: $table.estimatedMinutes,
     builder: (column) => column,
@@ -12155,6 +12879,8 @@ class $$TasksTableTableManager
                 Value<bool> isUrgent = const Value.absent(),
                 Value<bool> requiresAcknowledgement = const Value.absent(),
                 Value<String?> repeatRule = const Value.absent(),
+                Value<String?> seriesId = const Value.absent(),
+                Value<String?> occurrenceDate = const Value.absent(),
                 Value<int?> estimatedMinutes = const Value.absent(),
                 Value<int?> actualMinutes = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
@@ -12187,6 +12913,8 @@ class $$TasksTableTableManager
                 isUrgent: isUrgent,
                 requiresAcknowledgement: requiresAcknowledgement,
                 repeatRule: repeatRule,
+                seriesId: seriesId,
+                occurrenceDate: occurrenceDate,
                 estimatedMinutes: estimatedMinutes,
                 actualMinutes: actualMinutes,
                 sortOrder: sortOrder,
@@ -12221,6 +12949,8 @@ class $$TasksTableTableManager
                 Value<bool> isUrgent = const Value.absent(),
                 Value<bool> requiresAcknowledgement = const Value.absent(),
                 Value<String?> repeatRule = const Value.absent(),
+                Value<String?> seriesId = const Value.absent(),
+                Value<String?> occurrenceDate = const Value.absent(),
                 Value<int?> estimatedMinutes = const Value.absent(),
                 Value<int?> actualMinutes = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
@@ -12253,6 +12983,8 @@ class $$TasksTableTableManager
                 isUrgent: isUrgent,
                 requiresAcknowledgement: requiresAcknowledgement,
                 repeatRule: repeatRule,
+                seriesId: seriesId,
+                occurrenceDate: occurrenceDate,
                 estimatedMinutes: estimatedMinutes,
                 actualMinutes: actualMinutes,
                 sortOrder: sortOrder,
@@ -15158,6 +15890,286 @@ typedef $$QuickLinksTableProcessedTableManager =
       QuickLinkRecord,
       PrefetchHooks Function()
     >;
+typedef $$TaskSeriesTableCreateCompanionBuilder =
+    TaskSeriesCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String ruleJson,
+      required String templateJson,
+      Value<String> timezone,
+      required DateTime anchorAt,
+      Value<int> revision,
+      Value<DateTime?> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$TaskSeriesTableUpdateCompanionBuilder =
+    TaskSeriesCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> ruleJson,
+      Value<String> templateJson,
+      Value<String> timezone,
+      Value<DateTime> anchorAt,
+      Value<int> revision,
+      Value<DateTime?> createdAt,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$TaskSeriesTableFilterComposer
+    extends Composer<_$AwDatabase, $TaskSeriesTable> {
+  $$TaskSeriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ruleJson => $composableBuilder(
+    column: $table.ruleJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get templateJson => $composableBuilder(
+    column: $table.templateJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get timezone => $composableBuilder(
+    column: $table.timezone,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get anchorAt => $composableBuilder(
+    column: $table.anchorAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TaskSeriesTableOrderingComposer
+    extends Composer<_$AwDatabase, $TaskSeriesTable> {
+  $$TaskSeriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ruleJson => $composableBuilder(
+    column: $table.ruleJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get templateJson => $composableBuilder(
+    column: $table.templateJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get timezone => $composableBuilder(
+    column: $table.timezone,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get anchorAt => $composableBuilder(
+    column: $table.anchorAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TaskSeriesTableAnnotationComposer
+    extends Composer<_$AwDatabase, $TaskSeriesTable> {
+  $$TaskSeriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ruleJson =>
+      $composableBuilder(column: $table.ruleJson, builder: (column) => column);
+
+  GeneratedColumn<String> get templateJson => $composableBuilder(
+    column: $table.templateJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get timezone =>
+      $composableBuilder(column: $table.timezone, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get anchorAt =>
+      $composableBuilder(column: $table.anchorAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TaskSeriesTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $TaskSeriesTable,
+          TaskSeriesRecord,
+          $$TaskSeriesTableFilterComposer,
+          $$TaskSeriesTableOrderingComposer,
+          $$TaskSeriesTableAnnotationComposer,
+          $$TaskSeriesTableCreateCompanionBuilder,
+          $$TaskSeriesTableUpdateCompanionBuilder,
+          (
+            TaskSeriesRecord,
+            BaseReferences<_$AwDatabase, $TaskSeriesTable, TaskSeriesRecord>,
+          ),
+          TaskSeriesRecord,
+          PrefetchHooks Function()
+        > {
+  $$TaskSeriesTableTableManager(_$AwDatabase db, $TaskSeriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskSeriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskSeriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskSeriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> ruleJson = const Value.absent(),
+                Value<String> templateJson = const Value.absent(),
+                Value<String> timezone = const Value.absent(),
+                Value<DateTime> anchorAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskSeriesCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                ruleJson: ruleJson,
+                templateJson: templateJson,
+                timezone: timezone,
+                anchorAt: anchorAt,
+                revision: revision,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String ruleJson,
+                required String templateJson,
+                Value<String> timezone = const Value.absent(),
+                required DateTime anchorAt,
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskSeriesCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                ruleJson: ruleJson,
+                templateJson: templateJson,
+                timezone: timezone,
+                anchorAt: anchorAt,
+                revision: revision,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TaskSeriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $TaskSeriesTable,
+      TaskSeriesRecord,
+      $$TaskSeriesTableFilterComposer,
+      $$TaskSeriesTableOrderingComposer,
+      $$TaskSeriesTableAnnotationComposer,
+      $$TaskSeriesTableCreateCompanionBuilder,
+      $$TaskSeriesTableUpdateCompanionBuilder,
+      (
+        TaskSeriesRecord,
+        BaseReferences<_$AwDatabase, $TaskSeriesTable, TaskSeriesRecord>,
+      ),
+      TaskSeriesRecord,
+      PrefetchHooks Function()
+    >;
 typedef $$AlarmEventsTableCreateCompanionBuilder =
     AlarmEventsCompanion Function({
       Value<int> id,
@@ -16023,6 +17035,8 @@ class $AwDatabaseManager {
       $$FoldersTableTableManager(_db, _db.folders);
   $$QuickLinksTableTableManager get quickLinks =>
       $$QuickLinksTableTableManager(_db, _db.quickLinks);
+  $$TaskSeriesTableTableManager get taskSeries =>
+      $$TaskSeriesTableTableManager(_db, _db.taskSeries);
   $$AlarmEventsTableTableManager get alarmEvents =>
       $$AlarmEventsTableTableManager(_db, _db.alarmEvents);
   $$PendingMutationsTableTableManager get pendingMutations =>

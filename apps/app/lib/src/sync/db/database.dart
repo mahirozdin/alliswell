@@ -78,7 +78,17 @@ class Tasks extends Table {
   BoolColumn get isUrgent => boolean().withDefault(const Constant(false))();
   BoolColumn get requiresAcknowledgement =>
       boolean().withDefault(const Constant(false))();
+
+  /// Frozen since OPH-205 (ADR-0020 §7): recurrence lives in [TaskSeries] now.
+  /// The column stays because the server's does; nothing reads or writes it.
   TextColumn get repeatRule => text().nullable()();
+
+  /// Which series produced this task, and which day of it this is (v14,
+  /// OPH-205). Server-owned: the client never writes them, it learns them from
+  /// the pull. `occurrenceDate` is the series SLOT (`YYYY-MM-DD`, immutable) —
+  /// `dueAt` is when the occurrence actually happens and may be moved.
+  TextColumn get seriesId => text().nullable()();
+  TextColumn get occurrenceDate => text().nullable()();
   IntColumn get estimatedMinutes => integer().nullable()();
   IntColumn get actualMinutes => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
@@ -196,6 +206,38 @@ class QuickLinks extends Table {
   TextColumn get emoji => text().nullable()();
   TextColumn get colorRgb => text().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// A recurrence rule and the template its occurrences are stamped with
+/// (OPH-205, ADR-0020). Added in schema v14.
+///
+/// The occurrences themselves are ordinary rows in [Tasks] — this table exists
+/// so the edit dialog shows the same rule on every device, and so the "next 5"
+/// preview can be computed offline. The client NEVER generates occurrences:
+/// they arrive over sync like any other task.
+@DataClassName('TaskSeriesRecord')
+class TaskSeries extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+
+  /// The ADR-0020 rule object, stored as JSON text (drift has no JSON column
+  /// and the rule is read and written whole — never field by field).
+  TextColumn get ruleJson => text()();
+
+  /// Task fields every occurrence inherits (title, project, priority…), JSON.
+  TextColumn get templateJson => text()();
+  TextColumn get timezone =>
+      text().withDefault(const Constant('Europe/Istanbul'))();
+
+  /// Seed instant: the pattern's first candidate day and the time of day every
+  /// occurrence inherits.
+  DateTimeColumn get anchorAt => dateTime()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -402,6 +444,7 @@ class AppleEventLinks extends Table {
     FileRows,
     Folders,
     QuickLinks,
+    TaskSeries,
     AlarmEvents,
     PendingMutations,
     SyncStates,
@@ -419,8 +462,10 @@ class AwDatabase extends _$AwDatabase {
   /// v6 → v7 (OPH-170): folders + file_rows.folder_id (ADR-0014).
   /// v11 → v12 (OPH-186): `idx_tasks_completed` for the Completed archive.
   /// v12 → v13 (OPH-198): quick_links, the personal shortcut rail (ADR-0018).
+  /// v13 → v14 (OPH-205): task_series + tasks.series_id/occurrence_date
+  /// (ADR-0020) — recurring tasks.
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -510,6 +555,19 @@ class AwDatabase extends _$AwDatabase {
       // a table this same migration may have just created with them included.
       // The next pull fills it; nothing existing is touched.
       if (from < 13) await m.createTable(quickLinks);
+      // v14 (OPH-205, ADR-0020): recurring tasks. The table is new, but the two
+      // task columns are NOT — hence the `from >= 1` guard, which is the rule
+      // this file learned in v6/v7: a column added to a table the same
+      // migration may have just created (with the column already in it) must
+      // not be added twice. Nothing is backfilled: every existing task simply
+      // belongs to no series.
+      if (from < 14) {
+        await m.createTable(taskSeries);
+        if (from >= 1) {
+          await m.addColumn(tasks, tasks.seriesId);
+          await m.addColumn(tasks, tasks.occurrenceDate);
+        }
+      }
     },
   );
 

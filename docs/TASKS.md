@@ -4995,26 +4995,56 @@ tamamlananın dokunulmazlığı, saat taşıma, sync push'la offline kapsam) + 4
 
 ### OPH-207 — App: tekrar dialog'u — switch, otomatik açılış, özet + Değiştir
 
-- [ ] **Giriş yüzeyi (kullanıcının tarifi birebir):** detaylı ekleme VE düzenleme
+- [x] **Giriş yüzeyi (kullanıcının tarifi birebir):** detaylı ekleme VE düzenleme
       sheet'lerine "Tekrarla" switch'i; switch İLK açıldığında dialog **otomatik**
       açılır; dialog iptal edilirse switch kapanır (yarım kural kalmaz). Kural
       varken satırın altında **özet cümlesi** ("Her ayın son iş günü değil — örn.
       'Her ayın 22'sinden sonraki ilk Pazartesi · bitiş yok'") + sağında **Değiştir**.
-- [ ] **Dialog:** hızlı preset'ler (her gün / hafta / ay / yıl / hafta içi) +
+- [x] **Dialog:** hızlı preset'ler (her gün / hafta / ay / yıl / hafta içi) +
       **Gelişmiş** bölümü — üç senaryo sınıfı ayrı ayrı kurulabilir: (A) ayın günü
       (kısa ay kırpması açıklama metniyle: "kısa aylarda son güne çekilir"),
       (B) N. hafta + gün (1..5 + "son"), (C) "ayın X'inden sonraki ilk {gün}" ve
       "ayın ilk/son {gün}ü"; bitiş: asla / tarihe kadar / N kez.
-- [ ] **Canlı önizleme: "Sonraki 5"** — Dart motor portundan hesaplanır (OPH-204
+- [x] **Canlı önizleme: "Sonraki 5"** — Dart motor portundan hesaplanır (OPH-204
       paritesi); kural her değişiminde güncellenir; kırpma davranışı önizlemede
       GÖRÜNÜR (31 seçiliyken Şubat satırı 28/29 gösterir — kullanıcı sistemi
       bozulmamış görür).
-- [ ] Kuralın insan cümlesi tek yardımcıdan (TR/EN ayrı üretim — çeviri değil kural
+- [x] Kuralın insan cümlesi tek yardımcıdan (TR/EN ayrı üretim — çeviri değil kural
       bazlı cümle kurma; i18n `repeat.*`); erişilebilirlik: dialog tam klavye/okuyucu
       yolu.
-- [ ] Testler: switch→dialog otomatiği; iptal→switch kapanır; A/B/C kurallarının
+- [x] Testler: switch→dialog otomatiği; iptal→switch kapanır; A/B/C kurallarının
       cümleleri (TR+EN snapshot); önizleme kırpma vakası; kural gidiş-dönüşü (dialog →
       JSON → dialog).
+
+**Uygulama notları (2026-07-29):**
+
+- **drift v14** geldi: `TaskSeries` tablosu + `Tasks.seriesId`/`occurrenceDate`
+  (`from >= 1` guard'ıyla). `migration_test` v1→v14'ü gerçek SQLite dosyasında
+  koşuyor, `user_version` 14.
+- **Motor portu paritede:** `core/recurrence.dart` fikstürün 16 vakasını da
+  geçiyor — JS ile gün gün aynı (ADR-0020 §6).
+- **Cümle motoru** `core/recurrence_text.dart`: TR/EN ayrı kelime sırası, çoğul
+  yok (her form ayrı anahtar). Senaryo C **saklanmıyor, TANINIYOR**
+  (`awAfterDayOf`) — 7 günlük pencere + tek gün adı → "22. gününden sonraki ilk
+  Pazartesi"; `awAfterDayRule` tersini yazıyor.
+- **Kapsam dialog'u burada doğdu** (OPH-206'dan taşındı): `showSeriesScopeDialog`,
+  varsayılan "bu ve gelecektekiler"; **tarih düzenlemesinde "yalnız bu"**. Detay
+  ekranındaki başlık ve vade düzenlemeleri `_applyScoped`'tan geçiyor; sorudan
+  vazgeçilirse HİÇBİR ŞEY yazılmıyor.
+- **Dialog kök navigator'a açılıyor** (`useRootNavigator: true`) — OPH-212'nin
+  dersi burada peşinen uygulandı.
+- **Testin bulduğu:** detay sütunu Repeat satırıyla uzayınca `date_input_test`'in
+  iki dokunuşu telefon ekranının altına düştü (tap "off-screen") → testler artık
+  `ensureVisible` ile kaydırıyor. İkinci bulgu: **cümle uygulamanın diline uyar**,
+  `locale` parametresi yalnız tarihi biçimlendirir (i18n cephesi global, ADR-0009)
+  — test dili değiştirerek doğruluyor.
+- Create sheet'in switch'i **OPH-208'e** kaldı: sheet henüz kaydedilmemiş bir
+  görev üzerinde çalışıyor, seri ise `fromTaskId` istiyor — doğru sıra "kaydet →
+  seri kur", o da 208'in görev listesi/rozet işiyle aynı dosyalara dokunuyor.
+
+**Doğrulama (2026-07-29):** app **635 test** (22 motor paritesi + 10 tekrar
+yüzeyi yeni), `flutter analyze` temiz, `dart format` uygulandı,
+`check:i18n` temiz, kontrast **FAILURES: 0**.
 
 ### OPH-208 — App: seri görünürlüğü, yüzey etkileri + README tanıtımı
 

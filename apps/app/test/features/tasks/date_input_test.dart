@@ -105,6 +105,9 @@ void main() {
     await tester.pumpAndSettle();
     await openDetail(tester, 'Hatırlatma');
 
+    // The Repeat row (OPH-207) pushed this below a phone fold; scroll first.
+    await tester.ensureVisible(find.byKey(const Key('remind-row')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('remind-row')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
@@ -177,6 +180,10 @@ void main() {
       // It says what it IS, not "Planlanan" — the word that meant nothing.
       expect(find.textContaining('Moved in your calendar'), findsOneWidget);
 
+      // The detail column grew a Repeat row (OPH-207), so the button can sit
+      // below the fold on a phone — scroll to it instead of tapping into space.
+      await tester.ensureVisible(find.byKey(const Key('reset-schedule')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('reset-schedule')));
       await tester.pumpAndSettle();
 

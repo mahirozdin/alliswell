@@ -636,5 +636,88 @@
     "emptyPanelTitle": "Henüz kısayol yok",
     "emptyPanelBody": "Proje, not, dosya ya da bağlantıyı ⚡ menüsünden ekleyin.",
     "bubbleIntro": "Kısayolların burada. İstediğin yere sürükle."
+  },
+  "repeat": {
+    "switchTitle": "Tekrarla",
+    "switchSubtitle": "Bu görevi belirli aralıklarla yeniden oluştur",
+    "change": "Değiştir",
+    "dialogTitle": "Tekrar",
+    "presets": "Ne sıklıkla",
+    "advanced": "Gelişmiş",
+    "preset": {
+      "daily": "Her gün",
+      "weekly": "Her hafta",
+      "monthly": "Her ay",
+      "yearly": "Her yıl",
+      "weekdays": "Hafta içi"
+    },
+    "mode": {
+      "monthDay": "Ayın günü",
+      "nthWeekday": "Ayın kaçıncı günü",
+      "afterDay": "Bir günden sonraki ilk gün"
+    },
+    "monthDayLabel": "Gün",
+    "clampHint": "Kısa aylarda ayın son gününe çekilir",
+    "afterDayHint": "Kısa aylarda aralık ayın dışına taşabilir — önizlemeye bak",
+    "ordinalLabel": "Kaçıncı",
+    "weekdayLabel": "Gün",
+    "intervalLabel": "Her",
+    "next5": "Sonraki 5",
+    "endLabel": "Bitiş",
+    "end": {
+      "never": "Asla",
+      "until": "Tarihe kadar",
+      "count": "Belirli sayıda",
+      "neverSentence": "bitiş yok",
+      "untilSentence": "{date} tarihine kadar",
+      "countSentence": "{count} kez"
+    },
+    "endCountLabel": "Kez",
+    "endUntilLabel": "Bitiş tarihi",
+    "stop": "Tekrarı durdur",
+    "stopConfirm": "Gelecekteki tekrarlar silinir. Yapılmış olanlar geçmişinde kalır.",
+    "badgeTooltip": "Tekrarlanıyor",
+    "every": {
+      "daily": "Her gün",
+      "dailyN": "{n} günde bir",
+      "weekly": "Her hafta",
+      "weeklyN": "{n} haftada bir",
+      "monthly": "Her ayın",
+      "monthlyN": "{n} ayda bir, ayın",
+      "yearly": "Her yıl",
+      "yearlyN": "{n} yılda bir"
+    },
+    "on": {
+      "weekdays": "hafta içi her gün",
+      "monthDay": "{day}. günü",
+      "lastDay": "son günü",
+      "nthWeekday": "{ordinal} {weekday} günü",
+      "lastWeekday": "son {weekday} günü",
+      "afterDay": "{day}. gününden sonraki ilk {weekday}"
+    },
+    "ordinal": {
+      "1": "1.",
+      "2": "2.",
+      "3": "3.",
+      "4": "4.",
+      "5": "5."
+    },
+    "weekday": {
+      "mo": "Pazartesi",
+      "tu": "Salı",
+      "we": "Çarşamba",
+      "th": "Perşembe",
+      "fr": "Cuma",
+      "sa": "Cumartesi",
+      "su": "Pazar"
+    },
+    "scope": {
+      "title": "Bu görev tekrarlanıyor",
+      "question": "Hangi tekrarlar değişsin?",
+      "this": "Yalnız bu",
+      "future": "Bu ve gelecektekiler",
+      "all": "Tümü",
+      "apply": "Uygula"
+    }
   }
 }

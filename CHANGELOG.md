@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 19 in progress
 
+- **The Repeat switch, the dialog and the sentence (OPH-207).** Task detail
+  gains a **Tekrarla** switch that opens the rule dialog the first time it goes
+  on — cancel and it goes straight back off, because a switch that leaves a
+  half-configured rule behind is a lie about state. The dialog opens on presets
+  (day/week/weekdays/month/year) with everything else one disclosure deeper: day
+  of the month (including "the last day"), the Nth weekday, and "the first
+  {weekday} after day N" — with a live **"Sonraki 5"** preview that shows the
+  clamp honestly (pick the 31st and February reads 28). A configured rule reads
+  as one generated sentence per language, never as a form summary. Editing one
+  occurrence asks how far the change reaches, defaulting to "this and future" —
+  except for a date, where it defaults to "only this one". drift **v14** carries
+  `task_series` and the two occurrence columns; the Dart engine is a port pinned
+  to the server's by a shared parity fixture that both suites assert.
+
 - **Editing one occurrence asks how far it reaches (OPH-206).** A task edit can
   now carry `seriesScope`: **just this** (the default — nothing else moves),
   **this and future** (the series splits: the old one gets an `until`, a new one

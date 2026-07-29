@@ -25,6 +25,7 @@ import '../data/task.dart';
 import '../data/task_store.dart';
 import '../providers.dart';
 import 'task_tile.dart' show deleteTaskWithUndo;
+import 'repeat_row.dart';
 import 'task_visuals.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
@@ -105,12 +106,31 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     }
   }
 
+  /// A field edit on ONE occurrence of a series is ambiguous by construction
+  /// (DESIGN §25 R8), so it asks first — and the default follows the field:
+  /// moving a date means "just this", renaming means "this and future".
+  /// Backing out of the question writes nothing at all.
+  Future<void> _applyScoped(
+    Map<String, dynamic> patch, {
+    bool isDateEdit = false,
+  }) async {
+    if (!task.isRecurring) {
+      await _apply((store, id) => store.update(id, patch));
+      return;
+    }
+    final scope = await showSeriesScopeDialog(context, isDateEdit: isDateEdit);
+    if (scope == null) return;
+    await _apply(
+      (store, id) => store.update(id, {...patch, 'seriesScope': scope}),
+    );
+  }
+
   void _onTitleChanged(String value) {
     _titleDebounce?.cancel();
     _titleDebounce = Timer(_autosaveDelay, () {
       final title = value.trim();
       if (title.isEmpty || title == task.title) return;
-      _apply((store, id) => store.update(id, {'title': title}));
+      _applyScoped({'title': title});
     });
   }
 
@@ -317,6 +337,10 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         }
                       },
                     ),
+                    // OPH-207 (DESIGN §25 R1): the Repeat switch. Turning it
+                    // on opens the rule dialog immediately; the sentence and
+                    // "Değiştir" appear underneath once a rule exists.
+                    RepeatRow(task: task),
                     // OPH-177: a snoozed alarm says so here too — the task is
                     // still open, it is just quiet until then.
                     if (task.snoozedUntil != null &&
@@ -376,11 +400,9 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       label: 'task.due'.tr(),
                       icon: Icons.flag_outlined,
                       value: task.dueAt,
-                      onPicked: (picked) => _apply(
-                        (store, id) => store.update(id, {
-                          'dueAt': picked?.toUtc().toIso8601String(),
-                        }),
-                      ),
+                      onPicked: (picked) => _applyScoped({
+                        'dueAt': picked?.toUtc().toIso8601String(),
+                      }, isDateEdit: true),
                     ),
                     // OPH-192 (round 10 #7): NOT a third date field any more.
                     // "Planlanan" was never in BLUEPRINT §12.4's field list —

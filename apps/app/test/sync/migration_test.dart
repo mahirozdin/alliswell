@@ -40,6 +40,11 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
+    await db.customStatement('DROP TABLE task_series'); // v14
+    await db.customStatement('ALTER TABLE tasks DROP COLUMN series_id'); // v14
+    await db.customStatement(
+      'ALTER TABLE tasks DROP COLUMN occurrence_date', // v14
+    );
     await db.customStatement('DROP TABLE quick_links'); // v13
     await db.customStatement(
       'ALTER TABLE tasks DROP COLUMN alarms_muted_at', // v11
@@ -158,7 +163,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 13);
+      expect(version.data['user_version'], 14);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -204,7 +209,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 13);
+      expect(version.data['user_version'], 14);
       await db.close();
     },
   );

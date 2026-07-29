@@ -13,6 +13,8 @@ class Task {
     required this.sortOrder,
     required this.revision,
     this.calendarMirrorEnabled = false,
+    this.seriesId,
+    this.occurrenceDate,
     this.projectId,
     this.parentTaskId,
     this.description,
@@ -51,6 +53,8 @@ class Task {
     isUrgent: json['isUrgent'] as bool,
     requiresAcknowledgement: json['requiresAcknowledgement'] as bool,
     calendarMirrorEnabled: (json['calendarMirrorEnabled'] as bool?) ?? false,
+    seriesId: json['seriesId'] as String?,
+    occurrenceDate: json['occurrenceDate'] as String?,
     sortOrder: json['sortOrder'] as int,
     revision: json['revision'] as int,
     tagIds: ((json['tagIds'] as List?) ?? const []).cast<String>(),
@@ -95,6 +99,16 @@ class Task {
 
   /// Opt-in: mirror this task into the connected calendar (OPH-072/081).
   final bool calendarMirrorEnabled;
+
+  /// The series that produced this task, and which day of it this is
+  /// (OPH-205). Server-owned: the app reads them, it never writes them.
+  /// `occurrenceDate` is the SLOT (`YYYY-MM-DD`) — [dueAt] is when it actually
+  /// happens, and a "only this one" edit is free to move that alone.
+  final String? seriesId;
+  final String? occurrenceDate;
+
+  /// One occurrence of a repeating task (DESIGN §25 R6 — the ↻ badge).
+  bool get isRecurring => seriesId != null;
   final int sortOrder;
   final int revision;
   final List<String> tagIds;
