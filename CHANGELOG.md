@@ -5,7 +5,42 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
-### Added — Epic 19 in progress
+### Planned — request round 11 #2 (2026-07-29; Epics 18 and 19 shipped as 0.7.0 and 0.8.0 below)
+
+- **Epic 20 — AI (OPH-215…227, toward v0.9.0; renumbered from OPH-204…216 when
+  round 12 slotted Epic 19 in).** Two tracks, because the researched
+  reality is that no provider permits third-party use of consumer subscriptions in
+  mid-2026: **Track A** — an AllisWell remote MCP server ("add AllisWell to your
+  Claude/ChatGPT", where your subscription pays for the intelligence); **Track B** —
+  embedded AI with your own API key (Anthropic / OpenAI / Gemini / OpenRouter /
+  Ollama; thin fetch adapters, encrypted keys). In-app surfaces: an SSE-streamed AI
+  bubble, a left-side hold-to-talk FAB (lift-to-lock), on-device speech recognition,
+  single-schema task extraction with a **mandatory confirm card** committing through
+  the local-first task store, an OS share target, per-provider consent screens, and
+  an architectural injection defense (no model tools in v1; deletion permanently out
+  of AI reach; red-team corpus in CI). [docs/AI.md](docs/AI.md),
+  [ADR-0019](docs/adr/0019-ai-provider-architecture.md), BLUEPRINT §4.13/§12.16,
+  DESIGN §24.
+
+
+## [0.8.0] - 2026-07-29
+
+The Recurring Tasks release (Epic 19, OPH-204…214) — plus the calendar rule
+that should always have been the default, and four fixes the owner named.
+
+Repeating a task no longer means retyping it: pick "the last day of the month",
+"the 2nd Tuesday", or "the first Monday after the 22nd", watch the next five
+dates appear as you build the rule, and get twelve months of real tasks you can
+see in the calendar, the widget and search. Pick the 31st and February gets the
+28th — AllisWell clamps where Google Calendar would skip the month entirely.
+
+Every task is on your calendar now, and it stopped being a setting. A completed
+task keeps its block, marked. Work you finished late stops haunting the Overdue
+group. Sheets open in front of the app instead of under its own toolbar. Home's
+view controls moved into the app bar, giving the list back two lines. And the
+snooze button on an alarm notification finally does something.
+
+### Added 
 
 - **Recurring tasks reach every surface (OPH-208).** List rows wear a quiet ↻
   (and drop it the moment they are completed — a finished occurrence does not
@@ -60,7 +95,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   a series keeps every occurrence that already happened.
   `tasks.repeat_rule` left the write path in the same change.
 
-### Fixed — Epic 19 in progress
+### Fixed 
 
 - **Notification actions stop falling on the floor (OPH-214).** Pressing snooze
   on an alarm did nothing, and tapping the notification could crash the app on
@@ -84,7 +119,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   just finding it — with the fix reverted it fails with "would not hit test",
   which is exactly what the user saw.
 
-### Changed — Epic 19 in progress
+### Changed 
 
 - **Home's view controls moved into the app bar (OPH-213).** The Liste | Pano
   segmented row and the floating "show calendar" button used to eat two lines
@@ -147,39 +182,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   one event each. [ADR-0020](docs/adr/0020-recurring-tasks-and-materialization.md),
   DESIGN §25 (switch → auto-opening dialog, generated sentence, the "next 5"
   preview, scope defaults), tables and sources under OPH-204 in docs/TASKS.md.
-
-### Planned — request rounds 11 + 12 (2026-07-29; Epic 18 shipped as 0.7.0 below)
-
-- **Epic 19 — Recurring tasks, calendar always, flow fixes (OPH-204…214, toward
-  v0.8.0; round 12, slotted in between at the owner's request).** Recurring tasks
-  at last — the `repeat_rule` column has sat empty since v1: a structured rule
-  model on an RFC 5545 subset with RFC 7529 clamping ("the 31st" lands on a short
-  month's last day), Nth-weekday and after-day patterns ("the first Monday after
-  the 22nd"), a config dialog that opens automatically with the Repeat switch, a
-  live "next 5" preview, a **rolling 12-month window** of materialized real task
-  rows kept fresh by a daily sweep, and Google-style edit scopes (default:
-  this-and-future). Plus: the calendar mirror loses its opt-in switch (every dated
-  task becomes a 30-minute block, 23:29–23:59 when timeless; dateless tasks land
-  on their creation day; Google Tasks / Apple Reminders native-todo mapping
-  evaluated); overdue tasks completed today stop haunting the Overdue group; the
-  project-edit sheet stops opening under the popup menu; Home's view and calendar
-  toggles move into the app bar; and the screen-on alarm's dead snooze button +
-  tap-to-crash get a device investigation. BLUEPRINT §7.1/§12.2/§12.17,
-  DESIGN §16/§20/§25, ADR-0020/0021 at implementation.
-- **Epic 20 — AI (OPH-215…227, toward v0.9.0; renumbered from OPH-204…216 when
-  round 12 slotted Epic 19 in).** Two tracks, because the researched
-  reality is that no provider permits third-party use of consumer subscriptions in
-  mid-2026: **Track A** — an AllisWell remote MCP server ("add AllisWell to your
-  Claude/ChatGPT", where your subscription pays for the intelligence); **Track B** —
-  embedded AI with your own API key (Anthropic / OpenAI / Gemini / OpenRouter /
-  Ollama; thin fetch adapters, encrypted keys). In-app surfaces: an SSE-streamed AI
-  bubble, a left-side hold-to-talk FAB (lift-to-lock), on-device speech recognition,
-  single-schema task extraction with a **mandatory confirm card** committing through
-  the local-first task store, an OS share target, per-provider consent screens, and
-  an architectural injection defense (no model tools in v1; deletion permanently out
-  of AI reach; red-team corpus in CI). [docs/AI.md](docs/AI.md),
-  [ADR-0019](docs/adr/0019-ai-provider-architecture.md), BLUEPRINT §4.13/§12.16,
-  DESIGN §24.
 
 ## [0.7.0] - 2026-07-29
 

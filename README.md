@@ -28,7 +28,7 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 
 **AllisWell** brings your whole day into one place. Capture a task in seconds, plan it on a chronological **Home** or a kanban **Board**, keep rich **notes** and **files**, and never miss what matters thanks to **alarm-grade reminders that ring through Silent mode and Focus**. It works **offline-first** with realtime sync across every device, syncs **two-way with Google Calendar and Apple Calendar**, and is **100% self-hosted** — one `docker compose up` and every byte stays in **your own MySQL database**.
 
-> **Project status.** `v0.1.0` is the current tagged release. The full **`v0.4.0`** feature set described below is already built and tested — **366 app tests + 300+ backend tests green** — and in final on-device QA before its release tag. Track it in [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md). ⭐ Star the repo to follow along.
+> **Project status.** `v0.1.0` is the current tagged release. Everything described below through **`v0.8.0`** — recurring tasks, the always-on calendar mirror, Quick Access, alarm-grade reminders — is built and tested (**653 app tests + 390 backend unit + 47 integration green**) and in final on-device QA before its release tag. Track it in [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md). ⭐ Star the repo to follow along.
 
 <br>
 

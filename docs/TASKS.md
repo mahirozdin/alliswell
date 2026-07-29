@@ -4788,7 +4788,7 @@ gerçek telefonda göze bakılır ama DoD'yi kilitlemiyordu).
 
 ---
 
-## Epic 19 — Feedback round 12: tekrarlı görevler, takvim her zaman, akış düzeltmeleri (Phase 13, v0.8.0)
+## Epic 19 — Feedback round 12: tekrarlı görevler, takvim her zaman, akış düzeltmeleri (Phase 13, v0.8.0) ✅ KOD TAMAM (2026-07-29)
 
 _(Doğdu 2026-07-29 — Mahir'in 6 maddelik listesi; round 11'in aynı günü. Kullanıcının
 sıralamasıyla araya girdi: **bu epic Epic 18'den sonra, yapay zekadan (Epic 20) önce
