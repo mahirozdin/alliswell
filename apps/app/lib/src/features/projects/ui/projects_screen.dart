@@ -37,20 +37,19 @@ class ProjectsScreen extends ConsumerWidget {
         context,
         'nav.projects'.tr(),
         onRefresh: refresh,
+        // Round 13 #5: search is an app-bar action; the Active/Archived chips
+        // keep their row and the list starts higher.
+        trailingActions: [
+          AwSearchAction(
+            fieldKey: const Key('projects-search'),
+            hintText: 'project.searchHint'.tr(),
+            onQuery: (q) =>
+                ref.read(projectsSearchQueryProvider.notifier).set(q),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // OPH-167 (DESIGN §12): fold-insensitive search, ANDs with the
-          // Active/Archived chips below (S1/S5).
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: AwSearchField(
-              key: const Key('projects-search'),
-              hintText: 'project.searchHint'.tr(),
-              onQuery: (q) =>
-                  ref.read(projectsSearchQueryProvider.notifier).set(q),
-            ),
-          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Row(

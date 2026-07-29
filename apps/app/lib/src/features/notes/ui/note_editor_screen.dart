@@ -195,6 +195,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     final id = _noteId;
     final confirmed = await showDialog<bool>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         title: Text('note.deleteTitle'.tr()),
         actions: [

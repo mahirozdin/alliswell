@@ -88,6 +88,10 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
   Future<void> _pickMoreColors() async {
     final picked = await showDialog<String>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (_) => _ColorGridDialog(selectedHex: _colorHex),
     );
     if (picked != null) setState(() => _colorHex = picked);

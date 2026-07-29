@@ -63,6 +63,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No notes here'), findsOneWidget);
-    expect(find.byKey(const Key('notes-search')), findsOneWidget);
+    // Round 13 #5: an icon in the app bar, expanding into the field.
+    expect(find.byKey(const Key('search-open')), findsOneWidget);
   });
 }

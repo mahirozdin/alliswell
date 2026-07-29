@@ -373,7 +373,11 @@
     "fromYourCalendar": "Takviminden",
     "previousMonth": "Önceki ay",
     "nextMonth": "Sonraki ay",
-    "googleConsent": "Bütün görevlerin seçtiğin takvime yazılır — tarihsiz olanlar dahil, onlar eklendikleri güne düşer."
+    "googleConsent": "Bütün görevlerin seçtiğin takvime yazılır — tarihsiz olanlar dahil, onlar eklendikleri güne düşer.",
+    "disconnectConfirmTitle": "Takvim bağlantısı kesilsin mi?",
+    "disconnectConfirmBody": "AllisWell görevlerini oraya yazmayı bırakır. Takvimde olanlar yerinde kalır, istediğin zaman yeniden bağlayabilirsin.",
+    "appleDisconnect": "Bu takvimi kullanmayı bırak",
+    "appleDisconnectBody": "AllisWell görevlerini Apple Takvim'e yazmayı bırakır. Takvimde olanlar kalır. İznin kendisi macOS/iOS'te duruyor — tamamen kaldırmak istersen Ayarlar'dan al."
   },
   "tour": {
     "skip": "Atla",

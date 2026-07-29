@@ -40,7 +40,13 @@ Future<void> wideSurface(WidgetTester tester) async {
 String isoAt(DateTime local) => local.toUtc().toIso8601String();
 
 /// Type into a search field and ride out its 250 ms debounce.
+/// Round 13 #5: search is an app-bar action now — an icon until you open it —
+/// so every search starts with a tap on `search-open`.
 Future<void> search(WidgetTester tester, Key field, String query) async {
+  if (find.byKey(field).evaluate().isEmpty) {
+    await tester.tap(find.byKey(const Key('search-open')));
+    await tester.pumpAndSettle();
+  }
   await tester.enterText(find.byKey(field), query);
   await tester.pump(const Duration(milliseconds: 300));
   await tester.pumpAndSettle();
@@ -91,8 +97,9 @@ void main() {
     await search(tester, const Key('home-search'), 'zzz yok');
     expect(find.text('No results'), findsOneWidget);
 
-    // Clearing restores the exact prior list (S5).
-    await tester.tap(find.byKey(const Key('search-clear')));
+    // Clearing restores the exact prior list (S5). The X both clears AND
+    // collapses now, so a filter can never hide behind a closed icon.
+    await tester.tap(find.byKey(const Key('search-close')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('home-search-results')), findsNothing);
     expect(find.text('Alakasız iş'), findsOneWidget);

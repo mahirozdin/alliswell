@@ -5,6 +5,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **You can unlink a calendar again — and it asks first.** Google's disconnect
+  was a row at the bottom of a list nobody scrolled to, and Apple had none at
+  all. Both now carry a red unlink button beside the account, with a
+  confirmation that says what survives (your existing events do). On Apple,
+  "disconnect" honestly means "stop writing here" — the app cannot revoke an OS
+  permission, and the dialog says where that one lives.
+- **File and folder deletes ask for confirmation again.** They always had a
+  dialog; it was rendering UNDER the shell's own glass bar and floating button.
+  OPH-212 fixed that for sheets and left dialogs behind — all 20 of them now
+  open on the root navigator.
+- **The undo bar goes away sooner** — three seconds instead of five. Long enough
+  to catch a mistaken swipe, short enough to stop hovering over the list you
+  went back to using.
+- **Even spacing in the Home list.** Task rows and calendar cards used two
+  different rhythms, so a calendar card right after a task looked stuck to it
+  (3 px) while the reverse gap was 11. Every gap is 6 px now.
+- **Search moved into the app bar.** On Home, Notes and Projects it is an icon
+  that expands into a field in place, giving each list back a line on the phone.
+  Closing it clears the query, so a filter can never hide behind a collapsed
+  icon.
+- **A repeating task's rule follows the date you move it to.** Moving a "13th of
+  every month" task and choosing "this and future" (or "all") left the rule
+  saying the 13th — technically what the spec promised, and wrong, because you
+  had just said which day you wanted. Unambiguous patterns now move with the
+  date (including "the 2nd Tuesday" becoming whichever ordinal the new date is);
+  patterns with several days keep theirs and take only the new time.
+
 ### Planned — request round 11 #2 (2026-07-29; Epics 18 and 19 shipped as 0.7.0 and 0.8.0 below)
 
 - **Epic 20 — AI (OPH-215…227, toward v0.9.0; renumbered from OPH-204…216 when

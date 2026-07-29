@@ -222,6 +222,70 @@ describe('series editing scope (OPH-206)', () => {
     expect(anchor.getUTCHours()).toBe(18);
   });
 
+  it('moving a date with a wide scope moves the PATTERN too (round 13 #6)', async () => {
+    // The owner's report: a "13th of every month" task, moved to another date,
+    // kept saying "every month on the 13th". Technically what §25 R8 promised,
+    // and wrong — they had just told us which day they wanted.
+    const series = await createSeries({
+      rule: { freq: 'monthly', interval: 1, byMonthDay: [13] },
+      anchorAt: `${dayAfter(0)}T09:00:00.000Z`,
+    });
+    const target = occurrences(series.id)[0];
+    const movedTo = `${String(target.occurrence_date).slice(0, 8)}20`;
+
+    await patch(target.id, {
+      dueAt: `${movedTo}T09:00:00.000Z`,
+      seriesScope: 'all',
+    });
+
+    const rule = JSON.parse(tables.task_series.find((s) => s.id === series.id).rule);
+    expect(rule.byMonthDay).toEqual([20]);
+    // …and the occurrences followed, without leaving a duplicate behind.
+    const days = occurrences(series.id).map((t) => String(t.occurrence_date));
+    expect(days.every((d) => d.endsWith('-20'))).toBe(true);
+    expect(new Set(days).size).toBe(days.length);
+  });
+
+  it('“the 2nd Tuesday” follows to whatever the new date is', async () => {
+    const series = await createSeries({
+      rule: {
+        freq: 'monthly',
+        interval: 1,
+        byWeekday: [{ day: 'TU', ordinal: 2 }],
+      },
+    });
+    const target = occurrences(series.id)[0];
+    const day = String(target.occurrence_date);
+    // The 1st of that month — whatever weekday it is, it is the FIRST of them.
+    const first = `${day.slice(0, 8)}01`;
+
+    await patch(target.id, {
+      dueAt: `${first}T09:00:00.000Z`,
+      seriesScope: 'future',
+    });
+
+    const next = tables.task_series.find((s) => s.id !== series.id);
+    const rule = JSON.parse(next.rule);
+    expect(rule.byWeekday.single ?? rule.byWeekday[0]).toMatchObject({ ordinal: 1 });
+  });
+
+  it('an ambiguous pattern keeps its days and only takes the new time', async () => {
+    // Two days a month: there is no single day to move, so §25 R8 still holds.
+    const series = await createSeries({
+      rule: { freq: 'monthly', interval: 1, byMonthDay: [5, 20] },
+    });
+    const target = occurrences(series.id)[0];
+    const day = String(target.occurrence_date);
+
+    await patch(target.id, {
+      dueAt: `${day.slice(0, 8)}11T18:30:00.000Z`,
+      seriesScope: 'all',
+    });
+
+    const rule = JSON.parse(tables.task_series.find((s) => s.id === series.id).rule);
+    expect(rule.byMonthDay).toEqual([5, 20]);
+  });
+
   it('a scope on a task that is not part of a series does nothing at all', async () => {
     const created = await app.inject({
       method: 'POST',

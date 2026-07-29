@@ -66,6 +66,10 @@ class _ProjectDetail extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         title: Text('project.deleteTitle'.tr()),
         content: Text('project.deleteBody'.tr(args: {'name': project.name})),

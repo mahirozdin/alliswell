@@ -1,5 +1,12 @@
 import { newId } from '../lib/ids.js';
-import { expandOccurrences, MAX_OCCURRENCES, parseDay, validateRule } from '../lib/recurrence.js';
+import {
+  MAX_OCCURRENCES,
+  WEEKDAYS,
+  expandOccurrences,
+  lastDayOfMonth,
+  parseDay,
+  validateRule,
+} from '../lib/recurrence.js';
 import { wallClockParts, zonedWallTimeToUtc } from '../lib/time.js';
 import { reconcileTaskReminder } from './reminders.js';
 import { recordSyncWrite } from './sync.js';
@@ -356,6 +363,63 @@ async function writeOccurrence(trx, { workspaceId, row, patch, userId }) {
 }
 
 /**
+ * Re-points a rule's day selector at `day` (feedback round 13 #6).
+ *
+ * The owner moved a "13th of every month" task to another date and the rule
+ * kept saying the 13th — technically what §25 R8 promised ("days come from the
+ * rule"), and wrong in the only way that matters: they had just told us which
+ * day they wanted. So a date edit with a scope WIDER than "just this one" now
+ * moves the pattern too.
+ *
+ * Only unambiguous rules follow. A rule that names several days, or the
+ * "first Monday after the 22nd" window, has no single day to move — those keep
+ * their pattern and only take the new time of day, as before.
+ *
+ * @returns {object|null} the rewritten rule, or null when it must stay put.
+ */
+export function ruleFollowingDay(rule, day) {
+  const target = parseDay(day);
+  if (!target) return null;
+  const weekday =
+    WEEKDAYS[(new Date(Date.UTC(target.year, target.month - 1, target.day)).getUTCDay() + 6) % 7];
+  const monthDays = rule.byMonthDay ?? [];
+  const weekdays = rule.byWeekday ?? [];
+
+  if (rule.freq === 'daily') return null; // nothing about a day to follow
+  if (monthDays.length > 1 || weekdays.length > 1) return null; // ambiguous
+
+  if (rule.freq === 'weekly') {
+    if (weekdays.length !== 1 || weekdays[0].ordinal != null) return null;
+    return { ...rule, byWeekday: [{ day: weekday, ordinal: null }] };
+  }
+
+  // monthly / yearly
+  const next = { ...rule };
+  if (rule.freq === 'yearly' && Array.isArray(rule.byMonth) && rule.byMonth.length === 1) {
+    next.byMonth = [target.month];
+  }
+
+  if (monthDays.length === 1) {
+    const last = lastDayOfMonth(target.year, target.month);
+    // "The last day" stays "the last day" when the user picked one.
+    next.byMonthDay = monthDays[0] === -1 && target.day === last ? [-1] : [target.day];
+    return next;
+  }
+
+  if (weekdays.length === 1 && weekdays[0].ordinal != null) {
+    // "The 2nd Tuesday" becomes whichever ordinal weekday the new date is —
+    // and "the last one" is preserved when the new date is the last of its kind.
+    const nth = Math.ceil(target.day / 7);
+    const isLast = target.day + 7 > lastDayOfMonth(target.year, target.month);
+    next.byWeekday = [{ day: weekday, ordinal: isLast ? -1 : nth }];
+    return next;
+  }
+
+  // No selector at all: the anchor decides, and the anchor is moving anyway.
+  return monthDays.length === 0 && weekdays.length === 0 ? { ...rule } : null;
+}
+
+/**
  * Propagates a task edit to the rest of its series (OPH-206, DESIGN §25 R8).
  *
  * The caller has already written the row the user edited; this decides what the
@@ -408,6 +472,14 @@ export async function propagateSeriesScope(
 
   const template = { ...(parseJsonColumn(series.template) ?? {}), ...templatePatch };
   const fromDay = occurrenceDayOf(task.occurrence_date);
+  const currentRule = parseJsonColumn(series.rule);
+  // Round 13 #6: a scoped DATE edit moves the pattern too, when the pattern is
+  // unambiguous enough to move. `newDay` is where the user just put this
+  // occurrence; `followedRule` is null when the rule has to stay where it is.
+  const newDay = patch.dueAt ? wallDay(new Date(patch.dueAt), series.timezone) : null;
+  // Only a MOVE follows. Editing the hour of the same day must not churn every
+  // future row's id for a pattern that did not change.
+  const followedRule = newDay && newDay !== fromDay ? ruleFollowingDay(currentRule, newDay) : null;
 
   if (scope === 'all') {
     const rows = await movableOccurrences(trx, {
@@ -429,21 +501,63 @@ export async function propagateSeriesScope(
       entityType: 'task_series',
       entityId: series.id,
       operation: 'update',
-      changedFields: time ? ['template', 'anchor_at'] : ['template'],
+      changedFields: [
+        'template',
+        ...(time ? ['anchor_at'] : []),
+        ...(followedRule ? ['rule'] : []),
+      ],
     });
     await trx('task_series')
       .where({ id: series.id })
       .update({
         template: JSON.stringify(normalizeTemplate(template)),
-        ...(time ? { anchor_at: timeFor(wallDay(series.anchor_at, series.timezone)) } : {}),
+        ...(followedRule ? { rule: JSON.stringify(followedRule) } : {}),
+        ...(time
+          ? { anchor_at: timeFor(newDay ?? wallDay(series.anchor_at, series.timezone)) }
+          : {}),
         revision,
         updated_at: new Date(),
       });
+
+    if (followedRule) {
+      // The pattern moved, so the days did too: the edited row takes the new
+      // slot (its old one no longer exists in the plan, and leaving it there
+      // would let materialization create a duplicate on the new day), every
+      // other unfinished future row goes, and the window is rebuilt.
+      const slotRevision = await recordSyncWrite(trx, {
+        workspaceId,
+        entityType: 'task',
+        entityId: task.id,
+        operation: 'update',
+        changedFields: ['occurrence_date'],
+      });
+      await trx('tasks')
+        .where({ id: task.id })
+        .update({ occurrence_date: newDay, revision: slotRevision, updated_at: new Date() });
+      const stale = await movableOccurrences(trx, {
+        workspaceId,
+        seriesId: series.id,
+        excludeId: task.id,
+      });
+      for (const row of stale) {
+        const gone = await recordSyncWrite(trx, {
+          workspaceId,
+          entityType: 'task',
+          entityId: row.id,
+          operation: 'delete',
+        });
+        await trx('tasks')
+          .where({ id: row.id })
+          .update({ deleted_at: new Date(), revision: gone, updated_at: new Date() });
+      }
+      const fresh = await trx('task_series').where({ id: series.id }).first();
+      await materializeSeries(trx, { workspaceId, series: fresh, now });
+    }
     return { scope, touched: rows.length, newSeriesId: null };
   }
 
   // ── future: split the series in two ───────────────────────────────────────
-  const rule = parseJsonColumn(series.rule);
+  const rule = currentRule;
   const previousDay = addWallDays(fromDay, -1);
 
   // Everything from this day on, except the row the user is editing, leaves the
@@ -492,7 +606,8 @@ export async function propagateSeriesScope(
   await trx('task_series').insert({
     id: nextSeriesId,
     workspace_id: workspaceId,
-    rule: JSON.stringify(rule),
+    // The half that starts here follows the date the user just picked.
+    rule: JSON.stringify(followedRule ?? rule),
     template: JSON.stringify(normalizeTemplate(template)),
     timezone: series.timezone,
     anchor_at: anchorAt,
@@ -511,7 +626,12 @@ export async function propagateSeriesScope(
   });
   await trx('tasks')
     .where({ id: task.id })
-    .update({ series_id: nextSeriesId, revision: adoptRevision, updated_at: new Date() });
+    .update({
+      series_id: nextSeriesId,
+      ...(followedRule ? { occurrence_date: newDay } : {}),
+      revision: adoptRevision,
+      updated_at: new Date(),
+    });
 
   const { created } = await materializeSeries(trx, { workspaceId, series: fresh, now });
   return { scope, touched: moving.length + created, newSeriesId: nextSeriesId };

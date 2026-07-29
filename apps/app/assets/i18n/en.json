@@ -374,7 +374,11 @@
     "fromYourCalendar": "From your calendar",
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
-    "googleConsent": "All your tasks are written to the calendar you pick — including ones with no date, which land on the day you added them."
+    "googleConsent": "All your tasks are written to the calendar you pick — including ones with no date, which land on the day you added them.",
+    "disconnectConfirmTitle": "Disconnect this calendar?",
+    "disconnectConfirmBody": "AllisWell stops writing your tasks to it. Events already there stay where they are, and you can connect again any time.",
+    "appleDisconnect": "Stop using this calendar",
+    "appleDisconnectBody": "AllisWell stops writing your tasks to Apple Calendar. Events already there stay. macOS/iOS keeps the permission itself — remove that in Settings if you want it gone."
   },
   "tour": {
     "skip": "Skip",

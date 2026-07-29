@@ -11,7 +11,6 @@ import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/home/month_calendar.dart';
 import 'package:alliswell/src/features/tasks/providers.dart';
-import 'package:alliswell/src/widgets/search_field.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -286,7 +285,9 @@ void main() {
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(AwSearchField), 'cay');
+    await tester.tap(find.byKey(const Key('search-open')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('home-search')), 'cay');
     await tester.pump(const Duration(milliseconds: 400)); // search debounce
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('home-search-results')), findsOneWidget);

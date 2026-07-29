@@ -64,6 +64,9 @@ void main() {
 
     await tester.tap(find.text('All'));
     await tester.pumpAndSettle();
+    // The field lives behind the app-bar search icon now (round 13 #5).
+    await tester.tap(find.byKey(const Key('search-open')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('notes-search')), 'yumurta');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();

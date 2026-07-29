@@ -31,6 +31,10 @@ class _TagManageSheet extends ConsumerWidget {
   Future<void> _edit(BuildContext context, WidgetRef ref, Tag tag) async {
     await showDialog<void>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (_) => _TagEditDialog(tag: tag),
     );
   }
@@ -41,6 +45,10 @@ class _TagManageSheet extends ConsumerWidget {
     if (!context.mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         title: Text('tag.deleteTitle'.tr(args: {'name': tag.name})),
         content: Text(

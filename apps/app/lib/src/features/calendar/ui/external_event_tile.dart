@@ -29,87 +29,95 @@ class ExternalEventTile extends ConsumerWidget {
     // holidays — so it recedes instead of competing with the day's real work.
     final accent = event.isBusy ? scheme.primary : scheme.onSurfaceVariant;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AwSpace.x2),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AwSpace.x3,
-          vertical: AwSpace.x3,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // A time rail, not a checkbox: this is when something happens TO
-            // you, not something you tick off.
-            SizedBox(
-              width: 44,
-              child: event.isAllDay
-                  ? Icon(Icons.today_outlined, size: 18, color: accent)
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          hhmm(event.startsAt),
-                          style: text.labelLarge?.copyWith(
-                            color: accent,
-                            fontWeight: FontWeight.w700,
+    // Round 13 #4: the SAME outer rhythm as a task row (task_tile.dart's
+    // `vertical: 3`). This card used to carry `margin: only(bottom: 8)`, which
+    // meant a calendar card following a task got 3 px of air above it and 11 px
+    // below — so one gap read as "stuck together" and the next as a break.
+    // Every gap in the list is now the same 6 px, whatever the two rows are.
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AwSpace.x3,
+            vertical: AwSpace.x3,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // A time rail, not a checkbox: this is when something happens TO
+              // you, not something you tick off.
+              SizedBox(
+                width: 44,
+                child: event.isAllDay
+                    ? Icon(Icons.today_outlined, size: 18, color: accent)
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            hhmm(event.startsAt),
+                            style: text.labelLarge?.copyWith(
+                              color: accent,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        Text(
-                          hhmm(event.endsAt),
-                          style: text.labelSmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                          Text(
+                            hhmm(event.endsAt),
+                            style: text.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-            ),
-            Container(
-              width: 3,
-              height: 32,
-              margin: const EdgeInsets.only(right: AwSpace.x3),
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: BorderRadius.circular(AwRadius.s),
+                        ],
+                      ),
               ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    event.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (event.location != null && event.location!.isNotEmpty)
+              Container(
+                width: 3,
+                height: 32,
+                margin: const EdgeInsets.only(right: AwSpace.x3),
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(AwRadius.s),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      event.location!,
+                      event.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: text.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
+                      style: text.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                ],
+                    if (event.location != null && event.location!.isNotEmpty)
+                      Text(
+                        event.location!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            // Says "this came from your calendar, and it lives there" — the
-            // read-only affordance, without a disabled-looking control.
-            Tooltip(
-              message: 'calendar.fromYourCalendar'.tr(),
-              child: Icon(
-                Icons.event_outlined,
-                size: 16,
-                color: scheme.onSurfaceVariant,
+              // Says "this came from your calendar, and it lives there" — the
+              // read-only affordance, without a disabled-looking control.
+              Tooltip(
+                message: 'calendar.fromYourCalendar'.tr(),
+                child: Icon(
+                  Icons.event_outlined,
+                  size: 16,
+                  color: scheme.onSurfaceVariant,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

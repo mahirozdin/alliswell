@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../i18n/i18n.dart';
+import '../../../widgets/swipe_actions.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -85,6 +86,19 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
         .connectUrl(workspaceId);
     await ref.read(urlLauncherProvider)(Uri.parse(url));
   });
+
+  /// Cutting a calendar loose is not undoable from inside the app, so it asks
+  /// first (DESIGN §19 D3) — and says what survives, because "disconnect"
+  /// sounds like it might delete the events too. It does not.
+  Future<void> _confirmDisconnect(GoogleAccount account) async {
+    final ok = await awConfirmDelete(
+      context,
+      title: 'calendar.disconnectConfirmTitle'.tr(),
+      body: 'calendar.disconnectConfirmBody'.tr(),
+      confirmLabel: 'calendar.disconnect'.tr(),
+    );
+    if (ok) await _disconnect(account);
+  }
 
   Future<void> _disconnect(GoogleAccount account) => _guard(() async {
     await ref.read(googleIntegrationsApiProvider).disconnect(account.id);
@@ -209,11 +223,25 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
           ),
           title: Text('calendar.google'.tr()),
           subtitle: Text(account.providerAccountId),
-          trailing: IconButton(
-            key: const Key('google-refresh'),
-            tooltip: 'calendar.refresh'.tr(),
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(googleIntegrationProvider),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                key: const Key('google-refresh'),
+                tooltip: 'calendar.refresh'.tr(),
+                icon: const Icon(Icons.refresh),
+                onPressed: () => ref.invalidate(googleIntegrationProvider),
+              ),
+              // Round 13 #1: connecting was one tap and disconnecting was a row
+              // at the bottom of a list nobody scrolled to. The unlink lives
+              // next to the account it unlinks, in the error role.
+              IconButton(
+                key: const Key('google-unlink'),
+                tooltip: 'calendar.disconnect'.tr(),
+                icon: Icon(Icons.link_off, color: scheme.error),
+                onPressed: _busy ? null : () => _confirmDisconnect(account),
+              ),
+            ],
           ),
         ),
         if (account.needsReconnect)
@@ -255,7 +283,7 @@ class _GoogleCalendarCardState extends ConsumerState<GoogleCalendarCard> {
             style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
           ),
           subtitle: Text('calendar.disconnectSub'.tr()),
-          onTap: _busy ? null : () => _disconnect(account),
+          onTap: _busy ? null : () => _confirmDisconnect(account),
         ),
       ],
     );

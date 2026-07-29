@@ -4,7 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// How long a deleted row stays takeable-back before the delete is really
 /// performed (OPH-184, DESIGN §19 D4). Matches the undo snackbar's lifetime.
-const Duration kAwUndoWindow = Duration(seconds: 5);
+///
+/// Three seconds, not five (feedback round 13): the bar has to outlive the
+/// swipe animation and a glance, and nothing more. Five seconds of a control
+/// the user has already decided against reads as the app arguing with them —
+/// and it sits over the list they went back to using.
+const Duration kAwUndoWindow = Duration(seconds: 3);
 
 /// Overridable so widget tests need not wait out a real five seconds — and so
 /// a test that WANTS to observe the commit can shorten it deliberately.

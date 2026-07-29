@@ -99,6 +99,10 @@ Future<void> showQuickRenameDialog(
 ) async {
   final name = await showDialog<String>(
     context: context,
+    // Round 13 #2: dialogs go to the ROOT navigator for the same
+    // reason sheets do (OPH-212) — inside a shell branch the
+    // Scaffold's own bar and FAB paint over them.
+    useRootNavigator: true,
     // The dialog owns its controller: disposing it here would run while the
     // route is still animating out and the field is still rebuilding.
     builder: (dialogContext) => _RenameDialog(initial: row.displayTitle),

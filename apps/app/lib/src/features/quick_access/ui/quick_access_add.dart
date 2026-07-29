@@ -94,6 +94,10 @@ Future<void> showQuickLinkDialog(BuildContext context, WidgetRef ref) async {
   // route is still animating out, and the fields rebuild during that frame.
   final result = await showDialog<({String url, String title})>(
     context: context,
+    // Round 13 #2: dialogs go to the ROOT navigator for the same
+    // reason sheets do (OPH-212) — inside a shell branch the
+    // Scaffold's own bar and FAB paint over them.
+    useRootNavigator: true,
     builder: (dialogContext) => const _QuickLinkDialog(),
   );
   if (result == null) return;

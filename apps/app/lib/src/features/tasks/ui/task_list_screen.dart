@@ -99,6 +99,10 @@ class _CaptureTile extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final ok = await showDialog<bool>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (ctx) => AlertDialog(
         title: Text(title),
         content: Text(body),

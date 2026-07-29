@@ -5331,6 +5331,47 @@ en olası yeri orasıydı. **Gerçek crash log'u yine de cihaz turunda toplanmal
 `action`/`interacted` satırları görünür** (bu tur onların düşmesini garanti etti);
 sonuç STATE'e.
 
+### Round 13 — kullanıcı düzeltmeleri (2026-07-29, Epic 19'un altında; ayrı task numarası verilmedi, istek "direkt yap" idi)
+
+- [x] **1. Takvim bağlantısını koparma yok.** Google'da vardı ama listenin en altında
+      bir satırdı ve **onay sormuyordu**; Apple'da hiç yoktu. Artık ikisinde de hesabın
+      **yanında kırmızı `link_off` düğmesi** var (`google-unlink`, `apple-unlink`) ve
+      ikisi de onay istiyor. Apple'da "koparmak" OS iznini iptal etmek değil — uygulama
+      bunu yapamaz — **seçili takvimi boşaltmak**, yani aynayı durdurmak; onay metni
+      izninin Ayarlar'da durduğunu söylüyor. Google'ın eski alt satırı da aynı onaya bağlandı.
+- [x] **2. Dosya/klasör silmede onay çıkmıyor.** Onay dialog'ları **zaten vardı** —
+      görünmüyorlardı: OPH-212'de sheet'leri kök navigator'a aldık ama **`showDialog`
+      dokunulmamıştı**, dolayısıyla dal navigator'ına açılan her dialog HomeShell'in cam
+      çubuğu ve FAB'ının altında kalıyordu. **20 `showDialog` çağrısının hepsi** kök
+      navigator'a alındı — dosya/klasör silme, etiket yönetimi, not silme, ayarlar dahil.
+- [x] **3. Geri al çubuğu çok uzun kalıyor.** `kAwUndoWindow` 5 sn → **3 sn**
+      (snackbar süresi zaten pencereden türüyor). Kaydırma animasyonu + bir bakış için
+      yeterli; fazlası, kullanıcının çoktan karar verdiği bir düğmeyi listenin üstünde
+      tutmak demek.
+- [x] **4. Kart boşlukları eşit değil.** İki farklı kalıp vardı: görev satırı
+      `Padding(vertical: 3)`, etkinlik kartı `Card(margin: bottom 8)`. Sonuç: görev→etkinlik
+      **3 px** (yapışık), etkinlik→görev **11 px**. Etkinlik kartı da görev satırının
+      ritmine alındı — her boşluk artık **6 px**, sıra ne olursa olsun.
+- [x] **5. Arama app bar'a taşındı.** Yeni `AwSearchAction` (`widgets/search_field.dart`):
+      app bar'da bir arama ikonu, tıklayınca **yerinde genişleyen** input, X ile kapanıyor.
+      **Kapanış sorguyu da temizliyor** — kapalı bir ikonun arkasında duran filtre, §16'nın
+      takvim seçimi için zaten reddettiği "görünmez filtre"dir. Üç ekranda uygulandı
+      (Home, Notlar, Projeler); üçü de gövdesinden bir satır kazandı. Genişlik ekrana göre
+      140-280 px arası kısılıyor ki başlık ve diğer ikonlar yerinden olmasın.
+- [x] **6. Tekrar cümlesi tarihi değiştirince güncellenmiyor.** State bayat değildi,
+      **kural gerçekten değişmiyordu**: §25 R8 "günler kuraldan gelir" diyordu, ama
+      kullanıcı tarihi değiştirerek hangi günü istediğini zaten söylemişti. Artık
+      **kapsamı "bu ve gelecektekiler"/"tümü" olan bir tarih düzenlemesi deseni de
+      taşıyor** (`ruleFollowingDay`): tek günlü aylık kural yeni güne geçer, "ayın son
+      günü" son günse öyle kalır, "2. Salı" yeni tarihin kaçıncı Salı'sıysa ona döner,
+      yıllıkta ay da güncellenir. **Belirsiz kurallar** (birden çok gün, "22'sinden
+      sonraki ilk Pazartesi" penceresi) desenini korur, yalnız saati alır — taşınacak
+      tek bir gün yok. Aynı gün içinde saat değişimi kuralı hiç kıpırdatmıyor (yoksa
+      her satırın id'si boşuna değişirdi).
+
+**Doğrulama:** app **654 test**, API **393 unit + 47 entegrasyon**, analyze + i18n +
+kontrast (FAILURES: 0) + lint + format temiz.
+
 **Epic 19 DoD:** her task kendi testleriyle; ADR-0020 + ADR-0021 kabul edilmiş; motor
 parite fikstürleri iki süitte de yeşil; README tekrar bölümü gerçeği yansıtıyor;
 BLUEPRINT §7.1/§12.2/§12.17 + DESIGN §16/§20/§25 tutarlı; cihaz işleri (214 + 210'un

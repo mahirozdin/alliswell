@@ -347,6 +347,10 @@ Future<void> showFileRenameDialog(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final newName = await showDialog<String>(
     context: context,
+    // Round 13 #2: dialogs go to the ROOT navigator for the same
+    // reason sheets do (OPH-212) — inside a shell branch the
+    // Scaffold's own bar and FAB paint over them.
+    useRootNavigator: true,
     builder: (dialogContext) => AlertDialog(
       title: Text('file.renameTitle'.tr()),
       content: TextField(
@@ -389,6 +393,10 @@ Future<void> confirmFileDelete(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final confirmed = await showDialog<bool>(
     context: context,
+    // Round 13 #2: dialogs go to the ROOT navigator for the same
+    // reason sheets do (OPH-212) — inside a shell branch the
+    // Scaffold's own bar and FAB paint over them.
+    useRootNavigator: true,
     builder: (dialogContext) => AlertDialog(
       title: Text('file.deleteConfirm'.tr(args: {'name': file.name})),
       content: Text('file.deleteBody'.tr()),

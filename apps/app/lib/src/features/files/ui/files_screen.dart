@@ -149,6 +149,10 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
     if (!mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         title: Text('files.deleteFolderTitle'.tr(args: {'name': folder.name})),
         content: Text(
@@ -370,6 +374,10 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
     final controller = TextEditingController(text: initial ?? '');
     return showDialog<String>(
       context: context,
+      // Round 13 #2: dialogs go to the ROOT navigator for the same
+      // reason sheets do (OPH-212) — inside a shell branch the
+      // Scaffold's own bar and FAB paint over them.
+      useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         title: Text(title),
         content: TextField(

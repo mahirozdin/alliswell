@@ -129,20 +129,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final calendarVisible = ref.watch(homeCalendarVisibleProvider);
     final dateFormat = ref.watch(dateFormatProvider);
 
-    final searchField = Padding(
-      padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x1, AwSpace.x4, 0),
-      child: AwSearchField(
-        key: const Key('home-search'),
-        hintText: 'home.searchHint'.tr(),
-        onQuery: (q) => ref.read(homeSearchQueryProvider.notifier).set(q),
-      ),
-    );
-
     // OPH-213 (DESIGN §16 H1, revised): the view controls left the scroll and
     // became app-bar icons — the Notes pattern. An icon shows the view it will
     // SWITCH TO, so what you tap is what you get. The board's column editor
     // stays beside it, since it only means anything in the board.
     final viewActions = <Widget>[
+      // Round 13 #5: search is an app-bar action too, so the list keeps its
+      // line. Closing it clears the query (see AwSearchAction).
+      AwSearchAction(
+        fieldKey: const Key('home-search'),
+        hintText: 'home.searchHint'.tr(),
+        onQuery: (q) => ref.read(homeSearchQueryProvider.notifier).set(q),
+      ),
       IconButton(
         key: const Key('home-view-toggle'),
         tooltip: isBoard ? 'board.viewList'.tr() : 'board.viewBoard'.tr(),
@@ -264,7 +262,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               child: Column(
                                 children: [
                                   quickAdd,
-                                  searchField,
                                   Expanded(
                                     // OPH-171: the list pulls here too; the
                                     // calendar panel beside it is not a list.
@@ -341,7 +338,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       // context INSIDE the scroll view (H4).
                       child: KeyedSubtree(key: _quickAddKey, child: quickAdd),
                     ),
-                    SliverToBoxAdapter(child: searchField),
                     if (searching) const _HomeSearchResults(),
                     if (!searching && calendarVisible)
                       SliverToBoxAdapter(

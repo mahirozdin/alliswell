@@ -57,6 +57,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         title: Text('nav.notes'.tr()),
         actions: [
           if (wide) AwRefreshAction(onRefresh: refresh),
+          // Round 13 #5: search moved into the bar, so the list starts one
+          // line higher (the §16 H1 argument, applied everywhere).
+          AwSearchAction(
+            fieldKey: const Key('notes-search'),
+            hintText: 'note.searchHint'.tr(),
+            onQuery: (q) => ref.read(notesQueryProvider.notifier).setSearch(q),
+          ),
           IconButton(
             key: const Key('notes-view-toggle'),
             tooltip: isGrid ? 'note.listView'.tr() : 'note.cardView'.tr(),
@@ -77,17 +84,6 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
       // FAB hoisted to HomeShell (OPH-101).
       body: Column(
         children: [
-          // OPH-167: the shared search field (DESIGN S1) — as-you-type with
-          // debounce, fold-insensitive matching in the store (ADR-0013).
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: AwSearchField(
-              key: const Key('notes-search'),
-              hintText: 'note.searchHint'.tr(),
-              onQuery: (q) =>
-                  ref.read(notesQueryProvider.notifier).setSearch(q),
-            ),
-          ),
           // Horizontally scrollable so the filter strip never overflows on
           // phones (and survives extra chips like OPH-109's 'READMEs').
           SingleChildScrollView(

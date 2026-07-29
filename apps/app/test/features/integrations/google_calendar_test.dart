@@ -172,10 +172,35 @@ void main() {
     await tester.pumpWidget(await cardWith(api));
     await tester.pumpAndSettle();
 
+    // Round 13 #1: cutting a calendar loose asks first — it is not undoable
+    // from inside the app, and "disconnect" sounds like it deletes the events.
     await tester.tap(find.byKey(const Key('google-disconnect')));
+    await tester.pumpAndSettle();
+    expect(api.googleAccounts, isNotEmpty, reason: 'nothing happens before OK');
+
+    await tester.tap(find.byKey(const Key('confirm-delete')));
     await tester.pumpAndSettle();
 
     expect(api.googleAccounts, isEmpty);
     expect(find.byKey(const Key('google-connect')), findsOneWidget);
   });
+
+  testWidgets(
+    'the unlink button sits with the account, and can be backed out of',
+    (tester) async {
+      final api = FakeApi()..seedGoogleAccount(defaultCalendarId: 'primary');
+      await tester.pumpWidget(await cardWith(api));
+      await tester.pumpAndSettle();
+
+      // Round 13 #1: connecting was one tap; disconnecting was a row at the
+      // bottom of a list nobody scrolled to. Now it is next to the account.
+      await tester.tap(find.byKey(const Key('google-unlink')));
+      await tester.pumpAndSettle();
+      expect(find.text('Disconnect this calendar?'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(api.googleAccounts, isNotEmpty);
+    },
+  );
 }

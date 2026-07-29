@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../../widgets/swipe_actions.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import 'apple_calendar_gateway.dart';
@@ -141,6 +142,18 @@ class _Connected extends ConsumerWidget {
                 ? 'calendar.connected'.tr()
                 : 'calendar.accessGranted'.tr(),
           ),
+          // Round 13 #1: there was no way back at all here. The app cannot
+          // revoke an OS permission, so "disconnect" means what it honestly
+          // can — stop writing to the chosen calendar — and the confirm text
+          // says the permission itself stays in Settings.
+          trailing: hasCalendar
+              ? IconButton(
+                  key: const Key('apple-unlink'),
+                  tooltip: 'calendar.appleDisconnect'.tr(),
+                  icon: Icon(Icons.link_off, color: scheme.error),
+                  onPressed: () => _disconnect(context, ref),
+                )
+              : null,
         ),
         ListTile(
           key: const Key('apple-calendar-row'),
@@ -158,6 +171,18 @@ class _Connected extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _disconnect(BuildContext context, WidgetRef ref) async {
+    final ok = await awConfirmDelete(
+      context,
+      title: 'calendar.appleDisconnect'.tr(),
+      body: 'calendar.appleDisconnectBody'.tr(),
+      confirmLabel: 'calendar.disconnect'.tr(),
+    );
+    // Clearing the calendar id is what actually stops the mirror: the engine
+    // has nowhere to write, and existing events are left alone.
+    if (ok) await ref.read(appleCalendarIdProvider.notifier).set('');
   }
 
   Future<void> _pick(BuildContext context, WidgetRef ref) async {
