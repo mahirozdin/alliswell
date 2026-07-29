@@ -8,6 +8,7 @@ import '../providers.dart';
 import 'quick_access_menu.dart';
 import 'quick_access_navigation.dart';
 import 'quick_access_row.dart';
+import 'quick_link_sheets.dart';
 
 /// Which chrome the shared list is wearing (DESIGN §23 Q1: one store, one
 /// order, three surfaces — they may differ in chrome, never in content).
@@ -44,10 +45,9 @@ class QuickAccessList extends ConsumerWidget {
         case QuickRowAction.rename:
           await showQuickRenameDialog(context, ref, row);
         case QuickRowAction.emoji:
+          await showQuickEmojiSheet(context, ref, row);
         case QuickRowAction.color:
-          // The pickers arrive with OPH-202; until then the menu still shows
-          // the entries so the surface is complete in one place.
-          break;
+          await showQuickColorSheet(context, ref, row);
         case QuickRowAction.useTargetName:
           await store.rename(row.id, fallbackTitleFor(row));
         case QuickRowAction.moveUp:

@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 18 in progress
 
+- **Shortcuts you can recognise at a glance (OPH-202).** Give any shortcut an
+  emoji (recents + a curated grid + type your own — the system keyboard is the
+  real picker, so no new dependency), a colour from the project palette, or
+  your own name. Clearing the emoji returns the row to its kind icon; clearing
+  the name falls back to the target's current one, and when the target has
+  been renamed the row says so and offers to match it in one tap.
+
 - **Shortcuts are born where the thing lives (OPH-201).** Projects (list and
   detail), notes (list, grid and editor), tasks, folders and files all carry a
   ⚡ "Add to quick access" entry that flips to "Remove from quick access" once

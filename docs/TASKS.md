@@ -4711,26 +4711,40 @@ ediliyordu) → şema varsa olduğu gibi değerlendirilir; ve FakeApi'nin id ür
 yüzden 50 tohumlanan satırın yalnız 46'sı replikaya iniyordu (limit testi yakaladı) →
 `padLeft`.
 
-### OPH-202 — Kişiselleştirme: emoji, renk, ad
+### OPH-202 — Kişiselleştirme: emoji, renk, ad ✅ 2026-07-29
 
-- [ ] **Emoji seçici (DESIGN §23 Q7):** bottom sheet — "Son kullanılanlar" (cihaz-yerel,
+- [x] **Emoji seçici (DESIGN §23 Q7):** bottom sheet — "Son kullanılanlar" (cihaz-yerel,
       ≤16) + ~48'lik kürasyonlu ızgara (iş/etiket temaları) + **serbest metin alanı**
       (sistem klavyesinin emoji sayfası asıl yol; masaüstünde de bu alan çalışır).
       Tek grafem doğrulaması (API `emoji` ≤16 bayt utf8mb4 zaten sınırlar); "Kaldır"
       seçeneği tür ikonuna döndürür. Paket YOK — tam emoji-picker bağımlılığı park
       (ADR isterdi, gerekçesiz).
-- [ ] **Renk:** proje renk seçicisinin aynı swatch kalıbı (aynı palet, aynı bileşen
+- [x] **Renk:** proje renk seçicisinin aynı swatch kalıbı (aynı palet, aynı bileşen
       yeniden kullanılır — yeni palet İCAT EDİLMEZ) + "renk yok" seçeneği. Renk yalnız
       satırdaki nokta ve panel vurgusudur; metin rengine ASLA girmez (kontrast tabanı
       metinden bağımsız kalır, DESIGN §23 Q8; nokta ≥3:1 iki temada `contrast.py`
       çiftlerine girer).
-- [ ] **Ad:** satır menüsünden dialog, 200 karakter, boş bırakılırsa hedef adına döner
+- [x] **Ad:** satır menüsünden dialog, 200 karakter, boş bırakılırsa hedef adına döner
       (url'de host). Hedef yeniden adlanınca kısayol adı DEĞİŞMEZ; satır alt metni
       hedefin güncel adını gösterir (fark varsa) — kullanıcı isterse "hedef adını al"
       menü eylemiyle eşitler.
-- [ ] Testler: grafem doğrulaması (çok karakter reddi, ZWJ dizisi kabulü); son
+- [x] Testler: grafem doğrulaması (çok karakter reddi, ZWJ dizisi kabulü); son
       kullanılanlar sırası; renk seçiminin store'a düşüşü; ad boşaltmanın hedefe
       dönüşü; "hedef adını al" eşitlemesi.
+
+**OPH-202 uygulama notları:** (1) `_ColorSwatchDot` → `widgets/color_swatch_dot.dart`
+(`AwColorSwatchDot`); proje sheet'i artık oradan import ediyor — bir özelliğin başka bir
+özelliğin SHEET dosyasından widget alması ev düzenine aykırıydı; (2) kısayol renginde
+**yalnız 10'luk palet** var, `_ColorGridDialog`ın sınırsız seti bilinçle dışarıda
+(DESIGN §23 Q8a: sınırsız fille halka bile kontrastı garanti edemez) — park listesinde;
+(3) emoji kuralı "**tek grafem**", "emoji mi?" değil: paketsiz emoji sınıflandırması
+bayrakları/ZWJ ailelerini/keycap'leri yanlışlıkla reddeder, ve ikonuna "A" yazmak isteyen
+kullanıcı hata yapmıyor — testte açıkça yazıldı; (4) **OPH-199'da yazılan yeniden
+adlandırma dialog'unda aynı dispose hatası bulundu** (controller `showDialog` döner dönmez
+dispose ediliyordu, rota kapanma animasyonundayken alan rebuild oluyor) → dialog kendi
+controller'ının sahibi; (5) hedef yeniden adlandığında satırın canlı güncellenmesi store
+testinde, satırın NE YAPTIĞI (kendi adını korur + farkı gösterir + tek dokunuşla eşitler)
+widget testinde — periyodik pull testlerde kapalı olduğu için ikisi ayrı yerde kanıtlanıyor.
 
 ### OPH-203 — Davranış + kapanış: gezinme, kırık/arşivli hedef, sürüm dokunuşları
 

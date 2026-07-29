@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../i18n/i18n.dart';
+import '../../../widgets/color_swatch_dot.dart';
 import '../../../widgets/status_views.dart';
 import '../data/project.dart';
 import '../providers.dart';
@@ -157,14 +158,14 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                 runSpacing: 8,
                 children: [
                   for (final swatch in kProjectPalette)
-                    _ColorSwatchDot(
+                    AwColorSwatchDot(
                       color: colorFromRgbHex(swatch),
                       selected: _colorHex == swatch,
                       onTap: () => setState(() => _colorHex = swatch),
                     ),
                   // A color picked from the full grid shows as its own swatch.
                   if (!knownColor)
-                    _ColorSwatchDot(
+                    AwColorSwatchDot(
                       color: colorFromRgbHex(_colorHex),
                       selected: true,
                       onTap: _pickMoreColors,
@@ -234,7 +235,7 @@ class _ColorGridDialog extends StatelessWidget {
           crossAxisSpacing: 8,
           children: [
             for (final color in colors)
-              _ColorSwatchDot(
+              AwColorSwatchDot(
                 color: color,
                 selected: _hexOf(color) == selectedHex,
                 onTap: () => Navigator.of(context).pop(_hexOf(color)),
@@ -276,52 +277,6 @@ class _MoreColorsButton extends StatelessWidget {
             size: 20,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ColorSwatchDot extends StatelessWidget {
-  const _ColorSwatchDot({
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // Check mark adapts to the swatch so it stays visible on light colors.
-    final checkColor =
-        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
-        ? Colors.white
-        : Colors.black87;
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Semantics(
-        button: true,
-        selected: selected,
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            border: selected
-                ? Border.all(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    width: 3,
-                  )
-                : null,
-          ),
-          child: selected
-              ? Icon(Icons.check, size: 18, color: checkColor)
-              : null,
         ),
       ),
     );

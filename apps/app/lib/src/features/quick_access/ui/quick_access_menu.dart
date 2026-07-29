@@ -97,37 +97,63 @@ Future<void> showQuickRenameDialog(
   WidgetRef ref,
   QuickAccessRow row,
 ) async {
-  final controller = TextEditingController(text: row.displayTitle);
   final name = await showDialog<String>(
     context: context,
-    builder: (dialogContext) => AlertDialog(
-      title: Text('quick.rename'.tr()),
-      content: TextField(
-        key: const Key('quick-rename-field'),
-        controller: controller,
-        autofocus: true,
-        maxLength: 200,
-        decoration: InputDecoration(labelText: 'quick.linkTitle'.tr()),
-        onSubmitted: (value) => Navigator.of(dialogContext).pop(value),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: Text('common.cancel'.tr()),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-          child: Text('common.save'.tr()),
-        ),
-      ],
-    ),
+    // The dialog owns its controller: disposing it here would run while the
+    // route is still animating out and the field is still rebuilding.
+    builder: (dialogContext) => _RenameDialog(initial: row.displayTitle),
   );
-  controller.dispose();
   if (name == null) return;
   final trimmed = name.trim();
   await ref
       .read(quickAccessStoreProvider)
       .rename(row.id, trimmed.isEmpty ? fallbackTitleFor(row) : trimmed);
+}
+
+class _RenameDialog extends StatefulWidget {
+  const _RenameDialog({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initial,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('quick.rename'.tr()),
+      content: TextField(
+        key: const Key('quick-rename-field'),
+        controller: _controller,
+        autofocus: true,
+        maxLength: 200,
+        decoration: InputDecoration(labelText: 'quick.linkTitle'.tr()),
+        onSubmitted: (value) => Navigator.of(context).pop(value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('common.cancel'.tr()),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text('common.save'.tr()),
+        ),
+      ],
+    );
+  }
 }
 
 /// What an empty title falls back to: the target's live name, or a url's host.
