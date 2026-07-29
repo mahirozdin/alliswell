@@ -98,6 +98,12 @@ export default async function taskSeriesRoutes(app) {
     return row;
   }
 
+  /** The user's own timezone — what a series falls back to (OPH-208). */
+  async function timezoneOf(userId) {
+    const user = await app.db('users').where({ id: userId }).first('timezone');
+    return user?.timezone ?? 'Europe/Istanbul';
+  }
+
   /** Everything a create/patch needs to agree on before it touches the database. */
   function validatedInput({ rule, template, timezone, anchorAt }) {
     const problem = validateSeriesInput({ rule, template, timezone, anchorAt });
@@ -127,7 +133,7 @@ export default async function taskSeriesRoutes(app) {
         },
         body: {
           type: 'object',
-          required: ['rule', 'template', 'timezone', 'anchorAt'],
+          required: ['rule', 'template', 'anchorAt'],
           properties: {
             rule: ruleSchema,
             template: templateSchema,
@@ -157,7 +163,10 @@ export default async function taskSeriesRoutes(app) {
     async (request, reply) => {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
-      const input = validatedInput(request.body);
+      const input = validatedInput({
+        ...request.body,
+        timezone: request.body.timezone ?? (await timezoneOf(request.user.id)),
+      });
 
       const now = new Date();
       const id = newId();
@@ -341,6 +350,13 @@ export default async function taskSeriesRoutes(app) {
       ...auth,
       schema: {
         params: { type: 'object', required: ['seriesId'], properties: { seriesId: ULID_PARAM } },
+        querystring: {
+          type: 'object',
+          properties: {
+            // "This and future" from a specific occurrence, not from today.
+            fromDay: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+          },
+        },
         response: {
           200: {
             type: 'object',
@@ -358,6 +374,7 @@ export default async function taskSeriesRoutes(app) {
         ({ removed } = await softDeleteSeries(trx, {
           workspaceId: row.workspace_id,
           series: row,
+          fromDay: request.query.fromDay ?? null,
         }));
       });
       return { removed };

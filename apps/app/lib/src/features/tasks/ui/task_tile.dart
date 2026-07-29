@@ -11,6 +11,7 @@ import '../../projects/ui/project_badge.dart';
 import '../../tags/tags.dart';
 import '../data/task.dart';
 import '../providers.dart';
+import 'repeat_row.dart';
 import 'task_visuals.dart';
 
 /// The row form of the user's chosen format (OPH-174, DESIGN §17 D4): short
@@ -84,6 +85,9 @@ class TaskTile extends ConsumerWidget {
     // OPH-178: silenced-for-good says so, and offers the way back. An armed
     // looking task whose alarms are dead is the lie A5 forbids.
     final muted = !completed && task.alarmsMutedAt != null;
+    // DESIGN §25 R6: one occurrence of a series says so — quietly, and never on
+    // a finished row (a completed occurrence does not repeat; §20 C2).
+    final recurring = !completed && task.isRecurring;
     final isOverdue =
         due != null && !task.isCompleted && due.isBefore(DateTime.now());
     final priorityColor = taskPriorityColorOf(context, task.priority);
@@ -139,13 +143,25 @@ class TaskTile extends ConsumerWidget {
                 )
               : null,
         ),
-        subtitle: (due == null && rowTags.isEmpty && !snoozed && !muted)
+        subtitle:
+            (due == null && rowTags.isEmpty && !snoozed && !muted && !recurring)
             ? null
             : Wrap(
                 spacing: AwSpace.x2,
                 runSpacing: 2,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  if (recurring)
+                    Tooltip(
+                      message: 'repeat.badgeTooltip'.tr(),
+                      child: Icon(
+                        Icons.repeat,
+                        key: Key('repeat-badge-${task.id}'),
+                        size: 16,
+                        color: scheme.onSurfaceVariant,
+                        semanticLabel: 'repeat.badgeTooltip'.tr(),
+                      ),
+                    ),
                   if (muted)
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -319,7 +335,27 @@ Future<void> deleteTaskWithUndo(
   BuildContext context,
   WidgetRef ref,
   Task task,
-) {
+) async {
+  // OPH-208: deleting ONE occurrence of a series is ambiguous, so it asks —
+  // with two answers, not three. "Tümü" is deliberately absent: past and
+  // completed occurrences are history (DESIGN §20 C4/§25 R7), and a delete
+  // that quietly rewrote what the user already did would be the one thing
+  // this feature must never do.
+  if (task.isRecurring) {
+    final scope = await showOccurrenceDeleteScope(context);
+    if (scope == null) return;
+    if (scope == 'future') {
+      await ref
+          .read(seriesStoreProvider)
+          .stop(
+            workspaceId: task.workspaceId,
+            seriesId: task.seriesId!,
+            fromDay: task.occurrenceDate,
+          );
+      return;
+    }
+  }
+  if (!context.mounted) return;
   // Resolve the store NOW, while this widget is still mounted. The commit runs
   // ~5 s later from a timer, and by then the row is gone from the list and its
   // element is disposed — a captured `WidgetRef` would throw "Using ref when a

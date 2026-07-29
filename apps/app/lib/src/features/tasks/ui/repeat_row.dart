@@ -96,6 +96,7 @@ class RepeatRow extends ConsumerWidget {
             'tagIds': task.tagIds,
           },
           anchorAt: _anchor,
+          // The task already carries a real IANA zone from the server.
           timezone: task.timezone,
           fromTaskId: task.id,
         );
@@ -220,3 +221,34 @@ class _ScopeDialogState extends State<_ScopeDialog> {
     ],
   );
 }
+
+/// Deleting one occurrence asks a narrower question than editing does
+/// (OPH-208): **"Yalnız bu"** or **"Bu ve gelecektekiler"**. There is no
+/// "Tümü" — past and completed occurrences are history, and a delete that
+/// rewrote them would be the one thing recurrence must never do.
+Future<String?> showOccurrenceDeleteScope(BuildContext context) =>
+    showDialog<String>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('occurrence-delete-scope'),
+        title: Text('repeat.scope.title'.tr()),
+        content: Text('repeat.scope.question'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('common.cancel'.tr()),
+          ),
+          TextButton(
+            key: const Key('delete-scope-this'),
+            onPressed: () => Navigator.of(dialogContext).pop('this'),
+            child: Text('repeat.scope.this'.tr()),
+          ),
+          FilledButton(
+            key: const Key('delete-scope-future'),
+            onPressed: () => Navigator.of(dialogContext).pop('future'),
+            child: Text('repeat.scope.future'.tr()),
+          ),
+        ],
+      ),
+    );

@@ -285,7 +285,7 @@ because half the palette cannot clear 3:1 as a bare fill.
 
 ## Toward v0.8.0
 
-### Phase 13 — Feedback round 12: recurring tasks, calendar always, flow fixes ⏳ (planned 2026-07-29)
+### Phase 13 — Feedback round 12: recurring tasks, calendar always, flow fixes 🚧 (in progress 2026-07-29 — OPH-204…208 done)
 
 Eleven tasks (OPH-204…214), slotted between Quick Access and the AI epic at the
 owner's request. The headline is **recurring tasks** — the column that sat empty

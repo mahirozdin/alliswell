@@ -17,6 +17,9 @@ import '../../tags/ui/tag_input.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../providers.dart';
+import '../../../core/recurrence.dart';
+import '../../../core/recurrence_text.dart';
+import 'repeat_dialog.dart';
 import 'task_visuals.dart';
 
 /// Full task creation sheet behind the Home FAB (feedback round 2): title
@@ -76,6 +79,11 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   DateTime? _remindAt;
   bool _isUrgent = false;
   bool _saving = false;
+
+  /// OPH-208: the rule the user configured before the task exists. A series
+  /// needs a task to adopt (`fromTaskId`), so the order is save → start
+  /// repeating, in that transaction-less but deterministic sequence.
+  AwRepeatRule? _repeatRule;
   String? _error;
 
   @override
@@ -164,6 +172,27 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           if (_isUrgent) 'isUrgent': true,
           if (_tagIds.isNotEmpty) 'tagIds': _tagIds,
         });
+        // OPH-208: the task exists now, so the series has something to adopt —
+        // its own day becomes the first occurrence instead of a duplicate.
+        final rule = _repeatRule;
+        if (rule != null) {
+          await ref
+              .read(seriesStoreProvider)
+              .create(
+                workspaceId: workspaceId,
+                rule: rule,
+                template: {
+                  'title': _title.text.trim(),
+                  'description': _descriptionOrNull,
+                  'projectId': _projectId,
+                  'priority': _priority,
+                  'isUrgent': _isUrgent,
+                  'tagIds': _tagIds,
+                },
+                anchorAt: _dueAt?.toLocal() ?? DateTime.now(),
+                fromTaskId: taskId,
+              );
+        }
         // OPH-166: now the task exists — hand the picked files to the upload
         // machinery (F2 rows surface on detail; the sheet does not wait).
         final uploads = ref.read(uploadsProvider.notifier);
@@ -406,6 +435,59 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                   onChanged: (v) => setState(() => _isUrgent = v),
                 ),
               ),
+              // OPH-208 (DESIGN §25 R1): the Repeat switch, in the create
+              // sheet too. Editing an existing task keeps its rule on the
+              // detail screen, where the series it may already belong to lives.
+              if (widget.task == null) ...[
+                const SizedBox(height: 8),
+                _SheetSurface(
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        key: const Key('task-sheet-repeat'),
+                        title: Text('repeat.switchTitle'.tr()),
+                        subtitle: Text('repeat.switchSubtitle'.tr()),
+                        secondary: Icon(
+                          Icons.repeat,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        value: _repeatRule != null,
+                        onChanged: (wanted) async {
+                          if (!wanted) {
+                            setState(() => _repeatRule = null);
+                            return;
+                          }
+                          final rule = await showRepeatDialog(
+                            context,
+                            anchor: _dueAt?.toLocal() ?? DateTime.now(),
+                          );
+                          // Cancelling leaves the switch off — no half rule.
+                          if (rule != null) setState(() => _repeatRule = rule);
+                        },
+                      ),
+                      if (_repeatRule != null)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 16,
+                            right: 16,
+                            bottom: 12,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              awRepeatSentence(
+                                _repeatRule!,
+                                dateFormat: ref.watch(dateFormatProvider),
+                              ),
+                              key: const Key('task-sheet-repeat-summary'),
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 12),
                 AwInlineError(

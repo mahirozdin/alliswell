@@ -5048,20 +5048,46 @@ yüzeyi yeni), `flutter analyze` temiz, `dart format` uygulandı,
 
 ### OPH-208 — App: seri görünürlüğü, yüzey etkileri + README tanıtımı
 
-- [ ] Satır ve detayda **tekrar rozeti** (↻ + kısa özet tooltip'te); Tamamlananlar'da
+- [x] Satır ve detayda **tekrar rozeti** (↻ + kısa özet tooltip'te); Tamamlananlar'da
       occurrence sıradan satır (zaten OPH-186 sözleşmesi); Pano kartında rozet.
-- [ ] **Yüzeyler test edilir, varsayılmaz:** takvim noktaları, widget snapshot'ı,
+- [x] **Yüzeyler test edilir, varsayılmaz:** takvim noktaları, widget snapshot'ı,
       arama, alarm planlayıcı — occurrence'lar gerçek satır olduğu için çalışmalı;
       her biri için birer doğrulama testi (özellikle widget: 12 aylık pencerede
       bugünün occurrence'ı `openToday`'e sayılır).
-- [ ] Silme akışları: satırdan kaydırarak silme kapsam sorusuna bağlanır (OPH-184
+- [x] Silme akışları: satırdan kaydırarak silme kapsam sorusuna bağlanır (OPH-184
       jesti + OPH-206 kapsamı); seri detayından "Tekrarı durdur" (gelecekler silinir,
       geçmiş kalır — dürüst metin).
-- [ ] **README "öve öve" bölümü (Mahir'in isteği):** tekrar sistemi örnekleriyle
+- [x] **README "öve öve" bölümü (Mahir'in isteği):** tekrar sistemi örnekleriyle
       tanıtılır — "her ayın son günü", "ayın 2. Salı'sı", "22'sinden sonraki ilk
       Pazartesi" — ve **değişik senaryolu görev listesinin ekran görüntüsü** (demo
       workspace'te kurulmuş liste). ROADMAP + STORE-LISTING dokunuşları.
-- [ ] Kapanış: tam süit + `check:i18n` + kontrast + `analyze`.
+- [x] Kapanış: tam süit + `check:i18n` + kontrast + `analyze`.
+
+**Uygulama notları (2026-07-29):**
+
+- **Rozet** satırda (`task_tile.dart`, `repeat-badge-{id}`), tamamlanınca **kalkıyor**
+  (§20 C2: biten bir occurrence tekrarlamaz). Pano kartı aynı `TaskTile`ı kullandığı
+  için bedava geldi; detayda rozet yerine **kuralın cümlesi** duruyor (daha çok bilgi,
+  aynı yer).
+- **Silmede kapsam sorusu İKİ seçenekli:** "Yalnız bu" / "Bu ve gelecektekiler".
+  **"Tümü" bilinçli olarak YOK** — geçmiş ve tamamlanmış occurrence'lar tarihtir
+  (§20 C4 / §25 R7); onları silen bir akış, bu özelliğin asla yapmaması gereken tek
+  şeydi. "Bu ve gelecektekiler" seriyi **o occurrence'ın gününden** durduruyor
+  (`DELETE /task-series/:id?fromDay=…` — bugünden değil, kullanıcının kaydırdığı
+  günden; Mart'tan durdurmak Şubat'ı almamalı).
+- **Zaman dilimi artık sunucudan:** istemci IANA adını bilmiyor (cihaz "+03" der),
+  bu yüzden `timezone` isteğe bağlı oldu ve sunucu kullanıcının profilinden dolduruyor
+  (REST + sync guard). Client tahmini bir kolona yanlış değer yazmıyor.
+- Create sheet'in switch'i geldi: **kaydet → seri kur** sırası (`fromTaskId` görevi
+  sahiplendiriyor, kopya doğmuyor).
+
+**Yüzey testleri (varsayılmadı, ölçüldü):** widget `openToday` occurrence'ı sayıyor,
+widget kovaları occurrence'ı sıradan görev gibi bucketlıyor (+30 ufkunda düşüyor),
+ay takvimi noktası düşüyor, Home grubu tarihe göre (seriye göre değil) kuruluyor,
+arama fold'u aynı çalışıyor.
+
+**Doğrulama (2026-07-29):** API **386 unit** + 47 entegrasyon, app **641 test**,
+analyze + i18n + kontrast (FAILURES: 0) + format + lint temiz.
 
 ### OPH-209 — Takvim araştırması: aynanın seçeneksizleşmesi + Google Tasks / Apple Reminders değerlendirmesi + ADR-0021 (kod yazmaz)
 

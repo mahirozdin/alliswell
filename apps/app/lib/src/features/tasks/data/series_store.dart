@@ -75,7 +75,7 @@ class SeriesStore {
     required AwRepeatRule rule,
     required Map<String, dynamic> template,
     required DateTime anchorAt,
-    required String timezone,
+    String? timezone,
     String? fromTaskId,
   }) async {
     final id = newUlid();
@@ -89,7 +89,7 @@ class SeriesStore {
               workspaceId: workspaceId,
               ruleJson: jsonEncode(ruleJson),
               templateJson: jsonEncode(template),
-              timezone: Value(timezone),
+              timezone: Value(timezone ?? 'Europe/Istanbul'),
               anchorAt: anchorAt.toUtc(),
               createdAt: Value(DateTime.now().toUtc()),
               updatedAt: Value(DateTime.now().toUtc()),
@@ -104,7 +104,10 @@ class SeriesStore {
         patch: {
           'rule': ruleJson,
           'template': template,
-          'timezone': timezone,
+          // Omitted on purpose when the caller has none: the SERVER fills it
+          // from the user's own profile. A device can report "+03"; only the
+          // server knows that means Europe/Istanbul (OPH-208).
+          'timezone': ?timezone,
           'anchorAt': anchorAt.toUtc().toIso8601String(),
           'fromTaskId': ?fromTaskId,
         },
@@ -157,6 +160,7 @@ class SeriesStore {
   Future<void> stop({
     required String workspaceId,
     required String seriesId,
+    String? fromDay,
   }) async {
     await _db.transaction(() async {
       await (_db.delete(
@@ -168,7 +172,9 @@ class SeriesStore {
         entityType: 'task_series',
         entityId: seriesId,
         operation: 'delete',
-        patch: const {},
+        // `fromDay` makes "this and future" start at the occurrence the user
+        // swiped instead of at today (OPH-208).
+        patch: {'fromDay': ?fromDay},
       );
     });
     _poke();

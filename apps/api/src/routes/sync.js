@@ -760,9 +760,15 @@ export default async function syncRoutes(app) {
     task_series: {
       table: 'task_series',
       fields: TASK_SERIES_FIELDS,
-      requiredOnCreate: ['rule', 'template', 'timezone', 'anchorAt'],
+      requiredOnCreate: ['rule', 'template', 'anchorAt'],
       workspaceOf: (row) => row.workspace_id,
-      guard(ctx, patch, row) {
+      async guard(ctx, patch, row) {
+        if (patch.timezone === undefined && !row) {
+          // The client does not know its IANA zone (no tz database on device);
+          // the server does, from the user's profile.
+          const user = await app.db('users').where({ id: ctx.userId }).first('timezone');
+          patch.timezone = user?.timezone ?? 'Europe/Istanbul';
+        }
         const merged = {
           rule: patch.rule ?? parseJsonColumn(row?.rule),
           template: patch.template ?? parseJsonColumn(row?.template) ?? {},

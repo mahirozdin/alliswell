@@ -86,8 +86,12 @@ export function validateSeriesInput({ rule, template, timezone, anchorAt }) {
   ) {
     return problem('TASK_SERIES_TEMPLATE_INVALID', 'template.remindMinutesBefore is out of range');
   }
-  if (typeof timezone !== 'string' || timezone.length === 0 || timezone.length > 64) {
-    return problem('TASK_SERIES_TEMPLATE_INVALID', 'timezone is required');
+  // Optional: when the client omits it the SERVER fills it from the user's own
+  // timezone (routes/task-series.js, sync's guard). A client guessing an IANA
+  // name from a device offset would write "+03" into a column that means
+  // "Europe/Istanbul" — the app has no tz database of its own to ask.
+  if (timezone != null && (typeof timezone !== 'string' || timezone.length > 64)) {
+    return problem('TASK_SERIES_TEMPLATE_INVALID', 'timezone is invalid');
   }
   if (Number.isNaN(new Date(anchorAt).getTime())) {
     return problem('TASK_SERIES_TEMPLATE_INVALID', 'anchorAt must be a valid instant');
@@ -578,8 +582,14 @@ export async function rebuildFuture(trx, { workspaceId, series, now = new Date()
  * Soft-deletes a series and its future occurrences in the caller's transaction.
  * Past occurrences keep their `series_id` — they remain part of the history.
  */
-export async function softDeleteSeries(trx, { workspaceId, series, now = new Date() }) {
-  const fromDay = materializationWindow(series, now).from;
+export async function softDeleteSeries(
+  trx,
+  { workspaceId, series, now = new Date(), fromDay: overrideDay = null },
+) {
+  // `fromDay` lets "this and future" start at the occurrence the user swiped
+  // rather than at today — stopping a series from next March must not take
+  // February's rows with it (OPH-208).
+  const fromDay = overrideDay ?? materializationWindow(series, now).from;
   const removed = await deleteFutureOccurrences(trx, {
     workspaceId,
     seriesId: series.id,

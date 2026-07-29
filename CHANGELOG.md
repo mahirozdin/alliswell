@@ -7,6 +7,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 19 in progress
 
+- **Recurring tasks reach every surface (OPH-208).** List rows wear a quiet ↻
+  (and drop it the moment they are completed — a finished occurrence does not
+  repeat), the create sheet grows its own Repeat switch (save, then start
+  repeating, so the new task is adopted as the first occurrence instead of
+  duplicated), and swiping one occurrence away asks **"Yalnız bu"** or **"Bu ve
+  gelecektekiler"** — with no "all", because past and completed occurrences are
+  history. "This and future" stops the series **from that occurrence's day**,
+  not from today. The surfaces that were supposed to work for free are now
+  tested rather than assumed: the widget's "today" count, its buckets, the month
+  calendar dots, Home's grouping and search folding. A series' timezone is
+  resolved **by the server** from the user's profile — a device can only report
+  "+03", and only the server knows that means Europe/Istanbul.
+
 - **The Repeat switch, the dialog and the sentence (OPH-207).** Task detail
   gains a **Tekrarla** switch that opens the rule dialog the first time it goes
   on — cancel and it goes straight back off, because a switch that leaves a
