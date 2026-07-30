@@ -454,7 +454,8 @@
     "snoozeConfirmed": "{time}’de tekrar çalacak",
     "snoozeCustom": "Saat seç…",
     "silence": "Süresiz ertele",
-    "startSound": "Sesi başlat"
+    "startSound": "Sesi başlat",
+    "snoozePast": "O saat geçmiş — ileri bir saat seçin."
   },
   "alarmLog": {
     "title": "Alarm günlüğü",

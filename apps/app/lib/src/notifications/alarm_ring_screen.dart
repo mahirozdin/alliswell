@@ -103,27 +103,41 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   /// exact minute instead of picking from four presets.
   Future<void> _snoozeCustom() async {
     final now = DateTime.now();
+    // Both pickers are anchored on the SAME instant — "half an hour from now" —
+    // because that instant is TOMORROW whenever the alarm rings after 23:30.
+    // Anchoring the date on `now` while suggesting a time taken from
+    // `now + 30m` composed today-at-00:10: roughly a day in the past, which the
+    // guard below then threw away without a word. An alarm ringing at 23:40 is
+    // exactly when somebody reaches for snooze, and it did nothing.
+    final suggested = now.add(const Duration(minutes: 30));
     final format = ref.read(dateFormatProvider);
     final date = await showDatePicker(
       context: context,
-      initialDate: awInitialPickerDate(anchor: now, now: now),
-      firstDate: now,
+      initialDate: awInitialPickerDate(anchor: suggested, now: now),
+      firstDate: DateTime(now.year, now.month, now.day),
       lastDate: now.add(const Duration(days: 365)),
     );
     if (date == null || !mounted) return;
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(minutes: 30))),
+      initialTime: TimeOfDay.fromDateTime(suggested),
     );
     if (!mounted) return;
     final until = DateTime(
       date.year,
       date.month,
       date.day,
-      time?.hour ?? now.hour,
-      time?.minute ?? now.minute,
+      time?.hour ?? suggested.hour,
+      time?.minute ?? suggested.minute,
     );
-    if (!until.isAfter(DateTime.now())) return; // a past snooze is not a snooze
+    // A past snooze is not a snooze — but saying nothing is worse than
+    // refusing (OPH-177: a snooze must always state what will happen).
+    if (!until.isAfter(DateTime.now())) {
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text('alarm.snoozePast'.tr())));
+      return;
+    }
     _confirm(until, format: format);
     _run(
       () =>

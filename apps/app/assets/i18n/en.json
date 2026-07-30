@@ -455,7 +455,8 @@
     "snoozeConfirmed": "Rings again at {time}",
     "snoozeCustom": "Pick a time…",
     "silence": "Silence indefinitely",
-    "startSound": "Start the sound"
+    "startSound": "Start the sound",
+    "snoozePast": "That time has already passed — pick a later one."
   },
   "alarmLog": {
     "title": "Alarm log",

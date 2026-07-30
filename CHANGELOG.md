@@ -7,6 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [1.0.3] - 2026-07-31
 
+### Fixed
+
+- **A custom snooze did nothing for the half hour before midnight.** The alarm
+  ring screen suggested "half an hour from now" as the time but opened its date
+  picker on *today*, so accepting both defaults at 23:40 composed today-at-00:10
+  — about a day in the past — which the handler then discarded **silently**. An
+  alarm ringing at 23:40 is exactly when somebody reaches for snooze, and the
+  tap did nothing at all. Both pickers now share one anchor, and a refused
+  snooze says so instead of vanishing (OPH-177's rule: a snooze always states
+  what will happen). Caught by CI, which runs in UTC — on a UTC+3 machine the
+  broken window is 20:30–21:00 local, and nobody was testing then.
+
 ### Changed
 
 - **Permission dialogs are not product screenshots.** The README's alarm section

@@ -207,7 +207,13 @@ void main() {
     expect(
       row.snoozedUntil,
       isNotNull,
-      reason: 'BLUEPRINT §8.2 promised a custom snooze; now it exists',
+      reason:
+          'BLUEPRINT §8.2 promised a custom snooze; now it exists. This assertion '
+          'used to fail for the half hour before local midnight: the time picker '
+          'suggested now+30m (which is tomorrow) while the date picker opened on '
+          'today, so accepting both defaults composed a time ~24h in the past and '
+          'the handler discarded it silently. It only ever showed up on CI, which '
+          'runs in UTC.',
     );
     expect(row.snoozedUntil!.isAfter(DateTime.now().toUtc()), isTrue);
     await tester.pump(const Duration(seconds: 6));
