@@ -802,6 +802,14 @@
       "mic": "Speak",
       "savedToInbox": "Saved to your Inbox",
       "noIntent": "I couldn't turn that into a task. Try rephrasing, or save it to your Inbox."
+    },
+    "share": {
+      "makeTask": "Make a task",
+      "takeNote": "Take a note",
+      "summarize": "Summarize",
+      "ask": "Ask a question",
+      "savedNote": "Saved as a note",
+      "summarizePrompt": "Summarize this."
     }
   }
 }

@@ -6,6 +6,7 @@ import '../../../core/api_exception.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../core/ulid.dart';
 import '../../../i18n/i18n.dart';
+import '../../notes/providers.dart';
 import '../../projects/providers.dart';
 import '../../tasks/providers.dart';
 import '../../workspaces/workspaces.dart';
@@ -250,6 +251,12 @@ class AiBubbleController extends Notifier<AiBubbleState> {
     return route;
   }
 
+  /// OPH-225 — a share's "make task" chip got an `answer` back instead: show
+  /// it inline (both turns), same as the voice answer route.
+  void commitShareAnswer(String userText, String answerText) {
+    if (!_disposed) state = _machine.answer(state, userText, answerText);
+  }
+
   /// OPH-224 — the intent gate in one round trip: a finalized transcript goes
   /// to `/ai/extract` on the fast class; `intent` decides. `create_tasks` →
   /// the tasks come back on the same response; `answer` → the bubble streams
@@ -295,14 +302,33 @@ class AiBubbleController extends Notifier<AiBubbleState> {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) return;
     final trimmed = text.trim();
-    final firstLine = trimmed.split('\n').first;
-    final title = firstLine.length <= 140
-        ? firstLine
-        : '${firstLine.substring(0, 139).trimRight()}…';
+    final title = _clipTitle(trimmed);
     await ref.read(taskStoreProvider).create(workspaces.first.id, {
       'title': title,
       'status': 'inbox',
       if (trimmed.length > title.length) 'description': trimmed,
     });
+  }
+
+  /// OPH-225 — "take note" on a share: a note with zero AI (the honest path
+  /// that always works). First line (clipped) is the title, the whole text is
+  /// the body.
+  Future<void> shareToNote(SharedPayload shared) async {
+    final workspaces = await ref.read(workspacesProvider.future);
+    if (workspaces.isEmpty) return;
+    final body = shared.url != null
+        ? '${shared.text}\n${shared.url}'.trim()
+        : shared.text.trim();
+    await ref.read(noteStoreProvider).create(workspaces.first.id, {
+      'title': _clipTitle(body),
+      'contentMarkdown': body,
+    });
+  }
+
+  String _clipTitle(String text) {
+    final firstLine = text.split('\n').first;
+    return firstLine.length <= 140
+        ? firstLine
+        : '${firstLine.substring(0, 139).trimRight()}…';
   }
 }

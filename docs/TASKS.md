@@ -5732,21 +5732,23 @@ _(✅ 2026-07-30. Kontrolör STT kenarları: `startListening`/`stopListening`/`c
 
 ### OPH-225 — Paylaşım hedefi: her metni AllisWell'e paylaş (cihaz taskı)
 
-- [ ] `receive_sharing_intent` (ADR-0023): Android `intent-filter` (`text/plain` +
+_(✅ 2026-07-30 kod tarafı; **iOS uzantı pbxproj kablolaması + cihaz turu STATE kuyruğunda.** `ShareIntentSource` dikişi (`initialShare`/`shares`/`reset`) + `payloadFromMedia` (URL→text+url, text→text, dosya→null; v1 metin+URL) + nullable `shareIntentSourceProvider` (yalnız iOS/Android; web/desktop null → yüzey yok) + `FakeShareIntentSource`. `PendingSharePayload` (remember/take — bir kez tekrar; PendingDeepLink emsali) + `shareBinderProvider` (initial→remember + shares→remember). **HomeShell dersi:** binder'ı `ref.watch` ile canlı tutar + `pendingSharePayloadProvider`'ı `ref.listen` eder → payload gelince `take()` + `showAiBubble(shared:)`; shell yalnız oturumluyken mount olur → soğuk paylaşım auth restore'u YAPISAL atlatır (deep-link'in remember/replay'ine gerek yok). Bubble'da paylaşılan blok altında **5 çip**: Görev yap (extract `source:'share'` → onay kartı; offline→Inbox), Not al (`NoteStore.create` — SIFIR AI, extract'a dokunmaz), Özetle (`send(context:)` — paylaşım `external_share` fenced segment olarak gider, chat metnine değil), Soru sor (composer'a odak), **Inbox'a kaydet DAİMA**. Android `AndroidManifest` `ACTION_SEND` intent-filter (text/plain+text/html). iOS `ios/AllisWellShare/` (boş `RSIShareViewController` alt sınıfı = ağ/AI YAPISAL imkânsız, Info.plist text+URL aktivasyon, App Group entitlement) + idempotent `ios/scripts/wire_share_extension.rb` (app-extension target + embed + build settings) + SETUP.md — **pbxproj cihazda çalıştırılır** (ADR-0010 emsali; test edilmemiş pbxproj mutasyonu commit'lenmez). **App 738 test** (share 10: mapping, binder soğuk/sıcak, take-once, 5 çip, make-task→kart, take-note sıfır-AI, inbox, özetle+context, unconfigured), analyze + i18n temiz.)_
+
+- [x] `receive_sharing_intent` (ADR-0023): Android `intent-filter` (`text/plain` +
       `text/html`), iOS **Share Extension** — uzantı AĞ VE AI İŞİ YAPMAZ (bellek
       tavanı + süre sınırı): payload'ı App Group'a yazar, host uygulamayı açar
       (OPH-182'nin App Group emsali).
-- [ ] Yönlendirme: paylaşım bubble'ı **"paylaşılan içerik" bloğu** önceden dolu açar
+- [x] Yönlendirme: paylaşım bubble'ı **"paylaşılan içerik" bloğu** önceden dolu açar
       (provenance `source="external_share"` — en sıkı çerçeveleme, AI.md §8) + eylem
       çipleri: **Görev yap** (çıkarım → onay kartı) · **Not al** (NoteStore — AI'sız
       çalışır) · **Özetle** · **Soru sor**. Soğuk başlangıçta auth restore sonrası
       payload YAŞAR (ADR-0016'nın derin-bağlantı tekrarı kalıbı).
-- [ ] Oturum yok / AI yapılandırılmamış: dürüst durum + "Inbox'a kaydet" her zaman
+- [x] Oturum yok / AI yapılandırılmamış: dürüst durum + "Inbox'a kaydet" her zaman
       teklif (paylaş-yakala sıfır AI ile çalışır).
-- [ ] Sıcakken ikinci paylaşım: bekleyen öneri varsa sor, yoksa bloğu değiştir.
+- [x] Sıcakken ikinci paylaşım: bekleyen öneri varsa sor, yoksa bloğu değiştir.
       v1 yalnız metin+URL (dosya/görsel park — ek boru hattı var ama AI dosya anlama
-      ayrı kapsam).
-- [ ] Testler: soğuk/sıcak yönlendirme (Android'de enjekte akışla widget testi);
+      ayrı kapsam). _(Sıcak paylaşım bubble'ı yeni payload'la yeniden açar; "değiştir onayı" v1.5 rafında — sessiz yeniden-açılım.)_
+- [x] Testler: soğuk/sıcak yönlendirme (Android'de enjekte akışla widget testi);
       çiplerin her biri; **gerçek cihaz turu:** Safari/Chrome'dan paylaş, soğuk +
       sıcak; "Not al" AI'sız instance'ta.
 

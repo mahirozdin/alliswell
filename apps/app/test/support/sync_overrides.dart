@@ -10,6 +10,7 @@ import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
+import 'package:alliswell/src/features/ai/data/share_intent.dart';
 import 'package:alliswell/src/features/ai/data/stt.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -41,6 +42,10 @@ List<Override> syncTestOverrides({
   /// On-device STT (OPH-223). Default: null → the FAB falls back to text mode
   /// unless a test injects a fake recognizer.
   SttController? stt,
+
+  /// Inbound share intents (OPH-225). Default: null → no share surface unless
+  /// a test injects a fake source.
+  ShareIntentSource? shareIntentSource,
 }) => [
   databaseProvider.overrideWith((ref) {
     // closeStreamsSynchronously: drift otherwise keeps a Timer.run alive per
@@ -91,6 +96,7 @@ List<Override> syncTestOverrides({
   ),
   aiStreamClientProvider.overrideWithValue(aiStreamClient),
   sttProvider.overrideWithValue(stt),
+  shareIntentSourceProvider.overrideWithValue(shareIntentSource),
 ];
 
 Future<void> _instantUploadTransport({

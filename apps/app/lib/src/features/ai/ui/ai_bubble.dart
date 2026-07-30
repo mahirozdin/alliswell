@@ -94,6 +94,11 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
                 padding: const EdgeInsets.all(AwSpace.x4),
                 children: [
                   if (widget.shared != null) _sharedBlock(widget.shared!),
+                  if (widget.shared != null &&
+                      state.history.isEmpty &&
+                      state.phase != AiBubblePhase.thinking &&
+                      state.phase != AiBubblePhase.streaming)
+                    _shareActions(widget.shared!, controller),
                   for (final entry in state.history) _messageRow(entry),
                   if (state.phase == AiBubblePhase.streaming &&
                       state.streamed.isNotEmpty)
@@ -353,14 +358,137 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
     );
   }
 
+  // ── OPH-225: the share target's action chips ────────────────────────────
+
+  /// Four ways to act on shared content + the honest always-works Inbox. "Take
+  /// note" and "Save to Inbox" work with zero AI; the AI chips degrade to the
+  /// offline capture when no provider is configured.
+  Widget _shareActions(SharedPayload shared, AiBubbleController controller) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: AwSpace.x3),
+        child: Wrap(
+          spacing: AwSpace.x2,
+          runSpacing: AwSpace.x2,
+          children: [
+            ActionChip(
+              key: const Key('ai-share-task'),
+              avatar: const Icon(Icons.check_circle_outline, size: 18),
+              label: Text('ai.share.makeTask'.tr()),
+              onPressed: () => _shareMakeTask(shared, controller),
+            ),
+            ActionChip(
+              key: const Key('ai-share-note'),
+              avatar: const Icon(Icons.sticky_note_2_outlined, size: 18),
+              label: Text('ai.share.takeNote'.tr()),
+              onPressed: () => _shareTakeNote(shared, controller),
+            ),
+            ActionChip(
+              key: const Key('ai-share-summarize'),
+              avatar: const Icon(Icons.summarize_outlined, size: 18),
+              label: Text('ai.share.summarize'.tr()),
+              onPressed: () => _shareSummarize(shared, controller),
+            ),
+            ActionChip(
+              key: const Key('ai-share-ask'),
+              avatar: const Icon(Icons.help_outline, size: 18),
+              label: Text('ai.share.ask'.tr()),
+              onPressed: () => _inputFocus.requestFocus(),
+            ),
+            ActionChip(
+              key: const Key('ai-share-inbox'),
+              avatar: const Icon(Icons.inbox_outlined, size: 18),
+              label: Text('ai.bubble.saveToInbox'.tr()),
+              onPressed: () => _shareToInbox(shared, controller),
+            ),
+          ],
+        ),
+      );
+
+  String _shareText(SharedPayload shared) => shared.url != null
+      ? '${shared.text}\n${shared.url}'.trim()
+      : shared.text.trim();
+
+  /// A one-off context bundle carrying just the shared content, fenced by the
+  /// server under the strictest provenance (`external_share`).
+  AiContextBundle _shareContext(SharedPayload shared) {
+    final text = _shareText(shared);
+    return AiContextBundle(
+      segments: [
+        AiContextSegment(tier: 't2', source: 'external_share', text: text),
+      ],
+      tokenEstimate: estimateTokens(text),
+      truncated: false,
+    );
+  }
+
+  Future<void> _shareMakeTask(
+    SharedPayload shared,
+    AiBubbleController controller,
+  ) async {
+    final route = await controller.extractUtterance(
+      _shareText(shared),
+      source: 'share',
+    );
+    if (!mounted) return;
+    switch (route) {
+      case AiRouteTasks(:final proposal):
+        Navigator.of(context).pop();
+        await showAiConfirmSheet(context, proposal);
+      case AiRouteAnswer(:final text):
+        controller.commitShareAnswer(_shareText(shared), text);
+      case AiRouteNone():
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('ai.voice.noIntent'.tr())));
+      case AiRouteOffline():
+        // No AI here → the honest capture, not a dead end.
+        await _shareToInbox(shared, controller);
+    }
+  }
+
+  Future<void> _shareTakeNote(
+    SharedPayload shared,
+    AiBubbleController controller,
+  ) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await controller.shareToNote(shared);
+    navigator.pop();
+    messenger.showSnackBar(SnackBar(content: Text('ai.share.savedNote'.tr())));
+  }
+
+  Future<void> _shareToInbox(
+    SharedPayload shared,
+    AiBubbleController controller,
+  ) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await controller.captureToInbox(_shareText(shared));
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text('ai.voice.savedToInbox'.tr())),
+    );
+  }
+
+  void _shareSummarize(SharedPayload shared, AiBubbleController controller) {
+    controller.editInput('ai.share.summarizePrompt'.tr());
+    controller.send(context: _shareContext(shared));
+    _input.clear();
+  }
+
   /// A reviewing (voice/finalized) send runs the intent gate and routes the
-  /// outcome; a composing send is a normal chat turn (OPH-221/224).
+  /// outcome; a composing send is a normal chat turn (OPH-221/224). A share
+  /// carries its content along as fenced context.
   Future<void> _onSend(
     AiBubbleState state,
     AiBubbleController controller,
   ) async {
     if (state.phase != AiBubblePhase.reviewing) {
-      controller.send();
+      controller.send(
+        context: state.sharedBlock != null
+            ? _shareContext(state.sharedBlock!)
+            : null,
+      );
       _input.clear();
       return;
     }

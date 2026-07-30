@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **Share anything to AllisWell (OPH-225).** Send text or a link from any app
+  and AllisWell opens with four one-tap choices — make a task, take a note,
+  summarize, or ask about it — plus "save to Inbox", which always works even
+  with no AI provider. "Take a note" and "save to Inbox" never touch a model;
+  the share sheet itself does zero work and hands everything to the app.
+  (Android is live; the iOS Share Extension is wired by a script and verified
+  on device.)
 - **Speak a task, review it, done (OPH-224).** Finish talking and the
   transcript drops into an editable field — nothing is ever sent for you. Send
   it and one round trip decides: a task (or a few) opens the confirm card, a

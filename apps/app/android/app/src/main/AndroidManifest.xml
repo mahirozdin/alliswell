@@ -45,6 +45,15 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="alliswell"/>
             </intent-filter>
+            <!-- OPH-225 (ADR-0023): the share target — "Share to AllisWell"
+                 receives text and URLs (receive_sharing_intent). v1 is text
+                 only; images/files are ignored downstream. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+                <data android:mimeType="text/html"/>
+            </intent-filter>
         </activity>
         <!-- flutter_local_notifications: exact-alarm delivery + reboot
              rescheduling (docs/NOTIFICATIONS.md §1). -->

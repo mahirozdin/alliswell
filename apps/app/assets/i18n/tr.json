@@ -801,6 +801,14 @@
       "mic": "Konuş",
       "savedToInbox": "Inbox'a kaydedildi",
       "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Inbox'a kaydet."
+    },
+    "share": {
+      "makeTask": "Görev yap",
+      "takeNote": "Not al",
+      "summarize": "Özetle",
+      "ask": "Soru sor",
+      "savedNote": "Not olarak kaydedildi",
+      "summarizePrompt": "Bunu özetle."
     }
   }
 }

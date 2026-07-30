@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../core/persisted_prefs.dart';
 import '../features/calendar/apple/providers.dart';
+import '../features/ai/data/share_intent.dart';
+import '../features/ai/ui/ai_bubble.dart';
 import '../features/ai/ui/ai_fab.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
@@ -164,6 +166,16 @@ class HomeShell extends ConsumerWidget {
       ScaffoldMessenger.maybeOf(
         context,
       )?.showSnackBar(SnackBar(content: Text(_conflictMessage(conflict))));
+    });
+
+    // Share target (OPH-225): keep the binder alive while the shell shows — it
+    // only mounts signed in, so a cold-start share lands after the session
+    // exists. When a payload arrives, open the bubble on it (once).
+    ref.watch(shareBinderProvider);
+    ref.listen(pendingSharePayloadProvider, (_, next) {
+      if (next == null) return;
+      final payload = ref.read(pendingSharePayloadProvider.notifier).take();
+      if (payload != null) showAiBubble(context, shared: payload);
     });
 
     // First-run onboarding tour (OPH-111): try to auto-start once after the
