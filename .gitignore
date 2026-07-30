@@ -32,3 +32,11 @@ build/
 apps/app/android/key.properties
 **/*.jks
 **/*.keystore
+
+# --- Screenshot & deploy pipeline outputs ---
+# `screenshots/` and `store/` ARE committed: the README, the landing page and the
+# store listings all point at them, and a fresh clone should render correctly.
+# These three are derived from them on every build and must not be.
+apps/landing/public/shots/
+apps/landing/public/og-cover.png
+publish/

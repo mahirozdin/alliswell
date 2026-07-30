@@ -198,7 +198,6 @@
 			children = (
 				5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */,
 			);
-			name = Shared;
 			path = Shared;
 			sourceTree = "<group>";
 		};
@@ -316,7 +315,6 @@
 				B07D10CB9492D82A7326E84F /* Info.plist */,
 				430A28BE8630F124735EB640 /* AllisWellShare.entitlements */,
 			);
-			name = AllisWellShare;
 			path = AllisWellShare;
 			sourceTree = "<group>";
 		};
@@ -816,6 +814,7 @@
 				CODE_SIGN_ENTITLEMENTS = AllisWellShare/AllisWellShare.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				CUSTOM_GROUP_ID = group.com.alliswell.alliswell;
+				DEVELOPMENT_TEAM = WWRZ5CG3DW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AllisWellShare/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -995,6 +994,7 @@
 				CODE_SIGN_ENTITLEMENTS = AllisWellShare/AllisWellShare.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				CUSTOM_GROUP_ID = group.com.alliswell.alliswell;
+				DEVELOPMENT_TEAM = WWRZ5CG3DW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AllisWellShare/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
@@ -1149,6 +1149,7 @@
 				CODE_SIGN_ENTITLEMENTS = AllisWellShare/AllisWellShare.entitlements;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				CUSTOM_GROUP_ID = group.com.alliswell.alliswell;
+				DEVELOPMENT_TEAM = WWRZ5CG3DW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AllisWellShare/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;

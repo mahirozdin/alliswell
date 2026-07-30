@@ -1,0 +1,316 @@
+#!/usr/bin/env node
+/**
+ * web.mjs — drives the built Flutter web bundle in a real headless Chrome and
+ * writes full-resolution PNGs of every surface.
+ *
+ * Why a real browser and not the widget-test harness: the harness renders the
+ * same widget tree, but it is not the WEB app — it never touches CanvasKit, the
+ * service worker, localStorage or the router's hash strategy. A screenshot that
+ * claims to be "AllisWell on the web" should have gone through all four.
+ *
+ * Prerequisites (the script checks and tells you which one is missing):
+ *   1. the API is up            → npm run dev
+ *   2. the demo data is seeded  → node scripts/seed-demo.mjs
+ *   3. the bundle is built      → cd apps/app && flutter build web --release \
+ *                                   --dart-define=ALLISWELL_API_URL=http://localhost:3000
+ *   4. the bundle is served     → python3 -m http.server 8080 --directory apps/app/build/web
+ *
+ * Usage:
+ *   node scripts/screenshots/web.mjs
+ *   node scripts/screenshots/web.mjs --out screenshots/web --only home,board
+ *   node scripts/screenshots/web.mjs --locale tr
+ *
+ * The session is injected into localStorage before the app boots rather than
+ * typed into the login form: Flutter renders to a canvas, so form-driving means
+ * clicking coordinates, and coordinates rot the moment the layout moves.
+ */
+import { spawn } from 'node:child_process';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
+const args = process.argv.slice(2);
+const flag = (n, d = null) => {
+  const i = args.indexOf(`--${n}`);
+  return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : d;
+};
+
+const APP_URL = flag('app', 'http://localhost:8080').replace(/\/+$/, '');
+const API_URL = flag('api', 'http://localhost:3000').replace(/\/+$/, '');
+const OUT = path.resolve(flag('out', 'screenshots/web'));
+const EMAIL = flag('email', 'demo@alliswell.space');
+const PASSWORD = flag('password', 'AllisWellDemo2026');
+const LOCALE = flag('locale', 'en');
+const ONLY = flag('only')?.split(',').map((s) => s.trim());
+const PORT = Number(flag('port', '9222'));
+
+const CHROME =
+  flag('chrome') ??
+  [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+  ].find((p) => existsSync(p));
+
+/** Desktop shots at 1440×900, phone shots at 390×844 — both at 2× (retina). */
+const DESKTOP = { width: 1440, height: 900 };
+const PHONE = { width: 390, height: 844 };
+
+/**
+ * The shot list. `route` is the hash route; `dark` picks the emulated colour
+ * scheme; `before` is an optional CDP-driven interaction.
+ */
+const SHOTS = [
+  { name: 'home-light', route: '/home', ...DESKTOP },
+  { name: 'home-dark', route: '/home', dark: true, ...DESKTOP },
+  { name: 'board', route: '/home', ...DESKTOP, prefs: { alliswell_home_view: 'board' } },
+  { name: 'projects', route: '/projects', ...DESKTOP },
+  { name: 'notes', route: '/notes', ...DESKTOP },
+  { name: 'files', route: '/files', ...DESKTOP },
+  { name: 'inbox', route: '/inbox', ...DESKTOP },
+  { name: 'completed', route: '/settings/completed', ...DESKTOP },
+  { name: 'settings', route: '/settings', ...DESKTOP },
+  { name: 'reminders', route: '/settings/reminders', ...DESKTOP },
+  { name: 'ai-settings', route: '/settings/ai', ...DESKTOP },
+  { name: 'phone-home-light', route: '/home', ...PHONE },
+  { name: 'phone-home-dark', route: '/home', dark: true, ...PHONE },
+  { name: 'phone-projects', route: '/projects', ...PHONE },
+  { name: 'phone-notes', route: '/notes', ...PHONE },
+];
+
+// ── CDP over the DevTools WebSocket (no dependencies) ───────────────────────
+
+class Cdp {
+  constructor(ws) {
+    this.ws = ws;
+    this.id = 0;
+    this.pending = new Map();
+    ws.addEventListener('message', (ev) => {
+      const msg = JSON.parse(ev.data);
+      const waiter = this.pending.get(msg.id);
+      if (waiter) {
+        this.pending.delete(msg.id);
+        msg.error ? waiter.reject(new Error(msg.error.message)) : waiter.resolve(msg.result);
+      }
+    });
+  }
+
+  static async connect(url) {
+    const ws = new WebSocket(url);
+    await new Promise((resolve, reject) => {
+      ws.addEventListener('open', resolve, { once: true });
+      ws.addEventListener('error', () => reject(new Error(`cannot reach ${url}`)), { once: true });
+    });
+    return new Cdp(ws);
+  }
+
+  send(method, params = {}) {
+    const id = ++this.id;
+    this.ws.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
+  }
+
+  async evaluate(expression) {
+    const out = await this.send('Runtime.evaluate', {
+      expression,
+      awaitPromise: true,
+      returnByValue: true,
+    });
+    if (out.exceptionDetails) {
+      throw new Error(out.exceptionDetails.exception?.description ?? 'evaluate failed');
+    }
+    return out.result.value;
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function waitForPort(url, tries = 60) {
+  for (let i = 0; i < tries; i += 1) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return res.json();
+    } catch {
+      /* not up yet */
+    }
+    await sleep(250);
+  }
+  throw new Error(`timed out waiting for ${url}`);
+}
+
+// ── Preflight ───────────────────────────────────────────────────────────────
+
+async function preflight() {
+  if (!CHROME) throw new Error('no Chrome/Chromium found — pass --chrome /path/to/binary');
+
+  const health = await fetch(`${API_URL}/health/ready`).catch(() => null);
+  if (!health?.ok) throw new Error(`the API is not answering at ${API_URL} — run: npm run dev`);
+
+  const page = await fetch(APP_URL).catch(() => null);
+  if (!page?.ok) {
+    throw new Error(
+      `nothing is serving the web bundle at ${APP_URL} —\n` +
+        '  cd apps/app && flutter build web --release --dart-define=ALLISWELL_API_URL=' +
+        API_URL +
+        `\n  python3 -m http.server 8080 --directory apps/app/build/web`,
+    );
+  }
+
+  const login = await fetch(`${API_URL}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+  });
+  if (!login.ok) {
+    throw new Error(`cannot sign in as ${EMAIL} — run: node scripts/seed-demo.mjs`);
+  }
+  const { user, tokens } = await login.json();
+  return { user, tokens };
+}
+
+// ── Run ─────────────────────────────────────────────────────────────────────
+
+async function main() {
+  const session = await preflight();
+  await mkdir(OUT, { recursive: true });
+
+  const profile = path.join(process.env.TMPDIR ?? '/tmp', `alliswell-shots-${process.pid}`);
+  const chrome = spawn(
+    CHROME,
+    [
+      '--headless=new',
+      `--remote-debugging-port=${PORT}`,
+      `--user-data-dir=${profile}`,
+      `--lang=${LOCALE === 'tr' ? 'tr-TR' : 'en-US'}`,
+      '--hide-scrollbars',
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-extensions',
+      // CanvasKit needs WebGL; SwiftShader is the fallback on a headless box
+      // with no GPU (CI), and harmless where there is one.
+      '--enable-unsafe-swiftshader',
+      '--use-angle=metal',
+      'about:blank',
+    ],
+    { stdio: 'ignore' },
+  );
+
+  let cdp;
+  try {
+    await waitForPort(`http://127.0.0.1:${PORT}/json/version`);
+    // Attach to the tab Chrome already opened. Creating a second target and
+    // guessing its socket path works on some builds and answers "Not attached
+    // to an active page" on others; /json/list hands over the real URL.
+    const targets = await waitForPort(`http://127.0.0.1:${PORT}/json/list`);
+    const target = targets.find((t) => t.type === 'page');
+    if (!target) throw new Error('Chrome opened no page target');
+    const page = await Cdp.connect(target.webSocketDebuggerUrl);
+    cdp = page;
+    await page.send('Page.enable');
+    await page.send('Runtime.enable');
+
+    // Written before ANY document script runs, so the app boots signed in,
+    // past the first-run tour, and already in whatever view the shot needs.
+    // Setting a stored preference beats clicking the toggle: Flutter paints to
+    // a canvas, so "click the Board button" means either a coordinate (which
+    // rots the moment the app bar moves) or a walk of the accessibility tree
+    // that is only built once assistive tech asks for it.
+    const baseline = {
+      alliswell_session: JSON.stringify({ user: session.user, tokens: session.tokens }),
+      alliswell_onboarding_seen_v1: 'true',
+      alliswell_locale: LOCALE,
+      alliswell_quick_bubble_hinted: 'true',
+    };
+    let installedPrefs = null;
+    const installPrefs = async (prefs) => {
+      const values = { ...baseline, ...prefs };
+      const key = JSON.stringify(values);
+      if (key === installedPrefs) return;
+      installedPrefs = key;
+      if (bootstrapId) await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: bootstrapId });
+      const out = await page.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: `try { ${Object.entries(values)
+          .map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`)
+          .join('\n')} } catch (e) {}`,
+      });
+      bootstrapId = out.identifier;
+    };
+    let bootstrapId = null;
+
+    const shots = ONLY ? SHOTS.filter((s) => ONLY.includes(s.name)) : SHOTS;
+    for (const shot of shots) {
+      await installPrefs(shot.prefs ?? {});
+      await page.send('Emulation.setDeviceMetricsOverride', {
+        width: shot.width,
+        height: shot.height,
+        deviceScaleFactor: 2,
+        mobile: shot.width < 600,
+      });
+      await page.send('Emulation.setEmulatedMedia', {
+        features: [{ name: 'prefers-color-scheme', value: shot.dark ? 'dark' : 'light' }],
+      });
+
+      // Via about:blank, because a hash change alone does NOT reload: shot N
+      // would inherit shot N-1's scroll position and any sheet it left open.
+      // (`Page.reload` immediately after a navigate answers "Not attached to
+      // an active page" — the navigation is still in flight.)
+      await page.send('Page.navigate', { url: 'about:blank' });
+      await sleep(200);
+      await page.send('Page.navigate', { url: `${APP_URL}/#${shot.route}` });
+
+      await waitForApp(page);
+      await sleep(1200); // let the aurora and the list settle
+
+      const { data } = await page.send('Page.captureScreenshot', {
+        format: 'png',
+        captureBeyondViewport: false,
+      });
+      const file = path.join(OUT, `${shot.name}.png`);
+      await writeFile(file, Buffer.from(data, 'base64'));
+      console.log(`✓ ${path.relative(process.cwd(), file)}  (${shot.width}×${shot.height} @2×)`);
+    }
+  } finally {
+    try {
+      cdp?.ws.close();
+    } catch {
+      /* already gone */
+    }
+    chrome.kill();
+    await rm(profile, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * Flutter is up when `<flutter-view>` has been attached and the glass pane is
+ * inside it. Do NOT look for a `<canvas>`: the scene host lives in the glass
+ * pane's SHADOW root, so `document.querySelectorAll('canvas')` is 0 on a
+ * perfectly healthy page — a check that cost half an hour once.
+ */
+async function waitForApp(page) {
+  for (let i = 0; i < 100; i += 1) {
+    const ready = await page
+      .evaluate(`!!document.querySelector('flutter-view flt-glass-pane')`)
+      .catch(() => false);
+    if (ready) {
+      // The route the app lands on is the truth about whether the injected
+      // session was accepted; a redirect to /#/login means it was not.
+      const url = await page.evaluate('location.href').catch(() => '');
+      if (/#\/login|#\/register/.test(url)) {
+        throw new Error(
+          'the app booted to the sign-in screen — the injected session was rejected ' +
+            '(is the API the same one the bundle was built against?)',
+        );
+      }
+      await sleep(2000);
+      return;
+    }
+    await sleep(250);
+  }
+  throw new Error('the Flutter view never appeared — check the browser console');
+}
+
+main().catch((err) => {
+  console.error(`\n✗ ${err.message}`);
+  process.exit(1);
+});

@@ -171,6 +171,7 @@ class FakeApi {
     String priority = 'none',
     bool isUrgent = false,
     String? dueAt,
+    String? remindAt,
     String? scheduledStartAt,
     String? scheduledEndAt,
 
@@ -179,6 +180,16 @@ class FakeApi {
     /// cannot exist in production — and OPH-185's day boundary reads it.
     String? completedAt,
     bool calendarMirrorEnabled = false,
+
+    /// A subtask's parent. Real parent/child rows, exactly as the server
+    /// stores them — the detail screen reads the relation, not a list field.
+    String? parentTaskId,
+
+    /// Per-task colour (OPH-195), and the series this row belongs to
+    /// (OPH-205) — the repeat badge on a tile is `seriesId != null`.
+    String? colorRgb,
+    String? seriesId,
+    String? occurrenceDate,
     List<String> tagIds = const [],
     List<Map<String, dynamic>> checklist = const [],
   }) {
@@ -186,6 +197,7 @@ class FakeApi {
       'title': title,
       'description': description,
       'projectId': projectId,
+      'parentTaskId': parentTaskId,
       'status': status,
       'completedAt':
           completedAt ??
@@ -193,15 +205,45 @@ class FakeApi {
       'priority': priority,
       'isUrgent': isUrgent,
       'dueAt': dueAt,
+      'remindAt': remindAt ?? (isUrgent ? dueAt : null),
       'scheduledStartAt': scheduledStartAt,
       'scheduledEndAt': scheduledEndAt,
       'calendarMirrorEnabled': calendarMirrorEnabled,
+      'colorRgb': colorRgb,
+      'seriesId': seriesId,
+      'occurrenceDate': occurrenceDate,
       'tagIds': tagIds,
       'checklist': checklist,
     });
     tasks.add(task);
     _bump();
     return task;
+  }
+
+  /// A recurrence series (OPH-205). Seeded rows reference it through
+  /// [seedTask]'s `seriesId`; the app reads the rule from here to render the
+  /// repeat summary ("Every month on the 31st") on a task's detail.
+  final List<Map<String, dynamic>> taskSeries = [];
+
+  Map<String, dynamic> seedSeries({
+    required Map<String, dynamic> rule,
+    required Map<String, dynamic> template,
+    required String anchorAt,
+    String timezone = 'Europe/Istanbul',
+  }) {
+    _seq += 1;
+    final series = {
+      'id': 'SRS${_seq.toString().padLeft(23, '0')}',
+      'workspaceId': workspaceId,
+      'rule': rule,
+      'template': template,
+      'timezone': timezone,
+      'anchorAt': anchorAt,
+      'revision': 1,
+    };
+    taskSeries.add(series);
+    _bump();
+    return series;
   }
 
   Map<String, dynamic> seedProject({
@@ -858,6 +900,11 @@ class FakeApi {
       for (final q in quickLinks) {
         snapshot('quick_link', q);
       }
+      // Before the tasks: a row whose seriesId resolves to nothing renders as
+      // a repeat badge with no rule behind it.
+      for (final s in taskSeries) {
+        snapshot('task_series', s);
+      }
       for (final t in tasks) {
         snapshot('task', t);
         for (final item in (t['checklist'] as List? ?? const [])) {
@@ -1237,7 +1284,11 @@ class FakeApi {
       'description': body['description'],
       'status': body['status'] ?? 'open',
       'priority': body['priority'] ?? 'none',
-      'colorRgb': null,
+      'colorRgb': body['colorRgb'],
+      // OPH-205: server-owned. Clients read them; a non-null seriesId is what
+      // puts the repeat badge on a tile.
+      'seriesId': body['seriesId'],
+      'occurrenceDate': body['occurrenceDate'],
       'startAt': null,
       'dueAt': body['dueAt'],
       'scheduledStartAt': body['scheduledStartAt'],
