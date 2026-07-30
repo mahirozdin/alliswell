@@ -122,6 +122,79 @@ class AiModelCatalog {
   }
 }
 
+/// One proposed task from `/ai/extract` (OPH-219's schema). `projectName` is
+/// the user's words — resolution to a real project id is ours (project_match).
+class AiProposalTask {
+  const AiProposalTask({
+    required this.title,
+    this.description,
+    this.projectName,
+    this.dueAt,
+    this.dueAtSource,
+    this.reminderAt,
+    this.priority,
+    this.urgent = false,
+    this.tags = const [],
+    this.checklist = const [],
+    this.ambiguities = const [],
+  });
+
+  final String title;
+  final String? description;
+  final String? projectName;
+  final String? dueAt;
+  final String? dueAtSource;
+  final String? reminderAt;
+  final String? priority;
+  final bool urgent;
+  final List<String> tags;
+  final List<String> checklist;
+  final List<String> ambiguities;
+
+  factory AiProposalTask.fromJson(Map<String, dynamic> json) => AiProposalTask(
+    title: json['title'] as String,
+    description: json['description'] as String?,
+    projectName: json['projectName'] as String?,
+    dueAt: json['dueAt'] as String?,
+    dueAtSource: json['dueAtSource'] as String?,
+    reminderAt: json['reminderAt'] as String?,
+    priority: json['priority'] as String?,
+    urgent: (json['urgent'] as bool?) ?? false,
+    tags: ((json['tags'] as List?) ?? const []).cast<String>(),
+    checklist: ((json['checklist'] as List?) ?? const []).cast<String>(),
+    ambiguities: ((json['ambiguities'] as List?) ?? const []).cast<String>(),
+  );
+}
+
+class AiProposal {
+  const AiProposal({
+    required this.requestId,
+    required this.actionId,
+    required this.intent,
+    this.answer,
+    this.tasks = const [],
+  });
+
+  final String requestId;
+  final String actionId;
+  final String intent; // create_tasks | answer | none
+  final String? answer;
+  final List<AiProposalTask> tasks;
+
+  factory AiProposal.fromJson(Map<String, dynamic> json) {
+    final proposal = (json['proposal'] as Map<String, dynamic>?) ?? const {};
+    return AiProposal(
+      requestId: json['requestId'] as String,
+      actionId: json['actionId'] as String,
+      intent: proposal['intent'] as String? ?? 'none',
+      answer: proposal['answer'] as String?,
+      tasks: ((proposal['tasks'] as List?) ?? const [])
+          .map((t) => AiProposalTask.fromJson(t as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
 class AiConnectionTest {
   const AiConnectionTest({
     required this.ok,

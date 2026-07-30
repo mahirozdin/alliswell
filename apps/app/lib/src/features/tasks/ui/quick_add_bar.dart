@@ -14,11 +14,17 @@ class QuickAddBar extends StatefulWidget {
     this.autofocus = false,
     this.controller,
     this.focusNode,
+    this.onParse,
   });
 
   final String hintText;
   final Future<void> Function(String title) onAdd;
   final bool autofocus;
+
+  /// OPH-222: when provided (AI configured), a "✨ parse" affordance sends the
+  /// typed text through the extraction endpoint into the same confirm card —
+  /// no new UX invented. Absent → the bar is exactly as it was.
+  final Future<void> Function(String text)? onParse;
 
   /// Hand these in when the bar can be DISPOSED while the user is still using
   /// it — on Home it scrolls with the list (OPH-172), and a sliver past the
@@ -75,6 +81,12 @@ class _QuickAddBarState extends State<QuickAddBar> {
     }
   }
 
+  Future<void> _parse() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || widget.onParse == null) return;
+    await widget.onParse!(text);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -97,10 +109,22 @@ class _QuickAddBarState extends State<QuickAddBar> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 )
-              : IconButton(
-                  icon: const Icon(Icons.arrow_upward),
-                  tooltip: 'task.addTask'.tr(),
-                  onPressed: _submit,
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.onParse != null)
+                      IconButton(
+                        key: const Key('quick-add-parse'),
+                        icon: const Icon(Icons.auto_awesome_outlined),
+                        tooltip: 'ai.confirm.parse'.tr(),
+                        onPressed: _parse,
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_upward),
+                      tooltip: 'task.addTask'.tr(),
+                      onPressed: _submit,
+                    ),
+                  ],
                 ),
         ),
       ),

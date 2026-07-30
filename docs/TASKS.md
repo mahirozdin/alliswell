@@ -5669,19 +5669,21 @@ _(✅ 2026-07-30 — drift **v15** (`ai_messages`, AlarmEvents emsali cihaz-yere
 
 ### OPH-222 — Onay kartı → local-first commit (+ quick-add "sihirli ayrıştır")
 
-- [ ] Öneri kartı: oluşturma sheet'inin alan satırlarının AYNISI yeniden kullanılır
+_(✅ 2026-07-30 — `ai_confirm_card.dart` create sheet satırlarını yeniden kullanır (AwSheetTile/ProjectPickerField), satır-başına aç/kapa, `dueAtSource` çözülen değerin yanında ("yarın → 30 Tem"). Proje çözümü **bizde**: `project_match.dart` (fold + exact→prefix→contains, parite fikstürünün Dart yarısı — 11 vaka JS ile birebir). Accept: etkin her satır `TaskStore.create` + `addChecklistItem` (AI REST'e DOKUNMAZ — outbox tek yol); karar raporu `ai_action_reporter` (localKv kuyruğu, anında dene, resume'da drain — idempotent uç güvenli retry). **Undo 3sn** oluşturulanları store.delete ile geri alır (create+delete outbox). **Reject HİÇBİR ŞEY yazmaz** (pushedMutations boş assert'i). Quick-add ✨ binicisi (yalnız configured'da) → aynı extract → AYNI kart. FakeApi `_ai` extract/actions. **App 704 test** (690+14), analyze + i18n temiz. Onay-kartı-atlanamaz v1 değişmezi korunuyor.)_
+
+- [x] Öneri kartı: oluşturma sheet'inin alan satırlarının AYNISI yeniden kullanılır
       (`core/date_input.dart` tek tarih yolu — OPH-191 dersi; etiket chip-input; proje
       seçici + "+ Proje ekle"); her görev satırı ayrı aç/kapa; `dueAtSource` ham ifade
       alanın yanında ("yarın 15:00 → 30 Tem 15:00").
-- [ ] **Commit yolu = `TaskStore`:** kabul edilen her görev optimistic satır + outbox
+- [x] **Commit yolu = `TaskStore`:** kabul edilen her görev optimistic satır + outbox
       olarak yazılır (AI REST'e DOKUNMAZ — ADR-0016'nın "ikinci yazma yolu yok" ilkesi);
       hatırlatma sunucunun mevcut reconcile'ına düşer; çevrimdışı kabul çalışır, sonra
       senkron olur (test).
-- [ ] Reddedilen öneri outbox'a HİÇBİR ŞEY yazmaz (test); kabul `ai_action_log`'a
+- [x] Reddedilen öneri outbox'a HİÇBİR ŞEY yazmaz (test); kabul `ai_action_log`'a
       düşer; kabul sonrası geri alma DESIGN §19 kalıbı.
-- [ ] **Bonus yüzey (ucuz binici):** quick-add alanına "✨ ayrıştır" — yapıştırılan
+- [x] **Bonus yüzey (ucuz binici):** quick-add alanına "✨ ayrıştır" — yapıştırılan
       uzun metni aynı çıkarım ucundan geçirir, aynı onay kartı (yeni UX icat edilmez).
-- [ ] i18n: `ai.confirm.*`, `ai.parse.*`; testler: çok görevli kartın kısmi kabulü;
+- [x] i18n: `ai.confirm.*`, `ai.parse.*`; testler: çok görevli kartın kısmi kabulü;
       düzenle-sonra-kabul; çevrimdışı kabul + sonra senkron; sihirli ayrıştır ucu.
 
 ### OPH-223 — Basılı-konuş FAB + cihaz-üstü STT (cihaz taskı)

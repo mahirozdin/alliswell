@@ -12,7 +12,10 @@ void main() {
 
   setUp(() {
     db = AwDatabase(
-      DatabaseConnection(NativeDatabase.memory(), closeStreamsSynchronously: true),
+      DatabaseConnection(
+        NativeDatabase.memory(),
+        closeStreamsSynchronously: true,
+      ),
     );
     store = AiMessagesStore(db);
   });

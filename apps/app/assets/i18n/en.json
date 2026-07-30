@@ -778,6 +778,19 @@
       "unconfiguredTitle": "No AI provider yet",
       "unconfiguredBody": "Add a provider in Settings, or save this to your Inbox.",
       "saveToInbox": "Save to Inbox"
+    },
+    "confirm": {
+      "title": "Review these tasks",
+      "accept": "Add {count}",
+      "reject": "Discard",
+      "taskTitle": "Title",
+      "projectUnresolved": "You said \"{name}\" — pick a project",
+      "dueSource": "{source} → {resolved}",
+      "created": "{count} added",
+      "undo": "Undo",
+      "emptyTitle": "Nothing to add",
+      "emptyBody": "The AI didn't find any tasks in that.",
+      "parse": "Parse with AI"
     }
   }
 }

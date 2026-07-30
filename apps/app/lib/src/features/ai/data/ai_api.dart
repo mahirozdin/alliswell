@@ -80,6 +80,41 @@ class AiApi {
     return AiConnectionTest.fromJson(res.data ?? const {});
   });
 
+  /// Extraction (OPH-219): one utterance → a schema-validated proposal.
+  Future<AiProposal> extract(
+    String workspaceId, {
+    required String text,
+    required String source, // bubble | share | quick_add | voice
+    String? defaultTaskTime,
+    String? locale,
+    List<String>? projectNames,
+  }) => _run(() async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/api/v1/workspaces/$workspaceId/ai/extract',
+      data: {
+        'text': text,
+        'source': source,
+        'defaultTaskTime': ?defaultTaskTime,
+        'locale': ?locale,
+        'projectNames': ?projectNames,
+      },
+    );
+    return AiProposal.fromJson(res.data!);
+  });
+
+  /// Records the human verdict on a proposal (OPH-219). Idempotent server-side,
+  /// so the offline report queue can retry safely.
+  Future<void> decideAction(
+    String actionId, {
+    required bool accepted,
+    List<Map<String, String>>? entityRefs,
+  }) => _run(() async {
+    await _dio.post<void>(
+      '/api/v1/ai/actions/$actionId/decision',
+      data: {'accepted': accepted, 'entityRefs': ?entityRefs},
+    );
+  });
+
   Future<AiModelCatalog> models(String workspaceId, {String? connectionId}) =>
       _run(() async {
         final res = await _dio.get<Map<String, dynamic>>(

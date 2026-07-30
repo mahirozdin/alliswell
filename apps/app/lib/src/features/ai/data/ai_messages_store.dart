@@ -52,15 +52,17 @@ class AiMessagesStore {
   )..where((m) => m.workspaceId.equals(workspaceId))).go();
 
   Future<void> _trim() async {
+    // Trim by the monotonic autoincrement id, not createdAt: rapid inserts
+    // share a millisecond, and a timestamp cutoff cannot separate them.
     final keep =
         await (_db.select(_db.aiMessages)
-              ..orderBy([(m) => OrderingTerm.desc(m.createdAt)])
+              ..orderBy([(m) => OrderingTerm.desc(m.id)])
               ..limit(kAiMessageLimit))
             .get();
     if (keep.length < kAiMessageLimit) return;
-    final cutoff = keep.last.createdAt;
+    final cutoff = keep.last.id;
     await (_db.delete(
       _db.aiMessages,
-    )..where((m) => m.createdAt.isSmallerThanValue(cutoff))).go();
+    )..where((m) => m.id.isSmallerThanValue(cutoff))).go();
   }
 }

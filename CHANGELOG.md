@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **Turn a sentence into tasks — you always confirm first (OPH-222).** A
+  confirm card reuses the create sheet's own rows: one row per proposed task,
+  each independently on/off, with the phrase you said shown beside the resolved
+  date ("yarın → 30 Jul"). Project names are matched to your real projects by
+  us (Turkish-aware). Accepting commits through the normal offline-first task
+  path and offers Undo; rejecting writes nothing at all. A "✨ parse" button on
+  quick-add runs pasted text through the same card.
 - **The AI bubble streams answers (OPH-221).** A chat bubble that streams the
   reply token by token with a live Stop, keeps its history on-device only
   (never synced), and shows an honest face for every state — thinking, error,

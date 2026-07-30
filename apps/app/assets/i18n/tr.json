@@ -777,6 +777,19 @@
       "unconfiguredTitle": "Henüz yapay zekâ sağlayıcısı yok",
       "unconfiguredBody": "Ayarlar'dan bir sağlayıcı ekle, ya da bunu Inbox'a kaydet.",
       "saveToInbox": "Inbox'a kaydet"
+    },
+    "confirm": {
+      "title": "Bu işleri gözden geçir",
+      "accept": "{count} ekle",
+      "reject": "Vazgeç",
+      "taskTitle": "Başlık",
+      "projectUnresolved": "\"{name}\" dedin — bir proje seç",
+      "dueSource": "{source} → {resolved}",
+      "created": "{count} eklendi",
+      "undo": "Geri al",
+      "emptyTitle": "Eklenecek bir şey yok",
+      "emptyBody": "Yapay zekâ bunda görev bulamadı.",
+      "parse": "Yapay zekâyla ayrıştır"
     }
   }
 }

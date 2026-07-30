@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api_exception.dart';
 import '../../core/date_format.dart';
 import '../../core/error_messages.dart';
 import '../../core/fold.dart';
@@ -17,6 +18,9 @@ import '../../widgets/status_views.dart';
 import '../../search/providers.dart';
 import '../../search/search.dart';
 import '../../widgets/search_field.dart';
+import '../ai/providers.dart';
+import '../ai/ui/ai_confirm_card.dart';
+import '../projects/providers.dart';
 import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
@@ -107,6 +111,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'title': title,
       'dueAt': ?dueAt,
     });
+  }
+
+  /// OPH-222 — the ✨ rider: run pasted text through extraction into the same
+  /// confirm card the voice/share paths use.
+  Future<void> _parseWithAi(String text) async {
+    final workspaces = await ref.read(workspacesProvider.future);
+    if (workspaces.isEmpty || !mounted) return;
+    final projectNames =
+        (ref.read(projectsControllerProvider).value ?? const [])
+            .map((p) => p.name)
+            .toList();
+    try {
+      final proposal = await ref
+          .read(aiApiProvider)
+          .extract(
+            workspaces.first.id,
+            text: text,
+            source: 'quick_add',
+            defaultTaskTime: ref.read(defaultTaskTimeProvider),
+            projectNames: projectNames,
+          );
+      if (!mounted) return;
+      _quickAddController.clear();
+      await showAiConfirmSheet(context, proposal);
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(localizedError(e))));
+      }
+    }
   }
 
   @override
@@ -222,6 +257,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ref.read(selectedDayProvider.notifier).select(day),
           );
 
+          // OPH-222: the ✨ parse rider — only when AI is configured.
+          final aiConfigured =
+              ref.watch(aiStatusProvider).value?.configured ?? false;
           final quickAdd = QuickAddBar(
             key: const Key('home-quick-add'),
             // Hoisted state (H4) — see [_quickAddController].
@@ -235,6 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                   ),
             onAdd: _quickAdd,
+            onParse: aiConfigured ? _parseWithAi : null,
           );
 
           // Honest alarm-degradation banner (OPH-143): only shown when the OS
