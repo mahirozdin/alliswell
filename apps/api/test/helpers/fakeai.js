@@ -92,10 +92,14 @@ export async function startFakeAi() {
       if (!finished) state.aborted += 1;
     });
 
+    // Stall mode holds back the TERMINAL frame (message_stop / [DONE] /
+    // done:true) so the adapter's read loop stays genuinely open — a stall
+    // that has already said "the end" isn't a stall, it's a slow goodbye.
+    const limit = state.stall ? frames.length - 1 : frames.length;
     let index = 0;
     const writeNext = () => {
       if (closed) return;
-      if (index >= frames.length) {
+      if (index >= limit) {
         if (state.stall) return; // hang: only a client abort ends this request
         finished = true;
         raw.end();

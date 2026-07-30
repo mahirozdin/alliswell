@@ -3,6 +3,13 @@ import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { encryptSecret } from '../lib/crypto.js';
 import { MODEL_CATALOG, catalogDefaults } from '../lib/ai/models.js';
+import {
+  runChat,
+  sseSink,
+  socketSink,
+  ABORT_CANCELLED,
+  ABORT_CLIENT_GONE,
+} from '../lib/ai/chat.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
@@ -529,6 +536,176 @@ export default async function aiRoutes(app) {
         }
         return { ok: false, code, message: 'The provider refused the connection test' };
       }
+    },
+  );
+
+  // ── Chat: SSE-over-POST (or the web's Socket.IO room) ─────────────────────
+  const chatBodySchema = {
+    type: 'object',
+    additionalProperties: false,
+    required: ['requestId', 'messages'],
+    properties: {
+      // Client-generated: the cancellation rendezvous and the log correlator.
+      requestId: ULID_PARAM,
+      connectionId: ULID_PARAM,
+      model: { type: 'string', minLength: 1, maxLength: 128 },
+      messages: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 40,
+        items: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['role', 'content'],
+          properties: {
+            role: { type: 'string', enum: ['user', 'assistant'] },
+            content: { type: 'string', minLength: 1, maxLength: 32768 },
+          },
+        },
+      },
+      // STRUCTURED client-packed context (AI.md §7) — the server is the one
+      // place fence syntax exists (lib/ai/context.js), so the app's context
+      // chip stays an honest view of exactly this structure.
+      context: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          segments: {
+            type: 'array',
+            maxItems: 80,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['tier', 'source', 'text'],
+              properties: {
+                tier: { type: 'string', enum: ['t0', 't1', 't2'] },
+                source: { type: 'string', minLength: 1, maxLength: 32 },
+                id: { type: 'string', maxLength: 26 },
+                text: { type: 'string', minLength: 1, maxLength: 4000 },
+              },
+            },
+          },
+          truncated: { type: 'boolean' },
+        },
+      },
+      transport: { type: 'string', enum: ['sse', 'socket'] },
+    },
+  };
+
+  app.post(
+    '/workspaces/:workspaceId/ai/chat',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { workspaceId: ULID_PARAM } },
+        body: chatBodySchema,
+        // The SSE branch hijacks the reply, so only the JSON answers are
+        // schema-serialized (socket ack + the pre-hijack errors).
+        response: {
+          200: {
+            type: 'object',
+            properties: { requestId: { type: 'string' }, transport: { type: 'string' } },
+          },
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          429: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { workspaceId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      const userId = request.user.id;
+      const { requestId } = request.body;
+
+      // Rate limit BEFORE any hijack — a 429 is a normal JSON error.
+      const verdict = await app.ai.limiter.take(userId);
+      if (!verdict.allowed) {
+        reply.header('retry-after', String(verdict.retryAfterSec ?? 60));
+        throw coded(
+          app.httpErrors.tooManyRequests('Slow down — the AI limit refills in a minute'),
+          'AI_RATE_LIMITED',
+        );
+      }
+
+      const resolution = await app.ai.resolveConnection({
+        request,
+        workspaceId,
+        connectionId: request.body.connectionId ?? null,
+      });
+      if (resolution.authMode === 'instance_env' && (await app.ai.dailyCap.isOver(userId))) {
+        reply.header('retry-after', '3600');
+        throw coded(
+          app.httpErrors.tooManyRequests('Daily AI budget on this instance is used up'),
+          'AI_DAILY_CAP',
+        );
+      }
+      const model = request.body.model ?? resolution.models.chat;
+      if (!model) {
+        throw coded(
+          app.httpErrors.badRequest('Pick a model for this connection first'),
+          'AI_MODEL_REQUIRED',
+        );
+      }
+
+      const ac = new AbortController();
+      app.ai.registerInflight(requestId, userId, () => ac.abort(ABORT_CANCELLED));
+      const chatInput = {
+        app,
+        resolution,
+        requestId,
+        model,
+        messages: request.body.messages,
+        context: request.body.context ?? null,
+        userId,
+        workspaceId,
+        signal: ac.signal,
+      };
+
+      if (request.body.transport === 'socket') {
+        // Ack now; the stream lands in the caller's personal room. Detached by
+        // design — the HTTP request is done, the work is not.
+        runChat({ ...chatInput, sink: socketSink(app.io, userId, requestId) })
+          .catch((err) => app.log.error({ err: err.message, requestId }, 'ai socket chat failed'))
+          .finally(() => app.ai.unregisterInflight(requestId));
+        return { requestId, transport: 'socket' };
+      }
+
+      // SSE: the reply is hijacked from here on. Client disconnects surface on
+      // reply.raw 'close' (NOT request.raw — the OPH-216 fake taught us).
+      reply.raw.on('close', () => {
+        if (!ac.signal.aborted) ac.abort(ABORT_CLIENT_GONE);
+      });
+      try {
+        await runChat({ ...chatInput, sink: sseSink(reply) });
+      } finally {
+        app.ai.unregisterInflight(requestId);
+      }
+    },
+  );
+
+  // ── Cancel: always 204 — idempotent, existence never asserted ─────────────
+  app.post(
+    '/workspaces/:workspaceId/ai/chat/:requestId/cancel',
+    {
+      ...auth,
+      schema: {
+        params: {
+          type: 'object',
+          properties: { workspaceId: ULID_PARAM, requestId: ULID_PARAM },
+        },
+        response: { 204: { type: 'null' }, 403: errorResponseSchema },
+      },
+    },
+    async (request, reply) => {
+      const { workspaceId, requestId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      // Ownership is enforced at the worker holding the stream: the bus
+      // message carries the caller's id and only a matching entry aborts.
+      await app.ai.requestCancel({ requestId, userId: request.user.id });
+      return reply.code(204).send();
     },
   );
 }

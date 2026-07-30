@@ -109,9 +109,20 @@ ProxyPreserveHost On
 RewriteEngine On
 RewriteCond %{HTTP:Upgrade} =websocket [NC]
 RewriteRule ^/?(.*) ws://127.0.0.1:3000/$1 [P,L]
-ProxyPass        / http://127.0.0.1:3000/
+# AI chat streams as Server-Sent Events (docs/AI.md §3): the stream must reach
+# the client UNBUFFERED, or "thinking…" and "broken" become indistinguishable.
+# 1) keep mod_deflate away from event streams, 2) flush proxy packets as they
+# arrive, 3) keep the idle timeout ABOVE the 15 s heartbeat (AI_HEARTBEAT_MS).
+SetEnvIf Request_URI "/ai/chat$" no-gzip=1
+ProxyPass        / http://127.0.0.1:3000/ flushpackets=on
 ProxyPassReverse / http://127.0.0.1:3000/
+ProxyTimeout 120
 ```
+
+After changing the conf, prove it with a curl — buffered SSE looks exactly like
+a hung model, so the proof is non-negotiable (the OPH-217 checklist): a POST to
+`/api/v1/workspaces/…/ai/chat` with `curl -N` must print `event:` frames
+INCREMENTALLY, not in one burst at the end.
 
 </details>
 

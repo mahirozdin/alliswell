@@ -5508,19 +5508,38 @@ dinleyiciyi kullanmalı, yorumda yazılı.)_
 
 ### OPH-217 — `/ai/chat`: SSE akışı + hız sınırı + iptal + prod kanıtı
 
-- [ ] SSE-over-POST (`text/event-stream`, 15 sn heartbeat yorumu, token demeti başına
-      flush); istemci kopunca (`request.raw close`) upstream `AbortController` iptali.
-- [ ] Redis: kullanıcı başına token-bucket hız sınırı (paylaşılan self-host'u korur) +
-      `ai:cancel:{requestId}` yayını (bubble kapatınca PM2 worker'ları arası iptal).
-- [ ] **Transport dikişi tek yerde:** Flutter `AiStreamClient` — iOS/Android/masaüstü
-      SSE, **web Socket.IO odası** (dio/XHR web'de akıtmaz; Socket.IO+Redis adaptörü
-      zaten kurulu). UI transportu bilmez.
-- [ ] **Apache/PM2 deploy kontrol listesi dokümana** ([AI.md](AI.md) §6 + prod notları):
-      `text/event-stream` için `no-gzip`, `flushpackets=on`, `ProxyTimeout` >
-      heartbeat. **DoD: alliswell.space'e karşı curl ile artımlı parça kanıtı** —
-      tamponlanmış SSE "AI takıldı" gibi görünür, bu yüzden kanıt pazarlıksız.
-- [ ] Testler: enjekte akışla unit (parça sırası, heartbeat, iptal); hız sınırı 429 +
-      makine-okur kod; usage satırı.
+_(✅ 2026-07-30 kod tarafı — prod curl kanıtı v0.9.0 deploy'unda alınacak (aşağıda,
+STATE kuyruğunda). Uygulama notları: (1) istemci kopuşu `request.raw` DEĞİL
+**`reply.raw`'ın 'close'** olayında görünür (OPH-216'nın fakeai dersi — checklist'in
+orijinal cümlesi düzeltildi); (2) iptal hata değil: akış `done {cancelled:true}` ile
+biter, sahiplik STREAM'İ TUTAN worker'da doğrulanır (iptal eden yalnız kendi isteğini
+öldürebilir); (3) bucket chat+extract ORTAK (aynı sağlayıcı kotasını içerler);
+Redis'siz süreç-içi fallback PM2'de worker-başına düşer — daha sıkı, daha gevşek
+değil; Redis komut hatası **fail open** (limiter koruma, authz değil); (4) sunucu
+tarafı socket odası `user:{userId}` — `ws:*` odaları sohbeti tüm üyelere yayınlardı;
+Flutter `AiStreamClient` dikişi OPH-221'de.)_
+
+- [x] SSE-over-POST (`text/event-stream`, 15 sn heartbeat yorumu, token demeti başına
+      flush + drain backpressure); istemci kopunca (**`reply.raw` close**) upstream
+      `AbortController` iptali.
+- [x] Redis: kullanıcı başına token-bucket hız sınırı (paylaşılan self-host'u korur;
+      atomik Lua, chat+extract ortak kova) + `ai:cancel` yayını (bubble kapatınca PM2
+      worker'ları arası iptal — entegrasyon testi B instance'ına POST edilen iptalin
+      A'daki akışı öldürdüğünü gerçek Redis'le kanıtlıyor); instance_env için günlük
+      token tavanı (`AI_DAILY_TOKEN_CAP` → 429 `AI_DAILY_CAP`).
+- [x] **Transport dikişi tek yerde:** sunucu tarafı hazır — `runChat` tek kod yolu,
+      `sseSink` (iOS/Android/masaüstü) + `socketSink` (**web Socket.IO odası**
+      `user:{userId}`, anında 200 ack + detached koşu). Flutter `AiStreamClient`
+      OPH-221'de; UI transportu bilmez.
+- [x] **Apache/PM2 deploy kontrol listesi dokümana** ([AI.md](AI.md) **§3** + SELF-HOSTING
+      Apache bloğu): `text/event-stream` için `no-gzip`, `flushpackets=on`,
+      `ProxyTimeout` > heartbeat. **DoD: alliswell.space'e karşı curl ile artımlı parça
+      kanıtı** — tamponlanmış SSE "AI takıldı" gibi görünür, bu yüzden kanıt pazarlıksız
+      (v0.9.0 deploy adımında alınır, STATE'e yapıştırılır).
+- [x] Testler: enjekte akışla unit (parça sırası, heartbeat, iki iptal türü, hata
+      çevirisi + status bayrağı); hız sınırı 429 + makine-okur kod + Retry-After;
+      usage satırı her sonuçta; gerçek dinleyicide SSE artımlılığı + kopuş-abort +
+      sahiplikli iptal + **eş üyenin soketi HİÇBİR ŞEY almaz**.
 
 ### OPH-218 — Hat A: AllisWell uzak MCP sunucusu ("Add to Claude / ChatGPT")
 

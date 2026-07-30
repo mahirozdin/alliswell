@@ -82,9 +82,10 @@ JS-only on the server, and privacy-led — any design must survive all of that.
 - A quarterly provider-policy re-check becomes standing work (STATE "waiting on
   user" carries the OpenAI interest-form registration).
 - The Apache reverse proxy on prod must be configured for SSE (no-gzip,
-  flushpackets, timeouts) and the deploy checklist becomes part of OPH-206's DoD —
+  flushpackets, timeouts) and the deploy checklist becomes part of OPH-217's DoD —
   with a curl-against-prod proof, because buffered SSE is indistinguishable from a
-  hung model.
+  hung model. _(Editorial fix 2026-07-30: originally said "OPH-206", a pre-renumber
+  id from before round 12 slotted Epic 19 in.)_
 - Prompt-injection defense is architectural (no tools, no external comms, human
   confirm) rather than prompt-cosmetic; a red-team corpus lives in CI from v1.
 - Five adapters is more surface than one, but the contract suite keeps them honest,

@@ -60,6 +60,10 @@ export default fp(
         for (const membership of memberships) {
           await socket.join(`ws:${membership.workspace_id}`);
         }
+        // OPH-217: AI chat streams over the web transport land in a PERSONAL
+        // room — the ws:* rooms would broadcast one member's chat to the
+        // whole workspace.
+        await socket.join(`user:${socket.data.userId}`);
         socket.emit('sync:ready', {
           workspaceIds: memberships.map((m) => m.workspace_id),
         });

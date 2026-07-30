@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **AI chat streams (OPH-217).** `POST /ai/chat` streams answers as
+  Server-Sent Events (15 s heartbeats, real backpressure), with a Socket.IO
+  personal-room transport for the web where XHR can't stream. A per-user token
+  bucket (shared by chat and extraction) protects shared self-hosts, instance
+  keys get a daily token cap, and dismissing the bubble cancels the stream on
+  whichever PM2 worker holds it — closing the upstream connection for real,
+  not just the tab. The Apache SSE checklist (no-gzip, flushpackets, timeouts)
+  is documented in SELF-HOSTING.md; the curl-against-prod proof lands with the
+  v0.9.0 deploy.
 - **Five AI providers, one contract (OPH-216).** Thin fetch adapters for
   Anthropic, OpenAI, Gemini, OpenRouter and Ollama normalize three SSE dialects
   and one NDJSON stream into a single event flow, with a hand-written parser

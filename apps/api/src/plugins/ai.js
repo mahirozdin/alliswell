@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import fp from 'fastify-plugin';
 
 import { newId } from '../lib/ids.js';
@@ -5,6 +6,7 @@ import { coded } from '../lib/errors.js';
 import { decryptSecret } from '../lib/crypto.js';
 import { providers } from '../lib/ai/providers/index.js';
 import { catalogDefaults } from '../lib/ai/models.js';
+import { createRateLimiter, createDailyCap } from '../lib/ai/ratelimit.js';
 
 /**
  * The AI seam (OPH-215, Epic 20, ADR-0019): connection resolution, key
@@ -150,6 +152,70 @@ export default fp(
       }
     }
 
+    // ── OPH-217: rate limiting, daily caps, and the cancel bus ──────────────
+    const limiter = createRateLimiter({
+      redis: app.redis,
+      keyPrefix: app.config.redisKeyPrefix,
+      ratePerMinute: ai.ratePerMinute,
+      burst: ai.rateBurst,
+      log: app.log,
+    });
+    const dailyCap = createDailyCap({
+      redis: app.redis,
+      keyPrefix: app.config.redisKeyPrefix,
+      capTokens: ai.dailyTokenCap,
+      log: app.log,
+    });
+
+    /**
+     * In-flight streams on THIS worker: requestId → {userId, abort}. The
+     * cancel bus fans a cancel out to every worker (Redis pub/sub when up, a
+     * local EventEmitter otherwise); ownership is enforced at the worker that
+     * HOLDS the stream — a caller can only ever kill their own request.
+     */
+    const inflight = new Map();
+    const localBus = new EventEmitter();
+    const cancelChannel = `${app.config.redisKeyPrefix}:ai:cancel`;
+
+    function handleCancel({ requestId, userId }) {
+      const entry = inflight.get(requestId);
+      if (entry && entry.userId === userId) entry.abort();
+    }
+    localBus.on('cancel', handleCancel);
+
+    let cancelSub = null;
+    if (typeof app.redis?.duplicate === 'function' && app.redis.status === 'ready') {
+      const options = { lazyConnect: false, enableOfflineQueue: true, maxRetriesPerRequest: null };
+      cancelSub = app.redis.duplicate(options);
+      cancelSub.subscribe(cancelChannel).catch((err) => {
+        app.log.warn({ err: err.message }, 'ai cancel bus subscribe failed');
+      });
+      cancelSub.on('message', (channel, message) => {
+        if (channel !== cancelChannel) return;
+        try {
+          handleCancel(JSON.parse(message));
+        } catch {
+          /* a malformed bus message is noise, not a crash */
+        }
+      });
+      app.addHook('onClose', async () => {
+        cancelSub.disconnect();
+      });
+    }
+
+    async function requestCancel({ requestId, userId }) {
+      if (cancelSub) {
+        try {
+          // Our own subscription delivers locally too — no double-emit path.
+          await app.redis.publish(cancelChannel, JSON.stringify({ requestId, userId }));
+          return;
+        } catch (err) {
+          app.log.warn({ err: err.message }, 'ai cancel publish failed; falling back local');
+        }
+      }
+      localBus.emit('cancel', { requestId, userId });
+    }
+
     app.decorate('ai', {
       enabled: ai.enabled,
       providers,
@@ -157,6 +223,11 @@ export default fp(
       recordUsage,
       touchConnection,
       notConfigured,
+      limiter,
+      dailyCap,
+      registerInflight: (requestId, userId, abort) => inflight.set(requestId, { userId, abort }),
+      unregisterInflight: (requestId) => inflight.delete(requestId),
+      requestCancel,
     });
   },
   {
