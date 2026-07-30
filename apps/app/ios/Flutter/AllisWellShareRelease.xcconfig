@@ -1,0 +1,4 @@
+// Base configuration for the AllisWellShare extension — Release (OPH-225).
+// See AllisWellShareDebug.xcconfig for why both includes are required.
+#include? "Pods/Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.release.xcconfig"
+#include "Generated.xcconfig"

@@ -34,6 +34,16 @@ target 'Runner' do
   target 'RunnerTests' do
     inherit! :search_paths
   end
+
+  # OPH-225 (ADR-0023): the share extension needs RSIShareViewController from
+  # receive_sharing_intent. It must NOT compile that pod itself — the pod also
+  # carries the Flutter plugin registrar, whose `addApplicationDelegate` is
+  # unavailable in an app extension and fails the build. `inherit! :search_paths`
+  # is the plugin author's own recipe: the pod is built once for Runner (where
+  # that API is legal) and the extension links the framework the app embeds.
+  target 'AllisWellShare' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|

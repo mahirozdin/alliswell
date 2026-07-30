@@ -1,0 +1,4 @@
+// Base configuration for the AllisWellShare extension — Profile (OPH-225).
+// See AllisWellShareDebug.xcconfig for why both includes are required.
+#include? "Pods/Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.profile.xcconfig"
+#include "Generated.xcconfig"

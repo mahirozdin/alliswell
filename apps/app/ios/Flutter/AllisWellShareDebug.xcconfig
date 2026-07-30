@@ -1,0 +1,13 @@
+// Base configuration for the AllisWellShare extension — Debug (OPH-225).
+//
+// Two includes, both load-bearing:
+//   * the CocoaPods xcconfig, because unlike the widget this extension DOES
+//     link a pod (receive_sharing_intent provides RSIShareViewController). If
+//     we set a base config without it, CocoaPods refuses to integrate and the
+//     extension fails to link.
+//   * Generated.xcconfig, so FLUTTER_BUILD_NAME / FLUTTER_BUILD_NUMBER resolve
+//     here too. App Store validation rejects an upload whose extension version
+//     differs from the containing app's — the same trap AllisWellWidget.xcconfig
+//     documents.
+#include? "Pods/Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.debug.xcconfig"
+#include "Generated.xcconfig"

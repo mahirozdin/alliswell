@@ -8,8 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		527FC94C523279749E690FF6 /* Pods_AllisWellShare.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */; };
+		606CA4EB1635F2211E171418 /* AllisWellShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 33238BF1A6A73CCD435606A7 /* AllisWellShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		771B0720300A7CD52641BBEA /* AWAlarmShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
@@ -25,6 +28,7 @@
 		AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */ = {isa = PBXBuildFile; fileRef = AA414C4152414C41524D00F1 /* aw_alarm.caf */; };
 		B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
+		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
 		D767E2BD26C9FCED51D52539 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
 
@@ -42,6 +46,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = A5CBB5ED300AD02700CE60FF;
 			remoteInfo = AllisWellWidgetExtension;
+		};
+		B36B4BF154EDD6F66A2A3ECA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5B864826D23AA3D20820ACBC;
+			remoteInfo = AllisWellShare;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -63,6 +74,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				A5CBB601300AD02800CE60FF /* AllisWellWidgetExtension.appex in Embed Foundation Extensions */,
+				606CA4EB1635F2211E171418 /* AllisWellShare.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -72,12 +84,18 @@
 /* Begin PBXFileReference section */
 		012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		07A4383D5CFC7DCDC0913238 /* AllisWellWidget.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellWidget.xcconfig; path = Flutter/AllisWellWidget.xcconfig; sourceTree = "<group>"; };
+		0FB84AA988038830C33E7610 /* Pods-AllisWellShare.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.release.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.release.xcconfig"; sourceTree = "<group>"; };
+		12BA16DF6E2B364938EE1707 /* AllisWellShareDebug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareDebug.xcconfig; path = Flutter/AllisWellShareDebug.xcconfig; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		310613F65256275C5E5875F9 /* Pods-AllisWellShare.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.debug.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.debug.xcconfig"; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		33238BF1A6A73CCD435606A7 /* AllisWellShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AllisWellShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		3F993F7637B873D0D38FA086 /* AllisWellShareRelease.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareRelease.xcconfig; path = Flutter/AllisWellShareRelease.xcconfig; sourceTree = "<group>"; };
 		4209D7C0EEA0C5F894FC29D7 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		430A28BE8630F124735EB640 /* AllisWellShare.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = AllisWellShare.entitlements; sourceTree = "<group>"; };
 		540ACEF19CA6AC021848BCF6 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		5CEBC4792193C28E0669686C /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAlarmShared.swift; sourceTree = "<group>"; };
@@ -86,6 +104,9 @@
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		7D5609174DA84123DA2FFE05 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		85A46C53A340932C6DBE7C2E /* AllisWellShareProfile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareProfile.xcconfig; path = Flutter/AllisWellShareProfile.xcconfig; sourceTree = "<group>"; };
+		914B58EC491C15E69D71AF02 /* Pods-AllisWellShare.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.profile.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.profile.xcconfig"; sourceTree = "<group>"; };
 		95CB1B3B360E2D9C0F9F87A2 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
@@ -102,7 +123,10 @@
 		A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		A5CBB60B300AD09400CE60FF /* AllisWellWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AllisWellWidgetExtension.entitlements; sourceTree = "<group>"; };
 		AA414C4152414C41524D00F1 /* aw_alarm.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; name = aw_alarm.caf; path = Resources/aw_alarm.caf; sourceTree = "<group>"; };
+		AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AllisWellShare.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		B07D10CB9492D82A7326E84F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmKitBridge.swift; sourceTree = "<group>"; };
+		CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		DD4116869764FEFFC46ADBD1 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -157,6 +181,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CA0F59866AD3D124975AD15D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */,
+				527FC94C523279749E690FF6 /* Pods_AllisWellShare.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -186,6 +219,9 @@
 				7403D73B437A53572909BD99 /* Pods-RunnerTests.debug.xcconfig */,
 				540ACEF19CA6AC021848BCF6 /* Pods-RunnerTests.release.xcconfig */,
 				DD4116869764FEFFC46ADBD1 /* Pods-RunnerTests.profile.xcconfig */,
+				0FB84AA988038830C33E7610 /* Pods-AllisWellShare.release.xcconfig */,
+				310613F65256275C5E5875F9 /* Pods-AllisWellShare.debug.xcconfig */,
+				914B58EC491C15E69D71AF02 /* Pods-AllisWellShare.profile.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -198,6 +234,9 @@
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 				07A4383D5CFC7DCDC0913238 /* AllisWellWidget.xcconfig */,
+				3F993F7637B873D0D38FA086 /* AllisWellShareRelease.xcconfig */,
+				12BA16DF6E2B364938EE1707 /* AllisWellShareDebug.xcconfig */,
+				85A46C53A340932C6DBE7C2E /* AllisWellShareProfile.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -213,6 +252,7 @@
 				8E3D526BBEA851009F4F2267 /* Pods */,
 				F12E580C966FE8E74A3E7FB4 /* Frameworks */,
 				23753BF2E7F3101F58421A9C /* Shared */,
+				F1F3106C851AE85FB02E4367 /* AllisWellShare */,
 			);
 			sourceTree = "<group>";
 		};
@@ -222,6 +262,7 @@
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
 				A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */,
+				33238BF1A6A73CCD435606A7 /* AllisWellShare.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -247,6 +288,14 @@
 			path = Runner;
 			sourceTree = "<group>";
 		};
+		9A534B24111F986CF6D8D817 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				7D5609174DA84123DA2FFE05 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
 		F12E580C966FE8E74A3E7FB4 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
@@ -254,8 +303,21 @@
 				A1E645310745BD4734368576 /* Pods_RunnerTests.framework */,
 				A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */,
 				A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */,
+				9A534B24111F986CF6D8D817 /* iOS */,
+				AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F1F3106C851AE85FB02E4367 /* AllisWellShare */ = {
+			isa = PBXGroup;
+			children = (
+				CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */,
+				B07D10CB9492D82A7326E84F /* Info.plist */,
+				430A28BE8630F124735EB640 /* AllisWellShare.entitlements */,
+			);
+			name = AllisWellShare;
+			path = AllisWellShare;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -280,6 +342,24 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		5B864826D23AA3D20820ACBC /* AllisWellShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 219C2A7D97199A38050B634A /* Build configuration list for PBXNativeTarget "AllisWellShare" */;
+			buildPhases = (
+				B7CF662F51521823E04828E5 /* [CP] Check Pods Manifest.lock */,
+				7F4049FB67E03B720C9E0372 /* Sources */,
+				CA0F59866AD3D124975AD15D /* Frameworks */,
+				753C8A05896C3C1709A49689 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AllisWellShare;
+			productName = AllisWellShare;
+			productReference = 33238BF1A6A73CCD435606A7 /* AllisWellShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
@@ -298,6 +378,7 @@
 			);
 			dependencies = (
 				A5CBB600300AD02800CE60FF /* PBXTargetDependency */,
+				911C67893D68E197955611DC /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
@@ -364,12 +445,20 @@
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
 				A5CBB5ED300AD02700CE60FF /* AllisWellWidgetExtension */,
+				5B864826D23AA3D20820ACBC /* AllisWellShare */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		331C807F294A63A400263BE5 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		753C8A05896C3C1709A49689 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -492,6 +581,28 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		B7CF662F51521823E04828E5 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-AllisWellShare-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -500,6 +611,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7F4049FB67E03B720C9E0372 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -530,6 +649,12 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		911C67893D68E197955611DC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = AllisWellShare;
+			target = 5B864826D23AA3D20820ACBC /* AllisWellShare */;
+			targetProxy = B36B4BF154EDD6F66A2A3ECA /* PBXContainerItemProxy */;
 		};
 		A5CBB600300AD02800CE60FF /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -682,6 +807,27 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = Profile;
+		};
+		5552D0577FBC8E88926D9628 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 12BA16DF6E2B364938EE1707 /* AllisWellShareDebug.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = AllisWellShare/AllisWellShare.entitlements;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CUSTOM_GROUP_ID = group.com.alliswell.alliswell;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AllisWellShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.alliswell.alliswell.AllisWellShare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -841,6 +987,28 @@
 			};
 			name = Release;
 		};
+		9EBDD6CD4DB3C4D21D59D076 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 85A46C53A340932C6DBE7C2E /* AllisWellShareProfile.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = AllisWellShare/AllisWellShare.entitlements;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CUSTOM_GROUP_ID = group.com.alliswell.alliswell;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AllisWellShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.alliswell.alliswell.AllisWellShare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Profile;
+		};
 		A5CBB603300AD02800CE60FF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 07A4383D5CFC7DCDC0913238 /* AllisWellWidget.xcconfig */;
@@ -973,9 +1141,41 @@
 			};
 			name = Profile;
 		};
+		E25FFC396702AC721D4A06D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3F993F7637B873D0D38FA086 /* AllisWellShareRelease.xcconfig */;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = AllisWellShare/AllisWellShare.entitlements;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
+				CUSTOM_GROUP_ID = group.com.alliswell.alliswell;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = AllisWellShare/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.alliswell.alliswell.AllisWellShare;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		219C2A7D97199A38050B634A /* Build configuration list for PBXNativeTarget "AllisWellShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E25FFC396702AC721D4A06D3 /* Release */,
+				5552D0577FBC8E88926D9628 /* Debug */,
+				9EBDD6CD4DB3C4D21D59D076 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

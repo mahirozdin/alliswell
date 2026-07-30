@@ -48,7 +48,34 @@ end
 ref(group, 'Info.plist')
 ref(group, 'AllisWellShare.entitlements')
 
-# 3) Build settings on every configuration.
+# 3) Base configurations. Without these, MARKETING_VERSION below resolves to
+# EMPTY and App Store validation rejects the upload ("extension version must
+# match the app") — the exact trap Flutter/AllisWellWidget.xcconfig documents.
+# Each file includes BOTH the CocoaPods xcconfig (this extension links
+# receive_sharing_intent, unlike the widget) and Generated.xcconfig.
+flutter_group = project.main_group['Flutter'] ||
+                project.main_group.new_group('Flutter', 'Flutter')
+
+# The 'Flutter' group is VIRTUAL (name only, no path), so a reference inside it
+# must carry the full relative path or Xcode looks for the file next to the
+# .xcodeproj and fails with "Unable to open base configuration reference file".
+# AllisWellWidget.xcconfig stores `path = Flutter/…` for exactly this reason;
+# mirror it.
+def xcconfig_ref(group, name)
+  path = "Flutter/#{name}"
+  existing = group.files.find { |f| f.path == path }
+  return existing if existing
+  ref = group.new_reference(path)
+  ref.name = name
+  ref
+end
+
+ext.build_configurations.each do |config|
+  file = "AllisWellShare#{config.name}.xcconfig" # Debug / Release / Profile
+  config.base_configuration_reference = xcconfig_ref(flutter_group, file)
+end
+
+# 4) Build settings on every configuration.
 ext.build_configurations.each do |config|
   s = config.build_settings
   s['PRODUCT_BUNDLE_IDENTIFIER'] = EXT_BUNDLE
@@ -61,16 +88,32 @@ ext.build_configurations.each do |config|
   s['SKIP_INSTALL'] = 'YES'
   s['TARGETED_DEVICE_FAMILY'] = '1,2'
   s['GENERATE_INFOPLIST_FILE'] = 'YES'
+  # Single source of truth: pubspec.yaml, via Generated.xcconfig.
   s['MARKETING_VERSION'] = '$(FLUTTER_BUILD_NAME)'
   s['CURRENT_PROJECT_VERSION'] = '$(FLUTTER_BUILD_NUMBER)'
 end
 
-# 4) Embed the extension into Runner (Embed App Extensions copy-files phase).
-embed = runner.copy_files_build_phases.find { |p| p.name == 'Embed App Extensions' }
+# 5) Embed the extension into Runner. REUSE the existing PlugIns copy phase —
+# the widget already has one ("Embed Foundation Extensions", Xcode 15+ naming)
+# and it sits BEFORE Flutter's "Thin Binary" script phase. Appending a second,
+# separate phase puts it AFTER Thin Binary, which reads the whole Runner.app
+# tree (PlugIns included) and Xcode then fails with "Cycle inside Runner".
+embed = runner.copy_files_build_phases.find do |p|
+  p.symbol_dst_subfolder_spec == :plug_ins
+end
 if embed.nil?
-  embed = runner.new_copy_files_build_phase('Embed App Extensions')
+  embed = runner.new_copy_files_build_phase('Embed Foundation Extensions')
   embed.symbol_dst_subfolder_spec = :plug_ins # dstSubfolderSpec = 13
-  puts '+ Embed App Extensions phase'
+  thin = runner.build_phases.find do |p|
+    p.respond_to?(:name) && p.name == 'Thin Binary'
+  end
+  if thin
+    runner.build_phases.delete(embed)
+    runner.build_phases.insert(runner.build_phases.index(thin), embed)
+  end
+  puts '+ Embed Foundation Extensions phase (before Thin Binary)'
+else
+  puts "= embed phase: reusing #{embed.name.inspect}"
 end
 product = ext.product_reference
 unless embed.files.any? { |f| f.file_ref == product }
@@ -79,7 +122,7 @@ unless embed.files.any? { |f| f.file_ref == product }
   puts "+ embed #{EXT_NAME}.appex"
 end
 
-# 5) Runner depends on the extension so it builds first.
+# 6) Runner depends on the extension so it builds first.
 unless runner.dependencies.any? { |d| d.target == ext }
   runner.add_dependency(ext)
   puts "+ Runner depends on #{EXT_NAME}"
