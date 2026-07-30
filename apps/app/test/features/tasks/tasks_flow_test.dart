@@ -686,16 +686,26 @@ void main() {
       'Hatırlatıcılı iş',
     );
 
-    // A due date a few days from today, but kept INSIDE the month the picker
-    // opens on: the day cells are plain numbers, so tapping "1" while July is
-    // displayed picks July 1, not August 1. This test spent a day green and
-    // failed the moment the clock rolled to the 29th — the assertion was fine,
-    // the tap was ambiguous.
-    final now = DateTime.now();
-    final lastOfMonth = DateTime(now.year, now.month + 1, 0).day;
-    final target = now.day + 3 <= lastOfMonth
-        ? DateTime(now.year, now.month, now.day + 3)
-        : DateTime(now.year, now.month, now.day - 3);
+    // The day cells are plain numbers, so the tap must be unambiguous in BOTH
+    // directions, and this assertion has now been caught out twice by the
+    // calendar:
+    //
+    //  1. The picker opens on the sheet's default due date, which is TOMORROW
+    //     (OPH-173) — so on the last day of a month it is already showing the
+    //     NEXT month. Anchoring the target on `now` picked a day the grid was
+    //     not displaying, and the test failed every 31st.
+    //  2. A month grid also renders the neighbouring months' edge days (~1–9
+    //     trailing, ~25–31 leading), so those numbers can appear twice and
+    //     `.last` silently picks the wrong one.
+    //
+    // Mid-month is the only range that is unambiguous in every grid, so the
+    // target is pinned there rather than computed as an offset from today.
+    final opensOn = DateTime.now().add(const Duration(days: 1));
+    final target = DateTime(
+      opensOn.year,
+      opensOn.month,
+      opensOn.day == 15 ? 16 : 15,
+    );
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('${target.day}').last);
