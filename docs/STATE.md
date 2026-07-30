@@ -3,7 +3,19 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-31 (**v1.0.1 CANLI — alliswell.space kökte site, /app'te uygulama,
+**Last updated:** 2026-07-31 (**v1.0.2 CANLI — arama artık "Türkçe özelliği" değil.**
+Sahip uyarısı, haklı: global bir üründe Türkçe'yi `<h2>` ile bağırmak konumlandırma hatasıydı —
+Alman bir kullanıcı "Search that speaks Turkish" okuyup özelliğin kendisi için olmadığını
+düşünür, oysa öyle değil. Fold zaten **Latin-1 Supplement + Latin Extended-A**'nın tamamını
+kapsıyor (ß, ñ, å, ø, ł, č, é…), yani eski çerçeve kodun yaptığından DAR ve yanlış hedefliydi.
+Tüm kullanıcıya dönük yüzeylerde **"search that ignores accents"** ("muller" → Müller) oldu:
+README, landing, COMPARISON (fark #7 yeniden yazıldı), her iki mağaza metni. Türkçe `ı→i`
+vakası fold'un neden uygulama-sahipli olmak ZORUNDA olduğunun mühendislik gerekçesi olarak
+**ADR-0013'te kalıyor** — teknik kayıt oraya ait. README'den "Türkçe bir ürün vizyonuyla
+başladı" satırı kaldırıldı; yerelleştirme maddesi artık iki dilde çıktığını bir OLGU olarak
+yazıyor, farklılaştırıcı olarak değil. Türkçe arayüz, Türkçe mağaza metni ve Türkçe
+privacy/support sayfaları dokunulmadan duruyor — mesele dil desteği değil, dili özellik diye
+pazarlamaktı. Önceki: **v1.0.1 CANLI — alliswell.space kökte site, /app'te uygulama,
 /privacy + /support yayında.** `v1.0.0` → `v1.0.1` etiketlendi, release + deploy yeşil, canlıda
 doğrulandı: `/`, `/app/`, `/app/projects`, `/privacy`, `/privacy/tr`, `/support`, `/support/tr`
 hepsi 200. **Deploy'da yakalanan gerçek kusur → 1.0.1:** Cloudflare'in Email Address
