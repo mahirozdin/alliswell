@@ -791,6 +791,13 @@
       "emptyTitle": "Nothing to add",
       "emptyBody": "The AI didn't find any tasks in that.",
       "parse": "Parse with AI"
+    },
+    "voice": {
+      "fabLabel": "Talk to AI",
+      "fabHint": "Hold to speak, tap to type",
+      "denied": "Microphone or speech access is off — you can still type.",
+      "listening": "Listening…",
+      "localeLabel": "Voice language"
     }
   }
 }

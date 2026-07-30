@@ -10,6 +10,7 @@ import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
+import 'package:alliswell/src/features/ai/data/stt.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_socket.dart';
@@ -36,6 +37,10 @@ List<Override> syncTestOverrides({
   /// The AI chat transport (OPH-221). Default: null, so the bubble treats
   /// streaming as unavailable unless a test injects a scripted client.
   AiStreamClient? aiStreamClient,
+
+  /// On-device STT (OPH-223). Default: null → the FAB falls back to text mode
+  /// unless a test injects a fake recognizer.
+  SttController? stt,
 }) => [
   databaseProvider.overrideWith((ref) {
     // closeStreamsSynchronously: drift otherwise keeps a Timer.run alive per
@@ -85,6 +90,7 @@ List<Override> syncTestOverrides({
     uploadTransport ?? _instantUploadTransport,
   ),
   aiStreamClientProvider.overrideWithValue(aiStreamClient),
+  sttProvider.overrideWithValue(stt),
 ];
 
 Future<void> _instantUploadTransport({

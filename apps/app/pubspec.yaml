@@ -75,6 +75,12 @@ dependencies:
   # `USAGE_ALARM` audio attributes.
   audioplayers: ^6.8.1
   flutter_slidable: ^4.0.3
+  # AI voice (OPH-223, ADR-0023): on-device STT, behind the SttController seam.
+  speech_to_text: ^7.0.0
+  # AI share target (OPH-225, ADR-0023): behind the ShareIntentSource seam.
+  # Capped below 1.8 — that line is Swift-Package-Manager only, and this repo's
+  # iOS build uses CocoaPods.
+  receive_sharing_intent: ">=1.4.5 <1.8.0"
 
 dev_dependencies:
   # Generates the iOS AppIcon set + Android mipmaps/adaptive icons from

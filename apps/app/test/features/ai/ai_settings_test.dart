@@ -75,7 +75,7 @@ void main() {
   testWidgets(
     'the settings card shows a connect CTA when enabled but unconfigured',
     (tester) async {
-      final api = FakeApi();
+      final api = FakeApi()..aiEnabled = true;
       await tester.pumpWidget(await cardWith(api));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('settings-ai')), findsOneWidget);
@@ -99,7 +99,7 @@ void main() {
   testWidgets('connecting walks consent BEFORE the key, then creates', (
     tester,
   ) async {
-    final api = FakeApi();
+    final api = FakeApi()..aiEnabled = true;
     await tester.pumpWidget(await screenWith(api));
     await tester.pumpAndSettle();
 
@@ -134,7 +134,7 @@ void main() {
   });
 
   testWidgets('Gemini shows the amber training warning', (tester) async {
-    final api = FakeApi();
+    final api = FakeApi()..aiEnabled = true;
     await tester.pumpWidget(await screenWith(api));
     await tester.pumpAndSettle();
 
@@ -190,7 +190,7 @@ void main() {
         ),
       );
 
-      final api = FakeApi();
+      final api = FakeApi()..aiEnabled = true;
       await tester.pumpWidget(await screenWith(api));
       await tester.pumpAndSettle();
       expect(find.textContaining('/mcp'), findsOneWidget);

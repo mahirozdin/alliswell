@@ -52,6 +52,10 @@
 	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>AllisWell needs access to your photos so you can attach them to tasks and notes.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>AllisWell uses the microphone so you can speak tasks and notes into it. Nothing is recorded until you hold to talk.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>AllisWell turns your speech into text on your device so you can add tasks by voice. Only the text — never the audio — is sent when you use AI.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

@@ -790,6 +790,13 @@
       "emptyTitle": "Eklenecek bir şey yok",
       "emptyBody": "Yapay zekâ bunda görev bulamadı.",
       "parse": "Yapay zekâyla ayrıştır"
+    },
+    "voice": {
+      "fabLabel": "Yapay zekâyla konuş",
+      "fabHint": "Konuşmak için basılı tut, yazmak için dokun",
+      "denied": "Mikrofon veya konuşma erişimi kapalı — yine de yazabilirsin.",
+      "listening": "Dinliyorum…",
+      "localeLabel": "Ses dili"
     }
   }
 }

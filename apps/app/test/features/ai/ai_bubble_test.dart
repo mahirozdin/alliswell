@@ -83,7 +83,7 @@ void main() {
     tester,
   ) async {
     // No connection seeded → status.configured is false.
-    final api = FakeApi();
+    final api = FakeApi()..aiEnabled = true;
     final stream = ScriptedAiStreamClient();
     await tester.pumpWidget(await bubbleWith(api, stream));
     await tester.pumpAndSettle();

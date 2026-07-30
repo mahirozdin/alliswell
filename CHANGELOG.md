@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **Hold-to-talk AI button, on-device speech (OPH-223).** A second FAB in the
+  bottom-left corner (the create button stays bottom-right): hold to speak with
+  a live transcript, lift and it keeps listening with the bubble open, swipe
+  left to cancel, or tap to type instead. Speech is recognized on your device
+  (`speech_to_text`); only the text — never the audio — is ever sent. The
+  gesture and permission-denied fallback are covered by tests; a device tour
+  verifies the real microphone.
 - **Turn a sentence into tasks — you always confirm first (OPH-222).** A
   confirm card reuses the create sheet's own rows: one row per proposed task,
   each independently on/off, with the phrase you said shown beside the resolved

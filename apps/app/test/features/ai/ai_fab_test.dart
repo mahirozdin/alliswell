@@ -11,10 +11,11 @@ import 'package:alliswell/src/features/auth/providers.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
+import '../../support/fake_stt.dart';
 import '../../support/sync_overrides.dart';
 
-/// OPH-222 — the quick-add ✨ rider runs pasted text through extraction into
-/// the same confirm card, and only appears when AI is configured.
+/// OPH-223 — the AI FAB is present when AI is enabled, sits alongside the
+/// create FAB, and a tap opens the bubble in text/mic mode.
 Future<Widget> signedInApp(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
@@ -22,7 +23,7 @@ Future<Widget> signedInApp(FakeApi api) async {
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(),
+      ...syncTestOverrides(stt: FakeSttController()),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -33,46 +34,45 @@ Future<Widget> signedInApp(FakeApi api) async {
 }
 
 void main() {
-  testWidgets('no ✨ affordance when AI is unconfigured', (tester) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-
-    final api = FakeApi()..aiEnabled = true; // AI enabled, no connection → unconfigured
-    await tester.pumpWidget(await signedInApp(api));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('quick-add-parse')), findsNothing);
-  });
-
-  testWidgets('✨ parses text into the confirm card', (tester) async {
+  testWidgets('the AI FAB shows next to the create FAB on Home', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
     final api = FakeApi()..seedAiConnection(provider: 'anthropic');
-    api.nextProposal = {
-      'intent': 'create_tasks',
-      'tasks': [
-        {'title': 'Faturayı öde', 'confidence': 0.9},
-        {'title': 'Raporu gönder', 'confidence': 0.8},
-      ],
-    };
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('quick-add-parse')), findsOneWidget);
-    await tester.enterText(
-      find.byKey(const Key('home-quick-add')),
-      'faturayı öde ve raporu gönder',
-    );
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('quick-add-parse')));
+    expect(find.byKey(const Key('ai-fab')), findsOneWidget);
+    // The create FAB is still there, alongside the AI FAB.
+    expect(find.widgetWithIcon(FloatingActionButton, Icons.add), findsOneWidget);
+  });
+
+  testWidgets('no AI FAB when AI is disabled on the server', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final api = FakeApi()..aiEnabled = false;
+    await tester.pumpWidget(await signedInApp(api));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('ai-fab')), findsNothing);
+  });
+
+  testWidgets('a tap opens the bubble in composing mode', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+    await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
 
-    // The confirm card opened with both proposed tasks.
-    expect(find.byKey(const Key('ai-confirm-accept')), findsOneWidget);
-    expect(find.byKey(const Key('ai-confirm-row-0')), findsOneWidget);
-    expect(find.byKey(const Key('ai-confirm-row-1')), findsOneWidget);
-    expect(api.requests.any((r) => r.contains('/ai/extract')), isTrue);
+    await tester.tap(find.byKey(const Key('ai-fab')));
+    await tester.pumpAndSettle();
+    // The bubble's text input is up (composing / text+mic mode).
+    expect(find.byKey(const Key('ai-input')), findsOneWidget);
   });
 }

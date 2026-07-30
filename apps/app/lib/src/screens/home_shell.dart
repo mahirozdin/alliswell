@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/persisted_prefs.dart';
 import '../features/calendar/apple/providers.dart';
+import '../features/ai/ui/ai_fab.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
@@ -74,6 +75,25 @@ class HomeShell extends ConsumerWidget {
   /// used to own these FABs, but as nested Scaffolds their FAB was painted
   /// behind the bar and could not be tapped (OPH-101). Sections with no create
   /// action (Inbox) get none.
+  /// OPH-223 (DESIGN §24 AI1): two FABs, two corners. The AI FAB sits
+  /// bottom-left, the create FAB stays bottom-right; a full-width Row with
+  /// space-between is the standard two-corner recipe. When AI is off, the
+  /// section FAB is returned alone (unchanged behavior).
+  Widget? _fabBar(BuildContext context, WidgetRef ref) {
+    final section = _sectionFab(context, ref);
+    if (!aiFabVisible(ref)) return section;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const AiFab(),
+          if (section != null) section else const SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+
   Widget? _sectionFab(BuildContext context, WidgetRef ref) {
     return switch (AppSection.values[navigationShell.currentIndex]) {
       AppSection.home => FloatingActionButton(
@@ -167,7 +187,10 @@ class HomeShell extends ConsumerWidget {
         if (isWide) {
           return Scaffold(
             backgroundColor: Colors.transparent,
-            floatingActionButton: _sectionFab(context, ref),
+            floatingActionButton: _fabBar(context, ref),
+            floatingActionButtonLocation: aiFabVisible(ref)
+                ? FloatingActionButtonLocation.centerFloat
+                : FloatingActionButtonLocation.endFloat,
             body: Row(
               children: [
                 Padding(
@@ -238,7 +261,10 @@ class HomeShell extends ConsumerWidget {
         return Scaffold(
           backgroundColor: Colors.transparent,
           extendBody: true,
-          floatingActionButton: _sectionFab(context, ref),
+          floatingActionButton: _fabBar(context, ref),
+          floatingActionButtonLocation: aiFabVisible(ref)
+              ? FloatingActionButtonLocation.centerFloat
+              : FloatingActionButtonLocation.endFloat,
           body: navigationShell,
           bottomNavigationBar: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),

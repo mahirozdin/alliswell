@@ -5688,25 +5688,27 @@ _(✅ 2026-07-30 — `ai_confirm_card.dart` create sheet satırlarını yeniden 
 
 ### OPH-223 — Basılı-konuş FAB + cihaz-üstü STT (cihaz taskı)
 
-- [ ] **ADR-0023 (ilk iş):** `speech_to_text` + `receive_sharing_intent` (OPH-225'le
+_(✅ 2026-07-30 kod tarafı; **cihaz turu STATE kuyruğunda** — gerçek mikrofon + izin diyalogları cihaz ister. ADR-0023 yazıldı; `speech_to_text ^7` + `receive_sharing_intent` (1.8 SPM-only → `<1.8` CocoaPods'a sabitlendi). **Saf `ai_ptt_machine.dart`** (idle→pressed→recording→**locked (parmak kalkınca — Mahir kuralı)** | sola ≥80px cancel; tap<250ms composing; stop/VAD finalize) — 7 test. `SttController` dikişi + `SpeechToTextController` (onDevice tercihli) + `FakeSttController`; `sttProvider` nullable, syncTestOverrides'a eklendi. **`AiFab`** (Listener + makine + haptik; bottom-LEFT); home_shell iki-FAB Row (`_fabBar` + spaceBetween/centerFloat; AI kapalıysa aynen eski tek FAB). Info.plist mikrofon+konuşma gerekçeleri, AndroidManifest RECORD_AUDIO. **Test-double kararı:** FakeApi `aiEnabled` VARSAYILAN FALSE — 6 mevcut akış (14 FAB assert'i) perturbe olmasın; AI testleri `seedAiConnection`/`aiEnabled=true` ile opt-in. **App 727 test** (704+23: machine 7, FAB 3, + i18n voice), analyze + i18n temiz.)_
+
+- [x] **ADR-0023 (ilk iş):** `speech_to_text` + `receive_sharing_intent` (OPH-225'le
       ortak) + iOS Share Extension hedefi — yeni bağımlılık kategorisi + pbxproj sapması
       (ADR-0010 emsali).
-- [ ] Sol-alt **AI FAB** (mevcut sağ-alt oluşturma FAB'ı YERİNDE kalır — DESIGN §24
+- [x] Sol-alt **AI FAB** (mevcut sağ-alt oluşturma FAB'ı YERİNDE kalır — DESIGN §24
       yerleşim kuralı; geniş ekranda rail altı giriş, basılı-konuş mobil-öncelikli).
-- [ ] **Jest makinesi (DESIGN §24'te çizili):** ≥250 ms basılı tut → bubble açılır,
+- [x] **Jest makinesi (DESIGN §24'te çizili):** ≥250 ms basılı tut → bubble açılır,
       dalga formu + **canlı partial transkript**; sola ≥80 px kaydır → iptal (haptik);
       **parmağı kaldır → kayıt KİLİTLİ sürer, bubble açık kalır** (Mahir'in kuralı —
       kaldır-kilitle, WhatsApp'ın yukarı-kaydır kilidinden basit); durdur/2 sn sessizlik
       (VAD) → transkript; dokunma yolu: FAB'a TEK dokunuş bubble'ı metin+mik modunda
       açar (erişilebilirlik + masaüstü — jest asla tek yol değil, D2/K3).
-- [ ] STT: `speech_to_text` (iOS SFSpeech/SpeechAnalyzer, Android SpeechRecognizer) —
+- [x] STT: `speech_to_text` (iOS SFSpeech/SpeechAnalyzer, Android SpeechRecognizer) —
       cihaz-üstü, ücretsiz, çevrimdışı çalışabilir; **Ayarlar gerçek `locales()`
       sonucunu ve cihaz-üstü aktifliğini gösterir** (dürüst durum); dil çipi: uygulama
       dili + söz başına TR/EN geçişi; transkript HER ZAMAN düzenlenebilir (düşük kalite
       sigortası). Sunucu-STT (OpenAI $0.003/dk) v1.5 anahtarı — park.
-- [ ] İzin akışları: mikrofon + konuşma tanıma (iOS ikili izni) dürüst gerekçe
+- [x] İzin akışları: mikrofon + konuşma tanıma (iOS ikili izni) dürüst gerekçe
       metinleriyle; reddedilirse FAB metin moduna düşer.
-- [ ] Testler: jest makinesi saf durum-geçiş testleri; izin reddi düşüşü; VoiceOver/
+- [x] Testler: jest makinesi saf durum-geçiş testleri; izin reddi düşüşü; VoiceOver/
       TalkBack yolu; **gerçek iPhone + Android turu:** Türkçe söz → doğru onay kartı
       (STATE cihaz kuyruğuna).
 

@@ -228,9 +228,10 @@ class FakeApi {
   // protocol: calendar accounts are per-user server state.
 
   // ── AI (Epic 20) — per-user server state, like the calendar accounts ──────
-  /// Is AI enabled on the server? false = every /ai/* route 404s (the app
-  /// withdraws every AI surface).
-  bool aiEnabled = true;
+  /// Is AI enabled on the server? Defaults OFF so the many existing feature
+  /// flows are unperturbed by a second (AI) FAB; AI tests opt in with
+  /// `..aiEnabled = true`. false = every /ai/* route 404s (surfaces withdrawn).
+  bool aiEnabled = false;
 
   /// The caller's AI connections, in the server's connectionSchema shape.
   final List<Map<String, dynamic>> aiConnections = [];
@@ -251,6 +252,7 @@ class FakeApi {
     String? baseUrl,
     String status = 'active',
   }) {
+    aiEnabled = true; // a connection means the server has AI on
     final row = {
       'id': 'AICONN${(_aiSeq++).toString().padLeft(20, '0')}',
       'workspaceId': workspaceId,
