@@ -148,12 +148,30 @@ ${body}
     <a href="/support">Support</a> ·
     <a href="https://github.com/mahirozdin/alliswell">GitHub</a>
   </p>
-  <p>BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI · Talas / Kayseri · Türkiye ·
-     <a href="mailto:info@bubiapps.com">info@bubiapps.com</a></p>
+  <!--email_off--><p>BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI · Talas / Kayseri · Türkiye ·
+     <a href="mailto:info@bubiapps.com">info@bubiapps.com</a></p><!--/email_off-->
 </footer>
 </body>
 </html>
 `;
+}
+
+/**
+ * Opts the whole document out of Cloudflare's Email Address Obfuscation.
+ *
+ * That feature is on by default for the zone and rewrites every address it
+ * finds into the literal string "[email protected]" plus a decoder script — so
+ * with JavaScript off, the mandatory contact field of the privacy policy reads
+ * `[email protected]`. These pages are static and JS-free precisely so a store
+ * reviewer or an automated validator can read them; obfuscation put the JS
+ * dependency back on the single line that matters most.
+ *
+ * `<!--email_off-->` is Cloudflare's documented opt-out and is scoped to this
+ * markup, so it keeps working regardless of what the dashboard setting is later
+ * changed to. It stays a comment in the HTML — harmless anywhere else.
+ */
+function keepEmailsReadable(html) {
+  return `<!--email_off-->\n${html}\n<!--/email_off-->`;
 }
 
 export function renderLegalPage(page) {
@@ -163,7 +181,9 @@ export function renderLegalPage(page) {
   const baseLink = renderer.link.bind(renderer);
   renderer.link = (token) => baseLink({ ...token, href: rewriteLink(token.href) });
 
-  const body = marked.parse(md, { renderer, gfm: true, mangle: false, headerIds: true });
+  const body = keepEmailsReadable(
+    marked.parse(md, { renderer, gfm: true, mangle: false, headerIds: true }),
+  );
   return shell({ ...page, body });
 }
 

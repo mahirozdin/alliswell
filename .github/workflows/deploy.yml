@@ -353,4 +353,20 @@ jobs:
             *) echo "::error::$site/app/projects did not rewrite to the app — check .htaccess"; fail=1 ;;
           esac
 
+          # The legal pages are a store REQUIREMENT, and they are the pages most
+          # likely to be broken by something between us and the visitor rather
+          # than by the build — Cloudflare's Email Address Obfuscation silently
+          # replaced the privacy policy's contact address with
+          # "[email protected]" the first time this deployed. Assert what is
+          # actually served, not what was built.
+          for page in privacy support privacy/tr support/tr; do
+            html=$(curl -fsSL --max-time 20 "$site/$page/" || true)
+            case "$html" in
+              *'info@bubiapps.com'*) echo "✓ /$page serves a readable contact address" ;;
+              *'email-protection'*|*'[email'*)
+                echo "::error::/$page has its contact address obfuscated — turn off Cloudflare Email Address Obfuscation for this zone, or check the <!--email_off--> wrapper"; fail=1 ;;
+              *) echo "::error::/$page did not load, or has no contact address"; fail=1 ;;
+            esac
+          done
+
           exit $fail

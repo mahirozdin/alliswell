@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-31
+
+### Fixed
+
+- **The privacy policy's contact address was unreadable without JavaScript.**
+  Cloudflare's Email Address Obfuscation is on for the zone and rewrote
+  `info@bubiapps.com` into the literal string `[email protected]` plus a decoder
+  script — on the mandatory contact field of a document whose whole point is
+  being readable by a store reviewer or an automated validator with JS off. The
+  generated legal pages now carry Cloudflare's `<!--email_off-->` opt-out, which
+  lives in the markup and therefore survives any later dashboard change.
+- The deploy now asserts what is **served**, not what was built: after
+  publishing it fetches all four legal pages over the real domain and fails if
+  the contact address is missing or obfuscated. The build-time check could not
+  have caught this — the address was correct in `dist/` and mangled in flight.
+
 ## [1.0.0] - 2026-07-31
 
 **AllisWell 1.0.** The product goes public: a marketing site at the root of

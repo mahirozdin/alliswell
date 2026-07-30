@@ -10,7 +10,7 @@
 export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
-export const VERSION = '1.0.0';
+export const VERSION = '1.0.1';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
