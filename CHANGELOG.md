@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **AI safety, written down and tested (OPH-226).** A shared red-team corpus now
+  runs across all three AI surfaces (in-app extract, chat, and the MCP server):
+  hostile content — "ignore your instructions", fake tool calls, exfil links —
+  comes back as inert data, never an action, and creates nothing. `SECURITY.md`
+  gains an "AI surfaces" section that states the threat model plainly (the model
+  and its inputs are untrusted) and the seven layers that keep a shared note or
+  a spoken sentence from ever acting on your behalf.
 - **Share anything to AllisWell (OPH-225).** Send text or a link from any app
   and AllisWell opens with four one-tap choices — make a task, take a note,
   summarize, or ask about it — plus "save to Inbox", which always works even
