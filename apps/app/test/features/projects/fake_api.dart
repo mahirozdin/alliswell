@@ -227,6 +227,46 @@ class FakeApi {
   // Mirrors apps/api/src/routes/integrations-google.js. Not part of the sync
   // protocol: calendar accounts are per-user server state.
 
+  // ── AI (Epic 20) — per-user server state, like the calendar accounts ──────
+  /// Is AI enabled on the server? false = every /ai/* route 404s (the app
+  /// withdraws every AI surface).
+  bool aiEnabled = true;
+
+  /// The caller's AI connections, in the server's connectionSchema shape.
+  final List<Map<String, dynamic>> aiConnections = [];
+
+  /// The next `/ai/extract` proposal (OPH-222) and the accepted-action log.
+  Map<String, dynamic>? nextProposal;
+  final List<Map<String, dynamic>> aiActionAccepts = [];
+
+  /// Result the `/ai/connections/:id/test` endpoint returns.
+  Map<String, dynamic> aiTestResult = {'ok': true, 'latencyMs': 12};
+
+  int _aiSeq = 0;
+
+  Map<String, dynamic> seedAiConnection({
+    required String provider,
+    String authMode = 'api_key',
+    String? keyLast4 = '1234',
+    String? baseUrl,
+    String status = 'active',
+  }) {
+    final row = {
+      'id': 'AICONN${(_aiSeq++).toString().padLeft(20, '0')}',
+      'workspaceId': workspaceId,
+      'userId': 'user-1',
+      'provider': provider,
+      'authMode': authMode,
+      'keyLast4': keyLast4,
+      'baseUrl': baseUrl,
+      'defaultChatModel': null,
+      'defaultFastModel': null,
+      'status': status,
+    };
+    aiConnections.add(row);
+    return row;
+  }
+
   /// Does the SERVER have an OAuth client? Flip to false to test the
   /// not-configured path — the integration is optional by design.
   bool googleConfigured = true;
@@ -295,6 +335,113 @@ class FakeApi {
     };
     googleAccounts.add(account);
     return account;
+  }
+
+  /// AI settings + extract + actions (Epic 20). Returns null when the path is
+  /// not an AI route (fall through); a 404 for every /ai/* when disabled.
+  Future<ResponseBody>? _ai(
+    String path,
+    RequestOptions options,
+    Map<String, dynamic>? body,
+  ) {
+    if (!path.contains('/ai/')) return null;
+    if (!aiEnabled) {
+      return Future.value(
+        jsonBody(404, {'code': 'AI_DISABLED', 'message': 'AI is off'}),
+      );
+    }
+    final wsPrefix = '/api/v1/workspaces/$workspaceId/ai';
+
+    if (path == '$wsPrefix/status' && options.method == 'GET') {
+      return Future.value(
+        jsonBody(200, {
+          'configured': aiConnections.isNotEmpty,
+          'providers': aiConnections.map((c) => c['provider']).toList(),
+          'instanceProviders': const [],
+        }),
+      );
+    }
+    if (path == '$wsPrefix/connections' && options.method == 'GET') {
+      return Future.value(jsonBody(200, {'items': aiConnections}));
+    }
+    if (path == '$wsPrefix/connections' && options.method == 'POST') {
+      final provider = body?['provider'] as String;
+      final apiKey = body?['apiKey'] as String?;
+      final row = seedAiConnection(
+        provider: provider,
+        keyLast4: apiKey != null && apiKey.length >= 4
+            ? apiKey.substring(apiKey.length - 4)
+            : null,
+        baseUrl: body?['baseUrl'] as String?,
+      );
+      return Future.value(jsonBody(201, row));
+    }
+    if (path == '$wsPrefix/models' && options.method == 'GET') {
+      return Future.value(
+        jsonBody(200, {
+          'provider': 'anthropic',
+          'source': 'catalog',
+          'models': {
+            'chat': [
+              {'id': 'claude-sonnet-5', 'label': 'Claude Sonnet 5'},
+            ],
+            'fast': [
+              {'id': 'claude-haiku-4-5-20251001', 'label': 'Claude Haiku 4.5'},
+            ],
+          },
+          'defaults': {
+            'chat': 'claude-sonnet-5',
+            'fast': 'claude-haiku-4-5-20251001',
+          },
+        }),
+      );
+    }
+    if (path == '$wsPrefix/extract' && options.method == 'POST') {
+      final proposal = nextProposal ?? {'intent': 'none', 'tasks': <dynamic>[]};
+      return Future.value(
+        jsonBody(200, {
+          'requestId': 'AIREQ${(_aiSeq++).toString().padLeft(21, '0')}',
+          'actionId': 'AIACT${(_aiSeq++).toString().padLeft(21, '0')}',
+          'repaired': false,
+          'proposal': proposal,
+        }),
+      );
+    }
+
+    final test = RegExp(
+      r'^/api/v1/ai/connections/([^/]+)/test$',
+    ).firstMatch(path);
+    if (test != null && options.method == 'POST') {
+      return Future.value(jsonBody(200, aiTestResult));
+    }
+    final patch = RegExp(r'^/api/v1/ai/connections/([^/]+)$').firstMatch(path);
+    if (patch != null && options.method == 'PATCH') {
+      final row = aiConnections.firstWhere((c) => c['id'] == patch.group(1));
+      if (body?['defaultChatModel'] != null)
+        row['defaultChatModel'] = body!['defaultChatModel'];
+      if (body?['defaultFastModel'] != null)
+        row['defaultFastModel'] = body!['defaultFastModel'];
+      return Future.value(jsonBody(200, row));
+    }
+    if (patch != null && options.method == 'DELETE') {
+      aiConnections.removeWhere((c) => c['id'] == patch.group(1));
+      return Future.value(emptyBody(204));
+    }
+    final decision = RegExp(
+      r'^/api/v1/ai/actions/([^/]+)/decision$',
+    ).firstMatch(path);
+    if (decision != null && options.method == 'POST') {
+      aiActionAccepts.add({'actionId': decision.group(1), ...?body});
+      return Future.value(
+        jsonBody(200, {'id': decision.group(1), 'accepted': body?['accepted']}),
+      );
+    }
+    return Future.value(
+      jsonBody(404, {
+        'code': 'NOT_FOUND',
+        'message': 'No fake AI route for $path',
+      }),
+    );
   }
 
   Future<ResponseBody>? _google(
@@ -430,6 +577,9 @@ class FakeApi {
     if (path == '/api/v1/sync/push' && options.method == 'POST') {
       return _syncPush(body ?? const {});
     }
+
+    final ai = _ai(path, options, body);
+    if (ai != null) return ai;
 
     final google = _google(path, options, body);
     if (google != null) return google;

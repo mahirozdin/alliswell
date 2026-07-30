@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **AI settings and a real consent screen in the app (OPH-220).** A new
+  Settings → AI section (hidden entirely when the server has AI off) to
+  connect a provider with your own key — the key is shown only as its last 4
+  characters. Before a provider's first use, a full consent screen states
+  plainly what leaves your device, where your key lives, and that provider's
+  data stance, with an amber warning on Gemini's free tier (which trains on
+  your data). The screen also carries the instance's MCP connector URL.
 - **Add AllisWell to your own Claude or ChatGPT (OPH-218).** A remote MCP
   server (`/mcp`) with its own minimal OAuth 2.1 authorization server — the AI
   works against your workspace on *your* subscription, so AllisWell spends

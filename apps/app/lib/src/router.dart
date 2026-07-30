@@ -18,6 +18,7 @@ import 'features/tasks/ui/task_detail_screen.dart';
 import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
+import 'features/ai/ui/ai_settings_screen.dart';
 import 'notifications/alarm_log_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
@@ -264,6 +265,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/completed',
         builder: (context, state) => _page(const CompletedScreen()),
+      ),
+      // OPH-220: AI settings — connections, models, the MCP connector URL.
+      GoRoute(
+        path: '/settings/ai',
+        builder: (context, state) => _page(const AiSettingsScreen()),
       ),
       // Pushed on top of whichever list opened it (Inbox/Today/Upcoming/…).
       GoRoute(

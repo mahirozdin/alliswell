@@ -721,5 +721,49 @@
       "all": "Tümü",
       "apply": "Uygula"
     }
+  },
+  "ai": {
+    "settings": {
+      "title": "Yapay zekâ",
+      "setupSub": "Bir sağlayıcı bağla — kendi anahtarınla",
+      "connectedSub": "Bağlı ve hazır",
+      "connectionsTitle": "Bağlantılar",
+      "connectionsSub": "Kendi API anahtarınla bir sağlayıcı kullan",
+      "addProvider": "Sağlayıcı ekle",
+      "connect": "Bağlan",
+      "test": "Test et",
+      "testOk": "Bağlantı çalışıyor",
+      "testFailed": "Sağlayıcı bağlantıyı reddetti",
+      "remove": "Kaldır",
+      "keyLabel": "API anahtarı",
+      "baseUrlLabel": "Sunucu adresi (Ollama)",
+      "instanceManaged": "Bu instance tarafından yönetiliyor",
+      "couldNotCheck": "Yapay zekâ durumu kontrol edilemedi",
+      "disabledTitle": "Yapay zekâ kapalı",
+      "disabledBody": "Bu sunucuda yapay zekâ özellikleri kapalı.",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "mcpTitle": "Claude / ChatGPT'ye ekle",
+      "mcpSub": "AllisWell'i kendi yapay zekâ aboneliğine bağlayıcı olarak ekle"
+    },
+    "consent": {
+      "title": "{provider} — bilmen gerekenler",
+      "intro": "Bir yapay zekâ sağlayıcısı bağlamadan önce, ne olduğunu açıkça görmelisin.",
+      "leavesTitle": "Cihazdan ne çıkar",
+      "leavesBody": "Yapay zekâya gönderdiğin görev/not metni ve ses TRANSKRİPTİ — sesin değil.",
+      "keyTitle": "Anahtarın nerede durur",
+      "keyBody": "Anahtarın sunucuda şifreli saklanır; arayüz yalnız son 4 hanesini gösterir.",
+      "retentionTitle": "Sağlayıcının duruşu",
+      "retention": {
+        "anthropic": "Anthropic API: 7 gün saklama, verinle eğitim YOK.",
+        "openai": "OpenAI API: 30 gün saklama, varsayılan olarak eğitim YOK.",
+        "gemini": "Gemini API: ücretsiz katman verinle EĞİTİR (aşağıya bak); ücretli katman etmez.",
+        "openrouter": "OpenRouter: saklama/eğitim seçtiğin modelin sağlayıcısına bağlıdır.",
+        "ollama": "Ollama: her şey kendi sunucunda kalır."
+      },
+      "trainsWarning": "Gemini'nin ücretsiz katmanı gönderdiğin veriyle modelini eğitir. Bunu istemiyorsan ücretli katman kullan veya başka bir sağlayıcı seç.",
+      "accept": "Anladım, bağla",
+      "cancel": "Vazgeç"
+    }
   }
 }

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/app_version.dart';
 import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
+import '../features/ai/ui/ai_settings_card.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
@@ -223,6 +224,9 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: AwSpace.x3),
               // OPH-078: the device-side twin — hides itself off Apple platforms.
               const AppleCalendarCard(),
+              const SizedBox(height: AwSpace.x3),
+              // OPH-220: AI — hides itself when the server has AI disabled.
+              const AiSettingsCard(),
               const SizedBox(height: AwSpace.x3),
               // Destructive action, visually separated from the rest.
               Card(

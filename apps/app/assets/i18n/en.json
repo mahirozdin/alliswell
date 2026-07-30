@@ -722,5 +722,49 @@
       "all": "All of them",
       "apply": "Apply"
     }
+  },
+  "ai": {
+    "settings": {
+      "title": "AI",
+      "setupSub": "Connect a provider — with your own key",
+      "connectedSub": "Connected and ready",
+      "connectionsTitle": "Connections",
+      "connectionsSub": "Use a provider with your own API key",
+      "addProvider": "Add a provider",
+      "connect": "Connect",
+      "test": "Test",
+      "testOk": "The connection works",
+      "testFailed": "The provider refused the connection",
+      "remove": "Remove",
+      "keyLabel": "API key",
+      "baseUrlLabel": "Server address (Ollama)",
+      "instanceManaged": "Managed by this instance",
+      "couldNotCheck": "Could not check the AI status",
+      "disabledTitle": "AI is off",
+      "disabledBody": "AI features are turned off on this server.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "mcpTitle": "Add to Claude / ChatGPT",
+      "mcpSub": "Add AllisWell to your own AI subscription as a connector"
+    },
+    "consent": {
+      "title": "{provider} — what you should know",
+      "intro": "Before connecting an AI provider, you should see plainly what happens.",
+      "leavesTitle": "What leaves the device",
+      "leavesBody": "The task/note text and the voice TRANSCRIPT you send to the AI — never the audio.",
+      "keyTitle": "Where your key lives",
+      "keyBody": "Your key is stored encrypted on the server; the app only ever shows its last 4 characters.",
+      "retentionTitle": "The provider's stance",
+      "retention": {
+        "anthropic": "Anthropic API: 7-day retention, never trained on your data.",
+        "openai": "OpenAI API: 30-day retention, no training by default.",
+        "gemini": "Gemini API: the free tier trains on your data (see below); the paid tier does not.",
+        "openrouter": "OpenRouter: retention/training depends on the model provider you choose.",
+        "ollama": "Ollama: everything stays on your own server."
+      },
+      "trainsWarning": "Gemini's free tier trains its model on the data you send. If you don't want that, use the paid tier or pick another provider.",
+      "accept": "I understand — connect",
+      "cancel": "Cancel"
+    }
   }
 }

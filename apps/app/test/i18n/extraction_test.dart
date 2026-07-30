@@ -156,4 +156,27 @@ void main() {
       );
     });
   });
+
+  // OPH-220 — AI strings reach widgets as title:/label: arguments, invisible to
+  // the line-based check:i18n, so they are asserted here in both languages.
+  group('ai settings + consent strings', () {
+    test('resolve in English by default', () {
+      expect('ai.settings.title'.tr(), 'AI');
+      expect('ai.settings.addProvider'.tr(), 'Add a provider');
+      expect('ai.settings.disabledTitle'.tr(), 'AI is off');
+      expect('ai.settings.mcpTitle'.tr(), 'Add to Claude / ChatGPT');
+      expect('ai.consent.leavesTitle'.tr(), 'What leaves the device');
+      expect('ai.consent.accept'.tr(), 'I understand — connect');
+      expect('ai.consent.title'.tr(args: {'provider': 'X'}), contains('X'));
+      expect('ai.consent.retention.gemini'.tr(), contains('free tier'));
+    });
+
+    test('follow the active language', () {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect('ai.settings.title'.tr(), 'Yapay zekâ');
+      expect('ai.settings.addProvider'.tr(), 'Sağlayıcı ekle');
+      expect('ai.consent.accept'.tr(), 'Anladım, bağla');
+      expect('ai.consent.trainsWarning'.tr(), contains('Gemini'));
+    });
+  });
 }

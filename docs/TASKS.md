@@ -5627,19 +5627,21 @@ FARKLI karar 409 — kanıt append-once; (6) `ajv` package.json'a açıkça yaz�
 
 ### OPH-220 — Flutter: AI ayarları + onam ekranı
 
-- [ ] Ayarlar → "Yapay zeka": sağlayıcı bağla (BYOK — anahtar alanı, `…son4` gösterimi,
+_(✅ 2026-07-30 — `features/ai/` iskeleti kuruldu (data/ui/providers). aiStatusProvider localKv önbellekli (404 = disabled, çevrimdışı son-bilinen doğru); ekranlar için AiSettingsCard (AppleCalendarCard sonrası, disabled'da tamamen gizli) + /settings/ai (bağlantı listesi ••••son4, ekle akışı: sağlayıcı seç → ONAM → anahtar/baseUrl → connect, model/kullanım OPH-221'de daha da; MCP kartı instance /mcp URL + kopyala). Onam cihaz-yerel (localKv per user+provider) + create'ta consentAcknowledged:true kalıcı iz; ensureAiConsent kapısı; Gemini AMBER uyarı. GoogleCalendarCard kalıbı birebir (_guard/ApiException). FakeApi'ye _ai handler + seedAiConnection. 8 widget testi + extraction_test ai grubu (en+tr).)_
+
+- [x] Ayarlar → "Yapay zeka": sağlayıcı bağla (BYOK — anahtar alanı, `…son4` gösterimi,
       bağlantı testi düğmesi dürüst hatayla), model seçimi (sohbet/hızlı), kullanım
       sayacı (`ai_usage_events` özetinden: bu ay istek/token), bağlantıyı kaldır.
-- [ ] **Onam ekranı (ilk kullanımda, sağlayıcı başına):** neyin cihazdan çıktığı
+- [x] **Onam ekranı (ilk kullanımda, sağlayıcı başına):** neyin cihazdan çıktığı
       (dahil ettiğin görev/not metni, ses TRANSKRİPTİ — ses değil), anahtarın nerede
       durduğu (şifreli, sunucuda), sağlayıcının saklama/eğitim duruşu **tek dürüst
       cümleyle** (Anthropic 7 gün/eğitim yok; OpenAI 30 gün/eğitim yok; **Gemini
       ücretsiz katman verinle eğitir — sarı uyarı**; Ollama "kendi sunucunda kalır").
       Onamsız hiçbir AI yüzeyi açılmaz (widget testi).
-- [ ] Apple Kas 2025 / Play Nis 2026 üçüncü-parti-AI veri paylaşımı beyanlarıyla hizalı
+- [x] Apple Kas 2025 / Play Nis 2026 üçüncü-parti-AI veri paylaşımı beyanlarıyla hizalı
       metin (mağaza formu notları STORE-LISTING'e).
-- [ ] i18n: `ai.settings.*`, `ai.consent.*` (en+tr); tasarım DESIGN §24.
-- [ ] Testler: onam kapısı; anahtarın maskeli gösterimi; yapılandırılmamış durumda
+- [x] i18n: `ai.settings.*`, `ai.consent.*` (en+tr); tasarım DESIGN §24.
+- [x] Testler: onam kapısı; anahtarın maskeli gösterimi; yapılandırılmamış durumda
       yüzeylerin yokluğu; Gemini uyarısının varlığı.
 
 ### OPH-221 — AI bubble (önce metin) + akış render'ı
