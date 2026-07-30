@@ -1,0 +1,219 @@
+/*
+ * Styling for the generated legal/support pages (privacy, support, and their
+ * Turkish twins). Standalone rather than part of the Vue bundle: these pages
+ * are static HTML on purpose — a store reviewer must be able to read them with
+ * JavaScript off — so they cannot import the app's CSS module.
+ *
+ * The tokens are the same values as src/style.css (DESIGN §3.1). Duplicated
+ * deliberately and kept short: two dozen custom properties are cheaper than
+ * making a legal page depend on a hashed build asset.
+ */
+
+:root {
+  color-scheme: light dark;
+  --aw-primary: #0b54d0;
+  --aw-bg-top: #e9f2ff;
+  --aw-bg-bottom: #f1ebff;
+  --aw-surface: #ffffff;
+  --aw-surface-2: #e7eefa;
+  --aw-text: #0f1b2e;
+  --aw-text-dim: #44536f;
+  --aw-hairline: rgb(15 27 46 / 12%);
+  --aw-shadow: 0 18px 48px -18px rgb(32 58 102 / 22%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --aw-primary: #3e9bff;
+    --aw-bg-top: #0b1233;
+    --aw-bg-bottom: #070b1f;
+    --aw-surface: #151f3c;
+    --aw-surface-2: #1f2c51;
+    --aw-text: #eaf0fd;
+    --aw-text-dim: #aab6d6;
+    --aw-hairline: rgb(234 240 253 / 14%);
+    --aw-shadow: 0 22px 60px -20px rgb(2 4 12 / 60%);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 1.25rem 4rem;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--aw-text);
+  background: linear-gradient(180deg, var(--aw-bg-top), var(--aw-bg-bottom));
+  -webkit-font-smoothing: antialiased;
+}
+
+.doc__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.25rem 0;
+}
+
+.doc__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--aw-text);
+  text-decoration: none;
+}
+
+.doc__langs {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.doc__langs a {
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--aw-hairline);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--aw-text-dim);
+}
+
+.doc__langs a[aria-current='page'] {
+  background: var(--aw-surface);
+  color: var(--aw-text);
+}
+
+.doc {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: clamp(1.75rem, 4vw, 3rem);
+  background: var(--aw-surface);
+  border: 1px solid var(--aw-hairline);
+  border-radius: 20px;
+  box-shadow: var(--aw-shadow);
+}
+
+.doc h1 {
+  font-size: clamp(1.9rem, 4vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  margin: 0 0 1rem;
+}
+
+.doc h2 {
+  font-size: 1.3rem;
+  letter-spacing: -0.015em;
+  margin: 2.4rem 0 0.6rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--aw-hairline);
+}
+
+.doc h3 {
+  font-size: 1.06rem;
+  margin: 1.6rem 0 0.4rem;
+}
+
+.doc p,
+.doc li {
+  color: var(--aw-text-dim);
+}
+
+.doc strong {
+  color: var(--aw-text);
+}
+
+.doc a {
+  color: var(--aw-primary);
+  text-underline-offset: 3px;
+}
+
+.doc ul,
+.doc ol {
+  padding-left: 1.3rem;
+}
+
+.doc li {
+  margin: 0.35rem 0;
+}
+
+.doc code {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  padding: 0.12em 0.4em;
+  border-radius: 6px;
+  background: var(--aw-surface-2);
+  color: var(--aw-text);
+}
+
+.doc blockquote {
+  margin: 1.2rem 0;
+  padding: 0.8rem 1.1rem;
+  border-left: 3px solid var(--aw-primary);
+  border-radius: 0 12px 12px 0;
+  background: var(--aw-surface-2);
+}
+
+.doc blockquote p {
+  margin: 0.3rem 0;
+}
+
+/* Tables carry the legal-basis matrices; they must scroll inside their own box
+   rather than giving the page a horizontal scrollbar on a phone. */
+.doc table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 1.1rem 0;
+  font-size: 0.94rem;
+}
+
+.doc th,
+.doc td {
+  padding: 0.6rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--aw-hairline);
+  vertical-align: top;
+}
+
+.doc thead th {
+  background: var(--aw-surface-2);
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--aw-text-dim);
+}
+
+.doc hr {
+  border: 0;
+  border-top: 1px solid var(--aw-hairline);
+  margin: 2rem 0;
+}
+
+.doc__foot {
+  max-width: 46rem;
+  margin: 2rem auto 0;
+  font-size: 0.85rem;
+  color: var(--aw-text-dim);
+  text-align: center;
+}
+
+.doc__foot a {
+  color: var(--aw-text-dim);
+}
+
+:where(a):focus-visible {
+  outline: 3px solid var(--aw-primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}

@@ -52,14 +52,47 @@ jobs:
           flutter-version: 3.44.0
           cache: true
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
       # The API base URL is compiled INTO the bundle, so production needs its
       # own build — the release artifact is the generic one.
+      #
+      # `--base-href /app/` is what makes the split docroot work: the marketing
+      # site owns `/`, the app owns `/app`. Without it every asset path in the
+      # bundle is absolute-from-root and the app 404s under a subdirectory.
       - name: Build the web bundle for production
         working-directory: apps/app
         run: |
           test -n "$API_URL" || { echo "::error::vars.DEPLOY_API_URL is not set"; exit 1; }
           flutter pub get
-          flutter build web --release --dart-define=ALLISWELL_API_URL="$API_URL"
+          flutter build web --release \
+            --base-href /app/ \
+            --dart-define=ALLISWELL_API_URL="$API_URL"
+
+      # The marketing site is the docroot. It is assembled AFTER the app so the
+      # combined tree below is written once, in one order, with one owner.
+      - name: Build the landing site
+        run: |
+          npm ci
+          npm run landing:build
+
+      - name: Assemble the docroot (landing at /, the app at /app)
+        run: |
+          rm -rf publish && mkdir -p publish
+          cp -a apps/landing/dist/. publish/
+          mkdir -p publish/app
+          cp -a apps/app/build/web/. publish/app/
+          test -f publish/index.html     || { echo "::error::landing index.html missing"; exit 1; }
+          test -f publish/app/index.html || { echo "::error::app index.html missing"; exit 1; }
+          test -f publish/.htaccess      || { echo "::error::.htaccess missing — SPA routing would break"; exit 1; }
+          # Flutter writes `<base href="/app/" />` — self-closing, with a
+          # space. Match the attribute, not a hand-guessed tag spelling.
+          grep -q 'base href="/app/"' publish/app/index.html \
+            || { echo "::error::the app bundle was not built with --base-href /app/"; exit 1; }
+          echo "docroot: $(find publish -type f | wc -l) files, $(du -sh publish | cut -f1)"
 
       - name: Set up SSH
         run: |
@@ -234,7 +267,7 @@ jobs:
       # without needing --delete.
       - name: Publish the web bundle
         run: |
-          tar -C apps/app/build/web -czf - . \
+          tar -C publish -czf - . \
             | ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
                 "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
                 "rm -rf '$WEB_DIR.incoming' && mkdir -p '$WEB_DIR.incoming' && tar -xzf - -C '$WEB_DIR.incoming'"
@@ -242,9 +275,13 @@ jobs:
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "WEB_DIR='$WEB_DIR' bash -euo pipefail" <<'REMOTE'
-          # Docroot files the SERVER owns, not the build: SPA routing, and the
-          # .user.ini panels drop in every site root. Carry them across.
-          for keep in .htaccess .user.ini; do
+          # `.user.ini` is the panel's, not ours — carry it across. `.htaccess`
+          # used to be carried too, back when the docroot was only the Flutter
+          # bundle and the server owned its rewrite rules. It now ships WITH the
+          # build (apps/landing/public/.htaccess), because the routing is a
+          # property of what is deployed — two SPAs sharing one docroot — not of
+          # the machine. Keeping the server's copy would silently strip /app.
+          for keep in .user.ini; do
             [ -e "$WEB_DIR/$keep" ] && cp -a "$WEB_DIR/$keep" "$WEB_DIR.incoming/" 2>/dev/null || true
           done
           # Inherit the live docroot's ownership so the web server keeps reading it.
@@ -287,3 +324,33 @@ jobs:
           echo "Investigate on the server: pm2 logs --lines 50"
           echo "The pre-deploy database backup is in /www/backup/alliswell/."
           exit 1
+
+      # The API being up says nothing about the two SPAs sharing one docroot.
+      # A deploy that serves the landing page at / and a 404 at /app is exactly
+      # the failure this split introduces, so it gets its own check.
+      - name: Verify both sites answer
+        if: vars.DEPLOY_SITE_URL != ''
+        run: |
+          site="${{ vars.DEPLOY_SITE_URL }}"
+          fail=0
+
+          root=$(curl -fsS --max-time 15 "$site/" || true)
+          case "$root" in
+            *'AllisWell'*) echo "✓ landing page served at $site/" ;;
+            *) echo "::error::$site/ did not return the landing page"; fail=1 ;;
+          esac
+
+          app=$(curl -fsS --max-time 15 "$site/app/" || true)
+          case "$app" in
+            *'base href="/app/"'*) echo "✓ app served at $site/app/" ;;
+            *) echo "::error::$site/app/ did not return the Flutter bundle"; fail=1 ;;
+          esac
+
+          # A deep link is the one the rewrite rules actually have to get right.
+          deep=$(curl -fsS --max-time 15 "$site/app/projects" || true)
+          case "$deep" in
+            *'base href="/app/"'*) echo "✓ deep links under /app rewrite correctly" ;;
+            *) echo "::error::$site/app/projects did not rewrite to the app — check .htaccess"; fail=1 ;;
+          esac
+
+          exit $fail

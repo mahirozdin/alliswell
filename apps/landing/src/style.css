@@ -1,0 +1,312 @@
+/*
+ * AllisWell Glass, on the web.
+ *
+ * The values are lifted from docs/DESIGN.md §3.1 and apps/app/lib/src/theme/
+ * tokens.dart — NOT re-picked by eye. The site and the app share one palette,
+ * so the moment somebody arrives at /app the colour, the aurora and the glass
+ * are the ones they were just looking at.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Brand + semantic (DESIGN §3.1) */
+  --aw-primary: #0a5cff;
+  --aw-primary-strong: #0b54d0;
+  --aw-secondary: #5a50e0;
+  --aw-tertiary: #0c7d6c;
+  --aw-success: #0d7a33;
+  --aw-warning: #c77700;
+  --aw-error: #d70015;
+  --aw-urgent: #e3261a;
+
+  /* Surfaces */
+  --aw-bg-top: #e9f2ff;
+  --aw-bg-bottom: #f1ebff;
+  --aw-surface: #ffffff;
+  --aw-surface-2: #e7eefa;
+  --aw-text: #0f1b2e;
+  --aw-text-dim: #44536f;
+  --aw-hairline: rgb(15 27 46 / 10%);
+  --aw-glass: rgb(246 249 255 / 74%);
+  --aw-glass-stroke: rgb(255 255 255 / 65%);
+  --aw-shadow: 0 18px 48px -18px rgb(32 58 102 / 32%);
+  --aw-shadow-sm: 0 6px 18px -8px rgb(32 58 102 / 28%);
+
+  /* Aurora blobs */
+  --aw-blob-a: rgb(61 125 255 / 30%);
+  --aw-blob-b: rgb(142 92 255 / 25%);
+  --aw-blob-c: rgb(0 199 176 / 22%);
+
+  --aw-radius: 20px;
+  --aw-radius-lg: 28px;
+  --aw-max: 1180px;
+  --aw-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+:root[data-theme='dark'] {
+  --aw-primary: #3e9bff;
+  --aw-primary-strong: #6bb4ff;
+  --aw-secondary: #b9afff;
+  --aw-tertiary: #35d6c2;
+  --aw-success: #30d158;
+  --aw-warning: #ffc400;
+  --aw-error: #ff5147;
+  --aw-urgent: #ff453a;
+
+  --aw-bg-top: #0b1233;
+  --aw-bg-bottom: #070b1f;
+  --aw-surface: #151f3c;
+  --aw-surface-2: #1f2c51;
+  --aw-text: #eaf0fd;
+  --aw-text-dim: #aab6d6;
+  --aw-hairline: rgb(234 240 253 / 14%);
+  --aw-glass: rgb(17 26 56 / 72%);
+  --aw-glass-stroke: rgb(255 255 255 / 14%);
+  --aw-shadow: 0 22px 60px -20px rgb(2 4 12 / 72%);
+  --aw-shadow-sm: 0 8px 22px -10px rgb(2 4 12 / 64%);
+
+  --aw-blob-a: rgb(61 125 255 / 42%);
+  --aw-blob-b: rgb(139 92 246 / 35%);
+  --aw-blob-c: rgb(34 201 180 / 29%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue',
+    system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--aw-text);
+  background: linear-gradient(180deg, var(--aw-bg-top), var(--aw-bg-bottom));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* The aurora wash: three static blobs, exactly like the app's (DESIGN §4).
+   Static on purpose — animated blobs are decoration that costs battery. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(58vw 46vw at 12% 4%, var(--aw-blob-a), transparent 62%),
+    radial-gradient(52vw 44vw at 88% 12%, var(--aw-blob-b), transparent 60%),
+    radial-gradient(46vw 40vw at 50% 92%, var(--aw-blob-c), transparent 62%);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 0.5em;
+  line-height: 1.14;
+  letter-spacing: -0.022em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(2.4rem, 6vw, 4.1rem);
+  letter-spacing: -0.035em;
+}
+h2 {
+  font-size: clamp(1.85rem, 3.6vw, 2.8rem);
+}
+h3 {
+  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
+}
+
+p {
+  margin: 0 0 1em;
+  text-wrap: pretty;
+}
+
+/* `:not(.aw-btn)` is load-bearing, not tidiness. A button IS an anchor here, and
+   `:root[data-theme='dark'] a` outranks `.aw-btn` on specificity — so in dark
+   mode the primary button's label was being painted the same blue as its own
+   background, i.e. invisible. Excluding buttons from the link colour keeps the
+   rule where it belongs instead of escalating the button's selector. */
+a:not(.aw-btn) {
+  color: var(--aw-primary-strong);
+  text-underline-offset: 3px;
+}
+:root[data-theme='dark'] a:not(.aw-btn) {
+  color: var(--aw-primary);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+code,
+pre {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.87em;
+}
+
+:where(a, button, input, [tabindex]):focus-visible {
+  outline: 3px solid var(--aw-primary);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* ── Layout primitives ───────────────────────────────────────────────────── */
+
+.aw-shell {
+  width: min(100% - 2.5rem, var(--aw-max));
+  margin-inline: auto;
+}
+
+.aw-section {
+  padding-block: clamp(4rem, 9vw, 7.5rem);
+}
+
+.aw-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.34rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--aw-hairline);
+  background: var(--aw-glass);
+  font-size: 0.79rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--aw-text-dim);
+}
+
+.aw-lede {
+  font-size: clamp(1.05rem, 1.5vw, 1.28rem);
+  color: var(--aw-text-dim);
+  max-width: 62ch;
+}
+
+/* Glass is CHROME ONLY (DESIGN G1): cards that hold text get a solid surface;
+   only the header, the pills and the badges use the blurred material. */
+.aw-glass {
+  background: var(--aw-glass);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--aw-glass-stroke);
+}
+
+.aw-card {
+  background: var(--aw-surface);
+  border: 1px solid var(--aw-hairline);
+  border-radius: var(--aw-radius);
+  box-shadow: var(--aw-shadow-sm);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.aw-btn {
+  --_bg: var(--aw-primary);
+  --_fg: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  padding: 0.72rem 1.5rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--_bg);
+  color: var(--_fg);
+  font: inherit;
+  font-weight: 640;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.16s var(--aw-ease),
+    box-shadow 0.16s var(--aw-ease),
+    background-color 0.16s var(--aw-ease);
+  box-shadow: 0 10px 26px -12px color-mix(in srgb, var(--aw-primary) 80%, transparent);
+}
+
+.aw-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px -14px color-mix(in srgb, var(--aw-primary) 85%, transparent);
+}
+.aw-btn:active {
+  transform: translateY(0);
+}
+
+.aw-btn--ghost {
+  --_bg: transparent;
+  --_fg: var(--aw-text);
+  border-color: var(--aw-hairline);
+  background: var(--aw-glass);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: none;
+}
+.aw-btn--ghost:hover {
+  box-shadow: var(--aw-shadow-sm);
+}
+
+.aw-btn--sm {
+  min-height: 40px;
+  padding: 0.45rem 1rem;
+  font-size: 0.92rem;
+}
+
+/* ── Scroll reveal ───────────────────────────────────────────────────────── */
+
+.aw-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s var(--aw-ease),
+    transform 0.6s var(--aw-ease);
+}
+.aw-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Deliberately NOT `position: absolute`. These labels live inside the
+   comparison table, which sits in an `overflow-x: auto` box — and an absolutely
+   positioned element whose containing block is outside that box is not clipped
+   by it, so each hidden "Yes"/"No" was parked ~120 px past the viewport and gave
+   the whole page a horizontal scrollbar. In flow at 1×1 it is just as hidden and
+   cannot escape. */
+.aw-visually-hidden {
+  display: inline-block;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

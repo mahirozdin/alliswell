@@ -1,19 +1,24 @@
 {
   "name": "alliswell",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "AllisWell — open-source, self-hosted productivity hub: tasks, projects, notes, documents, calendar sync and reminders.",
-  "license": "AGPL-3.0-only",
+  "description": "AllisWell — source-available, self-hosted productivity hub: tasks, projects, notes, documents, calendar sync and reminders.",
+  "license": "LicenseRef-PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "workspaces": [
-    "apps/api"
+    "apps/api",
+    "apps/landing"
   ],
   "scripts": {
     "dev": "npm run dev -w @alliswell/api",
     "start": "npm run start -w @alliswell/api",
+    "landing:dev": "npm run dev -w @alliswell/landing",
+    "landing:build": "npm run build -w @alliswell/landing",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "shots:web": "node scripts/screenshots/web.mjs",
     "lint": "npm run lint -w @alliswell/api",
     "format": "npm run format -w @alliswell/api",
     "format:check": "npm run format:check -w @alliswell/api",

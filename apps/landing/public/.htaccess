@@ -1,0 +1,44 @@
+# alliswell.space — one docroot, two apps.
+#
+#   /       → the marketing site (Vue 3, this bundle)
+#   /app    → the Flutter web app, built with --base-href /app/
+#
+# Both are SPAs, so both need "serve index.html for anything that is not a real
+# file". The order matters: /app must be handled BEFORE the site's own fallback,
+# or the marketing page swallows every deep link into the app.
+#
+# Deployed by .github/workflows/deploy.yml — edit it here, not on the server.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Real files and directories always win (assets, .well-known, etc.).
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # /app deep links → the Flutter bundle's index.
+  RewriteRule ^app(/.*)?$ /app/index.html [L]
+
+  # Everything else → the marketing site.
+  RewriteRule ^ /index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Hashed build assets are immutable; the two index.html files must never be
+  # cached, or a deploy leaves visitors on the previous bundle.
+  <FilesMatch "\.(js|css|woff2?|png|jpe?g|svg|webp|avif)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^(index\.html|flutter_service_worker\.js|alliswell-config\.js)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>

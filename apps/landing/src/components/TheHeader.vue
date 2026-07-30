@@ -1,0 +1,234 @@
+<script setup>
+import { onMounted, onUnmounted, ref } from 'vue';
+
+import BrandMark from './BrandMark.vue';
+import { APP_URL, REPO_URL } from '../content.js';
+import { useGithubStars } from '../composables/useGithubStars.js';
+import { useTheme } from '../composables/useTheme.js';
+
+const { stars, loaded, format } = useGithubStars();
+const { theme, toggle } = useTheme();
+
+const scrolled = ref(false);
+const menuOpen = ref(false);
+
+const onScroll = () => (scrolled.value = window.scrollY > 12);
+onMounted(() => {
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+});
+onUnmounted(() => window.removeEventListener('scroll', onScroll));
+
+const links = [
+  { label: 'Features', href: '#features' },
+  { label: 'AI & MCP', href: '#ai' },
+  { label: 'Compare', href: '#compare' },
+  { label: 'Self-host', href: '#self-host' },
+  { label: 'Get it', href: '#get' },
+];
+</script>
+
+<template>
+  <header class="hdr" :class="{ 'hdr--scrolled': scrolled }">
+    <div class="hdr__inner aw-shell">
+      <a class="hdr__brand" href="#top">
+        <BrandMark :size="32" />
+        <span>AllisWell</span>
+      </a>
+
+      <nav class="hdr__nav" :class="{ 'is-open': menuOpen }" aria-label="Site">
+        <a v-for="l in links" :key="l.href" :href="l.href" @click="menuOpen = false">
+          {{ l.label }}
+        </a>
+      </nav>
+
+      <div class="hdr__actions">
+        <a class="hdr__stars" :href="REPO_URL" rel="noopener" target="_blank">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
+            <path
+              d="M8 0a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-1-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-3.9 0-.9.3-1.6.8-2.1 0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3-1.8 3.7-3.6 3.9.3.3.5.8.5 1.6v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 0z"
+            />
+          </svg>
+          <span class="hdr__stars-label">Star</span>
+          <span v-if="loaded && stars !== null" class="hdr__stars-count">{{ format(stars) }}</span>
+        </a>
+
+        <button
+          class="hdr__icon"
+          type="button"
+          :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+          @click="toggle"
+        >
+          <svg v-if="theme === 'dark'" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+            <path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0 3a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0v-1a1 1 0 0 1 1-1zm0-18a1 1 0 0 1 1 1v1a1 1 0 1 1-2 0V3a1 1 0 0 1 1-1zm10 10a1 1 0 0 1-1 1h-1a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1zM4 12a1 1 0 0 1-1 1H2a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1zm14.4 6.4a1 1 0 0 1-1.4 0l-.7-.7a1 1 0 0 1 1.4-1.4l.7.7a1 1 0 0 1 0 1.4zM7.7 7.7a1 1 0 0 1-1.4 0l-.7-.7a1 1 0 0 1 1.4-1.4l.7.7a1 1 0 0 1 0 1.4zm10.7-2.1a1 1 0 0 1 0 1.4l-.7.7a1 1 0 1 1-1.4-1.4l.7-.7a1 1 0 0 1 1.4 0zM7.7 16.3a1 1 0 0 1 0 1.4l-.7.7a1 1 0 0 1-1.4-1.4l.7-.7a1 1 0 0 1 1.4 0z" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+            <path d="M21 13.2A9 9 0 1 1 10.8 3a7 7 0 0 0 10.2 10.2z" />
+          </svg>
+        </button>
+
+        <a class="aw-btn aw-btn--sm hdr__cta" :href="APP_URL">Open the app</a>
+
+        <button
+          class="hdr__icon hdr__burger"
+          type="button"
+          :aria-expanded="menuOpen"
+          aria-label="Menu"
+          @click="menuOpen = !menuOpen"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+</template>
+
+<style scoped>
+.hdr {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: box-shadow 0.2s var(--aw-ease);
+}
+
+.hdr__inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-block: 0.75rem;
+  padding: 0.5rem 0.55rem 0.5rem 0.85rem;
+  border-radius: 999px;
+  background: var(--aw-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--aw-glass-stroke);
+  transition: box-shadow 0.2s var(--aw-ease);
+}
+
+.hdr--scrolled .hdr__inner {
+  box-shadow: var(--aw-shadow);
+}
+
+.hdr__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 700;
+  font-size: 1.06rem;
+  letter-spacing: -0.02em;
+  color: var(--aw-text);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.hdr__nav {
+  display: flex;
+  gap: 1.35rem;
+  margin-inline: auto;
+}
+
+.hdr__nav a {
+  color: var(--aw-text-dim);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 560;
+  white-space: nowrap;
+}
+.hdr__nav a:hover {
+  color: var(--aw-text);
+}
+
+.hdr__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.hdr__stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 40px;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--aw-hairline);
+  color: var(--aw-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.hdr__stars:hover {
+  background: var(--aw-surface-2);
+}
+
+.hdr__stars-count {
+  padding-left: 0.5rem;
+  margin-left: 0.1rem;
+  border-left: 1px solid var(--aw-hairline);
+  color: var(--aw-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.hdr__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--aw-hairline);
+  background: transparent;
+  color: var(--aw-text);
+  cursor: pointer;
+}
+.hdr__icon:hover {
+  background: var(--aw-surface-2);
+}
+
+.hdr__burger {
+  display: none;
+}
+
+@media (max-width: 940px) {
+  .hdr__nav {
+    position: absolute;
+    inset: calc(100% + 8px) 0 auto 0;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    border-radius: var(--aw-radius);
+    background: var(--aw-surface);
+    border: 1px solid var(--aw-hairline);
+    box-shadow: var(--aw-shadow);
+    display: none;
+  }
+  .hdr__nav.is-open {
+    display: flex;
+  }
+  .hdr__nav a {
+    padding: 0.6rem 0.75rem;
+    border-radius: 12px;
+  }
+  .hdr__nav a:hover {
+    background: var(--aw-surface-2);
+  }
+  .hdr__actions {
+    margin-left: auto;
+  }
+  .hdr__burger {
+    display: inline-flex;
+  }
+  .hdr__stars-label {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .hdr__cta {
+    display: none;
+  }
+}
+</style>

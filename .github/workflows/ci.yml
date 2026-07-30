@@ -204,3 +204,62 @@ jobs:
 
       - name: Tests
         run: flutter test
+
+  landing:
+    name: Landing site (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run landing:build
+
+      # The site's whole job is showing the product, so a build that quietly
+      # produced a page of broken frames is a failure worth catching here rather
+      # than on the domain. Every `/shots/...` the markup references must exist
+      # in the built output.
+      - name: Every referenced screenshot exists
+        run: |
+          missing=0
+          for ref in $(grep -rhoE "/shots/[A-Za-z0-9/_.-]+\.(jpg|png)" apps/landing/src | sort -u); do
+            if [ ! -f "apps/landing/dist${ref}" ]; then
+              echo "::error::missing $ref — regenerate with docs/SCREENSHOTS.md"
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: The docroot contract holds
+        run: |
+          test -f apps/landing/dist/index.html || { echo "::error::no index.html"; exit 1; }
+          test -f apps/landing/dist/.htaccess  || { echo "::error::no .htaccess — /app routing would break"; exit 1; }
+          grep -q 'RewriteRule \^app' apps/landing/dist/.htaccess \
+            || { echo "::error::.htaccess lost its /app rule"; exit 1; }
+
+      # Apple and Google both FETCH these URLs during review and reject a 404.
+      # They are generated from docs/*.md, so a rename there silently removes a
+      # store requirement — this is the check that notices.
+      - name: The legal pages the stores require are present
+        run: |
+          fail=0
+          for page in privacy privacy/tr support support/tr; do
+            f="apps/landing/dist/$page/index.html"
+            if [ ! -f "$f" ]; then
+              echo "::error::missing /$page — the stores fetch this URL"; fail=1; continue
+            fi
+            grep -q 'info@bubiapps.com' "$f" \
+              || { echo "::error::/$page has no contact address"; fail=1; }
+          done
+          grep -q 'BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI' apps/landing/dist/privacy/index.html \
+            || { echo "::error::the privacy policy does not name the data controller"; fail=1; }
+          exit $fail
