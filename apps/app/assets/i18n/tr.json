@@ -796,7 +796,11 @@
       "fabHint": "Konuşmak için basılı tut, yazmak için dokun",
       "denied": "Mikrofon veya konuşma erişimi kapalı — yine de yazabilirsin.",
       "listening": "Dinliyorum…",
-      "localeLabel": "Ses dili"
+      "localeLabel": "Ses dili",
+      "cancel": "Vazgeç",
+      "mic": "Konuş",
+      "savedToInbox": "Inbox'a kaydedildi",
+      "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Inbox'a kaydet."
     }
   }
 }

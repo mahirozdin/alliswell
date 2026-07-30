@@ -8,8 +8,10 @@ import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/sheets.dart';
 import '../../../widgets/status_views.dart';
 import '../data/ai_context_builder.dart';
+import '../data/stt.dart';
 import 'ai_bubble_controller.dart';
 import 'ai_bubble_state.dart';
+import 'ai_confirm_card.dart';
 import 'ai_text.dart';
 
 /// Opens the AI bubble as a root-navigator modal sheet (DESIGN §24: opaque
@@ -32,11 +34,19 @@ class AiBubble extends ConsumerStatefulWidget {
 
 class _AiBubbleState extends ConsumerState<AiBubble> {
   final _input = TextEditingController();
+  final _inputFocus = FocusNode();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // A voice session the FAB started (hold-to-talk) is already live on the
+      // shared controller — don't reset it back to composing (OPH-224).
+      final phase = ref.read(aiBubbleControllerProvider).phase;
+      if (phase == AiBubblePhase.listening ||
+          phase == AiBubblePhase.reviewing) {
+        return;
+      }
       ref
           .read(aiBubbleControllerProvider.notifier)
           .openComposing(shared: widget.shared);
@@ -46,11 +56,27 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
   @override
   void dispose() {
     _input.dispose();
+    _inputFocus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // When a finalized transcript lands (voice → reviewing), mirror it into the
+    // editable field and focus it — nothing is auto-sent (AI9). The text sync
+    // fires on any reviewing mismatch (a late final can follow the stop), while
+    // focus only grabs on the transition so it never fights the keyboard.
+    ref.listen<AiBubbleState>(aiBubbleControllerProvider, (prev, next) {
+      final entering =
+          next.phase == AiBubblePhase.reviewing &&
+          prev?.phase != AiBubblePhase.reviewing;
+      if (next.phase == AiBubblePhase.reviewing && _input.text != next.input) {
+        _input.text = next.input;
+        _input.selection = TextSelection.collapsed(offset: next.input.length);
+      }
+      if (entering) _inputFocus.requestFocus();
+    });
+
     final state = ref.watch(aiBubbleControllerProvider);
     final controller = ref.read(aiBubbleControllerProvider.notifier);
     final viewport = MediaQuery.sizeOf(context);
@@ -144,6 +170,31 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
 
   Widget _statusFace(AiBubbleState state) {
     switch (state.phase) {
+      case AiBubblePhase.listening:
+        return Padding(
+          key: const Key('ai-listening'),
+          padding: const EdgeInsets.symmetric(vertical: AwSpace.x3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.mic, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: AwSpace.x2),
+                  Text('ai.voice.listening'.tr()),
+                ],
+              ),
+              if (state.partial.isNotEmpty) ...[
+                const SizedBox(height: AwSpace.x2),
+                Text(
+                  state.partial,
+                  key: const Key('ai-partial'),
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+            ],
+          ),
+        );
       case AiBubblePhase.thinking:
         return Padding(
           key: const Key('ai-thinking'),
@@ -169,28 +220,91 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
           ),
         );
       case AiBubblePhase.offline:
-        return AwEmptyState(
-          key: const Key('ai-offline'),
-          icon: Icons.cloud_off_outlined,
-          title: 'ai.bubble.offlineTitle'.tr(),
-          message: 'ai.bubble.offlineBody'.tr(),
+        return Column(
+          children: [
+            AwEmptyState(
+              key: const Key('ai-offline'),
+              icon: Icons.cloud_off_outlined,
+              title: 'ai.bubble.offlineTitle'.tr(),
+              message: 'ai.bubble.offlineBody'.tr(),
+            ),
+            if (state.input.trim().isNotEmpty)
+              _saveToInboxButton(state.input.trim()),
+          ],
         );
       case AiBubblePhase.unconfigured:
-        return AwEmptyState(
-          key: const Key('ai-unconfigured'),
-          icon: Icons.auto_awesome_outlined,
-          title: 'ai.bubble.unconfiguredTitle'.tr(),
-          message: 'ai.bubble.unconfiguredBody'.tr(),
+        return Column(
+          children: [
+            AwEmptyState(
+              key: const Key('ai-unconfigured'),
+              icon: Icons.auto_awesome_outlined,
+              title: 'ai.bubble.unconfiguredTitle'.tr(),
+              message: 'ai.bubble.unconfiguredBody'.tr(),
+            ),
+            if (state.input.trim().isNotEmpty)
+              _saveToInboxButton(state.input.trim()),
+          ],
         );
       default:
         return const SizedBox.shrink();
     }
   }
 
+  /// One-tap Inbox capture (OPH-224) — the honest fallback when AI is offline
+  /// or unconfigured: nothing said is lost, and it works with zero AI.
+  Widget _saveToInboxButton(String text) => Padding(
+    padding: const EdgeInsets.only(top: AwSpace.x3),
+    child: FilledButton.tonalIcon(
+      key: const Key('ai-save-inbox'),
+      icon: const Icon(Icons.inbox_outlined),
+      label: Text('ai.bubble.saveToInbox'.tr()),
+      onPressed: () async {
+        final navigator = Navigator.of(context);
+        final messenger = ScaffoldMessenger.of(context);
+        await ref
+            .read(aiBubbleControllerProvider.notifier)
+            .captureToInbox(text);
+        navigator.pop();
+        messenger.showSnackBar(
+          SnackBar(content: Text('ai.voice.savedToInbox'.tr())),
+        );
+      },
+    ),
+  );
+
   Widget _composer(AiBubbleState state, AiBubbleController controller) {
+    // While recording, the composer is Cancel + Stop (the transcript shows
+    // live in the status face above); no text field to fight the mic.
+    if (state.phase == AiBubblePhase.listening) {
+      return Padding(
+        padding: const EdgeInsets.all(AwSpace.x3),
+        child: Row(
+          children: [
+            TextButton.icon(
+              key: const Key('ai-listen-cancel'),
+              onPressed: controller.cancelListening,
+              icon: const Icon(Icons.close),
+              label: Text('ai.voice.cancel'.tr()),
+            ),
+            const Spacer(),
+            IconButton.filled(
+              key: const Key('ai-listen-stop'),
+              icon: const Icon(Icons.stop),
+              tooltip: 'ai.bubble.stop'.tr(),
+              onPressed: controller.stopListening,
+            ),
+          ],
+        ),
+      );
+    }
+
     final streaming =
         state.phase == AiBubblePhase.streaming ||
         state.phase == AiBubblePhase.thinking;
+    final reviewing = state.phase == AiBubblePhase.reviewing;
+    // The mic is offered in text mode when a recognizer exists here; a plain
+    // tap on the FAB lands in composing, so the mic is the second way in.
+    final micAvailable = ref.watch(sttProvider) != null;
     return Padding(
       padding: const EdgeInsets.all(AwSpace.x3),
       child: Row(
@@ -199,6 +313,7 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
             child: TextField(
               key: const Key('ai-input'),
               controller: _input,
+              focusNode: _inputFocus,
               minLines: 1,
               maxLines: 4,
               onChanged: controller.editInput,
@@ -216,20 +331,50 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
               tooltip: 'ai.bubble.stop'.tr(),
               onPressed: controller.stop,
             )
-          else
+          else ...[
+            if (!reviewing && micAvailable)
+              IconButton(
+                key: const Key('ai-mic'),
+                icon: const Icon(Icons.mic_none_outlined),
+                tooltip: 'ai.voice.mic'.tr(),
+                onPressed: controller.startListening,
+              ),
             IconButton.filled(
               key: const Key('ai-send'),
               icon: const Icon(Icons.arrow_upward),
               tooltip: 'ai.bubble.send'.tr(),
               onPressed: state.canSend
-                  ? () {
-                      controller.send();
-                      _input.clear();
-                    }
+                  ? () => _onSend(state, controller)
                   : null,
             ),
+          ],
         ],
       ),
     );
+  }
+
+  /// A reviewing (voice/finalized) send runs the intent gate and routes the
+  /// outcome; a composing send is a normal chat turn (OPH-221/224).
+  Future<void> _onSend(
+    AiBubbleState state,
+    AiBubbleController controller,
+  ) async {
+    if (state.phase != AiBubblePhase.reviewing) {
+      controller.send();
+      _input.clear();
+      return;
+    }
+    final route = await controller.submitReview();
+    if (!mounted) return;
+    switch (route) {
+      case AiRouteTasks(:final proposal):
+        Navigator.of(context).pop();
+        await showAiConfirmSheet(context, proposal);
+      case AiRouteAnswer():
+      case AiRouteNone():
+        _input.clear();
+      case AiRouteOffline():
+        break; // keep the transcript for the "save to Inbox" affordance
+    }
   }
 }

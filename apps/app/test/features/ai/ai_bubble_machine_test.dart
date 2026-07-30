@@ -65,4 +65,13 @@ void main() {
     expect(s.phase, AiBubblePhase.offline);
     expect(s.requestId, isNull);
   });
+
+  test('answer commits both turns and returns to composing (OPH-224)', () {
+    var s = m.finalizeTranscript(const AiBubbleState(), 'bugün kaç işim var');
+    s = m.answer(s, 'bugün kaç işim var', 'Üç görevin var.');
+    expect(s.phase, AiBubblePhase.composing);
+    expect(s.input, isEmpty);
+    expect(s.history.map((e) => e.role).toList(), ['user', 'assistant']);
+    expect(s.history.last.text, 'Üç görevin var.');
+  });
 }

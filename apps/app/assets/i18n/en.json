@@ -797,7 +797,11 @@
       "fabHint": "Hold to speak, tap to type",
       "denied": "Microphone or speech access is off — you can still type.",
       "listening": "Listening…",
-      "localeLabel": "Voice language"
+      "localeLabel": "Voice language",
+      "cancel": "Cancel",
+      "mic": "Speak",
+      "savedToInbox": "Saved to your Inbox",
+      "noIntent": "I couldn't turn that into a task. Try rephrasing, or save it to your Inbox."
     }
   }
 }

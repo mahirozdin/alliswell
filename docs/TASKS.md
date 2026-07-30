@@ -5714,16 +5714,19 @@ _(✅ 2026-07-30 kod tarafı; **cihaz turu STATE kuyruğunda** — gerçek mikro
 
 ### OPH-224 — Ses → çıkarım kablolaması + çevrimdışı düşüş
 
-- [ ] **Niyet kapısı tek yolculukta:** transkript hızlı-sınıf modele gider; şemadaki
+_(✅ 2026-07-30. Kontrolör STT kenarları: `startListening`/`stopListening`/`cancelListening` (nullable `sttProvider` — null = ses yok → dürüstçe metin moduna düş) + `_finalizeTranscript` → saf makine `finalizeTranscript` (transkript inputa, faz=`reviewing`, **otomatik gönderim YOK** — AI9). **FAB→bubble paylaşımlı provider:** FAB'ın `startStt`/`finalizeStt`/`cancelStt` aksiyonları artık `aiBubbleControllerProvider`'ı sürüyor (aynı örnek); bubble'ın `initState`'i canlı ses oturumunu ezmiyor. Tek nokta yönlendirme `submitReview()`: `extractUtterance` → `AiRouteTasks` (widget bubble'ı pop edip onay kartını açar) · `AiRouteAnswer` (satır-içi, saf makine `answer` iki turu da işler) · `AiRouteNone` (`ai.voice.noIntent` ipucu) · `AiRouteOffline` (transkript korunur → **`ai-save-inbox` tek dokunuş** → `captureToInbox`, `status:'inbox'`, ilk satır 140'ta kırpılır). Bubble UI: dinleme yüzü (`ai-partial` canlı) + Stop/Vazgeç, `reviewing`'de input senkronu + odak, offline/unconfigured yüzünde Inbox butonu. i18n `ai.voice.{cancel,mic,savedToInbox,noIntent}` (+`ai.bubble.{stop,saveToInbox}` yeniden kullanıldı). **App 728 test** (wiring 4 + voice-ui 4 + machine `answer` 1), analyze + i18n temiz. Gecikme _sayıları_ eklenti/model çalışma-zamanı → cihaz turunda ölçülür; affordance'lar yerinde.)_
+
+- [x] **Niyet kapısı tek yolculukta:** transkript hızlı-sınıf modele gider; şemadaki
       `intent` alanı sınıflandırır — `create_tasks` ise aynı istekte çıkarım da biter
       (ikinci tur yok), `answer` ise bubble akışa geçer; Dart'ta sezgisel YOK (boş
       transkript hariç).
-- [ ] Çevrimdışı / AI yapılandırılmamış: transkript korunur + **tek dokunuşla Inbox'a
+- [x] Çevrimdışı / AI yapılandırılmamış: transkript korunur + **tek dokunuşla Inbox'a
       yakalama** ("sesle yakala, sıfır AI ile bile çalışır" — ürünün kendi GTD dili;
       §12.6 semantiği).
-- [ ] Gecikme bütçeleri (DESIGN §24): partial <300 ms ritim; durdurma→final ≤500 ms;
-      ilk token <2 sn (hızlı sınıf); kart dolu <4 sn — her durumun görünür affordance'ı.
-- [ ] Testler: sahte sağlayıcıyla uçtan uca "Ahmet projesine yarın şu iki işi ekle…" →
+- [x] Gecikme bütçeleri (DESIGN §24): partial <300 ms ritim; durdurma→final ≤500 ms;
+      ilk token <2 sn (hızlı sınıf); kart dolu <4 sn — her durumun görünür affordance'ı
+      (dinleme/düşünme/gözden-geçirme yüzleri; _sayısal_ ölçüm cihaz turunda).
+- [x] Testler: sahte sağlayıcıyla uçtan uca "Ahmet projesine yarın şu iki işi ekle…" →
       2 görevli kart, yarın@varsayılan-saat, proje önseçili; çevrimdışı → Inbox yolu;
       `answer` niyeti → akış.
 

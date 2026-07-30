@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../i18n/i18n.dart';
 import '../providers.dart';
 import 'ai_bubble.dart';
+import 'ai_bubble_controller.dart';
 import 'ai_ptt_machine.dart';
 
 /// The press-to-talk AI FAB (OPH-223, DESIGN §24 AI1): bottom-LEFT, distinct
@@ -46,10 +47,13 @@ class _AiFabState extends ConsumerState<AiFab> {
         case AiPttAction.openBubbleListening:
           showAiBubble(context);
         case AiPttAction.startStt:
+          // Shared provider: the bubble the line above opened reads the same
+          // controller, so it renders the live session (OPH-224).
+          ref.read(aiBubbleControllerProvider.notifier).startListening();
         case AiPttAction.finalizeStt:
+          ref.read(aiBubbleControllerProvider.notifier).stopListening();
         case AiPttAction.cancelStt:
-          // The bubble drives the STT session (OPH-224); the FAB only opens it.
-          break;
+          ref.read(aiBubbleControllerProvider.notifier).cancelListening();
       }
     }
   }

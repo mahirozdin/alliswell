@@ -113,6 +113,21 @@ class AiBubbleMachine {
     );
   }
 
+  /// OPH-224 — an `answer`-intent extraction comes back complete in one round
+  /// trip (no streaming): commit both the user turn and the reply to history
+  /// and return to composing. `none` reuses this with a hint reply.
+  AiBubbleState answer(AiBubbleState s, String userText, String answerText) =>
+      s.copyWith(
+        phase: AiBubblePhase.composing,
+        input: '',
+        history: [
+          ...s.history,
+          AiChatEntry(role: 'user', text: userText),
+          AiChatEntry(role: 'assistant', text: answerText),
+        ],
+        clearError: true,
+      );
+
   AiBubbleState firstToken(AiBubbleState s, String text) =>
       s.copyWith(phase: AiBubblePhase.streaming, streamed: text);
 

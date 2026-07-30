@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **Speak a task, review it, done (OPH-224).** Finish talking and the
+  transcript drops into an editable field — nothing is ever sent for you. Send
+  it and one round trip decides: a task (or a few) opens the confirm card, a
+  question is answered right in the bubble, and anything else gets an honest
+  hint. If you're offline or have no AI provider, the words you said are kept
+  and one tap saves them to your Inbox — capture works with zero AI.
 - **Hold-to-talk AI button, on-device speech (OPH-223).** A second FAB in the
   bottom-left corner (the create button stays bottom-right): hold to speak with
   a live transcript, lift and it keeps listening with the bubble open, swipe
