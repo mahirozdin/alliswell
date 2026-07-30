@@ -5646,23 +5646,25 @@ _(✅ 2026-07-30 — `features/ai/` iskeleti kuruldu (data/ui/providers). aiStat
 
 ### OPH-221 — AI bubble (önce metin) + akış render'ı
 
-- [ ] `features/ai/ui/ai_bubble.dart` — DESIGN §24 sözleşmesi: **opak içerik yüzeyi**
+_(✅ 2026-07-30 — drift **v15** (`ai_messages`, AlarmEvents emsali cihaz-yerel ring buffer `kAiMessageLimit=200`; migration_test v15 + DROP ladder + user_version 15); `showAwSheet` + `AwSheetSurface/AwSheetTile` `widgets/`e çıkarıldı (create sheet typedef ile aynı satırları paylaşır — DESIGN §24 AI5). Bubble kök-navigator opak sheet; **saf** `AiBubbleMachine` (composing/listening/reviewing/thinking/streaming/error/offline/unconfigured) + controller (impure kenarlar `_disposed` korumalı — Notifier dispose sonrası state yazımı UnmountedRefException verir, ders). `AiStreamClient` dikişi: `DioAiStreamClient` (dio ResponseType.stream + elle SSE satır ayrıştırıcı + CancelToken; kapatınca upstream kesilir + cancel POST), `syncTestOverrides`a `aiStreamClient` + `ScriptedAiStreamClient`. `ai_context_builder` **SAF** (T0/T1/T2, ≤50 satır, chars/4 bütçe, `external_share` çerçevesi; toJson yalnız tier/source/id/text). **`AiText`** sınırlı render: HTML asla widget, http linkler tıklanamaz düz metin, yalnız `alliswell://` `awRouteForUri`den geçen çip (background-action inert — exfil-tap bacağı yok). Kodun öğrettiği: bir FutureProvider tembel — `send()`te workspace `.value` null olabilir, `await workspacesProvider.future` gerekti. **App 690 test** (662+28), analyze + i18n temiz. Onay kartı OPH-222'de.)_
+
+- [x] `features/ai/ui/ai_bubble.dart` — DESIGN §24 sözleşmesi: **opak içerik yüzeyi**
       (cam yalnız krom), alt sayfa/overlay; durumlar: boş (metin alanı + mik anahtarı),
       düşünüyor, **token akışı** (durdur düğmesi canlı), hata (`status_views.dart`
       kalıbı + yeniden dene), çevrimdışı ("AI bağlantı ister" + transkripti Inbox'a
       kaydet).
-- [ ] `AiStreamClient` dikişi (OPH-217) — iptal bubble kapatınca upstream'i keser;
+- [x] `AiStreamClient` dikişi (OPH-217) — iptal bubble kapatınca upstream'i keser;
       "bağlam çipi" her mesajda **neyin gönderildiğini** açar (T0/T1/T2 paketi —
       güven + hata ayıklama, AI.md §7).
-- [ ] drift: `ai_messages` cihaz-yerel tablo (bubble geçmişi, budanabilir) — **v14,
+- [x] drift: `ai_messages` cihaz-yerel tablo (bubble geçmişi, budanabilir) — **v14,
       migration adımıyla** (belgelenmiş drift tuzağı); senkron varlık DEĞİL (karar
       yazılı).
-- [ ] Bağlam paketleyici `ai_context_builder.dart` **saf fonksiyon**: T0 (yerel ayar,
+- [x] Bağlam paketleyici `ai_context_builder.dart` **saf fonksiyon**: T0 (yerel ayar,
       TZ, proje adları, sayımlar) / T1 (bugün+geciken dilimleri ≤50 satır — açıklamasız)
       / T2 (soru → ADR-0013 fold aramasıyla top-K alıntı); bütçe ~4–8K girdi tokenı,
       görünür kırpma işareti. Ek baytları, presigned URL'ler, başka kullanıcı verisi
       **asla**.
-- [ ] Testler: durum makinesinin golden widget testleri; paketleyicinin saf testleri
+- [x] Testler: durum makinesinin golden widget testleri; paketleyicinin saf testleri
       (bütçe kırpması, dilim sınırları); iptal akışı; kontrast iki temada.
 
 ### OPH-222 — Onay kartı → local-first commit (+ quick-add "sihirli ayrıştır")

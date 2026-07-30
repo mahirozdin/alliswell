@@ -764,6 +764,19 @@
       "trainsWarning": "Gemini'nin ücretsiz katmanı gönderdiğin veriyle modelini eğitir. Bunu istemiyorsan ücretli katman kullan veya başka bir sağlayıcı seç.",
       "accept": "Anladım, bağla",
       "cancel": "Vazgeç"
+    },
+    "bubble": {
+      "hint": "Sor, ya da bir iş söyle…",
+      "send": "Gönder",
+      "stop": "Durdur",
+      "thinking": "Düşünüyorum…",
+      "error": "Yapay zekâ yanıt veremedi. Tekrar denensin mi?",
+      "sharedContent": "Paylaşılan içerik",
+      "offlineTitle": "Çevrimdışısın",
+      "offlineBody": "Yapay zekâ bağlantı ister. Yine de bunu Inbox'a kaydedebilirsin.",
+      "unconfiguredTitle": "Henüz yapay zekâ sağlayıcısı yok",
+      "unconfiguredBody": "Ayarlar'dan bir sağlayıcı ekle, ya da bunu Inbox'a kaydet.",
+      "saveToInbox": "Inbox'a kaydet"
     }
   }
 }

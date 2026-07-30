@@ -179,4 +179,16 @@ void main() {
       expect('ai.consent.trainsWarning'.tr(), contains('Gemini'));
     });
   });
+
+  group('ai bubble strings', () {
+    test('resolve in both languages', () {
+      expect('ai.bubble.thinking'.tr(), 'Thinking…');
+      expect('ai.bubble.stop'.tr(), 'Stop');
+      expect('ai.bubble.unconfiguredTitle'.tr(), 'No AI provider yet');
+      expect('ai.bubble.saveToInbox'.tr(), 'Save to Inbox');
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect('ai.bubble.thinking'.tr(), 'Düşünüyorum…');
+      expect('ai.bubble.offlineTitle'.tr(), 'Çevrimdışısın');
+    });
+  });
 }

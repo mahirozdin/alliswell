@@ -765,6 +765,19 @@
       "trainsWarning": "Gemini's free tier trains its model on the data you send. If you don't want that, use the paid tier or pick another provider.",
       "accept": "I understand — connect",
       "cancel": "Cancel"
+    },
+    "bubble": {
+      "hint": "Ask, or say a task…",
+      "send": "Send",
+      "stop": "Stop",
+      "thinking": "Thinking…",
+      "error": "The AI could not answer. Try again?",
+      "sharedContent": "Shared content",
+      "offlineTitle": "You're offline",
+      "offlineBody": "The AI needs a connection. You can still save this to your Inbox.",
+      "unconfiguredTitle": "No AI provider yet",
+      "unconfiguredBody": "Add a provider in Settings, or save this to your Inbox.",
+      "saveToInbox": "Save to Inbox"
     }
   }
 }

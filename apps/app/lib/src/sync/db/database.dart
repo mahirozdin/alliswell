@@ -376,6 +376,37 @@ class AlarmEvents extends Table {
 /// How many alarm-log rows the device keeps (a ring buffer, newest first).
 const int kAlarmLogLimit = 200;
 
+/// The AI bubble's chat history (OPH-221, Epic 20, ADR-0019). Device-only —
+/// NEVER synced and never pushed: a synced `conversation` entity would change
+/// the privacy stance and is a parked, deliberate decision. Ring-buffered to
+/// [kAiMessageLimit] newest rows, exactly like the alarm log.
+class AiMessages extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get workspaceId => text()();
+
+  /// `user` | `assistant`.
+  TextColumn get role => text()();
+
+  /// The final text (a stream is buffered in memory; the row is written on
+  /// done / cancel / error).
+  TextColumn get content => text()();
+
+  /// `done` | `cancelled` | `error`.
+  TextColumn get status => text().withDefault(const Constant('done'))();
+
+  /// The packed context bundle summary for the message's context chip (user
+  /// rows), as JSON. Null on assistant rows.
+  TextColumn get contextJson => text().nullable()();
+
+  /// Correlates with the server's requestId, where one exists.
+  TextColumn get requestId => text().nullable()();
+
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+/// How many AI chat rows the device keeps (a ring buffer, newest first).
+const int kAiMessageLimit = 200;
+
 /// The offline outbox (OPH-055, BLUEPRINT §6.3): one row per local write, in
 /// creation order. `id` doubles as the server-visible `clientMutationId`, so
 /// retries stay idempotent end to end.
@@ -446,6 +477,7 @@ class AppleEventLinks extends Table {
     QuickLinks,
     TaskSeries,
     AlarmEvents,
+    AiMessages,
     PendingMutations,
     SyncStates,
   ],
@@ -464,8 +496,10 @@ class AwDatabase extends _$AwDatabase {
   /// v12 → v13 (OPH-198): quick_links, the personal shortcut rail (ADR-0018).
   /// v13 → v14 (OPH-205): task_series + tasks.series_id/occurrence_date
   /// (ADR-0020) — recurring tasks.
+  /// v14 → v15 (OPH-221): ai_messages, the AI bubble's device-local chat
+  /// history (ADR-0019 — NOT a sync entity; the decision is written).
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -568,6 +602,10 @@ class AwDatabase extends _$AwDatabase {
           await m.addColumn(tasks, tasks.occurrenceDate);
         }
       }
+      // v15 (OPH-221, ADR-0019): the AI bubble's device-local chat history. A
+      // brand new table (no `from >=` guard, per the v13 rule); it holds no
+      // synced data, so nothing is backfilled.
+      if (from < 15) await m.createTable(aiMessages);
     },
   );
 

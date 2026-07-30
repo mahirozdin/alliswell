@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/kv/local_kv.dart';
+import '../../sync/providers.dart';
 import '../auth/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/ai_api.dart';
+import 'data/ai_messages_store.dart';
 import 'data/ai_models.dart';
 
 /// AI feature providers (OPH-220). The status gate is the app's single
@@ -13,6 +15,11 @@ import 'data/ai_models.dart';
 
 final aiApiProvider = Provider<AiApi>(
   (ref) => AiApi(ref.watch(apiClientProvider)),
+);
+
+/// Device-local AI chat history (OPH-221) — never synced.
+final aiMessagesStoreProvider = Provider<AiMessagesStore>(
+  (ref) => AiMessagesStore(ref.watch(databaseProvider)),
 );
 
 const String _kAiStatusCachePrefix = 'alliswell_ai_status::';

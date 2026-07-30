@@ -40,6 +40,7 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
+    await db.customStatement('DROP TABLE ai_messages'); // v15
     await db.customStatement('DROP TABLE task_series'); // v14
     await db.customStatement('ALTER TABLE tasks DROP COLUMN series_id'); // v14
     await db.customStatement(
@@ -156,6 +157,9 @@ void main() {
       // v13 (OPH-198): the quick access rail, created empty — the next pull
       // fills it with whatever this user has on their other devices.
       expect(await db.select(db.quickLinks).get(), isEmpty);
+      // v15 (OPH-221): the AI bubble's device-local chat history, created
+      // empty — it is never synced, so it starts blank on every device.
+      expect(await db.select(db.aiMessages).get(), isEmpty);
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -163,7 +167,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 14);
+      expect(version.data['user_version'], 15);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -209,7 +213,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 14);
+      expect(version.data['user_version'], 15);
       await db.close();
     },
   );

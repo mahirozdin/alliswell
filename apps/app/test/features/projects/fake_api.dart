@@ -417,10 +417,12 @@ class FakeApi {
     final patch = RegExp(r'^/api/v1/ai/connections/([^/]+)$').firstMatch(path);
     if (patch != null && options.method == 'PATCH') {
       final row = aiConnections.firstWhere((c) => c['id'] == patch.group(1));
-      if (body?['defaultChatModel'] != null)
+      if (body?['defaultChatModel'] != null) {
         row['defaultChatModel'] = body!['defaultChatModel'];
-      if (body?['defaultFastModel'] != null)
+      }
+      if (body?['defaultFastModel'] != null) {
         row['defaultFastModel'] = body!['defaultFastModel'];
+      }
       return Future.value(jsonBody(200, row));
     }
     if (patch != null && options.method == 'DELETE') {

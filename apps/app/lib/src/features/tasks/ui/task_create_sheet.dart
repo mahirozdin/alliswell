@@ -8,6 +8,7 @@ import '../../../core/date_input.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart';
@@ -523,69 +524,9 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   }
 }
 
-/// Filled rounded backdrop that makes tappable sheet rows read as controls.
-class _SheetSurface extends StatelessWidget {
-  const _SheetSurface({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-      borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
-      clipBehavior: Clip.antiAlias,
-      child: child,
-    );
-  }
-}
-
-/// Date/reminder picker row: filled surface, chevron affordance, clear action.
-class _SheetTile extends StatelessWidget {
-  const _SheetTile({
-    required this.tileKey,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.isSet,
-    required this.clearTooltip,
-    required this.onClear,
-    required this.onTap,
-  });
-
-  final Key tileKey;
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool isSet;
-  final String clearTooltip;
-  final VoidCallback onClear;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return _SheetSurface(
-      child: ListTile(
-        key: tileKey,
-        leading: Icon(icon, color: scheme.onSurfaceVariant),
-        title: Text(title),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            color: isSet ? scheme.onSurface : scheme.onSurfaceVariant,
-            fontWeight: isSet ? FontWeight.w600 : null,
-          ),
-        ),
-        trailing: isSet
-            ? IconButton(
-                tooltip: clearTooltip,
-                icon: const Icon(Icons.close),
-                onPressed: onClear,
-              )
-            : Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-        onTap: onTap,
-      ),
-    );
-  }
-}
+// _SheetSurface / _SheetTile moved to lib/src/widgets/sheet_rows.dart
+// (AwSheetSurface / AwSheetTile) in OPH-221 so the AI confirm card reuses the
+// exact same rows (DESIGN §24 AI5). This file aliases them to keep its call
+// sites unchanged.
+typedef _SheetSurface = AwSheetSurface;
+typedef _SheetTile = AwSheetTile;

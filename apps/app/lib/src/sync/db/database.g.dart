@@ -10546,6 +10546,526 @@ class AlarmEventsCompanion extends UpdateCompanion<AlarmEvent> {
   }
 }
 
+class $AiMessagesTable extends AiMessages
+    with TableInfo<$AiMessagesTable, AiMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('done'),
+  );
+  static const VerificationMeta _contextJsonMeta = const VerificationMeta(
+    'contextJson',
+  );
+  @override
+  late final GeneratedColumn<String> contextJson = GeneratedColumn<String>(
+    'context_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _requestIdMeta = const VerificationMeta(
+    'requestId',
+  );
+  @override
+  late final GeneratedColumn<String> requestId = GeneratedColumn<String>(
+    'request_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    role,
+    content,
+    status,
+    contextJson,
+    requestId,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_messages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiMessage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('context_json')) {
+      context.handle(
+        _contextJsonMeta,
+        contextJson.isAcceptableOrUnknown(
+          data['context_json']!,
+          _contextJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('request_id')) {
+      context.handle(
+        _requestIdMeta,
+        requestId.isAcceptableOrUnknown(data['request_id']!, _requestIdMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AiMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiMessage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      content: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      contextJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}context_json'],
+      ),
+      requestId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}request_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AiMessagesTable createAlias(String alias) {
+    return $AiMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class AiMessage extends DataClass implements Insertable<AiMessage> {
+  final int id;
+  final String workspaceId;
+
+  /// `user` | `assistant`.
+  final String role;
+
+  /// The final text (a stream is buffered in memory; the row is written on
+  /// done / cancel / error).
+  final String content;
+
+  /// `done` | `cancelled` | `error`.
+  final String status;
+
+  /// The packed context bundle summary for the message's context chip (user
+  /// rows), as JSON. Null on assistant rows.
+  final String? contextJson;
+
+  /// Correlates with the server's requestId, where one exists.
+  final String? requestId;
+  final DateTime createdAt;
+  const AiMessage({
+    required this.id,
+    required this.workspaceId,
+    required this.role,
+    required this.content,
+    required this.status,
+    this.contextJson,
+    this.requestId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['role'] = Variable<String>(role);
+    map['content'] = Variable<String>(content);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || contextJson != null) {
+      map['context_json'] = Variable<String>(contextJson);
+    }
+    if (!nullToAbsent || requestId != null) {
+      map['request_id'] = Variable<String>(requestId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AiMessagesCompanion toCompanion(bool nullToAbsent) {
+    return AiMessagesCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      role: Value(role),
+      content: Value(content),
+      status: Value(status),
+      contextJson: contextJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contextJson),
+      requestId: requestId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(requestId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AiMessage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiMessage(
+      id: serializer.fromJson<int>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      role: serializer.fromJson<String>(json['role']),
+      content: serializer.fromJson<String>(json['content']),
+      status: serializer.fromJson<String>(json['status']),
+      contextJson: serializer.fromJson<String?>(json['contextJson']),
+      requestId: serializer.fromJson<String?>(json['requestId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'role': serializer.toJson<String>(role),
+      'content': serializer.toJson<String>(content),
+      'status': serializer.toJson<String>(status),
+      'contextJson': serializer.toJson<String?>(contextJson),
+      'requestId': serializer.toJson<String?>(requestId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AiMessage copyWith({
+    int? id,
+    String? workspaceId,
+    String? role,
+    String? content,
+    String? status,
+    Value<String?> contextJson = const Value.absent(),
+    Value<String?> requestId = const Value.absent(),
+    DateTime? createdAt,
+  }) => AiMessage(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    role: role ?? this.role,
+    content: content ?? this.content,
+    status: status ?? this.status,
+    contextJson: contextJson.present ? contextJson.value : this.contextJson,
+    requestId: requestId.present ? requestId.value : this.requestId,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AiMessage copyWithCompanion(AiMessagesCompanion data) {
+    return AiMessage(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      role: data.role.present ? data.role.value : this.role,
+      content: data.content.present ? data.content.value : this.content,
+      status: data.status.present ? data.status.value : this.status,
+      contextJson: data.contextJson.present
+          ? data.contextJson.value
+          : this.contextJson,
+      requestId: data.requestId.present ? data.requestId.value : this.requestId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiMessage(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('status: $status, ')
+          ..write('contextJson: $contextJson, ')
+          ..write('requestId: $requestId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    role,
+    content,
+    status,
+    contextJson,
+    requestId,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiMessage &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.role == this.role &&
+          other.content == this.content &&
+          other.status == this.status &&
+          other.contextJson == this.contextJson &&
+          other.requestId == this.requestId &&
+          other.createdAt == this.createdAt);
+}
+
+class AiMessagesCompanion extends UpdateCompanion<AiMessage> {
+  final Value<int> id;
+  final Value<String> workspaceId;
+  final Value<String> role;
+  final Value<String> content;
+  final Value<String> status;
+  final Value<String?> contextJson;
+  final Value<String?> requestId;
+  final Value<DateTime> createdAt;
+  const AiMessagesCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.status = const Value.absent(),
+    this.contextJson = const Value.absent(),
+    this.requestId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  AiMessagesCompanion.insert({
+    this.id = const Value.absent(),
+    required String workspaceId,
+    required String role,
+    required String content,
+    this.status = const Value.absent(),
+    this.contextJson = const Value.absent(),
+    this.requestId = const Value.absent(),
+    required DateTime createdAt,
+  }) : workspaceId = Value(workspaceId),
+       role = Value(role),
+       content = Value(content),
+       createdAt = Value(createdAt);
+  static Insertable<AiMessage> custom({
+    Expression<int>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<String>? status,
+    Expression<String>? contextJson,
+    Expression<String>? requestId,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (status != null) 'status': status,
+      if (contextJson != null) 'context_json': contextJson,
+      if (requestId != null) 'request_id': requestId,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  AiMessagesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? workspaceId,
+    Value<String>? role,
+    Value<String>? content,
+    Value<String>? status,
+    Value<String?>? contextJson,
+    Value<String?>? requestId,
+    Value<DateTime>? createdAt,
+  }) {
+    return AiMessagesCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      status: status ?? this.status,
+      contextJson: contextJson ?? this.contextJson,
+      requestId: requestId ?? this.requestId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (contextJson.present) {
+      map['context_json'] = Variable<String>(contextJson.value);
+    }
+    if (requestId.present) {
+      map['request_id'] = Variable<String>(requestId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('status: $status, ')
+          ..write('contextJson: $contextJson, ')
+          ..write('requestId: $requestId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingMutationsTable extends PendingMutations
     with TableInfo<$PendingMutationsTable, PendingMutation> {
   @override
@@ -11526,6 +12046,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $QuickLinksTable quickLinks = $QuickLinksTable(this);
   late final $TaskSeriesTable taskSeries = $TaskSeriesTable(this);
   late final $AlarmEventsTable alarmEvents = $AlarmEventsTable(this);
+  late final $AiMessagesTable aiMessages = $AiMessagesTable(this);
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
   );
@@ -11550,6 +12071,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     quickLinks,
     taskSeries,
     alarmEvents,
+    aiMessages,
     pendingMutations,
     syncStates,
   ];
@@ -16515,6 +17037,258 @@ typedef $$AlarmEventsTableProcessedTableManager =
       AlarmEvent,
       PrefetchHooks Function()
     >;
+typedef $$AiMessagesTableCreateCompanionBuilder =
+    AiMessagesCompanion Function({
+      Value<int> id,
+      required String workspaceId,
+      required String role,
+      required String content,
+      Value<String> status,
+      Value<String?> contextJson,
+      Value<String?> requestId,
+      required DateTime createdAt,
+    });
+typedef $$AiMessagesTableUpdateCompanionBuilder =
+    AiMessagesCompanion Function({
+      Value<int> id,
+      Value<String> workspaceId,
+      Value<String> role,
+      Value<String> content,
+      Value<String> status,
+      Value<String?> contextJson,
+      Value<String?> requestId,
+      Value<DateTime> createdAt,
+    });
+
+class $$AiMessagesTableFilterComposer
+    extends Composer<_$AwDatabase, $AiMessagesTable> {
+  $$AiMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contextJson => $composableBuilder(
+    column: $table.contextJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get requestId => $composableBuilder(
+    column: $table.requestId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AiMessagesTableOrderingComposer
+    extends Composer<_$AwDatabase, $AiMessagesTable> {
+  $$AiMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contextJson => $composableBuilder(
+    column: $table.contextJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get requestId => $composableBuilder(
+    column: $table.requestId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiMessagesTableAnnotationComposer
+    extends Composer<_$AwDatabase, $AiMessagesTable> {
+  $$AiMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get contextJson => $composableBuilder(
+    column: $table.contextJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get requestId =>
+      $composableBuilder(column: $table.requestId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AiMessagesTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $AiMessagesTable,
+          AiMessage,
+          $$AiMessagesTableFilterComposer,
+          $$AiMessagesTableOrderingComposer,
+          $$AiMessagesTableAnnotationComposer,
+          $$AiMessagesTableCreateCompanionBuilder,
+          $$AiMessagesTableUpdateCompanionBuilder,
+          (
+            AiMessage,
+            BaseReferences<_$AwDatabase, $AiMessagesTable, AiMessage>,
+          ),
+          AiMessage,
+          PrefetchHooks Function()
+        > {
+  $$AiMessagesTableTableManager(_$AwDatabase db, $AiMessagesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiMessagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> contextJson = const Value.absent(),
+                Value<String?> requestId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => AiMessagesCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                role: role,
+                content: content,
+                status: status,
+                contextJson: contextJson,
+                requestId: requestId,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String workspaceId,
+                required String role,
+                required String content,
+                Value<String> status = const Value.absent(),
+                Value<String?> contextJson = const Value.absent(),
+                Value<String?> requestId = const Value.absent(),
+                required DateTime createdAt,
+              }) => AiMessagesCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                role: role,
+                content: content,
+                status: status,
+                contextJson: contextJson,
+                requestId: requestId,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AiMessagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $AiMessagesTable,
+      AiMessage,
+      $$AiMessagesTableFilterComposer,
+      $$AiMessagesTableOrderingComposer,
+      $$AiMessagesTableAnnotationComposer,
+      $$AiMessagesTableCreateCompanionBuilder,
+      $$AiMessagesTableUpdateCompanionBuilder,
+      (AiMessage, BaseReferences<_$AwDatabase, $AiMessagesTable, AiMessage>),
+      AiMessage,
+      PrefetchHooks Function()
+    >;
 typedef $$PendingMutationsTableCreateCompanionBuilder =
     PendingMutationsCompanion Function({
       required String id,
@@ -17039,6 +17813,8 @@ class $AwDatabaseManager {
       $$TaskSeriesTableTableManager(_db, _db.taskSeries);
   $$AlarmEventsTableTableManager get alarmEvents =>
       $$AlarmEventsTableTableManager(_db, _db.alarmEvents);
+  $$AiMessagesTableTableManager get aiMessages =>
+      $$AiMessagesTableTableManager(_db, _db.aiMessages);
   $$PendingMutationsTableTableManager get pendingMutations =>
       $$PendingMutationsTableTableManager(_db, _db.pendingMutations);
   $$SyncStatesTableTableManager get syncStates =>

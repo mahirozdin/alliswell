@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **The AI bubble streams answers (OPH-221).** A chat bubble that streams the
+  reply token by token with a live Stop, keeps its history on-device only
+  (never synced), and shows an honest face for every state — thinking, error,
+  offline, or "no provider yet, save to Inbox". AI output renders as plain text
+  and minimal markdown: no HTML is ever interpreted, external links are inert
+  (copy-only, never auto-opened), and only in-app `alliswell://` links are
+  tappable — through the navigation-only resolver. Context sent to the model is
+  packed on-device to a strict budget and the bubble can show exactly what was
+  sent.
 - **AI settings and a real consent screen in the app (OPH-220).** A new
   Settings → AI section (hidden entirely when the server has AI off) to
   connect a provider with your own key — the key is shown only as its last 4
