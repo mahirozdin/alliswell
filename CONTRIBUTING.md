@@ -65,3 +65,21 @@ Use the issue templates. For security issues **do not open a public issue** — 
 ## Code of Conduct
 
 Be excellent to each other — see [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
+## Licensing of contributions
+
+AllisWell is **source-available**, not open source: it is licensed under
+[PolyForm Noncommercial 1.0.0](LICENSE). Free for personal use, self-hosting,
+study, charities, schools and public bodies; commercial use needs a licence from
+**info@bubiapps.com**. The reasoning is in
+[ADR-0024](docs/adr/0024-license-polyform-noncommercial.md).
+
+**By opening a pull request you agree that your contribution is licensed under
+those same terms, and that the project owner may also license the combined work
+commercially.** That second clause is what makes the commercial licence possible
+at all — without it, a single contributed line would block it. If you are not
+comfortable with that, please say so in the issue before writing code; a bug
+report or a reproduction is just as valuable and carries no such condition.
+
+Nothing here changes what you can do with the software: fork it, run it, modify
+it, and keep your fork — all free, for any noncommercial purpose.

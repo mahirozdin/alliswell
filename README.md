@@ -1,133 +1,240 @@
 <div align="center">
 
-<img src="docs/assets/logo.png" width="112" alt="AllisWell logo — a white checkmark on a blue-to-indigo glass tile">
+<img src="docs/assets/logo.png" width="104" alt="AllisWell logo — a white checkmark on a blue-to-indigo glass tile">
 
 # AllisWell
 
-**The open-source, self-hosted productivity hub.**
+### Tasks, reminders &amp; notes — in an app you actually own.
 
-Tasks, projects, notes, files and alarm-grade reminders — with true two-way **Google & Apple Calendar** sync — in one Flutter app for **iOS, Android, Web, macOS, Windows & Linux**. Your data lives in **your own MySQL**, not someone else's cloud.
+**Alarms that ring through Silent mode. Two-way Google &amp; Apple Calendar sync.<br>
+One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own MySQL.**
+
+[**🌐 Try it now — alliswell.space**](https://alliswell.space/app) &nbsp;·&nbsp;
+[Self-host in one command](#-self-hosting-your-server-your-data) &nbsp;·&nbsp;
+[Why it's different](#-why-alliswell-and-where-it-isnt-better)
 
 [![CI](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml/badge.svg)](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml)
-[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-brightgreen)](LICENSE)
-[![Backend: JavaScript](<https://img.shields.io/badge/Backend-Node.js_(JavaScript_only)-yellow>)](AGENTS.md)
+[![Stars](https://img.shields.io/github/stars/mahirozdin/alliswell?style=flat&logo=github&color=2563EB)](https://github.com/mahirozdin/alliswell/stargazers)
+[![Licence: PolyForm Noncommercial](https://img.shields.io/badge/Licence-PolyForm_Noncommercial-brightgreen)](LICENSE)
+[![Free for personal use](https://img.shields.io/badge/Free-for_personal_use_%26_self--hosting-0D7A33)](#-licence--commercial-use)
+[![Self-hosted](https://img.shields.io/badge/Self--hosted-your_MySQL-2563EB)](docker-compose.selfhost.yml)
 [![App: Flutter](<https://img.shields.io/badge/App-Flutter_(6_platforms)-02569B>)](apps/app)
-[![Self-hosted](https://img.shields.io/badge/Self--hosted-your_MySQL-2563EB)](docker-compose.yml)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-orange)](CONTRIBUTING.md)
-
+[![Backend: JavaScript](<https://img.shields.io/badge/Backend-Node.js_(JavaScript_only)-yellow>)](AGENTS.md)
 [![Works with Claude & ChatGPT](https://img.shields.io/badge/Works_with-Claude_%C2%B7_ChatGPT-8A5CF6)](docs/MCP.md)
-[![Bring your own key](https://img.shields.io/badge/BYOK-Anthropic_%C2%B7_OpenAI_%C2%B7_Gemini_%C2%B7_OpenRouter_%C2%B7_Ollama-10A37F)](docs/AI.md)
 
-<em>A free, self-hostable alternative to Todoist, Things 3, TickTick, Apple Reminders & Notion.</em>
+<em>A free, self-hostable alternative to Todoist, Things 3, TickTick, Apple Reminders &amp; Notion.</em>
 
 </div>
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png">
-    <img src="docs/screenshots/home-light.png" width="100%" alt="AllisWell Home dashboard: chronological task groups (overdue, today, this week, next 30 days), a month calendar, a List/Board toggle and workspace-wide search — shown on desktop">
+    <source media="(prefers-color-scheme: dark)" srcset="screenshots/web/home-dark.png">
+    <img src="screenshots/web/home-light.png" width="100%" alt="AllisWell Home on the web: overdue and today groups with project badges and tag chips, a month calendar, and a personal quick-access rail in the sidebar">
   </picture>
 </p>
 
-**AllisWell** brings your whole day into one place. Capture a task in seconds, plan it on a chronological **Home** or a kanban **Board**, keep rich **notes** and **files**, and never miss what matters thanks to **alarm-grade reminders that ring through Silent mode and Focus**. It works **offline-first** with realtime sync across every device, syncs **two-way with Google Calendar and Apple Calendar**, and is **100% self-hosted** — one `docker compose up` and every byte stays in **your own MySQL database**.
+---
 
-> **Project status.** Everything described below through **`v0.9.0`** — the AI epic (a chat bubble, press-to-talk and share capture, bring-your-own-key providers, and an MCP connector for Claude & ChatGPT), plus recurring tasks, the always-on calendar mirror, Quick Access and alarm-grade reminders — is built and tested (**748 app tests + 592 backend unit + 58 integration green**) and in final on-device QA before its release tag. Track it in [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md). ⭐ Star the repo to follow along.
+## 🚀 Get it
 
-<br>
+| | Status | |
+| --- | --- | --- |
+| **🌐 Web app** | **Live now** | **[alliswell.space/app](https://alliswell.space/app)** — sign up and use it on every device. Nothing to install. |
+| 🍎 **App Store** | Internal testing | TestFlight internal build is running; public release next. |
+| 🤖 **Google Play** | Internal testing | Internal testing track is live; public release next. |
+| 🐳 **Self-host** | Live now | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data). |
+| 💻 **Desktop** | Build from source | macOS, Windows and Linux targets build from the same codebase. |
 
-<details>
-<summary><h2>✨ Features — click to expand</h2></summary>
+> **Project status — `v0.9.0`.** Everything on this page is built and tested
+> (**748 app tests · 592 backend unit · 58 integration, green**) and in final
+> on-device QA before its release tag. Track it in [ROADMAP.md](ROADMAP.md) and
+> [docs/STATE.md](docs/STATE.md). ⭐ Star the repo to follow along.
 
-- ⚡ **Fast capture** — add a task in seconds with or without a date; a dedicated **Inbox** keeps unplanned thoughts out of your day until you're ready.
-- 🏠 **Home, your way** — one chronological view (overdue · today · this week · next 30 days) with an Apple-style month calendar, **or** flip to a **Board (kanban)** with your own hideable, reorderable status columns and drag-to-move.
-- 🗂 **Projects** — colors, favorites, archiving, a Notion-style README note, and per-project Tasks / Notes / Files tabs.
-- 🏷 **Tags & priorities** — type `#tags` inline (auto-create, colors, fold-matched suggestions) and set `none → urgent` priority.
-- 🔔 **Alarm-grade reminders** — exact-time delivery, **urgent alarms that break through Silent mode & Focus**, a re-alert-until-acknowledged chain, snooze presets (5 m / 30 m / 1 h / tomorrow / custom), and a privacy mode that hides task content on the lock screen.
-- 🔎 **Instant search** — case- **and Turkish-accent-insensitive** ("cay" finds _Çay_, "isi" finds _ısı_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**.
-- 📝 **Notes & documents** — rich-text (Quill Delta) notes with inline images/video, links to tasks & projects, and Markdown export.
-- 📅 **True two-way calendar sync** — **Google** (OAuth, encrypted tokens, push webhooks, incremental sync, etag-based conflict resolution) and **Apple Calendar** (EventKit bridge); your own external events flow back into Home.
-- 📎 **Attachments & Files** — attach any file to tasks, notes and projects, plus a global **Files** section with nestable folders — stored in **Cloudflare R2 / any S3** via presigned URLs (the API never proxies your bytes).
-- 🔄 **Local-first realtime sync** — offline by default: a mutation outbox, a revision log, idempotent push with field-level last-write-wins, and a Socket.IO channel that fans changes to every device within a round-trip.
-- ✅ **Finish things visibly** — a completed task stays on today's list, struck through and calm, until the next midnight; everything older lives in **Settings ▸ Completed**, a day-headed timeline you can scroll back through. Nothing vanishes mid-tap.
-- 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
-- ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, color and order. It is a **section of the sidebar** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones (park it anywhere; it fades out of your way when idle). Yours alone: shortcuts never leak to other members of a shared workspace.
-- 🔁 **Recurring tasks that survive a short month** — repeat a task **every day / week / month / year**, on **weekdays**, on the **last day of the month**, on the **2nd Tuesday**, or on **the first Monday after the 22nd**. Pick "the 31st" and February gets the 28th — AllisWell **clamps, never skips** (Google Calendar would drop that month entirely). A live **"next 5"** preview shows exactly which days you are about to get, the next **12 months** are real tasks you can see in the calendar and the widget, and editing one occurrence asks how far the change should reach — this one, this and future, or all of them.
-- 🤖 **AI, on your terms (optional)** — chat with your tasks in a bubble, **press-to-talk** a task into being, or **share** any text or link straight into AllisWell. **Bring your own key** — Anthropic, OpenAI, Gemini, OpenRouter, or a local **Ollama** — with no AllisWell account and no markup. Every task it proposes waits for **your one-tap confirmation**, the model is given **no tools of its own**, and capture still works with **zero AI**. On-device speech means your **voice never leaves the device** — only the text does. [How AI works →](docs/AI.md)
-- 🔌 **Connect it to Claude or ChatGPT** — AllisWell is also a **remote MCP server**: link it to the Claude or ChatGPT subscription you already pay for and ask them about your tasks, through read-first tools with **no delete, ever**, behind your own OAuth. [Set it up →](docs/MCP.md)
-- 🖥 **Home-screen widgets** — iOS, Android & macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
-- 🌐 **Localization** — English + Turkish out of the box, auto-detected; adding a language is dropping in one JSON file.
-- 🔓 **Self-hosted & private** — your MySQL, your server, one `docker compose up`. AGPL-3.0.
+---
 
-</details>
+## ⚡ The five things that make it different
 
-<details>
-<summary><h2>📸 Screenshots</h2></summary>
+Everything else here is table stakes. These five are the reasons to switch — and
+each is something the alternatives **cannot** do, not merely haven't yet.
 
-<br>
+### 1. Alarms, not notifications
 
-|                                                                                                                  |                                                                                                                            |
-| ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Board (kanban)** — status columns, drag-to-move                                                                | **Files** — folders + every attachment, one place                                                                          |
-| ![AllisWell kanban Board view with Open, In progress, Waiting and Completed columns](docs/screenshots/board.png) | ![AllisWell global Files section showing folders and uploaded files with type icons and sizes](docs/screenshots/files.png) |
-| **Projects** — colors, favorites, archive                                                                        | **Home (dark)** — the same day, dark mode                                                                                  |
-| ![AllisWell Projects list with color-coded projects and favorite stars](docs/screenshots/projects.png)           | ![AllisWell Home dashboard in dark mode](docs/screenshots/home-dark.png)                                                   |
+A reminder that arrives with a chime is a suggestion. AllisWell's urgent tasks
+ring with a **real alarm sound, through Silent mode and through Focus** (iOS 26
+AlarmKit; Android's `USAGE_ALARM` insistent channel), keep **re-alerting until
+you acknowledge them**, and write a log entry explaining themselves when the OS
+gets in the way.
+
+<p align="center">
+  <img src="screenshots/android/09-alarm-ring.png" width="27%" alt="AllisWell's full-screen alarm on Android: URGENT REMINDER, a task title, an Acknowledge button and snooze presets that each say when they will ring again">
+  &nbsp;
+  <img src="screenshots/ios/alarmkit-permission.png" width="27%" alt="iOS asking to allow AllisWell to schedule alarms that play sounds and appear on screen even when a Focus is active">
+  &nbsp;
+  <img src="screenshots/android/11-alarm-permission.png" width="27%" alt="Android's Alarms and reminders permission screen for AllisWell">
+</p>
+
+<p align="center"><em>Left: the ring screen, with snooze presets that tell you the exact time they will ring again.<br>
+Middle &amp; right: the OS-level permissions this is actually built on — not a louder notification.</em></p>
+
+### 2. Recurrence that doesn't lie
+
+Ask for **the 31st** and RFC 5545 — which is what Google Calendar follows —
+simply **skips** every month without one. Your rent does not skip February.
+
+| Rule: every month on day 31 | Google Calendar | **AllisWell** |
+| --- | --- | --- |
+| December | 31 Dec | 31 Dec |
+| January | 31 Jan | 31 Jan |
+| **February** | **— skipped —** | **28 Feb** |
+| March | 31 Mar | 31 Mar |
+| **April** | **— skipped —** | **30 Apr** |
+
+Also: every day / weekday / week / month / year, **the last day of the month**,
+**the 2nd Tuesday**, **the first Monday after the 22nd** — with a live
+**"next 5" preview** before you commit, twelve rolling months of **real task
+rows** (so they show up in search, the calendar and the widget), and an
+"edit this / this and future / all" prompt when you change one.
+
+<p align="center">
+  <img src="screenshots/ios/07-task-detail-repeat.png" width="31%" alt="Task detail: Urgent alarm on, Repeat on with the sentence Every month on day 31, and a due date of 30 September — the clamp in action">
+  &nbsp;
+  <img src="screenshots/ios/08-repeat-dialog.png" width="31%" alt="The Repeat dialog with a Next 5 preview listing the exact upcoming dates">
+</p>
+
+### 3. True two-way calendar sync, to both ecosystems
+
+Not an ICS subscription and not a one-way import. Your tasks become **real
+Google Calendar events**; edits you make in Google **come back** through push
+webhooks, incremental sync and etag-based conflict resolution; and your other
+Google events appear **on Home, next to your tasks**. Apple Calendar goes
+through an **EventKit** bridge. Things 3 reads your calendar — it never writes.
+
+### 4. One codebase, six platforms, offline-first
+
+A local SQLite replica, a mutation outbox and a revision log mean **everything
+works with the network off** — create, edit, complete, search — and lands on
+every other device within a round-trip when it comes back. Apple's tools are
+Apple-only. Google's need the network more than they admit.
+
+### 5. AI on your terms — including none
+
+**Add AllisWell to the Claude or ChatGPT subscription you already pay for**
+(it is a remote MCP server), or **bring your own key** — Anthropic, OpenAI,
+Gemini, OpenRouter, or a local **Ollama** where nothing leaves the machine.
+The model gets **no write tools**; every task it proposes waits for your one-tap
+confirmation; **deletion is closed to AI permanently**; and capture works with
+**zero AI**. On-device speech means your **voice never leaves the device** —
+only the text does.
+
+[How AI works →](docs/AI.md) &nbsp;·&nbsp; [Set up the MCP connector →](docs/MCP.md)
+
+---
+
+## 📸 What it looks like
+
+<table>
+<tr>
+<td width="50%"><img src="screenshots/web/board.png" alt="AllisWell Board view: Open, In progress, Waiting and Completed columns with drag-to-move cards"></td>
+<td width="50%"><img src="screenshots/web/notes.png" alt="AllisWell Notes: pinned notes, project links and a READMEs filter"></td>
+</tr>
+<tr>
+<td><b>Board</b> — the same day as a kanban, with columns you name, hide and reorder</td>
+<td><b>Notes</b> — rich text, pinned, linked to a project, exportable as Markdown</td>
+</tr>
+<tr>
+<td><img src="screenshots/web/files.png" alt="AllisWell Files section with nestable folders and uploaded documents"></td>
+<td><img src="screenshots/web/completed.png" alt="Settings, Completed: a day-headed timeline of finished tasks grouped by Today, Yesterday and earlier dates"></td>
+</tr>
+<tr>
+<td><b>Files</b> — folders + every attachment, in your own R2/S3 bucket</td>
+<td><b>Completed</b> — an infinite, day-headed timeline. Nothing vanishes mid-tap</td>
+</tr>
+</table>
 
 <p align="center"><em>On the phone — the same local-first app, from one Flutter codebase:</em></p>
 
 <p align="center">
-  <img src="docs/screenshots/mobile-home-light.png" width="30%" alt="AllisWell mobile Home with month calendar (light)">
+  <img src="screenshots/ios/01-home.png" width="23%" alt="AllisWell Home on iPhone">
   &nbsp;
-  <img src="docs/screenshots/mobile-home-dark.png" width="30%" alt="AllisWell mobile Home (dark)">
+  <img src="screenshots/ios/10-home-dark.png" width="23%" alt="AllisWell Home on iPhone in dark mode">
   &nbsp;
-  <img src="docs/screenshots/mobile-create.png" width="30%" alt="AllisWell mobile quick-create task sheet">
+  <img src="screenshots/android/01-home.png" width="23%" alt="AllisWell Home on Android">
+  &nbsp;
+  <img src="screenshots/android/10-home-dark.png" width="23%" alt="AllisWell Home on Android in dark mode">
 </p>
+
+<p align="center"><sub>iPhone 17 Pro Max · Pixel 9 Pro XL · light and dark · every one a real capture from a running app, not a mock-up.<br>
+How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></sub></p>
+
+---
+
+<details>
+<summary><h2>✨ Every feature — click to expand</h2></summary>
+
+- ⚡ **Fast capture** — a task in seconds, with or without a date; a dedicated **Inbox** keeps unplanned thoughts out of your day until you're ready. Plus **press-and-hold to talk**, **share any text or link** into the app, and a **"magic parse"** that turns a sentence into a dated, tagged, projected task.
+- 🏠 **Home, your way** — one chronological view (overdue · today · this week · next 30 days) with an Apple-style month calendar, **or** flip to a **Board (kanban)** with your own hideable, reorderable status columns and drag-to-move.
+- 🗂 **Projects** — colours, favourites, archiving, a Notion-style README note as the overview, and per-project Tasks / Notes / Files tabs.
+- 🏷 **Tags &amp; priorities** — type `#tags` inline (auto-create, colours, fold-matched suggestions) and set `none → urgent` priority. Subtasks and checklists inside a task.
+- 🔔 **Alarm-grade reminders** — exact-minute delivery, **urgent alarms through Silent mode &amp; Focus**, a re-alert-until-acknowledged chain you can tune, snooze presets (5 m / 30 m / 1 h / tomorrow / custom) that each say when they'll ring, **mute one task's alarms** without completing it, your own ringtone, an **alarm log**, and a privacy mode that hides task content on the lock screen.
+- 🔁 **Recurring tasks that survive a short month** — see [§2 above](#2-recurrence-that-doesnt-lie).
+- 🔎 **Instant search** — case- **and Turkish-accent-insensitive** ("cay" finds _Çay_, "isi" finds _ısı_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**. Neither SQLite nor MySQL folds `ı → i`; AllisWell owns the fold itself.
+- 📝 **Notes &amp; documents** — rich-text (Quill Delta) notes with inline images/video, links to tasks and projects, pin/archive, card grid or list, and Markdown export.
+- 📅 **True two-way calendar sync** — see [§3 above](#3-true-two-way-calendar-sync-to-both-ecosystems). Every task is on the calendar, and it is **not a setting**.
+- 📎 **Attachments &amp; Files** — attach any file to tasks, notes and projects, plus a global **Files** section with nestable folders — stored in **Cloudflare R2 / any S3** via presigned URLs (the API never proxies your bytes).
+- 🔄 **Local-first realtime sync** — offline by default: a mutation outbox, a revision log, idempotent push with field-level last-write-wins, and a Socket.IO channel that fans changes to every device within a round-trip.
+- ✅ **Finish things visibly** — a completed task stays on today's list, struck through and calm, until the next midnight; everything older lives in **Settings ▸ Completed**, a day-headed timeline you can scroll back through.
+- 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
+- ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, colour and order. A **sidebar section** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones. Yours alone: shortcuts never leak to other members of a shared workspace.
+- 🤖 **AI, on your terms (optional)** — see [§5 above](#5-ai-on-your-terms--including-none).
+- 🖥 **Home-screen widgets** — iOS, Android &amp; macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
+- 🌐 **Localisation** — English + Turkish out of the box, auto-detected; adding a language is dropping in one JSON file.
+- 🔓 **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).
 
 </details>
 
-<details>
-<summary><h2>💡 Why AllisWell?</h2></summary>
+---
 
-<br>
+## 💡 Why AllisWell — and where it isn't better
 
-The tools we love, we can't fully own. AllisWell combines their best ideas — and adds what none of them give you: **open source, self-hosted, true two-way calendar sync, and a local-first realtime engine.**
+The tools we love, we can't fully own. AllisWell takes their best ideas and adds
+what none of them give you: **the source in the open, self-hosting you actually
+own, true two-way calendar sync, and a local-first realtime engine.**
 
-| Inspiration         | What we take from it                                   |
-| ------------------- | ------------------------------------------------------ |
-| **Apple Reminders** | Instant capture, date/time alarms, subtasks            |
-| **Things 3**        | Inbox / Today / Upcoming flow, projects & areas        |
-| **Todoist**         | Labels, priorities, filters, cross-platform discipline |
-| **TickTick**        | Calendar-first planning, kanban board, rich task notes |
-| **Notion**          | Project document pages, notes as a knowledge base      |
+| | **AllisWell** | Google Calendar | Google Tasks | Apple Reminders | Things 3 |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| **Source available** | ● | ○ | ○ | ○ | ○ |
+| **Self-hosted, your database** | ● | ○ | ○ | ○ | ○ |
+| Price | free | free | free | free | ~$80 |
+| iOS · Android · Web · desktop | ● | ◐ | ◐ | ○ | ○ |
+| Works fully offline | ● | ◐ | ◐ | ● | ● |
+| Kanban board | ● | ○ | ○ | ◐ | ○ |
+| Rich notes &amp; file attachments | ● | ◐ | ○ | ◐ | ○ |
+| **Alarms through Silent + Focus** | ● | ○ | ○ | ◐ | ○ |
+| **Re-alert until acknowledged** | ● | ○ | ○ | ○ | ○ |
+| **Recurrence clamps (31st → 28 Feb)** | ● | ○ | ○ | ● | ● |
+| **Two-way Google Calendar sync** | ● | native | native | ○ | ○ |
+| **Turkish-aware search** | ● | ○ | ○ | ○ | ○ |
+| **MCP connector for Claude / ChatGPT** | ● | ○ | ○ | ○ | ○ |
+
+<sub>● full · ◐ partial · ○ none. Competitor behaviour as of mid-2026.</sub>
+
+**Where they beat us — honestly.** Apple Reminders has **location-based** and
+**messaging-based** reminders we simply don't have. Google and Apple Calendar do
+invitations, RSVPs and free/busy; we mirror to your calendar and let it do that.
+Todoist and Apple Reminders have **real collaboration** — assignees, comments,
+shared lists — where our workspace model exists but the sharing UI does not.
+Things 3 has had ten years to sand its corners; we are at 0.9.0. And
+**self-hosting is work**: a managed app has no `docker compose`, no TLS
+certificate and no backups to think about.
+
+**The full analysis** — every claim above, the six things they do better, and the
+lines we deliberately did *not* write — is in **[docs/COMPARISON.md](docs/COMPARISON.md)**.
 
 > 🇹🇷 Bu proje Türkçe bir ürün vizyonuyla başladı — tam vizyon için [docs/BLUEPRINT.md](docs/BLUEPRINT.md).
 
-</details>
+---
 
-<details>
-<summary><h2>🏗 Architecture</h2></summary>
-
-```txt
-Flutter App (iOS / Android / macOS / Windows / Linux / Web)
-      │  REST + WebSocket (Socket.IO)   ·   offline-first local SQLite replica
-      ▼
-Node.js API — Fastify, JavaScript only (no TypeScript)
-  ├─ Auth (JWT + refresh rotation)     ├─ Sync engine (revision log, outbox)
-  ├─ Projects / Tasks / Tags           ├─ Reminder scheduler
-  ├─ Notes / Files (presigned R2/S3)   ├─ Calendar sync workers (BullMQ)
-  └─ Search (Turkish-fold)             └─ Local search + folders
-      │
-      ├─ MySQL 8.4 / MariaDB 10.11+  (canonical data)
-      ├─ Redis 8    (queues, Socket.IO fan-out, cache)
-      ├─ Object storage: Cloudflare R2 / any S3 (attachments)
-      └─ Calendar providers: Google Calendar API · Apple EventKit · CalDAV (v2)
-```
-
-Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) • Design decisions: [docs/adr/](docs/adr/)
-
-</details>
-
-<details>
-<summary><h2>🐳 Self-hosting (Docker)</h2></summary>
+## 🐳 Self-hosting: your server, your data
 
 Two published images — the API and the web app — for `linux/amd64` and
 `linux/arm64`, tagged on every release:
@@ -145,11 +252,45 @@ docker compose -f docker-compose.selfhost.yml up -d
 
 The API creates and migrates its own schema on start, so an upgrade is just
 `pull` + `up -d` — **your data lives in named volumes and is never touched**.
-The web image reads your API address at _container start_, so one prebuilt
-image serves any domain without rebuilding Flutter.
+The web image reads your API address at _container start_, so one prebuilt image
+serves any domain without rebuilding Flutter.
 
-Full guide — TLS/reverse proxy, upgrades & backups, Cloudflare R2 attachments,
+Full guide — TLS/reverse proxy, upgrades &amp; backups, Cloudflare R2 attachments,
 Google Calendar, troubleshooting: **[docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)**.
+
+---
+
+<details>
+<summary><h2>🏗 Architecture</h2></summary>
+
+```txt
+Flutter App (iOS / Android / macOS / Windows / Linux / Web)
+      │  REST + WebSocket (Socket.IO)   ·   offline-first local SQLite replica
+      ▼
+Node.js API — Fastify, JavaScript only (no TypeScript)
+  ├─ Auth (JWT + refresh rotation)     ├─ Sync engine (revision log, outbox)
+  ├─ Projects / Tasks / Tags           ├─ Reminder scheduler
+  ├─ Notes / Files (presigned R2/S3)   ├─ Calendar sync workers (BullMQ)
+  ├─ Recurrence engine (task_series)   ├─ Remote MCP server (OAuth 2.1)
+  └─ Search (Turkish-fold)             └─ AI providers (BYOK, 5 adapters)
+      │
+      ├─ MySQL 8.4 / MariaDB 10.11+  (canonical data)
+      ├─ Redis 8    (queues, Socket.IO fan-out, cache)
+      ├─ Object storage: Cloudflare R2 / any S3 (attachments)
+      └─ Calendar providers: Google Calendar API · Apple EventKit · CalDAV (v2)
+```
+
+The monorepo:
+
+| Path | What it is |
+| --- | --- |
+| [`apps/api`](apps/api) | Fastify backend — JavaScript only, MySQL via knex |
+| [`apps/app`](apps/app) | The Flutter app — all six platforms, one codebase |
+| [`apps/landing`](apps/landing) | This site — Vue 3 + Vite, served at the root of alliswell.space |
+| [`scripts/seed-demo.mjs`](scripts/seed-demo.mjs) | The demo workspace every screenshot is shot from |
+| [`scripts/screenshots/`](scripts/screenshots) | Screenshot + store-asset pipeline |
+
+Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) • Design decisions: [docs/adr/](docs/adr/)
 
 </details>
 
@@ -177,43 +318,56 @@ flutter pub get
 flutter run -d chrome    # or: macos / windows / an emulator
 ```
 
+Want the app full of realistic data in one command?
+
+```bash
+npm run seed:demo        # demo@alliswell.space / AllisWellDemo2026
+```
+
 Run everything in containers instead: `docker compose --profile full up`.
 Optional DB admin UI: `docker compose --profile tools up -d adminer` → http://localhost:8080.
 
 **Optional integrations** (all off until configured, see [.env.example](.env.example)):
-Google Calendar (`GOOGLE_*`), and file attachments via Cloudflare R2 / any S3 (`STORAGE_S3_*` — MinIO ships in `docker-compose` for local dev; full guide in [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md)).
+Google Calendar (`GOOGLE_*`), file attachments via Cloudflare R2 / any S3 (`STORAGE_S3_*`),
+and AI (`AI_*` — off by default; see [docs/AI.md](docs/AI.md)).
 
 ### Useful commands
 
-| Command                              | What it does                                   |
-| ------------------------------------ | ---------------------------------------------- |
-| `npm run dev`                        | Start API with watch mode                      |
-| `npm test`                           | API unit tests (no infra needed)               |
-| `npm run test:integration`           | API integration tests (needs MySQL+Redis)      |
-| `npm run lint` / `npm run format`    | ESLint / Prettier                              |
-| `npm run db:migrate` / `db:rollback` | Knex migrations                                |
-| `npm run check:no-ts`                | Enforce the JavaScript-only policy             |
-| `npm run check:i18n`                 | Enforce no hardcoded UI strings (localization) |
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start API with watch mode |
+| `npm test` | API unit tests (no infra needed) |
+| `npm run test:integration` | API integration tests (needs MySQL+Redis) |
+| `npm run seed:demo` | Fill a running instance with the demo workspace |
+| `npm run shots:web` | Regenerate the web screenshots |
+| `npm run landing:dev` | Run the marketing site locally |
+| `npm run lint` / `npm run format` | ESLint / Prettier |
+| `npm run db:migrate` / `db:rollback` | Knex migrations |
+| `npm run check:no-ts` | Enforce the JavaScript-only policy |
+| `npm run check:i18n` | Enforce no hardcoded UI strings (localisation) |
 
 </details>
 
 <details>
 <summary><h2>📚 Documentation</h2></summary>
 
-| Doc                                                                                      | Purpose                                                            |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| [docs/BLUEPRINT.md](docs/BLUEPRINT.md)                                                   | Product vision, domain model, full functional spec (TR)            |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                             | System architecture, stack, sync & calendar design                 |
-| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)                                             | Run your own instance with Docker: TLS, upgrades, backups, storage |
-| [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md)                                               | File attachments: R2/S3 storage, presigned flow, CORS setup        |
-| [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md)                                           | Exact-time / urgent alarm delivery research & plan                 |
-| [docs/WIDGETS.md](docs/WIDGETS.md)                                                       | Home-screen widget architecture                                    |
-| [ROADMAP.md](ROADMAP.md)                                                                 | Phase-by-phase roadmap: shipped, next, and v2 parking lot          |
-| [docs/TASKS.md](docs/TASKS.md)                                                           | Backlog: every OPH-xxx task with acceptance criteria               |
-| [docs/STATE.md](docs/STATE.md)                                                           | Live development state — what's done, what's next                  |
-| [CHANGELOG.md](CHANGELOG.md)                                                             | What changed, per release                                          |
-| [docs/adr/](docs/adr/)                                                                   | Architecture Decision Records (0001–0014)                          |
-| [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) | Workflow, contributing & security policy                           |
+| Doc | Purpose |
+| --- | --- |
+| [docs/COMPARISON.md](docs/COMPARISON.md) | Full feature inventory + honest comparison with Google, Apple and Things 3 |
+| [docs/BLUEPRINT.md](docs/BLUEPRINT.md) | Product vision, domain model, full functional spec (TR) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture, stack, sync &amp; calendar design |
+| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) | Run your own instance with Docker: TLS, upgrades, backups, storage |
+| [docs/AI.md](docs/AI.md) · [docs/MCP.md](docs/MCP.md) | AI providers &amp; consent · the remote MCP connector |
+| [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md) | File attachments: R2/S3 storage, presigned flow, CORS setup |
+| [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Exact-time / urgent alarm delivery research &amp; plan |
+| [docs/WIDGETS.md](docs/WIDGETS.md) | Home-screen widget architecture |
+| [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) | How every image in this repo is produced |
+| [docs/STORE-LISTING.md](docs/STORE-LISTING.md) | App Store &amp; Play copy, asset sizes, claim guardrails |
+| [ROADMAP.md](ROADMAP.md) | Phase-by-phase roadmap: shipped, next, and v2 parking lot |
+| [docs/TASKS.md](docs/TASKS.md) · [docs/STATE.md](docs/STATE.md) | Every OPH-xxx task · live development state |
+| [CHANGELOG.md](CHANGELOG.md) | What changed, per release |
+| [docs/adr/](docs/adr/) | Architecture Decision Records (0001–0023) |
+| [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) | Workflow, contributing &amp; security policy |
 
 </details>
 
@@ -230,23 +384,75 @@ The markdown files (STATE / TASKS / CHANGELOG) are the single source of truth �
 
 </details>
 
-<details>
-<summary><h2>🤝 Contributing & License</h2></summary>
+---
 
-Contributions are very welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) and pick a task from [docs/TASKS.md](docs/TASKS.md). Please open an issue before large changes.
+## ⚖️ Licence & commercial use
 
-**Translations** are especially welcome and need no Dart: copy `apps/app/assets/i18n/en.json` to `<code>.json`, translate the values, and register the locale — see [CONTRIBUTING.md](CONTRIBUTING.md#translating-adding-a-language). Ships with English + Turkish.
+**AllisWell is free for you, and not free for your employer.** That is the whole
+rule; everything below is detail.
 
-**License:** [AGPL-3.0](LICENSE) — free to use, self-host and modify; if you run a modified version as a service, you must share your changes. See [ADR-0002](docs/adr/0002-license-agpl-3.0.md) for why.
+The source is public and it always will be. You can read it, fork it, change it,
+and run your own instance on your own machine forever without paying anyone or
+asking anyone. What you cannot do is take it into a business — resell it, offer
+it as a service, or run it as part of a commercial operation.
 
-</details>
+| You are… | Free? |
+| --- | :---: |
+| A person, using it for your own life | ✅ Free |
+| Self-hosting your own instance at home or on your own VPS | ✅ Free |
+| Studying it, forking it, submitting a fix, building on it as a hobby | ✅ Free |
+| A charity, school, university, public research body or government institution | ✅ Free |
+| A company running it for your team, at any size | ❌ Needs a commercial licence |
+| Reselling it, or offering it to others as a hosted service | ❌ Needs a commercial licence |
+
+**Enterprise, or anything commercial → [info@bubiapps.com](mailto:info@bubiapps.com).**
+Commercial licences exist, they are not expensive, and they come with the
+self-hosting support the free tier does not.
+
+**Why this and not AGPL.** AllisWell used to be AGPL-3.0, and AGPL would have let
+a competitor host the whole product commercially and comply merely by publishing
+their changes. This is a single-maintainer product whose revenue is the hosted
+service at [alliswell.space](https://alliswell.space) and the app stores — so the
+licence now protects exactly that, and nothing else. The full reasoning, the
+alternatives that were weighed (FSL, Elastic License, AGPL + commercial
+exception), and the consequences are in
+**[ADR-0024](docs/adr/0024-license-polyform-noncommercial.md)**.
+
+**Being straight about the label.** PolyForm Noncommercial is **source-available**,
+not OSI "open source" — it discriminates against commercial use, which the Open
+Source Definition forbids. The repo used to say "open source" everywhere; it now
+says source-available, because the other word would be untrue.
+
+**If you already have v0.9.0 or earlier**, you have it under AGPL-3.0 and you
+keep those rights for that copy. A licence granted cannot be taken back. These
+terms apply from **v1.0.0**.
+
+---
+
+## 🤝 Contributing &amp; licence
+
+Contributions are very welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) and pick
+a task from [docs/TASKS.md](docs/TASKS.md). Please open an issue before large changes.
+
+**Translations** are especially welcome and need no Dart: copy
+`apps/app/assets/i18n/en.json` to `<code>.json`, translate the values, and
+register the locale — see [CONTRIBUTING.md](CONTRIBUTING.md#translating-adding-a-language).
+
+**Licence:** [PolyForm Noncommercial 1.0.0](LICENSE) — see
+[Licence & commercial use](#-licence--commercial-use) above. Contributions are
+accepted under the same terms.
 
 ---
 
 <div align="center">
+
+**[⭐ Star this repo](https://github.com/mahirozdin/alliswell)** &nbsp;·&nbsp;
+**[🌐 alliswell.space](https://alliswell.space)** &nbsp;·&nbsp;
+**[Open the app](https://alliswell.space/app)**
+
 <sub>
 
-**AllisWell** — open-source self-hosted productivity hub · to-do & task manager · Todoist / Things 3 / TickTick / Apple Reminders / Notion alternative · two-way Google Calendar & Apple Calendar sync · offline-first · Flutter (iOS, Android, Web, macOS, Windows, Linux) · Node.js + MySQL · self-hosted & private.
+**AllisWell** — source-available self-hosted productivity hub · to-do &amp; task manager · Todoist / Things 3 / TickTick / Apple Reminders / Notion alternative · two-way Google Calendar &amp; Apple Calendar sync · offline-first · Flutter (iOS, Android, Web, macOS, Windows, Linux) · Node.js + MySQL · self-hosted &amp; private.
 
 </sub>
 </div>

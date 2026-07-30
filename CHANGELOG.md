@@ -5,6 +5,75 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-31
+
+**AllisWell 1.0.** The product goes public: a marketing site at the root of
+alliswell.space with the app under `/app`, real store assets for both stores, and
+a licence that reflects what the project has become — a product, not a hobby.
+
+### Added
+
+- **The site (`apps/landing`).** A Vue 3 + Vite marketing site sharing the app's
+  own design tokens: the feature story, a live comparison table, the recurrence
+  clamp shown rather than claimed, self-hosting, and a live GitHub star count
+  fetched directly from the API (no third-party badge, no iframe, no visitor data
+  handed to anyone).
+- **`/privacy` and `/support`, on our own domain.** Both are generated at build
+  time from `docs/PRIVACY.md` and `docs/SUPPORT.md`, in English and Turkish, as
+  static HTML that needs no JavaScript. One source, two renderings — the website
+  and the repository can never state different policies. Both stores fetch these
+  URLs during review.
+- **A demo workspace, in one command (`npm run seed:demo`).** 7 projects, 9 tags,
+  ~47 tasks across every Home group and board column, 4 recurring series,
+  subtasks, checklists, 8 notes, folders, uploaded files and quick-access
+  shortcuts — written entirely through the public REST API, so nothing in a
+  screenshot is a state the product cannot actually reach.
+- **A screenshot pipeline (`scripts/screenshots/`).** Real captures from a real
+  headless Chrome, a booted iPhone simulator and a booted Android emulator,
+  composed into the exact canvases Apple and Google require, plus the feature
+  graphic, both store icons and the social cover. Documented in
+  `docs/SCREENSHOTS.md`.
+- **`docs/COMPARISON.md`.** The full feature inventory tagged by the epic that
+  shipped each line, an honest comparison with Google Calendar, Google Tasks,
+  Apple Reminders, Apple Calendar and Things 3 — including a section on the nine
+  things they do better than we do.
+
+### Changed
+
+- **Licence: AGPL-3.0 → PolyForm Noncommercial 1.0.0** (ADR-0024, superseding
+  ADR-0002). Free forever for personal use, self-hosting, study, charities,
+  schools, public research and government. Commercial use needs a licence from
+  info@bubiapps.com. Releases up to and including 0.9.0 remain AGPL-3.0 for
+  anyone who received them — a granted licence cannot be withdrawn. Every surface
+  that said "open source" now says **source-available**, because the other word
+  would no longer be true.
+- **The web app moved to `/app`.** alliswell.space now serves the marketing site
+  at its root; the Flutter bundle is built with `--base-href /app/` and the
+  rewrite rules ship with the build (`apps/landing/public/.htaccess`) instead of
+  living on the server, where they could silently be lost on a docroot swap.
+- **Privacy policies name a real controller and a real mailbox.** Both language
+  versions now carry the registered company details and **info@bubiapps.com**,
+  replacing an address that did not exist.
+- **README rebuilt** around the five things that actually differ, with real
+  device screenshots for each, and a new "Licence & commercial use" section.
+
+### Fixed
+
+- **The Android app would not build at all.** `receive_sharing_intent` (added
+  with the share target in 0.9.0) compiles Java at 11 while the toolchain
+  compiles Kotlin at 17, and Kotlin 2.x makes that mismatch a hard error — so
+  `flutter build apk` had been failing since OPH-225. Plugin modules are now
+  pinned to 17 in `android/build.gradle.kts`.
+- **A date-dependent test.** `tasks_flow_test.dart`'s reminder-picker assertion
+  computed its target day from *today* while the picker opens on *tomorrow's*
+  month — so it went red on the last day of every month. It now pins mid-month,
+  which is also the only range unambiguous in a calendar grid that renders its
+  neighbours' edge days.
+- The landing page's dark-mode primary buttons were painting their label the
+  same blue as their background (a theme `a` rule outranking `.aw-btn`), and the
+  comparison table's screen-reader labels escaped their scroll container and gave
+  the whole page a horizontal scrollbar.
+
 ## [0.9.0] - 2026-07-30
 
 Epic 20 — AI, on your terms. Two honest tracks: connect AllisWell to the Claude

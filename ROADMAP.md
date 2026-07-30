@@ -22,7 +22,7 @@ calendar events flowing back in). See [release notes](#release-history).
 
 ### Phase 0 — Foundation ✅
 
-Monorepo (npm workspaces), full docs set, AGPL-3.0, Docker Compose (MySQL 8.4 +
+Monorepo (npm workspaces), full docs set, public source, Docker Compose (MySQL 8.4 +
 Redis 8), Fastify API skeleton, Flutter 6-platform shell, GitHub Actions CI.
 _Epic 01._
 
@@ -96,7 +96,7 @@ Shipped: the flutter_quill editor, Delta storage, client + server markdown
 export, and note↔task/project links. _Deferred to v2:_ project documents (a
 block editor), richer backlinks, and a global search screen.
 
-### Phase 6 — Polish & open-source readiness 🟡 (in progress)
+### Phase 6 — Polish & public-release readiness 🟡 (in progress)
 
 Shipped: the "AllisWell Glass" design system (light/dark, WCAG-verified,
 [ADR-0005](docs/adr/0005-alliswell-glass-design-system.md)), accessibility pass,

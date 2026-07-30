@@ -1,7 +1,12 @@
 # Store listing — AllisWell
 
 Ready-to-paste copy for the **Apple App Store** and **Google Play**, for the
-**0.4.0** launch. Every character-limited field shows its real count.
+**0.9.0** launch. Every character-limited field shows its real count.
+
+> **Assets are generated, not hand-made.** Everything in §3 is produced by
+> `node scripts/screenshots/store.mjs` from the real device captures in
+> `screenshots/` — see [SCREENSHOTS.md](SCREENSHOTS.md). Regenerate after any
+> UI change rather than editing a PNG.
 
 Everything here was written against the shipped code (`README.md`,
 `docs/SELF-HOSTING.md`, `docs/PRIVACY.md`, the 0.4.0 CHANGELOG entry) — see
@@ -14,11 +19,23 @@ _not_ written, and why. **Read §5 before editing any of this copy.**
 
 ### 1.1 App name (≤ 30 characters)
 
-| #                     | Option                         | Count    |
-| --------------------- | ------------------------------ | -------- |
-| **A** _(recommended)_ | `AllisWell`                    | **(9)**  |
-| B                     | `AllisWell: Tasks & Reminders` | **(28)** |
-| C                     | `AllisWell - Tasks & Alarms`   | **(26)** |
+| #                     | Option                              | Count    |
+| --------------------- | ----------------------------------- | -------- |
+| **A** _(recommended)_ | `AllisWell`                         | **(9)**  |
+| B                     | `AllisWell: Tasks & Reminders`      | **(28)** |
+| C                     | `AllisWell - Tasks & Alarms`        | **(26)** |
+| D                     | `AllisWell: ToDo, Reminders, Notes` | **(33)** ❌ |
+| **D′**                | `AllisWell: ToDo & Reminders`       | **(27)** |
+| D″                    | `AllisWell: Tasks, Notes & Alarms`  | **(32)** ❌ |
+
+**On “AllisWell: ToDo & Reminders & Notes”** — the phrasing the owner asked for
+is **38 characters**, eight over Apple's hard 30-character limit, and Play's
+title cap is 30 too. It cannot be used verbatim on either store. The nearest
+legal spellings are **D′** (27) here, and the longer **`AllisWell: ToDo,
+Reminders & Notes`** (33) is *also* over — the third noun does not fit next to
+the brand on Apple. Play has no keyword field, so spend its 30 there instead
+(see §2.1); Apple's subtitle is a separate indexed field, so use it for the
+nouns that will not fit in the name.
 
 **Why A.** The name field and the subtitle are indexed separately, and both are
 indexed _in addition to_ the keywords field. Keeping the name to the bare brand
@@ -32,7 +49,7 @@ category words visible in search results rather than just indexed.
 | ---------------------------------------- | ------------------------------- | -------- |
 | **A** _(recommended, pairs with name A)_ | `Tasks, notes and real alarms`  | **(28)** |
 | B                                        | `Offline tasks, notes & alarms` | **(29)** |
-| C                                        | `Open-source task manager`      | **(24)** |
+| C                                        | `source-available task manager`      | **(24)** |
 
 **Recommended pairing: name A + subtitle A.** The keywords in §1.5 are built
 around exactly that pairing.
@@ -51,7 +68,7 @@ Editable without a new build — use it for launch beats and swap it later.
 <summary>Alternate promo lines</summary>
 
 ```text
-Open source, offline-first, and free. Tasks, notes and files in one place, with reminders loud enough to actually move you. No ads, no tracking, no paid tier.
+source-available, offline-first, and free. Tasks, notes and files in one place, with reminders loud enough to actually move you. No ads, no tracking, no paid tier.
 ```
 
 **(158)**
@@ -63,7 +80,7 @@ Open source, offline-first, and free. Tasks, notes and files in one place, with 
 ```text
 AllisWell keeps your whole day in one place: tasks, projects, notes and files, with reminders strong enough to actually get you out of a meeting on time.
 
-It is open source, it works offline, and there is no paid tier, no ads and no tracking.
+The source is public, it works offline, and there is no paid tier, no ads and no tracking.
 
 
 ONE PLACE FOR THE WHOLE DAY
@@ -114,9 +131,9 @@ ALSO IN THE BOX
 • Light and dark.
 
 
-OPEN SOURCE, AND YOURS TO HOST
+YOURS TO HOST
 
-AllisWell is AGPL-3.0. The entire app and server are public on GitHub, and you can run the whole thing yourself with a single docker compose command — your data in your own MySQL, on your own machine, reachable at your own domain. Use our hosted service or your own server; it is the same app either way.
+The entire app and server are public on GitHub, and you can run the whole thing yourself with a single docker compose command — your data in your own MySQL, on your own machine, reachable at your own domain. Free for personal use. Use our hosted service or your own server; it is the same app either way.
 
 
 NO PAID TIER. NO ADS. NO TRACKING.
@@ -149,6 +166,9 @@ Notes:
   waste characters on multi-word phrases.
 - Do **not** add competitor names (Todoist, Things, TickTick, Notion). Apple
   rejects trademarked terms in the keyword field.
+- `opensource` was removed when the licence changed: the app is
+  **source-available** (PolyForm Noncommercial), and a keyword that misdescribes
+  the licence is a claim we cannot back.
 - If you switch to name B, delete `reminder` from this list and spend the freed
   ~9 characters on `notes,files` — but see the count first.
 
@@ -156,10 +176,10 @@ Notes:
 <summary>Alternate keyword sets</summary>
 
 ```text
-todo,reminder,planner,kanban,board,project,checklist,gtd,agenda,organizer,offline,sync,opensource
+todo,reminder,planner,kanban,board,project,checklist,gtd,agenda,organizer,offline,sync,alarm,notes
 ```
 
-**(97)** — trades `selfhosted` for `opensource`.
+**(97)** — trades `selfhosted` for two consumer terms.
 
 ```text
 todo,reminder,planner,kanban,board,project,checklist,gtd,agenda,organizer,offline,sync,habit,list
@@ -173,13 +193,15 @@ todo,reminder,planner,kanban,board,project,checklist,gtd,agenda,organizer,offlin
 
 | Field                               | URL                               | Status               |
 | ----------------------------------- | --------------------------------- | -------------------- |
-| **Support URL** _(required)_        | `https://alliswell.space/support` | **Must be created.** |
-| **Marketing URL** _(optional)_      | `https://alliswell.space`         | **Must be created.** |
-| **Privacy Policy URL** _(required)_ | `https://alliswell.space/privacy` | **Must be created.** |
+| **Support URL** _(required)_        | `https://alliswell.space/support` | ✅ Live — generated from `docs/SUPPORT.md` |
+| **Marketing URL** _(optional)_      | `https://alliswell.space`         | ✅ Live — `apps/landing` |
+| **Privacy Policy URL** _(required)_ | `https://alliswell.space/privacy` | ✅ Live — generated from `docs/PRIVACY.md` (TR at `/privacy/tr`) |
+| **App URL** (for reviewers)         | `https://alliswell.space/app`     | ✅ Live — the full web app |
 
-**None of these pages exist yet** — the repo has no landing site, and
-`alliswell.space` currently appears only inside `docs/PRIVACY.md` and
-`docs/PRIVACY.tr.md`. Before submission:
+**All three pages now exist**, deployed from `apps/landing` to the root of
+alliswell.space with the app under `/app`. `/privacy` and `/support` are
+generated at build time from `docs/PRIVACY.md` and `docs/SUPPORT.md`, so the
+website and the repo can never state different policies. Remaining checks:
 
 1. **`/privacy`** — publish `docs/PRIVACY.md` as a real HTML page, with the
    Turkish version (`docs/PRIVACY.tr.md`) at `/privacy/tr` or behind a language
@@ -188,12 +210,15 @@ todo,reminder,planner,kanban,board,project,checklist,gtd,agenda,organizer,offlin
 2. **`/support`** — needs a working contact route. A page with the support
    mailbox, a link to GitHub Issues, and a short FAQ is enough. Apple checks that
    it loads and that it actually offers a way to reach a human.
-3. **`/`** — marketing home. Optional for review, but it is where App Store and
-   Play traffic lands, so ship it.
-4. **Blocker:** `docs/PRIVACY.md` names **privacy@alliswell.space**, and the file's
-   own header note says that mailbox **does not exist yet**. Create it (or change
-   the address in both policy files) before you submit — a dead privacy contact
-   is a rejection in both stores.
+3. **`/`** — marketing home. ✅ Shipped: `apps/landing`, a Vue 3 site built and
+   deployed by the same workflow as the app. Add `/privacy` and `/support` as
+   routes there rather than as separate hosting.
+4. ✅ **Resolved:** the policies used to name `privacy@alliswell.space`, a mailbox
+   that did not exist. Both now name **info@bubiapps.com**, which does — a dead
+   privacy contact is a rejection in both stores.
+5. **Data controller** in both policies is
+   **BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI** (Talas / Kayseri,
+   Türkiye). The App Store and Play seller name must match it.
 
 ### 1.7 Category
 
@@ -263,12 +288,43 @@ Notifications are used for task reminders. Urgent tasks use time-sensitive
 delivery with a bundled alarm sound. The app does not request the critical
 alerts entitlement.
 
-The app is open source (AGPL-3.0): https://github.com/mahirozdin/alliswell
+The app is source-available (PolyForm Noncommercial 1.0.0): https://github.com/mahirozdin/alliswell
 Users may also run their own server; the "server address" field in the sign-in
 screen exists for that and defaults to our hosted service.
 ```
 
-### 1.9 What's New (0.4.0)
+### 1.9 What's New (0.9.0)
+
+```text
+Reminders that actually get you moving — and repeats that never skip a month.
+
+ALARMS, NOT NOTIFICATIONS
+Urgent tasks now ring with a real alarm through Silent mode and Focus, and keep re-alerting until you acknowledge them. Snooze presets tell you exactly when they will ring again, you can silence one task without completing it, and there is a log you can read when your phone gets in the way.
+
+REPEATS THAT CLAMP INSTEAD OF SKIPPING
+Every day, every weekday, the last day of the month, the 2nd Tuesday. Ask for the 31st and February gives you the 28th — it does not drop the month. A live preview shows the next five dates before you commit, and editing one occurrence asks how far the change should reach.
+
+EVERY TASK ON YOUR CALENDAR
+The calendar mirror is no longer a setting you have to find. Your tasks are simply there, and your Google events show up next to them.
+
+CHAT WITH YOUR TASKS — OR DON'T
+Connect AllisWell to the Claude or ChatGPT subscription you already have, or bring your own API key. Press and hold to speak a task into being; share any text or link straight into the app. Everything it suggests waits for your tap, and none of it is required.
+
+QUICK ACCESS
+A personal shortcut list for the projects, notes and files you actually live in — with your own emoji, colour and order.
+
+ALSO
+• Completed work now has a timeline you can scroll back through
+• Swipe to delete, everywhere, with an undo
+• A faster, calmer Home
+
+Found something wrong? https://github.com/mahirozdin/alliswell/issues
+```
+
+**(1489 / 4000)**
+
+<details>
+<summary>Previous — What's New (0.4.0)</summary>
 
 ```text
 This is the big one — everything since the first release.
@@ -299,17 +355,27 @@ Found something wrong? Tell us at https://github.com/mahirozdin/alliswell/issues
 
 **(1294 / 4000)**
 
+</details>
+
 ---
 
 ## 2. Google Play
 
 ### 2.1 App title (≤ 30 characters)
 
-| #                     | Option                         | Count    |
-| --------------------- | ------------------------------ | -------- |
-| **A** _(recommended)_ | `AllisWell: Tasks & Reminders` | **(28)** |
-| B                     | `AllisWell - Task & Note App`  | **(27)** |
-| C                     | `AllisWell`                    | **(9)**  |
+| #                     | Option                            | Count    |
+| --------------------- | --------------------------------- | -------- |
+| **A** _(recommended)_ | `AllisWell: ToDo & Reminders`     | **(27)** |
+| B                     | `AllisWell: Tasks & Reminders`    | **(28)** |
+| C                     | `AllisWell - Task & Note App`     | **(27)** |
+| D                     | `AllisWell`                       | **(9)**  |
+
+**A over B** on Play specifically: “ToDo” is the higher-volume query on Android
+and Play matches the title literally, where Apple's engine already covers
+_tasks_ from the subtitle. The three-noun form the owner asked for
+(`ToDo & Reminders & Notes`) is **38 characters** — over Play's 30-character cap
+as well — so “Notes” moves into the **short description** (§2.2), which Play
+also indexes.
 
 **Why A here but not on Apple.** Play has no separate keyword field — the title,
 short description and full description _are_ the index. Spending the title on
@@ -320,8 +386,8 @@ category words is correct on Play and wasteful on Apple.
 | #                     | Option                                                                             | Count    |
 | --------------------- | ---------------------------------------------------------------------------------- | -------- |
 | **A** _(recommended)_ | `Offline-first tasks, notes and files, with alarms that actually wake you.`        | **(73)** |
-| B                     | `Tasks, notes, files and alarm-grade reminders. Open source. No ads, no tracking.` | **(80)** |
-| C                     | `Open-source task manager: offline, realtime sync, alarms that keep ringing.`      | **(75)** |
+| B                     | `Tasks, notes, files and alarm-grade reminders. source-available. No ads, no tracking.` | **(80)** |
+| C                     | `source-available task manager: offline, realtime sync, alarms that keep ringing.`      | **(75)** |
 
 This is the line under the icon on the store page and in search results. Option B
 is exactly at the cap — verify it in the console before publishing, since Play
@@ -332,7 +398,7 @@ counts trailing whitespace.
 ```text
 AllisWell keeps your whole day in one place — tasks, projects, notes and files — with reminders strong enough to actually move you.
 
-Open source. Works offline. No paid tier, no ads, no tracking.
+source-available. Works offline. No paid tier, no ads, no tracking.
 
 
 📥 CAPTURE, THEN PLAN
@@ -382,9 +448,9 @@ Search ignores case and Turkish accents, so "cay" finds "Çay" and "isi" finds "
 • Light and dark
 
 
-🔓 OPEN SOURCE, AND YOURS TO HOST
+🔓 YOURS TO HOST
 
-AllisWell is AGPL-3.0. The whole app and server are public on GitHub, and you can run the entire stack yourself with one docker compose command — your data in your own MySQL, on your own machine, at your own domain. Use our hosted service or your own server; it is the same app either way.
+The whole app and server are public on GitHub, and you can run the entire stack yourself with one docker compose command — your data in your own MySQL, on your own machine, at your own domain. Free for personal use. Use our hosted service or your own server; it is the same app either way.
 
 
 🚫 NO PAID TIER. NO ADS. NO TRACKING.
@@ -524,53 +590,53 @@ security-logging note, matching the "Technical logs" section of `docs/PRIVACY.md
 **Sizes are portrait unless noted.** All screenshots must be PNG or JPEG, RGB,
 no alpha channel and no rounded corners baked in.
 
-| #   | Store     | Asset                                      | Exact size                                                 | Count needed | Have it / To do                                                                                                                      |
-| --- | --------- | ------------------------------------------ | ---------------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | App Store | **iPhone 6.9"** screenshots                | 1290 × 2796                                                | 3–10 (min 3) | **To do**                                                                                                                            |
-| 2   | App Store | **iPhone 6.5"** screenshots                | 1284 × 2778 _(or 1242 × 2688)_                             | 3–10         | **To do** — optional if 6.9" is supplied; Apple upscales. Ship it anyway if you support older devices.                               |
-| 3   | App Store | **iPad 13"** screenshots                   | 2064 × 2752 _(portrait)_ or 2752 × 2064 _(landscape)_      | 3–10         | **To do** — **required** if the build declares iPad support. Drop iPad from the build's device family if you are not shipping these. |
-| 4   | App Store | **App icon**                               | 1024 × 1024, no alpha, no transparency, no rounded corners | 1            | **Partly** — source at `docs/assets/logo.png`. Verify it is exactly 1024², sRGB and flattened; export if not.                        |
-| 5   | App Store | **App preview video** (optional)           | per-device, 15–30 s                                        | 0–3          | **To do** — optional; skip for 0.4.0.                                                                                                |
-| 6   | Play      | **Phone** screenshots                      | ≥ 1080 px on the short edge; 9:16 (e.g. 1080 × 1920)       | 2–8 (min 2)  | **To do**                                                                                                                            |
-| 7   | Play      | **7" tablet** screenshots                  | 1200 × 1920 recommended                                    | up to 8      | **To do** — required only if the listing targets tablets; strongly recommended.                                                      |
-| 8   | Play      | **10" tablet** screenshots                 | 1920 × 1200 _(landscape)_ or 1200 × 1920                   | up to 8      | **To do** — same condition as #7.                                                                                                    |
-| 9   | Play      | **Feature graphic**                        | 1024 × 500, PNG/JPEG, no alpha                             | 1            | **To do** — mandatory. No text near the edges: Play crops it in several placements.                                                  |
-| 10  | Play      | **App icon**                               | 512 × 512, 32-bit PNG **with** alpha                       | 1            | **Partly** — same source as #4; Play wants the alpha channel Apple forbids, so export separately.                                    |
-| 11  | Play      | **Promo video** (optional)                 | YouTube URL                                                | 0–1          | **To do** — optional; skip for 0.4.0.                                                                                                |
-| 12  | Both      | Localized screenshot sets (**en**, **tr**) | as above, per locale                                       | ×2           | **To do** — Turkish is the primary market; ship a Turkish set, not just English.                                                     |
+| #   | Store     | Asset                                      | Exact size                                                 | Count        | Status |
+| --- | --------- | ------------------------------------------ | ---------------------------------------------------------- | ------------ | ------ |
+| 1   | App Store | **iPhone 6.9"** screenshots                | 1320 × 2868 _(1290 × 2796 also accepted)_                  | 3–10 (min 3) | ✅ `store/ios/iphone-6.9/01–08.png` |
+| 2   | App Store | **iPhone 6.5"** screenshots                | 1242 × 2688 _(or 1284 × 2778)_                             | 3–10         | ✅ `store/ios/iphone-6.5/01–08.png` |
+| 3   | App Store | **iPad 13"** screenshots                   | 2064 × 2752 _(portrait)_                                    | 3–10         | ⛔ **To do** — **required** if the build declares iPad support. Boot an iPad Pro 13" simulator and re-run the pipeline, or drop iPad from the device family. |
+| 4   | App Store | **App icon**                               | 1024 × 1024, no alpha, no rounded corners                  | 1            | ✅ `store/icons/app-store-1024.png` |
+| 5   | App Store | **App preview video** (optional)           | per-device, 15–30 s                                        | 0–3          | ⏭ Skipped for 0.9.0 |
+| 6   | Play      | **Phone** screenshots                      | ≥ 1080 px short edge, 9:16                                 | 2–8 (min 2)  | ✅ `store/android/phone/01–08.png` (1344 × 2992) |
+| 7   | Play      | **7" tablet** screenshots                  | 1200 × 1920 recommended                                    | up to 8      | ⛔ **To do** — only if the listing targets tablets |
+| 8   | Play      | **10" tablet** screenshots                 | 1920 × 1200 or 1200 × 1920                                 | up to 8      | ⛔ **To do** — same condition as #7 |
+| 9   | Play      | **Feature graphic**                        | exactly 1024 × 500, no alpha                               | 1            | ✅ `store/android/feature-graphic.png` |
+| 10  | Play      | **App icon**                               | exactly 512 × 512, 32-bit PNG **with** alpha               | 1            | ✅ `store/icons/play-512.png` |
+| 11  | Play      | **Promo video** (optional)                 | YouTube URL                                                | 0–1          | ⏭ Skipped for 0.9.0 |
+| 12  | Both      | Localized screenshot sets (**en**, **tr**) | as above, per locale                                       | ×2           | ⛔ **English only.** Turkish is the primary market — re-run the pipeline with the simulator/emulator in `tr` and the seeder's content translated. |
+| 13  | Site      | Social cover (Open Graph)                  | 1200 × 630                                                 | 1            | ✅ `apps/landing/public/og-cover.png` |
 
-### Generating the real screens
-
-Real in-app screenshots come from the design harness:
+### How they are generated
 
 ```bash
-cd apps/app
-flutter test --update-goldens --dart-define=screenshots=true \
-    test/design_screenshots_test.dart
-# → apps/app/test/goldens/*.png
+# 1. a running API with the demo workspace
+npm run dev &&  node scripts/seed-demo.mjs
+
+# 2. real device captures (see docs/SCREENSHOTS.md for the per-platform steps)
+npm run shots:web                       # → screenshots/web/
+#   iOS simulator + Android emulator     → screenshots/ios/, screenshots/android/
+
+# 3. compose them into store canvases, plus icons and the feature graphic
+node scripts/screenshots/store.mjs      # → store/
 ```
 
-The harness (`apps/app/test/design_screenshots_test.dart`) renders the **real**
-signed-in app — real router, real theme, real fonts, a seeded local replica — in
-light and dark, at two form factors:
+`scripts/screenshots/store.mjs` composites in **headless Chrome**: the caption
+band is CSS, so it can be re-rendered per language without touching a pixel
+editor, and every output is written at its exact store size rather than being
+upscaled from a golden. The captions live in the `SLIDES` array at the top of
+that file; Android slides can override them (`androidTitle`/`androidSub`) where
+the Android capture shows a different screen from its iOS counterpart.
 
-- **phone:** 390 × 844 logical @ 2× → **780 × 1688 px**
-- **desktop:** 1280 × 800 logical @ 2× → **2560 × 1600 px**
+**Why device captures and not widget-test goldens.** The harness in
+`apps/app/test/design_screenshots_test.dart` renders the real widget tree, but
+its output is 780 × 1688 / 2560 × 1600 — **no store size**, and upscaling to
+1320 × 2868 looks soft in a way reviewers notice. The simulator's own
+`xcrun simctl io … screenshot` is already 1320 × 2868, which *is* a valid 6.9"
+submission, so the pipeline starts from the device instead.
 
-**Neither output matches a store size.** Treat the goldens as the _source
-imagery_ and composite them into store-sized frames (device bezel + a headline
-band) at the exact dimensions in the table above. Do not simply upscale
-780 × 1688 to 1290 × 2796 — it will look soft, and Apple's reviewers do notice.
-
-Suggested screen order for both stores (first two carry almost all the
-conversion): **Home (chronological + month calendar)** → **Board (kanban)** →
-**urgent alarm / ring screen** → **note with attachments** → **Files with
-folders** → **Projects** → **dark mode**.
-
-Existing marketing screenshots (desktop-framed, from the README) live in
-`docs/screenshots/` — `home-light.png`, `home-dark.png`, `board.png`,
-`files.png`, `projects.png`, `mobile-home-light.png`, `mobile-home-dark.png`,
-`mobile-create.png`. Useful as a reference for framing; not store-sized.
+Screen order (the first two carry almost all the conversion): **Home** →
+**Board** → **the alarm / a repeating task** → **Projects** → **Notes** →
+**Files** → **dark mode**.
 
 ---
 
@@ -671,7 +737,7 @@ AYRICA
 
 AÇIK KAYNAK VE İSTERSENİZ KENDİ SUNUCUNUZDA
 
-AllisWell, AGPL-3.0 lisanslıdır. Uygulamanın ve sunucunun tamamı GitHub'da açık; tek bir docker compose komutuyla hepsini kendiniz çalıştırabilirsiniz — veriniz kendi MySQL'inizde, kendi makinenizde, kendi alan adınızda. Bizim servisimizi de kendi sunucunuzu da kullanabilirsiniz; uygulama aynı uygulama.
+Uygulamanın ve sunucunun tamamı GitHub'da açık; tek bir docker compose komutuyla hepsini kendiniz çalıştırabilirsiniz — veriniz kendi MySQL'inizde, kendi makinenizde, kendi alan adınızda. Kişisel kullanım için ücretsiz. Bizim servisimizi de kendi sunucunuzu da kullanabilirsiniz; uygulama aynı uygulama.
 
 
 ÜCRETLİ SÜRÜM YOK. REKLAM YOK. TAKİP YOK.
@@ -730,7 +796,7 @@ Bir aksaklık mı gördünüz? https://github.com/mahirozdin/alliswell/issues
 
 | #                  | Seçenek                                                                     | Karakter |
 | ------------------ | --------------------------------------------------------------------------- | -------- |
-| **A** _(önerilen)_ | `Görev, not ve dosya; uyandıran alarmlar. Çevrimdışı çalışır, açık kaynak.` | **(73)** |
+| **A** _(önerilen)_ | `Görev, not ve dosya; uyandıran alarmlar. Çevrimdışı çalışır, kaynağı açık.` | **(73)** |
 | B                  | `Görevler, notlar, dosyalar ve uyandıran alarmlar. Reklam yok, takip yok.`  | **(72)** |
 | C                  | `Çevrimdışı çalışan görev yöneticisi. Gerçek alarmlar, anlık eşitleme.`     | **(69)** |
 
@@ -791,7 +857,7 @@ Arama büyük-küçük harfe ve Türkçe karakterlere takılmaz: "cay" yazınca 
 
 🔓 AÇIK KAYNAK VE İSTERSENİZ KENDİ SUNUCUNUZDA
 
-AllisWell, AGPL-3.0 lisanslıdır. Uygulamanın ve sunucunun tamamı GitHub'da açık; tek bir docker compose komutuyla hepsini kendiniz çalıştırabilirsiniz — veriniz kendi MySQL'inizde, kendi makinenizde, kendi alan adınızda. Bizim servisimizi de kendi sunucunuzu da kullanabilirsiniz; uygulama aynı uygulama.
+Uygulamanın ve sunucunun tamamı GitHub'da açık; tek bir docker compose komutuyla hepsini kendiniz çalıştırabilirsiniz — veriniz kendi MySQL'inizde, kendi makinenizde, kendi alan adınızda. Kişisel kullanım için ücretsiz. Bizim servisimizi de kendi sunucunuzu da kullanabilirsiniz; uygulama aynı uygulama.
 
 
 🚫 ÜCRETLİ SÜRÜM YOK. REKLAM YOK. TAKİP YOK.

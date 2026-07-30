@@ -14,7 +14,7 @@ Discovery: `https://api.alliswell.space/.well-known/oauth-protected-resource`
 - **Category:** Productivity / Task management
 - **One-liner:** Your tasks, projects and notes in Claude — read your day and
   add tasks, with your confirmation.
-- **Description (≤ ~500 chars):** AllisWell is an open-source, self-hostable
+- **Description (≤ ~500 chars):** AllisWell is a source-available, self-hostable
   productivity hub (tasks, projects, notes, files, calendar sync). Connect it to
   Claude to search your workspace, list what's due today or overdue, read a task,
   note or project, and create or complete tasks. It is **read-first**: there is

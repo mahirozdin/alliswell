@@ -1,6 +1,12 @@
 # ADR-0002 — AGPL-3.0 license
 
-- **Status:** Accepted
+> **Superseded.** AllisWell moved to **PolyForm Noncommercial 1.0.0** at v1.0.0
+> because the product is being commercialised — see
+> [ADR-0024](0024-license-polyform-noncommercial.md). Releases up to and
+> including v0.9.0 remain AGPL-3.0 for anyone who received them. The record
+> below is kept as written; it is history, not current policy.
+
+- **Status:** **Superseded by [ADR-0024](0024-license-polyform-noncommercial.md)** (2026-07-31)
 - **Date:** 2026-07-14
 - **Related task:** OPH-001
 

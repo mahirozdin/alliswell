@@ -1,6 +1,6 @@
 <!--
   YAYINDAN ÖNCE YAPILMASI GEREKENLER:
-  1. privacy@alliswell.space kutusu HENÜZ YOK. Ya bu adresi açın ya da bu dosyadaki
+  1. info@bubiapps.com kutusu HENÜZ YOK. Ya bu adresi açın ya da bu dosyadaki
      ve PRIVACY.md'deki tüm geçtiği yerleri yeni adresle değiştirin.
   2. Geliştiriciler için: metinde geçen 3 günlük bekleme süresi varsayılan değerdir
      (ACCOUNT_DELETION_GRACE_DAYS, apps/api/src/config.js). Yayındaki kurulumda bu
@@ -11,7 +11,7 @@
 
 **Diller:** **Türkçe** · [English](PRIVACY.md)
 
-**Son güncelleme: 26.07.2026**
+**Son güncelleme: 31.07.2026**
 
 Bu metin, AllisWell'in hangi verileri neden işlediğini ve bu konuda neler
 yapabileceğinizi anlatır. AllisWell uygulamaları ile <https://alliswell.space>
@@ -19,9 +19,17 @@ adresindeki hizmet (API: `https://api.alliswell.space`) için geçerlidir.
 
 ## Veri sorumlusu
 
-Hizmetin veri sorumlusu **APILLON BİLGİ TEKNOLOJİLERİ**'dir.
+Hizmetin veri sorumlusu **BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI**'dir (ticari adı: **BubiApps**).
 
-Her türlü gizlilik sorusu ve başvurusu için: **privacy@alliswell.space**
+| | |
+| --- | --- |
+| **Ünvan** | BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI |
+| **Adres** | Mevlana Mah. Karasu Cad. No: 14, İç Kapı No: 16 · Talas / Kayseri · Türkiye |
+| **E-posta** | **info@bubiapps.com** |
+| **Telefon** | +90 505 493 1041 |
+
+Her türlü gizlilik sorusu ve KVKK başvurusu için: **info@bubiapps.com**.
+Başvurulara en geç **30 gün** içinde yanıt veriyoruz (KVKK m.13).
 
 ## Hangi verileri işliyoruz
 
@@ -185,7 +193,7 @@ Süreç tam olarak şöyle işler:
    silinir: görevler, projeler, notlar, etiketler, klasörler, hatırlatıcılar ve
    nesne deposundaki dosyalarınız. Geri yükleyebileceğimiz bir yedek kalmaz.
 
-Uygulama içindeki seçeneğe ulaşamıyorsanız **privacy@alliswell.space** adresine
+Uygulama içindeki seçeneğe ulaşamıyorsanız **info@bubiapps.com** adresine
 yazın; silme işlemini sizin adınıza yürütelim.
 
 Bilmenizde fayda olan bir sınır: sahibi olduğunuz çalışma alanları silinir. Bir
@@ -213,7 +221,7 @@ bağlıdır ve onunla birlikte kalır.
 veya işlenmesinin kısıtlanmasını isteme, meşru menfaate dayanan işlemeye itiraz
 etme ve verilerinizi taşınabilir bir biçimde alma haklarınız vardır.
 
-Başvurularınızı **privacy@alliswell.space** adresine iletebilirsiniz. İşlem
+Başvurularınızı **info@bubiapps.com** adresine iletebilirsiniz. İşlem
 yapmadan önce, hesabın e-posta adresinin sizde olduğunu doğrulamanızı
 isteyebiliriz. Türkiye'de bulunanlar, ayrıca **Kişisel Verileri Koruma Kurumu**'na
 şikâyette bulunabilir; GDPR kapsamındakiler ise kendi ülkelerindeki denetim
@@ -236,13 +244,13 @@ bakın.
 
 AllisWell 13 yaşın altındaki çocuklara yönelik bir hizmet değildir ve bu yaş
 grubundan bilerek kişisel veri toplamayız. 13 yaşın altında birinin hesap
-açtığını düşünüyorsanız **privacy@alliswell.space** adresine yazın; hesabı
+açtığını düşünüyorsanız **info@bubiapps.com** adresine yazın; hesabı
 silelim.
 
 ## Kendi sunucunuzda çalıştırma
 
-AllisWell **AGPL-3.0** lisanslı açık kaynaklı bir yazılımdır; dileyen kendi
-sunucusunda çalıştırabilir. **Bu politika yalnızca APILLON BİLGİ TEKNOLOJİLERİ
+AllisWell'in kaynak kodu **PolyForm Noncommercial 1.0.0** lisansıyla herkese açıktır; dileyen kendi
+sunucusunda çalıştırabilir. **Bu politika yalnızca BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI
 tarafından alliswell.space üzerinde işletilen hizmeti kapsar.** Başka birinin
 kurduğu bir örneği kullanıyorsanız, veri sorumlusu o işletmecidir: bizim
 kurallarımız değil onunkiler geçerlidir ve biz o verilere erişemeyiz.
@@ -256,4 +264,4 @@ projenin Git kayıtlarında herkese açıktır.
 
 ## İletişim
 
-**APILLON BİLGİ TEKNOLOJİLERİ** — **privacy@alliswell.space**
+**BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI** — **info@bubiapps.com**

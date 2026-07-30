@@ -1,17 +1,8 @@
-<!--
-  ACTION REQUIRED BEFORE STORE SUBMISSION:
-  1. The mailbox privacy@alliswell.space does NOT exist yet. Create it, or replace
-     every occurrence of that address in this file and in PRIVACY.tr.md.
-  2. Maintainers: the 3-day grace period stated below is the default
-     (ACCOUNT_DELETION_GRACE_DAYS, apps/api/src/config.js). If the hosted
-     deployment ever changes it, update both policy files to match.
--->
-
 # Privacy Policy
 
 **Languages:** **English** · [Türkçe](PRIVACY.tr.md)
 
-**Last updated: 2026-07-26**
+**Last updated: 2026-07-31**
 
 This policy explains what AllisWell collects, why, and what you can do about it.
 It applies to the AllisWell apps and to the hosted service at
@@ -19,9 +10,19 @@ It applies to the AllisWell apps and to the hosted service at
 
 ## Who is responsible for your data
 
-**APILLON BİLGİ TEKNOLOJİLERİ** is the data controller for the hosted service.
+**BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI** (trading as **BubiApps**) is the data controller for the hosted
+service.
 
-Contact for any privacy question or request: **privacy@alliswell.space**
+| | |
+| --- | --- |
+| **Registered name** | BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI |
+| **Address** | Mevlana Mah. Karasu Cad. No: 14, İç Kapı No: 16 · Talas / Kayseri · Türkiye |
+| **E-mail** | **info@bubiapps.com** |
+| **Phone** | +90 505 493 1041 |
+
+Contact for any privacy question or request: **info@bubiapps.com**. We answer
+within 30 days, and within the shorter period the law requires where one applies
+(KVKK: 30 days; GDPR: one month).
 
 ## What we collect
 
@@ -177,7 +178,7 @@ Here is exactly what happens:
    erased** — tasks, projects, notes, tags, folders, reminders, and your uploaded
    files in object storage. There is no backup copy we can restore for you.
 
-If you cannot reach the in-app option, e-mail **privacy@alliswell.space** and we
+If you cannot reach the in-app option, e-mail **info@bubiapps.com** and we
 will process the deletion for you.
 
 One limit worth knowing: we erase the workspaces you own. If you uploaded a file
@@ -205,7 +206,7 @@ your national data protection authority.
 - claim compensation if you suffer damage because the data was processed
   unlawfully.
 
-Write to **privacy@alliswell.space** to use any of these. We may ask you to
+Write to **info@bubiapps.com** to use any of these. We may ask you to
 confirm you control the account's e-mail address before we act. Turkish
 residents may also apply to the Personal Data Protection Authority (KVKK).
 
@@ -224,11 +225,11 @@ vulnerability, please see [SECURITY.md](../SECURITY.md) for how to report it.
 
 AllisWell is not directed at children under 13, and we do not knowingly collect
 personal data from them. If you believe a child under 13 has created an account,
-write to **privacy@alliswell.space** and we will delete it.
+write to **info@bubiapps.com** and we will delete it.
 
 ## Self-hosting
 
-AllisWell is open source under the **AGPL-3.0** licence, and anyone can run their
+AllisWell's source is public under the **PolyForm Noncommercial 1.0.0** licence, and anyone can run their
 own instance. **This policy only covers the hosted service run by APILLON BİLGİ
 TEKNOLOJİLERİ at alliswell.space.** If you use somebody else's instance, that
 operator is the data controller — their rules apply, not ours, and we have no
@@ -243,4 +244,4 @@ every edit is public in the project's Git history.
 
 ## Contact
 
-**APILLON BİLGİ TEKNOLOJİLERİ** — **privacy@alliswell.space**
+**BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI** — **info@bubiapps.com**
