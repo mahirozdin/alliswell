@@ -22,6 +22,8 @@ For contributors — the standing rules (BLUEPRINT §15.3, enforced through revi
 - Passwords: argon2id. Sessions: short-lived JWT + rotating refresh tokens stored **hashed**,
   with family-based reuse detection.
 - Calendar OAuth tokens encrypted at rest (AES-256-GCM, key from env, never committed).
+- AI provider keys (BYOK) encrypted at rest with the same AES-256-GCM pattern under a
+  separate `AI_TOKEN_KEY`; serializers only ever expose the key's last 4 characters.
 - All input Ajv-validated; SQL only through knex bindings (no string interpolation).
 - Notes render with XSS-safe pipelines; web builds ship CSP.
 - Notification payloads contain IDs only, never task content.

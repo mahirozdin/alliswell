@@ -62,6 +62,14 @@ const UNIQUE_INDEXES = {
       cols: ['series_id', 'occurrence_date'],
     },
   ],
+  // OPH-215: one connection per provider per user+workspace. Soft-deleted rows
+  // still occupy the tuple (no deleted_at in the index) — re-adds revive them.
+  ai_connections: [
+    {
+      name: 'ai_connections.uq_ai_connections_user_provider',
+      cols: ['workspace_id', 'user_id', 'provider'],
+    },
+  ],
 };
 
 const OPS = {
@@ -98,6 +106,9 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     folders: [],
     quick_links: [],
     task_series: [],
+    ai_connections: [],
+    ai_usage_events: [],
+    ai_action_log: [],
   };
 
   const columnDefaults = {
@@ -207,6 +218,30 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       last_local_updated_at: null,
       sync_direction: 'both',
       conflict_status: 'none',
+    }),
+    ai_connections: () => ({
+      auth_mode: 'api_key',
+      encrypted_key: null,
+      key_last4: null,
+      base_url: null,
+      default_chat_model: null,
+      default_fast_model: null,
+      status: 'active',
+      last_used_at: null,
+      deleted_at: null,
+    }),
+    ai_usage_events: () => ({
+      connection_id: null,
+      input_tokens: null,
+      output_tokens: null,
+      duration_ms: null,
+      request_id: null,
+    }),
+    ai_action_log: () => ({
+      request_id: null,
+      accepted: null,
+      entity_refs: null,
+      decided_at: null,
     }),
   };
 

@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added — Epic 20 in progress (toward v0.9.0)
+
+- **The AI foundation is on the server (OPH-215).** Three new tables
+  (`ai_connections`, `ai_usage_events` — accounting, never content —, and
+  `ai_action_log`), provider-key encryption at rest under a new `AI_TOKEN_KEY`
+  (the ADR-0006 AES-256-GCM pattern with its own key; **production now refuses
+  to boot without a real key while `AI_ENABLED=true`, the default** — generate
+  one with `openssl rand -hex 32` or set `AI_ENABLED=false`), and the
+  connection settings API (status + CRUD; the UI only ever sees `…last4`).
+  Turning the feature off withdraws every `/ai/*` endpoint honestly (404).
+
 ### Planned — request round 11 #2 (2026-07-29; Epics 18 and 19 shipped as 0.7.0 / 0.8.x below)
 
 - **Epic 20 — AI (OPH-215…227, toward v0.9.0; renumbered from OPH-204…216 when

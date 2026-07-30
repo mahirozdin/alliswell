@@ -5432,11 +5432,20 @@ bağlayıcı yüzeyi yok; logo kullanımı marka kurallarına takılırsa metin 
 
 ### OPH-215 — ADR-0019 + AI temeli: sağlayıcı dikişi, anahtar şifrelemesi, ayar şeması
 
-- [ ] **[ADR-0019](adr/0019-ai-provider-architecture.md) kabul edilmiş olmalı** (bu
+_(✅ 2026-07-30 — dört uygulama notu: (1) `ai_action_log.source` ENUM'u dört değil
+ALTI değerle doğdu (+`quick_add`,`voice` — şemanın kendisi bu iki extract yüzeyini
+ayırt ediyor; ENUM genişletmek migration ister, bilinen yüzey listesi baştan tam);
+(2) `key_last4` SAKLANAN kolon — serializer şifreliye hiç dokunmaz, maske için her
+listede decrypt etmek düz metnin maruziyet penceresini kozmetik uğruna genişletirdi;
+(3) app'in yüzey-çekme kapısı için `GET /ai/status` ucu eklendi (configured +
+instance sağlayıcıları); (4) create şemasında `consentAcknowledged: const true` —
+OPH-220'nin onam ekranı yürünmeden create'e ulaşılamaz, kalıcı sunucu izi baştan.)_
+
+- [x] **[ADR-0019](adr/0019-ai-provider-architecture.md) kabul edilmiş olmalı** (bu
       turda yazıldı): SDK yok — `fetch` tabanlı ince adaptörler (ADR-0006'nın "Google
       SDK'sız" duruşunun genellemesi), BYOK-first, `auth_mode`'da rezerve
       `oauth_subscription`, LangChain-sınıfı bağımlılık YOK.
-- [ ] Migration'lar: `ai_connections` (`user_id, workspace_id, provider
+- [x] Migration'lar: `ai_connections` (`user_id, workspace_id, provider
       ENUM(anthropic|openai|gemini|openrouter|ollama), auth_mode ENUM(api_key|instance_env|
       oauth_subscription), encrypted_key TEXT NULL, base_url NULL, default_chat_model,
       default_fast_model, status, last_used_at` + soft delete), `ai_usage_events`
@@ -5444,17 +5453,19 @@ bağlayıcı yüzeyi yok; logo kullanımı marka kurallarına takılırsa metin 
       süre — **içerik asla değil**), `ai_action_log` (AI-önerisi + kullanıcı onayı
       denetim izi: source bubble|share|chat|mcp, proposal JSON, accepted, varlık
       referansları — Epic 16'nın alarm günlüğü dersi: tartışma hafızadan değil kayıttan).
-- [ ] Anahtar şifrelemesi **ADR-0006 kalıbının aynısı**: `src/lib/crypto.js` yeniden
-      kullanılır, yeni `AI_TOKEN_KEY` env (prod placeholder reddi aynen); anahtar hiçbir
+- [x] Anahtar şifrelemesi **ADR-0006 kalıbının aynısı**: `src/lib/crypto.js` yeniden
+      kullanılır, yeni `AI_TOKEN_KEY` env (prod placeholder reddi aynen — prod +
+      `AI_ENABLED=true` iken gerçek anahtar ZORUNLU, boot'ta reddedilir); anahtar hiçbir
       serializer'dan çıkmaz — arayüz yalnız `…son4` görür; testler ciphertext sızmadığını
       kanıtlar.
-- [ ] Yapılandırma kapısı: `AI_ENABLED=false` (instance kapatabilir) ve hiç bağlantı
-      yokken `AI_NOT_CONFIGURED` dürüst boş durumu (`STORAGE_NOT_CONFIGURED` kalıbı) —
-      AI yüzeyleri arayüzden tamamen çekilir.
-- [ ] **Kullanıcı aksiyonu kaydı:** OpenAI "Sign in with ChatGPT" geliştirici ilgi
+- [x] Yapılandırma kapısı: `AI_ENABLED=false` (instance kapatabilir — route'lar hiç
+      register edilmez, tüm `/ai/*` 404) ve hiç bağlantı yokken `AI_NOT_CONFIGURED`
+      dürüst boş durumu (`STORAGE_NOT_CONFIGURED` kalıbı; `app.ai.resolveConnection`
+      503 atar) — AI yüzeyleri arayüzden tamamen çekilir (app tarafı OPH-220).
+- [x] **Kullanıcı aksiyonu kaydı:** OpenAI "Sign in with ChatGPT" geliştirici ilgi
       formuna başvuru + üç ayda bir üç sağlayıcının politika kontrolü — STATE
       "Kullanıcıdan bekleyen"e işlenir.
-- [ ] Testler: bağlantı CRUD'u şifreli anahtar gidiş-dönüşüyle (integration); sahiplik
+- [x] Testler: bağlantı CRUD'u şifreli anahtar gidiş-dönüşüyle (integration); sahiplik
       (başkasının bağlantısı 404); `AI_ENABLED=false`'ta tüm `/ai/*` uçlarının 404'ü.
 
 ### OPH-216 — Sağlayıcı adaptörleri: Anthropic, OpenAI, Gemini, OpenRouter, Ollama

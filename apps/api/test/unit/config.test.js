@@ -4,6 +4,9 @@ import { loadConfig } from '../../src/config.js';
 const strongSecrets = {
   JWT_ACCESS_SECRET: 'a'.repeat(32) + '-access-strong-random-secret',
   JWT_REFRESH_SECRET: 'b'.repeat(32) + '-refresh-strong-random-secret',
+  // AI is enabled by default (OPH-215), so a minimal production env includes
+  // a real AI_TOKEN_KEY — the deliberate upgrade speed bump ADR-0019 records.
+  AI_TOKEN_KEY: 'a1b2c3d4'.repeat(8),
 };
 
 describe('loadConfig', () => {
@@ -139,5 +142,58 @@ describe('loadConfig auth secrets (OPH-020)', () => {
     expect(config.auth.accessTtlSec).toBe(600);
     expect(config.auth.refreshTtlDays).toBe(7);
     expect(() => loadConfig({ AUTH_ACCESS_TTL_SEC: '0' })).toThrow(/positive/);
+  });
+});
+
+describe('loadConfig AI (OPH-215)', () => {
+  it('is enabled by default with the labeled dev key', () => {
+    const config = loadConfig({});
+    expect(config.ai.enabled).toBe(true);
+    expect(config.ai.tokenKey).toMatch(/^(feed)+$/);
+    expect(config.ai.heartbeatMs).toBe(15000);
+    expect(config.ai.ratePerMinute).toBe(10);
+    expect(config.ai.dailyTokenCap).toBe(200000);
+    expect(Object.isFrozen(config.ai)).toBe(true);
+    expect(Object.isFrozen(config.ai.baseUrls)).toBe(true);
+  });
+
+  it('parses the kill switch and instance keys', () => {
+    const off = loadConfig({ AI_ENABLED: 'false' });
+    expect(off.ai.enabled).toBe(false);
+    const config = loadConfig({ AI_OPENAI_API_KEY: 'sk-test-1234' });
+    expect(config.ai.instanceKeys.openai).toBe('sk-test-1234');
+    expect(config.ai.instanceKeys.anthropic).toBeNull();
+  });
+
+  it('rejects a non-hex AI_TOKEN_KEY in every environment', () => {
+    expect(() => loadConfig({ AI_TOKEN_KEY: 'not-hex' })).toThrow(/AI_TOKEN_KEY/);
+    expect(() => loadConfig({ AI_TOKEN_KEY: 'ff'.repeat(16) })).toThrow(/AI_TOKEN_KEY/);
+  });
+
+  const withoutAiKey = { ...strongSecrets };
+  delete withoutAiKey.AI_TOKEN_KEY;
+
+  it('refuses production without a real AI_TOKEN_KEY while AI is enabled', () => {
+    expect(() => loadConfig({ NODE_ENV: 'production', ...withoutAiKey })).toThrow(/AI_TOKEN_KEY/);
+    // The patterned dev placeholder is refused by name.
+    expect(() =>
+      loadConfig({ NODE_ENV: 'production', ...withoutAiKey, AI_TOKEN_KEY: 'feed'.repeat(16) }),
+    ).toThrow(/AI_TOKEN_KEY/);
+  });
+
+  it('boots production without the key when AI_ENABLED=false', () => {
+    const config = loadConfig({ NODE_ENV: 'production', AI_ENABLED: 'false', ...withoutAiKey });
+    expect(config.ai.enabled).toBe(false);
+  });
+
+  it('bounds the stream tunables and base URLs', () => {
+    expect(() => loadConfig({ AI_HEARTBEAT_MS: '100' })).toThrow(/AI_HEARTBEAT_MS/);
+    expect(() => loadConfig({ AI_HEARTBEAT_MS: '90000' })).toThrow(/AI_HEARTBEAT_MS/);
+    expect(() => loadConfig({ AI_RATE_PER_MINUTE: '0' })).toThrow(/AI_RATE_PER_MINUTE/);
+    expect(() => loadConfig({ AI_DAILY_TOKEN_CAP: '-1' })).toThrow(/AI_DAILY_TOKEN_CAP/);
+    expect(() => loadConfig({ AI_OLLAMA_BASE_URL: 'ftp://nope' })).toThrow(/base URL/);
+    expect(loadConfig({ AI_OLLAMA_BASE_URL: 'http://127.0.0.1:11434' }).ai.baseUrls.ollama).toBe(
+      'http://127.0.0.1:11434',
+    );
   });
 });

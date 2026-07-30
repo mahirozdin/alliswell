@@ -56,10 +56,13 @@ const DEV_ACCESS_SECRET = 'insecure-dev-access-secret-never-use-in-production';
 const DEV_REFRESH_SECRET = 'insecure-dev-refresh-secret-never-use-in-production';
 // 64 hex chars (32 bytes), obviously patterned so nobody ships it.
 const DEV_CALENDAR_TOKEN_KEY = 'deaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead';
+// Same shape, different pattern — AI keys must not share the calendar key.
+const DEV_AI_TOKEN_KEY = 'feedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed';
 const INSECURE_SECRETS = new Set([
   DEV_ACCESS_SECRET,
   DEV_REFRESH_SECRET,
   DEV_CALENDAR_TOKEN_KEY,
+  DEV_AI_TOKEN_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
 ]);
@@ -158,6 +161,41 @@ export function loadConfig(env = process.env) {
       presignTtlSec: toInt(env.STORAGE_PRESIGN_TTL_SEC, 3600, 'STORAGE_PRESIGN_TTL_SEC'),
       sweepSec: toInt(env.STORAGE_SWEEP_SEC, 3600, 'STORAGE_SWEEP_SEC'),
     }),
+    // AI (Epic 20, ADR-0019, AI.md). Enabled by default: the embedded track is
+    // BYOK — it needs no instance credentials to be useful — and `false` is the
+    // instance owner's honest kill switch (every /ai/* route answers 404, the
+    // app withdraws every AI surface). Base URLs are configurable so tests can
+    // point the five adapters at an in-process fake (the ADR-0006 §5 pattern);
+    // instance keys turn on `auth_mode = 'instance_env'` connections.
+    ai: Object.freeze({
+      enabled: toBool(env.AI_ENABLED, true, 'AI_ENABLED'),
+      // AES-256-GCM key for BYOK provider keys at rest — the exact ADR-0006
+      // pattern under its own key (a calendar-key compromise must not open the
+      // AI keys, and vice versa).
+      tokenKey: env.AI_TOKEN_KEY || DEV_AI_TOKEN_KEY,
+      // OPH-217 stream tunables.
+      heartbeatMs: toInt(env.AI_HEARTBEAT_MS, 15000, 'AI_HEARTBEAT_MS'),
+      ratePerMinute: toInt(env.AI_RATE_PER_MINUTE, 10, 'AI_RATE_PER_MINUTE'),
+      rateBurst: toInt(env.AI_RATE_BURST, 10, 'AI_RATE_BURST'),
+      // Daily token ceiling per user, instance_env connections only (the
+      // instance owner's money). 0 disables the cap.
+      dailyTokenCap: toInt(env.AI_DAILY_TOKEN_CAP, 200000, 'AI_DAILY_TOKEN_CAP'),
+      instanceKeys: Object.freeze({
+        anthropic: env.AI_ANTHROPIC_API_KEY || null,
+        openai: env.AI_OPENAI_API_KEY || null,
+        gemini: env.AI_GEMINI_API_KEY || null,
+        openrouter: env.AI_OPENROUTER_API_KEY || null,
+      }),
+      baseUrls: Object.freeze({
+        anthropic: env.AI_ANTHROPIC_BASE_URL || 'https://api.anthropic.com',
+        openai: env.AI_OPENAI_BASE_URL || 'https://api.openai.com',
+        gemini: env.AI_GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com',
+        openrouter: env.AI_OPENROUTER_BASE_URL || 'https://openrouter.ai/api',
+        // No default: an instance-wide Ollama must be pointed at explicitly
+        // (per-user connections carry their own base_url instead).
+        ollama: env.AI_OLLAMA_BASE_URL || null,
+      }),
+    }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
       // 64 hex chars → 32 bytes. Dev fallback is labeled insecure on purpose.
@@ -186,6 +224,23 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.calendar.tokenKey)) {
     throw new Error('CALENDAR_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.ai.tokenKey)) {
+    throw new Error('AI_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (config.ai.heartbeatMs < 1000 || config.ai.heartbeatMs > 60000) {
+    throw new Error('AI_HEARTBEAT_MS must be between 1000 and 60000 (proxies time out above that)');
+  }
+  if (config.ai.ratePerMinute < 1 || config.ai.rateBurst < 1) {
+    throw new Error('AI_RATE_PER_MINUTE and AI_RATE_BURST must be at least 1');
+  }
+  if (config.ai.dailyTokenCap < 0) {
+    throw new Error('AI_DAILY_TOKEN_CAP must be 0 (off) or positive');
+  }
+  for (const [provider, baseUrl] of Object.entries(config.ai.baseUrls)) {
+    if (baseUrl && !/^https?:\/\//.test(baseUrl)) {
+      throw new Error(`AI ${provider} base URL must start with http:// or https://`);
+    }
   }
   // The collation is interpolated into CREATE TABLE text, so it is validated as
   // a bare identifier here rather than trusted from the environment.
@@ -244,6 +299,12 @@ export function loadConfig(env = process.env) {
     if (config.google.clientId) {
       validateProductionSecret('GOOGLE_CLIENT_SECRET', env.GOOGLE_CLIENT_SECRET);
       validateProductionSecret('CALENDAR_TOKEN_KEY', env.CALENDAR_TOKEN_KEY);
+    }
+    // BYOK keys may only be stored under a real key. Required while the AI
+    // feature is enabled (it is enabled by default) — a boot error beats a
+    // runtime 500 on the first connection. Opting out is AI_ENABLED=false.
+    if (config.ai.enabled) {
+      validateProductionSecret('AI_TOKEN_KEY', env.AI_TOKEN_KEY);
     }
   }
 

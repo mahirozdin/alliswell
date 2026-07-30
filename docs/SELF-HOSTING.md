@@ -182,6 +182,23 @@ they happen. Google only pushes to a domain it has verified (Search Console →
 Google Cloud domain verification); until then AllisWell polls every few minutes
 on its own, so sync works either way.
 
+## 6b. AI (on by default — BYOK)
+
+The embedded AI track (Epic 20, [AI.md](AI.md)) is **bring-your-own-key**: users
+add their own Anthropic / OpenAI / Gemini / OpenRouter key (or an Ollama base
+URL) in Settings, so the instance needs no AI credentials of its own. What the
+instance owner controls:
+
+- **`AI_TOKEN_KEY`** (`openssl rand -hex 32`) encrypts stored user keys at rest.
+  **Required in production while AI is enabled (the default)** — upgrading to
+  v0.9.0 means either generating this key or setting `AI_ENABLED=false`.
+- **`AI_ENABLED=false`** withdraws the feature honestly: every `/ai/*` endpoint
+  answers 404 and the app hides every AI surface.
+- Optional **instance-wide keys** (`AI_ANTHROPIC_API_KEY`, `AI_OPENAI_API_KEY`,
+  `AI_GEMINI_API_KEY`, `AI_OPENROUTER_API_KEY`, `AI_OLLAMA_BASE_URL`) let
+  members use the instance's provider account (`instance_env` connections);
+  `AI_DAILY_TOKEN_CAP` bounds each user's daily spend on those.
+
 ## 7. Using your own database or Redis
 
 Point the API at them and drop the bundled services: set `DATABASE_HOST`,

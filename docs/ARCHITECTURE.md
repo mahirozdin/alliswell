@@ -21,7 +21,7 @@
 │  ├─ routes/    auth, workspaces, projects, tasks, tags,    │
 │  │             notes, sync, integrations, health           │
 │  ├─ plugins/   mysql(knex) · redis(ioredis) · auth · io    │
-│  │             mirror(out) · calendar-sync(in)             │
+│  │             mirror(out) · calendar-sync(in) · ai        │
 │  ├─ lib/       ids(ULID) · errors · revision helper        │
 │  └─ queue/     BullMQ jobs (inline fallback): calendar     │
 └───────┬───────────────────────────────┬────────────────────┘
@@ -65,7 +65,8 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
   `/health/ready` (component-level status). Metrics endpoint is a v2 task.
 - **Security baseline:** helmet, CORS allowlist, global rate limit (tighter on auth routes),
   argon2id password hashing, JWT (15 min) + rotating opaque refresh tokens stored hashed,
-  encrypted OAuth tokens (AES-256-GCM), soft-delete-aware queries.
+  encrypted OAuth tokens and BYOK AI provider keys (AES-256-GCM, separate keys:
+  `CALENDAR_TOKEN_KEY` / `AI_TOKEN_KEY`), soft-delete-aware queries.
 
 ## 4. Data layer
 
