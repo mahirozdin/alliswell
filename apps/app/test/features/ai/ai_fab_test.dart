@@ -47,7 +47,10 @@ void main() {
 
     expect(find.byKey(const Key('ai-fab')), findsOneWidget);
     // The create FAB is still there, alongside the AI FAB.
-    expect(find.widgetWithIcon(FloatingActionButton, Icons.add), findsOneWidget);
+    expect(
+      find.widgetWithIcon(FloatingActionButton, Icons.add),
+      findsOneWidget,
+    );
   });
 
   testWidgets('no AI FAB when AI is disabled on the server', (tester) async {

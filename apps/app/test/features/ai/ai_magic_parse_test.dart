@@ -38,7 +38,8 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
-    final api = FakeApi()..aiEnabled = true; // AI enabled, no connection → unconfigured
+    final api = FakeApi()
+      ..aiEnabled = true; // AI enabled, no connection → unconfigured
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('quick-add-parse')), findsNothing);
