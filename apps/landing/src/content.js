@@ -10,7 +10,7 @@
 export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
-export const VERSION = '1.0.1';
+export const VERSION = '1.0.2';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
@@ -141,11 +141,11 @@ export const features = [
   {
     id: 'search',
     eyebrow: 'Search',
-    title: 'Search that speaks Turkish',
-    body: 'Type “cay” and find Çay. Type “isi” and find ısı. Ranked title → tag → body, running over the copy of your data on the device, so it answers instantly and works with the network off.',
+    title: 'Search that ignores accents',
+    body: 'Type “muller” and find Müller. Type “cafe” and find café. Ranked title → tag → body, running over the copy of your data on the device, so it answers instantly and works with the network off.',
     points: [
-      'Neither SQLite nor MySQL folds ı → i — so AllisWell owns the fold itself',
-      'The same algorithm runs in Dart and in JavaScript, pinned by a shared fixture',
+      'Case- and diacritic-insensitive across the Latin alphabets — ß, ñ, å, ø, ł, č and the rest',
+      'Handles the letters database engines get wrong, so results do not depend on your server’s collation',
       'Offline, because the index is local',
     ],
     shot: 'web/projects.jpg',
@@ -195,7 +195,7 @@ export const comparison = {
     ['Re-alert until acknowledged', 'yes', 'no', 'no', 'no', 'no'],
     ['Recurrence clamps (31st → 28 Feb)', 'yes', 'no', 'no', 'yes', 'yes'],
     ['Two-way Google Calendar sync', 'yes', 'native', 'native', 'no', 'no'],
-    ['Turkish-aware search', 'yes', 'no', 'no', 'no', 'no'],
+    ['Accent-insensitive search', 'yes', 'no', 'no', 'no', 'no'],
     ['MCP connector for Claude / ChatGPT', 'yes', 'no', 'no', 'no', 'no'],
   ],
   footnote:

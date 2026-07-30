@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-31
+
+### Changed
+
+- **Search stopped being marketed as a Turkish feature.** The fold has always
+  covered Latin-1 Supplement and Latin Extended-A — ß, ñ, å, ø, ł, č, é and the
+  rest — so "Search that speaks Turkish" was both narrower than the truth and
+  the wrong thing to shout at a global audience from an `<h2>`. It is now
+  **"Search that ignores accents"**, with an example anyone can read
+  ("muller" finds Müller), across the README, the landing site, the comparison
+  doc and both stores' copy. The Turkish `ı → i` case remains the *engineering*
+  reason the fold is app-owned rather than delegated to a collation, and stays
+  recorded in ADR-0013 where it belongs.
+- The store listings' Turkish section is framed as a **localised listing**
+  because a localised page converts better, not because the product is Turkish.
+- Dropped the "this project began with a Turkish product vision" line from the
+  README, and reworded the localisation bullet so shipping in two languages
+  reads as a fact rather than a selling point.
+
 ## [1.0.1] - 2026-07-31
 
 ### Fixed

@@ -107,7 +107,7 @@ list every screenshot, the landing page and the store copy draw from.
 
 | Feature                                                                                                   | Shipped |
 | ----------------------------------------------------------------------------------------------------------- | ------- |
-| Case- **and Turkish-accent-insensitive**: "cay" finds _Çay_, "isi" finds _ısı_                             | OPH-167 |
+| Case- **and accent-insensitive** across the Latin alphabets: "muller" finds _Müller_                       | OPH-167 |
 | Ranked title → tag → body                                                                                 | OPH-167 |
 | Runs **on the device replica** — instant, and it works offline                                            | ADR-0013 |
 | The fold is app-owned on purpose: **neither SQLite nor MySQL folds ı→i** (DUCET gives them separate weights) | ADR-0013 |
@@ -234,7 +234,7 @@ Legend: ● full · ◐ partial / with caveats · ○ none.
 | "This / this and future / all" edits | ● | ● | ○ | ◐ | ● | ◐ |
 | **Two-way Google Calendar sync** | ● | native | native | ○ | ◐ subscribe | ○ read-only |
 | Apple Calendar | ● EventKit | ◐ | ○ | native | native | ◐ read-only |
-| Turkish-aware search | ● | ○ | ○ | ○ | ○ | ○ |
+| Accent-insensitive search | ● | ○ | ○ | ○ | ○ | ○ |
 | Home-screen widgets | ● iOS/Android/macOS | ● | ● | ● | ● | ● |
 | **MCP connector for Claude / ChatGPT** | ● | ○ | ○ | ○ | ○ | ○ |
 | In-app AI with **your own key** | ● 5 providers | ○ | ○ | ○ | ○ | ○ |
@@ -271,10 +271,13 @@ one is a thing a competitor **cannot** do, not merely hasn't yet.
    you already pay for (MCP), or bring your own API key — including a local
    Ollama, where nothing leaves the machine. The model gets **no write tools**;
    every proposal waits for your tap; deletion is closed to AI permanently.
-7. **It speaks Turkish properly.** Search folds `ı→i`, `ç→c`, `ğ→g` — something
-   neither SQLite nor MySQL will do for you, because Unicode's default collation
-   gives dotted and dotless _i_ separate weights. Every competitor on this page
-   fails "cay → Çay".
+7. **Search that does not care how you type it.** Accents and case are folded
+   across the Latin alphabets — ß, ñ, å, ø, ł, č, é — so "muller" finds _Müller_
+   and "cafe" finds _café_. The fold is the app's own rather than the database's,
+   because collations disagree with each other and some of them get letters
+   outright wrong; owning it means a search returns the same rows whether you run
+   MySQL, MariaDB or the on-device SQLite replica. Every competitor on this page
+   makes you type the diacritic.
 
 ---
 
@@ -317,7 +320,8 @@ Ordered by what actually moves someone:
 3. **"Add it to Claude or ChatGPT."** Nobody else in this category has it.
 4. **"One app on all six platforms."** The answer to "I'm on Android and my
    partner is on iPhone."
-5. **"Free, forever, no tier."** Not a trial, not a freemium cap.
+5. **"Free, forever, for you."** Not a trial, not a freemium cap — free for
+   personal use and self-hosting, with commercial licensing for businesses.
 
 **What we do not claim:** that we are more mature than Things 3, that we
 collaborate like Todoist, or that we replace Google Calendar's meeting

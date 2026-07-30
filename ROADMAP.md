@@ -157,9 +157,10 @@ task time (23:59 factory); the Calendar tab retired in favor of a global
 workspace uploads, a Sources view of every attachment — ADR-0014); inline
 "+ Add project" in pickers; editable task descriptions with tappable links;
 a typeable tag system (`#chip` input, fold-matched suggestions, auto-create,
-manage sheet); **Turkish-fold local search** ranked title > tag > body across
-Home/Notes/Projects (neither SQLite nor MySQL folds `ı→i` — one app-owned
-fold, parity-fixtured across Dart and JS — ADR-0013); and a Home **Board**
+manage sheet); **accent-folding local search** ranked title > tag > body across
+Home/Notes/Projects (one app-owned fold rather than the database's, because
+collations disagree and some get letters outright wrong — parity-fixtured
+across Dart and JS, ADR-0013); and a Home **Board**
 (kanban) view with user-managed status columns and a mandatory non-drag move
 path. Remaining for the release: a live pass with a real Google account and
 the standing device-tour matrix.

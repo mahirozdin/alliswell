@@ -59,7 +59,7 @@ around exactly that pairing.
 Editable without a new build — use it for launch beats and swap it later.
 
 ```text
-0.4.0 is here: a kanban Board, a Files section with folders, Turkish-aware search, and urgent alarms that re-alert until you actually acknowledge them.
+0.4.0 is here: a kanban Board, a Files section with folders, accent-insensitive search, and urgent alarms that re-alert until you actually acknowledge them.
 ```
 
 **(151)**
@@ -119,9 +119,9 @@ CALENDARS
 • Apple Calendar is one-way in this version: the tasks you choose are written into the calendar you pick.
 
 
-SEARCH THAT SPEAKS TURKISH
+SEARCH THAT IGNORES ACCENTS
 
-Search ignores case and Turkish accents, so "cay" finds "Çay" and "isi" finds "ısı". It runs over the copy of your data on the device, so it answers instantly and works offline.
+Search ignores case and accents across the Latin alphabets, so "muller" finds "Müller" and "cafe" finds "café". It runs over the copy of your data on the device, so it answers instantly and works offline.
 
 
 ALSO IN THE BOX
@@ -338,8 +338,8 @@ Attach files to tasks, notes and projects, and find every one of them in a works
 ALARMS THAT MEAN IT
 Urgent tasks now ring at their deadline with a real alarm sound, and keep re-alerting across the next half hour until you acknowledge them. Snooze in one tap, and turn on the privacy mode to keep task content off your lock screen.
 
-SEARCH THAT SPEAKS TURKISH
-Search now ignores case and Turkish accents everywhere — "cay" finds "Çay", "isi" finds "ısı" — and it runs on the device, so it is instant and works offline.
+SEARCH THAT IGNORES ACCENTS
+Search now ignores case and accents everywhere — "muller" finds "Müller", "cafe" finds "café" — and it runs on the device, so it is instant and works offline.
 
 CALENDAR SYNC THAT JUST CONNECTS
 Linking Google Calendar now picks your primary calendar and syncs straight away. The hidden second step is gone.
@@ -436,9 +436,9 @@ Everything works with no connection: create, edit, complete, search. Changes que
 Connect Google Calendar and your tasks become events. Edits you make in Google come back to AllisWell, and your other Google events show up next to your tasks on Home.
 
 
-🔎 SEARCH THAT SPEAKS TURKISH
+🔎 SEARCH THAT IGNORES ACCENTS
 
-Search ignores case and Turkish accents, so "cay" finds "Çay" and "isi" finds "ısı". It runs on the copy of your data on the device — instant, and it works offline.
+Search ignores case and accents across the Latin alphabets, so "muller" finds "Müller" and "cafe" finds "café". It runs on the copy of your data on the device — instant, and it works offline.
 
 
 🧩 ALSO IN THE BOX
@@ -603,7 +603,7 @@ no alpha channel and no rounded corners baked in.
 | 9   | Play      | **Feature graphic**                        | exactly 1024 × 500, no alpha                               | 1            | ✅ `store/android/feature-graphic.png` |
 | 10  | Play      | **App icon**                               | exactly 512 × 512, 32-bit PNG **with** alpha               | 1            | ✅ `store/icons/play-512.png` |
 | 11  | Play      | **Promo video** (optional)                 | YouTube URL                                                | 0–1          | ⏭ Skipped for 0.9.0 |
-| 12  | Both      | Localized screenshot sets (**en**, **tr**) | as above, per locale                                       | ×2           | ⛔ **English only.** Turkish is the primary market — re-run the pipeline with the simulator/emulator in `tr` and the seeder's content translated. |
+| 12  | Both      | Localized screenshot sets (**en**, **tr**) | as above, per locale                                       | ×2           | ⛔ **English only.** A Turkish set converts better on a localised page — re-run the pipeline with the simulator/emulator in `tr` and the seeder's content translated. |
 | 13  | Site      | Social cover (Open Graph)                  | 1200 × 630                                                 | 1            | ✅ `apps/landing/public/og-cover.png` |
 
 ### How they are generated
@@ -642,8 +642,11 @@ Screen order (the first two carry almost all the conversion): **Home** →
 
 ## 4. Turkish versions
 
-Turkish is the primary market. These are written as Turkish marketing copy, not
-as translations of §1–§2 — the emphasis and the idioms differ deliberately.
+A localised listing, written as Turkish marketing copy rather than a
+translation of §1–§2 — the emphasis and the idioms differ deliberately. Ship it
+because a localised store page converts better in that market, not because the
+product is Turkish: nothing in §1–§2 presents the language as a feature, and this
+section should not either.
 
 ### 4.1 Apple App Store — Türkçe
 
@@ -666,7 +669,7 @@ as translations of §1–§2 — the emphasis and the idioms differ deliberately
 **Tanıtım metni (≤ 170 karakter)**
 
 ```text
-0.4.0 yayında: Kanban Pano, klasörlü Dosyalar bölümü, Türkçe uyumlu arama ve siz kapatana kadar tekrar tekrar çalan acil alarmlar.
+0.4.0 yayında: Kanban Pano, klasörlü Dosyalar bölümü, aksana takılmayan arama ve siz kapatana kadar tekrar tekrar çalan acil alarmlar.
 ```
 
 **(130)**
@@ -723,9 +726,9 @@ TAKVİMLER
 • Apple Takvim bu sürümde tek yönlüdür: seçtiğiniz görevler, seçtiğiniz takvime yazılır.
 
 
-TÜRKÇE BİLEN ARAMA
+AKSANA TAKILMAYAN ARAMA
 
-Arama büyük-küçük harfe ve Türkçe karakterlere takılmaz: "cay" yazınca "Çay", "isi" yazınca "ısı" gelir. Cihazınızdaki kopya üzerinde çalıştığı için anında yanıt verir ve çevrimdışı da çalışır.
+Arama büyük-küçük harfe ve aksanlara takılmaz: "cay" yazınca "Çay", "isi" yazınca "ısı", "muller" yazınca "Müller" gelir. Cihazınızdaki kopya üzerinde çalıştığı için anında yanıt verir ve çevrimdışı da çalışır.
 
 
 AYRICA
@@ -765,8 +768,8 @@ Göreve, nota ve projeye dosya ekleyin; hepsini tek bir yerde, iç içe klasörl
 CİDDİ ALARMLAR
 Acil görevler artık tam zamanında, gerçek bir alarm sesiyle çalıyor ve siz kapatana kadar yarım saat boyunca tekrar tekrar hatırlatıyor. Tek dokunuşla erteleyin; gizlilik modunu açarsanız görev içeriği kilit ekranında görünmez.
 
-TÜRKÇE BİLEN ARAMA
-Arama artık her yerde büyük-küçük harfe ve Türkçe karakterlere takılmıyor — "cay" yazınca "Çay", "isi" yazınca "ısı" geliyor. Üstelik cihazda çalışıyor: anında ve çevrimdışı.
+AKSANA TAKILMAYAN ARAMA
+Arama artık her yerde büyük-küçük harfe ve aksanlara takılmıyor — "cay" yazınca "Çay", "isi" yazınca "ısı" geliyor. Üstelik cihazda çalışıyor: anında ve çevrimdışı.
 
 BAĞLANAN TAKVİM
 Google Takvim'i bağladığınızda ana takviminiz otomatik seçiliyor ve eşitleme hemen başlıyor. O gizli ikinci adım tarihe karıştı.
@@ -843,9 +846,9 @@ Bağlantı olmadan da her şey çalışır: oluşturun, düzenleyin, tamamlayın
 Google Takvim'i bağlayın; görevleriniz etkinliğe dönüşsün. Google'da yaptığınız düzenlemeler AllisWell'e geri gelir, diğer Google etkinlikleriniz de Ana ekranda görevlerinizin yanında görünür.
 
 
-🔎 TÜRKÇE BİLEN ARAMA
+🔎 AKSANA TAKILMAYAN ARAMA
 
-Arama büyük-küçük harfe ve Türkçe karakterlere takılmaz: "cay" yazınca "Çay", "isi" yazınca "ısı" gelir. Cihazınızdaki kopya üzerinde çalışır — anında, çevrimdışıyken bile.
+Arama büyük-küçük harfe ve aksanlara takılmaz: "cay" yazınca "Çay", "isi" yazınca "ısı" gelir. Cihazınızdaki kopya üzerinde çalışır — anında, çevrimdışıyken bile.
 
 
 🧩 AYRICA
@@ -879,7 +882,7 @@ Store'un 4000 karakterlik metnini buraya olduğu gibi yapıştırmayın.
 Kanban Pano: Ana ekranı liste ile pano arasında çevirin, sütunları kendiniz kurun.
 Dosyalar: göreve, nota ve projeye dosya ekleyin; hepsini iç içe klasörlerde bulun.
 Ciddi alarmlar: acil görevler tam zamanında, gerçek alarm sesiyle çalar ve siz kapatana kadar tekrarlar.
-Türkçe arama: "cay" yazınca "Çay" gelir; cihazda çalışır, çevrimdışı da bulur.
+Aksana takılmayan arama: "cay" yazınca "Çay" gelir; cihazda çalışır, çevrimdışı da bulur.
 Google Takvim tek adımda bağlanır.
 Ayrıca: widget'lar, yenilenen görünüm, tek komutla kendi sunucunuz.
 ```
@@ -893,7 +896,7 @@ Ayrıca: widget'lar, yenilenen görünüm, tek komutla kendi sunucunuz.
 Kanban Board: flip Home between list and board, with columns you define.
 Files: attach files to tasks, notes and projects, and find them all in nestable folders.
 Serious alarms: urgent tasks ring at the exact minute with a real alarm sound, and keep re-alerting until you acknowledge.
-Turkish-aware search: "cay" finds "Çay" — on-device, so it works offline.
+Accent-insensitive search: "muller" finds "Müller" — on-device, so it works offline.
 Google Calendar now connects in one step.
 Plus: home-screen widgets, a refreshed look, and one-command self-hosting.
 ```

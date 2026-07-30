@@ -45,10 +45,11 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | 🐳 **Self-host** | Live now | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data). |
 | 💻 **Desktop** | Build from source | macOS, Windows and Linux targets build from the same codebase. |
 
-> **Project status — `v0.9.0`.** Everything on this page is built and tested
-> (**748 app tests · 592 backend unit · 58 integration, green**) and in final
-> on-device QA before its release tag. Track it in [ROADMAP.md](ROADMAP.md) and
-> [docs/STATE.md](docs/STATE.md). ⭐ Star the repo to follow along.
+> **Project status — `v1.0.2`, live.** Everything on this page is built, tested
+> (**748 app tests · 592 backend unit · 58 integration, green**) and deployed to
+> [alliswell.space](https://alliswell.space). Track what's next in
+> [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
+> ⭐ Star the repo to follow along.
 
 ---
 
@@ -177,7 +178,7 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 - 🏷 **Tags &amp; priorities** — type `#tags` inline (auto-create, colours, fold-matched suggestions) and set `none → urgent` priority. Subtasks and checklists inside a task.
 - 🔔 **Alarm-grade reminders** — exact-minute delivery, **urgent alarms through Silent mode &amp; Focus**, a re-alert-until-acknowledged chain you can tune, snooze presets (5 m / 30 m / 1 h / tomorrow / custom) that each say when they'll ring, **mute one task's alarms** without completing it, your own ringtone, an **alarm log**, and a privacy mode that hides task content on the lock screen.
 - 🔁 **Recurring tasks that survive a short month** — see [§2 above](#2-recurrence-that-doesnt-lie).
-- 🔎 **Instant search** — case- **and Turkish-accent-insensitive** ("cay" finds _Çay_, "isi" finds _ısı_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**. Neither SQLite nor MySQL folds `ı → i`; AllisWell owns the fold itself.
+- 🔎 **Instant search** — case- **and accent-insensitive** across the Latin alphabets ("muller" finds _Müller_, "cafe" finds _café_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**. The folding is the app's own, so results never depend on your database's collation.
 - 📝 **Notes &amp; documents** — rich-text (Quill Delta) notes with inline images/video, links to tasks and projects, pin/archive, card grid or list, and Markdown export.
 - 📅 **True two-way calendar sync** — see [§3 above](#3-true-two-way-calendar-sync-to-both-ecosystems). Every task is on the calendar, and it is **not a setting**.
 - 📎 **Attachments &amp; Files** — attach any file to tasks, notes and projects, plus a global **Files** section with nestable folders — stored in **Cloudflare R2 / any S3** via presigned URLs (the API never proxies your bytes).
@@ -187,7 +188,7 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 - ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, colour and order. A **sidebar section** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones. Yours alone: shortcuts never leak to other members of a shared workspace.
 - 🤖 **AI, on your terms (optional)** — see [§5 above](#5-ai-on-your-terms--including-none).
 - 🖥 **Home-screen widgets** — iOS, Android &amp; macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
-- 🌐 **Localisation** — English + Turkish out of the box, auto-detected; adding a language is dropping in one JSON file.
+- 🌐 **Localisation** — ships in English and Turkish, auto-detected from your system; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).
 
 </details>
@@ -213,7 +214,7 @@ own, true two-way calendar sync, and a local-first realtime engine.**
 | **Re-alert until acknowledged** | ● | ○ | ○ | ○ | ○ |
 | **Recurrence clamps (31st → 28 Feb)** | ● | ○ | ○ | ● | ● |
 | **Two-way Google Calendar sync** | ● | native | native | ○ | ○ |
-| **Turkish-aware search** | ● | ○ | ○ | ○ | ○ |
+| **Accent-insensitive search** | ● | ○ | ○ | ○ | ○ |
 | **MCP connector for Claude / ChatGPT** | ● | ○ | ○ | ○ | ○ |
 
 <sub>● full · ◐ partial · ○ none. Competitor behaviour as of mid-2026.</sub>
@@ -223,14 +224,12 @@ own, true two-way calendar sync, and a local-first realtime engine.**
 invitations, RSVPs and free/busy; we mirror to your calendar and let it do that.
 Todoist and Apple Reminders have **real collaboration** — assignees, comments,
 shared lists — where our workspace model exists but the sharing UI does not.
-Things 3 has had ten years to sand its corners; we are at 0.9.0. And
+Things 3 has had ten years to sand its corners; we are at 1.0. And
 **self-hosting is work**: a managed app has no `docker compose`, no TLS
 certificate and no backups to think about.
 
-**The full analysis** — every claim above, the six things they do better, and the
+**The full analysis** — every claim above, the nine things they do better, and the
 lines we deliberately did *not* write — is in **[docs/COMPARISON.md](docs/COMPARISON.md)**.
-
-> 🇹🇷 Bu proje Türkçe bir ürün vizyonuyla başladı — tam vizyon için [docs/BLUEPRINT.md](docs/BLUEPRINT.md).
 
 ---
 
@@ -272,7 +271,7 @@ Node.js API — Fastify, JavaScript only (no TypeScript)
   ├─ Projects / Tasks / Tags           ├─ Reminder scheduler
   ├─ Notes / Files (presigned R2/S3)   ├─ Calendar sync workers (BullMQ)
   ├─ Recurrence engine (task_series)   ├─ Remote MCP server (OAuth 2.1)
-  └─ Search (Turkish-fold)             └─ AI providers (BYOK, 5 adapters)
+  └─ Search (accent folding)           └─ AI providers (BYOK, 5 adapters)
       │
       ├─ MySQL 8.4 / MariaDB 10.11+  (canonical data)
       ├─ Redis 8    (queues, Socket.IO fan-out, cache)
