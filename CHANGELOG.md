@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **Add AllisWell to your own Claude or ChatGPT (OPH-218).** A remote MCP
+  server (`/mcp`) with its own minimal OAuth 2.1 authorization server — the AI
+  works against your workspace on *your* subscription, so AllisWell spends
+  nothing on model calls. Seven tools (search, list/get, create and complete
+  tasks) and two task-view resources; **no delete tool, ever, by design**.
+  Writes go through the same domain layer as the app, are annotated for the
+  host's approval prompt, and land in the action log. Independent of the
+  in-app AI switch (`MCP_ENABLED` + `API_PUBLIC_URL`). See [MCP.md](docs/MCP.md).
 - **Speak (or paste) tasks, get a proposal — never a silent write (OPH-219).**
   `POST /ai/extract` turns one utterance into a schema-validated proposal:
   multi-task sentences split into rows, relative dates resolve against your

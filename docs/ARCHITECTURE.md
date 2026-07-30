@@ -19,7 +19,7 @@
 │  apps/api — Node.js (JavaScript ESM, NO TypeScript)        │
 │  Fastify 5 · pino logs (request-id) · JWT auth             │
 │  ├─ routes/    auth, workspaces, projects, tasks, tags,    │
-│  │             notes, sync, integrations, health           │
+│  │             notes, sync, integrations, ai, oauth, mcp    │
 │  ├─ plugins/   mysql(knex) · redis(ioredis) · auth · io    │
 │  │             mirror(out) · calendar-sync(in) · ai        │
 │  ├─ lib/       ids(ULID) · errors · revision helper        │

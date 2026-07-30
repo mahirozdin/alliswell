@@ -5543,21 +5543,44 @@ Flutter `AiStreamClient` dikişi OPH-221'de.)_
 
 ### OPH-218 — Hat A: AllisWell uzak MCP sunucusu ("Add to Claude / ChatGPT")
 
-- [ ] **ADR-0022 (ilk iş):** transport (Streamable HTTP `/mcp`), kimlik (mevcut auth
+_(✅ 2026-07-30 — uygulama notları: (1) **elle yazılmış** Streamable HTTP (SDK yok —
+ADR-0019 duruşu sunucuya genellendi); stateless, POST-only JSON-RPC, GET/DELETE 405,
+Mcp-Session-Id yok; protokol 2025-06-18 (+2025-03-26). (2) **Kendi OAuth 2.1 AS'imiz**:
+discovery (RFC 8414/9728, openid alias + /mcp sonekli PR biçimi), açık DCR (RFC 7591),
+sunucu-render login+consent (API'de UI yok — inline HTML; form-encoded parser plugin
+kapsamında ~6 satır; imzalı form token'ı = google state emsali; PKCE S256 ZORUNLU);
+**opak token'lar** (JWT değil — gerçek revocation; refresh_tokens kalıbı + aile iptali;
+kod tek-kullanım, replay tokenları yakar). (3) `MCP_ENABLED` + `API_PUBLIC_URL` **ayrı
+kapı** (`AI_ENABLED` yalnız `/ai/*`); yapılandırılmamışsa 404, boot hatası ASLA.
+(4) **`src/db/tasks.js` çıkarıldı** — createTask/completeTask/taskDetail routes'tan
+alındı, REST delege ediyor, sync.js'e DOKUNULMADI; 43 mevcut task testi regresyon ağı,
+yeşil. (5) Proje belirsizse create YARATMAZ, aday döner (onay-kartı seçicisinin dürüst
+MCP ikizi); etiketler yalnız MEVCUT'a çözülür, eşleşmeyen raporlanır. (6) Araç Ajv hatası
+protokol hatası değil `isError:true` SONUÇ (model düzeltebilir). Kırmızı-takım fikstürü
+`ai_redteam.json` doğdu — OPH-226 genişletecek.)_
+
+- [x] **ADR-0022 (ilk iş):** transport (Streamable HTTP `/mcp`), kimlik (mevcut auth
       OAuth 2.1 sağlayıcısı olarak + dynamic client registration), araç yüzeyi ve yazma
       kuralları. MCP **domain katmanının bir istemcisidir** — ham SQL asla; her yazı
-      REST ile aynı Ajv + authz + revision yolundan geçer.
-- [ ] Araçlar v1: `search` (ADR-0013 fold'uyla), `list_tasks` (filtreli), `get_task` /
-      `get_note` / `get_project`, `create_task` (OPH-219'un şemasıyla — tek kaynak),
-      `complete_task`; kaynaklar: bugün/geciken görünümleri. **Silme aracı YOK —
-      kalıcı karar** (tablo satır 6).
-- [ ] Yazma araçları host onay UI'ları için annotate edilir; `ai_action_log`'a
-      `source='mcp'` düşer.
-- [ ] Doküman: "AllisWell'i Claude'a / ChatGPT'ye ekle" sayfası (self-host: kendi
-      `https://instance/mcp` URL'in; alliswell.space için dizin başvuruları OPH-227'de).
-- [ ] Testler: MCP Inspector ile tohumlanmış workspace'te tüm araçlar; **düşman
-      fikstürleri** (görev başlığında talimat) veri döndürür, eylem DEĞİL; iki
-      kullanıcılı yetki izolasyonu; idempotent create (`clientMutationId` eşleniği).
+      REST ile aynı Ajv + authz + revision yolundan geçer (`src/db/tasks.js`).
+- [x] Araçlar v1: `search` (ADR-0013 fold'uyla — başlıklar fold-garantili, gövdeler
+      ikinci geçiş), `list_tasks` (filtreli + today/overdue kullanıcı TZ'siyle),
+      `get_task` / `get_note` / `get_project` (workspace dışı → varlık sızdırmayan
+      NOT_FOUND), `create_task` (OPH-219'un şemasıyla — tek kaynak + idempotencyKey +
+      proje/etiket çözümü), `complete_task` (idempotent); kaynaklar: bugün/geciken
+      görünümleri. **Silme aracı YOK — kalıcı karar** (tablo satır 6).
+- [x] Yazma araçları host onay UI'ları için annotate edilir (`destructiveHint:false`);
+      `ai_action_log`'a `source='mcp'` düşer; `mcp_mutations` idempotency defteri.
+- [x] Doküman: "AllisWell'i Claude'a / ChatGPT'ye ekle" sayfası ([MCP.md](MCP.md);
+      self-host: kendi `https://instance/mcp` URL'in; alliswell.space için dizin
+      başvuruları OPH-227'de) + SELF-HOSTING/ARCHITECTURE çaprazları.
+- [x] Testler: birim — OAuth tam dansı (PKCE, kod reuse→aile iptali, rotasyon, revoke,
+      form-token tamper); protokol (versiyon pazarlığı, -32700/600/601/602, 405'ler,
+      Origin matrisi); araçlar (fold arama Işık≈isik, **iki kullanıcılı izolasyon bayt
+      bayt**, idempotent create, belirsiz proje → satır YOK); **düşman korpusu** üç yüzey
+      assert'i (veri döner, eylem DEĞİL, tablo değişmez). Entegrasyon — gerçek dans +
+      **MCP yazısının /sync/pull'da cihaza aktığı** + gerçek unique index'te idempotens.
+      MCP Inspector koşusu STATE cihaz/kullanıcı kuyruğunda (canlı HTTPS ister).
 
 ### OPH-219 — Çıkarım ucu + görev-önerisi sözleşmesi (tek şema)
 

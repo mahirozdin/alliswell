@@ -42,3 +42,22 @@ export function hashChannelToken(token, secret) {
   // produce colliding digests.
   return crypto.createHmac('sha256', secret).update(`channel:${token}`).digest('hex');
 }
+
+/**
+ * MCP OAuth tokens (OPH-218, ADR-0022): access/refresh tokens, authorization
+ * codes and client secrets are all opaque randoms whose keyed digests are the
+ * only thing stored — the refresh-token pattern with per-kind domain
+ * separators ("I removed the connector" must genuinely revoke).
+ */
+export function newOpaqueToken(bytes = 48) {
+  return crypto.randomBytes(bytes).toString('base64url');
+}
+
+/**
+ * @param {'access'|'refresh'|'code'|'client_secret'} kind
+ * @param {string} token
+ * @param {string} secret - config.auth.refreshSecret
+ */
+export function hashMcpToken(kind, token, secret) {
+  return crypto.createHmac('sha256', secret).update(`mcp-${kind}:${token}`).digest('hex');
+}

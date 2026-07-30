@@ -7,6 +7,10 @@ import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
 import { SERIES_SCOPES, occurrenceDayOf, propagateSeriesScope } from '../db/task-series.js';
+// OPH-218: create/transition/detail logic lives in the domain layer so the
+// MCP tools and REST are one implementation (ADR-0022 §4).
+import * as taskDb from '../db/tasks.js';
+import { toRowPatch, completionPatch } from '../db/tasks.js';
 import { COLOR_PATTERN } from './projects.js';
 
 // Snooze presets (BLUEPRINT §4.9): fixed offsets in minutes, plus
@@ -146,49 +150,6 @@ const writableProps = {
   alarmsMutedAt: { type: ['string', 'null'], format: 'date-time' },
 };
 
-const CAMEL_TO_SNAKE = {
-  title: 'title',
-  description: 'description',
-  projectId: 'project_id',
-  parentTaskId: 'parent_task_id',
-  status: 'status',
-  priority: 'priority',
-  colorRgb: 'color_rgb',
-  startAt: 'start_at',
-  dueAt: 'due_at',
-  scheduledStartAt: 'scheduled_start_at',
-  scheduledEndAt: 'scheduled_end_at',
-  remindAt: 'remind_at',
-  timezone: 'timezone',
-  isUrgent: 'is_urgent',
-  requiresAcknowledgement: 'requires_acknowledgement',
-  estimatedMinutes: 'estimated_minutes',
-  actualMinutes: 'actual_minutes',
-  sortOrder: 'sort_order',
-  calendarMirrorEnabled: 'calendar_mirror_enabled',
-  alarmsMutedAt: 'alarms_muted_at',
-};
-
-const DATE_FIELDS = new Set([
-  'start_at',
-  'due_at',
-  'scheduled_start_at',
-  'scheduled_end_at',
-  'remind_at',
-  'alarms_muted_at',
-]);
-
-function toRowPatch(body) {
-  const row = {};
-  for (const [camel, snake] of Object.entries(CAMEL_TO_SNAKE)) {
-    if (camel in body) {
-      const value = body[camel];
-      row[snake] = DATE_FIELDS.has(snake) && value != null ? new Date(value) : value;
-    }
-  }
-  return row;
-}
-
 export function serializeTask(row) {
   return {
     id: row.id,
@@ -242,108 +203,17 @@ export function serializeChecklistItem(row) {
 export default async function taskRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
-  async function loadTask(id) {
-    const row = await app.db('tasks').where({ id }).whereNull('deleted_at').first();
-    if (!row) throw coded(app.httpErrors.notFound('Task not found'), 'TASK_NOT_FOUND');
-    return row;
-  }
-
-  // OPH-034 — remind_at needs a real timezone for alarm math. The column has a
-  // default, so validity (not presence) is what we enforce; aliases like
-  // Asia/Istanbul are fine — Intl throws on genuinely unknown zones.
-  function assertValidTimezone(tz) {
-    try {
-      new Intl.DateTimeFormat('en-US', { timeZone: tz });
-    } catch {
-      throw coded(app.httpErrors.badRequest(`Unknown timezone: ${tz}`), 'TASK_INVALID_TIMEZONE');
-    }
-  }
-
-  // OPH-033 — archived tasks are immutable (the sole allowed write is
-  // unarchiving via PATCH { status }); everything else answers 409.
-  function assertNotArchived(row) {
-    if (row.status === 'archived') {
-      throw coded(
-        app.httpErrors.conflict('Archived tasks are immutable — unarchive first'),
-        'TASK_ARCHIVED',
-      );
-    }
-  }
-
-  /** Status side effects shared by PATCH and the transition endpoints. */
-  function completionPatch(fromStatus, toStatus) {
-    if (toStatus === 'completed' && fromStatus !== 'completed') {
-      return { completed_at: new Date() };
-    }
-    if (toStatus !== 'completed' && fromStatus === 'completed') {
-      return { completed_at: null };
-    }
-    return {};
-  }
-
-  async function assertProjectUsable(projectId, workspaceId) {
-    const project = await app
-      .db('projects')
-      .where({ id: projectId, workspace_id: workspaceId })
-      .whereNull('deleted_at')
-      .first('id');
-    if (!project) {
-      throw coded(
-        app.httpErrors.badRequest('projectId does not reference a project in this workspace'),
-        'TASK_INVALID_PROJECT',
-      );
-    }
-  }
-
-  /** Parent must be a live task in the same workspace and not create a cycle. */
-  async function assertParentUsable(parentTaskId, workspaceId, childId) {
-    if (parentTaskId === childId) {
-      throw coded(
-        app.httpErrors.badRequest('A task cannot be its own parent'),
-        'TASK_PARENT_CYCLE',
-      );
-    }
-    const parent = await app
-      .db('tasks')
-      .where({ id: parentTaskId, workspace_id: workspaceId })
-      .whereNull('deleted_at')
-      .first('id', 'parent_task_id');
-    if (!parent) {
-      throw coded(
-        app.httpErrors.badRequest('parentTaskId does not reference a task in this workspace'),
-        'TASK_INVALID_PARENT',
-      );
-    }
-    // Walk up the ancestor chain — attaching below one of our own descendants
-    // (or ourselves) would loop forever.
-    let cursor = parent.parent_task_id;
-    for (let depth = 0; cursor && depth < 100; depth += 1) {
-      if (cursor === childId) {
-        throw coded(
-          app.httpErrors.badRequest('parentTaskId would create a subtask cycle'),
-          'TASK_PARENT_CYCLE',
-        );
-      }
-      const next = await app.db('tasks').where({ id: cursor }).first('parent_task_id');
-      cursor = next?.parent_task_id ?? null;
-    }
-  }
-
-  async function assertTagsUsable(tagIds, workspaceId) {
-    if (tagIds.length === 0) return;
-    const rows = await app
-      .db('tags')
-      .whereIn('id', tagIds)
-      .where({ workspace_id: workspaceId })
-      .whereNull('deleted_at')
-      .select('id');
-    if (rows.length !== new Set(tagIds).size) {
-      throw coded(
-        app.httpErrors.badRequest('tagIds contains tags that do not exist in this workspace'),
-        'TASK_INVALID_TAG',
-      );
-    }
-  }
+  // Thin delegates: the implementations moved to db/tasks.js (OPH-218) so the
+  // MCP tools share them; the local names keep every call site unchanged.
+  const loadTask = (id) => taskDb.loadTask(app, id);
+  const assertValidTimezone = (tz) => taskDb.assertValidTimezone(app, tz);
+  const assertNotArchived = (row) => taskDb.assertNotArchived(app, row);
+  const assertProjectUsable = (projectId, workspaceId) =>
+    taskDb.assertProjectUsable(app, projectId, workspaceId);
+  const assertParentUsable = (parentTaskId, workspaceId, childId) =>
+    taskDb.assertParentUsable(app, parentTaskId, workspaceId, childId);
+  const assertTagsUsable = (tagIds, workspaceId) =>
+    taskDb.assertTagsUsable(app, tagIds, workspaceId);
 
   // ── Collection: create + filtered, cursor-paginated list ─────────────────
 
@@ -368,42 +238,11 @@ export default async function taskRoutes(app) {
     async (request, reply) => {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
-
-      const { tagIds = [], ...body } = request.body;
-      if (body.projectId) await assertProjectUsable(body.projectId, workspaceId);
-      if (body.parentTaskId) await assertParentUsable(body.parentTaskId, workspaceId, null);
-      await assertTagsUsable(tagIds, workspaceId);
-      if (body.timezone !== undefined) assertValidTimezone(body.timezone);
-      // Urgent alarms demand acknowledgement unless the caller opts out (OPH-034).
-      if (body.isUrgent === true && body.requiresAcknowledgement === undefined) {
-        body.requiresAcknowledgement = true;
-      }
-
-      const id = newId();
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId,
-          entityType: 'task',
-          entityId: id,
-          operation: 'create',
-        });
-        await trx('tasks').insert({
-          id,
-          workspace_id: workspaceId,
-          ...toRowPatch(body),
-          created_by: request.user.id,
-          updated_by: request.user.id,
-          revision,
-        });
-        if (tagIds.length > 0) {
-          await trx('task_tags').insert(
-            [...new Set(tagIds)].map((tagId) => ({ task_id: id, tag_id: tagId })),
-          );
-        }
-        const fresh = await trx('tasks').where({ id }).first();
-        await reconcileTaskReminder(trx, { workspaceId, task: fresh });
+      const id = await taskDb.createTask(app, {
+        workspaceId,
+        userId: request.user.id,
+        body: request.body,
       });
-
       return reply.code(201).send(await taskDetail(id));
     },
   );
@@ -491,21 +330,11 @@ export default async function taskRoutes(app) {
   // ── Single task ───────────────────────────────────────────────────────────
 
   async function taskDetail(id) {
-    const row = await loadTask(id);
-    const [tagRows, checklistRows] = await Promise.all([
-      app.db('task_tags').where({ task_id: id }).select('tag_id'),
-      app
-        .db('checklist_items')
-        .where({ task_id: id })
-        .whereNull('deleted_at')
-        .orderBy('sort_order', 'asc')
-        .orderBy('created_at', 'asc')
-        .select(),
-    ]);
+    const { row, tagIds, checklist } = await taskDb.taskDetailRows(app, id);
     return {
       ...serializeTask(row),
-      tagIds: tagRows.map((r) => r.tag_id).sort(),
-      checklist: checklistRows.map(serializeChecklistItem),
+      tagIds,
+      checklist: checklist.map(serializeChecklistItem),
     };
   }
 
@@ -608,28 +437,8 @@ export default async function taskRoutes(app) {
 
   // ── Status transitions (OPH-033) ──────────────────────────────────────────
 
-  async function applyTransition(request, row, toStatus) {
-    const patch = { status: toStatus, ...completionPatch(row.status, toStatus) };
-    await app.db.transaction(async (trx) => {
-      const revision = await recordSyncWrite(trx, {
-        workspaceId: row.workspace_id,
-        entityType: 'task',
-        entityId: row.id,
-        operation: 'update',
-        changedFields: Object.keys(patch),
-      });
-      await trx('tasks')
-        .where({ id: row.id })
-        .update({
-          ...patch,
-          revision,
-          updated_by: request.user.id,
-          updated_at: new Date(),
-        });
-      const fresh = await trx('tasks').where({ id: row.id }).first();
-      await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
-    });
-  }
+  const applyTransition = (request, row, toStatus) =>
+    taskDb.applyStatusTransition(app, { userId: request.user.id, row, toStatus });
 
   const transitionSchema = {
     params: { type: 'object', properties: { taskId: ULID_PARAM } },

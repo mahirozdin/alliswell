@@ -29,5 +29,6 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0019](0019-ai-provider-architecture.md) | AI provider architecture: two tracks (MCP connector + BYOK), adapters not SDKs | Accepted |
 | [0020](0020-recurring-tasks-and-materialization.md) | Recurring tasks: a clamped RRULE subset, materialized as real rows | Accepted |
 | [0021](0021-calendar-mirror-v2.md) | Calendar mirror v2: every task is on the calendar, and it is not a setting | Accepted |
+| [0022](0022-remote-mcp-server.md) | Remote MCP server: hand-rolled Streamable HTTP behind our own OAuth 2.1 | Accepted |
 
 Template: [template.md](template.md)

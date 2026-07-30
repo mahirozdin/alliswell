@@ -196,6 +196,19 @@ export function loadConfig(env = process.env) {
         ollama: env.AI_OLLAMA_BASE_URL || null,
       }),
     }),
+    // Remote MCP server (Epic 20 Track A, ADR-0022). Independent of AI_ENABLED
+    // by decision: MCP spends no model money and stores no provider keys.
+    // `publicUrl` is the OAuth issuer + resource identity; without it (in
+    // production) the MCP/OAuth routes answer 404 MCP_NOT_CONFIGURED — never
+    // a boot failure (upgraded deployments must not brick).
+    mcp: Object.freeze({
+      enabled: toBool(env.MCP_ENABLED, true, 'MCP_ENABLED'),
+      publicUrl: (env.API_PUBLIC_URL || '').replace(/\/+$/, '') || null,
+      accessTtlSec: toInt(env.MCP_ACCESS_TTL_SEC, 3600, 'MCP_ACCESS_TTL_SEC'),
+      refreshTtlDays: toInt(env.MCP_REFRESH_TTL_DAYS, 30, 'MCP_REFRESH_TTL_DAYS'),
+      codeTtlSec: 60,
+      rateLimitMax: toInt(env.MCP_RATE_LIMIT_MAX, 120, 'MCP_RATE_LIMIT_MAX'),
+    }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
       // 64 hex chars → 32 bytes. Dev fallback is labeled insecure on purpose.
@@ -241,6 +254,12 @@ export function loadConfig(env = process.env) {
     if (baseUrl && !/^https?:\/\//.test(baseUrl)) {
       throw new Error(`AI ${provider} base URL must start with http:// or https://`);
     }
+  }
+  if (config.mcp.publicUrl && !/^https?:\/\//.test(config.mcp.publicUrl)) {
+    throw new Error('API_PUBLIC_URL must start with http:// or https://');
+  }
+  if (config.mcp.accessTtlSec < 60 || config.mcp.refreshTtlDays < 1) {
+    throw new Error('MCP token lifetimes are too small');
   }
   // The collation is interpolated into CREATE TABLE text, so it is validated as
   // a bare identifier here rather than trusted from the environment.

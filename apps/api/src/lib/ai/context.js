@@ -30,6 +30,33 @@ export function fenceBlock({ source, text, tier = null, id = null }) {
 }
 
 /**
+ * MCP task-view resources (OPH-218): pure builders — the route fetches rows,
+ * this shapes them. Lean fields only, ≤50 rows, visible truncation (the
+ * AI.md §7 budget stance applied server-side).
+ */
+export const TASK_VIEW_ROW_CAP = 50;
+
+export function buildTaskViewResource({ view, rows, now, timezone }) {
+  const capped = rows.slice(0, TASK_VIEW_ROW_CAP);
+  return {
+    view,
+    generatedAt: now.toISOString(),
+    timezone,
+    count: rows.length,
+    truncated: rows.length > capped.length,
+    tasks: capped.map((row) => ({
+      id: row.id,
+      title: row.title,
+      status: row.status,
+      priority: row.priority,
+      dueAt: row.due_at ? new Date(row.due_at).toISOString() : null,
+      isUrgent: Boolean(row.is_urgent),
+      projectId: row.project_id ?? null,
+    })),
+  };
+}
+
+/**
  * @param {Array<{tier: string, source: string, id?: string|null, text: string}>} segments
  * @param {{truncated?: boolean}} [flags]
  * @returns {string} the system prompt for a chat turn

@@ -210,6 +210,16 @@ instance owner controls:
   members use the instance's provider account (`instance_env` connections);
   `AI_DAILY_TOKEN_CAP` bounds each user's daily spend on those.
 
+## 6c. AI in Claude / ChatGPT (the MCP connector)
+
+Users can add AllisWell to their own Claude or ChatGPT account so the AI works
+against their workspace on their subscription — AllisWell spends no model money.
+Set **`API_PUBLIC_URL`** to your instance's public origin (HTTPS in production);
+it is the OAuth issuer and MCP resource identity. **`MCP_ENABLED=false`**
+withdraws the connector (every `/mcp` and `/oauth/*` route answers 404). This
+switch is **independent of `AI_ENABLED`**. Full setup and the tool list:
+[MCP.md](MCP.md).
+
 ## 7. Using your own database or Redis
 
 Point the API at them and drop the bundled services: set `DATABASE_HOST`,

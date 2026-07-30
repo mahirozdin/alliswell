@@ -70,6 +70,12 @@ const UNIQUE_INDEXES = {
       cols: ['workspace_id', 'user_id', 'provider'],
     },
   ],
+  // OPH-218: token digests are globally unique; the MCP idempotency ledger.
+  oauth_codes: [{ name: 'oauth_codes.uq_oauth_codes_hash', cols: ['code_hash'] }],
+  oauth_tokens: [{ name: 'oauth_tokens.uq_oauth_tokens_hash', cols: ['token_hash'] }],
+  mcp_mutations: [
+    { name: 'mcp_mutations.uq_mcp_mutation', cols: ['workspace_id', 'user_id', 'idempotency_key'] },
+  ],
 };
 
 const OPS = {
@@ -109,6 +115,10 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     ai_connections: [],
     ai_usage_events: [],
     ai_action_log: [],
+    oauth_clients: [],
+    oauth_codes: [],
+    oauth_tokens: [],
+    mcp_mutations: [],
   };
 
   const columnDefaults = {
@@ -243,6 +253,15 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
       entity_refs: null,
       decided_at: null,
     }),
+    oauth_clients: () => ({
+      name: null,
+      token_endpoint_auth_method: 'none',
+      client_secret_hash: null,
+      last_used_at: null,
+    }),
+    oauth_codes: () => ({ resource: null, consumed_at: null }),
+    oauth_tokens: () => ({ rotated_at: null, revoked_at: null, last_used_at: null }),
+    mcp_mutations: () => ({ client_id: null }),
   };
 
   function assertUnique(name, candidate, rows) {

@@ -34,6 +34,8 @@ import folderRoutes from './routes/folders.js';
 import quickLinkRoutes from './routes/quick-links.js';
 import taskSeriesRoutes from './routes/task-series.js';
 import aiRoutes from './routes/ai.js';
+import oauthRoutes from './routes/oauth.js';
+import mcpRoutes from './routes/mcp.js';
 
 const require = createRequire(import.meta.url);
 const pkg = require('../package.json');
@@ -142,6 +144,13 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   // every /ai/* route 404s exactly like a server that never had it (OPH-215).
   if (config.ai.enabled) {
     await app.register(aiRoutes, { prefix: '/api/v1' });
+  }
+  // The MCP track (OPH-218, ADR-0022) rides its own switch — no /api/v1
+  // prefix: /.well-known/*, /oauth/* and /mcp are protocol-fixed paths.
+  // Unconfigured instances answer 404 inside the routes (never a boot error).
+  if (config.mcp.enabled) {
+    await app.register(oauthRoutes);
+    await app.register(mcpRoutes);
   }
 
   return app;
