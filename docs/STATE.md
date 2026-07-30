@@ -3,7 +3,18 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-31 (**v1.0.0 — LİSANS DEĞİŞTİ + /privacy + /support.**
+**Last updated:** 2026-07-31 (**v1.0.1 CANLI — alliswell.space kökte site, /app'te uygulama,
+/privacy + /support yayında.** `v1.0.0` → `v1.0.1` etiketlendi, release + deploy yeşil, canlıda
+doğrulandı: `/`, `/app/`, `/app/projects`, `/privacy`, `/privacy/tr`, `/support`, `/support/tr`
+hepsi 200. **Deploy'da yakalanan gerçek kusur → 1.0.1:** Cloudflare'in Email Address
+Obfuscation'ı, gizlilik politikasının ZORUNLU iletişim alanındaki `info@bubiapps.com` adresini
+`[email protected]` + çözücü script'e çeviriyordu — sayfaları JS'siz okunur yapmamızın tek
+sebebi mağaza incelemesiydi ve obfuscation JS bağımlılığını tam o satıra geri koyuyordu.
+Build çıktısı DOĞRUYDU, bozulma uçuş sırasında oluyordu; bu yüzden düzeltme markup'ta
+(`<!--email_off-->`, Cloudflare'in kendi opt-out'u — panel ayarından bağımsız çalışır) ve
+deploy artık **build edileni değil SERVİS EDİLENİ** doğruluyor (dört legal sayfayı gerçek
+alan adından çekip adres okunabilir mi diye bakıyor). Ders: bir doğrulama adımı, kullanıcının
+gördüğü katmanda çalışmıyorsa o katmanın hatasını göremez. Önceki: **v1.0.0 — LİSANS DEĞİŞTİ + /privacy + /support.**
 Lisans **AGPL-3.0 → PolyForm Noncommercial 1.0.0** (ADR-0024, ADR-0002'yi geçersiz kılar):
 kişisel kullanım, self-host, eğitim/hayır kurumu ücretsiz; **ticari kullanım lisans ister**
 (info@bubiapps.com). Sebep: ürün alliswell.space + mağazalardan satılacak, AGPL rakibin aynı
