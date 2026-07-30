@@ -5,7 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
-### Added — Epic 20 in progress (toward v0.9.0)
+## [0.9.0] - 2026-07-30
+
+Epic 20 — AI, on your terms. Two honest tracks: connect AllisWell to the Claude
+or ChatGPT subscription you already pay for (a remote MCP server), or bring your
+own key for Anthropic, OpenAI, Gemini, OpenRouter, or a local Ollama. Every
+write goes through a confirmation you control; the model is given no tools, and
+capture works even with no AI at all.
+
+### Added — Epic 20: AI (OPH-215…227)
 
 - **AI safety, written down and tested (OPH-226).** A shared red-team corpus now
   runs across all three AI surfaces (in-app extract, chat, and the MCP server):

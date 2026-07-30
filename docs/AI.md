@@ -1,5 +1,11 @@
 # AI — the two-track integration design
 
+> **Status: implemented in v0.9.0 (2026-07-30).** Both tracks and all thirteen
+> tasks (OPH-215…227) shipped as specified below; the remaining items are device
+> tours (real mic, the iOS Share Extension's pbxproj wiring, a live Claude
+> connector run) and the prod SSE curl, queued in [STATE.md](STATE.md). This
+> document stays the binding design — deviations would supersede it via a new ADR.
+>
 > Binding design for Epic 20 (OPH-215…227 — renumbered from OPH-204…216 when
 > feedback round 12 slotted Epic 19 in between). Decision record:
 > [ADR-0019](adr/0019-ai-provider-architecture.md); entity: BLUEPRINT §4.13; surfaces:

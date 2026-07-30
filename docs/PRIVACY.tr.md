@@ -110,6 +110,37 @@ Tamamen cihazınızda, Apple'ın EventKit altyapısı üzerinden çalışır. Ap
 takvimlerinizle ilgili hiçbir bilgi sunucularımıza gönderilmez; bu verileri
 göremeyiz.
 
+## Yapay zekâ özellikleri (isteğe bağlı)
+
+Yapay zekâ, **siz açana kadar kapalıdır** — sağlayıcı yoksa hiçbir AI yüzeyi
+görünmez. Buradaki hiçbir şey, siz bir sağlayıcı anahtarı eklemeden ya da bir
+paylaşım/ses eylemi başlatmadan gerçekleşmez.
+
+- **Kendi anahtarını getir.** Bir sağlayıcı (Anthropic, OpenAI, Gemini,
+  OpenRouter veya kendi Ollama'nız) bağladığınızda, API anahtarınız sunucuda
+  **AES-256-GCM ile şifreli** saklanır; size yalnızca son 4 karakteri gösterilir
+  ve anahtar ne uygulamaya geri döner ne de o sağlayıcı dışında bir yere gider.
+- **Ne gönderilir, kime.** Bir AI eylemi çalıştırdığınızda — sohbet, "bunu göreve
+  çevir", özetle — ilgili metin (yazdığınız mesaj, asistanın bağlam olarak
+  ihtiyaç duyduğu görev başlıkları ve notlar, paylaşılan metin veya bir ses
+  **dökümü**) **seçtiğiniz sağlayıcıya**, yalnızca o anda gönderilir. O metnin
+  işlenmesi **o sağlayıcının** gizlilik politikasına tabidir. Yerel bir
+  **Ollama**'ya yönlendirirseniz metin kendi makinenizden hiç çıkmaz.
+- **Ses cihazda kalır.** Konuşma **cihazınızda** metne çevrilir; yalnızca ortaya
+  çıkan metin — ses kaydı asla — ve yalnızca siz gönderince iletilir.
+- **Onay hep sizde.** Asistan yalnızca *önerebilir*; her görev veya not sizin
+  dokunuşunuzla oluşur, hiçbir zaman kendiliğinden değil.
+- **Claude veya ChatGPT'ye bağlama (MCP).** AllisWell'i bir Claude ya da ChatGPT
+  aboneliğine bağlarsanız, o asistan görevlerinizi AllisWell'in sunucusu
+  üzerinden, iptal edebileceğiniz yetkili bir bağlantıyla okur; okuyabilir ve
+  oluşturabilir ama **asla silemez**. Okuduğuyla ne yaptığı, o sağlayıcının kendi
+  politikasına tabidir.
+
+Yapay zekâyı kapatmak veya bir bağlantıyı kaldırmak, saklanan anahtarı siler ve
+yukarıdakilerin tümünü durdurur. Seçmediğiniz bir sağlayıcıya verinizi asla
+göndermeyiz. Kendi sunucunuzda çalıştırıyorsanız, sağlayıcı anahtarlarını
+işletmeci sağlamış olabilir — neyi yapılandırdığını işletmecinize sorun.
+
 ## Verilerinizi kimlerle paylaşıyoruz
 
 Hizmeti çalıştırmak için gereken altyapı dışında kimseyle. Açıkça belirtelim:
@@ -123,9 +154,11 @@ Hizmeti çalıştırmak için gereken altyapı dışında kimseyle. Açıkça be
 
 Çalıştığımız veri işleyenler: sunucu ve veritabanı barındırma hizmetimiz,
 yüklediğiniz dosyalar için Cloudflare R2 ve — yalnızca bağlarsanız — takvim
-eşitlemesi için Google. Cloudflare ve Google uluslararası sağlayıcılar
-olduğundan, bu verilerin **yurt dışında** saklanması veya işlenmesi mümkündür.
-Bu aktarım, sözleşmenin ifası için gerekli olduğu ölçüde; Google Takvim
+eşitlemesi için Google ile **seçtiğiniz yapay zekâ sağlayıcısı** (Anthropic,
+OpenAI, Google Gemini, OpenRouter veya yerel kalan kendi Ollama'nız). Cloudflare,
+Google ve bulut yapay zekâ sağlayıcıları uluslararası olduğundan, bu verilerin
+**yurt dışında** saklanması veya işlenmesi mümkündür. Bu aktarım, sözleşmenin
+ifası için gerekli olduğu ölçüde; Google Takvim ve yapay zekâ özellikleri
 bakımından ise açık rızanıza dayanılarak yapılır.
 
 ## Verileri ne kadar süre saklıyoruz

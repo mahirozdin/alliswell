@@ -5775,18 +5775,20 @@ _(✅ 2026-07-30. Korpus `ai_redteam.json` (9 vaka — 218'de doğdu) artık Ü�
 
 ### OPH-227 — README/tanıtım + i18n/tasarım süpürmesi + dizin başvuruları
 
-- [ ] README: **"Works with Claude · ChatGPT"** (MCP bağlayıcısı — kurulum linkiyle) +
+_(✅ 2026-07-30. **Sürüm 0.9.0 dört kaynakta:** `pubspec 0.9.0+11`, `kAppVersion`, root + api `package.json`; CHANGELOG `[0.9.0]` Epic 20 anlatısı (Unreleased boşaltıldı). **README:** iki metin rozeti (Works with Claude · ChatGPT → MCP.md; BYOK: Anthropic · OpenAI · Gemini · OpenRouter · Ollama → AI.md — **logo değil metin**, Gemini "API key", tüketici entegrasyonu ima YOK) + iki özellik maddesi (uygulama içi AI + MCP bağlayıcı) + **bayat durum satırı düzeltildi** (v0.1.0→v0.9.0, **748 app + 592 backend unit + 58 integration**). **STORE-LISTING:** §2.6'ya AI satırı + kullanıcı-başlatımlı işleme notu (Calendar deseni); §5'te **bayat "recurring tasks yok" guardrail'ı düzeltildi** (artık v0.8.0'da var) + yeni "built-in/free AI yok" guardrail'ı (BYOK/kendi aboneliğin, Gemini API key). **PRIVACY.md + PRIVACY.tr.md:** "AI features (optional)" bölümü (BYOK anahtar şifreli, ne gönderilir/kime, ses cihazda, onay hep sizde, MCP; işleyen listesine AI eklendi). **ROADMAP** Phase 14 → ✅ v0.9.0 + kapanış notu; **ARCHITECTURE** §6d AI; **AI.md** "implemented in v0.9.0" başlık dokunuşu. **`docs/store/directories.md`** oluşturuldu (Claude Connectors + ChatGPT başvuru metinleri) → gönderim STATE "Kullanıcıdan bekleyen"e. **Kapılar:** `check:i18n` temiz, contrast **FAILURES: 0** (AI yüzeyleri mevcut token — secondaryContainer/AwTokens.warning — kullandığından yeni ham renk yok), `check:no-ts` + server `lint` + `format:check` temiz, **server 592 unit + app 748**. **Ekran görüntüleri:** bubble/kart sahneleri store_screenshots harness'ında üretilecek — cihaz/golden bağımlı, **cihaz turu kuyruğuna** (README iddiaları görüntüsüz de birebir gerçek).)_
+
+- [x] README: **"Works with Claude · ChatGPT"** (MCP bağlayıcısı — kurulum linkiyle) +
       **"Bring your own key: Anthropic · OpenAI · Gemini · OpenRouter · Ollama"**
       rozetleri/logoları — **logo kullanımı her markanın kurallarına göre denetlenir**,
       izin dar ise metin rozeti (iddia ≠ gerçeklik olamaz: Gemini "API key" diye yazar,
       tüketici-uygulama entegrasyonu İMA EDİLMEZ); özellik bölümü: sesle görev, bubble,
-      paylaşım hedefi, MCP — ekran görüntüleriyle.
-- [ ] STORE-LISTING: AI veri paylaşımı beyanları (Apple/Play formları), yaş
+      paylaşım hedefi, MCP — ekran görüntüleriyle. _(Metin rozetleri + özellik maddeleri BİTTİ; ekran görüntüleri cihaz turu kuyruğunda.)_
+- [x] STORE-LISTING: AI veri paylaşımı beyanları (Apple/Play formları), yaş
       derecelendirme kontrolü; ROADMAP/BLUEPRINT "uygulandı" dokunuşları.
-- [ ] alliswell.space için **Claude Connectors Directory** + **ChatGPT app** dizin
+- [x] alliswell.space için **Claude Connectors Directory** + **ChatGPT app** dizin
       başvuruları hazırlanır ve STATE "Kullanıcıdan bekleyen"e işlenir (inceleme
       süreçleri dış taraf — DoD'yi kilitlemez).
-- [ ] Kapanış süpürmesi: `check:i18n` (tüm `ai.*` anahtarları en+tr), kontrast
+- [x] Kapanış süpürmesi: `check:i18n` (tüm `ai.*` anahtarları en+tr), kontrast
       FAILURES: 0 (bubble/kart/onam yüzeyleri), `lint`/`format:check`/`check:no-ts`,
       app + API tam süit.
 

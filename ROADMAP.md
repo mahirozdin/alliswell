@@ -313,7 +313,7 @@ and tap-to-crash investigated on device.
 
 ## Toward v0.9.0
 
-### Phase 14 — Request round 11 #2: AI — MCP connector, BYOK chat, voice capture ⏳ (planned 2026-07-29)
+### Phase 14 — Request round 11 #2: AI — MCP connector, BYOK chat, voice capture ✅ (v0.9.0, 2026-07-30)
 
 Thirteen tasks (OPH-215…227; renumbered from OPH-204…216 when round 12 slotted
 Epic 19 in between), planned on top of a dedicated max-effort research
@@ -341,6 +341,15 @@ AI reach. Consent screens state each provider's real data policy (including
 Gemini's free-tier training, in amber); a red-team injection corpus runs in CI;
 the prod deploy checklist proves SSE streams through Apache with a curl. Spec:
 BLUEPRINT §4.13/§12.16, [DESIGN §24](docs/DESIGN.md), [docs/AI.md](docs/AI.md).
+
+**Shipped in v0.9.0 (2026-07-30).** All thirteen tasks landed: both tracks are
+live (remote MCP server behind our own OAuth 2.1; five BYOK adapters), the
+bubble/voice/share surfaces commit through the confirm card, and the red-team
+corpus runs across extract, chat and MCP. Remaining before the tag are the
+device tours (real microphone, the iOS Share Extension's pbxproj wiring, a live
+Claude connector run) and the prod SSE curl — queued in [docs/STATE.md](docs/STATE.md).
+Directory submissions (Claude Connectors, ChatGPT apps) are drafted in
+[docs/store/directories.md](docs/store/directories.md) and await the operator.
 
 ## v2 parking lot 💤
 

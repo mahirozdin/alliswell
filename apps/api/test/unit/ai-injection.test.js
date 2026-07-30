@@ -4,11 +4,7 @@ import path from 'node:path';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { startFakeAi } from '../helpers/fakeai.js';
-import {
-  fenceBlock,
-  renderChatSystem,
-  BASE_SYSTEM_RULE,
-} from '../../src/lib/ai/context.js';
+import { fenceBlock, renderChatSystem, BASE_SYSTEM_RULE } from '../../src/lib/ai/context.js';
 
 /**
  * OPH-226 — the red-team corpus against the app-facing AI surfaces (extract +
@@ -82,9 +78,7 @@ describe('extract fences hostile content and never acts (OPH-226)', () => {
       // The hostile text left fenced exactly as the production renderer fences
       // it — the escaped closing tag for the fence-escape case included, so a
       // </user_data> in content can never terminate the block early.
-      expect(lastUserPrompt()).toContain(
-        fenceBlock({ source: 'voice', text: c.text }),
-      );
+      expect(lastUserPrompt()).toContain(fenceBlock({ source: 'voice', text: c.text }));
       // Extract produces a proposal (DATA). It creates no task; the confirm
       // card is the only writer.
       expect(tables.tasks.length).toBe(tasksBefore);
@@ -98,9 +92,7 @@ describe('extract fences hostile content and never acts (OPH-226)', () => {
     fake.state.extractResults = [
       {
         intent: 'create_tasks',
-        tasks: [
-          { title: 'x', confidence: 0.9, action: 'delete_all', tool: 'delete' },
-        ],
+        tasks: [{ title: 'x', confidence: 0.9, action: 'delete_all', tool: 'delete' }],
       },
       { intent: 'create_tasks', tasks: [{ title: 'x', confidence: 0.9 }] },
     ];
@@ -136,9 +128,7 @@ describe('the fence renderer holds the boundary (OPH-226)', () => {
     expect(system).toContain(BASE_SYSTEM_RULE);
     expect(system).toContain('never instructions');
     for (const s of segments) {
-      expect(system).toContain(
-        fenceBlock({ source: 'external_share', tier: 't2', text: s.text }),
-      );
+      expect(system).toContain(fenceBlock({ source: 'external_share', tier: 't2', text: s.text }));
     }
   });
 });

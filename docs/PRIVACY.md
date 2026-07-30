@@ -103,6 +103,37 @@ privacy policy.
 Handled entirely on your device through Apple's EventKit. Nothing about your
 Apple calendars is sent to our servers, and we cannot see them.
 
+## AI features (optional)
+
+AI is **off until you turn it on** — no provider, no AI surfaces. Nothing here
+happens unless you add a provider key or start a share/voice action yourself.
+
+- **Bring your own key.** When you connect a provider (Anthropic, OpenAI,
+  Gemini, OpenRouter, or your own Ollama), your API key is stored **encrypted at
+  rest with AES-256-GCM** on the server; only its last 4 characters are ever
+  shown back to you, and the key is never returned to the app or sent anywhere
+  except that provider.
+- **What is sent, and to whom.** When you run an AI action — chat, "turn this
+  into a task", summarize — the relevant text (the message you write, the task
+  titles and notes the assistant needs as context, the shared text, or a voice
+  **transcript**) is sent to **the provider you chose**, and only then. That
+  provider's handling of it is governed by **their** privacy policy. Point it at
+  a local **Ollama** and the text never leaves your own machine.
+- **Voice stays on device.** Speech is recognized **on your device**; only the
+  resulting text — never the audio — is ever sent, and only when you send it.
+- **You always confirm.** The assistant can only *propose*; every task or note
+  is created by your own tap, never automatically.
+- **Connecting to Claude or ChatGPT (MCP).** If you link AllisWell to a Claude
+  or ChatGPT subscription, that assistant reads your tasks through AllisWell's
+  server over an authorized connection you can revoke; it can read and create,
+  but **never delete**. What that assistant does with what it reads is governed
+  by its own provider's policy.
+
+Turning AI off, or removing a connection, deletes the stored key and stops all
+of the above. We never send your data to a provider you did not choose. On a
+self-hosted instance, the operator may supply the provider keys instead — ask
+your operator what they have configured.
+
 ## Who we share data with
 
 No one, other than the infrastructure we need to run the service. Specifically:
@@ -115,10 +146,12 @@ No one, other than the infrastructure we need to run the service. Specifically:
   have legal or similarly significant effects on you.
 
 The processors we do rely on are our server and database hosting, Cloudflare R2
-for the files you upload, and — only if you connect it — Google for calendar
-sync. Cloudflare and Google are international providers, so data handled by them
-may be stored or processed outside Türkiye and the EU. Where that happens, it is
-either necessary to perform our contract with you or, for Google Calendar, based
+for the files you upload, and — only if you connect them — Google for calendar
+sync and the **AI provider you choose** (Anthropic, OpenAI, Google Gemini,
+OpenRouter, or your own Ollama, which stays local). Cloudflare, Google and the
+cloud AI providers are international, so data handled by them may be stored or
+processed outside Türkiye and the EU. Where that happens, it is either necessary
+to perform our contract with you or, for Google Calendar and AI features, based
 on your explicit consent.
 
 ## How long we keep things

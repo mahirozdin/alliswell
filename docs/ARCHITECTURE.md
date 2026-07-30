@@ -150,6 +150,28 @@ exactly why folding is app-owned) and it holds
 FULLTEXT indexes (`ft_notes_plain_text` in use; `ft_tasks_title_description` gains a task
 `?q=` param in Epic 15) — for API consumers and future web-scale needs, not the app's path.
 
+## 6d. AI (Epic 20 — MCP connector + BYOK, ADR-0019/0022/0023)
+
+Two tracks, one rule: **the model gets no write tools; every write goes through the confirm
+card / the local-first stores.** Track A is a **remote MCP server** (`/mcp`, hand-rolled
+Streamable HTTP — stateless POST-only JSON-RPC, ADR-0022) behind our **own OAuth 2.1 AS**
+(`/oauth/*`: PKCE, dynamic client registration, opaque rotating tokens with family revocation);
+its tools are an allowlist (`search`, `list_tasks`, `get_*`, `create_task`, `complete_task`) with
+**no delete**, and workspace membership is re-checked per request. Track B is **in-app BYOK**:
+thin fetch adapters (no SDKs, ADR-0019) for Anthropic/OpenAI/Gemini/OpenRouter/Ollama behind one
+`chatStream/extract/verify/listModels` contract, keys encrypted at rest (AES-256-GCM under
+`AI_TOKEN_KEY`, only last-4 exposed). Chat streams over **SSE-on-POST** (Socket.IO room for web),
+with a per-user token bucket (Redis Lua, fail-open) shared by chat and extract. Extraction is a
+single JSON-schema proposal (`apps/api/src/lib/ai/schema.js`, one source of truth; Ajv is the last
+word, `additionalProperties:false`, one repair round). **All context fencing lives in one place**
+(`apps/api/src/lib/ai/context.js` → `<user_data>` blocks, closing tag escaped); chat, extract and
+MCP resources render through it, so the app's context chip is an honest view of what was packed.
+The app side is `features/ai/**` — a pure bubble state machine + controller (impure stream/STT
+edges), `AiText` inert rendering (no HTML, external links non-tappable), on-device STT and the
+share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/ai/*` entirely;
+`MCP_ENABLED` + `API_PUBLIC_URL` gate MCP independently. Full threat model: [AI.md](AI.md),
+[SECURITY.md](../SECURITY.md) "AI surfaces".
+
 ## 7. Flutter app design
 
 - **State:** Riverpod. **Navigation:** go_router with `StatefulShellRoute` (adaptive: glass rail

@@ -15,6 +15,9 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 [![Self-hosted](https://img.shields.io/badge/Self--hosted-your_MySQL-2563EB)](docker-compose.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-orange)](CONTRIBUTING.md)
 
+[![Works with Claude & ChatGPT](https://img.shields.io/badge/Works_with-Claude_%C2%B7_ChatGPT-8A5CF6)](docs/MCP.md)
+[![Bring your own key](https://img.shields.io/badge/BYOK-Anthropic_%C2%B7_OpenAI_%C2%B7_Gemini_%C2%B7_OpenRouter_%C2%B7_Ollama-10A37F)](docs/AI.md)
+
 <em>A free, self-hostable alternative to Todoist, Things 3, TickTick, Apple Reminders & Notion.</em>
 
 </div>
@@ -28,7 +31,7 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 
 **AllisWell** brings your whole day into one place. Capture a task in seconds, plan it on a chronological **Home** or a kanban **Board**, keep rich **notes** and **files**, and never miss what matters thanks to **alarm-grade reminders that ring through Silent mode and Focus**. It works **offline-first** with realtime sync across every device, syncs **two-way with Google Calendar and Apple Calendar**, and is **100% self-hosted** — one `docker compose up` and every byte stays in **your own MySQL database**.
 
-> **Project status.** `v0.1.0` is the current tagged release. Everything described below through **`v0.8.0`** — recurring tasks, the always-on calendar mirror, Quick Access, alarm-grade reminders — is built and tested (**653 app tests + 390 backend unit + 47 integration green**) and in final on-device QA before its release tag. Track it in [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md). ⭐ Star the repo to follow along.
+> **Project status.** Everything described below through **`v0.9.0`** — the AI epic (a chat bubble, press-to-talk and share capture, bring-your-own-key providers, and an MCP connector for Claude & ChatGPT), plus recurring tasks, the always-on calendar mirror, Quick Access and alarm-grade reminders — is built and tested (**748 app tests + 592 backend unit + 58 integration green**) and in final on-device QA before its release tag. Track it in [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md). ⭐ Star the repo to follow along.
 
 <br>
 
@@ -49,6 +52,8 @@ Tasks, projects, notes, files and alarm-grade reminders — with true two-way **
 - 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
 - ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, color and order. It is a **section of the sidebar** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones (park it anywhere; it fades out of your way when idle). Yours alone: shortcuts never leak to other members of a shared workspace.
 - 🔁 **Recurring tasks that survive a short month** — repeat a task **every day / week / month / year**, on **weekdays**, on the **last day of the month**, on the **2nd Tuesday**, or on **the first Monday after the 22nd**. Pick "the 31st" and February gets the 28th — AllisWell **clamps, never skips** (Google Calendar would drop that month entirely). A live **"next 5"** preview shows exactly which days you are about to get, the next **12 months** are real tasks you can see in the calendar and the widget, and editing one occurrence asks how far the change should reach — this one, this and future, or all of them.
+- 🤖 **AI, on your terms (optional)** — chat with your tasks in a bubble, **press-to-talk** a task into being, or **share** any text or link straight into AllisWell. **Bring your own key** — Anthropic, OpenAI, Gemini, OpenRouter, or a local **Ollama** — with no AllisWell account and no markup. Every task it proposes waits for **your one-tap confirmation**, the model is given **no tools of its own**, and capture still works with **zero AI**. On-device speech means your **voice never leaves the device** — only the text does. [How AI works →](docs/AI.md)
+- 🔌 **Connect it to Claude or ChatGPT** — AllisWell is also a **remote MCP server**: link it to the Claude or ChatGPT subscription you already pay for and ask them about your tasks, through read-first tools with **no delete, ever**, behind your own OAuth. [Set it up →](docs/MCP.md)
 - 🖥 **Home-screen widgets** — iOS, Android & macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
 - 🌐 **Localization** — English + Turkish out of the box, auto-detected; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted & private** — your MySQL, your server, one `docker compose up`. AGPL-3.0.
