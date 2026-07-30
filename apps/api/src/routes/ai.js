@@ -2,7 +2,10 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { encryptSecret } from '../lib/crypto.js';
+import { formatInstantWithOffset } from '../lib/time.js';
+import { parseJsonColumn } from '../db/task-series.js';
 import { MODEL_CATALOG, catalogDefaults } from '../lib/ai/models.js';
+import { buildExtractionPrompt, extractTasks } from '../lib/ai/extract.js';
 import {
   runChat,
   sseSink,
@@ -706,6 +709,276 @@ export default async function aiRoutes(app) {
       // message carries the caller's id and only a matching entry aborts.
       await app.ai.requestCancel({ requestId, userId: request.user.id });
       return reply.code(204).send();
+    },
+  );
+
+  // ── Extraction: utterance → schema-validated proposal (OPH-219) ───────────
+  const actionSchema = {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      workspaceId: { type: 'string' },
+      userId: { type: 'string' },
+      source: { type: 'string' },
+      requestId: { type: ['string', 'null'] },
+      proposal: { type: 'object', additionalProperties: true },
+      accepted: { type: ['boolean', 'null'] },
+      entityRefs: {
+        type: ['array', 'null'],
+        items: {
+          type: 'object',
+          properties: { type: { type: 'string' }, id: { type: 'string' } },
+        },
+      },
+      createdAt: { type: 'string' },
+      decidedAt: { type: ['string', 'null'] },
+    },
+  };
+
+  function serializeAiAction(row) {
+    return {
+      id: row.id,
+      workspaceId: row.workspace_id,
+      userId: row.user_id,
+      source: row.source,
+      requestId: row.request_id ?? null,
+      proposal: parseJsonColumn(row.proposal) ?? {},
+      accepted: row.accepted === null || row.accepted === undefined ? null : Boolean(row.accepted),
+      entityRefs: parseJsonColumn(row.entity_refs),
+      createdAt: toIso(row.created_at),
+      decidedAt: toIso(row.decided_at),
+    };
+  }
+
+  app.post(
+    '/workspaces/:workspaceId/ai/extract',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { workspaceId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['text', 'source'],
+          properties: {
+            text: { type: 'string', minLength: 1, maxLength: 8000 },
+            source: { type: 'string', enum: ['bubble', 'share', 'quick_add', 'voice'] },
+            connectionId: ULID_PARAM,
+            locale: { type: 'string', maxLength: 16 },
+            timezone: { type: 'string', maxLength: 64 },
+            // The app-side default-task-time setting (OPH-161) — invisible to
+            // the server, so the client sends it; the fallback IS the
+            // product's default default, never an invented hour.
+            defaultTaskTime: { type: 'string', pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' },
+            projectNames: {
+              type: 'array',
+              maxItems: 100,
+              items: { type: 'string', minLength: 1, maxLength: 120 },
+            },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              requestId: { type: 'string' },
+              actionId: { type: 'string' },
+              repaired: { type: 'boolean' },
+              proposal: { type: 'object', additionalProperties: true },
+            },
+          },
+          400: errorResponseSchema,
+          403: errorResponseSchema,
+          422: errorResponseSchema,
+          429: errorResponseSchema,
+          502: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const { workspaceId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      const userId = request.user.id;
+
+      // One bucket with chat — both drain the same provider quota.
+      const verdict = await app.ai.limiter.take(userId);
+      if (!verdict.allowed) {
+        reply.header('retry-after', String(verdict.retryAfterSec ?? 60));
+        throw coded(
+          app.httpErrors.tooManyRequests('Slow down — the AI limit refills in a minute'),
+          'AI_RATE_LIMITED',
+        );
+      }
+      const resolution = await app.ai.resolveConnection({
+        request,
+        workspaceId,
+        connectionId: request.body.connectionId ?? null,
+      });
+      if (resolution.authMode === 'instance_env' && (await app.ai.dailyCap.isOver(userId))) {
+        reply.header('retry-after', '3600');
+        throw coded(
+          app.httpErrors.tooManyRequests('Daily AI budget on this instance is used up'),
+          'AI_DAILY_CAP',
+        );
+      }
+      // Extraction ALWAYS runs on the fast class (the ADR-0019 cost ceiling —
+      // no per-request override).
+      const model = resolution.models.fast ?? resolution.models.chat;
+      if (!model) {
+        throw coded(
+          app.httpErrors.badRequest('Pick a model for this connection first'),
+          'AI_MODEL_REQUIRED',
+        );
+      }
+
+      const userRow = await app.db('users').where({ id: userId }).first();
+      const timezone = request.body.timezone ?? userRow?.timezone ?? 'UTC';
+      const now = new Date();
+      const prompt = buildExtractionPrompt({
+        nowIso: formatInstantWithOffset(now, timezone),
+        timezone,
+        weekday: new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'long' }).format(
+          now,
+        ),
+        defaultTaskTime: request.body.defaultTaskTime ?? '23:59',
+        locale: request.body.locale ?? userRow?.locale ?? null,
+        projectNames: request.body.projectNames ?? [],
+        source: request.body.source,
+        text: request.body.text,
+      });
+
+      const requestId = newId();
+      let totalTokens = 0;
+      const onUsage = async (usage) => {
+        totalTokens += (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0);
+        await app.ai.recordUsage({
+          workspaceId,
+          userId,
+          connectionId: resolution.connectionId,
+          provider: resolution.provider,
+          kind: 'extract',
+          model,
+          inputTokens: usage?.inputTokens ?? null,
+          outputTokens: usage?.outputTokens ?? null,
+          requestId,
+        });
+      };
+
+      let outcome;
+      try {
+        outcome = await extractTasks({
+          adapter: resolution.adapter,
+          provider: resolution.provider,
+          baseUrl: resolution.baseUrl,
+          apiKey: resolution.apiKey,
+          model,
+          prompt,
+          onUsage,
+          now,
+        });
+      } catch (err) {
+        if (err?.code === 'AI_EXTRACTION_INVALID') {
+          // Usage rows exist (the calls happened); NO action-log row — the
+          // log records proposals that reached a human.
+          throw coded(
+            app.httpErrors.unprocessableEntity('The AI could not produce a valid proposal'),
+            'AI_EXTRACTION_INVALID',
+          );
+        }
+        if (err?.name === 'AiProviderError') {
+          throw coded(app.httpErrors.badGateway('The AI provider failed'), upstreamCode(err));
+        }
+        throw err;
+      } finally {
+        await app.ai.touchConnection(resolution.connectionId);
+        if (resolution.authMode === 'instance_env') {
+          await app.ai.dailyCap.add(userId, totalTokens);
+        }
+      }
+
+      const actionId = newId();
+      await app.db('ai_action_log').insert({
+        id: actionId,
+        workspace_id: workspaceId,
+        user_id: userId,
+        source: request.body.source,
+        request_id: requestId,
+        proposal: JSON.stringify(outcome.proposal),
+        accepted: null,
+      });
+      return { requestId, actionId, repaired: outcome.repaired, proposal: outcome.proposal };
+    },
+  );
+
+  // ── Decision: the human verdict on a proposal (append-once evidence) ──────
+  app.post(
+    '/ai/actions/:actionId/decision',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { actionId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['accepted'],
+          properties: {
+            accepted: { type: 'boolean' },
+            entityRefs: {
+              type: 'array',
+              maxItems: 20,
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['type', 'id'],
+                properties: {
+                  type: { type: 'string', enum: ['task', 'note'] },
+                  id: ULID_PARAM,
+                },
+              },
+            },
+          },
+        },
+        response: {
+          200: actionSchema,
+          404: errorResponseSchema,
+          409: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const row = await app.db('ai_action_log').where({ id: request.params.actionId }).first();
+      if (!row) {
+        throw coded(app.httpErrors.notFound('AI action not found'), 'AI_ACTION_NOT_FOUND');
+      }
+      await app.requireWorkspaceMember(request, row.workspace_id);
+      if (row.user_id !== request.user.id) {
+        // 404, not 403 — the co-member privacy stance, as everywhere.
+        throw coded(app.httpErrors.notFound('AI action not found'), 'AI_ACTION_NOT_YOURS');
+      }
+
+      const accepted = request.body.accepted;
+      if (row.accepted !== null && row.accepted !== undefined) {
+        // First decision wins — evidence is append-once (the Epic 16 lesson).
+        // The SAME decision repeated is a quiet no-op so the app's offline
+        // report queue can retry safely; a DIFFERENT one is a conflict.
+        if (Boolean(row.accepted) === accepted) return serializeAiAction(row);
+        throw coded(
+          app.httpErrors.conflict('This proposal was already decided'),
+          'AI_ACTION_DECIDED',
+        );
+      }
+
+      await app
+        .db('ai_action_log')
+        .where({ id: row.id })
+        .update({
+          accepted,
+          entity_refs: request.body.entityRefs ? JSON.stringify(request.body.entityRefs) : null,
+          decided_at: new Date(),
+        });
+      const fresh = await app.db('ai_action_log').where({ id: row.id }).first();
+      return serializeAiAction(fresh);
     },
   );
 }

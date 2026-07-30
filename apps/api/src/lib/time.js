@@ -52,6 +52,32 @@ export function zonedWallTimeToUtc({ year, month, day, hour = 0, minute = 0 }, t
   return new Date(ts);
 }
 
+/**
+ * The instant as an ISO-8601 string with the timezone's OFFSET — what the
+ * extraction prompt hands the model as `now` (OPH-219): a naive timestamp
+ * would make "yarın" ambiguous around midnight.
+ */
+export function formatInstantWithOffset(instant, timeZone) {
+  const wall = wallClockParts(instant, timeZone);
+  const wallAsUtc = Date.UTC(
+    wall.year,
+    wall.month - 1,
+    wall.day,
+    wall.hour,
+    wall.minute,
+    wall.second,
+  );
+  const offsetMin = Math.round((wallAsUtc - instant.getTime()) / 60000);
+  const sign = offsetMin < 0 ? '-' : '+';
+  const abs = Math.abs(offsetMin);
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${wall.year}-${pad(wall.month)}-${pad(wall.day)}` +
+    `T${pad(wall.hour)}:${pad(wall.minute)}:${pad(wall.second)}` +
+    `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+  );
+}
+
 /** Tomorrow at `hour`:00 on the wall clock of `timeZone`, relative to `from`. */
 export function nextMorningIn(timeZone, from = new Date(), hour = 9) {
   const today = wallClockParts(from, timeZone);

@@ -1,0 +1,17 @@
+{
+  "_comment": "OPH-219/OPH-222 — project-name matching parity vectors. Both the JS matcher (apps/api/src/lib/ai/project-match.js, asserted by apps/api/test/unit/ai-project-match.test.js) and the Dart twin (apps/app/lib/src/features/ai/data/project_match.dart, asserted by apps/app/test/features/ai/project_match_test.dart) run every case. Tiers in order: exact (folded equality) → prefix → contains; the first non-empty tier defines candidates; exactly one candidate = a match. Change one side alone and the other fails.",
+  "projects": ["Ahmet", "Ahmet Bey İnşaat", "Işık Evi", "Pazarlama", "Ev işleri", "Okul", "okuma listesi"],
+  "cases": [
+    { "query": "Ahmet", "tier": "exact", "candidates": ["Ahmet"], "match": "Ahmet", "note": "exact beats the prefix hit on 'Ahmet Bey İnşaat'" },
+    { "query": "AHMET", "tier": "exact", "candidates": ["Ahmet"], "match": "Ahmet", "note": "case folds" },
+    { "query": "ahmet bey", "tier": "prefix", "candidates": ["Ahmet Bey İnşaat"], "match": "Ahmet Bey İnşaat", "note": "single prefix hit preselects" },
+    { "query": "isik evi", "tier": "exact", "candidates": ["Işık Evi"], "match": "Işık Evi", "note": "ADR-0013 fold: ışık ≈ isik, İ ≈ i" },
+    { "query": "IŞIK", "tier": "prefix", "candidates": ["Işık Evi"], "match": "Işık Evi", "note": "dotless I folds before lowercasing" },
+    { "query": "ok", "tier": "prefix", "candidates": ["Okul", "okuma listesi"], "match": null, "note": "two prefix hits → picker, no preselect" },
+    { "query": "işleri", "tier": "contains", "candidates": ["Ev işleri"], "match": "Ev işleri", "note": "contains tier only reached when prefix is empty" },
+    { "query": "pazar", "tier": "prefix", "candidates": ["Pazarlama"], "match": "Pazarlama", "note": "plain prefix" },
+    { "query": "muhasebe", "tier": "none", "candidates": [], "match": null, "note": "zero match → picker + '+ Proje ekle'" },
+    { "query": "  ", "tier": "none", "candidates": [], "match": null, "note": "whitespace folds to empty → none" },
+    { "query": "EV İŞLERİ", "tier": "exact", "candidates": ["Ev işleri"], "match": "Ev işleri", "note": "Turkish İ in the query side folds too" }
+  ]
+}

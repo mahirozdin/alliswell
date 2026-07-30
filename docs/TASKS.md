@@ -5561,25 +5561,46 @@ Flutter `AiStreamClient` dikişi OPH-221'de.)_
 
 ### OPH-219 — Çıkarım ucu + görev-önerisi sözleşmesi (tek şema)
 
-- [ ] `src/lib/ai/schema.js` — **tek kaynak** öneri şeması: `intent
+_(✅ 2026-07-30 — **218'den ÖNCE koşuldu (bilinçli takas, STATE'te):** MCP'nin
+`create_task`'ı bu şemayı tek kaynaktan tüketsin diye. Uygulama notları:
+(1) `ajv-formats` YOK — `dueAt` açık ISO+offset pattern'i; `dependencies: {dueAt:
+[dueAtSource]}` çözülmüş tarihi ham ifadesiz İMKÂNSIZ kılar (dürüst onay kartının
+şema seviyesinde garantisi); (2) `providerSchema()` saf dönüşüm: OpenAI strict
+(hepsi required + nullable + bound'lar soyulur) / Gemini (additionalProperties+
+pattern yok) / Anthropic (dependencies+pattern'siz) / Ollama (aynen) —
+`normalizeProposal` strict null'larını düşürür, Ajv HER ZAMAN son sözü söyler;
+(3) geçmiş tarih ÇİFT katman: prompt söyler + sunucu post-check `date_unclear`'ı
+EKLER (tarih kaydırılmaz — sessiz kabul yapısal imkânsız); (4) `defaultTaskTime`
+İSTEMCİDEN gelir (OPH-161 app-side ayarı, sunucu göremez) — fallback '23:59'
+ürünün varsayılan varsayılanı; (5) karar ucu `POST /ai/actions/:id/decision`:
+AYNI karar tekrarı sessiz 200 no-op (çevrimdışı rapor kuyruğu güvenle retry eder),
+FARKLI karar 409 — kanıt append-once; (6) `ajv` package.json'a açıkça yazıldı
+(Fastify'ın zaten kullandığı doğrulayıcı — yeni kategori değil; hoisted v6'ya
+çözülüyordu, ^8 pinlendi).)_
+
+- [x] `src/lib/ai/schema.js` — **tek kaynak** öneri şeması: `intent
       (create_tasks|answer|none)`, `tasks[] {title, description?, projectName?
       (kullanıcının SÖYLEDİĞİ ad — id asla), dueAt (ISO+offset, kullanıcı TZ),
       dueAtSource ("yarın 15:00" ham ifadesi — onay kartında gösterilir), reminderAt?,
       priority, urgent, tags[], checklist[], confidence, ambiguities[]}`; Ajv hem API'de
       hem MCP'de aynı modülden.
-- [ ] Prompt'a enjekte: `now` (ISO+offset), IANA TZ, haftanın günü, **workspace'in
-      varsayılan görev saati** (OPH-161 ayarı — "yarın" çıplaksa yarın@varsayılan saat,
-      sabit saat İCAT EDİLMEZ); geçmişte kalan due → sessiz kabul değil `date_unclear`.
-- [ ] **Proje eşleme LLM'e bırakılmaz:** model `projectName`'i aynen döndürür; çözüm
+- [x] Prompt'a enjekte: `now` (ISO+offset — `formatInstantWithOffset` lib/time.js'e
+      eklendi), IANA TZ, haftanın günü, **workspace'in varsayılan görev saati**
+      (OPH-161 ayarı — "yarın" çıplaksa yarın@varsayılan saat, sabit saat İCAT
+      EDİLMEZ); geçmişte kalan due → sessiz kabul değil `date_unclear`.
+- [x] **Proje eşleme LLM'e bırakılmaz:** model `projectName`'i aynen döndürür; çözüm
       bizde — ADR-0013 fold'u + prefix/contains katmanı (`Ahmet ≈ ahmet ≈ AHMET`,
       `ışık ≈ isik`); tek eşleşme → önseçili, çoklu/sıfır → onay kartında seçici +
       "+ Proje ekle" (OPH-163 affordance'ı aynen). Dart/JS **ortak test vektörleri**
-      (fold süitinin parite kalıbı).
-- [ ] Onarım turu: Ajv hatası → hata metniyle TEK yeniden deneme → hâlâ bozuksa
-      `AI_EXTRACTION_INVALID` + arayüzde "transkripti Inbox'a kaydet" teklifi.
-- [ ] Testler: tablo-güdümlü TR/EN sözler — çok görevli tek cümle ("şu şu şu işler" →
+      (`apps/app/test/fixtures/project_match_parity.json` — Dart yarısı OPH-222'de).
+- [x] Onarım turu: Ajv hatası → hata metniyle TEK yeniden deneme → hâlâ bozuksa
+      `AI_EXTRACTION_INVALID` + arayüzde "transkripti Inbox'a kaydet" teklifi (app
+      OPH-224'te); onarımlı çıkarım İKİ usage satırı yazar (ikisi de gerçekleşti);
+      422'de log satırı YOK (log insana ulaşan önerileri kaydeder).
+- [x] Testler: tablo-güdümlü TR/EN sözler — çok görevli tek cümle ("şu şu şu işler" →
       N satır), göreli tarihler, bilinmeyen proje, geçmiş tarih, boş başlık reddi;
-      onarım turunun tam akışı sahte sağlayıcıyla.
+      onarım turunun tam akışı sahte sağlayıcıyla; parite fikstürü; karar ucu
+      idempotens/409/sahiplik; entegrasyonda JSON kolon gidiş-dönüşü.
 
 ### OPH-220 — Flutter: AI ayarları + onam ekranı
 

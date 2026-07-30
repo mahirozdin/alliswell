@@ -22,6 +22,13 @@ function fenceSafe(text) {
   return String(text).replaceAll('</user_data>', '<\\/user_data>');
 }
 
+/** One fenced data block — every fence in the system comes from here. */
+export function fenceBlock({ source, text, tier = null, id = null }) {
+  const tierAttr = tier ? ` tier="${tier}"` : '';
+  const idAttr = id ? ` id="${id}"` : '';
+  return `<user_data${tierAttr} source="${source}"${idAttr}>\n${fenceSafe(text)}\n</user_data>`;
+}
+
 /**
  * @param {Array<{tier: string, source: string, id?: string|null, text: string}>} segments
  * @param {{truncated?: boolean}} [flags]
@@ -30,10 +37,13 @@ function fenceSafe(text) {
 export function renderChatSystem(segments = [], { truncated = false } = {}) {
   const parts = [BASE_SYSTEM_RULE];
   for (const segment of segments) {
-    const id = segment.id ? ` id="${segment.id}"` : '';
     parts.push(
-      `<user_data tier="${segment.tier}" source="${segment.source}"${id}>\n` +
-        `${fenceSafe(segment.text)}\n</user_data>`,
+      fenceBlock({
+        source: segment.source,
+        text: segment.text,
+        tier: segment.tier,
+        id: segment.id,
+      }),
     );
   }
   if (truncated) {

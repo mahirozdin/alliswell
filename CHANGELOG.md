@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **Speak (or paste) tasks, get a proposal — never a silent write (OPH-219).**
+  `POST /ai/extract` turns one utterance into a schema-validated proposal:
+  multi-task sentences split into rows, relative dates resolve against your
+  timezone and your default task hour (never an invented one), the raw phrase
+  ("yarın 15:00") travels with every resolved date, and a past-due date is
+  flagged `date_unclear` instead of silently shifted. Project names come back
+  verbatim and are matched by *us* with the Turkish-fold tiers (shared JS/Dart
+  parity vectors). One repair round on invalid output, then an honest 422.
+  Accept/reject decisions land in the audit log exactly once.
 - **AI chat streams (OPH-217).** `POST /ai/chat` streams answers as
   Server-Sent Events (15 s heartbeats, real backpressure), with a Socket.IO
   personal-room transport for the web where XHR can't stream. A per-user token
