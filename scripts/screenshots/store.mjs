@@ -73,11 +73,16 @@ const SLIDES = [
   },
   {
     src: 'ios/08-repeat-dialog.png',
-    android: 'android/11-alarm-permission.png',
+    // Not the alarms permission screen, which is what used to be here: a store
+    // slide should show the PRODUCT, and an OS settings toggle shows the
+    // platform. Not the create sheet either — its capture has the keyboard up,
+    // covering half the frame. Android has no repeat-dialog capture yet, so it
+    // shows the day instead; recapture one and this line can match iOS.
+    android: 'android/02-home-today.png',
     title: 'See the next five days first',
     sub: 'Before you commit to a schedule',
-    androidTitle: 'Built on real alarms',
-    androidSub: 'Not a louder notification',
+    androidTitle: 'The whole day, in one scroll',
+    androidSub: 'Overdue, today, this week — finished work struck through',
   },
   {
     src: 'ios/03-projects.png',

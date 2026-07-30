@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-07-31
+
+### Changed
+
+- **Permission dialogs are not product screenshots.** The README's alarm section
+  led with three images, two of which were OS permission screens — they show the
+  platform, not the app, and a reader learns nothing from them. All three are
+  gone from that section; the one genuinely good capture (the full-screen alarm
+  actually ringing) moved into the phone strip, where it replaces a fourth
+  near-identical Home screen.
+- The same criticism applied to a **store slide**, which is more consequential
+  than a README image: Android's fourth slide was the "Alarms & reminders"
+  settings screen. It now shows the day's task list.
+- "Alarms, not notifications" moved from first to last of the five
+  differentiators, so the section opens on recurrence — the one with a table
+  that proves itself in four lines.
+
 ## [1.0.2] - 2026-07-31
 
 ### Changed

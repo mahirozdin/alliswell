@@ -45,7 +45,7 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | 🐳 **Self-host** | Live now | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data). |
 | 💻 **Desktop** | Build from source | macOS, Windows and Linux targets build from the same codebase. |
 
-> **Project status — `v1.0.2`, live.** Everything on this page is built, tested
+> **Project status — `v1.0.3`, live.** Everything on this page is built, tested
 > (**748 app tests · 592 backend unit · 58 integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
@@ -58,26 +58,7 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 Everything else here is table stakes. These five are the reasons to switch — and
 each is something the alternatives **cannot** do, not merely haven't yet.
 
-### 1. Alarms, not notifications
-
-A reminder that arrives with a chime is a suggestion. AllisWell's urgent tasks
-ring with a **real alarm sound, through Silent mode and through Focus** (iOS 26
-AlarmKit; Android's `USAGE_ALARM` insistent channel), keep **re-alerting until
-you acknowledge them**, and write a log entry explaining themselves when the OS
-gets in the way.
-
-<p align="center">
-  <img src="screenshots/android/09-alarm-ring.png" width="27%" alt="AllisWell's full-screen alarm on Android: URGENT REMINDER, a task title, an Acknowledge button and snooze presets that each say when they will ring again">
-  &nbsp;
-  <img src="screenshots/ios/alarmkit-permission.png" width="27%" alt="iOS asking to allow AllisWell to schedule alarms that play sounds and appear on screen even when a Focus is active">
-  &nbsp;
-  <img src="screenshots/android/11-alarm-permission.png" width="27%" alt="Android's Alarms and reminders permission screen for AllisWell">
-</p>
-
-<p align="center"><em>Left: the ring screen, with snooze presets that tell you the exact time they will ring again.<br>
-Middle &amp; right: the OS-level permissions this is actually built on — not a louder notification.</em></p>
-
-### 2. Recurrence that doesn't lie
+### 1. Recurrence that doesn't lie
 
 Ask for **the 31st** and RFC 5545 — which is what Google Calendar follows —
 simply **skips** every month without one. Your rent does not skip February.
@@ -102,7 +83,7 @@ rows** (so they show up in search, the calendar and the widget), and an
   <img src="screenshots/ios/08-repeat-dialog.png" width="31%" alt="The Repeat dialog with a Next 5 preview listing the exact upcoming dates">
 </p>
 
-### 3. True two-way calendar sync, to both ecosystems
+### 2. True two-way calendar sync, to both ecosystems
 
 Not an ICS subscription and not a one-way import. Your tasks become **real
 Google Calendar events**; edits you make in Google **come back** through push
@@ -110,14 +91,14 @@ webhooks, incremental sync and etag-based conflict resolution; and your other
 Google events appear **on Home, next to your tasks**. Apple Calendar goes
 through an **EventKit** bridge. Things 3 reads your calendar — it never writes.
 
-### 4. One codebase, six platforms, offline-first
+### 3. One codebase, six platforms, offline-first
 
 A local SQLite replica, a mutation outbox and a revision log mean **everything
 works with the network off** — create, edit, complete, search — and lands on
 every other device within a round-trip when it comes back. Apple's tools are
 Apple-only. Google's need the network more than they admit.
 
-### 5. AI on your terms — including none
+### 4. AI on your terms — including none
 
 **Add AllisWell to the Claude or ChatGPT subscription you already pay for**
 (it is a remote MCP server), or **bring your own key** — Anthropic, OpenAI,
@@ -128,6 +109,16 @@ confirmation; **deletion is closed to AI permanently**; and capture works with
 only the text does.
 
 [How AI works →](docs/AI.md) &nbsp;·&nbsp; [Set up the MCP connector →](docs/MCP.md)
+
+### 5. Alarms, not notifications
+
+A reminder that arrives with a chime is a suggestion. AllisWell's urgent tasks
+ring with a **real alarm sound, through Silent mode and through Focus** (iOS 26
+AlarmKit; Android's `USAGE_ALARM` insistent channel), keep **re-alerting until
+you acknowledge them**, and offer snooze presets that each tell you the exact
+time they will ring again. When the OS gets in the way — a battery manager, a
+revoked permission — the app writes a log entry explaining itself, so
+"it didn't ring" is a question with an answer.
 
 ---
 
@@ -161,10 +152,10 @@ only the text does.
   &nbsp;
   <img src="screenshots/android/01-home.png" width="23%" alt="AllisWell Home on Android">
   &nbsp;
-  <img src="screenshots/android/10-home-dark.png" width="23%" alt="AllisWell Home on Android in dark mode">
+  <img src="screenshots/android/09-alarm-ring.png" width="23%" alt="AllisWell's full-screen urgent reminder on Android: an Acknowledge button and snooze presets that each say the exact time they will ring again">
 </p>
 
-<p align="center"><sub>iPhone 17 Pro Max · Pixel 9 Pro XL · light and dark · every one a real capture from a running app, not a mock-up.<br>
+<p align="center"><sub>iPhone 17 Pro Max · Pixel 9 Pro XL · light, dark, and an alarm actually going off · every one a real capture from a running app, not a mock-up.<br>
 How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></sub></p>
 
 ---
@@ -177,16 +168,16 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 - 🗂 **Projects** — colours, favourites, archiving, a Notion-style README note as the overview, and per-project Tasks / Notes / Files tabs.
 - 🏷 **Tags &amp; priorities** — type `#tags` inline (auto-create, colours, fold-matched suggestions) and set `none → urgent` priority. Subtasks and checklists inside a task.
 - 🔔 **Alarm-grade reminders** — exact-minute delivery, **urgent alarms through Silent mode &amp; Focus**, a re-alert-until-acknowledged chain you can tune, snooze presets (5 m / 30 m / 1 h / tomorrow / custom) that each say when they'll ring, **mute one task's alarms** without completing it, your own ringtone, an **alarm log**, and a privacy mode that hides task content on the lock screen.
-- 🔁 **Recurring tasks that survive a short month** — see [§2 above](#2-recurrence-that-doesnt-lie).
+- 🔁 **Recurring tasks that survive a short month** — see [§1 above](#1-recurrence-that-doesnt-lie).
 - 🔎 **Instant search** — case- **and accent-insensitive** across the Latin alphabets ("muller" finds _Müller_, "cafe" finds _café_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**. The folding is the app's own, so results never depend on your database's collation.
 - 📝 **Notes &amp; documents** — rich-text (Quill Delta) notes with inline images/video, links to tasks and projects, pin/archive, card grid or list, and Markdown export.
-- 📅 **True two-way calendar sync** — see [§3 above](#3-true-two-way-calendar-sync-to-both-ecosystems). Every task is on the calendar, and it is **not a setting**.
+- 📅 **True two-way calendar sync** — see [§2 above](#2-true-two-way-calendar-sync-to-both-ecosystems). Every task is on the calendar, and it is **not a setting**.
 - 📎 **Attachments &amp; Files** — attach any file to tasks, notes and projects, plus a global **Files** section with nestable folders — stored in **Cloudflare R2 / any S3** via presigned URLs (the API never proxies your bytes).
 - 🔄 **Local-first realtime sync** — offline by default: a mutation outbox, a revision log, idempotent push with field-level last-write-wins, and a Socket.IO channel that fans changes to every device within a round-trip.
 - ✅ **Finish things visibly** — a completed task stays on today's list, struck through and calm, until the next midnight; everything older lives in **Settings ▸ Completed**, a day-headed timeline you can scroll back through.
 - 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
 - ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, colour and order. A **sidebar section** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones. Yours alone: shortcuts never leak to other members of a shared workspace.
-- 🤖 **AI, on your terms (optional)** — see [§5 above](#5-ai-on-your-terms--including-none).
+- 🤖 **AI, on your terms (optional)** — see [§4 above](#4-ai-on-your-terms--including-none).
 - 🖥 **Home-screen widgets** — iOS, Android &amp; macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
 - 🌐 **Localisation** — ships in English and Turkish, auto-detected from your system; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).
