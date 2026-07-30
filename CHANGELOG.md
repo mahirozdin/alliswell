@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added — Epic 20 in progress (toward v0.9.0)
 
+- **Five AI providers, one contract (OPH-216).** Thin fetch adapters for
+  Anthropic, OpenAI, Gemini, OpenRouter and Ollama normalize three SSE dialects
+  and one NDJSON stream into a single event flow, with a hand-written parser
+  (no SDKs, no LangChain — ADR-0019). A curated model catalog (`GET
+  /ai/models`, live tags for Ollama) and an honest connection test button
+  endpoint: a bad key answers `{ok:false}` instead of a 500, and flags the
+  connection. Cancellation is proven end-to-end in tests — closing the stream
+  really closes the upstream socket.
 - **The AI foundation is on the server (OPH-215).** Three new tables
   (`ai_connections`, `ai_usage_events` — accounting, never content —, and
   `ai_action_log`), provider-key encryption at rest under a new `AI_TOKEN_KEY`

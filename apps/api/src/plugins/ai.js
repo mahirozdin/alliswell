@@ -3,6 +3,8 @@ import fp from 'fastify-plugin';
 import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { decryptSecret } from '../lib/crypto.js';
+import { providers } from '../lib/ai/providers/index.js';
+import { catalogDefaults } from '../lib/ai/models.js';
 
 /**
  * The AI seam (OPH-215, Epic 20, ADR-0019): connection resolution, key
@@ -33,10 +35,11 @@ export default fp(
 
     /**
      * Resolves the connection a request should use and hands back everything
-     * an adapter call needs. `connectionId` pins one; otherwise the caller's
-     * most recently used live connection in the workspace wins.
+     * an adapter call needs. `connectionId` pins one (workspaceId optional —
+     * derived from the row after a membership re-check); otherwise the
+     * caller's most recently used live connection in `workspaceId` wins.
      */
-    async function resolveConnection({ request, workspaceId, connectionId = null }) {
+    async function resolveConnection({ request, workspaceId = null, connectionId = null }) {
       let row;
       if (connectionId) {
         row = await app
@@ -44,12 +47,13 @@ export default fp(
           .where({ id: connectionId })
           .whereNull('deleted_at')
           .first();
-        if (!row || row.workspace_id !== workspaceId) {
+        if (!row || (workspaceId && row.workspace_id !== workspaceId)) {
           throw coded(
             app.httpErrors.notFound('AI connection not found'),
             'AI_CONNECTION_NOT_FOUND',
           );
         }
+        await app.requireWorkspaceMember(request, row.workspace_id);
         if (row.user_id !== request.user.id) {
           // 404, not 403: the status must not confirm a co-member's row exists.
           throw coded(
@@ -83,14 +87,19 @@ export default fp(
         apiKey = decryptSecret(row.encrypted_key, ai.tokenKey);
       }
 
+      const defaults = catalogDefaults(row.provider);
       return {
         row,
         connectionId: row.id,
         provider: row.provider,
+        adapter: providers[row.provider],
         authMode: row.auth_mode,
         apiKey,
         baseUrl,
-        models: { chat: row.default_chat_model ?? null, fast: row.default_fast_model ?? null },
+        models: {
+          chat: row.default_chat_model ?? defaults.chat,
+          fast: row.default_fast_model ?? defaults.fast,
+        },
       };
     }
 
@@ -143,13 +152,15 @@ export default fp(
 
     app.decorate('ai', {
       enabled: ai.enabled,
-      // Provider adapter registry — filled by OPH-216 (lib/ai/providers).
-      providers: {},
+      providers,
       resolveConnection,
       recordUsage,
       touchConnection,
       notConfigured,
     });
   },
-  { name: 'alliswell-ai', dependencies: ['alliswell-mysql', 'alliswell-redis'] },
+  {
+    name: 'alliswell-ai',
+    dependencies: ['alliswell-mysql', 'alliswell-redis', 'alliswell-auth'],
+  },
 );

@@ -2,6 +2,7 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { encryptSecret } from '../lib/crypto.js';
+import { MODEL_CATALOG, catalogDefaults } from '../lib/ai/models.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
@@ -371,6 +372,163 @@ export default async function aiRoutes(app) {
         updated_at: new Date(),
       });
       return reply.code(204).send();
+    },
+  );
+
+  const modelOptionSchema = {
+    type: 'object',
+    properties: { id: { type: 'string' }, label: { type: 'string' } },
+  };
+
+  /** Maps an AiProviderError onto our stable upstream codes. */
+  function upstreamCode(err) {
+    if (err?.code === 'upstream_auth') return 'AI_UPSTREAM_AUTH_FAILED';
+    if (err?.code === 'upstream_rate_limited') return 'AI_UPSTREAM_RATE_LIMITED';
+    return 'AI_UPSTREAM_ERROR';
+  }
+
+  // ── Models: static catalog for the cloud four, live tags for Ollama ───────
+  app.get(
+    '/workspaces/:workspaceId/ai/models',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { workspaceId: ULID_PARAM } },
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { connectionId: ULID_PARAM },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              provider: { type: 'string' },
+              connectionId: { type: 'string' },
+              source: { type: 'string', enum: ['catalog', 'live'] },
+              models: {
+                type: 'object',
+                properties: {
+                  chat: { type: 'array', items: modelOptionSchema },
+                  fast: { type: 'array', items: modelOptionSchema },
+                },
+              },
+              defaults: {
+                type: 'object',
+                properties: {
+                  chat: { type: ['string', 'null'] },
+                  fast: { type: ['string', 'null'] },
+                },
+              },
+            },
+          },
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          502: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const { workspaceId } = request.params;
+      await app.requireWorkspaceMember(request, workspaceId);
+      const resolution = await app.ai.resolveConnection({
+        request,
+        workspaceId,
+        connectionId: request.query.connectionId ?? null,
+      });
+
+      if (resolution.adapter.capabilities().liveModels) {
+        let listed;
+        try {
+          listed = await resolution.adapter.listModels({
+            baseUrl: resolution.baseUrl,
+            apiKey: resolution.apiKey,
+          });
+        } catch (err) {
+          throw coded(
+            app.httpErrors.badGateway('The model list could not be fetched'),
+            upstreamCode(err),
+          );
+        }
+        const options = listed.map((m) => ({ id: m.id, label: m.id }));
+        const first = options[0]?.id ?? null;
+        return {
+          provider: resolution.provider,
+          connectionId: resolution.connectionId,
+          source: 'live',
+          // A self-host usually pulls one model; fast = chat there.
+          models: { chat: options, fast: options },
+          defaults: {
+            chat: resolution.row.default_chat_model ?? first,
+            fast: resolution.row.default_fast_model ?? first,
+          },
+        };
+      }
+
+      const entry = MODEL_CATALOG[resolution.provider];
+      const defaults = catalogDefaults(resolution.provider);
+      return {
+        provider: resolution.provider,
+        connectionId: resolution.connectionId,
+        source: 'catalog',
+        models: { chat: entry.chat, fast: entry.fast },
+        defaults: {
+          chat: resolution.row.default_chat_model ?? defaults.chat,
+          fast: resolution.row.default_fast_model ?? defaults.fast,
+        },
+      };
+    },
+  );
+
+  // ── Connection test: an honest result, not a thrown 502 ──────────────────
+  // A test that RAN and found a bad key is a successful test — OPH-220's
+  // button wants {ok:false, code} to render, so upstream failures are data.
+  app.post(
+    '/ai/connections/:connectionId/test',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { connectionId: ULID_PARAM } },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              ok: { type: 'boolean' },
+              latencyMs: { type: 'integer' },
+              code: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+          503: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const resolution = await app.ai.resolveConnection({
+        request,
+        connectionId: request.params.connectionId,
+      });
+      const started = Date.now();
+      try {
+        await resolution.adapter.verify({
+          baseUrl: resolution.baseUrl,
+          apiKey: resolution.apiKey,
+          signal: AbortSignal.timeout(10000),
+        });
+        return { ok: true, latencyMs: Date.now() - started };
+      } catch (err) {
+        const code = upstreamCode(err);
+        if (code === 'AI_UPSTREAM_AUTH_FAILED') {
+          await app
+            .db('ai_connections')
+            .where({ id: resolution.connectionId })
+            .update({ status: 'error', updated_at: new Date() });
+        }
+        return { ok: false, code, message: 'The provider refused the connection test' };
+      }
     },
   );
 }

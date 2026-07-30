@@ -5470,20 +5470,41 @@ OPH-220'nin onam ekranı yürünmeden create'e ulaşılamaz, kalıcı sunucu izi
 
 ### OPH-216 — Sağlayıcı adaptörleri: Anthropic, OpenAI, Gemini, OpenRouter, Ollama
 
-- [ ] `src/lib/ai/providers/*.js` — ortak sözleşme: `capabilities()`, `chatStream()`
+_(✅ 2026-07-30 — uygulama notları: (1) OpenAI adaptörü bir **lehçe fabrikası**
+(`createOpenAiDialectAdapter`) — OpenRouter ~15 satırlık örnekleme (max_tokens +
+`/v1/auth/key` verify + nezaket başlıkları); OpenAI `chat/completions` konuşur,
+`/v1/responses` değil — iki sağlayıcının paylaştığı ortak dil bu. (2) Hata olayları
+tel seviyesinde değil: adaptörler `AiProviderError` FIRLATIR, 'error' SSE olayına
+çeviri route katmanının işi (OPH-217). (3) Ollama SSE değil **NDJSON** — ikinci
+ayrıştırıcı `parseJsonLines` aynı dosyada. (4) Şema biçimlendirme adaptörün işi
+DEĞİL: `extract()` çağırandan SAĞLANMIŞ (provider-dönüştürülmüş) şemayı aynen
+geçirir — dönüşüm OPH-219'un `providerSchema`'sında. (5) Katalog varsayılanında
+Gemini sohbet = **Flash**: ücretsiz katman Flash-only, 402 yiyen varsayılan yalan
+olur. (6) fakeai'nin öğrettiği tuzak: istemci kopuşu `request.raw`'da değil
+**`reply.raw`'ın 'close'unda** görünür — OPH-217'nin gerçek SSE ucu aynı
+dinleyiciyi kullanmalı, yorumda yazılı.)_
+
+- [x] `src/lib/ai/providers/*.js` — ortak sözleşme: `capabilities()`, `chatStream()`
       (sağlayıcı SSE lehçeleri **tek normalize akışa** çevrilir: `text|usage|done|error`),
       `extract()` (sağlayıcı-doğal kısıtlı çıktı: Anthropic structured outputs, OpenAI
       `json_schema` strict, Gemini `responseSchema`; OpenRouter=OpenAI lehçesi; Ollama
-      `format: json`).
-- [ ] ~80 satırlık SSE ayrıştırıcı elle yazılır (bağımlılık yok — ADR-0019'da yazılı).
-- [ ] **Süreç-içi sahte sağlayıcılar** (ADR-0006 §5 emsali): beş adaptör aynı Vitest
+      `format: json` — tam şema, Ollama ≥0.5 grameri).
+- [x] ~80 satırlık SSE ayrıştırıcı elle yazılır (bağımlılık yok — ADR-0019'da yazılı;
+      `lib/ai/sse.js`: çok baytlı karakter chunk sınırında bölünse de TextDecoder
+      stream'li çözer, testte `ş` ikiye bölünür).
+- [x] **Süreç-içi sahte sağlayıcılar** (ADR-0006 §5 emsali): beş adaptör aynı Vitest
       sözleşme süitinden geçer (akış parçalama, iptal, hata gövdeleri, kısıtlı çıktı
-      reddi + onarım girdisi).
-- [ ] Model kataloğu ucu: `GET /ai/models` — bağlantının sağlayıcısına göre seçilebilir
+      reddi + onarım girdisi) — TEK Fastify, beş yerel tel kodlayıcı
+      (`test/helpers/fakeai.js`); tel assert'leri strict/responseSchema/format'ın
+      GERÇEKTEN gittiğini, Gemini anahtarının URL'e asla girmediğini kanıtlar.
+- [x] Model kataloğu ucu: `GET /ai/models` — bağlantının sağlayıcısına göre seçilebilir
       modeller + fabrika varsayılanları (sohbet: orta sınıf; çıkarım: **hızlı sınıf** —
-      maliyet tavanı ADR'de).
-- [ ] Testler: sözleşme süiti ×5; `AbortSignal`'ın gerçek iptali; usage muhasebesinin
-      `ai_usage_events`'e düşüşü.
+      maliyet tavanı ADR'de); katalog statik veri (üç aylık kontrolde tazelenir),
+      Ollama canlı `/api/tags`; bağlantı test ucu (`POST /ai/connections/:id/test`)
+      dürüst `{ok:false, code}` döner ve auth hatasında satırı `error`'a çevirir.
+- [x] Testler: sözleşme süiti ×5; `AbortSignal`'ın gerçek iptali (fake'in `aborted`
+      sayacı upstream soketin kapandığını kanıtlar); usage muhasebesinin
+      `ai_usage_events`'e düşüşü (+ bozuk muhasebe yanıtı asla düşürmez).
 
 ### OPH-217 — `/ai/chat`: SSE akışı + hız sınırı + iptal + prod kanıtı
 
