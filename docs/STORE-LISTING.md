@@ -576,10 +576,10 @@ security-logging note, matching the "Technical logs" section of `docs/PRIVACY.md
   https://alliswell.space/delete-account
   ```
 
-  **This page must be created.** It must state: the in-app path
+  ✅ **Live** at <https://alliswell.space/delete-account>. It states: the in-app path
   (Settings → Delete account), the 3-day grace period and how to cancel, exactly
   what is erased, what is retained and for how long, and an off-app route
-  (**privacy@alliswell.space**) for users who can no longer sign in. Apple has the
+  (**info@bubiapps.com**) for users who can no longer sign in. Apple has the
   same requirement for the in-app path — which the app already satisfies — but
   only Google requires the public URL.
 
@@ -928,19 +928,32 @@ shipped build**. Do not add them back without re-checking the code.
 
 ### Pre-submission blockers (not copy — build and infrastructure)
 
-- [ ] **Android release signing** still uses the debug keystore
-      (`apps/app/android/app/build.gradle.kts`, `signingConfig = signingConfigs.getByName("debug")`).
-      Play will reject the upload.
-- [ ] **Display name is inconsistent:** `Alliswell` on iOS
-      (`CFBundleDisplayName`) vs `alliswell` on Android (`android:label`).
-      Pick `AllisWell` and set it on both before the first submission — the
-      home-screen label is much harder to change later than the store title.
-- [ ] **`privacy@alliswell.space` does not exist yet** (see the header note in
-      `docs/PRIVACY.md`). Create the mailbox or change the address in both
-      policy files.
-- [ ] **Three web pages must exist:** `/privacy`, `/support`, `/delete-account`
-      (§1.6, §2.6).
-- [ ] **`ITSAppUsesNonExemptEncryption = false`** in `apps/app/ios/Runner/Info.plist`,
-      so every upload skips the export-compliance prompt.
-- [ ] **Demo account** created on the hosted service, with credentials in both
-      stores' review notes.
+Re-verified 2026-07-31 against the live site and the working tree — this list is
+the current state, not the original one.
+
+**Still open — these stop a submission:**
+
+- [ ] **The release keystore is missing.** `apps/app/android/key.properties`
+      points at `key0.jks`, and that file is not in the tree (correctly — it is
+      gitignored). Without it the release build silently falls back to the debug
+      key and **Play rejects the upload**. Restore the keystore from wherever it
+      is kept, or generate one and keep it somewhere you cannot lose it: losing
+      the upload key means never updating the listing again.
+- [ ] **No demo account on the hosted service.** `demo@alliswell.space` answers
+      401 on `api.alliswell.space`. Apple **rejects** any app behind a sign-in
+      without working review credentials. Create it and seed it:
+      `node scripts/seed-demo.mjs --api https://api.alliswell.space`.
+- [ ] **iPad screenshots** (asset checklist #3) — required while the build
+      declares iPad support.
+
+**Resolved:**
+
+- [x] **Display name** is `AllisWell` on both platforms (`CFBundleDisplayName`,
+      `android:label`).
+- [x] **`ITSAppUsesNonExemptEncryption = false`** is set in `Info.plist`, so
+      uploads skip the export-compliance prompt.
+- [x] **The three web pages are live:** `/privacy`, `/support`,
+      `/delete-account` — all 200, all readable without JavaScript.
+- [x] **The contact mailbox exists.** The policies name `info@bubiapps.com`, a
+      real address, instead of the `privacy@alliswell.space` box that was never
+      created.
