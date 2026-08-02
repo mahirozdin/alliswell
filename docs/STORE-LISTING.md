@@ -59,10 +59,27 @@ around exactly that pairing.
 Editable without a new build — use it for launch beats and swap it later.
 
 ```text
-0.4.0 is here: a kanban Board, a Files section with folders, accent-insensitive search, and urgent alarms that re-alert until you actually acknowledge them.
+Reminders that ring through Silent mode and Focus. Repeats that never skip a month. Two-way calendar sync. Free, no ads, no tracking — sign in with Google or Apple.
 ```
 
-**(151)**
+**(164)** — current, for the 1.1.0 launch.
+
+<details>
+<summary>Alternates, all counted</summary>
+
+```text
+Alarm-grade reminders that keep coming back until you acknowledge them, a kanban board, rich notes and two-way Google Calendar sync. Free, no ads, no tracking.
+```
+
+**(159)**
+
+```text
+Tasks, notes and reminders loud enough to actually move you. Ask for the 31st and February answers with the 28th. Free, no ads, no tracking, no paid tier.
+```
+
+**(154)**
+
+</details>
 
 <details>
 <summary>Alternate promo lines</summary>
@@ -670,8 +687,10 @@ section should not either.
 **Tanıtım metni (≤ 170 karakter)**
 
 ```text
-0.4.0 yayında: Kanban Pano, klasörlü Dosyalar bölümü, aksana takılmayan arama ve siz kapatana kadar tekrar tekrar çalan acil alarmlar.
+Sessiz moda ve Odak'a rağmen çalan hatırlatıcılar. Şubat'ı atlamayan tekrarlar. Çift yönlü takvim eşitlemesi. Ücretsiz; reklam yok, takip yok.
 ```
+
+**(142)** — 1.1.0 için güncel.
 
 **(130)**
 
