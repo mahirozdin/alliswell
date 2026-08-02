@@ -22,9 +22,6 @@
 	<string>$(FLUTTER_BUILD_NAME)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<!-- OPH-189 (ADR-0016): the app answers to alliswell:// — the widget taps
-	     through with it, calendar events carry it (ADR-0003) and notes embed it.
-	     Unregistered, iOS simply never launches us and the failure is silent. -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -35,6 +32,16 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>alliswell</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>google-sign-in</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
 			</array>
 		</dict>
 	</array>

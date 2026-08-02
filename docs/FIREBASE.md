@@ -79,6 +79,33 @@ Xcode targets need `GoogleService-Info.plist` added to the **Runner** target's
 being replaced). Crashlytics on iOS also wants a run-script phase uploading dSYMs
 — see Firebase's own iOS setup page; it is the one step the CLI cannot do.
 
+### Google Sign-In needs two more things
+
+- **SHA fingerprints (Android).** Until the release _and_ debug SHA-1s are
+  registered on the Android app, `google-services.json` comes back with an empty
+  `oauth_client` list and sign-in fails at runtime with a developer error. If you
+  use Play App Signing, the certificate Play re-signs with must be registered too
+  — otherwise sign-in works in your own build and fails for everyone who
+  installs from the store.
+- **The iOS callback URL scheme.** iOS cannot return from the Google sheet
+  without `REVERSED_CLIENT_ID` declared as a URL scheme. `Info.plist` (committed)
+  holds `$(GOOGLE_REVERSED_CLIENT_ID)`; the Podfile reads the real value out of
+  the plist and writes `ios/Flutter/Firebase.xcconfig`, which is gitignored. No
+  project identifier is committed, and a build with no config file simply
+  produces no scheme.
+
+**The token's audience.** `SocialSignIn` passes the **web** client id as
+`serverClientId`, so the ID token has one audience on every platform. That is why
+the server needs only `SIGN_IN_GOOGLE_WEB_CLIENT_ID` — the per-platform Android
+and iOS clients never appear as an audience and do not belong in the server's
+environment.
+
+**Fetching config with the CLI:** `firebase apps:sdkconfig … --out <file>` can
+write a **cached** copy that predates your latest console change. Printing to
+stdout returns the fresh one. If a config comes back with no `oauth_client`
+after you have added fingerprints, that is what happened — pipe stdout to the
+file instead.
+
 ## 3. Turning it off
 
 For a build with no telemetry at all, delete the config files. That is the whole

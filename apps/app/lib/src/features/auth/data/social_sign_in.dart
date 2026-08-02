@@ -73,9 +73,25 @@ class SocialSignIn {
   Future<String> googleIdToken() async {
     try {
       if (!_googleReady) {
-        // v7 requires an explicit initialize; the client ids come from the
-        // platform config files, which is why none of them appear in this repo.
-        await _google.initialize();
+        // v7 requires an explicit initialize. The per-platform client ids come
+        // from the native config files, which is why none of them appear here.
+        //
+        // `serverClientId` is the WEB client id, and it is what decides the
+        // `aud` claim of the token our server then verifies. Without it the
+        // audience differs per platform — the iOS client on iOS, the default
+        // web client on Android — so the server would need every id configured
+        // and would still be guessing. With it, one audience covers every
+        // platform: SIGN_IN_GOOGLE_WEB_CLIENT_ID.
+        //
+        // Empty by default so the repo carries no identifier; pass it at build
+        // time (--dart-define) and the SDK otherwise falls back to the web
+        // client in the platform config file.
+        const serverClientId = String.fromEnvironment(
+          'GOOGLE_SERVER_CLIENT_ID',
+        );
+        await _google.initialize(
+          serverClientId: serverClientId.isEmpty ? null : serverClientId,
+        );
         _googleReady = true;
       }
       final account = await _google.authenticate();
