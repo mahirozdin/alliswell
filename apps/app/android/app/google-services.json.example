@@ -1,0 +1,48 @@
+{
+  "_comment": [
+    "TEMPLATE — copy to google-services.json and fill in from YOUR OWN Firebase project.",
+    "The real file is gitignored (ADR-0025): AllisWell ships every line of Firebase",
+    "wiring, and none of the identifiers that point at the maintainer's project.",
+    "",
+    "Get yours: Firebase console > Project settings > Your apps > Android > google-services.json,",
+    "or:  firebase apps:sdkconfig ANDROID <appId> --project <yourProject> \\",
+    "       --out apps/app/android/app/google-services.json",
+    "",
+    "WITHOUT this file the app still builds and runs — the Gradle plugin is applied",
+    "conditionally and Firebase reports itself unconfigured. See docs/FIREBASE.md.",
+    "",
+    "None of these values is a secret in the password sense: they ship inside every",
+    "installed app and Google treats them as public identifiers. They are kept out of",
+    "the repository because they POINT AT a billed project, not because they unlock it.",
+    "What actually protects the project is Firebase Security Rules, App Check and the",
+    "SHA-256 fingerprints registered for OAuth — configure those, do not rely on hiding",
+    "this file."
+  ],
+  "project_info": {
+    "project_number": "000000000000",
+    "project_id": "your-firebase-project-id",
+    "storage_bucket": "your-firebase-project-id.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "android_client_info": {
+          "package_name": "com.alliswell.alliswell"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "YOUR_ANDROID_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -29,6 +29,20 @@ class AuthApi {
     'password': password,
   }).then(AuthSession.fromJson);
 
+  /// Exchange a Google/Apple ID token for an AllisWell session (ADR-0026).
+  ///
+  /// The provider's token never becomes the session: the server verifies it,
+  /// decides which account it belongs to and mints our own tokens. That is what
+  /// keeps a self-hosted deployment — which has no Firebase and may have no
+  /// Google client at all — working exactly like this one.
+  Future<AuthSession> oauth({
+    required String provider,
+    required String idToken,
+  }) => _post('/api/v1/auth/oauth', {
+    'provider': provider,
+    'idToken': idToken,
+  }).then(AuthSession.fromJson);
+
   Future<AuthSession> refresh(String refreshToken) => _post(
     '/api/v1/auth/refresh',
     {'refreshToken': refreshToken},

@@ -7,6 +7,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart';
 import 'auth_messages.dart';
 import 'auth_scaffold.dart';
+import 'social_sign_in_buttons.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -124,6 +125,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           onPressed: _submitting ? null : () => context.go('/register'),
           child: Text('auth.toRegister'.tr()),
         ),
+        const SizedBox(height: 12),
+        const SocialSignInButtons(),
       ],
     );
   }

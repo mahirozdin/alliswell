@@ -93,6 +93,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     workspaces: [],
     workspace_members: [],
     refresh_tokens: [],
+    // OPH-231: linked Google/Apple identities (ADR-0026).
+    user_identities: [],
     projects: [],
     tags: [],
     tasks: [],

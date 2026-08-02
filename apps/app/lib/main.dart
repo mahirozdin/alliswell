@@ -5,6 +5,7 @@ import 'package:home_widget/home_widget.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'src/app.dart';
+import 'src/core/firebase/firebase_bootstrap.dart';
 import 'src/core/retry.dart';
 import 'src/features/widgets/widget_callback.dart';
 import 'src/features/widgets/widget_host.dart';
@@ -40,6 +41,12 @@ Future<void> main() async {
   await AwI18n.instance.boot();
   // Locale-aware date/number formatting (OPH-123 — task due dates, etc.).
   await initializeDateFormatting();
+  // Optional, and awaited on purpose: Crashlytics can only report the errors
+  // that happen AFTER its handlers are installed, so a crash during the first
+  // frame is exactly what would be lost by firing this off unawaited. It
+  // returns false — quickly — on any build without a Firebase config file, so
+  // this costs a fork nothing (ADR-0025).
+  await AwFirebase.bootstrap();
   // `retry`: without it Riverpod 3 retries every failed provider ten times
   // behind a spinner — including errors no retry can fix (core/retry.dart).
   runApp(const ProviderScope(retry: awRetry, child: AllisWellApp()));

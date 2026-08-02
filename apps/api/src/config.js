@@ -143,6 +143,24 @@ export function loadConfig(env = process.env) {
       tokenBaseUrl: env.GOOGLE_TOKEN_BASE_URL || 'https://oauth2.googleapis.com',
       apiBaseUrl: env.GOOGLE_API_BASE_URL || 'https://www.googleapis.com',
     }),
+    // Sign in with Google / Apple (Epic 21, ADR-0026). Separate from the
+    // `google` block above, which is CALENDAR sync: different consent, different
+    // client, different lifetime. These are the audiences an incoming ID token
+    // is allowed to name — one per platform, because one Google project issues a
+    // different client ID to Android, iOS and web and all three are equally us.
+    //
+    // Configure none and the provider is simply off: the endpoint answers
+    // OAUTH_PROVIDER_NOT_CONFIGURED rather than accepting tokens minted for
+    // somebody else's application.
+    signIn: Object.freeze({
+      googleWebClientId: env.SIGN_IN_GOOGLE_WEB_CLIENT_ID || null,
+      googleIosClientId: env.SIGN_IN_GOOGLE_IOS_CLIENT_ID || null,
+      googleAndroidClientId: env.SIGN_IN_GOOGLE_ANDROID_CLIENT_ID || null,
+      // Apple names the audience differently per surface: the app's bundle id
+      // on iOS/macOS, the Services ID on web and Android.
+      appleBundleId: env.SIGN_IN_APPLE_BUNDLE_ID || null,
+      appleServiceId: env.SIGN_IN_APPLE_SERVICE_ID || null,
+    }),
     // Attachments (Epic 14, ATTACHMENTS.md / ADR-0011). Optional like Google:
     // with no storage env at all the file endpoints answer
     // STORAGE_NOT_CONFIGURED and the app shows honest empty states. The

@@ -5,13 +5,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-31
+
+### Added
+
+- **Sign in with Google and Sign in with Apple** (ADR-0026). The provider proves
+  who you are; **AllisWell's own database still owns the account**. The app gets
+  the provider's ID token and `POST /auth/oauth` verifies it against the
+  provider's live JWKS — signature, issuer, and audience pinned to our own client
+  IDs, which is the check that stops a token minted for somebody else's app from
+  signing its bearer in here. Account matching is three rules, and the third is
+  the security one: an unknown subject with an **unverified** e-mail gets a new
+  account, never a link to an existing one. A test fails if that guard is removed.
+  New table `user_identities`; one person may link both providers to one account.
+- **Firebase Analytics, Crashlytics and Performance** (ADR-0025) — all optional
+  at runtime, and **none of the credentials are in this repository**. There is no
+  `firebase_options.dart`; the native SDKs read gitignored config files, the
+  Gradle plugins are applied only when those files exist, and
+  `AwFirebase.bootstrap()` degrades silently when they do not. A fresh clone
+  builds and runs with no Firebase — which is the normal state for a fork.
+  See [docs/FIREBASE.md](docs/FIREBASE.md).
+- **macOS store screenshots** — `store/macos/01–06.png` at 2880×1800.
+
+### Changed
+
+- **The privacy policy now says what is actually true.** It claimed "no Firebase,
+  no Crashlytics, no analytics SDKs"; that stopped being true the moment
+  Crashlytics landed. Both language versions now list exactly what Analytics,
+  Crashlytics and Performance send, state that content — task titles, note
+  bodies, file names — is never attached, and note that self-hosted builds have
+  none of it.
+
 ## [1.0.3] - 2026-07-31
 
 ### Fixed
 
 - **A custom snooze did nothing for the half hour before midnight.** The alarm
   ring screen suggested "half an hour from now" as the time but opened its date
-  picker on *today*, so accepting both defaults at 23:40 composed today-at-00:10
+  picker on _today_, so accepting both defaults at 23:40 composed today-at-00:10
   — about a day in the past — which the handler then discarded **silently**. An
   alarm ringing at 23:40 is exactly when somebody reaches for snooze, and the
   tap did nothing at all. Both pickers now share one anchor, and a refused
@@ -44,7 +75,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   the wrong thing to shout at a global audience from an `<h2>`. It is now
   **"Search that ignores accents"**, with an example anyone can read
   ("muller" finds Müller), across the README, the landing site, the comparison
-  doc and both stores' copy. The Turkish `ı → i` case remains the *engineering*
+  doc and both stores' copy. The Turkish `ı → i` case remains the _engineering_
   reason the fold is app-owned rather than delegated to a collation, and stays
   recorded in ADR-0013 where it belongs.
 - The store listings' Turkish section is framed as a **localised listing**
@@ -129,7 +160,7 @@ a licence that reflects what the project has become — a product, not a hobby.
   `flutter build apk` had been failing since OPH-225. Plugin modules are now
   pinned to 17 in `android/build.gradle.kts`.
 - **A date-dependent test.** `tasks_flow_test.dart`'s reminder-picker assertion
-  computed its target day from *today* while the picker opens on *tomorrow's*
+  computed its target day from _today_ while the picker opens on _tomorrow's_
   month — so it went red on the last day of every month. It now pins mid-month,
   which is also the only range unambiguous in a calendar grid that renders its
   neighbours' edge days.
@@ -200,7 +231,7 @@ capture works even with no AI at all.
   your data). The screen also carries the instance's MCP connector URL.
 - **Add AllisWell to your own Claude or ChatGPT (OPH-218).** A remote MCP
   server (`/mcp`) with its own minimal OAuth 2.1 authorization server — the AI
-  works against your workspace on *your* subscription, so AllisWell spends
+  works against your workspace on _your_ subscription, so AllisWell spends
   nothing on model calls. Seven tools (search, list/get, create and complete
   tasks) and two task-view resources; **no delete tool, ever, by design**.
   Writes go through the same domain layer as the app, are annotated for the
@@ -212,7 +243,7 @@ capture works even with no AI at all.
   timezone and your default task hour (never an invented one), the raw phrase
   ("yarın 15:00") travels with every resolved date, and a past-due date is
   flagged `date_unclear` instead of silently shifted. Project names come back
-  verbatim and are matched by *us* with the Turkish-fold tiers (shared JS/Dart
+  verbatim and are matched by _us_ with the Turkish-fold tiers (shared JS/Dart
   parity vectors). One repair round on invalid output, then an honest 422.
   Accept/reject decisions land in the audit log exactly once.
 - **AI chat streams (OPH-217).** `POST /ai/chat` streams answers as
@@ -228,7 +259,7 @@ capture works even with no AI at all.
   Anthropic, OpenAI, Gemini, OpenRouter and Ollama normalize three SSE dialects
   and one NDJSON stream into a single event flow, with a hand-written parser
   (no SDKs, no LangChain — ADR-0019). A curated model catalog (`GET
-  /ai/models`, live tags for Ollama) and an honest connection test button
+/ai/models`, live tags for Ollama) and an honest connection test button
   endpoint: a bad key answers `{ok:false}` instead of a 500, and flags the
   connection. Cancellation is proven end-to-end in tests — closing the stream
   really closes the upstream socket.
@@ -257,7 +288,6 @@ capture works even with no AI at all.
   of AI reach; red-team corpus in CI). [docs/AI.md](docs/AI.md),
   [ADR-0019](docs/adr/0019-ai-provider-architecture.md), BLUEPRINT §4.13/§12.16,
   DESIGN §24.
-
 
 ## [0.8.1] - 2026-07-29
 
@@ -312,7 +342,7 @@ group. Sheets open in front of the app instead of under its own toolbar. Home's
 view controls moved into the app bar, giving the list back two lines. And the
 snooze button on an alarm notification finally does something.
 
-### Added 
+### Added
 
 - **Recurring tasks reach every surface (OPH-208).** List rows wear a quiet ↻
   (and drop it the moment they are completed — a finished occurrence does not
@@ -367,7 +397,7 @@ snooze button on an alarm notification finally does something.
   a series keeps every occurrence that already happened.
   `tasks.repeat_rule` left the write path in the same change.
 
-### Fixed 
+### Fixed
 
 - **Notification actions stop falling on the floor (OPH-214).** Pressing snooze
   on an alarm did nothing, and tapping the notification could crash the app on
@@ -382,7 +412,7 @@ snooze button on an alarm notification finally does something.
   device pass stays open — a real crash log is still worth collecting.
 
 - **Sheets open in front of the app again (OPH-212).** Editing a project from
-  its row menu opened the sheet *underneath* the shell's glass bar and floating
+  its row menu opened the sheet _underneath_ the shell's glass bar and floating
   button — visible, but not touchable. The cause was not the menu: every
   `showModalBottomSheet` in the app used the nearest navigator, and every
   project, note and file surface lives inside a shell branch whose Scaffold
@@ -391,7 +421,7 @@ snooze button on an alarm notification finally does something.
   just finding it — with the fix reverted it fails with "would not hit test",
   which is exactly what the user saw.
 
-### Changed 
+### Changed
 
 - **Home's view controls moved into the app bar (OPH-213).** The Liste | Pano
   segmented row and the floating "show calendar" button used to eat two lines
@@ -425,9 +455,9 @@ snooze button on an alarm notification finally does something.
 
 - **The calendar mirror's shape is decided, and the native-todo mapping is
   refused with a reason (OPH-209, docs only).** The owner asked for a direct
-  Google Tasks / Apple Reminders mapping *if the provider supports it properly*.
-  It does not: the Tasks API records only the DATE — *"It isn't possible to read
-  or write the time that a task is scheduled for using the API"* — and every
+  Google Tasks / Apple Reminders mapping _if the provider supports it properly_.
+  It does not: the Tasks API records only the DATE — _"It isn't possible to read
+  or write the time that a task is scheduled for using the API"_ — and every
   AllisWell task has a time (the default is 23:59, the alarms fire on it, the
   30-minute block derives from it). It also has no push channel, unlike
   Calendar; and Apple's `EKReminder` is a separate iOS permission with no server
@@ -437,7 +467,7 @@ snooze button on an alarm notification finally does something.
   as a machine suppression flag, because the inbound side needs somewhere to
   record "the user deleted this event in Google"), completed tasks KEEP their
   block with a `✓`, the backfill is bounded to −30 days → +12 months, and
-  429/Retry-After handling lands *before* the backfill rather than after it.
+  429/Retry-After handling lands _before_ the backfill rather than after it.
 
 - **The recurrence rule model is decided, and it clamps (OPH-204, docs only).**
   A sourced round across RFC 5545, RFC 7529, Google Calendar, Outlook, Todoist,
@@ -570,7 +600,7 @@ wired and tested at the layers below the UI, and invisible above it.
 - 🔗 **Tapping the widget goes somewhere.** `alliswell://` is registered with both
   operating systems and routed by a tested table; the router's error screen is
   ours and its way out works. Previously the tap produced `No route for
-  alliswell://open/` and the recovery button produced a second error.
+alliswell://open/` and the recovery button produced a second error.
 - 🔢 **The widget says how many tasks today actually holds** (overdue + due
   today), and iOS 17+/Android can tick one off **without opening the app** —
   through the same optimistic + outbox write the UI uses, so it syncs and works
@@ -613,7 +643,7 @@ wired and tested at the layers below the UI, and invisible above it.
   having written anything yet: nothing reaches the database or the outbox until
   the undo window closes, so if the app dies in between, nothing was deleted.
   Deletes that cascade — projects, folders, files — keep their confirmation
-  dialog; the swipe is a shortcut *to* that question, never past it.
+  dialog; the swipe is a shortcut _to_ that question, never past it.
   ([ADR-0017](docs/adr/0017-swipe-to-delete-package.md), DESIGN §19.)
 - **Settings ▸ Completed** (OPH-186): everything you have ever finished, newest
   first, grouped by day and paged as you scroll — sorted by the task's own date
@@ -678,8 +708,8 @@ wired and tested at the layers below the UI, and invisible above it.
 
 ## [0.5.0] - 2026-07-28
 
-The alarm release. Round 9 was the first time AllisWell was used *as an alarm
-clock*, and it failed the way only a real user can reveal — so this version is
+The alarm release. Round 9 was the first time AllisWell was used _as an alarm
+clock_, and it failed the way only a real user can reveal — so this version is
 mostly about a reminder that behaves like one.
 
 ### Highlights
@@ -764,6 +794,7 @@ mostly about a reminder that behaves like one.
   run once** — the Swift file was in no Xcode target, so the app built green
   while the one path that can outrun the mute switch was dead. It is wired now,
   and verified from the built app rather than from the source tree.
+
 - **Apple Watch, explained rather than built** (OPH-183). Reminder system settings
   now say what a paired watch already does — alerts mirror to it while your phone
   is locked, no extra app — and where its sound and haptics live (Watch → Sounds
@@ -824,7 +855,7 @@ mostly about a reminder that behaves like one.
 
 - **An urgent task's own deadline rings again** (OPH-175). Setting a reminder used
   to REPLACE the deadline alarm: a task due at 22:45 with a 22:42 nudge alerted at
-  22:42 and then let 22:45 pass in silence. A reminder is a nudge *before* the
+  22:42 and then let 22:45 pass in silence. A reminder is a nudge _before_ the
   deadline, never a substitute for it — so an urgent task now carries both alarms
   independently, each with its own text ("the time you set is here" vs "waiting for
   acknowledgement"), and both at alarm loudness. Identical times still ring once.

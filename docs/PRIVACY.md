@@ -13,12 +13,12 @@ It applies to the AllisWell apps and to the hosted service at
 **BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI** (trading as **BubiApps**) is the data controller for the hosted
 service.
 
-| | |
-| --- | --- |
-| **Registered name** | BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI |
-| **Address** | Mevlana Mah. Karasu Cad. No: 14, İç Kapı No: 16 · Talas / Kayseri · Türkiye |
-| **E-mail** | **info@bubiapps.com** |
-| **Phone** | +90 505 493 1041 |
+|                     |                                                                             |
+| ------------------- | --------------------------------------------------------------------------- |
+| **Registered name** | BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI                           |
+| **Address**         | Mevlana Mah. Karasu Cad. No: 14, İç Kapı No: 16 · Talas / Kayseri · Türkiye |
+| **E-mail**          | **info@bubiapps.com**                                                       |
+| **Phone**           | +90 505 493 1041                                                            |
 
 Contact for any privacy question or request: **info@bubiapps.com**. We answer
 within 30 days, and within the shorter period the law requires where one applies
@@ -122,7 +122,7 @@ happens unless you add a provider key or start a share/voice action yourself.
   a local **Ollama** and the text never leaves your own machine.
 - **Voice stays on device.** Speech is recognized **on your device**; only the
   resulting text — never the audio — is ever sent, and only when you send it.
-- **You always confirm.** The assistant can only *propose*; every task or note
+- **You always confirm.** The assistant can only _propose_; every task or note
   is created by your own tap, never automatically.
 - **Connecting to Claude or ChatGPT (MCP).** If you link AllisWell to a Claude
   or ChatGPT subscription, that assistant reads your tasks through AllisWell's
@@ -139,16 +139,32 @@ your operator what they have configured.
 
 No one, other than the infrastructure we need to run the service. Specifically:
 
-- **We do not use any third-party analytics, advertising, or tracking SDKs.**
-  There is no Firebase, no Crashlytics, no Sentry, no ad network, no attribution
-  or fingerprinting SDK in the app or the API.
-- **We do not sell or rent your data**, and we do not share it for advertising.
+- **We use Firebase for crash reporting, analytics and performance**, and
+  nothing else. Google is the processor. What goes to it:
+  - **Crashlytics** — stack traces, OS and device model, app version.
+  - **Analytics (Google Analytics for Firebase)** — screen names, app version,
+    coarse device model, country-level region, and a handful of events like
+    "a task was created". Not what the task said.
+  - **Performance** — how long requests and screens take.
+
+  Each of these is tagged with your AllisWell **account id** so a crash can be
+  matched to a report you send us. That id is a random string. It is never your
+  e-mail address, and **the content you write — task titles, note bodies, file
+  names — is never attached to any of it.**
+
+- **There is no advertising, attribution or fingerprinting SDK**, in the app or
+  in the API. We do not sell or rent your data, and we do not share it for
+  advertising.
+- **Self-hosted builds have none of this.** The Firebase configuration is not in
+  the public source; a build made from the repository has no analytics and no
+  crash reporting at all (docs/FIREBASE.md).
 - We do not build profiles about you and we do not make automated decisions that
   have legal or similarly significant effects on you.
 
-The processors we do rely on are our server and database hosting, Cloudflare R2
-for the files you upload, and — only if you connect them — Google for calendar
-sync and the **AI provider you choose** (Anthropic, OpenAI, Google Gemini,
+The processors we rely on are our server and database hosting, Cloudflare R2 for
+the files you upload, **Google (Firebase)** for the crash and usage reporting
+above, and — only if you connect them — Google for calendar sync and the **AI
+provider you choose** (Anthropic, OpenAI, Google Gemini,
 OpenRouter, or your own Ollama, which stays local). Cloudflare, Google and the
 cloud AI providers are international, so data handled by them may be stored or
 processed outside Türkiye and the EU. Where that happens, it is either necessary

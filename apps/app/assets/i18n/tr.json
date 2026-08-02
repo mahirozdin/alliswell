@@ -51,7 +51,11 @@
     "signIn": "Giriş yap",
     "createAccount": "Hesap oluştur",
     "toRegister": "Yeni misin? Hesap oluştur",
-    "toLogin": "Zaten hesabın var mı? Giriş yap"
+    "toLogin": "Zaten hesabın var mı? Giriş yap",
+    "or": "veya",
+    "continueWithGoogle": "Google ile devam et",
+    "continueWithApple": "Apple ile devam et",
+    "socialFailed": "Giriş tamamlanamadı. Lütfen tekrar deneyin."
   },
   "settings": {
     "title": "Ayarlar",

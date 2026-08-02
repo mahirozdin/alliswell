@@ -5,6 +5,7 @@ import '../../core/server_url.dart';
 import 'data/auth_api.dart';
 import 'data/auth_interceptor.dart';
 import 'data/auth_repository.dart';
+import 'data/social_sign_in.dart';
 import 'data/models.dart';
 import 'data/secret_store.dart';
 import 'data/secure_secret_store.dart';
@@ -92,3 +93,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
   Future<void> logout({bool allDevices = false}) =>
       ref.read(authRepositoryProvider).logout(allDevices: allDevices);
 }
+
+/// Google / Apple sign-in (ADR-0026). Overridden in widget tests with a fake so
+/// no test ever reaches a real provider.
+final socialSignInProvider = Provider<SocialSignIn>((_) => SocialSignIn());

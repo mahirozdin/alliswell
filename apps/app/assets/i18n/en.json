@@ -52,7 +52,11 @@
     "signIn": "Sign in",
     "createAccount": "Create account",
     "toRegister": "New here? Create an account",
-    "toLogin": "Already have an account? Sign in"
+    "toLogin": "Already have an account? Sign in",
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "socialFailed": "That sign-in did not go through. Please try again."
   },
   "settings": {
     "title": "Settings",

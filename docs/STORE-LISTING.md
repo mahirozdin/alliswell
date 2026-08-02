@@ -19,20 +19,20 @@ _not_ written, and why. **Read §5 before editing any of this copy.**
 
 ### 1.1 App name (≤ 30 characters)
 
-| #                     | Option                              | Count    |
-| --------------------- | ----------------------------------- | -------- |
-| **A** _(recommended)_ | `AllisWell`                         | **(9)**  |
-| B                     | `AllisWell: Tasks & Reminders`      | **(28)** |
-| C                     | `AllisWell - Tasks & Alarms`        | **(26)** |
+| #                     | Option                              | Count       |
+| --------------------- | ----------------------------------- | ----------- |
+| **A** _(recommended)_ | `AllisWell`                         | **(9)**     |
+| B                     | `AllisWell: Tasks & Reminders`      | **(28)**    |
+| C                     | `AllisWell - Tasks & Alarms`        | **(26)**    |
 | D                     | `AllisWell: ToDo, Reminders, Notes` | **(33)** ❌ |
-| **D′**                | `AllisWell: ToDo & Reminders`       | **(27)** |
+| **D′**                | `AllisWell: ToDo & Reminders`       | **(27)**    |
 | D″                    | `AllisWell: Tasks, Notes & Alarms`  | **(32)** ❌ |
 
 **On “AllisWell: ToDo & Reminders & Notes”** — the phrasing the owner asked for
 is **38 characters**, eight over Apple's hard 30-character limit, and Play's
 title cap is 30 too. It cannot be used verbatim on either store. The nearest
 legal spellings are **D′** (27) here, and the longer **`AllisWell: ToDo,
-Reminders & Notes`** (33) is *also* over — the third noun does not fit next to
+Reminders & Notes`** (33) is _also_ over — the third noun does not fit next to
 the brand on Apple. Play has no keyword field, so spend its 30 there instead
 (see §2.1); Apple's subtitle is a separate indexed field, so use it for the
 nouns that will not fit in the name.
@@ -49,7 +49,7 @@ category words visible in search results rather than just indexed.
 | ---------------------------------------- | ------------------------------- | -------- |
 | **A** _(recommended, pairs with name A)_ | `Tasks, notes and real alarms`  | **(28)** |
 | B                                        | `Offline tasks, notes & alarms` | **(29)** |
-| C                                        | `source-available task manager`      | **(24)** |
+| C                                        | `source-available task manager` | **(24)** |
 
 **Recommended pairing: name A + subtitle A.** The keywords in §1.5 are built
 around exactly that pairing.
@@ -191,12 +191,12 @@ todo,reminder,planner,kanban,board,project,checklist,gtd,agenda,organizer,offlin
 
 ### 1.6 URLs
 
-| Field                               | URL                               | Status               |
-| ----------------------------------- | --------------------------------- | -------------------- |
-| **Support URL** _(required)_        | `https://alliswell.space/support` | ✅ Live — generated from `docs/SUPPORT.md` |
-| **Marketing URL** _(optional)_      | `https://alliswell.space`         | ✅ Live — `apps/landing` |
+| Field                               | URL                               | Status                                                           |
+| ----------------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| **Support URL** _(required)_        | `https://alliswell.space/support` | ✅ Live — generated from `docs/SUPPORT.md`                       |
+| **Marketing URL** _(optional)_      | `https://alliswell.space`         | ✅ Live — `apps/landing`                                         |
 | **Privacy Policy URL** _(required)_ | `https://alliswell.space/privacy` | ✅ Live — generated from `docs/PRIVACY.md` (TR at `/privacy/tr`) |
-| **App URL** (for reviewers)         | `https://alliswell.space/app`     | ✅ Live — the full web app |
+| **App URL** (for reviewers)         | `https://alliswell.space/app`     | ✅ Live — the full web app                                       |
 
 **All three pages now exist**, deployed from `apps/landing` to the root of
 alliswell.space with the app under `/app`. `/privacy` and `/support` are
@@ -363,12 +363,12 @@ Found something wrong? Tell us at https://github.com/mahirozdin/alliswell/issues
 
 ### 2.1 App title (≤ 30 characters)
 
-| #                     | Option                            | Count    |
-| --------------------- | --------------------------------- | -------- |
-| **A** _(recommended)_ | `AllisWell: ToDo & Reminders`     | **(27)** |
-| B                     | `AllisWell: Tasks & Reminders`    | **(28)** |
-| C                     | `AllisWell - Task & Note App`     | **(27)** |
-| D                     | `AllisWell`                       | **(9)**  |
+| #                     | Option                         | Count    |
+| --------------------- | ------------------------------ | -------- |
+| **A** _(recommended)_ | `AllisWell: ToDo & Reminders`  | **(27)** |
+| B                     | `AllisWell: Tasks & Reminders` | **(28)** |
+| C                     | `AllisWell - Task & Note App`  | **(27)** |
+| D                     | `AllisWell`                    | **(9)**  |
 
 **A over B** on Play specifically: “ToDo” is the higher-volume query on Android
 and Play matches the title literally, where Apple's engine already covers
@@ -383,9 +383,9 @@ category words is correct on Play and wasteful on Apple.
 
 ### 2.2 Short description (≤ 80 characters)
 
-| #                     | Option                                                                             | Count    |
-| --------------------- | ---------------------------------------------------------------------------------- | -------- |
-| **A** _(recommended)_ | `Offline-first tasks, notes and files, with alarms that actually wake you.`        | **(73)** |
+| #                     | Option                                                                                  | Count    |
+| --------------------- | --------------------------------------------------------------------------------------- | -------- |
+| **A** _(recommended)_ | `Offline-first tasks, notes and files, with alarms that actually wake you.`             | **(73)** |
 | B                     | `Tasks, notes, files and alarm-grade reminders. source-available. No ads, no tracking.` | **(80)** |
 | C                     | `source-available task manager: offline, realtime sync, alarms that keep ringing.`      | **(75)** |
 
@@ -530,19 +530,19 @@ behaviour and `docs/PRIVACY.md`. Fill it as follows.
 
 **Data collected (none of it shared with third parties)**
 
-| Data type                                                                                          | Collected               | Shared | Required? | Purpose                                                                                                                  |
-| -------------------------------------------------------------------------------------------------- | ----------------------- | ------ | --------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Personal info → Email address**                                                                  | Yes                     | **No** | Required  | Account creation and sign-in                                                                                             |
-| **Personal info → Name**                                                                           | Yes                     | **No** | Optional  | Display name, if the user sets one                                                                                       |
-| **Personal info → User IDs**                                                                       | Yes                     | **No** | Required  | Account and device identity for sync                                                                                     |
-| **App activity → Other user-generated content** (tasks, projects, notes, tags, folders, reminders) | Yes                     | **No** | Required  | App functionality; syncing across the user's own devices                                                                 |
-| **Files and docs** (user uploads)                                                                  | Yes                     | **No** | Optional  | App functionality; only when the user attaches a file                                                                    |
-| **Photos and videos** (inline note media)                                                          | Yes                     | **No** | Optional  | App functionality; only when the user embeds media in a note                                                             |
-| **App info and performance → Diagnostics**                                                         | **No**                  | No     | —         | No crash-reporting or performance SDK is present                                                                         |
-| **Device or other IDs**                                                                            | Yes                     | **No** | Required  | A per-install device id, so reminders reach the right devices                                                            |
-| **Calendar**                                                                                       | **Not collected by us** | No     | Optional  | Google Calendar sync sends the task title and description to _the user's own_ Google account, only after they connect it |
+| Data type                                                                                          | Collected               | Shared   | Required? | Purpose                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------------------------- | ----------------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Personal info → Email address**                                                                  | Yes                     | **No**   | Required  | Account creation and sign-in                                                                                                                                                                     |
+| **Personal info → Name**                                                                           | Yes                     | **No**   | Optional  | Display name, if the user sets one                                                                                                                                                               |
+| **Personal info → User IDs**                                                                       | Yes                     | **No**   | Required  | Account and device identity for sync                                                                                                                                                             |
+| **App activity → Other user-generated content** (tasks, projects, notes, tags, folders, reminders) | Yes                     | **No**   | Required  | App functionality; syncing across the user's own devices                                                                                                                                         |
+| **Files and docs** (user uploads)                                                                  | Yes                     | **No**   | Optional  | App functionality; only when the user attaches a file                                                                                                                                            |
+| **Photos and videos** (inline note media)                                                          | Yes                     | **No**   | Optional  | App functionality; only when the user embeds media in a note                                                                                                                                     |
+| **App info and performance → Diagnostics**                                                         | **No**                  | No       | —         | No crash-reporting or performance SDK is present                                                                                                                                                 |
+| **Device or other IDs**                                                                            | Yes                     | **No**   | Required  | A per-install device id, so reminders reach the right devices                                                                                                                                    |
+| **Calendar**                                                                                       | **Not collected by us** | No       | Optional  | Google Calendar sync sends the task title and description to _the user's own_ Google account, only after they connect it                                                                         |
 | **AI features** (task/note text, shared text, a voice _transcript_)                                | **Not collected by us** | See note | Optional  | Sent to the AI provider _the user chooses_ (Anthropic/OpenAI/Google Gemini/OpenRouter, or a local Ollama), only on a user-initiated action. Voice is transcribed on-device — audio is never sent |
-| **Location / Contacts / Financial info / Health / Messages / Audio / Browsing history**            | **No**                  | No     | —         | Never collected                                                                                                          |
+| **Location / Contacts / Financial info / Health / Messages / Audio / Browsing history**            | **No**                  | No       | —         | Never collected                                                                                                                                                                                  |
 
 Also declare: **request logs include the IP address** for operating and securing
 the service — map this to _App activity → Other actions_ or the console's
@@ -590,21 +590,22 @@ security-logging note, matching the "Technical logs" section of `docs/PRIVACY.md
 **Sizes are portrait unless noted.** All screenshots must be PNG or JPEG, RGB,
 no alpha channel and no rounded corners baked in.
 
-| #   | Store     | Asset                                      | Exact size                                                 | Count        | Status |
-| --- | --------- | ------------------------------------------ | ---------------------------------------------------------- | ------------ | ------ |
-| 1   | App Store | **iPhone 6.9"** screenshots                | 1320 × 2868 _(1290 × 2796 also accepted)_                  | 3–10 (min 3) | ✅ `store/ios/iphone-6.9/01–08.png` |
-| 2   | App Store | **iPhone 6.5"** screenshots                | 1242 × 2688 _(or 1284 × 2778)_                             | 3–10         | ✅ `store/ios/iphone-6.5/01–08.png` |
-| 3   | App Store | **iPad 13"** screenshots                   | 2064 × 2752 _(portrait)_                                    | 3–10         | ⛔ **To do** — **required** if the build declares iPad support. Boot an iPad Pro 13" simulator and re-run the pipeline, or drop iPad from the device family. |
-| 4   | App Store | **App icon**                               | 1024 × 1024, no alpha, no rounded corners                  | 1            | ✅ `store/icons/app-store-1024.png` |
-| 5   | App Store | **App preview video** (optional)           | per-device, 15–30 s                                        | 0–3          | ⏭ Skipped for 0.9.0 |
-| 6   | Play      | **Phone** screenshots                      | ≥ 1080 px short edge, 9:16                                 | 2–8 (min 2)  | ✅ `store/android/phone/01–08.png` (1344 × 2992) |
-| 7   | Play      | **7" tablet** screenshots                  | 1200 × 1920 recommended                                    | up to 8      | ⛔ **To do** — only if the listing targets tablets |
-| 8   | Play      | **10" tablet** screenshots                 | 1920 × 1200 or 1200 × 1920                                 | up to 8      | ⛔ **To do** — same condition as #7 |
-| 9   | Play      | **Feature graphic**                        | exactly 1024 × 500, no alpha                               | 1            | ✅ `store/android/feature-graphic.png` |
-| 10  | Play      | **App icon**                               | exactly 512 × 512, 32-bit PNG **with** alpha               | 1            | ✅ `store/icons/play-512.png` |
-| 11  | Play      | **Promo video** (optional)                 | YouTube URL                                                | 0–1          | ⏭ Skipped for 0.9.0 |
-| 12  | Both      | Localized screenshot sets (**en**, **tr**) | as above, per locale                                       | ×2           | ⛔ **English only.** A Turkish set converts better on a localised page — re-run the pipeline with the simulator/emulator in `tr` and the seeder's content translated. |
-| 13  | Site      | Social cover (Open Graph)                  | 1200 × 630                                                 | 1            | ✅ `apps/landing/public/og-cover.png` |
+| #   | Store     | Asset                                      | Exact size                                                  | Count        | Status                                                                                                                                                                                                                                   |
+| --- | --------- | ------------------------------------------ | ----------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | App Store | **iPhone 6.9"** screenshots                | 1320 × 2868 _(1290 × 2796 also accepted)_                   | 3–10 (min 3) | ✅ `store/ios/iphone-6.9/01–08.png`                                                                                                                                                                                                      |
+| 2   | App Store | **iPhone 6.5"** screenshots                | 1242 × 2688 _(or 1284 × 2778)_                              | 3–10         | ✅ `store/ios/iphone-6.5/01–08.png`                                                                                                                                                                                                      |
+| 3   | App Store | **iPad 13"** screenshots                   | 2064 × 2752 _(portrait)_                                    | 3–10         | ⛔ **To do** — **required** if the build declares iPad support. Boot an iPad Pro 13" simulator and re-run the pipeline, or drop iPad from the device family.                                                                             |
+| 4   | App Store | **App icon**                               | 1024 × 1024, no alpha, no rounded corners                   | 1            | ✅ `store/icons/app-store-1024.png`                                                                                                                                                                                                      |
+| 5   | App Store | **App preview video** (optional)           | per-device, 15–30 s                                         | 0–3          | ⏭ Skipped for 0.9.0                                                                                                                                                                                                                      |
+| 6   | Play      | **Phone** screenshots                      | ≥ 1080 px short edge, 9:16                                  | 2–8 (min 2)  | ✅ `store/android/phone/01–08.png` (1344 × 2992)                                                                                                                                                                                         |
+| 7   | Play      | **7" tablet** screenshots                  | 1200 × 1920 recommended                                     | up to 8      | ⛔ **To do** — only if the listing targets tablets                                                                                                                                                                                       |
+| 8   | Play      | **10" tablet** screenshots                 | 1920 × 1200 or 1200 × 1920                                  | up to 8      | ⛔ **To do** — same condition as #7                                                                                                                                                                                                      |
+| 9   | Play      | **Feature graphic**                        | exactly 1024 × 500, no alpha                                | 1            | ✅ `store/android/feature-graphic.png`                                                                                                                                                                                                   |
+| 10  | Play      | **App icon**                               | exactly 512 × 512, 32-bit PNG **with** alpha                | 1            | ✅ `store/icons/play-512.png`                                                                                                                                                                                                            |
+| 11  | Play      | **Promo video** (optional)                 | YouTube URL                                                 | 0–1          | ⏭ Skipped for 0.9.0                                                                                                                                                                                                                      |
+| 12  | Both      | Localized screenshot sets (**en**, **tr**) | as above, per locale                                        | ×2           | ⛔ **English only.** A Turkish set converts better on a localised page — re-run the pipeline with the simulator/emulator in `tr` and the seeder's content translated.                                                                    |
+| 13  | Site      | Social cover (Open Graph)                  | 1200 × 630                                                  | 1            | ✅ `apps/landing/public/og-cover.png`                                                                                                                                                                                                    |
+| 14  | App Store | **macOS** screenshots                      | 2880 × 1800 _(1280×800, 1440×900, 2560×1600 also accepted)_ | 3–10         | ✅ `store/macos/01–06.png` — composed from the desktop web captures, which are the same Flutter layout the macOS binary renders, in a drawn Mac window. Recapture from a real `flutter build macos` if the desktop layouts ever diverge. |
 
 ### How they are generated
 
@@ -631,7 +632,7 @@ the Android capture shows a different screen from its iOS counterpart.
 `apps/app/test/design_screenshots_test.dart` renders the real widget tree, but
 its output is 780 × 1688 / 2560 × 1600 — **no store size**, and upscaling to
 1320 × 2868 looks soft in a way reviewers notice. The simulator's own
-`xcrun simctl io … screenshot` is already 1320 × 2868, which *is* a valid 6.9"
+`xcrun simctl io … screenshot` is already 1320 × 2868, which _is_ a valid 6.9"
 submission, so the pipeline starts from the device instead.
 
 Screen order (the first two carry almost all the conversion): **Home** →
@@ -797,11 +798,11 @@ Bir aksaklık mı gördünüz? https://github.com/mahirozdin/alliswell/issues
 
 **Kısa açıklama (≤ 80 karakter)**
 
-| #                  | Seçenek                                                                     | Karakter |
-| ------------------ | --------------------------------------------------------------------------- | -------- |
+| #                  | Seçenek                                                                      | Karakter |
+| ------------------ | ---------------------------------------------------------------------------- | -------- |
 | **A** _(önerilen)_ | `Görev, not ve dosya; uyandıran alarmlar. Çevrimdışı çalışır, kaynağı açık.` | **(73)** |
-| B                  | `Görevler, notlar, dosyalar ve uyandıran alarmlar. Reklam yok, takip yok.`  | **(72)** |
-| C                  | `Çevrimdışı çalışan görev yöneticisi. Gerçek alarmlar, anlık eşitleme.`     | **(69)** |
+| B                  | `Görevler, notlar, dosyalar ve uyandıran alarmlar. Reklam yok, takip yok.`   | **(72)** |
+| C                  | `Çevrimdışı çalışan görev yöneticisi. Gerçek alarmlar, anlık eşitleme.`      | **(69)** |
 
 **Tam açıklama (≤ 4000 karakter)**
 
@@ -912,24 +913,41 @@ Plus: home-screen widgets, a refreshed look, and one-command self-hosting.
 Things a reasonable copywriter would have written that are **not true of the
 shipped build**. Do not add them back without re-checking the code.
 
-| Claim                                                       | Why it is not in the copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **"Rings through the mute switch" / "AlarmKit"**            | The iOS 26 AlarmKit lane's Dart side is complete and tested, but the native bridge is **not in the build**: `AlarmKitBridge.swift` appears **zero** times in `apps/app/ios/Runner.xcodeproj/project.pbxproj`, and `apps/app/ios/Runner/AppDelegate.swift` explicitly leaves it unregistered ("Kept out of the committed build"). `apps/app/ios/Runner/ALARMKIT_SETUP.md` documents the remaining device-only step. Until that ships, urgent alarms are time-sensitive notifications with a bundled sound — **which a hardware mute switch can still silence.** The 0.4.0 CHANGELOG says as much under _Known limitations_. |
-| **"Alarms that never stop until you dismiss them"**         | The re-alert chain is a **finite, pre-scheduled** set of 5 alerts at 0 / 2 / 5 / 10 / 30 minutes (`kUrgentChainOffsets`, `apps/app/lib/src/notifications/planner.dart`). "Keeps re-alerting across the next half hour" is accurate; "never stops" is not.                                                                                                                                                                                                                                                                                                                                                                  |
-| **"Two-way Apple Calendar sync"**                           | Apple/EventKit is **one-way only** (task → event). The native plugin exposes no list-events method, and `apps/app/lib/src/features/calendar/apple/apple_mirror_engine.dart` states the one-way limit in its own doc comment. Only Google is two-way. Note that `README.md` currently overstates this — the store copy deliberately does not follow it.                                                                                                                                                                                                                                                                     |
-| **"Tap to complete from the widget"**                       | No `AppIntent` exists in any Swift file; the iOS widget is a `StaticConfiguration` whose only interaction is `.widgetURL`, and the Android provider only opens `MainActivity`. Widgets are read-only glances.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **"Widgets on iPhone, Android and Mac"**                    | There is **no macOS widget target**, so the copy claims iPhone and Android only. The iOS widget extension's deployment target was 26.2 (invisible to almost every device) and is now **16.0** — fixed 2026-07-26, so the iPhone claim needs no qualifier. |
-| **"Subtasks" / "natural-language dates" as built-ins**      | The app ships **no subtask UI** and **no built-in NLP date parser** in quick-add. (AI extraction can resolve "tomorrow 3pm" into a date, but only with a provider connected and always behind the confirm card — never sell it as an always-on built-in.) **Note:** "recurring tasks" **now ship** as of v0.8.0 (Epic 19) — that claim is no longer off-limits and appears in the copy.                                                                                                                                                                                                                                     |
-| **"Built-in / free AI" / "ChatGPT or Claude included"**     | AI is **bring-your-own-key** (Anthropic/OpenAI/Gemini/OpenRouter/Ollama) or **connect-your-own-subscription** (the MCP connector links the user's _own_ Claude or ChatGPT). The app ships no bundled or free model. Never imply AllisWell provides the AI, that it is free, or that a consumer Claude/ChatGPT account is integrated for the user. Gemini is always described as needing an **API key**, not the free consumer app.                                                                                                                                                                                        |
-| **"Share a project with your team" / collaboration**        | No sharing, invitation, comment or messaging surface ships. This also underpins the "No" answers in §1.8 and §2.5 — if collaboration ever ships, both questionnaires must be refiled.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **"Unlimited file uploads" / "up to 5 GB"**                 | The code default for `STORAGE_MAX_UPLOAD_MB` is 512, but every shipped environment sets **10** (`.env.production`, `docker-compose.selfhost.yml`, `.env.selfhost.example`), and `docs/PRIVACY.md` states 10 MB for the hosted service. The copy says **10 MB on the hosted service** and notes self-hosters can change it.                                                                                                                                                                                                                                                                                                 |
-| **"Instant account deletion"**                              | Deletion has a **3-day grace period** and is cancellable by signing in. The copy says you can delete from Settings without saying it is immediate; §2.6 states the grace period explicitly, as Play requires.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Any rating, download count, award or "#1" claim**         | The app has not shipped. No social proof of any kind appears in this file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Claim                                                   | Why it is not in the copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **"Rings through the mute switch" / "AlarmKit"**        | The iOS 26 AlarmKit lane's Dart side is complete and tested, but the native bridge is **not in the build**: `AlarmKitBridge.swift` appears **zero** times in `apps/app/ios/Runner.xcodeproj/project.pbxproj`, and `apps/app/ios/Runner/AppDelegate.swift` explicitly leaves it unregistered ("Kept out of the committed build"). `apps/app/ios/Runner/ALARMKIT_SETUP.md` documents the remaining device-only step. Until that ships, urgent alarms are time-sensitive notifications with a bundled sound — **which a hardware mute switch can still silence.** The 0.4.0 CHANGELOG says as much under _Known limitations_. |
+| **"Alarms that never stop until you dismiss them"**     | The re-alert chain is a **finite, pre-scheduled** set of 5 alerts at 0 / 2 / 5 / 10 / 30 minutes (`kUrgentChainOffsets`, `apps/app/lib/src/notifications/planner.dart`). "Keeps re-alerting across the next half hour" is accurate; "never stops" is not.                                                                                                                                                                                                                                                                                                                                                                  |
+| **"Two-way Apple Calendar sync"**                       | Apple/EventKit is **one-way only** (task → event). The native plugin exposes no list-events method, and `apps/app/lib/src/features/calendar/apple/apple_mirror_engine.dart` states the one-way limit in its own doc comment. Only Google is two-way. Note that `README.md` currently overstates this — the store copy deliberately does not follow it.                                                                                                                                                                                                                                                                     |
+| **"Tap to complete from the widget"**                   | No `AppIntent` exists in any Swift file; the iOS widget is a `StaticConfiguration` whose only interaction is `.widgetURL`, and the Android provider only opens `MainActivity`. Widgets are read-only glances.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **"Widgets on iPhone, Android and Mac"**                | There is **no macOS widget target**, so the copy claims iPhone and Android only. The iOS widget extension's deployment target was 26.2 (invisible to almost every device) and is now **16.0** — fixed 2026-07-26, so the iPhone claim needs no qualifier.                                                                                                                                                                                                                                                                                                                                                                  |
+| **"Subtasks" / "natural-language dates" as built-ins**  | The app ships **no subtask UI** and **no built-in NLP date parser** in quick-add. (AI extraction can resolve "tomorrow 3pm" into a date, but only with a provider connected and always behind the confirm card — never sell it as an always-on built-in.) **Note:** "recurring tasks" **now ship** as of v0.8.0 (Epic 19) — that claim is no longer off-limits and appears in the copy.                                                                                                                                                                                                                                    |
+| **"Built-in / free AI" / "ChatGPT or Claude included"** | AI is **bring-your-own-key** (Anthropic/OpenAI/Gemini/OpenRouter/Ollama) or **connect-your-own-subscription** (the MCP connector links the user's _own_ Claude or ChatGPT). The app ships no bundled or free model. Never imply AllisWell provides the AI, that it is free, or that a consumer Claude/ChatGPT account is integrated for the user. Gemini is always described as needing an **API key**, not the free consumer app.                                                                                                                                                                                         |
+| **"Share a project with your team" / collaboration**    | No sharing, invitation, comment or messaging surface ships. This also underpins the "No" answers in §1.8 and §2.5 — if collaboration ever ships, both questionnaires must be refiled.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **"Unlimited file uploads" / "up to 5 GB"**             | The code default for `STORAGE_MAX_UPLOAD_MB` is 512, but every shipped environment sets **10** (`.env.production`, `docker-compose.selfhost.yml`, `.env.selfhost.example`), and `docs/PRIVACY.md` states 10 MB for the hosted service. The copy says **10 MB on the hosted service** and notes self-hosters can change it.                                                                                                                                                                                                                                                                                                 |
+| **"Instant account deletion"**                          | Deletion has a **3-day grace period** and is cancellable by signing in. The copy says you can delete from Settings without saying it is immediate; §2.6 states the grace period explicitly, as Play requires.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Any rating, download count, award or "#1" claim**     | The app has not shipped. No social proof of any kind appears in this file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ### Pre-submission blockers (not copy — build and infrastructure)
 
 Re-verified 2026-07-31 against the live site and the working tree — this list is
 the current state, not the original one.
+
+**New since Firebase landed (Epic 21) — both stores ask, and both answers changed:**
+
+- [ ] **Play ▸ Data safety** must now declare Firebase: crash logs, diagnostics
+      and app interactions, collected and shared with Google, tied to a user id,
+      not used for advertising. §2.6's answers were written before Crashlytics
+      and Analytics existed and are now incomplete.
+- [ ] **Apple ▸ App privacy** needs the matching nutrition labels: _Diagnostics_
+      and _Usage Data_, "Linked to You" via the account id, "Not used for
+      tracking".
+- [ ] **Sign in with Apple** must be enabled as a capability on the App ID, and
+      `SIGN_IN_*` set on the production API — otherwise the buttons ship and the
+      server answers 503. See docs/FIREBASE.md and ADR-0026.
+- [ ] **Account deletion via a provider account** — Apple requires deletion to be
+      reachable for accounts created with Sign in with Apple, which this now
+      creates. The in-app path already covers it; confirm it on a
+      provider-only account before submitting.
 
 **Still open — these stop a submission:**
 

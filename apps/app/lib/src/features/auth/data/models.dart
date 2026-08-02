@@ -53,15 +53,26 @@ class AuthTokens {
 
 /// A signed-in identity: the user plus their current token pair.
 class AuthSession {
-  const AuthSession({required this.user, required this.tokens});
+  const AuthSession({
+    required this.user,
+    required this.tokens,
+    this.created = false,
+  });
 
   factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
     user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
     tokens: AuthTokens.fromJson(json['tokens'] as Map<String, dynamic>),
+    // Only `/auth/oauth` sends this (ADR-0026); login and refresh do not, and
+    // a restored session should never re-run onboarding — hence the false
+    // default and its absence from toJson().
+    created: json['created'] as bool? ?? false,
   );
 
   final AuthUser user;
   final AuthTokens tokens;
+
+  /// Whether the sign-in that produced this session also created the account.
+  final bool created;
 
   AuthSession withTokens(AuthTokens next) =>
       AuthSession(user: user, tokens: next);

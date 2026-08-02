@@ -21,12 +21,12 @@ adresindeki hizmet (API: `https://api.alliswell.space`) için geçerlidir.
 
 Hizmetin veri sorumlusu **BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI**'dir (ticari adı: **BubiApps**).
 
-| | |
-| --- | --- |
-| **Ünvan** | BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI |
-| **Adres** | Mevlana Mah. Karasu Cad. No: 14, İç Kapı No: 16 · Talas / Kayseri · Türkiye |
-| **E-posta** | **info@bubiapps.com** |
-| **Telefon** | +90 505 493 1041 |
+|             |                                                                             |
+| ----------- | --------------------------------------------------------------------------- |
+| **Ünvan**   | BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI                           |
+| **Adres**   | Mevlana Mah. Karasu Cad. No: 14, İç Kapı No: 16 · Talas / Kayseri · Türkiye |
+| **E-posta** | **info@bubiapps.com**                                                       |
+| **Telefon** | +90 505 493 1041                                                            |
 
 Her türlü gizlilik sorusu ve KVKK başvurusu için: **info@bubiapps.com**.
 Başvurulara en geç **30 gün** içinde yanıt veriyoruz (KVKK m.13).
@@ -136,7 +136,7 @@ paylaşım/ses eylemi başlatmadan gerçekleşmez.
   **Ollama**'ya yönlendirirseniz metin kendi makinenizden hiç çıkmaz.
 - **Ses cihazda kalır.** Konuşma **cihazınızda** metne çevrilir; yalnızca ortaya
   çıkan metin — ses kaydı asla — ve yalnızca siz gönderince iletilir.
-- **Onay hep sizde.** Asistan yalnızca *önerebilir*; her görev veya not sizin
+- **Onay hep sizde.** Asistan yalnızca _önerebilir_; her görev veya not sizin
   dokunuşunuzla oluşur, hiçbir zaman kendiliğinden değil.
 - **Claude veya ChatGPT'ye bağlama (MCP).** AllisWell'i bir Claude ya da ChatGPT
   aboneliğine bağlarsanız, o asistan görevlerinizi AllisWell'in sunucusu
@@ -153,15 +153,32 @@ işletmeci sağlamış olabilir — neyi yapılandırdığını işletmecinize s
 
 Hizmeti çalıştırmak için gereken altyapı dışında kimseyle. Açıkça belirtelim:
 
-- **Hiçbir üçüncü taraf analitik, reklam veya takip (tracking) SDK'sı
-  kullanmıyoruz.** Uygulamada da API'de de Firebase, Crashlytics, Sentry, reklam
-  ağı, atıf (attribution) veya parmak izi çıkarma aracı yok.
-- **Verilerinizi satmıyor, kiralamıyoruz**; reklam amacıyla kimseyle paylaşmıyoruz.
+- **Çökme raporlama, analitik ve performans için Firebase kullanıyoruz**;
+  başka hiçbir şey için değil. Veri işleyen Google'dır. Giden veriler:
+  - **Crashlytics** — hata yığını (stack trace), işletim sistemi ve cihaz
+    modeli, uygulama sürümü.
+  - **Analitik (Google Analytics for Firebase)** — ekran adları, uygulama
+    sürümü, kaba cihaz modeli, ülke düzeyinde bölge ve "bir görev oluşturuldu"
+    gibi birkaç olay. Görevin ne yazdığı değil.
+  - **Performans** — isteklerin ve ekranların ne kadar sürdüğü.
+
+  Bunların her biri, gönderdiğiniz bir hata bildirimiyle eşleştirilebilsin diye
+  AllisWell **hesap kimliğinizle** etiketlenir. O kimlik rastgele bir dizedir;
+  e-posta adresiniz değildir ve **yazdığınız içerik — görev başlıkları, not
+  gövdeleri, dosya adları — bunların hiçbirine eklenmez.**
+
+- **Reklam, atıf (attribution) veya parmak izi çıkarma aracı yoktur**;
+  uygulamada da API'de de. Verilerinizi satmıyor, kiralamıyoruz; reklam amacıyla
+  kimseyle paylaşmıyoruz.
+- **Kendi sunucunuzda derlediğiniz sürümlerde bunların hiçbiri yoktur.**
+  Firebase yapılandırması herkese açık kaynak kodunda değildir; depodan
+  derlenen bir sürümde ne analitik ne çökme raporlama bulunur (docs/FIREBASE.md).
 - Hakkınızda profil çıkarmıyoruz ve sizin için hukuki sonuç doğuran ya da benzer
   ölçüde etkili otomatik kararlar almıyoruz.
 
 Çalıştığımız veri işleyenler: sunucu ve veritabanı barındırma hizmetimiz,
-yüklediğiniz dosyalar için Cloudflare R2 ve — yalnızca bağlarsanız — takvim
+yüklediğiniz dosyalar için Cloudflare R2, yukarıdaki çökme ve kullanım
+raporlaması için **Google (Firebase)** ve — yalnızca bağlarsanız — takvim
 eşitlemesi için Google ile **seçtiğiniz yapay zekâ sağlayıcısı** (Anthropic,
 OpenAI, Google Gemini, OpenRouter veya yerel kalan kendi Ollama'nız). Cloudflare,
 Google ve bulut yapay zekâ sağlayıcıları uluslararası olduğundan, bu verilerin

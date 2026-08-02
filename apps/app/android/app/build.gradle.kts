@@ -6,6 +6,27 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase is opt-in, and the opt-in signal is the config file itself (ADR-0025).
+//
+// `com.google.gms.google-services` aborts the build with "File google-services.json
+// is missing" when it cannot find one, and that file is gitignored — so applying it
+// unconditionally would mean nobody could build a fresh clone. Crashlytics and
+// Performance both sit on top of it, so all three follow the same gate.
+//
+// Present  → a normal Firebase build.
+// Absent   → the app compiles and runs; firebaseBootstrap() reports it unconfigured.
+val firebaseConfigured = file("google-services.json").exists()
+if (firebaseConfigured) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+    apply(plugin = "com.google.firebase.firebase-perf")
+} else {
+    logger.lifecycle(
+        "AllisWell: android/app/google-services.json not found — building WITHOUT Firebase. " +
+            "See docs/FIREBASE.md if you meant to include it."
+    )
+}
+
 // Release signing, per the Flutter deployment docs: the credentials live in
 // android/key.properties (gitignored) so neither the keystore nor its passwords
 // enter version control. Absent — a fresh clone, or CI — the release build

@@ -37,16 +37,16 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 
 ## 🚀 Get it
 
-| | Status | |
-| --- | --- | --- |
-| **🌐 Web app** | **Live now** | **[alliswell.space/app](https://alliswell.space/app)** — sign up and use it on every device. Nothing to install. |
-| 🍎 **App Store** | Internal testing | TestFlight internal build is running; public release next. |
-| 🤖 **Google Play** | Internal testing | Internal testing track is live; public release next. |
-| 🐳 **Self-host** | Live now | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data). |
-| 💻 **Desktop** | Build from source | macOS, Windows and Linux targets build from the same codebase. |
+|                    | Status            |                                                                                                                  |
+| ------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **🌐 Web app**     | **Live now**      | **[alliswell.space/app](https://alliswell.space/app)** — sign up and use it on every device. Nothing to install. |
+| 🍎 **App Store**   | Internal testing  | TestFlight internal build is running; public release next.                                                       |
+| 🤖 **Google Play** | Internal testing  | Internal testing track is live; public release next.                                                             |
+| 🐳 **Self-host**   | Live now          | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data).                                   |
+| 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                   |
 
-> **Project status — `v1.0.3`, live.** Everything on this page is built, tested
-> (**748 app tests · 592 backend unit · 58 integration, green**) and deployed to
+> **Project status — `v1.1.0`, live.** Everything on this page is built, tested
+> (**751 app tests · 605 backend unit · 58 integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
 > ⭐ Star the repo to follow along.
@@ -64,12 +64,12 @@ Ask for **the 31st** and RFC 5545 — which is what Google Calendar follows —
 simply **skips** every month without one. Your rent does not skip February.
 
 | Rule: every month on day 31 | Google Calendar | **AllisWell** |
-| --- | --- | --- |
-| December | 31 Dec | 31 Dec |
-| January | 31 Jan | 31 Jan |
-| **February** | **— skipped —** | **28 Feb** |
-| March | 31 Mar | 31 Mar |
-| **April** | **— skipped —** | **30 Apr** |
+| --------------------------- | --------------- | ------------- |
+| December                    | 31 Dec          | 31 Dec        |
+| January                     | 31 Jan          | 31 Jan        |
+| **February**                | **— skipped —** | **28 Feb**    |
+| March                       | 31 Mar          | 31 Mar        |
+| **April**                   | **— skipped —** | **30 Apr**    |
 
 Also: every day / weekday / week / month / year, **the last day of the month**,
 **the 2nd Tuesday**, **the first Monday after the 22nd** — with a live
@@ -179,6 +179,7 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 - ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, colour and order. A **sidebar section** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones. Yours alone: shortcuts never leak to other members of a shared workspace.
 - 🤖 **AI, on your terms (optional)** — see [§4 above](#4-ai-on-your-terms--including-none).
 - 🖥 **Home-screen widgets** — iOS, Android &amp; macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
+- 🔑 **Sign in the way you already do** — e-mail and password, **Continue with Google**, or **Continue with Apple**. The provider proves who you are; **AllisWell's own database still owns the account**, so a self-hosted instance works the same way — or drops social sign-in entirely and keeps passwords. [How it works →](docs/adr/0026-social-sign-in.md)
 - 🌐 **Localisation** — ships in English and Turkish, auto-detected from your system; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).
 
@@ -192,21 +193,21 @@ The tools we love, we can't fully own. AllisWell takes their best ideas and adds
 what none of them give you: **the source in the open, self-hosting you actually
 own, true two-way calendar sync, and a local-first realtime engine.**
 
-| | **AllisWell** | Google Calendar | Google Tasks | Apple Reminders | Things 3 |
-| --- | :---: | :---: | :---: | :---: | :---: |
-| **Source available** | ● | ○ | ○ | ○ | ○ |
-| **Self-hosted, your database** | ● | ○ | ○ | ○ | ○ |
-| Price | free | free | free | free | ~$80 |
-| iOS · Android · Web · desktop | ● | ◐ | ◐ | ○ | ○ |
-| Works fully offline | ● | ◐ | ◐ | ● | ● |
-| Kanban board | ● | ○ | ○ | ◐ | ○ |
-| Rich notes &amp; file attachments | ● | ◐ | ○ | ◐ | ○ |
-| **Alarms through Silent + Focus** | ● | ○ | ○ | ◐ | ○ |
-| **Re-alert until acknowledged** | ● | ○ | ○ | ○ | ○ |
-| **Recurrence clamps (31st → 28 Feb)** | ● | ○ | ○ | ● | ● |
-| **Two-way Google Calendar sync** | ● | native | native | ○ | ○ |
-| **Accent-insensitive search** | ● | ○ | ○ | ○ | ○ |
-| **MCP connector for Claude / ChatGPT** | ● | ○ | ○ | ○ | ○ |
+|                                        | **AllisWell** | Google Calendar | Google Tasks | Apple Reminders | Things 3 |
+| -------------------------------------- | :-----------: | :-------------: | :----------: | :-------------: | :------: |
+| **Source available**                   |       ●       |        ○        |      ○       |        ○        |    ○     |
+| **Self-hosted, your database**         |       ●       |        ○        |      ○       |        ○        |    ○     |
+| Price                                  |     free      |      free       |     free     |      free       |   ~$80   |
+| iOS · Android · Web · desktop          |       ●       |        ◐        |      ◐       |        ○        |    ○     |
+| Works fully offline                    |       ●       |        ◐        |      ◐       |        ●        |    ●     |
+| Kanban board                           |       ●       |        ○        |      ○       |        ◐        |    ○     |
+| Rich notes &amp; file attachments      |       ●       |        ◐        |      ○       |        ◐        |    ○     |
+| **Alarms through Silent + Focus**      |       ●       |        ○        |      ○       |        ◐        |    ○     |
+| **Re-alert until acknowledged**        |       ●       |        ○        |      ○       |        ○        |    ○     |
+| **Recurrence clamps (31st → 28 Feb)**  |       ●       |        ○        |      ○       |        ●        |    ●     |
+| **Two-way Google Calendar sync**       |       ●       |     native      |    native    |        ○        |    ○     |
+| **Accent-insensitive search**          |       ●       |        ○        |      ○       |        ○        |    ○     |
+| **MCP connector for Claude / ChatGPT** |       ●       |        ○        |      ○       |        ○        |    ○     |
 
 <sub>● full · ◐ partial · ○ none. Competitor behaviour as of mid-2026.</sub>
 
@@ -220,7 +221,7 @@ Things 3 has had ten years to sand its corners; we are at 1.0. And
 certificate and no backups to think about.
 
 **The full analysis** — every claim above, the nine things they do better, and the
-lines we deliberately did *not* write — is in **[docs/COMPARISON.md](docs/COMPARISON.md)**.
+lines we deliberately did _not_ write — is in **[docs/COMPARISON.md](docs/COMPARISON.md)**.
 
 ---
 
@@ -272,13 +273,13 @@ Node.js API — Fastify, JavaScript only (no TypeScript)
 
 The monorepo:
 
-| Path | What it is |
-| --- | --- |
-| [`apps/api`](apps/api) | Fastify backend — JavaScript only, MySQL via knex |
-| [`apps/app`](apps/app) | The Flutter app — all six platforms, one codebase |
-| [`apps/landing`](apps/landing) | This site — Vue 3 + Vite, served at the root of alliswell.space |
-| [`scripts/seed-demo.mjs`](scripts/seed-demo.mjs) | The demo workspace every screenshot is shot from |
-| [`scripts/screenshots/`](scripts/screenshots) | Screenshot + store-asset pipeline |
+| Path                                             | What it is                                                      |
+| ------------------------------------------------ | --------------------------------------------------------------- |
+| [`apps/api`](apps/api)                           | Fastify backend — JavaScript only, MySQL via knex               |
+| [`apps/app`](apps/app)                           | The Flutter app — all six platforms, one codebase               |
+| [`apps/landing`](apps/landing)                   | This site — Vue 3 + Vite, served at the root of alliswell.space |
+| [`scripts/seed-demo.mjs`](scripts/seed-demo.mjs) | The demo workspace every screenshot is shot from                |
+| [`scripts/screenshots/`](scripts/screenshots)    | Screenshot + store-asset pipeline                               |
 
 Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) • Design decisions: [docs/adr/](docs/adr/)
 
@@ -323,41 +324,42 @@ and AI (`AI_*` — off by default; see [docs/AI.md](docs/AI.md)).
 
 ### Useful commands
 
-| Command | What it does |
-| --- | --- |
-| `npm run dev` | Start API with watch mode |
-| `npm test` | API unit tests (no infra needed) |
-| `npm run test:integration` | API integration tests (needs MySQL+Redis) |
-| `npm run seed:demo` | Fill a running instance with the demo workspace |
-| `npm run shots:web` | Regenerate the web screenshots |
-| `npm run landing:dev` | Run the marketing site locally |
-| `npm run lint` / `npm run format` | ESLint / Prettier |
-| `npm run db:migrate` / `db:rollback` | Knex migrations |
-| `npm run check:no-ts` | Enforce the JavaScript-only policy |
-| `npm run check:i18n` | Enforce no hardcoded UI strings (localisation) |
+| Command                              | What it does                                    |
+| ------------------------------------ | ----------------------------------------------- |
+| `npm run dev`                        | Start API with watch mode                       |
+| `npm test`                           | API unit tests (no infra needed)                |
+| `npm run test:integration`           | API integration tests (needs MySQL+Redis)       |
+| `npm run seed:demo`                  | Fill a running instance with the demo workspace |
+| `npm run shots:web`                  | Regenerate the web screenshots                  |
+| `npm run landing:dev`                | Run the marketing site locally                  |
+| `npm run lint` / `npm run format`    | ESLint / Prettier                               |
+| `npm run db:migrate` / `db:rollback` | Knex migrations                                 |
+| `npm run check:no-ts`                | Enforce the JavaScript-only policy              |
+| `npm run check:i18n`                 | Enforce no hardcoded UI strings (localisation)  |
 
 </details>
 
 <details>
 <summary><h2>📚 Documentation</h2></summary>
 
-| Doc | Purpose |
-| --- | --- |
-| [docs/COMPARISON.md](docs/COMPARISON.md) | Full feature inventory + honest comparison with Google, Apple and Things 3 |
-| [docs/BLUEPRINT.md](docs/BLUEPRINT.md) | Product vision, domain model, full functional spec (TR) |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture, stack, sync &amp; calendar design |
-| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md) | Run your own instance with Docker: TLS, upgrades, backups, storage |
-| [docs/AI.md](docs/AI.md) · [docs/MCP.md](docs/MCP.md) | AI providers &amp; consent · the remote MCP connector |
-| [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md) | File attachments: R2/S3 storage, presigned flow, CORS setup |
-| [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) | Exact-time / urgent alarm delivery research &amp; plan |
-| [docs/WIDGETS.md](docs/WIDGETS.md) | Home-screen widget architecture |
-| [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) | How every image in this repo is produced |
-| [docs/STORE-LISTING.md](docs/STORE-LISTING.md) | App Store &amp; Play copy, asset sizes, claim guardrails |
-| [ROADMAP.md](ROADMAP.md) | Phase-by-phase roadmap: shipped, next, and v2 parking lot |
-| [docs/TASKS.md](docs/TASKS.md) · [docs/STATE.md](docs/STATE.md) | Every OPH-xxx task · live development state |
-| [CHANGELOG.md](CHANGELOG.md) | What changed, per release |
-| [docs/adr/](docs/adr/) | Architecture Decision Records (0001–0023) |
-| [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) | Workflow, contributing &amp; security policy |
+| Doc                                                                                      | Purpose                                                                                   |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [docs/COMPARISON.md](docs/COMPARISON.md)                                                 | Full feature inventory + honest comparison with Google, Apple and Things 3                |
+| [docs/BLUEPRINT.md](docs/BLUEPRINT.md)                                                   | Product vision, domain model, full functional spec (TR)                                   |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                                             | System architecture, stack, sync &amp; calendar design                                    |
+| [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md)                                             | Run your own instance with Docker: TLS, upgrades, backups, storage                        |
+| [docs/AI.md](docs/AI.md) · [docs/MCP.md](docs/MCP.md)                                    | AI providers &amp; consent · the remote MCP connector                                     |
+| [docs/FIREBASE.md](docs/FIREBASE.md)                                                     | Analytics, Crashlytics, Performance — optional, and how to point them at **your** project |
+| [docs/ATTACHMENTS.md](docs/ATTACHMENTS.md)                                               | File attachments: R2/S3 storage, presigned flow, CORS setup                               |
+| [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md)                                           | Exact-time / urgent alarm delivery research &amp; plan                                    |
+| [docs/WIDGETS.md](docs/WIDGETS.md)                                                       | Home-screen widget architecture                                                           |
+| [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)                                               | How every image in this repo is produced                                                  |
+| [docs/STORE-LISTING.md](docs/STORE-LISTING.md)                                           | App Store &amp; Play copy, asset sizes, claim guardrails                                  |
+| [ROADMAP.md](ROADMAP.md)                                                                 | Phase-by-phase roadmap: shipped, next, and v2 parking lot                                 |
+| [docs/TASKS.md](docs/TASKS.md) · [docs/STATE.md](docs/STATE.md)                          | Every OPH-xxx task · live development state                                               |
+| [CHANGELOG.md](CHANGELOG.md)                                                             | What changed, per release                                                                 |
+| [docs/adr/](docs/adr/)                                                                   | Architecture Decision Records (0001–0023)                                                 |
+| [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) | Workflow, contributing &amp; security policy                                              |
 
 </details>
 
@@ -386,14 +388,14 @@ and run your own instance on your own machine forever without paying anyone or
 asking anyone. What you cannot do is take it into a business — resell it, offer
 it as a service, or run it as part of a commercial operation.
 
-| You are… | Free? |
-| --- | :---: |
-| A person, using it for your own life | ✅ Free |
-| Self-hosting your own instance at home or on your own VPS | ✅ Free |
-| Studying it, forking it, submitting a fix, building on it as a hobby | ✅ Free |
-| A charity, school, university, public research body or government institution | ✅ Free |
-| A company running it for your team, at any size | ❌ Needs a commercial licence |
-| Reselling it, or offering it to others as a hosted service | ❌ Needs a commercial licence |
+| You are…                                                                      |             Free?             |
+| ----------------------------------------------------------------------------- | :---------------------------: |
+| A person, using it for your own life                                          |            ✅ Free            |
+| Self-hosting your own instance at home or on your own VPS                     |            ✅ Free            |
+| Studying it, forking it, submitting a fix, building on it as a hobby          |            ✅ Free            |
+| A charity, school, university, public research body or government institution |            ✅ Free            |
+| A company running it for your team, at any size                               | ❌ Needs a commercial licence |
+| Reselling it, or offering it to others as a hosted service                    | ❌ Needs a commercial licence |
 
 **Enterprise, or anything commercial → [info@bubiapps.com](mailto:info@bubiapps.com).**
 Commercial licences exist, they are not expensive, and they come with the

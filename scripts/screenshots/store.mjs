@@ -110,6 +110,52 @@ const SLIDES = [
   },
 ];
 
+/**
+ * macOS slides.
+ *
+ * The captures are the desktop **web** build at 1440×900 @2× — which is exactly
+ * 2880×1800, one of the four sizes Apple accepts for a Mac app. Using them is
+ * honest because it is the same Flutter widget tree, laid out at the same size,
+ * that the macOS binary renders: one codebase, one desktop layout. What differs
+ * between the two is the window chrome the OS draws around it, and that is
+ * precisely what `macPage()` puts back.
+ *
+ * If the macOS build ever diverges from the desktop web layout, these stop being
+ * legitimate and must be recaptured from a real `flutter build macos`.
+ */
+const MAC_SLIDES = [
+  {
+    src: 'web/home-light.png',
+    title: 'Your whole day, on the desktop',
+    sub: 'Overdue, today, this week — beside a month calendar',
+  },
+  {
+    src: 'web/board.png',
+    title: 'Or the same day as a board',
+    sub: 'Columns you name, hide and reorder',
+  },
+  {
+    src: 'web/notes.png',
+    title: 'Notes that belong to the work',
+    sub: 'Rich text, pinned, linked to a project',
+  },
+  {
+    src: 'web/files.png',
+    title: 'Every file, one place',
+    sub: 'Folders, attachments, your own storage',
+  },
+  {
+    src: 'web/completed.png',
+    title: 'Nothing vanishes mid-tap',
+    sub: 'A day-headed timeline of everything you finished',
+  },
+  {
+    src: 'web/home-dark.png',
+    title: 'Light and dark, both first-class',
+    sub: 'Contrast-checked on every change',
+  },
+];
+
 /** Output canvases. `deviceHeightPct` tunes how much room the caption takes. */
 const CANVASES = [
   { key: 'ios-6.9', dir: 'ios/iphone-6.9', width: 1320, height: 2868, source: 'src' },
@@ -204,6 +250,51 @@ function slidePage({ width, height, image, title, sub }) {
   </style></head><body>
     <div class="cap"><h1>${title}</h1><p>${sub}</p></div>
     <div class="device"><img src="${image}"></div>
+  </body></html>`;
+}
+
+/**
+ * A Mac window around a desktop capture, at one of Apple's accepted sizes.
+ *
+ * The traffic lights and the title bar are drawn in CSS rather than captured,
+ * because a screenshot of a window on THIS machine would carry this machine's
+ * wallpaper, menu bar clock and accent colour into the store listing.
+ */
+function macPage({ width, height, image, title, sub }) {
+  const pad = Math.round(width * 0.055);
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:${width}px;height:${height}px;overflow:hidden}
+    body{font-family:${BRAND.font};background:${BRAND.bgLight};position:relative;
+         display:flex;flex-direction:column;align-items:center;padding:${pad}px}
+    body::before{content:'';position:absolute;inset:0;background:${BRAND.blobs}}
+    .cap{position:relative;z-index:1;text-align:center;margin-bottom:${Math.round(height * 0.035)}px}
+    h1{font-size:${Math.round(width * 0.036)}px;line-height:1.1;letter-spacing:-.028em;
+       color:${BRAND.text};font-weight:700}
+    p{margin-top:${Math.round(height * 0.012)}px;font-size:${Math.round(width * 0.018)}px;
+      color:${BRAND.dim};font-weight:500}
+    .win{position:relative;z-index:1;width:100%;flex:1;min-height:0;display:flex;
+      flex-direction:column;border-radius:${Math.round(width * 0.011)}px;overflow:hidden;
+      border:1px solid rgba(15,27,46,.14);
+      box-shadow:0 ${Math.round(height * 0.03)}px ${Math.round(height * 0.06)}px -${Math.round(height * 0.018)}px rgba(32,58,102,.45)}
+    .bar{display:flex;align-items:center;gap:${Math.round(width * 0.006)}px;
+      padding:0 ${Math.round(width * 0.014)}px;height:${Math.round(height * 0.032)}px;
+      background:#E9EDF5;border-bottom:1px solid rgba(15,27,46,.10);flex:0 0 auto}
+    .dot{width:${Math.round(width * 0.0072)}px;height:${Math.round(width * 0.0072)}px;border-radius:50%}
+    .r{background:#FF5F57}.y{background:#FEBC2E}.g{background:#28C840}
+    .t{flex:1;text-align:center;font-size:${Math.round(width * 0.0125)}px;color:#5A6B87;
+       font-weight:600;margin-right:${Math.round(width * 0.05)}px}
+    .shot{flex:1;min-height:0;overflow:hidden;background:#fff}
+    .shot img{width:100%;display:block}
+  </style></head><body>
+    <div class="cap"><h1>${title}</h1><p>${sub}</p></div>
+    <div class="win">
+      <div class="bar">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="t">AllisWell</span>
+      </div>
+      <div class="shot"><img src="${image}"></div>
+    </div>
   </body></html>`;
 }
 
@@ -384,6 +475,28 @@ async function main() {
           },
         );
         if (n >= 8) break; // Play accepts at most 8; Apple 10 — 8 satisfies both
+      }
+    }
+
+    // macOS — Apple accepts 1280×800, 1440×900, 2560×1600 and 2880×1800; the
+    // captures are already 2880×1800, so this is a 1:1 placement, not an upscale.
+    if (want('macos')) {
+      let n = 0;
+      for (const slide of MAC_SLIDES) {
+        const image = await dataUri(slide.src);
+        if (!image) {
+          console.log(`· macos: skipped “${slide.title}” — no ${slide.src}`);
+          continue;
+        }
+        n += 1;
+        await shoot(
+          macPage({ width: 2880, height: 1800, image, title: slide.title, sub: slide.sub }),
+          {
+            width: 2880,
+            height: 1800,
+            file: path.join(OUT, 'macos', `${String(n).padStart(2, '0')}.png`),
+          },
+        );
       }
     }
 

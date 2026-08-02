@@ -40,3 +40,19 @@ apps/app/android/key.properties
 apps/landing/public/shots/
 apps/landing/public/og-cover.png
 publish/
+
+# ── Firebase: code is public, credentials are not (ADR-0025) ────────────────
+# The repo carries every line of Firebase WIRING so a fork can plug in its own
+# project; it carries none of the identifiers that point at ours. Each of these
+# has a committed `.example` beside it showing the shape.
+apps/app/android/app/google-services.json
+apps/app/ios/Runner/GoogleService-Info.plist
+apps/app/macos/Runner/GoogleService-Info.plist
+apps/app/lib/firebase_options.dart
+.firebaserc
+firebase-debug.log
+.firebase/
+# Service-account keys, wherever they land. There is no legitimate reason for
+# one of these to be in a working tree that gets committed.
+**/*-service-account*.json
+**/serviceAccountKey*.json

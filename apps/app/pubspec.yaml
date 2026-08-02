@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.3+15
+version: 1.1.0+16
 environment:
   sdk: ^3.12.0
 
@@ -66,6 +66,24 @@ dependencies:
   # which Flutter 3.44 does not, so the release build cannot find
   # FilePickerPlugin. Reproduced on a bare `flutter create` app (2026-07-26).
   file_picker: ^12.0.0-beta.7
+
+  # ── Firebase (Epic 21, ADR-0025) — OPTIONAL at runtime ────────────────────
+  # Every one of these degrades to a no-op when the platform config file is
+  # absent: `firebaseBootstrap()` catches the initialisation failure and the
+  # rest of the app never learns Firebase exists. A fork with no Firebase
+  # project builds and runs unchanged; see docs/FIREBASE.md.
+  firebase_core: ^4.2.0
+  firebase_analytics: ^12.0.4
+  firebase_crashlytics: ^5.0.4
+  firebase_performance: ^0.11.0+4
+  firebase_auth: ^6.2.0
+  # The provider dance itself. These give us the ID TOKEN that our own API
+  # verifies (ADR-0026) — Firebase Auth is an identity provider here, never the
+  # user store: that stays MySQL, so a self-hoster keeps email+password working
+  # with no Google account anywhere in the picture.
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^7.0.1
+  crypto: ^3.0.6
   # The in-app alarm bed (OPH-180, ADR-0015 §7). Chosen over just_audio because
   # ONE package covers every target we ship (incl. Windows/Linux, where
   # just_audio needs a community backend) and exposes the two platform knobs the

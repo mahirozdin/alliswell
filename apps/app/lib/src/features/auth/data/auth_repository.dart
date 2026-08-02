@@ -57,6 +57,16 @@ class AuthRepository {
     return session;
   }
 
+  /// Sign in through Google or Apple. [idToken] comes from [SocialSignIn].
+  Future<AuthSession> signInWithProvider({
+    required String provider,
+    required String idToken,
+  }) async {
+    final session = await _api.oauth(provider: provider, idToken: idToken);
+    await _setSession(session);
+    return session;
+  }
+
   /// Rotates the refresh token and returns the new access token, or null when
   /// the session is gone (revoked family, expiry, no session). Concurrent
   /// callers share one in-flight rotation — the API treats a re-used refresh
