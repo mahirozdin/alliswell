@@ -1,7 +1,13 @@
 # Store listing — AllisWell
 
 Ready-to-paste copy for the **Apple App Store** and **Google Play**, for the
-**0.9.0** launch. Every character-limited field shows its real count.
+**1.1.0** launch. Every character-limited field shows its real count.
+
+> **Paste the right one.** §1 is Apple's, §2 is Play's, and they are not
+> interchangeable — Play's release of version code 16 was rejected on
+> 2026-08-02 with §1.4's wording in the Play listing. Play indexes the whole
+> description where Apple has a separate keyword field, so the two are written
+> differently on purpose.
 
 > **Assets are generated, not hand-made.** Everything in §3 is produced by
 > `node scripts/screenshots/store.mjs` from the real device captures in
@@ -59,7 +65,7 @@ around exactly that pairing.
 Editable without a new build — use it for launch beats and swap it later.
 
 ```text
-Reminders that ring through Silent mode and Focus. Repeats that never skip a month. Two-way calendar sync. Free, no ads, no tracking — sign in with Google or Apple.
+Reminders that ring at the exact minute, with a real alarm sound. Repeats that never skip a month. Two-way calendar sync. Free, no ads — sign in with Google or Apple.
 ```
 
 **(164)** — current, for the 1.1.0 launch.
@@ -68,13 +74,13 @@ Reminders that ring through Silent mode and Focus. Repeats that never skip a mon
 <summary>Alternates, all counted</summary>
 
 ```text
-Alarm-grade reminders that keep coming back until you acknowledge them, a kanban board, rich notes and two-way Google Calendar sync. Free, no ads, no tracking.
+Alarm-grade reminders that keep coming back until you acknowledge them, a kanban board, rich notes and two-way Google Calendar sync. Free, and no ads.
 ```
 
 **(159)**
 
 ```text
-Tasks, notes and reminders loud enough to actually move you. Ask for the 31st and February answers with the 28th. Free, no ads, no tracking, no paid tier.
+Tasks, notes and reminders loud enough to actually move you. Ask for the 31st and February answers with the 28th. Free, no ads, no paid tier.
 ```
 
 **(154)**
@@ -85,7 +91,7 @@ Tasks, notes and reminders loud enough to actually move you. Ask for the 31st an
 <summary>Alternate promo lines</summary>
 
 ```text
-source-available, offline-first, and free. Tasks, notes and files in one place, with reminders loud enough to actually move you. No ads, no tracking, no paid tier.
+source-available, offline-first, and free. Tasks, notes and files in one place, with reminders loud enough to actually move you. No ads, no paid tier.
 ```
 
 **(158)**
@@ -97,7 +103,7 @@ source-available, offline-first, and free. Tasks, notes and files in one place, 
 ```text
 AllisWell keeps your whole day in one place: tasks, projects, notes and files, with reminders strong enough to actually get you out of a meeting on time.
 
-The source is public, it works offline, and there is no paid tier, no ads and no tracking.
+The source is public, your tasks work offline, and there is no paid tier and no ads.
 
 
 ONE PLACE FOR THE WHOLE DAY
@@ -125,9 +131,11 @@ NOTES AND FILES
 • A workspace-wide Files section with nestable folders, plus a Files tab inside every project.
 
 
-OFFLINE FIRST, ALWAYS IN SYNC
+WORKS OFFLINE
 
-Everything works with no connection: create, edit, complete, search. Your changes are queued on the device and pushed when you are back, and they land on your other devices in realtime.
+Your tasks, projects and notes live on the device, so you can read, create, edit, complete and search them with no connection at all. Changes queue up and push themselves the moment you are back, and land on your other devices in realtime.
+
+A connection is needed to sign in the first time, to upload or open a file, and to sync with Google Calendar.
 
 
 CALENDARS
@@ -153,9 +161,13 @@ YOURS TO HOST
 The entire app and server are public on GitHub, and you can run the whole thing yourself with a single docker compose command — your data in your own MySQL, on your own machine, reachable at your own domain. Free for personal use. Use our hosted service or your own server; it is the same app either way.
 
 
-NO PAID TIER. NO ADS. NO TRACKING.
+NO PAID TIER. NO ADS.
 
-There is no subscription and nothing locked behind one. There is no advertising, analytics or crash-reporting SDK in the app — none. We do not sell or share your data with anyone. You can delete your account and everything in it from Settings, in the app, without asking us.
+There is no subscription and nothing locked behind one, and there is no advertising, attribution or fingerprinting SDK. We do not sell or rent your data, and we never share it for advertising.
+
+The app does send crash reports and basic usage and performance diagnostics to Firebase, tagged with a random account id, so we can fix what breaks. The content you write — task titles, note bodies, file names — is never attached to any of it, and self-hosted builds send none of it.
+
+You can delete your account and everything in it from Settings, in the app, without asking us.
 
 
 Privacy policy: https://alliswell.space/privacy
@@ -282,11 +294,14 @@ Target: **4+ / Ages 4 and up.** Answer every content question with **None**.
   the OS-provided implementation, plus standard password hashing. Set
   `ITSAppUsesNonExemptEncryption` to `false` in `Info.plist` to skip the export
   compliance prompt on every upload.
-- **Third-party analytics / advertising / tracking:** **None.** The app ships no
-  advertising, analytics or crash-reporting SDK, and
-  `apps/app/ios/Runner/PrivacyInfo.xcprivacy` already declares
-  `NSPrivacyTracking = false` with an empty tracking-domains list. Answer **No**
-  to App Tracking Transparency — do not add the ATT prompt.
+- **Third-party analytics / advertising / tracking:** the app ships **no
+  advertising, attribution or fingerprinting SDK**, but since 1.1.0 it does ship
+  **Firebase Analytics, Crashlytics and Performance** (ADR-0025) — declare
+  _Diagnostics_ and _Usage Data_, "Linked to You" via the random account id,
+  **not used for tracking**. `apps/app/ios/Runner/PrivacyInfo.xcprivacy` declares
+  `NSPrivacyTracking = false` with an empty tracking-domains list, which stays
+  accurate: none of it follows the user across other companies' apps or sites.
+  Answer **No** to App Tracking Transparency — do not add the ATT prompt.
 
 **Review notes to paste into App Store Connect**
 
@@ -400,11 +415,11 @@ category words is correct on Play and wasteful on Apple.
 
 ### 2.2 Short description (≤ 80 characters)
 
-| #                     | Option                                                                                  | Count    |
-| --------------------- | --------------------------------------------------------------------------------------- | -------- |
-| **A** _(recommended)_ | `Offline-first tasks, notes and files, with alarms that actually wake you.`             | **(73)** |
-| B                     | `Tasks, notes, files and alarm-grade reminders. source-available. No ads, no tracking.` | **(80)** |
-| C                     | `source-available task manager: offline, realtime sync, alarms that keep ringing.`      | **(75)** |
+| #                     | Option                                                                                | Count    |
+| --------------------- | ------------------------------------------------------------------------------------- | -------- |
+| **A** _(recommended)_ | `Offline-first tasks, notes and files, with alarms that actually wake you.`           | **(73)** |
+| B                     | `Tasks, notes, files and alarm-grade reminders. Source-available, and no ads at all.` | **(80)** |
+| C                     | `source-available task manager: offline, realtime sync, alarms that keep ringing.`    | **(75)** |
 
 This is the line under the icon on the store page and in search results. Option B
 is exactly at the cap — verify it in the console before publishing, since Play
@@ -415,7 +430,7 @@ counts trailing whitespace.
 ```text
 AllisWell keeps your whole day in one place — tasks, projects, notes and files — with reminders strong enough to actually move you.
 
-source-available. Works offline. No paid tier, no ads, no tracking.
+source-available. Your tasks work offline. No paid tier, no ads.
 
 
 📥 CAPTURE, THEN PLAN
@@ -443,9 +458,11 @@ source-available. Works offline. No paid tier, no ads, no tracking.
 • A workspace-wide Files section with nestable folders, and a Files tab in every project.
 
 
-📶 OFFLINE FIRST, ALWAYS IN SYNC
+📶 WORKS OFFLINE
 
-Everything works with no connection: create, edit, complete, search. Changes queue on your device, push when you are back, and land on your other devices in realtime — phone, tablet, desktop and web, from one account.
+Your tasks, projects and notes live on the device, so you can read, create, edit, complete and search them with no connection at all. Changes queue up and push themselves the moment you are back, and land on your other devices in realtime — phone, tablet, desktop and web, from one account.
+
+A connection is needed to sign in the first time, to upload or open a file, and to sync with Google Calendar.
 
 
 📅 GOOGLE CALENDAR, BOTH WAYS
@@ -470,9 +487,13 @@ Search ignores case and accents across the Latin alphabets, so "muller" finds "M
 The whole app and server are public on GitHub, and you can run the entire stack yourself with one docker compose command — your data in your own MySQL, on your own machine, at your own domain. Free for personal use. Use our hosted service or your own server; it is the same app either way.
 
 
-🚫 NO PAID TIER. NO ADS. NO TRACKING.
+🚫 NO PAID TIER. NO ADS.
 
-There is no subscription and nothing locked behind one. There is no advertising, analytics or crash-reporting SDK in the app — none at all. We do not sell or share your data. You can delete your account and everything in it from Settings, in the app, without asking us.
+There is no subscription and nothing locked behind one, and there is no advertising, attribution or fingerprinting SDK. We do not sell or rent your data, and we never share it for advertising.
+
+The app does send crash reports and basic usage and performance diagnostics to Firebase, tagged with a random account id, so we can fix what breaks. The content you write — task titles, note bodies, file names — is never attached to any of it, and self-hosted builds send none of it.
+
+You can delete your account and everything in it from Settings, in the app, without asking us.
 
 
 Source code: https://github.com/mahirozdin/alliswell
@@ -699,7 +720,7 @@ section should not either.
 **Tanıtım metni (≤ 170 karakter)**
 
 ```text
-Sessiz moda ve Odak'a rağmen çalan hatırlatıcılar. Şubat'ı atlamayan tekrarlar. Çift yönlü takvim eşitlemesi. Ücretsiz; reklam yok, takip yok.
+Tam dakikasında, gerçek alarm sesiyle çalan hatırlatıcılar. Şubat'ı atlamayan tekrarlar. Çift yönlü takvim eşitlemesi. Ücretsiz, reklamsız.
 ```
 
 **(142)** — 1.1.0 için güncel.
@@ -719,7 +740,7 @@ yapılacaklar,görev,hatırlatıcı,ajanda,planlayıcı,kanban,pano,proje,liste,
 ```text
 AllisWell gününüzü tek yerde toplar: görevler, projeler, notlar ve dosyalar — üstüne sizi toplantıdan zamanında çıkaracak kadar ısrarcı hatırlatıcılar.
 
-Açık kaynak. Çevrimdışı çalışır. Ücretli sürüm yok, reklam yok, takip yok.
+Kaynağı açık. Görevleriniz çevrimdışı çalışır. Ücretli sürüm yok, reklam yok.
 
 
 GÜNÜNÜZ TEK EKRANDA
@@ -747,9 +768,11 @@ NOTLAR VE DOSYALAR
 • Tüm çalışma alanını kapsayan, iç içe klasörlü bir Dosyalar bölümü; ayrıca her projenin kendi Dosyalar sekmesi.
 
 
-ÖNCE ÇEVRİMDIŞI, HEP EŞİTLENMİŞ
+ÇEVRİMDIŞI ÇALIŞIR
 
-Bağlantı olmadan da her şey çalışır: oluşturun, düzenleyin, tamamlayın, arayın. Değişiklikleriniz cihazda sıraya girer, siz döndüğünüzde gönderilir ve diğer cihazlarınıza anında düşer.
+Görevleriniz, projeleriniz ve notlarınız cihazınızda durur; hiç bağlantı olmadan okuyabilir, oluşturabilir, düzenleyebilir, tamamlayabilir ve arayabilirsiniz. Değişiklikleriniz sıraya girer, siz döndüğünüz anda gönderilir ve diğer cihazlarınıza anında düşer.
+
+İlk girişte, bir dosyayı yüklerken veya açarken ve Google Takvim eşitlemesinde bağlantı gerekir.
 
 
 TAKVİMLER
@@ -775,9 +798,13 @@ AÇIK KAYNAK VE İSTERSENİZ KENDİ SUNUCUNUZDA
 Uygulamanın ve sunucunun tamamı GitHub'da açık; tek bir docker compose komutuyla hepsini kendiniz çalıştırabilirsiniz — veriniz kendi MySQL'inizde, kendi makinenizde, kendi alan adınızda. Kişisel kullanım için ücretsiz. Bizim servisimizi de kendi sunucunuzu da kullanabilirsiniz; uygulama aynı uygulama.
 
 
-ÜCRETLİ SÜRÜM YOK. REKLAM YOK. TAKİP YOK.
+ÜCRETLİ SÜRÜM YOK. REKLAM YOK.
 
-Abonelik yok, kilitli özellik yok. Uygulamanın içinde reklam, analitik ya da çökme raporlama kütüphanesi yok — hiçbiri. Verinizi kimseye satmıyor, kimseyle paylaşmıyoruz. Hesabınızı ve içindeki her şeyi, bize sormadan, Ayarlar'dan silebilirsiniz.
+Abonelik yok, kilitli özellik yok; uygulamada reklam, ilişkilendirme veya parmak izi kütüphanesi yok. Verinizi satmıyor, kiralamıyor ve reklam için kimseyle paylaşmıyoruz.
+
+Uygulama, bozulanı düzeltebilmemiz için çökme raporlarını ve temel kullanım/performans ölçümlerini Firebase'e gönderir; bunlar rastgele bir hesap kimliğiyle etiketlenir. Yazdığınız içerik — görev başlıkları, not gövdeleri, dosya adları — hiçbirine eklenmez ve kendi sunucunuzda çalıştırdığınız sürümler bunların hiçbirini göndermez.
+
+Hesabınızı ve içindeki her şeyi, bize sormadan, Ayarlar'dan silebilirsiniz.
 
 
 Gizlilik politikası: https://alliswell.space/privacy
@@ -832,7 +859,7 @@ Bir aksaklık mı gördünüz? https://github.com/mahirozdin/alliswell/issues
 | #                  | Seçenek                                                                      | Karakter |
 | ------------------ | ---------------------------------------------------------------------------- | -------- |
 | **A** _(önerilen)_ | `Görev, not ve dosya; uyandıran alarmlar. Çevrimdışı çalışır, kaynağı açık.` | **(73)** |
-| B                  | `Görevler, notlar, dosyalar ve uyandıran alarmlar. Reklam yok, takip yok.`   | **(72)** |
+| B                  | `Görevler, notlar, dosyalar ve uyandıran alarmlar. Reklamsız, kaynağı açık.` | **(74)** |
 | C                  | `Çevrimdışı çalışan görev yöneticisi. Gerçek alarmlar, anlık eşitleme.`      | **(69)** |
 
 **Tam açıklama (≤ 4000 karakter)**
@@ -840,7 +867,7 @@ Bir aksaklık mı gördünüz? https://github.com/mahirozdin/alliswell/issues
 ```text
 AllisWell gününüzü tek yerde toplar — görevler, projeler, notlar ve dosyalar — üstüne sizi gerçekten harekete geçirecek hatırlatıcılar.
 
-Açık kaynak. Çevrimdışı çalışır. Ücretli sürüm yok, reklam yok, takip yok.
+Kaynağı açık. Görevleriniz çevrimdışı çalışır. Ücretli sürüm yok, reklam yok.
 
 
 📥 ÖNCE YAKALAYIN, SONRA PLANLAYIN
@@ -868,9 +895,11 @@ Açık kaynak. Çevrimdışı çalışır. Ücretli sürüm yok, reklam yok, tak
 • İç içe klasörlü, çalışma alanının tamamını kapsayan bir Dosyalar bölümü; her projede ayrı bir Dosyalar sekmesi.
 
 
-📶 ÖNCE ÇEVRİMDIŞI, HEP EŞİTLENMİŞ
+📶 ÇEVRİMDIŞI ÇALIŞIR
 
-Bağlantı olmadan da her şey çalışır: oluşturun, düzenleyin, tamamlayın, arayın. Değişiklikleriniz cihazda sıraya girer, siz döndüğünüzde gönderilir ve diğer cihazlarınıza anında düşer — telefon, tablet, masaüstü ve web, tek hesapla.
+Görevleriniz, projeleriniz ve notlarınız cihazınızda durur; hiç bağlantı olmadan okuyabilir, oluşturabilir, düzenleyebilir, tamamlayabilir ve arayabilirsiniz. Değişiklikleriniz sıraya girer, siz döndüğünüz anda gönderilir ve diğer cihazlarınıza anında düşer — telefon, tablet, masaüstü ve web, tek hesapla.
+
+İlk girişte, bir dosyayı yüklerken veya açarken ve Google Takvim eşitlemesinde bağlantı gerekir.
 
 
 📅 GOOGLE TAKVİM, ÇİFT YÖNLÜ
@@ -895,9 +924,13 @@ Arama büyük-küçük harfe ve aksanlara takılmaz: "cay" yazınca "Çay", "isi
 Uygulamanın ve sunucunun tamamı GitHub'da açık; tek bir docker compose komutuyla hepsini kendiniz çalıştırabilirsiniz — veriniz kendi MySQL'inizde, kendi makinenizde, kendi alan adınızda. Kişisel kullanım için ücretsiz. Bizim servisimizi de kendi sunucunuzu da kullanabilirsiniz; uygulama aynı uygulama.
 
 
-🚫 ÜCRETLİ SÜRÜM YOK. REKLAM YOK. TAKİP YOK.
+🚫 ÜCRETLİ SÜRÜM YOK. REKLAM YOK.
 
-Abonelik yok, kilitli özellik yok. Uygulamanın içinde reklam, analitik ya da çökme raporlama kütüphanesi yok — hiçbiri. Verinizi kimseye satmıyor, kimseyle paylaşmıyoruz. Hesabınızı ve içindeki her şeyi, bize sormadan, Ayarlar'dan silebilirsiniz.
+Abonelik yok, kilitli özellik yok; uygulamada reklam, ilişkilendirme veya parmak izi kütüphanesi yok. Verinizi satmıyor, kiralamıyor ve reklam için kimseyle paylaşmıyoruz.
+
+Uygulama, bozulanı düzeltebilmemiz için çökme raporlarını ve temel kullanım/performans ölçümlerini Firebase'e gönderir; bunlar rastgele bir hesap kimliğiyle etiketlenir. Yazdığınız içerik — görev başlıkları, not gövdeleri, dosya adları — hiçbirine eklenmez ve kendi sunucunuzda çalıştırdığınız sürümler bunların hiçbirini göndermez.
+
+Hesabınızı ve içindeki her şeyi, bize sormadan, Ayarlar'dan silebilirsiniz.
 
 
 Kaynak kodu: https://github.com/mahirozdin/alliswell
@@ -947,10 +980,9 @@ Sign in with Google, Apple or e-mail. No ads, no subscriptions.
 
 **Note the closing line.** It says _no ads, no subscriptions_ — **not** "no
 tracking" and **not** "no analytics". Since 1.1.0 the build carries Firebase
-Analytics, Crashlytics and Performance (ADR-0025), so the older
-"no advertising, analytics or crash-reporting SDK — none" line is false and
-would contradict the Data safety form filed beside it. See §1.4 / §2.3, both
-still carrying that sentence.
+Analytics, Crashlytics and Performance (ADR-0025), so that older claim is false
+and would contradict the Data safety form filed beside it. Both descriptions
+were corrected on 2026-08-02; see §5 for why neither sentence comes back.
 
 <details>
 <summary>Update-style alternate — use it for the first release <em>after</em> this one</summary>
@@ -990,19 +1022,21 @@ Plus: home-screen widgets, a refreshed look, and one-command self-hosting.
 Things a reasonable copywriter would have written that are **not true of the
 shipped build**. Do not add them back without re-checking the code.
 
-| Claim                                                   | Why it is not in the copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **"Rings through the mute switch" / "AlarmKit"**        | The iOS 26 AlarmKit lane's Dart side is complete and tested, but the native bridge is **not in the build**: `AlarmKitBridge.swift` appears **zero** times in `apps/app/ios/Runner.xcodeproj/project.pbxproj`, and `apps/app/ios/Runner/AppDelegate.swift` explicitly leaves it unregistered ("Kept out of the committed build"). `apps/app/ios/Runner/ALARMKIT_SETUP.md` documents the remaining device-only step. Until that ships, urgent alarms are time-sensitive notifications with a bundled sound — **which a hardware mute switch can still silence.** The 0.4.0 CHANGELOG says as much under _Known limitations_. |
-| **"Alarms that never stop until you dismiss them"**     | The re-alert chain is a **finite, pre-scheduled** set of 5 alerts at 0 / 2 / 5 / 10 / 30 minutes (`kUrgentChainOffsets`, `apps/app/lib/src/notifications/planner.dart`). "Keeps re-alerting across the next half hour" is accurate; "never stops" is not.                                                                                                                                                                                                                                                                                                                                                                  |
-| **"Two-way Apple Calendar sync"**                       | Apple/EventKit is **one-way only** (task → event). The native plugin exposes no list-events method, and `apps/app/lib/src/features/calendar/apple/apple_mirror_engine.dart` states the one-way limit in its own doc comment. Only Google is two-way. Note that `README.md` currently overstates this — the store copy deliberately does not follow it.                                                                                                                                                                                                                                                                     |
-| **"Tap to complete from the widget"**                   | No `AppIntent` exists in any Swift file; the iOS widget is a `StaticConfiguration` whose only interaction is `.widgetURL`, and the Android provider only opens `MainActivity`. Widgets are read-only glances.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **"Widgets on iPhone, Android and Mac"**                | There is **no macOS widget target**, so the copy claims iPhone and Android only. The iOS widget extension's deployment target was 26.2 (invisible to almost every device) and is now **16.0** — fixed 2026-07-26, so the iPhone claim needs no qualifier.                                                                                                                                                                                                                                                                                                                                                                  |
-| **"Subtasks" / "natural-language dates" as built-ins**  | The app ships **no subtask UI** and **no built-in NLP date parser** in quick-add. (AI extraction can resolve "tomorrow 3pm" into a date, but only with a provider connected and always behind the confirm card — never sell it as an always-on built-in.) **Note:** "recurring tasks" **now ship** as of v0.8.0 (Epic 19) — that claim is no longer off-limits and appears in the copy.                                                                                                                                                                                                                                    |
-| **"Built-in / free AI" / "ChatGPT or Claude included"** | AI is **bring-your-own-key** (Anthropic/OpenAI/Gemini/OpenRouter/Ollama) or **connect-your-own-subscription** (the MCP connector links the user's _own_ Claude or ChatGPT). The app ships no bundled or free model. Never imply AllisWell provides the AI, that it is free, or that a consumer Claude/ChatGPT account is integrated for the user. Gemini is always described as needing an **API key**, not the free consumer app.                                                                                                                                                                                         |
-| **"Share a project with your team" / collaboration**    | No sharing, invitation, comment or messaging surface ships. This also underpins the "No" answers in §1.8 and §2.5 — if collaboration ever ships, both questionnaires must be refiled.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **"Unlimited file uploads" / "up to 5 GB"**             | The code default for `STORAGE_MAX_UPLOAD_MB` is 512, but every shipped environment sets **10** (`.env.production`, `docker-compose.selfhost.yml`, `.env.selfhost.example`), and `docs/PRIVACY.md` states 10 MB for the hosted service. The copy says **10 MB on the hosted service** and notes self-hosters can change it.                                                                                                                                                                                                                                                                                                 |
-| **"Instant account deletion"**                          | Deletion has a **3-day grace period** and is cancellable by signing in. The copy says you can delete from Settings without saying it is immediate; §2.6 states the grace period explicitly, as Play requires.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Any rating, download count, award or "#1" claim**     | The app has not shipped. No social proof of any kind appears in this file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Claim                                                     | Why it is not in the copy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **"Rings through the mute switch" / "AlarmKit"**          | The iOS 26 AlarmKit lane's Dart side is complete and tested, but the native bridge is **not in the build**: `AlarmKitBridge.swift` appears **zero** times in `apps/app/ios/Runner.xcodeproj/project.pbxproj`, and `apps/app/ios/Runner/AppDelegate.swift` explicitly leaves it unregistered ("Kept out of the committed build"). `apps/app/ios/Runner/ALARMKIT_SETUP.md` documents the remaining device-only step. Until that ships, urgent alarms are time-sensitive notifications with a bundled sound — **which a hardware mute switch can still silence.** The 0.4.0 CHANGELOG says as much under _Known limitations_.                                                    |
+| **"Alarms that never stop until you dismiss them"**       | The re-alert chain is a **finite, pre-scheduled** set of 5 alerts at 0 / 2 / 5 / 10 / 30 minutes (`kUrgentChainOffsets`, `apps/app/lib/src/notifications/planner.dart`). "Keeps re-alerting across the next half hour" is accurate; "never stops" is not.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **"Two-way Apple Calendar sync"**                         | Apple/EventKit is **one-way only** (task → event). The native plugin exposes no list-events method, and `apps/app/lib/src/features/calendar/apple/apple_mirror_engine.dart` states the one-way limit in its own doc comment. Only Google is two-way. Note that `README.md` currently overstates this — the store copy deliberately does not follow it.                                                                                                                                                                                                                                                                                                                        |
+| **"Tap to complete from the widget"**                     | No `AppIntent` exists in any Swift file; the iOS widget is a `StaticConfiguration` whose only interaction is `.widgetURL`, and the Android provider only opens `MainActivity`. Widgets are read-only glances.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **"Widgets on iPhone, Android and Mac"**                  | There is **no macOS widget target**, so the copy claims iPhone and Android only. The iOS widget extension's deployment target was 26.2 (invisible to almost every device) and is now **16.0** — fixed 2026-07-26, so the iPhone claim needs no qualifier.                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **"Subtasks" / "natural-language dates" as built-ins**    | The app ships **no subtask UI** and **no built-in NLP date parser** in quick-add. (AI extraction can resolve "tomorrow 3pm" into a date, but only with a provider connected and always behind the confirm card — never sell it as an always-on built-in.) **Note:** "recurring tasks" **now ship** as of v0.8.0 (Epic 19) — that claim is no longer off-limits and appears in the copy.                                                                                                                                                                                                                                                                                       |
+| **"Built-in / free AI" / "ChatGPT or Claude included"**   | AI is **bring-your-own-key** (Anthropic/OpenAI/Gemini/OpenRouter/Ollama) or **connect-your-own-subscription** (the MCP connector links the user's _own_ Claude or ChatGPT). The app ships no bundled or free model. Never imply AllisWell provides the AI, that it is free, or that a consumer Claude/ChatGPT account is integrated for the user. Gemini is always described as needing an **API key**, not the free consumer app.                                                                                                                                                                                                                                            |
+| **"Share a project with your team" / collaboration**      | No sharing, invitation, comment or messaging surface ships. This also underpins the "No" answers in §1.8 and §2.5 — if collaboration ever ships, both questionnaires must be refiled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **"Unlimited file uploads" / "up to 5 GB"**               | The code default for `STORAGE_MAX_UPLOAD_MB` is 512, but every shipped environment sets **10** (`.env.production`, `docker-compose.selfhost.yml`, `.env.selfhost.example`), and `docs/PRIVACY.md` states 10 MB for the hosted service. The copy says **10 MB on the hosted service** and notes self-hosters can change it.                                                                                                                                                                                                                                                                                                                                                    |
+| **"Instant account deletion"**                            | Deletion has a **3-day grace period** and is cancellable by signing in. The copy says you can delete from Settings without saying it is immediate; §2.6 states the grace period explicitly, as Play requires.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **"Everything works with no connection"**                 | **Google Play rejected version code 16 for this sentence on 2026-08-02** — Misleading Claims, "app description lists features not present in the app". Tasks, projects and notes are genuinely local-first (drift replica + outbox), and search runs on the device. But **signing in the first time needs the network**, and so does **every file**: content is fetched through a presigned URL (`fileUrlProvider` → `GET /files/:id/url`), so an attachment or note image cannot be opened offline, let alone uploaded. Calendar sync and the AI surfaces need it too. Say what works offline, then name what does not — the caveat is the thing that keeps the claim legal. |
+| **"No tracking" / "no analytics" / "no crash reporting"** | True until 1.1.0, false the moment Firebase Analytics, Crashlytics and Performance landed (ADR-0025). It is also self-refuting on Play, where the Data safety form declaring exactly that data sits on the same page as the description. What is still true, and what the copy now says: no advertising, attribution or fingerprinting SDK; nothing sold or rented; the content you write is never attached; self-hosted builds send none of it.                                                                                                                                                                                                                              |
+| **Any rating, download count, award or "#1" claim**       | The app has not shipped. No social proof of any kind appears in this file.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ### Pre-submission blockers (not copy — build and infrastructure)
 
