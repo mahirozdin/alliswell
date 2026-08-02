@@ -6,12 +6,15 @@
 //       test/store_screenshots_test.dart
 //
 // Then copy test/goldens/store_*.png into docs/store/ (goldens are generated
-// output and stay untracked).
+// output and stay untracked), or run `npm run shots:store` which composes the
+// iPad ones straight into store/ios/ipad-13/.
 //
 // Sizes are expressed as LOGICAL pixels at devicePixelRatio 2, so the PNG comes
 // out at exactly twice the logical size — which is what the stores measure.
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:alliswell/src/sections.dart';
 
 import 'design_screenshots_test.dart' as design;
 
@@ -28,6 +31,39 @@ const _devices = <String, Size>{
   'android_tablet10': Size(800, 1280),
 };
 
+/// Devices whose store set is generated here rather than captured on real
+/// hardware, and which therefore need the WHOLE story, not just a reference
+/// pair. The iPhone and Android phone listings are built from real simulator
+/// and emulator captures (docs/SCREENSHOTS.md §2–3); no iPad or Android tablet
+/// is on hand, so these renders are the listing.
+const _fullSet = {'ipad13', 'android_tablet10'};
+
+class _Shot {
+  const _Shot(this.name, {this.navigate, this.brightness = Brightness.light});
+
+  final String name;
+  final Future<void> Function(WidgetTester tester)? navigate;
+  final Brightness brightness;
+}
+
+/// The order the listing tells its story in — the same one the composed phone
+/// slides use (STORE-LISTING §3): Home → Board → Projects → Notes → Files →
+/// dark. The numeric prefix is the slide order, so the compositor can just
+/// sort by filename.
+List<_Shot> _shots({required bool full}) => [
+  const _Shot('1_home'),
+  _Shot('2_board', navigate: design.openBoard),
+  if (full) ...[
+    _Shot(
+      '3_projects',
+      navigate: (t) => design.openSection(t, AppSection.projects),
+    ),
+    _Shot('4_notes', navigate: (t) => design.openSection(t, AppSection.notes)),
+    _Shot('5_files', navigate: design.openFilesFolder),
+    const _Shot('6_home_dark', brightness: Brightness.dark),
+  ],
+];
+
 void main() {
   setUpAll(design.loadRealFontsForStore);
 
@@ -35,21 +71,18 @@ void main() {
     final device = entry.key;
     final size = entry.value;
 
-    testWidgets('store · $device · home', skip: !_enabled, (tester) async {
-      await design.shootForStore(
+    for (final shot in _shots(full: _fullSet.contains(device))) {
+      testWidgets('store · $device · ${shot.name}', skip: !_enabled, (
         tester,
-        size: size,
-        name: 'store_${device}_1_home',
-      );
-    });
-
-    testWidgets('store · $device · board', skip: !_enabled, (tester) async {
-      await design.shootForStore(
-        tester,
-        size: size,
-        name: 'store_${device}_2_board',
-        openBoard: true,
-      );
-    });
+      ) async {
+        await design.shootForStore(
+          tester,
+          size: size,
+          name: 'store_${device}_${shot.name}',
+          brightness: shot.brightness,
+          navigate: shot.navigate,
+        );
+      });
+    }
   }
 }

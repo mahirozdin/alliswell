@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
@@ -241,7 +242,9 @@ FakeApi _seededApi() {
     projectId: personal,
   );
 
-  // Notes.
+  // Notes. Two rows read as an empty app on a 13" iPad — the store set is
+  // rendered at 1032×1376 logical, where a phone-sized workspace leaves most
+  // of the canvas blank. Six is still a believable week of notes.
   api.seedNote(
     title: 'Launch checklist',
     plainText: 'Store copy, screenshots, press kit, changelog.',
@@ -252,6 +255,26 @@ FakeApi _seededApi() {
     title: 'Renovation measurements',
     plainText: 'Kitchen 3.2 × 4.1 m · hallway 1.1 m wide.',
     projectId: reno,
+  );
+  api.seedNote(
+    title: 'Weekly review',
+    plainText: 'What moved, what stalled, what to drop this week.',
+    isPinned: true,
+  );
+  api.seedNote(
+    title: 'Shape Up — chapter notes',
+    plainText: 'Appetite before estimate. Fixed time, variable scope.',
+    projectId: reading,
+  );
+  api.seedNote(
+    title: 'Kitchen supplier quotes',
+    plainText: 'Three quotes in, one still missing the worktop line.',
+    projectId: reno,
+  );
+  api.seedNote(
+    title: 'Press kit outline',
+    plainText: 'Screenshots, icon, one-paragraph pitch, contact.',
+    projectId: launch,
   );
 
   // Files: two folders, workspace uploads inside one, plus a project
@@ -273,6 +296,38 @@ FakeApi _seededApi() {
     folderId: documents,
     mime: 'image/png',
     sizeBytes: 840000,
+  );
+  api.seedFile(
+    name: 'press-kit.zip',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    folderId: documents,
+    mime: 'application/zip',
+    sizeBytes: 15800000,
+  );
+  api.seedFile(
+    name: 'kitchen-quote.pdf',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    folderId: documents,
+    mime: 'application/pdf',
+    sizeBytes: 380000,
+  );
+  api.seedFile(
+    name: 'launch-timeline.png',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    folderId: documents,
+    mime: 'image/png',
+    sizeBytes: 1100000,
+  );
+  api.seedFile(
+    name: 'contract-signed.pdf',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    folderId: documents,
+    mime: 'application/pdf',
+    sizeBytes: 640000,
   );
   api.seedFile(
     name: 'hero-mockup.png',
@@ -305,6 +360,13 @@ Future<void> _shoot(
     tester.view.resetDevicePixelRatio();
     tester.platformDispatcher.clearPlatformBrightnessTestValue();
   });
+  // `localKv` is a process-wide singleton that CACHES its SharedPreferences
+  // instance, so `setMockInitialValues({})` does not clear it: without this
+  // line the board toggle written by one shot leaks into every later shot and
+  // the "home" screenshots come out showing the board. That is exactly how
+  // four of the five committed store goldens ended up byte-identical to their
+  // board twin. Same idiom the feature tests use.
+  await localKv.remove('alliswell_home_view');
   debugDisableShadows = false;
   try {
     await tester.pumpWidget(await _signedInScreenshotApp(_seededApi()));
@@ -332,17 +394,36 @@ Future<void> _openSection(WidgetTester tester, String label) async {
 /// that can drift.
 Future<void> loadRealFontsForStore() => _loadRealFonts();
 
+/// Flip Home into the board view. Keyed, not by label: OPH-213 moved the
+/// list/board switch out of a segmented control and into an app-bar icon whose
+/// only text is a tooltip, which silently broke the old `find.text` lookup.
+Future<void> openBoard(WidgetTester tester) =>
+    tester.tap(find.byKey(const Key('home-view-toggle')));
+
+/// Open a top-level section from the shell (rail on tablet/desktop widths).
+Future<void> openSection(WidgetTester tester, AppSection section) =>
+    _openSection(tester, section.title);
+
+/// Files, with a folder opened so the shot shows file rows rather than an
+/// empty folder grid.
+Future<void> openFilesFolder(WidgetTester tester) async {
+  await _openSection(tester, AppSection.files.title);
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Documents'));
+}
+
 Future<void> shootForStore(
   WidgetTester tester, {
   required Size size,
   required String name,
-  bool openBoard = false,
+  Brightness brightness = Brightness.light,
+  Future<void> Function(WidgetTester tester)? navigate,
 }) => _shoot(
   tester,
   size: size,
-  brightness: Brightness.light,
+  brightness: brightness,
   name: name,
-  navigate: openBoard ? (t) => t.tap(find.text('board.viewBoard'.tr())) : null,
+  navigate: navigate,
 );
 
 void main() {
