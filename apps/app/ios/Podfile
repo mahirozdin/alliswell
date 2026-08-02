@@ -1,5 +1,7 @@
-# home_widget (Epic 12) needs iOS 14+; the app targets 14.0 (OPH-131).
-platform :ios, '14.0'
+require 'fileutils'
+# Firebase 12.x'in taban gereksinimi iOS 15.0 (ADR-0025). Daha düşüğünde
+# CocoaPods 'required a higher minimum deployment target' ile durur.
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -26,6 +28,31 @@ end
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
 flutter_ios_podfile_setup
+
+# Firebase config: keep a fresh clone buildable (ADR-0025).
+#
+# GoogleService-Info.plist is gitignored, and Xcode's Copy Bundle Resources
+# treats it as a REQUIRED build input — so without this, cloning the repo and
+# running `flutter build ios` fails with "Build input file cannot be found"
+# before a single line of Dart is compiled. Android has no equivalent problem
+# because its Gradle plugins are applied conditionally; iOS cannot express that.
+#
+# So: if the real file is absent, materialise the committed .example in its
+# place. The app then starts, Firebase.initializeApp() fails on the placeholder
+# ids, AwFirebase reports itself unconfigured, and everything else works —
+# which is exactly the degradation the ADR describes.
+#
+# `pod install` runs as part of every `flutter build ios`, so this self-heals.
+plist = File.join(__dir__, 'Runner', 'GoogleService-Info.plist')
+unless File.exist?(plist)
+  example = "#{plist}.example"
+  if File.exist?(example)
+    FileUtils.cp(example, plist)
+    Pod::UI.warn 'AllisWell: no GoogleService-Info.plist — using the placeholder ' \
+                 'from GoogleService-Info.plist.example. The build works; Firebase ' \
+                 'stays off. See docs/FIREBASE.md to point it at your own project.'
+  end
+end
 
 target 'Runner' do
   use_frameworks!

@@ -20,6 +20,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
+		A54B30D1301EDC60003E181C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A54B30CF301EDC60003E181C /* GoogleService-Info.plist */; };
 		A567B04A3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */; };
 		A567B04B3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */; };
 		A5CBB5F0300AD02700CE60FF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */; };
@@ -116,6 +117,7 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1E645310745BD4734368576 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A54B30CF301EDC60003E181C /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A5BED92C30082BDB00593EDC /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AllisWellWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -269,6 +271,7 @@
 		97C146F01CF9000F007C117D /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				A54B30CF301EDC60003E181C /* GoogleService-Info.plist */,
 				A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */,
 				A5BED92C30082BDB00593EDC /* Runner.entitlements */,
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
@@ -371,6 +374,7 @@
 				A21211B1406FB33EBE85FAC7 /* [CP] Embed Pods Frameworks */,
 				A5CBB602300AD02800CE60FF /* Embed Foundation Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
+				CE15F957006D67684B1B7A43 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -473,6 +477,7 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+				A54B30D1301EDC60003E181C /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -601,6 +606,23 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		CE15F957006D67684B1B7A43 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -724,7 +746,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -817,7 +839,7 @@
 				DEVELOPMENT_TEAM = WWRZ5CG3DW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AllisWellShare/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.alliswell.alliswell.AllisWellShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -877,7 +899,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -928,7 +950,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = iphoneos;
@@ -997,7 +1019,7 @@
 				DEVELOPMENT_TEAM = WWRZ5CG3DW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AllisWellShare/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.alliswell.alliswell.AllisWellShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1152,7 +1174,7 @@
 				DEVELOPMENT_TEAM = WWRZ5CG3DW;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AllisWellShare/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.alliswell.alliswell.AllisWellShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";

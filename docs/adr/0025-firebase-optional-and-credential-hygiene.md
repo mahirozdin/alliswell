@@ -40,6 +40,12 @@ presence of the platform config file.
    the shape and pointing at `docs/FIREBASE.md`.
 5. **Web has no implicit config** — without `--dart-define`d options the web
    build simply has no Firebase.
+6. **iOS gets a Podfile fallback.** Xcode cannot express "copy this resource if
+   it exists": the plist is a required build input, so a clone without one fails
+   before compiling. The Podfile therefore copies the committed `.example` into
+   place when the real file is missing. Verified by deleting the plist and
+   building — which is how the gap was found, after the ADR had already claimed
+   the fresh-clone guarantee held on every platform.
 
 ## Alternatives considered
 
@@ -60,6 +66,9 @@ presence of the platform config file.
 ## Consequences
 
 - A fresh clone builds and runs with **no Firebase**, and says so once in the log.
+  On iOS this needs the Podfile fallback above; on Android the Gradle gate is
+  enough. The claim is checked by removing the config file and building, not
+  assumed.
   This is the normal state for contributors and self-hosters, not a broken setup.
 - The maintainer's release builds need the three files present on the build
   machine or in CI secrets — they are not in git, so a release pipeline that
