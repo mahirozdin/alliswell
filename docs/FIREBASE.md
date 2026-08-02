@@ -94,11 +94,19 @@ being replaced). Crashlytics on iOS also wants a run-script phase uploading dSYM
   project identifier is committed, and a build with no config file simply
   produces no scheme.
 
-**The token's audience.** `SocialSignIn` passes the **web** client id as
-`serverClientId`, so the ID token has one audience on every platform. That is why
-the server needs only `SIGN_IN_GOOGLE_WEB_CLIENT_ID` — the per-platform Android
-and iOS clients never appear as an audience and do not belong in the server's
-environment.
+**The token's audience — set two values, not one.** `SocialSignIn` passes the web
+client id as `serverClientId`, which pins the audience _when it is actually
+passed_. On iOS it may not be: the plugin resolves
+`runtimeServerClientId ?: plist[SERVER_CLIENT_ID]`, a Firebase-issued
+`GoogleService-Info.plist` has no `SERVER_CLIENT_ID`, and a `--dart-define` does
+not reliably survive an Xcode Archive. So an iOS token can legitimately carry the
+**iOS** client as its audience.
+
+Configure **both** `SIGN_IN_GOOGLE_WEB_CLIENT_ID` and
+`SIGN_IN_GOOGLE_IOS_CLIENT_ID`. Every audience in that list is still one of your
+own OAuth clients, so nothing about the security check weakens — it is the same
+reason `audiencesFor()` returns a list rather than a single value. Android needs
+no entry: its SDK already audiences to the web client.
 
 **Fetching config with the CLI:** `firebase apps:sdkconfig … --out <file>` can
 write a **cached** copy that predates your latest console change. Printing to
