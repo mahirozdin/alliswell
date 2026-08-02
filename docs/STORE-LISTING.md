@@ -611,7 +611,7 @@ no alpha channel and no rounded corners baked in.
 | --- | --------- | ------------------------------------------ | ----------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | App Store | **iPhone 6.9"** screenshots                | 1320 × 2868 _(1290 × 2796 also accepted)_                   | 3–10 (min 3) | ✅ `store/ios/iphone-6.9/01–08.png`                                                                                                                                                                                                      |
 | 2   | App Store | **iPhone 6.5"** screenshots                | 1242 × 2688 _(or 1284 × 2778)_                              | 3–10         | ✅ `store/ios/iphone-6.5/01–08.png`                                                                                                                                                                                                      |
-| 3   | App Store | **iPad 13"** screenshots                   | 2064 × 2752 _(portrait)_                                    | 3–10         | ⛔ **To do** — **required** if the build declares iPad support. Boot an iPad Pro 13" simulator and re-run the pipeline, or drop iPad from the device family.                                                                             |
+| 3   | App Store | **iPad 13"** screenshots                   | 2064 × 2752 _(portrait)_                                    | 1–10         | ✅ `store/ios/ipad-13/01–06.png` — **required**, because the build declares iPad (`TARGETED_DEVICE_FAMILY = "1,2"`). Rendered from the real widget tree at 1032 × 1376 @2×, not upscaled — see [SCREENSHOTS.md](SCREENSHOTS.md) §4.      |
 | 4   | App Store | **App icon**                               | 1024 × 1024, no alpha, no rounded corners                   | 1            | ✅ `store/icons/app-store-1024.png`                                                                                                                                                                                                      |
 | 5   | App Store | **App preview video** (optional)           | per-device, 15–30 s                                         | 0–3          | ⏭ Skipped for 0.9.0                                                                                                                                                                                                                      |
 | 6   | Play      | **Phone** screenshots                      | ≥ 1080 px short edge, 9:16                                  | 2–8 (min 2)  | ✅ `store/android/phone/01–08.png` (1344 × 2992)                                                                                                                                                                                         |
@@ -634,8 +634,12 @@ npm run dev &&  node scripts/seed-demo.mjs
 npm run shots:web                       # → screenshots/web/
 #   iOS simulator + Android emulator     → screenshots/ios/, screenshots/android/
 
+# 2b. iPad 13" — rendered at exact size, no device needed (SCREENSHOTS.md §4)
+cd apps/app && flutter test --update-goldens --dart-define=screenshots=true \
+  test/store_screenshots_test.dart      # → screenshots/ipad/ after the copy step
+
 # 3. compose them into store canvases, plus icons and the feature graphic
-node scripts/screenshots/store.mjs      # → store/
+npm run shots:store                     # → store/
 ```
 
 `scripts/screenshots/store.mjs` composites in **headless Chrome**: the caption
@@ -645,12 +649,20 @@ upscaled from a golden. The captions live in the `SLIDES` array at the top of
 that file; Android slides can override them (`androidTitle`/`androidSub`) where
 the Android capture shows a different screen from its iOS counterpart.
 
-**Why device captures and not widget-test goldens.** The harness in
-`apps/app/test/design_screenshots_test.dart` renders the real widget tree, but
-its output is 780 × 1688 / 2560 × 1600 — **no store size**, and upscaling to
-1320 × 2868 looks soft in a way reviewers notice. The simulator's own
-`xcrun simctl io … screenshot` is already 1320 × 2868, which _is_ a valid 6.9"
-submission, so the pipeline starts from the device instead.
+**Why device captures, and where goldens are used instead.** Prefer the device:
+`xcrun simctl io … screenshot` on an iPhone 17 Pro Max is already 1320 × 2868,
+which _is_ a valid 6.9" submission, so the phone pipeline starts there. The
+design harness (`apps/app/test/design_screenshots_test.dart`) renders at
+780 × 1688 / 2560 × 1600 — **no store size** — and upscaling to 1320 × 2868 looks
+soft in a way reviewers notice.
+
+The **iPad 13" set is the exception**, and it is not an upscale.
+`apps/app/test/store_screenshots_test.dart` pins the surface to 1032 × 1376
+logical at `devicePixelRatio: 2`, which is exactly 2064 × 2752 native — the
+required size, rendered 1:1 from the same widget tree, router and theme an iPad
+runs. No iPad hardware or simulator capture exists here; a phone screenshot
+stretched onto an iPad canvas would be both softer and, under guideline 2.3.3,
+a misrepresentation of the iPad experience.
 
 Screen order (the first two carry almost all the conversion): **Home** →
 **Board** → **the alarm / a repeating task** → **Projects** → **Notes** →
@@ -909,8 +921,54 @@ Ayrıca: widget'lar, yenilenen görünüm, tek komutla kendi sunucunuz.
 
 **(452 / 500)**
 
+### English "What's new" — 1.1.0, the first Play release (≤ 500 characters)
+
+Play's release-notes field is **≤ 500 characters** per language; never paste the
+App Store's 4000-character text here.
+
+**This is the first build ever uploaded to Play** — the release keystore was the
+blocker until 2026-08-02, so nothing before versionCode 16 exists on the store.
+Release notes that recite an internal 0.4.0 → 1.1.0 changelog would be describing
+changes no Play user has ever seen. Introduce the app instead.
+
+```text
+Your whole day in one place: tasks, projects, notes and files, with reminders strong enough to actually move you.
+
+• Home lays the day out chronologically — or flips into a kanban board
+• Urgent tasks ring with a real alarm sound and keep re-alerting until you acknowledge
+• Repeats that clamp: ask for the 31st, February answers with the 28th
+• Two-way Google Calendar sync
+• Works offline, syncs the moment you are back
+
+Sign in with Google, Apple or e-mail. No ads, no subscriptions.
+```
+
+**(486 / 500)**
+
+**Note the closing line.** It says _no ads, no subscriptions_ — **not** "no
+tracking" and **not** "no analytics". Since 1.1.0 the build carries Firebase
+Analytics, Crashlytics and Performance (ADR-0025), so the older
+"no advertising, analytics or crash-reporting SDK — none" line is false and
+would contradict the Data safety form filed beside it. See §1.4 / §2.3, both
+still carrying that sentence.
+
 <details>
-<summary>English "What's New" for Play (≤ 500 characters)</summary>
+<summary>Update-style alternate — use it for the first release <em>after</em> this one</summary>
+
+```text
+NEW — Sign in with Google or Sign in with Apple. One tap, and the account is still yours in AllisWell, not rented from a provider.
+
+FIXED — A custom snooze in the half hour before midnight silently did nothing. It now snoozes, and says exactly when it will ring again.
+
+ALSO — Search ignores accents everywhere: "muller" finds "Müller", "cafe" finds "café". It runs on your device, so it works offline.
+```
+
+**(402 / 500)**
+
+</details>
+
+<details>
+<summary>Previous — English "What's New" for Play, 0.4.0 (never published)</summary>
 
 ```text
 Kanban Board: flip Home between list and board, with columns you define.
@@ -980,8 +1038,8 @@ the current state, not the original one.
       401 on `api.alliswell.space`. Apple **rejects** any app behind a sign-in
       without working review credentials. Create it and seed it:
       `node scripts/seed-demo.mjs --api https://api.alliswell.space`.
-- [ ] **iPad screenshots** (asset checklist #3) — required while the build
-      declares iPad support.
+- [x] **iPad screenshots** (asset checklist #3) — shipped 2026-08-02 as
+      `store/ios/ipad-13/01–06.png`, 2064 × 2752, RGB, no alpha.
 
 **Resolved:**
 

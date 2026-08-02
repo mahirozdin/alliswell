@@ -44,10 +44,13 @@ const CHROME =
 
 // ── What the stores actually require ────────────────────────────────────────
 //
-// Apple: 6.9" iPhone 1290×2796 or 1320×2868 (required); 13" iPad 2064×2752 or
-// 2048×2732; app icon 1024×1024 with NO alpha and NO rounded corners.
+// Apple: 6.9" iPhone 1290×2796 or 1320×2868 (required); 13" iPad 2064×2752
+// (required whenever the build declares iPad support — ours sets
+// TARGETED_DEVICE_FAMILY = "1,2", so App Store Connect refuses the submission
+// without it); app icon 1024×1024 with NO alpha and NO rounded corners.
 // Google Play: phone screenshots 1080×1920 and up, 2–8 of them; feature graphic
 // exactly 1024×500 with no alpha; app icon exactly 512×512, 32-bit with alpha.
+// Both stores take 1–10 screenshots per display size.
 
 /** Caption + source capture for each store slide, in the order they appear. */
 const SLIDES = [
@@ -156,10 +159,93 @@ const MAC_SLIDES = [
   },
 ];
 
-/** Output canvases. `deviceHeightPct` tunes how much room the caption takes. */
+/**
+ * iPad 13" slides.
+ *
+ * These come from `apps/app/test/store_screenshots_test.dart`, which renders
+ * the REAL widget tree at 1032×1376 logical @2× — exactly 2064×2752, Apple's
+ * 13" size, with no upscaling. Every other set starts from a device capture,
+ * but no iPad is on hand and the golden harness renders the same app the iPad
+ * runs, at the size the iPad runs it. Copy the goldens into `screenshots/ipad/`
+ * (docs/SCREENSHOTS.md §4) before running this.
+ *
+ * The story is the phone story minus the two slides that only make sense on a
+ * phone (the repeat dialog and the alarm), which the tablet layout shows
+ * differently anyway.
+ */
+const IPAD_SLIDES = [
+  {
+    src: 'ipad/01-home.png',
+    title: 'Your whole day, in one place',
+    sub: 'Overdue, today, this week — beside a month calendar',
+  },
+  {
+    src: 'ipad/02-board.png',
+    title: 'Or the same day as a board',
+    sub: 'Columns you name, hide and reorder',
+  },
+  {
+    src: 'ipad/03-projects.png',
+    title: 'Projects, tags and priorities',
+    sub: 'Colour-coded, favourited, archivable',
+  },
+  {
+    src: 'ipad/04-notes.png',
+    title: 'Notes that belong to the work',
+    sub: 'Rich text, pinned, linked to a project',
+  },
+  {
+    src: 'ipad/05-files.png',
+    title: 'Every file, one place',
+    sub: 'Folders, attachments, your own storage',
+  },
+  {
+    src: 'ipad/06-home-dark.png',
+    title: 'Light and dark, both first-class',
+    sub: 'Contrast-checked on every change',
+  },
+];
+
+/**
+ * Slide geometry, as a share of the canvas.
+ *
+ * A phone canvas is 1:2.17, so a 78%-wide device still overflows the bottom
+ * edge and fills the frame. An iPad canvas is 1:1.33 — the same percentages
+ * would float a small tablet in a sea of gradient — so the tablet tune runs the
+ * device nearly full-width and keeps the type proportionally smaller, since
+ * 6.2% of 2064px is a headline nobody asked for.
+ */
+const PHONE_TUNE = {
+  title: 0.062,
+  sub: 0.034,
+  device: 0.78,
+  radius: 0.062,
+  border: 0.008,
+  top: 0.052,
+  gap: 0.042,
+};
+const TABLET_TUNE = {
+  title: 0.042,
+  sub: 0.022,
+  device: 0.92,
+  radius: 0.022,
+  border: 0.005,
+  top: 0.038,
+  gap: 0.03,
+};
+
+/** Output canvases. `tune` picks the slide geometry above. */
 const CANVASES = [
   { key: 'ios-6.9', dir: 'ios/iphone-6.9', width: 1320, height: 2868, source: 'src' },
   { key: 'ios-6.5', dir: 'ios/iphone-6.5', width: 1242, height: 2688, source: 'src' },
+  {
+    key: 'ipad-13',
+    dir: 'ios/ipad-13',
+    width: 2064,
+    height: 2752,
+    slides: IPAD_SLIDES,
+    tune: TABLET_TUNE,
+  },
   { key: 'android-phone', dir: 'android/phone', width: 1344, height: 2992, source: 'android' },
 ];
 
@@ -228,23 +314,25 @@ async function dataUri(rel) {
 
 // ── The pages ───────────────────────────────────────────────────────────────
 
-function slidePage({ width, height, image, title, sub }) {
+function slidePage({ width, height, image, title, sub, tune = PHONE_TUNE }) {
   // Device shell sized as a share of the canvas so one template serves every
-  // size; the capture keeps its own aspect ratio inside it.
+  // size; the capture keeps its own aspect ratio inside it and is allowed to
+  // run off the bottom edge (body hides the overflow), which is what makes the
+  // device read as entering the frame rather than floating in it.
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{width:${width}px;height:${height}px;overflow:hidden}
     body{font-family:${BRAND.font};background:${BRAND.bgLight};position:relative;
          display:flex;flex-direction:column;align-items:center}
     body::before{content:'';position:absolute;inset:0;background:${BRAND.blobs}}
-    .cap{position:relative;z-index:1;text-align:center;padding:${height * 0.052}px ${width * 0.075}px 0}
-    h1{font-size:${Math.round(width * 0.062)}px;line-height:1.12;letter-spacing:-.028em;
+    .cap{position:relative;z-index:1;text-align:center;padding:${height * tune.top}px ${width * 0.075}px 0}
+    h1{font-size:${Math.round(width * tune.title)}px;line-height:1.12;letter-spacing:-.028em;
        color:${BRAND.text};font-weight:700;text-wrap:balance}
-    p{margin-top:${Math.round(height * 0.013)}px;font-size:${Math.round(width * 0.034)}px;
+    p{margin-top:${Math.round(height * 0.013)}px;font-size:${Math.round(width * tune.sub)}px;
       line-height:1.35;color:${BRAND.dim};font-weight:500;text-wrap:balance}
-    .device{position:relative;z-index:1;margin-top:${Math.round(height * 0.042)}px;
-      width:${Math.round(width * 0.78)}px;border-radius:${Math.round(width * 0.062)}px;
-      border:${Math.round(width * 0.008)}px solid rgba(15,27,46,.86);overflow:hidden;
+    .device{position:relative;z-index:1;margin-top:${Math.round(height * tune.gap)}px;
+      width:${Math.round(width * tune.device)}px;border-radius:${Math.round(width * tune.radius)}px;
+      border:${Math.round(width * tune.border)}px solid rgba(15,27,46,.86);overflow:hidden;
       box-shadow:0 ${Math.round(height * 0.02)}px ${Math.round(height * 0.045)}px -${Math.round(height * 0.012)}px rgba(32,58,102,.42)}
     .device img{display:block;width:100%}
   </style></head><body>
@@ -450,8 +538,8 @@ async function main() {
     for (const canvas of CANVASES) {
       if (!want(canvas.key)) continue;
       let n = 0;
-      for (const slide of SLIDES) {
-        const rel = slide[canvas.source];
+      for (const slide of canvas.slides ?? SLIDES) {
+        const rel = canvas.slides ? slide.src : slide[canvas.source];
         const image = rel ? await dataUri(rel) : null;
         if (!image) {
           console.log(`· ${canvas.key}: skipped “${slide.title}” — no ${rel}`);
@@ -463,6 +551,7 @@ async function main() {
             width: canvas.width,
             height: canvas.height,
             image,
+            tune: canvas.tune,
             // A slide's Android capture is sometimes a different screen from
             // its iOS one, so the caption follows the image, not the row.
             title: (canvas.source === 'android' && slide.androidTitle) || slide.title,

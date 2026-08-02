@@ -120,15 +120,56 @@ reports "Requested internal only, but not enough space", raise
 `disk.dataPartition.size` in `~/.android/avd/<name>.avd/config.ini` and restart
 the emulator with `-wipe-data`.
 
-## 4. Store assets — `store/`
+## 4. iPad 13" — `screenshots/ipad/`
+
+The one set that is **rendered, not captured**. No iPad is on hand, and Apple
+refuses the submission without it: the build declares
+`TARGETED_DEVICE_FAMILY = "1,2"`, so 13" iPad screenshots (2064 × 2752) are
+mandatory.
 
 ```bash
-node scripts/screenshots/store.mjs
+cd apps/app
+flutter test --update-goldens --dart-define=screenshots=true \
+  test/store_screenshots_test.dart
+
+cp test/goldens/store_ipad13_1_home.png      ../../screenshots/ipad/01-home.png
+cp test/goldens/store_ipad13_2_board.png     ../../screenshots/ipad/02-board.png
+cp test/goldens/store_ipad13_3_projects.png  ../../screenshots/ipad/03-projects.png
+cp test/goldens/store_ipad13_4_notes.png     ../../screenshots/ipad/04-notes.png
+cp test/goldens/store_ipad13_5_files.png     ../../screenshots/ipad/05-files.png
+cp test/goldens/store_ipad13_6_home_dark.png ../../screenshots/ipad/06-home-dark.png
 ```
 
-Composes the device captures above into the exact canvases Apple and Google
-require, adds the caption band, and renders the feature graphic and icons. Sizes
-and the per-store checklist are in [STORE-LISTING.md](STORE-LISTING.md) §3.
+[`test/store_screenshots_test.dart`](../apps/app/test/store_screenshots_test.dart)
+pumps the **real** app — real router, real theme, the seeded workspace the
+design harness uses — at **1032 × 1376 logical pixels with
+`devicePixelRatio: 2`**, so the PNG lands at exactly 2064 × 2752. Nothing is
+upscaled, and the layout is the tablet layout (navigation rail + the calendar
+beside the list), because that is what the widget tree does at that width.
+
+Three things this harness got wrong once, all of them silent:
+
+| Trap | What actually happens |
+| --- | --- |
+| `localKv` is a process-wide singleton that **caches** its SharedPreferences instance | `SharedPreferences.setMockInitialValues({})` does not clear it, so the board toggle written by one shot leaked into every later shot. Four of the five committed goldens were byte-identical to their board twin. `_shoot` now removes `alliswell_home_view` before every render. |
+| Navigating by visible label | OPH-213 turned Home's `List \| Board` segmented control into an app-bar icon whose only text is a tooltip. `find.text('Board')` had nothing to tap. Navigate by `Key`, not by label. |
+| A phone-sized workspace on a 13" canvas | Two notes and two files leave two-thirds of the frame empty. The seed carries six of each so the tablet shots read as a workspace in use. |
+
+## 5. Store assets — `store/`
+
+```bash
+npm run shots:store          # → store/
+```
+
+Composes the captures above into the exact canvases Apple and Google require,
+adds the caption band, and renders the feature graphic and icons. Sizes and the
+per-store checklist are in [STORE-LISTING.md](STORE-LISTING.md) §3.
+
+The caption/device geometry is a share of the canvas, tuned per shape: a phone
+canvas is 1:2.17, so a 78 %-wide device still overflows the bottom edge and
+fills the frame; an iPad canvas is 1:1.33, where the same numbers would float a
+small tablet in a sea of gradient — hence `TABLET_TUNE` (92 % wide, smaller
+type). Pass `--only ipad-13` to rebuild just that set.
 
 ---
 
