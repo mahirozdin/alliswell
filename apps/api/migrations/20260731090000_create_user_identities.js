@@ -22,11 +22,26 @@
  * `password_hash` on `users` has been nullable since the first migration, so an
  * account created purely through a provider needs no schema change — it simply has
  * no password until the user sets one.
+ *
+ * **Column types are not incidental.** `char(26)` with an explicit charset and
+ * collation, exactly like every other table here: a `varchar` id, or one that
+ * inherits a different collation, makes the foreign key to `users.id`
+ * "incorrectly formed" (errno 150) — which MySQL 8 tolerated and MariaDB caught
+ * in CI.
  */
+import { CHARSET, PREFERRED_COLLATION, resolveCollation } from '../src/db/collation.js';
+
+// Resolved against the live server in up(): MySQL 8 keeps utf8mb4_0900_ai_ci,
+// MariaDB has no *_0900_* collation and gets utf8mb4_unicode_ci instead.
+let COLLATION = PREFERRED_COLLATION;
+
 export async function up(knex) {
+  COLLATION = await resolveCollation(knex);
   await knex.schema.createTable('user_identities', (t) => {
-    t.string('id', 26).primary();
-    t.string('user_id', 26).notNullable();
+    t.charset(CHARSET);
+    t.collate(COLLATION);
+    t.specificType('id', 'char(26)').primary();
+    t.specificType('user_id', 'char(26)').notNullable();
     // 'google' | 'apple'. A string rather than an enum so adding a provider is a
     // deploy, not a migration with a table lock.
     t.string('provider', 32).notNullable();
@@ -37,9 +52,9 @@ export async function up(knex) {
     // never an authorisation input, and never assumed current.
     t.string('email', 255).nullable();
     t.boolean('email_verified').notNullable().defaultTo(false);
-    t.timestamp('last_used_at', { precision: 3 }).nullable();
-    t.timestamp('created_at', { precision: 3 }).notNullable().defaultTo(knex.fn.now(3));
-    t.timestamp('updated_at', { precision: 3 }).notNullable().defaultTo(knex.fn.now(3));
+    t.datetime('last_used_at', { precision: 3 }).nullable();
+    t.datetime('created_at', { precision: 3 }).notNullable().defaultTo(knex.fn.now(3));
+    t.datetime('updated_at', { precision: 3 }).notNullable().defaultTo(knex.fn.now(3));
 
     t.foreign('user_id').references('users.id').onDelete('CASCADE');
     t.unique(['provider', 'subject'], { indexName: 'uq_user_identities_provider_subject' });
