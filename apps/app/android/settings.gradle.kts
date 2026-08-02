@@ -27,7 +27,13 @@ plugins {
     // unconditional `apply` would mean a fresh clone cannot compile.
     id("com.google.gms.google-services") version "4.4.4" apply false
     id("com.google.firebase.crashlytics") version "3.0.7" apply false
-    id("com.google.firebase.firebase-perf") version "2.0.1" apply false
+    // 2.0.2, not 2.0.1: the 2.0.1 jar still carries a reference to
+    // `com.android.build.api.transform.Transform`, the bytecode-transform API
+    // AGP removed in 8.0. Gradle cannot even instantiate the plugin against
+    // AGP 9 and fails with "Could not generate a decorated class for type
+    // FirebasePerfPlugin > com/android/build/api/transform/Transform", which
+    // reads like a Gradle bug and is really a missing class. 2.0.2 drops it.
+    id("com.google.firebase.firebase-perf") version "2.0.2" apply false
 }
 
 include(":app")
