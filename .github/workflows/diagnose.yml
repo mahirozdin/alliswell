@@ -1,0 +1,120 @@
+name: Diagnose
+
+# Read-only production triage (Actions ▸ Diagnose ▸ Run workflow).
+#
+# The repo is PUBLIC, so this workflow must never print log payloads, env
+# values or user data — only counts, error-code strings and directive names.
+# It exists because the maintainer's laptop has no SSH key for the box; the
+# deploy key in CI is the sanctioned remote-hands path.
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-production # share the deploy lock — never poke a mid-deploy box
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    name: Production triage (read-only)
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      APP_DIR: ${{ vars.DEPLOY_APP_DIR || '/www/wwwroot/alliswell' }}
+      SSH_PORT: ${{ vars.DEPLOY_SSH_PORT || '22' }}
+
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SSH_PORT" -H "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Collect sanitized diagnostics
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "APP_DIR='$APP_DIR' bash -euo pipefail" <<'REMOTE'
+          cd "$APP_DIR"
+
+          # Same PATH discovery as deploy.yml — non-interactive SSH has no profile.
+          best=""; best_major=0
+          for d in /www/server/nvm/versions/node/v*/bin \
+                   /www/server/nodejs/v*/bin \
+                   "${HOME:-/root}"/.nvm/versions/node/v*/bin \
+                   "$(dirname "$(command -v node 2>/dev/null || echo /nonexistent/node)")"; do
+            [ -x "$d/node" ] || continue
+            m=$("$d/node" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
+            if [ "$m" -gt "$best_major" ]; then best_major="$m"; best="$d"; fi
+          done
+          [ -n "$best" ] && PATH="$best:$PATH"
+          export PATH
+
+          pm2_as() {
+            u="$1"; shift
+            if [ "$u" = "$(id -un)" ]; then pm2 "$@"; else sudo -n -u "$u" -H env PATH="$PATH" pm2 "$@"; fi
+          }
+          as_user() {
+            u="$1"; shift
+            if [ "$u" = "$(id -un)" ]; then "$@"; else sudo -n -u "$u" -H "$@"; fi
+          }
+
+          echo "── runtime ──"
+          echo "ssh user: $(id -un) · node $(node -v)"
+          curl -s --max-time 5 http://127.0.0.1:3000/health/ready || echo "(health/ready unreachable)"
+          echo
+
+          echo "── AI env var NAMES present in apps/api/.env (values never printed) ──"
+          grep -oE '^AI_[A-Z_]*=' apps/api/.env 2>/dev/null | sed 's/=$//' | sort | tr '\n' ' '; echo
+
+          echo "── PM2 process ──"
+          PM2_USER=""
+          for u in $(id -un) www; do
+            json=$(pm2_as "$u" jlist 2>/dev/null || true)
+            if printf '%s' "$json" | grep -q '"name":"alliswellapi"'; then PM2_USER="$u"; break; fi
+          done
+          if [ -z "$PM2_USER" ]; then echo "alliswellapi not found under root/www pm2"; exit 1; fi
+          json=$(pm2_as "$PM2_USER" jlist)
+          echo "pm2 user: $PM2_USER"
+          printf '%s' "$json" | grep -o '"node_version":"[^"]*"' | head -1
+          ERR_LOG=$(printf '%s' "$json" | grep -o '"pm_err_log_path":"[^"]*"' | head -1 | cut -d'"' -f4)
+          OUT_LOG=$(printf '%s' "$json" | grep -o '"pm_out_log_path":"[^"]*"' | head -1 | cut -d'"' -f4)
+          echo "logs: $ERR_LOG · $OUT_LOG"
+          echo
+
+          echo "── AI failure signatures (last 8000 log lines; codes only, no payloads) ──"
+          for f in "$ERR_LOG" "$OUT_LOG"; do
+            [ -n "$f" ] || continue
+            as_user "$PM2_USER" tail -n 8000 "$f" 2>/dev/null > /tmp/aw-diag-tail || continue
+            echo "-- $(basename "$f"):"
+            echo "  ai chat upstream failed lines: $(grep -c 'ai chat upstream failed' /tmp/aw-diag-tail || true)"
+            echo "  ai socket chat failed lines:   $(grep -c 'ai socket chat failed' /tmp/aw-diag-tail || true)"
+            echo "  distinct err messages on those lines:"
+            grep 'ai chat upstream failed\|ai socket chat failed' /tmp/aw-diag-tail \
+              | grep -o '"err":"[^"]*"' | sort | uniq -c | sort -rn | head -8 | sed 's/^/    /'
+            echo "  AI_* error codes anywhere:"
+            grep -o 'AI_[A-Z_]*' /tmp/aw-diag-tail | sort | uniq -c | sort -rn | head -10 | sed 's/^/    /'
+            echo "  AiProviderError mentions: $(grep -c 'AiProviderError' /tmp/aw-diag-tail || true)"
+          done
+          rm -f /tmp/aw-diag-tail
+          echo
+
+          echo "── outbound reachability from this box (no credentials sent) ──"
+          curl -s -o /dev/null -w 'openai models:      HTTP %{http_code} in %{time_total}s\n' --max-time 10 https://api.openai.com/v1/models || echo "openai models: unreachable"
+          curl -s -o /dev/null -w 'openai completions: HTTP %{http_code} in %{time_total}s\n' --max-time 10 -X POST https://api.openai.com/v1/chat/completions || echo "openai completions: unreachable"
+          echo
+
+          echo "── apache conf for api.alliswell.space (directives only) ──"
+          V=/www/server/panel/vhost/apache
+          for f in "$V"/api.alliswell.space.conf "$V"/proxy/api.alliswell.space/*.conf; do
+            [ -f "$f" ] || continue
+            echo "-- $f:"
+            grep -inE 'ProxyPass|ProxyTimeout|flushpackets|no-gzip|SetEnv|DEFLATE|BROTLI|Upgrade|^[[:space:]]*Timeout' "$f" \
+              | sed 's/[[:space:]]\+/ /g' | head -20 | sed 's/^/  /'
+          done
+          echo "-- global output filters mentioning compression:"
+          grep -RinE 'AddOutputFilterByType|SetOutputFilter DEFLATE|BrotliCompressQuality' \
+            /www/server/apache/conf 2>/dev/null | grep -v '^\s*#' | head -10 | sed 's/^/  /'
+          REMOTE
