@@ -84,7 +84,27 @@ class _QuickAddBarState extends State<QuickAddBar> {
   Future<void> _parse() async {
     final text = _controller.text.trim();
     if (text.isEmpty || widget.onParse == null) return;
-    await widget.onParse!(text);
+
+    // Round 14: the ✨ tap answers INSTANTLY — same optimistic rhythm as
+    // _submit. The field clears, the spinner shows for the brief local
+    // create, and the task row (with its AI badge) is the real feedback.
+    _controller.clear();
+    _focus.requestFocus();
+    setState(() => _inFlight++);
+    try {
+      await widget.onParse!(text);
+    } on Object catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('task.couldNotAdd'.tr(args: {'title': text}))),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _inFlight--);
+        _focus.requestFocus();
+      }
+    }
   }
 
   @override

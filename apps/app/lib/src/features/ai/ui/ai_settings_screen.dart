@@ -267,11 +267,16 @@ class _ConnectionRow extends ConsumerWidget {
                 onPressed: busy ? null : () => _test(context, ref),
                 child: Text('ai.settings.test'.tr()),
               ),
-              IconButton(
+              // Feedback round 14: a labeled unlink, like the calendar's
+              // Disconnect — the icon-only bin read as undiscoverable on the
+              // live app. Destructive, so it confirms first.
+              TextButton(
                 key: Key('ai-remove-${connection.provider}'),
-                tooltip: 'ai.settings.remove'.tr(),
-                icon: const Icon(Icons.delete_outline),
-                onPressed: busy ? null : () => _remove(ref),
+                onPressed: busy ? null : () => _remove(context, ref),
+                child: Text(
+                  'ai.settings.remove'.tr(),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             ],
           ),
@@ -296,11 +301,42 @@ class _ConnectionRow extends ConsumerWidget {
     }
   });
 
-  Future<void> _remove(WidgetRef ref) => guard(() async {
-    await ref.read(aiApiProvider).remove(connection.id);
-    ref.invalidate(aiConnectionsProvider);
-    await ref.read(aiStatusProvider.notifier).refresh();
-  });
+  Future<void> _remove(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          'ai.settings.removeConfirmTitle'.tr(
+            args: {'provider': providerLabel(connection.provider)},
+          ),
+        ),
+        content: Text('ai.settings.removeConfirmBody'.tr()),
+        actions: [
+          TextButton(
+            key: const Key('ai-remove-cancel'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('common.cancel'.tr()),
+          ),
+          FilledButton(
+            key: const Key('ai-remove-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('ai.settings.remove'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await guard(() async {
+      await ref.read(aiApiProvider).remove(connection.id);
+      ref.invalidate(aiConnectionsProvider);
+      await ref.read(aiStatusProvider.notifier).refresh();
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('ai.settings.removed'.tr())));
+      }
+    });
+  }
 }
 
 /// The instance's MCP connector URL, for "Add AllisWell to Claude/ChatGPT".

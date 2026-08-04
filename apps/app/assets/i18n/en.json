@@ -413,7 +413,15 @@
     "NETWORK_ERROR": "Could not reach the server. Check your connection and the server address.",
     "server": "Unexpected server response.",
     "routeNotFound": "That link does not lead anywhere in this version of AllisWell.",
-    "goHome": "Go to Home"
+    "goHome": "Go to Home",
+    "AI_RATE_LIMITED": "Slow down a little — the AI limit refills in a minute.",
+    "AI_DAILY_CAP": "Today's AI budget on this server is used up. It resets tomorrow.",
+    "AI_UPSTREAM_AUTH_FAILED": "The provider rejected your API key. Renew it in Settings → AI.",
+    "AI_UPSTREAM_RATE_LIMITED": "The provider reports a rate/quota limit — check your plan and billing on the provider side.",
+    "AI_UPSTREAM_ERROR": "The AI provider returned an error. Try again; if it persists, test the connection in Settings → AI.",
+    "AI_EXTRACTION_INVALID": "The AI could not turn that into tasks. Try rephrasing.",
+    "AI_MODEL_REQUIRED": "Pick a model for this connection in Settings → AI first.",
+    "AI_NOT_CONFIGURED": "No AI provider is connected yet. Add one in Settings → AI."
   },
   "sync": {
     "noteConflict": "Note edited elsewhere — your version was kept as a conflicted copy.",
@@ -750,7 +758,10 @@
       "copy": "Copy",
       "copied": "Copied",
       "mcpTitle": "Add to Claude / ChatGPT",
-      "mcpSub": "Add AllisWell to your own AI subscription as a connector"
+      "mcpSub": "Add AllisWell to your own AI subscription as a connector",
+      "removeConfirmTitle": "Remove the {provider} connection?",
+      "removeConfirmBody": "Your API key is deleted from the server immediately. AllisWell stops using this provider; you can connect it again any time.",
+      "removed": "Connection removed"
     },
     "consent": {
       "title": "{provider} — what you should know",
@@ -815,6 +826,9 @@
       "ask": "Ask a question",
       "savedNote": "Saved as a note",
       "summarizePrompt": "Summarize this."
+    },
+    "quickAdd": {
+      "enriching": "AI is filling this in…"
     }
   }
 }

@@ -201,13 +201,23 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    // type → Enter → type → Enter: no re-tap between entries.
-    await tester.enterText(find.byKey(const Key('home-quick-add')), 'Birinci');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('home-quick-add')), 'İkinci');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
+    // type → Enter → type → Enter: no re-tap between entries. Round 14 puts a
+    // deadline picker on every Enter; Cancel is the "skip" path and must keep
+    // the rapid-entry chain (and its focus) intact.
+    Future<void> submitThenSkipDate(String title) async {
+      await tester.enterText(find.byKey(const Key('home-quick-add')), title);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      // No pumpAndSettle while the deadline dialog is up: the bar's own
+      // in-flight spinner animates until onAdd returns, so settle would spin
+      // forever. Bounded pumps open the dialog; Cancel is the skip path.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+    }
+
+    await submitThenSkipDate('Birinci');
+    await submitThenSkipDate('İkinci');
 
     expect(api.tasks, hasLength(2));
     expect(find.text('Birinci'), findsOneWidget);
@@ -215,6 +225,11 @@ void main() {
     // Dateless quick adds land in the No date group, visible immediately.
     expect(find.textContaining('No date ·'), findsOneWidget);
     expect(api.tasks.every((t) => t['dueAt'] == null), isTrue);
+    // Skipping the date skips the derived reminder too — but the round-14
+    // creation defaults (medium priority, urgent alarm on) always apply.
+    expect(api.tasks.every((t) => t['remindAt'] == null), isTrue);
+    expect(api.tasks.every((t) => t['priority'] == 'medium'), isTrue);
+    expect(api.tasks.every((t) => t['isUrgent'] == true), isTrue);
   });
 
   testWidgets('home quick-add targets the selected calendar day', (
@@ -233,6 +248,15 @@ void main() {
       'Seçili güne iş',
     );
     await tester.testTextInput.receiveAction(TextInputAction.done);
+    // Round 14: the deadline dialog opens prefilled with the selected day —
+    // accepting both steps keeps the bar's "for that day" promise. Bounded
+    // pumps: the bar's spinner animates until onAdd returns.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('OK'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
     final due = DateTime.parse(api.tasks.single['dueAt'] as String).toLocal();
@@ -241,6 +265,11 @@ void main() {
     // factory default), not at an invented 09:00 morning deadline.
     expect(due.hour, 23);
     expect(due.minute, 59);
+    // Round 14: a picked deadline auto-arms the reminder an hour earlier.
+    final remind = DateTime.parse(
+      api.tasks.single['remindAt'] as String,
+    ).toLocal();
+    expect(due.difference(remind), const Duration(hours: 1));
     expect(find.textContaining('Selected day ·'), findsOneWidget);
     expect(find.text('Seçili güne iş'), findsOneWidget);
   });
@@ -266,6 +295,15 @@ void main() {
       'Sabahçı iş',
     );
     await tester.testTextInput.receiveAction(TextInputAction.done);
+    // Round 14: accept the deadline dialog — its clock opens on the user's
+    // default task time, so OK+OK must land on 07:15, not a hardcoded hour.
+    // Bounded pumps: the bar's spinner animates until onAdd returns.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('OK'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
     final due = DateTime.parse(api.tasks.single['dueAt'] as String).toLocal();
@@ -301,8 +339,7 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('task-sheet-urgent')));
-    await tester.pumpAndSettle();
+    // Round 14: urgent is ON and priority is medium out of the box — no taps.
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 
@@ -311,7 +348,13 @@ void main() {
     expect(created['title'], 'Opsiyonlu görev');
     expect(created['description'], 'bağlam: https://x.dev/spec');
     expect(created['isUrgent'], isTrue);
+    expect(created['priority'], 'medium');
     expect(created['dueAt'], isNotNull);
+    // Round 14: picking the deadline auto-armed a reminder an hour before it,
+    // visibly in the sheet, without the user touching the reminder row.
+    final due = DateTime.parse(created['dueAt'] as String);
+    final remind = DateTime.parse(created['remindAt'] as String);
+    expect(due.difference(remind), const Duration(hours: 1));
     expect(find.text('Opsiyonlu görev'), findsOneWidget);
   });
 

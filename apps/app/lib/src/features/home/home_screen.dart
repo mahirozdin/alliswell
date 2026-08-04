@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/api_exception.dart';
 import '../../core/date_format.dart';
 import '../../core/error_messages.dart';
 import '../../core/fold.dart';
@@ -18,14 +17,15 @@ import '../../widgets/status_views.dart';
 import '../../search/providers.dart';
 import '../../search/search.dart';
 import '../../widgets/search_field.dart';
+import '../../core/date_input.dart';
+import '../ai/data/ai_quick_add.dart';
 import '../ai/providers.dart';
-import '../ai/ui/ai_confirm_card.dart';
-import '../projects/providers.dart';
 import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
+import '../tasks/data/task_defaults.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
 import '../tasks/ui/task_tile.dart';
@@ -101,47 +101,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) throw StateError('No workspace available');
     final selectedDay = ref.read(selectedDayProvider);
-    final dueAt = selectedDay == null
+    if (!mounted) return;
+    // Round 14: quick add asks for the deadline every time — the create
+    // sheet's own date+time picker, opening on the selected calendar day.
+    // Backing out is the "skip" path and keeps the old semantics: the
+    // selected day at the default task time, or no date at all.
+    DateTime? dueAt = await awPickDateTime(context, ref, anchor: selectedDay);
+    dueAt ??= selectedDay == null
         ? null
-        : applyDefaultTaskTime(
-            selectedDay,
-            ref.read(defaultTaskTimeProvider),
-          ).toUtc().toIso8601String();
+        : applyDefaultTaskTime(selectedDay, ref.read(defaultTaskTimeProvider));
     await ref.read(taskStoreProvider).create(workspaces.first.id, {
       'title': title,
-      'dueAt': ?dueAt,
+      // Round-14 defaults: medium priority, urgent alarm on, and a reminder
+      // an hour before the deadline whenever one was picked.
+      ...awQuickTaskDefaults(dueAt: dueAt),
     });
   }
 
-  /// OPH-222 — the ✨ rider: run pasted text through extraction into the same
-  /// confirm card the voice/share paths use.
+  /// OPH-222, redone in round 14 — the ✨ rider is optimistic: the task
+  /// appears immediately (plain quick-add semantics), the AI fills fields in
+  /// asynchronously, and any failure leaves the plain task standing. No
+  /// confirm card on this path.
   Future<void> _parseWithAi(String text) async {
     final workspaces = await ref.read(workspacesProvider.future);
-    if (workspaces.isEmpty || !mounted) return;
-    final projectNames =
-        (ref.read(projectsControllerProvider).value ?? const [])
-            .map((p) => p.name)
-            .toList();
-    try {
-      final proposal = await ref
-          .read(aiApiProvider)
-          .extract(
-            workspaces.first.id,
-            text: text,
-            source: 'quick_add',
-            defaultTaskTime: ref.read(defaultTaskTimeProvider),
-            projectNames: projectNames,
-          );
-      if (!mounted) return;
-      _quickAddController.clear();
-      await showAiConfirmSheet(context, proposal);
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(localizedError(e))));
-      }
-    }
+    if (workspaces.isEmpty) return;
+    await ref
+        .read(aiQuickAddProvider)
+        .start(workspaceId: workspaces.first.id, text: text);
   }
 
   @override

@@ -161,13 +161,33 @@ void main() {
     expect(find.text('The connection works'), findsOneWidget);
   });
 
-  testWidgets('removing a connection deletes it', (tester) async {
+  testWidgets('removing a connection asks first, then deletes it', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedAiConnection(provider: 'openai');
+    await tester.pumpWidget(await screenWith(api));
+    await tester.pumpAndSettle();
+    // Round 14: the unlink is a labeled, confirmed action (the calendar's
+    // Disconnect pattern) — nothing is deleted before the dialog's yes.
+    await tester.tap(find.byKey(const Key('ai-remove-openai')));
+    await tester.pumpAndSettle();
+    expect(api.aiConnections, hasLength(1));
+    await tester.tap(find.byKey(const Key('ai-remove-confirm')));
+    await tester.pumpAndSettle();
+    expect(api.aiConnections, isEmpty);
+  });
+
+  testWidgets('backing out of the remove dialog keeps the connection', (
+    tester,
+  ) async {
     final api = FakeApi()..seedAiConnection(provider: 'openai');
     await tester.pumpWidget(await screenWith(api));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('ai-remove-openai')));
     await tester.pumpAndSettle();
-    expect(api.aiConnections, isEmpty);
+    await tester.tap(find.byKey(const Key('ai-remove-cancel')));
+    await tester.pumpAndSettle();
+    expect(api.aiConnections, hasLength(1));
   });
 
   testWidgets(

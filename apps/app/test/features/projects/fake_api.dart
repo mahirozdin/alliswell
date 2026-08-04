@@ -282,6 +282,11 @@ class FakeApi {
   Map<String, dynamic>? nextProposal;
   final List<Map<String, dynamic>> aiActionAccepts = [];
 
+  /// Round 14: holds the `/ai/extract` answer back so a test can observe the
+  /// optimistic ✨ state (instant row + enriching badge) before the proposal
+  /// lands. Advance the fake clock past it with `tester.pump(delay)`.
+  Duration? extractDelay;
+
   /// Result the `/ai/connections/:id/test` endpoint returns.
   Map<String, dynamic> aiTestResult = {'ok': true, 'latencyMs': 12};
 
@@ -442,14 +447,15 @@ class FakeApi {
     }
     if (path == '$wsPrefix/extract' && options.method == 'POST') {
       final proposal = nextProposal ?? {'intent': 'none', 'tasks': <dynamic>[]};
-      return Future.value(
-        jsonBody(200, {
-          'requestId': 'AIREQ${(_aiSeq++).toString().padLeft(21, '0')}',
-          'actionId': 'AIACT${(_aiSeq++).toString().padLeft(21, '0')}',
-          'repaired': false,
-          'proposal': proposal,
-        }),
-      );
+      final body = jsonBody(200, {
+        'requestId': 'AIREQ${(_aiSeq++).toString().padLeft(21, '0')}',
+        'actionId': 'AIACT${(_aiSeq++).toString().padLeft(21, '0')}',
+        'repaired': false,
+        'proposal': proposal,
+      });
+      final delay = extractDelay;
+      if (delay == null) return Future.value(body);
+      return Future.delayed(delay, () => body);
     }
 
     final test = RegExp(

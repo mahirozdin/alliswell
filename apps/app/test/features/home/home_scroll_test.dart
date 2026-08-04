@@ -106,9 +106,15 @@ void main() {
     expect(find.byType(MonthCalendar), findsNothing);
 
     // The quick-add bar rides the scroll view now (OPH-172) — it is still the
-    // first thing under the app bar and still captures.
+    // first thing under the app bar and still captures. Round 14 asks for a
+    // deadline on the way; skipping it must not eat the capture.
     await tester.enterText(find.byKey(const Key('home-quick-add')), 'Yeni iş');
     await tester.testTextInput.receiveAction(TextInputAction.done);
+    // Bounded pumps: the bar's spinner animates until onAdd returns, so a
+    // pumpAndSettle with the dialog open would never settle.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(api.tasks.any((t) => t['title'] == 'Yeni iş'), isTrue);
   });

@@ -412,7 +412,15 @@
     "NETWORK_ERROR": "Sunucuya ulaşılamadı. Bağlantını ve sunucu adresini kontrol et.",
     "server": "Beklenmeyen sunucu yanıtı.",
     "routeNotFound": "Bu bağlantı AllisWell’in bu sürümünde bir yere gitmiyor.",
-    "goHome": "Ana sayfaya dön"
+    "goHome": "Ana sayfaya dön",
+    "AI_RATE_LIMITED": "Biraz yavaşla — yapay zekâ limiti bir dakikada dolar.",
+    "AI_DAILY_CAP": "Bu sunucunun günlük yapay zekâ bütçesi bitti. Yarın sıfırlanır.",
+    "AI_UPSTREAM_AUTH_FAILED": "Sağlayıcı API anahtarını reddetti. Ayarlar → Yapay zekâ’dan anahtarı yenile.",
+    "AI_UPSTREAM_RATE_LIMITED": "Sağlayıcı limit/kota hatası bildirdi — sağlayıcı tarafında plan ve faturalandırmanı kontrol et.",
+    "AI_UPSTREAM_ERROR": "Yapay zekâ sağlayıcısı hata döndürdü. Tekrar dene; sürerse Ayarlar → Yapay zekâ’dan bağlantıyı test et.",
+    "AI_EXTRACTION_INVALID": "Yapay zekâ bunu göreve çeviremedi. Farklı ifade etmeyi dene.",
+    "AI_MODEL_REQUIRED": "Önce Ayarlar → Yapay zekâ’dan bu bağlantı için bir model seç.",
+    "AI_NOT_CONFIGURED": "Henüz bağlı bir yapay zekâ sağlayıcısı yok. Ayarlar → Yapay zekâ’dan ekle."
   },
   "sync": {
     "noteConflict": "Not başka yerde düzenlendi — senin sürümün çakışan kopya olarak saklandı.",
@@ -749,7 +757,10 @@
       "copy": "Kopyala",
       "copied": "Kopyalandı",
       "mcpTitle": "Claude / ChatGPT'ye ekle",
-      "mcpSub": "AllisWell'i kendi yapay zekâ aboneliğine bağlayıcı olarak ekle"
+      "mcpSub": "AllisWell'i kendi yapay zekâ aboneliğine bağlayıcı olarak ekle",
+      "removeConfirmTitle": "{provider} bağlantısı kaldırılsın mı?",
+      "removeConfirmBody": "API anahtarın sunucudan hemen silinir. AllisWell bu sağlayıcıyı kullanmayı bırakır; istediğin zaman yeniden bağlayabilirsin.",
+      "removed": "Bağlantı kaldırıldı"
     },
     "consent": {
       "title": "{provider} — bilmen gerekenler",
@@ -814,6 +825,9 @@
       "ask": "Soru sor",
       "savedNote": "Not olarak kaydedildi",
       "summarizePrompt": "Bunu özetle."
+    },
+    "quickAdd": {
+      "enriching": "Yapay zekâ dolduruyor…"
     }
   }
 }

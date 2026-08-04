@@ -17,6 +17,7 @@ import '../../projects/ui/project_picker.dart';
 import '../../tags/ui/tag_input.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
+import '../data/task_defaults.dart';
 import '../providers.dart';
 import '../../../core/recurrence.dart';
 import '../../../core/recurrence_text.dart';
@@ -83,6 +84,11 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   DateTime? _dueAt;
   DateTime? _remindAt;
   bool _isUrgent = false;
+
+  /// Round 14: true while the reminder is merely DERIVED from the deadline
+  /// (1 h before, [kAwAutoReminderGap]) — a derived value follows the due date
+  /// around; one the user touched never gets overwritten.
+  bool _remindAuto = false;
   bool _saving = false;
 
   /// OPH-208: the rule the user configured before the task exists. A series
@@ -106,6 +112,25 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
       _isUrgent = task.isUrgent;
     } else {
       _dueAt = widget.initialDue;
+      // Round 14 creation defaults: medium priority, urgent alarm armed. The
+      // sheet SHOWS both before saving — defaults, not hidden behavior.
+      _priority = 'medium';
+      _isUrgent = true;
+      _syncAutoReminder();
+    }
+  }
+
+  /// Keeps a derived reminder glued to the deadline (round 14): due set and
+  /// reminder empty-or-derived → reminder lands [kAwAutoReminderGap] before
+  /// due; due cleared → a derived reminder leaves with it. A hand-set
+  /// reminder is never touched.
+  void _syncAutoReminder() {
+    if (_dueAt != null && (_remindAt == null || _remindAuto)) {
+      _remindAt = awAutoReminderFor(_dueAt);
+      _remindAuto = true;
+    } else if (_dueAt == null && _remindAuto) {
+      _remindAt = null;
+      _remindAuto = false;
     }
   }
 
@@ -404,10 +429,16 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 subtitle: _format(_dueAt, dateFormat),
                 isSet: _dueAt != null,
                 clearTooltip: 'task.clearDue'.tr(),
-                onClear: () => setState(() => _dueAt = null),
+                onClear: () => setState(() {
+                  _dueAt = null;
+                  _syncAutoReminder();
+                }),
                 onTap: () async {
                   final picked = await _pickDateTime(_dueAt);
-                  setState(() => _dueAt = picked);
+                  setState(() {
+                    _dueAt = picked;
+                    _syncAutoReminder();
+                  });
                 },
               ),
               const SizedBox(height: 8),
@@ -418,12 +449,21 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 subtitle: _format(_remindAt, dateFormat),
                 isSet: _remindAt != null,
                 clearTooltip: 'task.clearReminder'.tr(),
-                onClear: () => setState(() => _remindAt = null),
+                onClear: () => setState(() {
+                  _remindAt = null;
+                  // An explicit clear is a decision — stop deriving.
+                  _remindAuto = false;
+                }),
                 onTap: () async {
                   // A reminder belongs near its deadline, so it opens on the
                   // due day when there is one (OPH-173).
                   final picked = await _pickDateTime(_remindAt, anchor: _dueAt);
-                  setState(() => _remindAt = picked);
+                  setState(() {
+                    if (picked != _remindAt) {
+                      _remindAt = picked;
+                      _remindAuto = false;
+                    }
+                  });
                 },
               ),
               const SizedBox(height: 8),

@@ -6,6 +6,7 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/swipe_actions.dart';
+import '../../ai/data/ai_quick_add.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_badge.dart';
 import '../../tags/tags.dart';
@@ -262,6 +263,27 @@ class TaskTile extends ConsumerWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Round 14: the ✨ quick add already created this row; the badge
+            // is the async promise that the AI is still filling fields in.
+            // `select` keeps the whole list from rebuilding per set change.
+            if (ref.watch(
+              aiEnrichingTasksProvider.select((s) => s.contains(task.id)),
+            )) ...[
+              Tooltip(
+                message: 'ai.quickAdd.enriching'.tr(),
+                child: SizedBox(
+                  key: Key('ai-enriching-${task.id}'),
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: scheme.primary,
+                    semanticsLabel: 'ai.quickAdd.enriching'.tr(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AwSpace.x2),
+            ],
             if (project != null) ...[
               ProjectBadge(name: project.name, color: project.color),
               const SizedBox(width: AwSpace.x2),
