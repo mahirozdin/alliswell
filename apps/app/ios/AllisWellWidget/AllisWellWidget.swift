@@ -70,6 +70,69 @@ func loadAWSnapshot() -> AWSnapshot {
   return snapshot
 }
 
+/// Round 15 (OPH-233): flips `done` on one row INSIDE the stored snapshot so
+/// the tapped circle fills on the very next timeline render — the honest
+/// optimistic echo of the queued completion. Mutates via JSONSerialization,
+/// not the Codable model: a decode→encode round trip would silently DROP any
+/// field this widget build does not know yet (the OPH-187 versioning stance).
+func markAWSnapshotDone(taskId: String) {
+  guard
+    let defaults = UserDefaults(suiteName: kAppGroupId),
+    let raw = defaults.string(forKey: kSnapshotKey),
+    let data = raw.data(using: .utf8),
+    var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+    var buckets = json["buckets"] as? [[String: Any]]
+  else { return }
+  var changed = false
+  for bucketIndex in buckets.indices {
+    guard var items = buckets[bucketIndex]["items"] as? [[String: Any]] else { continue }
+    for itemIndex in items.indices where items[itemIndex]["id"] as? String == taskId {
+      items[itemIndex]["done"] = true
+      changed = true
+    }
+    buckets[bucketIndex]["items"] = items
+  }
+  guard changed else { return }
+  json["buckets"] = buckets
+  if let out = try? JSONSerialization.data(withJSONObject: json),
+    let text = String(data: out, encoding: .utf8)
+  {
+    defaults.set(text, forKey: kSnapshotKey)
+  }
+}
+
+// MARK: - The widget's own complete intent (round 15, OPH-233)
+
+/// The old circle reused `AWCompleteTaskIntent` — a **LiveActivityIntent**,
+/// which iOS runs IN THE MAIN APP: every tap cold-started a headless Flutter
+/// process in the background. Nothing visible happened on the widget, the
+/// half-born process crashed when the user then opened the app, and the
+/// completion only surfaced after a force-kill relaunch (the owner's exact
+/// device report). A plain `AppIntent` runs HERE in the widget extension:
+/// stamp the shared snapshot, queue the real completion for the app's
+/// existing drain (AlarmKitBridge → Dart), redraw. No app launch at all.
+@available(iOS 17.0, *)
+struct AWWidgetCompleteIntent: AppIntent {
+  static var title: LocalizedStringResource = "Complete task"
+  static var description = IntentDescription("Marks an AllisWell task done.")
+  static var isDiscoverable: Bool = false
+
+  @Parameter(title: "Task") var taskId: String
+
+  init() {}
+
+  init(taskId: String) {
+    self.taskId = taskId
+  }
+
+  func perform() async throws -> some IntentResult {
+    AWAlarmActionQueue.enqueue(actionId: "complete", taskId: taskId, reminderId: "")
+    markAWSnapshotDone(taskId: taskId)
+    WidgetCenter.shared.reloadTimelines(ofKind: kWidgetKind)
+    return .result()
+  }
+}
+
 // MARK: - Timeline
 
 struct AWEntry: TimelineEntry {
@@ -87,15 +150,31 @@ struct AWProvider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<AWEntry>) -> Void) {
-    let entry = AWEntry(date: Date(), snapshot: loadAWSnapshot())
-    // Roll Today/Overdue over at the next local midnight; foreground app pushes
-    // (home_widget updateWidget) keep it current the rest of the time.
-    let nextMidnight =
-      Calendar.current.nextDate(
-        after: Date(),
-        matching: DateComponents(hour: 0, minute: 1),
-        matchingPolicy: .nextTime) ?? Date().addingTimeInterval(6 * 3600)
-    completion(Timeline(entries: [entry], policy: .after(nextMidnight)))
+    let snapshot = loadAWSnapshot()
+    // Round 15 (OPH-232): a single entry + one midnight reload left the widget
+    // frozen for DAYS when the app was not opened — after the first midnight
+    // the reload re-rendered the SAME stale snapshot, still wearing
+    // yesterday's date. The timeline now carries an entry for NOW plus the
+    // next few midnights (the date header renders from the ENTRY's date, so
+    // it stays truthful without the app), and the trailing `.after` keeps the
+    // chain alive beyond the horizon. Task buckets are still the app's honest
+    // snapshot — recomputing them here would move product rules into native
+    // code (DESIGN §8 W1/W9), so a long-unopened app shows an aging list
+    // under a correct date, not a native guess.
+    var entries = [AWEntry(date: Date(), snapshot: snapshot)]
+    var cursor = Date()
+    for _ in 0..<4 {
+      guard
+        let midnight = Calendar.current.nextDate(
+          after: cursor,
+          matching: DateComponents(hour: 0, minute: 1),
+          matchingPolicy: .nextTime)
+      else { break }
+      entries.append(AWEntry(date: midnight, snapshot: snapshot))
+      cursor = midnight
+    }
+    let horizon = entries.last?.date ?? Date().addingTimeInterval(6 * 3600)
+    completion(Timeline(entries: entries, policy: .after(horizon)))
   }
 }
 
@@ -109,6 +188,23 @@ private func awColor(hex: String?) -> Color? {
     red: Double((value >> 16) & 0xFF) / 255,
     green: Double((value >> 8) & 0xFF) / 255,
     blue: Double(value & 0xFF) / 255)
+}
+
+/// Round 15 (OPH-232): the date header derives from the ENTRY's date so every
+/// midnight timeline entry shows its own day even when the snapshot is old.
+/// Weekday/month localization comes from the OS via the snapshot's locale —
+/// OS date names are not product strings, so W9 stays intact. An empty
+/// snapshot (no locale yet) falls back to the snapshot's own strings.
+func awDate(for date: Date, locale: String) -> AWDate {
+  let formatter = DateFormatter()
+  formatter.locale = Locale(identifier: locale)
+  formatter.dateFormat = "EEE"
+  let weekday = formatter.string(from: date)
+  formatter.dateFormat = "d"
+  let day = formatter.string(from: date)
+  formatter.dateFormat = "MMMM"
+  let month = formatter.string(from: date)
+  return AWDate(weekday: weekday, day: day, month: month)
 }
 
 /// The header badge's text, or nil when there is nothing to say. The COUNT and
@@ -176,7 +272,7 @@ struct AWTaskRowView: View {
       // replaced. Generous hit target: the stock Reminders widget's loudest
       // complaint is completing the wrong thing by accident (DESIGN W4).
       if #available(iOS 17.0, *), !row.done {
-        Button(intent: AWCompleteTaskIntent(taskId: row.id)) {
+        Button(intent: AWWidgetCompleteIntent(taskId: row.id)) {
           Image(systemName: "circle")
             .foregroundStyle(Color.secondary)
             .imageScale(.medium)
@@ -246,7 +342,12 @@ struct AllisWellWidgetEntryView: View {
     let snap = entry.snapshot
     VStack(alignment: .leading, spacing: 8) {
       if family != .systemMedium {
-        AWDateHeader(date: snap.date, openToday: awOpenTodayLabel(snap))
+        // Round 15: the ENTRY's date, not the snapshot's — see awDate(for:).
+        AWDateHeader(
+          date: snap.generatedAt.isEmpty
+            ? snap.date
+            : awDate(for: entry.date, locale: snap.locale),
+          openToday: awOpenTodayLabel(snap))
       }
       if snap.buckets.isEmpty {
         Spacer()

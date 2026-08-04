@@ -112,6 +112,18 @@ class LocalNotificationsGateway implements NotificationsGateway {
 
     // Category/action labels freeze per app run (registered once with the
     // OS); a mid-run language switch applies on next launch.
+    //
+    // Round 15 — EVERY Darwin action carries `foreground`. Without it, iOS
+    // handles the press WITHOUT launching the app and the plugin routes the
+    // response to `onDidReceiveBackgroundNotificationResponse`, which this app
+    // deliberately does not register (a background isolate has no drift/auth
+    // stack here) — so Snooze/Complete computed nothing and, on a dead
+    // process, the plugin's background dispatch could even crash. This is the
+    // exact iOS twin of Android's `showsUserInterface: true` below, and the
+    // OPH-214 queue already covers the cold-start delivery it produces.
+    const foreground = <DarwinNotificationActionOption>{
+      DarwinNotificationActionOption.foreground,
+    };
     final darwinCategories = <DarwinNotificationCategory>[
       DarwinNotificationCategory(
         _normalCategoryId,
@@ -119,18 +131,22 @@ class LocalNotificationsGateway implements NotificationsGateway {
           DarwinNotificationAction.plain(
             kActionComplete,
             'notif.action.complete'.tr(),
+            options: foreground,
           ),
           DarwinNotificationAction.plain(
             '${kActionSnoozePrefix}30_min',
             'notif.action.snooze30m'.tr(),
+            options: foreground,
           ),
           DarwinNotificationAction.plain(
             '${kActionSnoozePrefix}1_hour',
             'notif.action.snooze1h'.tr(),
+            options: foreground,
           ),
           DarwinNotificationAction.plain(
             '${kActionSnoozePrefix}tomorrow_morning',
             'notif.action.snoozeTomorrow'.tr(),
+            options: foreground,
           ),
         ],
       ),
@@ -140,23 +156,31 @@ class LocalNotificationsGateway implements NotificationsGateway {
           DarwinNotificationAction.plain(
             kActionAcknowledge,
             'notif.action.acknowledge'.tr(),
+            options: foreground,
           ),
           DarwinNotificationAction.plain(
             kActionComplete,
             'notif.action.complete'.tr(),
+            options: foreground,
           ),
           DarwinNotificationAction.plain(
             '${kActionSnoozePrefix}5_min',
             'notif.action.snooze5m'.tr(),
+            options: foreground,
           ),
           DarwinNotificationAction.plain(
             '${kActionSnoozePrefix}30_min',
             'notif.action.snooze30m'.tr(),
+            options: foreground,
           ),
           // OPH-178: silence for good, without completing the task. Last on
           // purpose — iOS surfaces the first few actions and this is the
           // heaviest one; the ring screen and the task detail carry it too.
-          DarwinNotificationAction.plain(kActionMute, 'notif.action.mute'.tr()),
+          DarwinNotificationAction.plain(
+            kActionMute,
+            'notif.action.mute'.tr(),
+            options: foreground,
+          ),
         ],
       ),
     ];
