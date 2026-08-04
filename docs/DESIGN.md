@@ -870,7 +870,22 @@ opens I can lift my finger and it stays open.")_
   one row per proposed task, each independently toggleable, with the model's source
   phrase ("yarın 15:00") shown beside the resolved value. Nothing writes until the
   user accepts; accepted tasks go through the store's optimistic+outbox path and get
-  the §19 undo idiom. Auto-commit does not exist in v1.
+  the §19 undo idiom. **One deliberate exception since round 14 (owner decision,
+  OPH-230): the quick-add ✨ rider auto-applies — see AI11.** Everywhere the AI
+  proposes work that does not exist yet (bubble, voice, share), the card stays the
+  law.
+- **AI11 — The ✨ rider is optimistic, and failure means "plain quick add".**
+  Tapping ✨ commits the typed text IMMEDIATELY as a normal quick-add task (round-14
+  defaults included, §26) — the row itself is the feedback, marked with a small
+  "AI is filling this in" progress badge (`ai-enriching-*`). Extraction runs in the
+  background and lands as an UPDATE to that row (extra proposed tasks are created
+  whole); the confirm card never appears on this path. Any failure — offline, slow
+  provider, nothing extractable — simply clears the badge and leaves the plain task
+  standing: the user never loses text, never waits, never reads an error for a task
+  that already exists. Auto-applied proposals still report accept/reject to the
+  `ai_action_log` (audit parity with the card). The card-first rule (AI5) is
+  untouched wherever the AI would CREATE new work from nothing; here the human
+  already committed the entry by typing it — the AI only decorates it.
 - **AI6 — AI output is text, not surface.** Answers render as plain text / limited
   markdown — no HTML, no auto-opened links, no embedded webviews; `alliswell://`
   links route through the ADR-0016 resolver (navigation-only by construction).
@@ -953,3 +968,31 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   bare dropdown glyphs), the preview is readable as text rather than as a chart, and
   every control clears the 44 px floor. Contrast is checked in both themes like any
   other surface — the dialog introduces no new colour.
+
+## 26. Creation defaults & the quick-add deadline ask (round 14 — Epic 21)
+
+_(Added 2026-08-05, feedback round 14. The owner's stance: a task worth writing
+down deserves a deadline, a reminder and an alarm by default — friction belongs
+at capture time, not at 02:00 when nothing rang.)_
+
+- **C1 — A new task is born medium + urgent-armed.** The create sheet opens with
+  priority **medium** and the **urgent-alarm switch ON**; both are visible fields
+  the user can flip before saving — defaults, never hidden behavior. Editing an
+  existing task shows the task's own truth, untouched.
+- **C2 — A deadline auto-arms its reminder, one hour before.** Picking a due date
+  (create sheet, quick add, ✨ rider) sets the reminder to **due − 1 h**
+  (`kAwAutoReminderGap`) — visibly. The derived value FOLLOWS the deadline while
+  it stays derived; the moment the user hand-picks or clears the reminder it is
+  theirs, and no due-date edit ever overwrites it again (§17 D5's "editing must
+  not change what the user didn't touch", applied to derivation). Clearing the
+  due date takes a still-derived reminder with it.
+- **C3 — Home quick add asks for the deadline, once, skippably.** Submitting the
+  Home quick-add bar opens the one shared date+time picker (§17 D5) prefilled
+  with the selected calendar day. Backing out is the skip path: the task still
+  lands instantly — on the selected day at the default task time when one is
+  picked (the bar's own promise), dateless otherwise. Inbox capture stays a
+  dateless capture box (§10) — the ask exists only where the user is planning,
+  not where they are unloading.
+- **C4 — Defaults apply at every birth point identically.** Sheet, quick add and
+  ✨ rider share `task_defaults.dart`; a surface that creates tasks and skips it
+  is a bug (§22 reachability logic applied to behavior parity).

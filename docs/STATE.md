@@ -3,7 +3,28 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-07-31 (**v1.0.2 CANLI — arama artık "Türkçe özelliği" değil.**
+**Last updated:** 2026-08-05 (**Epic 21 / round 14 KOD TAMAM — canlı AI arızası kökten çözüldü, ✨ optimistik oldu, oluşturma varsayılanları geldi; hedef v1.1.1.**
+Sahibin canlı raporu üç ayrı arızaya ayrıştı ve ÜÇÜ de sunucu loglarına dokunmadan,
+deploy anahtarlı read-only `Diagnose` workflow'uyla teşhis edildi (public repo →
+loglardan yalnız sayı/kod basar): (1) **Sohbet "bağlantı kurulamadı"**nın kökü
+uygulama değil, vhost'taki battaniye `SetOutputFilter DEFLATE` — zlib SSE'nin
+birkaç baytlık çerçevelerini tutuyor, Cloudflare ~100 sn sessizlikten sonra 524
+basıyor; sunucu tarafı bunu sessiz client-gone olarak yaşadığı için TÜM log
+tarihçesinde tek bir "ai chat upstream failed" yoktu (kanıtın yokluğu bu kez
+kanıttı). Düzeltme deploy'un kendisine gömüldü: `apachectl -t` kapılı idempotent
+`zz-alliswell-sse.conf` + istemcide `accept-encoding: identity`. (2) **✨/extract
+askıda kalıp hata basıyor**du çünkü akışsız çağrıda 15 sn'lik el sıkışma zamanaşımı
+üretimin TAMAMI demek → 90 s extract / 30 s chat bütçesi, `insufficient_quota`
+fast-fail, `upstreamMessage()` sağlayıcı hükmünü loga+istemciye taşır, `error.AI_*`
+en+tr. (3) UX: ✨ artık DESIGN §24 AI11 — metin ANINDA düz görev olur, satırda
+"Yapay zekâ dolduruyor…" rozeti, extraction arka planda UPDATE olarak iner, hata
+düz görevi bırakır (onay kartı bu yolda yok; audit aynen). AI bağlantısı artık
+takvim deseniyle KALDIRILABİLİR (etiketli + onaylı). Oluşturma varsayılanları
+DESIGN §26: orta öncelik + acil alarm açık + son tarihten 1 saat önce türetilmiş
+hatırlatma (`task_defaults.dart` tek kaynak, `_remindAuto` "türetilmiş izler,
+el değmiş dokunulmaz"), Home hızlı eklemede geçilebilir tarih+saat sorusu.
+**Süitler: app 753, API 613 unit; analyze/lint/i18n temiz.** Deploy sonrası sahibin
+cihaz turu: sohbetin canlıda artımlı akışı + ✨ + unlink. Önceki: v1.0.2 CANLI — arama artık "Türkçe özelliği" değil.**
 Sahip uyarısı, haklı: global bir üründe Türkçe'yi `<h2>` ile bağırmak konumlandırma hatasıydı —
 Alman bir kullanıcı "Search that speaks Turkish" okuyup özelliğin kendisi için olmadığını
 düşünür, oysa öyle değil. Fold zaten **Latin-1 Supplement + Latin Extended-A**'nın tamamını

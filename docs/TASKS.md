@@ -5800,6 +5800,95 @@ kapalı olduğu bu epic'in değişmezidir — gevşetme ancak yeni ADR'yle.
 
 ---
 
+## Epic 21 — Feedback round 14: canlı AI arızası + optimistik ✨ + oluşturma varsayılanları (v1.1.1) ✅ KOD TAMAM (2026-08-05)
+
+_Sahibin canlı (alliswell.space) turu: OpenAI bağlantı testi geçiyor ama sohbet
+"bağlantı kurulamadı" veriyor; ✨ hızlı ekleme tıklamaya tepkisiz, dakikalarca
+bekleyip hata basıyor; ayarlarda bağlantıyı kaldırma yolu fark edilmiyor; yeni
+görev varsayılanları (orta öncelik, acil alarm, son tarihten 1 saat önce
+hatırlatma) ve hızlı eklemede zorunlu-ama-geçilebilir tarih sorusu istendi.
+Bağlayıcı dokümanlar bu turda revize edildi: DESIGN §24 AI5/AI11 + §26, AI.md §3/§4._
+
+### OPH-228 — Canlı AI arızasının teşhisi ve kökten çözümü
+
+_(✅ 2026-08-05. **Teşhis SSH'sız yapıldı:** deploy anahtarını kullanan read-only
+`Diagnose` workflow'u (public repo → loglardan yalnız SAYI ve KOD basar, asla
+payload basmaz). Bulgular: API sağlıklı, Node 18.20.6 + `AbortSignal.any` mevcut,
+TÜM log tarihçesinde sıfır "ai chat upstream failed" — ama vhost'ta aaPanel'in
+battaniye `SetOutputFilter DEFLATE`'i. Kök neden: zlib birkaç baytlık SSE
+çerçevelerini blok dolana dek tutar → Cloudflare origin'i sessiz görür → ~100 sn'de
+524 → uygulama "bağlantı kurulamadı" okur; sunucu tarafıysa bunu sessiz
+client-gone olarak yaşar, tek satır log düşmez. Çözüm üç katman: deploy'a
+**idempotent, `apachectl -t` kapılı `zz-alliswell-sse.conf`** adımı (chat yoluna
+`SetEnv no-gzip/no-brotli`); istemcinin SSE isteğine **`accept-encoding: identity`**
+(self-host proxy'leri için); AI.md §3'e canlı vaka kaydı. İkinci kusur: extract
+gibi akışsız çağrılarda 15 sn'lik el sıkışma zamanaşımı üretimin TAMAMINI
+bekliyordu → 3 deneme ≈ 45+ sn askıda kalma + hata. `EXTRACT_TIMEOUT_MS` 90 s,
+`CHAT_HANDSHAKE_TIMEOUT_MS` 30 s, `insufficient_quota` 429'u retry yakmadan anında
+düşer, `upstreamMessage()` sağlayıcının kendi hüküm cümlesini loglara VE istemciye
+taşır (bir hafta "The AI provider failed" körlüğünün dersi). `error.AI_*` anahtar
+ailesi en+tr eklendi. API +4 test (kota fast-fail ×5 sağlayıcı sözleşmesinde,
+upstreamMessage ×3).)_
+
+- [x] Read-only `Diagnose` workflow'u; PM2/Apache/log imza sayımları, payload'sız.
+- [x] Deploy'a Apache SSE conf adımı — idempotent, config-test kapılı, geri alınır.
+- [x] `ai_stream_client.dart` SSE isteğine `accept-encoding: identity`.
+- [x] aiFetch zamanaşımı sabitleri + kota fast-fail + upstream verdict yüzeyi.
+- [x] AI.md §3 canlı vaka + §4 istisna kaydı.
+
+### OPH-229 — AI bağlantısını kaldırma: etiketli, onaylı unlink
+
+_(✅ 2026-08-05. Canlıda çöp-kutusu ikonu keşfedilemiyordu; takvimin Disconnect
+deseni uygulandı: "Kaldır" METİN düğmesi (hata rengi) + onay diyaloğu
+("{provider} bağlantısı kaldırılsın mı?" — anahtarın sunucudan silindiğini ve
+yeniden bağlanabileceğini söyler) + "Bağlantı kaldırıldı" snackbar'ı. Sunucu ucu
+zaten vardı (DELETE /ai/connections/:id, anahtar maddesini de siler). Testler:
+onaydan önce silinmez, vazgeç korur, onay siler.)_
+
+- [x] `_ConnectionRow` unlink akışı + `ai.settings.removeConfirm*`/`removed` en+tr.
+- [x] Widget testleri (onaylı silme + vazgeçme).
+
+### OPH-230 — ✨ hızlı ekleme: anında satır, asenkron zenginleştirme, sessiz düşüş
+
+_(✅ 2026-08-05. Eski akış kullanıcıyı extraction gidiş-dönüşüne rehin ediyordu
+(feedback yok → onay kartı → sağlayıcı yavaşsa hata). Yeni akış DESIGN §24 AI11:
+✨ dokunuşu metni ANINDA düz hızlı-ekleme görevi olarak yazar (round-14
+varsayılanları dahil), satırda "Yapay zekâ dolduruyor…" rozeti döner
+(`ai-enriching-*`, selector'lı watch — liste değil satır rebuild olur),
+extraction arka planda UPDATE olarak iner (çoklu görev önerisinin fazlası bütün
+olarak doğar), HERHANGİ bir hata rozeti söndürüp düz görevi bırakır — onay kartı
+bu yolda YOK, karar audit'i (accept/reject + entityRefs) aynen `ai_action_log`a
+gider. `ai_quick_add.dart` motoru + FakeApi `extractDelay` kancası; testler
+optimistik anı (satır var + rozet var + kart yok), iniş sonrasını (başlık/tarih/
+1 saat önce hatırlatma/varsayılanlar/audit) ve düşüşü (intent:none → düz görev)
+kanıtlar. Bar'ın ✨ dokunuşu _submit ritmiyle aynı: alan anında temizlenir,
+odak kalır.)_
+
+- [x] `aiQuickAddProvider` + `aiEnrichingTasksProvider` + TaskTile rozeti.
+- [x] QuickAddBar `_parse` optimistik ritim + hata snackbar'ı.
+- [x] Widget testleri (anında satır, asenkron iniş, sessiz düşüş).
+
+### OPH-231 — Oluşturma varsayılanları + hızlı eklemede tarih sorusu (DESIGN §26)
+
+_(✅ 2026-08-05. `task_defaults.dart` TEK kaynak (C4): öncelik **orta**, **acil
+alarm açık**, son tarih seçilince hatırlatma **due − 1 saat** (`kAwAutoReminderGap`).
+Create sheet: türetilmiş hatırlatma son tarihi İZLER (`_remindAuto`), kullanıcı
+eli değen/temizleyen hatırlatmaya bir daha dokunulmaz (C2, §17 D5 ruhu); edit/triage
+modunda görevin kendi gerçeği korunur, boş hatırlatma + yeni tarih yine türetir.
+Home hızlı ekleme: Enter'da paylaşılan tarih+saat seçici (C3) — seçili takvim
+günüyle önceden dolu; vazgeçmek "Geç"tir: seçili gün varsa o günün varsayılan
+saatine, yoksa tarihsiz ekler. Inbox kutusu bilinçli olarak DOKUNULMADI (tarihsiz
+yakalama kutusu kalır). Test düzeni: bar spinner'ı onAdd boyunca döndüğünden
+diyalog açıkken `pumpAndSettle` OTURMAZ — sınırlı pump deseni dört teste işlendi;
+FAB testi artık varsayılanları (medium + urgent + due−1 h) kanıtlıyor.)_
+
+- [x] `task_defaults.dart` + create sheet C1/C2 + Home quick add C3.
+- [x] Dört mevcut testin yeni gerçeğe uyarlanması + varsayılan kanıtları.
+
+**Epic 21 DoD:** app 753 + API 613 unit yeşil, analyze/lint/i18n/format temiz,
+deploy sonrası canlıda sohbet-SSE'nin artımlı aktığı ve ✨/unlink akışlarının
+çalıştığı sahibin cihaz turuyla doğrulanır → **v1.1.1**.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

@@ -113,7 +113,25 @@ proxy):** exclude `text/event-stream` from `mod_deflate` (`no-gzip`), `flushpack
 where applicable, `ProxyTimeout` above the heartbeat interval
 ([mod_proxy](https://httpd.apache.org/docs/2.4/mod/mod_proxy.html)). **The DoD is a
 curl against prod showing incremental chunks** — buffered SSE looks exactly like "the
-AI is stuck". Transport lives behind one Flutter seam (`AiStreamClient`): SSE on
+AI is stuck".
+
+**The trap fired for real (2026-08-04, round 14).** The live vhost carried aaPanel's
+blanket `SetOutputFilter DEFLATE`; zlib held the few-byte SSE frames until it had a
+full block, Cloudflare saw a silent origin, timed the request out (~100 s / 524) and
+the app read "connection failed" — while the API logs showed ZERO upstream failures
+(the stream died between Apache and the edge, which logs as a silent client-gone).
+Three fixes, layered: (1) the **deploy now applies the checklist itself** — an
+idempotent, `apachectl -t`-gated `zz-alliswell-sse.conf` (`SetEnv no-gzip/no-brotli`
+for the chat path) in the vhost's IncludeOptional'd proxy dir; (2) the app's SSE
+request sends `accept-encoding: identity` so ANY self-hosted proxy stays honest;
+(3) triage that would have found this in minutes is now a workflow
+(Actions ▸ Diagnose — read-only, public-repo-safe: counts and codes, never payloads).
+Related handshake fix: non-streaming provider calls (extract) deliver headers only
+when the WHOLE generation is done, so their timeout is the generation budget —
+`EXTRACT_TIMEOUT_MS` 90 s, `CHAT_HANDSHAKE_TIMEOUT_MS` 30 s (lib/ai/http.js), an
+out-of-credit 429 (`insufficient_quota`) fails fast instead of burning retries, and
+every upstream failure now logs + surfaces the provider's own verdict line
+(`upstreamMessage`), because a week of "The AI provider failed" taught us blindness. Transport lives behind one Flutter seam (`AiStreamClient`): SSE on
 iOS/Android/desktop, **Socket.IO room on web** (XHR does not stream reliably; the
 Socket.IO + Redis adapter path through this same Apache/PM2 topology is already
 proven). PM2 needs no sticky sessions for SSE.
@@ -135,8 +153,13 @@ user's default, never a hardcoded hour); a past due date raises `date_unclear`, 
 silent acceptance. **Project matching is ours, not the model's:** `projectName`
 resolves against real projects with the ADR-0013 Turkish fold + prefix/contains tiers;
 one match preselects, otherwise the confirm card shows the picker with "+ Proje ekle".
-Multi-task utterances are first-class. **The confirm card is mandatory in v1** —
-auto-commit at high confidence is a parked v1.5 opt-in.
+Multi-task utterances are first-class. **The confirm card is mandatory wherever the
+AI would create work from nothing** (bubble, voice, share). The one exception since
+round 14 (owner decision, OPH-230, DESIGN §24 AI11): the quick-add ✨ rider commits
+the typed text instantly as a plain quick-add task and applies the extraction
+asynchronously as an update — failure leaves the plain task standing, and the
+accept/reject still lands in `ai_action_log`. Confidence-gated auto-commit for the
+card paths stays a parked v1.5 opt-in.
 
 ## 5. Voice capture
 

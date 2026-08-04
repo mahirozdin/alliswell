@@ -5,12 +5,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-05
+
+### Fixed
+
+- **AI chat no longer dies behind a buffering reverse proxy.** The live server's
+  blanket Apache `DEFLATE` filter held the SSE frames until the edge timed the
+  stream out ("connection failed, try again" with a healthy API). The deploy now
+  installs a config-test-gated `no-gzip` rule for the chat stream, and the app
+  requests the stream uncompressed (`accept-encoding: identity`) so any
+  self-hosted proxy behaves too.
+- **Task extraction stopped hanging for ~45 s before failing.** Non-streaming AI
+  calls now get a budget that matches reality (90 s — the headers only arrive
+  when the whole generation is done), an out-of-credit provider answer fails
+  fast instead of burning retries, and AI errors finally show the provider's
+  own reason (quota, invalid key, missing model) in the user's language.
+
 ### Changed
 
+- **The ✨ quick-add is optimistic.** Tapping it adds the task instantly (plain
+  quick-add semantics), a small badge marks "AI is filling this in", and the
+  extraction lands asynchronously — on any failure the plain task simply stays.
+  No review card on this path; the accept/reject audit is still recorded.
+- **New-task defaults:** priority starts at medium, the urgent alarm starts on,
+  and picking a deadline auto-arms a reminder one hour before it (editable, and
+  never overwriting a reminder you set yourself). Home's quick add now asks for
+  the deadline with the shared date+time picker — skippable with one tap.
+- **AI connections can be removed** from Settings with a labeled, confirmed
+  Disconnect-style action; the key is deleted server-side immediately.
 - **AllisWell is live on Google Play.** The Android app is publicly listed at
   [play.google.com/store/apps/details?id=com.alliswell.alliswell](https://play.google.com/store/apps/details?id=com.alliswell.alliswell).
   The README and the landing page now link to the listing instead of calling
   the build "internal testing"; the App Store build remains in TestFlight.
+
+### Added
+
+- A read-only production triage workflow (Actions ▸ Diagnose) that reports
+  error-code counts and config directives — never payloads — so live incidents
+  are debuggable without shell access.
 
 ## [1.1.0] - 2026-07-31
 
