@@ -5889,6 +5889,70 @@ FAB testi artık varsayılanları (medium + urgent + due−1 h) kanıtlıyor.)_
 deploy sonrası canlıda sohbet-SSE'nin artımlı aktığı ve ✨/unlink akışlarının
 çalıştığı sahibin cihaz turuyla doğrulanır → **v1.1.1**.
 
+## Epic 22 — Feedback round 15: sohbetin körlüğü + iPhone alarm/widget arızaları (v1.1.2) ✅ KOD TAMAM (2026-08-05)
+
+_Sahibin gerçek iPhone turu, ekran görüntüleriyle: sohbet AKIYOR (round 14'ün
+transport zaferi) ama model "takvimine/görevlerine erişemem" diyor ve "yarın
+16'da toplantımı hatırlat" yazınca görev açmak yerine telefon takvimini tavsiye
+ediyor; bildirimdeki Ertele hiçbir şey yapmıyor (hatta çökme algısı); widget
+kendiliğinden tazelenmiyor; widget'tan tamamlama hiçbir şey yapmayıp sonra
+uygulamayı çökertiyor ve ancak kapat-aç sonrası işliyor._
+
+### OPH-232 — iOS widget zaman çizelgesi: bayat gün, tek girdili timeline
+
+_(✅ 2026-08-05. Tek girdi + tek gece-yarısı reload, uygulama açılmadıkça aynı
+bayat snapshot'ı DÜNÜN tarihiyle yeniden çiziyordu. Timeline artık şimdi + 4
+gece yarısı taşır; tarih başlığı ENTRY tarihinden çizilir (`awDate(for:locale:)`
+— OS tarih adları, ürün stringi değil; W9 korunur). Bucket'lar app'in dürüst
+snapshot'ı kalır (W1: native'e ürün kuralı taşınmaz). Android gece-yarısı işi
+açık yarım olarak kaydedildi.)_
+
+### OPH-233 — iOS widget tamamlama: LiveActivityIntent tuzağı
+
+_(✅ 2026-08-05. Widget'ın dairesi `AWCompleteTaskIntent`'i (LiveActivityIntent!)
+kullanıyordu — iOS bu türü DAİMA ana uygulamada koşturur: her dokunuş arka
+planda headless bir Flutter süreci doğurdu (görünürde hiçbir şey olmaz), yarım
+doğan süreç kullanıcı uygulamayı açınca çöktü (Dart'a varamadan öldüğü için
+Crashlytics'e DÜŞMEZ) ve kuyruklanan tamamlama ancak SONRAKİ temiz açılışta
+uygulandı — sahibin cihaz raporunun birebir zinciri. Yeni `AWWidgetCompleteIntent`
+düz AppIntent'tir ve WIDGET sürecinde koşar: snapshot'taki satırı
+JSONSerialization ile done işaretler (Codable tur atışı yeni sürüm alanlarını
+düşürürdü — OPH-187 duruşu), gerçek tamamlamayı mevcut `AWAlarmActionQueue`'ya
+kuyruklar (app foreground observer'ı zaten boşaltıyor), timeline'ı yeniler.
+`flutter build ios --debug` ile iki hedef de derlendi.)_
+
+### OPH-234 — iOS bildirim aksiyonları: foreground'suz düğme = hiçlik
+
+_(✅ 2026-08-05. Darwin aksiyonları seçeneksiz `.plain`'di: iOS basışı uygulamayı
+başlatmadan işler, plugin yanıtı bu uygulamanın bilerek KAYITSIZ bıraktığı
+background handler'a yollar — Ertele/Tamamla gerçek cihazda hiçbir şey
+hesaplamadı (ölü süreçte plugin'in background dispatch'i çökme bile üretebilir).
+Tüm Darwin aksiyonlarına `DarwinNotificationActionOption.foreground` verildi —
+Android'in `showsUserInterface: true`'sunun birebir ikizi; soğuk başlatma
+teslimatını OPH-214 kuyruğu zaten karşılıyor. NOTIFICATIONS.md sapma notu
+güncellendi.)_
+
+### OPH-235 — Sohbet: bağlam paketi gerçekten paketlensin + yazılı niyet kapısı
+
+_(✅ 2026-08-05. AI.md §7 spec'ti, davranış değildi: saf paketleyici OPH-221'den
+beri vardı ama yazılı hiçbir tur onu ÇAĞIRMADI — model sıfır fence ile "takvimine
+erişemem" diye dürüstçe cevapladı. `ai_live_context.dart` tek impure kenar:
+T0 meta+projeler, T1 geciken/bugün/yaklaşan (başlık+due satırları) + kullanıcının
+takvim etkinlikleri, T2 fold-eşleşmeli görev alıntıları; paylaşım bloğu aynı
+bundle içinde taşınır. Yazılı yol OPH-224 niyet kapısını aldı (`source: bubble`):
+create_tasks → onay kartı, gerisi → bağlamlı akışlı sohbet; kapı hatası düz
+sohbete düşer. İki ön-mevcut hata da yakalandı: sunucu error-event'inden sonra
+gelen Done hata yüzünü composing'e eziyordu (guard eklendi) ve error yüzünün
+Retry'ı boş input'la sessiz no-op'tu (`retryLast` + `machine.retry` — aynı turu
+kopyalamadan yeniden akıtır). BASE_SYSTEM_RULE'a "fence'ler kullanıcının kendi
+çalışma alanıdır, onlardan cevapla" cümlesi eklendi. +4 kapı testi
+(ai_bubble_gate_test), builder testleri genişletildi; app 759 yeşil.)_
+
+**Epic 22 DoD:** app 759 + API 613 unit yeşil, iOS debug build (app+widget) derlenir;
+cihaz turu: bildirim Ertele/Tamamla, widget dairesi (anında dolu daire + app'te
+işlenmiş görev), gece yarısı sonrası widget tarihi, sohbette "yoğun muyum" (veri
+görür) ve "yarın 16'da hatırlat" (kart açar) → **v1.1.2**.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

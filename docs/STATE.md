@@ -3,7 +3,21 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-05 (**Epic 21 / round 14 KOD TAMAM — canlı AI arızası kökten çözüldü, ✨ optimistik oldu, oluşturma varsayılanları geldi; hedef v1.1.1.**
+**Last updated:** 2026-08-05b (**Epic 22 / round 15 KOD TAMAM — sohbetin körlüğü bitti, iPhone alarm/widget arızaları kökten çözüldü; hedef v1.1.2.**
+Sahibin cihaz turu dört gerçek arıza getirdi, dördü de kod düzeyinde kapandı:
+(1) **Sohbet veriyi görmüyordu** çünkü AI.md §7'nin paketleyicisi hiç ÇAĞRILMIYORDU
+— `ai_live_context.dart` artık her yazılı turda T0/T1/T2'yi (görevler + takvim
+etkinlikleri + fold alıntıları) paketler; yazılı yol OPH-224 niyet kapısını aldı
+("yarın 16'da hatırlat" → onay kartı); iki ön-mevcut hata da düştü (error'dan
+sonraki Done'un yüzü ezmesi + Retry'ın boş-input no-op'u). (2) **Bildirim
+Ertele/Tamamla** iOS'ta foreground'suz `.plain` aksiyondu → kayıtsız background
+handler'a düşüp yok oluyordu; hepsi `foreground` oldu (Android'in
+showsUserInterface ikizi). (3) **Widget tamamlama** LiveActivityIntent yüzünden
+ana uygulamayı headless doğuruyordu (görünmez → çökme → ancak ikinci açılışta
+işlenme); widget-süreci `AWWidgetCompleteIntent` + snapshot'a anında done +
+kuyruk + reload. (4) **Widget bayatlığı**: timeline şimdi+4 gece yarısı, tarih
+başlığı entry tarihinden. iOS debug build (app+widget) DERLENDİ; app 759 yeşil.
+Cihaz DoD listesi Epic 22'de. Önceki: **Epic 21 / round 14 KOD TAMAM — canlı AI arızası kökten çözüldü, ✨ optimistik oldu, oluşturma varsayılanları geldi; v1.1.1 CANLI.**
 Sahibin canlı raporu üç ayrı arızaya ayrıştı ve ÜÇÜ de sunucu loglarına dokunmadan,
 deploy anahtarlı read-only `Diagnose` workflow'uyla teşhis edildi (public repo →
 loglardan yalnız sayı/kod basar): (1) **Sohbet "bağlantı kurulamadı"**nın kökü

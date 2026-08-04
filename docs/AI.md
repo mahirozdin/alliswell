@@ -189,9 +189,21 @@ always get "save to Inbox" — share-to-capture works with zero AI. v1 is text+U
 The model sees the minimum the request needs, and the user can always see what was
 sent (the bubble's per-message **context chip** expands the exact packed bundle).
 Client-side tiered packing from the drift replica: **T0** locale/TZ/now/default task
-time/project names/counts (always) · **T1** today+overdue+upcoming slices, titles
-only, ≤50 rows (task-ish requests) · **T2** top-K fold-search excerpts over
-tasks/notes (questions), ~4–8K input-token budget with a visible truncation marker.
+time/project names/counts (always) · **T1** today+overdue+upcoming slices (lean
+title+due rows, ≤50) **and the user's own calendar events** · **T2** top-K
+fold-search excerpts over tasks (notes excerpts are a recorded follow-up), ~4–8K
+input-token budget with a visible truncation marker.
+
+**Round 15 (OPH-235): this section was a spec, not a behavior.** The pure packer
+existed since OPH-221, but no typed chat turn ever CALLED it — the model received
+zero fences and honestly answered "takvimine erişemem" while holding nothing (the
+owner's live screenshots). `ai_live_context.dart` is now the one impure edge
+(replica providers → pure builder) and EVERY typed send packs the bundle. The
+same round gave the typed path the OPH-224 intent gate (`source: bubble`):
+extraction runs first, `create_tasks` opens the confirm card, anything else
+falls through to the streamed chat — so "yarın 16'da toplantımı hatırlat" creates
+a task instead of recommending the phone's calendar app. A gate failure of any
+kind degrades to plain chat, never a dead end.
 Never sent: attachment bytes, presigned URLs, storage keys, other members' data.
 Server logs carry ids and token counts, never content (the §8.3 notification-privacy
 stance extended). First-use consent per provider states, in one honest sentence each:

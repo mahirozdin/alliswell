@@ -376,7 +376,16 @@ in the picker.
 > sync-push `snoozedUntil` + `reminder` acknowledge, REST acknowledge). v1
 > deviations: notification actions run through the main isolate
 > (`showsUserInterface: true` — a background-isolate outbox writer is future
-> work); offline `tomorrow_morning` uses the device's wall clock (the server
+> work). **Round 15 (OPH-234): the iOS half of that deviation was missing** —
+> Darwin actions were `.plain` with no options, so iOS handled the press
+> WITHOUT launching the app and the plugin routed it to the background handler
+> this app deliberately does not register: Snooze/Complete on a real iPhone
+> computed nothing (and could crash a dead process via the plugin's background
+> dispatch). Every Darwin action now carries
+> `DarwinNotificationActionOption.foreground` — the exact iOS twin of
+> Android's `showsUserInterface: true`; the OPH-214 pending-queue already
+> covers the cold-start delivery it produces. Offline `tomorrow_morning` uses
+> the device's wall clock (the server
 > computes task-timezone mornings for REST snoozes). Exact-delivery behavior
 > requires the device verification pass (now OPH-140).
 >

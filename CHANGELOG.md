@@ -5,6 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-08-05
+
+### Fixed
+
+- **The AI chat finally sees your workspace.** The context bundle the design
+  always promised (your open tasks with due times, project names and counts,
+  your own calendar events, and excerpts matching your question) is now really
+  packed with every typed message — the assistant no longer answers "I can't
+  see your calendar" while your data sits a layer away.
+- **Typing a command creates a task.** "yarın 16'da toplantımı hatırlat" now
+  runs through the same intent gate as voice: task-like messages open the
+  review card; questions keep streaming as chat. A failed gate degrades to
+  plain chat, and the error face's Retry actually retries.
+- **iPhone notification buttons work.** Snooze/Complete/Mute on iOS
+  notifications were configured without the foreground option, so iOS handed
+  them to a handler that doesn't exist — they now open the app and apply, the
+  exact behavior Android always had.
+- **The widget's complete button no longer wounds the app.** It used to launch
+  a headless app process (nothing visible, a crash on next open, the
+  completion appearing only after a force-kill). The circle now fills
+  instantly, the completion queues for the app, and no background app launch
+  happens at all.
+- **The widget keeps the right date.** Its timeline now spans several
+  midnights and draws the date from the entry itself, so an unopened app no
+  longer leaves yesterday's date on the home screen.
+
 ## [1.1.1] - 2026-08-05
 
 ### Fixed

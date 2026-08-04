@@ -19,7 +19,7 @@
 | Dart snapshot core (`groupTasksForWidget`, `WidgetSnapshot`, `WidgetBridge`) | ✅ **done + unit-tested** (OPH-130) |
 | Android widget — rendering + tap-to-open | ✅ **written, `flutter build apk` green** (OPH-133); RemoteViews (not Glance) |
 | iOS widget — SwiftUI + timeline | 🟡 **Swift written** (`apps/app/ios/AllisWellWidget/`), awaiting the Xcode target + device — see that folder's `SETUP.md` (OPH-131) |
-| In-widget complete / quick-add (App Intents / Glance actions) | ⏳ deferred — background isolate + device (OPH-132, shared Android bit) |
+| In-widget complete (App Intents) | ✅ **iOS ships it (round 15, OPH-233):** a widget-process `AWWidgetCompleteIntent` stamps the shared snapshot + queues the completion — see §4's warning about LiveActivityIntent. Quick-add + the Android bit stay deferred (OPH-132) |
 | macOS widget | ⏳ deferred — blocked on the macOS signing gap (OPH-134) |
 | Configurable list, accessory tier, private-widget, WorkManager midnight | ⏳ deferred (OPH-135) |
 | Device visual/QA pass (all sizes, light+dark, sync) | ⏳ needs a real device/emulator |
@@ -171,6 +171,21 @@ This is the Reminders "tap the circle to complete" behavior. Configurable widget
 use `AppIntentConfiguration` + `AppIntentTimelineProvider`; plain interactivity
 works on a `StaticConfiguration` too.
 
+> **The round-15 device lesson (OPH-233): the intent's TYPE decides the
+> process.** The widget's circle originally reused `AWCompleteTaskIntent` — a
+> **`LiveActivityIntent`**, which iOS always runs IN THE MAIN APP. Every tap
+> cold-started a headless Flutter process in the background: the widget showed
+> nothing, the half-born process crashed when the user then opened the app
+> (never reaching Crashlytics — it dies before Dart), and the queued completion
+> only applied on the NEXT clean launch. The widget now has its own plain
+> `AppIntent` (`AWWidgetCompleteIntent`, widget target only): it flips `done`
+> inside the stored snapshot via JSONSerialization (a Codable round-trip would
+> drop fields newer app versions write — the OPH-187 stance), enqueues the real
+> completion into `AWAlarmActionQueue`, and reloads the timeline. The app
+> drains that queue on its existing foreground observer. `LiveActivityIntent`
+> remains correct for the Live Activity's own buttons, where the app is the
+> point.
+
 **Android:** a Glance `Checkbox`/`Button` with `actionRunCallback<T>()` (or a
 RemoteViews collection with a `setPendingIntentTemplate` + per-row
 `setOnClickFillInIntent`) fires a background broadcast.
@@ -252,6 +267,14 @@ budget but `updatePeriodMillis` has a **30-minute floor** and wakes the device.
    (`TimelineReloadPolicy.after`, entries ≥5 min apart) + a **midnight** entry for
    date rollover; on Android a **WorkManager** (or `AlarmManager` RTC) job at local
    midnight re-pushes. Keep sparse to live within 40–70/day.
+   **Round 15 (OPH-232):** one entry + one reload was NOT enough — after the
+   first midnight the reload re-rendered the same stale snapshot still wearing
+   yesterday's date. The iOS timeline now carries **now + the next 4 midnights**
+   (still ~1 reload/day of budget), and the **date header renders from the
+   ENTRY's date** (`awDate(for:locale:)` — OS date names via the snapshot's
+   locale, not product strings, so W9 holds). Buckets stay the app's honest
+   snapshot: an aging list under a correct date, never a native guess (W1).
+   The Android midnight job remains the open half of this item.
 3. Prefer `WidgetCenter.shared.reloadTimelines(ofKind:)` over `reloadAllTimelines()`.
 
 ## 7. Setup — extension targets & files committed to git
