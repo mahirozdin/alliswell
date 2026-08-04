@@ -90,4 +90,36 @@ void main() {
       );
     }
   });
+
+  test('round 15: due labels, calendar events and overdue-first grouping', () {
+    final bundle = buildAiContext(
+      meta: meta,
+      projects: const [],
+      overdue: const [TaskLite(title: 'Geciken', dueLabel: '2026-08-04 10:00')],
+      today: const [TaskLite(title: 'Bugünkü', dueLabel: '2026-08-05 16:00')],
+      events: const [
+        EventLite(title: 'Standup', timeLabel: '2026-08-05 09:30'),
+      ],
+    );
+    final segments = bundle.segments;
+    final taskSegment = segments.singleWhere((s) => s.source == 'task');
+    expect(
+      taskSegment.text.split('\n'),
+      containsAllInOrder([
+        '[overdue]',
+        'Geciken — due 2026-08-04 10:00',
+        '[today]',
+        'Bugünkü — due 2026-08-05 16:00',
+      ]),
+    );
+    final events = segments.singleWhere((s) => s.source == 'calendar_event');
+    expect(events.tier, 't1');
+    expect(events.text, 'Standup — 2026-08-05 09:30');
+  });
+
+  test('awIsoWithOffset carries the local UTC offset', () {
+    final iso = awIsoWithOffset(DateTime(2026, 8, 5, 16, 30));
+    expect(iso, startsWith('2026-08-05T16:30:00'));
+    expect(iso, matches(RegExp(r'[+-]\d{2}:\d{2}$')));
+  });
 }

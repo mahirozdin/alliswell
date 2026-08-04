@@ -32,8 +32,25 @@ class ProjectLite {
 }
 
 class TaskLite {
-  const TaskLite({required this.title});
+  const TaskLite({required this.title, this.dueLabel});
   final String title;
+
+  /// Round 15: a short human due label ("2026-08-06 16:00") beside the title.
+  /// Titles alone could not answer "bugün ne var, saat kaçta" — the model kept
+  /// honestly answering "göremiyorum". Still lean rows, never bodies.
+  final String? dueLabel;
+
+  String get line => dueLabel == null ? title : '$title — due $dueLabel';
+}
+
+/// One calendar event row for T1 (round 15) — the user's own calendar is part
+/// of "what does my day look like", exactly why ExternalEvent exists.
+class EventLite {
+  const EventLite({required this.title, required this.timeLabel});
+  final String title;
+  final String timeLabel;
+
+  String get line => '$title — $timeLabel';
 }
 
 class SearchExcerpt {
@@ -94,7 +111,22 @@ class AiContextBundle {
 /// budget is generous enough that precision is not the point).
 int estimateTokens(String text) => (text.length / 4).ceil();
 
+/// Local ISO-8601 WITH the UTC offset ("2026-08-06T16:00:00+03:00") — Dart's
+/// own `toIso8601String()` drops the offset on local times, and a naive
+/// timestamp would let the model resolve "yarın" in the wrong day (pure —
+/// round 15, the client twin of the API's formatInstantWithOffset).
+String awIsoWithOffset(DateTime local) {
+  final offset = local.timeZoneOffset;
+  final sign = offset.isNegative ? '-' : '+';
+  final abs = offset.abs();
+  final hh = abs.inHours.toString().padLeft(2, '0');
+  final mm = (abs.inMinutes % 60).toString().padLeft(2, '0');
+  final base = local.toIso8601String().split('.').first;
+  return '$base$sign$hh:$mm';
+}
+
 const int _t1RowCap = 50;
+const int _t1EventCap = 20;
 
 AiContextBundle buildAiContext({
   required AiContextMeta meta,
@@ -102,6 +134,7 @@ AiContextBundle buildAiContext({
   List<TaskLite> today = const [],
   List<TaskLite> overdue = const [],
   List<TaskLite> upcoming = const [],
+  List<EventLite> events = const [],
   List<SearchExcerpt> excerpts = const [],
   SharedPayload? sharedBlock,
   int tokenBudget = 6000,
@@ -153,21 +186,43 @@ AiContextBundle buildAiContext({
     );
   }
 
-  // T1 — today → overdue → upcoming, titles only, ≤50 rows total.
-  final t1Titles = <String>[];
-  for (final list in [today, overdue, upcoming]) {
+  // T1 — overdue → today → upcoming, lean rows (title + due label), ≤50 total.
+  // Overdue first: when the cap bites, the debt is what the model must see.
+  final t1Lines = <String>[];
+  void addRows(String label, List<TaskLite> list) {
+    if (list.isEmpty) return;
+    if (t1Lines.length >= _t1RowCap) {
+      truncated = true;
+      return;
+    }
+    t1Lines.add('[$label]');
     for (final task in list) {
-      if (t1Titles.length >= _t1RowCap) {
+      if (t1Lines.length >= _t1RowCap) {
         truncated = true;
         break;
       }
-      t1Titles.add(task.title);
+      t1Lines.add(task.line);
     }
   }
-  if (t1Titles.isNotEmpty) {
+
+  addRows('overdue', overdue);
+  addRows('today', today);
+  addRows('upcoming', upcoming);
+  if (t1Lines.isNotEmpty) {
+    add(AiContextSegment(tier: 't1', source: 'task', text: t1Lines.join('\n')));
+  }
+
+  // T1 — the user's own calendar events (round 15): "what does my day look
+  // like" is a calendar question, and ExternalEvent exists exactly for it.
+  if (events.isNotEmpty) {
     add(
-      AiContextSegment(tier: 't1', source: 'task', text: t1Titles.join('\n')),
+      AiContextSegment(
+        tier: 't1',
+        source: 'calendar_event',
+        text: events.take(_t1EventCap).map((e) => e.line).join('\n'),
+      ),
     );
+    if (events.length > _t1EventCap) truncated = true;
   }
 
   // T2 — top-K excerpts until the budget runs out.

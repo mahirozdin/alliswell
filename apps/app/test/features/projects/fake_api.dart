@@ -287,6 +287,10 @@ class FakeApi {
   /// lands. Advance the fake clock past it with `tester.pump(delay)`.
   Duration? extractDelay;
 
+  /// Round 15: force `/ai/extract` to fail with this HTTP status — the gate's
+  /// degrade-to-chat path needs a provider that is down for extraction only.
+  int? extractStatusCode;
+
   /// Result the `/ai/connections/:id/test` endpoint returns.
   Map<String, dynamic> aiTestResult = {'ok': true, 'latencyMs': 12};
 
@@ -446,6 +450,15 @@ class FakeApi {
       );
     }
     if (path == '$wsPrefix/extract' && options.method == 'POST') {
+      if (extractStatusCode != null) {
+        return Future.value(
+          jsonBody(extractStatusCode!, {
+            'statusCode': extractStatusCode,
+            'code': 'AI_UPSTREAM_ERROR',
+            'message': 'The AI provider failed',
+          }),
+        );
+      }
       final proposal = nextProposal ?? {'intent': 'none', 'tasks': <dynamic>[]};
       final body = jsonBody(200, {
         'requestId': 'AIREQ${(_aiSeq++).toString().padLeft(21, '0')}',

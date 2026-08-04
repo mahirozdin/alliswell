@@ -128,6 +128,16 @@ class AiBubbleMachine {
         clearError: true,
       );
 
+  /// Round 15: re-run the LAST committed user turn after a failure — same
+  /// thinking face, no new history entry (send() with an empty input used to
+  /// no-op and the retry button did nothing).
+  AiBubbleState retry(AiBubbleState s, String requestId) => s.copyWith(
+    phase: AiBubblePhase.thinking,
+    requestId: requestId,
+    streamed: '',
+    clearError: true,
+  );
+
   AiBubbleState firstToken(AiBubbleState s, String text) =>
       s.copyWith(phase: AiBubblePhase.streaming, streamed: text);
 

@@ -8,6 +8,7 @@ import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/sheets.dart';
 import '../../../widgets/status_views.dart';
 import '../data/ai_context_builder.dart';
+import '../data/ai_live_context.dart';
 import '../data/stt.dart';
 import 'ai_bubble_controller.dart';
 import 'ai_bubble_state.dart';
@@ -221,7 +222,17 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
           padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
           child: AwErrorState(
             message: 'ai.bubble.error'.tr(),
-            onRetry: () => ref.read(aiBubbleControllerProvider.notifier).send(),
+            // Round 15: re-run the FAILED turn (the input was already consumed
+            // by the send transition — a plain send() here silently no-oped).
+            onRetry: () {
+              final controller = ref.read(aiBubbleControllerProvider.notifier);
+              controller.retryLast(
+                context: buildLiveAiContext(
+                  read: ref.read,
+                  sharedBlock: ref.read(aiBubbleControllerProvider).sharedBlock,
+                ),
+              );
+            },
           ),
         );
       case AiBubblePhase.offline:
@@ -408,19 +419,6 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
       ? '${shared.text}\n${shared.url}'.trim()
       : shared.text.trim();
 
-  /// A one-off context bundle carrying just the shared content, fenced by the
-  /// server under the strictest provenance (`external_share`).
-  AiContextBundle _shareContext(SharedPayload shared) {
-    final text = _shareText(shared);
-    return AiContextBundle(
-      segments: [
-        AiContextSegment(tier: 't2', source: 'external_share', text: text),
-      ],
-      tokenEstimate: estimateTokens(text),
-      truncated: false,
-    );
-  }
-
   Future<void> _shareMakeTask(
     SharedPayload shared,
     AiBubbleController controller,
@@ -472,24 +470,40 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
 
   void _shareSummarize(SharedPayload shared, AiBubbleController controller) {
     controller.editInput('ai.share.summarizePrompt'.tr());
-    controller.send(context: _shareContext(shared));
+    // Round 15: the shared block rides INSIDE the live bundle — summarize
+    // still gets the fenced share, plus the same workspace grounding as any
+    // other chat turn.
+    controller.send(
+      context: buildLiveAiContext(read: ref.read, sharedBlock: shared),
+    );
     _input.clear();
   }
 
+  /// Round 15: EVERY typed turn packs the live T0–T2 bundle (AI.md §7 finally
+  /// wired — the model used to receive nothing and honestly answered "I can't
+  /// see your calendar"), and a share block rides along inside the same
+  /// bundle instead of replacing it.
+  AiContextBundle _liveContext(AiBubbleState state) => buildLiveAiContext(
+    read: ref.read,
+    query: state.input,
+    sharedBlock: state.sharedBlock,
+  );
+
   /// A reviewing (voice/finalized) send runs the intent gate and routes the
-  /// outcome; a composing send is a normal chat turn (OPH-221/224). A share
-  /// carries its content along as fenced context.
+  /// outcome; a composing send is a GATED chat turn (round 15): extraction
+  /// decides `create_tasks` → confirm card, anything else streams as chat
+  /// with the live context bundle.
   Future<void> _onSend(
     AiBubbleState state,
     AiBubbleController controller,
   ) async {
     if (state.phase != AiBubblePhase.reviewing) {
-      controller.send(
-        context: state.sharedBlock != null
-            ? _shareContext(state.sharedBlock!)
-            : null,
-      );
+      final proposal = await controller.sendGated(context: _liveContext(state));
       _input.clear();
+      if (proposal != null && mounted) {
+        Navigator.of(context).pop();
+        await showAiConfirmSheet(context, proposal);
+      }
       return;
     }
     final route = await controller.submitReview();

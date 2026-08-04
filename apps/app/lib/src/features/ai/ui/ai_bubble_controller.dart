@@ -96,32 +96,95 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// packed by the caller (kept minimal here so the controller stays testable).
   Future<void> send({AiContextBundle? context}) async {
     if (!state.canSend) return;
+    final prepared = await _prepare();
+    if (prepared == null) return; // offline face; the input is preserved
+    final requestId = newUlid();
+    _cancelled = false;
+    state = _machine.send(state, requestId);
+    _stream(prepared, requestId, context);
+  }
+
+  /// Round 15 — the typed path gets the OPH-224 intent gate too, chat flavor:
+  /// extraction runs FIRST (fast class, source `bubble`); `create_tasks` comes
+  /// back as a proposal for the widget to open the confirm card, anything else
+  /// falls through to the STREAMED chat turn with the packed context — the
+  /// extract's own answer is deliberately discarded (chat has the history and
+  /// the T0–T2 bundle; the gate only decides). The user turn + thinking face
+  /// commit BEFORE the gate so the tap answers instantly, and a gate failure
+  /// of any kind degrades to plain chat, never to a dead end.
+  Future<AiProposal?> sendGated({AiContextBundle? context}) async {
+    if (!state.canSend) return null;
+    final text = state.input.trim();
+    final prepared = await _prepare();
+    if (prepared == null) return null; // offline face; the input is preserved
+    final requestId = newUlid();
+    _cancelled = false;
+    state = _machine.send(state, requestId);
+
+    AiVoiceRoute route;
+    try {
+      route = await extractUtterance(text, source: 'bubble');
+    } on Object catch (_) {
+      route = const AiRouteNone();
+    }
+    if (_disposed || _cancelled) return null;
+    if (route case AiRouteTasks(:final proposal)) {
+      // The confirm card takes over; the bubble returns to composing.
+      state = _machine.done(state);
+      return proposal;
+    }
+    _stream(prepared, requestId, context);
+    return null;
+  }
+
+  /// The error face's retry: the failed turn is already the last history
+  /// entry (the send transition committed it), so re-stream from history —
+  /// with empty input the old `send()` was a silent no-op and the retry
+  /// button lied (round 15).
+  Future<void> retryLast({AiContextBundle? context}) async {
+    if (state.history.isEmpty || state.history.last.role != 'user') {
+      return send(context: context);
+    }
+    final prepared = await _prepare();
+    if (prepared == null) return;
+    final requestId = newUlid();
+    _cancelled = false;
+    state = _machine.retry(state, requestId);
+    _stream(prepared, requestId, context);
+  }
+
+  /// Resolves the transport + workspace, or shows the offline face (keeping
+  /// the input so "save to Inbox" still has the text). A FutureProvider is
+  /// lazy, so `.value` can be null on a first read even when signed in.
+  Future<({AiStreamClient client, String workspaceId})?> _prepare() async {
     final client = ref.read(aiStreamClientProvider);
-    // Resolve the workspace — a FutureProvider is lazy, so .value can be null
-    // on a first read even when the session is signed in.
     final workspaces = await ref.read(workspacesProvider.future);
     final workspace = workspaces.isEmpty ? null : workspaces.first;
     if (client == null || workspace == null) {
       state = _machine.offline(state);
-      return;
+      return null;
     }
+    return (client: client, workspaceId: workspace.id);
+  }
 
-    final requestId = newUlid();
-    _cancelled = false;
+  /// One streaming turn: the message list is HISTORY as-is (the send/retry
+  /// transition already committed the user turn).
+  void _stream(
+    ({AiStreamClient client, String workspaceId}) prepared,
+    String requestId,
+    AiContextBundle? context,
+  ) {
     final messages = [
       for (final entry in state.history)
         AiChatMessage(role: entry.role, content: entry.text),
-      AiChatMessage(role: 'user', content: state.input.trim()),
     ];
-    state = _machine.send(state, requestId);
-
     final request = AiChatRequest(
-      workspaceId: workspace.id,
+      workspaceId: prepared.workspaceId,
       requestId: requestId,
       messages: messages,
       context: context?.toJson(),
     );
-    _sub = client
+    _sub = prepared.client
         .chat(request)
         .listen(
           (event) {
@@ -134,7 +197,12 @@ class AiBubbleController extends Notifier<AiBubbleState> {
               case AiUsage():
                 break;
               case AiStreamDone():
-                state = _machine.done(state);
+                // A server `error` event is followed by the stream's normal
+                // end (round 15): the trailing Done must not clobber the
+                // error face the user needs to see and retry from.
+                if (state.phase != AiBubblePhase.error) {
+                  state = _machine.done(state);
+                }
               case AiStreamFailure(:final code):
                 if (!_cancelled) state = _machine.fail(state, code);
             }
