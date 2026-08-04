@@ -1,4 +1,9 @@
-import { aiFetch, AiProviderError } from '../http.js';
+import {
+  aiFetch,
+  AiProviderError,
+  CHAT_HANDSHAKE_TIMEOUT_MS,
+  EXTRACT_TIMEOUT_MS,
+} from '../http.js';
 import { parseJsonLines } from '../sse.js';
 
 /**
@@ -30,6 +35,8 @@ export default {
       },
       signal,
       stream: true,
+      // A cold local model can spend a while loading before the first byte.
+      timeoutMs: CHAT_HANDSHAKE_TIMEOUT_MS,
     });
 
     let usage = null;
@@ -60,6 +67,8 @@ export default {
         stream: false,
       },
       signal,
+      // Non-streaming: headers arrive when the WHOLE generation is done.
+      timeoutMs: EXTRACT_TIMEOUT_MS,
     });
     const raw = res.message?.content ?? '';
     const usage = {

@@ -1,4 +1,5 @@
 import { renderChatSystem } from './context.js';
+import { upstreamMessage } from './http.js';
 
 /**
  * The chat engine (OPH-217): ONE code path from adapter stream to client,
@@ -96,8 +97,15 @@ export async function runChat({
     } else {
       const code = errorCode(err);
       authFailed = code === 'AI_UPSTREAM_AUTH_FAILED';
-      app.log.warn({ err: err.message, requestId }, 'ai chat upstream failed');
-      await sink.error({ code, message: 'The AI provider failed to answer' });
+      // The provider's own verdict line rides along (status + capped message,
+      // never content) — without it every live failure reads the same and is
+      // undebuggable, which is exactly how the alliswell.space incident hid.
+      const detail = upstreamMessage(err);
+      app.log.warn(
+        { err: err.message, status: err.status ?? null, upstream: detail, requestId },
+        'ai chat upstream failed',
+      );
+      await sink.error({ code, message: detail ?? 'The AI provider failed to answer' });
     }
   } finally {
     clearInterval(heartbeat);

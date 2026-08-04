@@ -5,6 +5,7 @@ import { encryptSecret } from '../lib/crypto.js';
 import { formatInstantWithOffset } from '../lib/time.js';
 import { parseJsonColumn } from '../db/task-series.js';
 import { MODEL_CATALOG, catalogDefaults } from '../lib/ai/models.js';
+import { upstreamMessage } from '../lib/ai/http.js';
 import { buildExtractionPrompt, extractTasks } from '../lib/ai/extract.js';
 import {
   runChat,
@@ -887,7 +888,18 @@ export default async function aiRoutes(app) {
           );
         }
         if (err?.name === 'AiProviderError') {
-          throw coded(app.httpErrors.badGateway('The AI provider failed'), upstreamCode(err));
+          // Same discipline as runChat: log the provider's verdict (status +
+          // capped message, no content) — the live 502s were unexplainable
+          // without it — and let the client show something actionable.
+          const detail = upstreamMessage(err);
+          request.log.warn(
+            { err: err.message, status: err.status ?? null, upstream: detail },
+            'ai extract upstream failed',
+          );
+          throw coded(
+            app.httpErrors.badGateway(detail ?? 'The AI provider failed'),
+            upstreamCode(err),
+          );
         }
         throw err;
       } finally {

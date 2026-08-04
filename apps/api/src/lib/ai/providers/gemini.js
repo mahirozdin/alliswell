@@ -1,4 +1,9 @@
-import { aiFetch, AiProviderError } from '../http.js';
+import {
+  aiFetch,
+  AiProviderError,
+  CHAT_HANDSHAKE_TIMEOUT_MS,
+  EXTRACT_TIMEOUT_MS,
+} from '../http.js';
 import { parseSseStream } from '../sse.js';
 
 /**
@@ -32,6 +37,7 @@ export default {
         },
         signal,
         stream: true,
+        timeoutMs: CHAT_HANDSHAKE_TIMEOUT_MS,
       },
     );
 
@@ -67,6 +73,8 @@ export default {
           generationConfig: { responseMimeType: 'application/json', responseSchema: schema },
         },
         signal,
+        // Non-streaming: headers arrive when the WHOLE generation is done.
+        timeoutMs: EXTRACT_TIMEOUT_MS,
       },
     );
     const raw = res.candidates?.[0]?.content?.parts?.[0]?.text ?? '';

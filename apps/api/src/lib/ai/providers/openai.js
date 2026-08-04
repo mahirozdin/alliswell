@@ -1,4 +1,9 @@
-import { aiFetch, AiProviderError } from '../http.js';
+import {
+  aiFetch,
+  AiProviderError,
+  CHAT_HANDSHAKE_TIMEOUT_MS,
+  EXTRACT_TIMEOUT_MS,
+} from '../http.js';
 import { parseSseStream } from '../sse.js';
 
 /**
@@ -39,6 +44,7 @@ export function createOpenAiDialectAdapter({
         },
         signal,
         stream: true,
+        timeoutMs: CHAT_HANDSHAKE_TIMEOUT_MS,
       });
 
       let usage = null;
@@ -73,6 +79,8 @@ export function createOpenAiDialectAdapter({
           },
         },
         signal,
+        // Non-streaming: headers arrive when the WHOLE generation is done.
+        timeoutMs: EXTRACT_TIMEOUT_MS,
       });
       const raw = res.choices?.[0]?.message?.content ?? '';
       const usage = {

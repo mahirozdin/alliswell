@@ -1,4 +1,9 @@
-import { aiFetch, AiProviderError } from '../http.js';
+import {
+  aiFetch,
+  AiProviderError,
+  CHAT_HANDSHAKE_TIMEOUT_MS,
+  EXTRACT_TIMEOUT_MS,
+} from '../http.js';
 import { parseSseStream } from '../sse.js';
 
 /**
@@ -37,6 +42,7 @@ export default {
       },
       signal,
       stream: true,
+      timeoutMs: CHAT_HANDSHAKE_TIMEOUT_MS,
     });
 
     let inputTokens = null;
@@ -82,6 +88,8 @@ export default {
         output_format: { type: 'json_schema', schema, name: schemaName },
       },
       signal,
+      // Non-streaming: headers arrive when the WHOLE generation is done.
+      timeoutMs: EXTRACT_TIMEOUT_MS,
     });
     const raw = res.content?.[0]?.text ?? '';
     const usage = {

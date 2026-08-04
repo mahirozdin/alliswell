@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { providers } from '../../src/lib/ai/providers/index.js';
+import { AiProviderError, upstreamMessage } from '../../src/lib/ai/http.js';
 import { startFakeAi } from '../helpers/fakeai.js';
 
 /**
@@ -137,6 +138,56 @@ describe.each(PROVIDER_NAMES.map((name) => ({ name })))('adapter contract: $name
 
   it('verify answers ok against the cheapest authenticated endpoint', async () => {
     await expect(adapter.verify(args())).resolves.toEqual({ ok: true });
+  });
+
+  it('a quota-exhausted 429 fails fast — one attempt, verdict preserved', async () => {
+    // Out-of-credit never heals between attempts; the old path slept through
+    // two retries and the user read the silence as a hang (live finding).
+    fake.state.failNext = {
+      status: 429,
+      retryAfter: 0,
+      times: 3,
+      body: {
+        error: { message: 'You exceeded your current quota.', code: 'insufficient_quota' },
+      },
+    };
+    const attempt = adapter.extract({ ...args(), input: 'text', schema: SCHEMA, schemaName: 'p' });
+    await expect(attempt).rejects.toMatchObject({
+      name: 'AiProviderError',
+      code: 'upstream_rate_limited',
+      status: 429,
+    });
+    const total = Object.values(fake.state.attempts).reduce((a, b) => a + b, 0);
+    expect(total).toBe(1);
+  });
+});
+
+describe('upstreamMessage', () => {
+  it('lifts the provider verdict line out of the error body', () => {
+    const err = new AiProviderError('upstream_rate_limited', {
+      status: 429,
+      body: { error: { message: 'You exceeded your current quota.' } },
+    });
+    expect(upstreamMessage(err)).toBe('You exceeded your current quota.');
+  });
+
+  it('handles Ollama plain-string errors and caps long ones', () => {
+    expect(
+      upstreamMessage(
+        new AiProviderError('upstream_error', { body: { error: 'model not found' } }),
+      ),
+    ).toBe('model not found');
+    const long = new AiProviderError('upstream_error', {
+      body: { error: { message: 'x'.repeat(500) } },
+    });
+    expect(upstreamMessage(long)).toHaveLength(240);
+    expect(upstreamMessage(long).endsWith('…')).toBe(true);
+  });
+
+  it('answers null for bodiless failures and foreign errors', () => {
+    expect(upstreamMessage(new AiProviderError('upstream_error'))).toBeNull();
+    expect(upstreamMessage(new Error('boom'))).toBeNull();
+    expect(upstreamMessage(null)).toBeNull();
   });
 });
 

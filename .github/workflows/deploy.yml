@@ -256,6 +256,55 @@ jobs:
           pm2_as "$PM2_USER" save || true
           REMOTE
 
+      # aaPanel's vhost carries a blanket `SetOutputFilter DEFLATE`, which
+      # buffers the AI chat's tiny text/event-stream frames until zlib has a
+      # full block; the edge (Cloudflare) sees silence, times the request out
+      # at ~100 s and the app reads "connection failed" — found live 2026-08-04.
+      # This applies the AI.md §3 prod checklist idempotently on every deploy:
+      # a deploy-managed conf in the vhost's IncludeOptional'd proxy dir, only
+      # ever swapped in after `apachectl -t` blesses it.
+      - name: Ensure Apache does not buffer the AI SSE stream
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "bash -euo pipefail" <<'REMOTE'
+          PROXY_DIR=/www/server/panel/vhost/apache/proxy/api.alliswell.space
+          if [ ! -d "$PROXY_DIR" ]; then
+            echo "no aaPanel apache proxy dir — nothing to do on this host"
+            exit 0
+          fi
+          CONF="$PROXY_DIR/zz-alliswell-sse.conf"
+          WANT=$(mktemp)
+          {
+            echo '# AllisWell (deploy-managed — edits here are overwritten).'
+            echo '# The AI chat streams text/event-stream; the vhost-wide DEFLATE'
+            echo '# filter must not buffer it or the edge times the stream out.'
+            echo '# AI.md §3 prod checklist.'
+            echo '<LocationMatch "/ai/chat">'
+            echo '  SetEnv no-gzip 1'
+            echo '  SetEnv no-brotli 1'
+            echo '</LocationMatch>'
+          } > "$WANT"
+          if [ -f "$CONF" ] && cmp -s "$WANT" "$CONF"; then
+            echo "sse conf already in place"
+            rm -f "$WANT"
+            exit 0
+          fi
+          PREV=$(mktemp); had_conf=0
+          [ -f "$CONF" ] && { cp "$CONF" "$PREV"; had_conf=1; }
+          cp "$WANT" "$CONF"; rm -f "$WANT"
+          APACHECTL=/www/server/apache/bin/apachectl
+          if [ -x "$APACHECTL" ] && "$APACHECTL" -t; then
+            "$APACHECTL" -k graceful || true
+            echo "sse conf installed and apache gracefully reloaded"
+          else
+            # Never leave apache with a conf it rejects — restore what was there.
+            if [ "$had_conf" = 1 ]; then cp "$PREV" "$CONF"; else rm -f "$CONF"; fi
+            echo "::warning::apache config test failed — SSE conf NOT applied; AI chat will keep buffering"
+          fi
+          rm -f "$PREV"
+          REMOTE
+
       # Only now may the browser get the new bundle — the API it talks to is
       # already migrated and restarted.
       #

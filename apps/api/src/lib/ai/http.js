@@ -13,6 +13,19 @@ const MAX_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 400;
 const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
 
+/**
+ * Per-call handshake budgets. The default 15 s exists for verify-class calls;
+ * a NON-streaming completion delivers its headers only when the whole
+ * generation is done, so for extract the handshake IS the generation — a
+ * reasoning-class model routinely needs more than 15 s, and the old default
+ * turned that into three aborted attempts the user experienced as a ~50 s
+ * hang ending in "provider unreachable" (found live on alliswell.space).
+ * Streaming chat gets a smaller raise: providers send SSE headers early, but
+ * queue time under load is real.
+ */
+export const CHAT_HANDSHAKE_TIMEOUT_MS = 30000;
+export const EXTRACT_TIMEOUT_MS = 90000;
+
 export class AiProviderError extends Error {
   /**
    * @param {'upstream_auth'|'upstream_rate_limited'|'upstream_error'|'bad_json'} code
@@ -63,6 +76,22 @@ function classifyStatus(status) {
   if (status === 401 || status === 403) return 'upstream_auth';
   if (status === 429) return 'upstream_rate_limited';
   return 'upstream_error';
+}
+
+/**
+ * The provider's own human-readable failure line, if one exists — all five
+ * dialects put it at `body.error.message` (OpenAI/Anthropic/Gemini) or
+ * `body.error` (Ollama's plain string). Capped so it can ride a log line or an
+ * SSE error frame; never contains user content, only the provider's verdict
+ * ("You exceeded your current quota…", "model not found", …). Live debugging
+ * on alliswell.space was blind without this — every failure collapsed into
+ * "The AI provider failed".
+ */
+export function upstreamMessage(err) {
+  if (err?.name !== 'AiProviderError') return null;
+  const raw = err.body?.error?.message ?? err.body?.error ?? err.body?.message;
+  if (typeof raw !== 'string' || raw.length === 0) return null;
+  return raw.length > 240 ? `${raw.slice(0, 239)}…` : raw;
 }
 
 /**
@@ -120,7 +149,22 @@ export async function aiFetch(
 
     if (RETRY_STATUSES.has(res.status) && attempt < maxAttempts - 1) {
       const header = res.headers?.get?.('retry-after');
-      await res.text().catch(() => null); // drain so the socket is reusable
+      const drained = await res.text().catch(() => null); // drain so the socket is reusable
+      // An out-of-credit 429 does not heal between attempts — retrying it just
+      // stretches a clear "add billing" answer into a mute half-minute hang.
+      if (res.status === 429 && drained && /insufficient_quota/i.test(drained)) {
+        let body = null;
+        try {
+          body = JSON.parse(drained);
+        } catch {
+          body = null;
+        }
+        throw new AiProviderError('upstream_rate_limited', {
+          status: res.status,
+          body,
+          rawText: drained,
+        });
+      }
       await sleep(retryAfterMs(header, attempt), signal);
       continue;
     }

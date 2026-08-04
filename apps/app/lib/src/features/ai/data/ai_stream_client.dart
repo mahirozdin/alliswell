@@ -92,7 +92,14 @@ class DioAiStreamClient implements AiStreamClient {
           },
           options: Options(
             responseType: ResponseType.stream,
-            headers: {'accept': 'text/event-stream'},
+            // `identity`: a reverse proxy that gzips this stream also BUFFERS
+            // it (zlib wants full blocks), and a buffered SSE dies at the edge
+            // timeout — the live alliswell.space failure. Browsers ignore the
+            // header (they own it); native/desktop honor it.
+            headers: {
+              'accept': 'text/event-stream',
+              'accept-encoding': 'identity',
+            },
           ),
           cancelToken: cancelToken,
         );
