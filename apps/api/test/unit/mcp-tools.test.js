@@ -63,6 +63,17 @@ describe('read tools', () => {
   });
 
   it('list_tasks today/overdue use the owner timezone; plain list filters', async () => {
+    // Pin the owner's wall clock to ~midday for THIS run. The registration
+    // default is Europe/Istanbul, so a CI run between 22:00 and 00:00 Istanbul
+    // pushed `now + 2 h` across midnight and the today view rightly answered
+    // [] — a daily two-hour red window that blocked a release gate for real
+    // (2026-08-04 20:57Z). Etc/GMT naming is POSIX-inverted: Etc/GMT-5 means
+    // UTC+5. The view still resolves bounds through the owner's timezone —
+    // that behavior stays exercised, just at a safe local hour.
+    const offset = Math.max(-12, Math.min(12, 12 - new Date().getUTCHours()));
+    const middayTz = offset >= 0 ? `Etc/GMT-${offset}` : `Etc/GMT+${-offset}`;
+    await app.db('users').where({ id: owner.user.id }).update({ timezone: middayTz });
+
     const past = new Date(Date.now() - 86400000).toISOString();
     const inTwoHours = new Date(Date.now() + 2 * 3600000).toISOString();
     await seed(owner.headers, owner.workspace.id, 'tasks', { title: 'Geciken', dueAt: past });
