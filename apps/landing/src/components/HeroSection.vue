@@ -26,6 +26,10 @@ const { stars, loaded, format } = useGithubStars();
             <path d="M13.2 5.4 20 12l-6.8 6.6-1.4-1.4 4.2-4.2H4v-2h12l-4.2-4.2z" />
           </svg>
         </a>
+        <a class="aw-btn aw-btn--ghost" :href="hero.store.href" rel="noopener" target="_blank">
+          <PlatformIcon name="android" :size="17" />
+          {{ hero.store.label }}
+        </a>
         <a class="aw-btn aw-btn--ghost" :href="hero.secondary.href">{{ hero.secondary.label }}</a>
         <a class="aw-btn aw-btn--ghost" :href="REPO_URL" rel="noopener" target="_blank">
           <svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true">

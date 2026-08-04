@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **AllisWell is live on Google Play.** The Android app is publicly listed at
+  [play.google.com/store/apps/details?id=com.alliswell.alliswell](https://play.google.com/store/apps/details?id=com.alliswell.alliswell).
+  The README and the landing page now link to the listing instead of calling
+  the build "internal testing"; the App Store build remains in TestFlight.
+
 ## [1.1.0] - 2026-07-31
 
 ### Added

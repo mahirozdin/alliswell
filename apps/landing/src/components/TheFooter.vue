@@ -1,6 +1,6 @@
 <script setup>
 import BrandMark from './BrandMark.vue';
-import { APP_URL, DOCS_URL, REPO_URL, VERSION } from '../content.js';
+import { APP_URL, DOCS_URL, PLAY_URL, REPO_URL, VERSION } from '../content.js';
 import { company } from '../company.js';
 import { useGithubStars } from '../composables/useGithubStars.js';
 
@@ -11,6 +11,7 @@ const columns = [
     title: 'Product',
     links: [
       { label: 'Open the app', href: APP_URL },
+      { label: 'Get it on Google Play', href: PLAY_URL },
       { label: 'Features', href: '#features' },
       { label: 'Comparison', href: '#compare' },
       { label: 'Roadmap', href: `${REPO_URL}/blob/main/ROADMAP.md` },

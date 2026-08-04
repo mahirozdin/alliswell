@@ -23,14 +23,29 @@ import { download, selfHost } from '../content.js';
           <a class="aw-btn" :href="download.web.cta.href">{{ download.web.cta.label }}</a>
         </article>
 
-        <article v-for="store in download.stores" :key="store.name" class="aw-card get__card">
-          <span class="get__badge">{{ store.status }}</span>
+        <article
+          v-for="store in download.stores"
+          :key="store.name"
+          class="aw-card get__card"
+          :class="{ 'get__card--live': store.cta }"
+        >
+          <span class="get__badge" :class="{ 'get__badge--live': store.cta }">{{
+            store.status
+          }}</span>
           <h3>
             <PlatformIcon :name="store.icon" :size="22" />
             {{ store.name }}
           </h3>
           <p>{{ store.body }}</p>
-          <span class="get__soon">Coming soon</span>
+          <a
+            v-if="store.cta"
+            class="aw-btn"
+            :href="store.cta.href"
+            rel="noopener"
+            target="_blank"
+            >{{ store.cta.label }}</a
+          >
+          <span v-else class="get__soon">Coming soon</span>
         </article>
       </div>
 

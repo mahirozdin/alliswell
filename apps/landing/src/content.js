@@ -10,6 +10,7 @@
 export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
+export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
 export const VERSION = '1.1.0';
 
 export const hero = {
@@ -17,8 +18,9 @@ export const hero = {
   title: 'Your whole day, in an app you actually own.',
   lede: 'Tasks, projects, notes, files and reminders loud enough to move you — with true two-way Google & Apple Calendar sync. One app on six platforms, offline-first, storing every byte in your own database.',
   primary: { label: 'Open the web app', href: APP_URL },
+  store: { label: 'Get it on Google Play', href: PLAY_URL },
   secondary: { label: 'Self-host in one command', href: '#self-host' },
-  note: 'Free forever. No tier, no ads, no tracking. Try it right now at alliswell.space/app.',
+  note: 'Free forever. No tier, no ads, no tracking. In your browser at alliswell.space/app — and now on Google Play.',
 };
 
 export const platforms = [
@@ -224,8 +226,8 @@ docker compose -f docker-compose.selfhost.yml up -d`,
 
 export const download = {
   eyebrow: 'Get it',
-  title: 'Use it in the browser today',
-  lede: 'The web app is live and complete — sign up and it works on every device you own. The mobile builds are in internal testing right now and go to the App Store and Google Play next.',
+  title: 'In your browser today — and now on Google Play',
+  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is out on Google Play; the iOS build is in TestFlight and goes to the App Store next.',
   web: {
     title: 'Web app',
     status: 'Live now',
@@ -234,16 +236,17 @@ export const download = {
   },
   stores: [
     {
+      name: 'Google Play',
+      status: 'Live now',
+      body: 'The Android app, on the store — alarm-grade reminders, offline-first sync and the home-screen widget included.',
+      icon: 'android',
+      cta: { label: 'Get it on Google Play', href: PLAY_URL },
+    },
+    {
       name: 'App Store',
       status: 'Internal testing',
       body: 'TestFlight internal build is running. Public release next.',
       icon: 'apple',
-    },
-    {
-      name: 'Google Play',
-      status: 'Internal testing',
-      body: 'Internal testing track is live. Public release next.',
-      icon: 'android',
     },
   ],
   selfHostNote:
