@@ -94,8 +94,14 @@ jobs:
           # finding here, not a failure (pipefail taught us on run 1).
           for f in "$ERR_LOG" "$OUT_LOG"; do
             [ -n "$f" ] || continue
-            as_user "$PM2_USER" tail -n 8000 "$f" 2>/dev/null > /tmp/aw-diag-tail || continue
-            echo "-- $(basename "$f"):"
+            # WHOLE file, not a tail — run 2 proved a tail window can simply
+            # miss the incident. Print the covered date range so absence of a
+            # signature is interpretable.
+            as_user "$PM2_USER" cat "$f" 2>/dev/null > /tmp/aw-diag-tail || continue
+            echo "-- $(basename "$f") ($(wc -l < /tmp/aw-diag-tail) lines):"
+            first_ms=$(grep -o '"time":[0-9]*' /tmp/aw-diag-tail | head -1 | cut -d: -f2 || true)
+            last_ms=$(grep -o '"time":[0-9]*' /tmp/aw-diag-tail | tail -1 | cut -d: -f2 || true)
+            [ -n "$first_ms" ] && echo "  covers: $(date -u -d "@$((first_ms/1000))" +%FT%TZ 2>/dev/null || true) → $(date -u -d "@$((last_ms/1000))" +%FT%TZ 2>/dev/null || true)"
             echo "  ai chat upstream failed lines: $(grep -c 'ai chat upstream failed' /tmp/aw-diag-tail || true)"
             echo "  ai socket chat failed lines:   $(grep -c 'ai socket chat failed' /tmp/aw-diag-tail || true)"
             echo "  distinct err messages on those lines:"
