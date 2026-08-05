@@ -37,9 +37,34 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
   final _input = TextEditingController();
   final _inputFocus = FocusNode();
 
+  /// Round 15b: the conversation follows its own tail. `_stick` is true while
+  /// the user is AT the bottom — new turns, tokens and the thinking face then
+  /// auto-scroll; the moment they scroll up to read, the list stays put until
+  /// they return (or send, which always re-sticks).
+  final _scroll = ScrollController();
+  bool _stick = true;
+
+  void _onScrolled() {
+    if (!_scroll.hasClients) return;
+    final gap = _scroll.position.maxScrollExtent - _scroll.offset;
+    _stick = gap < 96;
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      _scroll.animateTo(
+        _scroll.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_onScrolled);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // A voice session the FAB started (hold-to-talk) is already live on the
       // shared controller — don't reset it back to composing (OPH-224).
@@ -56,6 +81,7 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
 
   @override
   void dispose() {
+    _scroll.dispose();
     _input.dispose();
     _inputFocus.dispose();
     super.dispose();
@@ -76,6 +102,21 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
         _input.selection = TextSelection.collapsed(offset: next.input.length);
       }
       if (entering) _inputFocus.requestFocus();
+      // The field re-enables when the answer lands — hand the keyboard back.
+      final answered =
+          next.phase == AiBubblePhase.composing &&
+          (prev?.phase == AiBubblePhase.streaming ||
+              prev?.phase == AiBubblePhase.thinking);
+      if (answered) _inputFocus.requestFocus();
+      // Round 15b: anything that grows the conversation pulls the list down —
+      // a new turn, a streamed token batch, the thinking face appearing — but
+      // only while the user is stuck to the bottom (_stick).
+      final grew =
+          next.history.length != (prev?.history.length ?? 0) ||
+          next.streamed != (prev?.streamed ?? '') ||
+          (next.phase == AiBubblePhase.thinking &&
+              prev?.phase != AiBubblePhase.thinking);
+      if (grew && _stick) _scrollToBottom();
     });
 
     final state = ref.watch(aiBubbleControllerProvider);
@@ -92,6 +133,7 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
           children: [
             Expanded(
               child: ListView(
+                controller: _scroll,
                 padding: const EdgeInsets.all(AwSpace.x4),
                 children: [
                   if (widget.shared != null) _sharedBlock(widget.shared!),
@@ -332,6 +374,15 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
               focusNode: _inputFocus,
               minLines: 1,
               maxLines: 4,
+              // Round 15b: while the model is answering, the field is LOCKED —
+              // the send-turned-stop button was already saying "one turn at a
+              // time"; the field now agrees instead of hoarding the old text.
+              enabled: !streaming,
+              // Enter sends (hardware keyboards and the mobile action key
+              // alike) — the user's report: Enter kept re-submitting the text
+              // the field never cleared.
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _onSend(state, controller),
               onChanged: controller.editInput,
               decoration: InputDecoration(
                 hintText: 'ai.bubble.hint'.tr(),
@@ -483,23 +534,32 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
   /// wired — the model used to receive nothing and honestly answered "I can't
   /// see your calendar"), and a share block rides along inside the same
   /// bundle instead of replacing it.
-  AiContextBundle _liveContext(AiBubbleState state) => buildLiveAiContext(
-    read: ref.read,
-    query: state.input,
-    sharedBlock: state.sharedBlock,
-  );
-
   /// A reviewing (voice/finalized) send runs the intent gate and routes the
   /// outcome; a composing send is a GATED chat turn (round 15): extraction
   /// decides `create_tasks` → confirm card, anything else streams as chat
-  /// with the live context bundle.
+  /// with the live T0–T2 bundle (a share block rides inside the same bundle).
   Future<void> _onSend(
     AiBubbleState state,
     AiBubbleController controller,
   ) async {
     if (state.phase != AiBubblePhase.reviewing) {
-      final proposal = await controller.sendGated(context: _liveContext(state));
+      // Round 15b: the field is the truth at tap time — sync, then clear
+      // INSTANTLY. The old flow cleared only after the intent gate answered,
+      // which left the sent text sitting in the field for seconds (and an
+      // eager Enter re-submitted it).
+      final text = _input.text.trim();
+      if (text.isEmpty) return;
+      controller.editInput(text);
       _input.clear();
+      _stick = true;
+      _scrollToBottom();
+      final proposal = await controller.sendGated(
+        context: buildLiveAiContext(
+          read: ref.read,
+          query: text,
+          sharedBlock: state.sharedBlock,
+        ),
+      );
       if (proposal != null && mounted) {
         Navigator.of(context).pop();
         await showAiConfirmSheet(context, proposal);

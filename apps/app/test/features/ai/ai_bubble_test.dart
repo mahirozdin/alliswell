@@ -79,6 +79,71 @@ void main() {
     expect(stream.cancelled, contains(stream.requests.single.requestId));
   });
 
+  testWidgets(
+    'round 15b: sending clears and LOCKS the field until the answer lands',
+    (tester) async {
+      final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+      final stream = ScriptedAiStreamClient(
+        script: const [AiTextDelta('yarım')],
+      )..hang = true;
+      await tester.pumpWidget(await bubbleWith(api, stream));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('ai-input')), 'uzun iş');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('ai-send')));
+      await tester.pump();
+
+      // The field emptied the MOMENT the send left (no stale text to
+      // re-submit), and it is disabled for the whole live turn.
+      TextField field() =>
+          tester.widget<TextField>(find.byKey(const Key('ai-input')));
+      expect(field().controller!.text, isEmpty);
+      await tester.pump(const Duration(milliseconds: 10));
+      expect(field().enabled, isFalse);
+
+      // Stop ends the turn — the field unlocks for the next message.
+      await tester.tap(find.byKey(const Key('ai-stop')));
+      await tester.pumpAndSettle();
+      // ignore: avoid_print
+      expect(field().enabled, isTrue);
+      expect(stream.requests, hasLength(1));
+    },
+  );
+
+  testWidgets('round 15b: the conversation follows its own tail', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 560);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+    // A long first answer overflows the sheet; the second user turn must
+    // still end up VISIBLE without any manual scrolling.
+    final stream = ScriptedAiStreamClient(
+      script: [
+        AiTextDelta(List.filled(80, 'uzun satır dolgu metni').join('\n')),
+      ],
+    );
+    await tester.pumpWidget(await bubbleWith(api, stream));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('ai-input')), 'ilk soru');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('ai-send')));
+    await tester.pumpAndSettle();
+
+    stream.script = const [AiTextDelta('kısa cevap')];
+    await tester.enterText(find.byKey(const Key('ai-input')), 'ikinci soru');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('ai-send')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ikinci soru').hitTestable(), findsOneWidget);
+    expect(find.text('kısa cevap').hitTestable(), findsOneWidget);
+  });
+
   testWidgets('an unconfigured status opens the honest capture state', (
     tester,
   ) async {

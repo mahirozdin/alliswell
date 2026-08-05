@@ -55,6 +55,18 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   bool _cancelled = false;
   bool _disposed = false;
 
+  /// Round 15b: send/sendGated/retryLast await network BEFORE the machine
+  /// commits the turn (so an offline failure keeps the input for the Inbox
+  /// capture) — which left a re-entrancy window where a second Enter re-sent
+  /// the SAME message. One flag closes it; the phase guard below covers the
+  /// rest of the stream's lifetime.
+  bool _busySending = false;
+
+  bool get _sendBlocked =>
+      _busySending ||
+      state.phase == AiBubblePhase.thinking ||
+      state.phase == AiBubblePhase.streaming;
+
   @override
   AiBubbleState build() {
     ref.onDispose(() {
@@ -95,13 +107,18 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// Sends the current input as a chat turn, streaming the answer. Context is
   /// packed by the caller (kept minimal here so the controller stays testable).
   Future<void> send({AiContextBundle? context}) async {
-    if (!state.canSend) return;
-    final prepared = await _prepare();
-    if (prepared == null) return; // offline face; the input is preserved
-    final requestId = newUlid();
-    _cancelled = false;
-    state = _machine.send(state, requestId);
-    _stream(prepared, requestId, context);
+    if (_sendBlocked || !state.canSend) return;
+    _busySending = true;
+    try {
+      final prepared = await _prepare();
+      if (prepared == null) return; // offline face; the input is preserved
+      final requestId = newUlid();
+      _cancelled = false;
+      state = _machine.send(state, requestId);
+      _stream(prepared, requestId, context);
+    } finally {
+      _busySending = false;
+    }
   }
 
   /// Round 15 — the typed path gets the OPH-224 intent gate too, chat flavor:
@@ -113,28 +130,35 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// commit BEFORE the gate so the tap answers instantly, and a gate failure
   /// of any kind degrades to plain chat, never to a dead end.
   Future<AiProposal?> sendGated({AiContextBundle? context}) async {
-    if (!state.canSend) return null;
-    final text = state.input.trim();
-    final prepared = await _prepare();
-    if (prepared == null) return null; // offline face; the input is preserved
-    final requestId = newUlid();
-    _cancelled = false;
-    state = _machine.send(state, requestId);
-
-    AiVoiceRoute route;
+    if (_sendBlocked || !state.canSend) return null;
+    _busySending = true;
     try {
-      route = await extractUtterance(text, source: 'bubble');
-    } on Object catch (_) {
-      route = const AiRouteNone();
+      final text = state.input.trim();
+      final prepared = await _prepare();
+      if (prepared == null) {
+        return null; // offline face; the input is preserved
+      }
+      final requestId = newUlid();
+      _cancelled = false;
+      state = _machine.send(state, requestId);
+
+      AiVoiceRoute route;
+      try {
+        route = await extractUtterance(text, source: 'bubble');
+      } on Object catch (_) {
+        route = const AiRouteNone();
+      }
+      if (_disposed || _cancelled) return null;
+      if (route case AiRouteTasks(:final proposal)) {
+        // The confirm card takes over; the bubble returns to composing.
+        state = _machine.done(state);
+        return proposal;
+      }
+      _stream(prepared, requestId, context);
+      return null;
+    } finally {
+      _busySending = false;
     }
-    if (_disposed || _cancelled) return null;
-    if (route case AiRouteTasks(:final proposal)) {
-      // The confirm card takes over; the bubble returns to composing.
-      state = _machine.done(state);
-      return proposal;
-    }
-    _stream(prepared, requestId, context);
-    return null;
   }
 
   /// The error face's retry: the failed turn is already the last history
@@ -145,12 +169,18 @@ class AiBubbleController extends Notifier<AiBubbleState> {
     if (state.history.isEmpty || state.history.last.role != 'user') {
       return send(context: context);
     }
-    final prepared = await _prepare();
-    if (prepared == null) return;
-    final requestId = newUlid();
-    _cancelled = false;
-    state = _machine.retry(state, requestId);
-    _stream(prepared, requestId, context);
+    if (_sendBlocked) return;
+    _busySending = true;
+    try {
+      final prepared = await _prepare();
+      if (prepared == null) return;
+      final requestId = newUlid();
+      _cancelled = false;
+      state = _machine.retry(state, requestId);
+      _stream(prepared, requestId, context);
+    } finally {
+      _busySending = false;
+    }
   }
 
   /// Resolves the transport + workspace, or shows the offline face (keeping
@@ -188,7 +218,9 @@ class AiBubbleController extends Notifier<AiBubbleState> {
         .chat(request)
         .listen(
           (event) {
-            if (_disposed) return;
+            // A straggler delivered while stop() tears the transport down
+            // must not repaint a face the user already dismissed (15b).
+            if (_disposed || _cancelled) return;
             switch (event) {
               case AiTextDelta(:final text):
                 state = state.phase == AiBubblePhase.thinking
@@ -216,10 +248,16 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// Stop — the live cancel. The stream ends as `done{cancelled}`; whatever
   /// text arrived stays.
   Future<void> stop() async {
+    // Round 15b: the face answers the TAP, not the teardown — awaiting the
+    // subscription cancel first left the bubble visibly "streaming" until the
+    // transport finished dying (the locked-input test caught it). Stragglers
+    // that were already in flight are voided by the _cancelled guard in
+    // _stream's listener.
     _cancelled = true;
-    await _sub?.cancel();
+    final sub = _sub;
     _sub = null;
     if (!_disposed) state = _machine.done(state);
+    await sub?.cancel();
   }
 
   void reset() {

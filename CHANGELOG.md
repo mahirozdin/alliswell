@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-08-05
+
+### Fixed
+
+- **The AI chat follows its own tail.** New messages, streamed tokens and the
+  thinking indicator auto-scroll into view while you are at the bottom (and
+  never yank the list while you are reading older turns).
+- **One message, one send.** The input clears the moment a message leaves, is
+  locked until the answer lands, and an eager Enter can no longer re-submit
+  the same text; Stop now answers instantly instead of waiting for the
+  transport to finish dying.
+- **The assistant knows it can add tasks.** Asked "can you add a task?", it
+  now says yes and tells you to write the task as one plain message — the
+  review card takes it from there.
+
 ## [1.1.2] - 2026-08-05
 
 ### Fixed

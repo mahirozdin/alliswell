@@ -139,6 +139,49 @@ void main() {
     expect(stream.requests.last.messages.single.role, 'user');
   });
 
+  test('round 15b: an eager double-send fires exactly one turn', () async {
+    final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+    final stream = ScriptedAiStreamClient(
+      script: const [AiTextDelta('tek cevap')],
+    );
+    final container = await signedInContainer(api, stream);
+    final controller = container.read(aiBubbleControllerProvider.notifier);
+
+    controller.editInput('selam');
+    // The user's Enter-Enter-Enter: both calls race before the machine
+    // consumes the input — the _busySending latch must let only one through.
+    final first = controller.sendGated();
+    final second = controller.sendGated();
+    await Future.wait([first, second]);
+    await pumpEventQueue();
+
+    expect(stream.requests, hasLength(1));
+    expect(api.requests.where((r) => r.contains('/ai/extract')), hasLength(1));
+    final history = container.read(aiBubbleControllerProvider).history;
+    expect(history.where((e) => e.role == 'user'), hasLength(1));
+  });
+
+  test('round 15b: no new send while a turn is thinking/streaming', () async {
+    final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+    final stream = ScriptedAiStreamClient(script: const [AiTextDelta('akıyor')])
+      ..hang = true; // never Done — the turn stays live
+    final container = await signedInContainer(api, stream);
+    final controller = container.read(aiBubbleControllerProvider.notifier);
+
+    controller.editInput('ilk');
+    await controller.sendGated();
+    await pumpEventQueue();
+    expect(
+      container.read(aiBubbleControllerProvider).phase,
+      AiBubblePhase.streaming,
+    );
+
+    controller.editInput('ikinci');
+    final blocked = await controller.sendGated();
+    expect(blocked, isNull);
+    expect(stream.requests, hasLength(1), reason: 'one turn at a time');
+  });
+
   test('a gate failure degrades to plain chat, never a dead end', () async {
     final api = FakeApi()..seedAiConnection(provider: 'anthropic');
     api.extractStatusCode = 502; // the provider is down for extraction…

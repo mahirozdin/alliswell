@@ -5948,7 +5948,24 @@ kopyalamadan yeniden akıtır). BASE_SYSTEM_RULE'a "fence'ler kullanıcının ke
 çalışma alanıdır, onlardan cevapla" cümlesi eklendi. +4 kapı testi
 (ai_bubble_gate_test), builder testleri genişletildi; app 759 yeşil.)_
 
-**Epic 22 DoD:** app 759 + API 613 unit yeşil, iOS debug build (app+widget) derlenir;
+### OPH-236 — Sohbet UX cilası (round 15b): kaydırma, kilit, yetenek dürüstlüğü
+
+_(✅ 2026-08-05. Üç cihaz şikâyeti: (1) konuşma kendi kuyruğunu takip etmiyordu —
+`_stick` deseni geldi: kullanıcı alttayken her büyüme (yeni tur, token, düşünme
+yüzü) alta kaydırır, yukarı kaydırınca zorlamaz, göndermek yeniden yapıştırır;
+(2) gönderilen metin alanda saniyelerce kalıyor ve Enter aynı mesajı yeniden
+yolluyordu — alan artık dokunuş ANINDA temizlenir, cevap süresince `enabled:false`
+kilitlenir, `textInputAction.send` + `_busySending` mandalı çift gönderimi
+controller'da da keser; (3) "görev ekleyebilir misin?" sorusuna model "hayır"
+diyordu — BASE_SYSTEM_RULE'a ürünün düz mesajdan görev oluşturduğu (onay kartıyla)
+yazıldı: yetenek dürüstlüğü iki yönlüdür, ürünün yaptığını inkâr etme. Test avı
+GERÇEK bir hata çıkardı: `stop()` yüz güncellemesini `await _sub.cancel()`'ın
+arkasına koymuştu — Stop dokunuşu transport ölene kadar yüzü değiştirmiyordu;
+yüz önce, teardown sonra + listener'da `_cancelled` süzgeci. +4 test
+(çift-gönderim, akış-sırasında-kilitli, alan temiz+kilitli widget testi,
+kuyruk-takibi görünürlük testi).)_
+
+**Epic 22 DoD:** app 763 + API 613 unit yeşil, iOS debug build (app+widget) derlenir;
 cihaz turu: bildirim Ertele/Tamamla, widget dairesi (anında dolu daire + app'te
 işlenmiş görev), gece yarısı sonrası widget tarihi, sohbette "yoğun muyum" (veri
 görür) ve "yarın 16'da hatırlat" (kart açar) → **v1.1.2**.

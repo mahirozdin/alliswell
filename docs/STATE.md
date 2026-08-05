@@ -3,7 +3,7 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-05b (**Epic 22 / round 15 KOD TAMAM — sohbetin körlüğü bitti, iPhone alarm/widget arızaları kökten çözüldü; hedef v1.1.2.**
+**Last updated:** 2026-08-05c (**Epic 22 / round 15+15b KOD TAMAM — sohbet UX cilası dahil (OPH-236: oto-kaydırma, gönderimde anında temizle+kilitle, çift-gönderim mandalı, Stop'un anında yüzü, "görev ekleyebilirim" bilinci); hedef v1.1.3.** Önceki blok: **Epic 22 / round 15 KOD TAMAM — sohbetin körlüğü bitti, iPhone alarm/widget arızaları kökten çözüldü; hedef v1.1.2.**
 Sahibin cihaz turu dört gerçek arıza getirdi, dördü de kod düzeyinde kapandı:
 (1) **Sohbet veriyi görmüyordu** çünkü AI.md §7'nin paketleyicisi hiç ÇAĞRILMIYORDU
 — `ai_live_context.dart` artık her yazılı turda T0/T1/T2'yi (görevler + takvim
