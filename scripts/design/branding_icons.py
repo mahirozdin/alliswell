@@ -20,14 +20,27 @@ Rather than hand-fix a PNG, derive every layer from the single master
   icon-monochrome.png   the same mark for Android 13+ themed icons, which tint
                         the alpha channel and ignore RGB
 
-Then `dart run flutter_launcher_icons` turns these into the platform assets.
+`dart run flutter_launcher_icons` turns those three into the Android assets.
+
+It does NOT touch iOS, and must not: v0.14.4 rewrites every
+`ASSETCATALOG_COMPILER_*` build setting it finds in `project.pbxproj` to the icon
+name, which turned the widget extension's `GLOBAL_ACCENT_COLOR_NAME` and
+`WIDGET_BACKGROUND_COLOR_NAME` into `AppIcon`. Working around that by reverting
+the file after every run is a landmine, so the iOS side is generated HERE
+instead — and the tool is configured `ios: false`.
+
+The asset catalog stays the specification: this script READS
+`AppIcon.appiconset/Contents.json` and fills in exactly the files it names, at
+exactly the size × scale it declares. It never rewrites that JSON, so Xcode
+remains the owner of which slots exist and the diff stays reviewable.
 
 Usage:  python3 scripts/design/branding_icons.py [--check]
-        --check verifies the committed layers instead of rewriting them.
+        --check verifies the committed assets instead of rewriting them.
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -36,6 +49,9 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 ROOT = Path(__file__).resolve().parents[2]
 BRANDING = ROOT / "apps" / "app" / "assets" / "branding"
 MASTER = BRANDING / "icon.png"
+APPICONSET = (
+    ROOT / "apps" / "app" / "ios" / "Runner" / "Assets.xcassets" / "AppIcon.appiconset"
+)
 
 CANVAS = 1024
 
@@ -205,11 +221,49 @@ def verify(layers: dict[str, Image.Image]) -> list[str]:
     return problems
 
 
+def _ios_icons() -> dict[Path, Image.Image]:
+    """The AppIcon set, sized from the catalog's own Contents.json.
+
+    Flattened onto white with NO alpha channel: App Store Connect rejects a
+    marketing icon that has one, and a transparent corner on a home-screen icon
+    shows the wallpaper through the rounded mask.
+    """
+    spec = json.loads((APPICONSET / "Contents.json").read_text())
+    master = Image.open(MASTER).convert("RGBA")
+    flat = Image.new("RGB", master.size, (255, 255, 255))
+    flat.paste(master, mask=master.getchannel("A"))
+
+    out: dict[Path, Image.Image] = {}
+    for entry in spec["images"]:
+        filename = entry.get("filename")
+        if not filename:
+            continue  # an unassigned slot; Xcode allows it, we skip it
+        points = float(entry["size"].split("x")[0])
+        scale = int(entry["scale"].rstrip("x"))
+        px = round(points * scale)
+        out[APPICONSET / filename] = flat.resize((px, px), Image.LANCZOS)
+    return out
+
+
+def verify_ios(icons: dict[Path, Image.Image]) -> list[str]:
+    problems: list[str] = []
+    if not icons:
+        return ["AppIcon.appiconset/Contents.json named no image files"]
+    for path, img in icons.items():
+        if img.mode != "RGB":
+            problems.append(f"{path.name}: must have no alpha channel")
+    marketing = [p for p in icons if "1024" in p.name]
+    if not marketing:
+        problems.append("no 1024 px ios-marketing icon — App Store Connect requires one")
+    return problems
+
+
 def main() -> int:
     check_only = "--check" in sys.argv
     layers = build()
+    ios = _ios_icons()
 
-    problems = verify(layers)
+    problems = verify(layers) + verify_ios(ios)
     for line in problems:
         print(f"FAIL {line}")
 
@@ -223,6 +277,18 @@ def main() -> int:
             if Image.open(path).convert("RGBA").tobytes() != img.tobytes():
                 problems.append(f"{name}: out of date, re-run this script")
                 print(f"FAIL {name}: out of date, re-run this script")
+        for path, img in ios.items():
+            if not path.exists():
+                problems.append(f"{path.name}: missing")
+                print(f"FAIL {path.name}: missing")
+                continue
+            have = Image.open(path)
+            if have.size != img.size:
+                problems.append(f"{path.name}: {have.size} != {img.size}")
+                print(f"FAIL {path.name}: {have.size} != {img.size}")
+            elif have.mode not in ("RGB", "P", "L"):
+                problems.append(f"{path.name}: has an alpha channel")
+                print(f"FAIL {path.name}: has an alpha channel")
     else:
         for name, img in layers.items():
             img.save(BRANDING / name)
@@ -234,6 +300,9 @@ def main() -> int:
                 f"wrote {name}  source span {span:.0%}  -> {visible:.0%} of the "
                 f"visible icon  corner alpha {a.getpixel((0, 0))}"
             )
+        for path, img in ios.items():
+            img.save(path)
+        print(f"wrote {len(ios)} iOS AppIcon files (no alpha, sized from Contents.json)")
 
     print(f"FAILURES: {len(problems)}")
     return 1 if problems else 0

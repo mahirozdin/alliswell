@@ -6,14 +6,21 @@
 /// links, figures — unit-testable with no plugin, no network and no widget
 /// tester. The UI edge (`ui/note_export.dart`) does the awaiting.
 ///
-/// KNOWN LIMIT — glyph coverage. The exporter draws with Roboto, which covers
-/// Latin (all of Turkish), Greek, Cyrillic, currency and typographic marks, but
-/// NOT the dingbat/arrow blocks: `→ ← ✓ ✗ ★ ▪ ☐` and emoji render as a hollow
-/// box, and `pdf` logs "Unable to find a font to draw …". PDF's base-14 Symbol
-/// and ZapfDingbats were tried as `fontFallback` and rescue none of them (they
-/// carry no Unicode mapping the package can use), so they are deliberately NOT
-/// wired up — dead weight reads like a solved problem. Fixing this properly
-/// means vendoring a symbol-covering face (DejaVu Sans, ~750 KB) as a fallback.
+/// GLYPH COVERAGE. Roboto is a Latin face: its cmap carries 896 code points, so
+/// `→ ← ↔ ⇒ ✓ ✗ ★ ☆ ▪ ▫ ☐ ☑ ✔ ✱ ♦ ♥` — all things people type into notes — had
+/// no glyph and `pdf` drew a hollow box. PDF's base-14 Symbol and ZapfDingbats
+/// were tried as `fontFallback` first and measured to rescue NONE of them (no
+/// Unicode mapping the package can use). DejaVu Sans (5918 code points) is
+/// vendored as the fallback instead and covers every one.
+///
+/// Remaining limit, measured not assumed: modern pictographic emoji beyond the
+/// legacy Emoticons block (`🎉` U+1F389 and most of Supplemental Symbols) still
+/// have no glyph — no monochrome face carries them, and a PDF cannot embed a
+/// COLOR emoji font at all. `note_pdf_test.dart` pins what is covered.
+///
+/// The fallback is regular-weight only: a bold arrow renders in regular DejaVu.
+/// That is deliberate — a second 700 KB face to bolden a rare symbol is a bad
+/// trade, and the symbol reads correctly either way.
 library;
 
 import 'dart:typed_data';
@@ -35,12 +42,16 @@ class NotePdfFonts {
     required this.bold,
     required this.italic,
     required this.boldItalic,
+    required this.symbols,
   });
 
   final pw.Font regular;
   final pw.Font bold;
   final pw.Font italic;
   final pw.Font boldItalic;
+
+  /// DejaVu Sans, consulted per glyph for anything Roboto lacks.
+  final pw.Font symbols;
 
   pw.Font resolve({required bool bold, required bool italic}) => bold && italic
       ? boldItalic
@@ -49,6 +60,10 @@ class NotePdfFonts {
       : italic
       ? this.italic
       : regular;
+
+  /// Every `TextStyle` this file builds goes through here — a face that is set
+  /// without a fallback is the bug this list exists to prevent.
+  List<pw.Font> get fallback => [symbols];
 }
 
 /// Everything the page needs besides the body.
@@ -118,7 +133,11 @@ Future<Uint8List> buildNotePdf(NotePdfDocument doc, NotePdfFonts fonts) async {
               margin: const pw.EdgeInsets.only(bottom: 12),
               child: pw.Text(
                 doc.title,
-                style: pw.TextStyle(fontSize: 9, color: _muted),
+                style: pw.TextStyle(
+                  fontFallback: fonts.fallback,
+                  fontSize: 9,
+                  color: _muted,
+                ),
                 maxLines: 1,
                 overflow: pw.TextOverflow.clip,
               ),
@@ -138,6 +157,7 @@ Future<Uint8List> buildNotePdf(NotePdfDocument doc, NotePdfFonts fonts) async {
           doc.title,
           style: pw.TextStyle(
             font: fonts.bold,
+            fontFallback: fonts.fallback,
             fontSize: 24,
             color: _ink,
             letterSpacing: -0.4,
@@ -145,7 +165,14 @@ Future<Uint8List> buildNotePdf(NotePdfDocument doc, NotePdfFonts fonts) async {
         ),
         if (doc.updatedLabel case final label?) ...[
           pw.SizedBox(height: 4),
-          pw.Text(label, style: pw.TextStyle(fontSize: 9, color: _muted)),
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontFallback: fonts.fallback,
+              fontSize: 9,
+              color: _muted,
+            ),
+          ),
         ],
         pw.SizedBox(height: 10),
         pw.Divider(color: _rule, thickness: 0.7, height: 1),
@@ -211,6 +238,7 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
             block.text,
             style: pw.TextStyle(
               font: fonts.regular,
+              fontFallback: fonts.fallback,
               fontSize: 9.5,
               color: _ink,
               lineSpacing: 2,
@@ -255,6 +283,7 @@ pw.Widget _marker(String marker, pw.Widget child, NotePdfFonts fonts) => pw.Row(
         marker,
         style: pw.TextStyle(
           font: fonts.regular,
+          fontFallback: fonts.fallback,
           fontSize: _bodySize,
           color: _muted,
         ),
@@ -330,7 +359,12 @@ pw.Widget _missingMedia(
   decoration: pw.BoxDecoration(border: pw.Border.all(color: _rule, width: 0.7)),
   child: pw.Text(
     doc.mediaPlaceholderLabel ?? block.source ?? '',
-    style: pw.TextStyle(font: fonts.italic, fontSize: 9, color: _muted),
+    style: pw.TextStyle(
+      font: fonts.italic,
+      fontFallback: fonts.fallback,
+      fontSize: 9,
+      color: _muted,
+    ),
     maxLines: 2,
     overflow: pw.TextOverflow.clip,
   ),
@@ -357,6 +391,7 @@ pw.Widget _rich(
                 bold: bold || span.bold,
                 italic: italic || span.italic,
               ),
+              fontFallback: fonts.fallback,
               fontSize: span.code ? size - 0.5 : size,
               color: span.link != null ? _accent : color,
               lineSpacing: 2.4,

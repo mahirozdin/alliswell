@@ -6048,6 +6048,62 @@ glifi çizmeyi reddeder. **Bilinen sınır** dosya başında yazılı: ok/dingba
 bağlanmadı. 18 yeni test: blok eşlemesi 5, gerçek PDF üretimi 4 (gömülü font ve
 bağlantı anotasyonu bayt düzeyinde doğrulanır), akış 4.)_
 
+### Round 16b — sahibin takip listesi (OPH-239…241) ✅ 2026-08-05
+
+#### OPH-239 — PDF'te ok/dingbat glifleri: DejaVu fallback
+
+_(✅ Ölçüldü: Roboto'nun cmap'i **896** kod noktası taşıyor ve `→ ← ↔ ⇒ ✓ ✗ ★ ☆
+▪ ▫ ☐ ☑ ✔ ✱ ♦ ♥`'ın HİÇBİRİ yok — `pdf` bulamadığı glifi boş kutu çiziyor. PDF'in
+base-14 Symbol/ZapfDingbats'i `fontFallback` olarak ÖNCE denendi ve hiçbirini
+kurtarmadığı ölçüldü (paketin kullanabileceği Unicode eşlemesi taşımıyorlar).
+Çözüm: **DejaVu Sans** (5918 kod noktası, Bitstream Vera lisansı, resmi
+upstream sürümünden, LİSANSIYLA birlikte vendor'landı) her `TextStyle`'a
+per-glyph fallback olarak bağlandı. Test *iddia ediyor*, göz kararı değil:
+`pdf` uyarıyı `assert` içinde `print`'lediği için test bir `Zone` ile stdout'u
+yakalayıp 30 sembolde SIFIR uyarı olduğunu ve DejaVu'nun dosyaya GÖMÜLDÜĞÜNÜ
+doğruluyor. Kalan sınır de pinlendi: modern piktografik emoji (`🎉`) hiçbir
+monokrom yüzde yok ve PDF renkli emoji fontu gömemez — bu bir test olarak
+yazıldı ki kimse hata sanıp yeniden açmasın. Fallback yalnız regular ağırlık:
+kalın bir ok regular DejaVu ile çizilir; nadir bir sembolü kalınlaştırmak için
+ikinci bir 700 KB'lık yüz kötü takas.)_
+
+#### OPH-240 — `flutter_launcher_icons`'ın pbxproj hasarı: iOS'u kendimiz üretiyoruz
+
+_(✅ `ios: false` bir geçici çözümdü; artık bir YEDEK var.
+`scripts/design/branding_icons.py` iOS AppIcon setini de üretiyor — aynı
+master'dan, **asset catalog'un kendi `Contents.json`'undan** okunan size × scale
+ile, alfasız düzleştirilmiş (App Store Connect alfası olan pazarlama ikonunu
+reddeder). Contents.json'u ASLA yeniden yazmıyor: hangi slotların var olduğunun
+sahibi Xcode kalıyor ve diff okunabilir kalıyor. `--check` commit'li varlıkları
+doğruluyor. Doğrulandı: araç yeniden koşturulduğunda `git status
+apps/app/ios/Runner.xcodeproj` BOŞ.)_
+
+#### OPH-241 — `.md` dosyalarını AllisWell ile aç, notlara/projeye aktar
+
+_(✅ Sahibin isteği: bilgisayardaki/telefondaki md dosyaları için AllisWell'i
+görüntüleyici olarak kullanmak ve dış kaynak olan bu dosyaları not olarak içeri
+aktarmak. Üç parça: (1) **`markdownToDelta`** — `deltaToMarkdown`'un birebir
+tersi, saf; en güçlü testi bir ROUND TRIP (delta→md→delta) çünkü iki çevirici
+birbirine karşı yazıldığında elle fikstür yazmaktan çok daha güçlü bir garanti
+verir. Tanımadığını DÜŞÜRMEZ, düz metin olarak korur (tablo, dipnot, HTML) —
+birinin dosyasını kayıplı almak çirkin almaktan kötüdür. (2) **Görüntüleyici**
+(`/notes/import`): önizleme, içe aktarmanın YAZACAĞI delta'nın üzerinde
+salt-okunur bir `QuillEditor` — ayrı bir markdown render'ı importer'dan sapıp
+kullanıcıya almayacağı bir şey gösterebilirdi. Kaynak dosya adı görünür
+(provenance), başlık düzenlenebilir (öndeki `# H1` başlık olur, yoksa dosya
+adı), proje seçimi create sheet'in AYNI `ProjectPickerField`'ı. (3) **OS
+kaydı**: Android `ACTION_VIEW` (mime TİPİ + uzantı deseni — Android bir .md'yi
+nereden geldiğine göre text/plain veya octet-stream diye raporlar, mime-only
+filtre gerçek dosyaların çoğunu kaçırır), iOS/macOS `CFBundleDocumentTypes` +
+`LSSupportsOpeningDocumentsInPlace`. Paylaşım dikişi genişletildi: OS tek kanaldan
+İKİ niyet gönderiyor (metin paylaş / belge aç), artık ayrı üyeler — tüketiciler
+birbirinin trafiğini filtrelemek zorunda değil; tek kanal aboneliği
+`asBroadcastStream` ile ikiye dağıtılıyor. **Uygulama içi giriş noktası de var**
+(Notlar app bar'ı): yalnızca OS'un başlatabildiği bir özelliği çoğu insan hiç
+bulamaz — DESIGN §22. 2 MB üstü dosya dürüst mesajla reddedilir. **Testin
+yakaladığı gerçek hata:** `take()` `initState` içinde provider yazıyordu
+(Riverpod yasaklıyor); okuma initState'te, temizleme kareden sonra. 20 yeni test.)_
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

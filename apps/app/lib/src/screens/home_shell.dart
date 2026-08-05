@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/persisted_prefs.dart';
+import '../features/notes/ui/markdown_import_screen.dart';
 import '../features/calendar/apple/providers.dart';
 import '../features/ai/data/share_intent.dart';
 import '../features/ai/ui/ai_bubble.dart';
@@ -176,6 +177,16 @@ class HomeShell extends ConsumerWidget {
       if (next == null) return;
       final payload = ref.read(pendingSharePayloadProvider.notifier).take();
       if (payload != null) showAiBubble(context, shared: payload);
+    });
+
+    // Round 16 follow-up: the OS opened a .md file with us. The viewer TAKES
+    // the pending document itself, so this only has to get the user there —
+    // and only when they are not already looking at it.
+    ref.listen(pendingMarkdownProvider, (_, next) {
+      if (next == null) return;
+      final location = GoRouterState.of(context).uri.path;
+      if (location == '/notes/import') return;
+      GoRouter.of(context).push('/notes/import');
     });
 
     // First-run onboarding tour (OPH-111): try to auto-start once after the

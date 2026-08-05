@@ -360,7 +360,17 @@
     "exportPrint": "Yazdır",
     "exportPrintHint": "Yazdırma önizlemesini açar",
     "exportFailed": "Not dışa aktarılamadı.",
-    "exportMediaMissing": "Medya (gömmek mümkün olmadı)"
+    "exportMediaMissing": "Medya (gömmek mümkün olmadı)",
+    "mdOpen": "Markdown dosyası aç…",
+    "mdViewerTitle": "Markdown",
+    "mdNothingOpen": "Açık belge yok. Okumak için bir .md dosyası seç.",
+    "mdImport": "Not olarak kaydet",
+    "mdImported": "{name} içe aktarıldı",
+    "mdImportFailed": "Dosya içe aktarılamadı.",
+    "mdOpenFailed": "Dosya açılamadı.",
+    "mdTooLarge": "Bu dosya {size} MB — not olarak içe aktarmak için fazla büyük.",
+    "mdProject": "Proje",
+    "mdProjectHint": "İsteğe bağlı — not bu projenin altına düşer"
   },
   "calendar": {
     "google": "Google Takvim",

@@ -1042,12 +1042,24 @@ code panels, figures, clickable links), not flattened text. Completed checklist
 items keep their strikethrough on paper (§20), and media that could not be
 fetched prints an honest placeholder (§10 F3).
 
-The exporter EMBEDS Roboto. The `pdf` package's built-in Helvetica is
-WinAnsi-encoded and has no `ı ğ ş İ`, so a Turkish note would export as
-mojibake — the font is a correctness requirement, not a style choice. It is a
-PDF-only asset: the UI keeps system fonts (§3.3). Known limit, written at the
-top of `note_pdf.dart`: arrows and dingbats (`→ ← ✓ ✗ ★ ▪ ☐`) and emoji have no
-glyph and draw as a hollow box.
+The exporter EMBEDS its fonts, and this is a correctness requirement rather
+than a style choice:
+
+- **Roboto** for the text. The `pdf` package's built-in Helvetica is
+  WinAnsi-encoded and has no `ı ğ ş İ`, so a Turkish note would export as
+  mojibake.
+- **DejaVu Sans** as a per-glyph fallback. Roboto's cmap is 896 code points and
+  carries none of `→ ← ↔ ⇒ ✓ ✗ ★ ☆ ▪ ▫ ☐ ☑` — all things people type — so they
+  drew as hollow boxes. PDF's base-14 Symbol and ZapfDingbats were tried first
+  and measured to rescue none of them.
+
+Both are PDF-only assets: the UI keeps system fonts (§3.3). Every `TextStyle`
+the exporter builds must carry the fallback — `NotePdfFonts.fallback` exists so
+that is one list, not seven copies.
+
+Remaining limit, pinned by a test so nobody re-opens it as a bug: modern
+pictographic emoji have no glyph in any monochrome face, and a PDF cannot embed
+a colour emoji font.
 
 ### E6 — The app icon's layers are GENERATED, and verified
 
@@ -1064,9 +1076,32 @@ Android's background layer is the brand GRADIENT, not a flat colour, so the icon
 is the same artwork on both stores. Android 13+ themed icons get the monochrome
 layer, or the launcher shrinks the whole icon into a grey circle.
 
-**`flutter_launcher_icons` is configured `ios: false` on purpose.** v0.14.4
+**`flutter_launcher_icons` is configured `ios: false`, and REPLACED.** v0.14.4
 rewrites every `ASSETCATALOG_COMPILER_*` build setting it finds to the icon name,
-which corrupted the widget extension's accent and background colour names. The
-iOS icon set is correct and committed; regenerate it deliberately (see the note
-in `pubspec.yaml`).
+which corrupted the widget extension's accent and background colour names.
+Reverting `project.pbxproj` after each run would be a landmine, so the same
+script generates the iOS AppIcon set: from the same master, at the sizes the
+catalog's own `Contents.json` declares, flattened to no alpha (App Store Connect
+rejects a marketing icon that has one). It never rewrites that JSON — Xcode stays
+the owner of which slots exist.
+
+## 28. Markdown in, note out (round 16b — OPH-241)
+
+AllisWell reads `.md` files: the OS can hand it one ("Open with"), or the user
+picks one from the Notes tab.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| M1 | **The preview IS the import.** The viewer renders the exact delta a save would write, in a read-only editor — never a second markdown renderer. | A separate preview drifts from the importer and shows the user something they will not get. |
+| M2 | **Nothing is dropped.** Markup the reader does not understand (tables, footnotes, HTML) survives as plain text. | A lossy import of somebody's own file is worse than an ugly one. |
+| M3 | **Provenance is visible.** The source file name sits above the title. | This is an external document; the user decides to keep it, so they must see which one. |
+| M4 | **The title comes from the document**, its leading `# H1` if it has one, otherwise the file name — and that heading is then removed from the body. | Apple-Notes rule (round 1): the title is the document's first block, not a repeated line. |
+| M5 | **Filing is the create sheet's own control.** Choosing a project uses `ProjectPickerField`, not a new picker. | Importing must not invent a second way to do an existing thing. |
+| M6 | **Reachable from inside the app**, not only when the OS starts it. | A feature only an OS handler can trigger is one most people never find (§22). |
+| M7 | **Refuse honestly.** Over 2 MB is declined with the size in the message; a file the OS names but cannot deliver leaves the app where it was. | Silence and a spinner are the failure modes this rule exists to prevent. |
+
+The converter (`markdown_delta.dart`) is the exact inverse of `deltaToMarkdown`,
+which is what lets the tests assert a ROUND TRIP instead of hand-written
+fixtures. It is not a CommonMark implementation and does not try to be — nested
+lists are out because Quill's own model is flat.
 

@@ -54,6 +54,36 @@
                 <data android:mimeType="text/plain"/>
                 <data android:mimeType="text/html"/>
             </intent-filter>
+            <!-- Round 16 follow-up: AllisWell opens markdown files. VIEW is
+                 the "Open with" path (a file manager, a mail attachment) and
+                 SEND is the share sheet. Both mime types AND the extension
+                 patterns are declared: Android routinely reports a .md file as
+                 text/plain or application/octet-stream depending on where it
+                 came from, so a mime-only filter misses most real files. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:mimeType="text/markdown"/>
+                <data android:mimeType="text/x-markdown"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file"/>
+                <data android:scheme="content"/>
+                <data android:mimeType="*/*"/>
+                <data android:host="*"/>
+                <data android:pathPattern=".*\\.md"/>
+                <data android:pathPattern=".*\\.markdown"/>
+                <data android:pathPattern=".*\\..*\\.md"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/markdown"/>
+                <data android:mimeType="text/x-markdown"/>
+            </intent-filter>
         </activity>
         <!-- flutter_local_notifications: exact-alarm delivery + reboot
              rescheduling (docs/NOTIFICATIONS.md §1). -->

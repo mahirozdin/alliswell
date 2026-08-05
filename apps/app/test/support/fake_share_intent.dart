@@ -6,10 +6,14 @@ import 'package:alliswell/src/features/ai/data/share_intent.dart';
 /// A scripted [ShareIntentSource] for tests (OPH-225) — no platform channel.
 /// Give it an [initial] cold-start payload and/or push warm ones with [emit].
 class FakeShareIntentSource implements ShareIntentSource {
-  FakeShareIntentSource({this.initial});
+  FakeShareIntentSource({this.initial, this.initialDocumentPath});
 
   final SharedPayload? initial;
+
+  /// A `.md` path the OS "opened" us with (round 16 follow-up).
+  final String? initialDocumentPath;
   final _controller = StreamController<SharedPayload>.broadcast();
+  final _documents = StreamController<String>.broadcast();
   final List<String> calls = [];
 
   @override
@@ -22,10 +26,25 @@ class FakeShareIntentSource implements ShareIntentSource {
   Stream<SharedPayload> shares() => _controller.stream;
 
   @override
+  Future<String?> initialDocument() async {
+    calls.add('initialDocument');
+    return initialDocumentPath;
+  }
+
+  @override
+  Stream<String> documents() => _documents.stream;
+
+  /// Push a warm document (the app is already running).
+  void emitDocument(String path) => _documents.add(path);
+
+  @override
   void reset() => calls.add('reset');
 
   /// Push a warm share (the app is already running).
   void emit(SharedPayload payload) => _controller.add(payload);
 
-  void dispose() => _controller.close();
+  void dispose() {
+    _controller.close();
+    _documents.close();
+  }
 }

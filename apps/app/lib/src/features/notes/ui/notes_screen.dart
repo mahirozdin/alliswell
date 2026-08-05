@@ -16,6 +16,7 @@ import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../projects/providers.dart';
+import 'markdown_import_screen.dart';
 import '../data/note.dart';
 import '../providers.dart';
 
@@ -73,6 +74,16 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             onPressed: () => ref
                 .read(notesViewModeProvider.notifier)
                 .set(isGrid ? 'list' : 'grid'),
+          ),
+          // Round 16 follow-up: AllisWell reads .md files. Reachable from
+          // inside the app too, not only when the OS hands us one — a feature
+          // only the OS can start is a feature most people never find
+          // (DESIGN §22).
+          IconButton(
+            key: const Key('notes-open-markdown'),
+            icon: const Icon(Icons.folder_open_outlined),
+            tooltip: 'note.mdOpen'.tr(),
+            onPressed: () => openMarkdownFile(context, ref),
           ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),

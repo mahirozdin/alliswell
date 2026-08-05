@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.2.0+20
+version: 1.3.0+21
 environment:
   sdk: ^3.12.0
 
@@ -141,11 +141,16 @@ flutter:
     # the OS notification carries, as a Flutter asset so every platform — incl.
     # desktop and web, where there is no OS alarm — can play it.
     - assets/audio/
-    # Roboto (Apache-2.0, vendored from the Flutter SDK with its LICENSE) for
-    # the PDF exporter ONLY — NOT a Flutter `fonts:` entry, so it never changes
-    # what the UI renders (DESIGN §3.3 keeps system fonts). The `pdf` package's
-    # built-in Helvetica is WinAnsi-encoded and has no ı/ğ/ş/İ, which would turn
-    # every Turkish note into mojibake on export.
+    # PDF-exporter fonts ONLY — NOT a Flutter `fonts:` entry, so they never
+    # change what the UI renders (DESIGN §3.3 keeps system fonts). Both are
+    # correctness requirements, not styling:
+    #   Roboto (Apache-2.0, from the Flutter SDK) — the `pdf` package's built-in
+    #     Helvetica is WinAnsi-encoded and has no ı/ğ/ş/İ, so every Turkish note
+    #     would export as mojibake;
+    #   DejaVu Sans (Bitstream Vera licence, official upstream) — Roboto's cmap
+    #     is 896 code points and carries none of → ← ✓ ✗ ★ ☐, which drew as
+    #     hollow boxes until it was wired in as a per-glyph fallback.
+    # Both LICENCE files ship beside them.
     - assets/fonts/
 
   # To add more assets to your application, add them to this section, like this:
@@ -199,13 +204,15 @@ flutter_launcher_icons:
   # wallpaper palette. Without it a themed home screen falls back to the full
   # icon shrunk inside a grey circle.
   adaptive_icon_monochrome: assets/branding/icon-monochrome.png
-  # OFF on purpose (round 16 #1). v0.14.4 rewrites EVERY `ASSETCATALOG_COMPILER_*`
-  # build setting it finds to the icon name — it turned the widget extension's
-  # GLOBAL_ACCENT_COLOR_NAME and WIDGET_BACKGROUND_COLOR_NAME into `AppIcon` and
-  # GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS (a boolean) into `AppIcon` too. The iOS
-  # icon set is already correct and committed; to regenerate it deliberately, flip
-  # this to true, run the tool, then `git checkout ios/Runner.xcodeproj/project.pbxproj`
-  # and re-check the diff.
+  # OFF on purpose, and REPLACED — not merely disabled. v0.14.4 rewrites EVERY
+  # `ASSETCATALOG_COMPILER_*` build setting it finds to the icon name: it turned
+  # the widget extension's GLOBAL_ACCENT_COLOR_NAME and
+  # WIDGET_BACKGROUND_COLOR_NAME into `AppIcon`, and the boolean
+  # GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS too. Reverting project.pbxproj after
+  # every run would be a landmine, so `scripts/design/branding_icons.py` now
+  # generates the iOS AppIcon set itself — from the same master, sized from the
+  # catalog's own Contents.json, flattened to no alpha (App Store Connect
+  # rejects a marketing icon that has one). It never touches the Xcode project.
   ios: false
   remove_alpha_ios: true
   web:

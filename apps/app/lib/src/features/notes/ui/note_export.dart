@@ -33,8 +33,9 @@ import '../data/note_pdf.dart';
 /// honest placeholder.
 const _imageTimeout = Duration(seconds: 8);
 
-/// The four Roboto faces, read once per process. ~690 KB of asset decoding is
-/// cheap but not free, and a second export should be instant.
+/// The faces the exporter draws with, read once per process: four Roboto
+/// weights plus DejaVu Sans as the symbol fallback. ~1.4 MB of asset decoding
+/// is cheap but not free, and a second export should be instant.
 final notePdfFontsProvider = FutureProvider<NotePdfFonts>((ref) async {
   Future<pw.Font> load(String name) async =>
       pw.Font.ttf(await rootBundle.load('assets/fonts/$name.ttf'));
@@ -43,6 +44,8 @@ final notePdfFontsProvider = FutureProvider<NotePdfFonts>((ref) async {
     bold: await load('Roboto-Bold'),
     italic: await load('Roboto-Italic'),
     boldItalic: await load('Roboto-BoldItalic'),
+    // The per-glyph fallback for everything Roboto's 896 code points miss.
+    symbols: await load('DejaVuSans'),
   );
 });
 

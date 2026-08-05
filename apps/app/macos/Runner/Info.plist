@@ -32,5 +32,26 @@
 	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
+	<!-- Round 16 follow-up: AllisWell opens markdown files, so it shows up in
+	     "Open with" / the Files app / a mail attachment's share sheet.
+	     `net.daringfireball.markdown` is the UTI Apple ships; the Editor role
+	     with LSSupportsOpeningDocumentsInPlace lets the OS hand us the real
+	     file instead of a copy in Inbox/. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Markdown document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+				<string>public.plain-text</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -361,7 +361,17 @@
     "exportPrint": "Print",
     "exportPrintHint": "Opens the print preview",
     "exportFailed": "Couldn't export the note.",
-    "exportMediaMissing": "Media (couldn’t be embedded)"
+    "exportMediaMissing": "Media (couldn’t be embedded)",
+    "mdOpen": "Open a markdown file…",
+    "mdViewerTitle": "Markdown",
+    "mdNothingOpen": "No document open. Pick a .md file to read it here.",
+    "mdImport": "Save as a note",
+    "mdImported": "Imported {name}",
+    "mdImportFailed": "Couldn't import the file.",
+    "mdOpenFailed": "Couldn't open the file.",
+    "mdTooLarge": "That file is {size} MB — too large to import as a note.",
+    "mdProject": "Project",
+    "mdProjectHint": "Optional — the note is filed under it"
   },
   "calendar": {
     "google": "Google Calendar",

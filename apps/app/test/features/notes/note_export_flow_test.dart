@@ -61,6 +61,7 @@ Future<NotePdfFonts> _realFonts() async {
     bold: await load('Roboto-Bold'),
     italic: await load('Roboto-Italic'),
     boldItalic: await load('Roboto-BoldItalic'),
+    symbols: await load('DejaVuSans'),
   );
 }
 

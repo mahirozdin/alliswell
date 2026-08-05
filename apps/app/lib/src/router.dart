@@ -9,6 +9,7 @@ import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
 import 'features/files/ui/files_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/notes/ui/markdown_import_screen.dart';
 import 'features/notes/ui/note_editor_screen.dart';
 import 'features/notes/ui/notes_screen.dart';
 import 'features/projects/ui/project_detail_screen.dart';
@@ -225,6 +226,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                         ),
                       ),
                     if (section == AppSection.notes) ...[
+                      // Round 16 follow-up: the markdown viewer. Like 'new', it
+                      // must precede ':noteId' so it wins the match.
+                      GoRoute(
+                        path: 'import',
+                        builder: (context, state) =>
+                            _page(const MarkdownImportScreen()),
+                      ),
                       // 'new' must precede ':noteId' so it wins the match.
                       GoRoute(
                         path: 'new',

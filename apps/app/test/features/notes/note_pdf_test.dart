@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -18,7 +19,26 @@ Future<NotePdfFonts> _fonts() async {
     bold: await load('Roboto-Bold'),
     italic: await load('Roboto-Italic'),
     boldItalic: await load('Roboto-BoldItalic'),
+    symbols: await load('DejaVuSans'),
   );
+}
+
+/// `pdf` reports a glyph it cannot draw by `print`ing inside an `assert`, so
+/// capturing stdout is the only way to ASSERT coverage rather than eyeball a
+/// page. Tests run in debug, so the assert is live.
+Future<List<String>> _missingGlyphWarnings(
+  Future<void> Function() build,
+) async {
+  final warnings = <String>[];
+  await runZoned(
+    build,
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, line) {
+        if (line.contains('Unable to find a font to draw')) warnings.add(line);
+      },
+    ),
+  );
+  return warnings;
 }
 
 void main() {
@@ -131,6 +151,78 @@ void main() {
       );
       expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
       expect(bytes.length, greaterThan(1000));
+    },
+  );
+
+  test(
+    'symbols people actually type keep their glyph (round 16 follow-up)',
+    () async {
+      // Roboto has NONE of these — its cmap is 896 code points. Before DejaVu was
+      // wired in as the fallback, every one of them drew a hollow box.
+      const symbols =
+          '→ ← ↔ ⇒ ✓ ✗ ★ ☆ ▪ ▫ ☐ ☑ ✔ ✱ ♦ ♥ ± ≥ ≤ ≠ ∞ × ÷ ° € ₺ α β π Ω';
+      late Uint8List bytes;
+
+      final warnings = await _missingGlyphWarnings(() async {
+        bytes = await buildNotePdf(
+          NotePdfDocument(
+            title: 'Semboller $symbols',
+            blocks: deltaToBlocks([
+              {'insert': 'Gövde: $symbols'},
+              {'insert': '\n'},
+              {'insert': 'Kalın: $symbols'},
+              {
+                'insert': '\n',
+                'attributes': {'header': 1},
+              },
+              {'insert': 'Kod: $symbols'},
+              {
+                'insert': '\n',
+                'attributes': {'code-block': true},
+              },
+              {'insert': 'Madde: $symbols'},
+              {
+                'insert': '\n',
+                'attributes': {'list': 'bullet'},
+              },
+              {'insert': 'Alıntı: $symbols'},
+              {
+                'insert': '\n',
+                'attributes': {'blockquote': true},
+              },
+            ]),
+            updatedLabel: 'Düzenlendi $symbols',
+          ),
+          await _fonts(),
+        );
+      });
+
+      expect(warnings, isEmpty, reason: warnings.join('\n'));
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+      // The fallback has to be EMBEDDED too, not merely consulted.
+      expect(String.fromCharCodes(bytes), contains('DejaVu'));
+    },
+  );
+
+  test(
+    'an emoji with no monochrome glyph anywhere still degrades quietly',
+    () async {
+      // The honest half of the story: a PDF cannot embed a COLOR emoji font, and
+      // no monochrome face carries the modern pictographs. This pins the limit so
+      // nobody re-opens it expecting a bug.
+      final warnings = await _missingGlyphWarnings(() async {
+        await buildNotePdf(
+          NotePdfDocument(
+            title: 'Parti',
+            blocks: deltaToBlocks([
+              {'insert': 'kutlama 🎉\n'},
+            ]),
+          ),
+          await _fonts(),
+        );
+      });
+      expect(warnings.length, 1);
+      expect(warnings.single, contains('U+1f389'));
     },
   );
 
