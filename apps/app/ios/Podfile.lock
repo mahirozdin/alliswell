@@ -224,6 +224,8 @@ PODS:
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
+  - printing (1.0.0):
+    - Flutter
   - PromisesObjC (2.4.1)
   - PromisesSwift (2.4.1):
     - PromisesObjC (= 2.4.1)
@@ -259,6 +261,7 @@ DEPENDENCIES:
   - flutter_secure_storage_darwin (from `.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
   - home_widget (from `.symlinks/plugins/home_widget/ios`)
+  - printing (from `.symlinks/plugins/printing/ios`)
   - quill_native_bridge_ios (from `.symlinks/plugins/quill_native_bridge_ios/ios`)
   - receive_sharing_intent (from `.symlinks/plugins/receive_sharing_intent/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -329,6 +332,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/google_sign_in_ios/darwin"
   home_widget:
     :path: ".symlinks/plugins/home_widget/ios"
+  printing:
+    :path: ".symlinks/plugins/printing/ios"
   quill_native_bridge_ios:
     :path: ".symlinks/plugins/quill_native_bridge_ios/ios"
   receive_sharing_intent:
@@ -385,6 +390,7 @@ SPEC CHECKSUMS:
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   home_widget: 54b4f6b36ed8d64cfee594a476225c35c3e45091
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  printing: a8960104e6c1a2b4bd3483a2f79c69be60830d08
   PromisesObjC: 752c3227f599e3467650e47ea36f433eeb10c273
   PromisesSwift: 217dea0fd5d2ad65222a109c48698add13cc1c5b
   quill_native_bridge_ios: f47af4b14e7757968486641656c5d23250cee521

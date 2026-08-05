@@ -5,6 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-05
+
+### Added
+
+- **Export a note as PDF.** The note's overflow menu now has "Export as PDF":
+  a progress dialog while the document is produced, then share, save to Files,
+  or print. Headings, bold/italic/strikethrough, bullet, numbered and checklist
+  items, quotes, code blocks, clickable links and inline images all keep their
+  shape on the page; an attachment that could not be fetched prints an honest
+  placeholder rather than disappearing. Turkish is safe: the exporter embeds
+  Roboto instead of the PDF standard font, which has no `ı ğ ş İ`.
+- **Android 13+ themed icon.** The launcher can now tint AllisWell's mark to
+  the wallpaper palette instead of shrinking the full icon into a grey circle.
+
+### Fixed
+
+- **The Android app icon was a blank white tile.** The adaptive icon's
+  foreground layer was fully opaque with a white background, so it covered the
+  brand colour underneath on every Android 8+ launcher. The icon layers are now
+  generated from the one master artwork — and Android shows the same gradient
+  artwork as iOS instead of a flat field.
+- **Selecting text in a note on Firefox garbled the page.** Dragging across a
+  note drew the text twice — once by the app and once, in a different font and
+  slightly offset, by the hidden element the web engine keeps for the clipboard
+  and IME. It stays invisible now, in every state.
+
 ## [1.1.3] - 2026-08-05
 
 ### Fixed

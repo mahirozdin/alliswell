@@ -34,6 +34,35 @@
     <link rel="manifest" href="manifest.json" />
 
     <!--
+    Round 16 #2 — drag-selecting text in a note on FIREFOX drew the text twice:
+    once by Flutter on the canvas and once, in 13 px monospace, on top of it.
+
+    The culprit is `<textarea class="flt-text-editing">`, the hidden proxy the
+    web engine keeps over the canvas for IME and the clipboard. It holds the
+    real text and the engine hides it with `color: transparent`. But `color` is
+    exactly what `::selection` overrides: the moment the engine mirrors the
+    app's selection into that textarea, Firefox repaints the selected range in
+    the SYSTEM selection colours and the invisible text becomes visible —
+    misaligned, in the wrong font, over the real text. Chromium keeps the
+    transparent colour for selected text, which is why this never showed there.
+
+    Painting the selection is Flutter's job, on the canvas. The proxy must stay
+    invisible in every state, so pin its selection colours to transparent.
+    Separate rules on purpose: an unknown pseudo-element invalidates the whole
+    selector, so `::-moz-selection` must not share a rule with `::selection`.
+  -->
+    <style>
+      .flt-text-editing::selection {
+        background-color: transparent;
+        color: transparent;
+      }
+      .flt-text-editing::-moz-selection {
+        background-color: transparent;
+        color: transparent;
+      }
+    </style>
+
+    <!--
     Runtime configuration (self-hosting): the published `alliswell-web` image
     rewrites this file from ALLISWELL_API_URL at container start, so one
     prebuilt bundle can serve any deployment. Loaded synchronously BEFORE

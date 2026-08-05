@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.3+19
+version: 1.2.0+20
 environment:
   sdk: ^3.12.0
 
@@ -99,6 +99,13 @@ dependencies:
   # Capped below 1.8 — that line is Swift-Package-Manager only, and this repo's
   # iOS build uses CocoaPods.
   receive_sharing_intent: ">=1.4.5 <1.8.0"
+  # Note → PDF export (round 16 #3). `pdf` builds the document in pure Dart, so
+  # the layout engine is unit-testable with no platform channel; `printing`
+  # supplies the one thing Dart cannot do — handing the bytes to the OS (share
+  # sheet on mobile, save panel on desktop, download on web) — and covers all
+  # six targets we ship.
+  pdf: ^3.11.3
+  printing: ^5.14.2
 
 dev_dependencies:
   # Generates the iOS AppIcon set + Android mipmaps/adaptive icons from
@@ -134,6 +141,12 @@ flutter:
     # the OS notification carries, as a Flutter asset so every platform — incl.
     # desktop and web, where there is no OS alarm — can play it.
     - assets/audio/
+    # Roboto (Apache-2.0, vendored from the Flutter SDK with its LICENSE) for
+    # the PDF exporter ONLY — NOT a Flutter `fonts:` entry, so it never changes
+    # what the UI renders (DESIGN §3.3 keeps system fonts). The `pdf` package's
+    # built-in Helvetica is WinAnsi-encoded and has no ı/ğ/ş/İ, which would turn
+    # every Turkish note into mojibake on export.
+    - assets/fonts/
 
   # To add more assets to your application, add them to this section, like this:
   #   - images/a_dot_burr.jpeg
@@ -166,14 +179,34 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 # Launcher icons are GENERATED, not hand-placed: `dart run flutter_launcher_icons`
-# rebuilds every density from these two sources, so the app icon can never drift
+# rebuilds every density from these sources, so the app icon can never drift
 # from the brand mark in docs/assets/.
+#
+# The adaptive-icon LAYERS are themselves generated, from the one master
+# artwork: `python3 scripts/design/branding_icons.py` (round 16 #1 — the hand-made
+# foreground was an opaque white square, so every Android 8+ launcher covered the
+# background layer and drew a blank white tile). That script also asserts the
+# invariants an adaptive foreground has to meet: transparent corners, mark inside
+# the safe zone, centred.
 flutter_launcher_icons:
   image_path: assets/branding/icon.png
   android: true
-  adaptive_icon_background: "#4F63EF"
+  # An image, not a flat colour: Android then shows the SAME artwork as iOS
+  # (brand gradient) instead of a flat field behind the mark.
+  adaptive_icon_background: assets/branding/icon-background.png
   adaptive_icon_foreground: assets/branding/icon-foreground.png
-  ios: true
+  # Android 13+ themed icons: the launcher tints this layer's alpha to the user's
+  # wallpaper palette. Without it a themed home screen falls back to the full
+  # icon shrunk inside a grey circle.
+  adaptive_icon_monochrome: assets/branding/icon-monochrome.png
+  # OFF on purpose (round 16 #1). v0.14.4 rewrites EVERY `ASSETCATALOG_COMPILER_*`
+  # build setting it finds to the icon name — it turned the widget extension's
+  # GLOBAL_ACCENT_COLOR_NAME and WIDGET_BACKGROUND_COLOR_NAME into `AppIcon` and
+  # GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS (a boolean) into `AppIcon` too. The iOS
+  # icon set is already correct and committed; to regenerate it deliberately, flip
+  # this to true, run the tool, then `git checkout ios/Runner.xcodeproj/project.pbxproj`
+  # and re-check the diff.
+  ios: false
   remove_alpha_ios: true
   web:
     generate: false

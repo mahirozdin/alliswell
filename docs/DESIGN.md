@@ -996,3 +996,77 @@ at capture time, not at 02:00 when nothing rang.)_
 - **C4 — Defaults apply at every birth point identically.** Sheet, quick add and
   ✨ rider share `task_defaults.dart`; a surface that creates tasks and skips it
   is a bug (§22 reachability logic applied to behavior parity).
+
+## 27. Exporting a note, and the app's own mark (round 16 — Epic 23)
+
+### E1 — Export is a menu item, not a fifth icon bar button
+
+The note editor's app bar is already at the phone's limit (§ OPH-201), so
+"Export as PDF" lives in the overflow menu — alongside Quick Access, above it,
+with a `picture_as_pdf_outlined` leading icon. The menu is NOT gated on the note
+having been saved: the document being exported is the one in the editor.
+
+### E2 — Producing a file is slow enough to need a face
+
+Fonts have to be decoded and embedded media fetched, so the export shows a
+BLOCKING, non-dismissible progress dialog ("Preparing the PDF…") and only then a
+sheet. Silence while an app works is the failure mode this rule exists to
+prevent — the same reason uploads got visible state (§10 F2).
+
+### E3 — Name the way out after what actually happens
+
+The result sheet offers what the platform really does, never a label for
+something that does not happen:
+
+| Platform | Actions |
+| --- | --- |
+| iOS / Android | **Share** (the OS sheet — which is also where "Save to Files" lives, so the subtitle says so) · **Save to Files** (system document picker) · **Print** |
+| Web | **Download** · **Print** (the browser's print preview) |
+| Desktop | **Save** · **Print** |
+
+Backing out of the save dialog leaves the sheet open. Closing it silently would
+read as success.
+
+### E4 — The page is always light, and always legible
+
+A PDF is print: it uses a fixed light palette derived from the tokens
+(`#0F1B2E` ink, `#44536F` muted, `#0A5CFF` accent), never the dark theme. This
+is the ONE place a raw colour is allowed outside `tokens.dart` (G6), because the
+`pdf` package has no access to the Flutter theme — and the values are pinned in
+`note_pdf.dart` next to the reason.
+
+### E5 — Structure survives, and so does Turkish
+
+The exporter renders the note's STRUCTURE (headings, lists, checklists, quotes,
+code panels, figures, clickable links), not flattened text. Completed checklist
+items keep their strikethrough on paper (§20), and media that could not be
+fetched prints an honest placeholder (§10 F3).
+
+The exporter EMBEDS Roboto. The `pdf` package's built-in Helvetica is
+WinAnsi-encoded and has no `ı ğ ş İ`, so a Turkish note would export as
+mojibake — the font is a correctness requirement, not a style choice. It is a
+PDF-only asset: the UI keeps system fonts (§3.3). Known limit, written at the
+top of `note_pdf.dart`: arrows and dingbats (`→ ← ✓ ✗ ★ ▪ ☐`) and emoji have no
+glyph and draw as a hollow box.
+
+### E6 — The app icon's layers are GENERATED, and verified
+
+An Android adaptive icon's foreground layer must be TRANSPARENT with the mark
+inside the safe zone — an opaque foreground covers the background layer and the
+launcher draws a blank tile (round 16 #1, shipped for months). So the layers are
+never hand-made: `scripts/design/branding_icons.py` derives all three
+(foreground, background, monochrome) from the one master `icon.png` and asserts
+the invariants — corners transparent, mark inside Google's 66 dp safe zone,
+centred. Run it, then `dart run flutter_launcher_icons`; `--check` verifies the
+committed layers without rewriting them.
+
+Android's background layer is the brand GRADIENT, not a flat colour, so the icon
+is the same artwork on both stores. Android 13+ themed icons get the monochrome
+layer, or the launcher shrinks the whole icon into a grey circle.
+
+**`flutter_launcher_icons` is configured `ios: false` on purpose.** v0.14.4
+rewrites every `ASSETCATALOG_COMPILER_*` build setting it finds to the icon name,
+which corrupted the widget extension's accent and background colour names. The
+iOS icon set is correct and committed; regenerate it deliberately (see the note
+in `pubspec.yaml`).
+

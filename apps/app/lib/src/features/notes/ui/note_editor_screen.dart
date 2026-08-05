@@ -15,6 +15,7 @@ import '../../../theme/tokens.dart';
 import '../data/delta_markdown.dart';
 import '../data/note.dart';
 import '../providers.dart';
+import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
 
 /// Rich note editor (OPH-044): flutter_quill content with debounced delta
@@ -264,24 +265,53 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
           ),
           // OPH-201: an overflow rather than a sixth icon — this app bar is
           // already at the phone's limit. The existing icons stay put.
-          if (_noteId case final id?)
-            PopupMenuButton<String>(
-              key: const Key('note-quick-menu'),
-              tooltip: 'quick.actions'.tr(),
-              onSelected: (_) => toggleQuickAccess(
-                context,
-                ref,
-                kind: QuickKind.note,
-                targetId: id,
-                suggestedTitle: _title.text,
+          //
+          // Round 16 #3: the menu is no longer gated on an id. PDF export works
+          // on a note that has never been saved (the document is right here in
+          // memory); only the quick-access row needs a persisted target.
+          PopupMenuButton<String>(
+            key: const Key('note-quick-menu'),
+            tooltip: 'quick.actions'.tr(),
+            onSelected: (value) {
+              if (value == 'export-pdf') {
+                unawaited(
+                  exportNoteAsPdf(
+                    context,
+                    ref,
+                    title: _titleText,
+                    deltaJson: _deltaJson,
+                    updatedAt: widget.note?.updatedAt,
+                  ),
+                );
+                return;
+              }
+              if (_noteId case final id?) {
+                toggleQuickAccess(
+                  context,
+                  ref,
+                  kind: QuickKind.note,
+                  targetId: id,
+                  suggestedTitle: _title.text,
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                key: const Key('note-export-pdf'),
+                value: 'export-pdf',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.picture_as_pdf_outlined),
+                  title: Text('note.exportPdf'.tr()),
+                ),
               ),
-              itemBuilder: (context) => [
+              if (_noteId case final id?)
                 quickAccessMenuItem(
                   value: 'quick',
                   isSaved: isInQuickAccess(ref, QuickKind.note, id),
                 ),
-              ],
-            ),
+            ],
+          ),
         ],
       ),
       body: Column(

@@ -58,3 +58,7 @@ firebase-debug.log
 # one of these to be in a working tree that gets committed.
 **/*-service-account*.json
 **/serviceAccountKey*.json
+
+# Python bytecode from scripts/
+__pycache__/
+*.pyc

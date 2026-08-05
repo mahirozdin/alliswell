@@ -5970,6 +5970,84 @@ cihaz turu: bildirim Ertele/Tamamla, widget dairesi (anında dolu daire + app'te
 işlenmiş görev), gece yarısı sonrası widget tarihi, sohbette "yoğun muyum" (veri
 görür) ve "yarın 16'da hatırlat" (kart açar) → **v1.1.2**.
 
+## Epic 23 — Feedback round 16: Play'den inen ikon, Firefox'ta seçim, notu PDF'e aktarma (v1.2.0) ✅ KOD TAMAM (2026-08-05)
+
+_Sahibin üç maddesi: (1) Google Play'den kurulan Android uygulamasının ikonu yok,
+"beyaz bir şeyde kalmış"; (2) web'de notlar sekmesinde metni sürükleyerek seçince
+font değişiyor, harfler üst üste biniyor, seçim vurgusu kayıyor; (3) notu PDF
+olarak dışa aktarma — yükleniyor diyaloğu, sonunda paylaş / indir / dosyalara
+kaydet._
+
+### OPH-236 — Android ikonu: adaptive foreground ŞEFFAF değildi
+
+_(✅ 2026-08-05. Kök neden ölçülerek bulundu: `assets/branding/icon-foreground.png`
+alfa kanalında HER pikselde 255 taşıyordu ve zemini bembeyazdı (görünen
+piksellerin ortalama RGB'si 254,254,254). Adaptive icon'da ön plan katmanı arka
+planı tamamen örter, dolayısıyla `#4F63EF` mavi yalnız `inset="16%"`ten artan
+çerçevede kalıyor, launcher maskesi onu da kırpınca geriye SAF BEYAZ bir karo +
+hayalet tik kalıyordu. Legacy `mipmap/ic_launcher.png` doğruydu — Play listesi
+ikonu bu yüzden düzgün görünüyor, ama Android 8+ (yani her cihaz)
+`mipmap-anydpi-v26/ic_launcher.xml`'i tercih eder ve legacy PNG hiç kullanılmaz.
+El düzeltmesi yerine katmanlar TEK master'dan türetilir oldu:
+`scripts/design/branding_icons.py` `icon.png`'den `icon-foreground.png` (işaret,
+beyaz, ŞEFFAF zeminde, safe zone'a ölçekli), `icon-background.png` (marka
+gradyanı — Android artık iOS ile AYNI resmi gösteriyor, düz renk değil) ve
+`icon-monochrome.png` (Android 13+ temalı ikon) üretir; script ayrıca bir
+adaptive foreground'ın sağlaması gereken değişmezleri DOĞRULAR (köşeler şeffaf,
+işaret safe zone içinde, ortalanmış) ve `--check` ile CI'da koşabilir. İşaret
+oranı iOS'takiyle aynı tutuldu (master'da işaret/karo = %64.7) — aracın
+`inset="16%"`i hesaba katılarak. **Turun tuzağı: `flutter_launcher_icons` 0.14.4
+`ios: true` ile pbxproj'i BOZUYOR** — bulduğu her `ASSETCATALOG_COMPILER_*`
+ayarını ikon adına eziyor; widget extension'ın `GLOBAL_ACCENT_COLOR_NAME` ve
+`WIDGET_BACKGROUND_COLOR_NAME` değerleri `AppIcon` olmuştu ve boolean
+`GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS` de öyle. Geri alındı, config'te
+`ios: false` yapıldı ve sebebi pubspec'e yazıldı; iOS ikon seti zaten doğru ve
+commit'li.)_
+
+### OPH-237 — Firefox'ta not seçimi: gizli IME textarea'sı görünür oluyordu
+
+_(✅ 2026-08-05. Chromium'da ÜÇ ayrı birebir-kopya repro build'i tertemiz
+çıktı; kırılma sahibin tarayıcısına özeldi, o yüzden gerçek Gecko'da (Playwright
+Firefox) sürükleme yapılıp ÜRETİLDİ ve DOM'dan kanıtlandı: suçlu
+`<textarea class="flt-text-editing">` — web engine'in IME ve pano için canvas'ın
+üstünde tuttuğu gizli vekil. Notun tam metnini taşır, editörün tam üzerinde
+konumlanır (140,170 · 720×784) ve fontu `monospace/13px`'tir. Engine onu
+`color: transparent` ile gizler — ve `::selection` tam olarak `color`'ı ezen
+şeydir: uygulamanın seçimi o textarea'ya yansıtıldığı anda Firefox seçili
+aralığı SİSTEM seçim renkleriyle yeniden boyar, görünmez monospace metin
+görünür olur ve canvas'taki gerçek metnin üstüne biner. Chromium seçili metnin
+şeffaf rengini koruduğu için orada hiç çıkmaz. Düzeltme `web/index.html`'de iki
+CSS kuralı (`::selection` + `::-moz-selection` — bilinmeyen bir pseudo-element
+TÜM seçiciyi geçersiz kıldığı için AYRI kurallar). Gerçek Firefox'ta düzeldiği
+doğrulandı. `test/web_shell_test.dart` kuralı bekçiliyor: `web/index.html`
+`flutter create` şablonunun toptan yeniden yazdığı bir dosya.)_
+
+### OPH-238 — Notu PDF olarak dışa aktar
+
+_(✅ 2026-08-05. Not detayındaki taşma menüsünde "PDF olarak dışa aktar"
+(sahibin kararı: yalnız bu yüzey). Üç katman: **saf** `note_blocks.dart` delta'yı
+blok modeline çevirir (başlık/madde/sıralı/onay kutusu/alıntı/kod/figür; sıralı
+liste numaralarını üretir ve araya başka bir blok girince sıfırlar; ardışık kod
+satırları TEK panel; embed'ler kendi figürü olur ve satırını kapatan `\n` boş
+paragraf ÜRETMEZ), **platform kanalsız** `note_pdf.dart` bunu A4 sayfaya çizer
+(başlık + düzenlenme tarihi + ayraç, sayfa numarası, ikinci sayfadan itibaren
+başlık üstbilgisi, tıklanabilir bağlantı anotasyonları, tamamlanmış maddede üstü
+çizili metin), `ui/note_export.dart` ise yalnız platformun yaptığı işi: fontları
+bundle'dan okur, gömülü görselleri çeker (8 sn tavan; gelmezse DESIGN §10 F3
+uyarınca dürüst yer tutucu), ilerleme diyaloğunu gösterir ve baytları
+`NotePdfSink` üzerinden OS'a verir (paylaş / dosyalara kaydet / yazdır; web'de
+paylaş yerine indir). **Türkçe için zorunlu karar:** `pdf` paketinin gömülü
+Helvetica'sı WinAnsi kodlamalıdır ve `ı ğ ş İ` YOKTUR — her Türkçe not mojibake
+çıkardı; bu yüzden Roboto (Apache-2.0) Flutter SDK'sından LİSANSIYLA birlikte
+`assets/fonts/`'a vendor'landı ve yalnız PDF üretiminde kullanılır (Flutter
+`fonts:` girdisi DEĞİL — DESIGN §3.3 sistem fontlarını korur, ağ isteği yok).
+Onay kutusunun tiki ÇİZİLİR, yazılmaz: Roboto'da U+2713 yoktur ve `pdf` bulamadığı
+glifi çizmeyi reddeder. **Bilinen sınır** dosya başında yazılı: ok/dingbat blokları
+(`→ ← ✓ ✗ ★ ▪ ☐`) ve emoji kutu olarak çizilir; base-14 Symbol/ZapfDingbats
+`fontFallback` olarak DENENDİ, ölçüldü, hiçbirini kurtarmadı ve bilinçli olarak
+bağlanmadı. 18 yeni test: blok eşlemesi 5, gerçek PDF üretimi 4 (gömülü font ve
+bağlantı anotasyonu bayt düzeyinde doğrulanır), akış 4.)_
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

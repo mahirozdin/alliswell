@@ -346,7 +346,22 @@
     "archivedHere": "Archived notes land here for safekeeping.",
     "captureFirst": "Capture the first one with the + button.",
     "deleted": "“{title}” deleted",
-    "deleteFromList": "Delete"
+    "deleteFromList": "Delete",
+    "exportPdf": "Export as PDF",
+    "exporting": "Preparing the PDF…",
+    "exportReady": "PDF ready",
+    "exportFile": "{name} · {size} KB",
+    "exportShare": "Share",
+    "exportShareHint": "Opens the share sheet — Save to Files, Mail, AirDrop…",
+    "exportSave": "Save to Files",
+    "exportSaveHint": "Pick a folder on this device",
+    "exportSaved": "Saved",
+    "exportDownload": "Download",
+    "exportDownloadHint": "Saves the PDF to your downloads folder",
+    "exportPrint": "Print",
+    "exportPrintHint": "Opens the print preview",
+    "exportFailed": "Couldn't export the note.",
+    "exportMediaMissing": "Media (couldn’t be embedded)"
   },
   "calendar": {
     "google": "Google Calendar",

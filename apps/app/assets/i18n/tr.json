@@ -345,7 +345,22 @@
     "archivedHere": "Arşivlenen notlar güvende burada durur.",
     "captureFirst": "İlkini + düğmesiyle yakala.",
     "deleted": "“{title}” silindi",
-    "deleteFromList": "Sil"
+    "deleteFromList": "Sil",
+    "exportPdf": "PDF olarak dışa aktar",
+    "exporting": "PDF hazırlanıyor…",
+    "exportReady": "PDF hazır",
+    "exportFile": "{name} · {size} KB",
+    "exportShare": "Paylaş",
+    "exportShareHint": "Paylaşım menüsünü açar — Dosyalara Kaydet, Mail, AirDrop…",
+    "exportSave": "Dosyalara kaydet",
+    "exportSaveHint": "Bu cihazda bir klasör seç",
+    "exportSaved": "Kaydedildi",
+    "exportDownload": "İndir",
+    "exportDownloadHint": "PDF'i indirilenler klasörüne kaydeder",
+    "exportPrint": "Yazdır",
+    "exportPrintHint": "Yazdırma önizlemesini açar",
+    "exportFailed": "Not dışa aktarılamadı.",
+    "exportMediaMissing": "Medya (gömmek mümkün olmadı)"
   },
   "calendar": {
     "google": "Google Takvim",
