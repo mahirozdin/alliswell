@@ -282,6 +282,11 @@ class FakeApi {
   Map<String, dynamic>? nextProposal;
   final List<Map<String, dynamic>> aiActionAccepts = [];
 
+  /// OPH-243: how many times `/ai/extract` was asked. The AI-free share path
+  /// must leave this at zero — "we didn't call the model" is an assertion, not
+  /// a hope (the OPH-225 "sıfır AI" pattern).
+  int aiExtractCalls = 0;
+
   /// Round 14: holds the `/ai/extract` answer back so a test can observe the
   /// optimistic ✨ state (instant row + enriching badge) before the proposal
   /// lands. Advance the fake clock past it with `tester.pump(delay)`.
@@ -450,6 +455,7 @@ class FakeApi {
       );
     }
     if (path == '$wsPrefix/extract' && options.method == 'POST') {
+      aiExtractCalls++;
       if (extractStatusCode != null) {
         return Future.value(
           jsonBody(extractStatusCode!, {

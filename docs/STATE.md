@@ -3,7 +3,97 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-05e (**Round 16b KOD TAMAM — sahibin takip listesi: PDF sembolleri,
+**Last updated:** 2026-08-10 (**OPH-242 + OPH-243 KISMEN BİTTİ — paylaşım arızası ÜÇ
+katman çıktı, ikisi kapandı; süitler 821 (797+24), analyze/i18n/kontrast temiz.
+Sıradaki iş: OPH-244.**
+**Turun tek cümlesi: arıza tek değildi ve ilk katman diğer ikisini görünmez
+yapıyordu.** Planın üç hipotezinden biri doğruydu, biri elendi, biri açık —
+ve listede olmayan bir dördüncüsü asıl suçluydu.
+**L1 (planda YOKTU, log söyledi):** `AllisWellShare` dyld'de **83 ms**'de
+ölüyordu — `Library not loaded: @rpath/AppAuth.framework/AppAuth`. Uzantının
+Pods xcconfig'i ona uygulamanın TÜM link satırını veriyor ama
+`LD_RUNPATH_SEARCH_PATHS`'i `/usr/lib/swift`'te bırakıyor; framework'ler
+`Runner.app/Frameworks`'te ve bir appex'in kendi kopyası olamaz. **Bir appex'in
+dyld ölümü çökme raporu ÜRETMEZ** — paylaşım sayfası kapanır, hiçbir şey olmaz.
+Sahibin cümlesinin birebir kaynağı. Düzeltme üç xcconfig'e tek satır (pbxproj'e
+dokunulmadı); `otool -l` üründe `@executable_path/../../Frameworks` gösteriyor.
+**L2 (planın H1'i, doğru):** `Info.plist` `ShareMedia-com.alliswell.alliswell`
+şemasını hiç kaydetmemişti. Eklendi, üründe ve CANLI doğrulandı — o URL
+açıldığında iOS "AllisWell ile açılsın mı?" sordu ve uygulama öne geldi.
+`GENERATE_INFOPLIST_FILE` şüphesi ELENDİ (appex plist'i sağlam).
+**L3 (planın H3'ü, AÇIK):** L1+L2 sonrası uzantı çalışıyor ve payload'ı App
+Group'a **yazıyor** (`ShareKey => [{"path":"https:…","type":"url"}]`), ama
+kendi süreci `BUG IN CLIENT OF UIKIT … openURL(_:) … Force returning false`
+basıyor: iOS 18+ eklentinin selector hilesini kapatmış. `extensionContext.open`
+shim'i denendi, yetmedi (kod repoda, doğru API, zararsız). **Kalan: ADR-0029** —
+plugin ≥1.8 (SPM, repo CocoaPods) / alternatif / compose UI + yönlendirmesiz.
+**Net kazanım: paylaşılan içerik artık KAYBOLMUYOR** — "hiçbir zaman hiçbir şey"
+yerine "uygulamayı açtığında orada".
+**Teşhis izi:** drift v16 `share_events` + `ShareLog` (AlarmLog ikizi, içerik
+ASLA — tür + bayt), Ayarlar → Paylaşım günlüğü; kapsam cümlesi asıl bulguyu
+taşıyor: **boş liste CEVAPTIR.** Bekçi: `test/native_config_test.dart`.
+**OPH-243:** AI yokken paylaşım artık dolu create sheet açıyor (sahibin kararı;
+"Not al"/"Inbox" bilinçli olarak paylaşım yolundan kalktı). Saf çekirdek
+`task_text.dart`'a ayrıldı. **Testin yakaladığı iki gerçek kusur:** (a) başlık
+ilk satırı trim'lemiyordu; (b) **AÇIK** — soğuk başlangıçta `aiStatusProvider`
+workspace gelmeden `disabled` çözülüyor, AI'lı kullanıcı bubble yerine sheet
+alıyor. Doğru düzeltme provider'ın semantiğinde, çağrı yerinde değil; gap
+`share_routing_test.dart` içine gerekçesiyle YAZILDI, sıcak yol yeşil.
+_Önceki blok:_ 2026-08-09 (**ROUND 17 PLANLANDI — Epic 24 açıldı, hedef v1.4.0; kod
+YAZILMADI, sıradaki iş OPH-242.** Sahibin dört maddesi araştırıldı ve dördü de
+**ölçülmüş** bir teşhisle plana girdi (tam kanıt tablosu TASKS Epic 24 başında,
+markdown alan taraması yeni **[MARKDOWN.md](MARKDOWN.md)**'de, bağlayıcı UI kuralları
+DESIGN **§29/§30/§31**'de).
+**(1) Paylaşım sessizliği — en güçlü şüpheli repoda duruyor:** `RSIShareViewController`
+ana uygulamayı `ShareMedia-<bundleId>:share` URL'iyle çağırıyor
+(`receive_sharing_intent-1.7.0/ios/Classes/RSIShareViewController.swift:173`) ama
+`ios/Runner/Info.plist`'in `CFBundleURLTypes`'ında yalnız `alliswell` ve Google şeması
+var — **`ShareMedia-com.alliswell.alliswell` YOK**. Kayıtsız bir şemaya `openURL:`
+= sessizce hiçbir şey, çökme de yok: sahibin raporunun birebir tarifi. İki hipotez daha
+sıraya kondu ve ikisi de ciddi: uygulama **sahne yaşam döngüsünde** (`SceneDelegate:
+FlutterSceneDelegate`) ve sonlandırılmış uygulamada `scene(_:openURLContexts:)`
+çağrılmıyor — URL `willConnectTo`'nun `connectionOptions`'ında geliyor; ayrıca **iOS 18+
+uzantıların `openURL:` selector hilesini kapattı** (UIKit "BUG IN CLIENT OF UIKIT" basıyor,
+Apple DTS "kullanmayın" diyor) — yani şema eklemek yetmeyebilir ve plugin/mimari değişikliği
+gerekirse ADR-0028 (ADR-0023'ü süperseder) ile gelir. OPH-242 üçünü SIRAYLA eliyor ve hattı bir daha
+kanıtlanamaz bırakmamak için **teşhis kaydı** ekliyor (alarm günlüğü kalıbı).
+OPH-243 ise hedefi değiştiriyor: **AI yoksa paylaşılan metin dolu create sheet'i açar**
+(sahibin beklentisi), AI varsa bugünkü bubble→onay kartı yolu kalır.
+**(2) Fotoğraf eklenememesi bug değil, yanlış çağrı:** `pick_files_io.dart` `FilePicker.pickFiles()`'ı
+tipsiz çağırıyor (`FileType.any`), file_picker 12'nin iOS kaynağı ise `case
+"image","video","media"` için **`PHPickerViewController`**, diğer her şey için
+`UIDocumentPickerViewController` açıyor (`IOSFilePickerHandler.swift:87,220`). İzin
+diyaloğunun gelmemesi de doğru: PHPicker süreç-dışıdır ve **hiç izin istemez**. Yani
+çözüm **yeni paket gerektirmiyor** — ve gerektirmemeli: `image_picker`'a geçmek Android
+13+'ta `READ_MEDIA_IMAGES` beyanı yüzünden **Play reddi** riski taşıyor
+(flutter#171493/171494). OPH-244 seçimi üçe ayırıyor (Fotoğraflar/Kamera/Dosyalar) ve
+açıklama alanına da ek yolu koyuyor; OPH-245 `note_media.dart` içinde **özel** duran
+`_EmbedImageViewer`'ı paylaşılan `AwImageViewer`'a çıkarıyor (zoom/çift-dokunuş/galeri
+kaydırma/paylaş — §22'nin ders kitabı vakası).
+**(3) Markdown bu epic'in en büyük işi ve bir MODEL kararı:** 13 ürün tarandı (Obsidian,
+Typora, iA Writer, Bear, Ulysses, Zettlr, Mark Text, Notion, Logseq, Joplin, VS Code,
+GFM, Marked-sınıfı görüntüleyiciler), 41 özellik alınır/sonra/alınmaz diye karara
+bağlandı — ama **Quill Delta bu blokların yarısını taşıyamıyor**: `flutter_quill` 11.5.1
+çekirdeğinde tablo düğümü yok, dipnot/matematik/mermaid/iç içe liste için temsil yok
+(DESIGN §28 zaten "Quill's own model is flat" diyor). MARKDOWN.md §4 üç seçeneği
+(Delta kanonik + embed / Markdown kanonik / niyete göre bölünmüş `content_format`)
+gerekçeleriyle yazdı; **ADR-0027 (OPH-246) seçer ve 247–252'nin hiçbiri ondan önce
+başlamaz.** Render motoru da ölçülerek seçilecek — `flutter_markdown` **30 Nisan
+2025'te sonlandırıldı**, resmî devamı `flutter_markdown_plus`; dört aday +
+kendi renderer'ımız bir **GFM uygunluk fikstürüyle** yarıştırılacak. Mermaid **web view
+ile YAPILMAYACAK** (güvenilmez belge + JS motoru = §24 AI6'nın tam tersi).
+**(4) Widget saati iki platformda aynı şey değil:** Android `TextClock` `@RemoteView`'dür,
+RemoteViews içinde bedava tıklar; iOS'ta `Text(date, style: .time)` **canlı değildir**
+(timeline girdisinin anını basıp donar; yalnız `.timer`/`.relative`/`.offset` güncellenir)
+ve widget'a günde ~40–70 reload bütçesi verilir. OPH-253 Android'de tıklayan saati,
+iOS'ta dakikalık timeline girdilerini alıyor ve **yanlış saat göstermektense saati
+gizliyor** (DESIGN §31 C3 — round 16'nın "doğru görünmesi doğru olduğu anlamına gelmez"
+dersinin doğrudan uygulaması).
+**Bu turda kod yazılmadı, süitler dokunulmadı** (son bilinen: app 797, analyze/i18n/
+kontrast temiz, v1.3.0 canlı). **Sıradaki: OPH-242.** _Not:_ **OPH-236 depoda iki kez
+kullanılmış** (Epic 22 ve Epic 23); ikisi de kapalı, geriye dönük düzeltilmiyor,
+numaralandırma OPH-242'den devam ediyor.)
+Önceki blok: 2026-08-05e (**Round 16b KOD TAMAM — sahibin takip listesi: PDF sembolleri,
 ikon aracının pbxproj hasarı, ve `.md` dosyalarını AllisWell ile açma; hedef v1.3.0.**
 (1) **PDF glifleri (OPH-239):** Roboto'nun cmap'i ölçüldü — 896 kod noktası, ok/dingbat
 setinin HİÇBİRİ yok. Base-14 Symbol/ZapfDingbats fallback olarak denendi ve hiçbirini

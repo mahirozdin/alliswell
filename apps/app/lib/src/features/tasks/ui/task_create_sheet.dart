@@ -32,6 +32,8 @@ Future<void> showTaskCreateSheet(
   DateTime? initialDue,
   String? initialStatus,
   Task? task,
+  String? initialTitle,
+  String? initialDescription,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -46,6 +48,8 @@ Future<void> showTaskCreateSheet(
       initialDue: initialDue,
       initialStatus: initialStatus,
       task: task,
+      initialTitle: initialTitle,
+      initialDescription: initialDescription,
     ),
   );
 }
@@ -56,6 +60,8 @@ class TaskCreateSheet extends ConsumerStatefulWidget {
     this.initialDue,
     this.initialStatus,
     this.task,
+    this.initialTitle,
+    this.initialDescription,
   });
 
   /// Prefilled due date (e.g. the day selected on the Home calendar).
@@ -68,6 +74,12 @@ class TaskCreateSheet extends ConsumerStatefulWidget {
   /// When set, the sheet EDITS this task ("Plan task" / "Save") instead of
   /// creating a new one — the Inbox triage flow (OPH-107).
   final Task? task;
+
+  /// Prefilled title and description (OPH-243): text shared into the app from
+  /// another one lands here, already split, when there is no AI to structure
+  /// it. Create mode only — in edit mode the task's own values win.
+  final String? initialTitle;
+  final String? initialDescription;
 
   @override
   ConsumerState<TaskCreateSheet> createState() => _TaskCreateSheetState();
@@ -112,6 +124,13 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
       _isUrgent = task.isUrgent;
     } else {
       _dueAt = widget.initialDue;
+      // OPH-243: text shared from another app arrives already split into a
+      // title and a body. The caret goes to the END — the field autofocuses,
+      // and a prefilled autofocused field otherwise opens with everything
+      // selected, one keystroke away from destroying what was shared.
+      _title.text = widget.initialTitle ?? '';
+      _title.selection = TextSelection.collapsed(offset: _title.text.length);
+      _description.text = widget.initialDescription ?? '';
       // Round 14 creation defaults: medium priority, urgent alarm armed. The
       // sheet SHOWS both before saving — defaults, not hidden behavior.
       _priority = 'medium';

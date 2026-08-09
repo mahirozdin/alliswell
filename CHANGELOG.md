@@ -5,6 +5,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **"Share to AllisWell" on iPhone did nothing at all** — no launch, no crash
+  report. Three separate defects were stacked on top of each other, and the
+  first one is why nobody could see the other two: the share extension was
+  dying in the dynamic linker 83 ms into launch, before any of its own code
+  ran, because it linked the app's frameworks but had no run-path to reach
+  them. An extension that dies that way produces no crash report; the share
+  sheet just closes. Shared content now survives: it lands in the shared
+  container and the app picks it up when you open it. Bringing the app to the
+  front automatically is still blocked by iOS 18+, which refuses the
+  URL-opening call the sharing plugin uses — tracked, with the payload no
+  longer lost in the meantime. (OPH-242)
+- AllisWell now registers the URL scheme its own share extension calls back
+  on. Without it iOS silently dropped the hand-off. (OPH-242)
+
+### Added
+
+- **Share log** (Settings → Share log): every share that reaches the app leaves
+  a line — what kind of thing arrived and how big it was, never its content.
+  An empty list after a share attempt is itself the answer: the payload never
+  reached the app. Built for the class of report that could not be settled
+  before. (OPH-242)
+- **Sharing text with no AI configured now opens the full task sheet, already
+  filled in** — the first line as the title, the whole text kept in the
+  description, a shared link appended at the end. Previously the AI bubble
+  opened and offered nothing useful to anyone without a provider. With AI
+  configured the bubble and its confirmation card are unchanged. (OPH-243)
+
 ## [1.3.0] - 2026-08-05
 
 ### Added

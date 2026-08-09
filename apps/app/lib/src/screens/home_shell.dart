@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,9 +7,14 @@ import 'package:go_router/go_router.dart';
 import '../core/persisted_prefs.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
 import '../features/calendar/apple/providers.dart';
+import '../features/ai/data/ai_context_builder.dart';
+import '../features/ai/data/ai_models.dart';
 import '../features/ai/data/share_intent.dart';
+import '../features/ai/providers.dart';
 import '../features/ai/ui/ai_bubble.dart';
 import '../features/ai/ui/ai_fab.dart';
+import '../features/tasks/data/task_text.dart';
+import '../features/workspaces/workspaces.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
@@ -171,12 +178,12 @@ class HomeShell extends ConsumerWidget {
 
     // Share target (OPH-225): keep the binder alive while the shell shows — it
     // only mounts signed in, so a cold-start share lands after the session
-    // exists. When a payload arrives, open the bubble on it (once).
+    // exists. When a payload arrives, take it (once) and route it.
     ref.watch(shareBinderProvider);
     ref.listen(pendingSharePayloadProvider, (_, next) {
       if (next == null) return;
       final payload = ref.read(pendingSharePayloadProvider.notifier).take();
-      if (payload != null) showAiBubble(context, shared: payload);
+      if (payload != null) unawaited(_routeShare(context, ref, payload));
     });
 
     // Round 16 follow-up: the OS opened a .md file with us. The viewer TAKES
@@ -351,6 +358,67 @@ class HomeShell extends ConsumerWidget {
     );
   }
 }
+
+/// Where shared text goes (OPH-243).
+///
+/// With AI configured, the bubble is the right destination: it can turn a
+/// paragraph into a structured task and put it behind the confirm card. Without
+/// AI, the bubble was a dead end — round 17 #1 asked for the thing a person
+/// actually wants there, and it is **the full create sheet, already filled in**.
+///
+/// So the gate is `configured`, and it deliberately covers "AI switched off on
+/// this instance" as well as "AI on, no key yet": in both cases there is
+/// nothing to structure the text with.
+Future<void> _routeShare(
+  BuildContext context,
+  WidgetRef ref,
+  SharedPayload payload,
+) async {
+  final status = await _aiStatusForShare(ref);
+  if (!context.mounted) return;
+
+  if (status.configured) {
+    await showAiBubble(context, shared: payload);
+    return;
+  }
+
+  final fields = taskFieldsFromSharedText(payload.text, url: payload.url);
+  await showTaskCreateSheet(
+    context,
+    initialTitle: fields.title,
+    initialDescription: fields.description,
+  );
+}
+
+/// The status, without making the user wait on a network call.
+///
+/// Two hazards, both found by `share_routing_test.dart`:
+///
+/// 1. **`aiStatusProvider` needs a workspace.** Its `build()` returns
+///    `AiStatus.disabled` outright while `currentWorkspaceProvider` is still
+///    loading — and a cold-start share is exactly that moment. Reading it too
+///    early therefore says "no AI" about an account that has AI. So the
+///    workspace is awaited first, the same way `extractUtterance` does.
+/// 2. **It awaits `/ai/status` with no timeout of its own** (falling back to
+///    the localKv cache only on error), so awaiting it blindly would let a slow
+///    network hold a share hostage. An already-resolved value is used as-is;
+///    otherwise we wait briefly and then treat AI as absent.
+///
+/// Being wrong is cheap and one-directional: an AI user on a bad connection
+/// gets the filled create sheet instead of the bubble — a working destination,
+/// not a dead end.
+Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
+  try {
+    await ref.read(workspacesProvider.future).timeout(_shareStatusBudget);
+    final resolved = ref.read(aiStatusProvider).value;
+    if (resolved != null) return resolved;
+    return await ref.read(aiStatusProvider.future).timeout(_shareStatusBudget);
+  } on Object {
+    return AiStatus.disabled;
+  }
+}
+
+const _shareStatusBudget = Duration(seconds: 2);
 
 /// Shared app bar for section screens with quick access to Settings.
 ///

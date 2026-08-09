@@ -8,6 +8,7 @@ import '../../../core/ulid.dart';
 import '../../../i18n/i18n.dart';
 import '../../notes/providers.dart';
 import '../../projects/providers.dart';
+import '../../tasks/data/task_text.dart';
 import '../../tasks/providers.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/ai_context_builder.dart';
@@ -408,7 +409,7 @@ class AiBubbleController extends Notifier<AiBubbleState> {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) return;
     final trimmed = text.trim();
-    final title = _clipTitle(trimmed);
+    final title = clipTaskTitle(trimmed);
     await ref.read(taskStoreProvider).create(workspaces.first.id, {
       'title': title,
       'status': 'inbox',
@@ -426,15 +427,8 @@ class AiBubbleController extends Notifier<AiBubbleState> {
         ? '${shared.text}\n${shared.url}'.trim()
         : shared.text.trim();
     await ref.read(noteStoreProvider).create(workspaces.first.id, {
-      'title': _clipTitle(body),
+      'title': clipTaskTitle(body),
       'contentMarkdown': body,
     });
-  }
-
-  String _clipTitle(String text) {
-    final firstLine = text.split('\n').first;
-    return firstLine.length <= 140
-        ? firstLine
-        : '${firstLine.substring(0, 139).trimRight()}…';
   }
 }
