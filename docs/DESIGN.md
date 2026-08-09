@@ -1105,3 +1105,102 @@ which is what lets the tests assert a ROUND TRIP instead of hand-written
 fixtures. It is not a CommonMark implementation and does not try to be — nested
 lists are out because Quill's own model is flat.
 
+> **Round 17 supersedes the scope of this section, not its rules.** §28's seven
+> rules stay true for *importing*; §29 below covers reading, editing and owning
+> a markdown document. The survey and the scope decision behind §29 live in
+> [MARKDOWN.md](MARKDOWN.md).
+
+## 29. The markdown workspace (round 17 — Epic 24, OPH-246…OPH-252)
+
+A note is a document. Round 17 makes AllisWell good enough at documents that a
+person stops leaving the app to read a `README.md`. The feature survey, the
+take/later/reject inventory and the model decision are in
+[MARKDOWN.md](MARKDOWN.md); this section is the binding UI contract.
+
+### 29.1 The three modes
+
+| # | Rule | Why |
+| --- | --- | --- |
+| D1 | **Exactly three modes: Reading · Live · Source.** One control switches them; the control shows which one is active and never hides. | Obsidian's triple is the only mental model users already have. A fourth mode is a design failure, not a feature. |
+| D2 | **Reading is the default for a document that arrived from outside**; Live is the default for a note the user wrote here. | The first thing you do with someone else's file is read it. The first thing you do with yours is keep writing. |
+| D3 | **A mode switch preserves the caret, the scroll position and the undo history.** | A switch that loses your place is a switch nobody uses twice. |
+| D4 | **Reading is never editable-looking.** No caret, no placeholder, no toolbar — but checkboxes in task lists ARE tappable, and ticking one writes to the document. | The one interaction people genuinely expect from a rendered task list. Everything else pretending to be editable is a lie. |
+| D5 | **Split view (Source ⇄ Reading, scroll-synced both ways) appears only ≥ 900 px** and is a toggle inside Source mode, not a fourth mode. | Zettlr/VS Code behaviour. On a phone a split pane gives two useless columns. |
+
+### 29.2 Rendering
+
+| # | Rule | Why |
+| --- | --- | --- |
+| D6 | **GFM is the dialect.** If GitHub renders it, AllisWell renders it: tables, task lists, footnotes, strikethrough, autolinks, alerts (`> [!NOTE]`), fenced code, `$…$`/`$$…$$` math. | Every file our users already own is written for that renderer. Anything narrower is a broken viewer. |
+| D7 | **Rendered markdown is themed from tokens, never from the package.** Headings use the type scale; code panels, tables and callouts use `AwTokens`; `contrast.py` passes in both themes. | Rule 11 has no carve-out for third-party widgets. |
+| D8 | **Wide content scrolls inside its own box.** Tables and code blocks get horizontal scroll; the page never scrolls sideways. | The single most common markdown-on-mobile failure. |
+| D9 | **Every code block carries its language label and a copy button.** | GitHub/VS Code baseline; the copy button is the reason people open a README on a phone. |
+| D10 | **A document is untrusted input.** HTML blocks render as escaped source, never live. `javascript:`/`data:` URIs are inert text. Remote images follow the note-embed rules. Diagrams render from a parsed AST — no web view, no JS engine on the reading path. | §24 AI6 is not about AI; it is about untrusted documents, and a `.md` from a stranger's repo is exactly that. |
+| D11 | **When a block cannot be drawn, show the source and say why** — never a blank, never a silent drop. | §10 F3. A missing diagram that leaves a gap is indistinguishable from a bug. |
+| D12 | **Front matter is a properties header, not text.** A leading YAML block renders as a compact key/value strip that can be collapsed. | Every Jekyll/Hugo file starts with one; dumping it as body text makes the app look broken on the first screen. |
+
+### 29.3 Navigating a long document
+
+| # | Rule | Why |
+| --- | --- | --- |
+| D13 | **The outline is one tap away and follows you.** A heading tree, current section highlighted, scroll-synced. Sheet on phones, side panel ≥ 900 px. | Obsidian's auto-scroll-to-current-section; a 2 000-line README is unusable without it. |
+| D14 | **Headings fold.** Collapse state is per-session, never persisted into the document. | VS Code. Folding must never mutate somebody's file. |
+| D15 | **Find & replace exists and is reachable by keyboard.** The toolbar's search button stops being disabled. | It is currently switched off in `QuillSimpleToolbarConfig` — a control that exists and does nothing (§22). |
+| D16 | **In-document anchors work.** `[link](#heading)` scrolls to that heading. | Otherwise every table of contents in every imported file is dead. |
+
+### 29.4 Writing comfort
+
+| # | Rule | Why |
+| --- | --- | --- |
+| D17 | **Lists continue themselves**, renumber themselves, and nest with Tab / Shift-Tab. | The biggest single typing-comfort win, and it is the thing the flat Delta model blocked. |
+| D18 | **On a phone, a scrolling markdown toolbar sits above the keyboard.** On desktop/web, keyboard shortcuts and a command palette do the same job. | Obsidian, Bear and iA Writer all converged here; the phone has no room for a palette. |
+| D19 | **Slash commands are the second path to every toolbar action**, never the only one. | §22 reachability: an invisible command surface is not a feature. |
+| D20 | **Paste is smart and reversible.** HTML pastes as markdown; a URL over a selection makes a link; a clipboard image uploads as an attachment. One undo restores the raw paste. | "Smart" paste without one-step undo is hostile. |
+| D21 | **Save state is visible.** Autosave keeps working; a small, non-blocking indicator says saved / saving / failed. | Silent autosave plus an eventual failure is how people lose work and trust. |
+| D22 | **Word and character count are always available, never in the way.** | Ulysses; a status affordance, not a panel. |
+| D23 | **Focus mode dims, it does not hide.** Everything but the current paragraph fades; nothing is removed from the layout. | iA Writer. Hiding causes reflow; dimming does not. |
+
+### 29.5 Somebody else's file (W-rules)
+
+These govern writing back to a file the app did not create. This is the only
+feature in the round that can destroy a user's data.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| W1 | **An external document is permanently marked as external** — a banner with the real file name, visible in every mode, for the whole session. | §28 M3 extended: the moment editing is possible, "which file am I changing" stops being a nicety. |
+| W2 | **Writing back is explicit.** Autosave belongs to AllisWell's own notes; an external file changes only on a deliberate save. | Auto-writing somebody's repo file is indefensible. |
+| W3 | **Editability is probed, not assumed.** If the OS gave us read-only access or an expired security scope, the banner says "read-only" and the save action is absent — not present and failing. | A dead button is worse than a missing one (§22). |
+| W4 | **Byte-faithful or refuse.** If the note's canonical form is not markdown text, AllisWell offers "Save as a note", not "Save to file". | A WYSIWYG round-trip reflows a hand-formatted file; doing that silently to somebody's document is data loss with good intentions. |
+| W5 | **Changed underneath = never silently overwritten.** If the file changed on disk since it was opened, the save is a choice: reload, overwrite, or save a copy. | The conflict-copy stance the sync layer already takes (AGENTS §6). |
+| W6 | **Recently opened files are listed in the app.** | A file the OS handed us once is otherwise unreachable forever — §22 again. |
+
+## 30. Attaching a photo, and looking at it (round 17 — OPH-244 / OPH-245)
+
+Round 17 #2: on an iPhone, "Add file" opened the document browser, photos were
+nowhere, and no permission was ever asked for.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| A1 | **Three named ways in, not one generic one: Photos · Camera · Files.** The attach control opens a small menu; each item says what it opens. | "Dosya seç" is a promise about the Files app. Someone looking for a photo has no reason to tap it, and if they do, their photos are not there. |
+| A2 | **Photos means the system photo picker** (iOS `PHPickerViewController`, Android Photo Picker) — which needs **no permission at all** and shows no dialog. | Measured: `file_picker` 12 routes `FileType.image/video/media` to `PHPicker` and everything else to `UIDocumentPickerViewController`. The missing permission prompt was not a bug — the wrong picker was being opened. |
+| A3 | **No broad media permission is ever requested.** If a path needs `READ_MEDIA_IMAGES` or full-library access, that path is wrong. | Play policy rejects apps that declare `READ_MEDIA_IMAGES` when the Photo Picker would do; a permission dialog is also a worse experience than no dialog. |
+| A4 | **The description area carries the attach affordance too**, not just a section further down the screen. | Round 17: the owner looked for it in the description first. That is where people expect it, because that is where notes put it. |
+| A5 | **Image attachments show as thumbnails**, other files as rows. | A grid of file names is not how anyone reviews photos. |
+| A6 | **Tapping an image opens a real viewer: pinch-zoom, double-tap zoom, pan, swipe between the images of that task, share/save, and the file name in the bar.** | The round's literal ask. It is also the piece that makes attaching photos worth doing. |
+| A7 | **One viewer, everywhere.** Task attachments, note embeds and the Files section all open the same component. | `_EmbedImageViewer` exists today, is private to `note_media.dart`, and is reachable only from notes — the definition of the §22 problem. |
+| A8 | **Failure is a stated reason, not a spinner.** Storage unconfigured, upload failed, file gone: each says which. | §10 F3, already the rule for attachments. |
+
+## 31. The widget header: date, clock, count (round 17 — OPH-253)
+
+Round 17 #4: the widget's header has the date on the left and today's open-task
+count on the right; the owner wants the **system clock** above that count, bold
+and readable.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| C1 | **The header's right column is two stacked lines: the clock on top (bold, prominent), the open count under it.** The left column (day number, weekday, month) is unchanged. | The requested layout; the date block is already load-bearing and stays put. |
+| C2 | **The clock respects the device's 12/24-hour setting and locale**, and is drawn with tabular figures so it does not jitter. | A clock that shows 24-hour time to someone who set 12-hour is not their clock. |
+| C3 | **The clock is never a stale number pretending to be live.** On Android it ticks (`TextClock` is a `@RemoteView`, so it updates itself with no refresh budget). On iOS a widget cannot tick: `Text(date, style: .time)` renders the value from the timeline entry and holds it, and only `.timer`/`.relative`/`.offset` update live. iOS therefore gets minute-granular timeline entries — and if the system stops honouring them, the header must degrade to something that is *true* (the date block alone), never to a wrong time. | A wrong clock is worse than no clock, and this repo has already paid for "it looks right, so it is right" once (the white Android icon, round 16). |
+| C4 | **The clock never costs a data refresh.** It is presentation over the entry's own date; no extra snapshot writes, no extra `getTimeline` calls. | WidgetKit budgets a widget to roughly 40–70 reloads a day; spending them on a clock would starve the task list. |
+| C5 | **At zero open tasks the count still hides** (existing behaviour) and the clock moves to the vertical centre of the right column. | The count already hides at zero; a clock hanging off a missing second line looks broken. |
+

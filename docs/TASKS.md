@@ -6104,6 +6104,486 @@ bulamaz — DESIGN §22. 2 MB üstü dosya dürüst mesajla reddedilir. **Testin
 yakaladığı gerçek hata:** `take()` `initState` içinde provider yazıyordu
 (Riverpod yasaklıyor); okuma initState'te, temizleme kareden sonra. 20 yeni test.)_
 
+## Epic 24 — Feedback round 17: paylaşım hattı, görsel ekleme, Markdown çalışma tezgâhı, widget saati (v1.4.0)
+
+_(Doğdu 2026-08-09 — sahibin dört maddelik listesi. (1) iPhone'da bir yazıyı seçip
+"Paylaş → AllisWell" dediğinde **hiçbir şey olmuyor** — çökme raporu bile yok; iki farklı
+kaynaktan (seçili metin, Mail'den kopyalanan metin) denendi, ikisinde de aynı sessizlik.
+Beklenti: AI varsa paylaşılan metni otomatik olarak sisteme uygun bir göreve çevirmesi,
+AI yoksa **detaylı ekleme sheet'inin başlık alanına yapıştırılmış** olarak açılması.
+(2) Göreve **resim eklenemiyor**: önce açıklama alanında bir ek yolu arandı, yoktu;
+"Dosya ekle" iPhone'da doğrudan dosya yöneticisini açtı ve orada fotoğraflar
+görünmüyor — beklenen izin diyaloğu da hiç gelmedi. İstenen: hem dosya hem resim
+eklenebilmesi ve eklenen resmin görev detayında **zoom/pinch yapılabilen bir
+görüntüleyicide** açılması. (3) **Markdown editörü/görüntüleyicisi bu epic'in en büyük
+işi** — bu bir düzeltme değil, YENİ İŞ: en az 10 modern md editörü/görüntüleyicisi
+taranıp mantıklı özelliklerin eklenmesi, ve bunun README + landing'de en önemli
+özelliklerden biri olarak gerçek ekran görüntüleriyle pazarlanması. (4) Widget'ta
+sağdaki boşluğa, açık görev sayısının hemen üstüne **cihazın sistem saati** kalın ve
+okunaklı biçimde gelmeli.
+Bağlayıcı metinler bu turda yazıldı: **[MARKDOWN.md](MARKDOWN.md)** (alan taraması —
+13 ürün, 41 özellik kararı, model seçenekleri, kaynak linkleri orada) ve DESIGN
+**§29** (markdown çalışma tezgâhı), **§30** (ek seçme + görsel görüntüleyici),
+**§31** (widget başlığı).
+_Numara notu:_ **OPH-236 depoda iki kez kullanıldı** (Epic 22 "Sohbet UX cilası" ve
+Epic 23 "Android ikonu"); ikisi de kapalı, geriye dönük düzeltilmiyor — bu epic
+OPH-242'den devam eder.)_
+
+> **Turun tek cümlesi:** dört maddenin üçü "kod eksik değil, **hat kopuk**" sınıfından
+> (paylaşım uzantısı doğru çalışıp cevapsız bir kapıyı çalıyor; ek seçici doğru çalışıp
+> yanlış seçiciyi açıyor; widget başlığında yer var, saat yok) — dördüncüsü ise gerçek
+> bir ürün genişlemesi: notların bir **belge** olduğunu kabul edip AllisWell'i birinin
+> Typora/Obsidian yerine `.md` okumak için açacağı kadar iyi yapmak.
+
+**Round'un ÖLÇÜLMÜŞ gerçekleri (planlama turu, 2026-08-09 — hiçbiri varsayım değil):**
+
+| # | Bulgu | Kanıt | Sonuç |
+| - | ----- | ----- | ----- |
+| 1 | iOS paylaşım uzantısı ana uygulamayı **kayıtlı olmayan bir URL şemasıyla** çağırıyor: `RSIShareViewController` `ShareMedia-<hostAppBundleIdentifier>:share` URL'ini kurup `openURL:` çağırıyor, ama `ios/Runner/Info.plist`'te yalnız `alliswell` ve Google şeması kayıtlı — **`ShareMedia-com.alliswell.alliswell` YOK** | `~/.pub-cache/.../receive_sharing_intent-1.7.0/ios/Classes/RSIShareViewController.swift:173` + paket README satır 192–195 + `ios/Runner/Info.plist` `CFBundleURLTypes` | Bu tek başına "hiçbir şey olmadı + çökme yok" belirtisini birebir üretir. OPH-242'nin ilk hipotezi; **ölçülerek** doğrulanacak, varsayılmayacak |
+| 2 | iOS 18+ **uygulama uzantılarının `openURL:` selector hilesini kapattı**: UIKit "BUG IN CLIENT OF UIKIT… migrate to the non-deprecated `UIApplication.open`" basıyor ve `UIApplication` zaten uzantılarda unavailable; Apple DTS'in cevabı "bu workaround'ları kullanmayın" | [KeyboardKit: iOS 18 breaks selector-based URL opening](https://keyboardkit.com/blog/2024/09/11/ios18-breaks-selector-based-url-opening) · [Apple Forums: iOS 18 ShareExtension openURL](https://developer.apple.com/forums/thread/764570) · [Issue with using openURL in iOS Extensions](https://developer.apple.com/forums/thread/762458) | Şema eklemek YETMEYEBİLİR. OPH-242 üç hipotezi de sırayla eler ve sonuç ne çıkarsa yazar; plugin sürümü/alternatifi gerekirse **ADR** ister |
+| 3 | Uygulama **sahne (UIScene) yaşam döngüsünde**: `Info.plist`'te `UIApplicationSceneManifest` var ve `SceneDelegate: FlutterSceneDelegate`. Bilinen boşluk: uygulama **sonlandırılmış** durumdayken `scene(_:openURLContexts:)` çağrılmaz — URL `scene(_:willConnectTo:)`'ın `connectionOptions.urlContexts`'inde gelir | [Flutter: UIScene adoption](https://docs.flutter.dev/release/breaking-changes/uiscenedelegate) · [FlutterPluginSceneLifeCycleDelegate](https://api.flutter.dev/ios-embedder/interface_flutter_plugin_scene_life_cycle_delegate.html) · [Apple Forums 686071](https://developer.apple.com/forums/thread/686071) | Paylaşım neredeyse her zaman **soğuk başlangıçtır** → bu tam da bizim vakamız. İkinci hipotez |
+| 4 | Ek seçici iOS'ta **yanlış seçiciyi** açıyor: `pick_files_io.dart` `FilePicker.pickFiles()`'ı tip vermeden çağırıyor (varsayılan `FileType.any`); file_picker 12'nin iOS kaynağı `case "image","video","media"` için **`PHPickerViewController`**, geri kalan her şey için `UIDocumentPickerViewController` açıyor | `file_picker-12.0.0-beta.7/darwin/.../IOSFilePickerHandler.swift:87, 220–236` + `pick_files_io.dart:14` | Fotoğrafların görünmemesi bug değil, **yanlış çağrı**. Çözüm için **yeni paket gerekmiyor** |
+| 5 | Beklenen izin diyaloğunun gelmemesi de doğru davranış: `PHPickerViewController` süreç-dışı çalışır ve **hiçbir fotoğraf izni istemez** | [flutter/flutter#106799](https://github.com/flutter/flutter/issues/106799) · [image_picker docs](https://pub.dev/packages/image_picker) | İzin eklenmeyecek; ASIL kural "izin isteme" (DESIGN §30 A2/A3) |
+| 6 | `image_picker`'a geçmek **Play riski**: Android 13+ `READ_MEDIA_IMAGES` beyanı Play politikası gereği reddedilmeye yol açıyor, kaldırınca da seçici bozuluyor | [flutter/flutter#171493](https://github.com/flutter/flutter/issues/171493) · [#171494](https://github.com/flutter/flutter/issues/171494) | Mevcut `file_picker` korunur; yeni bağımlılık ancak ölçülmüş bir gerekçeyle ve ADR ile gelir |
+| 7 | **Quill Delta bu turun istediği blokların yarısını taşıyamaz**: `flutter_quill` 11.5.1 çekirdeğinde tablo düğümü yok; dipnot, matematik, mermaid, iç içe liste için de temsil yok (DESIGN §28 zaten "nested lists are out because Quill's own model is flat" diyor) | `flutter_quill-11.5.1/lib/src/document/` taraması + DESIGN §28 | "MD editörünü güçlendir" bir UI işi değil **model kararı**. [MARKDOWN.md §4](MARKDOWN.md) üç seçeneği yazdı; ADR-0027 (OPH-246) seçer ve **hiçbir render işi ondan önce başlamaz** |
+| 8 | `flutter_markdown` **30 Nisan 2025'te Flutter ekibi tarafından sonlandırıldı**; resmî devamı `flutter_markdown_plus` | [flutter/flutter#162966](https://github.com/flutter/flutter/issues/162966) · [Foresight devir yazısı](https://foresightmobile.com/blog/flutter-markdown-plus-google-handover) | Render motoru seçimi OPH-246'da **ölçülerek** yapılır (4 aday + kendi renderer'ımız) |
+| 9 | Hedef lehçe **GFM**: tablo, görev listesi, dipnot, üstü çizili, autolink, `[!NOTE]` uyarıları, mermaid çitleri, `$…$` KaTeX | [GFM guide 2026](https://macmdviewer.com/blog/github-markdown-guide) · [GFM cheat sheet](https://www.markdowntools.io/github-markdown-cheat-sheet) | DESIGN §29 D6: "GitHub render ediyorsa AllisWell de eder" — bundan dar olan bir görüntüleyici bozuktur |
+| 10 | Widget saati iki platformda **aynı şey değil**: Android `TextClock` `@RemoteView`'dür, RemoteViews içinde kendi kendine tıklar; iOS'ta `Text(date, style: .time)` **canlı DEĞİLDİR** (timeline girdisinin anını basıp donar), yalnız `.timer`/`.relative`/`.offset` canlı güncellenir ve widget'a günde ~40–70 reload bütçesi verilir | [AOSP TextClock](https://github.com/aosp-mirror/platform_frameworks_base/blob/master/core/java/android/widget/TextClock.java) · [Displaying dynamic dates in widgets](https://developer.apple.com/documentation/widgetkit/displaying-dynamic-dates) · [Keeping a widget up to date](https://developer.apple.com/documentation/widgetkit/keeping-a-widget-up-to-date) | DESIGN §31 C3: Android tıklar, iOS dakikalık timeline girdileriyle yaklaşır ve **yanlış saat göstermektense saati gizler** |
+
+**Round'da karara bağlananlar (AGENTS §8 — sor değil, karar ver ve yaz):**
+paylaşımın AI'sız hedefi artık **bubble değil, dolu create sheet** (sahibin beklentisi
+budur ve AI'sı olmayan kullanıcı için bubble bir çıkmaz sokaktır — AI varken bubble/onay
+kartı yolu aynen kalır); ek seçme **yeni paket almadan** çözülür (bulgu #4/#6);
+`_EmbedImageViewer` özelden çıkıp **tek paylaşılan `AwImageViewer`** olur (§22
+ulaşılabilirlik); markdown tarafında **hiçbir kod ADR-0027'dan önce yazılmaz**; mermaid
+**web view ile YAPILMAZ** (güvenilmez belge + JS motoru = §24 AI6'nın tam karşıtı) —
+ayrıştırılmış AST'den çizilir ya da dürüst yer tutucuya düşer; harici dosyaya geri
+yazma **bayt-sadık ya da hiç** (DESIGN §29 W4); iOS'ta saat bütçe harcamaz (§31 C4).
+
+**Sıra bağlayıcı:** `242 → 243` (paylaşım hattı) · `244 → 245` (ek + görüntüleyici) ·
+**`246` (ADR kapısı — markdown'da ilk iş)** `→ 247 → 248 → 249 → 250 → 251` · `252`
+(pazarlama, markdown bittikten sonra) · `253` (widget saati — bağımsız, sıra dışı
+alınabilir). **Cihaz isteyenler:** 242 (gerçek iPhone + gerçek Android), 244/245
+(iki platformda seçici + izin turu), 251 (iOS security-scoped URL, Android
+`content://` yazma), 253 (iki cihazda gece-yarısı/dakika sınırı gözlemi).
+
+### OPH-242 — Paylaşım hattı iOS'ta neden sessiz: teşhis, kablolama, kalıcı kanıt
+
+_(⚠️ KISMEN — 2026-08-09/10. **Arıza tek değil ÜÇ katmandı** ve üçü de gerçek
+iOS 26.2 simülatöründe, `log show` ile ÖLÇÜLDÜ. Sırayla soyuldular:_
+
+_**L1 — uzantı hiç çalışmıyordu.** Planın hipotez listesinde bu yoktu; log
+söyledi: `AllisWellShare` dyld'de, kendi kodunun tek satırı koşmadan, **83 ms**'de
+ölüyordu → `Library not loaded: @rpath/AppAuth.framework/AppAuth`. Sebep:
+`Pods-AllisWellShare.*.xcconfig` uzantıya uygulamanın **TÜM link satırını**
+veriyor (`-framework AppAuth`, tüm Firebase, GoogleSignIn, receive_sharing_intent)
+ama `LD_RUNPATH_SEARCH_PATHS`'i `$(inherited) /usr/lib/swift`'te bırakıyor.
+O framework'ler `Runner.app/Frameworks`'te duruyor — bir appex'in kendi kopyası
+olamaz — dolayısıyla dyld'nin bakacağı yer yoktu. **Bir appex'in dyld ölümü
+kullanıcıya çökme raporu ÜRETMEZ:** paylaşım sayfası kapanır ve hiçbir şey olmaz.
+Sahibin cümlesinin birebir kaynağı budur. Düzeltme üç `Flutter/AllisWellShare*.xcconfig`
+dosyasına tek satır (pbxproj'e dokunulmadı — SETUP.md'nin 2. tuzağı); ürün
+doğrulaması `otool -l … | grep LC_RPATH` artık `@executable_path/../../Frameworks`
+gösteriyor ve logda "Library not loaded" YOK._
+
+_**L2 — şema kayıtlı değildi** (planın H1'i, ölçüldü ve düzeltildi):
+`RSIShareViewController.swift:173` `ShareMedia-com.alliswell.alliswell:share`
+kuruyor, `Info.plist`'te o şema yoktu. Eklendi; **üründe** doğrulandı
+(`plutil -extract CFBundleURLTypes` → şema `$(PRODUCT_BUNDLE_IDENTIFIER)` ile
+doğru çözülmüş) ve **canlı**: `simctl openurl` ile o URL açıldığında iOS
+"AllisWell ile açılsın mı?" sordu ve uygulama Safari'den öne geldi. Yan kazanım:
+`GENERATE_INFOPLIST_FILE = YES` şüphesi ELENDİ — appex'in ürün plist'i
+`NSExtension` + `AppGroupId` + sürüm paritesini (1.3.0/1.3.0) taşıyor._
+
+_**L3 — iOS 26 eklentinin yönlendirmesini reddediyor** (planın H3'ü, ölçüldü,
+AÇIK): L1+L2 düzeldikten sonra uzantı **çalışıyor ve payload'ı App Group'a
+YAZIYOR** (`group.…plist` → `ShareKey => [{"path":"https:…","type":"url"}]`) —
+ama logda uzantının kendi süreci basıyor:
+`BUG IN CLIENT OF UIKIT: The caller of UIApplication.openURL(_:) needs to
+migrate to the non-deprecated UIApplication.open(...). Force returning false (NO).`
+`RSIShareViewController.redirectToHostApp()` responder zincirinde `openURL:`
+selector'ünü arıyor; iOS 18+ bunu zorla NO döndürüyor ve `UIApplication` zaten
+uzantılara kapalı. Denenen ve **yetmeyen** çözüm: zincirin ilk halkası bizim
+sınıfımız olduğu için `ShareViewController`'a `@objc func openURL(_:)` konup
+`extensionContext.open(_:)`e çevrildi — uygulama yine öne gelmedi (kod repoda,
+gerekçesiyle; zararsız ve doğru API). **Kalan iş:** `receive_sharing_intent`
+≥1.8 (SPM-only — repo CocoaPods, gerçek maliyet) / alternatif paket / uzantıya
+kendi compose UI'ını verip yönlendirmeyi bırakma → **ADR-0029**._
+
+_**Bugünkü net kazanım:** paylaşılan içerik artık KAYBOLMUYOR. L1 öncesi hiçbir
+şey yazılmıyordu; şimdi App Group'a düşüyor ve `getInitialMedia()` uygulamanın
+bir sonraki açılışında onu okuyor. "Hiçbir zaman hiçbir şey" → "uygulamayı
+açtığında orada". L3 kapanınca anında olacak._
+
+_**Teşhis izi kondu** (bir daha kanıtlanamaz rapor olmasın): drift v16
+`share_events` + `ShareLog` (AlarmLog'un birebir ikizi: asla fırlatmaz, 100'lük
+halka tampon, **içerik ASLA — yalnız tür ve bayt**), `shareBinderProvider`
+artık her varışı ve her okuma hatasını yazıyor (eskiden hepsini sessizce
+yutuyordu), Ayarlar → **Paylaşım günlüğü** (`/settings/share-log`) kopyala
+butonlu. Ekranın kapsam cümlesi asıl bulguyu taşıyor: **boş liste bir eksiklik
+değil, CEVAPTIR** — içerik Dart'a hiç ulaşmamış demektir. Bekçi testi
+`test/native_config_test.dart` (`web_shell_test.dart` kalıbı) şemayı ve Android
+filtrelerini koruyor.)_
+
+- [ ] **Üç hipotez SIRAYLA elenir, atlanmaz** (Epic 22'nin dersi: "spec var ≠ davranış
+      var"; round 16'nın dersi: "üretilemeyen hatanın değişkeni genelde senin
+      ortamındır" — bu kez raporcunun cihazı bizde, o yüzden ölçüm cihazda yapılır):
+      **H1** `ios/Runner/Info.plist`'e `CFBundleURLTypes` → `ShareMedia-$(PRODUCT_BUNDLE_IDENTIFIER)`
+      eklenir (bulgu #1) ve gerçek iPhone'da paylaşım denenir; **H2** düzelmezse sahne
+      yolu ölçülür — `scene(_:willConnectTo:)`'ın `connectionOptions.urlContexts`'i ile
+      `scene(_:openURLContexts:)` ayrı ayrı loglanır (bulgu #3: soğuk başlangıçta
+      ikincisi çağrılmaz); **H3** hâlâ düzelmezse uzantının `openURL:` çağrısının iOS
+      18+ tarafından reddedildiği kabul edilir (bulgu #2) ve **`Console.app`/`log stream`
+      çıktısı kanıt olarak STATE'e yazılır**.
+- [ ] **App Group gerçekten yazıyor mu:** uzantı payload'ı `UserDefaults(suiteName:
+      "group.com.alliswell.alliswell")`'e yazamıyorsa (provisioning profile App Group'u
+      taşımıyorsa) yönlendirme çalışsa bile uygulama BOŞ açılır. Uzantı tarafında
+      suite'in `nil` olma durumu ayrı ayrı ölçülür ve ayırt edilir.
+- [ ] **H3 çıkarsa yol ayrımı ADR ile:** `receive_sharing_intent` ≥1.8 (SPM-only —
+      repo CocoaPods, bkz. pubspec notu) / alternatif paket / uzantıya kendi compose
+      UI'ını verip payload'ı App Group'a yazdırıp yönlendirmeyi bırakmak (uygulama bir
+      sonraki açılışta okur — "sessizlik" yerine "gecikme", dürüst bir düşüş).
+      Karar **ADR-0028** olur ve paylaşım bağımlılığını seçen
+      **[ADR-0023](adr/0023-stt-and-share-intent-dependencies.md)'ü süperseder**
+      (ADR-0024'ün ADR-0002'yi süpersede etme kalıbı); sessizce paket değiştirilmez.
+- [ ] **Android hattı da ölçülür** (sahip yalnız iPhone denedi): `ACTION_SEND`
+      `text/plain` gerçek cihazda Chrome/Gmail'den denenir, soğuk + sıcak.
+- [ ] **Bir daha "kanıtlanamaz arıza" olmasın:** paylaşım hattına Epic 16'nın alarm
+      günlüğü kalıbıyla **teşhis kaydı** eklenir — `initialShare`/`shares`/
+      `initialDocument`/`documents` her tetiklendiğinde cihaz-yerel bir halka tampona
+      (zaman + tür + bayt sayısı, **içerik değil**) yazar ve Ayarlar → Tanılama'dan
+      görünür. Sahibin "hiçbir şey olmadı" raporu bir dahaki sefere ölçülebilir olur.
+- [ ] Testler: `Info.plist`'te `ShareMedia-` şemasının varlığını **bekçileyen** bir test
+      (round 16'nın `web_shell_test.dart` kalıbı — `flutter create` bu dosyayı toptan
+      yeniden yazabilir); teşhis halka tamponunun saf birim testleri (sıra, kapasite,
+      içerik taşımadığı).
+- **Kabul:** gerçek bir iPhone'da Safari'de metin seç → Paylaş → AllisWell → uygulama
+  açılır ve payload gelir (soğuk VE sıcak); aynısı Android'de; hangi hipotezin doğru
+  çıktığı ve neden, TASKS'a + STATE'e yazılır.
+- **Doğrulama:** `flutter analyze` · `flutter test` · cihazda soğuk/sıcak paylaşım turu
+  (ekran kaydı ya da tanılama ekranı görüntüsü) · `log stream --predicate 'subsystem
+  contains "alliswell"'` çıktısı.
+
+### OPH-243 — Paylaşılan metin gerçekten işe dönüşsün: AI varsa görev, yoksa dolu create sheet
+
+_(⚠️ KISMEN — 2026-08-09/10. Sahibin kararı uygulandı: **AI yokken YALNIZ dolu
+create sheet** ("Not al" ve "Inbox'a kaydet" paylaşım yolundan kalktı; AI açıkken
+bubble'da duruyorlar — bilinçli bir yetenek kaybı, sessiz değil). `home_shell`
+artık `_routeShare` ile karar veriyor: `configured` ise bubble, değilse
+`showTaskCreateSheet(initialTitle:, initialDescription:)`. Sheet iki yeni
+parametre aldı ve prefill'de **caret sona alınıyor** — alan autofocus'lu, dolu
+ve baştan seçili bir alan paylaşılanı tek tuşla siler._
+
+_**Saf çekirdek ayrıldı:** `features/tasks/data/task_text.dart` —
+`clipTaskTitle` (kontrolörün `_clipTitle`'ı buraya TAŞINDI, üç kopya olmasın)
++ `taskFieldsFromSharedText`. Testin yakaladığı gerçek kusur: ilk satır
+kırpılmıyordu, yani görünmez bir sondaki boşluk başlığa sızıyordu — artık
+trim'leniyor ve gövde kararı uzunlukla değil DEĞERLE veriliyor._
+
+_**Testin yakaladığı ikinci, daha ciddi şey — AÇIK:** yeni
+`share_routing_test.dart` gerçek yolu (binder → shell → hedef) sürüyor, çünkü
+mevcut `ai_share_test.dart` bubble'ı doğrudan açıp bu kararı hiç göremiyor.
+AI-kapalı yol yeşil. **AI-açık + SOĞUK başlangıç ise yanlış dala gidiyor:**
+`AiStatusController.build()` `currentWorkspaceProvider`'ın değeri yokken
+düpedüz `AiStatus.disabled` dönüyor ve ilk karede biri provider'ı okuyor →
+durum "AI yok" diye çözülüyor, soğuk paylaşım tam o pencereye düşüyor.
+`_aiStatusForShare` içinde `workspacesProvider`'ı beklemek YETMİYOR (provider
+o ana kadar yer tutucuyla tamamlanmış oluyor). Doğru düzeltme çağrı yerinde
+bir yama değil, `aiStatusProvider`'a "workspace henüz yok" ile "AI kapalı"
+arasındaki farkı öğretmek — beş yüzeyin bağlı olduğu bir provider. Gap testin
+içine gerekçesiyle YAZILDI (saklanmadı) ve sıcak paylaşım varyantı yeşil.
+Kullanıcı maliyeti tek yönlü ve küçük: soğuk uygulamaya paylaşan AI'lı kullanıcı
+bubble yerine dolu create sheet görür — çalışan bir hedef, çıkmaz değil.)_
+
+- [ ] **AI yapılandırılmamışsa** (ya da `AI_ENABLED=false`): paylaşılan metin doğrudan
+      **detaylı görev oluşturma sheet'ini** açar; **başlık alanı metnin ilk satırıyla
+      dolu** (140 karakterde kırpılır — `captureToInbox`'ın mevcut kuralı), kalanı
+      açıklamaya düşer, URL varsa açıklamanın sonuna eklenir. Sahibin beklentisi budur;
+      bugünkü davranış (AI bubble'ı, Not al + Inbox çipleriyle) AI'sı olmayan kullanıcı
+      için çıkmaz sokaktır.
+- [ ] **AI yapılandırılmışsa:** bugünkü yol korunur ve tamamlanır — bubble açılır,
+      `extractUtterance(source:'share')` çalışır, sonuç **onay kartına** iner
+      (v1 değişmezi: onay kartı atlanamaz). `AiRouteOffline`/hata → AI'sız yola düşer
+      (dolu create sheet), sessiz kaybolma yok.
+- [ ] Beş çip (Görev yap / Not al / Özetle / Soru sor / Inbox'a kaydet) AI'lı yolda
+      aynen kalır; AI'sız yolda create sheet'in **kendi** eylemleri geçerlidir — ikinci
+      bir eylem dili icat edilmez.
+- [ ] Paylaşılan içerik **markdown dosyasıysa** OPH-241'in görüntüleyicisine gider
+      (mevcut ayrım korunur: `documents()` vs `shares()`).
+- [ ] i18n: yeni dizeler `en`+`tr`; `npm run check:i18n` temiz.
+- [ ] Testler: AI kapalı → create sheet açıldı + başlık doğru dolu + hiçbir AI çağrısı
+      yapılmadı (`extract`'a dokunulmadı assert'i, OPH-225'in "sıfır AI" kalıbı);
+      AI açık → bubble + extract + onay kartı; extract hata → create sheet'e düşüş;
+      çok satırlı metnin başlık/açıklama bölünmesi; 140 karakter kırpması.
+- **Kabul:** iki yol da cihazda çalışır; AI'sız kullanıcı paylaştığı metni **iki
+  dokunuşta** göreve çevirir.
+- **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n`.
+
+### OPH-244 — Ek seçimi üç yol: Fotoğraflar · Kamera · Dosyalar (DESIGN §30 A1–A4)
+
+- [ ] `pickUploads()` tek bir girişten çıkıp **niyet alan** bir API'ye döner:
+      `pickUploads(AttachmentSource source)` — `photos` → `FileType.media`
+      (iOS'ta `PHPickerViewController`, bulgu #4), `files` → bugünkü `FileType.any`
+      belge seçici. Web/masaüstü tek yolda kalır (orada ayrım yok) — seam korunur,
+      `filePickerProvider` imzası testlerde enjekte edilebilir kalır.
+- [ ] **Kamera** kararı bu task'ta verilir ve YAZILIR: `file_picker` kamera açmaz.
+      Ya yeni bir bağımlılık gelir (ADR + bulgu #6'nın Play riski ölçülerek) ya da
+      "Kamera" **v1'de sunulmaz** — sunulmayacaksa menüde yer almaz (dead affordance
+      yasak, §22). Karar gerekçesiyle DESIGN §30'a işlenir.
+- [ ] **Android tarafı ölçülür**: `file_picker`'ın `FileType.media` yolu Android 13+
+      Photo Picker'a mı düşüyor yoksa `ACTION_GET_CONTENT`'e mi — ve **hangi izinleri
+      manifest'e ekliyor**. `READ_MEDIA_IMAGES` görünürse (bulgu #6) alternatif ölçülür;
+      hiçbir koşulda geniş medya izni beyan edilmez.
+- [ ] `AttachmentsSection`'ın tek "Dosya ekle" butonu **üç maddelik bir menüye** döner
+      (DESIGN §30 A1); her madde ne açtığını söyler.
+- [ ] **Açıklama alanında da ek yolu** (A4): görev oluşturma sheet'i ve görev detayının
+      açıklama bloğunun altına aynı menü — sahip önce orada aradı.
+- [ ] Görsel ekler **küçük resim** olarak listelenir (A5), diğerleri bugünkü satır
+      olarak. Küçük resim `fileUrlProvider` cache'ini kullanır (OPH-153'ün dersi:
+      widget build'inde future üretme).
+- [ ] i18n + kontrast: yeni menü/dizeler `en`+`tr`; `contrast.py` **FAILURES: 0**.
+- [ ] Testler: her kaynak doğru `FileType` ile çağırıyor (fake picker enjekte edilir,
+      platform kanalı yok); menü üç madde gösteriyor (kamera kararına göre iki/üç);
+      depolama yapılandırılmamışken menü açılmıyor ve mevcut açıklayıcı satır kalıyor;
+      küçük resim ızgarası + bozuk görselde dürüst yer tutucu.
+- **Kabul:** gerçek iPhone'da "Fotoğraflar" fotoğraf ızgarasını açar, **izin diyaloğu
+  çıkmaz**, seçilen fotoğraf yüklenir; "Dosyalar" bugünkü belge seçicidir; aynısı
+  Android'de. Play/App Store için **hiçbir yeni izin beyanı yok**.
+- **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n` ·
+  `python3 scripts/design/contrast.py` · iki cihazda seçici turu.
+
+### OPH-245 — `AwImageViewer`: zoom, kaydırma, galeri, paylaş/kaydet (DESIGN §30 A6–A8)
+
+- [ ] `_EmbedImageViewer` (`note_media.dart` içinde **özel**, yalnız notlardan
+      ulaşılabilir) çıkarılıp `widgets/` altına **paylaşılan `AwImageViewer`** olur —
+      §22'nin ders kitabı vakası.
+- [ ] Yetenekler: **pinch-zoom** (mevcut `InteractiveViewer` temel alınır),
+      **çift-dokunuşla yakınlaş/uzaklaş** (odak noktası dokunulan yer), **pan**,
+      **aynı hedefin görselleri arasında yatay kaydırma** (görev detayındaki 4 fotoğraf
+      arasında geçiş), üstte dosya adı + `n/m` sayacı, altta **paylaş / kaydet**,
+      geri jesti ve `Esc`.
+- [ ] Üç yüzeyden de aynı görüntüleyici açılır: görev ekleri, not gömüleri, Dosyalar
+      bölümü (A7).
+- [ ] Yüklenirken iskelet, hata durumunda **sebepli** mesaj (A8) — mevcut
+      `file.couldNotOpen` yerine ayrıştırılmış sebep (ağ / bulunamadı / depolama kapalı).
+- [ ] Erişilebilirlik: görüntüleyici `Semantics` etiketi taşır, zoom kontrolleri
+      klavyeyle de erişilebilir (masaüstü/web), dokunma hedefleri ≥ 44 px.
+- [ ] Testler: çift-dokunuş ölçeği değiştiriyor; kaydırma indeksi ve sayaç doğru;
+      tek görselde kaydırma kapalı; hata durumunda sebep gösteriliyor; üç çağıran
+      yüzeyin de aynı sınıfı açtığı (widget testi).
+- **Kabul:** göreve eklenen bir fotoğrafın üstüne dokunulunca tam ekran açılır, iki
+  parmakla büyütülüp gezilebilir, diğer fotoğraflara kaydırılarak geçilir.
+- **Doğrulama:** `flutter analyze` · `flutter test` · `python3 scripts/design/contrast.py`.
+
+### OPH-246 — Markdown: model kararı + render motoru seçimi + ADR-0027 (kod yazmaz)
+
+> **Bu epic'in en büyük işinin kapısı. 247–252'nin hiçbiri bu task bitmeden başlamaz.**
+> Alan taraması ve özellik envanteri planlama turunda yapıldı ve
+> **[MARKDOWN.md](MARKDOWN.md)**'ye yazıldı (13 ürün, 41 özellik kararı, kaynaklar §9).
+> Bu task o dokümanın açık bıraktığı **iki kararı** kapatır.
+
+- [ ] **Karar 1 — not modeli.** [MARKDOWN.md §4](MARKDOWN.md)'ün üç seçeneği
+      (A: Delta kanonik + özel embed'ler · B: Markdown kanonik · C: niyete göre bölünmüş,
+      `content_format` bayrağı) implementasyon gözüyle tartılır. Ölçülecekler: mevcut
+      notların sayısı ve şekli (kaç tanesi salt-metin, kaç tanesi embed taşıyor),
+      migration maliyeti, `AGENTS.md` §6 çatışma politikasının (belge düzeyi iyimser
+      kilit + çatışma kopyası) her seçenekte ne olduğu, ve OPH-241'in ROUND TRIP
+      garantisinin akıbeti.
+- [ ] **Karar 2 — render motoru.** Dört aday (`flutter_markdown_plus` (+`_latex`),
+      `markdown_widget`, `gpt_markdown`, `flutter_smooth_markdown`) ve "kendi
+      renderer'ımız (`markdown` Dart paketi üzerine)" **ÖLÇÜLEREK** karşılaştırılır:
+      GFM kapsamı (tablo/dipnot/uyarı/görev listesi), token'lı tema kabiliyeti
+      (DESIGN §29 D7 — paketin varsayılan stilleri KABUL EDİLEMEZ), güvenli render
+      (D10: ham HTML inert, `javascript:`/`data:` inert), altı platform, bakım durumu,
+      paket boyutu. Ölçüm bir **fikstür belgesiyle** yapılır (aşağıdaki madde).
+- [ ] **Kabul fikstürü yazılır** — `apps/app/test/fixtures/markdown_conformance.md`:
+      GFM'in her özelliğini içeren tek bir belge (tablolar, hizalamalı tablo, görev
+      listesi, dipnot, `[!NOTE]`…`[!CAUTION]`, iç içe liste 3 seviye, dilli kod çiti,
+      satır içi + blok matematik, mermaid çiti, front matter, HTML bloğu,
+      `javascript:` linki, kırık görsel, `#başlık` çapası, uzun tablo). Bu dosya
+      hem seçimin hakemi, hem 247'nin regresyon ağı olur.
+- [ ] **Mermaid kararı**: AST'den çizim mi, dürüst yer tutucu mu (D11), yoksa
+      tamamen park mı — **web view kesin olarak hariç** (güvenilmez belge + JS motoru).
+      Karar gerekçesiyle yazılır.
+- [ ] **ADR-0027** (`docs/adr/0027-markdown-document-model-and-renderer.md`) yazılır:
+      Bağlam / Karar / Alternatifler / Sonuçlar / **Zorlama** (bu karar CI'da nasıl
+      zorlanıyor — fikstür testi, format bayrağının şema kısıtı, tema token taraması).
+- [ ] MARKDOWN.md §4/§5 kararla güncellenir; kapsam dışı bırakılanlar gerekçeleriyle
+      parking-lot'a girer.
+- **Kabul:** ADR-0027 kabul edilmiş; fikstür belgesi commit'li; hangi motorun neden
+  kazandığı **sayılarla** yazılı (kaç GFM özelliği geçti / kaç tanesi tema alıyor).
+- **Doğrulama:** `npm run docs:check` (varsa) · ADR indeksi + `ARCHITECTURE.md` tablosu
+  senkron · fikstür belgesi mevcut motor prototipiyle render edilip ekran görüntüsü
+  task'ın altına eklenir.
+
+### OPH-247 — Render motoru: GFM tam kapsam, token'lı tema, güvenli render (DESIGN §29 D6–D12)
+
+- [ ] ADR-0027'un seçtiği motor bağlanır ve **okuma görünümü** doğar: tablolar, görev
+      listeleri (tıklanabilir — D4), dipnotlar, üstü çizili, autolink, `==vurgu==`,
+      emoji kısa kodları, uyarı kutuları, iç içe listeler, satır içi/blok matematik.
+- [ ] **Kod blokları**: dil etiketi + sözdizimi vurgulama + **kopyala butonu** (D9);
+      yatay kaydırma kendi kutusunun içinde (D8).
+- [ ] **Token'lı tema** (D7): başlıklar tip ölçeğinden, kod paneli/tablo/uyarı kutusu
+      `AwTokens`'tan; ham hex yok, `Colors.*` yok; `contrast.py` iki temada da
+      **FAILURES: 0**.
+- [ ] **Güvenlik** (D10): HTML blokları kaçırılmış kaynak olarak render edilir, asla
+      canlı değil; `javascript:`/`data:` URI'leri **inert metin**; uzak görseller not
+      gömülerinin kurallarına uyar. Epic 20'nin `ai_redteam.json` korpusu bu yüzeye de
+      koşturulur (aynı vakalar bir markdown belgesinin içine gömülür).
+- [ ] **Front matter** properties şeridi olarak render edilir (D12), gövde metni olarak
+      değil.
+- [ ] Çizilemeyen blok → kaynağı + sebebi gösterir (D11), boşluk değil.
+- [ ] Testler: `markdown_conformance.md` fikstürünün her özelliği için bir assert
+      (golden değil, **yapısal** — hangi widget doğdu); kırmızı-takım korpusu → sıfır
+      canlı HTML, sıfır tıklanabilir `javascript:`; geniş tablo yatay kaydırıyor,
+      sayfa kaymıyor; iki temada kontrast.
+- **Kabul:** `markdown_conformance.md` AllisWell'de GitHub'daki gibi okunuyor; yan yana
+  ekran görüntüsü task'ın altına eklenir.
+- **Doğrulama:** `flutter analyze` · `flutter test` · `python3 scripts/design/contrast.py` ·
+  `npm run check:i18n`.
+
+### OPH-248 — Üç mod: Okuma · Canlı · Kaynak (+ bölünmüş görünüm, senkron kaydırma) (D1–D5)
+
+- [ ] Not editörü **üç modlu** olur; tek bir segment kontrolü modu gösterir ve gizlenmez
+      (D1). Varsayılan: dışarıdan gelen belge → Okuma, burada yazılan not → Canlı (D2).
+- [ ] **Kaynak modu** doğar: markdown metnini düz metin olarak düzenler, **kendisi
+      sözdizimi vurgulu**. Bugün ham markdown'ı düzenlemenin HİÇBİR yolu yok.
+- [ ] Mod geçişi **caret'i, kaydırma konumunu ve geri-al geçmişini korur** (D3).
+- [ ] ≥ 900 px'te **bölünmüş görünüm** (Kaynak ⇄ Okuma) + **iki yönlü senkron
+      kaydırma**, Kaynak modunun içinde bir anahtar olarak (D5) — dördüncü mod değil.
+- [ ] Okuma modu düzenlenebilir görünmez (D4): caret yok, placeholder yok, araç çubuğu
+      yok; ama görev listesi kutuları tıklanır ve belgeye yazar.
+- [ ] Mevcut `_showMarkdownPreview()` (monospace ham metin sheet'i) **kaldırılır** —
+      yerini Kaynak modu ve Okuma modu alır; app bar'daki ikon buna göre sadeleşir.
+- [ ] Testler: üç mod arası geçişte caret/scroll/undo korunuyor; dar ekranda bölünmüş
+      görünüm YOK; senkron kaydırma iki yönde; Okuma modunda caret yok ama checkbox
+      yazıyor; varsayılan mod kaynağa göre doğru seçiliyor.
+- **Kabul:** aynı belgede üç mod arasında gidip gelmek yerini kaybettirmiyor.
+- **Doğrulama:** `flutter analyze` · `flutter test` · geniş + dar ekran widget testleri.
+
+### OPH-249 — Uzun belgeyi gezmek: anahat, katlama, bul-değiştir, çapalar (D13–D16)
+
+- [ ] **Anahat (TOC)**: başlık ağacı, bulunulan bölüm vurgulu, kaydırmayla senkron;
+      telefonda sheet, ≥ 900 px'te yan panel (D13).
+- [ ] **Başlık katlama** (D14) — katlama durumu oturumluk, **belgeye asla yazılmaz**.
+- [ ] **Bul & değiştir** (D15): `QuillSimpleToolbarConfig`'te bugün
+      `showSearchButton: false` ile **kapalı** olan kontrol açılır ve gerçekten çalışır;
+      klavye kısayolu (⌘F/Ctrl+F, ⌘⌥F/Ctrl+H) bağlanır; eşleşme sayacı + sonraki/önceki.
+- [ ] **Belge içi çapalar** (D16): `[bağlantı](#başlık)` o başlığa kaydırır; slug üretimi
+      GitHub kuralıyla aynı (küçült, boşluk→tire, noktalama at) ve Türkçe karakterlerde
+      `core/fold.dart` ile tutarlı.
+- [ ] Testler: 500 başlıklı sentetik belgede anahat doğru ağaç kuruyor; katlama belgeyi
+      değiştirmiyor (delta/markdown baytları aynı); bul-değiştir tüm eşleşmeleri buluyor
+      ve tek geri-al ile dönüyor; `#turkce-baslik` çapası çalışıyor.
+- **Kabul:** 2 000 satırlık bir README'de bölüm bulmak tek dokunuş.
+- **Doğrulama:** `flutter analyze` · `flutter test`.
+
+### OPH-250 — Yazma konforu: liste otomasyonu, mobil araç çubuğu, slash, akıllı yapıştırma (D17–D23)
+
+- [ ] **Liste otomasyonu** (D17): Enter listeyi sürdürür, boş maddede listeden çıkar,
+      sıralı listeler yeniden numaralanır, **Tab / Shift-Tab ile iç içe geçer**
+      (ADR-0027'un modeli iç içe listeyi taşıyor olmalı — taşımıyorsa bu madde ADR'ye
+      geri döner, sessizce kırpılmaz).
+- [ ] **Telefonda klavye üstü kaydırılabilir markdown araç çubuğu** (D18); masaüstü/web'de
+      **klavye kısayolları** (⌘B/I/K, H1–H3, kod, alıntı, liste) + **komut paleti** (⌘K).
+- [ ] **Slash komutları** (D19) her araç çubuğu eylemine ikinci yol olarak; tek yol asla
+      değil.
+- [ ] **Akıllı yapıştırma** (D20): HTML → markdown (`flutter_quill_delta_from_html`
+      zaten ağaçta), seçimin üstüne URL → bağlantı, panodaki görsel → ek olarak yüklenir;
+      **tek geri-al ham yapıştırmaya döner**.
+- [ ] Masaüstü/web'de editöre **sürükle-bırak** dosya.
+- [ ] **Kayıt durumu göstergesi** (D21): kaydedildi / kaydediliyor / başarısız —
+      engellemeyen, küçük. Bugün autosave tamamen sessiz ve hatası da sessiz.
+- [ ] **Kelime/karakter sayısı** (D22) ve **odak modu** (D23 — söndürür, gizlemez).
+- [ ] i18n: tüm yeni dizeler `en`+`tr`.
+- [ ] Testler: liste otomasyonunun her kenarı (sürdür / çık / numaralandır / nest);
+      yapıştırma dönüşümleri + tek geri-al; kayıt göstergesinin üç durumu (hata durumu
+      `_save`'in mevcut retry davranışıyla tutarlı); odak modu düzeni bozmuyor
+      (reflow yok).
+- **Kabul:** uzun bir belgeyi telefonda yazmak klavye üstü araç çubuğuyla mümkün;
+  masaüstünde klavyeden elini kaldırmadan biçimlendirilebiliyor.
+- **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n` ·
+  `python3 scripts/design/contrast.py`.
+
+### OPH-251 — Dış dosyanın sahipliği: aç, düzenle, **geri kaydet** (DESIGN §29 W1–W6)
+
+> Bu turun **veri kaybettirebilecek tek özelliği**. W-kuralları bağlayıcıdır.
+
+- [ ] **Kalıcı dış-belge bandı** (W1): gerçek dosya adı, her modda, oturum boyunca.
+- [ ] **Açık kaydetme** (W2): autosave AllisWell'in kendi notlarına aittir; dış dosya
+      yalnız bilinçli bir eylemle değişir.
+- [ ] **Yazılabilirlik ÖLÇÜLÜR** (W3): iOS security-scoped URL (
+      `startAccessingSecurityScopedResource`, süresi dolabilir) ve Android
+      `content://` yazma izni **kaydetmeden önce** yoklanır; salt-okunur dosyada bant
+      "salt okunur" der ve **kaydet eylemi hiç görünmez** (ölü buton yasak).
+- [ ] **Bayt-sadıklık** (W4): notun kanonik biçimi markdown değilse "Dosyaya kaydet"
+      sunulmaz, "Not olarak kaydet" sunulur.
+- [ ] **Altından değişme** (W5): dosya diskte değiştiyse sessizce ezilmez — yeniden yükle
+      / üzerine yaz / kopya olarak kaydet seçimi. Dosya değişikliği izleme (canlı yeniden
+      yükleme) buraya bağlanır.
+- [ ] **Son açılan dosyalar listesi** (W6) — Notlar sekmesinden ulaşılır; OS'un bir kez
+      verdiği dosya bir daha erişilmez olmasın.
+- [ ] **Projeye ekle**: dış dosya, notlara kalıcı olarak aktarılmadan da bir projeye
+      bağlanabilir (sahibin isteği: "isterse notlara yaz, projeye ekle").
+- [ ] Testler: `MarkdownSource` seam'i **yazma** kenarını da alır ve fake ile test edilir
+      (disk yok); salt-okunur dosyada kaydet eylemi hiç build edilmiyor; altından değişen
+      dosyada üç seçenekli akış; son açılanlar listesi kapasitesi + kırık girdi temizliği.
+- **Kabul:** Mac'te bir `README.md` AllisWell ile açılır, düzenlenir, kaydedilir ve
+  **dosya diskte değişmiştir**; iPhone'da Dosyalar'dan açılan bir `.md` için aynısı ya
+  çalışır ya da bant dürüstçe "salt okunur" der.
+- **Doğrulama:** `flutter analyze` · `flutter test` · macOS + iOS + Android'de gerçek
+  dosya turu (öncesi/sonrası `shasum` çıktısı kanıt olarak yazılır).
+
+### OPH-252 — Pazarlama: README + landing + mağaza (beş özellik, gerçek ekran görüntüleri)
+
+- [ ] Sahibin sıraladığı **beş özellik** landing'de ve README'de öne çıkar
+      ([MARKDOWN.md §8](MARKDOWN.md)): (1) görevler + projeler ve görevlerin projelere
+      bağlanması, (2) **notlar + markdown görüntüleyici/editör** — not oluşturma, okuma,
+      bilgisayardaki `.md` dosyalarını açma/değiştirme/içe aktarma, (3) **alarmlı
+      görevler** — unutturmayan sistem, (4) proje ve görevle ilgili **tüm dosyaların aynı
+      yerde** durması, (5) **tekrarlı görevlerin** ne kadar ayrıntılı yapılandırılabildiği.
+- [ ] **Ekran görüntüleri**: mevcut set (`docs/screenshots/`, `docs/store/`) bu beş
+      başlığa göre denetlenir; **eksik olanlar** (markdown okuma görünümü, üç mod, dış
+      dosya bandı, görev eki + görsel görüntüleyici, tekrar dialog'u) `scripts/screenshots/`
+      harness'ıyla çekilir; **bayat olanlar** yenilenir. Hangi görüntünün nereye
+      gireceği task'ın altına tablo olarak yazılır.
+- [ ] `docs/COMPARISON.md`'ye markdown satırı; `docs/STORE-LISTING.md`'ye özellik
+      maddesi (+ mağaza guardrail'ları gözden geçirilir — round 13'ün bayat
+      "recurring tasks yok" dersi).
+- [ ] README'nin durum satırı (sürüm + test sayıları) güncellenir.
+- [ ] Landing (`apps/landing/`, Vue 3) beş bloğa göre düzenlenir; `npm run build` yeşil.
+- **Kabul:** landing'e ilk bakışta bu beş şey görünüyor ve her birinin **gerçek** bir
+  ekran görüntüsü var (mockup değil).
+- **Doğrulama:** landing build · `npm run lint` · görüntülerin çekildiği komutlar
+  task'ın altına yazılır (tekrar üretilebilirlik).
+
+### OPH-253 — Widget başlığında sistem saati (DESIGN §31 C1–C5)
+
+- [ ] **Android**: `tasks_widget.xml`'in sağ sütunu iki satır olur — üstte
+      **`TextClock`** (`@RemoteView`, RemoteViews içinde kendi tıklar, refresh bütçesi
+      harcamaz), altında mevcut `aw_open_today`. 12/24 saat cihaz ayarından
+      (`setFormat12Hour`/`setFormat24Hour` `RemoteViews.setCharSequence` ile), tabular
+      rakam, `aw_widget_text` rengi, kalın.
+- [ ] **iOS**: `AllisWellWidget.swift`'in başlık `HStack`'inin sağ tarafı `VStack` olur;
+      saat üstte kalın. **Bulgu #10 bağlayıcı:** `Text(date, style: .time)` canlı
+      değildir → timeline **dakika granülerliğinde** girdilerle üretilir (mevcut
+      "şimdi + 4 gece yarısı" kalıbının üstüne), saat **entry'nin kendi tarihinden**
+      çizilir (round 15'in bayat-gün dersinin aynısı).
+- [ ] **Dürüstlük kapısı (C3)**: iOS'ta girdi ufku dolduğunda ya da sistem timeline'ı
+      onurlandırmadığında başlık **yanlış bir saat göstermez** — saat gizlenir, tarih
+      bloğu kalır. Bu davranış bir testle sabitlenir (snapshot yaşı > eşik → saat yok).
+- [ ] **Bütçe (C4)**: saat için ek `home_widget` yazımı YOK, ek `getTimeline` çağrısı
+      YOK — sunum katmanı işi.
+- [ ] Sıfır açık görevde sayı gizli kalır ve saat sağ sütunun dikey ortasına gelir (C5).
+- [ ] Testler: `widget_snapshot.dart` tarafında entry tarihinden saat türetme saf testi;
+      eşik aşımında saatin düşmesi; Android layout'unun `TextClock` taşıdığını bekçileyen
+      test (round 16 `web_shell_test.dart` kalıbı).
+- **Kabul:** iki gerçek cihazda widget'ta saat görünür ve **dakika sınırını geçerken
+  değişir** (ekran kaydı ya da iki ekran görüntüsü kanıt olarak yazılır); iOS'un
+  gecikmesi ölçülür ve STATE'e sayıyla yazılır.
+- **Doğrulama:** `flutter analyze` · `flutter test` · Android release APK + iOS release
+  build'de widget turu.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
@@ -6159,6 +6639,14 @@ yakaladığı gerçek hata:** `take()` `initState` içinde provider yazıyordu
   haftalık AI özet e-postası; barındırılan ücretli "AllisWell AI" katmanı (ürün kararı);
   paylaşımda dosya/görsel anlama; günlük/haftalık AI incelemesi + not özetleme +
   toplantı-notu→görevler (v1.5 adayları — Epic 19 çıkarım ucunu yeniden kullanır).
+- **Round 17 park kuyruğu — Markdown (gerekçeler [MARKDOWN.md](MARKDOWN.md) §3):**
+  `[[wikilink]]`'ler + geri bağlantılar (bir bağlantı indeksi ister — kendi başına bir
+  özellik); graf görünümü, PDF üzerine not alma, atıf/BibTeX (**reddedildi** — başka bir
+  ürün); yazma hedefleri (Ulysses); sürüm geçmişi/anlık görüntüler (sunucu tarafı tasarım
+  ister); editör içi AI ("devam ettir", "yeniden yaz" — Epic 20'nin altyapısı hazır, ürün
+  kararı); DOCX/ePub dışa aktarma; klasör/vault izleme (**reddedildi** — biz markdown'ı
+  iyi okuyan bir görev uygulamasıyız, Obsidian değiliz); Vim/Emacs kısayolları ve özel CSS
+  temaları (**reddedildi** — Rule 11, tek tasarım sistemi).
 - Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).
