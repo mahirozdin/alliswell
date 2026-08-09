@@ -16,6 +16,7 @@ import 'package:alliswell/src/features/files/ui/file_widgets.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/tap_attach.dart';
 
 /// OPH-155 — the project "Files" tab: the aggregated file manager (project ∪
 /// task ∪ note files with source badges), filters, sort, uploads targeting
@@ -35,7 +36,7 @@ Future<Widget> signedInAppWith(
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(filePicker: () async => picks),
+      ...syncTestOverrides(filePicker: (_) async => picks),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -153,7 +154,7 @@ void main() {
     );
     await openFilesTab(tester, 'Yükleme projesi');
 
-    await tester.tap(find.byKey(const Key('project-add-file')));
+    await tapAttach(tester, find.byKey(const Key('project-add-file')));
     await tester.pumpAndSettle();
 
     expect(api.files, hasLength(1));

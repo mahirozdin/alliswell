@@ -205,6 +205,37 @@ jobs:
       - name: Tests
         run: flutter test
 
+  # OPH-244 / ADR-0027: the release APK must declare exactly the permissions we
+  # intend. Plugins contribute <uses-permission> at BUILD time and
+  # tools:node="remove" is silent when it matches nothing, so no Dart test can
+  # see this — only the built package can. A separate job so the fast app lane
+  # (analyze + tests) stays fast.
+  android-manifest:
+    name: Android (release manifest declares no media permission)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: apps/app
+
+      - name: Assert the shipped permission set
+        run: bash scripts/android/assert-permissions.sh
+
   landing:
     name: Landing site (build)
     runs-on: ubuntu-latest

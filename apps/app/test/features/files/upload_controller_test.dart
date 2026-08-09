@@ -99,15 +99,15 @@ void main() {
   late FakeTransport transport;
   late ProviderContainer container;
 
-  ProviderContainer build({List<PickedUpload> picks = const []}) =>
-      ProviderContainer(
-        overrides: [
-          filesApiProvider.overrideWithValue(api),
-          uploadTransportProvider.overrideWithValue(transport.call),
-          filePickerProvider.overrideWithValue(() async => picks),
-          syncEngineProvider.overrideWith((ref) => null),
-        ],
-      );
+  // OPH-244: the notifier no longer reads the picker — picking is the widget
+  // layer's job now — so this harness hands it files directly.
+  ProviderContainer build() => ProviderContainer(
+    overrides: [
+      filesApiProvider.overrideWithValue(api),
+      uploadTransportProvider.overrideWithValue(transport.call),
+      syncEngineProvider.overrideWith((ref) => null),
+    ],
+  );
 
   setUp(() {
     api = FakeFilesApi();
@@ -119,13 +119,18 @@ void main() {
   test(
     'happy path: every picked file inits, PUTs with progress, completes',
     () async {
-      container = build(picks: [picked('a.png'), picked('b.mp4')]);
+      container = build();
       final snapshots = <List<UploadJob>>[];
       container.listen(uploadsProvider, (_, next) => snapshots.add(next));
 
       await container
           .read(uploadsProvider.notifier)
-          .pickAndUpload(workspaceId: ws, targetType: 'task', targetId: 'T1');
+          .uploadAll(
+            workspaceId: ws,
+            targetType: 'task',
+            targetId: 'T1',
+            sources: [picked('a.png'), picked('b.mp4')],
+          );
 
       expect(container.read(uploadsProvider), isEmpty); // done jobs vanish
       expect(api.initNames, ['a.png', 'b.mp4']);

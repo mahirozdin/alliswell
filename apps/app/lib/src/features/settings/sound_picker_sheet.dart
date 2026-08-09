@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/files/providers.dart';
+import '../../features/files/ui/attach_menu.dart';
 import '../../features/workspaces/workspaces.dart';
 import '../../i18n/i18n.dart';
 import '../../notifications/alarm_sound.dart';
@@ -214,8 +215,14 @@ class _SoundPickerSheetState extends ConsumerState<_SoundPickerSheet> {
 
   /// Uploads a sound into the reserved folder, creating it on first use.
   Future<void> _upload() async {
-    setState(() => _busy = true);
     final messenger = ScaffoldMessenger.of(context);
+    // OPH-244: pick BEFORE the spinner. The picker is a full-screen system UI;
+    // showing a busy state behind it just means the sheet looks stuck for as
+    // long as the user browses. And it asks for audio now — it used to open an
+    // unfiltered file browser to choose a ringtone.
+    final picked = await pickFrom(context, ref, AttachSource.audioFiles);
+    if (picked.isEmpty || !mounted) return;
+    setState(() => _busy = true);
     try {
       final workspaces = await ref.read(workspacesProvider.future);
       if (workspaces.isEmpty) return;
@@ -229,7 +236,6 @@ class _SoundPickerSheetState extends ConsumerState<_SoundPickerSheet> {
           .read(folderStoreProvider)
           .create(workspaceId, kRingtoneFolderName);
 
-      final picked = await ref.read(filePickerProvider)();
       for (final source in picked) {
         if (soundUsability(source.name) == AwSoundUsability.inAppOnly) {
           // Said at upload time (N6), not discovered at 03:00.

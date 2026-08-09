@@ -15,6 +15,7 @@ import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/folder_store.dart';
 import '../providers.dart';
+import 'attach_menu.dart';
 import 'file_widgets.dart';
 
 /// The global Dosyalar section (round 8, OPH-170 — BLUEPRINT §12.12,
@@ -56,16 +57,18 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
         .create(workspaces.first.id, name, parentId: _currentFolderId);
   }
 
-  Future<void> _upload() async {
+  /// OPH-244: the picking happened in the widget; this only files the result.
+  Future<void> _upload(List<PickedUpload> picks) async {
     final workspaces = await ref.read(workspacesProvider.future);
     if (workspaces.isEmpty) return;
     await ref
         .read(uploadsProvider.notifier)
-        .pickAndUpload(
+        .uploadAll(
           workspaceId: workspaces.first.id,
           targetType: 'workspace',
           targetId: workspaces.first.id,
           folderId: _currentFolderId,
+          sources: picks,
         );
   }
 
@@ -423,7 +426,7 @@ class _FoldersLayer extends ConsumerWidget {
   final void Function(int index) onCrumb;
   final VoidCallback onRoot;
   final VoidCallback onCreateFolder;
-  final VoidCallback onUpload;
+  final Future<void> Function(List<PickedUpload> picks) onUpload;
   final void Function(Folder) onFolderActions;
   final void Function(FileAttachment) onMoveFile;
 
@@ -495,11 +498,12 @@ class _FoldersLayer extends ConsumerWidget {
                 label: Text('files.newFolder'.tr()),
               ),
               const SizedBox(width: AwSpace.x2),
-              TextButton.icon(
-                key: const Key('files-upload'),
-                onPressed: storageOn ? onUpload : null,
-                icon: const Icon(Icons.upload_file_outlined, size: 18),
-                label: Text('file.add'.tr()),
+              AttachButton(
+                buttonKey: const Key('files-upload'),
+                style: AttachButtonStyle.text,
+                enabled: storageOn,
+                icon: Icons.upload_file_outlined,
+                onPicked: onUpload,
               ),
             ],
           ),

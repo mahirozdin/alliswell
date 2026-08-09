@@ -15,6 +15,7 @@ import 'package:alliswell/src/features/files/providers.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/tap_attach.dart';
 
 /// OPH-170 — the global Dosyalar section (BLUEPRINT §12.12, DESIGN F7…F9).
 Future<Widget> app(FakeApi api, {List<PickedUpload> picks = const []}) async {
@@ -24,7 +25,7 @@ Future<Widget> app(FakeApi api, {List<PickedUpload> picks = const []}) async {
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(filePicker: () async => picks),
+      ...syncTestOverrides(filePicker: (_) async => picks),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -120,7 +121,7 @@ void main() {
     // Enter it and upload — the file lands IN the folder.
     await tester.tap(find.text('Yeni Klasör'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('files-upload')));
+    await tapAttach(tester, find.byKey(const Key('files-upload')));
     await tester.pumpAndSettle();
     expect(api.files.single['name'], 'rapor.pdf');
     expect(api.files.single['folderId'], api.folders.single['id']);

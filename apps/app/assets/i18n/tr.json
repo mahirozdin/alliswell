@@ -624,7 +624,13 @@
     "notConfiguredTitle": "Dosya deposu kapalı",
     "sourceProject": "Proje · {name}",
     "sourceTask": "Görev · {name}",
-    "sourceNote": "Not · {name}"
+    "sourceNote": "Not · {name}",
+    "attach": "Ekle",
+    "attachTitle": "Buna ekle",
+    "fromPhotos": "Fotoğraflar",
+    "fromCamera": "Fotoğraf çek",
+    "fromFiles": "Dosyalar",
+    "pickFailed": "Seçici açılamadı"
   },
   "files": {
     "myFolders": "Klasörlerim",

@@ -6,6 +6,7 @@ import '../../../i18n/i18n.dart' show AwTr;
 import '../../../theme/tokens.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../providers.dart';
+import 'attach_menu.dart';
 
 /// Inline note media (Epic 14, OPH-156 — BLUEPRINT §12.5 rev.).
 ///
@@ -290,23 +291,35 @@ class NoteMediaButtons extends ConsumerWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // OPH-244: two buttons, two sources. They used to call one untyped
+        // picker, so "Insert image" opened the document browser and the
+        // tooltip was simply a lie about what would happen. No attach MENU
+        // here — these are format-insertion buttons, not the attach control.
         IconButton(
+          key: const Key('note-insert-image'),
           tooltip: 'file.insertImage'.tr(),
           icon: const Icon(Icons.image_outlined),
-          onPressed: () => _pickAndInsert(context, ref),
+          onPressed: () =>
+              _pickAndInsert(context, ref, AttachSource.imageLibrary),
         ),
         IconButton(
+          key: const Key('note-insert-video'),
           tooltip: 'file.insertVideo'.tr(),
           icon: const Icon(Icons.movie_outlined),
-          onPressed: () => _pickAndInsert(context, ref),
+          onPressed: () =>
+              _pickAndInsert(context, ref, AttachSource.videoLibrary),
         ),
       ],
     );
   }
 
-  Future<void> _pickAndInsert(BuildContext context, WidgetRef ref) async {
+  Future<void> _pickAndInsert(
+    BuildContext context,
+    WidgetRef ref,
+    AttachSource source,
+  ) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
-    final picks = await ref.read(filePickerProvider)();
+    final picks = await pickFrom(context, ref, source);
     if (picks.isEmpty) return;
     final target = await ensureNote();
     if (target == null) return;

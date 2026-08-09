@@ -12,6 +12,7 @@ import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
 import '../providers.dart';
+import 'attach_menu.dart';
 
 /// Shared attachment UI (OPH-154/155, DESIGN §10): one row anatomy for task
 /// attachments, the project Files tab and note media — F1 says these three
@@ -555,18 +556,17 @@ class AttachmentsSection extends ConsumerWidget {
         const SizedBox(height: AwSpace.x2),
         Align(
           alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: configured
-                ? () => ref
-                      .read(uploadsProvider.notifier)
-                      .pickAndUpload(
-                        workspaceId: workspaceId,
-                        targetType: targetType,
-                        targetId: targetId,
-                      )
-                : null,
-            icon: const Icon(Icons.attach_file),
-            label: Text('file.add'.tr()),
+          child: AttachButton(
+            buttonKey: const Key('attach-button'),
+            enabled: configured,
+            onPicked: (picks) => ref
+                .read(uploadsProvider.notifier)
+                .uploadAll(
+                  workspaceId: workspaceId,
+                  targetType: targetType,
+                  targetId: targetId,
+                  sources: picks,
+                ),
           ),
         ),
       ],

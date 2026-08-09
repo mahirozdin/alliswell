@@ -16,6 +16,7 @@ import 'package:alliswell/src/features/files/ui/file_widgets.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/tap_attach.dart';
 
 /// OPH-154 — the task detail "Attachments" section, end to end over the fake
 /// server: seeded files render from the replica, uploads run the real
@@ -36,7 +37,7 @@ Future<Widget> signedInAppWith(
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(filePicker: () async => picks),
+      ...syncTestOverrides(filePicker: (_) async => picks),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -111,7 +112,7 @@ void main() {
     await openTaskDetail(tester, 'Yüklemeli iş');
     await scrollToAttachments(tester);
 
-    await tester.tap(find.text('Add file'));
+    await tapAttach(tester, find.byKey(const Key('attach-button')));
     await tester.pumpAndSettle();
 
     // The full handshake ran against the fake server…
@@ -209,7 +210,7 @@ void main() {
 
     // Pick: both selections appear as removable pending rows — no upload yet
     // (there is no task to own one).
-    await tester.tap(find.byKey(const Key('task-sheet-attach')));
+    await tapAttach(tester, find.byKey(const Key('task-sheet-attach')));
     await tester.pumpAndSettle();
     expect(find.text('plan.pdf'), findsOneWidget);
     expect(find.text('silinecek.txt'), findsOneWidget);

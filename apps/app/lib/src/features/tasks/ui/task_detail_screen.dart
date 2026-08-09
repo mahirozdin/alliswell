@@ -14,6 +14,8 @@ import '../../../sections.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/linkified_text.dart';
 import '../../../widgets/status_views.dart';
+import '../../files/providers.dart';
+import '../../files/ui/attach_menu.dart';
 import '../../files/ui/file_widgets.dart';
 import '../../integrations/providers.dart';
 import '../../projects/data/project.dart';
@@ -225,7 +227,25 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               const SizedBox(height: 4),
               // OPH-164: the task's own description — editable in place with
               // the title's autosave DNA; URLs are tappable in display mode.
-              _DescriptionField(task: task, onApply: _apply),
+              _DescriptionField(
+                task: task,
+                onApply: _apply,
+                // One destination, two doors: this lands in the very list the
+                // Attachments section at the bottom of this screen renders.
+                attach: AttachButton(
+                  buttonKey: const Key('task-description-attach'),
+                  style: AttachButtonStyle.text,
+                  labelKey: 'file.attach',
+                  onPicked: (picks) => ref
+                      .read(uploadsProvider.notifier)
+                      .uploadAll(
+                        workspaceId: task.workspaceId,
+                        targetType: 'task',
+                        targetId: task.id,
+                        sources: picks,
+                      ),
+                ),
+              ),
               const SizedBox(height: AwSpace.x3),
               _SectionCard(
                 title: 'task.details'.tr(),
@@ -695,10 +715,25 @@ class _ChecklistState extends State<_Checklist> {
 /// focus loss. Empty text saves as null — a task with nothing to say has no
 /// description row, not a blank one.
 class _DescriptionField extends ConsumerStatefulWidget {
-  const _DescriptionField({required this.task, required this.onApply});
+  const _DescriptionField({
+    required this.task,
+    required this.onApply,
+    required this.attach,
+  });
 
   final Task task;
   final Future<void> Function(TaskAction action) onApply;
+
+  /// The attach affordance (DESIGN §30 A4) — round 17 #2: this is where the
+  /// owner looked for it first, because it is where notes put it.
+  ///
+  /// Passed IN rather than placed beside this widget by the parent: only this
+  /// state knows whether the description is empty, being edited or displayed,
+  /// and the three layouts want the button in three different places. Tapping
+  /// it while editing moves focus out, which flushes the autosave — correct,
+  /// not a bug. Files land in the SAME list the Attachments section below
+  /// renders: one destination, two doors.
+  final Widget attach;
 
   @override
   ConsumerState<_DescriptionField> createState() => _DescriptionFieldState();
@@ -771,47 +806,73 @@ class _DescriptionFieldState extends ConsumerState<_DescriptionField> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (_editing) {
-      return TextField(
-        key: const Key('task-description'),
-        controller: _controller,
-        focusNode: _focus,
-        maxLines: null,
-        onChanged: _onChanged,
-        decoration: InputDecoration(
-          hintText: 'task.descriptionHint'.tr(),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          filled: false,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-        ),
-        style: theme.textTheme.bodyMedium,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            key: const Key('task-description'),
+            controller: _controller,
+            focusNode: _focus,
+            maxLines: null,
+            onChanged: _onChanged,
+            decoration: InputDecoration(
+              hintText: 'task.descriptionHint'.tr(),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              filled: false,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+            ),
+            style: theme.textTheme.bodyMedium,
+          ),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: widget.attach,
+          ),
+        ],
       );
     }
     if (_current.trim().isEmpty) {
+      // "Add description · Attach" on one line — literally the round-17 ask.
       return Align(
         alignment: AlignmentDirectional.centerStart,
-        child: TextButton.icon(
-          key: const Key('task-add-description'),
-          onPressed: _startEditing,
-          icon: const Icon(Icons.notes_outlined, size: 18),
-          label: Text('task.addDescription'.tr()),
+        child: Wrap(
+          spacing: AwSpace.x2,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            TextButton.icon(
+              key: const Key('task-add-description'),
+              onPressed: _startEditing,
+              icon: const Icon(Icons.notes_outlined, size: 18),
+              label: Text('task.addDescription'.tr()),
+            ),
+            widget.attach,
+          ],
         ),
       );
     }
-    return InkWell(
-      key: const Key('task-description-display'),
-      borderRadius: BorderRadius.circular(AwRadius.s),
-      onTap: _startEditing,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: LinkifiedText(
-          _current,
-          style: theme.textTheme.bodyMedium,
-          onOpen: (uri) => ref.read(urlLauncherProvider)(uri),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          key: const Key('task-description-display'),
+          borderRadius: BorderRadius.circular(AwRadius.s),
+          onTap: _startEditing,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: LinkifiedText(
+              _current,
+              style: theme.textTheme.bodyMedium,
+              onOpen: (uri) => ref.read(urlLauncherProvider)(uri),
+            ),
+          ),
         ),
-      ),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: widget.attach,
+        ),
+      ],
     );
   }
 }

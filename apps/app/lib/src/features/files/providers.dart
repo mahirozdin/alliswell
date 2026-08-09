@@ -1,10 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_exception.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
 import '../workspaces/workspaces.dart';
+import 'data/attach_source.dart';
 import 'data/file_attachment.dart';
 import 'data/folder_store.dart';
 import 'data/files_api.dart';
@@ -12,6 +14,7 @@ import 'data/pick_files.dart';
 import 'data/picked_upload.dart';
 import 'data/upload_controller.dart';
 
+export 'data/attach_source.dart';
 export 'data/file_attachment.dart' show FileAttachment, ProjectFileEntry;
 export 'data/files_api.dart' show FilesApi, StorageStatus, FileDownload;
 export 'data/picked_upload.dart' show PickedUpload;
@@ -34,10 +37,20 @@ final storageStatusProvider = FutureProvider<StorageStatus>(
   (ref) => ref.watch(filesApiProvider).storageStatus(),
 );
 
+/// Runs one named way of picking (OPH-244). Required positional argument, not
+/// an optional one: the bug this replaced was a call that forgot to say what it
+/// wanted, and a default would let that happen again.
+typedef FilePickerFn = Future<List<PickedUpload>> Function(AttachSource source);
+
 /// The platform file picker behind a seam (the urlLauncherProvider pattern) —
 /// widget tests inject picked files without a platform channel.
-final filePickerProvider = Provider<Future<List<PickedUpload>> Function()>(
-  (_) => pickUploads,
+final filePickerProvider = Provider<FilePickerFn>((_) => pickUploads);
+
+/// Which named ways this build offers (DESIGN §30 A1). A provider rather than a
+/// bare call so a widget test can choose a platform instead of inheriting the
+/// host's — `flutter_test` forces `defaultTargetPlatform` to android.
+final attachSourcesProvider = Provider<List<AttachSource>>(
+  (_) => attachMenuSources(isWeb: kIsWeb, platform: defaultTargetPlatform),
 );
 
 /// The presigned PUT itself. A BARE dio on purpose: the URL carries its own

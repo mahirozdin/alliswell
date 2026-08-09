@@ -70,15 +70,21 @@ class UploadsNotifier extends Notifier<List<UploadJob>> {
   @override
   List<UploadJob> build() => const [];
 
-  /// Opens the picker and starts one job per picked file.
-  Future<void> pickAndUpload({
+  /// Starts one job per ALREADY-PICKED file.
+  ///
+  /// OPH-244 moved the picking itself up to the widget layer: which named way
+  /// opened (Photos / Camera / Files) is a UI decision, and the notifier has no
+  /// business reading the picker to make it. That also makes "pick but upload
+  /// later" (the create sheet) and "pick then embed" (the note editor) ordinary
+  /// callers instead of special cases.
+  Future<void> uploadAll({
     required String workspaceId,
     required String targetType,
     required String targetId,
     String? folderId,
+    required List<PickedUpload> sources,
   }) async {
-    final picked = await ref.read(filePickerProvider)();
-    for (final source in picked) {
+    for (final source in sources) {
       await start(
         workspaceId: workspaceId,
         targetType: targetType,

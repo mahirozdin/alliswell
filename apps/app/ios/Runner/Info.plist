@@ -76,6 +76,14 @@
 	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>AllisWell shows your calendar next to your tasks, and adds the tasks you choose as calendar events. It never changes events it did not create.</string>
+	<!-- OPH-244: the ONLY new declaration the three-way attach menu costs.
+	     "Photos" goes through PHPickerViewController, which runs out of process
+	     and needs no permission and no dialog — NSPhotoLibraryUsageDescription
+	     below is legacy and stays only because removing a shipped string is a
+	     store-review conversation of its own. The camera genuinely needs this
+	     one. -->
+	<key>NSCameraUsageDescription</key>
+	<string>AllisWell uses the camera so you can take a photo and attach it to a task or a note. Photos are only taken when you ask.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>AllisWell needs access to your photos so you can attach them to tasks and notes.</string>
 	<key>NSMicrophoneUsageDescription</key>

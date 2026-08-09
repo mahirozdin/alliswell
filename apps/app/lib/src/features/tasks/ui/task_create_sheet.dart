@@ -11,6 +11,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
+import '../../files/ui/attach_menu.dart';
 import '../../files/ui/file_widgets.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
@@ -168,8 +169,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
 
   /// OPH-166: files are PICKED here but uploaded on save — a task must exist
   /// to own them. Until then they are plain local selections (removable).
-  Future<void> _pickFiles() async {
-    final picked = await ref.read(filePickerProvider)();
+  /// OPH-244: the picking moved into [AttachButton]; this only files what came
+  /// back. Uploads still wait for save — a task that does not exist yet has no
+  /// id to attach to.
+  void _addPending(List<PickedUpload> picked) {
     if (picked.isEmpty || !mounted) return;
     setState(() => _pendingFiles.addAll(picked));
   }
@@ -386,11 +389,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                           ),
                         Align(
                           alignment: AlignmentDirectional.centerStart,
-                          child: TextButton.icon(
-                            key: const Key('task-sheet-attach'),
-                            onPressed: _pickFiles,
-                            icon: const Icon(Icons.attach_file, size: 18),
-                            label: Text('file.add'.tr()),
+                          child: AttachButton(
+                            buttonKey: const Key('task-sheet-attach'),
+                            style: AttachButtonStyle.text,
+                            onPicked: (picks) async => _addPending(picks),
                           ),
                         ),
                       ],

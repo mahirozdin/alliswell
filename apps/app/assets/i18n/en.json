@@ -625,7 +625,13 @@
     "notConfiguredTitle": "File storage is off",
     "sourceProject": "Project · {name}",
     "sourceTask": "Task · {name}",
-    "sourceNote": "Note · {name}"
+    "sourceNote": "Note · {name}",
+    "attach": "Attach",
+    "attachTitle": "Add to this",
+    "fromPhotos": "Photos",
+    "fromCamera": "Take a photo",
+    "fromFiles": "Files",
+    "pickFailed": "Could not open the picker"
   },
   "files": {
     "myFolders": "My folders",

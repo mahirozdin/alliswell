@@ -3,7 +3,41 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10 (**OPH-242 + OPH-243 KISMEN BİTTİ — paylaşım arızası ÜÇ
+**Last updated:** 2026-08-10b (**OPH-244 BİTTİ (kod) — ek seçimi üç adlı yola ayrıldı,
+kamera geldi, Android'de SIFIR medya izni ölçülerek kanıtlandı. Süitler 834 (+13),
+analyze/i18n/kontrast/format temiz. Sıradaki iş: OPH-245.**
+Planlama turunun iki varsayımı ölçülünce TERS çıktı ve ikisi de kararı değiştirdi:
+(1) **`file_picker` Android'de A2'yi karşılayamıyor** — iOS'ta `FileType.media`
+PHPicker açıyor ama Android tarafı `ACTION_GET_CONTENT` kuruyor
+(`FileUtils.kt:180-250`), yani yalnız tip eklemek iPhone'u düzeltip Android'i
+raporun yolunda bırakırdı → medya `image_picker`'a taşındı. (2) **`image_picker`
+korkusu yersizmiş**: pub-cache'teki beş `image_picker_android` sürümünün hiçbiri
+`<uses-permission>` beyan etmiyor; asıl riskli paket **`camera`** —
+`camera_android_camerax` manifest'i `CAMERA` + `RECORD_AUDIO` +
+`WRITE_EXTERNAL_STORAGE` beyan ediyor, **ADR-0027'de gerekçesiyle reddedildi**.
+**Yeni beyan yüzeyi tek dize** (iOS `NSCameraUsageDescription`, üründe
+doğrulandı); Android'de sıfır izin ve bu bir İDDİA değil, ÖLÇÜM:
+`scripts/android/assert-permissions.sh` release APK'sının ikili manifest'ini
+(Play'in taradığı katman) commit'li allowlist'le TAM KÜME karşılaştırıyor —
+denylist değil, çünkü tehlike beklenmeyen izindir. Allowlist gerçek build'den
+doldu (`ACCESS_ADSERVICES_*`, `AD_ID`, `USE_BIOMETRIC`, `READ_GSERVICES` gibi
+tahmin edilemeyecek satırlar dahil): **18 izin, hiçbiri medya/kamera.** CI'ye
+ayrı `android-manifest` job'ı. Hiçbir Dart testi bunu doğrulayamaz.
+**İki tuzak kodda yorumlu:** `useAndroidPhotoPicker` varsayılan false (flip
+edilmezse aynı hataya düşer), masaüstünde `ImageSource.camera` `StateError`
+fırlatır (menü orada kamerayı sunmuyor — doğruluk gereği).
+**Dikiş:** `attach_source.dart` (saf), `filePickerProvider` → `FilePickerFn`
+zorunlu argümanla, `pickAndUpload` öldü → `uploadAll`; seçici artık tek yerden
+okunuyor. **Yüzeyler:** görev ekleri / Dosyalar / proje / create sheet ortak
+`AttachButton`; notlarda iki buton adını söylediği kütüphaneyi açıyor; zil sesi
+`audioFiles`; açıklama alanı kendi butonunu aldı (A4, tek varış iki kapı).
+A8 boşluğu kapandı (`PlatformException` hiç yakalanmıyordu).
+**DESIGN §30 düzeltildi:** A5/A6 zaten karşılanıyormuş (küçük resim +
+`InteractiveViewer` zoom) — sahip görmedi çünkü fotoğrafı hiç ekleyemedi;
+ikisi de OPH-245'e taşındı, A9/A10 eklendi. Markdown ADR'si **0028**'e kaydı.
+**Kalan:** cihaz turu (Fotoğraflar ızgarayı açıyor mu, izin diyaloğu ÇIKMIYOR mu,
+kamera çekiyor mu) — DoD'de zaten vardı.
+_Önceki blok:_ 2026-08-10 (**OPH-242 + OPH-243 KISMEN BİTTİ — paylaşım arızası ÜÇ
 katman çıktı, ikisi kapandı; süitler 821 (797+24), analyze/i18n/kontrast temiz.
 Sıradaki iş: OPH-244.**
 **Turun tek cümlesi: arıza tek değildi ve ilk katman diğer ikisini görünmez
@@ -77,7 +111,7 @@ bağlandı — ama **Quill Delta bu blokların yarısını taşıyamıyor**: `fl
 çekirdeğinde tablo düğümü yok, dipnot/matematik/mermaid/iç içe liste için temsil yok
 (DESIGN §28 zaten "Quill's own model is flat" diyor). MARKDOWN.md §4 üç seçeneği
 (Delta kanonik + embed / Markdown kanonik / niyete göre bölünmüş `content_format`)
-gerekçeleriyle yazdı; **ADR-0027 (OPH-246) seçer ve 247–252'nin hiçbiri ondan önce
+gerekçeleriyle yazdı; **ADR-0028 (OPH-246) seçer ve 247–252'nin hiçbiri ondan önce
 başlamaz.** Render motoru da ölçülerek seçilecek — `flutter_markdown` **30 Nisan
 2025'te sonlandırıldı**, resmî devamı `flutter_markdown_plus`; dört aday +
 kendi renderer'ımız bir **GFM uygunluk fikstürüyle** yarıştırılacak. Mermaid **web view

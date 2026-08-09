@@ -16,6 +16,7 @@ import 'package:alliswell/src/features/notes/data/delta_markdown.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
+import '../../support/fake_file_picker.dart';
 import '../../support/sync_overrides.dart';
 
 /// OPH-156 — inline note media: `alliswell://file/{id}` embeds render from
@@ -26,6 +27,7 @@ import '../../support/sync_overrides.dart';
 Future<Widget> signedInAppWith(
   FakeApi api, {
   List<PickedUpload> picks = const [],
+  RecordingFilePicker? picker,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
@@ -33,7 +35,7 @@ Future<Widget> signedInAppWith(
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(filePicker: () async => picks),
+      ...syncTestOverrides(filePicker: picker?.call ?? (_) async => picks),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -198,6 +200,31 @@ void main() {
     // …and the embed landed in the document, rendering our builder.
     expect(find.byType(AwNoteImageEmbed), findsOneWidget);
     expect(find.text('çekim.png'), findsOneWidget); // placeholder names it
+  });
+
+  testWidgets('the toolbar buttons ask for the library they NAME (OPH-244)', (
+    tester,
+  ) async {
+    // The highest-value assertion in this file. Both buttons used to call one
+    // untyped picker, so on an iPhone "Insert image" opened the document
+    // browser — the tooltip was a lie and nothing could see it, because the
+    // tests only checked that a file came back.
+    final api = FakeApi();
+    api.seedNote(title: 'Eklemeli not', plainText: 'gövde');
+    final picker = RecordingFilePicker();
+
+    await tester.pumpWidget(await signedInAppWith(api, picker: picker));
+    await openNote(tester, 'Eklemeli not');
+
+    await tester.tap(find.byKey(const Key('note-insert-image')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('note-insert-video')));
+    await tester.pumpAndSettle();
+
+    expect(picker.calls, [
+      AttachSource.imageLibrary,
+      AttachSource.videoLibrary,
+    ]);
   });
 
   testWidgets('a non-media pick uploads but explains it will not embed', (

@@ -6145,7 +6145,7 @@ OPH-242'den devam eder.)_
 | 4 | Ek seçici iOS'ta **yanlış seçiciyi** açıyor: `pick_files_io.dart` `FilePicker.pickFiles()`'ı tip vermeden çağırıyor (varsayılan `FileType.any`); file_picker 12'nin iOS kaynağı `case "image","video","media"` için **`PHPickerViewController`**, geri kalan her şey için `UIDocumentPickerViewController` açıyor | `file_picker-12.0.0-beta.7/darwin/.../IOSFilePickerHandler.swift:87, 220–236` + `pick_files_io.dart:14` | Fotoğrafların görünmemesi bug değil, **yanlış çağrı**. Çözüm için **yeni paket gerekmiyor** |
 | 5 | Beklenen izin diyaloğunun gelmemesi de doğru davranış: `PHPickerViewController` süreç-dışı çalışır ve **hiçbir fotoğraf izni istemez** | [flutter/flutter#106799](https://github.com/flutter/flutter/issues/106799) · [image_picker docs](https://pub.dev/packages/image_picker) | İzin eklenmeyecek; ASIL kural "izin isteme" (DESIGN §30 A2/A3) |
 | 6 | `image_picker`'a geçmek **Play riski**: Android 13+ `READ_MEDIA_IMAGES` beyanı Play politikası gereği reddedilmeye yol açıyor, kaldırınca da seçici bozuluyor | [flutter/flutter#171493](https://github.com/flutter/flutter/issues/171493) · [#171494](https://github.com/flutter/flutter/issues/171494) | Mevcut `file_picker` korunur; yeni bağımlılık ancak ölçülmüş bir gerekçeyle ve ADR ile gelir |
-| 7 | **Quill Delta bu turun istediği blokların yarısını taşıyamaz**: `flutter_quill` 11.5.1 çekirdeğinde tablo düğümü yok; dipnot, matematik, mermaid, iç içe liste için de temsil yok (DESIGN §28 zaten "nested lists are out because Quill's own model is flat" diyor) | `flutter_quill-11.5.1/lib/src/document/` taraması + DESIGN §28 | "MD editörünü güçlendir" bir UI işi değil **model kararı**. [MARKDOWN.md §4](MARKDOWN.md) üç seçeneği yazdı; ADR-0027 (OPH-246) seçer ve **hiçbir render işi ondan önce başlamaz** |
+| 7 | **Quill Delta bu turun istediği blokların yarısını taşıyamaz**: `flutter_quill` 11.5.1 çekirdeğinde tablo düğümü yok; dipnot, matematik, mermaid, iç içe liste için de temsil yok (DESIGN §28 zaten "nested lists are out because Quill's own model is flat" diyor) | `flutter_quill-11.5.1/lib/src/document/` taraması + DESIGN §28 | "MD editörünü güçlendir" bir UI işi değil **model kararı**. [MARKDOWN.md §4](MARKDOWN.md) üç seçeneği yazdı; ADR-0028 (OPH-246) seçer ve **hiçbir render işi ondan önce başlamaz** |
 | 8 | `flutter_markdown` **30 Nisan 2025'te Flutter ekibi tarafından sonlandırıldı**; resmî devamı `flutter_markdown_plus` | [flutter/flutter#162966](https://github.com/flutter/flutter/issues/162966) · [Foresight devir yazısı](https://foresightmobile.com/blog/flutter-markdown-plus-google-handover) | Render motoru seçimi OPH-246'da **ölçülerek** yapılır (4 aday + kendi renderer'ımız) |
 | 9 | Hedef lehçe **GFM**: tablo, görev listesi, dipnot, üstü çizili, autolink, `[!NOTE]` uyarıları, mermaid çitleri, `$…$` KaTeX | [GFM guide 2026](https://macmdviewer.com/blog/github-markdown-guide) · [GFM cheat sheet](https://www.markdowntools.io/github-markdown-cheat-sheet) | DESIGN §29 D6: "GitHub render ediyorsa AllisWell de eder" — bundan dar olan bir görüntüleyici bozuktur |
 | 10 | Widget saati iki platformda **aynı şey değil**: Android `TextClock` `@RemoteView`'dür, RemoteViews içinde kendi kendine tıklar; iOS'ta `Text(date, style: .time)` **canlı DEĞİLDİR** (timeline girdisinin anını basıp donar), yalnız `.timer`/`.relative`/`.offset` canlı güncellenir ve widget'a günde ~40–70 reload bütçesi verilir | [AOSP TextClock](https://github.com/aosp-mirror/platform_frameworks_base/blob/master/core/java/android/widget/TextClock.java) · [Displaying dynamic dates in widgets](https://developer.apple.com/documentation/widgetkit/displaying-dynamic-dates) · [Keeping a widget up to date](https://developer.apple.com/documentation/widgetkit/keeping-a-widget-up-to-date) | DESIGN §31 C3: Android tıklar, iOS dakikalık timeline girdileriyle yaklaşır ve **yanlış saat göstermektense saati gizler** |
@@ -6155,7 +6155,7 @@ paylaşımın AI'sız hedefi artık **bubble değil, dolu create sheet** (sahibi
 budur ve AI'sı olmayan kullanıcı için bubble bir çıkmaz sokaktır — AI varken bubble/onay
 kartı yolu aynen kalır); ek seçme **yeni paket almadan** çözülür (bulgu #4/#6);
 `_EmbedImageViewer` özelden çıkıp **tek paylaşılan `AwImageViewer`** olur (§22
-ulaşılabilirlik); markdown tarafında **hiçbir kod ADR-0027'dan önce yazılmaz**; mermaid
+ulaşılabilirlik); markdown tarafında **hiçbir kod ADR-0028'den önce yazılmaz**; mermaid
 **web view ile YAPILMAZ** (güvenilmez belge + JS motoru = §24 AI6'nın tam karşıtı) —
 ayrıştırılmış AST'den çizilir ya da dürüst yer tutucuya düşer; harici dosyaya geri
 yazma **bayt-sadık ya da hiç** (DESIGN §29 W4); iOS'ta saat bütçe harcamaz (§31 C4).
@@ -6321,6 +6321,71 @@ bubble yerine dolu create sheet görür — çalışan bir hedef, çıkmaz deği
 
 ### OPH-244 — Ek seçimi üç yol: Fotoğraflar · Kamera · Dosyalar (DESIGN §30 A1–A4)
 
+_(✅ 2026-08-10. Sahibin kararıyla **kamera da girdi**. Planlama turunun iki
+varsayımı ölçülünce ters çıktı ve ikisi de kararı değiştirdi:_
+
+_**(1) `file_picker` Android'de A2'yi karşılayamıyor.** iOS'ta `FileType.media`
+gerçekten PHPicker açıyor, ama Android tarafı (`FileUtils.kt:180-250`)
+`ACTION_GET_CONTENT` kuruyor — `ACTION_PICK_IMAGES`/`PickVisualMedia` değil.
+Yani yalnız çağrıya tip eklemek iPhone'u düzeltip Android'i raporun tarif ettiği
+yolda bırakırdı. Medya kaynakları mobilde **`image_picker`**'a gitti._
+
+_**(2) `image_picker` korkusu yersizmiş, asıl riskli paket başkasıymış.**
+pub-cache'teki BEŞ `image_picker_android` sürümünün hiçbiri `<uses-permission>`
+beyan etmiyor (flutter#171493/171494 uygulamaların KENDİ manifest'leri
+hakkındaymış). Gerçek risk `camera`: `camera_android_camerax-0.6.30` manifest'i
+`CAMERA` + `RECORD_AUDIO` + **`WRITE_EXTERNAL_STORAGE`** beyan ediyor →
+**ADR-0027'de gerekçesiyle reddedildi.**_
+
+_**Yeni beyan yüzeyi tek dize:** iOS `NSCameraUsageDescription`. Android'de
+SIFIR izin — ve bu iddia **ölçülüyor**: `scripts/android/assert-permissions.sh`
+release APK'sının **ikili manifest'ini** (Play'in taradığı katman, ara
+`merged_manifests` değil) commit'li bir allowlist'le TAM KÜME olarak
+karşılaştırıyor; denylist değil, çünkü asıl tehlike kimsenin beklemediği izindir.
+Allowlist gerçek bir build'den dolduruldu — kimsenin tahmin edemeyeceği satırlar
+içeriyor (`ACCESS_ADSERVICES_*`, `AD_ID`, `USE_BIOMETRIC`, `READ_GSERVICES`).
+İlk koşu: **18 izin, hiçbiri medya ya da kamera.** CI'ye ayrı bir
+`android-manifest` job'ı eklendi (hızlı şerit hızlı kalsın). **Hiçbir Dart testi
+bunu doğrulayamaz** — birleşmiş manifest yalnız build'de vardır._
+
+_**İki tuzak daha, ikisi de kodda yorumlu:** `useAndroidPhotoPicker` varsayılan
+**false** (flip edilmezse düzeltilen hatanın aynısına düşer), ve masaüstünde
+`ImageSource.camera` **`StateError` fırlatıyor** → `attachMenuSources` kamerayı
+orada sunmuyor; bu cila değil doğruluk gereği ve birim testi altı platformu da
+geziyor._
+
+_**Diki̇ş:** `attach_source.dart` (saf enum + platform yüklemi + FileType
+eşlemesi + `cameraCaptureName`), `filePickerProvider` artık `FilePickerFn` ve
+argüman **zorunlu pozisyonel** — varsayılan olsaydı bir sonraki çağıran aynı
+şekilde unutabilirdi. `pickAndUpload` ÖLDÜ, yerine `uploadAll`: seçim widget
+katmanının işi, notifier'ın seçiciyi okuması yanlıştı. Böylece
+`filePickerProvider` tek yerden okunuyor (`attach_menu.dart`)._
+
+_**Yüzeyler:** görev ekleri, Dosyalar, proje dosyaları ve create sheet ortak
+`AttachButton`'a geçti (aynı buton TİPLERİ korundu — mevcut testler tipe assert
+ediyor); notlarda iki buton artık **adını söylediği** kütüphaneyi açıyor
+(ipucu metni yalan söylemeyi bıraktı); zil sesi seçicisi `audioFiles` istiyor ve
+seçim spinner'ın ÜSTÜNE alındı. Açıklama alanı kendi ek butonunu aldı (A4) —
+`_DescriptionField` bir `attach` slot'u alıyor, çünkü boşluk durumunu yalnız o
+biliyor; oradan yüklenen dosya aşağıdaki Ekler listesine düşüyor (tek varış,
+iki kapı). **A8 boşluğu kapandı:** `PlatformException` hiçbir yerde
+yakalanmıyordu, `pickAndUpload`'dan asenkron hata olarak sızıyordu._
+
+_**Testler (+13, toplam 834):** `attach_source_test` altı platform × altı
+kaynak (saf); menü üç yolu gösteriyor ve Fotoğraflar **`photoLibrary` istiyor**;
+tek kaynaklı platformda sheet HİÇ açılmıyor; `PlatformException` → dürüst
+snackbar, çökme yok; açıklama alanından yükleme aynı listeye düşüyor;
+**notlardaki iki butonun doğru kütüphaneyi çağırdığı** — bu dosyanın en değerli
+assert'i, çünkü asıl yalanı yakalayacak olan oydu. Ortak `RecordingFilePicker`
+artık NİYETİ assert ediyor, "bir dosya geldi"yi değil. `FLUTTER_TEST` altında
+`defaultTargetPlatform` zorla android olduğu için her widget testi üç maddelik
+menüyü görüyor — `attachSourcesProvider`'ın provider olmasının sebebi bu._
+
+_**Kalan (cihaz turu, DoD'de zaten vardı):** gerçek iPhone/Android'de
+Fotoğraflar'ın foto ızgarasını açması, **izin diyaloğu ÇIKMAMASI** ve kameranın
+çekmesi. iOS derlemesi doğrulandı: `image_picker_ios.framework` bağlandı ve
+`NSCameraUsageDescription` ÜRÜNDE.)_
+
 - [ ] `pickUploads()` tek bir girişten çıkıp **niyet alan** bir API'ye döner:
       `pickUploads(AttachmentSource source)` — `photos` → `FileType.media`
       (iOS'ta `PHPickerViewController`, bulgu #4), `files` → bugünkü `FileType.any`
@@ -6375,7 +6440,7 @@ bubble yerine dolu create sheet görür — çalışan bir hedef, çıkmaz deği
   parmakla büyütülüp gezilebilir, diğer fotoğraflara kaydırılarak geçilir.
 - **Doğrulama:** `flutter analyze` · `flutter test` · `python3 scripts/design/contrast.py`.
 
-### OPH-246 — Markdown: model kararı + render motoru seçimi + ADR-0027 (kod yazmaz)
+### OPH-246 — Markdown: model kararı + render motoru seçimi + ADR-0028 (kod yazmaz)
 
 > **Bu epic'in en büyük işinin kapısı. 247–252'nin hiçbiri bu task bitmeden başlamaz.**
 > Alan taraması ve özellik envanteri planlama turunda yapıldı ve
@@ -6405,12 +6470,12 @@ bubble yerine dolu create sheet görür — çalışan bir hedef, çıkmaz deği
 - [ ] **Mermaid kararı**: AST'den çizim mi, dürüst yer tutucu mu (D11), yoksa
       tamamen park mı — **web view kesin olarak hariç** (güvenilmez belge + JS motoru).
       Karar gerekçesiyle yazılır.
-- [ ] **ADR-0027** (`docs/adr/0027-markdown-document-model-and-renderer.md`) yazılır:
+- [ ] **ADR-0028** (`docs/adr/0028-markdown-document-model-and-renderer.md`) yazılır:
       Bağlam / Karar / Alternatifler / Sonuçlar / **Zorlama** (bu karar CI'da nasıl
       zorlanıyor — fikstür testi, format bayrağının şema kısıtı, tema token taraması).
 - [ ] MARKDOWN.md §4/§5 kararla güncellenir; kapsam dışı bırakılanlar gerekçeleriyle
       parking-lot'a girer.
-- **Kabul:** ADR-0027 kabul edilmiş; fikstür belgesi commit'li; hangi motorun neden
+- **Kabul:** ADR-0028 kabul edilmiş; fikstür belgesi commit'li; hangi motorun neden
   kazandığı **sayılarla** yazılı (kaç GFM özelliği geçti / kaç tanesi tema alıyor).
 - **Doğrulama:** `npm run docs:check` (varsa) · ADR indeksi + `ARCHITECTURE.md` tablosu
   senkron · fikstür belgesi mevcut motor prototipiyle render edilip ekran görüntüsü
@@ -6418,7 +6483,7 @@ bubble yerine dolu create sheet görür — çalışan bir hedef, çıkmaz deği
 
 ### OPH-247 — Render motoru: GFM tam kapsam, token'lı tema, güvenli render (DESIGN §29 D6–D12)
 
-- [ ] ADR-0027'un seçtiği motor bağlanır ve **okuma görünümü** doğar: tablolar, görev
+- [ ] ADR-0028'in seçtiği motor bağlanır ve **okuma görünümü** doğar: tablolar, görev
       listeleri (tıklanabilir — D4), dipnotlar, üstü çizili, autolink, `==vurgu==`,
       emoji kısa kodları, uyarı kutuları, iç içe listeler, satır içi/blok matematik.
 - [ ] **Kod blokları**: dil etiketi + sözdizimi vurgulama + **kopyala butonu** (D9);
@@ -6482,7 +6547,7 @@ bubble yerine dolu create sheet görür — çalışan bir hedef, çıkmaz deği
 
 - [ ] **Liste otomasyonu** (D17): Enter listeyi sürdürür, boş maddede listeden çıkar,
       sıralı listeler yeniden numaralanır, **Tab / Shift-Tab ile iç içe geçer**
-      (ADR-0027'un modeli iç içe listeyi taşıyor olmalı — taşımıyorsa bu madde ADR'ye
+      (ADR-0028'in modeli iç içe listeyi taşıyor olmalı — taşımıyorsa bu madde ADR'ye
       geri döner, sessizce kırpılmaz).
 - [ ] **Telefonda klavye üstü kaydırılabilir markdown araç çubuğu** (D18); masaüstü/web'de
       **klavye kısayolları** (⌘B/I/K, H1–H3, kod, alıntı, liste) + **komut paleti** (⌘K).

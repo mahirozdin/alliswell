@@ -193,7 +193,7 @@ the WYSIWYG session and thrown away.
 - **Against:** two formats in one table, and a conversion door that must be
   explained in one sentence to a non-technical user.
 
-**ADR-0027 decides this (OPH-246) and nothing downstream starts before it.**
+**ADR-0028 decides this (OPH-246) and nothing downstream starts before it.**
 Recorded here so the decision is made with the trade-offs on the table rather
 than discovered halfway through OPH-248.
 

@@ -99,6 +99,24 @@ dependencies:
   # Capped below 1.8 — that line is Swift-Package-Manager only, and this repo's
   # iOS build uses CocoaPods.
   receive_sharing_intent: ">=1.4.5 <1.8.0"
+  # Attachment capture (OPH-244, ADR-0027). `file_picker` alone cannot satisfy
+  # DESIGN §30 A2: its Android path builds ACTION_GET_CONTENT for image/video/
+  # media (FileUtils.kt) rather than the Android Photo Picker, and it has no
+  # camera at all. image_picker gives us PHPicker on iOS 15+ and PickVisualMedia
+  # on Android 13+, and — measured across five versions in the pub cache — its
+  # Android manifest declares ZERO permissions. The `camera` package was
+  # rejected for exactly the opposite reason: camera_android_camerax declares
+  # CAMERA, RECORD_AUDIO *and* WRITE_EXTERNAL_STORAGE.
+  image_picker: ^1.2.0
+  # Direct, not transitive: the Android Photo Picker is OFF by default
+  # (`useAndroidPhotoPicker = false`) and we have to reach the implementation
+  # class to turn it on — without that it silently falls back to the document
+  # browser, i.e. the bug this round fixes.
+  image_picker_android: ^0.8.13
+  # Only for the `ImagePickerPlatform.instance` cast above; declared so the
+  # analyzer's depend_on_referenced_packages stays happy.
+  image_picker_platform_interface: ^2.11.0
+
   # Note → PDF export (round 16 #3). `pdf` builds the document in pure Dart, so
   # the layout engine is unit-testable with no platform channel; `printing`
   # supplies the one thing Dart cannot do — handing the bytes to the OS (share

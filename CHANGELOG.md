@@ -21,8 +21,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 - AllisWell now registers the URL scheme its own share extension calls back
   on. Without it iOS silently dropped the hand-off. (OPH-242)
 
+- **You can attach photos again — and now also take one.** "Add file" opened the
+  document browser, where photos are not, and no permission dialog ever appeared
+  because none was ever needed. Attaching now offers three named ways —
+  **Photos · Take a photo · Files** — each opening the picker it names. Photos
+  goes through the system photo picker on both platforms, which asks for no
+  permission at all, and AllisWell declares no media permission on Android
+  (checked against the release package on every CI run). The same fix reaches
+  the note toolbar, where "Insert image" also used to open the file browser, and
+  the ringtone picker, which now asks for audio. (OPH-244)
+
 ### Added
 
+- **Attach from the description too.** The attach button now also sits next to a
+  task's description — where people look for it first. Files land in the same
+  attachment list either way. (OPH-244)
 - **Share log** (Settings → Share log): every share that reaches the app leaves
   a line — what kind of thing arrived and how big it was, never its content.
   An empty list after a share attempt is itself the answer: the payload never

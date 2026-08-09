@@ -9,6 +9,7 @@ import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
+import '../../files/ui/attach_menu.dart';
 import '../../files/ui/file_widgets.dart';
 import '../../files/ui/note_media.dart';
 import '../../notes/data/note.dart';
@@ -600,19 +601,18 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(
             children: [
-              OutlinedButton.icon(
-                key: const Key('project-add-file'),
-                onPressed: configured
-                    ? () => ref
-                          .read(uploadsProvider.notifier)
-                          .pickAndUpload(
-                            workspaceId: project.workspaceId,
-                            targetType: 'project',
-                            targetId: project.id,
-                          )
-                    : null,
-                icon: const Icon(Icons.upload_file_outlined),
-                label: Text('file.add'.tr()),
+              AttachButton(
+                buttonKey: const Key('project-add-file'),
+                enabled: configured,
+                icon: Icons.upload_file_outlined,
+                onPicked: (picks) => ref
+                    .read(uploadsProvider.notifier)
+                    .uploadAll(
+                      workspaceId: project.workspaceId,
+                      targetType: 'project',
+                      targetId: project.id,
+                      sources: picks,
+                    ),
               ),
               const Spacer(),
               PopupMenuButton<_FileSort>(

@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Notifications (OPH-061/063, docs/NOTIFICATIONS.md §1): runtime
          notification permission (13+), exact alarms behind the Android 14
          special-access flow, reboot rescheduling, and the full-screen alarm
@@ -11,6 +12,23 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <!-- OPH-223: on-device speech-to-text for voice task capture. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- OPH-244 (DESIGN §30 A3): AllisWell asks for NO media permission, ever.
+         Photos come from the Android Photo Picker and the camera from
+         ACTION_IMAGE_CAPTURE, both of which hand back only what the user chose
+         and need nothing declared. These lines strip the permission if any
+         dependency ever merges one in — Play's photo/video policy rejects apps
+         that declare READ_MEDIA_* when the Photo Picker would do, and
+         image_picker only takes its runtime-permission branch when CAMERA is
+         present in the merged manifest.
+         `tools:node="remove"` is SILENT when nothing matches, which is why
+         scripts/android/assert-permissions.sh checks the built APK too. -->
+    <uses-permission android:name="android.permission.CAMERA" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
     <application
         android:label="AllisWell"
         android:name="${applicationName}"

@@ -28,7 +28,7 @@ List<Override> syncTestOverrides({
   SyncSocketFactory? socketFactory,
   bool tourAutoStart = false,
   bool alarmOverlayAutoShow = false,
-  Future<List<PickedUpload>> Function()? filePicker,
+  FilePickerFn? filePicker,
   UploadTransport? uploadTransport,
 
   /// Swap in a real (or recording) feedback to test the audible half — OPH-180.
@@ -88,7 +88,7 @@ List<Override> syncTestOverrides({
   widgetHostProvider.overrideWithValue(FakeWidgetHost()),
   // No platform channels: the file picker (OPH-153) answers "picked nothing"
   // unless a test passes fake picks of its own via [filePicker].
-  filePickerProvider.overrideWithValue(filePicker ?? () async => const []),
+  filePickerProvider.overrideWithValue(filePicker ?? (_) async => const []),
   // No network: the presigned PUT succeeds instantly with full progress
   // unless a test injects its own transport (failure/cancel scenarios).
   uploadTransportProvider.overrideWithValue(
