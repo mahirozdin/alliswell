@@ -45,6 +45,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Settings is a long list and grows every round (OPH-242 added the share
+  /// log), so the row this file is about sits below the fold on the fixed test
+  /// surface. Scroll to it the way a person would — tapping an off-screen
+  /// offset hits nothing and only warns.
+  Future<Finder> openDateFormatRow(WidgetTester tester) async {
+    await openSettings(tester);
+    final row = find.byKey(const Key('settings-date-format'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    return row;
+  }
+
   testWidgets('the picker offers results, not patterns, and the row previews '
       'the choice', (tester) async {
     tester.view.physicalSize = const Size(1280, 900);
@@ -53,10 +65,9 @@ void main() {
 
     await tester.pumpWidget(await signedInApp(FakeApi()));
     await tester.pumpAndSettle();
-    await openSettings(tester);
+    final row = await openDateFormatRow(tester);
 
     // The row previews the CURRENT format with the shared sample instant.
-    final row = find.byKey(const Key('settings-date-format'));
     expect(row, findsOneWidget);
     expect(
       find.descendant(
@@ -112,8 +123,7 @@ void main() {
     );
     expect(find.textContaining(asSystem), findsOneWidget);
 
-    await openSettings(tester);
-    await tester.tap(find.byKey(const Key('settings-date-format')));
+    await tester.tap(await openDateFormatRow(tester));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('date-format-iso')));
     await tester.pumpAndSettle();

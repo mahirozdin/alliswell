@@ -512,6 +512,23 @@
       "degraded": "Delivery limited by the system"
     }
   },
+  "shareLog": {
+    "title": "Share log",
+    "sub": "What actually reached the app when you shared something",
+    "scope": "Every share that reaches AllisWell leaves a line here — the kind of payload and its size, never its content. If you shared something and this list stayed EMPTY, that is the answer: the payload never reached the app, so the problem is in the hand-off from the other app, not in what AllisWell did with it.",
+    "copy": "Copy the log",
+    "copied": "Log copied",
+    "emptyTitle": "Nothing shared yet",
+    "emptyBody": "Share some text or a file to AllisWell from another app and it will show up here.",
+    "event": {
+      "initialShare": "Text arrived at launch",
+      "warmShare": "Text arrived",
+      "initialDocument": "File opened at launch",
+      "warmDocument": "File opened",
+      "readFailed": "File could not be read",
+      "consumed": "Handed to a screen"
+    }
+  },
   "reminderSettings": {
     "title": "Reminder system",
     "sub": "How many alerts, how far apart, and their order",

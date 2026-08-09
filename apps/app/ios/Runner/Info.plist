@@ -44,6 +44,25 @@
 				<string>$(GOOGLE_REVERSED_CLIENT_ID)</string>
 			</array>
 		</dict>
+		<!-- Round 17 #1 (OPH-242): the share extension's ONLY way back into the
+		     app. AllisWellShare subclasses RSIShareViewController, which writes
+		     the payload to the App Group and then opens
+		     `ShareMedia-<host bundle id>:share` (RSIShareViewController.swift,
+		     `kSchemePrefix` = "ShareMedia"). Without this entry the scheme is
+		     unregistered, iOS drops the open silently, and "Share to AllisWell"
+		     does nothing at all — no launch, no crash, no report. That is
+		     exactly what round 17 #1 described.
+		     Guarded by test/native_config_test.dart. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>space.alliswell.sharemedia</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ShareMedia-$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>

@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import '../../../sync/db/database.dart';
+import '../../../sync/providers.dart';
 import '../../notes/data/markdown_source.dart';
 import '../../notes/ui/markdown_import_screen.dart';
 import 'ai_context_builder.dart';
+import 'share_log.dart';
 
 /// Inbound share intents (OPH-225, ADR-0023), behind a seam. The rest of the
 /// app talks only to [ShareIntentSource]; tests inject a fake. The provider is
@@ -132,44 +136,97 @@ final pendingSharePayloadProvider =
       PendingSharePayload.new,
     );
 
+/// The share pipeline's device-local diagnostic trail (OPH-242).
+final shareLogProvider = Provider<ShareLog>(
+  (ref) => ShareLog(ref.watch(databaseProvider)),
+);
+
+/// Newest-first rows for the Settings diagnostic screen.
+final shareLogRowsProvider = StreamProvider<List<ShareEvent>>(
+  (ref) => ref.watch(shareLogProvider).watchRecent(),
+);
+
 /// Subscribes the share source to the pending holder. HomeShell keeps this
 /// alive — and the shell only mounts once signed in, so a cold-start share
 /// lands AFTER the session exists (it structurally sidesteps the auth-restore
 /// race the deep-link path had to solve with remember/replay).
+///
+/// Every arrival is also written to the [ShareLog]. Round 17 #1 was a report
+/// nothing could confirm or deny ("I shared a text and nothing happened");
+/// the log makes the next such report measurable — including, crucially, when
+/// it stays EMPTY, which places the fault before Dart.
 final shareBinderProvider = Provider<void>((ref) {
   final source = ref.watch(shareIntentSourceProvider);
   if (source == null) return;
   final pending = ref.read(pendingSharePayloadProvider.notifier);
   final markdown = ref.read(pendingMarkdownProvider.notifier);
   final files = ref.read(markdownSourceProvider);
+  final log = ref.read(shareLogProvider);
 
-  Future<void> openDocument(String path) async {
+  void rememberShare(SharedPayload payload, {required bool cold}) {
+    log.record(
+      event: cold ? ShareLogEvent.initialShare : ShareLogEvent.warmShare,
+      payloadKind: payload.url != null ? ShareLogKind.url : ShareLogKind.text,
+      bytes: _utf8Bytes(payload.text),
+    );
+    pending.remember(payload);
+  }
+
+  Future<void> openDocument(String path, {required bool cold}) async {
     // Reading can fail (a permission-scoped URI that expired, a file that is
-    // gone). Failing silently is right here: there is no screen to show an
-    // error on yet, and the viewer's empty state tells the user what to do.
+    // gone). Failing silently is still right for the UI — there is no screen to
+    // show an error on yet, and the viewer's empty state tells the user what to
+    // do — but it is no longer silent to the log.
     try {
       final doc = await files.read(path);
-      if (doc != null) markdown.remember(doc);
-    } on Object {
-      // ignored — see above
+      if (doc == null) {
+        log.record(
+          event: ShareLogEvent.readFailed,
+          payloadKind: ShareLogKind.markdown,
+          detail: 'empty',
+        );
+        return;
+      }
+      log.record(
+        event: cold
+            ? ShareLogEvent.initialDocument
+            : ShareLogEvent.warmDocument,
+        payloadKind: ShareLogKind.markdown,
+        bytes: _utf8Bytes(doc.markdown),
+      );
+      markdown.remember(doc);
+    } on Object catch (error) {
+      // The TYPE, never the path: a path can carry a document's name.
+      log.record(
+        event: ShareLogEvent.readFailed,
+        payloadKind: ShareLogKind.markdown,
+        detail: error.runtimeType.toString(),
+      );
     }
   }
 
   // Cold start: read BOTH intentions before telling the plugin we took them.
   Future.wait([
     source.initialShare().then((payload) {
-      if (payload != null) pending.remember(payload);
+      if (payload != null) rememberShare(payload, cold: true);
     }),
     source.initialDocument().then((path) async {
-      if (path != null) await openDocument(path);
+      if (path != null) await openDocument(path, cold: true);
     }),
   ]).whenComplete(source.reset);
 
   // Warm deliveries while the app runs.
-  final shares = source.shares().listen(pending.remember);
-  final documents = source.documents().listen(openDocument);
+  final shares = source.shares().listen(
+    (payload) => rememberShare(payload, cold: false),
+  );
+  final documents = source.documents().listen(
+    (path) => openDocument(path, cold: false),
+  );
   ref.onDispose(() {
     shares.cancel();
     documents.cancel();
   });
 });
+
+/// Size in bytes, not characters — a Turkish note is bigger than its length.
+int _utf8Bytes(String text) => utf8.encode(text).length;

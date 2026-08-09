@@ -11066,6 +11066,414 @@ class AiMessagesCompanion extends UpdateCompanion<AiMessage> {
   }
 }
 
+class $ShareEventsTable extends ShareEvents
+    with TableInfo<$ShareEventsTable, ShareEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ShareEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _atMeta = const VerificationMeta('at');
+  @override
+  late final GeneratedColumn<DateTime> at = GeneratedColumn<DateTime>(
+    'at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventMeta = const VerificationMeta('event');
+  @override
+  late final GeneratedColumn<String> event = GeneratedColumn<String>(
+    'event',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _payloadKindMeta = const VerificationMeta(
+    'payloadKind',
+  );
+  @override
+  late final GeneratedColumn<String> payloadKind = GeneratedColumn<String>(
+    'payload_kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bytesMeta = const VerificationMeta('bytes');
+  @override
+  late final GeneratedColumn<int> bytes = GeneratedColumn<int>(
+    'bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _detailMeta = const VerificationMeta('detail');
+  @override
+  late final GeneratedColumn<String> detail = GeneratedColumn<String>(
+    'detail',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    at,
+    event,
+    payloadKind,
+    bytes,
+    detail,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'share_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ShareEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('at')) {
+      context.handle(_atMeta, at.isAcceptableOrUnknown(data['at']!, _atMeta));
+    } else if (isInserting) {
+      context.missing(_atMeta);
+    }
+    if (data.containsKey('event')) {
+      context.handle(
+        _eventMeta,
+        event.isAcceptableOrUnknown(data['event']!, _eventMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventMeta);
+    }
+    if (data.containsKey('payload_kind')) {
+      context.handle(
+        _payloadKindMeta,
+        payloadKind.isAcceptableOrUnknown(
+          data['payload_kind']!,
+          _payloadKindMeta,
+        ),
+      );
+    }
+    if (data.containsKey('bytes')) {
+      context.handle(
+        _bytesMeta,
+        bytes.isAcceptableOrUnknown(data['bytes']!, _bytesMeta),
+      );
+    }
+    if (data.containsKey('detail')) {
+      context.handle(
+        _detailMeta,
+        detail.isAcceptableOrUnknown(data['detail']!, _detailMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ShareEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ShareEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      at: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}at'],
+      )!,
+      event: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event'],
+      )!,
+      payloadKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}payload_kind'],
+      ),
+      bytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bytes'],
+      ),
+      detail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detail'],
+      ),
+    );
+  }
+
+  @override
+  $ShareEventsTable createAlias(String alias) {
+    return $ShareEventsTable(attachedDatabase, alias);
+  }
+}
+
+class ShareEvent extends DataClass implements Insertable<ShareEvent> {
+  final int id;
+
+  /// When we recorded it (UTC).
+  final DateTime at;
+
+  /// `initial_share` | `warm_share` | `initial_document` | `warm_document` |
+  /// `read_failed` | `consumed`.
+  final String event;
+
+  /// `text` | `url` | `markdown`, where the shape is known.
+  final String? payloadKind;
+
+  /// How much arrived — never WHAT arrived.
+  final int? bytes;
+
+  /// Free-form extra: a file's extension, an error's runtime type. Never
+  /// payload text, never a full path.
+  final String? detail;
+  const ShareEvent({
+    required this.id,
+    required this.at,
+    required this.event,
+    this.payloadKind,
+    this.bytes,
+    this.detail,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['at'] = Variable<DateTime>(at);
+    map['event'] = Variable<String>(event);
+    if (!nullToAbsent || payloadKind != null) {
+      map['payload_kind'] = Variable<String>(payloadKind);
+    }
+    if (!nullToAbsent || bytes != null) {
+      map['bytes'] = Variable<int>(bytes);
+    }
+    if (!nullToAbsent || detail != null) {
+      map['detail'] = Variable<String>(detail);
+    }
+    return map;
+  }
+
+  ShareEventsCompanion toCompanion(bool nullToAbsent) {
+    return ShareEventsCompanion(
+      id: Value(id),
+      at: Value(at),
+      event: Value(event),
+      payloadKind: payloadKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(payloadKind),
+      bytes: bytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bytes),
+      detail: detail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detail),
+    );
+  }
+
+  factory ShareEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ShareEvent(
+      id: serializer.fromJson<int>(json['id']),
+      at: serializer.fromJson<DateTime>(json['at']),
+      event: serializer.fromJson<String>(json['event']),
+      payloadKind: serializer.fromJson<String?>(json['payloadKind']),
+      bytes: serializer.fromJson<int?>(json['bytes']),
+      detail: serializer.fromJson<String?>(json['detail']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'at': serializer.toJson<DateTime>(at),
+      'event': serializer.toJson<String>(event),
+      'payloadKind': serializer.toJson<String?>(payloadKind),
+      'bytes': serializer.toJson<int?>(bytes),
+      'detail': serializer.toJson<String?>(detail),
+    };
+  }
+
+  ShareEvent copyWith({
+    int? id,
+    DateTime? at,
+    String? event,
+    Value<String?> payloadKind = const Value.absent(),
+    Value<int?> bytes = const Value.absent(),
+    Value<String?> detail = const Value.absent(),
+  }) => ShareEvent(
+    id: id ?? this.id,
+    at: at ?? this.at,
+    event: event ?? this.event,
+    payloadKind: payloadKind.present ? payloadKind.value : this.payloadKind,
+    bytes: bytes.present ? bytes.value : this.bytes,
+    detail: detail.present ? detail.value : this.detail,
+  );
+  ShareEvent copyWithCompanion(ShareEventsCompanion data) {
+    return ShareEvent(
+      id: data.id.present ? data.id.value : this.id,
+      at: data.at.present ? data.at.value : this.at,
+      event: data.event.present ? data.event.value : this.event,
+      payloadKind: data.payloadKind.present
+          ? data.payloadKind.value
+          : this.payloadKind,
+      bytes: data.bytes.present ? data.bytes.value : this.bytes,
+      detail: data.detail.present ? data.detail.value : this.detail,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShareEvent(')
+          ..write('id: $id, ')
+          ..write('at: $at, ')
+          ..write('event: $event, ')
+          ..write('payloadKind: $payloadKind, ')
+          ..write('bytes: $bytes, ')
+          ..write('detail: $detail')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, at, event, payloadKind, bytes, detail);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ShareEvent &&
+          other.id == this.id &&
+          other.at == this.at &&
+          other.event == this.event &&
+          other.payloadKind == this.payloadKind &&
+          other.bytes == this.bytes &&
+          other.detail == this.detail);
+}
+
+class ShareEventsCompanion extends UpdateCompanion<ShareEvent> {
+  final Value<int> id;
+  final Value<DateTime> at;
+  final Value<String> event;
+  final Value<String?> payloadKind;
+  final Value<int?> bytes;
+  final Value<String?> detail;
+  const ShareEventsCompanion({
+    this.id = const Value.absent(),
+    this.at = const Value.absent(),
+    this.event = const Value.absent(),
+    this.payloadKind = const Value.absent(),
+    this.bytes = const Value.absent(),
+    this.detail = const Value.absent(),
+  });
+  ShareEventsCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime at,
+    required String event,
+    this.payloadKind = const Value.absent(),
+    this.bytes = const Value.absent(),
+    this.detail = const Value.absent(),
+  }) : at = Value(at),
+       event = Value(event);
+  static Insertable<ShareEvent> custom({
+    Expression<int>? id,
+    Expression<DateTime>? at,
+    Expression<String>? event,
+    Expression<String>? payloadKind,
+    Expression<int>? bytes,
+    Expression<String>? detail,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (at != null) 'at': at,
+      if (event != null) 'event': event,
+      if (payloadKind != null) 'payload_kind': payloadKind,
+      if (bytes != null) 'bytes': bytes,
+      if (detail != null) 'detail': detail,
+    });
+  }
+
+  ShareEventsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? at,
+    Value<String>? event,
+    Value<String?>? payloadKind,
+    Value<int?>? bytes,
+    Value<String?>? detail,
+  }) {
+    return ShareEventsCompanion(
+      id: id ?? this.id,
+      at: at ?? this.at,
+      event: event ?? this.event,
+      payloadKind: payloadKind ?? this.payloadKind,
+      bytes: bytes ?? this.bytes,
+      detail: detail ?? this.detail,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<DateTime>(at.value);
+    }
+    if (event.present) {
+      map['event'] = Variable<String>(event.value);
+    }
+    if (payloadKind.present) {
+      map['payload_kind'] = Variable<String>(payloadKind.value);
+    }
+    if (bytes.present) {
+      map['bytes'] = Variable<int>(bytes.value);
+    }
+    if (detail.present) {
+      map['detail'] = Variable<String>(detail.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ShareEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('at: $at, ')
+          ..write('event: $event, ')
+          ..write('payloadKind: $payloadKind, ')
+          ..write('bytes: $bytes, ')
+          ..write('detail: $detail')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PendingMutationsTable extends PendingMutations
     with TableInfo<$PendingMutationsTable, PendingMutation> {
   @override
@@ -12047,6 +12455,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $TaskSeriesTable taskSeries = $TaskSeriesTable(this);
   late final $AlarmEventsTable alarmEvents = $AlarmEventsTable(this);
   late final $AiMessagesTable aiMessages = $AiMessagesTable(this);
+  late final $ShareEventsTable shareEvents = $ShareEventsTable(this);
   late final $PendingMutationsTable pendingMutations = $PendingMutationsTable(
     this,
   );
@@ -12072,6 +12481,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     taskSeries,
     alarmEvents,
     aiMessages,
+    shareEvents,
     pendingMutations,
     syncStates,
   ];
@@ -17289,6 +17699,218 @@ typedef $$AiMessagesTableProcessedTableManager =
       AiMessage,
       PrefetchHooks Function()
     >;
+typedef $$ShareEventsTableCreateCompanionBuilder =
+    ShareEventsCompanion Function({
+      Value<int> id,
+      required DateTime at,
+      required String event,
+      Value<String?> payloadKind,
+      Value<int?> bytes,
+      Value<String?> detail,
+    });
+typedef $$ShareEventsTableUpdateCompanionBuilder =
+    ShareEventsCompanion Function({
+      Value<int> id,
+      Value<DateTime> at,
+      Value<String> event,
+      Value<String?> payloadKind,
+      Value<int?> bytes,
+      Value<String?> detail,
+    });
+
+class $$ShareEventsTableFilterComposer
+    extends Composer<_$AwDatabase, $ShareEventsTable> {
+  $$ShareEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get event => $composableBuilder(
+    column: $table.event,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get payloadKind => $composableBuilder(
+    column: $table.payloadKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bytes => $composableBuilder(
+    column: $table.bytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ShareEventsTableOrderingComposer
+    extends Composer<_$AwDatabase, $ShareEventsTable> {
+  $$ShareEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get event => $composableBuilder(
+    column: $table.event,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get payloadKind => $composableBuilder(
+    column: $table.payloadKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bytes => $composableBuilder(
+    column: $table.bytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ShareEventsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $ShareEventsTable> {
+  $$ShareEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+
+  GeneratedColumn<String> get event =>
+      $composableBuilder(column: $table.event, builder: (column) => column);
+
+  GeneratedColumn<String> get payloadKind => $composableBuilder(
+    column: $table.payloadKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get bytes =>
+      $composableBuilder(column: $table.bytes, builder: (column) => column);
+
+  GeneratedColumn<String> get detail =>
+      $composableBuilder(column: $table.detail, builder: (column) => column);
+}
+
+class $$ShareEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $ShareEventsTable,
+          ShareEvent,
+          $$ShareEventsTableFilterComposer,
+          $$ShareEventsTableOrderingComposer,
+          $$ShareEventsTableAnnotationComposer,
+          $$ShareEventsTableCreateCompanionBuilder,
+          $$ShareEventsTableUpdateCompanionBuilder,
+          (
+            ShareEvent,
+            BaseReferences<_$AwDatabase, $ShareEventsTable, ShareEvent>,
+          ),
+          ShareEvent,
+          PrefetchHooks Function()
+        > {
+  $$ShareEventsTableTableManager(_$AwDatabase db, $ShareEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ShareEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ShareEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ShareEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> at = const Value.absent(),
+                Value<String> event = const Value.absent(),
+                Value<String?> payloadKind = const Value.absent(),
+                Value<int?> bytes = const Value.absent(),
+                Value<String?> detail = const Value.absent(),
+              }) => ShareEventsCompanion(
+                id: id,
+                at: at,
+                event: event,
+                payloadKind: payloadKind,
+                bytes: bytes,
+                detail: detail,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime at,
+                required String event,
+                Value<String?> payloadKind = const Value.absent(),
+                Value<int?> bytes = const Value.absent(),
+                Value<String?> detail = const Value.absent(),
+              }) => ShareEventsCompanion.insert(
+                id: id,
+                at: at,
+                event: event,
+                payloadKind: payloadKind,
+                bytes: bytes,
+                detail: detail,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ShareEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $ShareEventsTable,
+      ShareEvent,
+      $$ShareEventsTableFilterComposer,
+      $$ShareEventsTableOrderingComposer,
+      $$ShareEventsTableAnnotationComposer,
+      $$ShareEventsTableCreateCompanionBuilder,
+      $$ShareEventsTableUpdateCompanionBuilder,
+      (ShareEvent, BaseReferences<_$AwDatabase, $ShareEventsTable, ShareEvent>),
+      ShareEvent,
+      PrefetchHooks Function()
+    >;
 typedef $$PendingMutationsTableCreateCompanionBuilder =
     PendingMutationsCompanion Function({
       required String id,
@@ -17815,6 +18437,8 @@ class $AwDatabaseManager {
       $$AlarmEventsTableTableManager(_db, _db.alarmEvents);
   $$AiMessagesTableTableManager get aiMessages =>
       $$AiMessagesTableTableManager(_db, _db.aiMessages);
+  $$ShareEventsTableTableManager get shareEvents =>
+      $$ShareEventsTableTableManager(_db, _db.shareEvents);
   $$PendingMutationsTableTableManager get pendingMutations =>
       $$PendingMutationsTableTableManager(_db, _db.pendingMutations);
   $$SyncStatesTableTableManager get syncStates =>

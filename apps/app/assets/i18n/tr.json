@@ -511,6 +511,23 @@
       "degraded": "Sistem teslimatı kısıtlıyor"
     }
   },
+  "shareLog": {
+    "title": "Paylaşım günlüğü",
+    "sub": "Bir şey paylaştığında uygulamaya gerçekte ne ulaştı",
+    "scope": "AllisWell'e ulaşan her paylaşım buraya bir satır bırakır — içeriğin türü ve boyutu, asla kendisi. Bir şey paylaştıysan ve bu liste BOŞ kaldıysa, cevap budur: içerik uygulamaya hiç ulaşmamış demektir, yani sorun diğer uygulamadan devralmada, AllisWell'in onunla ne yaptığında değil.",
+    "copy": "Günlüğü kopyala",
+    "copied": "Günlük kopyalandı",
+    "emptyTitle": "Henüz bir paylaşım yok",
+    "emptyBody": "Başka bir uygulamadan AllisWell'e bir metin ya da dosya paylaş; burada görünecek.",
+    "event": {
+      "initialShare": "Açılışta metin geldi",
+      "warmShare": "Metin geldi",
+      "initialDocument": "Açılışta dosya açıldı",
+      "warmDocument": "Dosya açıldı",
+      "readFailed": "Dosya okunamadı",
+      "consumed": "Bir ekrana verildi"
+    }
+  },
   "reminderSettings": {
     "title": "Hatırlatıcı sistemi",
     "sub": "Kaç uyarı, kaç dakika arayla ve hangi sırada",

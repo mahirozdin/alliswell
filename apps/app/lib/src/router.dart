@@ -20,6 +20,7 @@ import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
+import 'features/ai/ui/share_log_screen.dart';
 import 'notifications/alarm_log_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
@@ -262,6 +263,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/alarm-log',
         builder: (context, state) => _page(const AlarmLogScreen()),
+      ),
+      // OPH-242: the share log — the same kind of surface, for the same kind of
+      // unanswerable report ("I shared something and nothing happened").
+      GoRoute(
+        path: '/settings/share-log',
+        builder: (context, state) => _page(const ShareLogScreen()),
       ),
       // OPH-179: how insistent alarms are — one destination (DESIGN §18 N1).
       GoRoute(

@@ -111,6 +111,18 @@ class SettingsScreen extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.push('/settings/alarm-log'),
                     ),
+                    // OPH-242: what actually reached the app when something was
+                    // shared to it. Round 17 opened with a report nobody could
+                    // settle; this is the alarm log's twin for that class of
+                    // question.
+                    ListTile(
+                      key: const Key('settings-share-log'),
+                      leading: const Icon(Icons.ios_share_outlined),
+                      title: Text('shareLog.title'.tr()),
+                      subtitle: Text('shareLog.sub'.tr()),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/settings/share-log'),
+                    ),
                     // OPH-186 (DESIGN §20 C4): the archive of finished work.
                     // Home keeps today's; everything older lives here.
                     ListTile(

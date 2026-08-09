@@ -2,3 +2,23 @@
 // See AllisWellShareDebug.xcconfig for why both includes are required.
 #include? "Pods/Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.release.xcconfig"
 #include "Generated.xcconfig"
+
+// ── OPH-242: the reason "Share to AllisWell" did nothing ──────────────────
+// The Pods xcconfig above hands this extension the app's ENTIRE link line
+// (-framework AppAuth, all of Firebase, GoogleSignIn, receive_sharing_intent…)
+// but sets `LD_RUNPATH_SEARCH_PATHS = $(inherited) /usr/lib/swift` and nothing
+// else. Those frameworks are embedded once, in `Runner.app/Frameworks` — an
+// appex is not allowed its own copy — so dyld had nowhere to look, and the
+// extension died 83 ms into launch with:
+//
+//   Library not loaded: @rpath/AppAuth.framework/AppAuth
+//   Referenced from: …/Runner.app/PlugIns/AllisWellShare.appex/AllisWellShare
+//
+// A dyld death inside an app extension produces NO user-visible crash report:
+// the share sheet simply closes and nothing happens. That is round 17 #1,
+// exactly as it was reported.
+//
+// `@executable_path` for `…/PlugIns/X.appex/X` is the appex directory, so
+// `../../Frameworks` is the host app's Frameworks folder — the sanctioned way
+// for an extension to use what the app already embeds.
+LD_RUNPATH_SEARCH_PATHS = $(inherited) /usr/lib/swift @executable_path/Frameworks @executable_path/../../Frameworks

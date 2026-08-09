@@ -407,6 +407,44 @@ class AiMessages extends Table {
 /// How many AI chat rows the device keeps (a ring buffer, newest first).
 const int kAiMessageLimit = 200;
 
+/// The share pipeline's own record (OPH-242). Device-only, like the alarm log
+/// and for the same reason: round 17 opened with "I shared a text and nothing
+/// happened — not even a crash report", and nothing in the app could confirm or
+/// deny it. Every inbound share now leaves a row.
+///
+/// The most valuable reading of this table is an EMPTY one: zero rows after a
+/// share attempt proves the payload never reached Dart, which places the fault
+/// on the native side (the URL scheme, the App Group, the OS) rather than in
+/// the app's routing.
+///
+/// Content is never stored — only its size — so the log stays safe to copy into
+/// a bug report.
+class ShareEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// When we recorded it (UTC).
+  DateTimeColumn get at => dateTime()();
+
+  /// `initial_share` | `warm_share` | `initial_document` | `warm_document` |
+  /// `read_failed` | `consumed`.
+  TextColumn get event => text()();
+
+  /// `text` | `url` | `markdown`, where the shape is known.
+  TextColumn get payloadKind => text().nullable()();
+
+  /// How much arrived — never WHAT arrived.
+  IntColumn get bytes => integer().nullable()();
+
+  /// Free-form extra: a file's extension, an error's runtime type. Never
+  /// payload text, never a full path.
+  TextColumn get detail => text().nullable()();
+}
+
+/// How many share-log rows the device keeps (a ring buffer, newest first).
+/// Smaller than the alarm log: shares are rare and only the recent ones answer
+/// "did the last thing I tried arrive?".
+const int kShareLogLimit = 100;
+
 /// The offline outbox (OPH-055, BLUEPRINT §6.3): one row per local write, in
 /// creation order. `id` doubles as the server-visible `clientMutationId`, so
 /// retries stay idempotent end to end.
@@ -478,6 +516,7 @@ class AppleEventLinks extends Table {
     TaskSeries,
     AlarmEvents,
     AiMessages,
+    ShareEvents,
     PendingMutations,
     SyncStates,
   ],
@@ -498,8 +537,10 @@ class AwDatabase extends _$AwDatabase {
   /// (ADR-0020) — recurring tasks.
   /// v14 → v15 (OPH-221): ai_messages, the AI bubble's device-local chat
   /// history (ADR-0019 — NOT a sync entity; the decision is written).
+  /// v15 → v16 (OPH-242): share_events, the share pipeline's device-local
+  /// diagnostic trail — content-free, never synced.
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -606,6 +647,10 @@ class AwDatabase extends _$AwDatabase {
       // brand new table (no `from >=` guard, per the v13 rule); it holds no
       // synced data, so nothing is backfilled.
       if (from < 15) await m.createTable(aiMessages);
+      // v16 (OPH-242): the share pipeline's diagnostic trail. Another brand new
+      // device-local table — nothing to backfill, and nothing that could ever
+      // have been synced.
+      if (from < 16) await m.createTable(shareEvents);
     },
   );
 
