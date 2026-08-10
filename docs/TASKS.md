@@ -6239,13 +6239,23 @@ filtrelerini koruyor.)_
       "group.com.alliswell.alliswell")`'e yazamıyorsa (provisioning profile App Group'u
       taşımıyorsa) yönlendirme çalışsa bile uygulama BOŞ açılır. Uzantı tarafında
       suite'in `nil` olma durumu ayrı ayrı ölçülür ve ayırt edilir.
-- [ ] **H3 çıkarsa yol ayrımı ADR ile:** `receive_sharing_intent` ≥1.8 (SPM-only —
-      repo CocoaPods, bkz. pubspec notu) / alternatif paket / uzantıya kendi compose
-      UI'ını verip payload'ı App Group'a yazdırıp yönlendirmeyi bırakmak (uygulama bir
-      sonraki açılışta okur — "sessizlik" yerine "gecikme", dürüst bir düşüş).
-      Karar **ADR-0028** olur ve paylaşım bağımlılığını seçen
-      **[ADR-0023](adr/0023-stt-and-share-intent-dependencies.md)'ü süperseder**
-      (ADR-0024'ün ADR-0002'yi süpersede etme kalıbı); sessizce paket değiştirilmez.
+- [ ] **H3 çıkarsa yol ayrımı ADR ile:** `receive_sharing_intent` ≥1.8 / alternatif
+      paket / uzantıya kendi compose UI'ını verip payload'ı App Group'a yazdırıp
+      yönlendirmeyi bırakmak (uygulama bir sonraki açılışta okur — "sessizlik" yerine
+      "gecikme", dürüst bir düşüş).
+      **Düzeltme (2026-08-10, ölçüldü): "≥1.8 SPM-only" YANLIŞ.** SPM-only olan
+      **1.9.0**; **1.8.1** hâlâ podspec taşıyor ve changelog'u düpedüz _"Fixed sharing
+      not working on iOS 18"_ diyor. Kurulu sürüm de 1.6.8 değil **1.7.0**
+      (`pubspec.lock`; upstream podspec'te `s.version` bump'ını unutmuş). Bu yüzden
+      **ilk iş 1.8.1'i gerçek cihazda ölçmek** — düzeltirse ~200 satır Swift hiç
+      yazılmaz. `pubspec.yaml`'daki `<1.8.0` pin'inin gerekçe yorumu ve
+      `ShareViewController.swift:31-32` bu yanlışı taşıyor, ikisi de düzeltilecek.
+      Karar **ADR-0029** olur (0028 markdown'a ayrıldı — OPH-246) ve
+      [ADR-0023](adr/0023-stt-and-share-intent-dependencies.md)'ü **süpersede etmez,
+      §3'ünü tadil eder**: 0023 üç konulu bir ADR (STT + paket seçimi + uzantı
+      davranışı) ve diğer ikisi geçerli kalıyor; değişen tek cümle "…and opens the host
+      app". Uzantının **ağ ve AI yapmaması** güvencesi aynen duruyor. Sessizce paket
+      değiştirilmez.
 - [ ] **Android hattı da ölçülür** (sahip yalnız iPhone denedi): `ACTION_SEND`
       `text/plain` gerçek cihazda Chrome/Gmail'den denenir, soğuk + sıcak.
 - [ ] **Bir daha "kanıtlanamaz arıza" olmasın:** paylaşım hattına Epic 16'nın alarm
@@ -6264,7 +6274,7 @@ filtrelerini koruyor.)_
   (ekran kaydı ya da tanılama ekranı görüntüsü) · `log stream --predicate 'subsystem
   contains "alliswell"'` çıktısı.
 
-### OPH-243 — Paylaşılan metin gerçekten işe dönüşsün: AI varsa görev, yoksa dolu create sheet
+### OPH-243 — Paylaşılan metin gerçekten işe dönüşsün: AI varsa görev, yoksa Inbox + sebep
 
 _(⚠️ KISMEN — 2026-08-09/10. Sahibin kararı uygulandı: **AI yokken YALNIZ dolu
 create sheet** ("Not al" ve "Inbox'a kaydet" paylaşım yolundan kalktı; AI açıkken
@@ -6295,28 +6305,55 @@ içine gerekçesiyle YAZILDI (saklanmadı) ve sıcak paylaşım varyantı yeşil
 Kullanıcı maliyeti tek yönlü ve küçük: soğuk uygulamaya paylaşan AI'lı kullanıcı
 bubble yerine dolu create sheet görür — çalışan bir hedef, çıkmaz değil.)_
 
-- [ ] **AI yapılandırılmamışsa** (ya da `AI_ENABLED=false`): paylaşılan metin doğrudan
-      **detaylı görev oluşturma sheet'ini** açar; **başlık alanı metnin ilk satırıyla
-      dolu** (140 karakterde kırpılır — `captureToInbox`'ın mevcut kuralı), kalanı
-      açıklamaya düşer, URL varsa açıklamanın sonuna eklenir. Sahibin beklentisi budur;
-      bugünkü davranış (AI bubble'ı, Not al + Inbox çipleriyle) AI'sı olmayan kullanıcı
-      için çıkmaz sokaktır.
+> **Hedef 2026-08-10'da DEĞİŞTİ (sahibin kararı).** Aşağıdaki maddeler yeniden yazıldı;
+> başlıktaki "yoksa dolu create sheet" cümlesi artık geçersiz. Eski hedef — AI yoksa
+> başlığı dolu create sheet — round 17'de sahibin isteğiydi ve kısmen sevk edildi; sahip
+> bunun **bilinçli olarak geri alınmasını** istedi: paylaşım artık bir AI özelliği olarak
+> konumlanıyor. Bu, Android'de **çalışan** bir yolun kaldırılması demek ve öyle kayda
+> geçiyor — sessiz bir kırpma değil.
+
+- [ ] **AI yapılandırılmamışsa** (ya da `AI_ENABLED=false`), **her iki platformda**:
+      paylaşılan metin **sessizce Inbox'a kaydedilir** (`captureToInbox`, sıfır AI) ve
+      ardından bir **diyalog** "bu özellik için bir AI sağlayıcısı gerekiyor" der.
+      Sıra bağlayıcı — **önce kaydet, sonra göster**: diyalog bir rota değişimiyle
+      yutulursa metin zaten güvende olmalı.
+- [ ] Diyalog **çıkmaz sokak olamaz**: birincil eylem **Sağlayıcı ekle** →
+      `context.push('/settings/ai')`; ikincil **Inbox'ı aç** →
+      `context.go(AppSection.inbox.path)` (Inbox bir **shell branch**, `push` değil —
+      `router.dart:184-199`); üçüncüsü sade kapatma. Diyalog Inbox'ı **adıyla söylemek
+      zorunda**, yoksa "sessiz kayıt" kara deliğe döner.
+- [ ] **Soğuk başlangıç boşluğu kapanır:** `AiStatusController.build()` localKv
+      cache'ini **guard'dan önce** okur (bugün `_cacheKey` guard'dan sonra atanıyor, yani
+      cache soğuk başlangıçta hiç kullanılmıyor ve AI'lı kullanıcı yanlış dala gidiyor —
+      `share_routing_test.dart`'ın yazılı GAP'ı). Beş yüzey tek tek gözden geçirilir;
+      riskli olan tek yer `ai_bubble_controller.dart:85`'in senkron `.value` okuması.
 - [ ] **AI yapılandırılmışsa:** bugünkü yol korunur ve tamamlanır — bubble açılır,
       `extractUtterance(source:'share')` çalışır, sonuç **onay kartına** iner
-      (v1 değişmezi: onay kartı atlanamaz). `AiRouteOffline`/hata → AI'sız yola düşer
-      (dolu create sheet), sessiz kaybolma yok.
+      (v1 değişmezi: onay kartı atlanamaz).
+- [ ] **`ai_bubble.dart`'ın `AiRouteOffline` → Inbox düşüşü KALIR** ve gerekçesi yazılır:
+      yukarıdaki diyalog "hiç sağlayıcı yok" diyor (yapılandırma), bu dal ise sağlayıcı
+      **varken** ağ patladığında çalışıyor. Sağlayıcısı olan birine "sağlayıcı ekle"
+      demek yalan olurdu. İki yol bir bakışta aynı görünüyor; biri gelip "birleştirmesin".
 - [ ] Beş çip (Görev yap / Not al / Özetle / Soru sor / Inbox'a kaydet) AI'lı yolda
-      aynen kalır; AI'sız yolda create sheet'in **kendi** eylemleri geçerlidir — ikinci
-      bir eylem dili icat edilmez.
-- [ ] Paylaşılan içerik **markdown dosyasıysa** OPH-241'in görüntüleyicisine gider
-      (mevcut ayrım korunur: `documents()` vs `shares()`).
-- [ ] i18n: yeni dizeler `en`+`tr`; `npm run check:i18n` temiz.
-- [ ] Testler: AI kapalı → create sheet açıldı + başlık doğru dolu + hiçbir AI çağrısı
-      yapılmadı (`extract`'a dokunulmadı assert'i, OPH-225'in "sıfır AI" kalıbı);
-      AI açık → bubble + extract + onay kartı; extract hata → create sheet'e düşüş;
-      çok satırlı metnin başlık/açıklama bölünmesi; 140 karakter kırpması.
-- **Kabul:** iki yol da cihazda çalışır; AI'sız kullanıcı paylaştığı metni **iki
-  dokunuşta** göreve çevirir.
+      aynen kalır.
+- [ ] Paylaşılan içerik **markdown dosyasıysa** OPH-241'in görüntüleyicisine gider —
+      **zaten böyle**: `.md` `documents()` kanalından gelip `pendingMarkdownProvider`'a
+      düşüyor, `_routeShare`'e hiç uğramıyor. Madde doğrulama olarak duruyor.
+- [ ] `ShareLogEvent.consumed` bugün tanımlı ama **hiç yazılmıyor** — log varışı
+      kanıtlıyor, tüketimi kanıtlamıyor. `take()` sonrasında yazılır ve `detail` alanına
+      hedef (`bubble` / `no_provider`) konur. Not: her paylaşım artık **iki** satır
+      yazacak, `kShareLogLimit = 100` etkin geçmişi yarıya indiriyor.
+- [ ] i18n: yeni dizeler `en`+`tr` (`ai.share.noProviderTitle/Body/openInbox/dismiss`;
+      birincil eylem mevcut `ai.settings.addProvider`'ı kullanır); `check:i18n` temiz.
+- [ ] Testler: AI kapalı → **diyalog** açıldı + **Inbox satırı replica'da var** +
+      `api.aiExtractCalls == 0`; diyalog hemen kapatılsa bile satır duruyor (kararın asıl
+      garantisi); "Sağlayıcı ekle" → AI ayarları, "Inbox'ı aç" → shell duruyor
+      (`push`/`go` hatasını yakalar); **soğuk başlangıç + cache'te `configured: true` →
+      bubble** (bu test `main`'de kırmızı olmalı); bayat cache + sunucu "AI yok" → bubble
+      açılır, oturunca unconfigured yüzü gelir.
+- **Kabul:** AI'lı kullanıcı paylaştığını **soğuk başlangıçta da** bubble→onay kartında
+  görür; AI'sız kullanıcı ne kaybeder ne de sessizce bırakılır — metni Inbox'ında, sebebi
+  ekranında bulur.
 - **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n`.
 
 ### OPH-244 — Ek seçimi üç yol: Fotoğraflar · Kamera · Dosyalar (DESIGN §30 A1–A4)

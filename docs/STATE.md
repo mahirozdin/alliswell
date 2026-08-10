@@ -172,10 +172,13 @@ FlutterSceneDelegate`) ve sonlandırılmış uygulamada `scene(_:openURLContexts
 çağrılmıyor — URL `willConnectTo`'nun `connectionOptions`'ında geliyor; ayrıca **iOS 18+
 uzantıların `openURL:` selector hilesini kapattı** (UIKit "BUG IN CLIENT OF UIKIT" basıyor,
 Apple DTS "kullanmayın" diyor) — yani şema eklemek yetmeyebilir ve plugin/mimari değişikliği
-gerekirse ADR-0028 (ADR-0023'ü süperseder) ile gelir. OPH-242 üçünü SIRAYLA eliyor ve hattı bir daha
+gerekirse **ADR-0029** ile gelir (bu blok yazıldığında "ADR-0028, ADR-0023'ü süperseder"
+deniyordu; **ikisi de yanlıştı** — 0028 markdown'a ayrıldı ve karar 0023'ü süpersede
+etmiyor, yalnız §3'ünü tadil ediyor). OPH-242 üçünü SIRAYLA eliyor ve hattı bir daha
 kanıtlanamaz bırakmamak için **teşhis kaydı** ekliyor (alarm günlüğü kalıbı).
 OPH-243 ise hedefi değiştiriyor: **AI yoksa paylaşılan metin dolu create sheet'i açar**
-(sahibin beklentisi), AI varsa bugünkü bubble→onay kartı yolu kalır.
+(sahibin beklentisi), AI varsa bugünkü bubble→onay kartı yolu kalır. _(Bu hedef
+2026-08-10'da sahibin yeni kararıyla değişti — aşağıdaki OPH-243 notuna bakın.)_
 **(2) Fotoğraf eklenememesi bug değil, yanlış çağrı:** `pick_files_io.dart` `FilePicker.pickFiles()`'ı
 tipsiz çağırıyor (`FileType.any`), file_picker 12'nin iOS kaynağı ise `case
 "image","video","media"` için **`PHPickerViewController`**, diğer her şey için

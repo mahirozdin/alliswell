@@ -96,8 +96,16 @@ dependencies:
   # AI voice (OPH-223, ADR-0023): on-device STT, behind the SttController seam.
   speech_to_text: ^7.0.0
   # AI share target (OPH-225, ADR-0023): behind the ShareIntentSource seam.
-  # Capped below 1.8 — that line is Swift-Package-Manager only, and this repo's
-  # iOS build uses CocoaPods.
+  #
+  # The cap's original reason — "1.8 is Swift-Package-Manager only and we build
+  # with CocoaPods" — was WRONG, and re-reading the changelog is what found it
+  # (OPH-242): SPM-only starts at 1.9.0; 1.8.1 still ships a podspec, and its
+  # changelog line is literally "Fixed sharing not working on iOS 18" — which is
+  # the exact failure this project is still carrying. The cap therefore stays
+  # only until 1.8.1 is measured on a real device (OPH-242 step 0); if it fixes
+  # the foregrounding, the fix is this one line instead of ~200 lines of Swift.
+  # Do not raise it on the strength of a changelog alone — ADR-0029 records the
+  # measurement either way.
   receive_sharing_intent: ">=1.4.5 <1.8.0"
   # Attachment capture (OPH-244, ADR-0027). `file_picker` alone cannot satisfy
   # DESIGN §30 A2: its Android path builds ACTION_GET_CONTENT for image/video/
