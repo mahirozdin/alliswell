@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../i18n/i18n.dart' show AwTr;
 import '../../../theme/tokens.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
+import '../../notes/data/note_blocks.dart';
 import '../providers.dart';
 import 'attach_menu.dart';
+import 'image_viewer.dart';
 
 /// Inline note media (Epic 14, OPH-156 — BLUEPRINT §12.5 rev.).
 ///
@@ -36,7 +38,14 @@ class _AwImageEmbedBuilder extends EmbedBuilder {
   @override
   Widget build(BuildContext context, EmbedContext embedContext) {
     final source = embedContext.node.value.data;
-    return AwNoteImageEmbed(source: source is String ? source : '');
+    return AwNoteImageEmbed(
+      source: source is String ? source : '',
+      // The gallery is the note's own body order (DESIGN §30 A11), and the
+      // controller is already right here — no provider, no InheritedWidget.
+      // Every caller of awNoteEmbedBuilders() supplies one: the editor, the
+      // project README view and the markdown import preview.
+      controller: embedContext.controller,
+    );
   }
 }
 
@@ -54,9 +63,13 @@ class _AwVideoEmbedBuilder extends EmbedBuilder {
 /// An inline image: minted-URL fetch → image (tap = full-screen viewer);
 /// while fetching → soft progress tile; unavailable → placeholder tile.
 class AwNoteImageEmbed extends ConsumerWidget {
-  const AwNoteImageEmbed({super.key, required this.source});
+  const AwNoteImageEmbed({super.key, required this.source, this.controller});
 
   final String source;
+
+  /// The document this embed sits in, used only at tap time to build the
+  /// gallery in body order. Null = this image opens alone.
+  final QuillController? controller;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -65,8 +78,8 @@ class AwNoteImageEmbed extends ConsumerWidget {
       // A foreign (http) image from someone else's delta.
       return _framed(
         context,
-        Image.network(
-          source,
+        Image(
+          image: ref.watch(networkImageProvider)(source),
           fit: BoxFit.contain,
           errorBuilder: (context, _, _) => _placeholder(context, null),
         ),
@@ -80,11 +93,11 @@ class AwNoteImageEmbed extends ConsumerWidget {
           data: (url) => url == null
               ? _placeholder(context, fileId)
               : GestureDetector(
-                  onTap: () => _openViewer(context, ref, fileId),
+                  onTap: () => _openViewer(context, fileId),
                   child: _framed(
                     context,
-                    Image.network(
-                      url,
+                    Image(
+                      image: ref.watch(networkImageProvider)(url),
                       fit: BoxFit.contain,
                       loadingBuilder: (context, child, progress) =>
                           progress == null ? child : _loadingTile(context),
@@ -126,22 +139,34 @@ class AwNoteImageEmbed extends ConsumerWidget {
   Widget _placeholder(BuildContext context, String? fileId) =>
       _EmbedPlaceholder(fileId: fileId, icon: Icons.image_outlined);
 
-  Future<void> _openViewer(
-    BuildContext context,
-    WidgetRef ref,
-    String fileId,
-  ) async {
-    final file = await ref.read(fileByIdProvider(fileId).future);
-    if (!context.mounted) return;
-    await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => _EmbedImageViewer(
-          title: file?.name ?? 'file.mediaUnavailable'.tr(),
-          fileId: fileId,
-        ),
-      ),
+  /// Synchronous on purpose: the viewer resolves names itself now, so there is
+  /// nothing to await before pushing — and nothing to guard with `mounted`.
+  Future<void> _openViewer(BuildContext context, String fileId) {
+    final ids = _galleryIds();
+    final at = ids.indexOf(fileId);
+    return showAwImageViewer(
+      context,
+      fileIds: at < 0 ? [fileId] : ids,
+      initialIndex: at < 0 ? 0 : at,
     );
+  }
+
+  /// Every AllisWell image in the note, in the order it appears in the body.
+  ///
+  /// Walks the delta with [deltaToBlocks] — the same walk the PDF export uses
+  /// — rather than a bespoke scan, so document order can never drift between
+  /// the exporter and the viewer. Runs at tap time only; doing it in `build`
+  /// would be O(n²) per render. Foreign http(s) embeds drop out, matching the
+  /// body, where they are not tappable either.
+  List<String> _galleryIds() {
+    final doc = controller?.document;
+    if (doc == null) return const [];
+    final ops = doc.toDelta().toJson().cast<Map<String, dynamic>>();
+    return [
+      for (final block in deltaToBlocks(ops))
+        if (block.kind == NoteBlockKind.image && block.source != null)
+          fileIdFromEmbedSource(block.source!),
+    ].nonNulls.toList();
   }
 }
 
@@ -235,36 +260,6 @@ class _EmbedPlaceholder extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _EmbedImageViewer extends ConsumerWidget {
-  const _EmbedImageViewer({required this.title, required this.fileId});
-
-  final String title;
-  final String fileId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
-      body: ref
-          .watch(fileUrlProvider(fileId))
-          .when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, _) => Center(child: Text('file.couldNotOpen'.tr())),
-            data: (url) => url == null
-                ? Center(child: Text('file.couldNotOpen'.tr()))
-                : InteractiveViewer(
-                    maxScale: 6,
-                    child: Center(
-                      child: Image.network(url, fit: BoxFit.contain),
-                    ),
-                  ),
-          ),
     );
   }
 }

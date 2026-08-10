@@ -575,6 +575,10 @@ class _FoldersLayer extends ConsumerWidget {
                       for (final file in files)
                         FileRowTile(
                           file: file,
+                          siblingImageIds: [
+                            for (final f in files)
+                              if (f.isImage) f.id,
+                          ],
                           onMore: () => showFileActionsSheet(
                             context,
                             ref,
@@ -626,6 +630,10 @@ class _SourcesLayer extends ConsumerWidget {
                   FileRowTile(
                     key: Key('source-file-${entry.file.id}'),
                     file: entry.file,
+                    siblingImageIds: [
+                      for (final e in entries)
+                        if (e.file.isImage) e.file.id,
+                    ],
                     badge: SourceBadge(
                       type: entry.sourceType,
                       title: entry.sourceTitle,

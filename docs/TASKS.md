@@ -6417,28 +6417,85 @@ Fotoğraflar'ın foto ızgarasını açması, **izin diyaloğu ÇIKMAMASI** ve k
 - **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n` ·
   `python3 scripts/design/contrast.py` · iki cihazda seçici turu.
 
-### OPH-245 — `AwImageViewer`: zoom, kaydırma, galeri, paylaş/kaydet (DESIGN §30 A6–A8)
+### OPH-245 — `AwImageViewer`: zoom, kaydırma, galeri (DESIGN §30 A6–A8, A11)
 
-- [ ] `_EmbedImageViewer` (`note_media.dart` içinde **özel**, yalnız notlardan
-      ulaşılabilir) çıkarılıp `widgets/` altına **paylaşılan `AwImageViewer`** olur —
-      §22'nin ders kitabı vakası.
-- [ ] Yetenekler: **pinch-zoom** (mevcut `InteractiveViewer` temel alınır),
-      **çift-dokunuşla yakınlaş/uzaklaş** (odak noktası dokunulan yer), **pan**,
-      **aynı hedefin görselleri arasında yatay kaydırma** (görev detayındaki 4 fotoğraf
-      arasında geçiş), üstte dosya adı + `n/m` sayacı, altta **paylaş / kaydet**,
-      geri jesti ve `Esc`.
-- [ ] Üç yüzeyden de aynı görüntüleyici açılır: görev ekleri, not gömüleri, Dosyalar
-      bölümü (A7).
-- [ ] Yüklenirken iskelet, hata durumunda **sebepli** mesaj (A8) — mevcut
-      `file.couldNotOpen` yerine ayrıştırılmış sebep (ağ / bulunamadı / depolama kapalı).
-- [ ] Erişilebilirlik: görüntüleyici `Semantics` etiketi taşır, zoom kontrolleri
-      klavyeyle de erişilebilir (masaüstü/web), dokunma hedefleri ≥ 44 px.
-- [ ] Testler: çift-dokunuş ölçeği değiştiriyor; kaydırma indeksi ve sayaç doğru;
-      tek görselde kaydırma kapalı; hata durumunda sebep gösteriliyor; üç çağıran
-      yüzeyin de aynı sınıfı açtığı (widget testi).
+_(✅ 2026-08-10. **İki viewer vardı, biri diğerinden zayıftı** — `_EmbedImageViewer`'ın
+`loadingBuilder`/`errorBuilder`'ı bile yoktu. Planın üç varsayımı ölçülünce ters çıktı:_
+
+_**(1) Not içinde belge sırası için kablolama gerekmiyormuş.** `EmbedContext` zaten
+`QuillController` taşıyor (`flutter_quill-11.5.1/.../embed_context.dart:17-41`) — provider
+da, InheritedWidget da, builder parametresi de gereksiz. Üç `awNoteEmbedBuilders()`
+çağrısının (editör, proje README, markdown import önizlemesi) hepsi controller veriyor._
+
+_**(2) A8 teslim edilebilir değilmiş.** `FileUrlCache.urlFor` `ApiException`'ı yutup `null`
+dönüyordu, yani "ağ yok" ile "dosya silinmiş" widget'a **aynı hiçlik** olarak varıyordu ve
+üçü de `file.couldNotOpen` ("İndirme bağlantısı alınamadı") yazıyordu — üçünden yalnız biri
+için doğru bir cümle. Sebep artık cache'te tutuluyor._
+
+_**(3) `onMore` kısa devresi bug değil, OPH-170'in bilinçli kararıymış**
+(`file_widgets.dart:134-136`). "Görseller `onMore`'u atlasın" naif düzeltmesi Taşı… ve
+Kaynağa git eylemlerini **öksüz bırakırdı**; çözüm bir dal silmek değil bir affordance
+**eklemek** oldu — klasör satırlarının zaten kullandığı ⋯ düğmesi._
+
+_**Yol boyunca bulunan canlı hata:** `confirmFileDelete` `Future<void>` döndürüyordu ve
+`_FileImageViewer` onayı beklemeden koşulsuz `pop` ediyordu — yani **silmeyi iptal etsen
+bile görüntüleyici kapanıyordu**. Artık `Future<bool>`._
+
+_**Dikiş:** `networkImageProvider` (`filePickerProvider` kalıbı). `flutter_test`'in HTTP
+mock'u her isteğe sıfır bayt döndürüyor, o yüzden depoda bugüne dek **hiçbir test gerçek
+bir görsel çizmemişti** — "çift dokunuş yakınlaştırıyor" ancak hata sayfası üzerinde test
+edilebilirdi. Süitler 874 (+18).)_
+
+- [x] `_EmbedImageViewer` + `_FileImageViewer` çıkarılıp tek **`AwImageViewer`** olur —
+      §22'nin ders kitabı vakası. **`widgets/` altına değil**
+      (`features/files/ui/image_viewer.dart`): `lib/src/widgets/`'taki on dosyanın hiçbiri
+      `features/`'tan import etmiyor, görüntüleyici ise dört dosya provider'ı istiyor.
+      `Aw` bir **isim** kuralı, klasör kuralı değil (`AwNoteImageEmbed`, `AwRefresh`).
+- [x] **Dosya id'si alır, `FileAttachment` değil:** not galerisi delta yürüyüşünden ULID
+      veriyor, ve yeni yüklenmiş bir görselin replica satırı henüz yok — tip'li bir API
+      tam da o görseli açılamaz yapardı (eski embed viewer'ında olmayan bir gerileme).
+- [x] Yetenekler: **pinch-zoom** (`maxScale: 6`), **çift-dokunuşla 2.5×**, odak
+      **dokunulan nokta** (`T(p)·S·T(-p)`, `AwMotion.base`, içeri `enter` / dışarı `exit`),
+      **pan**, **hedefin görselleri arasında yatay kaydırma**, üstte dosya adı + `n/m`,
+      `Esc` + klavye zoom/sayfalama. **Zoom'luyken sayfalama kapanır** (yatay sürükleme
+      pan etmeli, sayfa çevirmemeli).
+- [x] **Paylaş/kaydet YOK** (sahibin kararı) — bugünkü **Aç/İndir + Sil** aynen kalır ve
+      satır replica'dan gelene kadar **disabled** (ölü buton yasak). DESIGN §30 A6 buna
+      göre tadil edildi; gerekçe ADR-0027'nin ölçülmüş sıfır-izin kazanımı.
+- [x] Galeri ortasında silme **kapatmaz, sonrakine geçer**; son görsel silinirse kapanır;
+      **iptal edilen silme hiçbir şey yapmaz** (bugünkü hatanın düzeltilmesi).
+- [x] Beş yüzeyden de aynı görüntüleyici açılır (A7): görev ekleri, Dosyalar → klasör,
+      Dosyalar → Kaynaklar, proje Dosyalar sekmesi, not gömüleri. `FileRowTile`'ın dokunuşu
+      **türe** bakar; `onMore` yeni bir **⋯** düğmesine taşındı (`file-menu-{id}`).
+- [x] Galeri, yüzeyin **gösterdiği** kümedir ve **gösterdiği sıradadır** (yeni A11):
+      proje sekmesi `_arrange` sonrasından, not **belge sırasından** (`deltaToBlocks` —
+      PDF export'un yürüdüğü aynı yol, sıra ikisi arasında ayrışamaz).
+- [x] Hata durumunda **sebepli** mesaj (A8): altı sonuç — çevrimdışı / silinmiş (404) /
+      başka bir sunucu kodu (`localizedError`) / depolama kapalı / henüz bağlantı yok /
+      bağlantı çalıştı ama baytlar çözülemedi. Veri katmanı değişikliği gerekti:
+      `FileUrlCache.errorCodeFor` + `fileUrlResultProvider`.
+- [x] Erişilebilirlik: sayaç `Semantics` etiketi taşır (`file.viewerPosition`), eylemler
+      tema tap hedefli `IconButton`, klavye kısayolları (`Esc`, oklar, `+`/`-`/`0`) —
+      depoda ilk `CallbackShortcuts` kullanımı, çünkü `fullscreenDialog` rotası `Esc` ile
+      kendiliğinden kapanmıyor.
+- [x] i18n: yedi yeni `file.*` anahtarı `en`+`tr`; hepsi `extraction_test.dart`'a yazıldı
+      (`check.mjs` bunları göremiyor — biri argüman olarak gidiyor, biri zaten `.tr(`
+      sarmalında, yani yanlış yazılmış bir anahtar CI'dan sessizce geçerdi).
+- [x] Testler: `test/widgets/image_viewer_test.dart` (12) — çift dokunuşun **ölçeği ve
+      çevirisi** dokunulan noktaya uyuyor, sayaç, tek görselde sayaç yok + physics kilitli,
+      zoom'luyken sayfalama kapalı, altı hata sebebi, `Esc`, oklar, satır gelmeden eylemler
+      disabled. `test/features/files/image_viewer_surfaces_test.dart` (3) — A7 çifti:
+      satır viewer'ı açıyor **ve** ⋯ hâlâ "Taşı…"ya ulaşıyor; görsel olmayan satır hâlâ
+      sheet açıyor. `note_media_test.dart` — yükleme sırası **ters** üç görselli not
+      (`targetFilesProvider`'a bağlanırsa kırmızıya döner).
 - **Kabul:** göreve eklenen bir fotoğrafın üstüne dokunulunca tam ekran açılır, iki
   parmakla büyütülüp gezilebilir, diğer fotoğraflara kaydırılarak geçilir.
 - **Doğrulama:** `flutter analyze` · `flutter test` · `python3 scripts/design/contrast.py`.
+- [x] **Cihaz turu — sahip tarafından doğrulandı (2026-08-10).** Kapsam: köşeye çift
+      dokunuşun o köşeyi sabit tutması · dört fotoğraflı bir görevde kaydırma + sayaç ·
+      galeri ortasında silmenin sonrakine geçmesi · yükleme sırası ters bir notta
+      kaydırmanın gövde sırasını izlemesi · dar ekranda ⋯ + kaynak rozeti · Android
+      sistem geri tuşu · masaüstünde `Esc` / oklar / `Tab`.
 
 ### OPH-246 — Markdown: model kararı + render motoru seçimi + ADR-0028 (kod yazmaz)
 

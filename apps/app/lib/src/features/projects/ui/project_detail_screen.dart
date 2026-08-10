@@ -582,6 +582,13 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
                 message: 'file.notConfiguredHint'.tr(),
               );
       }
+      // From the ARRANGED list, not the raw one: this tab sorts by name and by
+      // size, and swiping right has to land where the list implied it would
+      // (DESIGN §30 A11).
+      final imageIds = [
+        for (final entry in items)
+          if (entry.file.isImage) entry.file.id,
+      ];
       return ListView(
         padding: awListPadding(context),
         children: [
@@ -589,6 +596,7 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
           for (final entry in items)
             FileRowTile(
               file: entry.file,
+              siblingImageIds: imageIds,
               badge: _SourceBadge(entry: entry),
             ),
         ],

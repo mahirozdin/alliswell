@@ -57,6 +57,45 @@ void main() {
     });
   });
 
+  // OPH-245: same blind spot, two flavours of it. The viewer's reason strings
+  // reach `AwEmptyState(title:, message:)` as ARGUMENTS, and the counter
+  // reaches `Text` already wrapped in `.tr(` — which `check.mjs` allow-lists,
+  // so a missing or misspelled key would ship and render as the raw key.
+  group('image viewer strings', () {
+    test('resolve in English by default', () {
+      expect('file.viewerOffline'.tr(), contains('connection'));
+      expect('file.viewerGone'.tr(), contains('no longer'));
+      expect('file.viewerNotReady'.tr(), contains('download link'));
+      expect('file.viewerImageFailed'.tr(), contains('could not be loaded'));
+      expect('file.fileActions'.tr(), 'File actions');
+      expect(
+        'file.viewerCounter'.tr(args: {'index': '2', 'total': '4'}),
+        '2 / 4',
+      );
+      expect(
+        'file.viewerPosition'.tr(args: {'index': '2', 'total': '4'}),
+        'Image 2 of 4',
+      );
+    });
+
+    test('follow the active language', () {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect('file.viewerOffline'.tr(), contains('Sunucuya ulaşılamıyor'));
+      expect('file.viewerGone'.tr(), contains('artık sunucuda yok'));
+      expect('file.viewerNotReady'.tr(), contains('indirme bağlantısı'));
+      expect('file.viewerImageFailed'.tr(), contains('görsel yüklenemedi'));
+      expect('file.fileActions'.tr(), 'Dosya eylemleri');
+      expect(
+        'file.viewerCounter'.tr(args: {'index': '2', 'total': '4'}),
+        '2 / 4',
+      );
+      expect(
+        'file.viewerPosition'.tr(args: {'index': '2', 'total': '4'}),
+        '4 görselden 2.',
+      );
+    });
+  });
+
   group('shared error state', () {
     testWidgets('renders English by default', (tester) async {
       await tester.pumpWidget(

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_exception.dart';
@@ -51,6 +52,17 @@ final filePickerProvider = Provider<FilePickerFn>((_) => pickUploads);
 /// host's — `flutter_test` forces `defaultTargetPlatform` to android.
 final attachSourcesProvider = Provider<List<AttachSource>>(
   (_) => attachMenuSources(isWeb: kIsWeb, platform: defaultTargetPlatform),
+);
+
+/// How a minted URL becomes pixels, behind a seam (the [filePickerProvider]
+/// pattern). Not a nicety: `flutter_test`'s HTTP mock answers EVERY request
+/// with zero bytes, so before this seam no test in the repo could assert on a
+/// rendered image — only on the failure path (OPH-245). Tests inject a
+/// [MemoryImage]; production stays [NetworkImage].
+typedef AwImageProviderFn = ImageProvider Function(String url);
+
+final networkImageProvider = Provider<AwImageProviderFn>(
+  (_) => NetworkImage.new,
 );
 
 /// The presigned PUT itself. A BARE dio on purpose: the URL carries its own
@@ -129,6 +141,7 @@ class FileUrlCache {
   final FilesApi _api;
   final _futures = <String, Future<String?>>{};
   final _validUntil = <String, DateTime>{};
+  final _lastError = <String, String>{};
 
   Future<String?> urlFor(String fileId) {
     final cached = _futures[fileId];
@@ -139,6 +152,7 @@ class FileUrlCache {
     final future = () async {
       try {
         final fresh = await _api.download(fileId);
+        _lastError.remove(fileId);
         if (fresh != null) {
           // Renew a minute before the store would refuse the URL.
           _validUntil[fileId] =
@@ -147,8 +161,12 @@ class FileUrlCache {
                   .subtract(const Duration(minutes: 1));
           return fresh.url;
         }
-      } on ApiException {
-        // Unreachable/denied: fall through to the placeholder answer.
+      } on ApiException catch (e) {
+        // Unreachable/denied: fall through to the placeholder answer, but KEEP
+        // the code. Until OPH-245 this catch threw the reason away, which is
+        // why DESIGN §30 A8 ("failure states a reason") could not be built —
+        // "offline" and "the file is gone" arrived here as the same null.
+        _lastError[fileId] = e.code;
       }
       _validUntil[fileId] = DateTime.now().add(const Duration(minutes: 2));
       return null;
@@ -157,9 +175,15 @@ class FileUrlCache {
     return future;
   }
 
+  /// Why the most recent mint for [fileId] produced no URL, or null when it
+  /// did not fail (a null URL with no code means the server answered and the
+  /// file simply is not downloadable yet).
+  String? errorCodeFor(String fileId) => _lastError[fileId];
+
   void evict(String fileId) {
     _futures.remove(fileId);
     _validUntil.remove(fileId);
+    _lastError.remove(fileId);
   }
 }
 
@@ -172,6 +196,19 @@ final fileUrlCacheProvider = Provider<FileUrlCache>(
 final fileUrlProvider = FutureProvider.autoDispose.family<String?, String>(
   (ref, fileId) => ref.watch(fileUrlCacheProvider).urlFor(fileId),
 );
+
+/// The URL *and*, when there is none, why — DESIGN §30 A8. Only the viewer
+/// needs the reason; rows and embeds keep using [fileUrlProvider] and fall
+/// back to their placeholder tile. Both read the same memoized future, so a
+/// file is still minted exactly once.
+typedef FileUrlResult = ({String? url, String? errorCode});
+
+final fileUrlResultProvider = FutureProvider.autoDispose
+    .family<FileUrlResult, String>((ref, fileId) async {
+      final cache = ref.watch(fileUrlCacheProvider);
+      final url = await cache.urlFor(fileId);
+      return (url: url, errorCode: cache.errorCodeFor(fileId));
+    });
 
 final fileByIdProvider = FutureProvider.autoDispose
     .family<FileAttachment?, String>(

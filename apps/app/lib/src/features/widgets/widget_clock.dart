@@ -66,5 +66,4 @@ String widgetClockPattern({required String format, required String locale}) {
 bool widgetClockIsFresh({
   required DateTime entryDate,
   required DateTime renderedAt,
-}) =>
-    renderedAt.difference(entryDate).inSeconds <= kWidgetClockStaleSeconds;
+}) => renderedAt.difference(entryDate).inSeconds <= kWidgetClockStaleSeconds;

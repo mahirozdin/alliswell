@@ -13,6 +13,7 @@ import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
 import '../providers.dart';
 import 'attach_menu.dart';
+import 'image_viewer.dart';
 
 /// Shared attachment UI (OPH-154/155, DESIGN §10): one row anatomy for task
 /// attachments, the project Files tab and note media — F1 says these three
@@ -73,8 +74,8 @@ class FileLeadingThumb extends ConsumerWidget {
     if (url == null) return iconTile;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AwRadius.s),
-      child: Image.network(
-        url,
+      child: Image(
+        image: ref.watch(networkImageProvider)(url),
         width: 40,
         height: 40,
         fit: BoxFit.cover,
@@ -87,14 +88,31 @@ class FileLeadingThumb extends ConsumerWidget {
 /// One ready attachment row (F1). [badge] is the Files-tab source chip (F4);
 /// task/note lists leave it null.
 class FileRowTile extends ConsumerWidget {
-  const FileRowTile({super.key, required this.file, this.badge, this.onMore});
+  const FileRowTile({
+    super.key,
+    required this.file,
+    this.badge,
+    this.onMore,
+    this.siblingImageIds = const [],
+  });
 
   final FileAttachment file;
   final Widget? badge;
 
-  /// Overrides the default tap-through to the actions sheet (OPH-170: the
-  /// Dosyalar section injects extra actions like move / go-to-source).
+  /// The extra actions this surface injects (OPH-170: move to folder, go to
+  /// source), reachable from the row's own ⋯ button — the affordance folder
+  /// rows already use.
+  ///
+  /// Until OPH-245 this ALSO swallowed the tap, for every kind, images
+  /// included: that is why an image opened a sheet in Dosyalar and the viewer
+  /// in a project's Files tab. The tap now follows the file's kind (A7), and
+  /// the extra actions kept their own way in rather than being orphaned.
   final VoidCallback? onMore;
+
+  /// The images this surface is showing, in the order it is showing them, so a
+  /// tapped image can be swiped through its siblings (DESIGN §30 A11). Empty
+  /// means "this image, alone".
+  final List<String> siblingImageIds;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -123,7 +141,21 @@ class FileRowTile extends ConsumerWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          trailing: badge,
+          trailing: (badge == null && onMore == null)
+              ? null
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ?badge,
+                    if (onMore != null)
+                      IconButton(
+                        key: Key('file-menu-${file.id}'),
+                        tooltip: 'file.fileActions'.tr(),
+                        icon: const Icon(Icons.more_horiz),
+                        onPressed: onMore,
+                      ),
+                  ],
+                ),
           onTap: () => _onTap(context, ref),
         ),
       ),
@@ -131,15 +163,17 @@ class FileRowTile extends ConsumerWidget {
   }
 
   Future<void> _onTap(BuildContext context, WidgetRef ref) async {
-    // A caller-supplied handler wins for EVERY kind — the Dosyalar surfaces
-    // route taps through their sheet (extra actions incl. the viewer's own
-    // open action), images included.
-    if (onMore != null) {
-      onMore!();
-      return;
-    }
+    // The tap says what the KIND says, on every surface (A7). Surfaces that
+    // inject extra actions offer them through [onMore]'s ⋯ button instead of
+    // intercepting this.
     if (file.isImage) {
-      await showFileImageViewer(context, ref, file);
+      final ids = siblingImageIds.isEmpty ? [file.id] : siblingImageIds;
+      final at = ids.indexOf(file.id);
+      await showAwImageViewer(
+        context,
+        fileIds: ids,
+        initialIndex: at < 0 ? 0 : at,
+      );
       return;
     }
     await showFileActionsSheet(context, ref, file);
@@ -386,7 +420,10 @@ Future<void> showFileRenameDialog(
   }
 }
 
-Future<void> confirmFileDelete(
+/// True only when the user confirmed AND the server accepted it. The viewer
+/// needs to tell those apart (OPH-245): before this returned a verdict it
+/// popped unconditionally, so cancelling the dialog still closed the image.
+Future<bool> confirmFileDelete(
   BuildContext context,
   WidgetRef ref,
   FileAttachment file,
@@ -417,83 +454,17 @@ Future<void> confirmFileDelete(
       ],
     ),
   );
-  if (confirmed != true) return;
+  if (confirmed != true) return false;
   try {
     await ref.read(filesApiProvider).delete(file.id);
     ref.read(fileUrlCacheProvider).evict(file.id);
     await ref.read(syncEngineProvider)?.syncNow();
+    return true;
   } on ApiException catch (e) {
     messenger?.showSnackBar(
       SnackBar(content: Text(_errorText(e.code, 'file.couldNotDelete'.tr()))),
     );
-  }
-}
-
-/// Full-screen image viewer: pinch/pan via InteractiveViewer, honest
-/// loading/error states, actions accessible from the app bar.
-Future<void> showFileImageViewer(
-  BuildContext context,
-  WidgetRef ref,
-  FileAttachment file,
-) {
-  return Navigator.of(context, rootNavigator: true).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => _FileImageViewer(file: file),
-    ),
-  );
-}
-
-class _FileImageViewer extends ConsumerWidget {
-  const _FileImageViewer({required this.file});
-
-  final FileAttachment file;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(file.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        actions: [
-          IconButton(
-            tooltip: 'file.openDownload'.tr(),
-            icon: const Icon(Icons.open_in_new),
-            onPressed: () => openFileExternally(context, ref, file),
-          ),
-          IconButton(
-            tooltip: 'common.delete'.tr(),
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () async {
-              await confirmFileDelete(context, ref, file);
-              if (context.mounted) Navigator.of(context).maybePop();
-            },
-          ),
-        ],
-      ),
-      body: ref
-          .watch(fileUrlProvider(file.id))
-          .when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, _) => Center(child: Text('file.couldNotOpen'.tr())),
-            data: (url) => url == null
-                ? Center(child: Text('file.couldNotOpen'.tr()))
-                : InteractiveViewer(
-                    maxScale: 6,
-                    child: Center(
-                      child: Image.network(
-                        url,
-                        fit: BoxFit.contain,
-                        loadingBuilder: (context, child, progress) =>
-                            progress == null
-                            ? child
-                            : const Center(child: CircularProgressIndicator()),
-                        errorBuilder: (_, _, _) =>
-                            Center(child: Text('file.couldNotOpen'.tr())),
-                      ),
-                    ),
-                  ),
-          ),
-    );
+    return false;
   }
 }
 
@@ -547,12 +518,19 @@ class AttachmentsSection extends ConsumerWidget {
       );
     }
 
+    final rows = files.value ?? const <FileAttachment>[];
+    // The gallery is what this surface is showing, in the order it shows it.
+    final imageIds = [
+      for (final file in rows)
+        if (file.isImage) file.id,
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final job in uploads) UploadRowTile(job: job),
-        for (final file in files.value ?? const <FileAttachment>[])
-          FileRowTile(file: file),
+        for (final file in rows)
+          FileRowTile(file: file, siblingImageIds: imageIds),
         const SizedBox(height: AwSpace.x2),
         Align(
           alignment: Alignment.centerLeft,

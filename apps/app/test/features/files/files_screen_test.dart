@@ -167,7 +167,7 @@ void main() {
           .toUtc()
           .toIso8601String(),
     );
-    api.seedFile(
+    final file = api.seedFile(
       name: 'görev-eki.png',
       mime: 'image/png',
       targetType: 'task',
@@ -182,8 +182,9 @@ void main() {
     expect(find.text('görev-eki.png'), findsOneWidget);
     expect(find.textContaining('Ekli görev'), findsOneWidget); // the badge
 
-    // Go to source opens the owning task's detail.
-    await tester.tap(find.text('görev-eki.png'));
+    // OPH-245 (A7): tapping an image row opens the VIEWER on every surface, so
+    // this surface's injected actions live behind the row's own ⋯ button.
+    await tester.tap(find.byKey(Key('file-menu-${file['id']}')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Go to source'));
     await tester.pumpAndSettle();

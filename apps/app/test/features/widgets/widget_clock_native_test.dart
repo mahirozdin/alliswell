@@ -32,7 +32,9 @@ void main() {
     test('the staleness threshold is the same number on both sides', () {
       expect(
         swift,
-        contains('kAWClockStaleSeconds: TimeInterval = $kWidgetClockStaleSeconds'),
+        contains(
+          'kAWClockStaleSeconds: TimeInterval = $kWidgetClockStaleSeconds',
+        ),
         reason:
             'the honesty gate has to fire at the same age in Swift as it does '
             'in widget_clock.dart — two thresholds is no threshold',
@@ -106,18 +108,21 @@ void main() {
       expect(swift, contains('.monospacedDigit()'));
     });
 
-    test('the pattern comes from the snapshot, never from native guesswork', () {
-      // W9: which clock the user reads is a product rule, and the app settled
-      // it for the task rows already (OPH-174).
-      expect(swift, contains('entry.snapshot.clockFormat'));
-      expect(
-        swift,
-        isNot(contains('dateFormat = "HH:mm"')),
-        reason:
-            'hardcoding a 24-hour pattern hands the wrong clock to every '
-            '12-hour user — C2\'s exact prohibition',
-      );
-    });
+    test(
+      'the pattern comes from the snapshot, never from native guesswork',
+      () {
+        // W9: which clock the user reads is a product rule, and the app settled
+        // it for the task rows already (OPH-174).
+        expect(swift, contains('entry.snapshot.clockFormat'));
+        expect(
+          swift,
+          isNot(contains('dateFormat = "HH:mm"')),
+          reason:
+              'hardcoding a 24-hour pattern hands the wrong clock to every '
+              '12-hour user — C2\'s exact prohibition',
+        );
+      },
+    );
   });
 
   group('Android draws the same header (C1, C2, C5)', () {

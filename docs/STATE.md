@@ -3,7 +3,54 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10c (**OPH-253 BİTTİ — widget başlığında sistem saati, iki
+**Last updated:** 2026-08-10d (**OPH-245 BİTTİ — iki özel görüntüleyici tek
+`AwImageViewer`'da birleşti, cihaz turu doğrulandı. Süitler 874 (+18),
+analyze/format/i18n/kontrast temiz, Android izin allowlist'i değişmedi (18).
+Sıradaki iş: OPH-242.**
+Bu tur **üç şeyi ölçerek** öğrendi ve üçü de planı değiştirdi.
+(1) **Not içinde belge sırası için kablolama gerekmiyormuş.** Plan bir provider ya da
+InheritedWidget tartışıyordu; `EmbedContext` zaten `QuillController` taşıyor
+(`flutter_quill-11.5.1/lib/src/editor/embed/embed_context.dart:17-41`), yani galeri
+`controller.document` üzerinden tek satırda çıkıyor. Üç `awNoteEmbedBuilders()` çağrısının
+(editör, proje README, markdown import önizlemesi) hepsi controller veriyor, hiçbirinde dal
+yok. Yürüyüş `deltaToBlocks` ile — PDF export'un yürüdüğü aynı yol, böylece belge sırası
+exporter ile viewer arasında **ayrışamaz**; ve yalnız dokunuş anında koşuyor, `build`'de
+asla (orada O(n²) olurdu).
+(2) **A8 ("hata sebebini söyler") teslim edilebilir değilmiş.** `FileUrlCache.urlFor`
+`ApiException`'ı yakalayıp `null` dönüyordu (`files/providers.dart:150-152`), yani
+"ağ yok", "dosya silinmiş" ve "depolama kapalı" widget'a **aynı hiçlik** olarak varıyor ve
+üçü de `file.couldNotOpen` — "İndirme bağlantısı alınamadı" — yazıyordu. Üçünden yalnız
+biri için doğru bir cümle. Cache artık kodu tutuyor (`errorCodeFor`), yeni
+`fileUrlResultProvider` url+sebebi birlikte veriyor, viewer altı sonucu ayırıyor.
+`fileUrlProvider` ve dolayısıyla küçük resimler/embed'ler hiç değişmedi.
+(3) **`onMore` kısa devresi bug değil, bilinçli bir karardı** (OPH-170,
+`file_widgets.dart:134-136`: "A caller-supplied handler wins for EVERY kind… images
+included"). Dosyalar yüzeyleri Taşı… ve Kaynağa git eylemlerine **başka türlü ulaşamıyordu**.
+Naif "görseller `onMore`'u atlasın" düzeltmesi onları öksüz bırakırdı, o yüzden çözüm bir
+dal silmek değil bir affordance **eklemek** oldu: satıra klasör satırlarının zaten
+kullandığı **⋯** düğmesi kondu (`file-menu-{id}`), dokunuş türe bakar hale geldi.
+**Yol boyunca bulunan canlı hata:** `confirmFileDelete` `Future<void>` döndürüyor,
+`_FileImageViewer` ise onayı beklemeden koşulsuz `pop` ediyordu — **silmeyi iptal etsen
+bile görüntüleyici kapanıyordu.** Artık `Future<bool>` ve `Future<bool> <: Future<void>`
+olduğu için dört çağıranın hiçbiri değişmedi.
+**Dikiş:** `networkImageProvider` (`filePickerProvider`/`urlLauncherProvider` kalıbı).
+Sebebi ölçüm: `flutter_test`'in HTTP mock'u **her** isteğe sıfır bayt döndürüyor
+(`_binding_io.dart:302-345`), yani depoda bugüne kadar hiçbir test gerçek bir görsel
+çizmemiş; "çift dokunuş yakınlaştırıyor" ancak görselin yüklenemediği bir sayfada test
+edilebilirdi. Artık testler 1×1 PNG enjekte ediyor ve çift dokunuşun yalnız **ölçeğini**
+değil **çevirisini** de doğruluyor — merkeze zoom'layan bir viewer ölçek assert'ini geçer
+ve yine de yanlış hissettirir.
+**Sahibin kararları:** paylaş/galeriye-kaydet **yok** (ADR-0027'nin ölçülmüş sıfır-izin
+kazanımı harcanmaz; Aç/İndir zaten baytları OS'a veriyor) ve görev eklerinde **ızgara yok**
+(§10 F1 "üç ev aynı satırı çizer"). DESIGN §30 A5/A6/A8 buna göre tadil edildi, **yeni
+A11** galeri sırasını kurala bağladı.
+**Cihaz turu:** sahip tarafından doğrulandı — köşeye çift dokunuş, dört fotoğraflı görevde
+kaydırma + sayaç, galeri ortasında silmenin sonrakine geçmesi, ters yükleme sıralı notta
+gövde sırası, dar ekranda ⋯ + rozet, Android geri tuşu, masaüstünde `Esc`/oklar/`Tab`.
+**Ölçüm olarak yazılmadı, rapor olarak yazıldı:** `imageCache` bayt okuması alınmadı, yani
+büyük fotoğraflarda bellek davranışı hâlâ **ölçülmemiş** bir varsayım — OPH-252'nin ekran
+görüntüsü turunda ya da ilk bellek şikâyetinde ölçülmeli.)
+Önceki blok: 2026-08-10c (**OPH-253 BİTTİ — widget başlığında sistem saati, iki
 platformda; ve depodaki İLK ev-ekranı fotoğrafı. Süitler 856 (+11), analyze/i18n/kontrast
 temiz, APK + iOS simulator build yeşil, landing build yeşil. Sıradaki iş: OPH-245.**
 Bu tur **üç şeyi ölçerek** öğrendi ve üçü de kodu değiştirdi.

@@ -11,6 +11,7 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/files/providers.dart';
+import 'package:alliswell/src/features/files/ui/image_viewer.dart';
 import 'package:alliswell/src/features/files/ui/note_media.dart';
 import 'package:alliswell/src/features/notes/data/delta_markdown.dart';
 
@@ -137,6 +138,72 @@ void main() {
     expect(find.byType(AwNoteImageEmbed), findsOneWidget);
     // No download URL from the fake server → placeholder naming the file.
     expect(find.text('mimari-şema.png'), findsOneWidget);
+  });
+
+  testWidgets('tapping an embed pages the note in DOCUMENT order, not upload '
+      'order (OPH-245, DESIGN §30 A11)', (tester) async {
+    final api = FakeApi();
+    final note = api.seedNote(
+      title: 'Üç görselli not',
+      contentDelta: [
+        {'insert': 'Başlangıç\n'},
+        {
+          'insert': {'image': ''},
+        },
+        {'insert': 'ara metin\n'},
+        {
+          'insert': {'image': ''},
+        },
+        {'insert': 'daha fazla metin\n'},
+        {
+          'insert': {'image': ''},
+        },
+        {'insert': '\n'},
+      ],
+    );
+    // Seeded C, B, A — so `created_at DESC` (what the attachment list would
+    // give) is the exact REVERSE of body order. Wire the gallery to
+    // targetFilesProvider instead of the delta walk and this goes red.
+    final third = api.seedFile(
+      name: 'ucuncu.png',
+      targetType: 'note',
+      targetId: note['id'] as String,
+      mime: 'image/png',
+    );
+    final second = api.seedFile(
+      name: 'ikinci.png',
+      targetType: 'note',
+      targetId: note['id'] as String,
+      mime: 'image/png',
+    );
+    final first = api.seedFile(
+      name: 'birinci.png',
+      targetType: 'note',
+      targetId: note['id'] as String,
+      mime: 'image/png',
+    );
+    final delta = note['contentDelta'] as List;
+    for (final (at, file) in [(1, first), (3, second), (5, third)]) {
+      delta[at] = {
+        'insert': {'image': '$uri${file['id']}'},
+      };
+      // The embed is only tappable once a URL mints; the bytes themselves are
+      // free to fail (the GestureDetector wraps the frame, not the Image).
+      api.downloadUrls[file['id'] as String] =
+          'https://cdn.test/${file['id']}.png';
+    }
+
+    await tester.pumpWidget(await signedInAppWith(api));
+    await openNote(tester, 'Üç görselli not');
+
+    expect(find.byType(AwNoteImageEmbed), findsNWidgets(3));
+    // The MIDDLE one: index 2 of 3 only if the walk followed the body.
+    await tester.tap(find.byType(AwNoteImageEmbed).at(1));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AwImageViewer), findsOneWidget);
+    expect(find.text('2 / 3'), findsOneWidget);
+    expect(find.text('ikinci.png'), findsOneWidget);
   });
 
   testWidgets('a video embed renders a tile with the file name and open icon', (

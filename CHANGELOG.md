@@ -7,6 +7,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Tapping a photo opens a real viewer, and the same one everywhere.** Pinch to
+  zoom, double-tap to zoom **at the spot you tapped**, pan, and swipe between
+  the other images on that task, project or note — with the file name and a
+  `2 / 4` counter in the bar. Escape closes it; on a desktop the arrow keys page
+  and `+` / `-` / `0` zoom. A note swipes through its images **in the order they
+  appear in the note**, not the order they were uploaded.
+  (OPH-245, [DESIGN §30](docs/DESIGN.md))
+- **When an image will not load, it now says which thing went wrong** — no
+  connection, the file is gone from the server, storage is switched off on this
+  server, there is no download link yet, or the link worked and the picture
+  itself would not open. Until now all five said "Could not get a download
+  link", which was only true for one of them. (OPH-245)
+
 - **The home-screen widget now carries the system clock**, bold, above today's
   open count. Android ticks it for free (`TextClock` updates itself inside the
   launcher). iOS cannot tick — a widget renders the value baked into its
@@ -20,6 +33,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   Recipe: [docs/SCREENSHOTS.md §6](docs/SCREENSHOTS.md). (OPH-253)
 
 ### Fixed
+
+- **Cancelling a photo deletion no longer closes the photo.** The viewer used to
+  shut regardless of what you answered, and did the same when the delete failed.
+  Deleting one photo out of several now moves you to the next one instead of
+  throwing you out of the gallery. (OPH-245)
+- **In the Files section, tapping an image opened a menu instead of the image.**
+  The same image in a project's Files tab opened the viewer, so the app
+  disagreed with itself. Tapping now always opens the picture; that section's
+  extra actions — move to a folder, go to the source — moved to a **⋯** button
+  on the row, the same one folders already have. (OPH-245,
+  [DESIGN §30](docs/DESIGN.md))
 
 - **The widget's header was being clipped off the top of the card.** A full task
   list is taller than a large widget, and an oversized view centres itself — so
