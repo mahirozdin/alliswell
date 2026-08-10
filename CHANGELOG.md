@@ -5,7 +5,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-08-10
+
 ### Added
+
+- **Sharing to AllisWell works on iPhone again — differently than expected.**
+  Tapping "AllisWell" in a share sheet now opens a small sheet with your text
+  and a Send button; a notification tells you it is waiting, and opening the app
+  picks it up. It does not jump you into AllisWell mid-task, because on iOS 18
+  and later a share extension simply **cannot** bring its app to the front —
+  that was measured, twice, including against the plugin update whose changelog
+  claims to fix it. Silence became a delay, and the delay is visible. If you
+  have notifications turned off nothing is lost: the share is there the next
+  time you open the app.
+- **Sharing without an AI provider now says so, and keeps your text.** The words
+  are saved to your Inbox first, then a message explains that this feature needs
+  an AI provider and offers to take you there. Previously it opened a pre-filled
+  task sheet; the owner's call is that sharing is an AI feature and a smaller
+  version of it was the wrong kindness. Nothing is dropped either way.
 
 - **Tapping a photo opens a real viewer, and the same one everywhere.** Pinch to
   zoom, double-tap to zoom **at the spot you tapped**, pan, and swipe between
@@ -34,6 +51,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **Sharing into a closed app no longer forgets you have AI.** On a cold start
+  the app decided "no AI" before it had finished loading your workspace, so a
+  share landed on the wrong screen. It now remembers what it knew last time.
 - **Cancelling a photo deletion no longer closes the photo.** The viewer used to
   shut regardless of what you answered, and did the same when the delete failed.
   Deleting one photo out of several now moves you to the next one instead of

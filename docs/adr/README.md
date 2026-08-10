@@ -30,6 +30,17 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0020](0020-recurring-tasks-and-materialization.md) | Recurring tasks: a clamped RRULE subset, materialized as real rows | Accepted |
 | [0021](0021-calendar-mirror-v2.md) | Calendar mirror v2: every task is on the calendar, and it is not a setting | Accepted |
 | [0022](0022-remote-mcp-server.md) | Remote MCP server: hand-rolled Streamable HTTP behind our own OAuth 2.1 | Accepted |
-| [0023](0023-stt-and-share-intent-dependencies.md) | On-device STT + share-intent: two plugins behind seams, a second iOS extension | Accepted |
+| [0023](0023-stt-and-share-intent-dependencies.md) | On-device STT + share-intent: two plugins behind seams, a second iOS extension | Accepted — §3 amended by [0029](0029-share-extension-notifies-instead-of-redirecting.md) |
+| [0024](0024-license-polyform-noncommercial.md) | PolyForm Noncommercial license | Accepted — supersedes [0002](0002-license-agpl-3.0.md) |
+| [0025](0025-firebase-optional-and-credential-hygiene.md) | Firebase is optional; credential hygiene | Accepted |
+| [0026](0026-social-sign-in.md) | Social sign-in | Accepted |
+| [0027](0027-attachment-capture-image-picker.md) | Attachment capture: `image_picker` for the photo library and the camera | Accepted |
+| 0028 | _Reserved_ — markdown document model + renderer (OPH-246) | Proposed |
+| [0029](0029-share-extension-notifies-instead-of-redirecting.md) | The share extension notifies and the app drains, instead of redirecting | Accepted — amends [0023](0023-stt-and-share-intent-dependencies.md) §3 |
+
+> Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
+> without an index line. 0028 is listed as reserved so the number is not reused
+> while OPH-246 is still open — this round already had to correct two documents
+> that gave the share decision that number.
 
 Template: [template.md](template.md)

@@ -10,6 +10,7 @@ import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
+import 'package:alliswell/src/features/ai/data/share_inbox.dart';
 import 'package:alliswell/src/features/ai/data/share_intent.dart';
 import 'package:alliswell/src/features/ai/data/stt.dart';
 import 'package:alliswell/src/sync/db/database.dart';
@@ -46,6 +47,11 @@ List<Override> syncTestOverrides({
   /// Inbound share intents (OPH-225). Default: null → no share surface unless
   /// a test injects a fake source.
   ShareIntentSource? shareIntentSource,
+
+  /// The iOS App Group mailbox (OPH-242, ADR-0029). Defaults to empty, which is
+  /// what every non-share test wants; a real channel would throw under
+  /// `flutter_test` anyway.
+  ShareInbox? shareInbox,
 }) => [
   databaseProvider.overrideWith((ref) {
     // closeStreamsSynchronously: drift otherwise keeps a Timer.run alive per
@@ -97,6 +103,7 @@ List<Override> syncTestOverrides({
   aiStreamClientProvider.overrideWithValue(aiStreamClient),
   sttProvider.overrideWithValue(stt),
   shareIntentSourceProvider.overrideWithValue(shareIntentSource),
+  shareInboxProvider.overrideWithValue(shareInbox ?? const NoShareInbox()),
 ];
 
 Future<void> _instantUploadTransport({

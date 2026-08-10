@@ -880,7 +880,11 @@
       "summarize": "Summarize",
       "ask": "Ask a question",
       "savedNote": "Saved as a note",
-      "summarizePrompt": "Summarize this."
+      "summarizePrompt": "Summarize this.",
+      "noProviderTitle": "No AI provider yet",
+      "noProviderBody": "AllisWell needs an AI provider to turn shared text into a task. This one is safe in your Inbox.",
+      "openInbox": "Open Inbox",
+      "dismiss": "Got it"
     },
     "quickAdd": {
       "enriching": "AI is filling this in…"

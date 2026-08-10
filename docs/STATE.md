@@ -3,7 +3,55 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10d (**OPH-245 BİTTİ — iki özel görüntüleyici tek
+**Last updated:** 2026-08-10e (**G1 KAPANDI — OPH-242 + OPH-243 bitti; Epic 24'te
+artık yalnız markdown zinciri (246–251) ve pazarlama (252) kaldı. Süitler 887
+(+13), analyze/format/i18n/kontrast temiz. Sürüm 1.3.1. Sıradaki iş: OPH-246.**
+
+**Turun tek cümlesi: L3 "düzeltildi" değil, "yapılamaz" diye kapandı.**
+1.8.1 ölçüldü — changelog'u "Fixed sharing not working on iOS 18" diyor ve
+gerçekten öyle bir kod var, ama düzeltmesi
+`if let application = responder as? UIApplication { application.open(…) }`.
+Bir **app extension'ın responder zincirinde `UIApplication` asla bulunmaz**, yani
+dal hiç çalışmıyor; üstelik o dalı seçtiği için eski selector yürüyüşünü de
+atlıyor ve bizim şimimizi sessizce öldürüyor. Aynı turda ölçülen ikinci şey daha
+da belirleyici: **`getInitialMedia()` App Group'u okumuyor** — `initialMedia`
+yalnız `handleUrl(...)`'dan doluyor. Yani "uzantı yazsın, uygulama sonra alsın"
+planı, o okuma yazılmadan tek satır bile çalışmazdı.
+
+**ADR-0029:** uzantı öne getirmeyi bıraktı. `shouldAutoRedirect()` false →
+`RSIShareViewController` zaten `SLComposeServiceViewController` olduğu için
+Apple'ın "metin + Gönder/İptal" formu **hazır geldi** (planda ~200 satır özel UI
+vardı, sıfır satır yazıldı); `didSelectPost()` App Group'a yazıyor; bir yerel
+bildirim düşüyor (sabit kimlik, **paylaşılan metin asla içinde değil**, uzantıdan
+`requestAuthorization` **asla** çağrılmıyor). Uygulama tarafında
+`ShareInboxBridge` + `alliswell/share_inbox`, açılışta ve her resume'da
+oku-ve-sil. **Bildirim taşıyıcı değil dürtü:** bildirime izin vermeyen kullanıcı
+da paylaşımını bir sonraki açılışta buluyor — ve bunu test ediyoruz.
+ADR-0023'ü **süpersede etmiyor, §3'ünü tadil ediyor** (0023 üç konulu; STT ve
+paket seçimi duruyor, "no network / no AI" güvencesi ise bu yolu kabul edilebilir
+yapan şeyin ta kendisi).
+
+**OPH-243, sahibin ikinci kararıyla:** AI sağlayıcısı yoksa paylaşım artık
+sessizce Inbox'a düşüyor ve bir diyalog sebebini söylüyor (Sağlayıcı ekle /
+Inbox'ı aç / Tamam), **her iki platformda** — Android'de çalışan bir yolun
+bilinçli kaybı. Sıra bağlayıcı: **önce yakala, sonra göster**, ve test diyaloğu
+hemen kapatıp satırın durduğunu doğruluyor. Bir de round 17'nin yazılı GAP'ı
+kapandı: `AiStatusController` `_cacheKey`'i guard'dan **sonra** atıyordu, yani
+soğuk açılışta localKv cache'i hiç okunmuyordu ve AI FAB'i ilk karede provider'ı
+okuduğu için `disabled` yapışıyordu. Cache artık guard'dan önce.
+
+**Düzeltilen üç yanlış kayıt:** "1.8+ SPM-only" (hayır, o 1.9.0 — `pubspec`
+yorumu + Swift yorumu + TASKS), "ADR-0028, ADR-0023'ü süperseder" (numara da
+ilişki de yanlıştı), ve Swift'in "bir testle korunuyor" iddiası (öyle bir test
+yoktu; artık var, ve yorumları soyarak eşleşiyor — kuralı açıklayan cümleye
+takılan bir bekçi kendi belgesinde patlar).
+
+**Cihaz turu bekliyor** ve bu turda kanıtlanması gerekenler şunlar: Safari'den
+paylaş → form çıkıyor mu, Safari önde kalıyor mu, banner düşüyor mu ve içinde
+**metin yok** mu; bildirim KAPALIYKEN payload yine geliyor mu (ADR'nin vaat
+ettiği düşüş — kanıtlanmazsa iddia); iki kez paylaş → tek banner, tek görev;
+Android soğuk+sıcak. `log stream` çıktısı buraya yapıştırılacak.
+Önceki blok: 2026-08-10d (**OPH-245 BİTTİ — iki özel görüntüleyici tek
 `AwImageViewer`'da birleşti, cihaz turu doğrulandı. Süitler 874 (+18),
 analyze/format/i18n/kontrast temiz, Android izin allowlist'i değişmedi (18).
 Sıradaki iş: OPH-242.**

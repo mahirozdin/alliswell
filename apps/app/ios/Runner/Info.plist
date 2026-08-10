@@ -14,6 +14,13 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- OPH-242 (ADR-0029): the mailbox ShareInboxBridge drains. The extension
+	     already declares this key; Runner used to rely on the plugin's
+	     `group.<bundle id>` default happening to be the same string, which is
+	     true by coincidence, not by construction. Stated explicitly so a bundle
+	     id change breaks the build rather than the feature. -->
+	<key>AppGroupId</key>
+	<string>group.com.alliswell.alliswell</string>
 	<key>CFBundleName</key>
 	<string>AllisWell</string>
 	<key>CFBundlePackageType</key>

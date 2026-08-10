@@ -177,8 +177,11 @@ press-and-hold is never the only way.
 
 `receive_sharing_intent` (ADR-0023 with the share-extension target): Android
 `ACTION_SEND` for `text/plain`/`text/html`; the iOS Share Extension does **no network
-and no AI work** — it writes the payload to the App Group and opens the host app
-(extensions have hard memory/time ceilings). The bubble opens pre-loaded with the
+and no AI work** — it writes the payload to the App Group and, since
+[ADR-0029](adr/0029-share-extension-notifies-instead-of-redirecting.md), **posts a
+local notification** rather than opening the host app (an app extension cannot
+foreground its host on iOS 18+; the app drains the App Group on launch and on
+resume). The bubble opens pre-loaded with the
 shared block (provenance `source="external_share"`, strictest framing) and action
 chips: **Görev yap · Not al · Özetle · Soru sor**. Cold-start payloads survive auth
 restore (the ADR-0016 deep-link replay pattern). Signed-out or unconfigured instances

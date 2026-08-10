@@ -7,6 +7,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/sheets.dart';
 import '../../../widgets/status_views.dart';
+import '../../tasks/data/task_text.dart';
 import '../data/ai_context_builder.dart';
 import '../data/ai_live_context.dart';
 import '../data/stt.dart';
@@ -466,9 +467,10 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
         ),
       );
 
-  String _shareText(SharedPayload shared) => shared.url != null
-      ? '${shared.text}\n${shared.url}'.trim()
-      : shared.text.trim();
+  // The join lives in task_text.dart: the no-provider capture in home_shell
+  // needs the identical string, and two copies of this rule is one too many.
+  String _shareText(SharedPayload shared) =>
+      shareTextOf(shared.text, url: shared.url);
 
   Future<void> _shareMakeTask(
     SharedPayload shared,

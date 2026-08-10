@@ -37,9 +37,19 @@ class AiStatusController extends AsyncNotifier<AiStatus> {
   @override
   Future<AiStatus> build() async {
     final userId = ref.watch(currentUserIdProvider);
-    final workspace = ref.watch(currentWorkspaceProvider).value;
-    if (userId == null || workspace == null) return AiStatus.disabled;
+    if (userId == null) return AiStatus.disabled;
+    // OPH-243: the cache key is assigned and READ before the workspace guard,
+    // not after it. The old order made the doc comment above a lie — a cold
+    // start resolved to `disabled` while `currentWorkspaceProvider` was still
+    // loading, the cache was never consulted, and something reads this on the
+    // very first frame (the AI FAB does), so the placeholder stuck. A share
+    // arriving in that window is exactly a cold start, so an AI user's share
+    // went to the no-AI branch. "We have no workspace yet" and "this user has
+    // no AI" are different facts and the cache is the only one that can tell
+    // them apart before the network answers.
     _cacheKey = '$_kAiStatusCachePrefix$userId';
+    final workspace = ref.watch(currentWorkspaceProvider).value;
+    if (workspace == null) return await _readCache() ?? AiStatus.disabled;
 
     final cached = await _readCache();
     try {

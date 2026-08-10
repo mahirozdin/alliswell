@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
@@ -10,6 +11,7 @@ import '../../../sync/providers.dart';
 import '../../notes/data/markdown_source.dart';
 import '../../notes/ui/markdown_import_screen.dart';
 import 'ai_context_builder.dart';
+import 'share_inbox.dart';
 import 'share_log.dart';
 
 /// Inbound share intents (OPH-225, ADR-0023), behind a seam. The rest of the
@@ -163,11 +165,20 @@ final shareBinderProvider = Provider<void>((ref) {
   final files = ref.read(markdownSourceProvider);
   final log = ref.read(shareLogProvider);
 
-  void rememberShare(SharedPayload payload, {required bool cold}) {
+  void rememberShare(
+    SharedPayload payload, {
+    required bool cold,
+    String via = 'plugin',
+  }) {
     log.record(
       event: cold ? ShareLogEvent.initialShare : ShareLogEvent.warmShare,
       payloadKind: payload.url != null ? ShareLogKind.url : ShareLogKind.text,
       bytes: _utf8Bytes(payload.text),
+      // WHICH transport delivered it. On iOS these two answer very different
+      // questions — 'plugin' means a URL open reached us, 'app_group' means the
+      // extension's mailbox did — and knowing which is the first thing the next
+      // report will need.
+      detail: via,
     );
     pending.remember(payload);
   }
@@ -205,6 +216,31 @@ final shareBinderProvider = Provider<void>((ref) {
     }
   }
 
+  // The SECOND transport (OPH-242, ADR-0029). On iOS the extension writes the
+  // App Group and stops — it can no longer open the app — so nothing above will
+  // ever fire there. Draining is therefore not a fallback; on that platform it
+  // is the only path, and it must run on every resume as well as at bind time,
+  // because "resume" is what a notification tap looks like from here.
+  final inbox = ref.read(shareInboxProvider);
+  var draining = false;
+  Future<void> drain({required bool cold}) async {
+    if (draining) return; // a resume during an await must not double-read
+    draining = true;
+    try {
+      final payload = await inbox.take();
+      if (payload != null) {
+        rememberShare(payload, cold: cold, via: 'app_group');
+      }
+    } on Object catch (error) {
+      log.record(
+        event: ShareLogEvent.readFailed,
+        detail: error.runtimeType.toString(),
+      );
+    } finally {
+      draining = false;
+    }
+  }
+
   // Cold start: read BOTH intentions before telling the plugin we took them.
   Future.wait([
     source.initialShare().then((payload) {
@@ -214,6 +250,7 @@ final shareBinderProvider = Provider<void>((ref) {
       if (path != null) await openDocument(path, cold: true);
     }),
   ]).whenComplete(source.reset);
+  unawaited(drain(cold: true));
 
   // Warm deliveries while the app runs.
   final shares = source.shares().listen(
@@ -222,11 +259,28 @@ final shareBinderProvider = Provider<void>((ref) {
   final documents = source.documents().listen(
     (path) => openDocument(path, cold: false),
   );
+  final resume = _ResumeObserver(() => unawaited(drain(cold: false)));
+  WidgetsBinding.instance.addObserver(resume);
   ref.onDispose(() {
     shares.cancel();
     documents.cancel();
+    WidgetsBinding.instance.removeObserver(resume);
   });
 });
+
+/// Wakes the App Group drain when the app comes back to the front — which is
+/// exactly what tapping the extension's "shared with AllisWell" banner looks
+/// like from Dart's side (the same shape `day_boundary.dart` uses).
+class _ResumeObserver with WidgetsBindingObserver {
+  _ResumeObserver(this.onResumed);
+
+  final VoidCallback onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) onResumed();
+  }
+}
 
 /// Size in bytes, not characters — a Turkish note is bigger than its length.
 int _utf8Bytes(String text) => utf8.encode(text).length;

@@ -1,55 +1,59 @@
 //
 //  ShareViewController.swift
-//  AllisWellShare — the iOS Share Extension (OPH-225, ADR-0023).
+//  AllisWellShare — the iOS Share Extension (OPH-225/OPH-242, ADR-0023/ADR-0029).
 //
-//  Deliberately EMPTY of product logic. The extension does ZERO work of its
-//  own: it hands the shared text/URL to the AllisWell app through the App Group
-//  and redirects. Every AI/network decision stays in the app, which makes "the
-//  share sheet never talks to a model" a structural fact, not a promise — this
-//  process has no code that could. v1: text and URLs only.
+//  Still EMPTY of product logic. The extension does no network and no AI of its
+//  own: it hands the shared text/URL to the AllisWell app through the App Group.
+//  "The share sheet never talks to a model" stays a structural fact rather than
+//  a promise — this process has no code that could. v1: text and URLs only.
+//
+//  What ADR-0029 changed is only the last step. It used to end by opening the
+//  host app; it now ends by NOTIFYING, because on iOS 18+ an app extension
+//  cannot bring its host app forward at all (see below). The payload is the
+//  transport; the banner is a nudge.
 //
 import UIKit
 import receive_sharing_intent
 
 class ShareViewController: RSIShareViewController {
-    // Default shouldAutoRedirect() == true → no compose UI; the app opens with
-    // the payload and the user chooses what to do there.
 
-    /// OPH-242 — the last of three reasons "Share to AllisWell" did nothing.
+    /// OPH-242 L3 — the last of three reasons "Share to AllisWell" did nothing,
+    /// and the one that turned out to be unfixable rather than unfixed.
     ///
-    /// `RSIShareViewController.redirectToHostApp()` walks the responder chain
-    /// looking for anything that answers the old `openURL:` selector, and
-    /// performs it. On iOS 18 and later UIKit refuses that call outright:
+    /// `redirectToHostApp()` walks the responder chain trying to open a
+    /// `ShareMedia-<bundleid>:share` URL. Both of upstream's attempts are dead
+    /// ends inside an appex:
     ///
-    ///     BUG IN CLIENT OF UIKIT: The caller of UIApplication.openURL(_:)
-    ///     needs to migrate to the non-deprecated
-    ///     UIApplication.open(_:options:completionHandler:).
-    ///     Force returning false (NO).
+    /// * ≤1.7.0 performs the legacy `openURL:` selector. iOS 18 refuses it —
+    ///   "BUG IN CLIENT OF UIKIT… Force returning false (NO)" — measured on
+    ///   iOS 26.2. We tried the sanctioned `NSExtensionContext.open(_:)` here
+    ///   instead; the app still did not come forward (that API is documented
+    ///   for Today extensions).
+    /// * 1.8.1's "Fixed sharing not working on iOS 18" replaces that walk with
+    ///   `if let application = responder as? UIApplication { application.open(…) }`.
+    ///   **An app extension's responder chain never contains a UIApplication**,
+    ///   so on iOS 18+ the fix is a no-op — and because it takes that branch, it
+    ///   also stops calling the selector, which silently disabled the shim we
+    ///   had. Measured by reading 1.8.1's source; recorded in ADR-0029.
     ///
-    /// `UIApplication` is unavailable to app extensions by design, so the
-    /// plugin's Objective-C-runtime workaround is now a dead end — measured on
-    /// iOS 26.2.
-    ///
-    /// CORRECTION (2026-08-10): this comment used to add "and the upstream fix
-    /// (1.8+) is Swift-Package-Manager only while we build with CocoaPods".
-    /// That is false. SPM-only starts at **1.9.0**; **1.8.1** still ships a
-    /// podspec and its changelog reads "Fixed sharing not working on iOS 18".
-    /// Measuring 1.8.1 on a device is step 0 of the remaining OPH-242 work, and
-    /// it may well delete this whole file's reason for existing.
-    ///
-    /// The fix costs four lines instead of a dependency migration. That walk
-    /// starts at `self`, so declaring the selector HERE means ours is the first
-    /// — and the only working — implementation it finds. We then use the
-    /// sanctioned extension API, `NSExtensionContext.open(_:)`.
-    ///
-    /// NOT guarded by a test, despite what this comment claimed until
-    /// 2026-08-10: `native_config_test.dart` reads plists and the Android
-    /// manifest, never a `.swift` file, so nothing would notice if this
-    /// override vanished. A Swift group belongs in that test and is on
-    /// OPH-242's list — the symptom it would prevent is silence, and silence is
-    /// exactly what nobody notices in review.
-    @objc func openURL(_ url: URL) -> Bool {
-        extensionContext?.open(url, completionHandler: nil)
-        return true
+    /// So we stop trying to open the app. Returning false here shows the
+    /// inherited `SLComposeServiceViewController` sheet — the shared text with
+    /// Post/Cancel, Apple's own compose UI — and `didSelectPost()` below hands
+    /// off to `saveAndRedirect(message:)`, which writes the App Group. The app
+    /// drains that on its next launch or resume (`ShareInboxBridge` →
+    /// `alliswell/share_inbox`). Silence became a delay, and the delay is
+    /// visible.
+    override func shouldAutoRedirect() -> Bool {
+        return false
+    }
+
+    /// Order is load-bearing. `super` writes the App Group and then completes
+    /// the extension request, and completing can suspend this process — so the
+    /// banner is scheduled BEFORE the hand-off, and with a short time trigger
+    /// rather than an immediate one so the notification daemon owns it even if
+    /// we are torn down a millisecond later.
+    override func didSelectPost() {
+        ShareNotifier.schedulePendingBanner()
+        super.didSelectPost()
     }
 }

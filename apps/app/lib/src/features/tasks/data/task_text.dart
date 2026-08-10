@@ -27,6 +27,21 @@ String clipTaskTitle(String text) {
       : '${firstLine.substring(0, kTaskTitleMaxChars - 1).trimRight()}…';
 }
 
+/// One shared payload as one blob of text: the message, then its link on its
+/// own line (OPH-243).
+///
+/// Lives here rather than beside either caller because there are two of them —
+/// the bubble's chips and the no-provider Inbox capture — and a third copy of
+/// "text plus newline plus url" is how they start disagreeing about whether a
+/// bare URL gets written twice.
+String shareTextOf(String text, {String? url}) {
+  final body = text.trim();
+  final link = url?.trim();
+  if (link == null || link.isEmpty || link == body) return body;
+  if (body.isEmpty) return link;
+  return '$body\n$link';
+}
+
 /// The title and description a shared blob of text becomes (OPH-243).
 ///
 /// The rules, and why:

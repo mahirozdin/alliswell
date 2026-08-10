@@ -11,6 +11,7 @@
 		177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		4E2F5686630E1B33A7600A18 /* ShareInboxBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C660482E3BA4887F8A48C65D /* ShareInboxBridge.swift */; };
 		527FC94C523279749E690FF6 /* Pods_AllisWellShare.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */; };
 		606CA4EB1635F2211E171418 /* AllisWellShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 33238BF1A6A73CCD435606A7 /* AllisWellShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
@@ -31,6 +32,7 @@
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
 		D767E2BD26C9FCED51D52539 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */; };
+		DCB1241EC7970CB68479F292 /* ShareNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -128,8 +130,10 @@
 		AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AllisWellShare.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B07D10CB9492D82A7326E84F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmKitBridge.swift; sourceTree = "<group>"; };
+		C660482E3BA4887F8A48C65D /* ShareInboxBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareInboxBridge.swift; sourceTree = "<group>"; };
 		CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		DD4116869764FEFFC46ADBD1 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareNotifier.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -286,6 +290,7 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				A5CBB60B300AD09400CE60FF /* AllisWellWidgetExtension.entitlements */,
 				BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */,
+				C660482E3BA4887F8A48C65D /* ShareInboxBridge.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -317,6 +322,7 @@
 				CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */,
 				B07D10CB9492D82A7326E84F /* Info.plist */,
 				430A28BE8630F124735EB640 /* AllisWellShare.entitlements */,
+				DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */,
 			);
 			path = AllisWellShare;
 			sourceTree = "<group>";
@@ -639,6 +645,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */,
+				DCB1241EC7970CB68479F292 /* ShareNotifier.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -651,6 +658,7 @@
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */,
 				7B4BC4DC894A20C99CD3EEAD /* AWAlarmShared.swift in Sources */,
+				4E2F5686630E1B33A7600A18 /* ShareInboxBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

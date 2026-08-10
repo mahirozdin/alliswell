@@ -879,7 +879,11 @@
       "summarize": "Özetle",
       "ask": "Soru sor",
       "savedNote": "Not olarak kaydedildi",
-      "summarizePrompt": "Bunu özetle."
+      "summarizePrompt": "Bunu özetle.",
+      "noProviderTitle": "Henüz yapay zekâ sağlayıcısı yok",
+      "noProviderBody": "AllisWell'in paylaşılan metni göreve çevirmesi için bir yapay zekâ sağlayıcısı gerekiyor. Bu metin Inbox'ında güvende.",
+      "openInbox": "Inbox'ı aç",
+      "dismiss": "Tamam"
     },
     "quickAdd": {
       "enriching": "Yapay zekâ dolduruyor…"

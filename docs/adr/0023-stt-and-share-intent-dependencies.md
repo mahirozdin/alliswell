@@ -33,7 +33,13 @@ abstract seam so the rest of the app — and every test — never touches it.
    sanctioned pbxproj deviation after ADR-0010's widget extension. The
    extension does **no network and no AI work** (extensions have hard
    memory/time ceilings, AI.md §6): it writes the shared payload to the App
-   Group and opens the host app, which does the extraction. Wiring is a
+   Group and opens the host app, which does the extraction.
+   > **Amended by [ADR-0029](0029-share-extension-notifies-instead-of-redirecting.md)
+   > (2026-08-10):** the extension **notifies** instead of opening the host app —
+   > an appex cannot foreground its host on iOS 18+, measured — and the app
+   > drains the App Group on launch and resume. Everything else in this item,
+   > including "no network and no AI work", stands as written.
+   Wiring is a
    committed, idempotent `ios/scripts/wire_share_extension.rb` (the
    `wire_alarmkit.rb` xcodeproj-gem pattern) so the pbxproj/entitlements diffs
    read as intentional. The App Group reuses `group.com.alliswell.alliswell`

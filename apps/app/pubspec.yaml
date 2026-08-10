@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.3.0+21
+version: 1.3.1+22
 environment:
   sdk: ^3.12.0
 
@@ -97,16 +97,18 @@ dependencies:
   speech_to_text: ^7.0.0
   # AI share target (OPH-225, ADR-0023): behind the ShareIntentSource seam.
   #
-  # The cap's original reason — "1.8 is Swift-Package-Manager only and we build
-  # with CocoaPods" — was WRONG, and re-reading the changelog is what found it
-  # (OPH-242): SPM-only starts at 1.9.0; 1.8.1 still ships a podspec, and its
-  # changelog line is literally "Fixed sharing not working on iOS 18" — which is
-  # the exact failure this project is still carrying. The cap therefore stays
-  # only until 1.8.1 is measured on a real device (OPH-242 step 0); if it fixes
-  # the foregrounding, the fix is this one line instead of ~200 lines of Swift.
-  # Do not raise it on the strength of a changelog alone — ADR-0029 records the
-  # measurement either way.
-  receive_sharing_intent: ">=1.4.5 <1.8.0"
+  # The old cap said "<1.8.0 because 1.8+ is Swift-Package-Manager only and we
+  # build with CocoaPods". That was WRONG: SPM-only starts at 1.9.0.
+  #
+  # 1.8.1 is here for its screenshot support (1.8.0) and because it is
+  # API-identical to 1.7.0 — NOT for its "Fixed sharing not working on iOS 18"
+  # line, which was measured and does nothing for us: the fix looks for a
+  # UIApplication in a responder chain, and an app extension's never has one.
+  # ADR-0029 quotes the code and records why the extension now notifies instead
+  # of trying to open the app.
+  #
+  # 1.9.0 stays out: SPM-only, Flutter 3.38, and its own SceneDelegate contract.
+  receive_sharing_intent: ">=1.8.1 <1.9.0"
   # Attachment capture (OPH-244, ADR-0027). `file_picker` alone cannot satisfy
   # DESIGN §30 A2: its Android path builds ACTION_GET_CONTENT for image/video/
   # media (FileUtils.kt) rather than the Android Photo Picker, and it has no

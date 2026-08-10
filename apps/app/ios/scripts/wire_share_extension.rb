@@ -27,7 +27,7 @@ raise 'Runner target not found' unless runner
 # 1) The extension target (idempotent).
 ext = project.targets.find { |t| t.name == EXT_NAME }
 if ext.nil?
-  ext = project.new_target(:app_extension, EXT_NAME, :ios, '14.0')
+  ext = project.new_target(:app_extension, EXT_NAME, :ios, '15.0')
   puts "+ target #{EXT_NAME}"
 else
   puts "= target #{EXT_NAME}: exists"
@@ -38,10 +38,30 @@ group = project.main_group[EXT_NAME] || project.main_group.new_group(EXT_NAME, E
 def ref(group, path)
   group.files.find { |f| f.path == path } || group.new_reference(path)
 end
-src_ref = ref(group, 'ShareViewController.swift')
-unless ext.source_build_phase.files.any? { |f| f.file_ref == src_ref }
-  ext.add_file_references([src_ref])
-  puts "+ ShareViewController.swift -> #{EXT_NAME}"
+%w[ShareViewController.swift ShareNotifier.swift].each do |name|
+  src_ref = ref(group, name)
+  if ext.source_build_phase.files.any? { |f| f.file_ref == src_ref }
+    puts "= #{name}: already in #{EXT_NAME}"
+  else
+    ext.add_file_references([src_ref])
+    puts "+ #{name} -> #{EXT_NAME}"
+  end
+end
+
+# 2b) The Runner half of the same feature (OPH-242, ADR-0029). The extension
+# writes the App Group and stops there — an appex cannot open its host app on
+# iOS 18+ — so the app needs the channel that reads that mailbox. Wired here
+# rather than in wire_alarmkit.rb because it is share plumbing, and left out of
+# neither: a .swift file in the repo that is in no target compiles nowhere,
+# which is the exact lesson wire_alarmkit.rb was written to record.
+runner_group = project.main_group['Runner']
+raise 'Runner group not found' unless runner_group
+inbox_ref = ref(runner_group, 'ShareInboxBridge.swift')
+if runner.source_build_phase.files.any? { |f| f.file_ref == inbox_ref }
+  puts '= ShareInboxBridge.swift: already in Runner'
+else
+  runner.add_file_references([inbox_ref])
+  puts '+ ShareInboxBridge.swift -> Runner'
 end
 # Info.plist + entitlements only need to exist in the group (referenced by
 # build settings below), not compiled.
@@ -82,7 +102,12 @@ ext.build_configurations.each do |config|
   s['PRODUCT_NAME'] = '$(TARGET_NAME)'
   s['INFOPLIST_FILE'] = "#{EXT_NAME}/Info.plist"
   s['CODE_SIGN_ENTITLEMENTS'] = "#{EXT_NAME}/AllisWellShare.entitlements"
-  s['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+  # 15.0, not 14.0: receive_sharing_intent 1.8.1 raised its own minimum, and a
+  # lower target here fails the build with "Compiling for iOS 14.0, but module
+  # 'receive_sharing_intent' has a minimum deployment target of iOS 15.0"
+  # (OPH-242, measured). The Podfile has said `platform :ios, '15.0'` all along,
+  # so this only ever agreed with the app by accident.
+  s['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
   s['SWIFT_VERSION'] = '5.0'
   s['CUSTOM_GROUP_ID'] = GROUP_ID
   s['SKIP_INSTALL'] = 'YES'
