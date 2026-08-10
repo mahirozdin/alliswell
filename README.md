@@ -47,8 +47,8 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | 🐳 **Self-host**   | Live now          | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data).                                                      |
 | 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
 
-> **Project status — `v1.1.0`, live.** Everything on this page is built, tested
-> (**751 app tests · 605 backend unit · 58 integration, green**) and deployed to
+> **Project status — `v1.3.0`, live.** Everything on this page is built, tested
+> (**856 app tests · 605 backend unit · 58 integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
 > ⭐ Star the repo to follow along.
@@ -148,16 +148,21 @@ revoked permission — the app writes a log entry explaining itself, so
 <p align="center"><em>On the phone — the same local-first app, from one Flutter codebase:</em></p>
 
 <p align="center">
-  <img src="screenshots/ios/01-home.png" width="23%" alt="AllisWell Home on iPhone">
+  <img src="screenshots/ios/01-home.png" width="19%" alt="AllisWell Home on iPhone">
   &nbsp;
-  <img src="screenshots/ios/10-home-dark.png" width="23%" alt="AllisWell Home on iPhone in dark mode">
+  <img src="screenshots/ios/10-home-dark.png" width="19%" alt="AllisWell Home on iPhone in dark mode">
   &nbsp;
-  <img src="screenshots/android/01-home.png" width="23%" alt="AllisWell Home on Android">
+  <img src="screenshots/android/01-home.png" width="19%" alt="AllisWell Home on Android">
   &nbsp;
-  <img src="screenshots/android/09-alarm-ring.png" width="23%" alt="AllisWell's full-screen urgent reminder on Android: an Acknowledge button and snooze presets that each say the exact time they will ring again">
+  <img src="screenshots/android/09-alarm-ring.png" width="19%" alt="AllisWell's full-screen urgent reminder on Android: an Acknowledge button and snooze presets that each say the exact time they will ring again">
+  &nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="screenshots/ios/13-widget-dark.png">
+    <img src="screenshots/ios/12-widget.png" width="19%" alt="The AllisWell widget on the iPhone Home Screen: the date and the live system clock in the header, today's open count beneath it, then overdue, undated and today's tasks">
+  </picture>
 </p>
 
-<p align="center"><sub>iPhone 17 Pro Max · Pixel 9 Pro XL · light, dark, and an alarm actually going off · every one a real capture from a running app, not a mock-up.<br>
+<p align="center"><sub>iPhone 17 Pro Max · Pixel 9 Pro XL · light, dark, an alarm actually going off, and the Home Screen widget with a clock that really ticks · every one a real capture from a running app, not a mock-up.<br>
 How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></sub></p>
 
 ---
@@ -180,7 +185,7 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 - 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
 - ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, colour and order. A **sidebar section** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones. Yours alone: shortcuts never leak to other members of a shared workspace.
 - 🤖 **AI, on your terms (optional)** — see [§4 above](#4-ai-on-your-terms--including-none).
-- 🖥 **Home-screen widgets** — iOS, Android &amp; macOS widgets that mirror your Home buckets, show **how many tasks today actually holds**, and (iOS 17+/Android) let you tick one off **without opening the app** (device QA pending).
+- 🖥 **Home-screen widgets** — iPhone and Android widgets that mirror your Home buckets, carry the **system clock and how many tasks today actually holds** in the header, and (iOS 17+) let you tick one off **without opening the app**.
 - 🔑 **Sign in the way you already do** — e-mail and password, **Continue with Google**, or **Continue with Apple**. The provider proves who you are; **AllisWell's own database still owns the account**, so a self-hosted instance works the same way — or drops social sign-in entirely and keeps passwords. [How it works →](docs/adr/0026-social-sign-in.md)
 - 🌐 **Localisation** — ships in English and Turkish, auto-detected from your system; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).

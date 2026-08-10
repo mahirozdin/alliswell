@@ -1203,6 +1203,52 @@ and readable.
 | C1 | **The header's right column is two stacked lines: the clock on top (bold, prominent), the open count under it.** The left column (day number, weekday, month) is unchanged. | The requested layout; the date block is already load-bearing and stays put. |
 | C2 | **The clock respects the device's 12/24-hour setting and locale**, and is drawn with tabular figures so it does not jitter. | A clock that shows 24-hour time to someone who set 12-hour is not their clock. |
 | C3 | **The clock is never a stale number pretending to be live.** On Android it ticks (`TextClock` is a `@RemoteView`, so it updates itself with no refresh budget). On iOS a widget cannot tick: `Text(date, style: .time)` renders the value from the timeline entry and holds it, and only `.timer`/`.relative`/`.offset` update live. iOS therefore gets minute-granular timeline entries — and if the system stops honouring them, the header must degrade to something that is *true* (the date block alone), never to a wrong time. | A wrong clock is worse than no clock, and this repo has already paid for "it looks right, so it is right" once (the white Android icon, round 16). |
-| C4 | **The clock never costs a data refresh.** It is presentation over the entry's own date; no extra snapshot writes, no extra `getTimeline` calls. | WidgetKit budgets a widget to roughly 40–70 reloads a day; spending them on a clock would starve the task list. |
+| C4 | **The clock never costs a data refresh, and its reload cost is measured, not assumed.** No extra snapshot writes, ever. On Android it is free (`TextClock` ticks itself). On iOS it is not free and cannot be: see the measurement below. The rule is a budget — the clock may spend **at most a fifth** of the reload floor, and the horizon that buys is computed at runtime, not hardcoded. | WidgetKit budgets a widget to roughly 40–70 reloads a day; spending them on a clock would starve the task list. |
 | C5 | **At zero open tasks the count still hides** (existing behaviour) and the clock moves to the vertical centre of the right column. | The count already hides at zero; a clock hanging off a missing second line looks broken. |
+
+### What building it actually measured (2026-08-10)
+
+Three things were checked before writing this section and three more were only
+learned by putting the widget on a real Home Screen. Recording both, because the
+difference between them is the point.
+
+**Confirmed by research.** There is no self-updating wall clock on iOS, in any
+version including 26. `Text(date, style: .time)` prints its timeline entry's
+instant and freezes; only `.relative`, `.offset` and `.timer` update themselves,
+and all three render *durations*. iOS 18's `TimeDataSource<Date>.currentDate`
+auto-updates only with duration-shaped format styles. WWDC25's widget session
+adds nothing here. C3's premise was right.
+
+**Rejected, with reasons, so nobody re-proposes it.** A `Text(timerInterval:)`
+counting up from midnight *is* a live 24-hour clock at literally zero reloads.
+It is not usable: the seconds cannot be hidden, the twelve-o'clock hour renders
+as `0:05` for anyone on a 12-hour clock, there is no AM/PM marker, and `.timer`
+has a history of breaking outright (it did in iOS 16.0b7). C2 outranks the
+saving.
+
+**How every clock widget on the App Store actually does it** — and the number
+that matters: *entries are free*. The 40–70/day budget is spent by **asking for
+a new timeline**, not by rendering entries that already exist. So the cost of a
+live clock is `1440 / horizon-in-minutes` reloads a day, and the engineering
+question is how long a horizon you can afford to bake.
+
+**The ceiling is the archive, not the budget — measured the hard way.** 241
+minute entries of a `systemLarge` list archived to **16,665,560 bytes** and
+chronod threw the whole timeline away (`failed with too large timeline archive`,
+`CHSErrorDomain 1050`). The widget then sat on its placeholder — two grey bars,
+no error anywhere a user could see it. ~69 KB per entry, scaling with the **rows
+drawn**, so a fixed entry count fails precisely for the people with the most
+tasks. The horizon is therefore derived from a byte budget at runtime: a
+ten-row list settles at ~115 minutes (≈13 reloads/day), an empty one takes the
+full 240 (6/day).
+
+**And the header was being clipped off the top.** A full list is taller than a
+`systemLarge` card, an oversized child centres itself, and the widget was losing
+pixels at *both* ends — the day number came out sliced in half and the new clock
+was cut off the card entirely. `.frame(maxHeight: .infinity, alignment: .top)`
+does not fix this: a max frame only grows to the proposal, so when the child is
+bigger the frame reports the child's size and the alignment has nothing to do.
+Clamping to the geometry's exact height is what makes `.top` bite. **Rule: when
+a widget has to lose something, it loses it at the bottom** — the list already
+has a vocabulary for being cut short ("+N") and the header does not.
 

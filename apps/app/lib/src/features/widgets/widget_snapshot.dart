@@ -4,6 +4,7 @@ import '../../core/date_format.dart';
 
 import '../../i18n/i18n.dart';
 import '../tasks/data/task.dart';
+import 'widget_clock.dart';
 import 'widget_grouping.dart';
 
 /// The JSON snapshot the app writes to the shared container for the native
@@ -14,7 +15,14 @@ import 'widget_grouping.dart';
 /// absence — during an app update a v1 snapshot and a v2 widget (and the
 /// reverse) live side by side for a while, and a widget that blanks out because
 /// one field is missing is worse than one that hides a badge.
-const int kWidgetSnapshotVersion = 2;
+///
+/// **v3 (OPH-253):** adds `clockFormat`, the ICU pattern the header clock is
+/// drawn with. The clock is the one thing the app cannot pre-render (it changes
+/// every minute), so native formats it — but the *choice* of format is still a
+/// product rule and stays here (W9, and OPH-174's "the widget speaks the app's
+/// format"). Same tolerance rule as v2: an older snapshot has no `clockFormat`
+/// and the widget falls back to the locale's own clock.
+const int kWidgetSnapshotVersion = 3;
 
 /// How many rows per bucket the snapshot carries; the native layer trims further
 /// per widget size. The largest tier shows the most, so keep this generous.
@@ -104,6 +112,7 @@ class WidgetSnapshot {
     required this.buckets,
     required this.strings,
     required this.openToday,
+    required this.clockFormat,
   });
 
   final int version;
@@ -111,6 +120,11 @@ class WidgetSnapshot {
   final String locale;
   final WidgetDateHeader date;
   final List<WidgetBucketData> buckets;
+
+  /// The ICU pattern the header clock is drawn with (OPH-253, DESIGN §31 C2) —
+  /// "HH:mm", "h:mm a", … Resolved from the user's date-format preference so the
+  /// clock and the task rows under it can never disagree (OPH-174).
+  final String clockFormat;
 
   /// What is on the user TODAY: overdue + due today, open tasks only
   /// (OPH-187, DESIGN §8 W9). Snoozed and muted tasks count — they are still
@@ -128,6 +142,7 @@ class WidgetSnapshot {
     'locale': locale,
     'date': date.toJson(),
     'strings': strings,
+    'clockFormat': clockFormat,
     if (openToday > 0) 'openToday': openToday,
     'buckets': [for (final bucket in buckets) bucket.toJson()],
   };
@@ -232,6 +247,9 @@ WidgetSnapshot buildWidgetSnapshot(
   return WidgetSnapshot(
     version: kWidgetSnapshotVersion,
     openToday: openToday,
+    // The header clock's pattern, from the same preference the rows above use
+    // (OPH-253 — the native side formats the minute, it does not choose how).
+    clockFormat: widgetClockPattern(format: dateFormat, locale: localeTag),
     generatedAt: now.toUtc().toIso8601String(),
     locale: AwI18n.instance.locale.languageCode,
     date: WidgetDateHeader(

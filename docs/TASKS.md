@@ -6624,23 +6624,23 @@ Fotoğraflar'ın foto ızgarasını açması, **izin diyaloğu ÇIKMAMASI** ve k
 
 ### OPH-253 — Widget başlığında sistem saati (DESIGN §31 C1–C5)
 
-- [ ] **Android**: `tasks_widget.xml`'in sağ sütunu iki satır olur — üstte
+- [x] **Android**: `tasks_widget.xml`'in sağ sütunu iki satır olur — üstte
       **`TextClock`** (`@RemoteView`, RemoteViews içinde kendi tıklar, refresh bütçesi
       harcamaz), altında mevcut `aw_open_today`. 12/24 saat cihaz ayarından
       (`setFormat12Hour`/`setFormat24Hour` `RemoteViews.setCharSequence` ile), tabular
       rakam, `aw_widget_text` rengi, kalın.
-- [ ] **iOS**: `AllisWellWidget.swift`'in başlık `HStack`'inin sağ tarafı `VStack` olur;
+- [x] **iOS**: `AllisWellWidget.swift`'in başlık `HStack`'inin sağ tarafı `VStack` olur;
       saat üstte kalın. **Bulgu #10 bağlayıcı:** `Text(date, style: .time)` canlı
       değildir → timeline **dakika granülerliğinde** girdilerle üretilir (mevcut
       "şimdi + 4 gece yarısı" kalıbının üstüne), saat **entry'nin kendi tarihinden**
       çizilir (round 15'in bayat-gün dersinin aynısı).
-- [ ] **Dürüstlük kapısı (C3)**: iOS'ta girdi ufku dolduğunda ya da sistem timeline'ı
+- [x] **Dürüstlük kapısı (C3)**: iOS'ta girdi ufku dolduğunda ya da sistem timeline'ı
       onurlandırmadığında başlık **yanlış bir saat göstermez** — saat gizlenir, tarih
       bloğu kalır. Bu davranış bir testle sabitlenir (snapshot yaşı > eşik → saat yok).
-- [ ] **Bütçe (C4)**: saat için ek `home_widget` yazımı YOK, ek `getTimeline` çağrısı
+- [x] **Bütçe (C4)**: saat için ek `home_widget` yazımı YOK, ek `getTimeline` çağrısı
       YOK — sunum katmanı işi.
-- [ ] Sıfır açık görevde sayı gizli kalır ve saat sağ sütunun dikey ortasına gelir (C5).
-- [ ] Testler: `widget_snapshot.dart` tarafında entry tarihinden saat türetme saf testi;
+- [x] Sıfır açık görevde sayı gizli kalır ve saat sağ sütunun dikey ortasına gelir (C5).
+- [x] Testler: `widget_snapshot.dart` tarafında entry tarihinden saat türetme saf testi;
       eşik aşımında saatin düşmesi; Android layout'unun `TextClock` taşıdığını bekçileyen
       test (round 16 `web_shell_test.dart` kalıbı).
 - **Kabul:** iki gerçek cihazda widget'ta saat görünür ve **dakika sınırını geçerken
@@ -6648,6 +6648,32 @@ Fotoğraflar'ın foto ızgarasını açması, **izin diyaloğu ÇIKMAMASI** ve k
   gecikmesi ölçülür ve STATE'e sayıyla yazılır.
 - **Doğrulama:** `flutter analyze` · `flutter test` · Android release APK + iOS release
   build'de widget turu.
+
+**Ek kapsam (sahibin isteği, aynı turda):** widget'ın **ilk gerçek fotoğrafı** çekildi ve
+README + landing'e kondu.
+
+- [x] `screenshots/ios/12-widget.png` + `13-widget-dark.png` (iPhone 17 Pro Max, Large,
+      gerçek demo verisi). Depoda ilk **ev ekranı** çekimi; komutları
+      [SCREENSHOTS §6](SCREENSHOTS.md)'ya yazıldı — mevcut harness ev ekranına ulaşamıyor.
+- [x] README telefon şeridine beşinci görsel (`<picture>` ile açık/koyu); kredi satırı
+      güncellendi. **Satır 183'teki macOS widget iddiası düşürüldü** —
+      [STORE-LISTING.md:1023](STORE-LISTING.md) "macOS widget target yok" diyordu, README
+      onu çiğniyordu. Sürüm beş yerde 1.3.0'a hizalandı (README, landing `package.json`,
+      `content.js`, JSON-LD, durum satırı).
+- [x] Landing'e `features[]` sonuna `widget` bloğu (`frame: 'phone'` — varsayılan tarayıcı
+      çerçevesi bir telefon ev ekranının etrafına sahte URL çubuğu çiziyordu).
+      **`shotDark` ölü veriydi** (`content.js`'te tanımlı, hiçbir bileşen okumuyor);
+      `ScreenshotFrame`'e bağlandı — bu `useTheme`'i modül seviyesine taşımayı gerektirdi,
+      yoksa tema düğmesi sayfayı çevirip resmi çevirmiyordu. Uzun telefon görselinin CLS'i
+      için `aspect-ratio` eklendi.
+- **Ölçülenler (DESIGN §31'in altına da yazıldı):** timeline arşiv tavanı
+  **16,665,560 bayt** (241 girdi reddedildi, widget placeholder'da kaldı) → ufuk artık
+  bayt bütçesinden türetiliyor; dakika sınırı diff'i **13×16 pt**, yalnız bir rakam.
+  **Başlık üstten kırpılıyordu** (`.frame(maxHeight:)` kelepçelemiyor) — `GeometryReader`
+  ile sabit yükseklik + `.top` hizası.
+- **Kalan:** Android emülatöründe `TextClock` turu ve `systemMedium`/`extraLarge`
+  görselleri; makinede Docker/MySQL olmadığı için v3 snapshot'lı taze demo verisi yerine
+  30 Temmuz'un gerçek seed çıktısı kullanıldı.
 
 ## Backlog / v2 parking lot
 

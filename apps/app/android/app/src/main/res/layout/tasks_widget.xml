@@ -51,18 +51,49 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
-        <!-- OPH-187 #4B: today's open count (overdue + due today), right of the
-             date and on its line. Text and number both come pre-localized from
-             the app snapshot; GONE at zero. -->
-        <TextView
-            android:id="@+id/aw_open_today"
+        <!-- OPH-253 (round 17 #4): the header's right column is two stacked
+             lines — the system clock on top, today's open count under it, both
+             hard against the trailing edge (gravity="end"; two lines of
+             different widths left-aligned read as a typo).
+
+             TextClock is a @RemoteView: inside the launcher's host view it
+             registers its own time receivers and ticks for free. That is the
+             whole reason Android needs none of the minute-granular timeline
+             machinery iOS does, and why the clock costs no refresh here at all
+             (DESIGN §31 C4). The formats below are only defaults for the widget
+             picker's preview — TasksWidgetProvider overwrites both with the
+             pattern the app chose (C2). -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="@color/aw_widget_secondary"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:visibility="gone" />
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <TextClock
+                android:id="@+id/aw_clock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/aw_widget_text"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:fontFeatureSettings="tnum"
+                android:format12Hour="h:mm a"
+                android:format24Hour="HH:mm" />
+
+            <!-- OPH-187 #4B: today's open count (overdue + due today). Text and
+                 number both come pre-localized from the app snapshot; GONE at
+                 zero — and when it goes, aw_header's center_vertical gravity
+                 puts the clock on the vertical centre by itself (C5). -->
+            <TextView
+                android:id="@+id/aw_open_today"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/aw_widget_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
 
     <ListView

@@ -18,11 +18,12 @@
 | --- | --- |
 | Dart snapshot core (`groupTasksForWidget`, `WidgetSnapshot`, `WidgetBridge`) | ✅ **done + unit-tested** (OPH-130) |
 | Android widget — rendering + tap-to-open | ✅ **written, `flutter build apk` green** (OPH-133); RemoteViews (not Glance) |
-| iOS widget — SwiftUI + timeline | 🟡 **Swift written** (`apps/app/ios/AllisWellWidget/`), awaiting the Xcode target + device — see that folder's `SETUP.md` (OPH-131) |
+| iOS widget — SwiftUI + timeline | ✅ **shipping.** The Xcode target exists (`AllisWellWidgetExtension` in `Runner.xcodeproj`) and the `.appex` is embedded by the Runner build; verified rendering on an iPhone 17 Pro Max Home Screen 2026-08-10 (OPH-131, OPH-253) |
+| Header clock (date · clock · count) | ✅ **done + measured** (OPH-253). Android `TextClock`, free. iOS bakes minute entries against a byte budget — ~115 min / ≈13 reloads a day on a full list, and the clock **hides rather than lie** when a reload is deferred. Numbers and the traps in [DESIGN §31](DESIGN.md) |
 | In-widget complete (App Intents) | ✅ **iOS ships it (round 15, OPH-233):** a widget-process `AWWidgetCompleteIntent` stamps the shared snapshot + queues the completion — see §4's warning about LiveActivityIntent. Quick-add + the Android bit stay deferred (OPH-132) |
 | macOS widget | ⏳ deferred — blocked on the macOS signing gap (OPH-134) |
 | Configurable list, accessory tier, private-widget, WorkManager midnight | ⏳ deferred (OPH-135) |
-| Device visual/QA pass (all sizes, light+dark, sync) | ⏳ needs a real device/emulator |
+| Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android and the other families still pending |
 
 The Dart core is the single source of truth both native widgets render; it's the
 only fully unit-testable piece, and it's done. The native layers are verified by

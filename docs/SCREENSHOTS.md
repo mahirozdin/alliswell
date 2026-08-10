@@ -173,6 +173,66 @@ type). Pass `--only ipad-13` to rebuild just that set.
 
 ---
 
+## 6. The Home Screen widget (iOS) — OPH-253
+
+The first capture in this repo that is **not** of the app. The widget lives on
+the Home Screen, so nothing in `scripts/screenshots/` can reach it: `web.mjs`
+drives a headless browser and `store.mjs` only composes PNGs that already exist.
+This one is hand-run, and the steps below are the whole recipe.
+
+Demo data comes from §0 — the same dataset every other capture uses, so the
+tasks in the widget are the tasks in the README's other screenshots.
+
+```bash
+xcrun simctl boot "iPhone 17 Pro Max"
+cd apps/app && flutter build ios --simulator --debug --dart-define=ALLISWELL_API_URL=http://localhost:3000
+xcrun simctl install booted build/ios/iphonesimulator/Runner.app
+xcrun simctl launch booted com.alliswell.alliswell   # sign in; the app writes the App Group snapshot
+```
+
+Then place the widget: **long-press an empty spot → Edit → Add Widget → search
+"AllisWell" → swipe to the Large size → Add → Done.** (`mcp__Claude_Code_iOS_Simulator__control`
+does this; §2's note about there being no `simctl tap` applies here too. Tap
+coordinates are **points** — take the reference screenshot with
+`xcrun simctl io`, which gives the native 1320×2868, and divide by 3. The live
+panel's own screenshots are scaled differently and its pixels are not points.)
+
+Verify the widget actually got a timeline before capturing — if it is showing
+two grey placeholder bars, it did not:
+
+```bash
+xcrun simctl spawn booted log show --last 2m --predicate 'process == "chronod"' | grep -i alliswell | grep -iE "succeeded with|too large"
+```
+
+`succeeded with N entries` is what you want. `failed with too large timeline
+archive` means the minute-entry budget needs lowering — see
+`kAWArchiveBudgetBytes` in `AllisWellWidget.swift`.
+
+**The status bar must agree with the widget.** `--time "9:41"` only paints the
+status bar; the widget draws the real clock, so the 9:41 the rest of the iOS set
+uses would put a lie in the same picture. Pass the current minute instead — the
+value is a plain string, not ISO, and iOS omits AM/PM in the status bar exactly
+as `%-I:%M` does:
+
+```bash
+xcrun simctl status_bar booted override --time "$(date +%-I:%M)" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3 --dataNetwork wifi
+xcrun simctl io booted screenshot screenshots/ios/12-widget.png
+xcrun simctl ui booted appearance dark
+xcrun simctl status_bar booted override --time "$(date +%-I:%M)"
+xcrun simctl io booted screenshot screenshots/ios/13-widget-dark.png
+```
+
+Both land in the committed `screenshots/ios/` set; `sync:shots` turns them into
+the landing page's `/shots/ios/12-widget.jpg` and `13-widget-dark.jpg`, and the
+README references the PNGs directly through a `<picture>`.
+
+**Proving the clock is live** (the OPH-253 acceptance criterion) is a diff, not
+an opinion: capture at `t`, again at `t + 1 min`, and assert that the only
+pixels that changed are inside the clock. Measured 2026-08-10 — a 13 × 16 pt
+box, one digit, nothing else in the widget moved.
+
+---
+
 ## When to regenerate
 
 Any change to Home, the Board, the task detail, Notes, Files or the theme.

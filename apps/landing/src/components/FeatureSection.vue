@@ -36,10 +36,16 @@ defineProps({
       </ul>
     </div>
 
+    <!-- `shotDark` was declared in content.js from the start and never read, so
+         the site showed the light Home capture on a dark page. It is wired now,
+         and the widget block relies on it. -->
     <ScreenshotFrame
       class="feature__shot"
       :src="`/shots/${feature.shot}`"
+      :src-dark="feature.shotDark ? `/shots/${feature.shotDark}` : ''"
       :alt="feature.alt"
+      :variant="feature.frame || 'browser'"
+      :ratio="feature.ratio || ''"
       :label="`alliswell.space/app — ${feature.eyebrow}`"
     />
   </article>

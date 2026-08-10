@@ -1,4 +1,8 @@
 <script setup>
+import { computed } from 'vue';
+
+import { useTheme } from '../composables/useTheme.js';
+
 /**
  * Wraps a screenshot in browser or phone chrome.
  *
@@ -6,13 +10,23 @@
  * image can appear framed on the site and bare in the README and the stores —
  * one screenshot pipeline, three presentations.
  */
-defineProps({
+const props = defineProps({
   src: { type: String, required: true },
   alt: { type: String, required: true },
   variant: { type: String, default: 'browser' }, // 'browser' | 'phone' | 'bare'
   label: { type: String, default: 'alliswell.space/app' },
   eager: { type: Boolean, default: false },
+  /** Optional dark-theme capture; falls back to `src` when there isn't one. */
+  srcDark: { type: String, default: '' },
+  /** e.g. '1320 / 2868'. Reserves the box before the image loads. */
+  ratio: { type: String, default: '' },
 });
+
+const { theme } = useTheme();
+
+const shown = computed(() =>
+  theme.value === 'dark' && props.srcDark ? props.srcDark : props.src,
+);
 </script>
 
 <template>
@@ -24,11 +38,16 @@ defineProps({
       <span class="frame__url">{{ label }}</span>
     </div>
     <div v-else-if="variant === 'phone'" class="frame__notch" aria-hidden="true" />
+    <!-- `ratio` reserves the box before the bytes arrive. Without it a lazy
+         screenshot lands mid-scroll and shoves the page down under the reader
+         — worst for the tall phone captures, which are twice the page's own
+         height. -->
     <img
-      :src="src"
+      :src="shown"
       :alt="alt"
       :loading="eager ? 'eager' : 'lazy'"
       :fetchpriority="eager ? 'high' : 'auto'"
+      :style="ratio ? { aspectRatio: ratio } : null"
       decoding="async"
     />
   </figure>

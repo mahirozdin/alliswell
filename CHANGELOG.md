@@ -5,7 +5,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **The home-screen widget now carries the system clock**, bold, above today's
+  open count. Android ticks it for free (`TextClock` updates itself inside the
+  launcher). iOS cannot tick — a widget renders the value baked into its
+  timeline entry and holds it — so it bakes an entry per minute, and when the
+  system stops honouring that timeline the header **hides the clock rather than
+  show a wrong one**. Which clock you read, 12- or 24-hour, comes from the app's
+  own date-format setting, so the header can never disagree with the task rows
+  under it. (OPH-253, [DESIGN §31](docs/DESIGN.md))
+- **The widget has a picture for the first time** — on the README and the
+  landing page, light and dark, a real Home Screen capture rather than a mock-up.
+  Recipe: [docs/SCREENSHOTS.md §6](docs/SCREENSHOTS.md). (OPH-253)
+
 ### Fixed
+
+- **The widget's header was being clipped off the top of the card.** A full task
+  list is taller than a large widget, and an oversized view centres itself — so
+  the widget quietly lost pixels at both ends, slicing the day number in half.
+  It now loses them at the bottom instead, where "+N" already says so. (OPH-253)
+- **A widget with a long task list could stop updating entirely**, showing two
+  grey placeholder bars and no error: the pre-rendered timeline exceeded
+  WidgetKit's archive limit and the system discarded all of it. How far ahead
+  the widget renders is now derived from a byte budget, so the people with the
+  most tasks are no longer the ones whose widget breaks. (OPH-253)
+- **The landing page showed light screenshots on a dark page.** A dark-capture
+  field had been declared for every screenshot and never actually read.
+  (OPH-253)
+- README claimed a macOS widget that does not exist — the store listing's own
+  guardrail already said so. (OPH-253)
 
 - **"Share to AllisWell" on iPhone did nothing at all** — no launch, no crash
   report. Three separate defects were stacked on top of each other, and the

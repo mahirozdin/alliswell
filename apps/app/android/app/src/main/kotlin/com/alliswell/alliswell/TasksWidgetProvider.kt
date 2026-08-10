@@ -80,6 +80,18 @@ class TasksWidgetProvider : HomeWidgetProvider() {
           // Localized empty state (shown by setEmptyView when the list is empty).
           val empty = snap.optJSONObject("strings")?.optString("allCaughtUp")
           if (!empty.isNullOrEmpty()) views.setTextViewText(R.id.aw_empty, empty)
+          // OPH-253 (v3): the header clock's pattern. TextClock ticks on its own
+          // — it needs no data from us — but it would otherwise pick 12h vs 24h
+          // from the DEVICE, and which clock the user reads is a product rule
+          // the app already settled for the rows below (OPH-174, W9). Setting
+          // BOTH slots to the same resolved pattern is what makes the device
+          // toggle unable to overrule the app's answer. A v2 snapshot has no
+          // pattern and keeps the layout's device-driven defaults.
+          val clockFormat = snap.optString("clockFormat")
+          if (clockFormat.isNotEmpty()) {
+            views.setCharSequence(R.id.aw_clock, "setFormat12Hour", clockFormat)
+            views.setCharSequence(R.id.aw_clock, "setFormat24Hour", clockFormat)
+          }
           // OPH-187 #4B: today's open count. `optInt` returns 0 for a v1
           // snapshot that has no such field — which is also the "hide it"
           // value, so an older app degrades to exactly the old header.

@@ -11,7 +11,7 @@ export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
-export const VERSION = '1.1.0';
+export const VERSION = '1.3.0';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
@@ -152,6 +152,24 @@ export const features = [
     ],
     shot: 'web/projects.jpg',
     alt: 'AllisWell Projects with colour-coded projects and favourites',
+  },
+  {
+    id: 'widget',
+    eyebrow: 'Home Screen',
+    title: 'Your day, without unlocking anything',
+    body: 'The widget mirrors the same buckets Home does — overdue, undated, today — under a header carrying the date, the system clock and how many tasks today actually holds. On iPhone you can tick one off from the Home Screen without opening the app.',
+    points: [
+      'A clock that really ticks — not a number frozen at the last refresh',
+      'The count is what is on you today: overdue plus due today, hidden at zero',
+      'iPhone and Android, in light and dark, from the same task data',
+    ],
+    // A phone Home Screen belongs in phone chrome; the default browser frame
+    // would draw a fake URL bar around an iPhone.
+    frame: 'phone',
+    ratio: '1320 / 2868',
+    shot: 'ios/12-widget.jpg',
+    shotDark: 'ios/13-widget-dark.jpg',
+    alt: 'The AllisWell widget on the iPhone Home Screen: the date and the system clock in the header, today’s open count beneath it, then overdue, undated and today’s tasks',
   },
 ];
 

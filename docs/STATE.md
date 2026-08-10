@@ -3,7 +3,43 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10b (**OPH-244 BİTTİ (kod) — ek seçimi üç adlı yola ayrıldı,
+**Last updated:** 2026-08-10c (**OPH-253 BİTTİ — widget başlığında sistem saati, iki
+platformda; ve depodaki İLK ev-ekranı fotoğrafı. Süitler 856 (+11), analyze/i18n/kontrast
+temiz, APK + iOS simulator build yeşil, landing build yeşil. Sıradaki iş: OPH-245.**
+Bu tur **üç şeyi ölçerek** öğrendi ve üçü de kodu değiştirdi.
+(1) **iOS'ta canlı duvar saati API'si YOK** — 26 dahil. `Text(date, style: .time)` timeline
+girdisinin anını basıp donar; canlı olan `.relative`/`.offset`/`.timer` süre çizer, saat
+değil; iOS 18'in `TimeDataSource.currentDate`'i yalnız süre-biçimli stillerle güncelleniyor.
+App Store'daki saat widget'larının tamamı **dakikalık girdileri önceden pişiriyor**, ve bu
+ucuz çünkü **girdiler bedava**: 40–70/gün bütçeyi harcayan şey yeni bir timeline İSTEMEK,
+var olanı çizmek değil. Maliyet `1440 / ufuk`.
+(2) **Tavan bütçe değil ARŞİV, ve bunu sert yoldan öğrendik:** 241 girdilik `systemLarge`
+timeline'ı **16.665.560 bayta** çıktı, chronod tümünü attı (`too large timeline archive`,
+`CHSErrorDomain 1050`) ve widget **placeholder'da kaldı — iki gri çubuk, kullanıcının
+göreceği hiçbir hata yok**. Girdi başına ~69 KB ve bu sayı **çizilen satırla** ölçekleniyor,
+yani sabit girdi sayısı tam da en çok görevi olan kullanıcıda patlıyor. Ufuk artık çalışma
+anında bayt bütçesinden türetiliyor: on satırlık listede ~115 dk (≈13 reload/gün), boş
+widget'ta 240 (6/gün). DESIGN §31 C4 buna göre tadil edildi.
+(3) **Başlık üstten kırpılıyordu** — dolu bir liste `systemLarge` karttan uzun, taşan çocuk
+kendini ORTALIYOR, yani widget iki uçtan da piksel kaybediyordu; gün numarası ikiye
+bölünmüş, yeni saat karttan tamamen çıkmıştı: shipped, rendered, invisible.
+`.frame(maxHeight: .infinity, alignment: .top)` bunu **çözmüyor** (max frame yalnız
+büyütür; çocuk daha büyükse frame çocuğun boyunu bildirir ve hizaya iş kalmaz) —
+`GeometryReader` + sabit yükseklik gerekiyor. Kural: kaybedilecekse **alttan** kaybedilir,
+listenin "+N" sözlüğü var, başlığın yok.
+**Kanıt:** dakika sınırında t / t+1dk piksel diff'i **13×16 pt** — tek bir rakam, widget'ta
+başka hiçbir piksel oynamadı (tabular rakamlar + sıfır kayma). Türkçe v3 fikstürüyle
+`03:38` + `bugün 8 açık iş` tek satırda, `10 / Pzt / Ağustos` tam.
+**Tasarım kararı:** saatin 12/24 biçimi cihazdan değil **uygulamanın kendi tercihinden**
+geliyor (snapshot v3 `clockFormat`) — OPH-174 "widget uygulamanın formatını konuşur"
+kuralı, aksi halde başlık hemen altındaki satırlarla çelişebilirdi.
+**Reddedildi:** gece yarısından yukarı sayan `Text(timerInterval:)` gerçekten sıfır reload
+ama saniye gizlenemiyor, 12 saatlik yerelde 12'nci saat `0:05` çıkıyor, AM/PM yok.
+**Eksik kalan:** makinede **Docker/MySQL yok** (hafızadaki colima notu bayat), o yüzden
+API+seed çalıştırılamadı; fotoğraflar 30 Temmuz'un gerçek seed çıktısı olan App Group
+snapshot'ıyla çekildi (v2 yolu) ve saat 03:31'i gösteriyor. Android emülatör turu ve
+`systemMedium`/`extraLarge` görselleri de bekliyor.)
+Önceki blok: 2026-08-10b (**OPH-244 BİTTİ (kod) — ek seçimi üç adlı yola ayrıldı,
 kamera geldi, Android'de SIFIR medya izni ölçülerek kanıtlandı. Süitler 834 (+13),
 analyze/i18n/kontrast/format temiz. Sıradaki iş: OPH-245.**
 Planlama turunun iki varsayımı ölçülünce TERS çıktı ve ikisi de kararı değiştirdi:
