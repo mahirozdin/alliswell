@@ -35,6 +35,17 @@ flowchart bir katmanlı çizim algoritması, sequence neredeyse doğrusal; ikisi
 OPH-247'nin içinde kalsaydı o task üç işi birden yapardı. Yazılı çıkış kapısı
 var: yerleşim tutmazsa D11 yer tutucusuna düşülür ve ADR tadil edilir.
 
+**Yol boyunca bulunan gerileme (ve önceki bloğun yanlış bir iddiası):**
+`flutter analyze` temiz DEĞİLDİ — 4dfd6c8 `FakeShareInbox`'ta bir
+`prefer_initializing_formals` bırakmış, ama o turun STATE'i
+"analyze/format/i18n/kontrast temiz" diyordu. OPH-246'nın doğrulamasını
+koşarken çıktı. Lint'in **kendi önerisi burada uygulanamaz**: `this._pending`
+istiyor, ama Dart isimli parametrelerin `_` ile başlamasını yasaklıyor, yani
+private bir alan isimli initializing formal olamaz. Doğru düzeltme lint'i
+susturmak değil alanı public yapmaktı (test fake'i, `takes` zaten public, ve
+posta kutusunun gerçekten boşaldığını assert etmek isteyen bir test ona
+bakabilmeli). Şimdi **No issues found**, süitler **887**.
+
 **Sıra artık:** `246 ✅ → 247 → 254 → 248 → 249 → 250 → 251 → 252`.
 Ölçüm tekrar üretilebilir: `scripts/markdown/measure_coverage.dart`
 (çalıştırma yönergesi dosyanın başında; OPH-247 bunu bir teste dönüştürecek).
