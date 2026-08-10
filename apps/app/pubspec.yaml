@@ -135,6 +135,35 @@ dependencies:
   pdf: ^3.11.3
   printing: ^5.14.2
 
+  # The markdown workspace (round 17, ADR-0028 — OPH-247).
+  #
+  # `markdown` was already in the tree TRANSITIVELY (via flutter_quill); it is
+  # declared directly because we now import it from lib/, and importing a
+  # transitive package trips `depend_on_referenced_packages`. It is the parser
+  # only — the widget tree is ours, because no renderer package exposes the
+  # node -> source-line map that D4/D5/D13/D14/D16 all depend on (measured in
+  # OPH-246: `scripts/markdown/measure_coverage.dart`).
+  markdown: ^7.3.1
+  # Syntax highlighting for fenced code (DESIGN §29 D9) — the pure-Dart LEXER
+  # only. Deliberately NOT `flutter_highlight`: all that package adds is a
+  # widget plus ready-made theme maps, and D7 forbids a package's own colours.
+  # Token classes are painted from AwTokens.
+  highlight: ^0.7.0
+  # Inline/block math (DESIGN §29 D6, ADR-0028 §3). Pure Flutter painting with
+  # KaTeX fonts — no JS engine, no web view, which D10 requires on the reading
+  # path.
+  #
+  # Measured against the alternative rather than assumed: adding
+  # `flutter_markdown_plus_latex` resolves to 10 new packages and pulls
+  # `flutter_math_fork` in ANYWAY, on top of `flutter_markdown_plus` — a whole
+  # renderer ADR-0028 already declined. It is a bridge to a renderer we do not
+  # use, so we take the engine directly: 8 new packages instead of 10.
+  #
+  # The cost is honest: it drags flutter_svg + vector_graphics + provider +
+  # nested + tuple along. The APK/IPA delta is measured in OPH-247 and written
+  # into TASKS.
+  flutter_math_fork: ^0.7.4
+
 dev_dependencies:
   # Generates the iOS AppIcon set + Android mipmaps/adaptive icons from
   # assets/branding/ — run: dart run flutter_launcher_icons

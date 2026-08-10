@@ -889,5 +889,23 @@
     "quickAdd": {
       "enriching": "AI is filling this in…"
     }
+  },
+  "markdown": {
+    "copyCode": "Copy code",
+    "copied": "Copied",
+    "frontMatter": "Document properties",
+    "rawHtml": "HTML is shown as source, never run.",
+    "badMath": "This formula could not be typeset.",
+    "unsupportedBlock": "This block is not drawn yet.",
+    "inertLink": "Link disabled: unsupported address",
+    "image": "Image",
+    "relativeImage": "Image relative to the file",
+    "alert": {
+      "note": "Note",
+      "tip": "Tip",
+      "important": "Important",
+      "warning": "Warning",
+      "caution": "Caution"
+    }
   }
 }

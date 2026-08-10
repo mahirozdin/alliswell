@@ -202,6 +202,25 @@ python3 scripts/design/contrast.py
 
 It must print `FAILURES: 0` before a palette change ships.
 
+**Round 17 (OPH-247) added one token group and no other colours:** six
+syntax-highlighting inks (`codeKeyword`, `codeString`, `codeComment`,
+`codeNumber`, `codeName`, `codeMeta`), each ≥ 4.5:1 against the code panel
+(`surfaceContainerHighest` — `#DEE8F8` light, `#26345E` dark). Six roles, not
+the ~30 class names highlight.js emits: a palette nobody can tell apart is
+worse than one colour. `codeComment` shares a hue with `codeName` on purpose
+and separates by chroma (S 31% vs 95% light), which is the convention every
+editor uses — comments recede, identifiers do not.
+
+**The five GFM alert types grew no palette at all**, and that is a measured
+decision rather than thrift. They reuse `primary` / `success` / `secondary` /
+`warning` / `error`, tinted at **10%** over `surface`, and the accent colours
+the **icon and the left edge only** — the body text stays `onSurface`. Colouring
+alert text with its accent fails outright: `warning` `#C77700` on its own card
+measures **2.96:1**. `AwTokens.warning`'s own doc comment has always said it is
+an icon colour; this is the first surface that tried to use it as text and got
+caught. 10% rather than 14% for the same reason — at 14% even the light warning
+ICON lands on 2.96.
+
 ## 8. Widget design (home-screen / desktop — Epic 12)
 
 _(Added 2026-07-17, feedback round 5. Full plan: [WIDGETS.md](WIDGETS.md);

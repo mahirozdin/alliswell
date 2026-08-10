@@ -110,6 +110,57 @@ PAIRS = [
     # ── Swipe-to-delete action pane (OPH-184, DESIGN §19 D5)
     ('L delete label on error pane', '#FFFFFF', '#D70015', 4.5),
     ('D delete label on error pane', '#450603', '#FF5147', 4.5),
+    # ── Rendered markdown (round 17, OPH-247, DESIGN §29 D7/D9)
+    # The code panel is `surfaceContainerHighest`, which both themes define
+    # outright — so these are exact backgrounds, not blended estimates.
+    ('L code body on code panel', '#0F1B2E', '#DEE8F8', 4.5),
+    ('D code body on code panel', '#EAF0FD', '#26345E', 4.5),
+    ('L code keyword', '#8B2FA8', '#DEE8F8', 4.5),
+    ('L code string', '#0A6E3D', '#DEE8F8', 4.5),
+    ('L code comment', '#5A6782', '#DEE8F8', 4.5),
+    ('L code number', '#9A4A05', '#DEE8F8', 4.5),
+    ('L code name', '#0B54D0', '#DEE8F8', 4.5),
+    ('L code meta', '#00636E', '#DEE8F8', 4.5),
+    ('D code keyword', '#E5A8FF', '#26345E', 4.5),
+    ('D code string', '#7EE8A8', '#26345E', 4.5),
+    ('D code comment', '#A8B6D4', '#26345E', 4.5),
+    ('D code number', '#FFC07A', '#26345E', 4.5),
+    ('D code name', '#8FC4FF', '#26345E', 4.5),
+    ('D code meta', '#5FE0F0', '#26345E', 4.5),
+    # Table header row (`surfaceContainerLow`).
+    ('L table header ink', '#0F1B2E', '#F6F9FF', 4.5),
+    ('D table header ink', '#EAF0FD', '#121B36', 4.5),
+    # GFM alerts (DESIGN §29). The five types reuse EXISTING roles rather than
+    # growing the palette. The backgrounds below are not estimates: they are
+    # the accent composited at **10%** over `surface` (#FFFFFF light,
+    # #151F3C dark) — the exact value `md_callout.dart` paints.
+    #
+    # The split matters and was measured. The accent colours the ICON and the
+    # left edge (>= 3:1); the TEXT stays `onSurface` (>= 4.5:1). Colouring the
+    # body text with the accent fails outright — `warning` #C77700 on its own
+    # tint is 2.96 — which is what `AwTokens.warning`'s own doc comment has
+    # said all along: it is an ICON colour. 10% rather than 14% for the same
+    # reason: at 14% the light warning ICON lands on 2.96 too.
+    ('L alert note text on tint', '#0F1B2E', '#E6EFFF', 4.5),
+    ('L alert note icon on tint', '#0A5CFF', '#E6EFFF', 3.0),
+    ('L alert tip text on tint', '#0F1B2E', '#E7F2EB', 4.5),
+    ('L alert tip icon on tint', '#0D7A33', '#E7F2EB', 3.0),
+    ('L alert important text on tint', '#0F1B2E', '#EEEEFC', 4.5),
+    ('L alert important icon on tint', '#5A50E0', '#EEEEFC', 3.0),
+    ('L alert warning text on tint', '#0F1B2E', '#F9F1E6', 4.5),
+    ('L alert warning icon on tint', '#C77700', '#F9F1E6', 3.0),
+    ('L alert caution text on tint', '#0F1B2E', '#FBE6E8', 4.5),
+    ('L alert caution icon on tint', '#D70015', '#FBE6E8', 3.0),
+    ('D alert note text on tint', '#EAF0FD', '#192B50', 4.5),
+    ('D alert note icon on tint', '#3E9BFF', '#192B50', 3.0),
+    ('D alert tip text on tint', '#EAF0FD', '#18313F', 4.5),
+    ('D alert tip icon on tint', '#30D158', '#18313F', 3.0),
+    ('D alert important text on tint', '#EAF0FD', '#252D50', 4.5),
+    ('D alert important icon on tint', '#B9AFFF', '#252D50', 3.0),
+    ('D alert warning text on tint', '#EAF0FD', '#2C3036', 4.5),
+    ('D alert warning icon on tint', '#FFC400', '#2C3036', 3.0),
+    ('D alert caution text on tint', '#EAF0FD', '#2C243D', 4.5),
+    ('D alert caution icon on tint', '#FF5147', '#2C243D', 3.0),
 ]
 
 

@@ -888,5 +888,23 @@
     "quickAdd": {
       "enriching": "Yapay zekâ dolduruyor…"
     }
+  },
+  "markdown": {
+    "copyCode": "Kodu kopyala",
+    "copied": "Kopyalandı",
+    "frontMatter": "Belge bilgileri",
+    "rawHtml": "HTML kaynak olarak gösteriliyor, çalıştırılmıyor.",
+    "badMath": "Bu formül çizilemedi.",
+    "unsupportedBlock": "Bu blok henüz çizilmiyor.",
+    "inertLink": "Bağlantı devre dışı: desteklenmeyen adres",
+    "image": "Görsel",
+    "relativeImage": "Dosyaya göreli görsel",
+    "alert": {
+      "note": "Not",
+      "tip": "İpucu",
+      "important": "Önemli",
+      "warning": "Uyarı",
+      "caution": "Dikkat"
+    }
   }
 }

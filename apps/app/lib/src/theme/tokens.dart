@@ -88,6 +88,12 @@ class AwTokens extends ThemeExtension<AwTokens> {
     required this.prioMedium,
     required this.prioHigh,
     required this.prioUrgent,
+    required this.codeKeyword,
+    required this.codeString,
+    required this.codeComment,
+    required this.codeNumber,
+    required this.codeName,
+    required this.codeMeta,
   });
 
   /// Positive/confirmation accents (≥ 4.5:1 as text on surface).
@@ -143,6 +149,25 @@ class AwTokens extends ThemeExtension<AwTokens> {
   final Color prioHigh;
   final Color prioUrgent;
 
+  /// Syntax-highlighting inks for fenced code (round 17, OPH-247, DESIGN §29
+  /// D7/D9). Every one is ≥ 4.5:1 against the code panel — `surfaceContainerHighest`,
+  /// i.e. `#DEE8F8` light / `#26345E` dark — verified in `contrast.py`.
+  ///
+  /// Six roles, not the ~30 class names highlight.js emits: a palette nobody
+  /// can tell apart is worse than one colour. The first draft had `meta` in the
+  /// same brown as `number` (`#FFD27A` vs `#FFC07A` in dark — effectively the
+  /// same ink), which is why `meta` is teal now.
+  ///
+  /// [codeComment] deliberately shares a HUE with [codeName] and separates by
+  /// chroma instead (S 31% vs 95% light, 21% vs 44% dark). That is the
+  /// convention every editor uses: comments recede, identifiers do not.
+  final Color codeKeyword;
+  final Color codeString;
+  final Color codeComment;
+  final Color codeNumber;
+  final Color codeName;
+  final Color codeMeta;
+
   static const light = AwTokens(
     success: Color(0xFF0D7A33),
     warning: Color(0xFFC77700),
@@ -162,6 +187,12 @@ class AwTokens extends ThemeExtension<AwTokens> {
     prioMedium: Color(0xFFC77700),
     prioHigh: Color(0xFFE8500A),
     prioUrgent: Color(0xFFE3261A),
+    codeKeyword: Color(0xFF8B2FA8),
+    codeString: Color(0xFF0A6E3D),
+    codeComment: Color(0xFF5A6782),
+    codeNumber: Color(0xFF9A4A05),
+    codeName: Color(0xFF0B54D0),
+    codeMeta: Color(0xFF00636E),
   );
 
   static const dark = AwTokens(
@@ -183,6 +214,12 @@ class AwTokens extends ThemeExtension<AwTokens> {
     prioMedium: Color(0xFFFFC400),
     prioHigh: Color(0xFFFF8A1E),
     prioUrgent: Color(0xFFFF453A),
+    codeKeyword: Color(0xFFE5A8FF),
+    codeString: Color(0xFF7EE8A8),
+    codeComment: Color(0xFFA8B6D4),
+    codeNumber: Color(0xFFFFC07A),
+    codeName: Color(0xFF8FC4FF),
+    codeMeta: Color(0xFF5FE0F0),
   );
 
   @override
@@ -205,6 +242,12 @@ class AwTokens extends ThemeExtension<AwTokens> {
     Color? prioMedium,
     Color? prioHigh,
     Color? prioUrgent,
+    Color? codeKeyword,
+    Color? codeString,
+    Color? codeComment,
+    Color? codeNumber,
+    Color? codeName,
+    Color? codeMeta,
   }) {
     return AwTokens(
       success: success ?? this.success,
@@ -225,6 +268,12 @@ class AwTokens extends ThemeExtension<AwTokens> {
       prioMedium: prioMedium ?? this.prioMedium,
       prioHigh: prioHigh ?? this.prioHigh,
       prioUrgent: prioUrgent ?? this.prioUrgent,
+      codeKeyword: codeKeyword ?? this.codeKeyword,
+      codeString: codeString ?? this.codeString,
+      codeComment: codeComment ?? this.codeComment,
+      codeNumber: codeNumber ?? this.codeNumber,
+      codeName: codeName ?? this.codeName,
+      codeMeta: codeMeta ?? this.codeMeta,
     );
   }
 
@@ -251,6 +300,12 @@ class AwTokens extends ThemeExtension<AwTokens> {
       prioMedium: mix(prioMedium, other.prioMedium),
       prioHigh: mix(prioHigh, other.prioHigh),
       prioUrgent: mix(prioUrgent, other.prioUrgent),
+      codeKeyword: mix(codeKeyword, other.codeKeyword),
+      codeString: mix(codeString, other.codeString),
+      codeComment: mix(codeComment, other.codeComment),
+      codeNumber: mix(codeNumber, other.codeNumber),
+      codeName: mix(codeName, other.codeName),
+      codeMeta: mix(codeMeta, other.codeMeta),
     );
   }
 }
