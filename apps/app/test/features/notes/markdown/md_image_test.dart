@@ -41,10 +41,7 @@ void main() {
     child: MaterialApp(
       theme: buildAwTheme(Brightness.light),
       home: Scaffold(
-        body: AwMarkdown(
-          document: parseMarkdown(markdown),
-          shrinkWrap: true,
-        ),
+        body: AwMarkdown(document: parseMarkdown(markdown), shrinkWrap: true),
       ),
     ),
   );
@@ -124,7 +121,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          networkImageProvider.overrideWithValue((_) => MemoryImage(onePixelPng)),
+          networkImageProvider.overrideWithValue(
+            (_) => MemoryImage(onePixelPng),
+          ),
         ],
         child: MaterialApp(
           theme: buildAwTheme(Brightness.light),

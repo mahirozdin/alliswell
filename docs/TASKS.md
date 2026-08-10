@@ -6802,6 +6802,18 @@ taşımıyor, o OPH-251'in işi.)_
       görüntüleyiciyi daraltmamalı. Konum haritası da orada assert edilir.
 - **Kabul:** `markdown_conformance.md` AllisWell'de GitHub'daki gibi okunuyor; yan yana
   ekran görüntüsü task'ın altına eklenir.
+  **Çekildi:** [`docs/screenshots/markdown-reading-light.png`](screenshots/markdown-reading-light.png)
+  + [`-dark.png`](screenshots/markdown-reading-dark.png) (1800×10400, belgenin
+  TAMAMI). Üretici: `test/features/notes/markdown/markdown_screenshot_test.dart`,
+  `flutter test --update-goldens --dart-define=screenshots=true …`.
+  **Üç kere çekildi, ikisi çöptü ve sebebi aynıydı: font yüklemek yetmiyor,
+  temanın onu İSTEMESİ gerekiyor.** İlk kare kusursuz uyarı kutuları ve tablolar
+  gösteriyordu ama her kelime siyah dikdörtgendi (`fontFamilyOverride` verilmemiş).
+  İkincide gövde düzeldi, kod ve matematik kutu kaldı — test motorunda monospace
+  yok, ve bir bağımlılığın fontları `packages/<paket>/<aile>` adıyla çözülüyor.
+  Üçüncüde ikisi de kayıtlı: kod blokları gerçek glif + sözdizimi renkleriyle,
+  matematik gerçek KaTeX dizgisiyle (integral, toplam, kesir, karekök, hizalı
+  ortam) çiziliyor.
 - **Doğrulama:** `flutter analyze` · `flutter test` · `python3 scripts/design/contrast.py` ·
   `npm run check:i18n`.
 

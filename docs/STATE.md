@@ -36,7 +36,13 @@ için `id="trke-balk"` üretiyor — Türkçe karakterleri katlamıyor, **atıyo
 `core/fold.dart` ile üretmek zorunda (ADR-0013'ün arama dersi). Bir testle
 sabitlendi, 249 düzeltince **kırmızıya dönecek**.
 
-**Açık kalan tek şey:** fikstürün ekran görüntüsü (kabul şartı) çekilmedi.
+**Ekran görüntüsü çekildi** (`docs/screenshots/markdown-reading-{light,dark}.png`,
+1800×10400) ve üç denemede oturdu — ikisi çöptü, ikisinde de aynı ders vardı:
+**fontu yüklemek yetmiyor, temanın onu istemesi gerekiyor.** Birinci kare
+kusursuz uyarı kutuları ve tablolar gösteriyordu ama her kelime siyah
+dikdörtgendi; ikincide gövde düzeldi, kod ve matematik kutu kaldı (test
+motorunda monospace yok, ve bir bağımlılığın fontları `packages/<paket>/<aile>`
+adıyla çözülüyor). Üçüncüde ikisi de kayıtlı.
 
 Önceki blok: 2026-08-10g (**OPH-246 BİTTİ — ADR-0028 kabul edildi, markdown
 zincirinin kapısı açıldı. Kod yazılmadı (task öyle tasarlanmıştı), süitler 887.
