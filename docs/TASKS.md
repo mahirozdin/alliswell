@@ -6472,34 +6472,51 @@ Fotoğraflar'ın foto ızgarasını açması, **izin diyaloğu ÇIKMAMASI** ve k
 çekmesi. iOS derlemesi doğrulandı: `image_picker_ios.framework` bağlandı ve
 `NSCameraUsageDescription` ÜRÜNDE.)_
 
-- [ ] `pickUploads()` tek bir girişten çıkıp **niyet alan** bir API'ye döner:
+- [x] `pickUploads()` tek bir girişten çıkıp **niyet alan** bir API'ye döner:
       `pickUploads(AttachmentSource source)` — `photos` → `FileType.media`
       (iOS'ta `PHPickerViewController`, bulgu #4), `files` → bugünkü `FileType.any`
       belge seçici. Web/masaüstü tek yolda kalır (orada ayrım yok) — seam korunur,
       `filePickerProvider` imzası testlerde enjekte edilebilir kalır.
-- [ ] **Kamera** kararı bu task'ta verilir ve YAZILIR: `file_picker` kamera açmaz.
+      **Sevk edilen şekil farklı ve gerekçesi yukarıda:** medya kaynakları mobilde
+      `image_picker`'a gitti (Android'in `file_picker` yolu `ACTION_GET_CONTENT`
+      kuruyor), `pickAndUpload` öldü ve yerine `uploadAll` geldi.
+- [x] **Kamera** kararı bu task'ta verilir ve YAZILIR: `file_picker` kamera açmaz.
       Ya yeni bir bağımlılık gelir (ADR + bulgu #6'nın Play riski ölçülerek) ya da
       "Kamera" **v1'de sunulmaz** — sunulmayacaksa menüde yer almaz (dead affordance
       yasak, §22). Karar gerekçesiyle DESIGN §30'a işlenir.
-- [ ] **Android tarafı ölçülür**: `file_picker`'ın `FileType.media` yolu Android 13+
+      **Karar: kamera GİRDİ** (sahibin isteği) ama `camera` paketiyle değil —
+      o paket `WRITE_EXTERNAL_STORAGE` beyan ediyor ve **ADR-0027'de reddedildi**;
+      `image_picker`'ın `ImageSource.camera`'sı kullanıldı.
+- [x] **Android tarafı ölçülür**: `file_picker`'ın `FileType.media` yolu Android 13+
       Photo Picker'a mı düşüyor yoksa `ACTION_GET_CONTENT`'e mi — ve **hangi izinleri
       manifest'e ekliyor**. `READ_MEDIA_IMAGES` görünürse (bulgu #6) alternatif ölçülür;
       hiçbir koşulda geniş medya izni beyan edilmez.
-- [ ] `AttachmentsSection`'ın tek "Dosya ekle" butonu **üç maddelik bir menüye** döner
+      **Ölçüldü:** `ACTION_GET_CONTENT`. Sıfır medya/kamera izni, ve bu iddia artık
+      `scripts/android/assert-permissions.sh` ile release APK'sının ikili
+      manifest'inden TAM KÜME olarak zorlanıyor (ilk koşu: 18 izin).
+- [x] `AttachmentsSection`'ın tek "Dosya ekle" butonu **üç maddelik bir menüye** döner
       (DESIGN §30 A1); her madde ne açtığını söyler.
-- [ ] **Açıklama alanında da ek yolu** (A4): görev oluşturma sheet'i ve görev detayının
+- [x] **Açıklama alanında da ek yolu** (A4): görev oluşturma sheet'i ve görev detayının
       açıklama bloğunun altına aynı menü — sahip önce orada aradı.
-- [ ] Görsel ekler **küçük resim** olarak listelenir (A5), diğerleri bugünkü satır
+- [x] Görsel ekler **küçük resim** olarak listelenir (A5), diğerleri bugünkü satır
       olarak. Küçük resim `fileUrlProvider` cache'ini kullanır (OPH-153'ün dersi:
       widget build'inde future üretme).
-- [ ] i18n + kontrast: yeni menü/dizeler `en`+`tr`; `contrast.py` **FAILURES: 0**.
-- [ ] Testler: her kaynak doğru `FileType` ile çağırıyor (fake picker enjekte edilir,
+      **Zaten öyleymiş** (`FileLeadingThumb`, 40 px satır küçük resmi) — sahip
+      görmemişti çünkü zaten fotoğraf ekleyemiyordu. Izgara ise OPH-245'te
+      bilinçli olarak REDDEDİLDİ (§10 F1); DESIGN §30 A5 buna göre tadil edildi.
+- [x] i18n + kontrast: yeni menü/dizeler `en`+`tr`; `contrast.py` **FAILURES: 0**.
+- [x] Testler: her kaynak doğru `FileType` ile çağırıyor (fake picker enjekte edilir,
       platform kanalı yok); menü üç madde gösteriyor (kamera kararına göre iki/üç);
       depolama yapılandırılmamışken menü açılmıyor ve mevcut açıklayıcı satır kalıyor;
       küçük resim ızgarası + bozuk görselde dürüst yer tutucu.
 - **Kabul:** gerçek iPhone'da "Fotoğraflar" fotoğraf ızgarasını açar, **izin diyaloğu
   çıkmaz**, seçilen fotoğraf yüklenir; "Dosyalar" bugünkü belge seçicidir; aynısı
   Android'de. Play/App Store için **hiçbir yeni izin beyanı yok**.
+- **Kalan (cihaz turu — sahibe ait, agent akışını bloklamaz):** iki gerçek cihazda
+  "Fotoğraflar" foto ızgarasını açıyor mu · **izin diyaloğu ÇIKMIYOR** mu (ADR-0027'nin
+  ölçülmüş sıfır-izin iddiasının kullanıcı tarafındaki kanıtı) · kamera çekip yüklüyor
+  mu · "Dosyalar" belge seçici mi. Kanıt buraya yazılır. Epic 24'ün açık üç turu
+  STATE'in "Açık cihaz turları" bloğunda toplu listeleniyor.
 - **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n` ·
   `python3 scripts/design/contrast.py` · iki cihazda seçici turu.
 

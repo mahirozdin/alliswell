@@ -3,7 +3,40 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10e (**G1 KAPANDI — OPH-242 + OPH-243 bitti; Epic 24'te
+**Last updated:** 2026-08-10f (**Kayıt temizliği (markdown zincirinin ön adımı) —
+TASKS artık STATE ile aynı şeyi söylüyor. Kod değişmedi, süitler 887.
+Sıradaki iş: OPH-246.**
+
+**Turun tek cümlesi: bitmiş bir task işaretsiz kutu bırakırsa protokolün kendisi
+bozulur.** OPH-244 başlığında `✅`, STATE'te "bitti", commit'i (75d7b91) tam —
+ama sekiz maddesinin sekizi de `- [ ]` duruyordu. AGENTS §2 "epic'teki ilk
+işaretsiz `[ ]`" diyor, yani bir sonraki "sıradaki işi yap" turu OPH-246'ya
+değil **bitmiş olan 244'e** düşecekti. Sekizi de sevk edildikleri şekilde
+işaretlendi — üçünün altına, planla farklı sevk edildikleri için, gerekçe
+düşüldü: `pickUploads` medyada `image_picker`'a gitti (Android'in `file_picker`
+yolu `ACTION_GET_CONTENT` kuruyor), kamera `camera` paketiyle DEĞİL
+(`WRITE_EXTERNAL_STORAGE` beyan ediyor, ADR-0027 reddetti), ve A5 küçük
+resimleri **zaten vardı** (`FileLeadingThumb`) — sahip görmemişti çünkü zaten
+fotoğraf ekleyemiyordu.
+
+**Yol boyunca düzeltilen kendi hatam:** cihaz turunu önce yeni bir `- [ ]` kutusu
+olarak ekledim, ki bu tam da kaldırdığım tuzağı yeniden kurardı. Deponun kendi
+konvansiyonu bu durumda kutu değil düzyazı `**Kalan:**` satırı (OPH-253 öyle
+yapmış) — checkbox akışı **agent'ın iş kuyruğu**, sahibin yapacağı fiziksel
+gözlem değil. Öyle düzeltildi ve Epic 24'ün ilk işaretsiz maddesi artık
+gerçekten OPH-246'nın altında (`awk` ile doğrulandı: satır 6610).
+
+**Açık cihaz turları (sahibe ait, agent akışını BLOKLAMAZ — AGENTS §2'nin
+"blocked ise sebebini yaz, sonraki işi al" maddesi):**
+1. **OPH-242/243** — gerçek iPhone: Safari'den paylaş → form çıkıyor mu · Safari
+   önde kalıyor mu · banner düşüyor mu ve içinde **metin YOK** mu · **bildirim
+   KAPALIYKEN** payload yine geliyor mu (ADR-0029'un vaadi; kanıtlanmazsa iddia) ·
+   iki kez paylaş → tek banner tek görev. Android: `ACTION_SEND`, soğuk + sıcak.
+2. **OPH-244** — iki platformda Fotoğraflar foto ızgarası · **izin diyaloğu
+   ÇIKMAMALI** · kamera · Dosyalar belge seçici.
+3. **OPH-253** — Android emülatöründe `TextClock` + `systemMedium`/`extraLarge`.
+
+Önceki blok: 2026-08-10e (**G1 KAPANDI — OPH-242 + OPH-243 bitti; Epic 24'te
 artık yalnız markdown zinciri (246–251) ve pazarlama (252) kaldı. Süitler 887
 (+13), analyze/format/i18n/kontrast temiz. Sürüm 1.3.1. Sıradaki iş: OPH-246.**
 
