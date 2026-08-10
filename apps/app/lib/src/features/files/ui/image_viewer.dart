@@ -37,9 +37,37 @@ const double kAwViewerMaxScale = 6;
 /// there for the rest.
 const double kAwViewerDoubleTapScale = 2.5;
 
+/// One image in a gallery: either a **stored file** we resolve through the API,
+/// or a **URL that is already final**.
+///
+/// The second kind arrived with OPH-247. A markdown document embeds our own
+/// files as `alliswell://file/{id}`, but it also embeds ordinary remote images,
+/// and those have no replica row to look up. Adding a second viewer for them
+/// would undo exactly what OPH-245 fixed (§22), so the ONE viewer learned a
+/// second kind of reference instead.
+///
+/// A url-backed image is deliberately action-less: there is no row, so Open /
+/// Download and Delete stay disabled — which is the same "no dead buttons" rule
+/// that already governs a file whose row has not arrived yet.
+@immutable
+class AwImageRef {
+  const AwImageRef.file(String this.fileId) : url = null;
+  const AwImageRef.url(String this.url) : fileId = null;
+
+  final String? fileId;
+  final String? url;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AwImageRef && other.fileId == fileId && other.url == url;
+
+  @override
+  int get hashCode => Object.hash(fileId, url);
+}
+
 Future<void> showAwImageViewer(
   BuildContext context, {
-  required List<String> fileIds,
+  required List<AwImageRef> images,
   required int initialIndex,
 }) {
   // OPH-212: the ROOT navigator, like every sheet and dialog in this feature.
@@ -49,20 +77,24 @@ Future<void> showAwImageViewer(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
       builder: (_) =>
-          AwImageViewer(fileIds: fileIds, initialIndex: initialIndex),
+          AwImageViewer(images: images, initialIndex: initialIndex),
     ),
   );
 }
 
+/// Convenience for the surfaces whose galleries are all stored files.
+List<AwImageRef> awImageRefsFromIds(Iterable<String> fileIds) =>
+    [for (final id in fileIds) AwImageRef.file(id)];
+
 class AwImageViewer extends ConsumerStatefulWidget {
   const AwImageViewer({
     super.key,
-    required this.fileIds,
+    required this.images,
     required this.initialIndex,
   });
 
   /// The gallery, in the order the calling surface is showing it (A11).
-  final List<String> fileIds;
+  final List<AwImageRef> images;
   final int initialIndex;
 
   @override
@@ -78,7 +110,7 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
   /// while zoomed there is no scroll.
   final TransformationController _transform = TransformationController();
 
-  late final List<String> _ids;
+  late final List<AwImageRef> _refs;
   late int _index;
   late final PageController _pager;
   late final AnimationController _anim;
@@ -89,8 +121,10 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
   @override
   void initState() {
     super.initState();
-    _ids = List.of(widget.fileIds);
-    _index = _ids.isEmpty ? 0 : widget.initialIndex.clamp(0, _ids.length - 1);
+    _refs = List.of(widget.images);
+    _index = _refs.isEmpty
+        ? 0
+        : widget.initialIndex.clamp(0, _refs.length - 1);
     _pager = PageController(initialPage: _index);
     _anim = AnimationController(vsync: this, duration: AwMotion.base)
       ..addListener(() {
@@ -165,7 +199,7 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
   /// Keyboard paging jumps rather than animates: the zoom reset below flips
   /// the scroll physics, and that only lands on the next build.
   void _goTo(int index) {
-    if (index < 0 || index >= _ids.length) return;
+    if (index < 0 || index >= _refs.length) return;
     _transform.value = Matrix4.identity();
     _pager.jumpToPage(index);
   }
@@ -178,7 +212,7 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
   Future<void> _delete(FileAttachment file) async {
     final deleted = await confirmFileDelete(context, ref, file);
     if (!deleted || !mounted) return;
-    if (_ids.length <= 1) {
+    if (_refs.length <= 1) {
       // The gallery is empty now; there is nothing to look at.
       Navigator.of(context).maybePop();
       return;
@@ -188,9 +222,9 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
     // Only deleting the last one needs a move.
     var jumpTo = -1;
     setState(() {
-      _ids.removeAt(_index);
-      if (_index > _ids.length - 1) {
-        _index = _ids.length - 1;
+      _refs.removeAt(_index);
+      if (_index > _refs.length - 1) {
+        _index = _refs.length - 1;
         jumpTo = _index;
       }
     });
@@ -203,11 +237,14 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
 
   @override
   Widget build(BuildContext context) {
-    if (_ids.isEmpty) return const SizedBox.shrink();
-    final fileId = _ids[_index];
-    final byId = ref.watch(fileByIdProvider(fileId));
+    if (_refs.isEmpty) return const SizedBox.shrink();
+    final current = _refs[_index];
+    // A url-backed image has no row to look up, and therefore no actions.
+    final byId = current.fileId == null
+        ? const AsyncValue<FileAttachment?>.data(null)
+        : ref.watch(fileByIdProvider(current.fileId!));
     final file = byId.value;
-    final total = _ids.length;
+    final total = _refs.length;
 
     return CallbackShortcuts(
       bindings: {
@@ -262,7 +299,7 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
                   ? const NeverScrollableScrollPhysics()
                   : const PageScrollPhysics(),
               itemBuilder: (context, i) => _AwImageViewerPage(
-                fileId: _ids[i],
+                image: _refs[i],
                 transform: _transform,
                 onDoubleTapDown: (details) =>
                     _doubleTapPoint = details.localPosition,
@@ -310,25 +347,30 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
 
 class _AwImageViewerPage extends ConsumerWidget {
   const _AwImageViewerPage({
-    required this.fileId,
+    required this.image,
     required this.transform,
     required this.onDoubleTapDown,
     required this.onDoubleTap,
   });
 
-  final String fileId;
+  final AwImageRef image;
   final TransformationController transform;
   final GestureTapDownCallback onDoubleTapDown;
   final VoidCallback onDoubleTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // WATCH, never read: `fileUrlResultProvider` is autoDispose, and a `read`
-    // of an autoDispose family creates the element and tears it straight back
-    // down (files_screen.dart's own warning). The underlying FileUrlCache is
-    // not autoDispose, so paging back re-uses the memoized future — an
-    // off-screen dispose costs a rebuild, not a round trip.
-    final result = ref.watch(fileUrlResultProvider(fileId));
+    // A url-backed image is already resolved — there is nothing to mint, so it
+    // skips the round trip entirely rather than faking an AsyncValue around it.
+    //
+    // Otherwise WATCH, never read: `fileUrlResultProvider` is autoDispose, and
+    // a `read` of an autoDispose family creates the element and tears it
+    // straight back down (files_screen.dart's own warning). The underlying
+    // FileUrlCache is not autoDispose, so paging back re-uses the memoized
+    // future — an off-screen dispose costs a rebuild, not a round trip.
+    final result = image.url != null
+        ? AsyncValue.data((url: image.url, errorCode: null))
+        : ref.watch(fileUrlResultProvider(image.fileId!));
 
     return InteractiveViewer(
       transformationController: transform,

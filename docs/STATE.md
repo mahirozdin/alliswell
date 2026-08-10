@@ -3,7 +3,42 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10g (**OPH-246 BİTTİ — ADR-0028 kabul edildi, markdown
+**Last updated:** 2026-08-10h (**OPH-247 BİTTİ — markdown okuma yüzeyi doğdu.
+Süitler 962 (+75), analyze/format/i18n temiz, `contrast.py` 99 çiftte
+FAILURES: 0. Sıradaki iş: OPH-254 (mermaid).**
+
+**Turun tek cümlesi: iki hatam da "çalışıyor gibi görünen ama sessizce yanlış"
+sınıfındandı** — ve ikisini de ancak doğru soruyu soran test yakaladı.
+(1) Link recognizer'ını sarmalayıcı span'e koymuştum: link mavi, altı çizili
+ve **ölü**, çünkü Flutter isabet testini **metni olan** en içteki span'e
+çözüyor. "Bir span var mı" diye soran bir test bunu geçirirdi; "dokunulunca
+URI geldi mi" diye soran yakaladı. (2) `contrast.py`'ye uyarı kutusu
+zeminlerini **elle uydurmuştum** ve bekçi `FAILURES: 0` diyordu — çünkü var
+olmayan bir zemini ölçüyordu. Widget'ın gerçekten çizdiği karışımı hesaplayınca
+`warning` metni **2.96** çıktı. Token'ın kendi yorumu aylardır "ikon rengi"
+diyormuş; bunu metin yapmaya kalkan ilk yüzey buydu. Aksan artık ikonu ve sol
+kenarı boyuyor, metin `onSurface`, ton %14 değil %10.
+
+**Kararı taşıyan parça konum haritası ve fork gerekmedi:** indeksli `Line` alt
+sınıfı + `parseLineList` + public `BlockParser.lines` + HER blok sözdizimini
+saran dekoratör. `withDefaultBlockSyntaxes: false` kritik — açık bırakılırsa
+paket standart sözdizimlerini **dekore edilmemiş** ekliyor ve o bloklar
+damgasız dönüyor.
+
+**Boyut ölçümü de önce yanlış okundu:** APK 33.1 → 90.8 MB görünüyordu (+55 MB),
+ama sebep bağımlılık değil **ABI**'ydi — taban yalnız arm64 taşıyor, yenisi üçünü
+de. Katmanına ayrılınca gerçek sayı çıktı: `flutter_assets` **+369.733 bayt**,
+tamamı 20 KaTeX fontu (361 KB). Lazy-asset gerekmedi.
+
+**OPH-249'a devredilen ölçülmüş bulgu:** `HeaderWithIdSyntax` "Türkçe Başlık"
+için `id="trke-balk"` üretiyor — Türkçe karakterleri katlamıyor, **atıyor**.
+`#türkçe-başlık` çapaları paketin id'leriyle çalışmaz; 249 slug'ını
+`core/fold.dart` ile üretmek zorunda (ADR-0013'ün arama dersi). Bir testle
+sabitlendi, 249 düzeltince **kırmızıya dönecek**.
+
+**Açık kalan tek şey:** fikstürün ekran görüntüsü (kabul şartı) çekilmedi.
+
+Önceki blok: 2026-08-10g (**OPH-246 BİTTİ — ADR-0028 kabul edildi, markdown
 zincirinin kapısı açıldı. Kod yazılmadı (task öyle tasarlanmıştı), süitler 887.
 Sıradaki iş: OPH-247.**
 

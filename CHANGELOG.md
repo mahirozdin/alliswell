@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **Markdown now renders as a document, not as its own source.** Tables (with
+  their alignment), task lists, footnotes, GitHub's `[!NOTE]`-style callouts,
+  nested lists, strikethrough, `==highlight==`, emoji shortcodes, autolinks,
+  front matter and real mathematics all draw properly. Code blocks carry their
+  language, get syntax colours, and have a copy button — and a wide table or a
+  long line scrolls **inside its own box** instead of dragging the whole page
+  sideways. Images draw for real and open full screen in the same viewer
+  everything else uses, with a swipe between the other images in the document.
+- **A document AllisWell did not write is treated as untrusted.** HTML is shown
+  as source and never runs; `javascript:` and `data:` addresses are plain text
+  with nothing to tap. Anything the renderer cannot draw shows what was written
+  and says why — never a silent gap.
+
 ## [1.3.1] — 2026-08-10
 
 ### Added

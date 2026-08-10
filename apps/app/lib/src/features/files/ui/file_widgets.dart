@@ -171,7 +171,7 @@ class FileRowTile extends ConsumerWidget {
       final at = ids.indexOf(file.id);
       await showAwImageViewer(
         context,
-        fileIds: ids,
+        images: awImageRefsFromIds(ids),
         initialIndex: at < 0 ? 0 : at,
       );
       return;

@@ -75,7 +75,7 @@ void main() {
               key: const Key('open-viewer'),
               onPressed: () => showAwImageViewer(
                 context,
-                fileIds: ids,
+                images: awImageRefsFromIds(ids),
                 initialIndex: initialIndex,
               ),
               child: const Text('open'),

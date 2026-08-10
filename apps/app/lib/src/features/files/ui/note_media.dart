@@ -146,7 +146,7 @@ class AwNoteImageEmbed extends ConsumerWidget {
     final at = ids.indexOf(fileId);
     return showAwImageViewer(
       context,
-      fileIds: at < 0 ? [fileId] : ids,
+      images: awImageRefsFromIds(at < 0 ? [fileId] : ids),
       initialIndex: at < 0 ? 0 : at,
     );
   }

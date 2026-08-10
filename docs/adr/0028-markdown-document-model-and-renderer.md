@@ -109,11 +109,44 @@ widget work.
 
 Math is drawn for real (owner's decision, round 17 follow-up). The engine must
 paint in pure Flutter with **no JS engine and no web view** (D10), work on all
-six platforms, and take its colours from `AwTokens`. OPH-247 selects between
-`flutter_math_fork` and the `flutter_markdown_plus_latex` companion against the
-fixture's math section, and **records the measured APK/IPA size delta of the
-KaTeX font assets**. A new dependency category → this ADR is its justification
-(AGENTS §1.6).
+six platforms, and take its colours from `AwTokens`. A new dependency category →
+this ADR is its justification (AGENTS §1.6).
+
+**Resolved in OPH-247 by resolution, not by reading feature lists:**
+`flutter pub add --dry-run flutter_markdown_plus_latex` pulls **ten** new
+packages and brings `flutter_math_fork` in *anyway*, on top of
+`flutter_markdown_plus` — the renderer §2 already declined. The companion is a
+bridge to a renderer we do not use, so we take the engine directly: **eight**
+new packages instead of ten.
+
+The cost is written down rather than glossed: `flutter_math_fork` drags
+`flutter_svg`, `vector_graphics` (×3), `provider`, `nested` and `tuple` along.
+The measured bundle contribution is recorded under OPH-247 in TASKS.
+
+### 3b. Syntax highlighting — `highlight` as a lexer, colours ours
+
+Added 2026-08-10 during OPH-247. The original ADR settled math and forgot this,
+even though D9 requires it; the gap is closed here rather than decided silently
+in a widget file.
+
+**`highlight` (the pure-Dart lexer), not `flutter_highlight`.** All the latter
+adds is a widget plus ready-made theme maps, and D7 forbids a package's own
+colours outright — so the theme half is dead weight and the widget half is work
+we are doing anyway. The lexer's ~30 class names collapse onto **six**
+`AwTokens.code*` inks; a palette nobody can tell apart is worse than one colour,
+and six is what stayed distinguishable *and* above 4.5:1 on the code panel in
+both themes.
+
+**Grammars are registered explicitly**, through `highlight_core.dart`. The
+all-in-one entry point registers all 190 languages — **1.9 MB** of Dart source
+that cannot be tree-shaken, because every grammar is referenced by its own
+registration. The nineteen we ship come to **128 KB**, a 15× difference for a
+list that covers what a task app's users actually paste.
+
+The package has no public way to ask whether a language is registered, and
+`parse()` silently falls back to plaintext for a name it does not know — so an
+unregistered grammar would produce a *successful but colourless* result that
+nobody would notice. We keep our own set of registered names and check that.
 
 ### 4. Diagrams — flowchart and sequence are drawn; the rest degrade honestly
 

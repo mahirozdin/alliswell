@@ -6692,41 +6692,107 @@ kanıtı oradan çıkacak.)_
 > üzerine **kendi widget ağacımız**. Fikstür 22 kalemin 19'unu hazır geçiyor;
 > yapılacak iş üç özel syntax + widget katmanı + konum haritası.
 
-- [ ] **`markdown` DOĞRUDAN bağımlılığa yükseltilir** (`pubspec.yaml`) — bugün
+_(✅ 2026-08-10. `features/notes/markdown/` doğdu: 9 kaynak + 5 test dosyası.
+Süitler **962** (+75), analyze/format/i18n temiz, `contrast.py` 99 çiftte
+FAILURES: 0._
+
+_**Kararı taşıyan parça konum haritası oldu ve fork gerekmedi.** Paket AST'si
+hiçbir düzeyde konum taşımıyor; dört public dikişle çözüldü (indeksli `Line`
+alt sınıfı · `parseLineList` · public `BlockParser.lines` · HER blok
+sözdizimini saran ve `data-aw-line` damgalayan dekoratör). `withDefaultBlockSyntaxes:
+false` burada kritik: açık bırakılırsa paket kendi standart sözdizimlerini
+**dekore edilmemiş** halde ekliyor ve o bloklar damgasız dönüyor._
+
+_**Dört ölçüm planı değiştirdi:**_
+
+_(1) **Matematik motoru çözümlemeyle seçildi, özellik listesiyle değil.**
+`flutter_markdown_plus_latex` **on** paket getiriyor ve `flutter_math_fork`'u
+zaten çekiyor, üstüne §2'nin reddettiği `flutter_markdown_plus` renderer'ını.
+Kullanmadığımız bir renderer'a köprü; motoru doğrudan aldık — **sekiz** paket._
+
+_(2) **Vurgulama kararı ADR'de YOKTU** (0028 yalnız matematiği kapsıyordu, oysa
+D9 istiyor). Boşluk ADR §3b olarak kapatıldı: `highlight` lexer olarak,
+`flutter_highlight` değil. Diller açıkça kaydediliyor — hepsini import etmek
+**1.9 MB** grammar demek (tree-shake edilemez, hepsi kayıt haritasında), bizim
+19 dilimiz **128 KB**. 15 kat._
+
+_(3) **Uyarı kutuları palet büyütmedi ama neredeyse yanlış yoldan.** İlk tasarım
+aksan rengini metin yapıyordu; ölçünce `warning` #C77700 kendi tonlu zemininde
+**2.96** çıktı. Token'ın kendi yorumu aylardır "ikon rengi" diyormuş. Aksan
+artık ikonu ve sol kenarı boyuyor, metin `onSurface`. Ton da %14 değil **%10** —
+%14'te ikon bile 2.96'ya düşüyordu._
+
+_(4) **Kod paneli/tablo için yeni token gerekmedi** (M3'ün `surfaceContainer*`'ı
+iki temada da açıkça tanımlı), ama **vurgulama için gerekti**: altı `code*`
+mürekkebi. Altı, otuz değil — ayırt edilemeyen palet tek renkten kötüdür._
+
+_**İki hatam da "çalışıyor gibi görünen ama sessizce yanlış" sınıfındandı:**
+link recognizer'ını sarmalayıcı span'e koymuştum — link mavi, altı çizili ve
+**ölü**, çünkü Flutter isabet testini metni olan en içteki span'e çözüyor;
+recognizer artık yapraklara iniyor. Ve `contrast.py`'ye uyarı zeminlerini elle
+uydurmuştum, bekçi `FAILURES: 0` diyordu çünkü **var olmayan bir zemini**
+ölçüyordu; değerler artık widget'ın çizdiği karışımın ta kendisi._
+
+_**Yol boyunca bulunan ve OPH-249'a bırakılamayacak şey:**
+`HeaderWithIdSyntax` "Türkçe Başlık" için `id="trke-balk"` üretiyor — Türkçe
+karakterleri katlamıyor, **atıyor**. Yani `#türkçe-başlık` çapaları paketin
+id'leriyle asla çalışmaz; 249 slug'ını `core/fold.dart` ile üretmek zorunda
+(ADR-0013'ün arama için öğrendiği dersin aynısı). Bir testle sabitlendi ve o
+test 249 düzelttiğinde **kırmızıya dönecek** — doğru sinyal._
+
+_**Boyut ölçüldü (ADR-0028 §3'ün taahhüdü) ve önce YANLIŞ okundu.** Release APK
+33.1 MB'dan 90.8 MB'a çıkmış görünüyordu — **+55 MB**, font için saçma bir sayı.
+APK'nın içine bakınca sebep çıktı: taban APK yalnız `arm64-v8a` taşıyor (diğer
+iki ABI stub), yenisi üçünü de derlemiş. Fark **tamamen ABI'lerden**, bağımlılıktan
+değil. Karşılaştırılabilir tek katman `assets/flutter_assets`: **+369.733 bayt**,
+ve bunun tamamı **20 KaTeX font dosyası (361 KB sıkıştırılmış)**. Eşiği
+zorlamıyor → matematik **lazy-asset yapılmadı**. Ders: bir bayt farkını
+katmanına ayırmadan raporlama._
+
+_**Görseller gerçek piksel çiziyor** ve dokunuş tek `AwImageViewer`'ı açıyor.
+Viewer bunun için **id VEYA URL** alan `AwImageRef`'e geçti: bir markdown
+belgesi hem `alliswell://file/{id}` hem sıradan uzak görsel taşıyor, ve
+ikincisi için ikinci bir görüntüleyici açmak OPH-245'in az önce kapattığı §22
+sorununu geri getirirdi. URL'li görselde satır yok, dolayısıyla Aç/Sil
+**disabled** — mevcut "ölü buton yok" kuralının aynısı. Göreli yol (`./x.png`)
+çizilmiyor ve **sebebini söylüyor**: hangi klasöre göreli olduğunu belge
+taşımıyor, o OPH-251'in işi.)_
+
+- [x] **`markdown` DOĞRUDAN bağımlılığa yükseltilir** (`pubspec.yaml`) — bugün
       transitive, ve transitive bir paketten import etmek
       `depend_on_referenced_packages` lint'ini tetikler. Sürüm pin'i ve gerekçesi
       yorumla yazılır (ADR-0028 §2).
-- [ ] **Konum haritası katmanı** (`md_parse.dart`) — bu task'ın **kabul şartı**,
+- [x] **Konum haritası katmanı** (`md_parse.dart`) — bu task'ın **kabul şartı**,
       çünkü D4/D13/D14/D16/D5'in dördü de ona bağlı ve OPH-248 ondan önce
       başlayamaz. Paket AST'si konum taşımıyor; OPH-246'nın prototipi fork'suz
       yolu kanıtladı: `IndexedLine extends Line` · `parseLineList(List<Line>)` ·
       `withDefaultBlockSyntaxes: false` ile tüm sözdizimi listesini dekore etmek ·
       `Element.attributes`'a `data-line`/`data-line-end` damgalamak.
       Ölçülmüş taban: **109/110** düğüm, **29/29** başlık doğru.
-- [ ] **Üç eksik syntax yazılır** (ölçümün bulduğu tam liste): satır içi/blok
+- [x] **Üç eksik syntax yazılır** (ölçümün bulduğu tam liste): satır içi/blok
       **matematik** (`$…$`, `$$…$$`), **`==vurgu==`**, ve **front matter**.
       Geri kalan GFM `ExtensionSet.gitHubWeb`'den hazır geliyor — yeniden
       yazılmaz.
-- [ ] **Matematik motoru seçilir ve ÖLÇÜLÜR** (ADR-0028 §3): `flutter_math_fork`
+- [x] **Matematik motoru seçilir ve ÖLÇÜLÜR** (ADR-0028 §3): `flutter_math_fork`
       vs `flutter_markdown_plus_latex`, fikstürün matematik bölümüne karşı.
       **KaTeX font varlıklarının APK/IPA'ya kattığı bayt kayda geçer** — eşik
       aşılırsa lazy-asset'e düşer.
-- [ ] Motor bağlanır ve **okuma görünümü** doğar: tablolar, görev
+- [x] Motor bağlanır ve **okuma görünümü** doğar: tablolar, görev
       listeleri (tıklanabilir — D4), dipnotlar, üstü çizili, autolink, `==vurgu==`,
       emoji kısa kodları, uyarı kutuları, iç içe listeler, satır içi/blok matematik.
-- [ ] **Kod blokları**: dil etiketi + sözdizimi vurgulama + **kopyala butonu** (D9);
+- [x] **Kod blokları**: dil etiketi + sözdizimi vurgulama + **kopyala butonu** (D9);
       yatay kaydırma kendi kutusunun içinde (D8).
-- [ ] **Token'lı tema** (D7): başlıklar tip ölçeğinden, kod paneli/tablo/uyarı kutusu
+- [x] **Token'lı tema** (D7): başlıklar tip ölçeğinden, kod paneli/tablo/uyarı kutusu
       `AwTokens`'tan; ham hex yok, `Colors.*` yok; `contrast.py` iki temada da
       **FAILURES: 0**.
-- [ ] **Güvenlik** (D10): HTML blokları kaçırılmış kaynak olarak render edilir, asla
+- [x] **Güvenlik** (D10): HTML blokları kaçırılmış kaynak olarak render edilir, asla
       canlı değil; `javascript:`/`data:` URI'leri **inert metin**; uzak görseller not
       gömülerinin kurallarına uyar. Epic 20'nin `ai_redteam.json` korpusu bu yüzeye de
       koşturulur (aynı vakalar bir markdown belgesinin içine gömülür).
-- [ ] **Front matter** properties şeridi olarak render edilir (D12), gövde metni olarak
+- [x] **Front matter** properties şeridi olarak render edilir (D12), gövde metni olarak
       değil.
-- [ ] Çizilemeyen blok → kaynağı + sebebi gösterir (D11), boşluk değil.
-- [ ] Testler: `markdown_conformance.md` fikstürünün her özelliği için bir assert
+- [x] Çizilemeyen blok → kaynağı + sebebi gösterir (D11), boşluk değil.
+- [x] Testler: `markdown_conformance.md` fikstürünün her özelliği için bir assert
       (golden değil, **yapısal** — hangi widget doğdu); kırmızı-takım korpusu → sıfır
       canlı HTML, sıfır tıklanabilir `javascript:`; geniş tablo yatay kaydırıyor,
       sayfa kaymıyor; iki temada kontrast. **Ayrıca:**

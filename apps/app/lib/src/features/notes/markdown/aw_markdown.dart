@@ -12,13 +12,19 @@
 /// them, so this widget owns the list and clears it on every rebuild.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../files/providers.dart';
+import '../../files/ui/image_viewer.dart';
+import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
 import 'md_callout.dart';
 import 'md_code_block.dart';
 import 'md_parse.dart';
@@ -531,8 +537,54 @@ class _AwMarkdownState extends State<AwMarkdown> {
     final alt = node.attributes['alt'] ?? '';
     return WidgetSpan(
       alignment: PlaceholderAlignment.middle,
-      child: MdImage(source: source, alt: alt, onTap: widget.onTapImage),
+      child: Builder(
+        builder: (context) => MdImage(
+          source: source,
+          alt: alt,
+          onTap: (src) => widget.onTapImage != null
+              ? widget.onTapImage!(src)
+              : _openGallery(context, src),
+        ),
+      ),
     );
+  }
+
+  /// The document's images, in DOCUMENT ORDER, opened in the one viewer
+  /// (DESIGN §30 A7/A11). Walked at tap time only — doing it in `build` would
+  /// be O(n²) per render, the trap `note_media.dart` already documents.
+  ///
+  /// Unresolvable sources are skipped rather than paged through as blanks:
+  /// they cannot be drawn full-screen either, and an empty viewer page is
+  /// worse than one image fewer.
+  void _openGallery(BuildContext context, String tapped) {
+    final refs = <AwImageRef>[];
+    var index = 0;
+
+    void walk(md.Node node) {
+      if (node is! md.Element) return;
+      if (node.tag == 'img') {
+        final src = node.attributes['src'] ?? '';
+        final ref = switch (MdImageSource.of(src)) {
+          MdImageFile(:final fileId) => AwImageRef.file(fileId),
+          MdImageUrl(:final url) => AwImageRef.url(url),
+          MdImageUnresolvable() => null,
+        };
+        if (ref != null) {
+          if (src == tapped) index = refs.length;
+          refs.add(ref);
+        }
+        return;
+      }
+      for (final child in node.children ?? const <md.Node>[]) {
+        walk(child);
+      }
+    }
+
+    for (final block in widget.document.blocks) {
+      walk(block.node);
+    }
+    if (refs.isEmpty) return;
+    unawaited(showAwImageViewer(context, images: refs, initialIndex: index));
   }
 }
 
@@ -582,66 +634,152 @@ class _FrontMatterStrip extends StatelessWidget {
   }
 }
 
-/// An image inside a document.
+/// What kind of thing a markdown `src` points at.
 ///
-/// Placeholder-first: OPH-247 renders alt text and hands the tap upward. The
-/// real pixels land in the same viewer everything else uses — but resolving a
-/// source needs to know whether it is a file id, a URL or a path relative to a
-/// document's folder, and the last of those only has an answer once external
-/// files carry their base directory (OPH-251).
-class MdImage extends StatelessWidget {
+/// Three answers, and only two of them can be drawn today:
+///   * `alliswell://file/{id}` — one of our own files, resolved through the
+///     replica exactly like a note embed;
+///   * an absolute `http(s)` URL — drawn straight from the network;
+///   * anything relative (`./resim.png`) — **unresolvable here**, because it is
+///     relative to a folder only the document knows, and a document only
+///     carries its folder once external files do (OPH-251, W-rules). It gets a
+///     placeholder that says *that*, not a broken-image icon that would blame
+///     the file.
+sealed class MdImageSource {
+  const MdImageSource();
+
+  static MdImageSource of(String raw) {
+    final fileId = fileIdFromEmbedSource(raw);
+    if (fileId != null) return MdImageFile(fileId);
+    final uri = Uri.tryParse(raw.trim());
+    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+      return MdImageUrl(raw.trim());
+    }
+    return const MdImageUnresolvable();
+  }
+}
+
+class MdImageFile extends MdImageSource {
+  const MdImageFile(this.fileId);
+  final String fileId;
+}
+
+class MdImageUrl extends MdImageSource {
+  const MdImageUrl(this.url);
+  final String url;
+}
+
+class MdImageUnresolvable extends MdImageSource {
+  const MdImageUnresolvable();
+}
+
+/// An image inside a document — real pixels, and a tap into the one viewer.
+///
+/// Height-capped rather than free: a document is a column of text, and an
+/// image that pushes three screens of it off the page is not "rendered", it is
+/// in the way.
+class MdImage extends ConsumerWidget {
   const MdImage({super.key, required this.source, this.alt = '', this.onTap});
 
   final String source;
   final String alt;
   final MdImageTap? onTap;
 
+  static const double _maxHeight = 320;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resolved = MdImageSource.of(source);
+
+    return switch (resolved) {
+      MdImageUnresolvable() => _Chip(
+        icon: Icons.link_off_outlined,
+        label: alt.isNotEmpty ? alt : 'markdown.relativeImage'.tr(),
+      ),
+      MdImageUrl(:final url) => _tappable(
+        context,
+        child: _bytes(ref, url),
+      ),
+      MdImageFile(:final fileId) => _tappable(
+        context,
+        child: ref
+            .watch(fileUrlProvider(fileId))
+            .maybeWhen(
+              data: (url) => url == null
+                  ? _Chip(
+                      icon: Icons.broken_image_outlined,
+                      label: alt.isNotEmpty ? alt : 'markdown.image'.tr(),
+                    )
+                  : _bytes(ref, url),
+              orElse: () => const SizedBox(
+                height: 48,
+                width: 48,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+      ),
+    };
+  }
+
+  Widget _tappable(BuildContext context, {required Widget child}) => Semantics(
+    label: alt.isEmpty ? null : alt,
+    image: true,
+    child: InkWell(
+      onTap: onTap == null ? null : () => onTap!(source),
+      borderRadius: const BorderRadius.all(Radius.circular(AwRadius.s)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: _maxHeight),
+        child: child,
+      ),
+    ),
+  );
+
+  Widget _bytes(WidgetRef ref, String url) => Image(
+    image: ref.watch(networkImageProvider)(url),
+    fit: BoxFit.contain,
+    // A broken image says so where it stands (D11) — it does not vanish and it
+    // does not leave a grey rectangle nobody can interpret.
+    errorBuilder: (context, _, _) => _Chip(
+      icon: Icons.broken_image_outlined,
+      label: alt.isNotEmpty ? alt : 'markdown.image'.tr(),
+    ),
+  );
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
   @override
   Widget build(BuildContext context) {
     final styles = MdStyles.of(context);
-    final relative = !Uri.parse(source).hasScheme && !source.startsWith('/');
-
-    return Semantics(
-      label: alt.isEmpty ? null : alt,
-      image: true,
-      child: InkWell(
-        onTap: onTap == null ? null : () => onTap!(source),
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AwSpace.x2,
+        vertical: AwSpace.x1,
+      ),
+      decoration: BoxDecoration(
+        color: styles.scheme.surfaceContainer,
         borderRadius: const BorderRadius.all(Radius.circular(AwRadius.s)),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AwSpace.x2,
-            vertical: AwSpace.x1,
+        border: Border.all(color: styles.hairline),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: styles.muted),
+          const SizedBox(width: AwSpace.x1),
+          Flexible(
+            child: Text(
+              label,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: styles.muted),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          decoration: BoxDecoration(
-            color: styles.scheme.surfaceContainer,
-            borderRadius: const BorderRadius.all(Radius.circular(AwRadius.s)),
-            border: Border.all(color: styles.hairline),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                relative ? Icons.link_off_outlined : Icons.image_outlined,
-                size: 16,
-                color: styles.muted,
-              ),
-              const SizedBox(width: AwSpace.x1),
-              Flexible(
-                child: Text(
-                  alt.isNotEmpty
-                      ? alt
-                      : (relative
-                            ? 'markdown.relativeImage'.tr()
-                            : 'markdown.image'.tr()),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: styles.muted),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
