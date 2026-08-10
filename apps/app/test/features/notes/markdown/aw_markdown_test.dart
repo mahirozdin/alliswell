@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
@@ -37,19 +38,26 @@ void main() {
 
   group('the whole fixture', () {
     testWidgets('renders end to end without throwing', (tester) async {
-      tester.view.physicalSize = const Size(1400, 6000);
+      tester.view.physicalSize = const Size(1400, 9000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
+      // A ProviderScope is REQUIRED — images resolve through Riverpod. The
+      // viewport is tall enough to reach them on purpose: at 6000 px this test
+      // stopped short of the image section and passed without ever proving
+      // the thing it claims to prove.
       await tester.pumpWidget(
-        MaterialApp(
-          theme: buildAwTheme(Brightness.light),
-          home: Scaffold(body: AwMarkdown(document: parseMarkdown(fixture))),
+        ProviderScope(
+          child: MaterialApp(
+            theme: buildAwTheme(Brightness.light),
+            home: Scaffold(body: AwMarkdown(document: parseMarkdown(fixture))),
+          ),
         ),
       );
       await tester.pump();
 
       expect(tester.takeException(), isNull);
+      expect(find.byType(MdImage), findsWidgets, reason: 'images were reached');
     });
   });
 

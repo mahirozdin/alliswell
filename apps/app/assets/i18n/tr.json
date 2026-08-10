@@ -905,6 +905,8 @@
       "important": "Önemli",
       "warning": "Uyarı",
       "caution": "Dikkat"
-    }
+    },
+    "mermaidUnsupported": "“{type}” tipi diyagram henüz çizilmiyor.",
+    "mermaidUnreadable": "Bu diyagram okunamadı."
   }
 }

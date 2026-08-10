@@ -6827,23 +6827,56 @@ taşımıyor, o OPH-251'in işi.)_
 > tutucusuna düşülür ve gerekçe ADR-0028'e eklenir. Task **sessizce yarım
 > bırakılmaz** — kısmen çizen bir diyagram motoru, çizmeyenden daha kötüdür.
 
-- [ ] `mermaid_parse.dart` — alt küme lexer/parser → tipli graf modeli: düğüm
+_(✅ 2026-08-11. **Çıkış kapısı kullanılmadı: ikisi de çiziliyor.** Süitler 1011
+(+49), analyze/format/i18n temiz, `contrast.py` FAILURES: 0._
+
+_**Turun tek dersi: "çizdi" ile "okunaklı çizdi" farklı iddialar, ve aradaki
+farkı ancak ÜRÜNE bakınca gördüm.** Testlerin 20'si yeşildi — sıfır kesişim,
+düğümler çakışmıyor, koordinatlar deterministik — ama ekran görüntüsünde
+fikstürün `C --> F` kenarı iki rank atlayıp araya giren `E` düğümünün
+**üstünden** geçiyordu. Yani resim, belgenin yazmadığı bir oku iddia ediyordu:
+"C'den E'ye". Sebep, Sugiyama'nın atlaması cazip gelen adımıydı — uzun kenarlar
+için **kukla düğüm**. Eklendi, kenar artık etrafından dolanıyor, ve bunu
+koordinat sayısıyla değil **geometriyle** assert eden bir test kondu: hiçbir
+kenar, ucu olmadığı bir düğümün içinden geçemez._
+
+_**Parser'ın yakalanan hatası:** `U-->>A: metin` satırında id sınıfı `-`
+içerdiği için ilk grup açgözlülükle `U-` yakalıyor ve diyagram sessizce `U-`
+adlı bir katılımcı büyütüyordu. Mesaj regex'inde id'ler artık `-` almıyor —
+mermaid'in kendi grameri de aynı belirsizliği aynı şekilde çözüyor._
+
+_**Testin ortaya çıkardığı üçüncü şey OPH-247'ye ait:** `AwMarkdown` artık
+`ProviderScope` istiyor (görseller Riverpod'dan çözülüyor) ve
+`aw_markdown_test`'in uçtan uca testi bunu **yakalamamıştı** — çünkü 6000 px'lik
+görüntü alanı görsel bölümüne hiç ulaşmıyordu. Yükseklik artırıldı, scope
+eklendi, ve test artık görsellere gerçekten değdiğini de assert ediyor._
+
+_**Kapsam ADR-0028 §4'teki gibi:** `flowchart`/`graph` (beş yön) ve
+`sequenceDiagram` çiziliyor; class/state/ER/gantt/pie/journey **adıyla**
+reddediliyor. D11'in iki cümlesi ayrı: `gantt` için "henüz çizilmiyor",
+bozuk kaynak için "okunamadı" — ekran görüntüsünde ikisi de görünüyor._
+
+_**Modellemediğimiz ifadeler ölümcül değil:** `subgraph`, `style`, `classDef`,
+`activate`, `note`, `loop`, `alt` atlanıyor. Bir `style` satırı yüzünden tüm
+resmi kaybetmek, o satırı görmezden gelmekten kötü.)_
+
+- [x] `mermaid_parse.dart` — alt küme lexer/parser → tipli graf modeli: düğüm
       şekilleri (`[]` `()` `{}` `(())`), kenar tipleri (`-->` `---` `-.->` `==>`),
       kenar etiketleri, yön (TD/TB/LR/RL/BT), altgraf. **Parser eklentisi
       gerekmiyor** — mermaid `language-mermaid` bilgi dizeli bir kod bloğu olarak
       geliyor (OPH-246 ölçümü doğruladı), yani bu bir render-zamanı işi.
-- [ ] `flow_layout.dart` — katmanlı (Sugiyama) yerleşim: rank ataması
+- [x] `flow_layout.dart` — katmanlı (Sugiyama) yerleşim: rank ataması
       (en-uzun-yol) → sıralama (barycenter, kesişim azaltma) → x koordinatı →
       kenar yönlendirme. **Saf Dart, widget yok** — koordinatlar birim test
       edilebilir olmak zorunda.
-- [ ] `sequence_layout.dart` — katılımcılar sütun, mesajlar satır, aktivasyon
+- [x] `sequence_layout.dart` — katılımcılar sütun, mesajlar satır, aktivasyon
       kutuları, notlar. Doğrusal ve ucuz; bu yüzden ikisi aynı task'ta.
-- [ ] `mermaid_view.dart` — `CustomPainter`; renkler **`AwTokens`'tan** (D7, ham
+- [x] `mermaid_view.dart` — `CustomPainter`; renkler **`AwTokens`'tan** (D7, ham
       hex yok); geniş diyagram **kendi kutusunda** kaydırır (D8), sayfa kaymaz.
-- [ ] Desteklenmeyen tip (class/state/ER/gantt/pie/journey) ve ayrıştırılamayan
+- [x] Desteklenmeyen tip (class/state/ER/gantt/pie/journey) ve ayrıştırılamayan
       kaynak → **D11**: kaynağı *ve sebebi* gösterir, ikisi farklı cümleyle
       ("bu tip v1'de çizilmiyor" ≠ "bu diyagram ayrıştırılamadı").
-- [ ] Testler: parser birim testleri; bilinen graflarda **deterministik
+- [x] Testler: parser birim testleri; bilinen graflarda **deterministik
       koordinat** ve kesişim sayısı assert'i; fikstürün dört mermaid vakası
       (flowchart, sequence, gantt→yer tutucu, bozuk→yer tutucu); iki temada
       kontrast.

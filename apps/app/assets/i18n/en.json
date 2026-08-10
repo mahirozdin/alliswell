@@ -906,6 +906,8 @@
       "important": "Important",
       "warning": "Warning",
       "caution": "Caution"
-    }
+    },
+    "mermaidUnsupported": "A “{type}” diagram is not drawn yet.",
+    "mermaidUnreadable": "This diagram could not be read."
   }
 }

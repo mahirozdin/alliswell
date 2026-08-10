@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10h (**OPH-247 BİTTİ — markdown okuma yüzeyi doğdu.
+**Last updated:** 2026-08-11a (**OPH-254 BİTTİ — mermaid çiziliyor: flowchart
+ve sequenceDiagram. Süitler 1011 (+49), analyze/format/i18n temiz,
+`contrast.py` FAILURES: 0. Sıradaki iş: OPH-248 (üç mod).**
+
+**Turun tek cümlesi: "çizdi" ile "OKUNAKLI çizdi" farklı iddialar — ve aradaki
+farkı yirmi yeşil test değil, ekran görüntüsü gösterdi.** Sıfır kesişim,
+çakışmayan düğümler, deterministik koordinatlar: hepsi doğruydu. Ama fikstürün
+`C --> F` kenarı iki rank atlayıp araya giren `E` düğümünün **üstünden**
+geçiyordu, yani resim belgenin yazmadığı bir oku iddia ediyordu ("C'den E'ye").
+Eksik olan Sugiyama'nın atlaması cazip gelen adımıydı: uzun kenarlar için
+**kukla düğüm**. Eklendi; ve yeni test kenarı nokta sayısıyla değil
+**geometriyle** bağlıyor — hiçbir kenar, ucu olmadığı bir düğümün içinden
+geçemez.
+
+**Parser'da yakalanan hata:** `U-->>A: metin` satırında id sınıfı `-` içerdiği
+için ilk grup `U-` yakalıyor ve diyagram sessizce `U-` adlı bir katılımcı
+büyütüyordu. Mermaid'in kendi grameri de aynı belirsizliği aynı şekilde çözüyor.
+
+**OPH-247'den sarkan bir zayıflık da bu turda çıktı:** `AwMarkdown` artık
+`ProviderScope` istiyor (görseller Riverpod'dan çözülüyor) ve uçtan uca test
+bunu yakalamamıştı — çünkü 6000 px'lik görüntü alanı görsel bölümüne hiç
+ulaşmıyordu. Test artık görsellere değdiğini de assert ediyor.
+
+Önceki blok: 2026-08-10h (**OPH-247 BİTTİ — markdown okuma yüzeyi doğdu.
 Süitler 962 (+75), analyze/format/i18n temiz, `contrast.py` 99 çiftte
 FAILURES: 0. Sıradaki iş: OPH-254 (mermaid).**
 

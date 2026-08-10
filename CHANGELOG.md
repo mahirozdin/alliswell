@@ -15,6 +15,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   long line scrolls **inside its own box** instead of dragging the whole page
   sideways. Images draw for real and open full screen in the same viewer
   everything else uses, with a swipe between the other images in the document.
+- **Mermaid diagrams are drawn, not shown as source.** Flowcharts and sequence
+  diagrams render properly — shapes, labelled arrows, decision diamonds,
+  lifelines and self-messages — with no browser engine involved. Diagram types
+  that are not drawn yet say exactly that and name themselves, and a diagram
+  with a mistake in it says something different: that it could not be read.
+  Either way the text you wrote stays on screen.
 - **A document AllisWell did not write is treated as untrusted.** HTML is shown
   as source and never runs; `javascript:` and `data:` addresses are plain text
   with nothing to tap. Anything the renderer cannot draw shows what was written

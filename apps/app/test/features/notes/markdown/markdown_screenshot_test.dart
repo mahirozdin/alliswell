@@ -108,7 +108,7 @@ void main() {
       // Tall enough for the whole document: the point of the shot is that a
       // reader can scroll it like a README, so a cropped screen would prove
       // less than nothing.
-      tester.view.physicalSize = const Size(900, 5200) * 2;
+      tester.view.physicalSize = const Size(900, 7200) * 2;
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() {
         tester.view.resetPhysicalSize();

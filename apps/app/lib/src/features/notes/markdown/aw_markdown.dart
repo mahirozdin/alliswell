@@ -33,6 +33,7 @@ import 'md_syntaxes.dart';
 import 'md_table.dart';
 import 'md_theme.dart';
 import 'md_unsupported.dart';
+import 'mermaid/mermaid_view.dart';
 
 /// How a rendered document reaches the outside world.
 typedef MdLinkTap = void Function(Uri uri);
@@ -148,8 +149,15 @@ class _AwMarkdownState extends State<AwMarkdown> {
           'language-',
           '',
         );
+        final body = code?.textContent ?? el.textContent;
+        // A mermaid fence is a diagram, not source. No parser extension was
+        // needed for this: mermaid arrives as an ordinary fenced block with an
+        // info string, which is what makes it render-time work (ADR-0028 §4).
+        if (language.toLowerCase() == 'mermaid') {
+          return MermaidView(source: body);
+        }
         return MdCodeBlock(
-          source: code?.textContent ?? el.textContent,
+          source: body,
           language: language.isEmpty ? null : language,
         );
 
@@ -696,10 +704,7 @@ class MdImage extends ConsumerWidget {
         icon: Icons.link_off_outlined,
         label: alt.isNotEmpty ? alt : 'markdown.relativeImage'.tr(),
       ),
-      MdImageUrl(:final url) => _tappable(
-        context,
-        child: _bytes(ref, url),
-      ),
+      MdImageUrl(:final url) => _tappable(context, child: _bytes(ref, url)),
       MdImageFile(:final fileId) => _tappable(
         context,
         child: ref
