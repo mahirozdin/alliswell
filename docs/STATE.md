@@ -3,7 +3,43 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-10f (**Kayıt temizliği (markdown zincirinin ön adımı) —
+**Last updated:** 2026-08-10g (**OPH-246 BİTTİ — ADR-0028 kabul edildi, markdown
+zincirinin kapısı açıldı. Kod yazılmadı (task öyle tasarlanmıştı), süitler 887.
+Sıradaki iş: OPH-247.**
+
+**Turun tek cümlesi: kararı veren şey kapsam değil, KONUM haritası oldu.**
+Aday karşılaştırması "hangi paket daha çok GFM çiziyor" sanılıyordu; ölçünce
+asıl ayrım başka çıktı. `markdown` 7.3.1'in AST'si **hiçbir düzeyde kaynak
+konumu taşımıyor** — ne `Element`'te ne `Line`'da. D4 (okuma modunda tıklanan
+checkbox belgeye yazar), D13/D14 (anahat, katlama), D16 (çapalar) ve D5
+(senkron kaydırma) dördü de "düğüm → kaynak satırı" haritası istiyor ve
+**hiçbir aday bunu vermiyor**. Yani o katman hangi parser kazanırsa kazansın
+bizim — ki paketli bir renderer'ı tercih etmenin ana sebebi buydu. Prototip
+fork'suz yolu kanıtladı (110 düğümün **109'u** damgalandı, **29/29** başlık
+kaynakta doğrulandı) ve karar "kendi widget ağacımız" oldu.
+
+**İkinci sürpriz kapsamda, ama ters yönde:** `ExtensionSet.gitHubWeb` tabloyu
+**hizalamasıyla**, görev listesi kutularını, **dipnotları** ve **GFM uyarı
+kutularını** hazır getiriyor — MARKDOWN.md §5'in aday tablosu bunların
+yazılacağını varsayıyordu. **22 kalemden 19 HAZIR**; eksikler yalnız matematik
+(`$…$`), `==vurgu==` ve front matter, üçü de küçük birer özel syntax.
+
+**Düzeltilen kendi ölçüm hatam:** ilk koşu "tablo hizalaması YOK" dedi — paket
+hizalamayı `align="center"` attribute'üyle veriyor, CSS `text-align` ile değil.
+Yanlış negatifti; kapsam 18 değil **19**. Bir ADR'ye yanlış sayı yazmaktansa
+ölçümü iki kez koşmak ucuz.
+
+**Sahibin iki kararı ADR'ye girdi:** matematik VE mermaid gerçekten çizilir
+(web view kesin hariç, D10). Mermaid **kendi task'ına ayrıldı — OPH-254** —
+flowchart bir katmanlı çizim algoritması, sequence neredeyse doğrusal; ikisi
+OPH-247'nin içinde kalsaydı o task üç işi birden yapardı. Yazılı çıkış kapısı
+var: yerleşim tutmazsa D11 yer tutucusuna düşülür ve ADR tadil edilir.
+
+**Sıra artık:** `246 ✅ → 247 → 254 → 248 → 249 → 250 → 251 → 252`.
+Ölçüm tekrar üretilebilir: `scripts/markdown/measure_coverage.dart`
+(çalıştırma yönergesi dosyanın başında; OPH-247 bunu bir teste dönüştürecek).
+
+Önceki blok: 2026-08-10f (**Kayıt temizliği (markdown zincirinin ön adımı) —
 TASKS artık STATE ile aynı şeyi söylüyor. Kod değişmedi, süitler 887.
 Sıradaki iş: OPH-246.**
 

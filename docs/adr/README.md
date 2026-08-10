@@ -35,12 +35,12 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0025](0025-firebase-optional-and-credential-hygiene.md) | Firebase is optional; credential hygiene | Accepted |
 | [0026](0026-social-sign-in.md) | Social sign-in | Accepted |
 | [0027](0027-attachment-capture-image-picker.md) | Attachment capture: `image_picker` for the photo library and the camera | Accepted |
-| 0028 | _Reserved_ — markdown document model + renderer (OPH-246) | Proposed |
+| [0028](0028-markdown-document-model-and-renderer.md) | Markdown: the note model (split by intent), our own renderer over the `markdown` package, and how far diagrams go | Accepted |
 | [0029](0029-share-extension-notifies-instead-of-redirecting.md) | The share extension notifies and the app drains, instead of redirecting | Accepted — amends [0023](0023-stt-and-share-intent-dependencies.md) §3 |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
-> without an index line. 0028 is listed as reserved so the number is not reused
-> while OPH-246 is still open — this round already had to correct two documents
-> that gave the share decision that number.
+> without an index line. 0028 was held as a **reserved** row while OPH-246 was
+> open, so the number could not be reused — this round had already corrected two
+> documents that gave the share decision that number. It landed on 2026-08-10.
 
 Template: [template.md](template.md)

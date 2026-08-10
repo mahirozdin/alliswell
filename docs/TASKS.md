@@ -6161,9 +6161,11 @@ ayrıştırılmış AST'den çizilir ya da dürüst yer tutucuya düşer; harici
 yazma **bayt-sadık ya da hiç** (DESIGN §29 W4); iOS'ta saat bütçe harcamaz (§31 C4).
 
 **Sıra bağlayıcı:** `242 → 243` (paylaşım hattı) · `244 → 245` (ek + görüntüleyici) ·
-**`246` (ADR kapısı — markdown'da ilk iş)** `→ 247 → 248 → 249 → 250 → 251` · `252`
-(pazarlama, markdown bittikten sonra) · `253` (widget saati — bağımsız, sıra dışı
-alınabilir). **Cihaz isteyenler:** 242 (gerçek iPhone + gerçek Android), 244/245
+**`246` (ADR kapısı — markdown'da ilk iş)** `→ 247 → 254 → 248 → 249 → 250 → 251` ·
+`252` (pazarlama, markdown bittikten sonra) · `253` (widget saati — bağımsız, sıra
+dışı alınabilir). **`254` round 17'de doğmadı** — ADR-0028'in 4. kararı mermaid'i
+gerçekten çizmeye karar verince OPH-247'den ayrıldı (gerekçe orada ve task'ın
+başında). **Cihaz isteyenler:** 242 (gerçek iPhone + gerçek Android), 244/245
 (iki platformda seçici + izin turu), 251 (iOS security-scoped URL, Android
 `content://` yazma), 253 (iki cihazda gece-yarısı/dakika sınırı gözlemi).
 
@@ -6607,43 +6609,109 @@ edilebilirdi. Süitler 874 (+18).)_
 > **[MARKDOWN.md](MARKDOWN.md)**'ye yazıldı (13 ürün, 41 özellik kararı, kaynaklar §9).
 > Bu task o dokümanın açık bıraktığı **iki kararı** kapatır.
 
-- [ ] **Karar 1 — not modeli.** [MARKDOWN.md §4](MARKDOWN.md)'ün üç seçeneği
+_(✅ 2026-08-10 — **ADR-0028 kabul edildi.** Planın "ölçülerek karar ver"i
+harfiyen uygulandı ve **iki varsayımı ters çevirdi**:_
+
+_**(1) Ağaçtaki `markdown` 7.3.1 sanılandan çok daha fazlasını veriyor.**
+`ExtensionSet.gitHubWeb` tabloyu **hizalamasıyla**, görev listesi kutularını,
+**dipnotları** ve **GFM uyarı kutularını** (`[!NOTE]`) hazır getiriyor — MARKDOWN.md
+§5'in aday tablosu bunların yazılacağını varsayıyordu. Fikstüre karşı ölçüm:
+**22 kalemden 19 HAZIR**, üç eksik ve üçü de küçük birer özel syntax
+(matematik `$…$`, `==vurgu==`, front matter)._
+
+_**(2) Kararı veren şey kapsam değil, KONUM haritası çıktı.** `markdown`'ın
+AST'si **hiçbir düzeyde kaynak konumu taşımıyor** — `Element`'te de `Line`'da da
+yok. D4 (okuma modunda tıklanan checkbox belgeye yazar), D13/D14 (anahat,
+katlama), D16 (çapalar) ve D5 (senkron kaydırma) dördü de "düğüm → kaynak satırı"
+haritası istiyor ve **hiçbir aday bunu vermiyor**. Yani o katman hangi parser
+kazanırsa kazansın bizim — ki paketli bir renderer'ı tercih etmenin ana sebebi
+buydu. Prototip, paketi **fork'lamadan**, 110 üst düzey düğümün **109'unu**
+damgaladı ve **29 başlığın 29'unu** kaynakta doğruladı; dört public dikişle
+(`Line` alt sınıflanabilir · `parseLineList(List<Line>)` public · `BlockParser.lines`
+public · `withDefaultBlockSyntaxes: false` tüm listeyi bize verdiriyor ·
+`Element.attributes` değiştirilebilir)._
+
+_**Yol boyunca düzeltilen kendi ölçüm hatam:** ilk koşu "tablo hizalaması YOK"
+dedi; paket hizalamayı `align="center"` attribute'üyle veriyor, CSS
+`text-align` ile değil. Yanlış negatifti, kapsam 18 değil **19**. Bir ADR'ye
+yanlış sayı yazmaktansa ölçümü iki kez koşmak ucuz._
+
+_**Sahibin iki kararı ADR'ye girdi:** matematik VE mermaid gerçekten çizilir
+(web view kesin hariç). Mermaid **kendi task'ına ayrıldı — OPH-254** — çünkü
+flowchart bir katmanlı çizim algoritması, sequence ise neredeyse doğrusal;
+ikisinin maliyeti bir mertebe farklı ve OPH-247'nin içinde kalsalardı o task üç
+işi birden yapardı. Yazılı çıkış kapısı var: yerleşim kalitesi tutmazsa D11 yer
+tutucusuna düşülür ve ADR tadil edilir._
+
+_**Fikstür bilerek zararlı girdi taşıyor** (`javascript:` linki, canlı olmaması
+gereken HTML bloğu, çözülemeyen görsel) ve bunu kendi içinde söylüyor — D10'un
+kanıtı oradan çıkacak.)_
+
+- [x] **Karar 1 — not modeli.** [MARKDOWN.md §4](MARKDOWN.md)'ün üç seçeneği
       (A: Delta kanonik + özel embed'ler · B: Markdown kanonik · C: niyete göre bölünmüş,
       `content_format` bayrağı) implementasyon gözüyle tartılır. Ölçülecekler: mevcut
       notların sayısı ve şekli (kaç tanesi salt-metin, kaç tanesi embed taşıyor),
       migration maliyeti, `AGENTS.md` §6 çatışma politikasının (belge düzeyi iyimser
       kilit + çatışma kopyası) her seçenekte ne olduğu, ve OPH-241'in ROUND TRIP
       garantisinin akıbeti.
-- [ ] **Karar 2 — render motoru.** Dört aday (`flutter_markdown_plus` (+`_latex`),
+- [x] **Karar 2 — render motoru.** Dört aday (`flutter_markdown_plus` (+`_latex`),
       `markdown_widget`, `gpt_markdown`, `flutter_smooth_markdown`) ve "kendi
       renderer'ımız (`markdown` Dart paketi üzerine)" **ÖLÇÜLEREK** karşılaştırılır:
       GFM kapsamı (tablo/dipnot/uyarı/görev listesi), token'lı tema kabiliyeti
       (DESIGN §29 D7 — paketin varsayılan stilleri KABUL EDİLEMEZ), güvenli render
       (D10: ham HTML inert, `javascript:`/`data:` inert), altı platform, bakım durumu,
       paket boyutu. Ölçüm bir **fikstür belgesiyle** yapılır (aşağıdaki madde).
-- [ ] **Kabul fikstürü yazılır** — `apps/app/test/fixtures/markdown_conformance.md`:
+- [x] **Kabul fikstürü yazılır** — `apps/app/test/fixtures/markdown_conformance.md`:
       GFM'in her özelliğini içeren tek bir belge (tablolar, hizalamalı tablo, görev
       listesi, dipnot, `[!NOTE]`…`[!CAUTION]`, iç içe liste 3 seviye, dilli kod çiti,
       satır içi + blok matematik, mermaid çiti, front matter, HTML bloğu,
       `javascript:` linki, kırık görsel, `#başlık` çapası, uzun tablo). Bu dosya
       hem seçimin hakemi, hem 247'nin regresyon ağı olur.
-- [ ] **Mermaid kararı**: AST'den çizim mi, dürüst yer tutucu mu (D11), yoksa
+- [x] **Mermaid kararı**: AST'den çizim mi, dürüst yer tutucu mu (D11), yoksa
       tamamen park mı — **web view kesin olarak hariç** (güvenilmez belge + JS motoru).
-      Karar gerekçesiyle yazılır.
-- [ ] **ADR-0028** (`docs/adr/0028-markdown-document-model-and-renderer.md`) yazılır:
+      Karar gerekçesiyle yazılır. **Karar: ikisi de** — `flowchart`/`graph` ve
+      `sequenceDiagram` çizilir, diğer tipler D11'e düşer; iş **OPH-254**'te.
+- [x] **ADR-0028** (`docs/adr/0028-markdown-document-model-and-renderer.md`) yazılır:
       Bağlam / Karar / Alternatifler / Sonuçlar / **Zorlama** (bu karar CI'da nasıl
       zorlanıyor — fikstür testi, format bayrağının şema kısıtı, tema token taraması).
-- [ ] MARKDOWN.md §4/§5 kararla güncellenir; kapsam dışı bırakılanlar gerekçeleriyle
+- [x] MARKDOWN.md §4/§5 kararla güncellenir; kapsam dışı bırakılanlar gerekçeleriyle
       parking-lot'a girer.
 - **Kabul:** ADR-0028 kabul edilmiş; fikstür belgesi commit'li; hangi motorun neden
   kazandığı **sayılarla** yazılı (kaç GFM özelliği geçti / kaç tanesi tema alıyor).
-- **Doğrulama:** `npm run docs:check` (varsa) · ADR indeksi + `ARCHITECTURE.md` tablosu
-  senkron · fikstür belgesi mevcut motor prototipiyle render edilip ekran görüntüsü
-  task'ın altına eklenir.
+  **Sayılar:** kapsam **19/22** (eksikler: matematik, `==vurgu==`, front matter);
+  konum haritası **109/110** üst düzey düğüm damgalandı, **29/29** başlık kaynakta
+  doğrulandı — ve fork gerekmedi. Üretici: `scripts/markdown/measure_coverage.dart`.
+- **Doğrulama:** ADR indeksi senkron (0028'in "reserved" satırı gerçek bağlantıya
+  döndü) · fikstür commit'li · ölçüm betiği commit'li ve tekrar üretilebilir.
+  `ARCHITECTURE.md`'de ADR **tablosu yok** (satır içi referanslar var) ve bu task
+  kod yazmadığı için yapı değişmedi — markdown bölümü OPH-247/248'de yazılacak.
 
 ### OPH-247 — Render motoru: GFM tam kapsam, token'lı tema, güvenli render (DESIGN §29 D6–D12)
 
-- [ ] ADR-0028'in seçtiği motor bağlanır ve **okuma görünümü** doğar: tablolar, görev
+> **ADR-0028 kararı verdi, yani bu task'ın motoru belli:** `markdown` 7.3.1
+> üzerine **kendi widget ağacımız**. Fikstür 22 kalemin 19'unu hazır geçiyor;
+> yapılacak iş üç özel syntax + widget katmanı + konum haritası.
+
+- [ ] **`markdown` DOĞRUDAN bağımlılığa yükseltilir** (`pubspec.yaml`) — bugün
+      transitive, ve transitive bir paketten import etmek
+      `depend_on_referenced_packages` lint'ini tetikler. Sürüm pin'i ve gerekçesi
+      yorumla yazılır (ADR-0028 §2).
+- [ ] **Konum haritası katmanı** (`md_parse.dart`) — bu task'ın **kabul şartı**,
+      çünkü D4/D13/D14/D16/D5'in dördü de ona bağlı ve OPH-248 ondan önce
+      başlayamaz. Paket AST'si konum taşımıyor; OPH-246'nın prototipi fork'suz
+      yolu kanıtladı: `IndexedLine extends Line` · `parseLineList(List<Line>)` ·
+      `withDefaultBlockSyntaxes: false` ile tüm sözdizimi listesini dekore etmek ·
+      `Element.attributes`'a `data-line`/`data-line-end` damgalamak.
+      Ölçülmüş taban: **109/110** düğüm, **29/29** başlık doğru.
+- [ ] **Üç eksik syntax yazılır** (ölçümün bulduğu tam liste): satır içi/blok
+      **matematik** (`$…$`, `$$…$$`), **`==vurgu==`**, ve **front matter**.
+      Geri kalan GFM `ExtensionSet.gitHubWeb`'den hazır geliyor — yeniden
+      yazılmaz.
+- [ ] **Matematik motoru seçilir ve ÖLÇÜLÜR** (ADR-0028 §3): `flutter_math_fork`
+      vs `flutter_markdown_plus_latex`, fikstürün matematik bölümüne karşı.
+      **KaTeX font varlıklarının APK/IPA'ya kattığı bayt kayda geçer** — eşik
+      aşılırsa lazy-asset'e düşer.
+- [ ] Motor bağlanır ve **okuma görünümü** doğar: tablolar, görev
       listeleri (tıklanabilir — D4), dipnotlar, üstü çizili, autolink, `==vurgu==`,
       emoji kısa kodları, uyarı kutuları, iç içe listeler, satır içi/blok matematik.
 - [ ] **Kod blokları**: dil etiketi + sözdizimi vurgulama + **kopyala butonu** (D9);
@@ -6661,11 +6729,51 @@ edilebilirdi. Süitler 874 (+18).)_
 - [ ] Testler: `markdown_conformance.md` fikstürünün her özelliği için bir assert
       (golden değil, **yapısal** — hangi widget doğdu); kırmızı-takım korpusu → sıfır
       canlı HTML, sıfır tıklanabilir `javascript:`; geniş tablo yatay kaydırıyor,
-      sayfa kaymıyor; iki temada kontrast.
+      sayfa kaymıyor; iki temada kontrast. **Ayrıca:**
+      `scripts/markdown/measure_coverage.dart` bir teste dönüşür
+      (`test/features/notes/markdown_coverage_test.dart`) — ADR-0028 §Zorlama:
+      paketin bir yükseltmede syntax düşürmesi CI'da patlamalı, sessizce
+      görüntüleyiciyi daraltmamalı. Konum haritası da orada assert edilir.
 - **Kabul:** `markdown_conformance.md` AllisWell'de GitHub'daki gibi okunuyor; yan yana
   ekran görüntüsü task'ın altına eklenir.
 - **Doğrulama:** `flutter analyze` · `flutter test` · `python3 scripts/design/contrast.py` ·
   `npm run check:i18n`.
+
+### OPH-254 — Mermaid: ayrıştır, yerleştir, çiz (ADR-0028 §4 — 247'den sonra)
+
+> **Neden ayrı bir task:** OPH-247'nin içinde kalsaydı o task üç işi birden
+> yapardı (GFM renderer + matematik + diyagram motoru). Numara epic içinde ilk kez
+> açılıyor; gerekçesi ADR-0028'in 4. kararı.
+>
+> **Yazılı çıkış kapısı:** yerleşim kalitesi kabul edilebilir çıkmazsa D11 yer
+> tutucusuna düşülür ve gerekçe ADR-0028'e eklenir. Task **sessizce yarım
+> bırakılmaz** — kısmen çizen bir diyagram motoru, çizmeyenden daha kötüdür.
+
+- [ ] `mermaid_parse.dart` — alt küme lexer/parser → tipli graf modeli: düğüm
+      şekilleri (`[]` `()` `{}` `(())`), kenar tipleri (`-->` `---` `-.->` `==>`),
+      kenar etiketleri, yön (TD/TB/LR/RL/BT), altgraf. **Parser eklentisi
+      gerekmiyor** — mermaid `language-mermaid` bilgi dizeli bir kod bloğu olarak
+      geliyor (OPH-246 ölçümü doğruladı), yani bu bir render-zamanı işi.
+- [ ] `flow_layout.dart` — katmanlı (Sugiyama) yerleşim: rank ataması
+      (en-uzun-yol) → sıralama (barycenter, kesişim azaltma) → x koordinatı →
+      kenar yönlendirme. **Saf Dart, widget yok** — koordinatlar birim test
+      edilebilir olmak zorunda.
+- [ ] `sequence_layout.dart` — katılımcılar sütun, mesajlar satır, aktivasyon
+      kutuları, notlar. Doğrusal ve ucuz; bu yüzden ikisi aynı task'ta.
+- [ ] `mermaid_view.dart` — `CustomPainter`; renkler **`AwTokens`'tan** (D7, ham
+      hex yok); geniş diyagram **kendi kutusunda** kaydırır (D8), sayfa kaymaz.
+- [ ] Desteklenmeyen tip (class/state/ER/gantt/pie/journey) ve ayrıştırılamayan
+      kaynak → **D11**: kaynağı *ve sebebi* gösterir, ikisi farklı cümleyle
+      ("bu tip v1'de çizilmiyor" ≠ "bu diyagram ayrıştırılamadı").
+- [ ] Testler: parser birim testleri; bilinen graflarda **deterministik
+      koordinat** ve kesişim sayısı assert'i; fikstürün dört mermaid vakası
+      (flowchart, sequence, gantt→yer tutucu, bozuk→yer tutucu); iki temada
+      kontrast.
+- **Kabul:** fikstürün flowchart ve sequence diyagramları AllisWell'de okunaklı
+  çiziliyor; ekran görüntüsü task'ın altına eklenir. Desteklenmeyen tip boşluk
+  değil, sebepli bir kutu gösteriyor.
+- **Doğrulama:** `flutter analyze` · `flutter test` ·
+  `python3 scripts/design/contrast.py`.
 
 ### OPH-248 — Üç mod: Okuma · Canlı · Kaynak (+ bölünmüş görünüm, senkron kaydırma) (D1–D5)
 

@@ -193,17 +193,48 @@ the WYSIWYG session and thrown away.
 - **Against:** two formats in one table, and a conversion door that must be
   explained in one sentence to a non-technical user.
 
-**ADR-0028 decides this (OPH-246) and nothing downstream starts before it.**
-Recorded here so the decision is made with the trade-offs on the table rather
-than discovered halfway through OPH-248.
+> **DECIDED — [ADR-0028](adr/0028-markdown-document-model-and-renderer.md),
+> 2026-08-10: Option C.** A note is either Delta-canonical or markdown-canonical,
+> recorded in a `content_format` column defaulting to `'delta'` — so the
+> migration is **zero rows**. Reading is always a real markdown renderer; Source
+> edits the markdown as text; Live (Quill) is offered only to Delta-canonical
+> notes, and moving between them is an explicit, warned, one-way conversion.
+> The conflict unit (AGENTS §6) does not change, and OPH-241's round-trip pair
+> keeps serving the import path and the conversion door — off the reading path,
+> which is what stops it growing a branch per block type.
+>
+> Option B was the close call: it makes the note and the file the same thing, but
+> it migrates every existing note and reflows hand-formatted files through the
+> rich editor. Option C keeps B's win where it matters — files stay
+> byte-faithful, which is the only way §6's "save back" can be honest.
 
 ---
 
 ## 5. Renderer choice
 
+> **DECIDED — [ADR-0028](adr/0028-markdown-document-model-and-renderer.md),
+> 2026-08-10: our own widget tree over the `markdown` Dart package** (7.3.1,
+> already in the tree transitively). Measured with
+> `scripts/markdown/measure_coverage.dart` against
+> `apps/app/test/fixtures/markdown_conformance.md`:
+>
+> - **19 of 22** D6 items are ready out of the box with
+>   `ExtensionSet.gitHubWeb` — including tables *with alignment*, task-list
+>   checkboxes, **footnotes** and **GFM alerts**, which the table below assumed
+>   we would have to build. Three gaps remain, each a small custom syntax:
+>   math (`$…$`), `==highlight==`, front matter.
+> - The decisive one: `markdown`'s AST carries **no source positions at any
+>   level**, and **neither does any candidate below**. D4, D13/D14, D16 and D5
+>   all need a node → source-line map, so that layer is ours no matter what —
+>   which removes the main reason to take a packaged renderer. A prototype
+>   stamped **109 of 110** top-level nodes and verified **29 of 29** heading
+>   positions against the source, **without forking** the package.
+>
+> The candidate table below is kept as the record of what was weighed.
+
 `flutter_markdown` was **discontinued by the Flutter team on 30 April 2025**;
 Google formally designated **`flutter_markdown_plus`** (Foresight Mobile) as its
-continuation. The realistic candidates, all to be measured in OPH-246:
+continuation. The candidates that were measured in OPH-246:
 
 | Candidate | Brings | Costs |
 | --- | --- | --- |
@@ -223,6 +254,27 @@ Two rules constrain the choice regardless of which wins:
    embeds already follow. Mermaid, if it lands, renders from a parsed AST — we
    do not put a web view with a JS engine on the reading path. If a diagram
    cannot be drawn, DESIGN §10 F3 applies: an honest placeholder, never a blank.
+
+> **DECIDED — ADR-0028 §3 and §4, 2026-08-10.**
+>
+> **Math is drawn** (owner's decision). The engine must paint in pure Flutter —
+> no JS, no web view — on all six platforms and take its colours from
+> `AwTokens`; OPH-247 picks between `flutter_math_fork` and
+> `flutter_markdown_plus_latex` against the fixture and **records the measured
+> APK/IPA size delta of the KaTeX font assets**.
+>
+> **Mermaid is drawn, for two diagram types** (owner's decision, scoped by
+> measurement). v1 draws `flowchart`/`graph` and `sequenceDiagram`; class,
+> state, ER, gantt, pie and journey fall to the honest placeholder. The costs
+> differ by an order of magnitude — a sequence diagram is columns and rows, a
+> flowchart is layered graph drawing (rank → crossing reduction → coordinates →
+> edge routing). It gets **its own task, OPH-254**, so it cannot quietly consume
+> OPH-247, and it has a written exit: if the layout is not good enough to ship,
+> it falls back to the placeholder and amends the ADR.
+>
+> Mermaid needs no parser extension — it arrives as a fenced code block with a
+> `mermaid` info string, which the coverage measurement confirms is already
+> captured.
 
 ---
 
