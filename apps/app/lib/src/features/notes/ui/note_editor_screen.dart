@@ -72,6 +72,20 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   bool _dirty = false;
   bool _saving = false;
 
+  /// D21: autosave stops being silent.
+  ///
+  /// "Silent autosave plus an eventual failure is how people lose work and
+  /// trust." Before this the editor saved without a word AND swallowed its
+  /// errors — `_save`'s catch simply re-marked the note dirty and hoped the
+  /// next keystroke would retry.
+  _SaveState _saveState = _SaveState.idle;
+
+  /// `State.mounted` is still TRUE inside `dispose()`, and `dispose` flushes a
+  /// pending save — so the indicator's `setState` fired on a widget being torn
+  /// down and the framework asserted "defunct". `mounted` is the wrong guard
+  /// here; this is the right one.
+  bool _disposed = false;
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +99,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
 
   @override
   void dispose() {
+    _disposed = true;
     _debounce?.cancel();
     // Flush a pending save without awaiting (screen is going away).
     if (_dirty) unawaited(_save());
@@ -95,7 +110,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   }
 
   void _onDocChanged() {
-    if (mounted) setState(() {});
+    if (!_disposed && mounted) setState(() {});
+  }
+
+  void _setSaveState(_SaveState next) {
+    if (_disposed || !mounted) return;
+    setState(() => _saveState = next);
   }
 
   void _markDirty() {
@@ -126,6 +146,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     if (_saving || !_dirty) return;
     _saving = true;
     _dirty = false;
+    _setSaveState(_SaveState.saving);
     try {
       final store = ref.read(noteStoreProvider);
       final body = _doc.bodyFor(_titleText);
@@ -136,8 +157,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       } else {
         await store.update(_noteId!, body);
       }
+      _setSaveState(_SaveState.saved);
     } on Object {
       _dirty = true; // keep the changes marked; the next edit retries
+      // The retry behaviour is unchanged — what changes is that the reader can
+      // SEE it did not land.
+      _setSaveState(_SaveState.failed);
     } finally {
       _saving = false;
     }
@@ -342,10 +367,17 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-            child: NoteModeControl(
-              modes: _doc.availableModes,
-              active: _doc.mode,
-              onChanged: _doc.setMode,
+            child: Row(
+              children: [
+                Expanded(
+                  child: NoteModeControl(
+                    modes: _doc.availableModes,
+                    active: _doc.mode,
+                    onChanged: _doc.setMode,
+                  ),
+                ),
+                _SaveIndicator(state: _saveState),
+              ],
             ),
           ),
           if (_doc.mode == NoteMode.live) _liveToolbar(),
@@ -456,4 +488,51 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       ),
     ),
   };
+}
+
+/// What autosave last did (D21).
+enum _SaveState { idle, saving, saved, failed }
+
+/// Small, non-blocking, and silent when there is nothing to say.
+class _SaveIndicator extends StatelessWidget {
+  const _SaveIndicator({required this.state});
+
+  final _SaveState state;
+
+  @override
+  Widget build(BuildContext context) {
+    if (state == _SaveState.idle) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final failed = state == _SaveState.failed;
+
+    return Padding(
+      key: const Key('note-save-state'),
+      padding: const EdgeInsets.only(left: AwSpace.x2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            switch (state) {
+              _SaveState.saving => Icons.sync,
+              _SaveState.saved => Icons.cloud_done_outlined,
+              _ => Icons.cloud_off_outlined,
+            },
+            size: 16,
+            color: failed ? scheme.error : scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AwSpace.x1),
+          Text(
+            switch (state) {
+              _SaveState.saving => 'note.saving'.tr(),
+              _SaveState.saved => 'note.saved'.tr(),
+              _ => 'note.saveFailed'.tr(),
+            },
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: failed ? scheme.error : scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

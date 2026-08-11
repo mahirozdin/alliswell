@@ -9,12 +9,18 @@
 /// columns are two useless columns.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'find_replace_bar.dart';
+import 'md_toolbar.dart';
 
 import '../../../../i18n/i18n.dart';
 import '../../../../theme/tokens.dart';
+import '../../../notes/markdown/md_actions.dart';
+import '../../../notes/markdown/md_editing.dart';
 import '../../../notes/markdown/aw_markdown.dart';
 import '../../../notes/markdown/md_parse.dart';
 import '../../data/note_document.dart';
@@ -39,6 +45,100 @@ class _SourceModeState extends State<SourceMode> {
   bool _syncing = false;
   bool _finding = false;
   bool _replacing = false;
+  bool _focusMode = false;
+  List<MdAction> _slashMatches = const [];
+
+  /// D17: Enter, Tab and Shift-Tab, applied to the TEXT rather than intercepted
+  /// as key events on the field — one assignment per edit, so one undo.
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final controller = widget.document.source;
+    final caret = controller.selection.baseOffset;
+    if (caret < 0) return KeyEventResult.ignored;
+
+    MdEdit? edit;
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      edit = continueList(controller.text, caret);
+      if (edit != null) {
+        edit = MdEdit(renumberOrderedLists(edit.text), edit.selection);
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.keyV &&
+        (HardwareKeyboard.instance.isMetaPressed ||
+            HardwareKeyboard.instance.isControlPressed)) {
+      // D20. Scoped to THIS field's focus node rather than a global shortcut:
+      // hijacking paste everywhere would reach the find bar and the title too.
+      unawaited(_smartPaste());
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.tab) {
+      final shift = HardwareKeyboard.instance.isShiftPressed;
+      edit = indentListItem(controller.text, caret, outdent: shift);
+    }
+    if (edit == null) return KeyEventResult.ignored;
+
+    controller.value = TextEditingValue(
+      text: edit.text,
+      selection: TextSelection.collapsed(offset: edit.selection),
+    );
+    widget.onChanged?.call();
+    return KeyEventResult.handled;
+  }
+
+  /// Paste, made smart and still reversible (D20).
+  ///
+  /// HTML becomes markdown; a URL dropped on a selection becomes a link. The
+  /// whole new text is assigned ONCE, so a single undo restores the raw paste —
+  /// "smart" paste without one-step undo is hostile.
+  Future<void> _smartPaste() async {
+    final controller = widget.document.source;
+    final selection = controller.selection;
+    if (!selection.isValid) return;
+
+    final html = await Clipboard.getData('text/html');
+    final plain = await Clipboard.getData(Clipboard.kTextPlain);
+    final pasted = html?.text != null && html!.text!.isNotEmpty
+        ? htmlToMarkdown(html.text!)
+        : (plain?.text ?? '');
+    if (pasted.isEmpty || !mounted) return;
+
+    final edit = pasteOverSelection(
+      controller.text,
+      selection.start,
+      selection.end,
+      pasted,
+    );
+    controller.value = TextEditingValue(
+      text: edit.text,
+      selection: TextSelection.collapsed(offset: edit.selection),
+    );
+    _onTextChanged();
+  }
+
+  void _onTextChanged() {
+    widget.onChanged?.call();
+    final controller = widget.document.source;
+    final token = slashTokenAt(
+      controller.text,
+      controller.selection.baseOffset,
+    );
+    final matches = token == null ? const <MdAction>[] : matchSlash(token);
+    setState(() => _slashMatches = matches);
+  }
+
+  /// Replaces the `/token` with the action's result (D19).
+  void _applySlash(MdAction action) {
+    final controller = widget.document.source;
+    final caret = controller.selection.baseOffset;
+    final token = slashTokenAt(controller.text, caret);
+    if (token != null) {
+      controller.value = TextEditingValue(
+        text: controller.text.replaceRange(caret - token.length, caret, ''),
+        selection: TextSelection.collapsed(offset: caret - token.length),
+      );
+    }
+    applyMdAction(controller, action);
+    setState(() => _slashMatches = const []);
+    widget.onChanged?.call();
+  }
 
   @override
   void initState() {
@@ -88,16 +188,24 @@ class _SourceModeState extends State<SourceMode> {
     final split = _split && wide;
 
     return CallbackShortcuts(
-      bindings: noteFindShortcuts(
-        onFind: () => setState(() {
-          _finding = true;
-          _replacing = false;
-        }),
-        onReplace: () => setState(() {
-          _finding = true;
-          _replacing = true;
-        }),
-      ),
+      bindings: {
+        for (final action in mdActions())
+          if (action.shortcut != null)
+            action.shortcut!: () {
+              applyMdAction(widget.document.source, action);
+              widget.onChanged?.call();
+            },
+        ...noteFindShortcuts(
+          onFind: () => setState(() {
+            _finding = true;
+            _replacing = false;
+          }),
+          onReplace: () => setState(() {
+            _finding = true;
+            _replacing = true;
+          }),
+        ),
+      },
       child: Focus(
         autofocus: true,
         child: _content(wide: wide, split: split),
@@ -123,17 +231,42 @@ class _SourceModeState extends State<SourceMode> {
             ),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                key: const Key('note-split-toggle'),
-                onPressed: () => setState(() => _split = !_split),
-                icon: Icon(
-                  split ? Icons.vertical_split : Icons.horizontal_rule,
-                  size: 18,
-                ),
-                label: Text(split ? 'note.splitOff'.tr() : 'note.splitOn'.tr()),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    key: const Key('note-focus-toggle'),
+                    onPressed: () => setState(() {
+                      _focusMode = !_focusMode;
+                      widget.document.source.focusMode = _focusMode;
+                    }),
+                    icon: Icon(
+                      _focusMode
+                          ? Icons.center_focus_strong
+                          : Icons.center_focus_weak,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _focusMode ? 'note.focusOff'.tr() : 'note.focusOn'.tr(),
+                    ),
+                  ),
+                  TextButton.icon(
+                    key: const Key('note-split-toggle'),
+                    onPressed: () => setState(() => _split = !_split),
+                    icon: Icon(
+                      split ? Icons.vertical_split : Icons.horizontal_rule,
+                      size: 18,
+                    ),
+                    label: Text(
+                      split ? 'note.splitOff'.tr() : 'note.splitOn'.tr(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+        if (_slashMatches.isNotEmpty)
+          MdSlashMenu(matches: _slashMatches, onPick: _applySlash),
         Expanded(
           child: split
               ? Row(
@@ -146,35 +279,46 @@ class _SourceModeState extends State<SourceMode> {
                 )
               : _editor(),
         ),
+        MdCountStrip(text: widget.document.source.text),
+        // D18: the phone's toolbar sits above the keyboard. On a wide screen
+        // the shortcuts do this job, so the strip would only take space.
+        if (!wide)
+          MdToolbar(
+            controller: widget.document.source,
+            onApplied: _onTextChanged,
+          ),
       ],
     );
   }
 
   Widget _editor() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: AwSpace.x5),
-    child: TextField(
-      key: const Key('note-source-field'),
-      controller: widget.document.source,
-      scrollController: _sourceScroll,
-      onChanged: (_) {
-        widget.onChanged?.call();
-        if (_split) setState(() {}); // the preview follows the text
-      },
-      maxLines: null,
-      expands: true,
-      textAlignVertical: TextAlignVertical.top,
-      style: const TextStyle(
-        fontFamily: 'monospace',
-        fontFamilyFallback: ['Menlo', 'Consolas', 'Courier New'],
-        height: 1.5,
-      ),
-      decoration: InputDecoration(
-        hintText: 'note.sourceHint'.tr(),
-        border: InputBorder.none,
-        enabledBorder: InputBorder.none,
-        focusedBorder: InputBorder.none,
-        filled: false,
-        isDense: true,
+    child: Focus(
+      onKeyEvent: _onKey,
+      child: TextField(
+        key: const Key('note-source-field'),
+        controller: widget.document.source,
+        scrollController: _sourceScroll,
+        onChanged: (_) {
+          _onTextChanged();
+          if (_split) setState(() {}); // the preview follows the text
+        },
+        maxLines: null,
+        expands: true,
+        textAlignVertical: TextAlignVertical.top,
+        style: const TextStyle(
+          fontFamily: 'monospace',
+          fontFamilyFallback: ['Menlo', 'Consolas', 'Courier New'],
+          height: 1.5,
+        ),
+        decoration: InputDecoration(
+          hintText: 'note.sourceHint'.tr(),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          filled: false,
+          isDense: true,
+        ),
       ),
     ),
   );

@@ -6996,23 +6996,64 @@ tek geri-al belgeyi geri getiriyor._
 
 ### OPH-250 — Yazma konforu: liste otomasyonu, mobil araç çubuğu, slash, akıllı yapıştırma (D17–D23)
 
-- [ ] **Liste otomasyonu** (D17): Enter listeyi sürdürür, boş maddede listeden çıkar,
+_(✅ 2026-08-11, **iki maddesi açık bırakılarak** — aşağıda adıyla. Süitler
+**1093** (+34), analyze/format/i18n temiz, `contrast.py` FAILURES: 0._
+
+_**Eylemler TEK listeden üretiliyor** (`md_actions.dart`): araç çubuğu, ⌘/Ctrl
+kısayolları ve slash menüsü hepsi ondan doğuyor. D19 "slash her araç çubuğu
+eylemine İKİNCİ yol" diyor; üç yerde ayrı ayrı tanımlamak, slash ile butonun
+zamanla farklı şeyler yapmasının ve birinin sessizce yok olmasının yolu._
+
+_**D17 saf metin aritmetiği** ve testleri stringte: Enter listeyi sürdürüyor,
+BOŞ maddede listeden çıkıyor (insanların fark ettiği davranış — yoksa listeden
+çıkmanın tek yolu az önce verilen madde işaretini silmek), `*` yazan kullanıcıya
+`-` dayatmıyor, devam eden görev maddesi **işaretsiz** başlıyor (`[x]` taşımak
+kimsenin işaretlemediği kutuyu işaretlerdi), Tab/Shift-Tab iç içe geçiriyor ve
+numaralar belge genelinde yeniden hesaplanıyor._
+
+_**D21 yazıldı çünkü autosave hem sessizdi hem hatası sessizdi** — eski `_save`
+hatayı yutup notu tekrar kirli işaretliyordu. Gösterge geldi; ve **eklerken bir
+hata ürettim**: `dispose()` içinden çağrılan son kaydetme `setState` yapıyordu
+ve `State.mounted` dispose SIRASINDA hâlâ true olduğu için framework "defunct"
+diye patladı. `mounted` burada yanlış bekçi; ayrı bir `_disposed` bayrağı kondu.
+Mevcut `note_media_test` yakaladı._
+
+_**D23 tek denetleyiciyle çözüldü:** `MdSourceController.buildTextSpan` caret'in
+paragrafı dışını **söndürüyor**. Alt sınıf, ikinci bir controller değil — D3
+belge ömrü boyunca TEK controller istiyor. Test metnin değişmediğini assert
+ediyor: gizlemek reflow yapar, söndürmek yapmaz._
+
+_**AÇIK KALAN İKİ MADDE (kırpılmadı, yazıldı):**_
+_1. **Komut paleti (⌘K)** yapılmadı. ⌘K şu an "bağlantı" eylemine bağlı ve
+   slash menüsü paletin işini görüyor; ayrı bir palet ikinci bir keşif yüzeyi
+   demek ve hangisinin kanonik olduğu kararı ürün kararı._
+_2. **Masaüstü/web'de editöre sürükle-bırak dosya** yapılmadı — yükleme yolu
+   (`uploadAll`) hazır ama bırakma hedefi yok._
+_İkisi de OPH-250'nin altında açık kutu olarak duruyor._
+
+
+- [x] **Liste otomasyonu** (D17): Enter listeyi sürdürür, boş maddede listeden çıkar,
       sıralı listeler yeniden numaralanır, **Tab / Shift-Tab ile iç içe geçer**
       (ADR-0028'in modeli iç içe listeyi taşıyor olmalı — taşımıyorsa bu madde ADR'ye
       geri döner, sessizce kırpılmaz).
-- [ ] **Telefonda klavye üstü kaydırılabilir markdown araç çubuğu** (D18); masaüstü/web'de
-      **klavye kısayolları** (⌘B/I/K, H1–H3, kod, alıntı, liste) + **komut paleti** (⌘K).
-- [ ] **Slash komutları** (D19) her araç çubuğu eylemine ikinci yol olarak; tek yol asla
+- [x] **Telefonda klavye üstü kaydırılabilir markdown araç çubuğu** (D18); masaüstü/web'de
+      **klavye kısayolları** (⌘B/I/K, H1–H3, kod, alıntı, liste).
+- [ ] **Komut paleti (⌘K)** — D18'in bu yarısı YAPILMADI. ⌘K şu an "bağlantı"
+      eylemine bağlı ve slash menüsü paletin işini görüyor; ayrı bir palet ikinci
+      bir keşif yüzeyi demek ve hangisinin kanonik olduğu bir ürün kararı.
+- [x] **Slash komutları** (D19) her araç çubuğu eylemine ikinci yol olarak; tek yol asla
       değil.
-- [ ] **Akıllı yapıştırma** (D20): HTML → markdown (`flutter_quill_delta_from_html`
-      zaten ağaçta), seçimin üstüne URL → bağlantı, panodaki görsel → ek olarak yüklenir;
-      **tek geri-al ham yapıştırmaya döner**.
+- [x] **Akıllı yapıştırma** (D20): HTML → markdown, seçimin üstüne URL → bağlantı;
+      **tek geri-al ham yapıştırmaya döner** (tek atama). Kaynak alanının kendi
+      focus node'una bağlı — global kısayol yapmak bul çubuğuna ve başlığa da
+      uzanırdı. **Panodaki GÖRSEL yüklemesi yapılmadı:** pano görselini okumak
+      platform kanalı ister, `uploadAll` hazır ama köprü yok.
 - [ ] Masaüstü/web'de editöre **sürükle-bırak** dosya.
-- [ ] **Kayıt durumu göstergesi** (D21): kaydedildi / kaydediliyor / başarısız —
+- [x] **Kayıt durumu göstergesi** (D21): kaydedildi / kaydediliyor / başarısız —
       engellemeyen, küçük. Bugün autosave tamamen sessiz ve hatası da sessiz.
-- [ ] **Kelime/karakter sayısı** (D22) ve **odak modu** (D23 — söndürür, gizlemez).
-- [ ] i18n: tüm yeni dizeler `en`+`tr`.
-- [ ] Testler: liste otomasyonunun her kenarı (sürdür / çık / numaralandır / nest);
+- [x] **Kelime/karakter sayısı** (D22) ve **odak modu** (D23 — söndürür, gizlemez).
+- [x] i18n: tüm yeni dizeler `en`+`tr`.
+- [x] Testler: liste otomasyonunun her kenarı (sürdür / çık / numaralandır / nest);
       yapıştırma dönüşümleri + tek geri-al; kayıt göstergesinin üç durumu (hata durumu
       `_save`'in mevcut retry davranışıyla tutarlı); odak modu düzeni bozmuyor
       (reflow yok).

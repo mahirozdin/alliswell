@@ -391,7 +391,28 @@
     "replace": "Replace",
     "replaceAll": "Replace all",
     "matchCount": "{index} of {total}",
-    "noMatches": "No matches"
+    "noMatches": "No matches",
+    "focusOn": "Focus mode",
+    "focusOff": "Focus off",
+    "counts": "{words} words · {characters} characters",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "saveFailed": "Not saved",
+    "action": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "code": "Inline code",
+      "link": "Link",
+      "h1": "Heading 1",
+      "h2": "Heading 2",
+      "bullet": "Bulleted list",
+      "numbered": "Numbered list",
+      "todo": "Task list",
+      "quote": "Quote",
+      "codeBlock": "Code block",
+      "table": "Table",
+      "divider": "Divider"
+    }
   },
   "calendar": {
     "google": "Google Calendar",

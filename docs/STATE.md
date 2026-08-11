@@ -3,7 +3,32 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-11c (**OPH-249 BİTTİ — anahat, katlama, bul-değiştir
+**Last updated:** 2026-08-11d (**OPH-250 büyük ölçüde bitti — liste otomasyonu,
+araç çubuğu, slash, akıllı yapıştırma, kayıt göstergesi, sayım, odak modu.
+**Üç maddesi bilinçli olarak AÇIK bırakıldı** (komut paleti, sürükle-bırak,
+panodan görsel) ve TASKS'ta adıyla duruyor. Süitler 1093 (+34),
+analyze/format/i18n temiz, `contrast.py` FAILURES: 0.
+Sıradaki iş: OPH-250'nin açık üç maddesi ya da OPH-251 (dış dosya).**
+
+**Turun tek cümlesi: eylemleri üç kez tanımlamak, slash ile butonun zamanla
+farklı şeyler yapmasının yoludur.** Araç çubuğu, ⌘/Ctrl kısayolları ve slash
+menüsü tek bir `mdActions()` listesinden doğuyor — D19'un "slash İKİNCİ yol"
+kuralı ancak böyle korunabiliyor.
+
+**Eklerken ürettiğim hata:** D21 göstergesi `dispose()` içinden çağrılan son
+kaydetmede `setState` yapıyordu. `State.mounted` dispose SIRASINDA hâlâ true
+olduğu için framework "defunct" diye patladı — `mounted` burada yanlış bekçi,
+ayrı bir `_disposed` bayrağı gerekti. Mevcut `note_media_test` yakaladı.
+
+**D23 tek denetleyiciyle çözüldü:** `MdSourceController.buildTextSpan` caret'in
+paragrafı dışını söndürüyor. İkinci bir controller değil alt sınıf — D3 belge
+ömrü boyunca TEK controller istiyor.
+
+**Açık üç madde:** komut paleti (⌘K şu an bağlantıya bağlı, slash menüsü paletin
+işini görüyor — hangisinin kanonik olduğu ürün kararı), masaüstünde
+sürükle-bırak, ve panodaki görselin yüklenmesi (platform kanalı ister).
+
+Önceki blok: 2026-08-11c (**OPH-249 BİTTİ — anahat, katlama, bul-değiştir
 ve Türkçe çapalar. Süitler 1059 (+27), analyze/format/i18n temiz,
 `contrast.py` FAILURES: 0. Sıradaki iş: OPH-250 (yazma konforu).**
 

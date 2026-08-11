@@ -390,7 +390,28 @@
     "replace": "Değiştir",
     "replaceAll": "Tümünü değiştir",
     "matchCount": "{index} / {total}",
-    "noMatches": "Eşleşme yok"
+    "noMatches": "Eşleşme yok",
+    "focusOn": "Odak modu",
+    "focusOff": "Odağı kapat",
+    "counts": "{words} kelime · {characters} karakter",
+    "saving": "Kaydediliyor…",
+    "saved": "Kaydedildi",
+    "saveFailed": "Kaydedilmedi",
+    "action": {
+      "bold": "Kalın",
+      "italic": "İtalik",
+      "code": "Satır içi kod",
+      "link": "Bağlantı",
+      "h1": "Başlık 1",
+      "h2": "Başlık 2",
+      "bullet": "Madde listesi",
+      "numbered": "Numaralı liste",
+      "todo": "Görev listesi",
+      "quote": "Alıntı",
+      "codeBlock": "Kod bloğu",
+      "table": "Tablo",
+      "divider": "Ayraç"
+    }
   },
   "calendar": {
     "google": "Google Takvim",

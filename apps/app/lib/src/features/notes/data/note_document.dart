@@ -63,7 +63,7 @@ class NoteDocument extends ChangeNotifier {
     : _format = NoteFormat.parse(note?.contentFormat),
       title = TextEditingController(text: note?.title ?? ''),
       quill = QuillController.basic(),
-      source = TextEditingController(text: note?.contentMarkdown ?? '') {
+      source = MdSourceController(text: note?.contentMarkdown ?? '') {
     final delta = note?.contentDelta;
     if (delta != null && delta.isNotEmpty) {
       quill.document = Document.fromJson(delta);
@@ -80,7 +80,7 @@ class NoteDocument extends ChangeNotifier {
   final QuillController quill;
 
   /// Live for a markdown-canonical note. Same lifetime, same reason.
-  final TextEditingController source;
+  final MdSourceController source;
 
   NoteFormat _format;
   NoteFormat get format => _format;
@@ -172,5 +172,77 @@ class NoteDocument extends ChangeNotifier {
     quill.dispose();
     source.dispose();
     super.dispose();
+  }
+}
+
+/// The Source-mode text controller, with focus mode built in (DESIGN §29 D23).
+///
+/// A subclass rather than a second controller: D3 keeps ONE controller alive
+/// for the document's whole life, so focus mode has to be a property of that
+/// controller, not a swap.
+///
+/// "Focus mode dims, it does not hide." Everything outside the paragraph
+/// holding the caret fades; nothing leaves the layout, because removing text
+/// reflows the page and reflow is what makes a focus mode unusable.
+class MdSourceController extends TextEditingController {
+  MdSourceController({super.text});
+
+  bool _focusMode = false;
+  bool get focusMode => _focusMode;
+  set focusMode(bool value) {
+    if (value == _focusMode) return;
+    _focusMode = value;
+    notifyListeners();
+  }
+
+  /// The paragraph around [offset] — bounded by blank lines, the way markdown
+  /// itself decides where a paragraph ends.
+  ({int start, int end}) paragraphAt(int offset) {
+    final caret = offset.clamp(0, text.length);
+    var start = 0;
+    var end = text.length;
+    final breakRe = RegExp(r'\n[ \t]*\n');
+    for (final match in breakRe.allMatches(text)) {
+      if (match.end <= caret) {
+        start = match.end;
+      } else {
+        end = match.start;
+        break;
+      }
+    }
+    return (start: start, end: end);
+  }
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    if (!_focusMode || text.isEmpty) {
+      return super.buildTextSpan(
+        context: context,
+        style: style,
+        withComposing: withComposing,
+      );
+    }
+
+    final range = paragraphAt(
+      selection.baseOffset < 0 ? 0 : selection.baseOffset,
+    );
+    final dim = (style ?? const TextStyle()).copyWith(
+      color: (style?.color ?? Theme.of(context).colorScheme.onSurface)
+          .withValues(alpha: 0.35),
+    );
+    return TextSpan(
+      style: style,
+      children: [
+        if (range.start > 0)
+          TextSpan(text: text.substring(0, range.start), style: dim),
+        TextSpan(text: text.substring(range.start, range.end), style: style),
+        if (range.end < text.length)
+          TextSpan(text: text.substring(range.end), style: dim),
+      ],
+    );
   }
 }

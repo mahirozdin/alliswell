@@ -15,6 +15,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   long line scrolls **inside its own box** instead of dragging the whole page
   sideways. Images draw for real and open full screen in the same viewer
   everything else uses, with a swipe between the other images in the document.
+- **Writing markdown stopped fighting back.** Lists continue themselves, an
+  empty bullet exits the list instead of breeding another, numbers renumber
+  themselves and Tab nests. There is a toolbar above the keyboard on a phone,
+  ⌘B/⌘I/⌘K on a desktop, and `/table`-style commands everywhere — all three
+  doing exactly the same things. Pasting a web page brings markdown rather than
+  tags, and dropping a link onto selected text makes it a link; one undo puts
+  the raw paste back. A word count sits out of the way, a focus mode dims
+  everything but the paragraph you are in, and autosave finally says whether it
+  saved — it used to work in silence and fail in silence too.
 - **Long documents got navigable.** An outline of every heading sits beside the
   document on a wide screen and one tap away on a phone, following you as you
   scroll; tapping a heading jumps there even in a document you have not read
