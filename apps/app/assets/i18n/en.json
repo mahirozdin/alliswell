@@ -23,7 +23,9 @@
     "clear": "Clear",
     "refresh": "Refresh",
     "refreshFailed": "Couldn't refresh — you're seeing the last synced data.",
-    "undo": "Undo"
+    "undo": "Undo",
+    "previous": "Previous",
+    "next": "Next"
   },
   "nav": {
     "home": "Home",
@@ -382,7 +384,14 @@
     "convertToRich": "Convert to rich text",
     "convertToMarkdownBody": "The note becomes markdown text you edit directly. Formatting the rich editor stores but markdown cannot express is flattened.",
     "convertToRichBody": "The note becomes a rich-text document. Markdown this app does not parse — tables, footnotes, HTML — stays as plain text.",
-    "convertAction": "Convert"
+    "convertAction": "Convert",
+    "outline": "Outline",
+    "outlineEmpty": "No headings yet.",
+    "find": "Find",
+    "replace": "Replace",
+    "replaceAll": "Replace all",
+    "matchCount": "{index} of {total}",
+    "noMatches": "No matches"
   },
   "calendar": {
     "google": "Google Calendar",

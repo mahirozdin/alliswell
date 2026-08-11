@@ -15,6 +15,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   long line scrolls **inside its own box** instead of dragging the whole page
   sideways. Images draw for real and open full screen in the same viewer
   everything else uses, with a swipe between the other images in the document.
+- **Long documents got navigable.** An outline of every heading sits beside the
+  document on a wide screen and one tap away on a phone, following you as you
+  scroll; tapping a heading jumps there even in a document you have not read
+  yet. Sections fold — for looking, never in the file itself. Find and replace
+  works in the markdown source, with a match counter and one undo to put
+  everything back, and the rich editor's search button is no longer switched
+  off. And `[link](#türkçe-başlık)` finally lands where it says: heading links
+  now fold Turkish letters instead of dropping them.
 - **Notes have modes now: Reading, and the editor that matches the note.** A
   note you wrote here opens in the rich editor; a document that came from a
   file opens in Reading and edits as markdown text — which you could not do at

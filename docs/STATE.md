@@ -3,7 +3,31 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-11b (**OPH-248 BİTTİ — not editörü üç moda ayrıldı ve
+**Last updated:** 2026-08-11c (**OPH-249 BİTTİ — anahat, katlama, bul-değiştir
+ve Türkçe çapalar. Süitler 1059 (+27), analyze/format/i18n temiz,
+`contrast.py` FAILURES: 0. Sıradaki iş: OPH-250 (yazma konforu).**
+
+**Turun tek cümlesi: iki tur önce teste bağladığım hata, tam da işaret ettiği
+yerde kapandı.** OPH-247 `HeaderWithIdSyntax`'ın "Türkçe Başlık" için
+`trke-balk` ürettiğini ölçüp bir testle sabitlemişti; slug üretimi artık
+`core/fold.dart` üzerinden bizim. ADR-0013'ün aramada vardığı yerin aynısı:
+katlama app-owned olmak zorunda.
+
+**Ve kendi eklediğim bir satır yeni bir hata açtı:** çapayı çözerken
+`Uri.decodeComponent` çağırıyordum — o fonksiyon ham Türkçe girdide
+**fırlatıyor** ("Illegal percent encoding"), yani D16'nın var olma sebebi olan
+girdide çöküyordu. Şimdi yalnız gerçekten yüzde-kodluysa çözülüyor.
+
+**OPH-248'den devredilen kaydırma hedefleme kararı verildi:**
+`scrollable_positioned_list` tam bu iş için var ama alınmadı — işin tamamı bir
+yükseklik önbelleği ve iki kare düzeltme. Bedeli yazıldı: inşa edilmemiş
+bölgeye ilk atlayış bir tahmin, ve tahmin güvenilmiyor, düzeltiliyor.
+
+**D15'te yazılan ayrım:** bul-değiştir fold'suz. Okumak için arama ı→i katlar,
+ama YAZMAK için katlamak kullanıcının dokunmak istemediği metni değiştirmek
+olurdu.
+
+Önceki blok: 2026-08-11b (**OPH-248 BİTTİ — not editörü üç moda ayrıldı ve
 `content_format` uçtan uca bağlandı (API migration + drift v17). Süitler 1032,
 API 620, analyze/format/i18n temiz, `contrast.py` FAILURES: 0.
 Sıradaki iş: OPH-249 (anahat, katlama, bul-değiştir, çapalar).**

@@ -6946,16 +6946,49 @@ ki bir sonraki okuyan vakit harcamasın. Zorlayıcı kopya zaten
 
 ### OPH-249 — Uzun belgeyi gezmek: anahat, katlama, bul-değiştir, çapalar (D13–D16)
 
-- [ ] **Anahat (TOC)**: başlık ağacı, bulunulan bölüm vurgulu, kaydırmayla senkron;
+_(✅ 2026-08-11. Süitler **1059** (+27), analyze/format/i18n temiz,
+`contrast.py` FAILURES: 0._
+
+_**OPH-247'nin teste bağladığı Türkçe çapa sorunu burada kapandı** — ve tam da
+o testin işaret ettiği yerde. Paket `Türkçe Başlık` için `trke-balk` üretiyor
+(harfleri katlamıyor, ATIYOR); slug üretimi artık `core/fold.dart` üzerinden
+bizim, ADR-0013'ün aramada vardığı yerin aynısı. GitHub'ın tekrar eden başlık
+kuralı da eklendi (`kurulum`, `kurulum-1`) — olmasa iki bölüm aynı çapayı
+paylaşır ve biri ulaşılamaz olurdu._
+
+_**Yol boyunca kendi eklediğim satırın açtığı hata:** çapayı çözerken
+`Uri.decodeComponent` çağırıyordum; o fonksiyon **ham Türkçe girdide
+fırlatıyor** ("Illegal percent encoding"). Yani D16'nın var olma sebebi olan
+girdide çöküyordu. Artık yalnız gerçekten yüzde-kodluysa çözülüyor ve bozuk
+kodlama sessizce ham metne düşüyor._
+
+_**OPH-248'den devredilen kaydırma hedefleme mekanizması seçildi ve yazıldı:**
+`scrollable_positioned_list` tam bu iş için var ama **alınmadı** — işin tamamı
+bir yükseklik önbelleği ve iki kare düzeltme, ve AGENTS §1.6 bağımlılığın kendini
+hak etmesini istiyor. Bedeli de yazıldı: inşa edilmemiş bölgeye ilk atlayış bir
+TAHMİN, ve tahminler güvenilmiyor, düzeltiliyor._
+
+_**Katlama hiçbir yere yazılmıyor** — collapsed slug'lar widget'ın kendi
+kümesinde. D14'ün "belgeyi asla değiştirme" sözünü tutmanın en ucuz yolu
+yazacak bir yer bulundurmamak. Silinen bir başlığın katlaması da temizleniyor,
+yoksa başlığı düzenlemek açılamayan bir bölüm bırakırdı._
+
+_**D15'te bir ayrım yazıldı:** bul-değiştir **fold'suz**. Okumak için arama
+ı→i katlar (ADR-0013), ama YAZMAK için katlamak kullanıcının dokunmak
+istemediği metni değiştirmek olurdu. Replace-all tek atamayla yazıyor, yani
+tek geri-al belgeyi geri getiriyor._
+
+
+- [x] **Anahat (TOC)**: başlık ağacı, bulunulan bölüm vurgulu, kaydırmayla senkron;
       telefonda sheet, ≥ 900 px'te yan panel (D13).
-- [ ] **Başlık katlama** (D14) — katlama durumu oturumluk, **belgeye asla yazılmaz**.
-- [ ] **Bul & değiştir** (D15): `QuillSimpleToolbarConfig`'te bugün
+- [x] **Başlık katlama** (D14) — katlama durumu oturumluk, **belgeye asla yazılmaz**.
+- [x] **Bul & değiştir** (D15): `QuillSimpleToolbarConfig`'te bugün
       `showSearchButton: false` ile **kapalı** olan kontrol açılır ve gerçekten çalışır;
       klavye kısayolu (⌘F/Ctrl+F, ⌘⌥F/Ctrl+H) bağlanır; eşleşme sayacı + sonraki/önceki.
-- [ ] **Belge içi çapalar** (D16): `[bağlantı](#başlık)` o başlığa kaydırır; slug üretimi
+- [x] **Belge içi çapalar** (D16): `[bağlantı](#başlık)` o başlığa kaydırır; slug üretimi
       GitHub kuralıyla aynı (küçült, boşluk→tire, noktalama at) ve Türkçe karakterlerde
       `core/fold.dart` ile tutarlı.
-- [ ] Testler: 500 başlıklı sentetik belgede anahat doğru ağaç kuruyor; katlama belgeyi
+- [x] Testler: 500 başlıklı sentetik belgede anahat doğru ağaç kuruyor; katlama belgeyi
       değiştirmiyor (delta/markdown baytları aynı); bul-değiştir tüm eşleşmeleri buluyor
       ve tek geri-al ile dönüyor; `#turkce-baslik` çapası çalışıyor.
 - **Kabul:** 2 000 satırlık bir README'de bölüm bulmak tek dokunuş.

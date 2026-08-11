@@ -22,7 +22,9 @@
     "clear": "Temizle",
     "refresh": "Yenile",
     "refreshFailed": "Yenilenemedi — son eşitlenen veriyi görüyorsun.",
-    "undo": "Geri al"
+    "undo": "Geri al",
+    "previous": "Önceki",
+    "next": "Sonraki"
   },
   "nav": {
     "home": "Ana Sayfa",
@@ -381,7 +383,14 @@
     "convertToRich": "Zengin metne çevir",
     "convertToMarkdownBody": "Not, doğrudan düzenlediğin bir markdown metnine dönüşür. Zengin editörün tuttuğu ama markdown'ın ifade edemediği biçimlendirme düzleşir.",
     "convertToRichBody": "Not, zengin metin belgesine dönüşür. Bu uygulamanın ayrıştırmadığı markdown — tablo, dipnot, HTML — düz metin olarak kalır.",
-    "convertAction": "Çevir"
+    "convertAction": "Çevir",
+    "outline": "Anahat",
+    "outlineEmpty": "Henüz başlık yok.",
+    "find": "Bul",
+    "replace": "Değiştir",
+    "replaceAll": "Tümünü değiştir",
+    "matchCount": "{index} / {total}",
+    "noMatches": "Eşleşme yok"
   },
   "calendar": {
     "google": "Google Takvim",

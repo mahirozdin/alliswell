@@ -11,6 +11,8 @@ library;
 
 import 'package:flutter/material.dart';
 
+import 'find_replace_bar.dart';
+
 import '../../../../i18n/i18n.dart';
 import '../../../../theme/tokens.dart';
 import '../../../notes/markdown/aw_markdown.dart';
@@ -35,6 +37,8 @@ class _SourceModeState extends State<SourceMode> {
   final ScrollController _previewScroll = ScrollController();
   bool _split = false;
   bool _syncing = false;
+  bool _finding = false;
+  bool _replacing = false;
 
   @override
   void initState() {
@@ -83,9 +87,34 @@ class _SourceModeState extends State<SourceMode> {
     // with nowhere to put the second pane.
     final split = _split && wide;
 
+    return CallbackShortcuts(
+      bindings: noteFindShortcuts(
+        onFind: () => setState(() {
+          _finding = true;
+          _replacing = false;
+        }),
+        onReplace: () => setState(() {
+          _finding = true;
+          _replacing = true;
+        }),
+      ),
+      child: Focus(
+        autofocus: true,
+        child: _content(wide: wide, split: split),
+      ),
+    );
+  }
+
+  Widget _content({required bool wide, required bool split}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (_finding)
+          FindReplaceBar(
+            target: widget.document.source,
+            showReplace: _replacing,
+            onClose: () => setState(() => _finding = false),
+          ),
         if (wide)
           Padding(
             padding: const EdgeInsets.only(

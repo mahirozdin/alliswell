@@ -33,7 +33,9 @@ import '../../files/ui/image_viewer.dart';
 import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
 import 'md_callout.dart';
 import 'md_code_block.dart';
+import 'md_outline.dart';
 import 'md_parse.dart';
+import 'md_scroll.dart';
 import 'md_security.dart';
 import 'md_syntaxes.dart';
 import 'md_table.dart';
@@ -58,6 +60,8 @@ class AwMarkdown extends ConsumerStatefulWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: AwSpace.x5),
     this.shrinkWrap = false,
     this.controller,
+    this.markdownController,
+    this.collapsed = const {},
   });
 
   final MdDocument document;
@@ -73,6 +77,17 @@ class AwMarkdown extends ConsumerStatefulWidget {
   /// this pane against the source pane (DESIGN §29 D5); ignored when
   /// [shrinkWrap] is on, because then there is no scroll view of our own.
   final ScrollController? controller;
+
+  /// Height cache + jump-to-block, for the outline and for `#anchor` links
+  /// (D13/D16). Takes precedence over [controller] — it owns a scroll
+  /// controller of its own.
+  final AwMarkdownController? markdownController;
+
+  /// Slugs of headings whose sections are collapsed (D14).
+  ///
+  /// A SET of slugs, passed in — never stored here and never written to the
+  /// document. Folding is a view state; the bytes are not ours to rewrite.
+  final Set<String> collapsed;
 
   @override
   ConsumerState<AwMarkdown> createState() => _AwMarkdownState();
@@ -94,11 +109,35 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
     super.dispose();
   }
 
+  /// Block indices hidden by a collapsed heading (D14).
+  ///
+  /// Recomputed per build from [AwMarkdown.collapsed], never cached and never
+  /// written anywhere: the fold is a lens over the document, so a folded
+  /// document and an unfolded one are the same bytes.
+  Set<int> _hiddenBlocks() {
+    if (widget.collapsed.isEmpty) return const {};
+    final headings = outlineHeadings(widget.document);
+    final hidden = <int>{};
+    for (final heading in headings) {
+      if (!widget.collapsed.contains(heading.slug)) continue;
+      final range = foldedRangeFor(widget.document, headings, heading);
+      for (var i = range.start; i < range.end; i++) {
+        hidden.add(i);
+      }
+    }
+    return hidden;
+  }
+
   @override
   Widget build(BuildContext context) {
     _clearRecognizers();
     final styles = MdStyles.of(context);
-    final blocks = widget.document.blocks;
+    final hidden = _hiddenBlocks();
+    final blocks = [
+      for (var i = 0; i < widget.document.blocks.length; i++)
+        if (!hidden.contains(i)) (index: i, block: widget.document.blocks[i]),
+    ];
+    widget.markdownController?.reportBlockCount(blocks.length);
 
     if (widget.shrinkWrap) {
       return Padding(
@@ -106,20 +145,24 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
-          children: [for (final block in blocks) _block(block, styles)],
+          children: [for (final e in blocks) _block(e.block, styles)],
         ),
       );
     }
 
     // Lazy by block: a 2 000-line README should not build every paragraph to
-    // show its first screen. The list stays INDEXABLE by block, which is what
-    // OPH-249 needs to jump to a heading — the scroll mechanism is that task's
-    // choice, not this one's.
+    // show its first screen. Each built block reports its height, which is what
+    // lets `AwMarkdownController` jump to one it has never drawn.
+    final md = widget.markdownController;
     return ListView.builder(
-      controller: widget.controller,
+      controller: md?.scroll ?? widget.controller,
       padding: widget.padding,
       itemCount: blocks.length,
-      itemBuilder: (_, i) => _block(blocks[i], styles),
+      itemBuilder: (_, i) {
+        final child = _block(blocks[i].block, styles);
+        if (md == null) return child;
+        return MdMeasuredBlock(index: i, controller: md, child: child);
+      },
     );
   }
 

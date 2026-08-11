@@ -14,10 +14,9 @@ import '../../files/ui/note_media.dart';
 import '../../../theme/tokens.dart';
 import '../data/note.dart';
 import '../data/note_document.dart';
-import '../markdown/aw_markdown.dart';
-import '../markdown/md_parse.dart';
 import '../providers.dart';
 import 'modes/note_mode_control.dart';
+import 'modes/reading_mode.dart';
 import 'modes/source_mode.dart';
 import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
@@ -424,7 +423,8 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                   showAlignmentButtons: false,
                   showIndent: false,
                   showDirection: false,
-                  showSearchButton: false,
+                  showSearchButton:
+                      true, // D15: it shipped disabled — a control that did nothing (§22).
                 ),
               ),
             ),
@@ -440,10 +440,9 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     // D4: Reading is never editable-looking — no caret, no placeholder, no
     // toolbar. (Tappable task-list checkboxes that write back are OPH-249's,
     // and they need the source map this renderer already carries.)
-    NoteMode.reading => AwMarkdown(
-      key: const Key('note-reading'),
-      document: parseMarkdown(_doc.markdown),
-    ),
+    // D13/D14/D16 live in ReadingMode: the outline, folding and `#anchor`
+    // jumps all need the same block index, so they share one owner.
+    NoteMode.reading => ReadingMode(markdown: _doc.markdown),
     NoteMode.source => SourceMode(document: _doc, onChanged: _markDirty),
     NoteMode.live => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
