@@ -6127,7 +6127,20 @@ Bağlayıcı metinler bu turda yazıldı: **[MARKDOWN.md](MARKDOWN.md)** (alan t
 **§31** (widget başlığı).
 _Numara notu:_ **OPH-236 depoda iki kez kullanıldı** (Epic 22 "Sohbet UX cilası" ve
 Epic 23 "Android ikonu"); ikisi de kapalı, geriye dönük düzeltilmiyor — bu epic
-OPH-242'den devam eder.)_
+OPH-242'den devam eder.
+
+_**Kapanış planı (2026-08-11, sahiple kararlaştırıldı).** Yürütme sırası —
+dosya sırası da budur, numara sırası değil (OPH-254'ün 247–248 arasına konması gibi):_
+_`OPH-250 kuyruğu → OPH-255 → OPH-256 → OPH-251 → OPH-252`._
+_Verilen dört karar: (1) **komut paleti YAZILIR**, slash telefon/satır-içi yol olarak
+kalır; (2) geri kaydetme **üç platformda da gerçek** olur ve OPH-251 üçe ayrılır —
+tutamak katmanı (255) · native gerçeklik (256) · W1–W6 arayüzü (251); (3) sürükle-bırak
+`desktop_drop`, pano **kendi kanalımız** — `super_clipboard` reddedildi çünkü
+`super_native_extensions` bir Rust toolchain'ini altı platform build'ine ve CI'a sokardı;
+(4) **sürüm ve v1.4.0 etiketi bu epic'in işi DEĞİL** — ayrı tur, CHANGELOG `[Unreleased]`
+altında birikmeye devam eder. (O turda ele alınacak ölçüm: `release.yml` üç dosyayı
+kapılıyor ama **v1.3.1 `app_version.dart` 1.3.0 iken çıkmış** — gate'in tam olarak
+reddetmesi gereken durum; ayrıca sürüm dizesi depoda **11 yerde** yaşıyor, kapıda üçü var.))_
 
 > **Turun tek cümlesi:** dört maddenin üçü "kod eksik değil, **hat kopuk**" sınıfından
 > (paylaşım uzantısı doğru çalışıp cevapsız bir kapıyı çalıyor; ek seçici doğru çalışıp
@@ -7038,9 +7051,22 @@ _İkisi de OPH-250'nin altında açık kutu olarak duruyor._
       geri döner, sessizce kırpılmaz).
 - [x] **Telefonda klavye üstü kaydırılabilir markdown araç çubuğu** (D18); masaüstü/web'de
       **klavye kısayolları** (⌘B/I/K, H1–H3, kod, alıntı, liste).
-- [ ] **Komut paleti (⌘K)** — D18'in bu yarısı YAPILMADI. ⌘K şu an "bağlantı"
-      eylemine bağlı ve slash menüsü paletin işini görüyor; ayrı bir palet ikinci
-      bir keşif yüzeyi demek ve hangisinin kanonik olduğu bir ürün kararı.
+- [ ] **Komut paleti (⌘K / Ctrl+K)** — D18'in bu yarısı. **Ürün kararı verildi
+      (2026-08-11, sahip): palet YAZILIR**, slash telefon/satır-içi yol olarak kalır.
+      Palet `mdActions()`'tan doğar — dördüncü bir eylem tanımı yasak, D19'un "slash
+      İKİNCİ yol" kuralı ancak böyle ayakta kalır. Eşleştirme `foldSearchText()`
+      üzerinden ve **yerelleştirilmiş etikete de** bakar (`'note.action.${id}'.tr()`);
+      `matchSlash` bugün düz `toLowerCase()` ve yalnız `/slash` token'ına bakıyor —
+      **tek eşleştirici** yazılır ve ikisi de ona bağlanır. Yüzey `showAwSheet` +
+      `AwSearchField` (**`debounce: Duration.zero`** — varsayılan 250 ms palet için
+      yanlış), klavye gezinmesi (↑/↓/Enter/Esc) paletin ayırt edici özelliği.
+      ⌘K bugün "bağlantı"da → bağlantı **⌘⇧K**'ya taşınır.
+- [ ] **Kısayollar Windows/Linux/web'de ÖLÜ** (yol boyunca ölçülen gerileme):
+      `md_actions.dart` yalnız `meta: true` tanımlıyor, yani ⌘B/I/K macOS'ta çalışıyor
+      ama **Ctrl+B/I/K hiçbir yerde çalışmıyor** — dosya başlığı ve `MdAction.shortcut`
+      dokümantasyonu "⌘/Ctrl" dediği hâlde. §22 reachability ihlali;
+      `find_replace_bar.dart` doğrusunu zaten yapıyor (ikisini de kaydediyor).
+      Her kısayola `control:` varyantı + bunu bekçileyen test.
 - [x] **Slash komutları** (D19) her araç çubuğu eylemine ikinci yol olarak; tek yol asla
       değil.
 - [x] **Akıllı yapıştırma** (D20): HTML → markdown, seçimin üstüne URL → bağlantı;
@@ -7048,7 +7074,21 @@ _İkisi de OPH-250'nin altında açık kutu olarak duruyor._
       focus node'una bağlı — global kısayol yapmak bul çubuğuna ve başlığa da
       uzanırdı. **Panodaki GÖRSEL yüklemesi yapılmadı:** pano görselini okumak
       platform kanalı ister, `uploadAll` hazır ama köprü yok.
-- [ ] Masaüstü/web'de editöre **sürükle-bırak** dosya.
+- [ ] Masaüstü/web'de editöre **sürükle-bırak** dosya — `desktop_drop` (saf platform
+      kanalı, Rust yok, CI değişmez). Bırakılan dosya → `PickedUpload.fromBytes` →
+      `uploads.start` (fileId döndürür) → gömme. **Plumbing gerçeği:** `SourceMode`
+      düz bir `StatefulWidget`, ne `ref`i ne `_ensureNote`ı var — drop hedefi
+      `_NoteEditorState.build`'in gövdesine konur, orada ikisi de var ve tek sarmalayış
+      Live + Source + başlığı birden kapsar.
+- [ ] **Panodan görsel + HTML** (D20'nin yapılmayan yarısı) — kendi kanalımız
+      (`alliswell_docref.clipboardRead()`, bkz. OPH-255/256; **karar: `super_clipboard`
+      DEĞİL** — `super_native_extensions` bir Rust toolchain'ini altı platform build'ine
+      ve CI'a sokardı). **Ölçüm:** `source_mode.dart` `Clipboard.getData('text/html')`
+      çağırıyor ama Flutter'ın platform kanalı yalnız `text/plain` uyguluyor — bu dal
+      **her platformda null döner**, yani `htmlToMarkdown` bugün ölü kod ve sadece saf
+      fonksiyon testinde koşuyor. Aynı kanal ikisini birden diriltir. Görsel → Source'ta
+      `![ad](alliswell://file/{id})`, Live'da `BlockEmbed.image` — **iki insert yolu tek
+      özellik demek**, o yüzden `NoteDocument`'a "aktif yüzeye dosya ekle" seam'i konur.
 - [x] **Kayıt durumu göstergesi** (D21): kaydedildi / kaydediliyor / başarısız —
       engellemeyen, küçük. Bugün autosave tamamen sessiz ve hatası da sessiz.
 - [x] **Kelime/karakter sayısı** (D22) ve **odak modu** (D23 — söndürür, gizlemez).
@@ -7062,29 +7102,198 @@ _İkisi de OPH-250'nin altında açık kutu olarak duruyor._
 - **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n` ·
   `python3 scripts/design/contrast.py`.
 
+### OPH-255 — Dış belge tutamağı: ADR-0030 + saf Dart katmanı (cihaz yok, native yok)
+
+_(Doğdu 2026-08-11 — OPH-251'in planlanmasında ölçülen üç engel yüzünden. OPH-251 tek
+task olarak sevk edilseydi üç işi birden yapardı: yerel tutamak katmanı, native
+gerçeklik ve W1–W6 arayüzü. OPH-254'ün mermaid için OPH-247'den ayrılma gerekçesinin
+aynısı. **Bu task'ın tamamı `flutter test` ile kanıtlanabilir** — eklenti iskeleti altı
+platformda da `MissingPluginException` → `unsupportedPlatform` döner._
+
+_**Planlamada ölçülen üç engel** (plan bunlar olmadan yazılsaydı yanlış olurdu):_
+_1. **`file_picker` iOS'ta dosyanın KOPYASINI veriyor** —
+   `IOSFilePickerHandler.swift:249` `UIDocumentPickerViewController(..., asCopy:
+   !asDirectoryPicker)`, dosya seçiminde daima `true`. Bugünkü seçiciyle iPhone'da geri
+   kaydetmek yapısal olarak imkânsız: yazdığımız şey tmp'deki kopya olur. Seçiciyi
+   kendimiz sahiplenmek zorundayız._
+_2. **macOS'ta sandbox açık ve HİÇBİR dosya entitlement'ı yok** — ne
+   `user-selected.read-write` ne `bookmarks.app-scope`. Kabul kriterinin zorunlu kıldığı
+   "Mac'te README.md diskte değişmiştir" bugün fiziksel olarak mümkün değil._
+_3. **`markdown_source.dart` `allowMalformed: true` ile okuyor** — okumak için doğru
+   karar, ama yazma eklendiği an her UTF-8-olmayan baytı U+FFFD'ye çevirip kullanıcının
+   dosyasına geri yazar. Tam olarak W4'ün "iyi niyetli veri kaybı" dediği şey._
+
+_**Ve ölçülen bir iyi haber:** `note_document.dart`'ın `markdown` getter'ı
+markdown-kanonik notta `source.text`'i **birebir** döndürüyor, Delta'dan geçmeden —
+yorumu zaten "OPH-251'in geri kaydetmesini dürüst yapan şey bu" diyor. Yani W4'ün zor
+yarısı (round-trip reflow) ÇÖZÜLMÜŞ; geriye yalnız kodlama sadakati + bir biçim kapısı
+kalıyor._
+
+- [ ] **ADR-0030 önce** (kapı, kod yazılmadan). AGENTS §1 rule 6 iki kez zorunlu kılıyor:
+      yeni bağımlılık kategorisi (üç platforma yayılan in-repo native eklenti) **ve**
+      güvenlikle ilgili karar (yeni macOS sandbox entitlement'ları). Kararları: kalıcı
+      tutamak modeli ve **`LocalKv`'de saklanması, senkron DB'de DEĞİL** (bookmark cihaza
+      özeldir; senkronlamak başka cihaza çözemeyeceği bir token vermek olur) · kendi
+      eklentimiz vs `file_picker` (ölçülmüş gerekçe yukarıda) · iki macOS entitlement'ı ·
+      W4'ün kodda karşılığı · atomiklik asimetrisi · Android'in **sıfır** izin kazanması.
+- [ ] **W3'ü derleyici zorlar** — `external_document.dart`, saf, eklenti import'u yok:
+      `sealed class ExternalAccess` = `ExternalWritable(saver)` | `ExternalReadOnly(reason)`
+      | `ExternalUnreachable(reason)`. **`saver` YALNIZ yazılabilir kolda var**, yani
+      salt-okunur bir dosyada kaydet butonunun bağlanacağı bir şey yoktur. Bool olsaydı
+      buton kurulur ve `enabled: false` yapılırdı — §22'nin "ölü buton" yasağı tam olarak
+      budur. Kayıt sonucu da sealed: `SaveSucceeded` | `SaveConflict(onDisk)` |
+      `SaveLostAccess` | `SaveFailed`; **`SaveIntent.force` yalnız çatışma dalından
+      erişilebilir**, sessiz ezme ifade edilemez.
+- [ ] **W4 — kodlama sadakati.** Eklenti ham bayt döndürür; Dart
+      `utf8.decode(bytes, allowMalformed: **false**)` dener. Baştaki `EF BB BF` ayıklanır,
+      `utf8Bom` diye kaydedilir ve **kaydederken geri konur** (BOM'u sessizce düşürmek
+      kimsenin istemediği bir bayt değişikliğidir). `FormatException` → `notText`:
+      Latin-1 **tahmin edilmez**, dosya yine AÇILIR (göstermeyi reddetmek yazmayı
+      reddetmekten kötüdür), gösterim için kayıplı çözülür, erişim
+      `ExternalReadOnly(notUtf8)` olur — reddediş veri kaybının olacağı yerde, yazma
+      kenarında. Tek saf yüklem `canWriteBack(NoteFormat, ExternalEncoding)`. Satır sonu
+      normalize edilmez, sona `\n` eklenmez.
+- [ ] **W5 primitifi** — açılışta üçü de yakalanır: `sha256` (`crypto: ^3.0.6` zaten
+      doğrudan bağımlılık; 2 MB tavanla ~10 ms), `sizeBytes`, `modifiedAt`. **Yetki sırası
+      yazılır:** mtime Apple'da güvenilir, **Android'de değil** — SAF'ın
+      `COLUMN_LAST_MODIFIED`'ı isteğe bağlı ve bulut sağlayıcılar null döner, o yüzden
+      mtime yoksa hash'e düşülür.
+- [ ] **W6 — `external_recents.dart`**: `parseExternalRecents` / `pushExternalRecent` /
+      `encodeExternalRecents`, modeli `quick_access/emoji_input.dart` (en-yeni-önce, dedup,
+      kapasiteli, bozuk girdiyi düşürür), `PersistedChoice('alliswell_external_recents')`.
+      **Bilinçli sapma:** emoji recents virgülle birleşiyor (emoji virgül içeremez); bir
+      `content://` URI'si de base64 bookmark da içerebilir → JSON dizi.
+- [ ] **Seam**: `MarkdownSource` genişletilir (`share_intent.dart` zaten
+      `markdownSourceProvider`'ı okuyor) — `pickExternal()` · `open(handle)` ·
+      `adopt(osToken)` · `probe(handle)`.
+- [ ] **Fake ve testler**: `test/support/fake_markdown_source.dart` (bellek-içi dosya
+      sistemi + senaryo düğmeleri `expireScopeAfter`/`mutateBeforeNextSave`/
+      `revokeGrantOnSave` + `writes`/`intents` kayıtları). `syncTestOverrides` bir
+      `markdownSource` parametresi kazanır ve **varsayılanı null değil FAKE olur**
+      (`shareInbox ?? const NoShareInbox()` idiomu) — böylece HER widget testi diske ve
+      kanala ulaşamaz hâle gelir, sadece hatırlayanlar değil. `markdown_import_test.dart`'ın
+      satır-içi `_FakeMarkdownSource`'u silinip ortak fake'e bağlanır. Vakalar:
+      salt-okunur · süresi dolmuş kapsam · çatışma (ifUnchanged → `SaveConflict`, sonra
+      force → `SaveSucceeded`, sonra reload) · bayt sadakati (BOM korunur, CRLF korunur,
+      sona `\n` eklenmez) · W4 kapısı · recents kapasitesi + bozuk girdi.
+- **Kabul:** dış dosya katmanının her kenarı diske ve native koda hiç dokunmadan
+  test edilebiliyor; salt-okunur bir dosyada kaydet eylemi **derlenmiyor bile**.
+- **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n`.
+
+### OPH-256 — Native gerçeklik: macOS · iOS · Android (`alliswell_docref`)
+
+_(OPH-255'in kanalını üç platformda gerçek yapar. Tek in-repo eklenti
+`apps/app/packages/alliswell_docref/`, kanal `alliswell/docref`, düzeni
+`alliswell_eventkit`'ten birebir — **doğrulanmış numara dahil**: eventkit'in
+`macos/.../Sources/` dizini iOS kaynaklarına bir **sembolik bağ**, yani tek Swift dosyası
+iki Apple platformuna hizmet ediyor (`#if os(iOS)` / `#elseif os(macOS)`). Gerekçe
+`pubspec.yaml`'da yazılı: Flutter tooling podspec'i pbxproj cerrahisi olmadan bağlıyor —
+`ios/Runner/` köprüleri (share_inbox, alarmkit) iOS'a hapis ve AppDelegate düzenlemesi
+istiyor. Eklenti **ince ve aptal** kalır; politika Dart'ta.)_
+
+- [ ] **macOS** — `NSOpenPanel`; `bookmarkData(options: .withSecurityScope)` +
+      `startAccessingSecurityScopedResource`; yoklama
+      `resourceValues(forKeys: [.isWritableKey, .volumeIsReadOnlyKey])` —
+      **`isWritableFile(atPath:)` DEĞİL**, o POSIX modunu söyler, sandbox iznini değil;
+      yazma `NSFileCoordinator(.forReplacing)` + `write(to:options:.atomic)`.
+- [ ] **macOS entitlement'ları** (`DebugProfile` + `Release`):
+      `com.apple.security.files.user-selected.read-write` +
+      `com.apple.security.files.bookmarks.app-scope`. Birincisi olmadan panel salt-okunur
+      veriyor; ikincisi olmadan bookmark hiç üretilemiyor. **Ve `AppDelegate.swift`'e
+      `application(_:open:)`** — `Info.plist` doküman tiplerini beyan ettiği hâlde bugün
+      Finder'da bir `.md`'ye çift tıklamak hiçbir Dart koduna ulaşmıyor. URL Dart
+      dinlemeye başlamadan geldiği için `ShareInboxBridge` posta-kutusu deseni kullanılır.
+- [ ] **iOS** — `UIDocumentPickerViewController(asCopy: **false**)`; `bookmarkData()`
+      **`.withSecurityScope` OLMADAN** (o seçenek macOS'a özel; iOS'ta doküman-seçici
+      bookmark'ı örtük olarak security-scoped — bu, paylaşılan Swift dosyasının ayrışmak
+      zorunda olduğu tek yer, yoruma yazılır). `NSFileCoordinator` burada **zorunlu**:
+      iCloud/Dropbox sağlayıcıları materyalleşmeyi ve yüklemeyi ondan geçiriyor.
+      Entitlement **yok**. Soğuk açılışta URL `SceneDelegate`'in
+      `scene(_:willConnectTo:options:)` → `connectionOptions.urlContexts`'ine düşüyor —
+      OPH-242'nin zaten belgelediği tuzak; tamponlanır.
+- [ ] **Android** — `ACTION_OPEN_DOCUMENT` + persistable flag'ler;
+      `takePersistableUriPermission(READ or WRITE)` `SecurityException` yakalanarak
+      (başarısızlık = `ExternalReadOnly(permissionReadOnly)`); yoklama **iki olgu birden**:
+      `persistedUriPermissions…isWritePermission` (bizim tuttuğumuz) **ve**
+      `COLUMN_FLAGS and FLAG_SUPPORTS_WRITE` (sağlayıcının izin verdiği —
+      `androidx.documentfile` bağımlılığı eklenmez, o yalnız bir sarmalayıcı).
+      **Yazma `openOutputStream(uri, "wt")` — `"w"` DEĞİL:** düz `"w"` birçok sağlayıcıda
+      dosyayı kesmiyor, yeni belge kısaysa eskinin kuyruğu dosyada kalıyor; yalnız gerçek
+      cihazda görünen bir bayt bozulması. Manifest'e `ACTION_EDIT` eklenir,
+      **hiçbir `<uses-permission>` eklenmez** — `assert-permissions.sh` değişmeden geçmeli.
+- [ ] **Atomiklik, dürüstçe asimetrik** (ADR-0030'a yazılır). **Apple: çökme-güvenli** —
+      `.atomic` kullanılır, elle temp dosya **yazılmaz**: sandbox izni *seçilen dosyayı*
+      kapsıyor, klasörünü değil, kardeş temp dosya gerçek imzalı build'de tam da bu yüzden
+      patlar. Mod bitleri okunup geri konur. **Android: değil, ve yapılamaz** — SAF URI'si
+      üzerinde rename yok; `"wt"` keser ve akıtır, kesme ile son bayt arasındaki çökme
+      kısmi dosya bırakır ve orijinal gitmiştir. Telafi: tek `write`+`flush`+`close`
+      (≤2 MB) + kesmeden önce eski baytlar `filesDir/external_recovery/<sha>.md`'ye,
+      başarılı kapanışta silinir; açılışta orada dosya bulmak = son kayıt yırtılmış
+      olabilir → kullanıcıya geri yükleme. **Reddedilen:** `createDocument` + delete —
+      URI'yi değiştirir, kalıcı izni ve tüm recents girdilerini geçersiz kılar.
+- [ ] **`clipboardRead()`** (OPH-250'nin panodan görsel maddesini besler):
+      `{html?, imageBytes?, imageMime?}` — iOS/macOS `UIPasteboard`/`NSPasteboard`,
+      Android `ClipData`, web `navigator.clipboard.read()`. Desteklenmeyen platform
+      sessizce boş döner.
+- **Kabul:** üç platformda da `probe` gerçeği söylüyor ve yazılabilir bir dosyaya yazmak
+  **dosyayı diskte değiştiriyor**.
+- **Doğrulama:** `flutter analyze` · `flutter test` · `bash scripts/android/assert-permissions.sh`
+  (değişmeden geçmeli) · üç platformda `shasum` öncesi/sonrası.
+- **En riskli adım — macOS, ve önden yazılmış çıkış kapısı:** özellik burada
+  `flutter test`'in göremediği ve CI'ın doğrulayamadığı bir *build yapılandırmasına*
+  bağlı; `app-sandbox` zaten açık olduğu için eksik entitlement hata vermiyor, **sessizce
+  salt-okunur dönüyor** — meşru salt-okunur bir dosyadan ayırt edilemez. Muhtemel arıza:
+  entitlement'lar doğru ama `flutter run`'ın ad-hoc imzalı build'inde app-scope bookmark
+  onurlandırılmıyor. **Geri çekilme:** oturum yazılabilir kalır (panel izni süreç boyunca
+  yaşar), recents girdisi `sessionOnly` işaretlenir, recents'tan açmak paneli o dosyaya
+  konumlanmış olarak yeniden açar — W6 o zaman "hâlâ tutuyoruz" değil "tek tıkla oraya
+  dönersin" demektir **ve bant bunu söyler**. Sessizce kırpılmaz.
+- **İkinci risk (yalnız zahmetli):** `receive_sharing_intent` ile eklentimiz aynı
+  `ACTION_VIEW`'ı gözlüyor, bir `.md` iki kez teslim edilebilir. Token'a göre take-once
+  tutucu tekrarı etkisiz kılar; yetmezse OS-açılış şeridi yalnız eklentiye verilir ve
+  `share_intent.dart`'ın `.md` eşleşmesi kaldırılır — o yol bu özellik için zaten çıkmaz
+  sokak, kopya veriyor.
+
 ### OPH-251 — Dış dosyanın sahipliği: aç, düzenle, **geri kaydet** (DESIGN §29 W1–W6)
 
 > Bu turun **veri kaybettirebilecek tek özelliği**. W-kuralları bağlayıcıdır.
+> Tutamak katmanı OPH-255'te, native gerçeklik OPH-256'da doğar; bu task **arayüz**.
 
-- [ ] **Kalıcı dış-belge bandı** (W1): gerçek dosya adı, her modda, oturum boyunca.
-- [ ] **Açık kaydetme** (W2): autosave AllisWell'in kendi notlarına aittir; dış dosya
-      yalnız bilinçli bir eylemle değişir.
-- [ ] **Yazılabilirlik ÖLÇÜLÜR** (W3): iOS security-scoped URL (
-      `startAccessingSecurityScopedResource`, süresi dolabilir) ve Android
-      `content://` yazma izni **kaydetmeden önce** yoklanır; salt-okunur dosyada bant
-      "salt okunur" der ve **kaydet eylemi hiç görünmez** (ölü buton yasak).
-- [ ] **Bayt-sadıklık** (W4): notun kanonik biçimi markdown değilse "Dosyaya kaydet"
-      sunulmaz, "Not olarak kaydet" sunulur.
-- [ ] **Altından değişme** (W5): dosya diskte değiştiyse sessizce ezilmez — yeniden yükle
-      / üzerine yaz / kopya olarak kaydet seçimi. Dosya değişikliği izleme (canlı yeniden
-      yükleme) buraya bağlanır.
-- [ ] **Son açılan dosyalar listesi** (W6) — Notlar sekmesinden ulaşılır; OS'un bir kez
-      verdiği dosya bir daha erişilmez olmasın.
+- [ ] **Kalıcı dış-belge bandı** (W1): gerçek dosya adı, her modda, oturum boyunca —
+      Reading/Source/Quill üçünü de kapsayacak şekilde `note_editor_screen.dart`'ın
+      gövdesinde, tek yerde.
+- [ ] **Açık kaydetme** (W2): autosave dış dosyaya **hiç** dokunmaz; kaydet açık bir
+      eylem. D21 göstergesi (kaydedildi/kaydediliyor/başarısız) AllisWell notunu
+      anlatmaya devam eder — **bant ayrı bir durum taşır ve ikisi karıştırılmaz.**
+- [ ] **Yazılabilirlik ÖLÇÜLÜR** (W3): `switch (access)` — kaydet eylemi yalnız
+      `ExternalWritable` kolunda **build edilir**, diğer ikisinde hiç kurulmaz (OPH-255
+      tipleri bunu derleyici düzeyinde zorluyor: `saver` orada yok). Bant sebebi söyler:
+      salt okunur / erişim yitirildi / UTF-8 değil.
+- [ ] **Bayt-sadıklık** (W4): `canWriteBack` false ise eylem "Dosyaya kaydet" değil
+      **"Not olarak kaydet"** olur — hem Delta-kanonik notta hem UTF-8 olmayan dosyada.
+- [ ] **Altından değişme** (W5): çatışmada üç seçenekli `showAwSheet` — **yeniden yükle**
+      (`open(handle)`) / **üzerine yaz** (`save(intent: force)`) / **kopya olarak kaydet**
+      (`saveCopy()`). Dosya değişikliği izleme (canlı yeniden yükleme) **bu turda değil**;
+      primitifi OPH-255'te doğuyor, pollama UI'ı sonraki tura yazıldı.
+- [ ] **Son açılan dosyalar listesi** (W6) — `Key('notes-open-markdown')` butonu menü
+      butonuna dönüşür ("Markdown dosyası aç…" + "Son açılanlar"); ikinci giriş noktası
+      `markdown_import_screen`'in boş durumu, çünkü bayat/kırık tutamak zaten oraya düşüyor.
 - [ ] **Projeye ekle**: dış dosya, notlara kalıcı olarak aktarılmadan da bir projeye
       bağlanabilir (sahibin isteği: "isterse notlara yaz, projeye ekle").
-- [ ] Testler: `MarkdownSource` seam'i **yazma** kenarını da alır ve fake ile test edilir
-      (disk yok); salt-okunur dosyada kaydet eylemi hiç build edilmiyor; altından değişen
-      dosyada üç seçenekli akış; son açılanlar listesi kapasitesi + kırık girdi temizliği.
+      **Ölçülen: mevcut iki mekanizmanın ikisi de bunu karşılamıyor** — not→proje düz bir
+      kolon (`notes.projectId`, yani önce not olmak gerekir), dosya→proje ise ek tablosu
+      (`FileRows`) ve **bir kopyayı R2'ye yükler**, ki bu "dış dosyayı bağlamak" değil
+      kopyalamak. Çözüm: recents girdisine `projectId` alanı (yerel, senkronsuz — tutamak
+      zaten cihaza özel); `ProjectPickerField` yeniden kullanılır.
+- [ ] **Kontrast**: bant yeni bir yüzey → `contrast.py` çiftlerine eklenir. OPH-247'nin
+      dersi bağlayıcı: **elle uydurulmuş bir zemini ölçmek `FAILURES: 0` yalanı söyler** —
+      bandın gerçekten çizdiği karışım hesaplanır.
+- [ ] Testler (seam/fake/recents birim testleri OPH-255'e taşındı — burada **arayüz**):
+      bant üç modda da görünüyor ve dosya adını taşıyor; salt-okunur dosyada kaydet eylemi
+      **hiç build edilmiyor** (finder boş, `enabled: false` değil); altından değişen
+      dosyada üç seçenekli akışın üçü de doğru çağrıyı yapıyor; UTF-8 olmayan dosyada bant
+      sebebi söylüyor ve "Not olarak kaydet" sunuluyor; son açılanlar menüsü bir girdiden
+      dosyayı yeniden açıyor. i18n: tüm yeni dizeler `en`+`tr`.
 - **Kabul:** Mac'te bir `README.md` AllisWell ile açılır, düzenlenir, kaydedilir ve
   **dosya diskte değişmiştir**; iPhone'da Dosyalar'dan açılan bir `.md` için aynısı ya
   çalışır ya da bant dürüstçe "salt okunur" der.
@@ -7099,14 +7308,46 @@ _İkisi de OPH-250'nin altında açık kutu olarak duruyor._
       bilgisayardaki `.md` dosyalarını açma/değiştirme/içe aktarma, (3) **alarmlı
       görevler** — unutturmayan sistem, (4) proje ve görevle ilgili **tüm dosyaların aynı
       yerde** durması, (5) **tekrarlı görevlerin** ne kadar ayrıntılı yapılandırılabildiği.
-- [ ] **Ekran görüntüleri**: mevcut set (`docs/screenshots/`, `docs/store/`) bu beş
-      başlığa göre denetlenir; **eksik olanlar** (markdown okuma görünümü, üç mod, dış
-      dosya bandı, görev eki + görsel görüntüleyici, tekrar dialog'u) `scripts/screenshots/`
-      harness'ıyla çekilir; **bayat olanlar** yenilenir. Hangi görüntünün nereye
-      gireceği task'ın altına tablo olarak yazılır.
-- [ ] `docs/COMPARISON.md`'ye markdown satırı; `docs/STORE-LISTING.md`'ye özellik
-      maddesi (+ mağaza guardrail'ları gözden geçirilir — round 13'ün bayat
-      "recurring tasks yok" dersi).
+- [ ] **Yol boyunca düzeltilecek ÖLÇÜLMÜŞ çelişkiler** (kapsam genişletmesi değil — aynı
+      dosyalarda duran ve deponun kendi guardrail'ini çiğneyen satırlar):
+
+      | Nerede | Ne diyor | Neyi çiğniyor |
+      | --- | --- | --- |
+      | `apps/landing/src/content.js` `widget` bloğu | "On iPhone you can tick one off from the Home Screen" | STORE-LISTING §5 — **`AppIntent` yok, widget salt-okunur** |
+      | `README.md` özellik listesi | aynı iddia | aynı |
+      | `docs/COMPARISON.md` (iki yer) | "Home-screen widgets ● iOS/Android/**macOS**" | STORE-LISTING §5 — **macOS widget target yok** |
+      | `docs/COMPARISON.md` §5 | "We are at 0.9.0" | bayat (1.3.1) |
+      | `README.md` durum satırı | "887 app tests" | bayat (STATE: 1093+) |
+      | landing `search` bloğu | Search bloğu **Projects ekran görüntüsü** kullanıyor | kabul kriteri: eşleşen, gerçek görüntü |
+      | landing `recurrence` bloğu | `shot: 'web/home-dark.jpg'` — Home görüntüsü tekrar iddiasının yerine geçiyor, üstelik blok `App.vue`'da render'dan **filtreleniyor** | #5 landing'de hiç görünmüyor |
+- [ ] **Ekran görüntüleri**: mevcut set (`screenshots/`, `docs/store/`, `store/`) bu beş
+      başlığa göre denetlenir; **eksik olanlar** çekilir, **bayat olanlar** yenilenir.
+      Çekim `scripts/screenshots/web.mjs` (`--only` bayrağı var; önkoşullar dosyanın
+      başında: API + `seed-demo.mjs` + `flutter build web --release` + :8080). Yeni
+      görüntüler `/screenshots/<platform>/*.png` altına — `apps/landing/public/shots/`
+      gitignore'lu, `sync-screenshots.mjs` build'de kendisi üretiyor.
+      **Uyarı:** `docs/screenshots/markdown-reading-{light,dark}.png` bir *conformance
+      belgesinin* golden render'ı (1800×10400, 1:5.8) — `ScreenshotFrame`'de kullanılamaz;
+      uygulama kabuğu çekimi ayrı iştir.
+
+      | Özellik | Hedef | Durum |
+      | --- | --- | --- |
+      | 1 görevler+projeler | landing `tasks` bloğu (**yeni**), README | `web/projects.png` var — `search` bloğundan alınır |
+      | 2 markdown | landing `markdown` bloğu (**hiç yok**), README | **çekilecek:** okuma görünümü *uygulama kabuğunda*, üç mod, dış dosya bandı |
+      | 3 alarmlar | `alarms` | `web/reminders.png` + `android/09-alarm-ring.png` var |
+      | 4 dosyalar | `files` | `web/files.png` var; **çekilecek:** görev eki + görsel görüntüleyici |
+      | 5 tekrar | `recurrence` (filtre kaldırılır ya da `RecurrenceProof` görselle beslenir) | `ios/07-task-detail-repeat.png` + `08-repeat-dialog.png` **var ama hiç kullanılmıyor** |
+- [ ] `docs/COMPARISON.md`: §1 "Notes & files" altına markdown satırı (OPH-246…251) + §3
+      matrisine markdown satırı + **landing'in kendi ikinci karşılaştırma tablosuna**
+      (`content.js` `comparison`) — iki tablo var, biri unutulursa sapıyorlar.
+      `docs/STORE-LISTING.md`: Apple `NOTES AND FILES` ve Play blokları + **TR aynaları** +
+      karakter sayıları yeniden hesaplanır. **Guardrail bağlayıcı:** hiçbir mağaza metni
+      "offline / çevrimdışı" diyemez (Play sürüm kodu 16'yı 2026-08-02'de bu yüzden
+      reddetti) — "bilgisayarındaki `.md`'yi aç" ifadesi bağlantı iddiası gibi
+      okunmayacak şekilde, **dosya işleme** olarak yazılır.
+      §5 guardrail tablosu yeniden denetlenir: round 13'ün "recurring tasks yok" dersi
+      **zaten düzeltilmiş** — aranan şey *o zamandan beri doğru hâline gelmiş diğer*
+      guardrail'ler, yani bu bir yeniden-denetim, yeni bir düzeltme değil.
 - [ ] README'nin durum satırı (sürüm + test sayıları) güncellenir.
 - [ ] Landing (`apps/landing/`, Vue 3) beş bloğa göre düzenlenir; `npm run build` yeşil.
 - **Kabul:** landing'e ilk bakışta bu beş şey görünüyor ve her birinin **gerçek** bir
