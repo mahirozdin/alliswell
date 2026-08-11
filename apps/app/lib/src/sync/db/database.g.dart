@@ -4148,6 +4148,18 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _contentFormatMeta = const VerificationMeta(
+    'contentFormat',
+  );
+  @override
+  late final GeneratedColumn<String> contentFormat = GeneratedColumn<String>(
+    'content_format',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('delta'),
+  );
   static const VerificationMeta _plainTextMeta = const VerificationMeta(
     'plainText',
   );
@@ -4254,6 +4266,7 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
     title,
     contentDelta,
     contentMarkdown,
+    contentFormat,
     plainText,
     isPinned,
     isArchived,
@@ -4329,6 +4342,15 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
         contentMarkdown.isAcceptableOrUnknown(
           data['content_markdown']!,
           _contentMarkdownMeta,
+        ),
+      );
+    }
+    if (data.containsKey('content_format')) {
+      context.handle(
+        _contentFormatMeta,
+        contentFormat.isAcceptableOrUnknown(
+          data['content_format']!,
+          _contentFormatMeta,
         ),
       );
     }
@@ -4417,6 +4439,10 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
         DriftSqlType.string,
         data['${effectivePrefix}content_markdown'],
       ),
+      contentFormat: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_format'],
+      )!,
       plainText: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}plain_text'],
@@ -4468,6 +4494,13 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
   /// Quill delta ops as a JSON string (canonical content, §9.1).
   final String? contentDelta;
   final String? contentMarkdown;
+
+  /// Which of the two above is CANONICAL (v17, OPH-248, ADR-0028 §1).
+  ///
+  /// `'delta'` or `'markdown'`. Defaulted rather than nullable so the replica
+  /// answers the same way the server does for every row that predates the
+  /// column — the migration backfills nothing because it does not have to.
+  final String contentFormat;
   final String? plainText;
   final bool isPinned;
   final bool isArchived;
@@ -4484,6 +4517,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     required this.title,
     this.contentDelta,
     this.contentMarkdown,
+    required this.contentFormat,
     this.plainText,
     required this.isPinned,
     required this.isArchived,
@@ -4511,6 +4545,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     if (!nullToAbsent || contentMarkdown != null) {
       map['content_markdown'] = Variable<String>(contentMarkdown);
     }
+    map['content_format'] = Variable<String>(contentFormat);
     if (!nullToAbsent || plainText != null) {
       map['plain_text'] = Variable<String>(plainText);
     }
@@ -4549,6 +4584,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       contentMarkdown: contentMarkdown == null && nullToAbsent
           ? const Value.absent()
           : Value(contentMarkdown),
+      contentFormat: Value(contentFormat),
       plainText: plainText == null && nullToAbsent
           ? const Value.absent()
           : Value(plainText),
@@ -4585,6 +4621,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       title: serializer.fromJson<String>(json['title']),
       contentDelta: serializer.fromJson<String?>(json['contentDelta']),
       contentMarkdown: serializer.fromJson<String?>(json['contentMarkdown']),
+      contentFormat: serializer.fromJson<String>(json['contentFormat']),
       plainText: serializer.fromJson<String?>(json['plainText']),
       isPinned: serializer.fromJson<bool>(json['isPinned']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
@@ -4606,6 +4643,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       'title': serializer.toJson<String>(title),
       'contentDelta': serializer.toJson<String?>(contentDelta),
       'contentMarkdown': serializer.toJson<String?>(contentMarkdown),
+      'contentFormat': serializer.toJson<String>(contentFormat),
       'plainText': serializer.toJson<String?>(plainText),
       'isPinned': serializer.toJson<bool>(isPinned),
       'isArchived': serializer.toJson<bool>(isArchived),
@@ -4625,6 +4663,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     String? title,
     Value<String?> contentDelta = const Value.absent(),
     Value<String?> contentMarkdown = const Value.absent(),
+    String? contentFormat,
     Value<String?> plainText = const Value.absent(),
     bool? isPinned,
     bool? isArchived,
@@ -4645,6 +4684,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     contentMarkdown: contentMarkdown.present
         ? contentMarkdown.value
         : this.contentMarkdown,
+    contentFormat: contentFormat ?? this.contentFormat,
     plainText: plainText.present ? plainText.value : this.plainText,
     isPinned: isPinned ?? this.isPinned,
     isArchived: isArchived ?? this.isArchived,
@@ -4671,6 +4711,9 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       contentMarkdown: data.contentMarkdown.present
           ? data.contentMarkdown.value
           : this.contentMarkdown,
+      contentFormat: data.contentFormat.present
+          ? data.contentFormat.value
+          : this.contentFormat,
       plainText: data.plainText.present ? data.plainText.value : this.plainText,
       isPinned: data.isPinned.present ? data.isPinned.value : this.isPinned,
       isArchived: data.isArchived.present
@@ -4694,6 +4737,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
           ..write('title: $title, ')
           ..write('contentDelta: $contentDelta, ')
           ..write('contentMarkdown: $contentMarkdown, ')
+          ..write('contentFormat: $contentFormat, ')
           ..write('plainText: $plainText, ')
           ..write('isPinned: $isPinned, ')
           ..write('isArchived: $isArchived, ')
@@ -4715,6 +4759,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     title,
     contentDelta,
     contentMarkdown,
+    contentFormat,
     plainText,
     isPinned,
     isArchived,
@@ -4735,6 +4780,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
           other.title == this.title &&
           other.contentDelta == this.contentDelta &&
           other.contentMarkdown == this.contentMarkdown &&
+          other.contentFormat == this.contentFormat &&
           other.plainText == this.plainText &&
           other.isPinned == this.isPinned &&
           other.isArchived == this.isArchived &&
@@ -4753,6 +4799,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
   final Value<String> title;
   final Value<String?> contentDelta;
   final Value<String?> contentMarkdown;
+  final Value<String> contentFormat;
   final Value<String?> plainText;
   final Value<bool> isPinned;
   final Value<bool> isArchived;
@@ -4770,6 +4817,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     this.title = const Value.absent(),
     this.contentDelta = const Value.absent(),
     this.contentMarkdown = const Value.absent(),
+    this.contentFormat = const Value.absent(),
     this.plainText = const Value.absent(),
     this.isPinned = const Value.absent(),
     this.isArchived = const Value.absent(),
@@ -4788,6 +4836,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     required String title,
     this.contentDelta = const Value.absent(),
     this.contentMarkdown = const Value.absent(),
+    this.contentFormat = const Value.absent(),
     this.plainText = const Value.absent(),
     this.isPinned = const Value.absent(),
     this.isArchived = const Value.absent(),
@@ -4808,6 +4857,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     Expression<String>? title,
     Expression<String>? contentDelta,
     Expression<String>? contentMarkdown,
+    Expression<String>? contentFormat,
     Expression<String>? plainText,
     Expression<bool>? isPinned,
     Expression<bool>? isArchived,
@@ -4826,6 +4876,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
       if (title != null) 'title': title,
       if (contentDelta != null) 'content_delta': contentDelta,
       if (contentMarkdown != null) 'content_markdown': contentMarkdown,
+      if (contentFormat != null) 'content_format': contentFormat,
       if (plainText != null) 'plain_text': plainText,
       if (isPinned != null) 'is_pinned': isPinned,
       if (isArchived != null) 'is_archived': isArchived,
@@ -4846,6 +4897,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     Value<String>? title,
     Value<String?>? contentDelta,
     Value<String?>? contentMarkdown,
+    Value<String>? contentFormat,
     Value<String?>? plainText,
     Value<bool>? isPinned,
     Value<bool>? isArchived,
@@ -4864,6 +4916,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
       title: title ?? this.title,
       contentDelta: contentDelta ?? this.contentDelta,
       contentMarkdown: contentMarkdown ?? this.contentMarkdown,
+      contentFormat: contentFormat ?? this.contentFormat,
       plainText: plainText ?? this.plainText,
       isPinned: isPinned ?? this.isPinned,
       isArchived: isArchived ?? this.isArchived,
@@ -4899,6 +4952,9 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     }
     if (contentMarkdown.present) {
       map['content_markdown'] = Variable<String>(contentMarkdown.value);
+    }
+    if (contentFormat.present) {
+      map['content_format'] = Variable<String>(contentFormat.value);
     }
     if (plainText.present) {
       map['plain_text'] = Variable<String>(plainText.value);
@@ -4940,6 +4996,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
           ..write('title: $title, ')
           ..write('contentDelta: $contentDelta, ')
           ..write('contentMarkdown: $contentMarkdown, ')
+          ..write('contentFormat: $contentFormat, ')
           ..write('plainText: $plainText, ')
           ..write('isPinned: $isPinned, ')
           ..write('isArchived: $isArchived, ')
@@ -14361,6 +14418,7 @@ typedef $$NotesTableCreateCompanionBuilder =
       required String title,
       Value<String?> contentDelta,
       Value<String?> contentMarkdown,
+      Value<String> contentFormat,
       Value<String?> plainText,
       Value<bool> isPinned,
       Value<bool> isArchived,
@@ -14380,6 +14438,7 @@ typedef $$NotesTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String?> contentDelta,
       Value<String?> contentMarkdown,
+      Value<String> contentFormat,
       Value<String?> plainText,
       Value<bool> isPinned,
       Value<bool> isArchived,
@@ -14431,6 +14490,11 @@ class $$NotesTableFilterComposer extends Composer<_$AwDatabase, $NotesTable> {
 
   ColumnFilters<String> get contentMarkdown => $composableBuilder(
     column: $table.contentMarkdown,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentFormat => $composableBuilder(
+    column: $table.contentFormat,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14518,6 +14582,11 @@ class $$NotesTableOrderingComposer extends Composer<_$AwDatabase, $NotesTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get contentFormat => $composableBuilder(
+    column: $table.contentFormat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get plainText => $composableBuilder(
     column: $table.plainText,
     builder: (column) => ColumnOrderings(column),
@@ -14597,6 +14666,11 @@ class $$NotesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get contentFormat => $composableBuilder(
+    column: $table.contentFormat,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get plainText =>
       $composableBuilder(column: $table.plainText, builder: (column) => column);
 
@@ -14659,6 +14733,7 @@ class $$NotesTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> contentDelta = const Value.absent(),
                 Value<String?> contentMarkdown = const Value.absent(),
+                Value<String> contentFormat = const Value.absent(),
                 Value<String?> plainText = const Value.absent(),
                 Value<bool> isPinned = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
@@ -14676,6 +14751,7 @@ class $$NotesTableTableManager
                 title: title,
                 contentDelta: contentDelta,
                 contentMarkdown: contentMarkdown,
+                contentFormat: contentFormat,
                 plainText: plainText,
                 isPinned: isPinned,
                 isArchived: isArchived,
@@ -14695,6 +14771,7 @@ class $$NotesTableTableManager
                 required String title,
                 Value<String?> contentDelta = const Value.absent(),
                 Value<String?> contentMarkdown = const Value.absent(),
+                Value<String> contentFormat = const Value.absent(),
                 Value<String?> plainText = const Value.absent(),
                 Value<bool> isPinned = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
@@ -14712,6 +14789,7 @@ class $$NotesTableTableManager
                 title: title,
                 contentDelta: contentDelta,
                 contentMarkdown: contentMarkdown,
+                contentFormat: contentFormat,
                 plainText: plainText,
                 isPinned: isPinned,
                 isArchived: isArchived,

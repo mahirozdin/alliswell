@@ -61,6 +61,7 @@ class NoteDetail extends NoteRow {
     super.updatedAt,
     this.contentDelta,
     this.contentMarkdown,
+    this.contentFormat = 'delta',
     this.links = const [],
   });
 
@@ -81,6 +82,7 @@ class NoteDetail extends NoteRow {
       contentDelta: (json['contentDelta'] as List?)
           ?.cast<Map<String, dynamic>>(),
       contentMarkdown: json['contentMarkdown'] as String?,
+      contentFormat: (json['contentFormat'] as String?) ?? 'delta',
       links: ((json['links'] as List?) ?? const [])
           .map((l) => NoteLink.fromJson(l as Map<String, dynamic>))
           .toList(),
@@ -89,6 +91,15 @@ class NoteDetail extends NoteRow {
 
   final List<Map<String, dynamic>>? contentDelta;
   final String? contentMarkdown;
+
+  /// Which of the two above is CANONICAL (ADR-0028 §1) — `'delta'` or
+  /// `'markdown'`. Defaults to `'delta'`: that is what every note written
+  /// before OPH-248 is, and what the server's column default says too.
+  final String contentFormat;
+
+  /// Reading is always a real markdown renderer; this decides which EDITOR a
+  /// note may open in (DESIGN §29 D1, as amended in OPH-248).
+  bool get isMarkdownCanonical => contentFormat == 'markdown';
   final List<NoteLink> links;
 }
 

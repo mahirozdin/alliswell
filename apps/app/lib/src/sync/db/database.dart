@@ -280,6 +280,13 @@ class Notes extends Table {
   /// Quill delta ops as a JSON string (canonical content, §9.1).
   TextColumn get contentDelta => text().nullable()();
   TextColumn get contentMarkdown => text().nullable()();
+
+  /// Which of the two above is CANONICAL (v17, OPH-248, ADR-0028 §1).
+  ///
+  /// `'delta'` or `'markdown'`. Defaulted rather than nullable so the replica
+  /// answers the same way the server does for every row that predates the
+  /// column — the migration backfills nothing because it does not have to.
+  TextColumn get contentFormat => text().withDefault(const Constant('delta'))();
   TextColumn get plainText => text().nullable()();
   BoolColumn get isPinned => boolean().withDefault(const Constant(false))();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
@@ -540,7 +547,7 @@ class AwDatabase extends _$AwDatabase {
   /// v15 → v16 (OPH-242): share_events, the share pipeline's device-local
   /// diagnostic trail — content-free, never synced.
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -651,6 +658,13 @@ class AwDatabase extends _$AwDatabase {
       // device-local table — nothing to backfill, and nothing that could ever
       // have been synced.
       if (from < 16) await m.createTable(shareEvents);
+      // v17 (OPH-248, ADR-0028 §1): which field is a note's canonical content.
+      // A column on an EXISTING table, so it needs the `from >= 1` guard the
+      // file learned in v6/v7 — a fresh install creates `notes` with the
+      // column already in it, and adding it again would fail.
+      if (from < 17 && from >= 1) {
+        await m.addColumn(notes, notes.contentFormat);
+      }
     },
   );
 

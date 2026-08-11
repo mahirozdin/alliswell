@@ -296,6 +296,9 @@ NotesCompanion noteCompanion(Map<String, dynamic> d) => NotesCompanion.insert(
     d['contentDelta'] == null ? null : jsonEncode(d['contentDelta']),
   ),
   contentMarkdown: Value(d['contentMarkdown'] as String?),
+  // A server that predates OPH-248 sends nothing; 'delta' is the same answer
+  // its table default gives, so the replica never disagrees with it.
+  contentFormat: Value((d['contentFormat'] as String?) ?? 'delta'),
   plainText: Value((d['plainText'] as String?) ?? (d['snippet'] as String?)),
   isPinned: Value((d['isPinned'] as bool?) ?? false),
   isArchived: Value((d['isArchived'] as bool?) ?? false),

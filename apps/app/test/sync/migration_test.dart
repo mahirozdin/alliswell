@@ -40,6 +40,9 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
+    await db.customStatement(
+      'ALTER TABLE notes DROP COLUMN content_format', // v17
+    );
     await db.customStatement('DROP TABLE share_events'); // v16
     await db.customStatement('DROP TABLE ai_messages'); // v15
     await db.customStatement('DROP TABLE task_series'); // v14
@@ -164,6 +167,13 @@ void main() {
       // v16 (OPH-242): the share pipeline's diagnostic trail, same story —
       // device-local, never synced, blank until something is shared here.
       expect(await db.select(db.shareEvents).get(), isEmpty);
+      // v17 (OPH-248): a COLUMN this time, not a table — and the point of
+      // ADR-0028 §1 is that it needs no backfill. A note that existed before
+      // the column comes out of the migration already saying what it is.
+      final migratedNotes = await db.select(db.notes).get();
+      for (final note in migratedNotes) {
+        expect(note.contentFormat, 'delta');
+      }
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -171,7 +181,7 @@ void main() {
       expect(pending.single.entityId, 'T1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 16);
+      expect(version.data['user_version'], 17);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -217,7 +227,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 16);
+      expect(version.data['user_version'], 17);
       await db.close();
     },
   );

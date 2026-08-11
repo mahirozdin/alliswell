@@ -178,6 +178,9 @@ class NoteStore {
               projectId: Value(body['projectId'] as String?),
               contentDelta: Value(delta == null ? null : jsonEncode(delta)),
               contentMarkdown: Value(body['contentMarkdown'] as String?),
+              contentFormat: Value(
+                (body['contentFormat'] as String?) ?? 'delta',
+              ),
               plainText: Value(plainTextFromDelta(delta)),
               bodyFold: Value(foldSearchText(plainTextFromDelta(delta))),
               isPinned: Value((body['isPinned'] as bool?) ?? false),
@@ -218,6 +221,11 @@ class NoteStore {
         contentDelta: Value(delta == null ? null : jsonEncode(delta)),
         plainText: Value(plainTextFromDelta(delta)),
         bodyFold: Value(foldSearchText(plainTextFromDelta(delta))),
+      );
+    }
+    if (patch.containsKey('contentFormat')) {
+      companion = companion.copyWith(
+        contentFormat: Value(patch['contentFormat'] as String),
       );
     }
     if (patch.containsKey('contentMarkdown')) {
@@ -314,6 +322,7 @@ class NoteStore {
         ? null
         : (jsonDecode(r.contentDelta!) as List).cast<Map<String, dynamic>>(),
     contentMarkdown: r.contentMarkdown,
+    contentFormat: r.contentFormat,
     links: [
       for (final l in links)
         NoteLink(id: l.id, entityType: l.entityType, entityId: l.entityId),
