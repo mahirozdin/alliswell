@@ -36,6 +36,27 @@ bir kontrast çifti (OPH-247'nin dersi).
 **Kapı sınandı:** `bold` kasten `meta`-only'ye döndürüldü, test
 `bold has no Ctrl binding` diyerek yakaladı, geri alındı.
 
+**Ve yol boyunca çok daha önemli bir şey ölçüldü — bir kapının var olması
+kapatıyor olması demek değil.** `dart format`ı paket geneline koşunca hiç
+dokunmadığım bir dosya değişti: `features/files/ui/image_viewer.dart`
+**`ef902d5`'ten (OPH-247) beri biçimsizmiş** ve altı commit boyunca öyle kalmış —
+o turların HEPSİ STATE'te "format temiz" diyordu. Kanıt tahmin değil: `ef902d5`'in
+içeriği gerçek paket ağacına geri yazıldı ve CI'ın **birebir** komutu
+(`dart format --output=none --set-exit-if-changed lib test`, `ci.yml:200`)
+koşuldu → **exit 1**. Kapı doğru yazılmış, koşulsuz çalışıyor ve aynı Flutter
+sürümünü sabitliyor. **Sebep şu: yerel `main`, `origin/main`'in 16 commit
+önünde** — yani bu commit'lerin hiçbiri CI'a hiç varmadı. OPH-246'nın
+"`flutter analyze` temiz DEĞİLDİ" bulgusunun aynısı, bir katman yukarıda:
+o zaman kapı koşulmuştu ve iddia yanlıştı; bu sefer kapı hiç koşulmadı.
+Ders: **turun DoD'si `dart format <dokunduğum dizin>` değil, CI'ın koştuğu
+komutun kendisi olmalı** — dar bir kapsam, kapıyı "geçiyor" gösterir.
+Biçimlendirme düzeltmesi palet commit'ine bindi ve mesajında adıyla yazıldı
+(davranış değişikliği sıfır, yalnız boşluk).
+
+**Bekleyen karar (sahibe ait):** 16 commit push edilmedi. Push, CI'ı ilk kez bu
+zincirin tamamı üzerinde koşturacak — dışa dönük bir işlem olduğu için
+sorulmadan yapılmadı.
+
 Önceki blok: 2026-08-11e (**EPIC 24'ÜN KAPANIŞI PLANLANDI — kod yazılmadı,
 süitler 1093.**
 
