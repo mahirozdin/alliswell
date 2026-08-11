@@ -12,15 +12,26 @@ import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart' show UploadRowTile;
 import '../../files/ui/note_media.dart';
 import '../../../theme/tokens.dart';
-import '../data/delta_markdown.dart';
 import '../data/note.dart';
+import '../data/note_document.dart';
+import '../markdown/aw_markdown.dart';
+import '../markdown/md_parse.dart';
 import '../providers.dart';
+import 'modes/note_mode_control.dart';
+import 'modes/source_mode.dart';
 import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
 
-/// Rich note editor (OPH-044): flutter_quill content with debounced delta
-/// autosave. A new note (noteId == null) is created on the first save; the
-/// generated markdown is stored alongside the delta and drives the preview.
+/// The note editor (OPH-044, rebuilt for three modes in OPH-248).
+///
+/// A note is a DOCUMENT (DESIGN §29). What it is made of decides which surfaces
+/// may edit it — `NoteDocument` owns that decision, and this screen is the
+/// shell around it: app bar, mode control, autosave.
+///
+/// The old `_showMarkdownPreview()` is gone. It was a read-only monospace sheet
+/// of the generated markdown, which is neither Reading (that renders now) nor
+/// Source (that edits now); keeping it would have left three ways to look at
+/// one document, two of them worse.
 class NoteEditorScreen extends ConsumerWidget {
   const NoteEditorScreen({super.key, this.noteId});
 
@@ -54,8 +65,7 @@ class _NoteEditor extends ConsumerStatefulWidget {
 class _NoteEditorState extends ConsumerState<_NoteEditor> {
   static const _autosaveDelay = Duration(milliseconds: 1500);
 
-  late final TextEditingController _title;
-  late final QuillController _quill;
+  late final NoteDocument _doc;
   Timer? _debounce;
   String? _noteId;
   bool _isPinned = false;
@@ -69,14 +79,9 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _noteId = widget.note?.id;
     _isPinned = widget.note?.isPinned ?? false;
     _isArchived = widget.note?.isArchived ?? false;
-    _title = TextEditingController(text: widget.note?.title ?? '');
-    _quill = QuillController.basic();
-    final delta = widget.note?.contentDelta;
-    if (delta != null && delta.isNotEmpty) {
-      _quill.document = Document.fromJson(delta);
-    }
-    _title.addListener(_markDirty);
-    _quill.document.changes.listen((_) => _markDirty());
+    _doc = NoteDocument(note: widget.note)..addListener(_onDocChanged);
+    _doc.title.addListener(_markDirty);
+    _doc.quill.document.changes.listen((_) => _markDirty());
   }
 
   @override
@@ -84,9 +89,14 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _debounce?.cancel();
     // Flush a pending save without awaiting (screen is going away).
     if (_dirty) unawaited(_save());
-    _title.dispose();
-    _quill.dispose();
+    _doc
+      ..removeListener(_onDocChanged)
+      ..dispose();
     super.dispose();
+  }
+
+  void _onDocChanged() {
+    if (mounted) setState(() {});
   }
 
   void _markDirty() {
@@ -109,21 +119,9 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     return (noteId: id, workspaceId: workspaces.first.id);
   }
 
-  List<Map<String, dynamic>> get _deltaJson =>
-      _quill.document.toDelta().toJson().cast<Map<String, dynamic>>();
-
-  String get _titleText =>
-      _title.text.trim().isEmpty ? 'note.untitled'.tr() : _title.text.trim();
-
-  /// The title is part of the document (Apple-Notes style): exports lead
-  /// with it as an H1 (feedback round 1).
-  String get _markdown => '# $_titleText\n\n${deltaToMarkdown(_deltaJson)}';
-
-  Map<String, dynamic> get _body => {
-    'title': _titleText,
-    'contentDelta': _deltaJson,
-    'contentMarkdown': _markdown,
-  };
+  String get _titleText => _doc.title.text.trim().isEmpty
+      ? 'note.untitled'.tr()
+      : _doc.title.text.trim();
 
   Future<void> _save() async {
     if (_saving || !_dirty) return;
@@ -131,12 +129,13 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _dirty = false;
     try {
       final store = ref.read(noteStoreProvider);
+      final body = _doc.bodyFor(_titleText);
       if (_noteId == null) {
         final workspaces = await ref.read(workspacesProvider.future);
         if (workspaces.isEmpty) return;
-        _noteId = await store.create(workspaces.first.id, _body);
+        _noteId = await store.create(workspaces.first.id, body);
       } else {
-        await store.update(_noteId!, _body);
+        await store.update(_noteId!, body);
       }
     } on Object {
       _dirty = true; // keep the changes marked; the next edit retries
@@ -168,28 +167,45 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     await ref.read(noteStoreProvider).update(_noteId!, {'isArchived': next});
   }
 
-  void _showMarkdownPreview() {
-    final markdown = _markdown;
-    showModalBottomSheet<void>(
+  /// The conversion door (DESIGN §29 D1, as amended in OPH-248).
+  ///
+  /// Named, deliberate, and warned — never a silent reinterpretation of
+  /// somebody's note. Going to markdown flattens what Delta could hold; coming
+  /// back parses what markdown can express. Either way the OTHER form is
+  /// rebuilt from this one, so it is one-way in effect even though the button
+  /// exists in both directions.
+  Future<void> _convert() async {
+    final toMarkdown = _doc.convertTarget == NoteFormat.markdown;
+    final confirmed = await showDialog<bool>(
       context: context,
-      // OPH-212: the ROOT navigator. Pushed into a shell branch, a sheet
-      // renders UNDER the shell's own glass bar and FAB — they are painted by
-      // the Scaffold that owns the branch, above its body.
       useRootNavigator: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      constraints: const BoxConstraints(maxWidth: 720),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
-        child: SingleChildScrollView(
-          child: SelectableText(
-            markdown.isEmpty ? 'note.emptyPreview'.tr() : markdown,
-            key: const Key('markdown-preview'),
-            style: const TextStyle(fontFamily: 'monospace', height: 1.6),
-          ),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          toMarkdown
+              ? 'note.convertToMarkdown'.tr()
+              : 'note.convertToRich'.tr(),
         ),
+        content: Text(
+          toMarkdown
+              ? 'note.convertToMarkdownBody'.tr()
+              : 'note.convertToRichBody'.tr(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('common.cancel'.tr()),
+          ),
+          FilledButton(
+            key: const Key('note-convert-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('note.convertAction'.tr()),
+          ),
+        ],
       ),
     );
+    if (confirmed != true || !mounted) return;
+    _doc.convert();
+    _markDirty();
   }
 
   Future<void> _delete() async {
@@ -254,21 +270,13 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             onPressed: _toggleArchived,
           ),
           IconButton(
-            tooltip: 'note.markdownPreview'.tr(),
-            icon: const Icon(Icons.preview_outlined),
-            onPressed: _showMarkdownPreview,
-          ),
-          IconButton(
             tooltip: 'note.deleteTooltip'.tr(),
             icon: const Icon(Icons.delete_outline),
             onPressed: _delete,
           ),
           // OPH-201: an overflow rather than a sixth icon — this app bar is
-          // already at the phone's limit. The existing icons stay put.
-          //
-          // Round 16 #3: the menu is no longer gated on an id. PDF export works
-          // on a note that has never been saved (the document is right here in
-          // memory); only the quick-access row needs a persisted target.
+          // already at the phone's limit. The mode control took the preview
+          // button's place (OPH-248), so the count did not grow.
           PopupMenuButton<String>(
             key: const Key('note-quick-menu'),
             tooltip: 'quick.actions'.tr(),
@@ -279,10 +287,14 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                     context,
                     ref,
                     title: _titleText,
-                    deltaJson: _deltaJson,
+                    deltaJson: _doc.deltaJson,
                     updatedAt: widget.note?.updatedAt,
                   ),
                 );
+                return;
+              }
+              if (value == 'convert') {
+                unawaited(_convert());
                 return;
               }
               if (_noteId case final id?) {
@@ -291,7 +303,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                   ref,
                   kind: QuickKind.note,
                   targetId: id,
-                  suggestedTitle: _title.text,
+                  suggestedTitle: _doc.title.text,
                 );
               }
             },
@@ -303,6 +315,19 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.picture_as_pdf_outlined),
                   title: Text('note.exportPdf'.tr()),
+                ),
+              ),
+              PopupMenuItem(
+                key: const Key('note-convert'),
+                value: 'convert',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.swap_horiz),
+                  title: Text(
+                    _doc.convertTarget == NoteFormat.markdown
+                        ? 'note.convertToMarkdown'.tr()
+                        : 'note.convertToRich'.tr(),
+                  ),
                 ),
               ),
               if (_noteId case final id?)
@@ -317,38 +342,14 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: QuillSimpleToolbar(
-                        controller: _quill,
-                        config: const QuillSimpleToolbarConfig(
-                          multiRowsDisplay: false,
-                          showFontFamily: false,
-                          showFontSize: false,
-                          showSubscript: false,
-                          showSuperscript: false,
-                          showAlignmentButtons: false,
-                          showIndent: false,
-                          showDirection: false,
-                          showSearchButton: false,
-                        ),
-                      ),
-                    ),
-                    // Epic 14 (OPH-156): inline images/videos.
-                    NoteMediaButtons(
-                      controller: _quill,
-                      ensureNote: _ensureNote,
-                    ),
-                  ],
-                ),
-              ),
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+            child: NoteModeControl(
+              modes: _doc.availableModes,
+              active: _doc.mode,
+              onChanged: _doc.setMode,
             ),
           ),
+          if (_doc.mode == NoteMode.live) _liveToolbar(),
           // In-flight/failed media uploads for THIS note (F2: visible state).
           for (final job
               in ref
@@ -362,19 +363,23 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             ),
           // Apple-Notes style: the title is the document's fixed first block —
           // an H1 the note content flows under (feedback round 1). Content is
-          // width-capped for a readable measure on wide screens.
+          // width-capped for a readable measure on wide screens, EXCEPT in the
+          // split view, which wants the whole window.
           Expanded(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
+                constraints: BoxConstraints(
+                  maxWidth: _doc.mode == NoteMode.source ? 1400 : 760,
+                ),
                 child: Column(
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                       child: TextField(
                         key: const Key('note-title'),
-                        controller: _title,
+                        controller: _doc.title,
                         maxLines: null,
+                        readOnly: _doc.mode == NoteMode.reading,
                         decoration: InputDecoration(
                           hintText: 'note.titleHint'.tr(),
                           border: InputBorder.none,
@@ -389,19 +394,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                         style: theme.textTheme.headlineMedium,
                       ),
                     ),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: QuillEditor.basic(
-                          controller: _quill,
-                          config: QuillEditorConfig(
-                            placeholder: 'note.startWriting'.tr(),
-                            padding: const EdgeInsets.only(top: 8, bottom: 24),
-                            embedBuilders: awNoteEmbedBuilders(),
-                          ),
-                        ),
-                      ),
-                    ),
+                    Expanded(child: _body()),
                   ],
                 ),
               ),
@@ -411,4 +404,57 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       ),
     );
   }
+
+  Widget _liveToolbar() => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+    child: Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Row(
+          children: [
+            Expanded(
+              child: QuillSimpleToolbar(
+                controller: _doc.quill,
+                config: const QuillSimpleToolbarConfig(
+                  multiRowsDisplay: false,
+                  showFontFamily: false,
+                  showFontSize: false,
+                  showSubscript: false,
+                  showSuperscript: false,
+                  showAlignmentButtons: false,
+                  showIndent: false,
+                  showDirection: false,
+                  showSearchButton: false,
+                ),
+              ),
+            ),
+            // Epic 14 (OPH-156): inline images/videos.
+            NoteMediaButtons(controller: _doc.quill, ensureNote: _ensureNote),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _body() => switch (_doc.mode) {
+    // D4: Reading is never editable-looking — no caret, no placeholder, no
+    // toolbar. (Tappable task-list checkboxes that write back are OPH-249's,
+    // and they need the source map this renderer already carries.)
+    NoteMode.reading => AwMarkdown(
+      key: const Key('note-reading'),
+      document: parseMarkdown(_doc.markdown),
+    ),
+    NoteMode.source => SourceMode(document: _doc, onChanged: _markDirty),
+    NoteMode.live => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: QuillEditor.basic(
+        controller: _doc.quill,
+        config: QuillEditorConfig(
+          placeholder: 'note.startWriting'.tr(),
+          padding: const EdgeInsets.only(top: 8, bottom: 24),
+          embedBuilders: awNoteEmbedBuilders(),
+        ),
+      ),
+    ),
+  };
 }

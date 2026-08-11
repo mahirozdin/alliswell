@@ -1141,6 +1141,19 @@ take/later/reject inventory and the model decision are in
 | # | Rule | Why |
 | --- | --- | --- |
 | D1 | **Exactly three modes: Reading · Live · Source.** One control switches them; the control shows which one is active and never hides. | Obsidian's triple is the only mental model users already have. A fourth mode is a design failure, not a feature. |
+
+> **D1 amended (OPH-248).** Three modes exist in the app; a NOTE offers **two**.
+>
+> ADR-0028 §1 made a note either Delta-canonical or markdown-canonical, and
+> only one editor can honour a given note's canonical content: Live edits a
+> Delta, Source edits markdown text. Offering both would either lie about what
+> gets saved or convert the document underneath the user. So a note shows
+> Reading plus whichever editor matches it, and the third is reached through a
+> **named, warned, one-way conversion** in the overflow menu.
+>
+> This narrows D1's scope, not its intent. A greyed-out third segment would be
+> exactly the dead affordance §22 forbids, and "the control never hides" still
+> holds — it shows what this note can actually do.
 | D2 | **Reading is the default for a document that arrived from outside**; Live is the default for a note the user wrote here. | The first thing you do with someone else's file is read it. The first thing you do with yours is keep writing. |
 | D3 | **A mode switch preserves the caret, the scroll position and the undo history.** | A switch that loses your place is a switch nobody uses twice. |
 | D4 | **Reading is never editable-looking.** No caret, no placeholder, no toolbar — but checkboxes in task lists ARE tappable, and ticking one writes to the document. | The one interaction people genuinely expect from a rendered task list. Everything else pretending to be editable is a lie. |

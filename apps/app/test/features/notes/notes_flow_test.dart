@@ -9,6 +9,7 @@ import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -103,12 +104,26 @@ void main() {
       reason: 'title loads into the app bar field',
     );
 
-    // Markdown preview renders the converted delta, led by the title as H1.
-    await tester.tap(find.byIcon(Icons.preview_outlined));
+    // OPH-248 replaced the monospace "preview" sheet with a real Reading mode.
+    // The old assertion looked for the markdown SOURCE (`# Detaylı not`,
+    // `**Kalın kısım**`); a rendered document shows neither, because the marks
+    // have become a heading and bold text — which is the entire point.
+    expect(find.byKey(const Key('note-mode-control')), findsOneWidget);
+    await tester.tap(find.text('Reading'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('markdown-preview')), findsOneWidget);
-    expect(find.textContaining('# Detaylı not'), findsOneWidget);
-    expect(find.textContaining('**Kalın kısım**'), findsOneWidget);
+
+    expect(find.byType(AwMarkdown), findsOneWidget);
+    expect(find.byType(QuillEditor), findsNothing, reason: 'D4: no editor');
+    expect(
+      find.textContaining('Kalın kısım', findRichText: true),
+      findsWidgets,
+      reason: 'the text survives; only its asterisks are gone',
+    );
+    expect(
+      find.textContaining('**Kalın kısım**', findRichText: true),
+      findsNothing,
+      reason: 'rendered, not shown as source',
+    );
   });
 
   testWidgets('star quick-pins from the list; archive menu hides the note', (

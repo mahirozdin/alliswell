@@ -15,6 +15,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   long line scrolls **inside its own box** instead of dragging the whole page
   sideways. Images draw for real and open full screen in the same viewer
   everything else uses, with a swipe between the other images in the document.
+- **Notes have modes now: Reading, and the editor that matches the note.** A
+  note you wrote here opens in the rich editor; a document that came from a
+  file opens in Reading and edits as markdown text — which you could not do at
+  all before. One control switches them, switching never loses your place, and
+  on a wide screen the source can sit beside a live preview that scrolls with
+  it. Moving a note between the two is an explicit choice with a warning, never
+  something that happens to your document quietly.
 - **Mermaid diagrams are drawn, not shown as source.** Flowcharts and sequence
   diagrams render properly — shapes, labelled arrows, decision diamonds,
   lifelines and self-messages — with no browser engine involved. Diagram types

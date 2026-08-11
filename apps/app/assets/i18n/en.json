@@ -371,7 +371,18 @@
     "mdOpenFailed": "Couldn't open the file.",
     "mdTooLarge": "That file is {size} MB — too large to import as a note.",
     "mdProject": "Project",
-    "mdProjectHint": "Optional — the note is filed under it"
+    "mdProjectHint": "Optional — the note is filed under it",
+    "modeReading": "Reading",
+    "modeLive": "Live",
+    "modeSource": "Source",
+    "sourceHint": "Write markdown…",
+    "splitOn": "Split view",
+    "splitOff": "Single pane",
+    "convertToMarkdown": "Convert to markdown",
+    "convertToRich": "Convert to rich text",
+    "convertToMarkdownBody": "The note becomes markdown text you edit directly. Formatting the rich editor stores but markdown cannot express is flattened.",
+    "convertToRichBody": "The note becomes a rich-text document. Markdown this app does not parse — tables, footnotes, HTML — stays as plain text.",
+    "convertAction": "Convert"
   },
   "calendar": {
     "google": "Google Calendar",

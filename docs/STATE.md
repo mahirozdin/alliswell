@@ -3,7 +3,35 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-11a (**OPH-254 BİTTİ — mermaid çiziliyor: flowchart
+**Last updated:** 2026-08-11b (**OPH-248 BİTTİ — not editörü üç moda ayrıldı ve
+`content_format` uçtan uca bağlandı (API migration + drift v17). Süitler 1032,
+API 620, analyze/format/i18n temiz, `contrast.py` FAILURES: 0.
+Sıradaki iş: OPH-249 (anahat, katlama, bul-değiştir, çapalar).**
+
+**Turun tek cümlesi: D1'i uygulayamadım, TADİL ettim — ve sebebi modelin
+kendisi.** "Tam üç mod" Seçenek C altında dürüst değil: Canlı bir Delta'yı,
+Kaynak bir markdown metnini düzenler, ve bir notun kanonik içeriği yalnız biri.
+Diğerini sunmak ya kaydedilenin ne olduğu konusunda yalan söylerdi ya belgeyi
+kullanıcının altından çevirirdi. Bir not artık **iki** mod sunuyor, üçüncüsü
+adı konmuş ve uyarılı bir dönüştürmeyle geliyor. DESIGN §29'a yazıldı.
+
+**D3'ün mekanizması "geri yükle" değil "hiç yıkma":** denetleyiciler
+`NoteDocument`'ta belge ömrü boyunca yaşıyor, yani caret/seçim/geri-al
+kendiliğinden devam ediyor. Test bunu kimlikle assert ediyor.
+
+**Yol boyunca bulunan ve kökten çözülen kararsızlık:** `notes.test.js`'in
+"lists newest-first" vakası 6 koşuda 2 kırmızıydı. Sebep test değildi —
+`ids.js` "creation time'a göre sıralanabilir" diye söz veriyor ama düz
+`ulid()` bunu yalnız milisaniyeler ARASINDA tutuyor; aynı ms'de iki id
+bağımsız rastgele sonek alıyor ve notlar/görevler/dosyalar `orderBy('id','desc')`
+ile sayfalanıyor. Yani hızlı iki not oluşturan kullanıcı onları ters sırada
+görebilirdi. `monotonicFactory` sözü gerçek yaptı; mevcut id testi bunu
+yakalayamazdı çünkü teklik iki durumda da sağlanıyor.
+
+**Dürüstçe yarım bırakılan:** D5'in senkron kaydırması oransal, satır eşlemeli
+değil — o ölçüm anahat/çapa ile birlikte OPH-249'a ait ve kodda öyle yazıyor.
+
+Önceki blok: 2026-08-11a (**OPH-254 BİTTİ — mermaid çiziliyor: flowchart
 ve sequenceDiagram. Süitler 1011 (+49), analyze/format/i18n temiz,
 `contrast.py` FAILURES: 0. Sıradaki iş: OPH-248 (üç mod).**
 

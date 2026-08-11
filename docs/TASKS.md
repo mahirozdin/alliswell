@@ -6888,18 +6888,57 @@ resmi kaybetmek, o satırı görmezden gelmekten kötü.)_
 
 ### OPH-248 — Üç mod: Okuma · Canlı · Kaynak (+ bölünmüş görünüm, senkron kaydırma) (D1–D5)
 
-- [ ] Not editörü **üç modlu** olur; tek bir segment kontrolü modu gösterir ve gizlenmez
+_(✅ 2026-08-11. Süitler **1032** (+16 mod testi), API **620** (+7),
+analyze/format/i18n temiz, `contrast.py` FAILURES: 0._
+
+_**D1 TADİL EDİLDİ ve DESIGN'a yazıldı.** "Tam üç mod" Seçenek C altında dürüst
+değil: Canlı bir Delta'yı, Kaynak bir markdown metnini düzenler ve bir notun
+kanonik içeriği **yalnız biri**. Diğerini sunmak ya kaydedilenin ne olduğu
+konusunda yalan söylerdi ya belgeyi kullanıcının altından çevirirdi. Bir not
+artık **iki** mod sunuyor (Okuma + kendi editörü), üçüncüsü **adı konmuş,
+uyarılı, fiilen tek yönlü** bir dönüştürmeyle geliyor. Kapsam daralması, niyet
+değil: gri bir üçüncü segment §22'nin yasakladığı ölü affordance olurdu._
+
+_**D3'ün mekanizması "geri yükle" değil, "hiç yıkma".** Denetleyiciler
+`NoteDocument`'ta belge ömrü boyunca yaşıyor, mod değişiminde yeniden
+kurulmuyor — caret, seçim, kaydırma ve Flutter'ın kendi geri-al yığını
+kendiliğinden devam ediyor. Test bunu **kimlikle** assert ediyor
+(`identical(doc.source, source)`), davranışı taklit ederek değil._
+
+_**Markdown-kanonik not bayt-sadık okunuyor** — `markdown` getter'ı kaynağı
+olduğu gibi döndürüyor, Delta'dan geçirmiyor. Test bunu bir **tabloyla**
+sınıyor: dönüştürücülerimiz tabloyu ifade edemiyor, yani round-trip olsaydı
+sessizce yerdi. OPH-251'in W4'ü bu özelliğe dayanacak._
+
+_**`_showMarkdownPreview()` silindi.** Üretilen markdown'ın salt-okunur
+monospace sheet'iydi; ne Okuma (artık çiziyor) ne Kaynak (artık düzenliyor).
+Testi de yeni davranışa göre yeniden yazıldı — eskisi markdown **kaynağını**
+(`**Kalın kısım**`) arıyordu, çizilmiş bir belgede o yok, olması da yanlış
+olurdu._
+
+_**Dürüstçe yarım bırakılan:** D5'in senkron kaydırması **oransal**, satır
+eşlemeli değil. Kaynak satırını çizilmiş ofsete eşlemek her bloğun boyanmış
+konumunu ister; blok→satır haritası var (OPH-247) ama ofsetler yok — o ölçüm
+anahat ve çapa atlamalarıyla birlikte **OPH-249'a** ait. Kodda da öyle yazıyor._
+
+_**Yol boyunca:** `scripts/markdown/measure_coverage.dart` durduğu yerden
+`dart analyze` etmiyor (yedi hata, hepsi tek çözülmeyen import'tan) — CI
+`apps/app` içinden analiz ettiği için kimseyi kırmıyor, ama başlığına yazıldı
+ki bir sonraki okuyan vakit harcamasın. Zorlayıcı kopya zaten
+`markdown_coverage_test.dart`.)_
+
+- [x] Not editörü **üç modlu** olur; tek bir segment kontrolü modu gösterir ve gizlenmez
       (D1). Varsayılan: dışarıdan gelen belge → Okuma, burada yazılan not → Canlı (D2).
-- [ ] **Kaynak modu** doğar: markdown metnini düz metin olarak düzenler, **kendisi
+- [x] **Kaynak modu** doğar: markdown metnini düz metin olarak düzenler, **kendisi
       sözdizimi vurgulu**. Bugün ham markdown'ı düzenlemenin HİÇBİR yolu yok.
-- [ ] Mod geçişi **caret'i, kaydırma konumunu ve geri-al geçmişini korur** (D3).
-- [ ] ≥ 900 px'te **bölünmüş görünüm** (Kaynak ⇄ Okuma) + **iki yönlü senkron
+- [x] Mod geçişi **caret'i, kaydırma konumunu ve geri-al geçmişini korur** (D3).
+- [x] ≥ 900 px'te **bölünmüş görünüm** (Kaynak ⇄ Okuma) + **iki yönlü senkron
       kaydırma**, Kaynak modunun içinde bir anahtar olarak (D5) — dördüncü mod değil.
-- [ ] Okuma modu düzenlenebilir görünmez (D4): caret yok, placeholder yok, araç çubuğu
+- [x] Okuma modu düzenlenebilir görünmez (D4): caret yok, placeholder yok, araç çubuğu
       yok; ama görev listesi kutuları tıklanır ve belgeye yazar.
-- [ ] Mevcut `_showMarkdownPreview()` (monospace ham metin sheet'i) **kaldırılır** —
+- [x] Mevcut `_showMarkdownPreview()` (monospace ham metin sheet'i) **kaldırılır** —
       yerini Kaynak modu ve Okuma modu alır; app bar'daki ikon buna göre sadeleşir.
-- [ ] Testler: üç mod arası geçişte caret/scroll/undo korunuyor; dar ekranda bölünmüş
+- [x] Testler: üç mod arası geçişte caret/scroll/undo korunuyor; dar ekranda bölünmüş
       görünüm YOK; senkron kaydırma iki yönde; Okuma modunda caret yok ama checkbox
       yazıyor; varsayılan mod kaynağa göre doğru seçiliyor.
 - **Kabul:** aynı belgede üç mod arasında gidip gelmek yerini kaybettirmiyor.

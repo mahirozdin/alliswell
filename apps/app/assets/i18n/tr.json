@@ -370,7 +370,18 @@
     "mdOpenFailed": "Dosya açılamadı.",
     "mdTooLarge": "Bu dosya {size} MB — not olarak içe aktarmak için fazla büyük.",
     "mdProject": "Proje",
-    "mdProjectHint": "İsteğe bağlı — not bu projenin altına düşer"
+    "mdProjectHint": "İsteğe bağlı — not bu projenin altına düşer",
+    "modeReading": "Okuma",
+    "modeLive": "Canlı",
+    "modeSource": "Kaynak",
+    "sourceHint": "Markdown yaz…",
+    "splitOn": "Bölünmüş görünüm",
+    "splitOff": "Tek panel",
+    "convertToMarkdown": "Markdown'a çevir",
+    "convertToRich": "Zengin metne çevir",
+    "convertToMarkdownBody": "Not, doğrudan düzenlediğin bir markdown metnine dönüşür. Zengin editörün tuttuğu ama markdown'ın ifade edemediği biçimlendirme düzleşir.",
+    "convertToRichBody": "Not, zengin metin belgesine dönüşür. Bu uygulamanın ayrıştırmadığı markdown — tablo, dipnot, HTML — düz metin olarak kalır.",
+    "convertAction": "Çevir"
   },
   "calendar": {
     "google": "Google Takvim",

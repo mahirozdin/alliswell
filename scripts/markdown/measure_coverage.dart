@@ -8,9 +8,16 @@
 //     dart run _measure.dart test/fixtures/markdown_conformance.md
 //     rm _measure.dart
 //
-// OPH-247 `markdown`'ı DOĞRUDAN bağımlılığa yükseltince bu betik bir teste
-// dönüşür (`test/features/notes/markdown_coverage_test.dart`) ve iddia CI'da
-// zorlanır — bkz. ADR-0028 §Zorlama. O ana kadar sayılar elle üretilir.
+// **Zorlayıcı kopya artık bu değil.** OPH-247 bunu bir teste dönüştürdü —
+// `apps/app/test/features/notes/markdown/markdown_coverage_test.dart` — ve
+// CI'da koşan o. Bu dosya ADR-0028'in sayılarının NASIL üretildiğinin kaydı
+// olarak duruyor.
+//
+// Burada durduğu yerden `dart analyze` ETMEZ ve koşmaz: `package:markdown`
+// yalnız `apps/app`'in paket çözümünde var, o yüzden analiz burada yedi hata
+// verir ve yedisi de aynı çözülmeyen import'tan gelir. CI `apps/app` içinden
+// analiz ettiği için bu kimseyi kırmıyor; yine de bilerek yazılıyor ki bir
+// sonraki okuyan "burası neden kırmızı" diye vakit harcamasın.
 //
 // OPH-246 ölçümü — iki soruya sayıyla cevap verir:
 //   1. Ağaçtaki `markdown` 7.3.1 + gitHubWeb, D6 hedefinin ne kadarını KARŞILIYOR?

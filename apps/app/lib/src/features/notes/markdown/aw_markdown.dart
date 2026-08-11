@@ -57,6 +57,7 @@ class AwMarkdown extends ConsumerStatefulWidget {
     this.onTapImage,
     this.padding = const EdgeInsets.symmetric(horizontal: AwSpace.x5),
     this.shrinkWrap = false,
+    this.controller,
   });
 
   final MdDocument document;
@@ -67,6 +68,11 @@ class AwMarkdown extends ConsumerStatefulWidget {
   /// Tests and short embeds want the whole document laid out at once; a real
   /// README wants the lazy list. Both go through the same block builders.
   final bool shrinkWrap;
+
+  /// Scroll controller for the lazy list. Exposed so the split view can mirror
+  /// this pane against the source pane (DESIGN §29 D5); ignored when
+  /// [shrinkWrap] is on, because then there is no scroll view of our own.
+  final ScrollController? controller;
 
   @override
   ConsumerState<AwMarkdown> createState() => _AwMarkdownState();
@@ -110,6 +116,7 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
     // OPH-249 needs to jump to a heading — the scroll mechanism is that task's
     // choice, not this one's.
     return ListView.builder(
+      controller: widget.controller,
       padding: widget.padding,
       itemCount: blocks.length,
       itemBuilder: (_, i) => _block(blocks[i], styles),
