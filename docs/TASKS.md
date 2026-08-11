@@ -7051,7 +7051,7 @@ _İkisi de OPH-250'nin altında açık kutu olarak duruyor._
       geri döner, sessizce kırpılmaz).
 - [x] **Telefonda klavye üstü kaydırılabilir markdown araç çubuğu** (D18); masaüstü/web'de
       **klavye kısayolları** (⌘B/I/K, H1–H3, kod, alıntı, liste).
-- [ ] **Komut paleti (⌘K / Ctrl+K)** — D18'in bu yarısı. **Ürün kararı verildi
+- [x] **Komut paleti (⌘K / Ctrl+K)** — D18'in bu yarısı. **Ürün kararı verildi
       (2026-08-11, sahip): palet YAZILIR**, slash telefon/satır-içi yol olarak kalır.
       Palet `mdActions()`'tan doğar — dördüncü bir eylem tanımı yasak, D19'un "slash
       İKİNCİ yol" kuralı ancak böyle ayakta kalır. Eşleştirme `foldSearchText()`
@@ -7061,12 +7061,48 @@ _İkisi de OPH-250'nin altında açık kutu olarak duruyor._
       `AwSearchField` (**`debounce: Duration.zero`** — varsayılan 250 ms palet için
       yanlış), klavye gezinmesi (↑/↓/Enter/Esc) paletin ayırt edici özelliği.
       ⌘K bugün "bağlantı"da → bağlantı **⌘⇧K**'ya taşınır.
-- [ ] **Kısayollar Windows/Linux/web'de ÖLÜ** (yol boyunca ölçülen gerileme):
+- [x] **Kısayollar Windows/Linux/web'de ÖLÜ** (yol boyunca ölçülen gerileme):
       `md_actions.dart` yalnız `meta: true` tanımlıyor, yani ⌘B/I/K macOS'ta çalışıyor
       ama **Ctrl+B/I/K hiçbir yerde çalışmıyor** — dosya başlığı ve `MdAction.shortcut`
       dokümantasyonu "⌘/Ctrl" dediği hâlde. §22 reachability ihlali;
       `find_replace_bar.dart` doğrusunu zaten yapıyor (ikisini de kaydediyor).
       Her kısayola `control:` varyantı + bunu bekçileyen test.
+
+_(**Palet + kısayollar sevk edildi 2026-08-11f.** Süitler **1101** (+8),
+analyze/format/i18n temiz, `contrast.py` FAILURES: 0._
+
+_**Alan çoğul oldu:** `MdAction.shortcut` → `shortcuts`, ve `metaOrControl()`
+çifti üretiyor. Tekil alan tutmak hatanın **sebebiydi** — `SingleActivator`
+"meta VEYA control" diyemiyor, yani tek aktivatörlü bir alan sessizce
+"yalnız macOS" demek. Çoğul ad, eksikliği görünür kılıyor._
+
+_**Palet dördüncü bir liste değil, dördüncü bir GÖRÜNÜM:** `matchMdActions()`
+tek eşleştirici ve `matchSlash` artık ona delege ediyor. Ayrımı sorgu yapıyor —
+`/` ile başlayan bir sorgu komutu ÖN EKTEN eşliyor (slash semantiği birebir
+korundu), kelime sorgusu ise **yerelleştirilmiş etiketi** `foldSearchText` ile
+eşliyor, yani "kalin" → "Kalın". Etiket enjekte ediliyor, böylece
+`md_actions.dart` i18n'den bağımsız ve saf kalıyor._
+
+_**⌘K çakışmasını çözmek gerekti:** bağlantı **⌘⇧K**'ya taşındı (Slack, Notion
+ve VS Code de çıplak ⌘K'yı komut yüzeyine ayırıyor) ve bir test hiçbir eylemin
+paletin aktivatörünü geri almadığını bekçiliyor — alsaydı palet sessizce
+ulaşılmaz olurdu._
+
+_**Tuş dinleyicisi alanın KENDİ node'unda**, üstteki bir `Focus`ta değil:
+`DefaultTextEditingShortcuts` kökün yakınında kurulu, yani üstte duran bir
+işleyici ancak metin alanı tuşa çoktan davrandıktan sonra çalışırdı._
+
+_**Seçili satırın vurgusu metin değil ZEMİN rengi:** `ListTile`ın varsayılan
+`selectedColor`'ı etiketi ve ikonu `primary` ile boyuyor — hiç ölçülmemiş bir
+kontrast çifti. OPH-247'nin dersi (var olmayan bir zemini ölçmek `FAILURES: 0`
+yalanı söyler) burada peşinen uygulandı._
+
+_**Kapı sınandı:** `bold`u kasten `meta`-only'ye döndürdüm, test
+`bold has no Ctrl binding` diyerek yakaladı, geri alındı._
+
+_**Kalan iki madde bilinçli açık:** sürükle-bırak ve panodan görsel. İkincisi
+**OPH-256'ya bağımlı** (`alliswell_docref.clipboardRead()` henüz yok) — AGENTS §2'nin
+"blocked ise sebebini yaz" maddesi.)_
 - [x] **Slash komutları** (D19) her araç çubuğu eylemine ikinci yol olarak; tek yol asla
       değil.
 - [x] **Akıllı yapıştırma** (D20): HTML → markdown, seçimin üstüne URL → bağlantı;

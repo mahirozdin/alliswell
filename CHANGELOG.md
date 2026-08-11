@@ -24,6 +24,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   the raw paste back. A word count sits out of the way, a focus mode dims
   everything but the paragraph you are in, and autosave finally says whether it
   saved — it used to work in silence and fail in silence too.
+- **A command palette, and shortcuts that finally work off a Mac.** ⌘K (Ctrl+K)
+  opens a searchable list of every formatting command, navigable entirely from
+  the keyboard, and it searches by name rather than by command — typing "kalin"
+  finds "Kalın". Along the way: ⌘B, ⌘I and ⌘K were bound to the Command key
+  only, so on Windows, Linux and in the browser the Ctrl versions had never
+  done anything at all. They do now. Making a link moved to ⌘⇧K.
 - **Long documents got navigable.** An outline of every heading sits beside the
   document on a wide screen and one tap away on a phone, following you as you
   scroll; tapping a heading jumps there even in a document you have not read

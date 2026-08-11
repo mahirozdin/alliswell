@@ -377,6 +377,8 @@
     "modeLive": "Canlı",
     "modeSource": "Kaynak",
     "sourceHint": "Markdown yaz…",
+    "paletteHint": "Komut ara…",
+    "paletteEmpty": "Eşleşen komut yok.",
     "splitOn": "Bölünmüş görünüm",
     "splitOff": "Tek panel",
     "convertToMarkdown": "Markdown'a çevir",

@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'find_replace_bar.dart';
+import 'md_command_palette.dart';
 import 'md_toolbar.dart';
 
 import '../../../../i18n/i18n.dart';
@@ -124,6 +125,15 @@ class _SourceModeState extends State<SourceMode> {
     setState(() => _slashMatches = matches);
   }
 
+  /// ⌘K / Ctrl+K (D18). The palette picks an action; applying it is the same
+  /// single assignment every other surface makes, so it is one undo.
+  Future<void> _openPalette() async {
+    final action = await showMdCommandPalette(context);
+    if (action == null || !mounted) return;
+    applyMdAction(widget.document.source, action);
+    _onTextChanged();
+  }
+
   /// Replaces the `/token` with the action's result (D19).
   void _applySlash(MdAction action) {
     final controller = widget.document.source;
@@ -190,11 +200,13 @@ class _SourceModeState extends State<SourceMode> {
     return CallbackShortcuts(
       bindings: {
         for (final action in mdActions())
-          if (action.shortcut != null)
-            action.shortcut!: () {
+          for (final activator in action.shortcuts)
+            activator: () {
               applyMdAction(widget.document.source, action);
               widget.onChanged?.call();
             },
+        for (final activator in mdPaletteShortcuts)
+          activator: () => unawaited(_openPalette()),
         ...noteFindShortcuts(
           onFind: () => setState(() {
             _finding = true;

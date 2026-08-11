@@ -378,6 +378,8 @@
     "modeLive": "Live",
     "modeSource": "Source",
     "sourceHint": "Write markdown…",
+    "paletteHint": "Search commands…",
+    "paletteEmpty": "No command matches that.",
     "splitOn": "Split view",
     "splitOff": "Single pane",
     "convertToMarkdown": "Convert to markdown",

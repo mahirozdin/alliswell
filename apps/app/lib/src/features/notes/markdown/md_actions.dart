@@ -12,6 +12,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/fold.dart';
 import 'md_editing.dart';
 
 /// One thing a writer can do to the text.
@@ -21,7 +22,7 @@ class MdAction {
     required this.icon,
     required this.slash,
     required this.apply,
-    this.shortcut,
+    this.shortcuts = const [],
   });
 
   /// i18n key suffix — `note.action.<id>`.
@@ -31,13 +32,36 @@ class MdAction {
   /// What typing `/…` matches.
   final String slash;
 
-  /// ⌘/Ctrl shortcut, where one is conventional.
-  final SingleActivator? shortcut;
+  /// The ⌘ *and* Ctrl activators, where a shortcut is conventional.
+  final List<SingleActivator> shortcuts;
 
   /// Pure: text + selection in, whole new text + caret out. One assignment
   /// downstream means one undo (D20's principle, applied to every action).
   final MdEdit Function(String text, int start, int end) apply;
 }
+
+/// One shortcut, bound on BOTH desktop conventions.
+///
+/// `SingleActivator` cannot express "meta OR control", so holding a single
+/// activator per action silently meant macOS-only: ⌘B worked, and Ctrl+B did
+/// nothing on every Windows, Linux and web build — while this file's own
+/// documentation promised "⌘/Ctrl". Returning the pair is what keeps that
+/// promise true; `noteFindShortcuts` already does the same thing for ⌘F.
+List<SingleActivator> metaOrControl(
+  LogicalKeyboardKey key, {
+  bool shift = false,
+}) => [
+  SingleActivator(key, meta: true, shift: shift),
+  SingleActivator(key, control: true, shift: shift),
+];
+
+/// ⌘K / Ctrl+K — the command palette (D18).
+///
+/// Not an `MdAction`: the palette is a way to REACH the actions, so putting it
+/// in the list would make it findable inside itself.
+final List<SingleActivator> mdPaletteShortcuts = metaOrControl(
+  LogicalKeyboardKey.keyK,
+);
 
 /// Wraps the selection in [left]…[right], or inserts the pair empty.
 MdEdit _wrap(String text, int start, int end, String left, String right) {
@@ -84,14 +108,14 @@ List<MdAction> mdActions() => [
     id: 'bold',
     icon: Icons.format_bold,
     slash: '/bold',
-    shortcut: const SingleActivator(LogicalKeyboardKey.keyB, meta: true),
+    shortcuts: metaOrControl(LogicalKeyboardKey.keyB),
     apply: (t, s, e) => _wrap(t, s, e, '**', '**'),
   ),
   MdAction(
     id: 'italic',
     icon: Icons.format_italic,
     slash: '/italic',
-    shortcut: const SingleActivator(LogicalKeyboardKey.keyI, meta: true),
+    shortcuts: metaOrControl(LogicalKeyboardKey.keyI),
     apply: (t, s, e) => _wrap(t, s, e, '*', '*'),
   ),
   MdAction(
@@ -104,7 +128,9 @@ List<MdAction> mdActions() => [
     id: 'link',
     icon: Icons.link,
     slash: '/link',
-    shortcut: const SingleActivator(LogicalKeyboardKey.keyK, meta: true),
+    // ⌘⇧K, because ⌘K is the palette now. Conventional either way: Slack,
+    // Notion and VS Code all reserve the bare ⌘K for a command surface.
+    shortcuts: metaOrControl(LogicalKeyboardKey.keyK, shift: true),
     apply: (t, s, e) {
       final selected = t.substring(s, e);
       final inserted = '[$selected]()';
@@ -173,18 +199,49 @@ List<MdAction> mdActions() => [
   ),
 ];
 
-/// Actions whose slash trigger matches what the writer has typed so far.
+/// The one matcher behind both discovery surfaces (D19).
 ///
-/// Matching on a PREFIX so `/ta` narrows to `/table`; an exact-match-only menu
-/// would mean memorising the command list, which is the invisible surface D19
-/// forbids.
-List<MdAction> matchSlash(String typed) {
-  final needle = typed.toLowerCase();
-  if (!needle.startsWith('/')) return const [];
+/// The slash menu and the command palette must offer the SAME actions; only
+/// the way you type differs. A query starting with `/` is a slash token and
+/// matches the command by PREFIX — `/ta` narrows to `/table`, because an
+/// exact-match-only menu would mean memorising the list, which is the
+/// invisible surface D19 forbids. Anything else is a word, and matches the
+/// action's label or its command anywhere inside, folded (ADR-0013) so
+/// "kalın", "KALIN" and "kalin" all find the same button.
+///
+/// [label] is injected rather than looked up here so this file stays pure and
+/// testable — and because the palette matches what the reader SEES, which is
+/// the localized label, not the English id.
+///
+/// Two matchers is precisely how the palette and the slash menu would come to
+/// disagree about what exists — the failure this file's header is written
+/// against, one surface further along.
+List<MdAction> matchMdActions(
+  String query, {
+  String Function(MdAction)? label,
+}) {
+  final trimmed = query.trim();
+  if (trimmed.startsWith('/')) {
+    final needle = trimmed.toLowerCase();
+    return [
+      for (final action in mdActions())
+        if (action.slash.startsWith(needle)) action,
+    ];
+  }
+  final needle = foldSearchText(trimmed);
+  if (needle.isEmpty) return mdActions();
   return [
     for (final action in mdActions())
-      if (action.slash.startsWith(needle)) action,
+      if (foldSearchText(label?.call(action) ?? '').contains(needle) ||
+          foldSearchText(action.slash).contains(needle))
+        action,
   ];
+}
+
+/// Actions whose slash trigger matches what the writer has typed so far.
+List<MdAction> matchSlash(String typed) {
+  if (!typed.startsWith('/')) return const [];
+  return matchMdActions(typed);
 }
 
 /// The slash token immediately before [caret], if the writer is typing one.

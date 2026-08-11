@@ -76,15 +76,15 @@ Future<void> showAwImageViewer(
   return Navigator.of(context, rootNavigator: true).push(
     MaterialPageRoute<void>(
       fullscreenDialog: true,
-      builder: (_) =>
-          AwImageViewer(images: images, initialIndex: initialIndex),
+      builder: (_) => AwImageViewer(images: images, initialIndex: initialIndex),
     ),
   );
 }
 
 /// Convenience for the surfaces whose galleries are all stored files.
-List<AwImageRef> awImageRefsFromIds(Iterable<String> fileIds) =>
-    [for (final id in fileIds) AwImageRef.file(id)];
+List<AwImageRef> awImageRefsFromIds(Iterable<String> fileIds) => [
+  for (final id in fileIds) AwImageRef.file(id),
+];
 
 class AwImageViewer extends ConsumerStatefulWidget {
   const AwImageViewer({
@@ -122,9 +122,7 @@ class _AwImageViewerState extends ConsumerState<AwImageViewer>
   void initState() {
     super.initState();
     _refs = List.of(widget.images);
-    _index = _refs.isEmpty
-        ? 0
-        : widget.initialIndex.clamp(0, _refs.length - 1);
+    _index = _refs.isEmpty ? 0 : widget.initialIndex.clamp(0, _refs.length - 1);
     _pager = PageController(initialPage: _index);
     _anim = AnimationController(vsync: this, duration: AwMotion.base)
       ..addListener(() {
