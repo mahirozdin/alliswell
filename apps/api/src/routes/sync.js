@@ -178,6 +178,11 @@ const NOTE_FIELDS = {
   title: { col: 'title', ok: str(500) },
   contentDelta: { col: 'content_delta', ok: (v) => v === null || Array.isArray(v), virtual: true },
   contentMarkdown: { col: 'content_markdown', ok: strOrNull(1000000) },
+  // Which field is canonical (OPH-248, ADR-0028 §1). It rides with the
+  // content, not as metadata: a device that switched a note to markdown and a
+  // device that kept editing the delta disagree about what the note IS, and
+  // that is a document-level conflict, not a field to last-write-wins.
+  contentFormat: { col: 'content_format', ok: oneOf(['delta', 'markdown']) },
   projectId: { col: 'project_id', ok: ulidOrNull },
   isPinned: { col: 'is_pinned', ok: bool },
   isArchived: { col: 'is_archived', ok: bool },
@@ -224,7 +229,7 @@ const CHECKLIST_FIELDS = {
 };
 
 // Note CONTENT is doc-level locked (§6.5) — these intents never LWW-merge.
-const NOTE_CONTENT_INTENTS = new Set(['content_delta', 'content_markdown']);
+const NOTE_CONTENT_INTENTS = new Set(['content_delta', 'content_markdown', 'content_format']);
 
 export function serializeReminder(row) {
   return {

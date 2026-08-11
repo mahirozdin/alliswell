@@ -235,3 +235,68 @@ describe('note CRUD (OPH-040)', () => {
     }
   });
 });
+
+describe('content_format — which field is canonical (OPH-248, ADR-0028 §1)', () => {
+  it("defaults to 'delta', so every note that already existed is correct", async () => {
+    const res = await createNote({ title: 'Eski not', contentDelta: DELTA });
+
+    expect(res.statusCode).toBe(201);
+    // The migration touches zero rows precisely because of this default —
+    // anything the WYSIWYG wrote IS delta-canonical.
+    expect(res.json().contentFormat).toBe('delta');
+  });
+
+  it('can be set at creation for a document that came from a file', async () => {
+    const res = await createNote({
+      title: 'README',
+      contentMarkdown: '# README\n\nmetin',
+      contentFormat: 'markdown',
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().contentFormat).toBe('markdown');
+  });
+
+  it('survives a round trip through GET', async () => {
+    const created = await createNote({
+      title: 'Belge',
+      contentMarkdown: '# Belge',
+      contentFormat: 'markdown',
+    });
+    const id = created.json().id;
+
+    const fetched = await app.inject({
+      method: 'GET',
+      url: `/api/v1/notes/${id}`,
+      headers: owner.headers,
+    });
+
+    expect(fetched.json().contentFormat).toBe('markdown');
+  });
+
+  it('is patchable — the conversion door DESIGN §29 describes', async () => {
+    const created = await createNote({ title: 'Not', contentDelta: DELTA });
+
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/notes/${created.json().id}`,
+      headers: owner.headers,
+      payload: { contentFormat: 'markdown', contentMarkdown: '# Not' },
+    });
+
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().contentFormat).toBe('markdown');
+  });
+
+  it('refuses a value nobody has heard of', async () => {
+    // A third format would silently decide how somebody's note is edited, so
+    // the Ajv enum and the table's CHECK constraint both say no.
+    const res = await createNote({
+      title: 'Not',
+      contentDelta: DELTA,
+      contentFormat: 'yaml',
+    });
+
+    expect(res.statusCode).toBe(400);
+  });
+});

@@ -46,6 +46,7 @@ const noteDetailSchema = {
     ...noteRowSchema.properties,
     contentDelta: { type: ['array', 'null'] },
     contentMarkdown: { type: ['string', 'null'] },
+    contentFormat: { type: 'string', enum: ['delta', 'markdown'] },
     plainText: { type: ['string', 'null'] },
     links: {
       type: 'array',
@@ -65,6 +66,10 @@ const writableProps = {
   title: { type: 'string', minLength: 1, maxLength: 500 },
   contentDelta: { type: ['array', 'null'], maxItems: 20000 },
   contentMarkdown: { type: ['string', 'null'], maxLength: 1000000 },
+  // Which field is canonical (ADR-0028 §1). The schema constrains it here AND
+  // a CHECK constraint constrains it in the table: a value the app has never
+  // heard of would silently decide how somebody's note is edited.
+  contentFormat: { type: 'string', enum: ['delta', 'markdown'] },
   projectId: { anyOf: [{ type: 'null' }, ULID_PARAM] },
   isPinned: { type: 'boolean' },
   isArchived: { type: 'boolean' },
@@ -107,6 +112,10 @@ export function serializeNoteSnapshot(row, links) {
     ...serializeNoteRow(row),
     contentDelta: parseDelta(row.content_delta),
     contentMarkdown: row.content_markdown ?? null,
+    // Rows written before OPH-248 have no column value in flight; 'delta' is
+    // both the table default and the right answer for anything the WYSIWYG
+    // wrote, which is every note that existed before this.
+    contentFormat: row.content_format ?? 'delta',
     plainText: row.plain_text ?? null,
     links: links.map((l) => ({
       id: l.id,
@@ -163,6 +172,7 @@ export default async function noteRoutes(app) {
       row.plain_text = deltaToPlainText(body.contentDelta);
     }
     if ('contentMarkdown' in body) row.content_markdown = body.contentMarkdown;
+    if ('contentFormat' in body) row.content_format = body.contentFormat;
     if ('projectId' in body) row.project_id = body.projectId;
     if ('isPinned' in body) row.is_pinned = body.isPinned;
     if ('isArchived' in body) row.is_archived = body.isArchived;
