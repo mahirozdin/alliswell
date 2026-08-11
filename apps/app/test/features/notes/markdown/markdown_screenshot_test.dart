@@ -53,7 +53,13 @@ Future<void> _loadMonospace() async {
     any = true;
     loader.addFont(Future.value(ByteData.view(file.readAsBytesSync().buffer)));
   }
-  if (any) await loader.load();
+  if (!any) {
+    throw StateError(
+      'No monospace font found. Code blocks would render as boxes and the '
+      'shot would claim a readability it does not have.',
+    );
+  }
+  await loader.load();
 }
 
 /// The KaTeX faces, straight out of the package that ships them.
@@ -63,20 +69,53 @@ Future<void> _loadMonospace() async {
 /// the formulas came out as boxes too. Loading them by family name here is the
 /// screenshot's problem, not the product's.
 Future<void> _loadKatexFonts() async {
-  final dir = Directory(
-    '${Platform.environment['HOME']}/.pub-cache/hosted/pub.dev/'
-    'flutter_math_fork-0.7.4/lib/katex_fonts/fonts',
+  // The version is DISCOVERED, not pinned, and a miss THROWS.
+  //
+  // Both halves matter and both were wrong first: a hard-coded
+  // `flutter_math_fork-0.7.4` goes stale the day the package is bumped, and
+  // the old `if (!dir.existsSync()) return;` meant that when it did, the
+  // formulas would quietly go back to being black rectangles and the shot
+  // would still be "successful". A screenshot that silently stops proving its
+  // point is the exact failure this file already made twice.
+  final root = Directory(
+    '${Platform.environment['HOME']}/.pub-cache/hosted/pub.dev',
   );
-  if (!dir.existsSync()) return;
+  final packages = root.existsSync()
+      ? root
+            .listSync()
+            .whereType<Directory>()
+            .where(
+              (d) => d.uri.pathSegments
+                  .where((s) => s.isNotEmpty)
+                  .last
+                  .startsWith('flutter_math_fork-'),
+            )
+            .toList()
+      : <Directory>[];
+
+  final dir = packages.isEmpty
+      ? null
+      : Directory('${packages.last.path}/lib/katex_fonts/fonts');
+  if (dir == null || !dir.existsSync()) {
+    throw StateError(
+      'KaTeX fonts not found under ${root.path}. Without them the math in '
+      'this screenshot renders as box glyphs, which is worse than no '
+      'screenshot — run `flutter pub get` first.',
+    );
+  }
 
   final byFamily = <String, FontLoader>{};
   for (final entry in dir.listSync().whereType<File>()) {
     final name = entry.uri.pathSegments.last;
     if (!name.endsWith('.ttf')) continue;
-    // `KaTeX_Main-Bold.ttf` -> family `KaTeX_Main`. Registered under BOTH the
-    // bare name and Flutter's package-scoped form, because a font declared by
-    // a dependency resolves as `packages/<pkg>/<family>` and it is cheaper to
-    // cover both than to guess which one the engine asks for.
+    // `KaTeX_Main-Bold.ttf` -> family `KaTeX_Main`, registered under BOTH the
+    // bare name and Flutter's package-scoped form.
+    //
+    // The package-scoped one is NOT a hedge — it is the one that works. That
+    // was measured the hard way: dropping it, on the theory that the bare name
+    // sufficed, put the formulas straight back to box glyphs. A font declared
+    // by a dependency is namespaced `packages/<pkg>/<family>`, and
+    // `flutter_math_fork` asks for it by that name.
     final family = name.split('-').first;
     final bytes = ByteData.view(entry.readAsBytesSync().buffer);
     for (final key in [family, 'packages/flutter_math_fork/$family']) {

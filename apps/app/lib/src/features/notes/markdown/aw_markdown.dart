@@ -10,6 +10,12 @@
 /// `LinkifiedText` learned this the hard way and says so in its own comment
 /// ("`TextSpan` recognizers leak if nobody does"). A README has hundreds of
 /// them, so this widget owns the list and clears it on every rebuild.
+///
+/// **A `ProviderScope` is required**, and it is a `ConsumerStatefulWidget`
+/// precisely so that requirement is visible in the type rather than discovered
+/// at runtime. Images resolve through Riverpod; before this the dependency was
+/// buried in a descendant, and the end-to-end test only passed because its
+/// viewport stopped short of the first image (OPH-254 found it).
 library;
 
 import 'dart:async';
@@ -43,7 +49,7 @@ typedef MdLinkTap = void Function(Uri uri);
 /// to resolve.
 typedef MdImageTap = void Function(String source);
 
-class AwMarkdown extends StatefulWidget {
+class AwMarkdown extends ConsumerStatefulWidget {
   const AwMarkdown({
     super.key,
     required this.document,
@@ -63,10 +69,10 @@ class AwMarkdown extends StatefulWidget {
   final bool shrinkWrap;
 
   @override
-  State<AwMarkdown> createState() => _AwMarkdownState();
+  ConsumerState<AwMarkdown> createState() => _AwMarkdownState();
 }
 
-class _AwMarkdownState extends State<AwMarkdown> {
+class _AwMarkdownState extends ConsumerState<AwMarkdown> {
   final List<TapGestureRecognizer> _recognizers = [];
 
   void _clearRecognizers() {
