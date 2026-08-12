@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-08-12
+
 ### Added
 
 - **Markdown now renders as a document, not as its own source.** Tables (with
@@ -29,6 +31,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   that note and puts them where you dropped them — a picture as a picture, and
   anything else as a link you can get back to. It works the same whichever
   editor the note uses, because both doors now go through the same place.
+- **Open a markdown file from your own computer, edit it, and save it back.**
+  A `.md` on your Mac, iPhone or Android device opens in the same editor your
+  notes use — same modes, same toolbar — and it is permanently marked as
+  somebody else's file. It is never saved behind your back: autosave belongs to
+  your notes, and the file changes only when you say so. If something else
+  changed it while you were working, you choose what happens to your version —
+  reload, keep a copy, or overwrite. And when AllisWell cannot write the file
+  safely — it is read-only, the permission expired, or the text is not UTF-8 —
+  it says which of those it is and does not offer to save at all. Files you
+  have opened stay one tap away, and can be tied to a project without importing
+  anything.
 - **A command palette, and shortcuts that finally work off a Mac.** ⌘K (Ctrl+K)
   opens a searchable list of every formatting command, navigable entirely from
   the keyboard, and it searches by name rather than by command — typing "kalin"

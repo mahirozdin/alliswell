@@ -7450,13 +7450,13 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
 
 ### OPH-252 — Pazarlama: README + landing + mağaza (beş özellik, gerçek ekran görüntüleri)
 
-- [ ] Sahibin sıraladığı **beş özellik** landing'de ve README'de öne çıkar
+- [x] Sahibin sıraladığı **beş özellik** landing'de ve README'de öne çıkar
       ([MARKDOWN.md §8](MARKDOWN.md)): (1) görevler + projeler ve görevlerin projelere
       bağlanması, (2) **notlar + markdown görüntüleyici/editör** — not oluşturma, okuma,
       bilgisayardaki `.md` dosyalarını açma/değiştirme/içe aktarma, (3) **alarmlı
       görevler** — unutturmayan sistem, (4) proje ve görevle ilgili **tüm dosyaların aynı
       yerde** durması, (5) **tekrarlı görevlerin** ne kadar ayrıntılı yapılandırılabildiği.
-- [ ] **Yol boyunca düzeltilecek ÖLÇÜLMÜŞ çelişkiler** (kapsam genişletmesi değil — aynı
+- [x] **Yol boyunca düzeltilecek ÖLÇÜLMÜŞ çelişkiler** (kapsam genişletmesi değil — aynı
       dosyalarda duran ve deponun kendi guardrail'ini çiğneyen satırlar):
 
       | Nerede | Ne diyor | Neyi çiğniyor |
@@ -7485,7 +7485,7 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
       | 3 alarmlar | `alarms` | `web/reminders.png` + `android/09-alarm-ring.png` var |
       | 4 dosyalar | `files` | `web/files.png` var; **çekilecek:** görev eki + görsel görüntüleyici |
       | 5 tekrar | `recurrence` (filtre kaldırılır ya da `RecurrenceProof` görselle beslenir) | `ios/07-task-detail-repeat.png` + `08-repeat-dialog.png` **var ama hiç kullanılmıyor** |
-- [ ] `docs/COMPARISON.md`: §1 "Notes & files" altına markdown satırı (OPH-246…251) + §3
+- [x] `docs/COMPARISON.md`: §1 "Notes & files" altına markdown satırı (OPH-246…251) + §3
       matrisine markdown satırı + **landing'in kendi ikinci karşılaştırma tablosuna**
       (`content.js` `comparison`) — iki tablo var, biri unutulursa sapıyorlar.
       `docs/STORE-LISTING.md`: Apple `NOTES AND FILES` ve Play blokları + **TR aynaları** +
@@ -7496,13 +7496,34 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
       §5 guardrail tablosu yeniden denetlenir: round 13'ün "recurring tasks yok" dersi
       **zaten düzeltilmiş** — aranan şey *o zamandan beri doğru hâline gelmiş diğer*
       guardrail'ler, yani bu bir yeniden-denetim, yeni bir düzeltme değil.
-- [ ] README'nin durum satırı (sürüm + test sayıları) güncellenir.
-- [ ] Landing (`apps/landing/`, Vue 3) beş bloğa göre düzenlenir; `npm run build` yeşil.
+- [x] README'nin durum satırı (sürüm + test sayıları) güncellenir.
+- [x] Landing (`apps/landing/`, Vue 3) beş bloğa göre düzenlenir; `npm run build` yeşil.
 - **Kabul:** landing'e ilk bakışta bu beş şey görünüyor ve her birinin **gerçek** bir
   ekran görüntüsü var (mockup değil).
 - **Doğrulama:** landing build · `npm run lint` · görüntülerin çekildiği komutlar
   task'ın altına yazılır (tekrar üretilebilirlik).
 
+
+_(✅ 2026-08-12, **ekran görüntüsü kutusu açık bırakılarak**. Metin işleri bitti:
+README'nin beş özelliği MARKDOWN §8'in bağlayıcı sırasına göre YENİDEN yazıldı
+(bugünkü beşi başka bir beşti), landing'e hiç olmayan `markdown` bloğu eklendi,
+COMPARISON'a iki satır + landing'in kendi tablosuna bir satır, STORE-LISTING'in
+dört bloğuna (EN + TR) markdown maddesi._
+
+_**Guardrail denetimi iki GERÇEK ihlal buldu ve ikisi de kaynağında düzeltildi**
+— yeniden bayraklanmadı: (1) widget'tan görev tamamlama iddiası README ve
+landing'de canlıydı, oysa §5 bunu yasaklıyor (`AppIntent` yok); (2) COMPARISON
+"Home-screen widgets ● iOS/Android/**macOS**" diyordu, §5 "macOS widget target
+yok" diyor. Round 13'ün dersinin aynası: bir guardrail **izin verici** yönde
+bayatlayabildiği gibi, kural yazıldıktan sonra metin kayarsa **ihlal edilmiş**
+yönde de bayatlar._
+
+_**Ekran görüntüleri ALINMADI, ve sebebi ölçüldü:** `web.mjs` çalışan bir API +
+`seed-demo` + release web build + :8080 istiyor; bu makinede Docker/MySQL ayakta
+değil. Beş başlığın dördü mevcut gerçek görsellerle karşılanıyor; **eksik olan
+markdown'ın uygulama kabuğundaki çekimi** — landing şimdilik `web/notes.jpg`
+kullanıyor, ki gerçek ama markdown çalışma tezgâhını göstermiyor. Kutu bu yüzden
+açık: "gerçek görüntü" kabul kriteri henüz karşılanmadı._)
 ### OPH-253 — Widget başlığında sistem saati (DESIGN §31 C1–C5)
 
 - [x] **Android**: `tasks_widget.xml`'in sağ sütunu iki satır olur — üstte

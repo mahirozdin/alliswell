@@ -127,6 +127,7 @@ REMINDERS THAT DO NOT WHISPER
 NOTES AND FILES
 
 • Rich-text notes with inline images and video, linked to your tasks and projects, exportable as Markdown.
+• A full Markdown workspace: tables, checklists, code, maths and diagrams, with reading, rich and source views. Open a .md file from your device, edit it, and save it back to that file.
 • Attach files to tasks, notes and projects — up to 10 MB per file on the hosted service.
 • A workspace-wide Files section with nestable folders, plus a Files tab inside every project.
 
@@ -452,6 +453,7 @@ source-available. No paid tier, no ads.
 📝 NOTES AND FILES
 
 • Rich-text notes with inline images and video, linked to tasks and projects, exportable as Markdown.
+• A full Markdown workspace: tables, checklists, code, maths and diagrams, with reading, rich and source views. Open a .md file from your device, edit it, and save it back to that file.
 • Attach files to tasks, notes and projects — up to 10 MB per file on the hosted service.
 • A workspace-wide Files section with nestable folders, and a Files tab in every project.
 
@@ -760,6 +762,7 @@ FISILDAMAYAN HATIRLATICILAR
 NOTLAR VE DOSYALAR
 
 • Zengin metin notları: satır içi görsel ve video, göreve ve projeye bağlama, Markdown olarak dışa aktarma.
+• Tam bir Markdown çalışma tezgâhı: tablolar, kontrol listeleri, kod, matematik ve diyagramlar; okuma, zengin ve kaynak görünümleriyle. Cihazındaki bir .md dosyasını aç, düzenle ve o dosyaya geri kaydet.
 • Göreve, nota ve projeye dosya ekleyin — barındırılan serviste dosya başına 10 MB'a kadar.
 • Tüm çalışma alanını kapsayan, iç içe klasörlü bir Dosyalar bölümü; ayrıca her projenin kendi Dosyalar sekmesi.
 
@@ -885,6 +888,7 @@ Kaynağı açık. Ücretli sürüm yok, reklam yok.
 📝 NOTLAR VE DOSYALAR
 
 • Zengin metin notları: satır içi görsel ve video, göreve ve projeye bağlama, Markdown olarak dışa aktarma.
+• Tam bir Markdown çalışma tezgâhı: tablolar, kontrol listeleri, kod, matematik ve diyagramlar; okuma, zengin ve kaynak görünümleriyle. Cihazındaki bir .md dosyasını aç, düzenle ve o dosyaya geri kaydet.
 • Göreve, nota ve projeye dosya ekleyin — barındırılan serviste dosya başına 10 MB'a kadar.
 • İç içe klasörlü, çalışma alanının tamamını kapsayan bir Dosyalar bölümü; her projede ayrı bir Dosyalar sekmesi.
 
@@ -1010,6 +1014,14 @@ Plus: home-screen widgets, a refreshed look, and one-command self-hosting.
 ---
 
 ## 5. Claim guardrails
+
+> Re-audited 2026-08-12 (OPH-252). Two claims that were **live in the copy and
+> forbidden here** were removed at the source rather than re-flagged: the
+> widget "tick one off without opening the app" line (README + landing) and
+> "Home-screen widgets ● iOS/Android/**macOS**" (COMPARISON). The round-13
+> lesson — a guardrail can go stale in the *permissive* direction — has its
+> mirror: one can go stale in the *violated* direction too, when copy drifts
+> after the rule was written.
 
 Things a reasonable copywriter would have written that are **not true of the
 shipped build**. Do not add them back without re-checking the code.

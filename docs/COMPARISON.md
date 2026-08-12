@@ -5,7 +5,7 @@ README, the landing page and the store listings can be traced to something the
 code actually does — and so the places where a competitor is genuinely better
 are written down instead of quietly avoided.
 
-Written against **v0.9.0** (2026-07-30). Competitor behaviour is stated as of
+Written against **v1.4.0** (2026-08-12). Competitor behaviour is stated as of
 mid-2026; re-check before a release cycle, because half of it changes yearly.
 
 **Contents:** [1. What we built](#1-what-we-built-the-full-inventory) ·
@@ -92,6 +92,8 @@ list every screenshot, the landing page and the store copy draw from.
 | Attachments on tasks, notes and projects                                             | Epic 14 |
 | A workspace-wide **Files** section with nestable folders (≤ 10 deep)                 | OPH-169/170 |
 | Storage is **Cloudflare R2 / any S3 via presigned URLs** — bytes never touch the API | Epic 14 |
+| **Markdown workspace** — GFM rendering (tables, callouts, footnotes, maths, Mermaid), three modes, outline/folding/find, command palette | OPH-246…250 |
+| **Open a `.md` from your computer, edit it and save it BACK to that file** — marked, never autosaved, conflict-aware | OPH-251 (ADR-0030) |
 
 ### Calendar
 
@@ -225,6 +227,7 @@ Legend: ● full · ◐ partial / with caveats · ○ none.
 | Subtasks · checklists | ● ● | ○ ○ | ◐ 1 level ○ | ● ○ | ○ ○ | ● ● |
 | Tags · priorities | ● ● | ○ ○ | ○ ○ | ● ● | ○ ○ | ● ◐ |
 | Rich notes / documents | ● | ○ | ○ | ○ separate app | ○ | ◐ |
+| Markdown files edited in place | ● | ○ | ○ | ○ | ○ | ○ |
 | File attachments | ● any file, R2/S3 | ◐ Drive | ○ | ◐ images/URLs | ◐ | ○ links |
 | **Alarms that break Silent + Focus** | ● | ○ | ○ | ◐ time-sensitive | ◐ | ○ |
 | Re-alert until acknowledged | ● | ○ | ○ | ○ | ○ | ○ |
@@ -235,7 +238,7 @@ Legend: ● full · ◐ partial / with caveats · ○ none.
 | **Two-way Google Calendar sync** | ● | native | native | ○ | ◐ subscribe | ○ read-only |
 | Apple Calendar | ● EventKit | ◐ | ○ | native | native | ◐ read-only |
 | Accent-insensitive search | ● | ○ | ○ | ○ | ○ | ○ |
-| Home-screen widgets | ● iOS/Android/macOS | ● | ● | ● | ● | ● |
+| Home-screen widgets | ● iOS/Android | ● | ● | ● | ● | ● |
 | **MCP connector for Claude / ChatGPT** | ● | ○ | ○ | ○ | ○ | ○ |
 | In-app AI with **your own key** | ● 5 providers | ○ | ○ | ○ | ○ | ○ |
 | Voice capture | ● on-device | ◐ Assistant | ◐ Assistant | ● Siri | ● Siri | ◐ Siri |
@@ -292,7 +295,7 @@ Writing these down is what makes §4 trustworthy.
 | **Invitations, RSVPs, free/busy, rooms** | Google & Apple Calendar | Out of scope — we mirror to your calendar and let it do this. |
 | **Natural-language date entry, everywhere** | Todoist, Things 3 | Partial: magic-parse exists in quick-add, and it currently leans on AI. |
 | **Real collaboration** — assignees, comments, shared lists | Todoist, Apple Reminders, Google | Workspaces exist in the model; the sharing UI is not built. Single-user today. |
-| **Maturity** — a decade of edge cases, App Store trust, an ecosystem | all of them | We are at 0.9.0. This is a young product. |
+| **Maturity** — a decade of edge cases, App Store trust, an ecosystem | all of them | We are at 1.4.0. This is a young product. |
 | **Ecosystem reach** — Siri, Gmail side panel, Watch complications | Apple, Google | Widgets ship; Siri/Watch integration is designed (OPH-183), not delivered. |
 | **Design polish over years** | Things 3 | We took their model and our own design system is strict — but they have had ten years to sand the corners. |
 | **Localisation breadth** | all of them | Two languages. Adding one is a JSON file, which is the point, but the file has to be written. |

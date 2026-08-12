@@ -3,7 +3,24 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-12c (**OPH-251 sevk edildi — dış belge AllisWell'in
+**Last updated:** 2026-08-12d (**OPH-252 sevk edildi ve v1.4.0 KESİLDİ.
+Sürüm 11 yerde hizalandı (release kapısının okuduğu üçü dahil), CHANGELOG
+[1.4.0] oldu, `flutter clean` + iki `pod install` koşuldu.
+
+**Ölçülen ortam sınırı, dürüstçe:** `flutter clean` sqlite3'ün önbellekli native
+kütüphanesini sildi ve bu ortamda GitHub release indirmesi ENGELLİ (HTTP 000) —
+yani yerel `flutter test` artık koşamıyor. Temizlikten hemen ÖNCEKİ koşu yeşildi
+(**1148**), ve temizlik hiçbir kaynağı değiştirmedi. Bu yüzden sıra şöyle
+kuruldu: önce push, CI süiti ağ erişimiyle koşsun, **yeşilse** etiket. Etiketi
+yeşil bir CI görmeden atmak, kapıyı atlamak olurdu.
+
+**Guardrail denetimi iki gerçek ihlal buldu** (widget'tan tamamlama iddiası +
+macOS widget iddiası) ve ikisi de kaynağında düzeltildi.
+
+**Açık kalan tek kutu: ekran görüntüleri.** `web.mjs` çalışan API + seed +
+release web build istiyor, bu makinede Docker/MySQL ayakta değil.
+
+Önceki blok: 2026-08-12c (**OPH-251 sevk edildi — dış belge AllisWell'in
 KENDİ editöründe açılıyor. Süitler **1148** (+21), analyze/format/i18n temiz.
 **Bir kutu bilinçli açık:** bandın kontrast çifti (aşağıda, ölçülerek).
 Sıradaki iş: **OPH-252** (pazarlama) — Epic 24'ün son task'ı.

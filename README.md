@@ -47,8 +47,8 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | 🐳 **Self-host**   | Live now          | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data).                                                      |
 | 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
 
-> **Project status — `v1.3.1`, live.** Everything on this page is built, tested
-> (**887 app tests · 605 backend unit · 58 integration, green**) and deployed to
+> **Project status — `v1.4.0`, live.** Everything on this page is built, tested
+> (**1148 app tests · 620 backend unit · 58 integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
 > ⭐ Star the repo to follow along.
@@ -57,10 +57,57 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 
 ## ⚡ The five things that make it different
 
-Everything else here is table stakes. These five are the reasons to switch — and
-each is something the alternatives **cannot** do, not merely haven't yet.
+Everything else here is table stakes. These five are why people move — and each
+one is something the alternatives either cannot do or make you leave the app for.
 
-### 1. Recurrence that doesn't lie
+### 1. Tasks and projects that actually belong together
+
+A task is not a line in a list. It belongs to a **project**, carries its own
+description, tags, subtasks, colour and attachments, and shows up wherever that
+project does — the project's Overview, its Files tab, its own board column. The
+project badge follows the task everywhere, so "what is this for?" never needs a
+second click.
+
+### 2. Notes with a real markdown workspace
+
+Not a text box that happens to accept `#`. AllisWell renders **GitHub-flavoured
+markdown properly** — tables with their alignment, task lists, footnotes,
+callouts, real mathematics, syntax-coloured code with a copy button, and
+**Mermaid diagrams drawn as diagrams**, with no browser engine involved.
+
+You get **three ways to look at one document**: Reading, the rich editor, and
+the markdown source — with a live preview beside it on a wide screen. Lists
+continue themselves, `/table`-style commands work everywhere, ⌘K opens a command
+palette, and an outline of every heading follows you as you scroll.
+
+And it is not limited to notes that were born here: **open a `.md` file from
+your own computer, edit it, and save it back to that file.** The document is
+permanently marked as external, it is never autosaved behind your back, and if
+something else changed it while you were editing you are asked what happens to
+your version — reload, save a copy, or overwrite. If AllisWell cannot write the
+file safely, it says so and does not offer to.
+
+### 3. Alarms, not notifications
+
+A reminder that arrives with a chime is a suggestion. AllisWell's urgent tasks
+ring with a **real alarm sound, through Silent mode and through Focus** (iOS 26
+AlarmKit; Android's `USAGE_ALARM` insistent channel), keep **re-alerting until
+you acknowledge them**, and offer snooze presets that each tell you the exact
+time they will ring again. When the OS gets in the way — a battery manager, a
+revoked permission — the app writes a log entry explaining itself, so
+"it didn't ring" is a question with an answer.
+
+---
+
+### 4. Every file where the work is
+
+The photo of the whiteboard, the contract PDF, the screenshot — they live with
+the task or the project they belong to, not in a chat scroll or a downloads
+folder. Attach from **Photos, the camera, or Files**; images open in a real
+pinch-and-zoom viewer with a swipe between the others; and everything in a
+project is listed in its Files tab, in folders you control.
+
+### 5. Recurrence that doesn't lie
 
 Ask for **the 31st** and RFC 5545 — which is what Google Calendar follows —
 simply **skips** every month without one. Your rent does not skip February.
@@ -84,45 +131,6 @@ rows** (so they show up in search, the calendar and the widget), and an
   &nbsp;
   <img src="screenshots/ios/08-repeat-dialog.png" width="31%" alt="The Repeat dialog with a Next 5 preview listing the exact upcoming dates">
 </p>
-
-### 2. True two-way calendar sync, to both ecosystems
-
-Not an ICS subscription and not a one-way import. Your tasks become **real
-Google Calendar events**; edits you make in Google **come back** through push
-webhooks, incremental sync and etag-based conflict resolution; and your other
-Google events appear **on Home, next to your tasks**. Apple Calendar goes
-through an **EventKit** bridge. Things 3 reads your calendar — it never writes.
-
-### 3. One codebase, six platforms, offline-first
-
-A local SQLite replica, a mutation outbox and a revision log mean **everything
-works with the network off** — create, edit, complete, search — and lands on
-every other device within a round-trip when it comes back. Apple's tools are
-Apple-only. Google's need the network more than they admit.
-
-### 4. AI on your terms — including none
-
-**Add AllisWell to the Claude or ChatGPT subscription you already pay for**
-(it is a remote MCP server), or **bring your own key** — Anthropic, OpenAI,
-Gemini, OpenRouter, or a local **Ollama** where nothing leaves the machine.
-The model gets **no write tools**; every task it proposes waits for your one-tap
-confirmation; **deletion is closed to AI permanently**; and capture works with
-**zero AI**. On-device speech means your **voice never leaves the device** —
-only the text does.
-
-[How AI works →](docs/AI.md) &nbsp;·&nbsp; [Set up the MCP connector →](docs/MCP.md)
-
-### 5. Alarms, not notifications
-
-A reminder that arrives with a chime is a suggestion. AllisWell's urgent tasks
-ring with a **real alarm sound, through Silent mode and through Focus** (iOS 26
-AlarmKit; Android's `USAGE_ALARM` insistent channel), keep **re-alerting until
-you acknowledge them**, and offer snooze presets that each tell you the exact
-time they will ring again. When the OS gets in the way — a battery manager, a
-revoked permission — the app writes a log entry explaining itself, so
-"it didn't ring" is a question with an answer.
-
----
 
 ## 📸 What it looks like
 
@@ -185,7 +193,7 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 - 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
 - ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, colour and order. A **sidebar section** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones. Yours alone: shortcuts never leak to other members of a shared workspace.
 - 🤖 **AI, on your terms (optional)** — see [§4 above](#4-ai-on-your-terms--including-none).
-- 🖥 **Home-screen widgets** — iPhone and Android widgets that mirror your Home buckets, carry the **system clock and how many tasks today actually holds** in the header, and (iOS 17+) let you tick one off **without opening the app**.
+- 🖥 **Home-screen widgets** — iPhone and Android widgets that mirror your Home buckets, carry the **system clock and how many tasks today actually holds** in the header, so the day is readable without unlocking anything.
 - 🔑 **Sign in the way you already do** — e-mail and password, **Continue with Google**, or **Continue with Apple**. The provider proves who you are; **AllisWell's own database still owns the account**, so a self-hosted instance works the same way — or drops social sign-in entirely and keeps passwords. [How it works →](docs/adr/0026-social-sign-in.md)
 - 🌐 **Localisation** — ships in English and Turkish, auto-detected from your system; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).

@@ -358,7 +358,7 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
-  alliswell_docref: 5c989524d80e66c8330436b09e22c854e7c327ee
+  alliswell_docref: b0a1c8b0155eacb6df7b209342d6cb53fc9a2c8a
   alliswell_eventkit: e47cd94eee7b40e450e9177bbaa7cbf9e04641cc
   AppAuth: ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5
   AppCheckCore: e215d35177a9cf469927863e69c13e220df32a8b

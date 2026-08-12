@@ -11,7 +11,7 @@ export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
-export const VERSION = '1.3.0';
+export const VERSION = '1.4.0';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
@@ -128,6 +128,20 @@ export const features = [
     alt: 'AllisWell Notes: pinned notes, project links, README filter',
   },
   {
+    id: 'markdown',
+    eyebrow: 'Notes',
+    title: 'A markdown workspace, not a text box',
+    body: 'Notes render GitHub-flavoured markdown properly — tables with their alignment, task lists, callouts, real mathematics, syntax-coloured code, and Mermaid diagrams drawn as diagrams. One document, three ways to look at it: Reading, the rich editor, and the markdown source with a live preview beside it.',
+    points: [
+      'Open a .md file from your own computer, edit it, and save it back to that file',
+      'The file is never written behind your back — and if something else changed it, you choose what happens',
+      'Outline, folding, find and replace, a command palette, and slash commands everywhere',
+    ],
+    ratio: '1440 / 900',
+    shot: 'web/notes.jpg',
+    alt: 'A note open in AllisWell with markdown rendered as a document',
+  },
+  {
     id: 'files',
     eyebrow: 'Files',
     title: 'Folders, and everything attached anywhere',
@@ -157,7 +171,7 @@ export const features = [
     id: 'widget',
     eyebrow: 'Home Screen',
     title: 'Your day, without unlocking anything',
-    body: 'The widget mirrors the same buckets Home does — overdue, undated, today — under a header carrying the date, the system clock and how many tasks today actually holds. On iPhone you can tick one off from the Home Screen without opening the app.',
+    body: 'The widget mirrors the same buckets Home does — overdue, undated, today — under a header carrying the date, the system clock and how many tasks today actually holds. It reads the same data the app does, without unlocking anything.',
     points: [
       'A clock that really ticks — not a number frozen at the last refresh',
       'The count is what is on you today: overdue plus due today, hidden at zero',
@@ -211,6 +225,7 @@ export const comparison = {
     ['Works fully offline', 'yes', 'partial', 'partial', 'yes', 'yes'],
     ['Kanban board', 'yes', 'no', 'no', 'partial', 'no'],
     ['Rich notes & file attachments', 'yes', 'partial', 'no', 'partial', 'no'],
+    ['Markdown files edited in place', 'yes', 'no', 'no', 'no', 'no'],
     ['Alarms through Silent + Focus', 'yes', 'no', 'no', 'partial', 'no'],
     ['Re-alert until acknowledged', 'yes', 'no', 'no', 'no', 'no'],
     ['Recurrence clamps (31st → 28 Feb)', 'yes', 'no', 'no', 'yes', 'yes'],
