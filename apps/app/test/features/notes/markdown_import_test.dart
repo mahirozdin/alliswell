@@ -142,7 +142,12 @@ void main() {
     await tester.tap(find.text('Notes').last);
     await tester.pumpAndSettle();
 
+    // OPH-251 turned the single button into a menu: editing the file itself
+    // and importing it as a note are different jobs, and the import is this
+    // one.
     await tester.tap(find.byKey(const Key('notes-open-markdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Import as a note…'));
     await tester.pumpAndSettle();
 
     expect(files.pickCalls, 1);

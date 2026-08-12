@@ -7401,36 +7401,42 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
 > Bu turun **veri kaybettirebilecek tek özelliği**. W-kuralları bağlayıcıdır.
 > Tutamak katmanı OPH-255'te, native gerçeklik OPH-256'da doğar; bu task **arayüz**.
 
-- [ ] **Kalıcı dış-belge bandı** (W1): gerçek dosya adı, her modda, oturum boyunca —
+- [x] **Kalıcı dış-belge bandı** (W1): gerçek dosya adı, her modda, oturum boyunca —
       Reading/Source/Quill üçünü de kapsayacak şekilde `note_editor_screen.dart`'ın
       gövdesinde, tek yerde.
-- [ ] **Açık kaydetme** (W2): autosave dış dosyaya **hiç** dokunmaz; kaydet açık bir
+- [x] **Açık kaydetme** (W2): autosave dış dosyaya **hiç** dokunmaz; kaydet açık bir
       eylem. D21 göstergesi (kaydedildi/kaydediliyor/başarısız) AllisWell notunu
       anlatmaya devam eder — **bant ayrı bir durum taşır ve ikisi karıştırılmaz.**
-- [ ] **Yazılabilirlik ÖLÇÜLÜR** (W3): `switch (access)` — kaydet eylemi yalnız
+- [x] **Yazılabilirlik ÖLÇÜLÜR** (W3): `switch (access)` — kaydet eylemi yalnız
       `ExternalWritable` kolunda **build edilir**, diğer ikisinde hiç kurulmaz (OPH-255
       tipleri bunu derleyici düzeyinde zorluyor: `saver` orada yok). Bant sebebi söyler:
       salt okunur / erişim yitirildi / UTF-8 değil.
-- [ ] **Bayt-sadıklık** (W4): `canWriteBack` false ise eylem "Dosyaya kaydet" değil
+- [x] **Bayt-sadıklık** (W4): `canWriteBack` false ise eylem "Dosyaya kaydet" değil
       **"Not olarak kaydet"** olur — hem Delta-kanonik notta hem UTF-8 olmayan dosyada.
-- [ ] **Altından değişme** (W5): çatışmada üç seçenekli `showAwSheet` — **yeniden yükle**
+- [x] **Altından değişme** (W5): çatışmada üç seçenekli `showAwSheet` — **yeniden yükle**
       (`open(handle)`) / **üzerine yaz** (`save(intent: force)`) / **kopya olarak kaydet**
       (`saveCopy()`). Dosya değişikliği izleme (canlı yeniden yükleme) **bu turda değil**;
       primitifi OPH-255'te doğuyor, pollama UI'ı sonraki tura yazıldı.
-- [ ] **Son açılan dosyalar listesi** (W6) — `Key('notes-open-markdown')` butonu menü
+- [x] **Son açılan dosyalar listesi** (W6) — `Key('notes-open-markdown')` butonu menü
       butonuna dönüşür ("Markdown dosyası aç…" + "Son açılanlar"); ikinci giriş noktası
       `markdown_import_screen`'in boş durumu, çünkü bayat/kırık tutamak zaten oraya düşüyor.
-- [ ] **Projeye ekle**: dış dosya, notlara kalıcı olarak aktarılmadan da bir projeye
+- [x] **Projeye ekle**: dış dosya, notlara kalıcı olarak aktarılmadan da bir projeye
       bağlanabilir (sahibin isteği: "isterse notlara yaz, projeye ekle").
       **Ölçülen: mevcut iki mekanizmanın ikisi de bunu karşılamıyor** — not→proje düz bir
       kolon (`notes.projectId`, yani önce not olmak gerekir), dosya→proje ise ek tablosu
       (`FileRows`) ve **bir kopyayı R2'ye yükler**, ki bu "dış dosyayı bağlamak" değil
       kopyalamak. Çözüm: recents girdisine `projectId` alanı (yerel, senkronsuz — tutamak
       zaten cihaza özel); `ProjectPickerField` yeniden kullanılır.
-- [ ] **Kontrast**: bant yeni bir yüzey → `contrast.py` çiftlerine eklenir. OPH-247'nin
+- [ ] **Kontrast**: bant yeni bir yüzey → `contrast.py` çiftlerine eklenir.
+      **YAPILMADI, ölçülerek:** `contrast.py` bugün `surfaceContainerHigh` üzerine
+      hiçbir çift taşımıyor (`grep` ile doğrulandı, 0 eşleşme) — yani bant yeşil
+      görünüyor çünkü **hiç ölçülmüyor**, OPH-247'nin yakaladığı yalanın aynısı.
+      Bu bant tarafından yaratılmadı: `MdToolbar` ve `MdSlashMenu` da aynı yüzeyi
+      kullanıyor ve onlar da kapının dışında. Yani iş "bir çift eklemek" değil,
+      **paylaşılan bir yüzeyi kapıya sokmak** — kendi turunu hak ediyor. OPH-247'nin
       dersi bağlayıcı: **elle uydurulmuş bir zemini ölçmek `FAILURES: 0` yalanı söyler** —
       bandın gerçekten çizdiği karışım hesaplanır.
-- [ ] Testler (seam/fake/recents birim testleri OPH-255'e taşındı — burada **arayüz**):
+- [x] Testler (seam/fake/recents birim testleri OPH-255'e taşındı — burada **arayüz**):
       bant üç modda da görünüyor ve dosya adını taşıyor; salt-okunur dosyada kaydet eylemi
       **hiç build edilmiyor** (finder boş, `enabled: false` değil); altından değişen
       dosyada üç seçenekli akışın üçü de doğru çağrıyı yapıyor; UTF-8 olmayan dosyada bant

@@ -143,7 +143,10 @@ void main() {
 
     // Archive via the row menu (the chip also says "Archive" — target the
     // menu item, which mounts later in the overlay) → leaves the default list…
-    await tester.tap(find.byType(PopupMenuButton<String>));
+    // By KEY, not by type: OPH-251 put a second PopupMenuButton in this app
+    // bar ("open a file"), so a type finder is now ambiguous — and would stay
+    // ambiguous every time the screen grows another menu.
+    await tester.tap(find.byKey(Key('note-menu-${api.notes.single['id']}')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Archive').last);
     await tester.pumpAndSettle();

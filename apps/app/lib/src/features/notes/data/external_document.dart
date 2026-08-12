@@ -55,6 +55,7 @@ class ExternalDocHandle {
     required this.token,
     required this.kind,
     required this.displayName,
+    this.projectId,
   });
 
   final String token;
@@ -63,10 +64,25 @@ class ExternalDocHandle {
   /// The file's own name, as the OS gave it — what W1's banner shows.
   final String displayName;
 
+  /// "Add to a project" without importing (the owner's ask). It lives on the
+  /// HANDLE, not in the database: a note→project link needs a note, and a
+  /// file→project link uploads a COPY to storage — neither of which is
+  /// "point at the file where it already is". The handle is device-local
+  /// anyway, so this rides along with it.
+  final String? projectId;
+
+  ExternalDocHandle withProject(String? id) => ExternalDocHandle(
+    token: token,
+    kind: kind,
+    displayName: displayName,
+    projectId: id,
+  );
+
   Map<String, dynamic> toJson() => {
     'token': token,
     'kind': kind.name,
     'name': displayName,
+    if (projectId != null) 'projectId': projectId,
   };
 
   /// Null on anything malformed, so one bad row cannot poison the list.
@@ -84,7 +100,12 @@ class ExternalDocHandle {
         .where((k) => k.name == raw['kind'])
         .firstOrNull;
     if (kind == null) return null;
-    return ExternalDocHandle(token: token, kind: kind, displayName: name);
+    return ExternalDocHandle(
+      token: token,
+      kind: kind,
+      displayName: name,
+      projectId: raw['projectId'] as String?,
+    );
   }
 
   @override
@@ -92,10 +113,11 @@ class ExternalDocHandle {
       other is ExternalDocHandle &&
       other.token == token &&
       other.kind == kind &&
-      other.displayName == displayName;
+      other.displayName == displayName &&
+      other.projectId == projectId;
 
   @override
-  int get hashCode => Object.hash(token, kind, displayName);
+  int get hashCode => Object.hash(token, kind, displayName, projectId);
 }
 
 /// What the file looked like when we opened it (W5).

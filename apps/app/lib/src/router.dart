@@ -234,6 +234,13 @@ final routerProvider = Provider<GoRouter>((ref) {
                         builder: (context, state) =>
                             _page(const MarkdownImportScreen()),
                       ),
+                      // OPH-251: somebody else's file, in our own editor.
+                      // Before ':noteId' for the same reason 'new' is.
+                      GoRoute(
+                        path: 'file',
+                        builder: (context, state) =>
+                            _page(const NoteEditorScreen(external: true)),
+                      ),
                       // 'new' must precede ':noteId' so it wins the match.
                       GoRoute(
                         path: 'new',

@@ -16,7 +16,7 @@ import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../projects/providers.dart';
-import 'markdown_import_screen.dart';
+import 'external_open_menu.dart';
 import '../data/note.dart';
 import '../providers.dart';
 
@@ -79,12 +79,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           // inside the app too, not only when the OS hands us one — a feature
           // only the OS can start is a feature most people never find
           // (DESIGN §22).
-          IconButton(
-            key: const Key('notes-open-markdown'),
-            icon: const Icon(Icons.folder_open_outlined),
-            tooltip: 'note.mdOpen'.tr(),
-            onPressed: () => openMarkdownFile(context, ref),
-          ),
+          // OPH-251 (W6): one affordance, three things behind it — edit the
+          // file itself, import it as a note, or go back to one we already
+          // hold a handle for. A file the OS gave us once is otherwise
+          // unreachable forever.
+          const ExternalOpenMenu(),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'shell.settingsTooltip'.tr(),

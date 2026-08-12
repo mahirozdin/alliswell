@@ -14,7 +14,10 @@ import '../../files/ui/note_drop_target.dart';
 import '../../files/ui/note_media.dart';
 import '../../../theme/tokens.dart';
 import '../data/note.dart';
+import '../data/external_document.dart';
+import '../data/external_session.dart';
 import '../data/note_document.dart';
+import 'external_doc_band.dart';
 import '../providers.dart';
 import 'modes/note_mode_control.dart';
 import 'modes/reading_mode.dart';
@@ -33,12 +36,19 @@ import '../../workspaces/workspaces.dart';
 /// Source (that edits now); keeping it would have left three ways to look at
 /// one document, two of them worse.
 class NoteEditorScreen extends ConsumerWidget {
-  const NoteEditorScreen({super.key, this.noteId});
+  const NoteEditorScreen({super.key, this.noteId, this.external = false});
 
   final String? noteId;
 
+  /// Whether this is somebody else's FILE rather than one of our notes
+  /// (OPH-251). The same editor either way — same modes, same toolbar — which
+  /// is the point: it is the same job. What changes is that the document is
+  /// permanently marked (W1) and never autosaved (W2).
+  final bool external;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (external) return const _NoteEditor(note: null, external: true);
     if (noteId == null) return const _NoteEditor(note: null);
     final note = ref.watch(noteDetailProvider(noteId!));
     return note.when(
@@ -54,9 +64,10 @@ class NoteEditorScreen extends ConsumerWidget {
 }
 
 class _NoteEditor extends ConsumerStatefulWidget {
-  const _NoteEditor({required this.note});
+  const _NoteEditor({required this.note, this.external = false});
 
   final NoteDetail? note;
+  final bool external;
 
   @override
   ConsumerState<_NoteEditor> createState() => _NoteEditorState();
@@ -93,7 +104,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _noteId = widget.note?.id;
     _isPinned = widget.note?.isPinned ?? false;
     _isArchived = widget.note?.isArchived ?? false;
-    _doc = NoteDocument(note: widget.note)..addListener(_onDocChanged);
+    _doc = NoteDocument(note: widget.note ?? _externalSeed())
+      ..addListener(_onDocChanged);
+    // D1 opens a document that came from a file in Reading, which is right
+    // when the OS handed it to us. This entry point is "Edit a file…", so it
+    // lands on the editor instead — the mode control still offers both.
+    if (widget.external) _doc.setMode(_doc.editorMode);
     _doc.title.addListener(_markDirty);
     _doc.quill.document.changes.listen((_) => _markDirty());
   }
@@ -102,8 +118,9 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   void dispose() {
     _disposed = true;
     _debounce?.cancel();
-    // Flush a pending save without awaiting (screen is going away).
-    if (_dirty) unawaited(_save());
+    // Flush a pending save without awaiting (screen is going away) — but never
+    // for an external document: leaving is not consent to write (W2).
+    if (_dirty && !widget.external) unawaited(_save());
     _doc
       ..removeListener(_onDocChanged)
       ..dispose();
@@ -119,8 +136,74 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     setState(() => _saveState = next);
   }
 
+  /// The document the external session opened, as a markdown-canonical note
+  /// the editor already knows how to hold. Null for an ordinary new note.
+  NoteDetail? _externalSeed() {
+    if (!widget.external) return null;
+    final session = ref.read(externalSessionProvider);
+    if (session == null) return null;
+    return NoteDetail(
+      id: '',
+      workspaceId: '',
+      title: session.document.name,
+      snippet: '',
+      isPinned: false,
+      isArchived: false,
+      revision: 0,
+      contentFormat: NoteFormat.markdown.wire,
+      contentMarkdown: session.document.markdown,
+    );
+  }
+
+  /// W3/W4 in one place: the saver exists only when the OS allows the write
+  /// AND the bytes survive the round trip.
+  ExternalSaver? get _externalSaver {
+    final session = ref.watch(externalSessionProvider);
+    return session == null ? null : saverFor(session);
+  }
+
+  /// The deliberate write (W2). Autosave never reaches this.
+  Future<void> _saveExternal() async {
+    final saved = await saveExternal(context, ref, _doc.markdown);
+    if (!mounted) return;
+    if (saved) {
+      setState(() => _dirty = false);
+      return;
+    }
+    // The conflict sheet's "reload" leg replaces the document under us, so the
+    // editor has to take the new text rather than keep showing ours.
+    final session = ref.read(externalSessionProvider);
+    if (session != null && session.document.markdown != _doc.source.text) {
+      setState(() {
+        _doc.source.text = session.document.markdown;
+        _dirty = false;
+      });
+    }
+  }
+
+  /// W4's other half, and the answer for a file we may not write: keep it here
+  /// instead. Always available, because it never touches the file.
+  Future<void> _saveExternalAsNote() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final workspaces = await ref.read(workspacesProvider.future);
+    if (workspaces.isEmpty || !mounted) return;
+    await ref
+        .read(noteStoreProvider)
+        .create(workspaces.first.id, _doc.bodyFor(_titleText));
+    if (!mounted) return;
+    setState(() => _dirty = false);
+    messenger.showSnackBar(SnackBar(content: Text('note.extSavedAsNote'.tr())));
+  }
+
   void _markDirty() {
     _dirty = true;
+    // W2: autosave belongs to AllisWell's own notes. An external file — and
+    // the note it would otherwise be silently imported as — changes only on a
+    // deliberate action, so the timer is not started at all.
+    if (widget.external) {
+      if (!_disposed && mounted) setState(() {});
+      return;
+    }
     _debounce?.cancel();
     _debounce = Timer(_autosaveDelay, _save);
   }
@@ -277,97 +360,131 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('note.detailTitle'.tr()),
+        title: Text(
+          widget.external ? 'note.extTitle'.tr() : 'note.detailTitle'.tr(),
+        ),
         actions: [
-          IconButton(
-            tooltip: _isPinned ? 'note.unpin'.tr() : 'note.pin'.tr(),
-            icon: Icon(
-              _isPinned ? Icons.star : Icons.star_border,
-              color: _isPinned ? context.awTokens.warning : null,
+          // W3/W4: built ONLY when a saver exists. `saverFor` returns one only
+          // from the writable arm of a sealed type, so on a read-only file —
+          // or a non-UTF-8 one — there is nothing to bind this to and it does
+          // not exist. A disabled button would be the dead affordance §22
+          // forbids; the band says why instead.
+          if (widget.external) ...[
+            if (_externalSaver != null)
+              IconButton(
+                key: const Key('external-save'),
+                tooltip: 'note.extSave'.tr(),
+                icon: const Icon(Icons.save_outlined),
+                onPressed: _saveExternal,
+              ),
+            IconButton(
+              key: const Key('external-save-as-note'),
+              tooltip: 'note.extSaveAsNote'.tr(),
+              icon: const Icon(Icons.note_add_outlined),
+              onPressed: _saveExternalAsNote,
             ),
-            onPressed: _togglePin,
-          ),
-          IconButton(
-            tooltip: _isArchived ? 'note.unarchive'.tr() : 'note.archive'.tr(),
-            icon: Icon(
-              _isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
+          ] else ...[
+            IconButton(
+              tooltip: _isPinned ? 'note.unpin'.tr() : 'note.pin'.tr(),
+              icon: Icon(
+                _isPinned ? Icons.star : Icons.star_border,
+                color: _isPinned ? context.awTokens.warning : null,
+              ),
+              onPressed: _togglePin,
             ),
-            onPressed: _toggleArchived,
-          ),
-          IconButton(
-            tooltip: 'note.deleteTooltip'.tr(),
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _delete,
-          ),
+            IconButton(
+              tooltip: _isArchived
+                  ? 'note.unarchive'.tr()
+                  : 'note.archive'.tr(),
+              icon: Icon(
+                _isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
+              ),
+              onPressed: _toggleArchived,
+            ),
+            IconButton(
+              tooltip: 'note.deleteTooltip'.tr(),
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _delete,
+            ),
+          ],
           // OPH-201: an overflow rather than a sixth icon — this app bar is
           // already at the phone's limit. The mode control took the preview
           // button's place (OPH-248), so the count did not grow.
-          PopupMenuButton<String>(
-            key: const Key('note-quick-menu'),
-            tooltip: 'quick.actions'.tr(),
-            onSelected: (value) {
-              if (value == 'export-pdf') {
-                unawaited(
-                  exportNoteAsPdf(
+          //
+          // Hidden for an external document: pin, archive, delete and quick
+          // access all name a NOTE by id, and this one has none until the user
+          // saves it as one.
+          if (!widget.external)
+            PopupMenuButton<String>(
+              key: const Key('note-quick-menu'),
+              tooltip: 'quick.actions'.tr(),
+              onSelected: (value) {
+                if (value == 'export-pdf') {
+                  unawaited(
+                    exportNoteAsPdf(
+                      context,
+                      ref,
+                      title: _titleText,
+                      deltaJson: _doc.deltaJson,
+                      updatedAt: widget.note?.updatedAt,
+                    ),
+                  );
+                  return;
+                }
+                if (value == 'convert') {
+                  unawaited(_convert());
+                  return;
+                }
+                if (_noteId case final id?) {
+                  toggleQuickAccess(
                     context,
                     ref,
-                    title: _titleText,
-                    deltaJson: _doc.deltaJson,
-                    updatedAt: widget.note?.updatedAt,
-                  ),
-                );
-                return;
-              }
-              if (value == 'convert') {
-                unawaited(_convert());
-                return;
-              }
-              if (_noteId case final id?) {
-                toggleQuickAccess(
-                  context,
-                  ref,
-                  kind: QuickKind.note,
-                  targetId: id,
-                  suggestedTitle: _doc.title.text,
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                key: const Key('note-export-pdf'),
-                value: 'export-pdf',
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.picture_as_pdf_outlined),
-                  title: Text('note.exportPdf'.tr()),
-                ),
-              ),
-              PopupMenuItem(
-                key: const Key('note-convert'),
-                value: 'convert',
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.swap_horiz),
-                  title: Text(
-                    _doc.convertTarget == NoteFormat.markdown
-                        ? 'note.convertToMarkdown'.tr()
-                        : 'note.convertToRich'.tr(),
+                    kind: QuickKind.note,
+                    targetId: id,
+                    suggestedTitle: _doc.title.text,
+                  );
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  key: const Key('note-export-pdf'),
+                  value: 'export-pdf',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.picture_as_pdf_outlined),
+                    title: Text('note.exportPdf'.tr()),
                   ),
                 ),
-              ),
-              if (_noteId case final id?)
-                quickAccessMenuItem(
-                  value: 'quick',
-                  isSaved: isInQuickAccess(ref, QuickKind.note, id),
+                PopupMenuItem(
+                  key: const Key('note-convert'),
+                  value: 'convert',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.swap_horiz),
+                    title: Text(
+                      _doc.convertTarget == NoteFormat.markdown
+                          ? 'note.convertToMarkdown'.tr()
+                          : 'note.convertToRich'.tr(),
+                    ),
+                  ),
                 ),
-            ],
-          ),
+                if (_noteId case final id?)
+                  quickAccessMenuItem(
+                    value: 'quick',
+                    isSaved: isInQuickAccess(ref, QuickKind.note, id),
+                  ),
+              ],
+            ),
         ],
       ),
       body: NoteDropTarget(
         onFiles: _uploadDropped,
         child: Column(
           children: [
+            // W1: above everything, so it is present in Reading, Live and
+            // Source alike — "which file am I changing" stops being a nicety
+            // the moment editing is possible.
+            if (widget.external) ExternalDocBand(dirty: _dirty),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
               child: Row(
