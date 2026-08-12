@@ -663,6 +663,7 @@
     "insertImage": "Insert image",
     "insertVideo": "Insert video",
     "attachedNotEmbedded": "Uploaded as an attachment — this file type doesn't embed inline",
+    "dropHere": "Drop files to add them to this note",
     "mediaUnavailable": "Attachment unavailable",
     "viewerOffline": "Can't reach the server — this image needs a connection.",
     "viewerGone": "This file is no longer on the server.",

@@ -164,6 +164,23 @@ dependencies:
   # into TASKS.
   flutter_math_fork: ^0.7.4
 
+  # Dropping a file onto the editor (DESIGN §29 D20's neighbour, OPH-250).
+  # Flutter has no built-in OS-file drop, and the only alternative that covers
+  # the desktops AND the web is dart:html, which is web-only — so this is a
+  # package or nothing. Not a new dependency CATEGORY (file_picker and
+  # image_picker are the same thing through a different door), so no ADR.
+  #
+  # 0.7.1 registers macOS, Windows, Linux, Android and web; there is no iOS
+  # plugin class, and `DropTarget` degrades to a plain pass-through there
+  # rather than throwing. `super_drag_and_drop` was rejected for the reason
+  # its clipboard sibling was: super_native_extensions puts a Rust toolchain
+  # into all six platform builds and into CI.
+  desktop_drop: ^0.7.1
+  # Only for the `XFile` a drop hands back; declared so the analyzer's
+  # depend_on_referenced_packages stays happy (same reason as
+  # image_picker_platform_interface above).
+  cross_file: ^0.3.4+2
+
 dev_dependencies:
   # Generates the iOS AppIcon set + Android mipmaps/adaptive icons from
   # assets/branding/ — run: dart run flutter_launcher_icons

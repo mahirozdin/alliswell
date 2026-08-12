@@ -57,6 +57,14 @@ enum NoteMode {
   source,
 }
 
+/// What the document managed to do with an uploaded file.
+///
+/// The caller needs to know, because [NoteInsert.attachedOnly] is the one case
+/// with nothing to see in the document — the file really is attached to the
+/// note, but the surface has no way to show it, and silence there reads as a
+/// failed upload.
+enum NoteInsert { embedded, linked, attachedOnly }
+
 /// Owns a note's content and the controllers that edit it.
 class NoteDocument extends ChangeNotifier {
   NoteDocument({NoteDetail? note})
@@ -128,6 +136,58 @@ class NoteDocument extends ChangeNotifier {
 
   List<Map<String, dynamic>> get deltaJson =>
       quill.document.toDelta().toJson().cast<Map<String, dynamic>>();
+
+  /// Puts an already-uploaded file into whichever surface is currently editing.
+  ///
+  /// Live takes a Quill `BlockEmbed`; Source takes markdown text. Three things
+  /// want to do this — the toolbar's insert buttons, a dropped file, and
+  /// (once OPH-256 lands) a pasted image — and if each decided for itself,
+  /// they would drift the way the toolbar and the slash menu were about to
+  /// before `mdActions()` was made the single list. The document knows which
+  /// surface is canonical, so the choice lives here.
+  NoteInsert insertFile({
+    required String fileId,
+    required String name,
+    required String mime,
+  }) {
+    final uri = 'alliswell://file/$fileId';
+    final isImage = mime.startsWith('image/');
+
+    if (editorMode == NoteMode.source) {
+      // Markdown has no video embed, so a non-image becomes a LINK rather than
+      // an `![…]()` that every renderer would draw as a broken image. The file
+      // is attached either way; this is about not lying in the document.
+      final text = isImage ? '![$name]($uri)' : '[$name]($uri)';
+      final selection = source.selection;
+      final start = selection.isValid ? selection.start : source.text.length;
+      final end = selection.isValid ? selection.end : source.text.length;
+      source.value = TextEditingValue(
+        text: source.text.replaceRange(start, end, text),
+        selection: TextSelection.collapsed(offset: start + text.length),
+      );
+      return isImage ? NoteInsert.embedded : NoteInsert.linked;
+    }
+
+    final BlockEmbed? embed = isImage
+        ? BlockEmbed.image(uri)
+        : mime.startsWith('video/')
+        ? BlockEmbed.video(uri)
+        : null;
+    if (embed == null) return NoteInsert.attachedOnly;
+
+    final selection = quill.selection;
+    final index = selection.isValid
+        ? selection.start
+        : quill.document.length - 1;
+    final length = selection.isValid ? selection.end - selection.start : 0;
+    quill.replaceText(
+      index,
+      length,
+      embed,
+      TextSelection.collapsed(offset: index + 1),
+    );
+    return NoteInsert.embedded;
+  }
 
   /// Whether converting would change the note's canonical form in a way the
   /// user cannot undo by switching back.

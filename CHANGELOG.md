@@ -24,6 +24,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   the raw paste back. A word count sits out of the way, a focus mode dims
   everything but the paragraph you are in, and autosave finally says whether it
   saved — it used to work in silence and fail in silence too.
+- **Drag a file onto a note and it lands there.** On a Mac, Windows, Linux, the
+  browser or an Android tablet, dropping files onto the editor uploads them to
+  that note and puts them where you dropped them — a picture as a picture, and
+  anything else as a link you can get back to. It works the same whichever
+  editor the note uses, because both doors now go through the same place.
 - **A command palette, and shortcuts that finally work off a Mac.** ⌘K (Ctrl+K)
   opens a searchable list of every formatting command, navigable entirely from
   the keyboard, and it searches by name rather than by command — typing "kalin"

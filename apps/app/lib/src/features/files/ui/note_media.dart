@@ -6,6 +6,7 @@ import '../../../i18n/i18n.dart' show AwTr;
 import '../../../theme/tokens.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../notes/data/note_blocks.dart';
+import '../../notes/data/note_document.dart';
 import '../providers.dart';
 import 'attach_menu.dart';
 import 'image_viewer.dart';
@@ -272,11 +273,14 @@ class _EmbedPlaceholder extends ConsumerWidget {
 class NoteMediaButtons extends ConsumerWidget {
   const NoteMediaButtons({
     super.key,
-    required this.controller,
+    required this.document,
     required this.ensureNote,
   });
 
-  final QuillController controller;
+  /// The document, not the Quill controller: where an upload lands is the
+  /// document's decision now (`NoteDocument.insertFile`), shared with the
+  /// drop target so the two cannot drift apart.
+  final NoteDocument document;
 
   /// Autosaves a brand-new note first so an upload has a target id.
   final Future<({String noteId, String workspaceId})?> Function() ensureNote;
@@ -329,35 +333,16 @@ class NoteMediaButtons extends ConsumerWidget {
             source: pick,
           );
       if (fileId == null) continue; // the upload strip shows the failure
-      final mime = pick.mime ?? mimeForName(pick.name);
-      final uri = 'alliswell://file/$fileId';
-
-      final BlockEmbed? embed;
-      if (mime.startsWith('image/')) {
-        embed = BlockEmbed.image(uri);
-      } else if (mime.startsWith('video/')) {
-        embed = BlockEmbed.video(uri);
-      } else {
-        embed = null;
-      }
-      if (embed == null) {
+      final outcome = document.insertFile(
+        fileId: fileId,
+        name: pick.name,
+        mime: pick.mime ?? mimeForName(pick.name),
+      );
+      if (outcome == NoteInsert.attachedOnly) {
         messenger?.showSnackBar(
           SnackBar(content: Text('file.attachedNotEmbedded'.tr())),
         );
-        continue;
       }
-
-      final selection = controller.selection;
-      final index = selection.isValid
-          ? selection.start
-          : controller.document.length - 1;
-      final length = selection.isValid ? selection.end - selection.start : 0;
-      controller.replaceText(
-        index,
-        length,
-        embed,
-        TextSelection.collapsed(offset: index + 1),
-      );
     }
   }
 }

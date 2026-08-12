@@ -7,6 +7,7 @@ import Foundation
 
 import alliswell_eventkit
 import audioplayers_darwin
+import desktop_drop
 import file_picker
 import file_selector_macos
 import firebase_analytics
@@ -26,6 +27,7 @@ import url_launcher_macos
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   AlliswellEventkitPlugin.register(with: registry.registrar(forPlugin: "AlliswellEventkitPlugin"))
   AudioplayersDarwinPlugin.register(with: registry.registrar(forPlugin: "AudioplayersDarwinPlugin"))
+  DesktopDropPlugin.register(with: registry.registrar(forPlugin: "DesktopDropPlugin"))
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
   FirebaseAnalyticsPlugin.register(with: registry.registrar(forPlugin: "FirebaseAnalyticsPlugin"))

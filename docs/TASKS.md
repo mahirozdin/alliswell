@@ -7103,6 +7103,36 @@ _**Kapı sınandı:** `bold`u kasten `meta`-only'ye döndürdüm, test
 _**Kalan iki madde bilinçli açık:** sürükle-bırak ve panodan görsel. İkincisi
 **OPH-256'ya bağımlı** (`alliswell_docref.clipboardRead()` henüz yok) — AGENTS §2'nin
 "blocked ise sebebini yaz" maddesi.)_
+
+_(**Sürükle-bırak sevk edildi 2026-08-11g.** Süitler **1108** (+7),
+analyze/format/i18n temiz, `contrast.py` FAILURES: 0._
+
+_**Asıl iş `desktop_drop` değil, insert yolunu TEKE indirmekti.** Bırakma üçüncü
+çağıran olacaktı (araç çubuğu düğmeleri + OPH-256'nın panosu + bırakma), ve üçü de
+"görsel mi, video mu, hiçbiri mi" sorusunu kendi cevaplasaydı `mdActions()` öncesi
+araç çubuğu/slash ikilisinin tam olarak düştüğü yere düşerlerdi. Karar
+`NoteDocument.insertFile()`'a taşındı — hangi yüzeyin kanonik olduğunu bilen tek
+yer orası — ve `NoteMediaButtons` de ona bağlandı (artık `QuillController` değil
+`NoteDocument` alıyor)._
+
+_**Markdown'da video gömme yok**, o yüzden Source modunda görsel `![ad](uri)`,
+görsel olmayan `[ad](uri)` **bağlantı** oluyor. `![clip.mp4](…)` yazmak her
+renderer'da kırık görsel çizdirirdi — belge kendi içeriği hakkında yanlış bir şey
+iddia ederdi. Sonuç `NoteInsert{embedded,linked,attachedOnly}` ile dönüyor, çünkü
+`attachedOnly` gösterilecek hiçbir şeyi olmayan tek durum ve orada sessizlik
+"yükleme başarısız" diye okunur._
+
+_**Yazarken bulunan kendi açığım:** `pickedFromDrop` `XFile.name`'e körü körüne
+güveniyordu. `name` garanti DEĞİL — io'da yoldan türetiliyor ve bir bırakma ikisi
+de olmadan gelebilir; boş ad boş satırlı bir yükleme ve `mimeForName`'e tahmin
+edecek hiçbir şey bırakmak demekti. Fallback kondu._
+
+_**iOS'ta `DropTarget` hiç kurulmuyor** (`supportsFileDrop`) — desktop_drop'un iOS
+eklenti sınıfı yok, sarmalamak cevapsız bir kanalın etrafına widget dizmek olurdu._
+
+_**Dürüst sınır:** OS'un bırakma OLAYI bir platform kanalı ve cihazda doğrulanır,
+burada değil (native köprülerin tuttuğu sınırın aynısı). Test edilen, dosya elimize
+geçtikten sonraki her karar.)_
 - [x] **Slash komutları** (D19) her araç çubuğu eylemine ikinci yol olarak; tek yol asla
       değil.
 - [x] **Akıllı yapıştırma** (D20): HTML → markdown, seçimin üstüne URL → bağlantı;
@@ -7110,7 +7140,7 @@ _**Kalan iki madde bilinçli açık:** sürükle-bırak ve panodan görsel. İki
       focus node'una bağlı — global kısayol yapmak bul çubuğuna ve başlığa da
       uzanırdı. **Panodaki GÖRSEL yüklemesi yapılmadı:** pano görselini okumak
       platform kanalı ister, `uploadAll` hazır ama köprü yok.
-- [ ] Masaüstü/web'de editöre **sürükle-bırak** dosya — `desktop_drop` (saf platform
+- [x] Masaüstü/web'de editöre **sürükle-bırak** dosya — `desktop_drop` (saf platform
       kanalı, Rust yok, CI değişmez). Bırakılan dosya → `PickedUpload.fromBytes` →
       `uploads.start` (fileId döndürür) → gömme. **Plumbing gerçeği:** `SourceMode`
       düz bir `StatefulWidget`, ne `ref`i ne `_ensureNote`ı var — drop hedefi

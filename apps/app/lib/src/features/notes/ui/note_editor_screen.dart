@@ -10,6 +10,7 @@ import '../../quick_access/ui/quick_access_add.dart';
 import '../../../i18n/i18n.dart';
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart' show UploadRowTile;
+import '../../files/ui/note_drop_target.dart';
 import '../../files/ui/note_media.dart';
 import '../../../theme/tokens.dart';
 import '../data/note.dart';
@@ -363,77 +364,116 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: NoteModeControl(
-                    modes: _doc.availableModes,
-                    active: _doc.mode,
-                    onChanged: _doc.setMode,
-                  ),
-                ),
-                _SaveIndicator(state: _saveState),
-              ],
-            ),
-          ),
-          if (_doc.mode == NoteMode.live) _liveToolbar(),
-          // In-flight/failed media uploads for THIS note (F2: visible state).
-          for (final job
-              in ref
-                  .watch(uploadsProvider)
-                  .where(
-                    (j) => j.targetType == 'note' && j.targetId == _noteId,
-                  ))
+      body: NoteDropTarget(
+        onFiles: _uploadDropped,
+        child: Column(
+          children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: UploadRowTile(job: job),
-            ),
-          // Apple-Notes style: the title is the document's fixed first block —
-          // an H1 the note content flows under (feedback round 1). Content is
-          // width-capped for a readable measure on wide screens, EXCEPT in the
-          // split view, which wants the whole window.
-          Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: _doc.mode == NoteMode.source ? 1400 : 760,
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                      child: TextField(
-                        key: const Key('note-title'),
-                        controller: _doc.title,
-                        maxLines: null,
-                        readOnly: _doc.mode == NoteMode.reading,
-                        decoration: InputDecoration(
-                          hintText: 'note.titleHint'.tr(),
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 6,
-                          ),
-                        ),
-                        style: theme.textTheme.headlineMedium,
-                      ),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: NoteModeControl(
+                      modes: _doc.availableModes,
+                      active: _doc.mode,
+                      onChanged: _doc.setMode,
                     ),
-                    Expanded(child: _body()),
-                  ],
+                  ),
+                  _SaveIndicator(state: _saveState),
+                ],
+              ),
+            ),
+            if (_doc.mode == NoteMode.live) _liveToolbar(),
+            // In-flight/failed media uploads for THIS note (F2: visible state).
+            for (final job
+                in ref
+                    .watch(uploadsProvider)
+                    .where(
+                      (j) => j.targetType == 'note' && j.targetId == _noteId,
+                    ))
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: UploadRowTile(job: job),
+              ),
+            // Apple-Notes style: the title is the document's fixed first block —
+            // an H1 the note content flows under (feedback round 1). Content is
+            // width-capped for a readable measure on wide screens, EXCEPT in the
+            // split view, which wants the whole window.
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: _doc.mode == NoteMode.source ? 1400 : 760,
+                  ),
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        child: TextField(
+                          key: const Key('note-title'),
+                          controller: _doc.title,
+                          maxLines: null,
+                          readOnly: _doc.mode == NoteMode.reading,
+                          decoration: InputDecoration(
+                            hintText: 'note.titleHint'.tr(),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 6,
+                            ),
+                          ),
+                          style: theme.textTheme.headlineMedium,
+                        ),
+                      ),
+                      Expanded(child: _body()),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  /// A file dropped onto the editor: upload it to THIS note, then let the
+  /// document decide where it lands (Live gets an embed, Source gets markdown).
+  ///
+  /// Same three steps the insert buttons take — ensure the note exists so the
+  /// upload has a target, upload, insert — because a drop is a different door
+  /// to the same room, not a different feature.
+  Future<void> _uploadDropped(List<PickedUpload> picks) async {
+    if (picks.isEmpty) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final target = await _ensureNote();
+    if (target == null) return;
+
+    for (final pick in picks) {
+      final fileId = await ref
+          .read(uploadsProvider.notifier)
+          .start(
+            workspaceId: target.workspaceId,
+            targetType: 'note',
+            targetId: target.noteId,
+            source: pick,
+          );
+      if (fileId == null) continue; // the upload strip shows the failure
+      final outcome = _doc.insertFile(
+        fileId: fileId,
+        name: pick.name,
+        mime: pick.mime ?? mimeForName(pick.name),
+      );
+      if (outcome == NoteInsert.attachedOnly) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text('file.attachedNotEmbedded'.tr())),
+        );
+      }
+      _markDirty();
+    }
   }
 
   Widget _liveToolbar() => Padding(
@@ -461,7 +501,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
               ),
             ),
             // Epic 14 (OPH-156): inline images/videos.
-            NoteMediaButtons(controller: _doc.quill, ensureNote: _ensureNote),
+            NoteMediaButtons(document: _doc, ensureNote: _ensureNote),
           ],
         ),
       ),
