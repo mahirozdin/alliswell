@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ADR-0030 §7: SAF is permissionless by design. This plugin declares NO
+         <uses-permission>, and scripts/android/assert-permissions.sh proves it
+         from the built APK rather than from this file. -->
+</manifest>

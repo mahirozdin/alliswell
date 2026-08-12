@@ -7292,19 +7292,19 @@ iki Apple platformuna hizmet ediyor (`#if os(iOS)` / `#elseif os(macOS)`). Gerek
 `ios/Runner/` köprüleri (share_inbox, alarmkit) iOS'a hapis ve AppDelegate düzenlemesi
 istiyor. Eklenti **ince ve aptal** kalır; politika Dart'ta.)_
 
-- [ ] **macOS** — `NSOpenPanel`; `bookmarkData(options: .withSecurityScope)` +
+- [x] **macOS** — `NSOpenPanel`; `bookmarkData(options: .withSecurityScope)` +
       `startAccessingSecurityScopedResource`; yoklama
       `resourceValues(forKeys: [.isWritableKey, .volumeIsReadOnlyKey])` —
       **`isWritableFile(atPath:)` DEĞİL**, o POSIX modunu söyler, sandbox iznini değil;
       yazma `NSFileCoordinator(.forReplacing)` + `write(to:options:.atomic)`.
-- [ ] **macOS entitlement'ları** (`DebugProfile` + `Release`):
+- [x] **macOS entitlement'ları** (`DebugProfile` + `Release`):
       `com.apple.security.files.user-selected.read-write` +
       `com.apple.security.files.bookmarks.app-scope`. Birincisi olmadan panel salt-okunur
       veriyor; ikincisi olmadan bookmark hiç üretilemiyor. **Ve `AppDelegate.swift`'e
       `application(_:open:)`** — `Info.plist` doküman tiplerini beyan ettiği hâlde bugün
       Finder'da bir `.md`'ye çift tıklamak hiçbir Dart koduna ulaşmıyor. URL Dart
       dinlemeye başlamadan geldiği için `ShareInboxBridge` posta-kutusu deseni kullanılır.
-- [ ] **iOS** — `UIDocumentPickerViewController(asCopy: **false**)`; `bookmarkData()`
+- [x] **iOS** — `UIDocumentPickerViewController(asCopy: **false**)`; `bookmarkData()`
       **`.withSecurityScope` OLMADAN** (o seçenek macOS'a özel; iOS'ta doküman-seçici
       bookmark'ı örtük olarak security-scoped — bu, paylaşılan Swift dosyasının ayrışmak
       zorunda olduğu tek yer, yoruma yazılır). `NSFileCoordinator` burada **zorunlu**:
@@ -7312,7 +7312,7 @@ istiyor. Eklenti **ince ve aptal** kalır; politika Dart'ta.)_
       Entitlement **yok**. Soğuk açılışta URL `SceneDelegate`'in
       `scene(_:willConnectTo:options:)` → `connectionOptions.urlContexts`'ine düşüyor —
       OPH-242'nin zaten belgelediği tuzak; tamponlanır.
-- [ ] **Android** — `ACTION_OPEN_DOCUMENT` + persistable flag'ler;
+- [x] **Android** — `ACTION_OPEN_DOCUMENT` + persistable flag'ler;
       `takePersistableUriPermission(READ or WRITE)` `SecurityException` yakalanarak
       (başarısızlık = `ExternalReadOnly(permissionReadOnly)`); yoklama **iki olgu birden**:
       `persistedUriPermissions…isWritePermission` (bizim tuttuğumuz) **ve**
@@ -7322,7 +7322,7 @@ istiyor. Eklenti **ince ve aptal** kalır; politika Dart'ta.)_
       dosyayı kesmiyor, yeni belge kısaysa eskinin kuyruğu dosyada kalıyor; yalnız gerçek
       cihazda görünen bir bayt bozulması. Manifest'e `ACTION_EDIT` eklenir,
       **hiçbir `<uses-permission>` eklenmez** — `assert-permissions.sh` değişmeden geçmeli.
-- [ ] **Atomiklik, dürüstçe asimetrik** (ADR-0030'a yazılır). **Apple: çökme-güvenli** —
+- [x] **Atomiklik, dürüstçe asimetrik** (ADR-0030'a yazılır). **Apple: çökme-güvenli** —
       `.atomic` kullanılır, elle temp dosya **yazılmaz**: sandbox izni *seçilen dosyayı*
       kapsıyor, klasörünü değil, kardeş temp dosya gerçek imzalı build'de tam da bu yüzden
       patlar. Mod bitleri okunup geri konur. **Android: değil, ve yapılamaz** — SAF URI'si
@@ -7332,7 +7332,7 @@ istiyor. Eklenti **ince ve aptal** kalır; politika Dart'ta.)_
       başarılı kapanışta silinir; açılışta orada dosya bulmak = son kayıt yırtılmış
       olabilir → kullanıcıya geri yükleme. **Reddedilen:** `createDocument` + delete —
       URI'yi değiştirir, kalıcı izni ve tüm recents girdilerini geçersiz kılar.
-- [ ] **`clipboardRead()`** (OPH-250'nin panodan görsel maddesini besler):
+- [x] **`clipboardRead()`** (OPH-250'nin panodan görsel maddesini besler):
       `{html?, imageBytes?, imageMime?}` — iOS/macOS `UIPasteboard`/`NSPasteboard`,
       Android `ClipData`, web `navigator.clipboard.read()`. Desteklenmeyen platform
       sessizce boş döner.
@@ -7354,6 +7354,47 @@ istiyor. Eklenti **ince ve aptal** kalır; politika Dart'ta.)_
   tutucu tekrarı etkisiz kılar; yetmezse OS-açılış şeridi yalnız eklentiye verilir ve
   `share_intent.dart`'ın `.md` eşleşmesi kaldırılır — o yol bu özellik için zaten çıkmaz
   sokak, kopya veriyor.
+
+_(✅ 2026-08-12. Süitler **1142** (+15), analyze/format/i18n temiz, `contrast.py`
+FAILURES: 0, **`assert-permissions.sh` YEŞİL** — 18 izin, eklenti sıfır ekledi._
+
+_**Bu tur native kodun kaynak ağacında durmasıyla derlenmesi arasındaki farkı
+dört kez gösterdi (OPH-182'nin dersi).** Hepsi ölçüldü:_
+
+_**1. macOS derlemesi OPH-223'ten beri kırıkmış.** `speech_to_text` macOS 11
+istiyor, hedef 10.15'ti — `pod install` daha başlarken patlıyordu. Kimse fark
+etmemiş çünkü hiçbir şey macOS'u derlemiyordu. Podfile + pbxproj (3 yer) 11.0'a
+çekildi._
+
+_**2. `alliswell_eventkit`'in macOS Swift'i HİÇ derlenmemiş** — yani
+`pubspec.yaml`'ın "paket kullanmamızın sebebi bu" diye yazdığı sembolik-bağ
+numarası macOS'ta sessizce boş bir hedef üretiyormuş. Ölçüm: `pod install`
+sonrası Pods projesinde **0** kaynak referansı, `xcodebuild` çıktısında **0**
+Swift derleme satırı. Sebep dizin-seviyesi bağ; **dosya-seviyesi** bağa
+çevrilince **4** referans ve **12** derleme satırı. İki eklenti de düzeltildi —
+eventkit'in macOS köprüsü bugün ilk kez gerçekten derlendi._
+
+_**3. iOS'ta iki gerçek derleme hatası** ancak derleyerek çıktı: `UTType`
+(iOS 14+) ve `keyWindow` (iOS 15+). Kök sebep öğrenmeye değer: Podfile'ın
+`flutter_additional_ios_build_settings`'i **her pod'u Flutter'ın alt sınırında
+derliyor**, podspec ne derse desin — yani eklenti uygulamanın hedefine değil o
+tabana göre yazılmak zorunda._
+
+_**4. macOS'ta imzalama, önceden var olan ve SAHİBE ait bir engel.**
+`CODE_SIGN_IDENTITY = "-"` (ad-hoc) ama proje geliştirici sertifikası isteyen
+entitlement'lar taşıyor. **Benim eklediğim iki entitlement'ın suçu değil:**
+ikisini geçici olarak çıkarıp derledim, hata birebir aynı çıktı. Tam macOS
+uygulama derlemesi bu yüzden hâlâ yapılamıyor; eklentinin Swift'i pod hedefi
+olarak ayrıca derlenip doğrulandı._
+
+_**Doğrulananlar (üründen, kaynak ağacından değil):** iOS — tam uygulama
+derlendi ve `Runner.app/Frameworks/alliswell_docref.framework` içinde **17**
+sembol var. macOS — pod hedefi `BUILD SUCCEEDED`, 12 Swift derleme satırı.
+Android — release APK derlendi, izin kapısı yeşil._
+
+_**Doğrulanmayan ve sahibe kalan:** gerçek dosya turu — üç platformda
+`shasum` öncesi/sonrası. Kabul kriteri bunu istiyor ve kod bunu yapamaz.
+macOS için önce imzalama sorununun çözülmesi gerekiyor._)
 
 ### OPH-251 — Dış dosyanın sahipliği: aç, düzenle, **geri kaydet** (DESIGN §29 W1–W6)
 

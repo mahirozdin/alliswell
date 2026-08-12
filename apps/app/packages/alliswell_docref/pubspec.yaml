@@ -1,0 +1,28 @@
+name: alliswell_docref
+description: "External document handles for AllisWell — pick, probe, read and write a file the app does not own (ADR-0030, OPH-256)."
+version: 0.1.0
+publish_to: none # internal to this monorepo
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        pluginClass: AlliswellDocrefPlugin
+      macos:
+        pluginClass: AlliswellDocrefPlugin
+      android:
+        package: com.alliswell.docref
+        pluginClass: AlliswellDocrefPlugin

@@ -1,4 +1,8 @@
-platform :osx, '10.15'
+# 11.0, not 10.15 (OPH-256): `speech_to_text` has required macOS 11 since
+# OPH-223, so the macOS build had been failing at `pod install` — nobody
+# noticed because nothing built it. ADR-0030 makes a Mac round part of the
+# acceptance, so it has to build.
+platform :osx, '11.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'

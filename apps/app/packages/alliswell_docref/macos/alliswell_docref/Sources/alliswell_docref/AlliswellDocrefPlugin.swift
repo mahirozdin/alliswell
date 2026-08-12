@@ -1,0 +1,1 @@
+../../../../ios/alliswell_docref/Sources/alliswell_docref/AlliswellDocrefPlugin.swift

@@ -4,6 +4,16 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- ADR-0030: opening somebody's .md and SAVING IT BACK. Without
+	     files.user-selected.read-write the open panel grants read-only, and
+	     without files.bookmarks.app-scope a security-scoped bookmark cannot be
+	     minted at all — so the recents list could never reopen anything.
+	     Neither absence ERRORS: the sandbox just returns read-only, which is
+	     indistinguishable from a legitimately read-only file. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
 	<key>com.apple.developer.usernotifications.time-sensitive</key>
 	<true/>
 	<key>com.apple.security.personal-information.calendars</key>

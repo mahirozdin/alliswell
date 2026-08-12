@@ -61,6 +61,12 @@ dependencies:
   # Flutter's tooling wires the podspec for iOS AND macOS, so no pbxproj surgery.
   alliswell_eventkit:
     path: packages/alliswell_eventkit
+  # External document handles (ADR-0030, OPH-256): pick / probe / read / WRITE
+  # a file the app does not own. A package rather than files in Runner for the
+  # same reason eventkit is one — and because Android needs a plugin class that
+  # MainActivity does not have to know about.
+  alliswell_docref:
+    path: packages/alliswell_docref
   # 12.x (beta) is REQUIRED on AGP 9: 11.0.2 skips applying its own Kotlin
   # plugin when it detects AGP 9, expecting Flutter to compile its Kotlin —
   # which Flutter 3.44 does not, so the release build cannot find

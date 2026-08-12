@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
+import 'external_docref.dart';
 import 'external_document.dart';
 
 /// The extensions we claim. `.markdown` is the long form Jekyll and friends
@@ -99,33 +100,28 @@ abstract class MarkdownSource {
   Future<ExternalAccess> probe(ExternalDocHandle handle);
 }
 
-/// What every platform answers until OPH-256 implements the plugin.
-///
-/// Honest-unavailable rather than a throw or a silent false: the banner can say
-/// "this device cannot edit the file" and mean it, and no save action is built
-/// because [ExternalUnreachable] carries no saver.
-mixin NoExternalWriteBack implements MarkdownSource {
-  @override
-  Future<ExternalOpenResult> pickExternal() async =>
-      const ExternalRefused(ExternalOpenRefusal.unsupported);
+class PlatformMarkdownSource implements MarkdownSource {
+  const PlatformMarkdownSource({
+    this.docRef = const DocRefSource(maxBytes: kMarkdownMaxBytes),
+  });
+
+  /// The write edge (ADR-0030). Injectable so a test can drive the mapping
+  /// without a channel; the app always gets the real one.
+  final DocRefSource docRef;
 
   @override
-  Future<ExternalOpenResult> open(ExternalDocHandle handle) async =>
-      const ExternalRefused(ExternalOpenRefusal.unsupported);
+  Future<ExternalOpenResult> pickExternal() => docRef.pickExternal();
 
   @override
-  Future<ExternalOpenResult> adopt(String osToken) async =>
-      const ExternalRefused(ExternalOpenRefusal.unsupported);
+  Future<ExternalOpenResult> open(ExternalDocHandle handle) =>
+      docRef.open(handle);
 
   @override
-  Future<ExternalAccess> probe(ExternalDocHandle handle) async =>
-      const ExternalUnreachable(LostAccessReason.unsupportedPlatform);
-}
+  Future<ExternalOpenResult> adopt(String osToken) => docRef.adopt(osToken);
 
-class PlatformMarkdownSource
-    with NoExternalWriteBack
-    implements MarkdownSource {
-  const PlatformMarkdownSource();
+  @override
+  Future<ExternalAccess> probe(ExternalDocHandle handle) =>
+      docRef.probe(handle);
 
   @override
   Future<MarkdownDocument?> pick() async {

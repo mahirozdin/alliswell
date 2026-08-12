@@ -87,6 +87,11 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
+                <!-- ADR-0030: EDIT is what a file manager sends when the user
+                     means "open this so I can change it". Without it the app
+                     is only ever offered as a viewer, which is the wrong
+                     contract now that saving back exists. -->
+                <action android:name="android.intent.action.EDIT"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:scheme="file"/>
                 <data android:scheme="content"/>
