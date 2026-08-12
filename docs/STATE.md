@@ -3,7 +3,31 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-12d (**OPH-252 sevk edildi ve v1.4.0 KESİLDİ.
+**Last updated:** 2026-08-12e (**v1.4.0 CANLI — deploy doğrulandı.**
+`alliswell.space/` 200 ve JSON-LD `softwareVersion 1.4.0` diyor, `/app/` 200,
+`api.alliswell.space/health/ready` → `{"status":"ok"}` (mysql up, redis up).
+
+**İki ayrı arıza vardı, biri geçici biri GERÇEK:**
+1. **Android izin kapısı** ilk etiket koşusunda düştü ama **aynı commit main'de
+   dakikalar önce geçmişti** — job 36 saniyede ölmüştü, APK derlemesi bu kadar
+   süremez. Yeniden koşturulunca geçti: geçici altyapı arızası, kodda sorun yok.
+2. **Deploy'daki arıza bizimdi.** Sunucuda `npm ci` sırasında `argon2` kaynaktan
+   derlenmeye kalkıp öldü. Sebep `deploy.yml`'in node keşfi: "en yüksek major'ı
+   seç" diyor ve yedek taraması `/opt`'u da tarıyor — orada **runner'ın kendi
+   gömülü node'u** var. **Aylardır yanlış node seçiliyordu ve sessizce
+   çalışıyordu**, çünkü runner'ın node'u 20'ydi ve argon2'nin o ABI için hazır
+   ikilisi vardı. GitHub runner'ı 24'e çıkardı, hazır ikili yok, derleme
+   denendi, deploy kırmızıya döndü. Yani yukarı akıştaki bir yükseltme, aylardır
+   var olan bir hatayı görünür yaptı. Keşif artık `actions-runner` altındaki her
+   adayı atlıyor — sıralı listede, yedek taramada ve teşhis çıktısında.
+   Runner'ın node'u kurulu bir çalışma zamanı değil: runner'ı koşturmak için var,
+   habersiz değişir, ve PM2 süreci onu kullanmıyor.
+
+**Redeploy şekli:** ürün kodu v1.4.0'ın kendisi kaldı — düzeltilmiş workflow
+main'den, hedef etiket `v1.4.0`
+(`gh workflow run deploy.yml --ref main -f ref=v1.4.0`).
+
+Önceki blok: 2026-08-12d (**OPH-252 sevk edildi ve v1.4.0 KESİLDİ.
 Sürüm 11 yerde hizalandı (release kapısının okuduğu üçü dahil), CHANGELOG
 [1.4.0] oldu, `flutter clean` + iki `pod install` koşuldu.
 
