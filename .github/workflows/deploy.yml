@@ -115,6 +115,17 @@ jobs:
           # own directory, its bundled nvm, a user nvm). Ask each candidate what
           # version it IS and take the highest — picking by directory order
           # silently installs against the wrong engine.
+          # A GitHub self-hosted runner ships its OWN private Node under
+          # /opt/actions-runner/externals/. It is not an installed runtime: it
+          # exists to run the runner, it is replaced without notice, and the
+          # PM2 process this deploy restarts does not use it. Building native
+          # modules against it is wrong even when it works — and on
+          # 2026-08-12 it stopped working, because the runner moved from
+          # node20 to node24 and argon2 0.44.0 has no prebuilt for that ABI, so
+          # `npm ci` tried to compile and failed. It had been picking the
+          # runner's node for months; the upstream bump only made it visible.
+          is_runner_node() { case "$1" in */actions-runner/*) return 0 ;; *) return 1 ;; esac; }
+
           best=""; best_major=0
           for d in ${DEPLOY_NODE_PATH:-} \
                    /www/server/nvm/versions/node/v*/bin \
@@ -122,6 +133,7 @@ jobs:
                    "${HOME:-/root}"/.nvm/versions/node/v*/bin \
                    "$(dirname "$(command -v node 2>/dev/null || echo /nonexistent/node)")"; do
             [ -x "$d/node" ] || continue
+            is_runner_node "$d" && continue
             m=$("$d/node" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
             if [ "$m" -gt "$best_major" ]; then best_major="$m"; best="$d"; fi
           done
@@ -130,6 +142,7 @@ jobs:
           # should not break because a directory was renamed upstream.
           if [ "$best_major" -lt 22 ]; then
             for cand in $(find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null | head -40); do
+              is_runner_node "$cand" && continue
               m=$("$cand" -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
               if [ "$m" -gt "$best_major" ]; then best_major="$m"; best=$(dirname "$cand"); fi
             done
@@ -212,6 +225,7 @@ jobs:
             echo "ERROR: node $(node -v) is below the accepted minimum (v$MIN_NODE)." >&2
             echo "--- every node binary on this host ---" >&2
             find /www/server /opt /usr/local /home -maxdepth 6 -type f -name node -perm -u+x 2>/dev/null \
+              | grep -v '/actions-runner/' \
               | while read -r n; do echo "  $n → $("$n" -v 2>/dev/null)" >&2; done
             echo "Install a newer Node (aaPanel ▸ App Store ▸ Node.js), or point the" >&2
             echo "DEPLOY_NODE_PATH repository variable at a bin directory that has one." >&2
