@@ -35,9 +35,19 @@ ve `Runner.app/Frameworks/alliswell_docref.framework` **17** sembol taşıyor;
 macOS pod hedefi `BUILD SUCCEEDED` + 12 Swift derleme satırı; Android release APK
 derlendi ve izin kapısı yeşil.
 
+**macOS imzalama ÇÖZÜLDÜ (sahip onayladı, 2026-08-12):** takım `WWRZ5CG3DW`
+(APPILLON BILGI TEKNOLOJILERI). Kök sebep göründüğünden dardı — Runner hedefi
+zaten `DEVELOPMENT_TEAM` + `Automatic` taşıyordu, ama `CODE_SIGN_IDENTITY`
+ayarlamadığı için **proje seviyesindeki `"-"`'yi miras alıyordu**: otomatik
+imzalama bir takımla açıkken kimlik ad-hoc'ta kilitliydi. Debug + Profile hedef
+config'lerine `"Apple Development"` kondu, profil `-allowProvisioningUpdates`
+ile üretildi. Release bilinçli olarak elle sürülmedi (dağıtım Developer ID +
+noterleme ister, ayrı karar). **Üründen doğrulandı:** `codesign -d`
+`TeamIdentifier=WWRZ5CG3DW` diyor ve **imzalanmış** `AllisWell.app` iki yeni
+entitlement'ı da taşıyor; iki eklenti framework'ü de paketin içinde.
+
 **Sahibe kalan (kod bunu yapamaz):** üç platformda gerçek dosya turu, `shasum`
-öncesi/sonrası. macOS için önce imzalama sorununun çözülmesi gerekiyor —
-`DEVELOPMENT_TEAM` projede var (WWRZ5CG3DW) ama Debug/Profile `-` ile imzalıyor.
+öncesi/sonrası.
 
 Önceki blok: 2026-08-12a (**OPH-255 BİTTİ — ADR-0030 kabul edildi ve dış
 belge katmanı saf Dart olarak doğdu. Native kod YOK, cihaz YOK: katmanın her
