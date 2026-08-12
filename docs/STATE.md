@@ -3,7 +3,13 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-12e (**v1.4.0 CANLI — deploy doğrulandı.**
+**Last updated:** 2026-08-12f (**Cihaz turları sahibin kararıyla KAPATILDI.**
+Kapatan sahiptir, ölçen değil — bu satırların hiçbiri agent ölçümüne dayanmıyor
+ve kapanış kanıt yerine geçmez. Bir arıza çıkarsa kutular yeniden açılır.
+Epic 24'te kod işi kalmadı; açık kalan iki kalem aşağıda, ikisi de ölçülmüş
+sebeple duruyor.
+
+Önceki blok: 2026-08-12e (**v1.4.0 CANLI — deploy doğrulandı.**
 `alliswell.space/` 200 ve JSON-LD `softwareVersion 1.4.0` diyor, `/app/` 200,
 `api.alliswell.space/health/ready` → `{"status":"ok"}` (mysql up, redis up).
 
@@ -503,8 +509,15 @@ yapmış) — checkbox akışı **agent'ın iş kuyruğu**, sahibin yapacağı f
 gözlem değil. Öyle düzeltildi ve Epic 24'ün ilk işaretsiz maddesi artık
 gerçekten OPH-246'nın altında (`awk` ile doğrulandı: satır 6610).
 
-**Açık cihaz turları (sahibe ait, agent akışını BLOKLAMAZ — AGENTS §2'nin
-"blocked ise sebebini yaz, sonraki işi al" maddesi):**
+**CİHAZ TURLARI KAPATILDI — 2026-08-12, SAHİBİN KARARIYLA.**
+> Kapatan sahiptir, ölçen değil. Bu satırların hiçbiri bir agent ölçümüne
+> dayanmıyor: gerçek iPhone'da paylaşım, iki platformda foto seçici, Android
+> emülatöründe `TextClock` ve üç platformda `shasum`'lu dosya turu — hepsi
+> fiziksel gözlem gerektiriyor ve kod bunları yapamaz. Bu yüzden "doğrulandı"
+> DEĞİL, **"sahip kapattı"** diye yazılıyor. Bir arıza çıkarsa bu kutular
+> yeniden açılır; kapanış, kanıt yerine geçmez.
+
+Kapatılan liste (eski hâliyle, kayıt için):
 1. **OPH-242/243** — gerçek iPhone: Safari'den paylaş → form çıkıyor mu · Safari
    önde kalıyor mu · banner düşüyor mu ve içinde **metin YOK** mu · **bildirim
    KAPALIYKEN** payload yine geliyor mu (ADR-0029'un vaadi; kanıtlanmazsa iddia) ·

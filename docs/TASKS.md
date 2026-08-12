@@ -4000,7 +4000,7 @@ round 9'un kalıcı dersi: **native bağlantı kaynak ağacından değil üründ
 - **OPH-132 ve OPH-133'ün açık kutuları bu task'a devredildi.**
 
 **Kodsal DoD met 2026-07-29:** app **544/544** + `analyze` + `check:i18n` temiz.
-**Kalan tek şey cihaz matrisi** (yukarıdaki açık kutu) — kullanıcının telefonunu
+**Kalan tek şey cihaz matrisi** (yukarıdaki açık kutu) — kullanıcının telefonunu **[KAPATILDI 2026-08-12 — sahibin kararı, agent ölçümü değil.]**
 gerektiriyor, kod tarafında iş yok.
 
 ### OPH-189 — `alliswell://` yönlendirmesi + yönlendiricinin hata çıkışı (round 10 #4D) ✅ 2026-07-29
@@ -6482,7 +6482,7 @@ artık NİYETİ assert ediyor, "bir dosya geldi"yi değil. `FLUTTER_TEST` altın
 `defaultTargetPlatform` zorla android olduğu için her widget testi üç maddelik
 menüyü görüyor — `attachSourcesProvider`'ın provider olmasının sebebi bu._
 
-_**Kalan (cihaz turu, DoD'de zaten vardı):** gerçek iPhone/Android'de
+_**Kalan (cihaz turu, DoD'de zaten vardı):** gerçek iPhone/Android'de **[KAPATILDI 2026-08-12 — sahibin kararı, agent ölçümü değil.]**
 Fotoğraflar'ın foto ızgarasını açması, **izin diyaloğu ÇIKMAMASI** ve kameranın
 çekmesi. iOS derlemesi doğrulandı: `image_picker_ios.framework` bağlandı ve
 `NSCameraUsageDescription` ÜRÜNDE.)_
@@ -6527,7 +6527,7 @@ Fotoğraflar'ın foto ızgarasını açması, **izin diyaloğu ÇIKMAMASI** ve k
 - **Kabul:** gerçek iPhone'da "Fotoğraflar" fotoğraf ızgarasını açar, **izin diyaloğu
   çıkmaz**, seçilen fotoğraf yüklenir; "Dosyalar" bugünkü belge seçicidir; aynısı
   Android'de. Play/App Store için **hiçbir yeni izin beyanı yok**.
-- **Kalan (cihaz turu — sahibe ait, agent akışını bloklamaz):** iki gerçek cihazda
+- **Kalan (cihaz turu — sahibe ait, agent akışını bloklamaz):** iki gerçek cihazda **[KAPATILDI 2026-08-12 — sahibin kararı, agent ölçümü değil.]**
   "Fotoğraflar" foto ızgarasını açıyor mu · **izin diyaloğu ÇIKMIYOR** mu (ADR-0027'nin
   ölçülmüş sıfır-izin iddiasının kullanıcı tarafındaki kanıtı) · kamera çekip yüklüyor
   mu · "Dosyalar" belge seçici mi. Kanıt buraya yazılır. Epic 24'ün açık üç turu
