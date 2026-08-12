@@ -17,6 +17,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
+import 'external_document.dart';
+
 /// The extensions we claim. `.markdown` is the long form Jekyll and friends
 /// write; `.mdown`/`.mkd` are old but still in the wild.
 const kMarkdownExtensions = ['md', 'markdown', 'mdown', 'mkd'];
@@ -65,9 +67,64 @@ abstract class MarkdownSource {
 
   /// Reads a path the OS handed us.
   Future<MarkdownDocument?> read(String path);
+
+  // ── The write edge (ADR-0030, OPH-255) ────────────────────────────────────
+  //
+  // [pick] and [read] both throw the file's IDENTITY away — `pick` reads only
+  // `file.name` and `file.readAsBytes()`, and `read` drops the path it was
+  // given. That was fine while importing was the only thing we did with a
+  // file. It is the first thing that has to change for OPH-251, because you
+  // cannot save back to something you did not keep a handle on.
+
+  /// Opens the system picker for a document we intend to EDIT, keeping a
+  /// durable handle to it.
+  ///
+  /// Not the same call as [pick]: `file_picker` hands iOS a copy
+  /// (`asCopy: true`, always — ADR-0030 §Context), so import and edit cannot
+  /// share a picker.
+  Future<ExternalOpenResult> pickExternal();
+
+  /// Reopens a handle from the recents list (W6), or re-reads it after a
+  /// conflict (W5's "reload" leg).
+  Future<ExternalOpenResult> open(ExternalDocHandle handle);
+
+  /// Turns a token the OS handed us — a URL on Apple, a `content://` URI on
+  /// Android — into a durable handle we can come back to.
+  Future<ExternalOpenResult> adopt(String osToken);
+
+  /// W3: asks whether this handle can be written RIGHT NOW.
+  ///
+  /// Cheap, and meant to be re-asked — on resume, and again immediately before
+  /// a save. A security scope expires; a persisted grant can be revoked.
+  Future<ExternalAccess> probe(ExternalDocHandle handle);
 }
 
-class PlatformMarkdownSource implements MarkdownSource {
+/// What every platform answers until OPH-256 implements the plugin.
+///
+/// Honest-unavailable rather than a throw or a silent false: the banner can say
+/// "this device cannot edit the file" and mean it, and no save action is built
+/// because [ExternalUnreachable] carries no saver.
+mixin NoExternalWriteBack implements MarkdownSource {
+  @override
+  Future<ExternalOpenResult> pickExternal() async =>
+      const ExternalRefused(ExternalOpenRefusal.unsupported);
+
+  @override
+  Future<ExternalOpenResult> open(ExternalDocHandle handle) async =>
+      const ExternalRefused(ExternalOpenRefusal.unsupported);
+
+  @override
+  Future<ExternalOpenResult> adopt(String osToken) async =>
+      const ExternalRefused(ExternalOpenRefusal.unsupported);
+
+  @override
+  Future<ExternalAccess> probe(ExternalDocHandle handle) async =>
+      const ExternalUnreachable(LostAccessReason.unsupportedPlatform);
+}
+
+class PlatformMarkdownSource
+    with NoExternalWriteBack
+    implements MarkdownSource {
   const PlatformMarkdownSource();
 
   @override

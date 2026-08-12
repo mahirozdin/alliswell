@@ -16,6 +16,7 @@ import 'package:alliswell/src/features/notes/data/markdown_source.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/fake_share_intent.dart';
+import '../../support/fake_markdown_source.dart';
 import '../../support/sync_overrides.dart';
 
 /// Round 16 follow-up: open a `.md` file with AllisWell and keep it as a note.
@@ -31,30 +32,6 @@ Ağustos sonu için **Pokut** rotası.
 > Sis çökerse Pokut'ta kal.
 ''';
 
-/// A [MarkdownSource] with a filesystem made of a Map.
-class _FakeMarkdownSource implements MarkdownSource {
-  _FakeMarkdownSource({this.picked, this.files = const {}});
-
-  final MarkdownDocument? picked;
-  final Map<String, String> files;
-  final List<String> reads = [];
-  var pickCalls = 0;
-
-  @override
-  Future<MarkdownDocument?> pick() async {
-    pickCalls++;
-    return picked;
-  }
-
-  @override
-  Future<MarkdownDocument?> read(String path) async {
-    reads.add(path);
-    final markdown = files[path];
-    if (markdown == null) return null;
-    return MarkdownDocument(name: path.split('/').last, markdown: markdown);
-  }
-}
-
 Future<Widget> _app(
   FakeApi api, {
   MarkdownSource? markdown,
@@ -66,12 +43,11 @@ Future<Widget> _app(
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(shareIntentSource: share),
+      ...syncTestOverrides(shareIntentSource: share, markdownSource: markdown),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
       ),
-      if (markdown != null) markdownSourceProvider.overrideWithValue(markdown),
     ],
     child: const AllisWellApp(),
   );
@@ -106,7 +82,7 @@ void main() {
     tester,
   ) async {
     final api = FakeApi();
-    final files = _FakeMarkdownSource(files: {'/tmp/yayla.md': _markdown});
+    final files = FakeMarkdownSource(files: {'/tmp/yayla.md': _markdown});
     final share = FakeShareIntentSource(initialDocumentPath: '/tmp/yayla.md');
 
     await tester.pumpWidget(await _app(api, markdown: files, share: share));
@@ -154,7 +130,7 @@ void main() {
     tester,
   ) async {
     final api = FakeApi();
-    final files = _FakeMarkdownSource(
+    final files = FakeMarkdownSource(
       picked: const MarkdownDocument(
         name: 'okuma.md',
         markdown: '# Okuma\n\nmetin\n',
@@ -179,7 +155,7 @@ void main() {
       final api = FakeApi();
       // The path is announced but reading it yields nothing (an expired
       // permission-scoped URI, a file that moved).
-      final files = _FakeMarkdownSource(files: const {});
+      final files = FakeMarkdownSource(files: const {});
       final share = FakeShareIntentSource(initialDocumentPath: '/tmp/gone.md');
 
       await tester.pumpWidget(await _app(api, markdown: files, share: share));

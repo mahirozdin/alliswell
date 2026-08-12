@@ -37,6 +37,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0027](0027-attachment-capture-image-picker.md) | Attachment capture: `image_picker` for the photo library and the camera | Accepted |
 | [0028](0028-markdown-document-model-and-renderer.md) | Markdown: the note model (split by intent), our own renderer over the `markdown` package, and how far diagrams go | Accepted |
 | [0029](0029-share-extension-notifies-instead-of-redirecting.md) | The share extension notifies and the app drains, instead of redirecting | Accepted — amends [0023](0023-stt-and-share-intent-dependencies.md) §3 |
+| [0030](0030-external-document-handles.md) | Owning somebody else's file: durable handles, an in-repo plugin, and where writing is refused | Accepted |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was

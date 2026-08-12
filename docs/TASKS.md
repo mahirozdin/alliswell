@@ -7195,14 +7195,14 @@ yorumu zaten "OPH-251'in geri kaydetmesini dürüst yapan şey bu" diyor. Yani W
 yarısı (round-trip reflow) ÇÖZÜLMÜŞ; geriye yalnız kodlama sadakati + bir biçim kapısı
 kalıyor._
 
-- [ ] **ADR-0030 önce** (kapı, kod yazılmadan). AGENTS §1 rule 6 iki kez zorunlu kılıyor:
+- [x] **ADR-0030 önce** (kapı, kod yazılmadan). AGENTS §1 rule 6 iki kez zorunlu kılıyor:
       yeni bağımlılık kategorisi (üç platforma yayılan in-repo native eklenti) **ve**
       güvenlikle ilgili karar (yeni macOS sandbox entitlement'ları). Kararları: kalıcı
       tutamak modeli ve **`LocalKv`'de saklanması, senkron DB'de DEĞİL** (bookmark cihaza
       özeldir; senkronlamak başka cihaza çözemeyeceği bir token vermek olur) · kendi
       eklentimiz vs `file_picker` (ölçülmüş gerekçe yukarıda) · iki macOS entitlement'ı ·
       W4'ün kodda karşılığı · atomiklik asimetrisi · Android'in **sıfır** izin kazanması.
-- [ ] **W3'ü derleyici zorlar** — `external_document.dart`, saf, eklenti import'u yok:
+- [x] **W3'ü derleyici zorlar** — `external_document.dart`, saf, eklenti import'u yok:
       `sealed class ExternalAccess` = `ExternalWritable(saver)` | `ExternalReadOnly(reason)`
       | `ExternalUnreachable(reason)`. **`saver` YALNIZ yazılabilir kolda var**, yani
       salt-okunur bir dosyada kaydet butonunun bağlanacağı bir şey yoktur. Bool olsaydı
@@ -7210,7 +7210,7 @@ kalıyor._
       budur. Kayıt sonucu da sealed: `SaveSucceeded` | `SaveConflict(onDisk)` |
       `SaveLostAccess` | `SaveFailed`; **`SaveIntent.force` yalnız çatışma dalından
       erişilebilir**, sessiz ezme ifade edilemez.
-- [ ] **W4 — kodlama sadakati.** Eklenti ham bayt döndürür; Dart
+- [x] **W4 — kodlama sadakati.** Eklenti ham bayt döndürür; Dart
       `utf8.decode(bytes, allowMalformed: **false**)` dener. Baştaki `EF BB BF` ayıklanır,
       `utf8Bom` diye kaydedilir ve **kaydederken geri konur** (BOM'u sessizce düşürmek
       kimsenin istemediği bir bayt değişikliğidir). `FormatException` → `notText`:
@@ -7219,20 +7219,20 @@ kalıyor._
       `ExternalReadOnly(notUtf8)` olur — reddediş veri kaybının olacağı yerde, yazma
       kenarında. Tek saf yüklem `canWriteBack(NoteFormat, ExternalEncoding)`. Satır sonu
       normalize edilmez, sona `\n` eklenmez.
-- [ ] **W5 primitifi** — açılışta üçü de yakalanır: `sha256` (`crypto: ^3.0.6` zaten
+- [x] **W5 primitifi** — açılışta üçü de yakalanır: `sha256` (`crypto: ^3.0.6` zaten
       doğrudan bağımlılık; 2 MB tavanla ~10 ms), `sizeBytes`, `modifiedAt`. **Yetki sırası
       yazılır:** mtime Apple'da güvenilir, **Android'de değil** — SAF'ın
       `COLUMN_LAST_MODIFIED`'ı isteğe bağlı ve bulut sağlayıcılar null döner, o yüzden
       mtime yoksa hash'e düşülür.
-- [ ] **W6 — `external_recents.dart`**: `parseExternalRecents` / `pushExternalRecent` /
+- [x] **W6 — `external_recents.dart`**: `parseExternalRecents` / `pushExternalRecent` /
       `encodeExternalRecents`, modeli `quick_access/emoji_input.dart` (en-yeni-önce, dedup,
       kapasiteli, bozuk girdiyi düşürür), `PersistedChoice('alliswell_external_recents')`.
       **Bilinçli sapma:** emoji recents virgülle birleşiyor (emoji virgül içeremez); bir
       `content://` URI'si de base64 bookmark da içerebilir → JSON dizi.
-- [ ] **Seam**: `MarkdownSource` genişletilir (`share_intent.dart` zaten
+- [x] **Seam**: `MarkdownSource` genişletilir (`share_intent.dart` zaten
       `markdownSourceProvider`'ı okuyor) — `pickExternal()` · `open(handle)` ·
       `adopt(osToken)` · `probe(handle)`.
-- [ ] **Fake ve testler**: `test/support/fake_markdown_source.dart` (bellek-içi dosya
+- [x] **Fake ve testler**: `test/support/fake_markdown_source.dart` (bellek-içi dosya
       sistemi + senaryo düğmeleri `expireScopeAfter`/`mutateBeforeNextSave`/
       `revokeGrantOnSave` + `writes`/`intents` kayıtları). `syncTestOverrides` bir
       `markdownSource` parametresi kazanır ve **varsayılanı null değil FAKE olur**
@@ -7245,6 +7245,41 @@ kalıyor._
 - **Kabul:** dış dosya katmanının her kenarı diske ve native koda hiç dokunmadan
   test edilebiliyor; salt-okunur bir dosyada kaydet eylemi **derlenmiyor bile**.
 - **Doğrulama:** `flutter analyze` · `flutter test` · `npm run check:i18n`.
+
+_(✅ 2026-08-12. Süitler **1127** (+19), analyze/format/i18n temiz,
+`contrast.py` FAILURES: 0. **ADR-0030 kabul edildi.** CHANGELOG'a satır
+yazılmadı — bu turun kullanıcıya görünen bir değişikliği yok ve deponun emsali
+bu yönde (OPH-246 da ADR turunda CHANGELOG'a dokunmamıştı); katman kullanıcıya
+OPH-251'de çıkacak._
+
+_**W3 gerçekten derleyiciye devredildi ve test bunu ŞEKİLLE kanıtlıyor:**
+`saverFor()` yardımcısı `ExternalAccess` üzerinde tüketici bir `switch` yazıyor
+ve `saver` yalnız `ExternalWritable` kolunda **var olduğu için** diğer iki kolda
+döndürecek bir şey yok. "Buton disabled mı" diye soran bir test bunu geçirirdi;
+"bağlanacak bir şey var mı" diye soran, ölü butonu imkânsız kılıyor._
+
+_**Yazarken kendi tasarımımdaki bir açığı buldum:** `_FakeSaver` kodlamayı
+**diskteki** baytlardan türetiyordu. Çatışmadan sonra oradaki baytlar BAŞKASININ
+sürümü — yani onların BOM'u bizim belgemizin nasıl yazılacağına karar ederdi.
+`ExternalSaver.save` artık `encoding`'i parametre alıyor ve o AÇILIŞTAN geliyor.
+Bu, W4'ün "bayt-sadıklık" kuralının fark etmesi kolay olmayan bir kenarı._
+
+_**Politika üç yerde durmasın diye `narrowForEncoding()` ortak:** `probe()`
+OS'un cevaplayabildiği soruyu cevaplıyor (bu süreç bu baytları yazabilir mi),
+ama W4'ün sorusunu cevaplayamıyor (yazmak dokunulmamış baytları değiştirir mi).
+Bir dosya pekâlâ yazılabilir olup yine de yazılmayı reddedebilir. Üç native
+dosyada duran politika, eninde sonunda kendisiyle çelişen politikadır._
+
+_**`syncTestOverrides`'ın varsayılanı null değil FAKE** — ve bu, tam da
+umulduğu gibi bir çağrı yerini zorladı: `markdown_import_test` kendi
+override'ını ekliyordu, Riverpod 3 çift override'ı **assert ediyor**, ve test
+fake'ini diğer bütün dikişler gibi `syncTestOverrides`'tan geçirmek zorunda
+kaldı. Artık HİÇBİR widget testi diske ya da kanala ulaşamıyor — sadece
+hatırlayanlar değil._
+
+_**Üretim `PlatformMarkdownSource`'u `NoExternalWriteBack` mixin'i ile
+"desteklenmiyor" diyor** ve bunun bir testi var: dürüst cevabın anlamı, hâlâ
+saver yok demek — yani hâlâ buton yok.)_
 
 ### OPH-256 — Native gerçeklik: macOS · iOS · Android (`alliswell_docref`)
 
