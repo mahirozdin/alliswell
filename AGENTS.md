@@ -38,6 +38,14 @@ in [docs/TASKS.md](docs/TASKS.md); the current position in [docs/STATE.md](docs/
     BOTH themes (`python3 scripts/design/contrast.py` must pass after palette edits), tap targets
     ≥ 44 px, and every UI change is checked in light *and* dark before it is done. Deviations
     require amending docs/DESIGN.md in the same change.
+12. **The MCP tool surface and the public API are part of every feature.** When a task adds or
+    changes a user-facing capability (an entity, a field, an operation), the same epic must
+    extend the remote MCP server (and [docs/MCP.md](docs/MCP.md)) and the key-authenticated
+    public REST surface ([docs/API.md](docs/API.md)) to match — or record a one-line written
+    reason in the task. Standing exceptions, already decided: `delete_*` never enters MCP
+    (ADR-0022; the API-key surface does expose deletes), and raw file bytes / presigned URLs
+    never flow through MCP (AI.md §7). Added in the Epic 25 planning round (2026-08-13);
+    OPH-261…OPH-266 backfill the gaps that existed on that date.
 
 ## 2. The "do the next task" protocol
 
@@ -68,6 +76,8 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
 - [ ] New/changed endpoints have Ajv JSON schemas (request + response).
 - [ ] DB changes shipped as a new knex migration (with `down`).
 - [ ] Docs updated: TASKS checkbox, STATE, CHANGELOG (+ ADR/ARCHITECTURE when relevant).
+- [ ] User-facing capability added/changed → MCP tools + docs/MCP.md and docs/API.md extended,
+      or a written reason recorded (rule 12).
 - [ ] Conventional commit created.
 
 ## 4. Code conventions

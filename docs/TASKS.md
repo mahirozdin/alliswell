@@ -7577,6 +7577,479 @@ README + landing'e kondu.
   görselleri; makinede Docker/MySQL olmadığı için v3 snapshot'lı taze demo verisi yerine
   30 Temmuz'un gerçek seed çıktısı kullanıldı.
 
+## Epic 25 — İstek turu 18: MCP tam kapsama, API anahtarları, gelişmiş ayarlar, not sürümleme & çakışma yönetimi (v1.5.0)
+
+_(Doğdu 2026-08-13 — sahibin sekiz maddelik listesi. (1) **MCP her işlevi kapsasın**: bugün not
+oluşturma bile yok; acil alarm işaretlemekten detaylı görev eklemeye, notu göreve bağlamaktan
+proje yönetimine her alan birebir kontrol edilebilsin, ve bundan sonra her yeni özellik MCP'ye
+de eklensin diye kalıcı bir doküman belirteci konsun. (2) **API katmanı**: kullanıcı Ayarlar'dan
+API anahtarı üretsin, süresini/son kullanımını görsün, iptal edebilsin; notları içe/dışa
+aktarabilsin, görev/not/proje dahil tüm yazılım işlemleri API'den yapılabilsin; karmaşık
+doğrulama YOK — [issue #3](https://github.com/mahirozdin/alliswell/issues/3) doğrudan referans.
+(3) **Ayarlar çok karıştı**: işleve göre gruplanıp alt sayfalara bölünsün; takvimler/AI/API
+"Entegrasyonlar" altına. (4) [issue #2](https://github.com/mahirozdin/alliswell/issues/2) (OIDC)
+araştırılıp ekle/reddet kararı verilsin ve issue uygun dille kapatılsın. (5) **MD editörde
+boyama**: son kullanılan 5 renk görünsün — renk seçici olan her yerde; mevcut seçici ne UI ne
+UX olarak kullanışlı. (6) **Notlar düzenlenme tarihine göre** sıralansın; sıralama seçenekleri
+liste ekranlarına gelsin, satır kaplamadan app bar'da dursun. (7) **Not sürümleme + offline
+çakışma yönetimi**: bugün aynı not iki cihazda düzenlenince override yaşanıyor; Google
+Docs/Word/bulut ürünleri nasıl çözüyor en az 5 kaynaktan araştırılıp sağlam, kurumsal
+kurgulansın. (8) **Geri al barı kaybolmuyor** — daha önce de bildirildi, düzelmedi; web'de de
+mobilde de elle kaydırmadıkça gitmiyor.)_
+
+_**Planlama turunda yapılanlar (2026-08-13):** dört paralel keşif koşuldu (MCP/REST envanteri ·
+Flutter UI dörtlüsü · sync/çakışma mekaniği · 12+ ürün/sistemlik literatür taraması), bulgular
+aşağıdaki iki tabloda; **AGENTS.md kural 12** yazıldı (madde 1'in kalıcı belirteci: her özellik
+MCP + docs/API.md yüzeyini de günceller, istisnalar yazılı); **DESIGN §32–§35** bağlandı
+(ayarlar IA'sı, renk seçici, sıralama denetimi, sürüm/çakışma yüzeyleri); issue #2 (OIDC)
+için karar verildi (aşağıda, "karara bağlananlar" #12) ve park listesine tasarım
+taslağıyla yazıldı; issue #3'e plan referansı yorumu bırakıldı._
+
+> **Turun tek cümlesi:** sekiz maddenin dördü cilalama (geri al, sıralama, renk, ayarlar
+> düzeni), ikisi ürünün **programlanabilir yüzeyini** doğurma (MCP tam kapsama + API
+> anahtarları — 78 REST rotasına karşılık MCP'de 7 araç var), biri ise ürünün **hafızasını**
+> doğurma: bugün ezilen bir not gövdesi HİÇBİR yerde durmuyor; sürümleme + not-bazlı base +
+> sunucuda diff3 birleştirme bunu "asla sessizce kaybetme" sözleşmesine çevirecek.
+
+**Round'un ÖLÇÜLMÜŞ gerçekleri (planlama turu, 2026-08-13 — hiçbiri varsayım değil; task
+uygulanırken satırlar yeniden doğrulanır):**
+
+| # | Bulgu | Kanıt | Sonuç |
+| - | ----- | ----- | ----- |
+| 1 | Çakışma kopyası mekanizması YAZILI ve TESTLİ (sunucu `NOTE_CONTENT_CONFLICT`, istemci kopya) — ama kilidin base'i yanlış şey: istemci push'ta notun revizyonunu değil **workspace pull imlecini** gönderiyor | `sync_engine.dart:204` (`baseRevision: state.lastRevision`) · sunucu kıyası `sync.js:550-556` · kopya `sync_engine.dart:281-322` | Soket/60 sn zamanlayıcı pull yaptığı an imleç karşı yazımı geçiyor → kilit kör → **sessiz override**. Düzeltme mutation-bazlı `baseRevision` (OPH-268) |
+| 2 | Açık editör pull ile gelen içeriği HİÇ yeniden okumuyor (`_doc` `initState`'te bir kez kurulur, `didUpdateWidget` yok); pull replikayı editörün ALTINDA ezer | `note_editor_screen.dart:107` · `sync_applier.dart:101-107` (koşulsuz upsert) | Çevrimiçi senaryoda kopya bile üretilmeden override. Editör davranışı DESIGN §35 V7 (OPH-268) |
+| 3 | Bir push batch'i TEK `baseRevision` taşıyor ve settle kopyayı satır başına üretiyor → aynı nota N otosave = N çakışma kopyası; kopya `contentFormat` taşımıyor (markdown notun kopyası 'delta' doğuyor) | `sync.js:1455-1468` · `sync_engine.dart:248-253`, `:288-311` | Outbox'ta not-başına koalesans + kopyada format alanı (OPH-268) |
+| 4 | Ezilen not gövdesi HİÇBİR tabloda durmuyor: `sync_revisions` yalnız işaret (kolon adları), gövde tarihçesi yok | `db/sync.js:27-35` · migration `20260714000400:15-31` | Override geri getirilemez → `note_versions` (OPH-267) |
+| 5 | Not güncellemesi 1.5 sn boşluk debounce'lu TAM gövde değişimi (title+delta+markdown+format); REST `PATCH /notes/:id` ise HİÇ çakışma kontrolü yapmıyor | `note_editor_screen.dart:77,198-209` · `note_document.dart:217-227` · `notes.js:390-438` | Snapshot birimi hazır; REST'e de base parametresi (OPH-267/268) |
+| 6 | Markdown-canonical notta `plain_text` HİÇ türetilmiyor (yalnız `contentDelta` yazımında güncelleniyor) → FULLTEXT arama, `?q=`, MCP `search`/`get_note` o notlar için kör; export da markdown-canonical notta bile delta-öncelikli | `notes.js:161-180` (`row.plain_text` yalnız delta dalında) · `notes.js:380-382` | İki dürüstlük onarımı OPH-261'de |
+| 7 | MCP yüzeyi: 7 araç / 78 REST rotası. `update_task`, snooze, checklist, not oluşturma/bağlama/listeleme, proje/etiket araçları tamamen yok; domain katmanı yalnız `db/tasks.js` (notes/projects/tags mantığı hâlâ route içinde) | `lib/mcp/tools.js:122-608` · route envanteri planlama raporunda | ADR-0022 K4 ("MCP ham SQL değil domain katmanı çağırır") gereği önce çıkarım: OPH-261 |
+| 8 | MCP kısıtları bağlayıcı: delete KALICI dışarıda; yazma araçları annotation + `ai_action_log(source='mcp')` + `mcp_mutations` idempotency taşır; `ai_action_log` insert'i iki handler'da kopya duruyor, helper yok; red-team korpusu `apps/app/test/fixtures/ai_redteam.json` + `mcp-injection.test.js` CI'da | ADR-0022 Decision 3-4 · `tools.js:10-19,531-540,594-603` · `mcp-injection.test.js:15-19` | Her yeni araç aynı yola oturur; `recordMcpAction()` helper'ı OPH-262'de doğar |
+| 9 | API-key zemini hazır ama tablo yok: `hashMcpToken` HMAC-SHA256 + domain separator + char(64) deseni, `newOpaqueToken(48)`, tek `authenticate` decorator'ü (78 rotanın tamamı `onRequest: [app.authenticate]` üzerinden `request.user` kullanıyor), MCP'de token-başına rate-limit `keyGenerator` emsali | `lib/tokens.js:52-63` · `plugins/auth.js:39-50` · `mcp.js:243-254` | Çift-modlu authenticate ile TÜM rotalar tek dosyadan anahtar-uyumlu (OPH-264) |
+| 10 | Geri al barının kök nedeni Flutter 3.44'ün kendisi: `SnackBar.persist` varsayılanı `action != null` — Undo'lu her bar otomatik kapanıştan MUAF; zamanlayıcı 2750 ms'de tetiklenip `persist` yüzünden dönüyor ve `_snackBarTimer` bir daha kurulmuyor. Uygulama hiçbir yerde `persist:` geçmiyor; dört action'lı snackbar da aynı durumda | SDK `snack_bar.dart:303` (`persist = persist ?? action != null`), `scaffold.dart:617-625` · `widgets/swipe_actions.dart:114-139` · grep `persist:` → 0 | Tek satırlık fix DEĞİL: bayat barda "Geri al" sessiz no-op (`pending_deletes.dart:66`), `commitNow()` hiç bağlanmamış ölü kod, ve Round 13'te aynı şikâyet "süre sorunu" sanılıp 5sn→3sn sabitiyle YANLIŞ kapatılmış (`TASKS.md:5347-5350`) — OPH-257 üçünü birden kapatır |
+| 11 | MD editörde renk aksiyonu aslında YOK (`mdActions()`: bold…divider, renk yok); Live modda Quill'in stok renk diyaloğu açılıyor — **hex alanıyla** ("no hex" kuralının canlı ihlali); delta→markdown dönüşümü `color`/`background`'ı SESSİZCE düşürüyor | `md_actions.dart:106-200` · quill `color_dialog.dart:36,125-131` + `note_editor_screen.dart:604-617` (color butonları kapatılmamış) · `delta_markdown.dart:56-66` | OPH-259: kendi `AwColorPicker`'ımız + stok diyaloğun ölümü + dönüşüm dürüstlüğü (DESIGN §33) |
+| 12 | "Son kullanılan renk" mekanizması hiç yok (grep 0); cihaz-yerel kalıcılık emsalleri hazır: `localKv` (`alliswell_*` anahtarları) + `PersistedChoice`, dış-dosya recents şekli `external_session.dart:121-148` | `core/kv/local_kv.dart` · `core/persisted_prefs.dart:36-95` | MRU listesi `alliswell_recent_colors` (OPH-259) |
+| 13 | Notlar `id DESC` sıralanıyor (≈oluşturma; `updated_at` OKUNMUYOR) — oysa `updatedAt` her kayıtta zaten damgalanıyor ve satırda ZATEN gösteriliyor; pinli not öne GELMİYOR (pin bugün filtre); Notes app bar'ı ölçülü olarak telefon sınırında (tek "aç" düğmesi bile bu yüzden menü olmuştu) | `note_store.dart:63-89,127-132` (`OrderingTerm.desc(n.id)`) · `:210` (`updatedAt` damgası) · `external_open_menu.dart:8-10` | Varsayılan `updatedAt DESC` + görünüm/sıralama TEK menü düğmesi (DESIGN §34, OPH-258) |
+| 14 | Kullanıcıya açık tek sıralama seçici proje Files sekmesinde (`_FileSort` enum + PopupMenu, `setState`-geçici, kalıcı değil); global Dosyalar bölümünde sıralama denetimi HİÇ yok; Ayarlar 19 satırlık düz liste, tek `Divider`'lı tek dev kart; tema satırı diye bir şey YOK (`themeMode` hardcoded system) | `project_detail_screen.dart:524-645` · `files_screen.dart` grep sort → 0 · `settings_screen.dart:40-263` · `app.dart:35` | §34 L4 paylaşılan bileşen; §32 S5 "satır icat etme" |
+
+**Madde 7'nin literatür taraması (sahibin şartı "en az 5 kaynak" — 12+ ürün/sistem tarandı;
+tam rapor kararlarla birlikte ADR-0031'e girecek):**
+
+| Ürün / sistem | Mekanizma | Doğrulanmış sayılar / dersler | Kaynak |
+| --- | --- | --- | --- |
+| Google Docs | OT + append-only revizyon logu; **her değişiklik base revision taşır** ("what the editor saw"); adsız revizyonlar zamanla birleştirilir, adlandırılmış sürüm sabit kalır | 40 adlı sürüm/doküman; "deleting version history is permanent" | idl.uw.edu 2010 OT whitepaper · support.google.com/docs/answer/190843 |
+| CouchDB/PouchDB | MVCC revizyon ağacı; çakışan dallar İKİSİ de saklanır, deterministik "kazanan", çözüm UYGULAMANIN işi | compaction gövdeyi atar, soy kütüğünü tutar (`_revs_limit`) | docs.couchdb.org/en/stable/replication/conflicts.html · pouchdb.com/guides/conflicts.html |
+| Obsidian Sync | Markdown'da otomatik merge (diff-match-patch), diğer dosyalarda LWW; v1.9.7'den beri cihaz başına "merge / conflict file" seçimi | Sürüm geçmişi 1 ay (Standard) / 12 ay (Plus); kopya adı `(Conflicted copy device YYYYMMDDHHMM)` | obsidian.md/sync · obsidian.md/help/sync/troubleshoot |
+| Joplin | Merge YOK — yerel sürüm Conflict defterine kopyalanır (en çok şikâyet edilen UX'i); restore mevcut sürümü DEĞİŞTİRMEZ | 10 dakikada bir sürüm; varsayılan 90 gün; saklama cihazlar arası MINIMUM'a iner → politika SUNUCUDA olmalı | joplinapp.org/help/apps/note_history · /help/apps/conflict |
+| Standard Notes | ≥5 dk aralıklı sürümler; cihaz-içi (ücretsiz) + uzak (ücretli) geçmiş; "Restore" VE "Restore as copy" | plan gün sayıları resmî sayfadan doğrulanamadı (bot 403) — işaretli | standardnotes.com/help/26 |
+| Figma | OT REDDEDİLDİ ("unnecessarily complex"), tam CRDT de değil: **alan-bazlı LWW**, metin tek property | ders: skaler alanlara LWW yeter, gövde ayrı muamele ister | figma.com/blog/how-figmas-multiplayer-technology-works |
+| Yjs / Automerge (CRDT) | Karaktere kadar otomatik merge; tarihçe yapının içinde | Yjs: gerçek iz üzerinde ~%53 ek yer; Automerge ~1.1 B/op; **Dart'ta bakımı yapılan port YOK** → 6 platformda FFI riski | blog.kevinjahns.de/are-crdts-suitable-for-shared-editing · automerge.org/docs |
+| git / diff3 | 3-yollu birleştirme "altın standart"; çakışan hunk asla sessizce seçilmez | diff3 makalesi: garanti yalnız "iyi ayrılmış" bölgelerde — markdown'ın tek-satır paragrafları satır-bazlıyı yanıltır → **kelime-düzeyi inceltme şart** | cis.upenn.edu/~bcpierce/papers/diff3-short.pdf · git-scm.com/docs/merge-strategies |
+| Notion | Sayfa geçmişi gün-gruplu; restore sonrası her noktaya dönülebilir | 7 gün Free / 30 Plus / 90 Business / sınırsız Enterprise | notion.com/help/duplicate-delete-and-restore-content |
+| Dropbox | "Conflicted copy" adlandırma sözleşmesi (ad + kullanıcı + tarih); merge denenmez | 30/180/365 gün plan kademeleri | help.dropbox.com/organize/conflicted-copy |
+| Kütüphaneler | **node-diff3** (MIT, sıfır bağımlılık, aktif) birincil motor; **jsdiff** kelime-inceltme + geçmiş diff'i; **diff-match-patch Google tarafından 2024-08-05'te ARŞİVLENDİ** — fuzzy patch zaten istenmiyor (Obsidian'ın "duplicate üretebilir" uyarısının sebebi); pub.dev'de 3-yollu merge paketi YOK → merge SUNUCUDA | github.com/bhousel/node-diff3 · github.com/kpdecker/jsdiff · github.com/google/diff-match-patch |
+
+**Round'da karara bağlananlar (AGENTS §8 — sor değil, karar ver ve yaz):**
+(1) MCP'de `delete_*` KALICI olarak yok (ADR-0022'nin kuralı aynen); silme yetkisi API-anahtar
+yüzeyinde VAR — iki yüzeyin güven modeli farklı (AI öneri yapar, anahtar sahibin kendi
+otomasyonudur) ve bu ayrım ADR-0032'ye yazılır. (2) MCP dosya araçları metadata döndürür,
+**presigned URL / bayt asla** (AI.md §7'nin sınırı); dosya yükleme MCP'ye girmez, yazılı sebep:
+baytlar MCP host'larından akmaz. (3) API anahtarı **OAuth'suz düz Bearer**: `awk_` önekli tek
+gösterimlik sır, HMAC-SHA256 hash'le saklanır (`hashMcpToken` deseni), scope YOK (v1 karar —
+anahtar sahibinin tam yetkisi, tek workspace'e bağlı, MCP bağlantısı emsali), anahtar-başına
+rate limit. (4) Anahtar yönetim uçları YALNIZ JWT ile çalışır (anahtar anahtar üretemez);
+`/auth/*`, hesap silme ve `/ai/*` (BYOK sırları) anahtara KAPALI. (5) Sürümler sunucuda yaşar,
+replikaya İNMEZ — geçmiş ekranı çevrimiçi yüzeydir (DESIGN §35 V6). (6) Merge SUNUCUDA koşar
+(`node-diff3` satır + `jsdiff` kelime inceltme): pub.dev'de diff3 yok, iki dilde iki merge
+motoru tutarsızlık üretir; istemci yalnız SONUCU çizer. Fuzzy patch (dmp) motor olarak RED.
+(7) Merge yalnız üç taraf da markdown-canonical iken; delta-canonical notlar çakışmada doğrudan
+banner/kopya yoluna düşer (Delta JSON'a satır-merge uygulanmaz — dürüst sınır). (8) Çakışmanın
+varsayılan yüzü **not üstünde banner**; kendiliğinden kardeş-not üretimi ölür, "kopya olarak
+ayır" kullanıcının seçtiği eylem olur (DESIGN §35 V3). Kayıp taraf HER durumda sürüm satırı
+olarak saklanır. (9) Saklama sunucu-politikasıdır (Joplin'in min-across-devices tuzağı):
+0–7 gün hepsi (10 dk sunucu koalesansı), 7–90 gün günde 1, sonrası silinir; `conflict`/
+`merge`/`restore`/`import` kökenli sürümler 365 gün; not başına tavan 500; env:
+`NOTE_VERSION_RETENTION_DAYS` vb. (10) Restore TARİHİ YENİDEN YAZMAZ: yeni head sürümü üretir;
+"kopya olarak geri yükle" ikinci seçenek (sektör normu, üç üründe doğrulandı). (11) Renk
+seçicide hex ASLA görünmez; son-5 MRU globaldir ve her yüzey kendi paletiyle KESİŞİMİ gösterir
+(§23 Q8a kontrat bozulmaz); markdown'a renk sözdizimi EKLENMEZ (GFM'de yok — parked, yazılı
+sebep). (12) **Issue #2 (OIDC): meşru ve Firebase'den farklı bir istek — ama bu tura girmez.**
+Sunucu yarısı ucuz (ADR-0026'nın `oauth-identity.js`'i zaten JWKS+issuer+audience doğruluyor;
+"issuer listesi konfigürasyona açılır" işi), istemci yarısı pahalı (6 platformda code+PKCE
+tarayıcı akışı + deep-link dönüşü). Park listesine tasarım taslağıyla yazıldı, issue nazikçe
+"parked/not planned" kapatıldı; tetikleyici: çok kullanıcılı workspace UI'ı gündeme gelirse
+birlikte açılır. (13) Ayarlar yeniden yapılanması SATIR İCAT ETMEZ (tema anahtarı yok —
+`themeMode` hardcoded; §32 S5). (14) Home/Projeler sıralamaya AÇILMAZ (yazılı sebepler §34 L5).
+(15) Sürüm/etiket kesimi bu epic'in işi DEĞİL (Epic 24'ün 4. kararı emsal — ayrı tur).
+
+**Sıra bağlayıcı ve iş paketleri:** `257 → 258 → 259 → 260` (P1, uygulama cilası) ·
+`261 → 262 → 263` (P2, domain çıkarımı + MCP) · `264 → 265 → 266` (P3, API katmanı) ·
+`267 → 268 → 269` (P4, sürümleme & çakışma). Paketler kendi içinde sıralı; P2/P3/P4'ün
+tamamı OPH-261'e bağımlı olduğundan paketler arası sıra da bağlayıcıdır. **Cihaz/elle
+doğrulama isteyenler:** 257 (bir web + bir telefon hızlı bakışı — SnackBar davranışı widget
+testinde de kanıtlanır ama göz teyidi ucuz), 259/260 (light+dark görsel tur + `contrast.py`),
+263 (MCP Inspector koşusu — ADR-0022'nin ayakta duran uyum kanaryası), 269 (iki cihazla
+gerçek çakışma provası: uçak modu + aynı nota iki düzenleme).
+
+### OPH-257 — Geri al barı: `persist` varsayılanını yen, bayat Geri al'ı sustur, yalanı sil
+
+_Kök neden ÖLÇÜLDÜ (bulgu #10) — bu task teşhis değil, kapanıştır. Round 13'ün "süreyi kısalt"
+düzeltmesi neden işe yaramadı sorusunun cevabı da budur: bar süresini hiç dinlemiyordu._
+
+- [ ] `widgets/swipe_actions.dart` → ortak bir `showAwActionSnackBar(...)` yardımcı fonksiyonu
+      doğur (aynı dosyada ya da `widgets/snackbars.dart`): `persist: false` + verilen `duration`
+      + action'ı sarar; `awDeleteWithUndo` bunu kullanır. **Uygulamadaki action'lı dört snackbar
+      da** bu yardımcıya taşınır: `home_board.dart:71-75` (board.undo), `ai_confirm_card.dart:277-290`,
+      `quick_access_navigation.dart:121-128`. (Gelecekteki bir action'lı snackbar'ın aynı tuzağa
+      düşmemesi için tek kapı.)
+- [ ] Bayat "Geri al" no-op'u kapat: `SnackBarAction.onPressed` → `pending.undo(id)` çağrısı
+      **başarısızsa** (id artık `_commits`'te değilse) barı gizle; `PendingDeletes.undo` bool
+      dönsün. (Bulgu #10'un ikincil bug'ı: commit 3000 ms'de koşarken bar sonsuza dek kalıyor
+      ve düğmesi hiçbir şey yapmıyordu.)
+- [ ] `pending_deletes.dart:70-76` `commitNow()` — hiçbir çağıranı yok (ölü kod). OPH-184'ün
+      asıl niyeti "ekrandan çıkılınca commit" idi (`TASKS.md:3681-3683`): ya ekrandan ayrılışta
+      (notes/tasks liste `dispose`'unda bekleyen id'ler için) bağla, ya da yazılı gerekçeyle sil.
+      Karar task içinde ölçülerek verilir; hangisi seçilirse `pending_deletes.dart:8-11`
+      yorumundaki Round-13 fosili ve `swipe_actions.dart:130-131`'deki "control is never on
+      screen after it stops working" cümlesi GERÇEĞE çekilir (bugün ikisi de yalan).
+- [ ] Testler: `delete_flow_test.dart`'a gerçek regresyon eklenir —
+      `expect(find.byKey(Key('undo-delete-$id')), findsNothing)` **pencere sonrası** (bugün
+      hiçbir test barın kapandığını iddia etmiyor; mevcut yorum "snackbar expires" diyor ama
+      ölçmüyor). Dört çağrı yüzeyinden en az ikisi (liste swipe + detay app-bar) + bayat-Geri
+      al no-op senaryosu test edilir.
+- [ ] Elle: web (Chrome) + bir telefonda sil → 3 sn bekle → bar KENDİ KENDİNE gider; Undo'ya
+      basılırsa satır döner. STATE'e tek satır kanıt.
+
+### OPH-258 — Liste sıralaması: notlar düzenlenmeye göre, denetim app bar'da (DESIGN §34)
+
+_Bulgu #13/#14. `updatedAt` zaten her `update()`'te damgalanıyor (`note_store.dart:210`) ve
+satırda zaten gösteriliyor — iş sıralamayı ona çevirmek ve seçiciyi SATIR HARCAMADAN vermek._
+
+- [ ] `AwSortMenuButton` bileşeni (`widgets/`): checkmark'lı seçenek listesi + "Ters çevir"
+      anahtarı; seçenek kümesi ve `PersistedChoice` anahtarı parametre. §34 L2 anatomisi.
+- [ ] Notlar: `note_store.dart:63-89` ve `:127-132` `orderBy` → seçime göre; varsayılan
+      `updatedAt DESC` (null → `createdAt`/id fallback'i tek yerde çözülür). Başlık sıralaması
+      fold-duyarlı (`core/fold.dart` — İ/ı Türkçe beklentisi, ADR-0013 emsali). Pin sıralamayı
+      DEĞİŞTİRMEZ (bilinçli — §34 L5). Kalıcılık `alliswell_notes_sort`.
+- [ ] Notes app bar'ı: görünüm anahtarı (`notes-view-toggle`) + sıralama TEK "görünüm & sıralama"
+      menü düğmesinde birleşir (bar ölçülü olarak sınırda — `external_open_menu.dart:8-10`
+      emsali). Menü öğeleri: Liste/Izgara + Düzenlenme/Oluşturma/Başlık + Ters çevir.
+- [ ] Global Dosyalar bölümü aynı bileşeni alır (tarih · ad · boyut, `alliswell_files_sort`) —
+      bugün seçicisi HİÇ yok; proje Files sekmesindeki `_FileSort` (`project_detail_screen.dart:524-645`)
+      paylaşılan bileşene taşınır ve artık kalıcıdır.
+- [ ] Testler: sıralama değişiminin listeyi yeniden dizdiği (3 notla üç seçenek), kalıcılığın
+      restart'ı atlattığı (`localKv` reset deseni), fold'lu başlık sırası; Files sekmesi
+      regresyonu. i18n: `sort.*` anahtarları en+tr.
+- [ ] Yüzey: Notlar sekmesi app bar menüsü + Dosyalar bölümü app bar'ı + proje Files sekmesi.
+
+### OPH-259 — Renk sistemi v2: `AwColorPicker`, son 5 renk, hex diyaloğunun ölümü (DESIGN §33)
+
+_Bulgu #11/#12. "Mevcut seçici kullanışsız" şikâyetinin ölçülen karşılığı: Live modda Quill'in
+stok diyaloğu (hex alanlı) açılıyor; md tarafında renk aksiyonu zaten yok; dönüşüm renkleri
+sessizce siliyor. Bu task seçiciyi BİZİM yapar ve dört yüzeyi tek bileşene bağlar._
+
+- [ ] `widgets/aw_color_picker.dart`: §33 R1 anatomisi — "Son kullanılanlar" satırı (≤5, boşsa
+      gizli) + yüzeyin palet ızgarası (`AwColorSwatchDot`, ≥44 px) + (yalnız proje/etikette)
+      mevcut "daha fazla" ızgarası. Sheet olarak açılır; seçim anında uygular ve kapanır (R5).
+- [ ] Son kullanılanlar MRU'su: `alliswell_recent_colors` (localKv, JSON liste, 8 saklanır,
+      5 gösterilir), HER seçici HER seçimde ekler; her yüzey kendi paletiyle KESİŞİMİ gösterir
+      (karar #11; §23 Q8a bozulmaz). `external_session.dart:121-148` şekli emsal.
+- [ ] Dört mevcut yüzey bileşene taşınır: proje (`project_edit_sheet.dart:164-186`), etiket
+      (`tag_manage_sheet.dart:152-213` — bugün `AwColorSwatchDot` bile kullanmıyor), hızlı
+      erişim (`quick_link_sheets.dart:187-248`, 10'luk palet aynen), + editör (aşağıda).
+      Görsel dil light+dark kontrol edilir.
+- [ ] Editör (Live mod): `QuillSimpleToolbarConfig`'te `showColorButton: false,
+      showBackgroundColorButton: false`; yerine iki AwToolbar düğmesi (metin rengi / vurgu) —
+      `AwColorPicker` açar, `ColorAttribute`/`BackgroundAttribute` uygular. Paletler §33 R4:
+      12 metin + 6 vurgu rengi, `kProjectPalette` yanında tanımlı, **`scripts/design/contrast.py`
+      çiftlerine eklenir ve FAILURES: 0 kanıtlanır** (iki temada).
+- [ ] Markdown modu: `md_actions.dart`'a `highlight` aksiyonu (`==…==` sarma — argümansız,
+      mevcut `MdAction` tipine sığar); renk aksiyonu markdown'a EKLENMEZ (karar #11, park).
+- [ ] Dönüşüm dürüstlüğü: `delta_markdown.dart:56-66` `background` → `==…==` üretir; `color`
+      düşecekse dönüşüm diyaloğu bunu ÖNCEDEN söyler (ADR-0028 "explicit, warned" sözleşmesi).
+      Round-trip testi: vurgulu delta → md → delta vurguyu korur.
+- [ ] Testler: MRU (ekleme/tekilleştirme/kesişim/kalıcılık), dört yüzeyde seçim akışı, quill
+      config'inde stok renk düğmelerinin kapalı olduğu (regresyon: hex diyaloğu bir daha
+      açılamaz), dönüşüm round-trip. i18n en+tr.
+- [ ] Yüzey: editör araç çubuğu (iki yeni düğme), proje/etiket/hızlı-erişim renk seçicileri.
+
+### OPH-260 — Gelişmiş ayarlar: 19 satırlık düz liste → 6 gruplu IA (DESIGN §32)
+
+_Bulgu #14. Envanterin tamamı planlama raporunda satır satır çıkarıldı (19 satır, sıra ve
+key'lerle); bu task YENİ HİÇBİR AYAR EKLEMEDEN yeniden ev kurar (S5)._
+
+- [ ] Kök ekran `settings_screen.dart` yeniden düzenlenir: hesap başlığı (→ `/settings/account`),
+      beş grup satırı (Genel · Bildirimler & Alarmlar · Entegrasyonlar · Veri · Hakkında-satırı
+      mevcut About davranışıyla), altta sign-out kartı (S4). Grup satırları ikon + başlık +
+      içerik sayan alt başlık (S1).
+- [ ] Yeni rotalar `router.dart:265+` deseninde: `/settings/account`, `/settings/general`,
+      `/settings/notifications`, `/settings/integrations`, `/settings/data`. Mevcut beş derin
+      rota AYNEN kalır ve grup sayfalarından bağlanır (S3). Dağılım §32 S2'deki gibi;
+      `_AlarmStatusTile`, `ServerUrlTile`, takvim kartları, `AiSettingsCard` (MCP kartı içinde
+      kalır) widget olarak taşınır, key'ler ve i18n anahtarları DEĞİŞMEZ.
+- [ ] `/settings/integrations` sayfası OPH-265'in "API erişimi" satırına yer bırakır (bu turda
+      satır YOK — S5; sadece grup var).
+- [ ] Testler: mevcut settings widget testleri yeni gezinmeye uyarlanır (key'ler korunduğu için
+      satır testleri yaşar; ekstra: her grup sayfasının açıldığı ve BEKLENEN satırları taşıdığı
+      — 19 satırın tamamı bir eşleme testiyle sayılır ki taşınırken satır düşmesin, §22).
+      i18n: `settings.group.*` anahtarları en+tr. Light+dark tur + `contrast.py` yeşil.
+- [ ] Yüzey: Ayarlar kökü + 5 yeni alt sayfa; hiçbir mevcut satır kaybolmaz (S2'nin eşleme
+      tablosu kanıttır).
+
+### OPH-261 — Domain katmanı çıkarımı + not dürüstlük onarımları (MCP/API'nin ön koşulu)
+
+_Bulgu #6/#7. ADR-0022 K4: MCP domain katmanını çağırır, ham SQL'i değil — ama notes/projects/
+tags mantığı bugün route içinde. Bu task REST davranışını DEĞİŞTİRMEDEN çıkarımı yapar ve iki
+ölçülmüş yalanı düzeltir._
+
+- [ ] `src/db/notes.js` doğar: `createNote`, `updateNote`, `deleteNote`, `linkNote`/`unlinkNote`,
+      `listNotes`, `getNote`, `exportNoteMarkdown` — `db/tasks.js` deseni (recordSyncWrite +
+      revision damgası + aynı transaction). `routes/notes.js` bunlara delege eder; Ajv şemaları
+      ve hata kodları AYNEN kalır (mevcut unit testler değişmeden yeşil kalmalı — davranış
+      sözleşmesinin kanıtı budur).
+- [ ] `src/db/projects.js` (`createProject`, `updateProject`, `archiveProject`, `listProjects`,
+      `getProject` + açık görev sayımı) ve `src/db/tags.js` (`createTag`, `updateTag`,
+      `deleteTag`, `listTags`) aynı şekilde; `routes/projects.js` / `routes/tags.js` delege.
+- [ ] **Onarım 1 (`plain_text`):** `toRowPatch` (`notes.js:161-180` → yeni `db/notes.js`)
+      markdown-canonical yazımda `plain_text`'i markdown'dan türetir (yeni `markdownToPlainText`
+      — sunucuda md ayrıştırıcıya gerek yok: satır bazlı sözdizimi soyma yeterli, test
+      fixture'larıyla). Sync tarafındaki ikiz üretici (`sync.js:535-539`) AYNI yardımcıyı
+      kullanır. Kanıt: markdown-canonical not `?q=` ve MCP `search`/`get_note`'ta bulunur
+      (bugün bulunmuyor — bulgu #6). Mevcut satırlar için tek seferlik backfill migration'ı
+      (yalnız `content_format='markdown'` VE `plain_text` boş/bayat olanlar).
+- [ ] **Onarım 2 (export):** `exportNoteMarkdown` `content_format`'a saygı duyar —
+      markdown-canonical notta `content_markdown` kanonik kaynaktır (bugün delta-öncelikli,
+      `notes.js:380-382`).
+- [ ] **Onarım 3 (`note_tags`):** tablo ilk günden var, REST ucu hiç olmadı. `PUT
+      /api/v1/notes/:noteId/tags` (replace-set — `tasks.js:647` emsali) + not
+      serileştirmesine `tagIds` eklenir; sync `NOTE_FIELDS`'e girmez (bilinçli: v1'de etiket
+      not-sync'ine dahil değil, yazılı sınır — pull serializer'ı zaten links'i taşıyor,
+      tagIds de aynı yoldan okunur).
+- [ ] Testler: mevcut notes/projects/tags unit + integration süitleri YEŞİL (delege kanıtı);
+      yeni: plain_text markdown üretimi (fixture'lı), export format-saygısı, note-tags ucu,
+      backfill migration'ı. `npm run lint` + format.
+
+### OPH-262 — MCP genişleme 1. dalga: görev yazma araçları + `recordMcpAction`
+
+_Bulgu #7/#8. ADR-0022'nin kendi cümlesi genişlemeye izin veriyor: "v1.5 write tools slot into
+the same dispatch + annotation + audit path; `delete_*` never does."_
+
+- [ ] `lib/mcp/actions.js` → `recordMcpAction(app, auth, {idempotencyKey, entityType, entityId,
+      proposal, entityRefs})`: `mcp_mutations` replay kontrolü + `ai_action_log(source='mcp')`
+      insert'ini TEK yere alır ("ledger LAST" sırası korunur — `tools.js:529-530` notu);
+      `create_task`/`complete_task` buna taşınır (davranış değişmez, testler sabit kalır).
+- [ ] Yeni araçlar (hepsi: annotation dörtlüsü + `requireScope('mcp:write')` + Ajv +
+      workspace-scope + `recordMcpAction` + DATA_NOTE):
+      **`update_task`** — `writableProps`'un MCP-güvenli alt kümesi: `title`, `description`,
+      `status`, `priority`, `dueAt`, `remindAt`, `startAt`, `isUrgent` (acil alarm buradan),
+      `requiresAcknowledgement`, `projectName` (id değil — `matchProject`, belirsizse aday
+      listesiyle RED, K5), `tags[]` (yalnız var olana çözülür, sessiz yaratma yok), `timezone`.
+      Domain: mevcut PATCH yolu `db/tasks.js`'e `updateTask` olarak iner (reconcileTaskReminder
+      dahil). **`reopen_task`**, **`snooze_task`** (preset enum'u REST'le aynı: `5_min|30_min|
+      1_hour|tomorrow_morning` ya da `snoozeUntil`), **`add_checklist_item`**,
+      **`set_checklist_item`** (`isDone`/`title`), **`acknowledge_reminder`**.
+- [ ] Red-team: `mcp-injection.test.js` her yeni aracı düşman başlık korpusuyla çağırır,
+      `tableSnapshot()` değişmezliği genişletilir (bulgu #8'in CI sözleşmesi, SECURITY.md:89-90).
+- [ ] Unit testler `mcp-tools.test.js` deseninde: mutlu yol + scope reddi + cross-workspace
+      NOT_FOUND + idempotency replay + belirsiz proje reddi. `docs/MCP.md` tablosu bu dalganın
+      araçlarıyla güncellenir (kalan güncelleme OPH-263'te).
+
+### OPH-263 — MCP genişleme 2. dalga: not/proje/etiket araçları, listeler, dokümantasyon
+
+_Sahibin cümlesi birebir: "not olusturma yok … not ekleme notu taska baglama … proje yonetimi
+not olusturma ayrica task bagimsiz not ekleme yapilabilmesi lazim." Bu dalga onu kapatır._
+
+- [ ] Araçlar: **`create_note`** (`title` zorunlu; `contentMarkdown` — MCP notları
+      markdown-canonical doğar, karar; `projectName?` fold-eşleşme K5; `taskId?` verilirse
+      `db/notes.js.linkNote` ile aynı transaction'da bağlanır — "task bağımsız not" da "göreve
+      bağlı not" da tek araç), **`update_note`** (`title?`, `contentMarkdown?`, `isPinned?`,
+      `isArchived?` — içerik yazımı sürümleme yolundan geçer: OPH-267 sonrası origin='mcp'
+      sürüm satırı otomatiktir çünkü domain katmanı tektir, V8), **`link_note`** /
+      **`unlink_note`** (`entityType: task|project`), **`list_notes`** (proje/arşiv/pin
+      filtreleri, limit ≤50, gövde DEĞİL özet — `plain_text` ilk 200 char), **`create_project`**
+      / **`update_project`** (name/description/status/dueAt; renk YOK — renk UI kararıdır),
+      **`list_projects`** (statü filtresi + açık görev sayıları), **`list_tags`**,
+      **`create_tag`**, **`list_files`** (metadata-only: ad, boyut, mime, hedef; presigned URL
+      ASLA — karar #2). Okuma araçları `{ readOnlyHint: true }` + satır tavanları (K7).
+- [ ] `get_task`/`get_note` zenginleşir: bağlı notlar / bağlı görevler + checklist + etiketler
+      görünür (K7 tavanlarıyla) — "her alanın görülebilmesi" tarafı.
+- [ ] Resources: `alliswell://views/today`/`overdue` kalır; `alliswell://views/inbox` eklenir
+      (planlama statüleri — `buildTaskViewResource` yanına saf builder, route içine değil).
+- [ ] Dokümantasyon: `docs/MCP.md` araç tablosu tam liste olur ("Seven tools" cümlesi ve
+      README/AI.md sayıları güncellenir; "no delete, by design" cümlesi KALIR); ADR-0022'ye
+      kısa amendment notu (yüzey genişledi, delete-dışı aynı yol — yeni ADR gerekmedi, kendi
+      Consequences cümlesi izin veriyor). AGENTS kural 12 zaten bağlandı (planlama turu).
+- [ ] Red-team + unit + `test/integration/mcp.test.js` genişletmeleri; **MCP Inspector elle
+      koşusu** (ADR-0022'nin uyum kanaryası): her yeni araç Inspector'dan bir kez çağrılır,
+      STATE'e tek satır kanıt düşülür.
+
+### OPH-264 — API anahtarları sunucu tarafı: ADR-0032 + `api_keys` + çift-modlu kimlik
+
+_Bulgu #9. Issue #3'ün gövdesi: "Allow user to create API keys and expose REST API to
+applications." Karar #3/#4 çerçeveyi çizdi; ADR-0032 bu task'ın İLK işi olarak yazılır
+(tehdit modeli, scope'suz v1, workspace bağı, MCP/anahtar güven ayrımı, hash mirası)._
+
+- [ ] Migration `create_api_keys`: `id` char(26) · `user_id` FK · `workspace_id` FK · `name`
+      varchar(100) · `key_hash` char(64) UNIQUE · `key_prefix` varchar(16) · `expires_at`
+      datetime(3) NULL · `revoked_at` NULL · `last_used_at` NULL · `created_at`. Şablon:
+      `20260729180000_create_task_series.js` konvansiyonları.
+- [ ] Üretim: `awk_` + `newOpaqueToken(32)`; saklama `hashMcpToken('api_key', token, secret)`
+      (`tokens.js:58` kind birliğine `api_key` eklenir); `key_prefix` = ilk 12 karakter
+      (listede tanıma için). Sır YALNIZ create yanıtında döner.
+- [ ] `plugins/auth.js` `authenticate` çift-modlu olur: Bearer `awk_` önekliyse hash lookup →
+      canlı kullanıcı + `revoked_at`/`expires_at` kontrolü → `request.user` + `request.apiKeyAuth
+      = {keyId, workspaceId}`; `requireWorkspaceMember` apiKeyAuth varsa hedef workspace'in
+      anahtarın workspace'i olduğunu da doğrular (403 `AUTH_APIKEY_WORKSPACE`). `last_used_at`
+      ~1 dk throttled (mcp.js:106-114 deseni). JWT davranışı bit değişmeden aynı kalır.
+- [ ] Kapılar: `/api/v1/auth/*` zaten authenticate dışı; hesap silme (`DELETE /me`,
+      `/me/deletion/*`) ve `/ai/*` rotalarına `rejectApiKeys` preHandler'ı (karar #4); anahtar
+      yönetim uçları da `rejectApiKeys` taşır (anahtar anahtar üretemez/silemez).
+- [ ] Yönetim uçları (JWT): `GET/POST /api/v1/workspaces/:workspaceId/api-keys` (create body:
+      `name` zorunlu, `expiresInDays?` ∈ {30, 90, 365} — yoksa süresiz), `POST
+      /api/v1/api-keys/:keyId/revoke`. Liste yanıtı: name, prefix, createdAt, expiresAt,
+      lastUsedAt, revokedAt.
+- [ ] Rate limit: anahtar-doğrulanmış isteklerde `keyGenerator` anahtar hash'i (mcp.js:243-254
+      kopyası), `API_KEY_RATE_LIMIT_MAX` (varsayılan 300/dk = mevcut global ile aynı) —
+      `config.js`'e + `.env.example`'a.
+- [ ] Testler (unit + integration): anahtarla `GET /me` ve task/not CRUD'u; süresi geçmiş /
+      revoke edilmiş anahtar 401; yanlış workspace 403; `/ai/*` ve anahtar-yönetimi anahtara
+      403; JWT regresyonu (mevcut süit yeşil); hash'in düz metin saklanMADIĞI (satırda `awk_`
+      araması). SECURITY.md'ye anahtar bölümü (bildirim + saklama modeli).
+
+### OPH-265 — API anahtarları ekranı (Entegrasyonlar) + `docs/API.md`
+
+- [ ] `/settings/api-keys` ekranı; Entegrasyonlar grubuna "API erişimi" satırı (OPH-260'ın
+      bıraktığı yere). Liste: ad + `awk_XXXXXXXX…` prefix + oluşturma/bitiş/son kullanım;
+      revoke onaylı; oluşturma sheet'i (ad + süre: 30/90/365 gün/süresiz); **sır tek kez**
+      gösterilir — kopyala düğmeli diyalog + "bu anahtar bir daha gösterilmeyecek" cümlesi.
+      Sunucu `API`'ye erişilemiyorsa dürüst hata (status_views).
+- [ ] Store/provider: bu ekran çevrimiçi yüzeydir (sync varlığı DEĞİL — anahtar listesi
+      replikaya inmez, karar; AI bağlantıları ekranı emsal).
+- [ ] `docs/API.md` doğar: kimlik (header örneği), workspace keşfi (`GET /me`), uç listesi
+      (rota envanterinden özet tablo + curl örnekleri: task oluştur, not oluştur+bağla, not
+      export, içe aktarma OPH-266 sonrası), hata kodları, rate limit, anahtar yaşam döngüsü.
+      README'ye "REST API & API keys" maddesi; `docs/MCP.md`'ye karşılıklı bağlantı.
+- [ ] Testler: widget (liste/oluşturma/tek-sefer-sır/revoke akışı, `sync_overrides` ile),
+      i18n en+tr, light+dark + `contrast.py`. Yüzey: Ayarlar → Entegrasyonlar → API erişimi.
+
+### OPH-266 — Toplu içe/dışa aktarma: issue #3'ün kabul testi
+
+- [ ] `GET /api/v1/workspaces/:workspaceId/export/notes` → `{notes:[{id,title,contentFormat,
+      contentMarkdown,contentDelta,plainText,projectId,tagIds,links,isPinned,isArchived,
+      createdAt,updatedAt}]}` (sayfalı, `limit`/`cursor`; format=json v1 — zip PARK, yazılı
+      sebep: tek tek md zaten `/notes/:id/export`).
+- [ ] `POST /api/v1/workspaces/:workspaceId/import/notes` — gövde `{notes:[{title zorunlu,
+      contentMarkdown?, projectId?, tagIds?, isPinned?}]}`, tavan 500/istek; markdown-canonical
+      doğar; domain katmanından geçer → sync revision'ları düşer, cihazlar kendiliğinden
+      yakınsar; yanıt `{created:[ids], errors:[{index, code}]}` (kısmi başarı dürüst).
+- [ ] `POST /api/v1/workspaces/:workspaceId/import/tasks` — `{tasks:[{title zorunlu, dueAt?,
+      priority?, projectId?, description?, isUrgent?}]}` tavan 500; `db/tasks.js.createTask`
+      döngüsü (reminder reconcile dahil).
+- [ ] OPH-267 indikten sonra import sürümlemede `origin='import'` görünür (V8) — sıra notu:
+      bu task 267'den ÖNCE biterse origin alanı 267'de geriye dönük bağlanır (tek satır).
+- [ ] Testler: integration round-trip (import → pull → export eşleşir), tavan/hata yolları,
+      anahtarla uçtan uca (264'ün anahtarıyla curl senaryosu integration'da). `docs/API.md`
+      örnekleri güncellenir. **Issue #3'e kapanış yorumu** (sevk edilen uçlar + docs/API.md
+      bağlantısı + sürüm) — issue bu task'la kapanır.
+
+### OPH-267 — Sürümlemenin omurgası: ADR-0031, `note_versions`, yakalama + saklama
+
+_Bulgu #4/#5 + literatür tablosu. İLK İŞ ADR-0031: yukarıdaki karar #5-#10 çerçevesi + iki
+tablo ADR'ye taşınır (araştırma raporu bağlantısıyla); "hiçbir sürümleme kodu ADR'den önce
+yazılmaz" (OPH-246 emsali)._
+
+- [ ] Migration `create_note_versions`: `id` char(26) · `workspace_id` · `note_id` (FK CASCADE)
+      · `note_revision` bigint (yakaladığı not revizyonu) · `title` · `content_delta` json NULL
+      · `content_markdown` mediumtext NULL · `content_format` varchar(16) · `origin` varchar(16)
+      (`edit|merge|restore|conflict|import|api|mcp`) · `client_id` char(26) NULL ·
+      `created_by` char(26) NULL · `content_hash` char(64) · `created_at`. Index
+      `(note_id, created_at)`, `(note_id, note_revision)`. ÜÇ içerik alanı birden — hangi
+      alanın kanonik olduğu belgenin kimliğidir (ADR-0028 tutarlılığı).
+- [ ] Yakalama TEK noktada: `db/notes.js.updateNote`/`createNote` (OPH-261'in çıkardığı yol)
+      içerik değiştiren her kabul edilen yazımda sürüm satırı düşer — REST, sync push, MCP,
+      API, import HEPSİ buradan geçtiği için V8 kendiliğinden sağlanır. Sunucu koalesansı:
+      son sürüm aynı not + aynı `client_id` + `origin='edit'` + <10 dk ise satır YERİNDE
+      güncellenir (rolling head), değilse INSERT (1.5 sn'lik otosave'in dakikada ~26 satır
+      üretmesine karşı ölçülmüş cevap — bulgu #5).
+- [ ] `content_hash` (sha256) ile özdeş gövde artarda iki satır üretmez.
+- [ ] Saklama süpürücüsü (karar #9): günlük job (dosya-GC süpürücüsü emsal); 0–7 gün dokunma,
+      7–90 gün not başına günde 1'e incelt, 90+ gün sil; `conflict|merge|restore|import` 365
+      gün; not başına tavan 500 (en eskiden incelt); env: `NOTE_VERSION_RETENTION_DAYS=90`,
+      `NOTE_VERSION_PROTECTED_DAYS=365`, `NOTE_VERSION_CAP=500`, `NOTE_VERSION_COALESCE_MIN=10`
+      → `config.js` + `.env.example`. Not silinince sürümler CASCADE gider.
+- [ ] REST: `GET /api/v1/notes/:noteId/versions` (sayfalı metadata: id, createdAt, origin,
+      clientId=bu cihaz mı işareti için, boyut) · `GET /api/v1/notes/:noteId/versions/:versionId`
+      (tam gövde) · `POST /api/v1/notes/:noteId/versions/:versionId/restore` body
+      `{mode: 'replace'|'copy'}` — replace: eski gövde YENİ head yazımı olur (`origin='restore'`,
+      karar #10), copy: yeni not döner. `GET …/versions/:id/diff` → mevcut gövdeyle kelime
+      düzeyi diff segmentleri (jsdiff; istemci yalnız çizer — karar #6).
+- [ ] Bağımlılık: `node-diff3` + `jsdiff` package.json'a bu task'ta girer (ADR-0031 gerekçeli —
+      lisans MIT/BSD, sıfır/az bağımlılık, literatür tablosundaki durum tespitiyle).
+- [ ] Testler: unit (yakalama/koalesans/hash-dedupe/origin'ler), integration (autosave
+      fırtınası → beklenen satır sayısı; süpürücü inceltmesi; restore-replace'in yeni head
+      ürettiği ve tarihçeyi DEĞİŞTİRMEDİĞİ; cascade). Sürümler sync'e AÇILMAZ (karar #5) —
+      `SNAPSHOT_LOADERS`/`ENTITIES` dokunulmaz, testle sabitlenir.
+
+### OPH-268 — Çakışma doğruluğu: not-bazlı base, sunucuda diff3, kopyanın emekliliği
+
+_Bulgu #1/#2/#3 — override'ın ölçülmüş üç katmanı. Merge YALNIZ üç taraf markdown-canonical
+iken (karar #7); gerisi banner/kopya yolu. Eski istemci uyumu: mutation'da base yoksa sunucu
+bugünkü davranışa düşer (kendi kendini kırmayan protokol)._
+
+- [ ] Protokol: push mutation'ına opsiyonel `baseRevision` (NOT-bazlı) alanı — Ajv şeması +
+      `PendingMutations`'a kolon (drift v18, `from >= 1` guard'sız yeni-kolon kuralı DEĞİL:
+      mevcut tabloya kolon → guard'LI; v17 emsali `database.dart:661-667`). Editör belge
+      yüklerken `note.revision`'ı alır; `store.update(..., baseRevision:)` outbox satırına
+      yazar; **kendi başarılı push'unun `result_revision`'ı base'i İLERLETİR** (ölçüsü: art
+      arda iki otosave sahte çakışma ÜRETMEZ — test).
+- [ ] Outbox koalesansı: aynı nota push edilmemiş ikinci `update` enqueue edilirse patch'ler
+      birleşir — EN ESKİ base + EN YENİ gövde (bulgu #3'ün N-kopya patlamasının istemci ayağı).
+- [ ] Sunucu `applyUpdate` (not, content intents): mutation base'i varsa notun KENDİ
+      `revision`'ıyla kıyasla (workspace-imleç kıyası content için ölür — bulgu #1'in kökü).
+      Eşit → uygula + sürüm. Küçük → base gövdesini `note_versions`(note_revision=base)'ten
+      getir: bulunamadı YA DA üç taraftan biri markdown-canonical değil → `NOTE_CONTENT_CONFLICT`
+      + gelen gövde `origin='conflict'` sürümü olarak SAKLANIR (V1: kayıp yok) + yanıtta
+      `conflictVersionId`. Bulundu → normalize (`\r\n`→`\n`) → `node-diff3` satır → çakışan
+      bölgede `jsdiff` kelime inceltme (karar #6, diff3 makalesinin tek-satır-paragraf tuzağı)
+      → temiz: birleşik gövdeyi uygula (`origin='merge'`, yanıt `status:'merged'` + gövde;
+      istemci replika + AÇIK editörü günceller) → örtüşme: yukarıdaki conflict yolu.
+- [ ] İstemci çakışma davranışı DEĞİŞİR (karar #8): otomatik kardeş-kopya ÜRETİLMEZ; Notes
+      replika satırına yerel `conflictVersionId` işlenir → not banner'ı (OPH-269 çizer; bu
+      task state+snackbar'ı koyar). Batch'te aynı nota tek çakışma işlenir (dedupe). "Kopya
+      olarak ayır" seçilirse kopya `contentFormat` DAHİL doğar (bulgu #3'ün format bug'ı
+      burada ölür — kopya üretimi artık kullanıcı eylemi).
+- [ ] Editör V7: pull ile gelen değişiklik AÇIK ve TEMİZ editöre yerinde iner (base ilerler);
+      KİRLİ editör kullanıcı metnini korur (push-time base işini yapar). `didUpdateWidget`/
+      provider dinleme — bulgu #2'nin kapanışı.
+- [ ] REST `PATCH /notes/:noteId` opsiyonel `baseRevision` kabul eder (aynı yol; API
+      istemcileri de dürüst çakışma alabilir — docs/API.md güncellenir).
+- [ ] Testler: unit sync-push (merge-temiz / merge-çakışma / base'siz eski istemci /
+      delta-canonical düşüşü / base-sürümü-inceltilmiş düşüşü); **integration: Senaryo A'nın
+      birebir reprodüksiyonu** (iki istemci çevrimiçi, soket-pull araya girer, İKİ metin de
+      yaşar — bugün kaybolan test artık sözleşme) + offline reconnect senaryosu; app: engine
+      settle/base-ilerletme/dedupe + editör temiz/kirli davranış testleri.
+
+### OPH-269 — Sürüm geçmişi & çakışma yüzeyi (DESIGN §35)
+
+- [ ] Editör menüsüne "Sürüm geçmişi" (`note-quick-menu`'ye öğe) → `/notes/:id/versions`
+      ekranı: gün başlıklı liste (Bugün/Dün/tarih), satır = saat + origin çipi (Bu cihaz ·
+      Diğer cihaz · Birleştirme · Çakışma · Geri yükleme · İçe aktarma — clientId kıyasıyla) ·
+      tık = mevcut OKUMA moduyla önizleme + "Farkı gör" (sunucunun diff segmentleri, kelime
+      düzeyi vurgulama) · "Geri yükle" (onaylı; yeni head — V5 cümlesi diyalogda) · "Kopya
+      olarak geri yükle". Çevrimdışıysa dürüst boş durum (V6, status_views).
+- [ ] Çakışma banner'ı (V3): `conflictVersionId` taşıyan not editörde açılınca üst bant —
+      "Bu not başka bir cihazda da düzenlendi" + Farkı gör · Benimkini kullan · Diğerini
+      kullan · Kopya olarak ayır. Her seçim çözümü sürümleme yolundan yazar (hiçbir seçim
+      veri kaybetmez — kaybeden taraf zaten sürümde, V1).
+- [ ] i18n en+tr (`versions.*`, `conflict.*`); light+dark + `contrast.py` (origin çipleri +
+      banner `surfaceContainerHigh` üstündeyse Epic 24'ün açık kalemiyle birleşme notu:
+      o yüzeyin kapıya girme işi hâlâ ayrı turdadır, bu task kendi çiftlerini geçici olarak
+      elle doğrular ve STATE'e yazar).
+- [ ] Testler: widget (liste gruplama, önizleme, restore onayı → store çağrısı, banner üç
+      eylemi, offline boş durum — `sync_overrides` + sahte REST); i18n anahtar denetimi.
+- [ ] Yüzey: editör menü öğesi + sürüm ekranı + çakışma banner'ı. **Elle prova (cihaz):** iki
+      cihaz/simülatör, uçak modu senaryosu — temiz merge, örtüşen çakışma banner'ı, restore;
+      STATE'e kanıt satırları.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
@@ -7635,11 +8108,25 @@ README + landing'e kondu.
 - **Round 17 park kuyruğu — Markdown (gerekçeler [MARKDOWN.md](MARKDOWN.md) §3):**
   `[[wikilink]]`'ler + geri bağlantılar (bir bağlantı indeksi ister — kendi başına bir
   özellik); graf görünümü, PDF üzerine not alma, atıf/BibTeX (**reddedildi** — başka bir
-  ürün); yazma hedefleri (Ulysses); sürüm geçmişi/anlık görüntüler (sunucu tarafı tasarım
-  ister); editör içi AI ("devam ettir", "yeniden yaz" — Epic 20'nin altyapısı hazır, ürün
+  ürün); yazma hedefleri (Ulysses); ~~sürüm geçmişi/anlık görüntüler~~ (**park bitti —
+  round 18'de Epic 25 oldu**, OPH-267…269; "sunucu tarafı tasarım ister" şartı ADR-0031 ile
+  karşılanıyor); editör içi AI ("devam ettir", "yeniden yaz" — Epic 20'nin altyapısı hazır, ürün
   kararı); DOCX/ePub dışa aktarma; klasör/vault izleme (**reddedildi** — biz markdown'ı
   iyi okuyan bir görev uygulamasıyız, Obsidian değiliz); Vim/Emacs kısayolları ve özel CSS
   temaları (**reddedildi** — Rule 11, tek tasarım sistemi).
+- **Round 18 park kuyruğu (gerekçeler TASKS Epic 25 "karara bağlananlar"):** **generic OIDC
+  girişi** ([issue #2](https://github.com/mahirozdin/alliswell/issues/2) — Authentik/Keycloak/
+  PocketID; meşru ve Firebase-sosyal-girişten farklı: sunucu yarısı ucuz çünkü ADR-0026'nın
+  `src/lib/oauth-identity.js`'i zaten JWKS+issuer+audience doğrulaması ve subject-öncelikli
+  hesap merdiveni taşıyor — iş "güvenilen issuer listesi + OIDC discovery'yi konfigürasyona
+  açmak"; pahalı olan istemci yarısı: 6 Flutter platformunda authorization-code+PKCE tarayıcı
+  akışı, deep-link dönüşü, ayar/doc yüzeyi. Tetikleyici: çok kullanıcılı workspace UI'ı
+  açıldığında ya da talep birikince kendi epic'i olur); markdown'a renk sözdizimi (GFM'de yok
+  — `==mark==` vurgusu var, gerisi Live/Delta tarafında; DESIGN §33 R6); Home/Projeler liste
+  sıralaması (DESIGN §34 L5 yazılı sebepleri); notlar zip/dosya-başına toplu export (v1 JSON —
+  OPH-266); API anahtarlarına scope'lar (v1 bilinçli scope'suz — ADR-0032 revizyonu ister);
+  sürüm geçmişinde adlandırılmış/sabitlenmiş sürümler (Google Docs deseni; saklama
+  inceltmesinden muafiyet mekanizması hazır, UI ürün kararı bekler).
 - Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).

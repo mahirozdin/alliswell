@@ -7,7 +7,7 @@ Where AllisWell is and where it's going. Generated from the phase plan in
 **Legend:** ✅ shipped · 🟡 partial (rest deferred) · ⏳ planned · 💤 v2 parking lot
 
 > This file is a summary. The authoritative, task-by-task status is
-> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-136); the live pointer to
+> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-269); the live pointer to
 > "what's next" is [docs/STATE.md](docs/STATE.md). When they disagree, they win.
 
 ---
@@ -352,11 +352,83 @@ Claude connector run) and the prod SSE curl — queued in [docs/STATE.md](docs/S
 Directory submissions (Claude Connectors, ChatGPT apps) are drafted in
 [docs/store/directories.md](docs/store/directories.md) and await the operator.
 
+## v1.1 → v1.4 — feedback rounds 14–17 ✅ (shipped)
+
+Four owner-driven rounds landed between the AI epic and this roadmap revision —
+each specced, shipped and released the repo's usual way; this file skipped them,
+so in brief (the full story is [CHANGELOG.md](CHANGELOG.md) + the epic headers in
+[docs/TASKS.md](docs/TASKS.md)):
+
+- **Epic 21 (v1.1.1)** — the live AI outage (Apache's blanket DEFLATE buffering
+  SSE), optimistic ✨ quick-add, creation defaults (DESIGN §26).
+- **Epic 22 (v1.1.2)** — the chat's context blindness (spec'd packer finally
+  wired), iPhone alarm/widget crashes rooted in intent *types*.
+- **Epic 23 (v1.2.0)** — the white Play Store icon, Firefox's note-selection
+  ghost (Flutter's hidden IME textarea), note→PDF export with embedded Unicode
+  fonts.
+- **Epic 24 (v1.4.0)** — the silent iOS share pipeline (a three-layer failure,
+  measured), photo attach + a real image viewer, the **markdown workbench**
+  (ADR-0028: per-note canonical format, GFM renderer, external `.md` files
+  opened and saved back byte-faithfully — ADR-0029/0030), and the widget clock.
+
+## Toward v1.5.0
+
+### Phase 15 — Request round 18: the programmable surface, and memory (Epic 25) ⏳ (planned 2026-08-13)
+
+Thirteen tasks (OPH-257…OPH-269) from the owner's eight-item list, planned on a
+dedicated research pass (four parallel codebase/literature investigations; the
+measured-facts and sources tables live in the epic header in
+[docs/TASKS.md](docs/TASKS.md)). Four threads:
+
+- **App polish (OPH-257…260).** The undo bar that never auto-dismissed — root
+  cause measured to Flutter 3.44's `SnackBar.persist` defaulting on for any bar
+  with an action (an earlier round had "fixed" this by shortening a duration the
+  bar never honoured); notes ordered by edited date with an app-bar sort menu
+  shared with the Files section (DESIGN §34); one `AwColorPicker` with a
+  last-5-colors row across every color surface, killing the stock hex dialog
+  (DESIGN §33); and Settings regrouped into six sub-pages — Hesap, Genel,
+  Bildirimler & Alarmlar, **Entegrasyonlar**, Veri, Hakkında (DESIGN §32).
+- **MCP full coverage (OPH-261…263).** The connector grows from 7 tools to the
+  whole product: task updates/snooze/checklists, note create/update/link,
+  standalone notes, projects, tags, lists, files metadata — writes through a
+  freshly extracted domain layer (`db/notes.js`, `db/projects.js`, `db/tags.js`),
+  every one annotated, audited and red-teamed; `delete_*` stays permanently out
+  (ADR-0022). **AGENTS.md rule 12** now makes MCP+API parity part of every
+  future feature's Definition of Done. Two honesty repairs ride along:
+  markdown-canonical notes were invisible to search (`plain_text` never derived)
+  and exported delta-first.
+- **The API layer (OPH-264…266,** [#3](https://github.com/mahirozdin/alliswell/issues/3)**).**
+  User-managed API keys (create/expiry/last-used/revoke from Settings →
+  Entegrasyonlar), hashed like every other token in the house, feeding the same
+  78-route REST surface the app uses — no OAuth ceremony, no scopes in v1
+  (ADR-0032) — plus bulk notes/tasks import & export and a public
+  [docs/API.md](docs/API.md).
+- **Note versioning & offline conflicts (OPH-267…269).** Today a note edited on
+  two devices ends in silent, *unrecoverable* override (the optimistic lock
+  compared against the wrong base — measured to the line). The fix is layered,
+  grounded in a 12-product literature pass (Google Docs, CouchDB, Obsidian,
+  Joplin, Figma, Yjs/Automerge, git/diff3, Notion, Dropbox…): per-note base
+  revisions in the sync protocol, server-side three-way merge (`node-diff3`,
+  line-then-word), conflict versions + an in-note review banner instead of stray
+  sibling copies, a `note_versions` table with server-enforced retention
+  (7d full / 90d daily / conflict-class 365d), and a version-history UI with
+  non-destructive restore (ADR-0031, DESIGN §35).
+
+Deliberately parked with written reasons: generic OIDC sign-in
+([#2](https://github.com/mahirozdin/alliswell/issues/2) — legitimate, distinct
+from the Firebase-optional social sign-in, server half cheap on top of
+ADR-0026's verifier, client half expensive across six platforms; queued behind
+this round), markdown color syntax, Home/Projects sorting, API-key scopes,
+named/pinned versions.
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:
 
 - Multi-user workspace sharing & roles UI (the schema already supports members).
+- Generic OIDC sign-in (Authentik/Keycloak/PocketID —
+  [#2](https://github.com/mahirozdin/alliswell/issues/2); design sketch in the
+  TASKS parking lot, revisits with the multi-user round).
 - Project documents (block editor); timeline view; smart-list / filter DSL;
   a single global search screen (per-screen search shipped in Phase 9);
   search v2 (FTS5/bm25, server-side fold columns); OG link previews on task

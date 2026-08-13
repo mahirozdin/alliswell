@@ -1285,3 +1285,72 @@ Clamping to the geometry's exact height is what makes `.top` bite. **Rule: when
 a widget has to lose something, it loses it at the bottom** — the list already
 has a vocabulary for being cut short ("+N") and the header does not.
 
+## 32. Settings, grouped (round 18 — OPH-260)
+
+Round 18 #3: the Settings screen has become a 19-row flat list (measured:
+`settings_screen.dart` — one giant card of 14 tiles, then four stray cards, one
+`Divider` as the only visual structure). The owner wants it grouped by function
+and split into sub-pages, "Entegrasyonlar" being the named example.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| S1 | **The root Settings screen is an index, not a form.** It shows the account header, then one row per group — icon + title + a subtitle naming what lives inside ("Google Takvim, Apple Takvim, Yapay zeka, API erişimi") — then the sign-out card and the About row. Nothing else stays on the root. | An index the eye can scan in one pass; the subtitle is the map, so nobody has to open a group to learn what it holds. |
+| S2 | **Six groups, fixed:** Hesap (account header target, server URL, account deletion) · Genel (language, date format, default task time, quick-access bubble, app tour) · Bildirimler & Alarmlar (notification privacy, alarm permission status, reminder system, alarm log) · Entegrasyonlar (Google Calendar, Apple Calendar, AI — whose screen keeps the MCP connector card —, API access) · Veri (completed tasks, share log; import/export lands here when it ships) · Hakkında (version + licences, the existing About dialog). | Grouping is by what the user is trying to do, not by which subsystem implements it. Every existing row keeps its widget `Key` and i18n string — this is a re-homing, not a rewrite (§22: nothing becomes unreachable). |
+| S3 | **Sub-pages are real routes** (`/settings/account`, `/settings/general`, `/settings/notifications`, `/settings/integrations`, `/settings/data`), pushed with `context.push` like the five settings routes that already exist; existing deep routes (`/settings/reminders`, `/settings/alarm-log`, `/settings/share-log`, `/settings/completed`, `/settings/ai`) stay valid and are linked from their new group pages. | Deep links, widget tests and muscle memory survive. A settings URL that worked yesterday works tomorrow. |
+| S4 | **Sign out stays on the root**, error-coloured, below the groups. | The one action people arrive stressed for does not get buried a level down. |
+| S5 | **No invented rows.** There is no theme switch today (`themeMode` is hardcoded to system — measured); regrouping must not smuggle new settings in. A group with one row is still a group. | This task's scope is architecture, not features; anything new gets its own task and its own row *inside* the structure. |
+| S6 | Group rows and sub-pages use the same 720 px constrained card layout as today, chevroned rows, `AwSpace` paddings, both themes checked. | Rule 11. |
+
+## 33. Picking a color, remembering five (round 18 — OPH-259)
+
+Round 18 #5: the color dialog in the markdown editor's Live mode is flutter_quill's
+stock picker — it shows a **hex text field** (a standing violation of the round-1
+"no technical concepts" rule) and looks nothing like the app. And no picker
+anywhere remembers what you just used.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| R1 | **One picker component everywhere: `AwColorPicker`.** Project color, tag color, quick-link color and the editor's text/highlight colors all present the same anatomy: an optional "Son kullanılanlar" row, then the surface's own palette grid of `AwColorSwatchDot`s (44 px targets), then — only where the surface already offers it — the "more colors" grid. | Four hand-rolled pickers exist today (measured; the tag dialog doesn't even use the shared swatch widget). One component is the §22 rule applied to color. |
+| R2 | **Recent colors: the last 5, globally.** One device-local MRU list (`localKv`, `alliswell_recent_colors`, hex-encoded) is appended by *every* picker on *every* pick; each picker **shows the intersection** of that list with its own palette, newest first, capped at five, and hides the row when the intersection is empty. | "Son kullanılanlar" is one memory, not one per screen — the color you chose for a project is the color you'll want in a note. Intersecting keeps every surface's own contrast guarantees intact (§23 Q8a's bounded quick-link palette stays bounded). |
+| R3 | **Hex never appears.** No hex input, no hex label, nowhere. The quill stock dialog's `showColorButton`/`showBackgroundColorButton` are disabled and replaced by our own toolbar buttons opening `AwColorPicker`. | Round-1 rule; the stock dialog is the measured violation this section exists to kill. |
+| R4 | **The editor's palettes are curated and theme-checked.** Text colors: 12 hues legible on both themes' surfaces; highlight colors: 6 fills that keep body text ≥ 4.5:1 in both themes. The palettes live next to `kProjectPalette` and are added to `scripts/design/contrast.py`'s checked pairs. | User-picked color is data (G6 exception) — but a text color that disappears in dark mode is a broken feature, not a preference. The contrast gate makes the promise mechanical. |
+| R5 | **Selection feedback is immediate**: the swatch ring marks the current value, tapping applies and closes; a "clear" affordance exists where clearing is meaningful (quick links today, editor color removal). | The old dialog's pick-then-confirm dance is why it felt clumsy. |
+| R6 | **Conversion is honest about color.** Delta→markdown conversion maps `background` to `==mark==` and **states in the conversion dialog** that text colors will be dropped (markdown has no color syntax — decided, parked). The markdown toolbar gains a `highlight` action (`==…==`); a color action for markdown-canonical notes is **not** built. | ADR-0028 made conversion "explicit, warned, one-way"; silently deleting the user's coloring (today's measured behavior) breaks that contract. |
+
+## 34. Sorting a list without spending a row (round 18 — OPH-258)
+
+Round 18 #6: notes are listed by creation (measured: `orderBy id DESC` — a ULID
+proxy for created-at), while the row itself already *shows* the edited date. The
+owner wants edited-date ordering by default and a sort control that lives in the
+app bar, not in a row of its own.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| L1 | **Notes default to edited-date, newest first** (`updatedAt DESC`, falling back to `createdAt`/id where null), in both the Notes tab and a project's notes list. | The note you touched last is the note you want first; every notes product ships this default. The column already exists and is bumped on every save (measured) — this is an `orderBy` change, not schema work. |
+| L2 | **One shared control: `AwSortMenuButton`** — a `sort` icon opening a checkmarked menu of the surface's sort options plus a "Ters çevir" direction toggle. It mounts in the app bar (Notes: merged with the existing view toggle into one display menu, because that bar is measured to be at the phone's limit — the §22 escape is a menu, not a sixth icon). | The round's literal constraint: no new row. The project Files tab already proved the popup-menu sort pattern (OPH-170); this makes it a component instead of a one-off. |
+| L3 | **Options are per-surface, persistence is per-surface.** Notes v1: Düzenlenme (default) · Oluşturma · Başlık (fold-aware A→Z, the ADR-0013 fold so İ/ı sort as Turkish expects). The choice persists per list (`PersistedChoice`, `alliswell_notes_sort`), survives restarts, and syncs nowhere (device preference, like view mode). | Sorting is a viewing preference, not data — the precedent is `alliswell_notes_view_mode`. |
+| L4 | **The global Files section adopts the same control** with its existing option set (date · name · size), replacing nothing — it simply gains the selector it never had (measured: none), persisted as `alliswell_files_sort`. The project Files tab's inline enum migrates to the shared component. | One anatomy for "how is this list ordered" everywhere it exists. |
+| L5 | **Deliberately not sorted:** Home (its grouping *is* its order), Projects (manual `sortOrder` is the product), board columns. Pinned notes do **not** jump the sort (pin is a filter today — measured; changing that is a separate product decision, not a side effect). | Written non-goals keep the next round from reading absence as neglect. |
+
+## 35. History you can stand on: versions & conflicts (round 18 — OPH-267…OPH-269)
+
+Round 18 #7. Today a note edited on two devices ends in silent override — measured
+to the exact line: the optimistic lock compares against the workspace pull cursor,
+any pull disarms it, the editor never reloads pulled content, and no historical
+body is stored anywhere, so the loss is unrecoverable. The design answer (research:
+12+ products/systems, sources in TASKS Epic 25) is three layers: per-note base
+revisions, server-side three-way merge, and version history as the safety net.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| V1 | **No edit is ever silently lost.** Every accepted body write leaves a version row; a losing concurrent edit becomes a version (`conflict`) even when the user never looks at it. | The one promise this feature exists for. Dropbox: "no one loses anything." |
+| V2 | **Merge quietly when it's safe, ask when it isn't.** Disjoint edits (different regions) merge server-side (diff3, line-then-word refinement) with no ceremony beyond a passive "birleştirildi" note in history. Overlapping edits never guess: the incoming edit is kept as a conflict version and the note shows a banner. | Obsidian auto-merges markdown and users accept it; git never silently picks a side. Both are right — the split is *disjoint vs overlapping*. |
+| V3 | **The conflict surface is a banner on the note, not a stray sibling note.** "Bu not başka bir cihazda da düzenlendi" + actions: Farkı gör · Benimkini kullan · Diğerini kullan · Kopya olarak ayır. The Dropbox-style copy (`Ad (çakışan kopya — cihaz, tarih)`) remains as the *chosen* outcome of the last action, never the automatic one. | Joplin's far-away Conflict folder is the documented anti-pattern for a single user on two devices; the banner keeps the decision where the user's attention already is. |
+| V4 | **Version history is read in the editor's own clothes**: a day-grouped list (Bugün/Dün/date headers), each row time + origin chip (Bu cihaz · Diğer cihaz · Birleştirme · Çakışma · Geri yükleme · İçe aktarma), tap = read-only preview in the existing reading renderer, with a word-level diff toggle against the current body. | Google Docs/Notion group by day and label authors; for one human the author axis is *device*. Reusing the reading mode means zero new renderer surface. |
+| V5 | **Restore never rewrites history.** "Geri yükle" writes the old body as a *new* head version (`restore`); "Kopya olarak geri yükle" births a new note. Both verified as the industry norm (Joplin, Notion, Standard Notes). | History that can be edited is not history. |
+| V6 | **Version history is an online surface.** Offline it states plainly "Sürüm geçmişi çevrimiçi kullanılabilir" (status_views empty-state anatomy) — bodies live on the server and are never replicated to devices. | Replicating every historical body to every replica would tax exactly the sync path this epic is stabilising; Notion/Docs/Obsidian all fetch history remotely. Honest boundary, stated. |
+| V7 | **An open editor follows the world when it safely can**: a pulled change lands in an open, *clean* editor in place (with base advanced); a *dirty* editor keeps the user's text and lets the push-time base check do its job. | The measured bug class: the editor held yesterday's text over today's replica. Clean = reload is free; dirty = reload would eat keystrokes. |
+| V8 | **Every write channel versions the same way** — app sync, REST PATCH, API keys, MCP, import, restore: one capture point in the domain layer, origin-labelled. | A history with blind spots is worse than none; the label is what makes the history legible. |
+
+
+

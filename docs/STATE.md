@@ -3,7 +3,46 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-12f (**Cihaz turları sahibin kararıyla KAPATILDI.**
+**Last updated:** 2026-08-13a (**Epic 25 PLANLANDI — sahibin sekiz maddelik
+istek turu (round 18), OPH-257…OPH-269, hedef v1.5.0. Sıradaki iş: OPH-257
+(geri al barı).** Bu tur kod yazmadı; araştırdı, karar verdi ve yazdı.
+
+**Planlama turunda yapılanlar:** dört paralel keşif (MCP/REST envanteri ·
+Flutter UI dörtlüsü · sync/çakışma mekaniği · 12+ ürünlük sürümleme/çakışma
+literatürü) koşuldu; ölçülmüş gerçekler ve kaynak tabloları TASKS Epic 25
+başlığında. **AGENTS.md kural 12 eklendi** (her özellik MCP + docs/API.md
+yüzeyini de günceller — sahibin istediği kalıcı belirteç), DoD'ye satırı kondu.
+**DESIGN §32–§35 yazıldı** (ayarlar IA'sı · renk seçici + son 5 renk · liste
+sıralama denetimi · sürüm/çakışma yüzeyleri). ROADMAP'e Phase 15 + v1.1→v1.4
+arayı kapatan dürüstlük bloğu girdi. Park listesine Round 18 kuyruğu yazıldı;
+"sürüm geçmişi" parkı bitti (Epic 25 oldu).
+
+**Issue aksiyonları:** [#3 (API Keys)](https://github.com/mahirozdin/alliswell/issues/3)
+epic'in P3 paketi oldu (OPH-264…266), plan yorumu bırakıldı, OPH-266 sevkiyle
+kapanacak. [#2 (OIDC)](https://github.com/mahirozdin/alliswell/issues/2)
+ölçülerek değerlendirildi: meşru ve Firebase-sosyal-girişten FARKLI bir istek —
+ama istemci yarısı (6 platformda code+PKCE tarayıcı akışı) bu tura sığmaz;
+park listesine tasarım taslağıyla yazıldı ve issue "parked/not planned" olarak
+nazikçe kapatıldı (sunucu yarısının ucuz olduğu, ADR-0026'nın doğrulayıcısı
+üzerine kurulacağı cevapta yazılı).
+
+**Turun tek cümlesi: sekiz maddenin hiçbiri tahminle planlanmadı — geri al
+barının "süre" sanılan arızası SDK'nın `SnackBar.persist ?? action != null`
+varsayılanı çıktı (Round 13'ün 5sn→3sn "düzeltmesi" bu yüzden hiçbir şey
+değiştirmemişti), sessiz not override'ının kökü ise çakışma kopyasının
+yokluğu değil, kilidin base'inin workspace pull imleci olması çıktı
+(`sync_engine.dart:204`) — ikisi de satır numarasıyla epic başlığında.**
+Yol üstünde iki ek yalan ölçüldü ve task'landı: markdown-canonical notlarda
+`plain_text` hiç türetilmiyor (arama + MCP o notlara kör) ve export
+delta-öncelikli. Sürümleme mimarisi literatürle sabitlendi: not-bazlı base +
+sunucuda node-diff3 (satır→kelime) + çakışan taraf DAİMA sürüm satırı +
+banner'lı çözüm; kardeş-kopya otomatik üretim ölüyor, kullanıcı eylemi oluyor.
+
+Epic 24'ün iki açık kalemi (paylaşılan `surfaceContainerHigh` yüzeyinin
+kontrast kapısına sokulması; `web.mjs` ekran görüntüleri) ve sahibe kalan
+üç-platform dosya turu AYNEN duruyor — bu tur onlara dokunmadı.
+
+Önceki blok: 2026-08-12f (**Cihaz turları sahibin kararıyla KAPATILDI.**
 Kapatan sahiptir, ölçen değil — bu satırların hiçbiri agent ölçümüne dayanmıyor
 ve kapanış kanıt yerine geçmez. Bir arıza çıkarsa kutular yeniden açılır.
 Epic 24'te kod işi kalmadı; açık kalan iki kalem aşağıda, ikisi de ölçülmüş
