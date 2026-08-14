@@ -5,8 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.4.1] — 2026-08-15
+
 ### Fixed
 
+- **Writing in a note no longer throws your cursor into the title.** You could
+  be typing in the body, the "Saved" tick would appear, and the caret would
+  jump up into the title — mid-word, in the middle of it. The rich editor was
+  being handed a brand-new keyboard-focus every time the screen redrew, so each
+  save quietly threw away where you were, and the title (the first field on the
+  screen) picked the focus up. The editor now keeps one focus and one scroll
+  position for as long as the note is open, so saving is something that happens
+  around you rather than to you. This is also why the caret sometimes seemed to
+  disappear from the body on a phone (OPH-270).
 - **The "Undo" bar after a delete now goes away by itself.** It used to sit there
   until you swiped it off — on the web and on the phone — and once its few
   seconds had passed, its button quietly did nothing. Flutter treats a snackbar

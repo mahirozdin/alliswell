@@ -637,6 +637,13 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: QuillEditor.basic(
         controller: _doc.quill,
+        // OPH-270. Both of these MUST be passed: `QuillEditor.basic` builds a
+        // new FocusNode and ScrollController whenever they are absent, and this
+        // is a `build()` — so every rebuild took the caret out of the body and
+        // handed the focus to the title. They belong to the document, like
+        // every other controller here (D3).
+        focusNode: _doc.quillFocus,
+        scrollController: _doc.quillScroll,
         config: QuillEditorConfig(
           placeholder: 'note.startWriting'.tr(),
           padding: const EdgeInsets.only(top: 8, bottom: 24),

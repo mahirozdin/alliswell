@@ -90,6 +90,19 @@ class NoteDocument extends ChangeNotifier {
   /// Live for a markdown-canonical note. Same lifetime, same reason.
   final MdSourceController source;
 
+  /// The rich editor's focus node and scroll position (OPH-270).
+  ///
+  /// They live here for D3's reason — one per document, outliving every mode
+  /// switch — and for a sharper one: `QuillEditor.basic` **mints a new
+  /// `FocusNode` and `ScrollController` every time they are not supplied**
+  /// (flutter_quill 11.5.1, `editor.dart:163-164`). Since the editor is built
+  /// inside a `build()`, that meant a fresh focus node on every rebuild: the
+  /// caret was thrown away mid-sentence and the title — the first focusable in
+  /// the tree — caught the focus. Autosave's own `setState` (the D21 indicator)
+  /// is what made it happen on almost every save.
+  final FocusNode quillFocus = FocusNode(debugLabel: 'note-body');
+  final ScrollController quillScroll = ScrollController();
+
   NoteFormat _format;
   NoteFormat get format => _format;
 
@@ -231,6 +244,8 @@ class NoteDocument extends ChangeNotifier {
     title.dispose();
     quill.dispose();
     source.dispose();
+    quillFocus.dispose();
+    quillScroll.dispose();
     super.dispose();
   }
 }

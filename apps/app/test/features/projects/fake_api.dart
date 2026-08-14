@@ -57,6 +57,8 @@ class FakeApi {
     bool isArchived = false,
     String? projectId,
     List<Map<String, dynamic>>? contentDelta,
+    String? contentFormat,
+    String? contentMarkdown,
   }) {
     final note = _note({
       'title': title,
@@ -65,6 +67,8 @@ class FakeApi {
           [
             {'insert': '$plainText\n'},
           ],
+      'contentFormat': contentFormat,
+      'contentMarkdown': contentMarkdown,
       'projectId': projectId,
       'isPinned': isPinned,
     });
@@ -1359,6 +1363,7 @@ class FakeApi {
       'plainText': plain,
       'contentDelta': delta,
       'contentMarkdown': body['contentMarkdown'],
+      'contentFormat': body['contentFormat'] ?? 'delta',
       'isPinned': body['isPinned'] ?? false,
       'isArchived': false,
       'links': <Map<String, dynamic>>[],

@@ -3,9 +3,34 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-15a (**OPH-257 BİTTİ — geri al barı artık kendiliğinden
-gidiyor. Süitler **1157** (+9), analyze/format/i18n temiz. Sıradaki iş: OPH-258
-(liste sıralaması).**
+**Last updated:** 2026-08-15b (**OPH-270 ACİL BİTTİ + v1.4.1 kesildi — not yazarken
+imleç artık başlığa sıçramıyor. Süitler **1160** (+3), analyze/format/i18n temiz.
+Sıradaki iş: OPH-258 (liste sıralaması).**
+
+**Turun tek cücresi — kök neden PAKETTE:** `QuillEditor.basic` kendisine verilmediğinde
+**her çağrıda yeni bir `FocusNode` ve `ScrollController` üretiyor**
+(`flutter_quill-11.5.1/.../editor.dart:163-164`). Editör ikisini de vermiyordu ve
+`_body()` her `setState`'te koşuyor — yani her yeniden derleme gövdenin odağını çöpe
+atıyor, odak kapsayıcıya düşüyor ve **ağaçtaki ilk odaklanabilir alan olan başlığa**
+yerleşiyordu. Sahibin "kaydedildi özelliğinden sonra geldi" tespiti birebir doğruydu:
+D21'in göstergesi kayıt anına iki ek `setState` koydu ve gizli hata her kayıtta
+görünür oldu. Mobilde "gövdede imleç kayboluyor" şikâyeti de aynı kökten.
+
+**İlk hipotezim yanlıştı ve ölçülerek elendi:** `SourceMode`'un `Focus(autofocus: true)`'u
+sanmıştım; izole test saf `setState`'in Source odağını almadığını gösterdi. Arıza ancak
+Live (Quill) yolunda üretildi — `identical(before, after)` false.
+
+**Düzeltme D3'ün kendi doktrini:** odak düğümü ve kaydırma kontrolcüsü artık
+`NoteDocument`'ta, diğer kontrolcülerle aynı ömürde. Kapı testle korunuyor
+(`focusNode` kaldırılınca kırmızı — enjekte edildi, görüldü, geri alındı).
+
+**Yol üstünde ölçülüp DÜZELTİLMEYEN, park edildi:** markdown-canonical notlar Okuma
+modunda açılıyor (`cameFromOutside: _format == NoteFormat.markdown` — "markdown" ile
+"dışarıdan geldi" eşitlenmiş); iki salt-okunur Quill önizlemesi aynı paket desenini
+kullanıyor ama `showCursor: false`, yani kaybolacak imleç yok.
+
+Önceki blok: 2026-08-15a (**OPH-257 BİTTİ — geri al barı artık kendiliğinden
+gidiyor. Süitler **1157** (+9), analyze/format/i18n temiz.**
 
 **Turun tek cümlesi: kapımı kasıtlı ihlalle sınadım ve kapı yanlış sebepten
 geçiyordu.** `persist: false`'u yorum satırına aldığımda `delete_flow_test`

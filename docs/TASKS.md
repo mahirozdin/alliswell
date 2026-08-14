@@ -7749,6 +7749,47 @@ silme kesinleşir. Görmediğin geri-al, sahip olmadığın geri-aldır._
       testler onu gerçek widget ağacında çalıştırıyor; bu, native köprü sınıfı bir belirsizlik
       DEĞİL. Sahibin bir sonraki turunda bakılacak: sil → 3 sn bekle → bar kendiliğinden gider.
 
+### OPH-270 — İmleç yerinde kalır: Quill'in her derlemede yeni odak düğümü üretmesi (ACİL, sıra dışı)
+
+_(Doğdu ve kapandı 2026-08-15 — sahibin acil raporu: "not yazamıyorum". Gövdeye yazarken
+"kaydedildi" tiki çıktığı anda odak başlığa sıçrıyor, imleç başlığın ortasına düşüyor;
+ayrıca mobilde gövdede imleç kayboluyor gibi oluyor. Sıra bozuldu, bilinçli: yazmayı
+engelleyen bir arıza sıradaki işi bekleyemez.)_
+
+_**Kök neden ÖLÇÜLDÜ, paket kaynağından:** `QuillEditor.basic`, kendisine verilmediğinde
+**her çağrıda yeni bir `FocusNode` ve `ScrollController` üretiyor**
+(`flutter_quill-11.5.1/lib/src/editor/editor.dart:163-164`). Editörümüz ikisini de
+vermiyordu ve `_body()` her `setState`'te koşuyor — yani her yeniden derleme gövdenin
+odağını çöpe atıyor, odak kapsayıcıya düşüyor ve ağaçtaki **ilk odaklanabilir alan olan
+başlığa** yerleşiyordu. Sahibin "kaydedildi özelliğinden sonra başladı" tespiti birebir
+doğru: D21'in kayıt göstergesi (`_setSaveState`) kayıt anına **iki ek `setState`** koydu
+ve o güne kadar sessiz duran hata her kayıtta görünür oldu._
+
+_**Yanlış hipotez, ölçülerek elendi:** ilk şüpheli `SourceMode`'daki
+`Focus(autofocus: true)`'du. İzole bir testle sınandı ve **çürüdü** — saf bir ebeveyn
+`setState`'i Source alanının odağını almıyor. Kaybettiğim on dakika, tahminle
+düzeltmenin maliyetinden ucuzdu._
+
+_**Yol üstünde ölçülen, düzeltilmeyen:** markdown-canonical notlar **Okuma** modunda
+açılıyor (`NoteDocument` kurucusu `cameFromOutside: _format == NoteFormat.markdown`
+diyor) — yani kendi dönüştürdüğün not her seferinde salt-okunur açılıyor. Ayrı bir
+karar; bu turda dokunulmadı, park kuyruğuna yazıldı. Ayrıca `project_detail_screen.dart:374`
+ve `markdown_import_screen.dart:266` aynı `QuillEditor.basic` desenini kullanıyor ama
+ikisi de `showCursor: false` — salt-okunur önizleme, kaybolacak imleç yok._
+
+- [x] `NoteDocument` odak düğümünü ve kaydırma kontrolcüsünü sahiplenir (`quillFocus`,
+      `quillScroll`) — diğer kontrolcülerle aynı gerekçe (D3: "bir belge başına bir kez
+      yaratılır, her mod değişimini atlatır") ve `dispose`'da bırakılır.
+- [x] `note_editor_screen.dart` Live gövdesinde ikisini de **geçirir**; neden geçirilmek
+      ZORUNDA olduğu satırın yanında yazılı.
+- [x] Testler (+3, süit 1157 → **1160**), `test/features/notes/note_focus_test.dart`:
+      odak düğümü kimliğinin yeniden derlemeyi atlattığı (kapı — `focusNode` kaldırılıp
+      kırmızı görüldü, geri alındı) · kaydettikten sonra başlığın odak ALMADIĞI ·
+      Source modunda yazıp autosave'i bekleyince imlecin gövdede kaldığı. Sahte API
+      artık markdown notu tohumlayabiliyor (`contentFormat`/`contentMarkdown`).
+- [x] v1.4.1 kesildi ve sevk edildi (sürüm 6 yerde hizalandı, release kapısının okuduğu
+      üçü dahil).
+
 ### OPH-258 — Liste sıralaması: notlar düzenlenmeye göre, denetim app bar'da (DESIGN §34)
 
 _Bulgu #13/#14. `updatedAt` zaten her `update()`'te damgalanıyor (`note_store.dart:210`) ve
@@ -8156,7 +8197,14 @@ bugünkü davranışa düşer (kendi kendini kırmayan protokol)._
   sıralaması (DESIGN §34 L5 yazılı sebepleri); notlar zip/dosya-başına toplu export (v1 JSON —
   OPH-266); API anahtarlarına scope'lar (v1 bilinçli scope'suz — ADR-0032 revizyonu ister);
   sürüm geçmişinde adlandırılmış/sabitlenmiş sürümler (Google Docs deseni; saklama
-  inceltmesinden muafiyet mekanizması hazır, UI ürün kararı bekler).
+  inceltmesinden muafiyet mekanizması hazır, UI ürün kararı bekler); **markdown-canonical
+  notların Okuma modunda açılması** (OPH-270'te ölçüldü: `NoteDocument` kurucusu
+  `cameFromOutside: _format == NoteFormat.markdown` diyor, yani "markdown" ile "dışarıdan
+  geldi" eşitleniyor — kendi dönüştürdüğün not da her açılışta salt-okunur geliyor;
+  D2'nin niyeti bu değil, ama düzeltmesi dış-belge davranışına dokunuyor ve kendi turunu
+  hak ediyor); salt-okunur Quill önizlemelerinin (`project_detail_screen.dart:374`,
+  `markdown_import_screen.dart:266`) her derlemede `ScrollController` üretmesi (aynı
+  paket deseni, imleç yok — kullanıcıya görünen etkisi ölçülmedi).
 - Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).
