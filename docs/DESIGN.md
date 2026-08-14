@@ -672,6 +672,20 @@ not a shipped capability.
   there would either fight the pager or kill the way back to the List. The board
   offers delete in the card's status sheet instead — stated here so the gap is a
   decision, not an oversight.
+- **D7 — A bar that offers an action still dismisses itself, and the window it
+  shows is the window that exists.** _(Added 2026-08-15, round 18 — OPH-257.)_
+  Every snackbar with an action passes `persist: false` through
+  `widgets/snackbars.dart`; Flutter 3.44 defaults `persist` to `action != null`,
+  which silently converts every undo bar into a permanent one — measured, and
+  the reason the owner reported the same bar twice. Two consequences bind:
+  **(a)** the bar going away *is* the commit (`commitNow`), so an undo the user
+  can no longer see is an undo they no longer have — dismissing it, or starting
+  another delete, accepts the pending one instead of leaving it hanging for a
+  window nobody is being shown; **(b)** a control that has stopped working must
+  not stay on screen, and if it is tapped in the frames it spends animating
+  away, it says so (`common.undoTooLate`) rather than doing nothing. D4 stated
+  this behaviour from round 10; until OPH-257 nothing implemented it — the
+  early-commit path existed as an uncalled method.
 
 ## 20. Completed work: it stays, then it moves (round 10 — OPH-185 / OPH-186)
 

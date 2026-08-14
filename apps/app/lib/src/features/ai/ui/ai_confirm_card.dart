@@ -7,6 +7,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/sheets.dart';
+import '../../../widgets/snackbars.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/data/project.dart';
 import '../../projects/providers.dart';
@@ -274,20 +275,17 @@ class _AiConfirmCardState extends ConsumerState<AiConfirmCard> {
 
   void _showUndo(List<String> created) {
     final store = ref.read(taskStoreProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'ai.confirm.created'.tr(args: {'count': '${created.length}'}),
-        ),
-        action: SnackBarAction(
-          label: 'ai.confirm.undo'.tr(),
-          onPressed: () {
-            for (final id in created) {
-              store.delete(id);
-            }
-          },
-        ),
+    showAwActionSnackBar(
+      ScaffoldMessenger.of(context),
+      content: Text(
+        'ai.confirm.created'.tr(args: {'count': '${created.length}'}),
       ),
+      actionLabel: 'ai.confirm.undo'.tr(),
+      onAction: () {
+        for (final id in created) {
+          store.delete(id);
+        }
+      },
     );
   }
 }

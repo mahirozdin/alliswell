@@ -23,6 +23,7 @@
     "refresh": "Yenile",
     "refreshFailed": "Yenilenemedi — son eşitlenen veriyi görüyorsun.",
     "undo": "Geri al",
+    "undoTooLate": "Çok geç — o kayıt silindi.",
     "previous": "Önceki",
     "next": "Sonraki"
   },

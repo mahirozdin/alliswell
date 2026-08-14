@@ -9,6 +9,7 @@ import '../../sections.dart';
 import '../../sync/refresh.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/refreshable.dart';
+import '../../widgets/snackbars.dart';
 import '../tasks/data/task.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/task_create_sheet.dart';
@@ -61,18 +62,15 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
       messenger.showSnackBar(SnackBar(content: Text('task.couldNotSave'.tr())));
       return;
     }
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          'board.moved'.tr(
-            args: {'title': task.title, 'status': taskStatusLabel(status)},
-          ),
-        ),
-        action: SnackBarAction(
-          label: 'board.undo'.tr(),
-          onPressed: () => store.update(task.id, {'status': previous}),
+    showAwActionSnackBar(
+      messenger,
+      content: Text(
+        'board.moved'.tr(
+          args: {'title': task.title, 'status': taskStatusLabel(status)},
         ),
       ),
+      actionLabel: 'board.undo'.tr(),
+      onAction: () => store.update(task.id, {'status': previous}),
     );
     // A polite announcement for screen readers (K5).
     if (mounted) {

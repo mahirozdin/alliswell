@@ -9,6 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// swipe animation and a glance, and nothing more. Five seconds of a control
 /// the user has already decided against reads as the app arguing with them —
 /// and it sits over the list they went back to using.
+///
+/// Worth knowing (OPH-257): shortening this in round 13 did **nothing** to the
+/// complaint it was answering. The bar was ignoring its duration entirely —
+/// see `widgets/snackbars.dart`. This constant only ever governed the commit.
 const Duration kAwUndoWindow = Duration(seconds: 3);
 
 /// Overridable so widget tests need not wait out a real five seconds — and so
@@ -60,15 +64,29 @@ class PendingDeletes extends Notifier<Set<String>> {
   }
 
   /// Take it back: the row returns and [commit] never runs.
-  void undo(String id) {
+  ///
+  /// Returns whether there was still something to take back. False means the
+  /// window had already closed and the delete is written — the caller must say
+  /// so rather than let the tap look like it worked (OPH-257: the old signature
+  /// returned nothing, so a stale Undo button was a silent no-op).
+  bool undo(String id) {
+    final cancelled = _commits.remove(id) != null;
     _timers.remove(id)?.cancel();
-    _commits.remove(id);
-    if (!state.contains(id)) return;
-    state = {...state}..remove(id);
+    if (state.contains(id)) state = {...state}..remove(id);
+    return cancelled;
   }
 
-  /// Commit early — used when the user leaves the surface that offered the undo.
-  /// Safe to call for an id that is not pending.
+  /// Commit early, because the undo has left the screen.
+  ///
+  /// The bar that offers the window is the only thing the user can see of it,
+  /// so when the bar goes — timed out, swiped away, cleared by the next delete
+  /// — the delete it described stops being provisional. The backstop timer
+  /// stays for the case where there is no bar at all (OPH-257 wired this; it
+  /// had been written in round 10 and never called).
+  ///
+  /// Safe for an id that is not pending, and for an id already committed: a
+  /// delete pushed twice is a real bug, and the `closed` future and the timer
+  /// genuinely race.
   void commitNow(String id) {
     if (!_timers.containsKey(id)) return;
     _timers.remove(id)!.cancel();

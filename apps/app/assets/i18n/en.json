@@ -24,6 +24,7 @@
     "refresh": "Refresh",
     "refreshFailed": "Couldn't refresh — you're seeing the last synced data.",
     "undo": "Undo",
+    "undoTooLate": "Too late — that one is already deleted.",
     "previous": "Previous",
     "next": "Next"
   },

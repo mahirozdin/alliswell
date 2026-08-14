@@ -138,7 +138,7 @@ void main() {
 
     await swipeAndDelete(tester, task['id'] as String);
     // `pumpAndSettle` only advances until frames stop (~the snackbar's entrance),
-    // so the 5 s window is still open here. A SHORTER window would not test
+    // so the window is still open here. A SHORTER window would not test
     // anything — settle would jump straight past it and this line would fail.
     expect(pushedDelete(api), isFalse);
 
@@ -174,6 +174,85 @@ void main() {
     expect(find.byKey(const Key('task-title')), findsNothing);
     expect(find.text('Detaydan sil'), findsNothing);
   });
+
+  // OPH-257. The bar was on screen until the user swiped it away — on web and
+  // on mobile — because Flutter 3.44 defaults `SnackBar.persist` to `action !=
+  // null`: the scaffold's timer fires once, sees `persist`, returns, and is
+  // never re-armed. Round 13 read the same report as "it stays too long" and
+  // shortened `kAwUndoWindow` from 5 s to 3 s, which changed nothing, because
+  // the bar never read its duration. Nothing in this file asserted the bar
+  // closing, so nothing caught it. These two do.
+  testWidgets('the undo bar goes away on its own (list swipe)', (tester) async {
+    phone(tester);
+    final api = FakeApi();
+    final task = api.seedTask(title: 'Kendiliğinden gitsin');
+    await tester.pumpWidget(await app(api));
+    await tester.pumpAndSettle();
+
+    await swipeAndDelete(tester, task['id'] as String);
+    final bar = find.byKey(Key('undo-delete-${task['id']}'));
+    expect(bar, findsOneWidget, reason: 'the undo is offered at all');
+
+    await tester.pump(kAwUndoWindow);
+    await tester.pumpAndSettle();
+
+    expect(
+      bar,
+      findsNothing,
+      reason: 'the window closed, so the control must leave with it',
+    );
+  });
+
+  testWidgets('the undo bar goes away on its own (detail screen)', (
+    tester,
+  ) async {
+    phone(tester);
+    final api = FakeApi();
+    final task = api.seedTask(title: 'Detaydan da gitsin');
+    await tester.pumpWidget(await app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Detaydan da gitsin'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('task-delete')));
+    await tester.pumpAndSettle();
+
+    final bar = find.byKey(Key('undo-delete-${task['id']}'));
+    expect(bar, findsOneWidget);
+
+    await tester.pump(kAwUndoWindow);
+    await tester.pumpAndSettle();
+
+    expect(bar, findsNothing);
+  });
+
+  testWidgets(
+    'a second delete accepts the first one — the bar left the screen',
+    (tester) async {
+      phone(tester);
+      final api = FakeApi();
+      final first = api.seedTask(title: 'Birinci');
+      final second = api.seedTask(title: 'İkinci');
+      await tester.pumpWidget(await app(api));
+      await tester.pumpAndSettle();
+
+      await swipeAndDelete(tester, first['id'] as String);
+      expect(pushedDelete(api), isFalse, reason: 'its window is still open');
+
+      // The second delete clears the first bar. The undo it offered is gone, so
+      // the delete it described stops being provisional — the write follows what
+      // the user can actually see, instead of lingering for a window nobody is
+      // being shown any more.
+      await swipeAndDelete(tester, second['id'] as String);
+      await tester.pumpAndSettle();
+
+      expect(
+        pushedDelete(api),
+        isTrue,
+        reason: 'the first delete stands once its undo has left the screen',
+      );
+    },
+  );
 
   testWidgets('a note can be deleted from the LIST, not just its editor', (
     tester,

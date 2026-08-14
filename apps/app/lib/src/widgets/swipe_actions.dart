@@ -7,6 +7,7 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../core/pending_deletes.dart';
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
+import 'snackbars.dart';
 
 /// Swipe-from-the-trailing-edge delete (OPH-184, DESIGN §19).
 ///
@@ -111,6 +112,12 @@ class AwSwipeToDelete extends ConsumerWidget {
 ///
 /// [commit] runs from a timer AFTER the row has left the list, so it must not
 /// close over a widget's [WidgetRef] — resolve the store before calling this.
+///
+/// The bar and the window are held together deliberately (OPH-257): the bar
+/// going away is what commits the delete, and the delete committing is what
+/// takes the bar away. Before that they were two timers that merely hoped to
+/// agree — and the bar's never even started, so the control sat on screen
+/// indefinitely, its button quietly doing nothing once the window had passed.
 Future<void> awDeleteWithUndo(
   BuildContext context,
   WidgetRef ref, {
@@ -121,20 +128,44 @@ Future<void> awDeleteWithUndo(
   final messenger = ScaffoldMessenger.of(context);
   final window = ref.read(undoWindowProvider);
   final pending = ref.read(pendingDeletesProvider.notifier);
-  pending.schedule(id, commit, window: window);
+
+  // This also ends the PREVIOUS delete's window: its bar closes, so its commit
+  // lands. One rule — an undo you cannot see is an undo you do not have.
   messenger.clearSnackBars();
-  messenger.showSnackBar(
-    SnackBar(
-      key: Key('undo-delete-$id'),
-      content: Text(message),
-      // One frame shorter than the commit window, so the control is never on
-      // screen after the moment it stops working.
-      duration: window - const Duration(milliseconds: 250),
-      action: SnackBarAction(
-        label: 'common.undo'.tr(),
-        onPressed: () => pending.undo(id),
-      ),
-    ),
+
+  var onScreen = true;
+  pending.schedule(id, () async {
+    // The backstop. It exists for the case where the bar never got to run
+    // its own clock (no scaffold, a queue behind it), and it takes the
+    // control off screen at the exact moment that control stops working.
+    if (onScreen) messenger.hideCurrentSnackBar();
+    await commit();
+  }, window: window);
+
+  final bar = showAwActionSnackBar(
+    messenger,
+    key: Key('undo-delete-$id'),
+    content: Text(message),
+    duration: window,
+    actionLabel: 'common.undo'.tr(),
+    onAction: () {
+      if (pending.undo(id)) return;
+      // The tap landed after the window closed — possible in the frames the
+      // bar spends animating away. Silence would look exactly like a working
+      // undo; it isn't one, and the row is not coming back.
+      messenger.showSnackBar(
+        SnackBar(content: Text('common.undoTooLate'.tr())),
+      );
+    },
+  );
+
+  unawaited(
+    bar.closed.then((reason) {
+      onScreen = false;
+      // Dismissing the undo accepts the delete: sooner than the window when the
+      // user swipes it away or the next delete clears it, never later.
+      if (reason != SnackBarClosedReason.action) pending.commitNow(id);
+    }),
   );
 }
 

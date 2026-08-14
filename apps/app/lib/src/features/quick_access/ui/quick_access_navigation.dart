@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../../widgets/snackbars.dart';
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart';
 import '../../integrations/providers.dart';
@@ -118,13 +119,10 @@ void _offerRemoval(
   String rowId,
 ) {
   final store = ref.read(quickAccessStoreProvider);
-  messenger.showSnackBar(
-    SnackBar(
-      content: Text('quick.brokenBody'.tr()),
-      action: SnackBarAction(
-        label: 'common.remove'.tr(),
-        onPressed: () => store.remove(rowId),
-      ),
-    ),
+  showAwActionSnackBar(
+    messenger,
+    content: Text('quick.brokenBody'.tr()),
+    actionLabel: 'common.remove'.tr(),
+    onAction: () => store.remove(rowId),
   );
 }

@@ -3,9 +3,47 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-13a (**Epic 25 PLANLANDI — sahibin sekiz maddelik
-istek turu (round 18), OPH-257…OPH-269, hedef v1.5.0. Sıradaki iş: OPH-257
-(geri al barı).** Bu tur kod yazmadı; araştırdı, karar verdi ve yazdı.
+**Last updated:** 2026-08-15a (**OPH-257 BİTTİ — geri al barı artık kendiliğinden
+gidiyor. Süitler **1157** (+9), analyze/format/i18n temiz. Sıradaki iş: OPH-258
+(liste sıralaması).**
+
+**Turun tek cümlesi: kapımı kasıtlı ihlalle sınadım ve kapı yanlış sebepten
+geçiyordu.** `persist: false`'u yorum satırına aldığımda `delete_flow_test`
+YEŞİL kaldı — çünkü aynı turda eklediğim yedek zamanlayıcı barı zaten
+indiriyordu. Yani o testler bayrağı değil kendi mekanizmamı ölçüyordu, ve
+bayrağa **tek dayanağı olan diğer üç bar** (pano taşıma · AI onayı · kırık
+kısayol) korumasız kalacaktı. `test/widgets/snackbars_test.dart` bunun üzerine
+yazıldı: çıplak yardımcı, yedek yok, bayrak kalkınca kırmızı (enjekte edildi,
+görüldü, geri alındı). **Ders: "test geçti" ile "test bu şeyi ölçüyor" ayrı
+cümlelerdir.**
+
+**Kök neden SDK kaynağından doğrulandı, rapordan değil:** Flutter 3.44.0,
+`snack_bar.dart:303` → `persist = persist ?? action != null`; `scaffold.dart`
+zamanlayıcısı bir kez kurulur, `if (snackBar.persist) return;` deyip döner ve
+`_snackBarTimer == null` koruması yüzünden **bir daha kurulmaz**. Yani Undo
+düğmesi taşıyan her snackbar sessizce kalıcıya dönüşüyordu. Round 13'ün
+5sn→3sn düzeltmesi bu yüzden hiçbir şey değiştirmemişti: bar süresini zaten
+okumuyordu. Arıza gerçek uygulama widget testinde önce ÜRETİLDİ (bar, pencere
+kapandıktan 3 sn sonra hâlâ ekranda), sonra kapatıldı.
+
+**İkinci bulgu: DESIGN §19 D4 doğruyu yazıyormuş, davranış yokmuş.** D4 round
+10'dan beri "silme, snackbar kapanınca commit olur" diyor; `commitNow()` tam
+bu niyet için yazılmış ama **hiçbir çağıranı yoktu**. Artık `bar.closed`
+future'ına bağlı — bar giderse (zaman aşımı · kullanıcı kaydırması · sıradaki
+silmenin `clearSnackBars`'ı) silme kesinleşiyor. Görmediğin geri-al, sahip
+olmadığın geri-aldır. §19'a **D7** olarak yazıldı.
+
+**Açık kalan tek kutu, ölçülmüş sebeple: elle web/telefon turu.** `docker info`
+düşüyor ve `colima` PATH'te yok → API+MySQL kalkmıyor, uygulama girişsiz listeye
+ulaşmıyor. `flutter test --platform chrome` de harness yüzünden imkânsız:
+`test/flutter_test_config.dart` i18n JSON'ını `dart:io` `File` ile okuyor
+(`Unsupported operation: _Namespace`). Dürüst değerlendirme: kalan risk düşük —
+düzeltmenin çalıştığı kod saf Dart'tır, her platformda aynıdır ve testler onu
+gerçek widget ağacında koşuyor; bu, native köprü sınıfı bir belirsizlik değil.
+
+Önceki blok: 2026-08-13a (**Epic 25 PLANLANDI — sahibin sekiz maddelik
+istek turu (round 18), OPH-257…OPH-269, hedef v1.5.0.** Bu tur kod yazmadı;
+araştırdı, karar verdi ve yazdı.
 
 **Planlama turunda yapılanlar:** dört paralel keşif (MCP/REST envanteri ·
 Flutter UI dörtlüsü · sync/çakışma mekaniği · 12+ ürünlük sürümleme/çakışma

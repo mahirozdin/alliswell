@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **The "Undo" bar after a delete now goes away by itself.** It used to sit there
+  until you swiped it off — on the web and on the phone — and once its few
+  seconds had passed, its button quietly did nothing. Flutter treats a snackbar
+  that carries a button as one you meant to keep on screen, so the bar was
+  never reading the few seconds it was given; shortening that number in an
+  earlier round changed nothing, which is why the same report came back. The
+  bar and the delete are now one thing: the bar leaving is what makes the delete
+  final, and the delete becoming final is what takes the bar away. Dismissing
+  the bar yourself, or deleting something else, accepts the delete instead of
+  leaving it hanging; and in the moment the bar is sliding away, a tap on Undo
+  that arrives too late says so rather than pretending it worked (OPH-257).
+
 ## [1.4.0] — 2026-08-12
 
 ### Added

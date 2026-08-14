@@ -7695,29 +7695,59 @@ gerçek çakışma provası: uçak modu + aynı nota iki düzenleme).
 _Kök neden ÖLÇÜLDÜ (bulgu #10) — bu task teşhis değil, kapanıştır. Round 13'ün "süreyi kısalt"
 düzeltmesi neden işe yaramadı sorusunun cevabı da budur: bar süresini hiç dinlemiyordu._
 
-- [ ] `widgets/swipe_actions.dart` → ortak bir `showAwActionSnackBar(...)` yardımcı fonksiyonu
+_(✅ 2026-08-15 — **kırmızı önce üretildi, sonra kapatıldı.** Kök neden SDK kaynağından
+doğrulandı (Flutter 3.44.0 tag'i: `snack_bar.dart:303` `persist = persist ?? action != null`,
+`scaffold.dart` zamanlayıcısı `if (snackBar.persist) return;` ile dönüp bir daha kurulmuyor) ve
+gerçek uygulama widget testinde üretildi: bar, pencere kapandıktan 3 sn sonra hâlâ ekrandaydı.
+Süitler **1157** (+9), analyze/format/i18n temiz._
+
+_**Turun tek cümlesi: ilk yazdığım kapı yanlış sebepten geçiyordu.** `persist: false`'u
+yorum satırına alıp kasıtlı ihlal enjekte ettiğimde `delete_flow_test` **yeşil kaldı** —
+çünkü eklediğim yedek zamanlayıcı barı zaten indiriyordu. Yani o testler bayrağı değil,
+kendi mekanizmamı ölçüyordu; ve bayrağa tek dayanağı olan **diğer üç bar** (pano taşıma,
+AI onayı, kırık kısayol) korumasız kalırdı — onların yedeği yok. Bunun üzerine
+`test/widgets/snackbars_test.dart` yazıldı: çıplak yardımcıyı kurar, yedek yoktur, bayrak
+kalkınca **kırmızıya döner** (enjekte edilip ölçüldü, sonra geri alındı)._
+
+_**İkinci bulgu: D4 zaten doğruyu yazıyormuş, davranış yokmuş.** DESIGN §19 D4 round 10'dan
+beri "delete, snackbar kapanınca ya da ekrandan çıkılınca commit olur" diyor; `commitNow()`
+o niyet için yazılmış ama **hiçbir zaman çağrılmamıştı**. Artık barın `closed` future'ına
+bağlı: bar giderse (zaman aşımı · kullanıcı kaydırması · sıradaki silmenin `clearSnackBars`'ı)
+silme kesinleşir. Görmediğin geri-al, sahip olmadığın geri-aldır._
+
+- [x] `widgets/swipe_actions.dart` → ortak bir `showAwActionSnackBar(...)` yardımcı fonksiyonu
       doğur (aynı dosyada ya da `widgets/snackbars.dart`): `persist: false` + verilen `duration`
       + action'ı sarar; `awDeleteWithUndo` bunu kullanır. **Uygulamadaki action'lı dört snackbar
       da** bu yardımcıya taşınır: `home_board.dart:71-75` (board.undo), `ai_confirm_card.dart:277-290`,
       `quick_access_navigation.dart:121-128`. (Gelecekteki bir action'lı snackbar'ın aynı tuzağa
-      düşmemesi için tek kapı.)
-- [ ] Bayat "Geri al" no-op'u kapat: `SnackBarAction.onPressed` → `pending.undo(id)` çağrısı
-      **başarısızsa** (id artık `_commits`'te değilse) barı gizle; `PendingDeletes.undo` bool
-      dönsün. (Bulgu #10'un ikincil bug'ı: commit 3000 ms'de koşarken bar sonsuza dek kalıyor
-      ve düğmesi hiçbir şey yapmıyordu.)
-- [ ] `pending_deletes.dart:70-76` `commitNow()` — hiçbir çağıranı yok (ölü kod). OPH-184'ün
-      asıl niyeti "ekrandan çıkılınca commit" idi (`TASKS.md:3681-3683`): ya ekrandan ayrılışta
-      (notes/tasks liste `dispose`'unda bekleyen id'ler için) bağla, ya da yazılı gerekçeyle sil.
-      Karar task içinde ölçülerek verilir; hangisi seçilirse `pending_deletes.dart:8-11`
-      yorumundaki Round-13 fosili ve `swipe_actions.dart:130-131`'deki "control is never on
-      screen after it stops working" cümlesi GERÇEĞE çekilir (bugün ikisi de yalan).
-- [ ] Testler: `delete_flow_test.dart`'a gerçek regresyon eklenir —
-      `expect(find.byKey(Key('undo-delete-$id')), findsNothing)` **pencere sonrası** (bugün
-      hiçbir test barın kapandığını iddia etmiyor; mevcut yorum "snackbar expires" diyor ama
-      ölçmüyor). Dört çağrı yüzeyinden en az ikisi (liste swipe + detay app-bar) + bayat-Geri
-      al no-op senaryosu test edilir.
-- [ ] Elle: web (Chrome) + bir telefonda sil → 3 sn bekle → bar KENDİ KENDİNE gider; Undo'ya
-      basılırsa satır döner. STATE'e tek satır kanıt.
+      düşmemesi için tek kapı.) → `lib/src/widgets/snackbars.dart`; dördü de taşındı.
+- [x] Bayat "Geri al" no-op'u kapat: `PendingDeletes.undo` artık **bool** dönüyor (iptal
+      edilecek bir şey var mıydı). Dönen `false` ise bar kapanırken gelen dokunuş sessiz
+      kalmıyor, `common.undoTooLate` ile dürüstçe cevaplanıyor (en+tr eklendi).
+- [x] `commitNow()` — **silinmedi, BAĞLANDI.** Ölü olmasının sebebi eksik niyet değil eksik
+      çağrandı: D4 bu davranışı round 10'da tarif etmiş. Artık `bar.closed` future'ına bağlı
+      ve `reason != action` ise commit eder. Birim testleri iki kez commit etmediğini ve
+      iptal edilmiş bir silmeyi diriltmediğini sabitliyor.
+- [x] İki yalan gerçeğe çekildi: `swipe_actions.dart`'ın "control is never on screen after it
+      stops working" cümlesi artık mekanizmayla doğru (yedek zamanlayıcı commit ederken barı
+      indiriyor); `pending_deletes.dart`'ın Round-13 fosiline "bu sabit yalnız commit'i
+      yönetiyordu, barı hiç yönetmedi" notu düşüldü. `delete_flow_test`'in "5 s window"
+      yorumu da (round 13'ten beri 3 sn) düzeltildi.
+- [x] Testler (+9, süit 1148 → **1157**): `test/widgets/snackbars_test.dart` (bayrağın
+      GERÇEK kapısı — ihlal enjekte edilip kırmızı görüldü, geri alındı) ·
+      `test/core/pending_deletes_test.dart` (undo'nun bool sözleşmesi, çok-geç hâli,
+      commitNow'ın tek-seferliği, iptal edilmişi diriltmemesi) · `delete_flow_test.dart`'a
+      üç regresyon: liste swipe'ında ve detay ekranında bar KENDİLİĞİNDEN gidiyor + ikinci
+      silme birincisini kesinleştiriyor.
+- [ ] **Elle tur — AÇIK, ölçülmüş sebeple.** Bu makinede canlı web/telefon turu kurulamıyor:
+      `docker info` başarısız ve `colima` PATH'te yok, yani API+MySQL ayağa kalkmıyor (uygulama
+      giriş olmadan listeye ulaşmıyor). `flutter test --platform chrome` ile web motorunda
+      koşmak da harness'ın kendisi yüzünden imkânsız: `test/flutter_test_config.dart` i18n
+      JSON'ını `dart:io` `File` ile okuyor ve her teste uygulanıyor (`Unsupported operation:
+      _Namespace`). **Dürüst sınır:** kalan risk düşük ama sıfır değil — düzeltmenin çalıştığı
+      kod (`ScaffoldMessengerState.build`) saf Dart'tır ve her platformda aynıdır, üstelik
+      testler onu gerçek widget ağacında çalıştırıyor; bu, native köprü sınıfı bir belirsizlik
+      DEĞİL. Sahibin bir sonraki turunda bakılacak: sil → 3 sn bekle → bar kendiliğinden gider.
 
 ### OPH-258 — Liste sıralaması: notlar düzenlenmeye göre, denetim app bar'da (DESIGN §34)
 
