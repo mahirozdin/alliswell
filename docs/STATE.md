@@ -3,9 +3,17 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-15b (**OPH-270 ACİL BİTTİ + v1.4.1 kesildi — not yazarken
+**Last updated:** 2026-08-15b (**OPH-270 ACİL BİTTİ + v1.4.1 CANLI — not yazarken
 imleç artık başlığa sıçramıyor. Süitler **1160** (+3), analyze/format/i18n temiz.
 Sıradaki iş: OPH-258 (liste sıralaması).**
+
+**Deploy ÜRÜNDEN doğrulandı (2026-08-15):** release zincirinin dokuz işi de yeşil
+(beş test kapısı + iki imaj + yayın + deploy). `alliswell.space/` 200 ve JSON-LD
+`softwareVersion` **1.4.0 → 1.4.1** oldu (deploy öncesi de ölçülmüştü, yani değişim
+gözlendi — "zaten öyleydi" değil); `alliswell.space/app/version.json` →
+`{"version":"1.4.1","build_number":"24"}` yani web uygulamasının KENDİSİ yeni sürümü
+söylüyor; `api.alliswell.space/health/ready` → mysql up, redis up. v1.4.0'ı kırmızıya
+düşüren runner-node hatası tekrarlamadı.
 
 **Turun tek cücresi — kök neden PAKETTE:** `QuillEditor.basic` kendisine verilmediğinde
 **her çağrıda yeni bir `FocusNode` ve `ScrollController` üretiyor**
