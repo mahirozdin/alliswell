@@ -41,6 +41,13 @@
     "fileName": "Ad",
     "fileSize": "Boyut"
   },
+  "color": {
+    "recent": "Son kullanılanlar",
+    "more": "Daha fazla renk",
+    "none": "Renk yok",
+    "text": "Metin rengi",
+    "highlight": "Vurgu"
+  },
   "nav": {
     "home": "Ana Sayfa",
     "homeDesc": "Her şey tek bakışta — geciken, bugün ve sonrası.",

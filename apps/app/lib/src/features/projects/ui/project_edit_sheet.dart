@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_exception.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/color_swatch_dot.dart';
+import '../../../widgets/color_picker.dart';
 import '../../../widgets/status_views.dart';
 import '../data/project.dart';
 import '../providers.dart';
@@ -161,28 +162,19 @@ class _ProjectEditSheetState extends ConsumerState<ProjectEditSheet> {
                 ),
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final swatch in kProjectPalette)
-                    AwColorSwatchDot(
-                      color: colorFromRgbHex(swatch),
-                      selected: _colorHex == swatch,
-                      onTap: () => setState(() => _colorHex = swatch),
-                    ),
-                  // A color picked from the full grid shows as its own swatch.
-                  if (!knownColor)
-                    AwColorSwatchDot(
-                      color: colorFromRgbHex(_colorHex),
-                      selected: true,
-                      onTap: _pickMoreColors,
-                    ),
-                  _MoreColorsButton(
-                    key: const Key('more-colors'),
-                    onTap: _pickMoreColors,
-                  ),
-                ],
+              // OPH-259: one picker everywhere (§33 R1), and it is what
+              // remembers the last colours used — here and in every other
+              // surface.
+              AwColorPicker(
+                keyPrefix: 'project-color',
+                // A colour picked from the full grid joins the row as its own
+                // swatch, so the choice stays visible and re-pickable.
+                palette: knownColor
+                    ? kProjectPalette
+                    : [...kProjectPalette, _colorHex.toUpperCase()],
+                selected: _colorHex,
+                onPicked: (hex) => setState(() => _colorHex = hex),
+                onMore: _pickMoreColors,
               ),
               if (_error != null) ...[
                 const SizedBox(height: 12),
@@ -257,36 +249,6 @@ class _ColorGridDialog extends StatelessWidget {
           child: Text('common.cancel'.tr()),
         ),
       ],
-    );
-  }
-}
-
-class _MoreColorsButton extends StatelessWidget {
-  const _MoreColorsButton({super.key, required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      customBorder: const CircleBorder(),
-      child: Tooltip(
-        message: 'project.moreColors'.tr(),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Theme.of(context).colorScheme.outline),
-          ),
-          child: Icon(
-            Icons.palette_outlined,
-            size: 20,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ),
     );
   }
 }

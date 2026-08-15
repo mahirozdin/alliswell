@@ -42,6 +42,13 @@
     "fileName": "Name",
     "fileSize": "Size"
   },
+  "color": {
+    "recent": "Recently used",
+    "more": "More colors",
+    "none": "No color",
+    "text": "Text color",
+    "highlight": "Highlight"
+  },
   "nav": {
     "home": "Home",
     "homeDesc": "Everything at a glance — overdue, today and beyond.",

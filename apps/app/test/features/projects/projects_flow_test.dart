@@ -36,6 +36,39 @@ Future<void> openProjects(WidgetTester tester) async {
 }
 
 void main() {
+  // OPH-259 (§33 R1/R2): the shared picker, and the memory behind it.
+  testWidgets('a colour picked once is offered again, on another surface', (
+    tester,
+  ) async {
+    final api = FakeApi();
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    // No memory yet, so no row.
+    expect(find.byKey(const Key('project-color-recents')), findsNothing);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      'Renkli',
+    );
+    await tester.tap(find.byKey(const Key('project-color-#EF4444')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create project'));
+    await tester.pumpAndSettle();
+
+    // Open a second sheet: the colour is remembered, and offered first.
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('project-color-recent-#EF4444')),
+      findsOneWidget,
+      reason: 'one memory, shared by every picker in the app',
+    );
+  });
+
   testWidgets('projects list renders items and favorites, never a raw status', (
     tester,
   ) async {

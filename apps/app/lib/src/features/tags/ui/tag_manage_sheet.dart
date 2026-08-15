@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../../widgets/color_picker.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../projects/ui/project_edit_sheet.dart' show kProjectPalette;
@@ -193,26 +194,14 @@ class _TagEditDialogState extends ConsumerState<_TagEditDialog> {
             decoration: InputDecoration(labelText: 'tag.nameLabel'.tr()),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final hex in kProjectPalette)
-                InkWell(
-                  key: Key('tag-color-$hex'),
-                  borderRadius: BorderRadius.circular(999),
-                  onTap: () => setState(() => _colorHex = hex),
-                  child: CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(
-                      0xFF000000 | int.parse(hex.substring(1), radix: 16),
-                    ),
-                    child: _colorHex == hex
-                        ? const Icon(Icons.check, size: 16, color: Colors.white)
-                        : null,
-                  ),
-                ),
-            ],
+          // OPH-259: this one had grown its OWN swatch — 28 px circles with a
+          // white check that vanished on light colours, and no memory of what
+          // was picked last. Same component as everywhere else now (§33 R1).
+          AwColorPicker(
+            keyPrefix: 'tag-color',
+            palette: kProjectPalette,
+            selected: _colorHex,
+            onPicked: (hex) => setState(() => _colorHex = hex),
           ),
         ],
       ),

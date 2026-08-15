@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
+import '../../../widgets/color_picker.dart';
 import '../../../theme/tokens.dart';
-import '../../../widgets/color_swatch_dot.dart';
-import '../../projects/data/project.dart';
 import '../../projects/ui/project_edit_sheet.dart' show kProjectPalette;
 import '../data/quick_link.dart';
 import '../emoji_input.dart';
@@ -221,25 +220,16 @@ Future<void> showQuickColorSheet(
               children: [
                 Text('quick.color'.tr(), style: theme.textTheme.titleMedium),
                 const SizedBox(height: AwSpace.x3),
-                Wrap(
-                  spacing: AwSpace.x2,
-                  runSpacing: AwSpace.x2,
-                  children: [
-                    for (final hex in kProjectPalette)
-                      AwColorSwatchDot(
-                        key: Key('quick-color-$hex'),
-                        color: colorFromRgbHex(hex),
-                        selected: row.link.colorRgb == hex,
-                        onTap: () => pick(hex),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: AwSpace.x2),
-                TextButton.icon(
-                  key: const Key('quick-color-clear'),
-                  onPressed: () => pick(null),
-                  icon: const Icon(Icons.format_color_reset_outlined),
-                  label: Text('quick.noColor'.tr()),
+                // OPH-259: the shared picker (§33 R1). The palette stays the
+                // bounded ten — §23 Q8a's contrast promise is why — and the
+                // recents row shows only what this ten can honour (R2).
+                AwColorPicker(
+                  keyPrefix: 'quick-color',
+                  palette: kProjectPalette,
+                  selected: row.link.colorRgb,
+                  onPicked: pick,
+                  onCleared: () => pick(null),
+                  clearLabelKey: 'quick.noColor',
                 ),
               ],
             ),

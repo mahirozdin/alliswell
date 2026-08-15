@@ -7862,30 +7862,44 @@ _Bulgu #11/#12. "Mevcut seçici kullanışsız" şikâyetinin ölçülen karşı
 stok diyaloğu (hex alanlı) açılıyor; md tarafında renk aksiyonu zaten yok; dönüşüm renkleri
 sessizce siliyor. Bu task seçiciyi BİZİM yapar ve dört yüzeyi tek bileşene bağlar._
 
-- [ ] `widgets/aw_color_picker.dart`: §33 R1 anatomisi — "Son kullanılanlar" satırı (≤5, boşsa
-      gizli) + yüzeyin palet ızgarası (`AwColorSwatchDot`, ≥44 px) + (yalnız proje/etikette)
-      mevcut "daha fazla" ızgarası. Sheet olarak açılır; seçim anında uygular ve kapanır (R5).
-- [ ] Son kullanılanlar MRU'su: `alliswell_recent_colors` (localKv, JSON liste, 8 saklanır,
-      5 gösterilir), HER seçici HER seçimde ekler; her yüzey kendi paletiyle KESİŞİMİ gösterir
-      (karar #11; §23 Q8a bozulmaz). `external_session.dart:121-148` şekli emsal.
-- [ ] Dört mevcut yüzey bileşene taşınır: proje (`project_edit_sheet.dart:164-186`), etiket
-      (`tag_manage_sheet.dart:152-213` — bugün `AwColorSwatchDot` bile kullanmıyor), hızlı
-      erişim (`quick_link_sheets.dart:187-248`, 10'luk palet aynen), + editör (aşağıda).
-      Görsel dil light+dark kontrol edilir.
-- [ ] Editör (Live mod): `QuillSimpleToolbarConfig`'te `showColorButton: false,
-      showBackgroundColorButton: false`; yerine iki AwToolbar düğmesi (metin rengi / vurgu) —
-      `AwColorPicker` açar, `ColorAttribute`/`BackgroundAttribute` uygular. Paletler §33 R4:
-      12 metin + 6 vurgu rengi, `kProjectPalette` yanında tanımlı, **`scripts/design/contrast.py`
-      çiftlerine eklenir ve FAILURES: 0 kanıtlanır** (iki temada).
-- [ ] Markdown modu: `md_actions.dart`'a `highlight` aksiyonu (`==…==` sarma — argümansız,
-      mevcut `MdAction` tipine sığar); renk aksiyonu markdown'a EKLENMEZ (karar #11, park).
-- [ ] Dönüşüm dürüstlüğü: `delta_markdown.dart:56-66` `background` → `==…==` üretir; `color`
-      düşecekse dönüşüm diyaloğu bunu ÖNCEDEN söyler (ADR-0028 "explicit, warned" sözleşmesi).
-      Round-trip testi: vurgulu delta → md → delta vurguyu korur.
-- [ ] Testler: MRU (ekleme/tekilleştirme/kesişim/kalıcılık), dört yüzeyde seçim akışı, quill
-      config'inde stok renk düğmelerinin kapalı olduğu (regresyon: hex diyaloğu bir daha
-      açılamaz), dönüşüm round-trip. i18n en+tr.
-- [ ] Yüzey: editör araç çubuğu (iki yeni düğme), proje/etiket/hızlı-erişim renk seçicileri.
+_(🟡 2026-08-15 — **yarısı sevk edildi, yarısı ÖLÇÜLEREK durduruldu.** Süitler **1188**
+(+8), analyze/format/i18n temiz. Kalan iş aşağıda, sebebiyle birlikte.)_
+
+_**Turun tek cümlesi: R4'ün sözü aritmetikle çelişiyor ve bunu planlayan bendim.**
+Quill'in `color`/`background` niteliği TEK bir sabit hex saklar; altındaki yüzey (ve
+üstündeki mürekkep) temayla değişir. Ölçüm: 18 aday metin renginin **sıfırı** hem
+`#FFFFFF` hem `#151F3C` üzerinde 4.5'i geçiyor (ışıkta 5–8, karanlıkta 2–3). Vurgu daha
+da kötü: bir dolgunun ışıkta `#0F1B2E`, karanlıkta `#EAF0FD` mürekkebin altında okunur
+kalması gerekiyor ve bu iki oranın çarpımı en fazla 21 olduğu için ikisi birden ancak
+tek bir orta açıklıkta ~4.6'ya ulaşabiliyor — en iyi aday `#808080` **4.37 / 3.46**
+veriyor, yani ikisinde de kalıyor ve zaten kimsenin "vurgu" demeyeceği bir gri.
+**Renk ham hex olarak saklanırsa bu söz tutulamaz.** DESIGN §33 R4 düzeltildi ve iki
+dürüst yol yazıldı; editör rengi bu karar verilmeden yazılmaz._
+
+- [x] `widgets/color_picker.dart` — `AwColorPicker`: son kullanılanlar satırı (boşsa yok) +
+      yüzeyin paleti (`AwColorSwatchDot`) + yüzeye göre "daha fazla"/"renk yok". Satır içi
+      bileşen; sheet isteyen yüzey onu sheet'e koyuyor (proje/etiket zaten form içinde).
+- [x] MRU `core/recent_colors.dart`: `alliswell_recent_colors`, 8 saklanır 5 gösterilir,
+      yeniden seçim yukarı taşır (kopya üretmez), bozuk değer çökme değil hafızasızlık.
+      **Yazma tek yerde — bileşenin kendisinde**, yani hiçbir çağıran hatırlamayı unutamaz.
+- [x] Üç yüzey taşındı: proje · etiket (kendi `InkWell`+`CircleAvatar`'ı vardı, paylaşılan
+      swatch'ı bile kullanmıyordu) · hızlı erişim (10'luk palet aynen, §23 Q8a korunuyor).
+      Artık üçü de aynı anatomi ve aynı hafıza.
+- [ ] **Editör (AÇIK — R4 kararına bağlı).** `showColorButton`/`showBackgroundColorButton`
+      hâlâ açık ve stok hex diyaloğu hâlâ ulaşılabilir. **Bilinçli:** yerine koymadan
+      düğmeleri kaldırmak yeteneği silmek olurdu (§22'nin tersi). Sıra: önce R4'ün (a)/(b)
+      kararı — semantik id + tema başına çözümleme, ya da dolgu+mürekkep sabit çifti —
+      sonra iki araç çubuğu düğmesi + paletler + `contrast.py` çiftleri.
+- [ ] Markdown modu: `md_actions.dart`'a `highlight` aksiyonu (`==…==` sarma) — **açık**;
+      editörle aynı turda yapılması mantıklı, tek başına yarım bir cevap.
+- [ ] Dönüşüm dürüstlüğü: `background` → `==…==`, `color` düşecekse dönüşüm diyaloğu ÖNCEDEN
+      söyler — **açık**, editör renginin ne saklayacağına bağlı (R4 kararı ne saklanacağını
+      değiştiriyor, dolayısıyla neyin nasıl dönüştürüleceğini de).
+- [x] Testler (+8): MRU (sıra/tekilleştirme/tavan/restart/bozuk değer/kesişim, 7) ·
+      çapraz-yüzey hafıza (bir yüzeyde seçilen renk diğerinde "son kullanılanlar"da çıkıyor) ·
+      üç yüzeyin mevcut testleri yeşil. i18n `color.*` en+tr.
+- [x] Yüzey (bu turda): proje · etiket · hızlı erişim renk seçicileri.
+- [ ] Yüzey (kalan): editör araç çubuğu.
 
 ### OPH-260 — Gelişmiş ayarlar: 19 satırlık düz liste → 6 gruplu IA (DESIGN §32)
 

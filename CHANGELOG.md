@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **Colour pickers remember what you used last.** Every place you pick a colour
+  — projects, tags, quick-access shortcuts — now offers the ones you reached
+  for recently, above that surface's palette, and they are the same picker
+  rather than three that had drifted apart (the tag one had even grown its own
+  swatch, with a white checkmark that disappeared on pale colours). The memory
+  is shared, so a colour you gave a project is waiting for you on a tag
+  (OPH-259).
+
 ### Fixed
 
 - **Writing a note is no longer crowded by floating buttons.** The "new note"

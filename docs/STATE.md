@@ -3,7 +3,33 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-15c (**OPH-258 BİTTİ — listeler artık sıralanabiliyor,
+**Last updated:** 2026-08-15d (**OPH-271 BİTTİ (sıra dışı, sahibin isteği) +
+OPH-259 YARIM — yarısı sevk edildi, yarısı ÖLÇÜLEREK durduruldu. Süitler **1188**,
+analyze/format/i18n/contrast temiz. Sıradaki iş: OPH-259'un editör yarısı, ama önce
+DESIGN §33 R4'ün (a)/(b) kararı.**
+
+**OPH-271 (not ekranında hiçbir şey yüzmez):** üç düğme üç ayrı yerden geliyordu —
+bölüm FAB'ı ve AI düğmesi shell'in Scaffold'una ait (editör shell dalının İÇİNDE bir
+rota), balon ise `MaterialApp.builder`'da tüm uygulamanın üstünde. Kapı rota oldu
+(`awIsDocumentRoute`, şekil eşleşmesi — dört giriş noktası, `/edit-note/:id` dahil).
+**Önce provider denedim ve ölçüp bıraktım:** Riverpod `initState`'ten provider yazmayı
+yasaklıyor, post-frame'e ertelemek de düğmeleri bir kare gösterirdi.
+
+**OPH-259'un kalıcı bulgusu — planladığım kural aritmetikle çelişiyor.** Quill'in
+`color`/`background` niteliği TEK sabit hex saklar; altındaki yüzey ve üstündeki
+mürekkep temayla değişir. Ölçüm: 18 aday metin renginin **sıfırı** hem `#FFFFFF` hem
+`#151F3C` üzerinde 4.5'i geçiyor. Vurguda iki oranın çarpımı en fazla 21 olduğundan
+ikisi birden ancak tek bir orta açıklıkta ~4.6'ya çıkabiliyor — en iyi aday `#808080`
+**4.37 / 3.46**, ikisinde de kalıyor. **Yani renk ham hex saklanırsa §33 R4'ün sözü
+tutulamaz.** R4 düzeltildi ve iki yol yazıldı: (a) semantik id + tema başına çözümleme
+(uygulamanın kendi `==mark==`'ı zaten böyle çalışıyor), (b) dolgu+mürekkep sabit çifti
+(Word'ün highlighter'ı). Editör rengi bu karar verilmeden YAZILMAZ.
+
+**Stok quill hex diyaloğu bilinçli olarak DURUYOR:** yerine koymadan düğmeleri
+kaldırmak yeteneği silmek olurdu (§22'nin tersi). Sevk edilen yarı: `AwColorPicker` +
+paylaşılan MRU (`alliswell_recent_colors`) + üç yüzeyin taşınması.
+
+Önceki blok: 2026-08-15c (**OPH-258 BİTTİ — listeler artık sıralanabiliyor,
 notlar düzenlenme tarihine göre açılıyor. Süitler **1176** (+16), analyze/format/i18n
 temiz. Sıradaki iş: OPH-259 (renk sistemi v2, DESIGN §33).**
 
