@@ -27,6 +27,20 @@
     "previous": "Önceki",
     "next": "Sonraki"
   },
+  "sort": {
+    "sectionTitle": "Sıralama",
+    "tooltip": "Sırala",
+    "reverse": "Ters çevir",
+    "updated": "Düzenlenme",
+    "created": "Oluşturma",
+    "title": "Başlık",
+    "viewSection": "Görünüm",
+    "viewList": "Liste",
+    "viewGrid": "Kartlar",
+    "fileDate": "Eklenme",
+    "fileName": "Ad",
+    "fileSize": "Boyut"
+  },
   "nav": {
     "home": "Ana Sayfa",
     "homeDesc": "Her şey tek bakışta — geciken, bugün ve sonrası.",

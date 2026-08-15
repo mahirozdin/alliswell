@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **Lists can be sorted, from the app bar.** Notes now open with whatever you
+  edited last at the top — which is what the row was already telling you, since
+  it has always shown the edited date — and you can switch to creation date or
+  title, or flip the order, from one menu that also holds the list/cards
+  switch. Titles sort the way Turkish reads them. The Files section got the
+  same control, which it never had at all, and a project's Files tab now
+  remembers the order you chose instead of forgetting it a moment later
+  (OPH-258).
+
 ## [1.4.1] — 2026-08-15
 
 ### Fixed

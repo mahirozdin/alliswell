@@ -12,6 +12,8 @@ import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/files/providers.dart';
 
+import 'package:alliswell/src/features/files/ui/file_widgets.dart';
+
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
@@ -154,6 +156,38 @@ void main() {
 
     expect(find.text('Silinecek'), findsNothing);
     expect(api.folders, isEmpty); // the pushed root delete reached the server
+  });
+
+  // OPH-258 (§34 L4): this section shipped with no way to reorder it at all.
+  testWidgets('Kaynaklar can be reordered, and the choice is remembered', (
+    tester,
+  ) async {
+    await wideSurface(tester);
+    final api = FakeApi();
+    final task = api.seedTask(title: 'Ekli görev');
+    final taskId = task['id'] as String;
+    api.seedFile(name: 'zeta.bin', targetType: 'task', targetId: taskId);
+    api.seedFile(name: 'alfa.bin', targetType: 'task', targetId: taskId);
+
+    await tester.pumpWidget(await app(api));
+    await tester.pumpAndSettle();
+    await openFiles(tester);
+    await tester.tap(find.text('Sources'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('list-sort-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('sort-option-name')));
+    await tester.pumpAndSettle();
+
+    final rows = tester
+        .widgetList<FileRowTile>(find.byType(FileRowTile))
+        .map((w) => w.file.name)
+        .toList();
+    expect(rows, ['alfa.bin', 'zeta.bin']);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('alliswell_files_sort'), 'name:asc');
   });
 
   testWidgets('Kaynaklar lists attached files with source badges and '

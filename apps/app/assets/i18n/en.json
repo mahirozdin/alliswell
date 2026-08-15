@@ -28,6 +28,20 @@
     "previous": "Previous",
     "next": "Next"
   },
+  "sort": {
+    "sectionTitle": "Sort by",
+    "tooltip": "Sort",
+    "reverse": "Reverse order",
+    "updated": "Last edited",
+    "created": "Date created",
+    "title": "Title",
+    "viewSection": "View",
+    "viewList": "List",
+    "viewGrid": "Cards",
+    "fileDate": "Date added",
+    "fileName": "Name",
+    "fileSize": "Size"
+  },
   "nav": {
     "home": "Home",
     "homeDesc": "Everything at a glance — overdue, today and beyond.",

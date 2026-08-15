@@ -1,5 +1,7 @@
 import 'package:drift/drift.dart';
 
+import '../../../core/fold.dart';
+import '../../../core/list_sort.dart';
 import '../../../sync/db/database.dart';
 
 /// One attachment's metadata (OPH-153, Epic 14, ADR-0011).
@@ -8,6 +10,37 @@ import '../../../sync/db/database.dart';
 /// through short-lived download URLs minted by the API on demand. Rows arrive
 /// exclusively via sync pull (the store below has no write path; uploads and
 /// deletes are REST + `syncNow()`).
+/// What a file list can be ordered by (OPH-258, DESIGN §34 L4).
+///
+/// The ids match the labels the project Files tab has used since OPH-170, so a
+/// tab that shipped with `date | name | size` keeps the same vocabulary — it
+/// just stops forgetting the choice between rebuilds.
+const kFileSortChoices = [
+  AwSortChoice(id: 'date', labelKey: 'sort.fileDate'),
+  AwSortChoice(
+    id: 'name',
+    labelKey: 'sort.fileName',
+    descendingByDefault: false,
+  ),
+  AwSortChoice(id: 'size', labelKey: 'sort.fileSize'),
+];
+
+/// Orders files for [sort]; ties break on the id so the list never shuffles.
+Comparator<FileAttachment> fileSortComparator(AwSortState sort) {
+  int ascending(FileAttachment a, FileAttachment b) => switch (sort.id) {
+    'name' => foldSearchText(a.name).compareTo(foldSearchText(b.name)),
+    'size' => a.sizeBytes.compareTo(b.sizeBytes),
+    _ => (a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0)).compareTo(
+      b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+    ),
+  };
+  final ordered = sort.comparator<FileAttachment>(ascending);
+  return (a, b) {
+    final result = ordered(a, b);
+    return result != 0 ? result : b.id.compareTo(a.id);
+  };
+}
+
 class FileAttachment {
   const FileAttachment({
     required this.id,

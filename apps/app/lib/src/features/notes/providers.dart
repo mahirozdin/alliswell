@@ -1,11 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/list_sort.dart';
+import '../../core/persisted_prefs.dart';
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/note.dart';
 import 'data/note_store.dart';
 
-export 'data/note_store.dart' show NotesFilter, NotesQuery;
+export 'data/note_store.dart'
+    show NotesFilter, NotesQuery, kNoteSortChoices, noteSortComparator;
 
 /// Local-first store (OPH-054): reads watch the drift replica, writes are
 /// optimistic + outbox'd.
@@ -39,9 +42,17 @@ final notesListProvider = StreamProvider<List<NoteRow>>((ref) async* {
     yield const [];
     return;
   }
-  final query = ref.watch(notesQueryProvider);
+  final query = ref
+      .watch(notesQueryProvider)
+      .copyWith(sort: ref.watch(notesSortStateProvider));
   yield* ref.watch(noteStoreProvider).watchList(workspaces.first.id, query);
 });
+
+/// The persisted notes order, parsed (OPH-258). Kept out of `NotesQueryController`
+/// so the preference stays a device setting rather than transient screen state.
+final notesSortStateProvider = Provider<AwSortState>(
+  (ref) => AwSortState.parse(ref.watch(notesSortProvider), kNoteSortChoices),
+);
 
 /// Star tap on a note row: flip the pin without opening the editor.
 Future<void> toggleNotePinned(WidgetRef ref, NoteRow note) =>

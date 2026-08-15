@@ -7795,22 +7795,38 @@ ikisi de `showCursor: false` — salt-okunur önizleme, kaybolacak imleç yok._
 _Bulgu #13/#14. `updatedAt` zaten her `update()`'te damgalanıyor (`note_store.dart:210`) ve
 satırda zaten gösteriliyor — iş sıralamayı ona çevirmek ve seçiciyi SATIR HARCAMADAN vermek._
 
-- [ ] `AwSortMenuButton` bileşeni (`widgets/`): checkmark'lı seçenek listesi + "Ters çevir"
-      anahtarı; seçenek kümesi ve `PersistedChoice` anahtarı parametre. §34 L2 anatomisi.
-- [ ] Notlar: `note_store.dart:63-89` ve `:127-132` `orderBy` → seçime göre; varsayılan
-      `updatedAt DESC` (null → `createdAt`/id fallback'i tek yerde çözülür). Başlık sıralaması
-      fold-duyarlı (`core/fold.dart` — İ/ı Türkçe beklentisi, ADR-0013 emsali). Pin sıralamayı
-      DEĞİŞTİRMEZ (bilinçli — §34 L5). Kalıcılık `alliswell_notes_sort`.
-- [ ] Notes app bar'ı: görünüm anahtarı (`notes-view-toggle`) + sıralama TEK "görünüm & sıralama"
-      menü düğmesinde birleşir (bar ölçülü olarak sınırda — `external_open_menu.dart:8-10`
-      emsali). Menü öğeleri: Liste/Izgara + Düzenlenme/Oluşturma/Başlık + Ters çevir.
-- [ ] Global Dosyalar bölümü aynı bileşeni alır (tarih · ad · boyut, `alliswell_files_sort`) —
-      bugün seçicisi HİÇ yok; proje Files sekmesindeki `_FileSort` (`project_detail_screen.dart:524-645`)
-      paylaşılan bileşene taşınır ve artık kalıcıdır.
-- [ ] Testler: sıralama değişiminin listeyi yeniden dizdiği (3 notla üç seçenek), kalıcılığın
-      restart'ı atlattığı (`localKv` reset deseni), fold'lu başlık sırası; Files sekmesi
-      regresyonu. i18n: `sort.*` anahtarları en+tr.
-- [ ] Yüzey: Notlar sekmesi app bar menüsü + Dosyalar bölümü app bar'ı + proje Files sekmesi.
+_(✅ 2026-08-15 — Süitler **1176** (+16), analyze/format/i18n temiz.)_
+
+_**Turun tek cümlesi: sıralama bir SORGU değil, bir görüntüleme tercihi — ve bu, nerede
+yaşayacağını belirledi.** Sıra `NotesQuery`'ye bindi (store onu uygulayabilen tek yer,
+çünkü başlık sırasının ihtiyaç duyduğu fold'u SQLite yapamıyor — ADR-0013'ün kendi
+dersi), ama tercihin kendisi `PersistedChoice`'ta, cihazda, ekranın state'inde değil._
+
+_**Yol boyunca çıkan iki şey:** (1) kendi testimin beklentisi yanlıştı — fold hem `İ`
+hem `ı`'yı `i`'ye indiriyor (bilinçli, ADR-0013), yani `ırmak` `İzmir`'den ÖNCE gelir;
+kodu değil testi düzelttim ve yorumunu gerçeğe çektim. (2) `notes_flow_test`'in
+koşumunu ikinci kez kopyalamak üzereyken durup ortak dosyaya aldım — iki dosya aynı
+sahte uygulamayı kurmamalı._
+
+- [x] `AwSortMenuButton` (`widgets/sort_menu.dart`): checkmark'lı seçenekler + "Ters çevir";
+      seçenek kümesi ve durum parametre, kalıcılık çağırana ait. Model `core/list_sort.dart`
+      (`AwSortChoice` · `AwSortState` — `field:dir` olarak saklanır, bozuk/eski değer
+      yüzeyin ilk seçeneğine düşer, alan değişince o alanın DOĞAL yönü gelir: tarih
+      yeniden-eskiye, başlık A→Z).
+- [x] Notlar varsayılanı **düzenlenme, yeniden eskiye**; null zinciri (`updatedAt` →
+      `createdAt` → ULID) tek yerde (`_noteInstant`). Başlık sırası fold-duyarlı. Arama
+      açıkken tier önce, seçilen sıra tier İÇİNDE (yoksa sıralama sessizce yok sayılırdı).
+      Pin sıralamayı değiştirmiyor (§34 L5). Proje notlar sekmesi de varsayılan sırayı alıyor.
+- [x] Notes app bar'ı: görünüm + sıralama TEK menüde (`list-sort-menu`); `notes-view-toggle`
+      ikonu kalktı, işlevi menünün "Görünüm" bölümünde.
+- [x] Global Dosyalar bölümü seçiciye kavuştu (hiç yoktu) ve proje Files sekmesinin
+      `_FileSort` enum'u paylaşılan bileşene taşındı — ikisi de `alliswell_files_sort`'u
+      paylaşıyor, yani artık **hatırlanıyor** (eskiden `setState` ile ölüyordu).
+- [x] Testler (+16): `list_sort_test` (kodlama/çözümleme/yön/karşılaştırıcı, 8) ·
+      `note_sort_test` (üç sıra + ters çevirme + tarihsiz not + menüden seçim + kalıcılık, 7) ·
+      Kaynaklar katmanında sıralama + kalıcılık (1). Mevcut iki test yeni yüzeye uyarlandı.
+      i18n `sort.*` en+tr.
+- [x] Yüzey: Notlar app bar menüsü · Dosyalar bölümü app bar'ı · proje Files sekmesi.
 
 ### OPH-259 — Renk sistemi v2: `AwColorPicker`, son 5 renk, hex diyaloğunun ölümü (DESIGN §33)
 

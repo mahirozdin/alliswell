@@ -1,41 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:alliswell/src/core/retry.dart';
-import 'package:alliswell/src/app.dart';
-import 'package:alliswell/src/features/auth/data/secret_store.dart';
-import 'package:alliswell/src/features/auth/data/token_storage.dart';
-import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
 
-import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
-import '../../support/sync_overrides.dart';
-
-Future<Widget> signedInAppWith(FakeApi api) async {
-  SharedPreferences.setMockInitialValues({});
-  final store = InMemorySecretStore();
-  await TokenStorage(store).save(fakeSession());
-  return ProviderScope(
-    retry: awRetry,
-    overrides: [
-      ...syncTestOverrides(),
-      secretStoreProvider.overrideWithValue(store),
-      apiClientProvider.overrideWithValue(
-        fakeDio(FakeHttpClientAdapter(api.handle)),
-      ),
-    ],
-    child: const AllisWellApp(),
-  );
-}
-
-Future<void> openNotes(WidgetTester tester) async {
-  await tester.tap(find.text('Notes').last);
-  await tester.pumpAndSettle();
-}
+import 'notes_flow_test_support.dart';
 
 void main() {
   testWidgets('notes list renders, pinned chip and search filter the list', (
@@ -168,7 +139,13 @@ void main() {
     await openNotes(tester);
 
     expect(find.byType(GridView), findsNothing);
-    await tester.tap(find.byKey(const Key('notes-view-toggle')));
+    // OPH-258: view and order share one app-bar menu now (§34 L2) — the bar
+    // was at the phone's limit, so the order could not arrive as a sixth icon.
+    await tester.tap(find.byKey(const Key('list-sort-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('sort-option-sort.viewSection:grid')),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(GridView), findsOneWidget);

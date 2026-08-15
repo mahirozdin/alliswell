@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/list_sort.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
@@ -13,6 +14,7 @@ import '../../../sync/refresh.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/refreshable.dart';
 import '../../../widgets/search_field.dart';
+import '../../../widgets/sort_menu.dart';
 import '../../../widgets/status_views.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../projects/providers.dart';
@@ -65,15 +67,27 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             hintText: 'note.searchHint'.tr(),
             onQuery: (q) => ref.read(notesQueryProvider.notifier).setSearch(q),
           ),
-          IconButton(
-            key: const Key('notes-view-toggle'),
-            tooltip: isGrid ? 'note.listView'.tr() : 'note.cardView'.tr(),
-            icon: Icon(
-              isGrid ? Icons.view_list_outlined : Icons.grid_view_outlined,
-            ),
-            onPressed: () => ref
-                .read(notesViewModeProvider.notifier)
-                .set(isGrid ? 'list' : 'grid'),
+          // OPH-258 (§34 L2): view and order are one menu, not two icons. The
+          // bar was already at the phone's limit — that is why the file
+          // actions became a menu in OPH-251 — and L1's point is that choosing
+          // an order must not cost a row of the list either.
+          AwSortMenuButton(
+            choices: kNoteSortChoices,
+            sort: ref.watch(notesSortStateProvider),
+            onChanged: (next) =>
+                ref.read(notesSortProvider.notifier).set(next.encode()),
+            groups: [
+              AwMenuChoiceGroup(
+                titleKey: 'sort.viewSection',
+                choices: const [
+                  AwSortChoice(id: 'list', labelKey: 'sort.viewList'),
+                  AwSortChoice(id: 'grid', labelKey: 'sort.viewGrid'),
+                ],
+                selectedId: viewMode,
+                onSelected: (id) =>
+                    ref.read(notesViewModeProvider.notifier).set(id),
+              ),
+            ],
           ),
           // Round 16 follow-up: AllisWell reads .md files. Reachable from
           // inside the app too, not only when the OS hands us one — a feature

@@ -3,7 +3,26 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-15b (**OPH-270 ACİL BİTTİ + v1.4.1 CANLI — not yazarken
+**Last updated:** 2026-08-15c (**OPH-258 BİTTİ — listeler artık sıralanabiliyor,
+notlar düzenlenme tarihine göre açılıyor. Süitler **1176** (+16), analyze/format/i18n
+temiz. Sıradaki iş: OPH-259 (renk sistemi v2, DESIGN §33).**
+
+**Turun tek cümlesi: sıralama bir sorgu değil bir GÖRÜNTÜLEME tercihi — ve bu ikisini
+ayırmak nerede yaşayacaklarını belirledi.** Sıra `NotesQuery`'ye bindi, çünkü store
+onu uygulayabilen tek yer: başlık sırasının ihtiyaç duyduğu fold'u SQLite yapamıyor
+(ADR-0013'ün kendi dersi, arama için öğrenilmişti). Tercihin KENDİSİ ise ekranın
+state'inde değil `PersistedChoice`'ta — `alliswell_notes_sort` / `alliswell_files_sort`.
+
+**Ölçülen iki şey:** (1) kendi testimin beklentisi yanlıştı — fold hem `İ` hem `ı`'yı
+`i`'ye indiriyor, yani `ırmak` `İzmir`'den ÖNCE gelir; kodu değil testi düzelttim.
+(2) Proje Files sekmesinin sıralaması `setState` ile yaşıyordu, yani her yeniden
+derlemede unutuluyordu — paylaşılan bileşene taşınınca ilk kez kalıcı oldu.
+
+**Notes app bar'ında ikon SAYISI artmadı:** görünüm anahtarı menüye girdi, sıralama da
+onun yanına — §34 L2'nin sebebi buydu (bar telefonda zaten sınırda, OPH-251 aynı yüzden
+dosya eylemlerini menüye almıştı).
+
+Önceki blok: 2026-08-15b (**OPH-270 ACİL BİTTİ + v1.4.1 CANLI — not yazarken
 imleç artık başlığa sıçramıyor. Süitler **1160** (+3), analyze/format/i18n temiz.
 Sıradaki iş: OPH-258 (liste sıralaması).**
 

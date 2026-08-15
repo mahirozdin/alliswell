@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../../core/fold.dart';
+import '../../../core/list_sort.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
 import '../../../sync/outbox.dart';
@@ -17,13 +18,60 @@ const _maxPlainText = 60000;
 enum NotesFilter { all, pinned, archived, readmes }
 
 class NotesQuery {
-  const NotesQuery({this.filter = NotesFilter.all, this.search = ''});
+  const NotesQuery({
+    this.filter = NotesFilter.all,
+    this.search = '',
+    this.sort = const AwSortState('updated'),
+  });
 
   final NotesFilter filter;
   final String search;
 
-  NotesQuery copyWith({NotesFilter? filter, String? search}) =>
-      NotesQuery(filter: filter ?? this.filter, search: search ?? this.search);
+  /// OPH-258: the viewing order travels with the query, because the store is
+  /// the only place that can apply it — the fold a title sort needs is not
+  /// something SQLite can do (ADR-0013).
+  final AwSortState sort;
+
+  NotesQuery copyWith({
+    NotesFilter? filter,
+    String? search,
+    AwSortState? sort,
+  }) => NotesQuery(
+    filter: filter ?? this.filter,
+    search: search ?? this.search,
+    sort: sort ?? this.sort,
+  );
+}
+
+/// What the notes list can be ordered by (§34 L3).
+const kNoteSortChoices = [
+  AwSortChoice(id: 'updated', labelKey: 'sort.updated'),
+  AwSortChoice(id: 'created', labelKey: 'sort.created'),
+  AwSortChoice(id: 'title', labelKey: 'sort.title', descendingByDefault: false),
+];
+
+/// The instant a row sorts by, with the fallback chain resolved in ONE place:
+/// edited falls back to created, and a row with neither sorts oldest (its ULID
+/// still breaks the tie, so the order stays stable).
+DateTime _noteInstant(NoteRow r, String field) {
+  final at = field == 'created' ? r.createdAt : (r.updatedAt ?? r.createdAt);
+  return at ?? DateTime.fromMillisecondsSinceEpoch(0);
+}
+
+/// Orders notes for [sort]. Ties break on the id — ULIDs carry creation order,
+/// so two notes saved in the same millisecond never swap places between frames.
+Comparator<NoteRow> noteSortComparator(AwSortState sort) {
+  int ascending(NoteRow a, NoteRow b) => switch (sort.id) {
+    // Turkish-aware: 'İzmir' and 'ırmak' land where a reader expects, which
+    // no collation this app can rely on gets right (ADR-0013).
+    'title' => foldSearchText(a.title).compareTo(foldSearchText(b.title)),
+    final field => _noteInstant(a, field).compareTo(_noteInstant(b, field)),
+  };
+  final ordered = sort.comparator<NoteRow>(ascending);
+  return (a, b) {
+    final result = ordered(a, b);
+    return result != 0 ? result : b.id.compareTo(a.id);
+  };
 }
 
 /// Searchable plain text from delta ops — mirrors the server's derivation
@@ -80,10 +128,14 @@ class NoteStore {
               if (_matches(r, query, words, readmeIds.contains(r.id)))
                 (_tier(r, words), _row(r)),
           ];
-          if (words.isNotEmpty) {
-            // Ranked tiers (S3): title hits above body hits, stable within.
-            hits.sort((a, b) => a.$1.compareTo(b.$1));
-          }
+          // Ranked tiers first when searching (S3: title hits above body
+          // hits), and the user's chosen order WITHIN a tier — a sort the
+          // search silently ignored would be the §22 problem in miniature.
+          final order = noteSortComparator(query.sort);
+          hits.sort((a, b) {
+            final tier = a.$1.compareTo(b.$1);
+            return tier != 0 ? tier : order(a.$2, b.$2);
+          });
           return [for (final hit in hits) hit.$2];
         },
       );
@@ -141,13 +193,16 @@ class NoteStore {
         (rows, links, project) {
           final linked = {for (final l in links) l.noteId};
           final readmeId = project?.readmeNoteId;
+          // §34 L1 covers a project's notes too. It has no selector of its own
+          // (one tab, no app bar to put it in), so it takes the default order
+          // rather than a different one.
           return [
             for (final r in rows)
               if (!r.isArchived &&
                   r.id != readmeId &&
                   (r.projectId == projectId || linked.contains(r.id)))
                 _row(r),
-          ];
+          ]..sort(noteSortComparator(const AwSortState('updated')));
         },
       );
 

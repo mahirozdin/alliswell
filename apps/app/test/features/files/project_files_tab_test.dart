@@ -124,9 +124,12 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await openFilesTab(tester, 'Sıralı proje');
 
-    await tester.tap(find.byIcon(Icons.sort));
+    // OPH-258: the tab's private enum became the shared control, so the
+    // wording comes from `sort.*` now — and, unlike before, the choice is
+    // remembered instead of dying with the next rebuild.
+    await tester.tap(find.byKey(const Key('list-sort-menu')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('By name'));
+    await tester.tap(find.byKey(const Key('sort-option-name')));
     await tester.pumpAndSettle();
 
     final rows = tester
@@ -134,6 +137,9 @@ void main() {
         .map((w) => w.file.name)
         .toList();
     expect(rows, ['a-önce.bin', 'b-son.bin']);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('alliswell_files_sort'), 'name:asc');
   });
 
   testWidgets('uploading from the tab targets the PROJECT', (tester) async {

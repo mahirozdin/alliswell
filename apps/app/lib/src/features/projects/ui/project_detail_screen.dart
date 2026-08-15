@@ -6,7 +6,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error_messages.dart';
 import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
+import '../../../core/list_sort.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
+import '../../../widgets/sort_menu.dart';
+import '../../files/data/file_attachment.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
 import '../../files/ui/attach_menu.dart';
@@ -521,8 +525,6 @@ class _ProjectNotesTab extends ConsumerWidget {
 /// (offline-capable), with source badges (F4), source filter chips, sort
 /// toggles and uploads targeting the PROJECT. Follows the Tasks/Notes tab
 /// shape (top action row, not a FAB — those tabs set the pattern).
-enum _FileSort { date, name, size }
-
 class _ProjectFilesTab extends ConsumerStatefulWidget {
   const _ProjectFilesTab({required this.project});
 
@@ -534,24 +536,19 @@ class _ProjectFilesTab extends ConsumerStatefulWidget {
 
 class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
   String _filter = 'all'; // all | project | task | note
-  _FileSort _sort = _FileSort.date;
 
-  List<ProjectFileEntry> _arrange(List<ProjectFileEntry> entries) {
+  /// OPH-258 (§34 L4): the same control and the same preference as the global
+  /// Files section — this tab's own enum sorted with `setState` and forgot the
+  /// choice the moment the tab rebuilt.
+  List<ProjectFileEntry> _arrange(
+    List<ProjectFileEntry> entries,
+    AwSortState sort,
+  ) {
     final filtered = _filter == 'all'
         ? entries.toList()
         : entries.where((e) => e.sourceType == _filter).toList();
-    switch (_sort) {
-      case _FileSort.date:
-        break; // the store already orders newest-first
-      case _FileSort.name:
-        filtered.sort(
-          (a, b) =>
-              a.file.name.toLowerCase().compareTo(b.file.name.toLowerCase()),
-        );
-      case _FileSort.size:
-        filtered.sort((a, b) => b.file.sizeBytes.compareTo(a.file.sizeBytes));
-    }
-    return filtered;
+    final order = fileSortComparator(sort);
+    return filtered..sort((a, b) => order(a.file, b.file));
   }
 
   @override
@@ -566,9 +563,13 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
         .where((j) => j.targetType == 'project' && j.targetId == project.id)
         .toList();
     final configured = status.value?.configured ?? true;
+    final sort = AwSortState.parse(
+      ref.watch(filesSortProvider),
+      kFileSortChoices,
+    );
 
     Widget list(List<ProjectFileEntry> all) {
-      final items = _arrange(all);
+      final items = _arrange(all, sort);
       if (items.isEmpty && uploads.isEmpty) {
         return configured
             ? AwEmptyState(
@@ -623,25 +624,11 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
                     ),
               ),
               const Spacer(),
-              PopupMenuButton<_FileSort>(
-                tooltip: 'file.sort'.tr(),
-                icon: const Icon(Icons.sort),
-                initialValue: _sort,
-                onSelected: (value) => setState(() => _sort = value),
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: _FileSort.date,
-                    child: Text('file.sortDate'.tr()),
-                  ),
-                  PopupMenuItem(
-                    value: _FileSort.name,
-                    child: Text('file.sortName'.tr()),
-                  ),
-                  PopupMenuItem(
-                    value: _FileSort.size,
-                    child: Text('file.sortSize'.tr()),
-                  ),
-                ],
+              AwSortMenuButton(
+                choices: kFileSortChoices,
+                sort: sort,
+                onChanged: (next) =>
+                    ref.read(filesSortProvider.notifier).set(next.encode()),
               ),
             ],
           ),

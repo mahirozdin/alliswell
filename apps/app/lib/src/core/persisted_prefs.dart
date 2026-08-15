@@ -66,6 +66,21 @@ final notesViewModeProvider = NotifierProvider<PersistedChoice, String>(
   () => PersistedChoice('alliswell_notes_view_mode', fallback: 'list'),
 );
 
+/// How the notes list is ordered (OPH-258, DESIGN §34 L1/L3) — `field:dir`.
+///
+/// Last edited, newest first: the note you touched last is the note you want
+/// first. Until round 18 the list came back in creation order, while the row
+/// itself showed the edited date.
+final notesSortProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_notes_sort', fallback: 'updated:desc'),
+);
+
+/// How the global Files section is ordered (§34 L4). It had no selector at
+/// all; the project Files tab had one that forgot itself on every rebuild.
+final filesSortProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_files_sort', fallback: 'date:desc'),
+);
+
 /// Home's view: 'list' (the chronological flow, default) or 'board' (the
 /// status-column kanban — round 8, OPH-168 / DESIGN §14 K1).
 final homeViewProvider = NotifierProvider<PersistedChoice, String>(

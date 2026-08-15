@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
+import '../../../core/list_sort.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../screens/home_shell.dart';
 import '../../../sections.dart';
@@ -11,8 +13,10 @@ import '../../../sync/refresh.dart';
 import '../../../widgets/refreshable.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/sort_menu.dart';
 import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
+import '../data/file_attachment.dart';
 import '../data/folder_store.dart';
 import '../providers.dart';
 import 'attach_menu.dart';
@@ -313,8 +317,25 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
       _seedPathFromRoute(ref.watch(foldersProvider).value ?? const []);
     }
     Future<bool> refresh() => refreshSection(ref, AppSection.files);
+    final sort = AwSortState.parse(
+      ref.watch(filesSortProvider),
+      kFileSortChoices,
+    );
     return Scaffold(
-      appBar: buildSectionAppBar(context, 'nav.files'.tr(), onRefresh: refresh),
+      appBar: buildSectionAppBar(
+        context,
+        'nav.files'.tr(),
+        onRefresh: refresh,
+        // OPH-258 (§34 L4): this section never had a sort control at all.
+        trailingActions: [
+          AwSortMenuButton(
+            choices: kFileSortChoices,
+            sort: sort,
+            onChanged: (next) =>
+                ref.read(filesSortProvider.notifier).set(next.encode()),
+          ),
+        ],
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -609,9 +630,15 @@ class _SourcesLayer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entries =
-        ref.watch(workspaceAttachedFilesProvider).value ??
-        const <ProjectFileEntry>[];
+    final sort = AwSortState.parse(
+      ref.watch(filesSortProvider),
+      kFileSortChoices,
+    );
+    final order = fileSortComparator(sort);
+    final entries = [
+      ...ref.watch(workspaceAttachedFilesProvider).value ??
+          const <ProjectFileEntry>[],
+    ]..sort((a, b) => order(a.file, b.file));
     return AwRefresh(
       indicatorKey: const Key('sources-refresh'),
       onRefresh: onRefresh,
