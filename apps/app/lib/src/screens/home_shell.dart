@@ -32,6 +32,7 @@ import '../sections.dart';
 import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
 import '../theme/tokens.dart';
+import '../widgets/document_surface.dart';
 import '../widgets/glass.dart';
 import '../widgets/refreshable.dart';
 
@@ -92,6 +93,10 @@ class HomeShell extends ConsumerWidget {
   /// space-between is the standard two-corner recipe. When AI is off, the
   /// section FAB is returned alone (unchanged behavior).
   Widget? _fabBar(BuildContext context, WidgetRef ref) {
+    // OPH-271: the note editor takes the screen, so nothing floats over it —
+    // neither "new note" nor the AI button. Someone writing is not shopping
+    // for a second thing to start.
+    if (awIsDocumentRoute(GoRouterState.of(context).uri.path)) return null;
     final section = _sectionFab(context, ref);
     if (!aiFabVisible(ref)) return section;
     return Padding(

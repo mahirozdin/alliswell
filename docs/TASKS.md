@@ -7828,6 +7828,34 @@ sahte uygulamayı kurmamalı._
       i18n `sort.*` en+tr.
 - [x] Yüzey: Notlar app bar menüsü · Dosyalar bölümü app bar'ı · proje Files sekmesi.
 
+### OPH-271 — Not ekranında hiçbir şey yüzmez (DESIGN §22a, sıra dışı)
+
+_(Doğdu ve kapandı 2026-08-15 — sahibin OPH-259 ile birlikte istediği düzeltme: "not yazma
+ve düzenleme ekranında FAB butonların tamamı görünmez olmalı … hızlı erişim butonu, ekleme
+butonu ve AI sohbet butonu". Epic'te planlı değildi; yazmayı zorlaştıran bir şey sıradaki
+işi bekleyemez.)_
+
+_**Üç düğme üç ayrı yerden geliyordu** ve bu yüzden tek bir yamayla kapanmıyordu: bölüm
+FAB'ı ve AI düğmesi shell'in `Scaffold`'una ait (editör shell dalının İÇİNDE bir rota),
+hızlı erişim balonu ise `MaterialApp.builder`'da, yani tüm uygulamanın üstünde._
+
+_**Yanlış mekanizmayı önce denedim, ölçüp bıraktım:** ekranın kendini "belge yüzeyi" ilan
+ettiği bir provider yazdım; Riverpod `initState`'ten provider yazmayı **yasaklıyor**
+(test birebir bu istisnayı bastı), post-frame'e ertelemek de düğmeleri bir kare
+göstermek demekti. Rota zaten bu bilgiyi ilk kareden önce taşıyor — kapı `awIsDocumentRoute`
+oldu: shell `GoRouterState` ile, balon router delegate'iyle soruyor (balon Router'ın
+ÜSTÜNDE, `GoRouterState.of` orada bir `ModalRoute` istiyor ve bulamıyor)._
+
+- [x] `widgets/document_surface.dart`: `awIsDocumentRoute` (şekil eşleşmesi — dört giriş
+      noktası da kapsanıyor, `/edit-note/:id` dahil) + `AwDocumentRouteBuilder` (Router'ın
+      üstündeki katmanlar için, delegate `Listenable` olduğundan pollama yok).
+- [x] `home_shell._fabBar` belge rotasında `null` dönüyor (bölüm FAB'ı + AI düğmesi birlikte).
+- [x] `QuickAccessBubbleHost`'a aynı kapı, mevcut tur/alarm kapılarının yanına.
+- [x] Markdown import önizlemesi de kapsandı (§22a U3 — kendi birincil eylemi var).
+- [x] Testler (+4): rota predicate'i (dört giriş + beş olumsuz) · nota girince üç kontrolün
+      de kaybolduğu ve **geri dönünce döndüğü** · yeni notta ilk kareden itibaren gizli.
+- [x] Yüzey: not editörü (dört giriş noktası) + markdown import ekranı.
+
 ### OPH-259 — Renk sistemi v2: `AwColorPicker`, son 5 renk, hex diyaloğunun ölümü (DESIGN §33)
 
 _Bulgu #11/#12. "Mevcut seçici kullanışsız" şikâyetinin ölçülen karşılığı: Live modda Quill'in

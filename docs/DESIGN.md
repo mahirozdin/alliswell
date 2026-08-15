@@ -780,6 +780,23 @@ Two consequences, binding on every future task:
   deliberately (OPH-195). Delete is the cell that goes missing, because it is the
   only one no happy-path demo ever exercises.
 
+### 22a. A document owns its screen (round 18 — OPH-271)
+
+_(Added 2026-08-15. The owner, mid-round: "not yazma ve düzenleme ekranında FAB
+butonların tamamı görünmez olmalı … hızlı erişim butonu, ekleme butonu ve AI
+sohbet butonu".)_
+
+Reachability (§22) says a capability nobody can reach is not shipped. Its
+corollary is this: a surface where the user is **producing** something must not
+be covered by shortcuts to producing something else.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| U1 | **On a note — read or written — nothing floats.** The section FAB, the AI button and the quick-access bubble are all hidden while a document owns the screen. | Three separate controls sat over the text, two of them offering to start a *new* thing to someone already writing one. On a phone the bubble also lands where a thumb rests. |
+| U2 | **The route decides, not the widget.** `awIsDocumentRoute` matches the shape (`/notes/<anything>`, `/edit-note/<id>`), and both layers ask it — the shell through `GoRouterState`, the bubble through the router delegate, because it sits above the Router. | The editor has four entry points and one (`/edit-note/:id`) is easy to forget; a list of literals would rot at the fifth. A provider raised by the screen was tried first and rejected: Riverpod forbids writing one from `initState`, and deferring to a post-frame callback flashes the buttons on the way in. |
+| U3 | **The markdown import preview counts too.** | It is the same document one tap before it becomes a note, and it carries its own primary action. |
+| U4 | **They come back when the document closes** — the controls belong to the lists, and the way back is the ordinary one. | Hiding must not become losing (§22 again). |
+
 ## 23. Quick Access: the sidebar section and the floating button (round 11 — Epic 18)
 
 _(Added 2026-07-29, request round 11 #1: "Notion'daki sol menü gibi… mobilde iPhone'un

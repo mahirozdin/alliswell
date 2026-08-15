@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/modal_observer.dart';
 import '../../../router.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/document_surface.dart';
 import '../../auth/providers.dart';
 import '../../onboarding/tour.dart';
 import '../../../notifications/alarm_overlay.dart';
@@ -46,7 +47,13 @@ class QuickAccessBubbleHost extends ConsumerWidget {
     if (ref.watch(tourControllerProvider).running) return child;
     if (ref.watch(alarmOverlayControllerProvider).ringing != null) return child;
 
-    return _BubbleLayer(child: child);
+    // OPH-271: and it does not float over a note being read or written. This
+    // layer sits above the Router, so it follows navigation through the
+    // delegate rather than `GoRouterState` (which needs a route ancestor).
+    return AwDocumentRouteBuilder(
+      builder: (context, isDocument) =>
+          isDocument ? child : _BubbleLayer(child: child),
+    );
   }
 }
 

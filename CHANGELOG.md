@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Writing a note is no longer crowded by floating buttons.** The "new note"
+  button, the AI button and the quick-access bubble all used to sit on top of
+  the note you were reading or writing — two of them offering to start
+  something new to someone already in the middle of something. They step aside
+  while a note is open, and come back when you leave it (OPH-271).
+
 ### Added
 
 - **Lists can be sorted, from the app bar.** Notes now open with whatever you
