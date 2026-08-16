@@ -3,7 +3,25 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-16a (**OPH-259 TAMAMLANDI — sahip (a) yolunu seçti ve
+**Last updated:** 2026-08-16b (**OPH-272 (sahibin üç düzeltmesi) BİTTİ + **v1.5.0
+kesildi**. Süitler **1199**, analyze/format/i18n temiz, contrast FAILURES: 0.
+Sıradaki iş: OPH-260 (gelişmiş ayarlar).**
+
+**Turun tek cümlesi: raporlanan üç şeyden birincisi eksik özellik değildi, bulunamayan
+özellikti.** Telefon genişliğinde teşhis testi üçünü de yerinde buldu — markdown düğmesi
+294–342 px'de ikonuyla, editörün taşma menüsü 342–390'da ve **PDF öğesi içinde**. Arıza
+ulaşılabilirlikteydi: menü kendine "Hızlı işlemler" diyordu ve export yalnız oradaydı.
+Sahibin cümlesi çözümü de söylüyordu ("arşivle sil vs işlemlerinin orda") — export satır
+menüsüne kondu, ipucu "Not işlemleri" oldu.
+
+**İkon: üretilemedi, o yüzden tahmin sevk edilmedi.** Kod noktası teorisi çürüdü (yanındaki
+ayarlar ikonu aynı 0xf… bloğunda ve çiziliyor); yapılan şey o tek glyph'e bağımlılığı
+kaldırmak oldu (`folder_open_outlined` → `folder_open`). Sahibin cihazında doğrulanacak.
+
+**DESIGN §34 L5 ters çevrildi:** yıldızlı notlar artık her sıralamanın üstünde gruplanıyor.
+Kuralı ben yazmıştım ve yanlıştı — sabitleme "gözümün önünde tut" demektir.
+
+Önceki blok: 2026-08-16a (**OPH-259 TAMAMLANDI — sahip (a) yolunu seçti ve
 mekanizma paketin içinden çıktı. Süitler **1196**, analyze/format/i18n temiz,
 `contrast.py` FAILURES: 0 (28 yeni çift). Sıradaki iş: OPH-260 (gelişmiş ayarlar).**
 

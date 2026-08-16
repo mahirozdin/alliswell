@@ -69,6 +69,12 @@ Comparator<NoteRow> noteSortComparator(AwSortState sort) {
   };
   final ordered = sort.comparator<NoteRow>(ascending);
   return (a, b) {
+    // Starred notes are a GROUP above the list, not a value inside the sort
+    // (owner's call, 2026-08-16 — §34 L5 said the opposite and was wrong about
+    // what a star means here). Pinning is how someone says "keep this where I
+    // can see it"; an order that can bury it makes the star a decoration.
+    // Inside each group the chosen order applies exactly as before.
+    if (a.isPinned != b.isPinned) return a.isPinned ? -1 : 1;
     final result = ordered(a, b);
     return result != 0 ? result : b.id.compareTo(a.id);
   };

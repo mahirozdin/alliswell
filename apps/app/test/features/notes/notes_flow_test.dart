@@ -130,6 +130,29 @@ void main() {
     expect(find.text('Yıldızlanacak'), findsOneWidget);
   });
 
+  // OPH-272: the owner went looking for the export "where archive and delete
+  // are" — the row menu — and it was only inside the editor's overflow.
+  testWidgets('a note can be exported to PDF from its row menu', (
+    tester,
+  ) async {
+    final api = FakeApi()
+      ..seedNote(title: 'Dışa aktarılacak', plainText: 'gövde');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openNotes(tester);
+
+    await tester.tap(find.byKey(Key('note-menu-${api.notes.single['id']}')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(Key('note-row-export-${api.notes.single['id']}')),
+      findsOneWidget,
+      reason:
+          'export belongs beside archive and delete, not only in the editor',
+    );
+    expect(find.text('Export as PDF'), findsOneWidget);
+  });
+
   testWidgets('view toggle switches to A4 cards and persists the mode', (
     tester,
   ) async {

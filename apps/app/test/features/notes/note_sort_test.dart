@@ -29,6 +29,20 @@ NoteRow _note({
   updatedAt: updated,
 );
 
+extension on NoteRow {
+  NoteRow copyPinned() => NoteRow(
+    id: id,
+    workspaceId: workspaceId,
+    title: title,
+    snippet: snippet,
+    isPinned: true,
+    isArchived: isArchived,
+    revision: revision,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+  );
+}
+
 void main() {
   group('the comparator (§34 L1/L3)', () {
     final oldest = _note(
@@ -78,6 +92,48 @@ void main() {
 
     test('reversing flips the whole list', () {
       expect(idsFor('updated:asc'), ['B', 'A', 'C']);
+    });
+
+    test('starred notes are a group above the list, whatever the sort', () {
+      // Owner's call (2026-08-16): §34 L5 had said the star must not disturb
+      // the order. It was wrong about what a star means — pinning is how
+      // someone keeps a note in sight, and an order that can bury it makes the
+      // star a decoration.
+      final pinned = _note(
+        id: 'P',
+        title: 'zzz en eski',
+        created: DateTime.utc(2020, 1, 1),
+        updated: DateTime.utc(2020, 1, 1),
+      ).copyPinned();
+
+      for (final encoded in ['updated:desc', 'created:desc', 'title:asc']) {
+        final sorted = [newest, middle, pinned, oldest]
+          ..sort(
+            noteSortComparator(AwSortState.parse(encoded, kNoteSortChoices)),
+          );
+        expect(
+          sorted.first.id,
+          'P',
+          reason: 'the star outranks $encoded, which it did not before',
+        );
+      }
+    });
+
+    test('inside a group the chosen order still decides', () {
+      final pinnedOld = _note(
+        id: 'P1',
+        title: 'a',
+        updated: DateTime.utc(2026, 1, 1),
+      ).copyPinned();
+      final pinnedNew = _note(
+        id: 'P2',
+        title: 'b',
+        updated: DateTime.utc(2026, 8, 1),
+      ).copyPinned();
+
+      final sorted = [pinnedOld, pinnedNew, newest]
+        ..sort(noteSortComparator(const AwSortState('updated')));
+      expect(sorted.map((n) => n.id), ['P2', 'P1', 'A']);
     });
 
     test('a note with no dates sorts last, and stays put', () {

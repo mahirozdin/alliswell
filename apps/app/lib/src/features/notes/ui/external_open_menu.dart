@@ -30,7 +30,15 @@ class ExternalOpenMenu extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
       key: const Key('notes-open-markdown'),
-      icon: const Icon(Icons.folder_open_outlined),
+      // OPH-272: reported blank on the owner's device — the tooltip appeared
+      // but no glyph did, so the control did not read as a button. It could
+      // not be reproduced here (the widget and the icon are both present in a
+      // widget test), and the codepoint theory does not hold either: the
+      // settings icon next to it is in the same 0xf… variant block and draws
+      // fine. Rather than ship a guess, this drops the dependence on that one
+      // glyph — `folder_open` is the classic-codepoint sibling and says the
+      // same thing.
+      icon: const Icon(Icons.folder_open),
       tooltip: 'note.mdOpen'.tr(),
       onSelected: (value) async {
         switch (value) {

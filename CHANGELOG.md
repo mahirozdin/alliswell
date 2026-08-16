@@ -5,6 +5,29 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-16
+
+### Fixed
+
+- **Exporting a note to PDF is where you would look for it.** It existed, but
+  only inside the editor's overflow menu — which called itself "quick actions",
+  so it did not read as the place notes get exported. It now sits in the note's
+  own row menu too, beside Archive and Delete, and the editor's menu says what
+  it is (OPH-272).
+- **The "open a markdown file" button in Notes has an icon again.** It was
+  drawing nothing on the owner's device: the tooltip appeared but the button
+  did not look like one. That control no longer depends on the glyph that came
+  up blank (OPH-272).
+- **Starred notes stay at the top of the list**, above whatever order you chose,
+  instead of being sorted in among the rest. Pinning is how you keep a note in
+  sight; an order that can bury it makes the star a decoration (OPH-272).
+
+- **Writing a note is no longer crowded by floating buttons.** The "new note"
+  button, the AI button and the quick-access bubble all used to sit on top of
+  the note you were reading or writing — two of them offering to start
+  something new to someone already in the middle of something. They step aside
+  while a note is open, and come back when you leave it (OPH-271).
+
 ### Changed
 
 - **You can colour text and highlight it in a note, without ever seeing a hex
@@ -23,14 +46,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   swatch, with a white checkmark that disappeared on pale colours). The memory
   is shared, so a colour you gave a project is waiting for you on a tag
   (OPH-259).
-
-### Fixed
-
-- **Writing a note is no longer crowded by floating buttons.** The "new note"
-  button, the AI button and the quick-access bubble all used to sit on top of
-  the note you were reading or writing — two of them offering to start
-  something new to someone already in the middle of something. They step aside
-  while a note is open, and come back when you leave it (OPH-271).
 
 ### Added
 

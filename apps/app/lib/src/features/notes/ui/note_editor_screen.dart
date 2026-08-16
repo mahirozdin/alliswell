@@ -419,7 +419,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
           if (!widget.external)
             PopupMenuButton<String>(
               key: const Key('note-quick-menu'),
-              tooltip: 'quick.actions'.tr(),
+              tooltip: 'note.actions'.tr(),
               onSelected: (value) {
                 if (value == 'export-pdf') {
                   unawaited(

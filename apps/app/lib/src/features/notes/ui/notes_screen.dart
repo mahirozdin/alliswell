@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +21,7 @@ import '../../../widgets/status_views.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../projects/providers.dart';
 import 'external_open_menu.dart';
+import 'note_export.dart';
 import '../data/note.dart';
 import '../providers.dart';
 
@@ -246,6 +249,28 @@ Future<void> deleteNoteWithUndo(
   );
 }
 
+/// Exports a note straight from its row (OPH-272).
+///
+/// The list only holds a snippet, so the body is read from the replica first —
+/// the same watch the editor opens with, taken once.
+Future<void> _exportRow(
+  BuildContext context,
+  WidgetRef ref,
+  NoteRow note,
+) async {
+  final detail = await ref.read(noteStoreProvider).watchDetail(note.id).first;
+  if (!context.mounted) return;
+  await exportNoteAsPdf(
+    context,
+    ref,
+    title: detail.title.trim().isEmpty
+        ? 'note.untitled'.tr()
+        : detail.title.trim(),
+    deltaJson: detail.contentDelta ?? const [],
+    updatedAt: detail.updatedAt,
+  );
+}
+
 class _NoteMenu extends ConsumerWidget {
   const _NoteMenu({required this.note});
 
@@ -259,6 +284,10 @@ class _NoteMenu extends ConsumerWidget {
       onSelected: (action) {
         if (action == 'archive') setNoteArchived(ref, note, !note.isArchived);
         if (action == 'delete') deleteNoteWithUndo(context, ref, note);
+        // OPH-272: the export existed only inside the editor's overflow, and
+        // the owner went looking for it "where archive and delete are" — which
+        // is here. The row carries no body, so it loads the note first.
+        if (action == 'export-pdf') unawaited(_exportRow(context, ref, note));
         if (action == 'quick') {
           toggleQuickAccess(
             context,
@@ -270,6 +299,15 @@ class _NoteMenu extends ConsumerWidget {
         }
       },
       itemBuilder: (context) => [
+        PopupMenuItem(
+          key: Key('note-row-export-${note.id}'),
+          value: 'export-pdf',
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.picture_as_pdf_outlined),
+            title: Text('note.exportPdf'.tr()),
+          ),
+        ),
         quickAccessMenuItem(
           value: 'quick',
           isSaved: isInQuickAccess(ref, QuickKind.note, note.id),

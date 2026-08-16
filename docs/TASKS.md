@@ -7914,6 +7914,34 @@ ediyorsa bunu kanıtlamak zorunda._
 - [x] Yüzey (bu turda): proje · etiket · hızlı erişim renk seçicileri.
 - [x] Yüzey (kalan): editör araç çubuğu — iki yeni düğme.
 
+### OPH-272 — Sahibin üç düzeltmesi: dışa aktarma nerede, ikon nerede, yıldız nerede (sıra dışı)
+
+_(Doğdu ve kapandı 2026-08-16 — epic dışı, sahibin doğrudan raporu. v1.5.0 ile sevk edildi.)_
+
+_**Teşhis önce ölçüldü, sonra düzeltildi — ve ilk madde "eksik özellik" DEĞİLDİ.** Telefon
+genişliğinde bir teşhis testi üçünü de yerinde buldu: `notes-open-markdown` 294–342 px'de
+ve ikonu mevcut, editörün `note-quick-menu`'sü 342–390'da ve **PDF öğesi menünün içinde**.
+Yani kod doğruydu; arıza ULAŞILABİLİRLİKTE. §22'nin tanıdık yüzü: "menüde var" ile
+"insan bulabiliyor" ayrı cümleler._
+
+- [x] **PDF dışa aktarma bulunabilir oldu.** Sahibin cümlesi birebir yol gösterdi —
+      "arşivle sil vs işlemlerinin orda" — ve orası **satır menüsü**. Export oraya kondu
+      (`note-row-export-<id>`); satır gövdeyi taşımadığı için not önce replikadan okunuyor
+      (`watchDetail(...).first`). Editörün taşma menüsünün ipucu da düzeltildi: "Hızlı
+      işlemler" diyordu, artık "Not işlemleri" — kısayol değil, notun kendi eylemleri.
+- [x] **Markdown menüsünün ikonu.** Sahibin cihazında hiç çizilmiyor (ipucu çıkıyor, düğme
+      belli değil). **Üretilemedi** ve kod noktası teorisi de çürüdü: yanındaki ayarlar
+      ikonu aynı 0xf… varyant bloğunda (0xf36e) ve sorunsuz çiziliyor. Tahmin sevk etmek
+      yerine o tek glyph'e olan bağımlılık kaldırıldı — `folder_open_outlined` (0xf090)
+      yerine klasik kod noktalı kardeşi `folder_open` (0xe2a4).
+- [x] **Yıldızlı notlar listenin başında.** Sıralama ne olursa olsun önce yıldızlılar
+      gruplanıyor, grup İÇİNDE seçilen sıra aynen işliyor. **DESIGN §34 L5 bunun TERSİNİ
+      söylüyordu ve yanlıştı** — sabitleme "bunu gözümün önünde tut" demenin yolu, onu
+      gömebilen bir sıra yıldızı süse çevirir. Kural sahibin kararıyla ters çevrildi ve
+      gerekçesi yazıldı.
+- [x] Testler (+3): üç sıralama seçeneğinde de yıldızlının başa geçtiği · grup içinde
+      sıranın korunduğu · satır menüsünde export öğesinin bulunduğu.
+
 ### OPH-260 — Gelişmiş ayarlar: 19 satırlık düz liste → 6 gruplu IA (DESIGN §32)
 
 _Bulgu #14. Envanterin tamamı planlama raporunda satır satır çıkarıldı (19 satır, sıra ve
