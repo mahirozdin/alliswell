@@ -7862,8 +7862,8 @@ _Bulgu #11/#12. "Mevcut seçici kullanışsız" şikâyetinin ölçülen karşı
 stok diyaloğu (hex alanlı) açılıyor; md tarafında renk aksiyonu zaten yok; dönüşüm renkleri
 sessizce siliyor. Bu task seçiciyi BİZİM yapar ve dört yüzeyi tek bileşene bağlar._
 
-_(🟡 2026-08-15 — **yarısı sevk edildi, yarısı ÖLÇÜLEREK durduruldu.** Süitler **1188**
-(+8), analyze/format/i18n temiz. Kalan iş aşağıda, sebebiyle birlikte.)_
+_(✅ 2026-08-16 — **tamamlandı.** Süitler **1196** (+16 toplam), analyze/format/i18n
+temiz, `contrast.py` FAILURES: 0 (28 yeni çift). Sahip (a) yolunu seçti.)_
 
 _**Turun tek cümlesi: R4'ün sözü aritmetikle çelişiyor ve bunu planlayan bendim.**
 Quill'in `color`/`background` niteliği TEK bir sabit hex saklar; altındaki yüzey (ve
@@ -7873,8 +7873,19 @@ da kötü: bir dolgunun ışıkta `#0F1B2E`, karanlıkta `#EAF0FD` mürekkebin a
 kalması gerekiyor ve bu iki oranın çarpımı en fazla 21 olduğu için ikisi birden ancak
 tek bir orta açıklıkta ~4.6'ya ulaşabiliyor — en iyi aday `#808080` **4.37 / 3.46**
 veriyor, yani ikisinde de kalıyor ve zaten kimsenin "vurgu" demeyeceği bir gri.
-**Renk ham hex olarak saklanırsa bu söz tutulamaz.** DESIGN §33 R4 düzeltildi ve iki
-dürüst yol yazıldı; editör rengi bu karar verilmeden yazılmaz._
+**Renk ham hex olarak saklanırsa bu söz tutulamaz.**_
+
+_**Sahibin kararı: (a) — semantik id + tema başına çözümleme.** Ve mekanizma paketin
+kendi içinde çıktı: `stringToColor` herhangi bir ayrıştırma denemeden ÖNCE
+`DefaultStyles.palette` haritasına bakıyor, yani `aw:text-red` adını Quill'in kendisi
+çözüyor — renderer'ını çatallamaya gerek yok. Belge adı saklıyor, tema hex'i seçiyor.
+Ölçüm sonrası: **14 çiftin 14'ü de iki temada geçiyor** (metin 6.0–9.8, vurgu 7.6–15.3),
+28 çift `contrast.py`'ye eklendi ve kapı kasıtlı ihlalle sınandı (1.47 → FAILURES: 1)._
+
+_**Yol boyunca kendi hatam:** markdown→delta yamalarım Python kaçış karakterleri yüzünden
+**sessizce düşmüştü** — `replace` hiçbir şey yapmadı, dosya değişmedi. OPH-251'in dersi
+birebir tekrarladı; `assert`'lerle yeniden yazıldı. Bir yama, uygulandığını iddia
+ediyorsa bunu kanıtlamak zorunda._
 
 - [x] `widgets/color_picker.dart` — `AwColorPicker`: son kullanılanlar satırı (boşsa yok) +
       yüzeyin paleti (`AwColorSwatchDot`) + yüzeye göre "daha fazla"/"renk yok". Satır içi
@@ -7885,21 +7896,23 @@ dürüst yol yazıldı; editör rengi bu karar verilmeden yazılmaz._
 - [x] Üç yüzey taşındı: proje · etiket (kendi `InkWell`+`CircleAvatar`'ı vardı, paylaşılan
       swatch'ı bile kullanmıyordu) · hızlı erişim (10'luk palet aynen, §23 Q8a korunuyor).
       Artık üçü de aynı anatomi ve aynı hafıza.
-- [ ] **Editör (AÇIK — R4 kararına bağlı).** `showColorButton`/`showBackgroundColorButton`
-      hâlâ açık ve stok hex diyaloğu hâlâ ulaşılabilir. **Bilinçli:** yerine koymadan
-      düğmeleri kaldırmak yeteneği silmek olurdu (§22'nin tersi). Sıra: önce R4'ün (a)/(b)
-      kararı — semantik id + tema başına çözümleme, ya da dolgu+mürekkep sabit çifti —
-      sonra iki araç çubuğu düğmesi + paletler + `contrast.py` çiftleri.
-- [ ] Markdown modu: `md_actions.dart`'a `highlight` aksiyonu (`==…==` sarma) — **açık**;
-      editörle aynı turda yapılması mantıklı, tek başına yarım bir cevap.
-- [ ] Dönüşüm dürüstlüğü: `background` → `==…==`, `color` düşecekse dönüşüm diyaloğu ÖNCEDEN
-      söyler — **açık**, editör renginin ne saklayacağına bağlı (R4 kararı ne saklanacağını
-      değiştiriyor, dolayısıyla neyin nasıl dönüştürüleceğini de).
-- [x] Testler (+8): MRU (sıra/tekilleştirme/tavan/restart/bozuk değer/kesişim, 7) ·
+- [x] **Editör.** Stok renk düğmeleri KAPALI (`showColorButton`/`showBackgroundColorButton`
+      — paket ikisini de varsayılan olarak AÇIK bırakıyor, bu yüzden test ikisini de
+      çiviliyor); yerlerine iki düğme: metin rengi ve vurgu. İkisi de `AwColorPicker`
+      açıyor, yazdıkları şey **ad** (`aw:text-red`), ve editör
+      `DefaultStyles(palette: awNoteColorPalette(brightness))` ile o adı temaya çözüyor.
+      Paletler `data/note_colors.dart`'ta; 8 metin + 6 vurgu, hepsi kapıda.
+- [x] Markdown modu: `highlight` aksiyonu (`==…==`) eklendi — renderer'ın OPH-247'den beri
+      çizdiği işaret, ve yapısı gereği tema-güvenli. Metin rengi markdown'a girmiyor
+      (GFM'de yok — §33 R6, yazılı sebep).
+- [x] Dönüşüm dürüstlüğü: delta→markdown vurguyu `==…==` olarak taşıyor, markdown→delta
+      onu varsayılan vurgu ADIYLA geri getiriyor — yani round-trip'te kayboluyor değil.
+      Metin rengi GFM'de yok, düşüyor ve dönüşüm diyaloğu bunu önceden söylüyor.
+- [x] Testler (+16 toplam): semantik renkler (tema başına çözümleme, palet bütünlüğü, ad tekilliği, bize ait olmayan değer, vurgu round-trip, stok düğmelerin kapalılığı — 8) · MRU (sıra/tekilleştirme/tavan/restart/bozuk değer/kesişim, 7) ·
       çapraz-yüzey hafıza (bir yüzeyde seçilen renk diğerinde "son kullanılanlar"da çıkıyor) ·
       üç yüzeyin mevcut testleri yeşil. i18n `color.*` en+tr.
 - [x] Yüzey (bu turda): proje · etiket · hızlı erişim renk seçicileri.
-- [ ] Yüzey (kalan): editör araç çubuğu.
+- [x] Yüzey (kalan): editör araç çubuğu — iki yeni düğme.
 
 ### OPH-260 — Gelişmiş ayarlar: 19 satırlık düz liste → 6 gruplu IA (DESIGN §32)
 

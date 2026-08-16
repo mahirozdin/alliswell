@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-15d (**OPH-271 BİTTİ (sıra dışı, sahibin isteği) +
+**Last updated:** 2026-08-16a (**OPH-259 TAMAMLANDI — sahip (a) yolunu seçti ve
+mekanizma paketin içinden çıktı. Süitler **1196**, analyze/format/i18n temiz,
+`contrast.py` FAILURES: 0 (28 yeni çift). Sıradaki iş: OPH-260 (gelişmiş ayarlar).**
+
+**Turun tek cümlesi: çözümü yazmadım, paketin içinde buldum.** flutter_quill'in
+`stringToColor`'ı herhangi bir ayrıştırma denemeden ÖNCE `DefaultStyles.palette`
+haritasına bakıyor — yani `aw:text-red` gibi bir ADI Quill'in kendisi çözüyor.
+Belge adı saklıyor, tema hex'i seçiyor; renderer çatallanmadı. Dünkü ölçüm (tek
+sabit hex iki temada okunur olamaz) böylece bir engel değil, bir tasarım kararına
+dönüştü. **Sonuç ölçüldü: 14 çiftin 14'ü de geçiyor** (metin 6.0–9.8, vurgu
+7.6–15.3); 28 çift kontrast kapısına girdi ve kapı kasıtlı ihlalle sınandı
+(1.47 → FAILURES: 1, geri alındı → 0).
+
+**Stok hex diyaloğu artık ULAŞILAMAZ** (§33 R3 tamamlandı): iki bayrak da kapalı ve
+test ikisini birden çiviliyor — paket ikisini de varsayılan olarak AÇIK bırakıyor,
+yani yazılmasa sessizce geri gelirdi. Vurgu markdown'a `==…==` olarak geçiyor ve
+geri dönüyor (round-trip testli); metin rengi GFM'de olmadığı için düşüyor ve
+dönüşüm bunu önceden söylüyor.
+
+**Kendi hatam, kayda geçsin:** markdown→delta yamalarım Python kaçış karakterleri
+yüzünden **sessizce düştü** — `replace` hiçbir şey yapmadı ve dosya değişmedi.
+OPH-251'in dersi birebir tekrarladı; `assert`'lerle yeniden yazıldı ve doğrulandı.
+
+Önceki blok: 2026-08-15d (**OPH-271 BİTTİ (sıra dışı, sahibin isteği) +
 OPH-259 YARIM — yarısı sevk edildi, yarısı ÖLÇÜLEREK durduruldu. Süitler **1188**,
 analyze/format/i18n/contrast temiz. Sıradaki iş: OPH-259'un editör yarısı, ama önce
 DESIGN §33 R4'ün (a)/(b) kararı.**

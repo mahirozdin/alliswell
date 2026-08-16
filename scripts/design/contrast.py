@@ -161,6 +161,43 @@ PAIRS = [
     ('D alert warning icon on tint', '#FFC400', '#2C3036', 3.0),
     ('D alert caution text on tint', '#EAF0FD', '#2C243D', 4.5),
     ('D alert caution icon on tint', '#FF5147', '#2C243D', 3.0),
+
+    # ── Note colours (OPH-259, DESIGN §33 R4) ──
+    # Stored by NAME and resolved per theme, which is the whole point: no single
+    # hex clears 4.5 against both #FFFFFF and #151F3C (measured: 0 of 18
+    # candidates), and no single highlight fill carries both body inks — those
+    # two ratios multiply to at most 21, so the best case is ~4.6 at one exact
+    # lightness, and mid-grey #808080 measured 4.37/3.46 and failed both.
+    # Text: against the surface each theme actually paints.
+    ('L note text red', '#B3261E', '#FFFFFF', 4.5),
+    ('L note text orange', '#A8410A', '#FFFFFF', 4.5),
+    ('L note text green', '#1B6E2F', '#FFFFFF', 4.5),
+    ('L note text teal', '#0F6E6E', '#FFFFFF', 4.5),
+    ('L note text blue', '#0B54D0', '#FFFFFF', 4.5),
+    ('L note text purple', '#6D28D9', '#FFFFFF', 4.5),
+    ('L note text pink', '#9D174D', '#FFFFFF', 4.5),
+    ('L note text grey', '#4A5568', '#FFFFFF', 4.5),
+    ('D note text red', '#FF9E96', '#151F3C', 4.5),
+    ('D note text orange', '#FFB07A', '#151F3C', 4.5),
+    ('D note text green', '#6FE08A', '#151F3C', 4.5),
+    ('D note text teal', '#5FD9D9', '#151F3C', 4.5),
+    ('D note text blue', '#8FBEFF', '#151F3C', 4.5),
+    ('D note text purple', '#C4A7FF', '#151F3C', 4.5),
+    ('D note text pink', '#FF9EC4', '#151F3C', 4.5),
+    ('D note text grey', '#AEB9D4', '#151F3C', 4.5),
+    # Highlights: the BODY ink that will sit on the fill, not the fill itself.
+    ('L note mark yellow', '#0F1B2E', '#FFF3A3', 4.5),
+    ('L note mark green', '#0F1B2E', '#CDEFD4', 4.5),
+    ('L note mark blue', '#0F1B2E', '#CFE3FF', 4.5),
+    ('L note mark pink', '#0F1B2E', '#FFD6E4', 4.5),
+    ('L note mark purple', '#0F1B2E', '#E6D9FF', 4.5),
+    ('L note mark grey', '#0F1B2E', '#DFE4EC', 4.5),
+    ('D note mark yellow', '#EAF0FD', '#5A4A12', 4.5),
+    ('D note mark green', '#EAF0FD', '#1E4A2C', 4.5),
+    ('D note mark blue', '#EAF0FD', '#1B3A63', 4.5),
+    ('D note mark pink', '#EAF0FD', '#5A2340', 4.5),
+    ('D note mark purple', '#EAF0FD', '#3B2A66', 4.5),
+    ('D note mark grey', '#EAF0FD', '#333B52', 4.5),
 ]
 
 

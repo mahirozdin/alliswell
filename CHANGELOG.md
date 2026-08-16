@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **You can colour text and highlight it in a note, without ever seeing a hex
+  code.** The editor's old colour buttons opened flutter_quill's own dialog,
+  which asked for a hex value — the one thing this app promised never to show
+  anyone. They are gone, replaced by a text-colour button and a highlight
+  button that offer eight and six named colours. A note now stores the *name*
+  of a colour rather than a fixed value, so light and dark mode each paint one
+  that stays readable — which no single fixed colour can do, and the reason is
+  written down where the next person will look. Highlights also survive being
+  converted to markdown and back (OPH-259).
 - **Colour pickers remember what you used last.** Every place you pick a colour
   — projects, tags, quick-access shortcuts — now offers the ones you reached
   for recently, above that surface's palette, and they are the same picker

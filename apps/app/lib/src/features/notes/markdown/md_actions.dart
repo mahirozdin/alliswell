@@ -119,6 +119,16 @@ List<MdAction> mdActions() => [
     apply: (t, s, e) => _wrap(t, s, e, '*', '*'),
   ),
   MdAction(
+    // OPH-259: markdown's own way to mark text. `==…==` is what the renderer
+    // has drawn since OPH-247, and it is theme-safe by construction — a tinted
+    // token behind the body ink, never a fixed fill. Text COLOUR stays out of
+    // markdown: GFM has no syntax for it (§33 R6, parked with that reason).
+    id: 'highlight',
+    icon: Icons.format_color_fill,
+    slash: '/highlight',
+    apply: (t, s, e) => _wrap(t, s, e, '==', '=='),
+  ),
+  MdAction(
     id: 'code',
     icon: Icons.code,
     slash: '/code',

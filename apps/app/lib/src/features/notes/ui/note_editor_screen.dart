@@ -13,9 +13,11 @@ import '../../files/ui/file_widgets.dart' show UploadRowTile;
 import '../../files/ui/note_drop_target.dart';
 import '../../files/ui/note_media.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/color_picker.dart';
 import '../data/note.dart';
 import '../data/external_document.dart';
 import '../data/external_session.dart';
+import '../data/note_colors.dart';
 import '../data/note_document.dart';
 import 'external_doc_band.dart';
 import '../providers.dart';
@@ -612,10 +614,34 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                   showAlignmentButtons: false,
                   showIndent: false,
                   showDirection: false,
+                  // OPH-259 (§33 R3): the stock colour buttons open a dialog
+                  // with a HEX FIELD, which round 1 forbade. Ours replace
+                  // them — and store a name, not a hex, so each theme paints
+                  // its own readable value (§33 R4).
+                  showColorButton: false,
+                  showBackgroundColorButton: false,
                   showSearchButton:
                       true, // D15: it shipped disabled — a control that did nothing (§22).
                 ),
               ),
+            ),
+            _NoteColorButton(
+              key: const Key('note-text-color'),
+              icon: Icons.format_color_text,
+              titleKey: 'color.text',
+              palette: kAwNoteTextColors,
+              attribute: Attribute.color,
+              controller: _doc.quill,
+              onApplied: _markDirty,
+            ),
+            _NoteColorButton(
+              key: const Key('note-highlight-color'),
+              icon: Icons.format_color_fill,
+              titleKey: 'color.highlight',
+              palette: kAwNoteHighlightColors,
+              attribute: Attribute.background,
+              controller: _doc.quill,
+              onApplied: _markDirty,
             ),
             // Epic 14 (OPH-156): inline images/videos.
             NoteMediaButtons(document: _doc, ensureNote: _ensureNote),
@@ -648,10 +674,104 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
           placeholder: 'note.startWriting'.tr(),
           padding: const EdgeInsets.only(top: 8, bottom: 24),
           embedBuilders: awNoteEmbedBuilders(),
+          // §33 R4: the document stores `aw:text-red`; the theme decides what
+          // that is. `stringToColor` consults this map before it tries to
+          // parse anything, so the names are resolved by the package itself.
+          customStyles: DefaultStyles(
+            palette: awNoteColorPalette(Theme.of(context).brightness),
+          ),
         ),
       ),
     ),
   };
+}
+
+/// A note-colour button: text colour or highlight (OPH-259, §33 R1/R3).
+///
+/// Replaces flutter_quill's stock pair, whose dialog offered a **hex field** —
+/// the one thing round 1 said end users must never see. What it writes is a
+/// NAME (`aw:text-red`), not a hex, so light and dark each paint a value that
+/// has been contrast-checked against the surface it actually lands on (§33 R4).
+class _NoteColorButton extends ConsumerWidget {
+  const _NoteColorButton({
+    super.key,
+    required this.icon,
+    required this.titleKey,
+    required this.palette,
+    required this.attribute,
+    required this.controller,
+    required this.onApplied,
+  });
+
+  final IconData icon;
+  final String titleKey;
+  final List<AwNoteColor> palette;
+  final Attribute<dynamic> attribute;
+  final QuillController controller;
+  final VoidCallback onApplied;
+
+  String? get _current {
+    final value = controller.getSelectionStyle().attributes[attribute.key];
+    return value?.value as String?;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brightness = Theme.of(context).brightness;
+    final selected = awResolveNoteColor(_current, brightness);
+
+    void apply(String? id) {
+      controller.formatSelection(Attribute.clone(attribute, id));
+      onApplied();
+      Navigator.of(context).maybePop();
+    }
+
+    return IconButton(
+      icon: Icon(icon, color: selected),
+      tooltip: titleKey.tr(),
+      onPressed: () => showModalBottomSheet<void>(
+        context: context,
+        // OPH-212: the ROOT navigator, or the shell's own chrome paints over it.
+        useRootNavigator: true,
+        showDragHandle: true,
+        useSafeArea: true,
+        constraints: const BoxConstraints(maxWidth: 560),
+        builder: (sheetContext) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              0,
+              AwSpace.x4,
+              AwSpace.x6,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  titleKey.tr(),
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                ),
+                const SizedBox(height: AwSpace.x3),
+                AwColorPicker(
+                  keyPrefix: attribute.key == Attribute.background.key
+                      ? 'note-mark'
+                      : 'note-ink',
+                  palette: [for (final color in palette) color.id],
+                  selected: _current,
+                  colorOf: (id) =>
+                      awResolveNoteColor(id, brightness) ?? Colors.transparent,
+                  onPicked: apply,
+                  onCleared: () => apply(null),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// What autosave last did (D21).

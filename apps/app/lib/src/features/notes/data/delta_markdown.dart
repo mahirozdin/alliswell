@@ -60,6 +60,10 @@ String deltaToMarkdown(List<Map<String, dynamic>> ops) {
     if (attrs['bold'] == true) out = '**$out**';
     if (attrs['italic'] == true) out = '_${out}_';
     if (attrs['strike'] == true) out = '~~$out~~';
+    // OPH-259: a highlight survives the conversion as the mark markdown has.
+    // A text COLOUR does not — GFM cannot express one — which is why the
+    // conversion dialog says so before it runs (§33 R6).
+    if (attrs['background'] != null) out = '==$out==';
     final link = attrs['link'];
     if (link is String && link.isNotEmpty) out = '[$out]($link)';
     return out;

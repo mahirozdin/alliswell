@@ -46,7 +46,16 @@
     "more": "Daha fazla renk",
     "none": "Renk yok",
     "text": "Metin rengi",
-    "highlight": "Vurgu"
+    "highlight": "Vurgu",
+    "red": "Kırmızı",
+    "orange": "Turuncu",
+    "yellow": "Sarı",
+    "green": "Yeşil",
+    "teal": "Turkuaz",
+    "blue": "Mavi",
+    "purple": "Mor",
+    "pink": "Pembe",
+    "grey": "Gri"
   },
   "nav": {
     "home": "Ana Sayfa",

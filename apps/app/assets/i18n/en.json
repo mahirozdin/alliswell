@@ -47,7 +47,16 @@
     "more": "More colors",
     "none": "No color",
     "text": "Text color",
-    "highlight": "Highlight"
+    "highlight": "Highlight",
+    "red": "Red",
+    "orange": "Orange",
+    "yellow": "Yellow",
+    "green": "Green",
+    "teal": "Teal",
+    "blue": "Blue",
+    "purple": "Purple",
+    "pink": "Pink",
+    "grey": "Grey"
   },
   "nav": {
     "home": "Home",

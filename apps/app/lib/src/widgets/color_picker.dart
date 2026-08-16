@@ -33,12 +33,19 @@ class AwColorPicker extends ConsumerWidget {
     this.onCleared,
     this.moreLabelKey = 'color.more',
     this.clearLabelKey = 'color.none',
+    this.colorOf = colorFromRgbHex,
   });
 
-  /// Upper-case `#RRGGBB` values this surface is willing to show.
+  /// The values this surface is willing to show — `#RRGGBB` for the surfaces
+  /// that store a colour, or note-colour **names** for the editor, which
+  /// stores a name so each theme can resolve its own hex (§33 R4).
   final List<String> palette;
   final String? selected;
   final ValueChanged<String> onPicked;
+
+  /// How a palette value becomes something paintable. Only the editor needs to
+  /// override it; everywhere else a value IS a hex.
+  final Color Function(String value) colorOf;
 
   /// Namespaces the swatch keys so two pickers on one screen stay findable.
   final String keyPrefix;
@@ -59,7 +66,7 @@ class AwColorPicker extends ConsumerWidget {
 
     Widget dot(String hex, {required String keyName}) => AwColorSwatchDot(
       key: Key(keyName),
-      color: colorFromRgbHex(hex),
+      color: colorOf(hex),
       selected: selected?.toUpperCase() == hex.toUpperCase(),
       onTap: () {
         // Remembered before it is applied: the caller may close the sheet.
