@@ -3,7 +3,29 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17a (**OPH-260 BİTTİ — Ayarlar beş yer adlandıran bir
+**Last updated:** 2026-08-17b (**OPH-273 ACİL — canlıdaki tarayıcılar bir yıllık
+eski uygulamayı çalıştırıyordu; kök neden sunucu başlıklarında ve DEPODAYDI. v1.6.0
+kesiliyor (OPH-260 + bu düzeltme).**
+
+**Turun tek cümlesi: "deploy başarılı" ile "kullanıcı yeni kodu çalıştırıyor" ayrı
+cümleler — ve benim deploy doğrulamam ikincisini hiç ölçmemişti.** Sahibin raporu
+haklıydı. Önce üründen ölçtüm: `/app/version.json` 1.5.0 diyor ve deploy edilen
+`tr.json` yeni `sort` bloğunu taşıyor, yani origin doğru. Sonra başlıklar:
+`main.dart.js` ve `flutter_bootstrap.js` → `public, max-age=31536000, immutable`.
+Kök neden `apps/landing/public/.htaccess`: `.js` uzantılı her şeyi bir yıllığına
+immutable yapıyor ve yorumu "Hashed build assets are immutable" diyor — Vite
+paketi için DOĞRU, Flutter için YANLIŞ (adlar sabit, içerik değişir).
+
+**Doğrulamamın neden yeşil yandığı da öğretici:** `version.json` ve landing'in
+JSON-LD'si o immutable kuralının DIŞINDA kaldığı için ikisi de doğruyu söylüyordu.
+Ürünün kullanıcıya ULAŞAN katmanını ölçmeyen bir kanıt, kanıt değil.
+
+**Mevcut kullanıcılar için dürüst sınır:** düzeltme yeni ziyaretçileri ve bundan
+sonrasını kurtarır, ama elinde "bir yıl geçerli" kaydı olan tarayıcı sunucuya HİÇ
+sormaz — o tek kayıt bir kez hard refresh (Ctrl/⌘+Shift+R) ile atılmalı. Ayrıca
+Cloudflare kenarı eski girdiyi tutabilir; purge sahibin panelinden yapılır.
+
+Önceki blok: 2026-08-17a (**OPH-260 BİTTİ — Ayarlar beş yer adlandıran bir
 index oldu. Süitler **1204** (+5), analyze/format/i18n temiz, contrast FAILURES: 0.
 Sıradaki iş: OPH-261 (domain katmanı çıkarımı — MCP/API'nin ön koşulu).**
 

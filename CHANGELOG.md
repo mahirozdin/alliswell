@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.6.0] — 2026-08-17
+
+### Fixed
+
+- **The web app was serving you a year-old copy of itself.** A deploy would go
+  out, the version would say the new number, and the features in it simply were
+  not there — because the server told your browser that the app's code file
+  never changes, so the browser kept running the copy it had and stopped asking
+  for a new one. It now checks on every visit, which costs nothing when nothing
+  changed. **If the app still looks old after this release, reload it once with
+  a hard refresh** (Ctrl/⌘ + Shift + R) — that clears the one stale copy your
+  browser was told to keep; after that it stays current on its own (OPH-273).
+
 ### Changed
 
 - **Settings is an index now, not one long list.** Nineteen rows had piled up in
