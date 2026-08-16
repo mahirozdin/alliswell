@@ -26,14 +26,35 @@
 </IfModule>
 
 <IfModule mod_headers.c>
-  # Hashed build assets are immutable; the two index.html files must never be
-  # cached, or a deploy leaves visitors on the previous bundle.
+  # The MARKETING bundle is content-hashed by Vite (`index-A1b2C3d4.js`), so its
+  # assets really are immutable: a new build writes a new filename.
   <FilesMatch "\.(js|css|woff2?|png|jpe?g|svg|webp|avif)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
   <FilesMatch "^(index\.html|flutter_service_worker\.js|alliswell-config\.js)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
   </FilesMatch>
+
+  # The FLUTTER bundle is not, and the rule above used to swallow it whole.
+  #
+  # `main.dart.js`, `flutter_bootstrap.js`, `flutter.js` and everything under
+  # `assets/` keep the SAME NAME from build to build and change content on
+  # every release — so `immutable, max-age=31536000` told every returning
+  # browser to run the app it already had, for a year, without ever asking.
+  #
+  # Measured 2026-08-17, and it is exactly what a user sees: the origin served
+  # v1.5.0 (`/app/version.json` said so, and the deployed `tr.json` carried the
+  # new strings), while the browser kept executing the `main.dart.js` it had
+  # cached — so shipped features simply were not there. index.html was fresh,
+  # the service worker was fresh, and neither could help: the app's own code
+  # was never re-fetched.
+  #
+  # `<If>` is merged after `<FilesMatch>`, so this wins for everything under
+  # /app/ regardless of extension. Revalidation is cheap — ETags are on, and an
+  # unchanged file answers 304.
+  <If "%{REQUEST_URI} =~ m#^/app/#">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </If>
 
   Header always set X-Content-Type-Options "nosniff"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"

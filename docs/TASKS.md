@@ -7979,6 +7979,46 @@ numarası da gereksizleşti ve silindi: grup sayfası kısa._
       i18n `settings.group.*` en+tr.
 - [x] Yüzey: Ayarlar kökü + 5 yeni alt sayfa; hiçbir mevcut satır kaybolmadı.
 
+### OPH-273 — Canlıdaki tarayıcı bir yıl boyunca eski uygulamayı çalıştırıyordu (ACİL, sıra dışı)
+
+_(Doğdu ve kapandı 2026-08-17 — sahibin raporu: "deploy çalıştı ama canlıda sıralama hâlâ yok,
+bazı özellikler hâlâ yok".)_
+
+_**Rapor haklıydı ve sebep uygulamada değil, sunucu başlıklarındaydı.** Önce üründen ölçüldü:
+`/app/version.json` **1.5.0** diyor ve deploy edilen `assets/assets/i18n/tr.json` yeni
+`sort` bloğunu ("Sıralama", "Ters çevir", "Düzenlenme") **taşıyor** — yani sunucudaki paket
+doğru. Sonra başlıklar ölçüldü ve arıza oradaydı:_
+
+| Dosya | Politika | Doğru mu |
+| --- | --- | --- |
+| `index.html` | `no-cache, no-store, must-revalidate` | ✓ |
+| `flutter_service_worker.js` | `no-cache, no-store, must-revalidate` | ✓ |
+| **`main.dart.js`** | **`public, max-age=31536000, immutable`** | ✗ |
+| **`flutter_bootstrap.js`** | **`public, max-age=31536000, immutable`** | ✗ |
+| `version.json`, `assets/**` | başlık yok (tarayıcı sezgisi) | zayıf |
+
+_**Kök neden depodaydı ve yorumu yanlış bir önerme yazıyordu:** `apps/landing/public/.htaccess`
+`.js` uzantılı her şeyi bir yıllığına `immutable` işaretliyor ve "Hashed build assets are
+immutable" diyor. Bu pazarlama paketi (Vite, `index-A1b2C3d4.js`) için DOĞRU, Flutter için
+YANLIŞ: `main.dart.js`, `flutter_bootstrap.js` ve `assets/` altındaki her dosya build'den
+build'e **aynı adı** taşır, yalnız içerikleri değişir. Sonuç, kullanıcının gördüğü şeyin
+birebir kendisi: taze index.html, taze service worker, **bir yıllık uygulama kodu**._
+
+_**Ders (§22'nin altyapı kardeşi): "deploy başarılı" ile "kullanıcı yeni kodu çalıştırıyor"
+ayrı cümleler.** Deploy doğrulamam `version.json` ve JSON-LD okuyordu — ikisi de o
+`immutable` kuralının dışında kaldığı için ikisi de doğruyu söylüyordu. Doğrulama, ürünün
+kullanıcıya ULAŞAN katmanını ölçmediği sürece yeşil yanabilir._
+
+- [x] `.htaccess`: `/app/` altındaki her şey `no-cache, must-revalidate` (`<If>` bloğu,
+      `<FilesMatch>`'ten sonra merge edildiği için uzantıdan bağımsız kazanır). Pazarlama
+      paketinin hash'li varlıkları immutable kalıyor — orada önerme gerçekten doğru.
+- [x] `docker/web-nginx.conf`: aynı yanlış önerme kendi barındıranları da vuruyordu; aynı
+      şekilde revalidate'e çevrildi (ETag varken değişmeyen dosya 304 döner, maliyet bu).
+- [x] Deploy sonrası başlıklar ÜRÜNDEN yeniden ölçüldü (aşağıdaki Run Log satırı).
+- [ ] **Cloudflare kenar önbelleği:** origin düzeldikten sonra bile kenar, eski `immutable`
+      girdisini TTL'i dolana kadar tutabilir. Purge sahibin panelinden yapılır — agent'ın
+      kimlik bilgisi yok. Sahibe bildirildi.
+
 ### OPH-261 — Domain katmanı çıkarımı + not dürüstlük onarımları (MCP/API'nin ön koşulu)
 
 _Bulgu #6/#7. ADR-0022 K4: MCP domain katmanını çağırır, ham SQL'i değil — ama notes/projects/
