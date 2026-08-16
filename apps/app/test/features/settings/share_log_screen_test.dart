@@ -14,6 +14,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'settings_nav.dart';
 
 /// OPH-242 — the share log is reachable from Settings, states its scope, and
 /// shows what actually arrived. The `alarm_log_screen_test.dart` twin.
@@ -35,8 +36,7 @@ Future<Widget> signedInApp(FakeApi api) async {
 }
 
 Future<void> openShareLog(WidgetTester tester) async {
-  await tester.tap(find.byIcon(Icons.settings_outlined).first);
-  await tester.pumpAndSettle();
+  await openSettingsGroup(tester, kSettingsData);
   final row = find.byKey(const Key('settings-share-log'));
   await tester.scrollUntilVisible(
     row,

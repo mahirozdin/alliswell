@@ -16,6 +16,7 @@ import 'package:alliswell/src/notifications/reminder_profile.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'settings_nav.dart';
 
 /// OPH-179 — "Hatırlatıcı Sistemi Ayarları" (DESIGN §18): presets first, the
 /// step editor as the escape hatch, limits stated, and drag only where order is
@@ -53,8 +54,7 @@ void main() {
 
     await tester.pumpWidget(await signedInApp(FakeApi()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.settings_outlined).first);
-    await tester.pumpAndSettle();
+    await openSettingsGroup(tester, kSettingsNotifications);
 
     final row = find.byKey(const Key('settings-reminder-system'));
     await tester.scrollUntilVisible(

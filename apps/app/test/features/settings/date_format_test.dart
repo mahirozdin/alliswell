@@ -14,6 +14,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'settings_nav.dart';
 
 /// OPH-174 — one formatter, one setting (DESIGN §17). The picker shows RESULTS,
 /// and the choice reaches every surface that renders a date.
@@ -41,8 +42,7 @@ void main() {
   });
 
   Future<void> openSettings(WidgetTester tester) async {
-    await tester.tap(find.byIcon(Icons.settings_outlined).first);
-    await tester.pumpAndSettle();
+    await openSettingsGroup(tester, kSettingsGeneral);
   }
 
   /// Settings is a long list and grows every round (OPH-242 added the share
@@ -126,6 +126,9 @@ void main() {
     await tester.tap(await openDateFormatRow(tester));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('date-format-iso')));
+    await tester.pumpAndSettle();
+    // OPH-260: two levels back now — General, then the settings index.
+    await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.pageBack();
     await tester.pumpAndSettle();

@@ -267,6 +267,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => _page(const SettingsScreen()),
       ),
       // OPH-176: the alarm log — a diagnostic surface, pushed from Settings.
+      // OPH-260 (DESIGN §32 S3): the groups are real routes, so a settings
+      // URL keeps working and each page is somewhere you can be sent.
+      GoRoute(
+        path: '/settings/account',
+        builder: (context, state) => _page(const SettingsAccountScreen()),
+      ),
+      GoRoute(
+        path: '/settings/general',
+        builder: (context, state) => _page(const SettingsGeneralScreen()),
+      ),
+      GoRoute(
+        path: '/settings/notifications',
+        builder: (context, state) => _page(const SettingsNotificationsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/integrations',
+        builder: (context, state) => _page(const SettingsIntegrationsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/data',
+        builder: (context, state) => _page(const SettingsDataScreen()),
+      ),
       GoRoute(
         path: '/settings/alarm-log',
         builder: (context, state) => _page(const AlarmLogScreen()),

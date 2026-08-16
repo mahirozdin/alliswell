@@ -15,6 +15,7 @@ import 'package:alliswell/src/notifications/providers.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'settings_nav.dart';
 
 /// OPH-176 — the alarm log is reachable, honest about its scope, and shows what
 /// the device actually did (DESIGN §11 A6).
@@ -65,8 +66,7 @@ void main() {
         );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.settings_outlined).first);
-    await tester.pumpAndSettle();
+    await openSettingsGroup(tester, kSettingsNotifications);
 
     final row = find.byKey(const Key('settings-alarm-log'));
     await tester.scrollUntilVisible(
@@ -96,8 +96,7 @@ void main() {
 
     await tester.pumpWidget(await signedInApp(FakeApi()));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.settings_outlined).first);
-    await tester.pumpAndSettle();
+    await openSettingsGroup(tester, kSettingsNotifications);
 
     final row = find.byKey(const Key('settings-alarm-log'));
     await tester.scrollUntilVisible(

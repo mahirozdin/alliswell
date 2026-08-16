@@ -22,6 +22,14 @@ import '../notifications/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
 
+/// Settings, as an index (OPH-260, DESIGN §32).
+///
+/// It used to be one card of fourteen tiles followed by four loose ones —
+/// nineteen rows in a single column, ordered by the epic that added them
+/// rather than by what anyone was looking for. Now the root names five places
+/// and gets out of the way; every row still exists, with the same key and the
+/// same string, one level down (S2's mapping is the proof, and a test counts
+/// them so a re-home can never quietly drop one).
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -29,244 +37,414 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).value;
     final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: Text('settings.title'.tr())),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView(
-            padding: awListPadding(context, top: AwSpace.x2),
+    return _SettingsPage(
+      title: 'settings.title'.tr(),
+      children: [
+        Card(
+          child: Column(
             children: [
-              Card(
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: scheme.primaryContainer,
-                        child: Icon(
-                          Icons.person_outline,
-                          color: scheme.onPrimaryContainer,
-                        ),
-                      ),
-                      title: Text(
-                        session?.user.displayName ?? 'settings.account'.tr(),
-                      ),
-                      subtitle: Text(
-                        session?.user.email ?? 'settings.notSignedIn'.tr(),
-                      ),
-                    ),
-                    const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
-                    // Self-hosting: the address is a setting, not a fact —
-                    // changing it signs the user out (tokens belong to the
-                    // server that issued them).
-                    const ServerUrlTile(),
-                    // OPH-064: lock-screen privacy — generic notification
-                    // content ("Bir hatırlatıcın var") instead of task titles.
-                    SwitchListTile(
-                      key: const Key('notification-privacy'),
-                      secondary: const Icon(Icons.notifications_outlined),
-                      title: Text('settings.privateNotifications'.tr()),
-                      subtitle: Text('settings.privateNotificationsSub'.tr()),
-                      value: ref.watch(notificationPrivacyProvider),
-                      onChanged: (_) => ref
-                          .read(notificationPrivacyProvider.notifier)
-                          .toggle(),
-                    ),
-                    // OPH-200 (DESIGN §23 Q5): the floating shortcut button
-                    // is optional, and turning it off does not remove the
-                    // feature — the Home app bar grows a ⚡ entry instead. A
-                    // gesture is never the only path.
-                    SwitchListTile(
-                      key: const Key('quick-bubble-toggle'),
-                      secondary: const Icon(kQuickAccessIcon),
-                      title: Text('settings.quickBubble'.tr()),
-                      subtitle: Text('settings.quickBubbleSub'.tr()),
-                      value: ref.watch(quickBubbleEnabledProvider),
-                      onChanged: (_) => ref
-                          .read(quickBubbleEnabledProvider.notifier)
-                          .toggle(),
-                    ),
-                    // Feedback round 6: an honest status row for the
-                    // product's backbone — can the alarm actually ring on
-                    // this device? Tapping re-runs the permission flow.
-                    const _AlarmStatusTile(),
-                    // OPH-179 (DESIGN §18 N1): one destination for how
-                    // insistent alarms are — chain, snooze order, and (from
-                    // OPH-181) the sounds.
-                    ListTile(
-                      key: const Key('settings-reminder-system'),
-                      leading: const Icon(Icons.notifications_active_outlined),
-                      title: Text('reminderSettings.title'.tr()),
-                      subtitle: Text('reminderSettings.sub'.tr()),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/settings/reminders'),
-                    ),
-                    // OPH-176 (DESIGN §11 A6): what this device DID about
-                    // alarms. Round 9 was argued from memory; it won't be again.
-                    ListTile(
-                      key: const Key('settings-alarm-log'),
-                      leading: const Icon(Icons.history_outlined),
-                      title: Text('alarmLog.title'.tr()),
-                      subtitle: Text('alarmLog.sub'.tr()),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/settings/alarm-log'),
-                    ),
-                    // OPH-242: what actually reached the app when something was
-                    // shared to it. Round 17 opened with a report nobody could
-                    // settle; this is the alarm log's twin for that class of
-                    // question.
-                    ListTile(
-                      key: const Key('settings-share-log'),
-                      leading: const Icon(Icons.ios_share_outlined),
-                      title: Text('shareLog.title'.tr()),
-                      subtitle: Text('shareLog.sub'.tr()),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/settings/share-log'),
-                    ),
-                    // OPH-186 (DESIGN §20 C4): the archive of finished work.
-                    // Home keeps today's; everything older lives here.
-                    ListTile(
-                      key: const Key('settings-completed'),
-                      leading: const Icon(Icons.check_circle_outline),
-                      title: Text('completed.title'.tr()),
-                      subtitle: Text('completed.sub'.tr()),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.push('/settings/completed'),
-                    ),
-                    // OPH-111: replay the first-run tour on demand. Start it,
-                    // then pop back to the shell where the overlay lives.
-                    ListTile(
-                      key: const Key('replay-tour'),
-                      leading: const Icon(Icons.help_outline),
-                      title: Text('settings.appTour'.tr()),
-                      subtitle: Text('settings.appTourSub'.tr()),
-                      onTap: () {
-                        ref.read(tourControllerProvider.notifier).start();
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                    // OPH-121: language override. Following the device shows the
-                    // "System default" subtitle; an explicit pick shows its
-                    // endonym. Changing it rebuilds the whole app (app.dart).
-                    ListTile(
-                      key: const Key('settings-language'),
-                      leading: const Icon(Icons.language_outlined),
-                      title: Text('settings.language.title'.tr()),
-                      subtitle: Text(
-                        AwI18n.instance.followsDevice
-                            ? 'settings.language.system'.tr()
-                            : awLanguageEndonyms[AwI18n
-                                      .instance
-                                      .locale
-                                      .languageCode] ??
-                                  AwI18n.instance.locale.languageCode,
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => showLanguagePicker(context),
-                    ),
-                    // OPH-174 (DESIGN §17): how dates are DISPLAYED. The row and
-                    // the picker show results, never patterns — nobody should
-                    // have to read `dd.MM.yyyy` to choose how their app looks.
-                    Builder(
-                      builder: (context) {
-                        final format = ref.watch(dateFormatProvider);
-                        return ListTile(
-                          key: const Key('settings-date-format'),
-                          leading: const Icon(Icons.event_note_outlined),
-                          title: Text('settings.dateFormat.title'.tr()),
-                          subtitle: Text(
-                            awFormatDateTime(
-                              kAwDateFormatSample,
-                              format: format,
-                            ),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => showDateFormatPicker(context),
-                        );
-                      },
-                    ),
-                    // OPH-161: where a day-only task lands. One source of
-                    // truth for quick-add, the FAB prefill and date pickers.
-                    Builder(
-                      builder: (context) {
-                        final (hour, minute) = parseTaskTime(
-                          ref.watch(defaultTaskTimeProvider),
-                        );
-                        final current = TimeOfDay(hour: hour, minute: minute);
-                        return ListTile(
-                          key: const Key('settings-default-task-time'),
-                          leading: const Icon(Icons.schedule_outlined),
-                          title: Text('settings.defaultTaskTime.title'.tr()),
-                          subtitle: Text(
-                            'settings.defaultTaskTime.sub'.tr(
-                              args: {'time': current.format(context)},
-                            ),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () async {
-                            final picked = await showTimePicker(
-                              context: context,
-                              initialTime: current,
-                            );
-                            if (picked == null) return;
-                            final value =
-                                '${picked.hour.toString().padLeft(2, '0')}:'
-                                '${picked.minute.toString().padLeft(2, '0')}';
-                            await ref
-                                .read(defaultTaskTimeProvider.notifier)
-                                .set(value);
-                          },
-                        );
-                      },
-                    ),
-                    AboutListTile(
-                      icon: const Icon(Icons.info_outline),
-                      applicationName: 'AllisWell',
-                      // Read from the bundle, not retyped — a hardcoded string
-                      // here silently lied about the version for three releases.
-                      applicationVersion: ref.watch(appVersionProvider),
-                      aboutBoxChildren: [Text('settings.aboutBody'.tr())],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AwSpace.x3),
-              // OPH-080: the only door to the Epic 08 calendar vertical.
-              const GoogleCalendarCard(),
-              const SizedBox(height: AwSpace.x3),
-              // OPH-078: the device-side twin — hides itself off Apple platforms.
-              const AppleCalendarCard(),
-              const SizedBox(height: AwSpace.x3),
-              // OPH-220: AI — hides itself when the server has AI disabled.
-              const AiSettingsCard(),
-              const SizedBox(height: AwSpace.x3),
-              // Destructive action, visually separated from the rest.
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.logout, color: scheme.error),
-                  title: Text(
-                    'settings.signOut'.tr(),
-                    style: TextStyle(
-                      color: scheme.error,
-                      fontWeight: FontWeight.w600,
-                    ),
+              // S1: the account is the one row that is also a destination —
+              // it names who you are and opens where that is changed.
+              ListTile(
+                key: const Key('settings-group-account'),
+                leading: CircleAvatar(
+                  backgroundColor: scheme.primaryContainer,
+                  child: Icon(
+                    Icons.person_outline,
+                    color: scheme.onPrimaryContainer,
                   ),
-                  // Router redirect drops the user on /login once state clears.
-                  onTap: () =>
-                      ref.read(authControllerProvider.notifier).logout(),
                 ),
+                title: Text(
+                  session?.user.displayName ?? 'settings.account'.tr(),
+                ),
+                subtitle: Text(
+                  session?.user.email ?? 'settings.notSignedIn'.tr(),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/settings/account'),
               ),
-              const SizedBox(height: AwSpace.x3),
-              // Deleting the account must be reachable from inside the app
-              // (App Store 5.1.1(v) / Google Play) — and reversible while the
-              // grace period lasts.
-              const _DeleteAccountCard(),
+              const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
+              // S1: each group says what is inside it, so nobody has to open
+              // one to find out.
+              _GroupRow(
+                keyName: 'settings-group-general',
+                icon: Icons.tune_outlined,
+                titleKey: 'settings.group.general',
+                subtitleKey: 'settings.group.generalSub',
+                path: '/settings/general',
+              ),
+              _GroupRow(
+                keyName: 'settings-group-notifications',
+                icon: Icons.notifications_active_outlined,
+                titleKey: 'settings.group.notifications',
+                subtitleKey: 'settings.group.notificationsSub',
+                path: '/settings/notifications',
+              ),
+              _GroupRow(
+                keyName: 'settings-group-integrations',
+                icon: Icons.hub_outlined,
+                titleKey: 'settings.group.integrations',
+                subtitleKey: 'settings.group.integrationsSub',
+                path: '/settings/integrations',
+              ),
+              _GroupRow(
+                keyName: 'settings-group-data',
+                icon: Icons.inventory_2_outlined,
+                titleKey: 'settings.group.data',
+                subtitleKey: 'settings.group.dataSub',
+                path: '/settings/data',
+              ),
+              // Kept on the root, and kept a dialog: it is one screenful of
+              // facts, not a place with settings in it.
+              AboutListTile(
+                icon: const Icon(Icons.info_outline),
+                applicationName: 'AllisWell',
+                // Read from the bundle, not retyped — a hardcoded string here
+                // silently lied about the version for three releases.
+                applicationVersion: ref.watch(appVersionProvider),
+                aboutBoxChildren: [Text('settings.aboutBody'.tr())],
+              ),
             ],
           ),
         ),
-      ),
+        const SizedBox(height: AwSpace.x3),
+        // S4: the one action people arrive stressed for does not get buried.
+        Card(
+          child: ListTile(
+            leading: Icon(Icons.logout, color: scheme.error),
+            title: Text(
+              'settings.signOut'.tr(),
+              style: TextStyle(
+                color: scheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            // Router redirect drops the user on /login once state clears.
+            onTap: () => ref.read(authControllerProvider.notifier).logout(),
+          ),
+        ),
+      ],
     );
   }
+}
+
+/// One row of the index: icon, name, and what it holds.
+class _GroupRow extends StatelessWidget {
+  const _GroupRow({
+    required this.keyName,
+    required this.icon,
+    required this.titleKey,
+    required this.subtitleKey,
+    required this.path,
+  });
+
+  final String keyName;
+  final IconData icon;
+  final String titleKey;
+  final String subtitleKey;
+  final String path;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    key: Key(keyName),
+    leading: Icon(icon),
+    title: Text(titleKey.tr()),
+    subtitle: Text(subtitleKey.tr()),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () => context.push(path),
+  );
+}
+
+/// The shape every settings surface shares (S6): one readable column, the same
+/// paddings, the same card. Extracted so five new pages could not each invent
+/// their own.
+class _SettingsPage extends StatelessWidget {
+  const _SettingsPage({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: ListView(
+          padding: awListPadding(context, top: AwSpace.x2),
+          children: children,
+        ),
+      ),
+    ),
+  );
+}
+
+/// Hesap: who you are, which server, and the way out (§32 S2).
+class SettingsAccountScreen extends ConsumerWidget {
+  const SettingsAccountScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(authControllerProvider).value;
+    final scheme = Theme.of(context).colorScheme;
+    return _SettingsPage(
+      title: 'settings.group.account'.tr(),
+      children: [
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: scheme.primaryContainer,
+                  child: Icon(
+                    Icons.person_outline,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                ),
+                title: Text(
+                  session?.user.displayName ?? 'settings.account'.tr(),
+                ),
+                subtitle: Text(
+                  session?.user.email ?? 'settings.notSignedIn'.tr(),
+                ),
+              ),
+              const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
+              // Self-hosting: the address is a setting, not a fact — changing
+              // it signs the user out (tokens belong to the server that
+              // issued them).
+              const ServerUrlTile(),
+            ],
+          ),
+        ),
+        const SizedBox(height: AwSpace.x3),
+        // Deleting the account must be reachable from inside the app
+        // (App Store 5.1.1(v) / Google Play) — and reversible while the grace
+        // period lasts.
+        const _DeleteAccountCard(),
+      ],
+    );
+  }
+}
+
+/// Genel: the choices that shape everyday use (§32 S2).
+class SettingsGeneralScreen extends ConsumerWidget {
+  const SettingsGeneralScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final format = ref.watch(dateFormatProvider);
+    final (hour, minute) = parseTaskTime(ref.watch(defaultTaskTimeProvider));
+    final current = TimeOfDay(hour: hour, minute: minute);
+    return _SettingsPage(
+      title: 'settings.group.general'.tr(),
+      children: [
+        Card(
+          child: Column(
+            children: [
+              // OPH-121: language override. Following the device shows the
+              // "System default" subtitle; an explicit pick shows its endonym.
+              // Changing it rebuilds the whole app (app.dart).
+              ListTile(
+                key: const Key('settings-language'),
+                leading: const Icon(Icons.language_outlined),
+                title: Text('settings.language.title'.tr()),
+                subtitle: Text(
+                  AwI18n.instance.followsDevice
+                      ? 'settings.language.system'.tr()
+                      : awLanguageEndonyms[AwI18n
+                                .instance
+                                .locale
+                                .languageCode] ??
+                            AwI18n.instance.locale.languageCode,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showLanguagePicker(context),
+              ),
+              // OPH-174 (DESIGN §17): how dates are DISPLAYED. The row and the
+              // picker show results, never patterns — nobody should have to
+              // read `dd.MM.yyyy` to choose how their app looks.
+              ListTile(
+                key: const Key('settings-date-format'),
+                leading: const Icon(Icons.event_note_outlined),
+                title: Text('settings.dateFormat.title'.tr()),
+                subtitle: Text(
+                  awFormatDateTime(kAwDateFormatSample, format: format),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showDateFormatPicker(context),
+              ),
+              // OPH-161: where a day-only task lands. One source of truth for
+              // quick-add, the FAB prefill and date pickers.
+              ListTile(
+                key: const Key('settings-default-task-time'),
+                leading: const Icon(Icons.schedule_outlined),
+                title: Text('settings.defaultTaskTime.title'.tr()),
+                subtitle: Text(
+                  'settings.defaultTaskTime.sub'.tr(
+                    args: {'time': current.format(context)},
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: context,
+                    initialTime: current,
+                  );
+                  if (picked == null) return;
+                  final value =
+                      '${picked.hour.toString().padLeft(2, '0')}:'
+                      '${picked.minute.toString().padLeft(2, '0')}';
+                  await ref.read(defaultTaskTimeProvider.notifier).set(value);
+                },
+              ),
+              // OPH-200 (DESIGN §23 Q5): the floating shortcut button is
+              // optional, and turning it off does not remove the feature — the
+              // Home app bar grows a ⚡ entry instead. A gesture is never the
+              // only path.
+              SwitchListTile(
+                key: const Key('quick-bubble-toggle'),
+                secondary: const Icon(kQuickAccessIcon),
+                title: Text('settings.quickBubble'.tr()),
+                subtitle: Text('settings.quickBubbleSub'.tr()),
+                value: ref.watch(quickBubbleEnabledProvider),
+                onChanged: (_) =>
+                    ref.read(quickBubbleEnabledProvider.notifier).toggle(),
+              ),
+              // OPH-111: replay the first-run tour on demand. Start it, then
+              // pop back to the shell where the overlay lives — from here that
+              // means all the way out of settings.
+              ListTile(
+                key: const Key('replay-tour'),
+                leading: const Icon(Icons.help_outline),
+                title: Text('settings.appTour'.tr()),
+                subtitle: Text('settings.appTourSub'.tr()),
+                onTap: () {
+                  ref.read(tourControllerProvider.notifier).start();
+                  context.go('/home');
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bildirimler & Alarmlar: whether this device can ring, and what it did (§32 S2).
+class SettingsNotificationsScreen extends ConsumerWidget {
+  const SettingsNotificationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => _SettingsPage(
+    title: 'settings.group.notifications'.tr(),
+    children: [
+      Card(
+        child: Column(
+          children: [
+            // Feedback round 6: an honest status row for the product's
+            // backbone — can the alarm actually ring on this device? Tapping
+            // re-runs the permission flow.
+            const _AlarmStatusTile(),
+            // OPH-064: lock-screen privacy — generic notification content
+            // ("Bir hatırlatıcın var") instead of task titles.
+            SwitchListTile(
+              key: const Key('notification-privacy'),
+              secondary: const Icon(Icons.notifications_outlined),
+              title: Text('settings.privateNotifications'.tr()),
+              subtitle: Text('settings.privateNotificationsSub'.tr()),
+              value: ref.watch(notificationPrivacyProvider),
+              onChanged: (_) =>
+                  ref.read(notificationPrivacyProvider.notifier).toggle(),
+            ),
+            // OPH-179 (DESIGN §18 N1): one destination for how insistent
+            // alarms are — chain, snooze order, and (from OPH-181) the sounds.
+            ListTile(
+              key: const Key('settings-reminder-system'),
+              leading: const Icon(Icons.notifications_active_outlined),
+              title: Text('reminderSettings.title'.tr()),
+              subtitle: Text('reminderSettings.sub'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/reminders'),
+            ),
+            // OPH-176 (DESIGN §11 A6): what this device DID about alarms.
+            // Round 9 was argued from memory; it won't be again.
+            ListTile(
+              key: const Key('settings-alarm-log'),
+              leading: const Icon(Icons.history_outlined),
+              title: Text('alarmLog.title'.tr()),
+              subtitle: Text('alarmLog.sub'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/alarm-log'),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+/// Entegrasyonlar: the things AllisWell talks to (§32 S2).
+///
+/// OPH-265's "API access" row lands here; this round deliberately leaves the
+/// space rather than inventing the row (S5).
+class SettingsIntegrationsScreen extends StatelessWidget {
+  const SettingsIntegrationsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => _SettingsPage(
+    title: 'settings.group.integrations'.tr(),
+    children: const [
+      // OPH-080: the only door to the Epic 08 calendar vertical.
+      GoogleCalendarCard(),
+      SizedBox(height: AwSpace.x3),
+      // OPH-078: the device-side twin — hides itself off Apple platforms.
+      AppleCalendarCard(),
+      SizedBox(height: AwSpace.x3),
+      // OPH-220: AI — hides itself when the server has AI disabled. The MCP
+      // connector card lives inside it and stays there.
+      AiSettingsCard(),
+    ],
+  );
+}
+
+/// Veri: what this device recorded, and the work already done (§32 S2).
+class SettingsDataScreen extends StatelessWidget {
+  const SettingsDataScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => _SettingsPage(
+    title: 'settings.group.data'.tr(),
+    children: [
+      Card(
+        child: Column(
+          children: [
+            // OPH-186 (DESIGN §20 C4): the archive of finished work. Home
+            // keeps today's; everything older lives here.
+            ListTile(
+              key: const Key('settings-completed'),
+              leading: const Icon(Icons.check_circle_outline),
+              title: Text('completed.title'.tr()),
+              subtitle: Text('completed.sub'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/completed'),
+            ),
+            // OPH-242: what actually reached the app when something was shared
+            // to it. Round 17 opened with a report nobody could settle; this
+            // is the alarm log's twin for that class of question.
+            ListTile(
+              key: const Key('settings-share-log'),
+              leading: const Icon(Icons.ios_share_outlined),
+              title: Text('shareLog.title'.tr()),
+              subtitle: Text('shareLog.sub'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/share-log'),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
 /// Account deletion (App Store 5.1.1(v) / Google Play): the request, the

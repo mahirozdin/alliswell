@@ -7947,23 +7947,37 @@ Yani kod doğruydu; arıza ULAŞILABİLİRLİKTE. §22'nin tanıdık yüzü: "me
 _Bulgu #14. Envanterin tamamı planlama raporunda satır satır çıkarıldı (19 satır, sıra ve
 key'lerle); bu task YENİ HİÇBİR AYAR EKLEMEDEN yeniden ev kurar (S5)._
 
-- [ ] Kök ekran `settings_screen.dart` yeniden düzenlenir: hesap başlığı (→ `/settings/account`),
-      beş grup satırı (Genel · Bildirimler & Alarmlar · Entegrasyonlar · Veri · Hakkında-satırı
-      mevcut About davranışıyla), altta sign-out kartı (S4). Grup satırları ikon + başlık +
-      içerik sayan alt başlık (S1).
-- [ ] Yeni rotalar `router.dart:265+` deseninde: `/settings/account`, `/settings/general`,
-      `/settings/notifications`, `/settings/integrations`, `/settings/data`. Mevcut beş derin
-      rota AYNEN kalır ve grup sayfalarından bağlanır (S3). Dağılım §32 S2'deki gibi;
-      `_AlarmStatusTile`, `ServerUrlTile`, takvim kartları, `AiSettingsCard` (MCP kartı içinde
-      kalır) widget olarak taşınır, key'ler ve i18n anahtarları DEĞİŞMEZ.
-- [ ] `/settings/integrations` sayfası OPH-265'in "API erişimi" satırına yer bırakır (bu turda
-      satır YOK — S5; sadece grup var).
-- [ ] Testler: mevcut settings widget testleri yeni gezinmeye uyarlanır (key'ler korunduğu için
-      satır testleri yaşar; ekstra: her grup sayfasının açıldığı ve BEKLENEN satırları taşıdığı
-      — 19 satırın tamamı bir eşleme testiyle sayılır ki taşınırken satır düşmesin, §22).
-      i18n: `settings.group.*` anahtarları en+tr. Light+dark tur + `contrast.py` yeşil.
-- [ ] Yüzey: Ayarlar kökü + 5 yeni alt sayfa; hiçbir mevcut satır kaybolmaz (S2'nin eşleme
-      tablosu kanıttır).
+_(✅ 2026-08-17 — Süitler **1204** (+5), analyze/format/i18n temiz, `contrast.py`
+FAILURES: 0.)_
+
+_**Turun tek cümlesi: bir yeniden ev kurmanın riski yanlış görünmek değil, bir satırın
+hiçbir yere varmaması.** Bu yüzden taşın kendisinden çok SAYIM testi yazıldı: her satır,
+zaten sahip olduğu key'le, yeni sayfalardan tam birinde bulunuyor. §22'nin en yalın hâli
+— ulaşılamayan bir ayar, ayar değildir._
+
+_**Ölçülen yan etki:** mevcut beş süit kökten doğrudan satırlara gidiyordu ve hiyerarşi
+bir seviye derinleştiği için `pageBack()` sayıları da kaydı. Testleri tek tek yamamak
+yerine ortak `openSettingsGroup(...)` yardımcısı yazıldı — bir sonraki gruplama tek
+düzenleme olsun diye. `completed_screen_test`'in "ayarlar büyüyor, satıra kaydırarak git"
+numarası da gereksizleşti ve silindi: grup sayfası kısa._
+
+- [x] Kök artık bir INDEX: hesap başlığı (→ `/settings/account`) + dört grup satırı
+      (Genel · Bildirimler & Alarmlar · Entegrasyonlar · Veri) + About satırı (diyalog
+      olarak kaldı — içinde ayar yok, bir ekran dolusu bilgi var) + sign-out kartı (S4).
+      Grup satırları ikon + ad + **ne içerdiğini sayan** alt başlık (S1).
+- [x] Beş yeni rota mevcut desende: `/settings/account`, `/general`, `/notifications`,
+      `/integrations`, `/data`. Mevcut beş derin rota AYNEN duruyor ve grup sayfalarından
+      bağlanıyor (S3) — bir ayar URL'i dün çalışıyorduysa bugün de çalışıyor (testli).
+- [x] Dağılım §32 S2'deki gibi; `_AlarmStatusTile`, `ServerUrlTile`, takvim kartları,
+      `AiSettingsCard` widget olarak taşındı, **key'ler ve i18n anahtarları değişmedi**.
+      Ortak `_SettingsPage` kabuğu çıkarıldı ki beş sayfa kendi düzenini uydurmasın (S6).
+- [x] `/settings/integrations` OPH-265'in "API erişimi" satırına yer bırakıyor — bu turda
+      satır YOK (S5, satır icat edilmedi; tema anahtarı da yok, çünkü `themeMode` sabit).
+- [x] Testler (+5): kökün beş yeri adlandırdığı ve sign-out'u tuttuğu · **sayım** (11 satır
+      key'iyle, ait olduğu grupta) · Hesap'ta sunucu + hesap silme · Entegrasyonlar'da
+      takvim · derin rotanın hâlâ açıldığı. Beş mevcut süit yeni gezinmeye uyarlandı.
+      i18n `settings.group.*` en+tr.
+- [x] Yüzey: Ayarlar kökü + 5 yeni alt sayfa; hiçbir mevcut satır kaybolmadı.
 
 ### OPH-261 — Domain katmanı çıkarımı + not dürüstlük onarımları (MCP/API'nin ön koşulu)
 

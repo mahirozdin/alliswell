@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **Settings is an index now, not one long list.** Nineteen rows had piled up in
+  a single column, ordered by when each was added rather than by what anyone
+  was looking for. The first screen names five places — Account, General,
+  Notifications & alarms, Integrations, Data — and says what is inside each;
+  everything you had is one tap down, in the same words. Sign out stays where
+  you can find it in a hurry (OPH-260).
+
 ## [1.5.0] — 2026-08-16
 
 ### Fixed

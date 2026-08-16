@@ -13,6 +13,7 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'settings_nav.dart';
 
 /// Deleting an account must be reachable from inside the app (App Store
 /// 5.1.1(v), Google Play) — and the way back out of it must work. A
@@ -38,8 +39,8 @@ void main() {
   Future<void> openSettings(WidgetTester tester, FakeApi api) async {
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.settings_outlined).first);
-    await tester.pumpAndSettle();
+    // OPH-260: account rows live behind the Account group now.
+    await openSettingsGroup(tester, kSettingsAccount);
   }
 
   Future<void> scrollTo(WidgetTester tester, Finder target) async {

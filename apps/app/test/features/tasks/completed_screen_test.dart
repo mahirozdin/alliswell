@@ -13,6 +13,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../settings/settings_nav.dart';
 
 /// OPH-186 — Settings ▸ Completed, the archive of finished work
 /// (DESIGN §20 C4). Reached the way a user reaches it, from Settings.
@@ -41,17 +42,9 @@ void phone(WidgetTester tester) {
 }
 
 Future<void> openCompleted(WidgetTester tester) async {
-  await tester.tap(find.byIcon(Icons.settings_outlined).last);
-  await tester.pumpAndSettle();
-  // Settings grows over time (OPH-200 added the quick-access toggle), so the
-  // archive row is not necessarily on screen: scroll to it rather than tapping
-  // where it used to be.
-  await tester.scrollUntilVisible(
-    find.byKey(const Key('settings-completed')),
-    240,
-    scrollable: find.byType(Scrollable).last,
-  );
-  await tester.pumpAndSettle();
+  // OPH-260: Settings is an index now, so the archive lives behind its group.
+  // The scroll this used to need is gone with it — a group page is short.
+  await openSettingsGroup(tester, kSettingsData);
   await tester.tap(find.byKey(const Key('settings-completed')));
   await tester.pumpAndSettle();
 }
@@ -123,10 +116,12 @@ void main() {
     // "completed", and the task no longer is.
     expect(find.text('Geri açılacak'), findsNothing);
 
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+    // OPH-260: Completed sits under Data now, so Home is three pops away
+    // (archive → Data → settings index).
+    for (var i = 0; i < 3; i++) {
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
     expect(find.text('Geri açılacak'), findsOneWidget);
   });
 

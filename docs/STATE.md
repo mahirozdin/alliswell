@@ -3,7 +3,25 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-16c (**OPH-272 BİTTİ + **v1.5.0 CANLI ve üründen
+**Last updated:** 2026-08-17a (**OPH-260 BİTTİ — Ayarlar beş yer adlandıran bir
+index oldu. Süitler **1204** (+5), analyze/format/i18n temiz, contrast FAILURES: 0.
+Sıradaki iş: OPH-261 (domain katmanı çıkarımı — MCP/API'nin ön koşulu).**
+
+**Turun tek cümlesi: bir yeniden ev kurmanın riski yanlış görünmek değil, bir satırın
+hiçbir yere varmaması.** Bu yüzden asıl test taşın kendisi değil SAYIM: her satır, zaten
+sahip olduğu key'le, yeni sayfalardan tam birinde bulunuyor. Key'ler ve i18n anahtarları
+bilinçli olarak hiç değişmedi — böylece mevcut satır testleri yaşadı ve sayım
+karşılaştırılabilir kaldı.
+
+**Ölçülen yan etki:** beş süit kökten doğrudan satırlara gidiyordu ve hiyerarşi bir
+seviye derinleştiği için `pageBack()` sayıları kaydı. Tek tek yamamak yerine ortak
+`openSettingsGroup(...)` yazıldı. `completed_screen_test`'in "ayarlar büyüyor, kaydırarak
+git" numarası da gereksizleşti — grup sayfası kısa, kaydırmaya gerek yok.
+
+**Satır icat edilmedi (S5):** tema anahtarı hâlâ yok çünkü `themeMode` sabit;
+Entegrasyonlar sayfası OPH-265'in "API erişimi" satırına yalnızca yer bırakıyor.
+
+Önceki blok: 2026-08-16c (**OPH-272 BİTTİ + **v1.5.0 CANLI ve üründen
 doğrulandı**. Süitler **1199**, analyze/format/i18n temiz, contrast FAILURES: 0.
 Sıradaki iş: OPH-260 (gelişmiş ayarlar).**
 

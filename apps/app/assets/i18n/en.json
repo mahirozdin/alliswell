@@ -142,7 +142,18 @@
       "system": "Follow the app language"
     },
     "quickBubble": "Floating quick-access button",
-    "quickBubbleSub": "Drag it anywhere; tap to open your shortcuts"
+    "quickBubbleSub": "Drag it anywhere; tap to open your shortcuts",
+    "group": {
+      "general": "General",
+      "generalSub": "Language, dates, default time, tour",
+      "notifications": "Notifications & alarms",
+      "notificationsSub": "Ringing, privacy, alarm log",
+      "integrations": "Integrations",
+      "integrationsSub": "Google Calendar, Apple Calendar, AI",
+      "data": "Data",
+      "dataSub": "Completed work, share log",
+      "account": "Account"
+    }
   },
   "shell": {
     "fabNewTask": "New task with options",

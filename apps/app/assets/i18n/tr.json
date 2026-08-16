@@ -141,7 +141,18 @@
       "system": "Uygulama diline uy"
     },
     "quickBubble": "Yüzen hızlı erişim düğmesi",
-    "quickBubbleSub": "İstediğiniz yere sürükleyin; dokununca kısayollar açılır"
+    "quickBubbleSub": "İstediğiniz yere sürükleyin; dokununca kısayollar açılır",
+    "group": {
+      "general": "Genel",
+      "generalSub": "Dil, tarih, varsayılan saat, tur",
+      "notifications": "Bildirimler & alarmlar",
+      "notificationsSub": "Çalma, gizlilik, alarm günlüğü",
+      "integrations": "Entegrasyonlar",
+      "integrationsSub": "Google Takvim, Apple Takvim, yapay zekâ",
+      "data": "Veri",
+      "dataSub": "Tamamlananlar, paylaşım günlüğü",
+      "account": "Hesap"
+    }
   },
   "shell": {
     "fabNewTask": "Seçeneklerle yeni görev",
