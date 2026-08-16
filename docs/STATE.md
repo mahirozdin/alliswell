@@ -3,9 +3,20 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-16b (**OPH-272 (sahibin üç düzeltmesi) BİTTİ + **v1.5.0
-kesildi**. Süitler **1199**, analyze/format/i18n temiz, contrast FAILURES: 0.
+**Last updated:** 2026-08-16c (**OPH-272 BİTTİ + **v1.5.0 CANLI ve üründen
+doğrulandı**. Süitler **1199**, analyze/format/i18n temiz, contrast FAILURES: 0.
 Sıradaki iş: OPH-260 (gelişmiş ayarlar).**
+
+**Deploy ÜRÜNDEN doğrulandı (2026-08-16):** release zincirinin dokuz işi de yeşil.
+`alliswell.space/` 200 ve JSON-LD `softwareVersion` **1.4.1 → 1.5.0** (deploy ÖNCESİ de
+ölçüldü, yani değişim gözlendi); `/app/version.json` → `{"version":"1.5.0",
+"build_number":"25"}` yani web uygulamasının kendisi yeni sürümü söylüyor;
+`api.alliswell.space/health/ready` → mysql up, redis up. GitHub Release v1.5.0 yayında.
+
+**Sahibin cihazında bakılacak iki kalem (kod tarafı bitti, gözlem kaldı):** markdown
+düğmesinin ikonu (arıza burada ÜRETİLEMEDİ — yapılan şey o glyph'e bağımlılığı
+kaldırmaktı, hâlâ boşsa sorun font katmanındadır) ve yıldızlı notların her sıralamada
+üstte kalması.
 
 **Turun tek cümlesi: raporlanan üç şeyden birincisi eksik özellik değildi, bulunamayan
 özellikti.** Telefon genişliğinde teşhis testi üçünü de yerinde buldu — markdown düğmesi
