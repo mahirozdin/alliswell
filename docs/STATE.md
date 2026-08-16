@@ -24,9 +24,13 @@ satırlarına dokunuyor, delta notlara ELLEMİYOR (onların sütunu zaten doğru
 markdown'dan yeniden türetmek doğruyu kötüyle değiştirmek olurdu), sayfalı ve yalnız
 gerçekten değişen satırı yazıyor.
 
-**AÇIK kalan:** `db/notes.js` / `db/projects.js` / `db/tags.js` çıkarımı. Bu turda
-yapılmadı — üç route dosyasından mantık taşımak mekanik ama geniş, ve yarım bırakılması
-hiç yapılmamasından kötü. OPH-262 (MCP yazma araçları) bunu bekliyor.
+**Çıkarım da yapıldı (aynı gün, ikinci tur):** `db/notes.js` · `db/projects.js` ·
+`db/tags.js` doğdu, route'lar delege ediyor, `routes/notes.js` 862 → 655 satır.
+**Kanıt: 632 testin hiçbiri değişmedi ve hepsi yeşil** — bir refactor'ün doğru kanıtı
+yeni test yazmak değil, eskilerin dokunulmadan geçmesidir. `createNoteFromTask` ayrı
+fonksiyon olarak çıktı (OPH-263'ün `create_note(taskId:)` aracının çağıracağı şey).
+Projenin arşiv kaskadı bilinçli olarak taşınmadı — görevlere ve notlara uzanıyor, kendi
+onay semantiği var, ayrı bir karar. **OPH-262 artık açılabilir.**
 
 Önceki blok: 2026-08-17b (**OPH-273 ACİL — canlıdaki tarayıcılar bir yıllık
 eski uygulamayı çalıştırıyordu; kök neden sunucu başlıklarında ve DEPODAYDI. v1.6.0

@@ -1,7 +1,6 @@
-import { newId } from '../lib/ids.js';
-import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { recordSyncWrite } from '../db/sync.js';
+import * as domain from '../db/projects.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
@@ -116,25 +115,10 @@ export function serializeProject(row) {
 export default async function projectRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
-  async function loadProject(id) {
-    const row = await app.db('projects').where({ id }).whereNull('deleted_at').first();
-    if (!row) throw coded(app.httpErrors.notFound('Project not found'), 'PROJECT_NOT_FOUND');
-    return row;
-  }
-
-  async function assertReadmeNoteUsable(noteId, workspaceId) {
-    const note = await app
-      .db('notes')
-      .where({ id: noteId, workspace_id: workspaceId })
-      .whereNull('deleted_at')
-      .first('id');
-    if (!note) {
-      throw coded(
-        app.httpErrors.badRequest('readmeNoteId does not reference a note in this workspace'),
-        'PROJECT_INVALID_README_NOTE',
-      );
-    }
-  }
+  // OPH-261: writes and lookups live in `db/projects.js` (ADR-0022 §4).
+  const loadProject = (id) => domain.loadProject(app, id);
+  const assertReadmeNoteUsable = (noteId, workspaceId) =>
+    domain.assertReadmeNoteUsable(app, noteId, workspaceId);
 
   // ── Workspace-scoped collection ────────────────────────────────────────────
 
@@ -159,15 +143,10 @@ export default async function projectRoutes(app) {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
 
-      let query = app
-        .db('projects')
-        .where({ workspace_id: workspaceId })
-        .whereNull('deleted_at')
-        .orderBy('sort_order', 'asc')
-        .orderBy('created_at', 'asc');
-      if (request.query.status) query = query.where({ status: request.query.status });
-
-      return { items: (await query.select()).map(serializeProject) };
+      const rows = await domain.listProjects(app, workspaceId, {
+        status: request.query.status,
+      });
+      return { items: rows.map(serializeProject) };
     },
   );
 
@@ -189,28 +168,12 @@ export default async function projectRoutes(app) {
     async (request, reply) => {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
-      if (request.body.readmeNoteId) {
-        await assertReadmeNoteUsable(request.body.readmeNoteId, workspaceId);
-      }
-
-      const id = newId();
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId,
-          entityType: 'project',
-          entityId: id,
-          operation: 'create',
-        });
-        await trx('projects').insert({
-          id,
-          workspace_id: workspaceId,
-          ...toRowPatch(request.body),
-          created_by: request.user.id,
-          updated_by: request.user.id,
-          revision,
-        });
+      const id = await domain.createProject(app, {
+        workspaceId,
+        userId: request.user.id,
+        body: request.body,
+        toRowPatch,
       });
-
       return reply.code(201).send(serializeProject(await loadProject(id)));
     },
   );

@@ -2,14 +2,9 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
-import {
-  deltaToMarkdown,
-  deltaToPlainText,
-  embedFileIds,
-  isValidDelta,
-  markdownToPlainText,
-} from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
+import * as domain from '../db/notes.js';
+import { parseDelta } from '../db/notes.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
 
@@ -98,18 +93,6 @@ export function serializeNoteRow(row) {
   };
 }
 
-function parseDelta(value) {
-  if (value == null) return null;
-  if (typeof value === 'string') {
-    try {
-      return JSON.parse(value);
-    } catch {
-      return null;
-    }
-  }
-  return value;
-}
-
 /**
  * Full note snapshot (row + preloaded note_links rows) — the shape note
  * detail responses and sync pull snapshots share.
@@ -139,78 +122,14 @@ export function serializeNoteSnapshot(row, links, tagIds = []) {
 export default async function noteRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
-  async function loadNote(id) {
-    const row = await app.db('notes').where({ id }).whereNull('deleted_at').first();
-    if (!row) throw coded(app.httpErrors.notFound('Note not found'), 'NOTE_NOT_FOUND');
-    return row;
-  }
+  // OPH-261: the writes live in `db/notes.js` so MCP and REST are ONE
+  // implementation (ADR-0022 §4). What stays here is HTTP: schemas, codes and
+  // the serializers the sync pull also imports.
+  const loadNote = (id) => domain.loadNote(app, id);
 
   async function serializeNoteDetail(row) {
-    const links = await app
-      .db('note_links')
-      .where({ note_id: row.id })
-      .orderBy('created_at', 'asc')
-      .select();
-    const tagIds = (await app.db('note_tags').where({ note_id: row.id }).select('tag_id')).map(
-      (r) => r.tag_id,
-    );
+    const { links, tagIds } = await domain.noteRelations(app, row.id);
     return serializeNoteSnapshot(row, links, tagIds);
-  }
-
-  async function assertProjectUsable(projectId, workspaceId) {
-    const project = await app
-      .db('projects')
-      .where({ id: projectId, workspace_id: workspaceId })
-      .whereNull('deleted_at')
-      .first('id');
-    if (!project) {
-      throw coded(
-        app.httpErrors.badRequest('projectId does not reference a project in this workspace'),
-        'NOTE_INVALID_PROJECT',
-      );
-    }
-  }
-
-  /** camelCase body → row values; content changes re-derive plain_text. */
-  /**
-   * @param {object} body
-   * @param {object} [opts]
-   * @param {string} [opts.currentFormat] the row's format when the patch does
-   *   not set one — the write has to know which field is canonical.
-   * @param {string} [opts.currentMarkdown] the row's markdown, for the case
-   *   where a note BECOMES markdown-canonical without its body being resent.
-   */
-  function toRowPatch(body, { currentFormat, currentMarkdown } = {}) {
-    const row = {};
-    if ('title' in body) row.title = body.title;
-    if ('contentDelta' in body) {
-      if (body.contentDelta !== null && !isValidDelta(body.contentDelta)) {
-        throw coded(
-          app.httpErrors.badRequest('contentDelta must be an array of Quill insert ops'),
-          'NOTE_INVALID_DELTA',
-        );
-      }
-      row.content_delta = body.contentDelta === null ? null : JSON.stringify(body.contentDelta);
-      row.plain_text = deltaToPlainText(body.contentDelta);
-    }
-    if ('contentMarkdown' in body) row.content_markdown = body.contentMarkdown;
-    if ('contentFormat' in body) row.content_format = body.contentFormat;
-    // OPH-261: the search column follows whichever field is CANONICAL.
-    //
-    // Before this, `plain_text` was written only in the delta branch above, so
-    // a markdown-canonical note (ADR-0028) kept an empty or stale one and was
-    // invisible to `?q=`, to FULLTEXT and to the MCP search tools. It existed
-    // and could not be found — which is §22 with the reachability on the other
-    // side of the glass.
-    const format = body.contentFormat ?? currentFormat ?? 'delta';
-    if (format === 'markdown') {
-      const markdown = 'contentMarkdown' in body ? body.contentMarkdown : currentMarkdown;
-      if (markdown !== undefined) row.plain_text = markdownToPlainText(markdown ?? '');
-    }
-    if ('projectId' in body) row.project_id = body.projectId;
-    if ('isPinned' in body) row.is_pinned = body.isPinned;
-    if ('isArchived' in body) row.is_archived = body.isArchived;
-    return row;
   }
 
   // ── Collection ────────────────────────────────────────────────────────────
@@ -333,26 +252,11 @@ export default async function noteRoutes(app) {
     async (request, reply) => {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
-      if (request.body.projectId) await assertProjectUsable(request.body.projectId, workspaceId);
-
-      const id = newId();
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId,
-          entityType: 'note',
-          entityId: id,
-          operation: 'create',
-        });
-        await trx('notes').insert({
-          id,
-          workspace_id: workspaceId,
-          ...toRowPatch(request.body),
-          created_by: request.user.id,
-          updated_by: request.user.id,
-          revision,
-        });
+      const id = await domain.createNote(app, {
+        workspaceId,
+        userId: request.user.id,
+        body: request.body,
       });
-
       return reply.code(201).send(await serializeNoteDetail(await loadNote(id)));
     },
   );
@@ -397,30 +301,7 @@ export default async function noteRoutes(app) {
       const row = await loadNote(request.params.noteId);
       await app.requireWorkspaceMember(request, row.workspace_id);
 
-      const delta = parseDelta(row.content_delta);
-      // Attachment embeds export with their CURRENT file name as the label
-      // (OPH-152) — the alliswell://file/{id} source stays stable either way.
-      let embedLabel;
-      const fileIds = delta ? embedFileIds(delta) : [];
-      if (fileIds.length > 0) {
-        const files = await app
-          .db('files')
-          .whereIn('id', fileIds)
-          .whereNull('deleted_at')
-          .select('id', 'name');
-        const names = new Map(files.map((f) => [`alliswell://file/${f.id}`, f.name]));
-        embedLabel = (source) => names.get(source) ?? null;
-      }
-      // OPH-261 (Repair 2): the export follows `content_format`. It used to
-      // prefer the delta whenever one existed, so a markdown-canonical note —
-      // whose delta is a stale shadow of an earlier life — exported the wrong
-      // document. The canonical field is the one the editor writes.
-      const markdown =
-        row.content_format === 'markdown'
-          ? (row.content_markdown ?? '')
-          : delta
-            ? deltaToMarkdown(delta, { embedLabel })
-            : (row.content_markdown ?? '');
+      const markdown = await domain.exportNoteMarkdown(app, row);
       return reply
         .header('content-type', 'text/markdown; charset=utf-8')
         .header('content-disposition', `attachment; filename="${slugify(row.title, 'note')}.md"`)
@@ -451,32 +332,7 @@ export default async function noteRoutes(app) {
     async (request) => {
       const row = await loadNote(request.params.noteId);
       await app.requireWorkspaceMember(request, row.workspace_id);
-      if (request.body.projectId) {
-        await assertProjectUsable(request.body.projectId, row.workspace_id);
-      }
-
-      const patch = toRowPatch(request.body, {
-        currentFormat: row.content_format,
-        currentMarkdown: row.content_markdown,
-      });
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId: row.workspace_id,
-          entityType: 'note',
-          entityId: row.id,
-          operation: 'update',
-          changedFields: Object.keys(patch),
-        });
-        await trx('notes')
-          .where({ id: row.id })
-          .update({
-            ...patch,
-            revision,
-            updated_by: request.user.id,
-            updated_at: new Date(),
-          });
-      });
-
+      await domain.updateNote(app, { row, userId: request.user.id, body: request.body });
       return serializeNoteDetail(await loadNote(row.id));
     },
   );
@@ -638,53 +494,11 @@ export default async function noteRoutes(app) {
       const row = await loadNote(request.params.noteId);
       await app.requireWorkspaceMember(request, row.workspace_id);
 
-      const desired = [...new Set(request.body.tagIds)];
-      if (desired.length > 0) {
-        const found = await app
-          .db('tags')
-          .whereIn('id', desired)
-          .where({ workspace_id: row.workspace_id })
-          .whereNull('deleted_at')
-          .select('id');
-        if (found.length !== desired.length) {
-          throw coded(
-            app.httpErrors.badRequest('One or more tags do not exist in this workspace'),
-            'NOTE_TAG_NOT_FOUND',
-          );
-        }
-      }
-
-      const current = (await app.db('note_tags').where({ note_id: row.id }).select('tag_id')).map(
-        (r) => r.tag_id,
-      );
-      const toAdd = desired.filter((id) => !current.includes(id));
-      const toRemove = current.filter((id) => !desired.includes(id));
-
-      if (toAdd.length > 0 || toRemove.length > 0) {
-        await app.db.transaction(async (trx) => {
-          const revision = await recordSyncWrite(trx, {
-            workspaceId: row.workspace_id,
-            entityType: 'note',
-            entityId: row.id,
-            operation: 'update',
-            changedFields: ['tags'],
-          });
-          if (toRemove.length > 0) {
-            await trx('note_tags').where({ note_id: row.id }).whereIn('tag_id', toRemove).delete();
-          }
-          if (toAdd.length > 0) {
-            await trx('note_tags').insert(
-              toAdd.map((tagId) => ({ note_id: row.id, tag_id: tagId })),
-            );
-          }
-          await trx('notes').where({ id: row.id }).update({
-            revision,
-            updated_by: request.user.id,
-            updated_at: new Date(),
-          });
-        });
-      }
-
+      await domain.setNoteTags(app, {
+        row,
+        userId: request.user.id,
+        tagIds: request.body.tagIds,
+      });
       return serializeNoteDetail(await loadNote(row.id));
     },
   );
@@ -830,32 +644,11 @@ export default async function noteRoutes(app) {
       if (!task) throw coded(app.httpErrors.notFound('Task not found'), 'TASK_NOT_FOUND');
       await app.requireWorkspaceMember(request, task.workspace_id);
 
-      const id = newId();
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId: task.workspace_id,
-          entityType: 'note',
-          entityId: id,
-          operation: 'create',
-        });
-        await trx('notes').insert({
-          id,
-          workspace_id: task.workspace_id,
-          project_id: task.project_id ?? null, // inherited from the task
-          created_from_task_id: task.id,
-          ...toRowPatch({ title: task.title, ...request.body }),
-          created_by: request.user.id,
-          updated_by: request.user.id,
-          revision,
-        });
-        await trx('note_links').insert({
-          id: newId(),
-          note_id: id,
-          linked_entity_type: 'task',
-          linked_entity_id: task.id,
-        });
+      const id = await domain.createNoteFromTask(app, {
+        task,
+        userId: request.user.id,
+        body: request.body,
       });
-
       return reply.code(201).send(await serializeNoteDetail(await loadNote(id)));
     },
   );

@@ -1,8 +1,7 @@
-import { newId } from '../lib/ids.js';
-import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
 import { recordSyncWrite } from '../db/sync.js';
+import * as domain from '../db/tags.js';
 import { COLOR_PATTERN } from './projects.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
@@ -53,37 +52,15 @@ export function serializeTag(row) {
   };
 }
 
-function slugTakenError(app) {
-  return coded(
-    app.httpErrors.conflict('A tag with this name already exists in the workspace'),
-    'TAG_SLUG_TAKEN',
-  );
-}
-
 export default async function tagRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
-  async function loadTag(id) {
-    const row = await app.db('tags').where({ id }).whereNull('deleted_at').first();
-    if (!row) throw coded(app.httpErrors.notFound('Tag not found'), 'TAG_NOT_FOUND');
-    return row;
-  }
-
-  // The (workspace_id, slug) unique index also covers soft-deleted rows, so a
-  // fast pre-check gives the friendly 409 and the index stays authoritative
-  // for races (ER_DUP_ENTRY → same 409).
-  async function assertSlugFree(workspaceId, slug, excludeId) {
-    let query = app.db('tags').where({ workspace_id: workspaceId, slug });
-    if (excludeId) query = query.whereNot('id', excludeId);
-    if (await query.first('id')) throw slugTakenError(app);
-  }
-
-  const wrapSlugRace = (err) => {
-    if (err?.code === 'ER_DUP_ENTRY' && err.message.includes('uq_tags_workspace_slug')) {
-      throw slugTakenError(app);
-    }
-    throw err;
-  };
+  // OPH-261: the writes and the slug rules live in `db/tags.js`, so an MCP
+  // tool cannot reimplement them and get the race wrong (ADR-0022 §4).
+  const loadTag = (id) => domain.loadTag(app, id);
+  const assertSlugFree = (workspaceId, slug, excludeId) =>
+    domain.assertSlugFree(app, workspaceId, slug, excludeId);
+  const wrapSlugRace = (err) => domain.wrapSlugRace(app, err);
 
   app.get(
     '/workspaces/:workspaceId/tags',
@@ -100,13 +77,7 @@ export default async function tagRoutes(app) {
     async (request) => {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
-      const rows = await app
-        .db('tags')
-        .where({ workspace_id: workspaceId })
-        .whereNull('deleted_at')
-        .orderBy('name', 'asc')
-        .select();
-      return { items: rows.map(serializeTag) };
+      return { items: (await domain.listTags(app, workspaceId)).map(serializeTag) };
     },
   );
 
@@ -129,33 +100,7 @@ export default async function tagRoutes(app) {
       const { workspaceId } = request.params;
       await app.requireWorkspaceMember(request, workspaceId);
 
-      const name = request.body.name.trim();
-      const slug = slugify(name, 'tag');
-      await assertSlugFree(workspaceId, slug);
-
-      const id = newId();
-      try {
-        await app.db.transaction(async (trx) => {
-          const revision = await recordSyncWrite(trx, {
-            workspaceId,
-            entityType: 'tag',
-            entityId: id,
-            operation: 'create',
-          });
-          await trx('tags').insert({
-            id,
-            workspace_id: workspaceId,
-            name,
-            slug,
-            ...(request.body.colorRgb ? { color_rgb: request.body.colorRgb } : {}),
-            ...('icon' in request.body ? { icon: request.body.icon } : {}),
-            revision,
-          });
-        });
-      } catch (err) {
-        wrapSlugRace(err);
-      }
-
+      const id = await domain.createTag(app, { workspaceId, body: request.body });
       return reply.code(201).send(serializeTag(await loadTag(id)));
     },
   );

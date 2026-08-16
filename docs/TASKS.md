@@ -8039,7 +8039,7 @@ _Bulgu #6/#7. ADR-0022 K4: MCP domain katmanını çağırır, ham SQL'i değil 
 tags mantığı bugün route içinde. Bu task REST davranışını DEĞİŞTİRMEDEN çıkarımı yapar ve iki
 ölçülmüş yalanı düzeltir._
 
-_(🟡 2026-08-17 — **üç onarım da sevk edildi, çıkarım AÇIK.** API süiti **632** (+12),
+_(✅ 2026-08-17 — **tamamlandı: üç onarım + çıkarım.** API süiti **632** (+12),
 lint/format temiz. Deploy alınmadı, sahibin talimatı.)_
 
 _**Turun tek cümlesi: üç ayrı arıza da tek bir şeklin tekrarıydı** — kod ADR-0028'in iki
@@ -8052,12 +8052,21 @@ fonksiyonu çağırdığı için her snapshot `tagIds: []` demeye başlamıştı
 kapatırken yenisini açıyordum. Pull artık etiketleri de yüklüyor (link'ler nasıl
 yükleniyorsa öyle). Etiketler not PUSH protokolüne girmiyor; bu bilinçli ve yazılı sınır._
 
-- [ ] **AÇIK: `src/db/notes.js` / `db/projects.js` / `db/tags.js` çıkarımı.** Bu turda
-      yapılmadı — üç route dosyasından mantık taşımak mekanik ama geniş bir refactor ve
-      yarım bırakılması, hiç yapılmamasından kötü. Kapsamı değişmedi: `db/tasks.js` deseni,
-      Ajv şemaları ve hata kodları aynen, mevcut süitler değişmeden yeşil kalmalı (davranış
-      sözleşmesinin kanıtı budur). **OPH-262 bunu bekliyor** (ADR-0022 K4: MCP domain
-      katmanını çağırır, ham SQL'i değil).
+- [x] **Çıkarım YAPILDI** (2026-08-17, ikinci tur). `src/db/notes.js` (270 satır:
+      `loadNote`, `noteRelations`, `assertProjectUsable`, `toRowPatch`, `createNote`,
+      **`createNoteFromTask`**, `updateNote`, `setNoteTags`, `exportNoteMarkdown`,
+      `parseDelta`) · `src/db/projects.js` (101: `loadProject`, `assertReadmeNoteUsable`,
+      `listProjects`, **`openTaskCounts`** batched, `createProject`, `updateProject`) ·
+      `src/db/tags.js` (85: `loadTag`, slug kuralları — ön kontrol + index yarışı birlikte —,
+      `listTags`, `createTag`). Route dosyaları delege ediyor; `routes/notes.js` 862 → 655
+      satır. **Kanıt: 632 testin hiçbiri değişmeden yeşil** — "aynı davranış, yeni ev"
+      sözleşmesi tam olarak budur.
+      _`createNoteFromTask` ayrı bir fonksiyon: bağlantı süs değil, işlemin kendisi
+      ("bu görevi nota çevir"), ve OPH-263'ün `create_note(taskId:)` aracının ikinci
+      çağıranı olacak._
+      _Bilinçli olarak taşınmayan: projenin **arşiv kaskadı**. Görevlere ve notlara uzanıyor
+      ve kendi onay semantiği var; taşınması bu turun "aynı davranış" sözleşmesinden daha
+      büyük bir soru. Sessizce atlanmadı, yazıldı._
 - [x] **Onarım 1 (`plain_text`) — ÖLÇÜLDÜ ve kapandı.** `toRowPatch` (`notes.js:161-180` → yeni `db/notes.js`)
       markdown-canonical yazımda `plain_text`'i markdown'dan türetir (yeni `markdownToPlainText`
       — sunucuda md ayrıştırıcıya gerek yok: satır bazlı sözdizimi soyma yeterli, test
