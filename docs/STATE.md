@@ -25,6 +25,15 @@ sonrasını kurtarır, ama elinde "bir yıl geçerli" kaydı olan tarayıcı sun
 sormaz — o tek kayıt bir kez hard refresh (Ctrl/⌘+Shift+R) ile atılmalı. Ayrıca
 Cloudflare kenarı eski girdiyi tutabilir; purge sahibin panelinden yapılır.
 
+**v1.6.0 CANLI ve başlıklar ÜRÜNDEN ölçüldü — origin düzeldi, kenar açık kaldı.**
+`version.json` / `assets/**` artık `no-cache, must-revalidate` (`cf-cache-status: DYNAMIC`,
+yani gördüğümüz origin'in kendi politikası) ve `main.dart.js`'in damgası yeni deploy'un.
+Ama Cloudflare iki şey yapıyor: `.js`'i kendi 4 saatlik tarayıcı TTL'ine yeniden yazıyor
+(`max-age=14400`) ve `flutter_bootstrap.js`'i kenarda ESKİ yıllık-immutable kopyasıyla
+tutuyor (`HIT`, `last-modified` dünkü). **Kalan iş panelde: `/app/*` purge + Browser Cache
+TTL'i "Respect Existing Headers" yapmak.** Agent'ın Cloudflare erişimi yok; yazıldı, sahibe
+bildirildi. Yine de kazanç gerçek: bir YIL → en fazla 4 saat, ve servis edilen kod yeni.
+
 Önceki blok: 2026-08-17a (**OPH-260 BİTTİ — Ayarlar beş yer adlandıran bir
 index oldu. Süitler **1204** (+5), analyze/format/i18n temiz, contrast FAILURES: 0.
 Sıradaki iş: OPH-261 (domain katmanı çıkarımı — MCP/API'nin ön koşulu).**

@@ -8015,9 +8015,23 @@ kullanıcıya ULAŞAN katmanını ölçmediği sürece yeşil yanabilir._
 - [x] `docker/web-nginx.conf`: aynı yanlış önerme kendi barındıranları da vuruyordu; aynı
       şekilde revalidate'e çevrildi (ETag varken değişmeyen dosya 304 döner, maliyet bu).
 - [x] Deploy sonrası başlıklar ÜRÜNDEN yeniden ölçüldü (aşağıdaki Run Log satırı).
-- [ ] **Cloudflare kenar önbelleği:** origin düzeldikten sonra bile kenar, eski `immutable`
-      girdisini TTL'i dolana kadar tutabilir. Purge sahibin panelinden yapılır — agent'ın
-      kimlik bilgisi yok. Sahibe bildirildi.
+- [x] Deploy sonrası ÜRÜNDEN ölçüldü (v1.6.0, 2026-08-17) ve **origin düzeldiği kanıtlandı**:
+      `version.json` ve `assets/**` artık `no-cache, must-revalidate` dönüyor (`cf-cache-status:
+      DYNAMIC` — Cloudflare bunları önbelleklemiyor, yani gördüğümüz doğrudan origin'in
+      politikası). `main.dart.js`'in `last-modified`'ı yeni deploy'un damgası.
+- [ ] **AÇIK — Cloudflare kenarı, ve düzeltmesi panelde (agent'ın erişimi yok).** Ölçüm:
+      | Dosya | Cache-Control | cf-cache-status |
+      | --- | --- | --- |
+      | `version.json` | `no-cache, must-revalidate` | DYNAMIC (origin'e geçiyor) |
+      | `main.dart.js` | **`max-age=14400, must-revalidate`** | EXPIRED (içerik YENİ) |
+      | `flutter_bootstrap.js` | **`public, max-age=31536000, immutable`** | **HIT, age 445** |
+      İki ayrı Cloudflare davranışı: (1) `.js` CF'nin varsayılan önbelleklenen tipleri
+      arasında olduğu için tarayıcı TTL'ini kendi **4 saatine** yeniden yazıyor — origin ne
+      derse desin; (2) `flutter_bootstrap.js` kenarda **eski, yıllık-immutable** kopyasıyla
+      duruyor (`last-modified` dünkü deploy). **Sahibin yapması gerekenler:** `/app/*` için
+      cache **purge**, ve kalıcı çözüm olarak Browser Cache TTL → *Respect Existing Headers*
+      ya da `alliswell.space/app/*` için bypass eden bir Cache Rule.
+      _Not: purge yapılmasa bile durum yıldan 4 saate indi ve servis edilen kod yeni._
 
 ### OPH-261 — Domain katmanı çıkarımı + not dürüstlük onarımları (MCP/API'nin ön koşulu)
 
