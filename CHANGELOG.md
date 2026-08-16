@@ -5,6 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Notes written in markdown can be found again.** Search only ever indexed
+  notes the rich editor had written, so anything markdown-canonical — a note
+  you converted, or one opened from a file — was invisible to search, to the
+  filter and to the AI tools, even though it was right there in the list. It is
+  indexed now, and existing notes are repaired on upgrade.
+- **Exporting a converted note gives you the note.** The export preferred the
+  old rich-text copy whenever one still existed, so a note you had converted to
+  markdown exported the version you had left behind (OPH-261).
+
+### Added
+
+- **Notes can carry tags.** The table has been there since the first release
+  with no way to read or write it; there is now an endpoint, and a note's tags
+  travel to your devices with the rest of it (OPH-261).
+
 ## [1.6.0] — 2026-08-17
 
 ### Fixed

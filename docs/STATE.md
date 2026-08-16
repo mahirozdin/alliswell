@@ -3,7 +3,32 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17b (**OPH-273 ACİL — canlıdaki tarayıcılar bir yıllık
+**Last updated:** 2026-08-17c (**OPH-261'in üç onarımı sevk edildi, domain çıkarımı
+AÇIK. API süiti **632** (+12), lint/format temiz. **Deploy alınmadı — sahibin talimatı.**
+Sıradaki iş: OPH-261'in kalan yarısı (çıkarım), sonra OPH-262.**
+
+**Turun tek cümlesi: üç ayrı arıza da tek bir şeklin tekrarıydı** — kod ADR-0028'in iki
+kanonik biçimini BİR yerde biliyor, diğerlerinde bilmiyordu. (1) `plain_text` yalnız delta
+dalında yazılıyordu, yani markdown notlar aramada, `?q='de ve MCP araçlarında görünmüyordu;
+(2) export delta varsa onu tercih ediyordu, yani dönüştürülmüş not eski hayatını dışa
+aktarıyordu; (3) `note_tags` ilk migration'dan beri duruyor ve ne yazılabiliyor ne
+okunabiliyordu.
+
+**Yazarken kendi açtığım bir yalan:** `tagIds`'i serileştirmeye eklediğimde sync PULL da
+aynı fonksiyonu çağırdığı için her snapshot `tagIds: []` demeye başladı — bir yalanı
+kapatırken yenisini açıyordum. Pull artık etiketleri de yüklüyor. Etiketler not PUSH
+protokolüne girmiyor: bilinçli, yazılı sınır.
+
+**Backfill migration'ı yazıldı** (`20260817090000`): yalnız `content_format='markdown'`
+satırlarına dokunuyor, delta notlara ELLEMİYOR (onların sütunu zaten doğru ve üretilmiş
+markdown'dan yeniden türetmek doğruyu kötüyle değiştirmek olurdu), sayfalı ve yalnız
+gerçekten değişen satırı yazıyor.
+
+**AÇIK kalan:** `db/notes.js` / `db/projects.js` / `db/tags.js` çıkarımı. Bu turda
+yapılmadı — üç route dosyasından mantık taşımak mekanik ama geniş, ve yarım bırakılması
+hiç yapılmamasından kötü. OPH-262 (MCP yazma araçları) bunu bekliyor.
+
+Önceki blok: 2026-08-17b (**OPH-273 ACİL — canlıdaki tarayıcılar bir yıllık
 eski uygulamayı çalıştırıyordu; kök neden sunucu başlıklarında ve DEPODAYDI. v1.6.0
 kesiliyor (OPH-260 + bu düzeltme).**
 

@@ -21,7 +21,7 @@
 import { newId } from '../lib/ids.js';
 import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
-import { deltaToPlainText, isValidDelta } from '../lib/delta.js';
+import { deltaToPlainText, isValidDelta, markdownToPlainText } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
@@ -322,18 +322,29 @@ export default async function syncRoutes(app) {
       };
     },
     note: async (ids) => {
-      const [rows, linkRows] = await Promise.all([
+      // OPH-261: tags load here for the same reason links do. They are not part
+      // of the note PUSH protocol (a client cannot change them through sync),
+      // but a snapshot that always claimed `tagIds: []` would be a new lie —
+      // and the pull is where a replica learns what a note is.
+      const [rows, linkRows, tagRows] = await Promise.all([
         app.db('notes').whereIn('id', ids).select(),
         app.db('note_links').whereIn('note_id', ids).orderBy('created_at', 'asc').select(),
+        app.db('note_tags').whereIn('note_id', ids).select(),
       ]);
       const linksByNote = new Map();
       for (const l of linkRows) {
         if (!linksByNote.has(l.note_id)) linksByNote.set(l.note_id, []);
         linksByNote.get(l.note_id).push(l);
       }
+      const tagsByNote = new Map();
+      for (const t of tagRows) {
+        if (!tagsByNote.has(t.note_id)) tagsByNote.set(t.note_id, []);
+        tagsByNote.get(t.note_id).push(t.tag_id);
+      }
       return {
         rows,
-        serialize: (row) => serializeNoteSnapshot(row, linksByNote.get(row.id) ?? []),
+        serialize: (row) =>
+          serializeNoteSnapshot(row, linksByNote.get(row.id) ?? [], tagsByNote.get(row.id) ?? []),
       };
     },
     checklist_item: async (ids) => ({
@@ -536,6 +547,22 @@ export default async function syncRoutes(app) {
         rowPatch.content_delta = value === null ? null : JSON.stringify(value);
         rowPatch.plain_text = deltaToPlainText(value);
         intent.cols.push('content_delta', 'plain_text');
+      }
+      // OPH-261: the same repair on the sync path — the app writes the whole
+      // body on every autosave, so a markdown note arrives here far more often
+      // than through REST, and it was the bigger half of the search blind spot.
+      //
+      // Guarded by the note's CANONICAL format, and that guard is the whole
+      // subtlety: the app sends `contentMarkdown` for delta notes too (it
+      // derives one for export), so deriving from it unconditionally would
+      // have quietly re-based every existing note's search column on a
+      // generated document instead of the one the user typed.
+      if (entityKey === 'note' && key === 'contentMarkdown') {
+        const format = patch.contentFormat ?? row?.content_format ?? 'delta';
+        if (format === 'markdown') {
+          rowPatch.plain_text = markdownToPlainText(value ?? '');
+          intent.cols.push('plain_text');
+        }
       }
       intents.push(intent);
     }

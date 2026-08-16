@@ -22,6 +22,55 @@ export function deltaToPlainText(ops) {
   return text.replace(/\s+/g, ' ').trim().slice(0, MAX_PLAIN_TEXT);
 }
 
+/**
+ * Extracts searchable plain text from MARKDOWN — the twin of
+ * [deltaToPlainText] for the notes ADR-0028 made markdown-canonical.
+ *
+ * Until OPH-261 there was no twin, and `plain_text` was derived ONLY when a
+ * delta was written. A markdown note therefore carried an empty (or stale)
+ * search column: invisible to `?q=`, to the FULLTEXT index and to the MCP
+ * `search`/`get_note` tools. The note existed and could not be found.
+ *
+ * Deliberately not a markdown parser. The goal is the words a person would
+ * search for, so this strips the syntax that stands between them: fences and
+ * inline code, images (the alt text is not the note's words), link labels kept
+ * without their targets, headings, quotes, list bullets, table pipes and the
+ * emphasis marks. Anything it fails to recognise stays as text, which is the
+ * safe direction for a search column.
+ *
+ * @param {string|null|undefined} markdown
+ * @returns {string}
+ */
+export function markdownToPlainText(markdown) {
+  if (typeof markdown !== 'string' || markdown === '') return '';
+  const text = markdown
+    // Fenced code: the content is rarely what someone searches a note for, and
+    // keeping it would drown the prose in punctuation.
+    .replace(/^```[\s\S]*?^```/gm, ' ')
+    .replace(/^~~~[\s\S]*?^~~~/gm, ' ')
+    // Front matter, when the document opens with it.
+    .replace(/^---\n[\s\S]*?\n---\n/, ' ')
+    // Images before links: `![alt](src)` must not survive as a link label.
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // Reference-style and bare autolinks.
+    .replace(/<[^>\s]+>/g, ' ')
+    .replace(/`([^`]*)`/g, '$1')
+    // Block markers at the start of a line.
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s*[-*+]\s+\[[ xX]\]\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+[.)]\s+/gm, '')
+    // Horizontal rules, table pipes and cell padding.
+    .replace(/^\s{0,3}([-*_])\s*(?:\1\s*){2,}$/gm, ' ')
+    .replace(/\|/g, ' ')
+    // Emphasis, strikethrough and the highlight mark.
+    .replace(/(\*\*|__|~~|==)(.*?)\1/g, '$2')
+    .replace(/(^|[^\w])[*_]([^*_\n]+)[*_]([^\w]|$)/g, '$1$2$3');
+  return text.replace(/\s+/g, ' ').trim().slice(0, MAX_PLAIN_TEXT);
+}
+
 /** A structurally valid ops array: objects whose `insert` is string or object. */
 export function isValidDelta(ops) {
   return (

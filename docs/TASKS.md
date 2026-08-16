@@ -8039,30 +8039,45 @@ _Bulgu #6/#7. ADR-0022 K4: MCP domain katmanını çağırır, ham SQL'i değil 
 tags mantığı bugün route içinde. Bu task REST davranışını DEĞİŞTİRMEDEN çıkarımı yapar ve iki
 ölçülmüş yalanı düzeltir._
 
-- [ ] `src/db/notes.js` doğar: `createNote`, `updateNote`, `deleteNote`, `linkNote`/`unlinkNote`,
-      `listNotes`, `getNote`, `exportNoteMarkdown` — `db/tasks.js` deseni (recordSyncWrite +
-      revision damgası + aynı transaction). `routes/notes.js` bunlara delege eder; Ajv şemaları
-      ve hata kodları AYNEN kalır (mevcut unit testler değişmeden yeşil kalmalı — davranış
-      sözleşmesinin kanıtı budur).
-- [ ] `src/db/projects.js` (`createProject`, `updateProject`, `archiveProject`, `listProjects`,
-      `getProject` + açık görev sayımı) ve `src/db/tags.js` (`createTag`, `updateTag`,
-      `deleteTag`, `listTags`) aynı şekilde; `routes/projects.js` / `routes/tags.js` delege.
-- [ ] **Onarım 1 (`plain_text`):** `toRowPatch` (`notes.js:161-180` → yeni `db/notes.js`)
+_(🟡 2026-08-17 — **üç onarım da sevk edildi, çıkarım AÇIK.** API süiti **632** (+12),
+lint/format temiz. Deploy alınmadı, sahibin talimatı.)_
+
+_**Turun tek cümlesi: üç ayrı arıza da tek bir şeklin tekrarıydı** — kod ADR-0028'in iki
+kanonik biçimini BİR yerde biliyor, diğerlerinde bilmiyordu. `plain_text` yalnız delta
+dalında yazılıyordu; export delta'yı varsa her zaman tercih ediyordu; `note_tags` tablosu
+ilk migration'dan beri duruyor ve ne yazılabiliyor ne okunabiliyordu._
+
+_**Yazarken bulduğum kendi açığım:** `tagIds`'i serileştirmeye eklediğimde sync PULL da aynı
+fonksiyonu çağırdığı için her snapshot `tagIds: []` demeye başlamıştı — yani bir yalanı
+kapatırken yenisini açıyordum. Pull artık etiketleri de yüklüyor (link'ler nasıl
+yükleniyorsa öyle). Etiketler not PUSH protokolüne girmiyor; bu bilinçli ve yazılı sınır._
+
+- [ ] **AÇIK: `src/db/notes.js` / `db/projects.js` / `db/tags.js` çıkarımı.** Bu turda
+      yapılmadı — üç route dosyasından mantık taşımak mekanik ama geniş bir refactor ve
+      yarım bırakılması, hiç yapılmamasından kötü. Kapsamı değişmedi: `db/tasks.js` deseni,
+      Ajv şemaları ve hata kodları aynen, mevcut süitler değişmeden yeşil kalmalı (davranış
+      sözleşmesinin kanıtı budur). **OPH-262 bunu bekliyor** (ADR-0022 K4: MCP domain
+      katmanını çağırır, ham SQL'i değil).
+- [x] **Onarım 1 (`plain_text`) — ÖLÇÜLDÜ ve kapandı.** `toRowPatch` (`notes.js:161-180` → yeni `db/notes.js`)
       markdown-canonical yazımda `plain_text`'i markdown'dan türetir (yeni `markdownToPlainText`
       — sunucuda md ayrıştırıcıya gerek yok: satır bazlı sözdizimi soyma yeterli, test
       fixture'larıyla). Sync tarafındaki ikiz üretici (`sync.js:535-539`) AYNI yardımcıyı
       kullanır. Kanıt: markdown-canonical not `?q=` ve MCP `search`/`get_note`'ta bulunur
       (bugün bulunmuyor — bulgu #6). Mevcut satırlar için tek seferlik backfill migration'ı
       (yalnız `content_format='markdown'` VE `plain_text` boş/bayat olanlar).
-- [ ] **Onarım 2 (export):** `exportNoteMarkdown` `content_format`'a saygı duyar —
+- [x] **Onarım 2 (export) — kapandı.** `exportNoteMarkdown` `content_format`'a saygı duyar —
       markdown-canonical notta `content_markdown` kanonik kaynaktır (bugün delta-öncelikli,
       `notes.js:380-382`).
-- [ ] **Onarım 3 (`note_tags`):** tablo ilk günden var, REST ucu hiç olmadı. `PUT
+- [x] **Onarım 3 (`note_tags`) — kapandı.** tablo ilk günden var, REST ucu hiç olmadı. `PUT
       /api/v1/notes/:noteId/tags` (replace-set — `tasks.js:647` emsali) + not
       serileştirmesine `tagIds` eklenir; sync `NOTE_FIELDS`'e girmez (bilinçli: v1'de etiket
       not-sync'ine dahil değil, yazılı sınır — pull serializer'ı zaten links'i taşıyor,
       tagIds de aynı yoldan okunur).
-- [ ] Testler: mevcut notes/projects/tags unit + integration süitleri YEŞİL (delege kanıtı);
+- [x] Testler (+12, süit 620 → **632**): `markdownToPlainText` fixture'ları (bağlantı
+      etiketi kalır hedefi gider, görsel ve kod bloğu düşer, junk çökmez) · markdown notun
+      create/update'te `plain_text` türettiği ve **`?q=` ile bulunduğu** · delta notun hâlâ
+      delta'dan türettiği (asıl bekçi) · export'un kanonik alana uyduğu, iki yönde de ·
+      etiket replace-set'i ve başka workspace'in etiketini reddettiği. Eski süitler:
       yeni: plain_text markdown üretimi (fixture'lı), export format-saygısı, note-tags ucu,
       backfill migration'ı. `npm run lint` + format.
 
