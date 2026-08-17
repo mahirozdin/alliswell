@@ -16,6 +16,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   old rich-text copy whenever one still existed, so a note you had converted to
   markdown exported the version you had left behind (OPH-261).
 
+### Fixed
+
+- **Editing the same note on two devices no longer loses one of them.** The
+  app used to make an automatic "conflicted copy" and leave you to sort it
+  out — and only when it noticed at all; a pull arriving at the wrong moment
+  could let one device's text quietly replace the other's. Now edits that do
+  not touch each other are merged (including two people editing opposite ends
+  of the same paragraph), and when they genuinely collide the note tells you
+  so instead of duplicating itself — with both versions kept, so nothing is
+  lost either way. A note open on screen also picks up changes from your other
+  devices while you are not typing in it, and keeps your text when you are
+  (OPH-268).
+
 ### Added
 
 - **Notes remember what they used to say.** Every edit is captured, so you can

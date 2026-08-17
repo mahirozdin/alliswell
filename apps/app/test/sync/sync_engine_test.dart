@@ -406,7 +406,7 @@ void main() {
     });
 
     test(
-      'note content conflict spawns a local conflicted copy that syncs up',
+      'a refused note write leaves a POINTER, not an automatic copy',
       () async {
         // The local replica holds the user's version of the note.
         await db
@@ -445,6 +445,8 @@ void main() {
                 status: 'conflict',
                 replayed: false,
                 errorCode: 'NOTE_CONTENT_CONFLICT',
+                conflictVersionId: 'VER${'0' * 23}',
+                reason: 'OVERLAP',
               )
             else
               SyncPushResult(
@@ -458,29 +460,135 @@ void main() {
         final surfaced = <SyncConflict>[];
         final sub = engine.conflicts.listen(surfaced.add);
         await engine.start();
-        // The copy's own create lands in the outbox and pushes on the follow-up
-        // round the engine queues; give the microtask queue a beat.
         await engine.syncNow();
         await Future<void>.delayed(Duration.zero);
 
+        // OPH-268: NO sibling copy is made. That decision was the app's to
+        // stop making — the losing body is safe in the server's history, and
+        // splitting the note is now something the user chooses.
         final notes = await db.select(db.notes).get();
-        expect(notes, hasLength(2));
-        final copy = notes.singleWhere((n) => n.id != id('N1'));
-        expect(copy.title, 'Ortak not (çakışan kopya)');
-        expect(copy.contentDelta, contains('benim halim'));
+        expect(notes, hasLength(1));
+        expect(
+          api.pushedBatches
+              .expand((b) => b)
+              .where((m) => m.operation == 'create' && m.entityType == 'note'),
+          isEmpty,
+        );
 
-        // The copy synced up as a note create.
-        final pushedCreates = api.pushedBatches
-            .expand((b) => b)
-            .where((m) => m.operation == 'create' && m.entityType == 'note');
-        expect(pushedCreates, hasLength(1));
-        expect(pushedCreates.single.entityId, copy.id);
+        // The note carries the pointer instead: this is what raises its banner.
+        expect(notes.single.conflictVersionId, 'VER${'0' * 23}');
         expect(await db.select(db.pendingMutations).get(), isEmpty);
-
         expect(surfaced.single.errorCode, 'NOTE_CONTENT_CONFLICT');
-        expect(surfaced.single.conflictCopyNoteId, copy.id);
+        expect(surfaced.single.conflictVersionId, isNotNull);
         await sub.cancel();
       },
     );
+
+    /// One note in the replica plus one queued body write, the shape every
+    /// test below starts from.
+    Future<void> seedNoteWrite(
+      String noteId, {
+      required String body,
+      int? baseRevision,
+    }) async {
+      await db
+          .into(db.notes)
+          .insert(
+            NotesCompanion.insert(
+              id: noteId,
+              workspaceId: ws,
+              title: 'Ortak not',
+              contentMarkdown: Value(body),
+              contentFormat: const Value('markdown'),
+              plainText: Value(body),
+            ),
+            mode: InsertMode.insertOrReplace,
+          );
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'note',
+        entityId: noteId,
+        operation: 'update',
+        patch: {'contentMarkdown': body, 'contentFormat': 'markdown'},
+        baseRevision: baseRevision,
+      );
+    }
+
+    test('a merged push adopts the server body and advances the base', () async {
+      await seedNoteWrite(id('N1'), body: 'benim satırım', baseRevision: 3);
+      api.onPush = (mutations) => [
+        for (final m in mutations)
+          SyncPushResult(
+            clientMutationId: m.clientMutationId,
+            status: 'merged',
+            replayed: false,
+            revision: 12,
+            mergedMarkdown: 'benim satırım\nonun satırı',
+          ),
+      ];
+
+      await engine.start();
+      await engine.syncNow();
+
+      final note = await (db.select(
+        db.notes,
+      )..where((n) => n.id.equals(id('N1')))).getSingle();
+      // Both texts are in the replica, so an open editor sees them…
+      expect(note.contentMarkdown, contains('onun satırı'));
+      expect(note.contentMarkdown, contains('benim satırım'));
+      // …and the base advanced with our OWN result, so the next autosave is an
+      // ordinary write rather than a conflict against ourselves.
+      expect(note.revision, 12);
+      // The base the client sent is what the server merged against.
+      final pushed = api.pushedBatches
+          .expand((b) => b)
+          .where((m) => m.entityType == 'note')
+          .single;
+      expect(pushed.baseRevision, 3);
+    });
+
+    test('an applied push advances the note revision too', () async {
+      await seedNoteWrite(id('N1'), body: 'ilk', baseRevision: 1);
+      api.onPush = (mutations) => [
+        for (final m in mutations)
+          SyncPushResult(
+            clientMutationId: m.clientMutationId,
+            status: 'applied',
+            replayed: false,
+            revision: 5,
+          ),
+      ];
+      await engine.start();
+      await engine.syncNow();
+
+      final note = await (db.select(
+        db.notes,
+      )..where((n) => n.id.equals(id('N1')))).getSingle();
+      expect(note.revision, 5);
+    });
+
+    test('unpushed edits to one note coalesce into a single write', () async {
+      // Three autosaves before the engine gets a chance to push — the 1.5 s
+      // debounce's real shape when the network is slow.
+      await seedNoteWrite(id('N1'), body: 'a', baseRevision: 2);
+      for (final body in ['ab', 'abc']) {
+        await enqueueMutation(
+          db,
+          workspaceId: ws,
+          entityType: 'note',
+          entityId: id('N1'),
+          operation: 'update',
+          patch: {'contentMarkdown': body, 'contentFormat': 'markdown'},
+          baseRevision: 4,
+        );
+      }
+
+      final queued = await db.select(db.pendingMutations).get();
+      // ONE row: newest body, OLDEST base — the session started at 2.
+      expect(queued, hasLength(1));
+      expect(queued.single.patchJson, contains('abc'));
+      expect(queued.single.baseRevision, 2);
+    });
   });
 }

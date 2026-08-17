@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17j (**OPH-268 SUNUCU YARIMI BİTTİ, istemci yarımı AÇIK —
+**Last updated:** 2026-08-17k (**OPH-268 TAMAMEN BİTTİ — istemci yarımı da indi: drift v18,
+base taşıma, outbox koalesansı, otomatik kopyanın emekliliği, editör V7. App süiti **1213**
+(+3), API **709**, analyze/format/i18n temiz, contrast FAILURES: 0. **Deploy alınmadı —
+sahibin talimatı.** Sıradaki iş: OPH-269 (sürüm geçmişi & çakışma yüzeyi, DESIGN §35) — Epic
+25'in son işi.**
+
+**Turun tek cümlesi: uygulama artık kullanıcı adına karar vermiyor.** Otomatik "çakışan kopya"
+öldü: reddedilen gövde sunucunun tarihçesinde duruyor, not `conflictVersionId` taşıyor, notu
+ikiye bölmek kullanıcının seçimi oldu. Eski davranış üç yerden yanlıştı — sunucunun artık
+birleştirebildiği çakışmalarda da tetikleniyordu, kuyruktaki her otosave için bir kopya
+üretiyordu (bulgu #3), ve kopya `contentFormat`'sız doğduğu için markdown notun kopyası zengin
+metin olarak geri geliyordu. Üçü birden tek kararla kapandı.
+
+**Yazarken bulduğum kendi açığım — koalesans uçuştaki satırı silebilirdi.** Motor settle'da
+outbox satırını koşulsuz siliyor; koalesans, push'a çoktan girmiş bir satıra daha yeni bir
+gövde yazarsa o gövde silinip giderdi. **Tam da bu task'ın bitirdiği arıza sınıfı, yeni
+koddan.** Silme artık `localUpdatedAt` eşleşmesine bağlı: satır push'tan sonra değiştiyse
+silinmiyor, bir sonraki turda birleşmiş gövdeyle gidiyor.
+
+**Editör V7 kontrolleri yeniden KURMUYOR:** `adoptRemote` mevcut `TextEditingController` ve
+`QuillController` üzerine yazıyor, çünkü onlar odak düğümünü ve kaydırma konumunu taşıyor —
+OPH-270'in imleç dersi burada da geçerli.
+
+Önceki blok: 2026-08-17j (**OPH-268 SUNUCU YARIMI BİTTİ, istemci yarımı AÇIK —
 not-bazlı base, sunucuda üç yollu merge, çakışanın saklanması. API süiti **709** (+12),
 lint/format temiz. **Deploy alınmadı — sahibin talimatı.** Sıradaki iş: OPH-268'in istemci
 yarımı (drift v18 + outbox koalesansı + otomatik kopyanın ölmesi + editör V7), sonra OPH-269.**

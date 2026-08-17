@@ -321,9 +321,31 @@ class NoteStore {
         entityId: noteId,
         operation: 'update',
         patch: patch,
+        // OPH-268: what this write started from. The replica's revision is the
+        // last thing THIS device heard about the note — from a pull, or from
+        // its own previous push, which the engine writes back on success. That
+        // is what makes two consecutive autosaves an ordinary pair of writes
+        // instead of a conflict against ourselves.
+        baseRevision: isContentPatch(patch) ? record.revision : null,
       );
     });
     _poke();
+  }
+
+  /// Whether a patch touches the body — only those need a base (a pin does
+  /// not conflict with anything).
+  static bool isContentPatch(Map<String, dynamic> patch) =>
+      patch.containsKey('contentDelta') ||
+      patch.containsKey('contentMarkdown') ||
+      patch.containsKey('contentFormat') ||
+      patch.containsKey('title');
+
+  /// The user resolved a conflict banner: the pointer goes, the note stays.
+  /// Never pushed — `conflictVersionId` is device-local (v18).
+  Future<void> clearConflict(String noteId) async {
+    await (_db.update(_db.notes)..where((n) => n.id.equals(noteId))).write(
+      const NotesCompanion(conflictVersionId: Value(null)),
+    );
   }
 
   Future<void> delete(String noteId) async {

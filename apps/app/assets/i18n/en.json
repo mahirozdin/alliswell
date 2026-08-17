@@ -564,7 +564,7 @@
     "AI_NOT_CONFIGURED": "No AI provider is connected yet. Add one in Settings → AI."
   },
   "sync": {
-    "noteConflict": "Note edited elsewhere — your version was kept as a conflicted copy.",
+    "noteConflict": "This note was edited on another device too — open it to compare.",
     "fieldsOverridden": "Some changes were overridden by a newer edit ({fields}).",
     "rejected": "A change was rejected by the server{code}.",
     "conflicted": "A change conflicted with a newer edit and was not applied."

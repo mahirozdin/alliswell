@@ -145,7 +145,7 @@ class HomeShell extends ConsumerWidget {
   /// as a snackbar — the replica already shows the server's version by the
   /// time the user reads it.
   String _conflictMessage(SyncConflict conflict) {
-    if (conflict.conflictCopyNoteId != null) {
+    if (conflict.conflictVersionId != null) {
       return 'sync.noteConflict'.tr();
     }
     if (conflict.discardedFields.isNotEmpty) {

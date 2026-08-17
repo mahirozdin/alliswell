@@ -563,7 +563,7 @@
     "AI_NOT_CONFIGURED": "Henüz bağlı bir yapay zekâ sağlayıcısı yok. Ayarlar → Yapay zekâ’dan ekle."
   },
   "sync": {
-    "noteConflict": "Not başka yerde düzenlendi — senin sürümün çakışan kopya olarak saklandı.",
+    "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
     "fieldsOverridden": "Bazı değişiklikler daha yeni bir düzenlemeyle geçersiz kılındı ({fields}).",
     "rejected": "Bir değişiklik sunucu tarafından reddedildi{code}.",
     "conflicted": "Bir değişiklik daha yeni bir düzenlemeyle çakıştı ve uygulanmadı."

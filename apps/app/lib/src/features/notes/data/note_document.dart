@@ -27,6 +27,8 @@
 /// own undo stack simply continue.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 
@@ -131,6 +133,32 @@ class NoteDocument extends ChangeNotifier {
   /// The editor mode this note offers, whichever it is.
   NoteMode get editorMode =>
       _format == NoteFormat.delta ? NoteMode.live : NoteMode.source;
+
+  /// Replaces the document's content with a note that arrived from the server
+  /// (OPH-268 V7). Called ONLY when the editor is clean — a dirty editor keeps
+  /// the user's text and lets the push-time three-way merge do the work.
+  ///
+  /// The controllers are reused rather than rebuilt: they own the focus node
+  /// and the scroll position (OPH-270), and swapping them mid-screen is how
+  /// the caret used to jump.
+  void adoptRemote(NoteDetail note) {
+    _format = NoteFormat.parse(note.contentFormat);
+    if (title.text != note.title) title.text = note.title;
+    final markdown = note.contentMarkdown ?? '';
+    if (_format == NoteFormat.markdown) {
+      if (source.text != markdown) source.text = markdown;
+    } else {
+      final delta = note.contentDelta;
+      final incoming = delta == null || delta.isEmpty
+          ? Document()
+          : Document.fromJson(delta);
+      if (jsonEncode(incoming.toDelta().toJson()) !=
+          jsonEncode(quill.document.toDelta().toJson())) {
+        quill.document = incoming;
+      }
+    }
+    notifyListeners();
+  }
 
   void setMode(NoteMode next) {
     if (next == _mode || !availableModes.contains(next)) return;

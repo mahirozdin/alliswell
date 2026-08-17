@@ -116,6 +116,25 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _doc.quill.document.changes.listen((_) => _markDirty());
   }
 
+  /// V7 (OPH-268, finding #2): a change that arrived from another device lands
+  /// in this editor instead of sitting under it.
+  ///
+  /// The document used to be built once in `initState` and never looked at the
+  /// replica again, so a pull wrote underneath an open editor and the next
+  /// autosave sent the stale text back up. Now: a CLEAN editor adopts the new
+  /// content in place (and its base advances with it); a DIRTY editor keeps
+  /// what the user is typing — the push-time three-way merge is what reconciles
+  /// those two, and it can only do that if the text still exists.
+  @override
+  void didUpdateWidget(covariant _NoteEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final incoming = widget.note;
+    if (incoming == null || widget.external) return;
+    if (incoming.revision == oldWidget.note?.revision) return;
+    if (_dirty || _saving) return;
+    _doc.adoptRemote(incoming);
+  }
+
   @override
   void dispose() {
     _disposed = true;

@@ -5,9 +5,9 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/fold.dart';
 import '../core/ulid.dart';
 import 'db/database.dart';
-import 'outbox.dart';
 import 'sync_api.dart';
 import 'sync_applier.dart';
 
@@ -23,7 +23,7 @@ class SyncConflict {
     required this.at,
     this.errorCode,
     this.discardedFields = const [],
-    this.conflictCopyNoteId,
+    this.conflictVersionId,
   });
 
   final String entityType;
@@ -35,8 +35,10 @@ class SyncConflict {
   final String? errorCode;
   final List<String> discardedFields;
 
-  /// Set when a note-content conflict spawned a local "conflicted copy".
-  final String? conflictCopyNoteId;
+  /// OPH-268: where the server kept the body it refused. The note carries the
+  /// same id, which is what raises its banner; this is the snackbar's cue that
+  /// something needs the user's eyes — and its proof that nothing was lost.
+  final String? conflictVersionId;
   final DateTime at;
 }
 
@@ -241,23 +243,27 @@ class SyncEngine {
         ? null
         : (jsonDecode(row.patchJson!) as Map<String, dynamic>),
     localUpdatedAt: row.localUpdatedAt,
+    baseRevision: row.baseRevision,
   );
 
   /// The server answered for this mutation — the outbox row is done either
   /// way; conflicts/rejections additionally surface to the user (OPH-056).
   Future<void> _settleResult(PendingMutation row, SyncPushResult result) async {
-    String? copyNoteId;
-    if (result.status == 'conflict' &&
-        result.errorCode == 'NOTE_CONTENT_CONFLICT') {
-      copyNoteId = await _createNoteConflictCopy(row);
+    if (row.entityType == 'note') {
+      await _settleNote(row, result);
     }
 
-    await (db.delete(
-      db.pendingMutations,
-    )..where((m) => m.id.equals(row.id))).go();
+    // OPH-268: delete ONLY if this row has not been rewritten since it was
+    // read for the push. Outbox coalescing can merge a newer body into a row
+    // that is already in flight, and an unconditional delete would throw that
+    // newer body away — the very failure mode this task exists to end.
+    await (db.delete(db.pendingMutations)..where(
+          (m) =>
+              m.id.equals(row.id) & m.localUpdatedAt.equals(row.localUpdatedAt),
+        ))
+        .go();
 
-    final lostSomething =
-        result.status != 'applied' || result.discardedFields.isNotEmpty;
+    final lostSomething = !result.applied || result.discardedFields.isNotEmpty;
     if (lostSomething && !result.replayed) {
       _conflicts.add(
         SyncConflict(
@@ -267,59 +273,62 @@ class SyncEngine {
           status: result.status,
           errorCode: result.errorCode,
           discardedFields: result.discardedFields,
-          conflictCopyNoteId: copyNoteId,
+          conflictVersionId: result.conflictVersionId,
           at: DateTime.now().toUtc(),
         ),
       );
     }
   }
 
-  /// BLUEPRINT §6.5 v1 policy: the server kept its version of the note
-  /// content, so the local edit becomes a NEW note ("çakışan kopya") that
-  /// syncs up as a create — nothing the user typed is ever lost. The
-  /// following pull restores the server content into the original note.
-  Future<String?> _createNoteConflictCopy(PendingMutation row) async {
-    final local = await (db.select(
-      db.notes,
-    )..where((n) => n.id.equals(row.entityId))).getSingleOrNull();
-    if (local == null) return null;
-
-    final copyId = newUlid();
-    final patch = <String, dynamic>{
-      'title': '${local.title} (çakışan kopya)',
-      if (local.contentDelta != null)
-        'contentDelta': jsonDecode(local.contentDelta!),
-      if (local.contentMarkdown != null)
-        'contentMarkdown': local.contentMarkdown,
-      if (local.projectId != null) 'projectId': local.projectId,
-    };
-    await db.transaction(() async {
-      await db
-          .into(db.notes)
-          .insert(
-            NotesCompanion.insert(
-              id: copyId,
-              workspaceId: local.workspaceId,
-              projectId: Value(local.projectId),
-              title: patch['title'] as String,
-              contentDelta: Value(local.contentDelta),
-              contentMarkdown: Value(local.contentMarkdown),
-              plainText: Value(local.plainText),
-              createdAt: Value(DateTime.now().toUtc()),
-              updatedAt: Value(DateTime.now().toUtc()),
-            ),
-          );
-      await enqueueMutation(
-        db,
-        workspaceId: workspaceId,
-        entityType: 'note',
-        entityId: copyId,
-        operation: 'create',
-        patch: patch,
+  /// What a note's own push result does to the replica (OPH-268).
+  ///
+  /// Three things, and the first is the one that stops fake conflicts: a
+  /// successful push ADVANCES this note's local revision, so the next autosave
+  /// carries a base the server recognises instead of the one from before our
+  /// own write.
+  Future<void> _settleNote(PendingMutation row, SyncPushResult result) async {
+    if (result.applied && result.revision != null) {
+      await (db.update(db.notes)..where((n) => n.id.equals(row.entityId)))
+          .write(NotesCompanion(revision: Value(result.revision!)));
+    }
+    // The server merged our text with somebody else's: the merged body IS the
+    // note now, so the replica takes it (an open editor reads the replica).
+    if (result.merged && result.mergedMarkdown != null) {
+      await (db.update(
+        db.notes,
+      )..where((n) => n.id.equals(row.entityId))).write(
+        NotesCompanion(
+          contentMarkdown: Value(result.mergedMarkdown),
+          contentFormat: const Value('markdown'),
+          plainText: Value(result.mergedMarkdown),
+          bodyFold: Value(foldSearchText(result.mergedMarkdown!)),
+          updatedAt: Value(DateTime.now().toUtc()),
+        ),
       );
-    });
-    return copyId;
+    }
+    // Refused: the server kept our body as a version. We record WHERE, and the
+    // note raises a banner (OPH-269 draws it). No automatic sibling copy —
+    // making that decision for the user was decision #8's mistake to undo.
+    if (result.status == 'conflict' &&
+        result.errorCode == 'NOTE_CONTENT_CONFLICT' &&
+        result.conflictVersionId != null) {
+      await (db.update(
+        db.notes,
+      )..where((n) => n.id.equals(row.entityId))).write(
+        NotesCompanion(conflictVersionId: Value(result.conflictVersionId)),
+      );
+    }
   }
+
+  // The automatic "çakışan kopya" note is GONE (OPH-268, decision #8).
+  //
+  // It was the v1 answer to a lock that could not merge: duplicate the note
+  // and let the user sort it out. Three things made it wrong — it fired on
+  // conflicts the server can now merge, it produced one copy per queued
+  // autosave (finding #3), and the copy was born without `contentFormat`, so a
+  // markdown note's copy came back as rich text. Splitting a note into two is
+  // now a thing the USER chooses, from the banner, with the losing body safe
+  // in the server's history either way.
 
   Future<void> _pullAll() async {
     while (true) {

@@ -8506,12 +8506,31 @@ artık NOTUN kendi revizyonu ("editörün gördüğü şey")._
       üretmiyor · delta-canonical not merge'e girmiyor (`NOT_MARKDOWN`) · saklama süpürmüş
       base (`BASE_MISSING`) · **base göndermeyen eski istemci bugünkü davranışı alıyor** ·
       REST PATCH'in merge'i ve 409'u.
-- [ ] **AÇIK — istemci yarımı:** drift v18 kolonu + editörün `note.revision`'ı taşıması,
-      outbox koalesansı (aynı nota ikinci update → EN ESKİ base + EN YENİ gövde), otomatik
-      kardeş-kopyanın ÖLMESİ (yerine `conflictVersionId` + banner state), editör V7 (temiz
-      editör pull'u yerinde alır, kirli editör kullanıcı metnini korur). Sunucu yarımı
-      bunlarsız da doğru davranıyor — base göndermeyen istemci bugünkü yolu alır — ama
-      kullanıcının gördüğü davranış istemci yarımı inene kadar DEĞİŞMEZ.
+- [x] **İstemci yarımı da BİTTİ** (aynı gün, ikinci tur). App süiti **1213** (+3),
+      analyze/format/i18n temiz, `contrast.py` FAILURES: 0.
+      · **drift v18** iki kolon: `PendingMutations.baseRevision` (editörün gördüğü) ve
+      `Notes.conflictVersionId` (reddedilen gövdenin sunucudaki yeri — cihaz-yerel, ASLA
+      push edilmez). İkisi de mevcut tabloda olduğu için `from >= 1` guard'lı; migration
+      testi v18'e taşındı ve **yükseltmeden gelen kuyruk satırının base'siz olduğunu** —
+      yani sunucunun hâlâ onurlandırdığı eski-istemci yolunu — çiviliyor.
+      · **Base taşıma:** `NoteStore.update` içerik yazımlarında replikanın `revision`'ını
+      outbox satırına yazıyor; motor başarılı push'ta (applied VE merged) notun yerel
+      revizyonunu sonuç revizyonuyla ilerletiyor — art arda iki otosave'in kendi kendine
+      çakışmamasının istemci ayağı.
+      · **Outbox koalesansı:** aynı nota push edilmemiş ikinci update, EN ESKİ base + EN
+      YENİ gövdeyle tek satıra iniyor (üç otosave → bir satır, testli).
+      · **Otomatik kardeş-kopya ÖLDÜ.** Yerine nota `conflictVersionId` işleniyor (banner'ı
+      OPH-269 çizecek) + snackbar. Kopya üretmek artık kullanıcının seçimi; kaybeden gövde
+      zaten sunucunun tarihçesinde.
+      · **Editör V7:** `didUpdateWidget` + `NoteDocument.adoptRemote` — TEMİZ editör pull ile
+      geleni yerinde alıyor (denetleyiciler yeniden kurulmuyor: odak düğümü ve kaydırma
+      konumu OPH-270'in dersi), KİRLİ editör kullanıcının metnini koruyor ve işi push-time
+      merge'e bırakıyor.
+- [x] **Bulgu — koalesans, uçuştaki satırı silebilirdi.** Motor settle'da outbox satırını
+      koşulsuz siliyordu; koalesans push'a girmiş bir satıra daha yeni bir gövde yazarsa o
+      gövde silinip giderdi. Silme artık `localUpdatedAt` eşleşmesine bağlı (compare-and-
+      delete): satır push'tan sonra değiştiyse silinmiyor, bir sonraki turda birleşmiş
+      gövdeyle gidiyor. _Tam da bu task'ın bitirdiği arıza sınıfı._
 - [ ] **BLOKE — integration: Senaryo A'nın birebir reprodüksiyonu** (iki istemci çevrimiçi, soket-pull araya girer, İKİ metin de
       yaşar — bugün kaybolan test artık sözleşme) + offline reconnect senaryosu; app: engine
       settle/base-ilerletme/dedupe + editör temiz/kirli davranış testleri.

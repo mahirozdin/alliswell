@@ -63,6 +63,7 @@ class SyncMutation {
     required this.operation,
     this.patch,
     this.localUpdatedAt,
+    this.baseRevision,
   });
 
   final String clientMutationId;
@@ -72,6 +73,9 @@ class SyncMutation {
   final Map<String, dynamic>? patch;
   final DateTime? localUpdatedAt;
 
+  /// OPH-268: the entity revision this write started from.
+  final int? baseRevision;
+
   Map<String, dynamic> toJson() => {
     'clientMutationId': clientMutationId,
     'entityType': entityType,
@@ -80,6 +84,7 @@ class SyncMutation {
     if (patch != null) 'patch': patch,
     if (localUpdatedAt != null)
       'localUpdatedAt': localUpdatedAt!.toUtc().toIso8601String(),
+    if (baseRevision != null) 'baseRevision': baseRevision,
   };
 }
 
@@ -91,6 +96,9 @@ class SyncPushResult {
     this.revision,
     this.errorCode,
     this.discardedFields = const [],
+    this.conflictVersionId,
+    this.reason,
+    this.mergedMarkdown,
   });
 
   factory SyncPushResult.fromJson(Map<String, dynamic> json) => SyncPushResult(
@@ -101,6 +109,11 @@ class SyncPushResult {
     errorCode: json['errorCode'] as String?,
     discardedFields: ((json['discardedFields'] as List?) ?? const [])
         .cast<String>(),
+    conflictVersionId: json['conflictVersionId'] as String?,
+    reason: json['reason'] as String?,
+    mergedMarkdown:
+        (json['merged'] as Map<String, dynamic>?)?['contentMarkdown']
+            as String?,
   );
 
   final String clientMutationId;
@@ -110,7 +123,14 @@ class SyncPushResult {
   final String? errorCode;
   final List<String> discardedFields;
 
-  bool get applied => status == 'applied';
+  /// OPH-268 — where the server kept the body it refused (nothing is lost),
+  /// why it could not merge, and the merged body when it could.
+  final String? conflictVersionId;
+  final String? reason;
+  final String? mergedMarkdown;
+
+  bool get applied => status == 'applied' || status == 'merged';
+  bool get merged => status == 'merged';
 }
 
 class SyncPushResponse {

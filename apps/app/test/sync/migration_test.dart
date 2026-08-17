@@ -41,6 +41,12 @@ void main() {
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
     await db.customStatement(
+      'ALTER TABLE notes DROP COLUMN conflict_version_id', // v18
+    );
+    await db.customStatement(
+      'ALTER TABLE pending_mutations DROP COLUMN base_revision', // v18
+    );
+    await db.customStatement(
       'ALTER TABLE notes DROP COLUMN content_format', // v17
     );
     await db.customStatement('DROP TABLE share_events'); // v16
@@ -173,15 +179,22 @@ void main() {
       final migratedNotes = await db.select(db.notes).get();
       for (final note in migratedNotes) {
         expect(note.contentFormat, 'delta');
+        // v18 (OPH-268): no note arrives from a migration in conflict — the
+        // pointer is written by a push result, never by an upgrade.
+        expect(note.conflictVersionId, null);
       }
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
       expect(pending, hasLength(1));
       expect(pending.single.entityId, 'T1');
+      // v18: the queued write survived AND gained the new column, empty —
+      // an offline write made before the upgrade simply carries no base, which
+      // is exactly the old-client path the server still honours.
+      expect(pending.single.baseRevision, null);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 17);
+      expect(version.data['user_version'], 18);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -227,7 +240,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 17);
+      expect(version.data['user_version'], 18);
       await db.close();
     },
   );

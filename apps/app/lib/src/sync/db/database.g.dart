@@ -4257,6 +4257,18 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _conflictVersionIdMeta = const VerificationMeta(
+    'conflictVersionId',
+  );
+  @override
+  late final GeneratedColumn<String> conflictVersionId =
+      GeneratedColumn<String>(
+        'conflict_version_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4275,6 +4287,7 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
     revision,
     createdAt,
     updatedAt,
+    conflictVersionId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4402,6 +4415,15 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('conflict_version_id')) {
+      context.handle(
+        _conflictVersionIdMeta,
+        conflictVersionId.isAcceptableOrUnknown(
+          data['conflict_version_id']!,
+          _conflictVersionIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -4475,6 +4497,10 @@ class $NotesTable extends Notes with TableInfo<$NotesTable, NoteRecord> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       ),
+      conflictVersionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}conflict_version_id'],
+      ),
     );
   }
 
@@ -4509,6 +4535,13 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// The server version row holding a body of THIS note that was refused
+  /// (v18, OPH-268). Device-local and never pushed: it is a pointer into the
+  /// server's history, not a fact about the note. Its presence is what raises
+  /// the conflict banner — and it replaces the automatic sibling copy, which
+  /// used to make the decision for the user.
+  final String? conflictVersionId;
   const NoteRecord({
     required this.id,
     required this.workspaceId,
@@ -4526,6 +4559,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     required this.revision,
     this.createdAt,
     this.updatedAt,
+    this.conflictVersionId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4563,6 +4597,9 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     }
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || conflictVersionId != null) {
+      map['conflict_version_id'] = Variable<String>(conflictVersionId);
     }
     return map;
   }
@@ -4603,6 +4640,9 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
+      conflictVersionId: conflictVersionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(conflictVersionId),
     );
   }
 
@@ -4630,6 +4670,9 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      conflictVersionId: serializer.fromJson<String?>(
+        json['conflictVersionId'],
+      ),
     );
   }
   @override
@@ -4652,6 +4695,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'conflictVersionId': serializer.toJson<String?>(conflictVersionId),
     };
   }
 
@@ -4672,6 +4716,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
+    Value<String?> conflictVersionId = const Value.absent(),
   }) => NoteRecord(
     id: id ?? this.id,
     workspaceId: workspaceId ?? this.workspaceId,
@@ -4693,6 +4738,9 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+    conflictVersionId: conflictVersionId.present
+        ? conflictVersionId.value
+        : this.conflictVersionId,
   );
   NoteRecord copyWithCompanion(NotesCompanion data) {
     return NoteRecord(
@@ -4724,6 +4772,9 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      conflictVersionId: data.conflictVersionId.present
+          ? data.conflictVersionId.value
+          : this.conflictVersionId,
     );
   }
 
@@ -4745,7 +4796,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
           ..write('bodyFold: $bodyFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('conflictVersionId: $conflictVersionId')
           ..write(')'))
         .toString();
   }
@@ -4768,6 +4820,7 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
     revision,
     createdAt,
     updatedAt,
+    conflictVersionId,
   );
   @override
   bool operator ==(Object other) =>
@@ -4788,7 +4841,8 @@ class NoteRecord extends DataClass implements Insertable<NoteRecord> {
           other.bodyFold == this.bodyFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.conflictVersionId == this.conflictVersionId);
 }
 
 class NotesCompanion extends UpdateCompanion<NoteRecord> {
@@ -4808,6 +4862,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
+  final Value<String?> conflictVersionId;
   final Value<int> rowid;
   const NotesCompanion({
     this.id = const Value.absent(),
@@ -4826,6 +4881,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.conflictVersionId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   NotesCompanion.insert({
@@ -4845,6 +4901,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.conflictVersionId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        workspaceId = Value(workspaceId),
@@ -4866,6 +4923,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<String>? conflictVersionId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4885,6 +4943,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (conflictVersionId != null) 'conflict_version_id': conflictVersionId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4906,6 +4965,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
+    Value<String?>? conflictVersionId,
     Value<int>? rowid,
   }) {
     return NotesCompanion(
@@ -4925,6 +4985,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      conflictVersionId: conflictVersionId ?? this.conflictVersionId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4980,6 +5041,9 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (conflictVersionId.present) {
+      map['conflict_version_id'] = Variable<String>(conflictVersionId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5005,6 +5069,7 @@ class NotesCompanion extends UpdateCompanion<NoteRecord> {
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('conflictVersionId: $conflictVersionId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -11647,6 +11712,17 @@ class $PendingMutationsTable extends PendingMutations
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _baseRevisionMeta = const VerificationMeta(
+    'baseRevision',
+  );
+  @override
+  late final GeneratedColumn<int> baseRevision = GeneratedColumn<int>(
+    'base_revision',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -11659,6 +11735,7 @@ class $PendingMutationsTable extends PendingMutations
     createdAt,
     attempts,
     lastError,
+    baseRevision,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -11749,6 +11826,15 @@ class $PendingMutationsTable extends PendingMutations
         lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
       );
     }
+    if (data.containsKey('base_revision')) {
+      context.handle(
+        _baseRevisionMeta,
+        baseRevision.isAcceptableOrUnknown(
+          data['base_revision']!,
+          _baseRevisionMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -11798,6 +11884,10 @@ class $PendingMutationsTable extends PendingMutations
         DriftSqlType.string,
         data['${effectivePrefix}last_error'],
       ),
+      baseRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}base_revision'],
+      ),
     );
   }
 
@@ -11822,6 +11912,13 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
   final DateTime createdAt;
   final int attempts;
   final String? lastError;
+
+  /// The entity revision this write started from — "what the editor saw"
+  /// (v18, OPH-268). The server merges against it instead of comparing the
+  /// workspace pull cursor, which is what used to make one body silently
+  /// replace another. Nullable: writes that do not carry one behave exactly
+  /// as they did before.
+  final int? baseRevision;
   const PendingMutation({
     required this.id,
     required this.workspaceId,
@@ -11833,6 +11930,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     required this.createdAt,
     required this.attempts,
     this.lastError,
+    this.baseRevision,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -11850,6 +11948,9 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     map['attempts'] = Variable<int>(attempts);
     if (!nullToAbsent || lastError != null) {
       map['last_error'] = Variable<String>(lastError);
+    }
+    if (!nullToAbsent || baseRevision != null) {
+      map['base_revision'] = Variable<int>(baseRevision);
     }
     return map;
   }
@@ -11870,6 +11971,9 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       lastError: lastError == null && nullToAbsent
           ? const Value.absent()
           : Value(lastError),
+      baseRevision: baseRevision == null && nullToAbsent
+          ? const Value.absent()
+          : Value(baseRevision),
     );
   }
 
@@ -11889,6 +11993,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       attempts: serializer.fromJson<int>(json['attempts']),
       lastError: serializer.fromJson<String?>(json['lastError']),
+      baseRevision: serializer.fromJson<int?>(json['baseRevision']),
     );
   }
   @override
@@ -11905,6 +12010,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'attempts': serializer.toJson<int>(attempts),
       'lastError': serializer.toJson<String?>(lastError),
+      'baseRevision': serializer.toJson<int?>(baseRevision),
     };
   }
 
@@ -11919,6 +12025,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     DateTime? createdAt,
     int? attempts,
     Value<String?> lastError = const Value.absent(),
+    Value<int?> baseRevision = const Value.absent(),
   }) => PendingMutation(
     id: id ?? this.id,
     workspaceId: workspaceId ?? this.workspaceId,
@@ -11930,6 +12037,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     createdAt: createdAt ?? this.createdAt,
     attempts: attempts ?? this.attempts,
     lastError: lastError.present ? lastError.value : this.lastError,
+    baseRevision: baseRevision.present ? baseRevision.value : this.baseRevision,
   );
   PendingMutation copyWithCompanion(PendingMutationsCompanion data) {
     return PendingMutation(
@@ -11949,6 +12057,9 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      baseRevision: data.baseRevision.present
+          ? data.baseRevision.value
+          : this.baseRevision,
     );
   }
 
@@ -11964,7 +12075,8 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
           ..write('localUpdatedAt: $localUpdatedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('attempts: $attempts, ')
-          ..write('lastError: $lastError')
+          ..write('lastError: $lastError, ')
+          ..write('baseRevision: $baseRevision')
           ..write(')'))
         .toString();
   }
@@ -11981,6 +12093,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     createdAt,
     attempts,
     lastError,
+    baseRevision,
   );
   @override
   bool operator ==(Object other) =>
@@ -11995,7 +12108,8 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
           other.localUpdatedAt == this.localUpdatedAt &&
           other.createdAt == this.createdAt &&
           other.attempts == this.attempts &&
-          other.lastError == this.lastError);
+          other.lastError == this.lastError &&
+          other.baseRevision == this.baseRevision);
 }
 
 class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
@@ -12009,6 +12123,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
   final Value<DateTime> createdAt;
   final Value<int> attempts;
   final Value<String?> lastError;
+  final Value<int?> baseRevision;
   final Value<int> rowid;
   const PendingMutationsCompanion({
     this.id = const Value.absent(),
@@ -12021,6 +12136,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     this.createdAt = const Value.absent(),
     this.attempts = const Value.absent(),
     this.lastError = const Value.absent(),
+    this.baseRevision = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PendingMutationsCompanion.insert({
@@ -12034,6 +12150,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     required DateTime createdAt,
     this.attempts = const Value.absent(),
     this.lastError = const Value.absent(),
+    this.baseRevision = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        workspaceId = Value(workspaceId),
@@ -12053,6 +12170,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     Expression<DateTime>? createdAt,
     Expression<int>? attempts,
     Expression<String>? lastError,
+    Expression<int>? baseRevision,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -12066,6 +12184,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
       if (createdAt != null) 'created_at': createdAt,
       if (attempts != null) 'attempts': attempts,
       if (lastError != null) 'last_error': lastError,
+      if (baseRevision != null) 'base_revision': baseRevision,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -12081,6 +12200,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     Value<DateTime>? createdAt,
     Value<int>? attempts,
     Value<String?>? lastError,
+    Value<int?>? baseRevision,
     Value<int>? rowid,
   }) {
     return PendingMutationsCompanion(
@@ -12094,6 +12214,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
       createdAt: createdAt ?? this.createdAt,
       attempts: attempts ?? this.attempts,
       lastError: lastError ?? this.lastError,
+      baseRevision: baseRevision ?? this.baseRevision,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -12131,6 +12252,9 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     if (lastError.present) {
       map['last_error'] = Variable<String>(lastError.value);
     }
+    if (baseRevision.present) {
+      map['base_revision'] = Variable<int>(baseRevision.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -12150,6 +12274,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
           ..write('createdAt: $createdAt, ')
           ..write('attempts: $attempts, ')
           ..write('lastError: $lastError, ')
+          ..write('baseRevision: $baseRevision, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -14427,6 +14552,7 @@ typedef $$NotesTableCreateCompanionBuilder =
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<String?> conflictVersionId,
       Value<int> rowid,
     });
 typedef $$NotesTableUpdateCompanionBuilder =
@@ -14447,6 +14573,7 @@ typedef $$NotesTableUpdateCompanionBuilder =
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
+      Value<String?> conflictVersionId,
       Value<int> rowid,
     });
 
@@ -14535,6 +14662,11 @@ class $$NotesTableFilterComposer extends Composer<_$AwDatabase, $NotesTable> {
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conflictVersionId => $composableBuilder(
+    column: $table.conflictVersionId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -14626,6 +14758,11 @@ class $$NotesTableOrderingComposer extends Composer<_$AwDatabase, $NotesTable> {
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get conflictVersionId => $composableBuilder(
+    column: $table.conflictVersionId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$NotesTableAnnotationComposer
@@ -14696,6 +14833,11 @@ class $$NotesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get conflictVersionId => $composableBuilder(
+    column: $table.conflictVersionId,
+    builder: (column) => column,
+  );
 }
 
 class $$NotesTableTableManager
@@ -14742,6 +14884,7 @@ class $$NotesTableTableManager
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String?> conflictVersionId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion(
                 id: id,
@@ -14760,6 +14903,7 @@ class $$NotesTableTableManager
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                conflictVersionId: conflictVersionId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -14780,6 +14924,7 @@ class $$NotesTableTableManager
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
+                Value<String?> conflictVersionId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => NotesCompanion.insert(
                 id: id,
@@ -14798,6 +14943,7 @@ class $$NotesTableTableManager
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                conflictVersionId: conflictVersionId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -18001,6 +18147,7 @@ typedef $$PendingMutationsTableCreateCompanionBuilder =
       required DateTime createdAt,
       Value<int> attempts,
       Value<String?> lastError,
+      Value<int?> baseRevision,
       Value<int> rowid,
     });
 typedef $$PendingMutationsTableUpdateCompanionBuilder =
@@ -18015,6 +18162,7 @@ typedef $$PendingMutationsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<int> attempts,
       Value<String?> lastError,
+      Value<int?> baseRevision,
       Value<int> rowid,
     });
 
@@ -18074,6 +18222,11 @@ class $$PendingMutationsTableFilterComposer
 
   ColumnFilters<String> get lastError => $composableBuilder(
     column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get baseRevision => $composableBuilder(
+    column: $table.baseRevision,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -18136,6 +18289,11 @@ class $$PendingMutationsTableOrderingComposer
     column: $table.lastError,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get baseRevision => $composableBuilder(
+    column: $table.baseRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PendingMutationsTableAnnotationComposer
@@ -18182,6 +18340,11 @@ class $$PendingMutationsTableAnnotationComposer
 
   GeneratedColumn<String> get lastError =>
       $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<int> get baseRevision => $composableBuilder(
+    column: $table.baseRevision,
+    builder: (column) => column,
+  );
 }
 
 class $$PendingMutationsTableTableManager
@@ -18231,6 +18394,7 @@ class $$PendingMutationsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
+                Value<int?> baseRevision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingMutationsCompanion(
                 id: id,
@@ -18243,6 +18407,7 @@ class $$PendingMutationsTableTableManager
                 createdAt: createdAt,
                 attempts: attempts,
                 lastError: lastError,
+                baseRevision: baseRevision,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -18257,6 +18422,7 @@ class $$PendingMutationsTableTableManager
                 required DateTime createdAt,
                 Value<int> attempts = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
+                Value<int?> baseRevision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingMutationsCompanion.insert(
                 id: id,
@@ -18269,6 +18435,7 @@ class $$PendingMutationsTableTableManager
                 createdAt: createdAt,
                 attempts: attempts,
                 lastError: lastError,
+                baseRevision: baseRevision,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

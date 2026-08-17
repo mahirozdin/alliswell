@@ -297,6 +297,13 @@ class Notes extends Table {
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
 
+  /// The server version row holding a body of THIS note that was refused
+  /// (v18, OPH-268). Device-local and never pushed: it is a pointer into the
+  /// server's history, not a fact about the note. Its presence is what raises
+  /// the conflict banner — and it replaces the automatic sibling copy, which
+  /// used to make the decision for the user.
+  TextColumn get conflictVersionId => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -471,6 +478,13 @@ class PendingMutations extends Table {
   IntColumn get attempts => integer().withDefault(const Constant(0))();
   TextColumn get lastError => text().nullable()();
 
+  /// The entity revision this write started from — "what the editor saw"
+  /// (v18, OPH-268). The server merges against it instead of comparing the
+  /// workspace pull cursor, which is what used to make one body silently
+  /// replace another. Nullable: writes that do not carry one behave exactly
+  /// as they did before.
+  IntColumn get baseRevision => integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -547,7 +561,7 @@ class AwDatabase extends _$AwDatabase {
   /// v15 → v16 (OPH-242): share_events, the share pipeline's device-local
   /// diagnostic trail — content-free, never synced.
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -664,6 +678,13 @@ class AwDatabase extends _$AwDatabase {
       // column already in it, and adding it again would fail.
       if (from < 17 && from >= 1) {
         await m.addColumn(notes, notes.contentFormat);
+      }
+      // v18 (OPH-268): the base a write started from, and the pointer to a
+      // refused body. Both are columns on EXISTING tables, so both take the
+      // `from >= 1` guard v6/v7 taught this file.
+      if (from < 18 && from >= 1) {
+        await m.addColumn(pendingMutations, pendingMutations.baseRevision);
+        await m.addColumn(notes, notes.conflictVersionId);
       }
     },
   );
