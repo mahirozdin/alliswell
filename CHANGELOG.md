@@ -25,7 +25,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   moment you stop trusting it; the list shows when each was last used so you
   know what you are revoking. It deliberately cannot delete your account,
   cannot touch your AI provider keys, and cannot create or revoke other keys
-  (OPH-264). The screen for managing them arrives next; the endpoints are live.
+  (OPH-264). Manage them in **Settings → Integrations → API access**, and see
+  [docs/API.md](docs/API.md) for how to call the API — authentication, curl
+  recipes, the endpoint list and every error code (OPH-265).
 - **Your assistant can now write notes, projects and tags too.** Ask Claude or
   ChatGPT to take a note — standalone, filed under a project, or attached to a
   task in one step — to rewrite or pin one, to attach it to a project, to open

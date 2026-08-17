@@ -3,7 +3,32 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17f (**OPH-264 KOD TAMAM — API anahtarları sunucu tarafı:
+**Last updated:** 2026-08-17g (**OPH-265 BİTTİ — API anahtarları ekranı (Ayarlar →
+Entegrasyonlar → API erişimi) + **`docs/API.md` doğdu**. App süiti **1210** (+6),
+analyze/format/i18n temiz, `contrast.py` FAILURES: 0. **Deploy alınmadı — sahibin talimatı.**
+Sıradaki iş: OPH-266 (toplu içe/dışa aktarma — issue #3'ün kabul testi).**
+
+**Turun tek cümlesi: ekranı yazmak kolaydı, testler İKİ gerçek yalan yakaladı.** Birincisi
+küçük: kopyala düğmesi `Clipboard.setData`'yı await edip sonra pop ediyordu, kanal testte
+patlayınca diyalog açık kalıyordu — sıra ters çevrildi (önce kapat, sonra kopyala; kapanma
+başarısız olabilecek parça değil). **İkincisi ciddi: çevrimdışı sunucuda ekran "henüz anahtar
+yok" diyordu.** `currentWorkspaceProvider`'ın `.value`'su hatada `null` dönüyor, o da boş
+listeye, o da boş-durum ekranına çıkıyordu. "Anahtarın yok" SUNUCU hakkında bir iddiadır ve
+yükleme başarısızken sunucudan haber alınmamıştır. Provider artık hatayı yeniden fırlatıyor.
+_Ekranı da testi de ben yazdım; yalanı test yakaladı — round 16'nın "bir hata üretilemiyorsa
+değişken senin ortamındır" dersinin tersi: bir yalan üretilebiliyorsa test onu üretmelidir._
+
+**Bir karar, yazıldı:** anahtar listesi drift replikasına İNMEZ. Bir haftadır çevrimdışı bir
+cihazın, hepsi iptal edilmiş olabilecek kimlik bilgilerini kendinden emin listelemesi doğru
+değil; ayrıca sızabilecek ikinci bir yer olurdu. AI bağlantıları ekranı emsal.
+
+**`docs/API.md` doğdu** — anahtarların anlamı buydu: uçlar okunabilir olmasa anahtar neyi
+kimliklendirdiği belirsiz bir sır olurdu. Kimlik + üç kapalı kapı tablosu, `GET /me` ile
+workspace keşfi, curl tarifleri, rota dosyalarından üretilmiş tam uç envanteri, hata kodu
+tablosu, rate limit ve anahtar yaşam döngüsü ("sızarsa: iptal et, başka hiçbir şey döndürmeye
+gerek yok — anahtar kendinden başka bir şeyi kimliklendirmiyor").
+
+Önceki blok: 2026-08-17f (**OPH-264 KOD TAMAM — API anahtarları sunucu tarafı:
 ADR-0032, `api_keys` migration'ı, çift-modlu `authenticate`, üç kapalı kapı, yönetim uçları,
 anahtar-başına rate limit. API süiti **669** (+11), lint/format temiz. **Üç doğrulama BLOKE**
 (migration'ın gerçek MySQL'de koşması, entegrasyon süiti, MCP Inspector — üçü de konteyner

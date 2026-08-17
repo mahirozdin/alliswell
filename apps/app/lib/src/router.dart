@@ -20,6 +20,7 @@ import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
+import 'features/api_keys/ui/api_keys_screen.dart';
 import 'features/ai/ui/share_log_screen.dart';
 import 'notifications/alarm_log_screen.dart';
 import 'screens/settings_screen.dart';
@@ -314,6 +315,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/ai',
         builder: (context, state) => _page(const AiSettingsScreen()),
+      ),
+      // OPH-265: API access — the keys a person hands to their own scripts.
+      GoRoute(
+        path: '/settings/api-keys',
+        builder: (context, state) => _page(const ApiKeysScreen()),
       ),
       // Pushed on top of whichever list opened it (Inbox/Today/Upcoming/…).
       GoRoute(

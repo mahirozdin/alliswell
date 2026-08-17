@@ -385,25 +385,35 @@ class SettingsNotificationsScreen extends ConsumerWidget {
 }
 
 /// Entegrasyonlar: the things AllisWell talks to (§32 S2).
-///
-/// OPH-265's "API access" row lands here; this round deliberately leaves the
-/// space rather than inventing the row (S5).
 class SettingsIntegrationsScreen extends StatelessWidget {
   const SettingsIntegrationsScreen({super.key});
 
   @override
   Widget build(BuildContext context) => _SettingsPage(
     title: 'settings.group.integrations'.tr(),
-    children: const [
+    children: [
       // OPH-080: the only door to the Epic 08 calendar vertical.
-      GoogleCalendarCard(),
-      SizedBox(height: AwSpace.x3),
+      const GoogleCalendarCard(),
+      const SizedBox(height: AwSpace.x3),
       // OPH-078: the device-side twin — hides itself off Apple platforms.
-      AppleCalendarCard(),
-      SizedBox(height: AwSpace.x3),
+      const AppleCalendarCard(),
+      const SizedBox(height: AwSpace.x3),
       // OPH-220: AI — hides itself when the server has AI disabled. The MCP
       // connector card lives inside it and stays there.
-      AiSettingsCard(),
+      const AiSettingsCard(),
+      const SizedBox(height: AwSpace.x3),
+      // OPH-265: the space OPH-260 left here, now filled — the door to the
+      // keys a person hands to their own scripts (ADR-0032).
+      Card(
+        child: ListTile(
+          key: const Key('settings-api-keys'),
+          leading: const Icon(Icons.vpn_key_outlined),
+          title: Text('apiKeys.title'.tr()),
+          subtitle: Text('apiKeys.sub'.tr()),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => context.push('/settings/api-keys'),
+        ),
+      ),
     ],
   );
 }

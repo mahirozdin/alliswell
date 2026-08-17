@@ -273,6 +273,81 @@ class FakeApi {
   // Mirrors apps/api/src/routes/integrations-google.js. Not part of the sync
   // protocol: calendar accounts are per-user server state.
 
+  // ── API keys (OPH-264/265, ADR-0032) — per-user server state, online only ─
+  /// Rows in the server's `apiKeySchema` shape. The secret is NOT in here:
+  /// like the real server, the fake hands it out once and forgets it.
+  final List<Map<String, dynamic>> apiKeys = [];
+
+  /// Every secret this fake ever minted, so a test can prove the one shown in
+  /// the dialog is the one the server produced.
+  final List<String> mintedApiKeys = [];
+
+  int _apiKeySeq = 0;
+
+  Map<String, dynamic> seedApiKey({
+    String name = 'Home Assistant',
+    String? expiresAt,
+    String? lastUsedAt,
+    String? revokedAt,
+  }) {
+    final row = {
+      'id': 'APIKEY${(_apiKeySeq++).toString().padLeft(20, '0')}',
+      'workspaceId': workspaceId,
+      'name': name,
+      'keyPrefix': 'awk_seeded$_apiKeySeq',
+      'createdAt': '2026-08-01T09:00:00.000Z',
+      'expiresAt': expiresAt,
+      'lastUsedAt': lastUsedAt,
+      'revokedAt': revokedAt,
+    };
+    apiKeys.add(row);
+    return row;
+  }
+
+  ResponseBody? _apiKeysRoutes(
+    String path,
+    RequestOptions options,
+    Map<String, dynamic>? body,
+  ) {
+    if (path == '/api/v1/workspaces/$workspaceId/api-keys') {
+      if (options.method == 'GET') return jsonBody(200, {'items': apiKeys});
+      if (options.method == 'POST') {
+        final days = body?['expiresInDays'] as int?;
+        final secret = 'awk_${'s' * 8}$_apiKeySeq${'x' * 30}';
+        mintedApiKeys.add(secret);
+        final row = {
+          'id': 'APIKEY${(_apiKeySeq++).toString().padLeft(20, '0')}',
+          'workspaceId': workspaceId,
+          'name': body?['name'] as String? ?? '',
+          'keyPrefix': secret.substring(0, 12),
+          'createdAt': '2026-08-17T09:00:00.000Z',
+          'expiresAt': days == null
+              ? null
+              : DateTime.utc(
+                  2026,
+                  8,
+                  17,
+                ).add(Duration(days: days)).toIso8601String(),
+          'lastUsedAt': null,
+          'revokedAt': null,
+        };
+        apiKeys.insert(0, row);
+        // The secret rides along exactly once — the 201 body.
+        return jsonBody(201, {...row, 'key': secret});
+      }
+    }
+    final revoke = RegExp(
+      r'^/api/v1/api-keys/([^/]+)/revoke$',
+    ).firstMatch(path);
+    if (revoke != null && options.method == 'POST') {
+      final id = revoke.group(1);
+      final row = apiKeys.firstWhere((k) => k['id'] == id);
+      row['revokedAt'] ??= '2026-08-17T10:00:00.000Z';
+      return jsonBody(200, row);
+    }
+    return null;
+  }
+
   // ── AI (Epic 20) — per-user server state, like the calendar accounts ──────
   /// Is AI enabled on the server? Defaults OFF so the many existing feature
   /// flows are unperturbed by a second (AI) FAB; AI tests opt in with
@@ -652,6 +727,9 @@ class FakeApi {
     if (path == '/api/v1/sync/push' && options.method == 'POST') {
       return _syncPush(body ?? const {});
     }
+
+    final apiKeysRes = _apiKeysRoutes(path, options, body);
+    if (apiKeysRes != null) return apiKeysRes;
 
     final ai = _ai(path, options, body);
     if (ai != null) return ai;

@@ -7,6 +7,9 @@ This is Track A of the AI design ([AI.md](AI.md); [ADR-0022](adr/0022-remote-mcp
 
 Every self-hosted instance is its own connector at `https://<your-instance>/mcp`.
 
+Writing a script rather than asking an assistant? That is the REST API and a
+personal key instead: [API.md](API.md).
+
 ## Add it to Claude
 
 1. In Claude (Free ×1 / Pro / Max) open **Settings → Connectors → Add custom connector**.

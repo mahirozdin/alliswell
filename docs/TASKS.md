@@ -8307,19 +8307,47 @@ tamamı regresyon kanıtı olarak koşuldu.**_
 
 ### OPH-265 — API anahtarları ekranı (Entegrasyonlar) + `docs/API.md`
 
-- [ ] `/settings/api-keys` ekranı; Entegrasyonlar grubuna "API erişimi" satırı (OPH-260'ın
-      bıraktığı yere). Liste: ad + `awk_XXXXXXXX…` prefix + oluşturma/bitiş/son kullanım;
-      revoke onaylı; oluşturma sheet'i (ad + süre: 30/90/365 gün/süresiz); **sır tek kez**
-      gösterilir — kopyala düğmeli diyalog + "bu anahtar bir daha gösterilmeyecek" cümlesi.
-      Sunucu `API`'ye erişilemiyorsa dürüst hata (status_views).
-- [ ] Store/provider: bu ekran çevrimiçi yüzeydir (sync varlığı DEĞİL — anahtar listesi
-      replikaya inmez, karar; AI bağlantıları ekranı emsal).
-- [ ] `docs/API.md` doğar: kimlik (header örneği), workspace keşfi (`GET /me`), uç listesi
-      (rota envanterinden özet tablo + curl örnekleri: task oluştur, not oluştur+bağla, not
-      export, içe aktarma OPH-266 sonrası), hata kodları, rate limit, anahtar yaşam döngüsü.
-      README'ye "REST API & API keys" maddesi; `docs/MCP.md`'ye karşılıklı bağlantı.
-- [ ] Testler: widget (liste/oluşturma/tek-sefer-sır/revoke akışı, `sync_overrides` ile),
-      i18n en+tr, light+dark + `contrast.py`. Yüzey: Ayarlar → Entegrasyonlar → API erişimi.
+_(✅ 2026-08-17 — **tamamlandı.** Ekran + `docs/API.md`. App süiti **1210** (+6),
+`flutter analyze` temiz, `dart format` uygulandı, `check:i18n` yeşil, `contrast.py`
+FAILURES: 0. Deploy alınmadı, sahibin talimatı.)_
+
+_**Turun tek cümlesi: ekranı yazmak kolaydı, testler iki gerçek yalanı yakaladı.** Biri
+kopyala düğmesiydi (platform kanalı testte patlayınca diyalog açık kalıyordu), diğeri
+ciddiydi: **çevrimdışı sunucuda ekran "henüz anahtar yok" diyordu.**_
+
+- [x] `/settings/api-keys` ekranı + Entegrasyonlar grubunda "API erişimi" satırı (OPH-260'ın
+      bilinçle boş bıraktığı yer artık dolu). Liste: ad, `awk_XXXXXXXX…` prefix (monospace),
+      oluşturma/bitiş/son-kullanım tek satırda; canlı olmayan anahtarın revoke düğmesi YOK
+      (yapacak bir şey kalmamıştır) ve durum rengin YANINDA yazıyla da söyleniyor (§3: renk
+      tek taşıyıcı olamaz). Oluşturma sheet'i ad + süre (30/90/365/süresiz, ChoiceChip).
+      **Sır tek kez:** `barrierDismissible: false`, "bu bir daha gösterilmeyecek" cümlesi,
+      SelectableText + kopyala düğmesi.
+- [x] **Bulgu 1 — kopyala düğmesi diyalogu kapatmıyordu.** `Clipboard.setData`'yı await edip
+      sonra pop etmek, kanal patlarsa kullanıcıyı açık diyalogda bırakıyor. Sıra ters
+      çevrildi: önce kapat, sonra kopyala (kapanma başarısız olabilecek parça değil). Test
+      panonun İÇERİĞİNİ de doğruluyor — sunucunun ürettiği sır mı, prefix mi.
+- [x] **Bulgu 2 — çevrimdışıyken ekran yalan söylüyordu.** `currentWorkspaceProvider`'ın
+      `.value`'su hata durumunda `null` dönüyor, o da boş listeye, o da "henüz anahtar yok"
+      ekranına çıkıyordu. "Anahtarın yok" SUNUCU hakkında bir iddia ve yükleme başarısızken
+      sunucudan haber alınmamıştır. Provider artık hatayı yeniden fırlatıyor → dürüst hata
+      ekranı + yeniden dene. _Testi ben yazdım, ekranı ben yazdım, yalanı test yakaladı._
+- [x] Store/provider: çevrimiçi yüzey — liste drift replikasına İNMEZ (bir haftadır
+      çevrimdışı bir cihazın, hepsi iptal edilmiş olabilecek kimlik bilgilerini kendinden
+      emin listelemesi doğru değil; ayrıca sızabilecek ikinci bir yer olurdu). AI bağlantıları
+      ekranı emsal.
+- [x] `docs/API.md` doğdu (265 satır): anahtar alma + `awk_` header örneği, üç kapalı kapının
+      tablosu, `GET /me` ile workspace keşfi, curl tarifleri (görev oluştur/tamamla/ertele,
+      not oluştur + göreve bağla, export, arama), **tam uç envanteri** (6 tablo, rota
+      dosyalarından üretildi), hata kodu tablosu, rate limit, anahtar yaşam döngüsü ve
+      "sızarsa ne yapılır". README doküman tablosuna satır + `docs/MCP.md` ↔ `docs/API.md`
+      karşılıklı bağlantı ("script mi yazıyorsun, asistana mı soruyorsun" ayrımı).
+      _İçe aktarma tarifleri OPH-266 indiğinde eklenecek (o uçlar henüz yok — yazılmadı)._
+- [x] Testler (+6, süit 1204 → **1210**): boş durum · oluşturma akışı (sırın SUNUCUNUN
+      ürettiği değer olduğu + panoya o değerin gittiği + listede bir daha görünmediği) ·
+      süresiz anahtarın bilinçli seçim olduğu · revoke onayı (iptal edilebilir + sonrası
+      düğmenin kaybolması) · **çevrimdışı sunucunun boş liste DEĞİL hata göstermesi** ·
+      dark render. i18n `apiKeys.*` 27 anahtar en+tr, `check:i18n` yeşil, `contrast.py`
+      FAILURES: 0 (palet değişmedi, mevcut token'lar kullanıldı).
 
 ### OPH-266 — Toplu içe/dışa aktarma: issue #3'ün kabul testi
 
