@@ -94,6 +94,9 @@ export function loadConfig(env = process.env) {
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
     rateLimitMax: toInt(env.RATE_LIMIT_MAX, 300, 'RATE_LIMIT_MAX'),
     rateLimitAuthMax: toInt(env.RATE_LIMIT_AUTH_MAX, 10, 'RATE_LIMIT_AUTH_MAX'),
+    // Per KEY, not per IP (OPH-264, ADR-0032 §5). Same ceiling as the global
+    // per-IP limit: a key is one client, and this is what one client gets.
+    apiKeyRateLimitMax: toInt(env.API_KEY_RATE_LIMIT_MAX, 300, 'API_KEY_RATE_LIMIT_MAX'),
     database: Object.freeze({
       host: env.DATABASE_HOST ?? '127.0.0.1',
       port: toInt(env.DATABASE_PORT, 3306, 'DATABASE_PORT'),

@@ -8245,32 +8245,65 @@ _Bulgu #9. Issue #3'ün gövdesi: "Allow user to create API keys and expose REST
 applications." Karar #3/#4 çerçeveyi çizdi; ADR-0032 bu task'ın İLK işi olarak yazılır
 (tehdit modeli, scope'suz v1, workspace bağı, MCP/anahtar güven ayrımı, hash mirası)._
 
-- [ ] Migration `create_api_keys`: `id` char(26) · `user_id` FK · `workspace_id` FK · `name`
-      varchar(100) · `key_hash` char(64) UNIQUE · `key_prefix` varchar(16) · `expires_at`
-      datetime(3) NULL · `revoked_at` NULL · `last_used_at` NULL · `created_at`. Şablon:
-      `20260729180000_create_task_series.js` konvansiyonları.
-- [ ] Üretim: `awk_` + `newOpaqueToken(32)`; saklama `hashMcpToken('api_key', token, secret)`
-      (`tokens.js:58` kind birliğine `api_key` eklenir); `key_prefix` = ilk 12 karakter
-      (listede tanıma için). Sır YALNIZ create yanıtında döner.
-- [ ] `plugins/auth.js` `authenticate` çift-modlu olur: Bearer `awk_` önekliyse hash lookup →
-      canlı kullanıcı + `revoked_at`/`expires_at` kontrolü → `request.user` + `request.apiKeyAuth
-      = {keyId, workspaceId}`; `requireWorkspaceMember` apiKeyAuth varsa hedef workspace'in
-      anahtarın workspace'i olduğunu da doğrular (403 `AUTH_APIKEY_WORKSPACE`). `last_used_at`
-      ~1 dk throttled (mcp.js:106-114 deseni). JWT davranışı bit değişmeden aynı kalır.
-- [ ] Kapılar: `/api/v1/auth/*` zaten authenticate dışı; hesap silme (`DELETE /me`,
-      `/me/deletion/*`) ve `/ai/*` rotalarına `rejectApiKeys` preHandler'ı (karar #4); anahtar
-      yönetim uçları da `rejectApiKeys` taşır (anahtar anahtar üretemez/silemez).
-- [ ] Yönetim uçları (JWT): `GET/POST /api/v1/workspaces/:workspaceId/api-keys` (create body:
-      `name` zorunlu, `expiresInDays?` ∈ {30, 90, 365} — yoksa süresiz), `POST
-      /api/v1/api-keys/:keyId/revoke`. Liste yanıtı: name, prefix, createdAt, expiresAt,
-      lastUsedAt, revokedAt.
-- [ ] Rate limit: anahtar-doğrulanmış isteklerde `keyGenerator` anahtar hash'i (mcp.js:243-254
-      kopyası), `API_KEY_RATE_LIMIT_MAX` (varsayılan 300/dk = mevcut global ile aynı) —
-      `config.js`'e + `.env.example`'a.
-- [ ] Testler (unit + integration): anahtarla `GET /me` ve task/not CRUD'u; süresi geçmiş /
-      revoke edilmiş anahtar 401; yanlış workspace 403; `/ai/*` ve anahtar-yönetimi anahtara
-      403; JWT regresyonu (mevcut süit yeşil); hash'in düz metin saklanMADIĞI (satırda `awk_`
-      araması). SECURITY.md'ye anahtar bölümü (bildirim + saklama modeli).
+_(✅ 2026-08-17 — **kod TAMAM.** ADR-0032 yazıldı, `api_keys` migration'ı, çift-modlu
+`authenticate`, üç kapı, yönetim uçları, anahtar-başına rate limit. API süiti **669** (+11),
+lint/format/check:no-ts temiz. **İki doğrulama BLOKE:** migration `db:migrate` ile ve
+entegrasyon süiti KOŞULAMADI — konteyner çalışma zamanı yok. Deploy alınmadı.)_
+
+_**Turun tek cümlesi: bu task'ın riski yeni uçlarda değil, TEK bir fonksiyonun ikiye
+çatallanmasındaydı.** `authenticate` artık ~80 rotanın hepsinde `request.user`'ı belirleyen
+çatallı fonksiyon; o yüzden JWT dalı bit değişmeden bırakıldı ve **mevcut 658 testin
+tamamı regresyon kanıtı olarak koşuldu.**_
+
+- [x] **ADR-0032 yazıldı (task'ın İLK işi):** OAuth'suz düz Bearer + neden MCP'nin OAuth'u
+      yeniden kullanılmadığı (cron job'ın onaylayacağı tarayıcısı yok), hash-only saklama,
+      **v1'de scope YOK** gerekçesiyle (kimsenin istemediği bir izin modeli icat etmek —
+      yarım uygulanmışı hiç olmamasından kötü), workspace bağı = patlama yarıçapı, dört
+      alternatif (client-credentials, JWT anahtar, scope'lu v1, hesap-bazlı anahtar) ve
+      sonuçları.
+- [x] Migration `20260817140000_create_api_keys`: char(26) id/user_id/workspace_id, name(100),
+      `key_hash` char(64) UNIQUE, `key_prefix`(16), `expires_at`/`revoked_at`/`last_used_at`
+      NULL, FK'ler CASCADE. **`deleted_at` YOK — bilinçli:** iptal kalıcıdır ve iptal edilmiş
+      satır kanıt olarak kalır; digest'i tekil kaldığı için aynı sır bir daha kaydedilemez.
+- [x] Üretim: `lib/api-keys.js` (`newApiKey` = `awk_` + `newOpaqueToken(32)`, `apiKeyPrefixOf`,
+      `bearerApiKey`, `apiKeyRateBucket`). **Spec'ten küçük sapma, gerekçesi yazıldı:** saklama
+      `hashMcpToken('api_key', …)` değil, `tokens.js`'e eklenen `hashApiKey` (`api-key:`
+      ayrıştırıcısı) — aynı desen, aynı dosya, aynı sır; ama API anahtarı MCP token'ı değildir
+      ve `mcp-api_key:` ayrıştırıcısı her gelecekteki okuyucuya yanlış bir şey söylerdi.
+- [x] `authenticate` çift-modlu: `awk_` öneki modu İŞ YAPILMADAN önce belirler (anahtar hiç
+      `jwtVerify`'a girmez, JWT hiç hash'lenmez); revoked/expired/silinmiş-hesap için ayrı
+      kodlar ama hepsi aynı 401 şekli; `last_used_at` ~1 dk throttled ve fire-and-forget.
+      `requireWorkspaceMember` anahtarın workspace'ini üyelikten ÖNCE kontrol eder — sahip o
+      diğer workspace'in gerçek üyesi olabilir, anahtarın yine işi yok (`AUTH_APIKEY_WORKSPACE`).
+- [x] Kapılar (`app.rejectApiKeys` preHandler'ı — `onRequest` DEĞİL, `authenticate`'ten SONRA
+      koşmak zorunda): `DELETE /me` + `/me/deletion/cancel`, anahtar yönetim uçlarının üçü, ve
+      **`/ai/*`'ın tamamı** — tek tek rotalara değil, `routes/ai.js`'in kendi kapsamına
+      eklenen plugin-seviyesi hook'la, böylece yeni bir /ai rotası kapıyı unutamaz.
+- [x] Yönetim uçları (JWT-only): `GET/POST /workspaces/:id/api-keys`, `POST
+      /api-keys/:keyId/revoke`. Sır yalnız 201 gövdesinde. Başkasının anahtarı 403 değil
+      **404** (API'nin başkalarının satırları hakkındaki kuralı); iptal idempotent ve İLK
+      damgayı korur ("ne zaman çalışmayı durdurdu?" sorusunun dürüst cevabı).
+- [x] Rate limit: global limiter `max` ve `keyGenerator` fonksiyonlarıyla çatallandı;
+      anahtar isteği kendi kovasına ve `API_KEY_RATE_LIMIT_MAX`'ine (300/dk) düşer. İkisi de
+      `request.apiKeyAuth`'a değil BAŞLIĞA bakar — limiter kimlik doğrulamadan önce koşar.
+      `config.js` + `.env.example`.
+- [x] Testler (+11, süit 658 → **669**), yeni `test/unit/api-keys.test.js`: sır bir kez döner
+      ve satırda düz metin YOK (kolon değil, **tüm satır** aranıyor) · anahtarla `/me` + görev
+      CRUD ve yazımın kullanıcının kendi adına düştüğü · `last_used_at` damgası · revoked/
+      expired/bilinmeyen üçü de 401 ve ayrı kodlar · **sahibi iki workspace'in de üyesiyken
+      anahtarın ikincisine 403 vermesi** (JWT aynı çağrıda 200 — fark kanıtlanıyor) · üç kapı
+      (anahtar anahtar üretemez/iptal edemez, hesap silemez, `/ai/*`'a giremez; her birinde
+      "hiçbir satır değişmedi" iddiası) · başkasının anahtarına 404 · idempotent iptal.
+      **JWT regresyonu:** mevcut 658 testin tamamı değişmeden yeşil.
+      Kapı doğrulaması: workspace bağı kasten devre dışı bırakıldı → süit yakaladı
+      (`expected 200 to be 403`) → geri alındı.
+- [x] `SECURITY.md`'ye "API keys" bölümü (beş madde: tek gösterim + digest, tek workspace/
+      scope yok, üç kapalı kapı, iptalin anlığı, anahtar-başına limit) + sızan anahtarda ne
+      yapılacağı. ADR-0032, ARCHITECTURE §3, CHANGELOG, `.env.example`.
+- [ ] **BLOKE — migration'ın gerçek MySQL'de koşması ve entegrasyon testleri:** bu makinede
+      konteyner çalışma zamanı yok (`docker info` başarısız). Migration konvansiyonlara birebir
+      uyuyor (`resolveCollation`, char(26), FK adlandırma) ama **çalıştırılmadı**; CI'ın
+      migrate adımı ilk gerçek kanıttır. OPH-263'ün iki bloke maddesiyle aynı oturumda kapanmalı.
 
 ### OPH-265 — API anahtarları ekranı (Entegrasyonlar) + `docs/API.md`
 

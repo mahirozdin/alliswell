@@ -181,10 +181,13 @@ export default async function meRoutes(app) {
     },
   };
 
+  // API keys may not reach either deletion route (ADR-0032 §4): a leaked key
+  // must not be able to erase the account it leaked from.
   app.delete(
     '/me',
     {
       onRequest: [app.authenticate],
+      preHandler: [app.rejectApiKeys],
       schema: { response: { 200: deletionResponseSchema, 401: errorResponseSchema } },
     },
     async (request) => {
@@ -202,6 +205,7 @@ export default async function meRoutes(app) {
     '/me/deletion/cancel',
     {
       onRequest: [app.authenticate],
+      preHandler: [app.rejectApiKeys],
       schema: { response: { 200: deletionResponseSchema, 401: errorResponseSchema } },
     },
     async (request) => {

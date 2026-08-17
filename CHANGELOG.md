@@ -18,6 +18,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **API keys, so your own scripts can reach your data.** Mint a key for a cron
+  job, a shell script or a home-automation box and call the API with
+  `Authorization: Bearer awk_…` — no OAuth dance, no token refresh. A key is
+  shown to you exactly once, belongs to one workspace, and can be revoked the
+  moment you stop trusting it; the list shows when each was last used so you
+  know what you are revoking. It deliberately cannot delete your account,
+  cannot touch your AI provider keys, and cannot create or revoke other keys
+  (OPH-264). The screen for managing them arrives next; the endpoints are live.
 - **Your assistant can now write notes, projects and tags too.** Ask Claude or
   ChatGPT to take a note — standalone, filed under a project, or attached to a
   task in one step — to rewrite or pin one, to attach it to a project, to open

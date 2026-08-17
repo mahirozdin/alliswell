@@ -3,7 +3,40 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17e (**OPH-263 KOD TAMAM — MCP yüzeyi 13 → **24 araç** + inbox
+**Last updated:** 2026-08-17f (**OPH-264 KOD TAMAM — API anahtarları sunucu tarafı:
+ADR-0032, `api_keys` migration'ı, çift-modlu `authenticate`, üç kapalı kapı, yönetim uçları,
+anahtar-başına rate limit. API süiti **669** (+11), lint/format temiz. **Üç doğrulama BLOKE**
+(migration'ın gerçek MySQL'de koşması, entegrasyon süiti, MCP Inspector — üçü de konteyner
+çalışma zamanı ister, bu makinede yok). **Deploy alınmadı — sahibin talimatı.**
+Sıradaki iş: OPH-265 (API anahtarları ekranı + `docs/API.md`).**
+
+**Turun tek cümlesi: bu işin riski yeni uçlarda değil, TEK bir fonksiyonun ikiye
+çatallanmasındaydı.** `authenticate` artık ~80 rotanın hepsinde `request.user`'ı belirleyen
+çatallı fonksiyon — kod tabanının en güvenlik-kritik satırları. Bu yüzden JWT dalı bit
+değişmeden bırakıldı ve **mevcut 658 testin tamamı regresyon kanıtı olarak koşuldu**; anahtar
+dalı kendi süitini aldı. `awk_` öneki modu İŞ YAPILMADAN önce seçiyor: anahtar hiç `jwtVerify`'a
+girmiyor, JWT hiç hash'lenmiyor.
+
+**Üç kapı bilinçle kapalı (ADR-0032 §4):** hesap silme (sızan anahtar, sızdığı hesabı silememeli),
+`/ai/*` (BYOK sırları ve kullanıcının model parası — anahtar verinin anahtarıdır, cüzdanın
+değil) ve **anahtar yönetiminin kendisi** — anahtar anahtar üretebilseydi iptal tiyatro olurdu:
+saldırgan ikincisini üretir, birincinin iptali hiçbir şeyi değiştirmezdi. `/ai/*` kapısı tek tek
+rotalara değil `routes/ai.js`'in kendi kapsamına eklendi, böylece yeni bir /ai rotası kapıyı
+unutamaz.
+
+**v1'de scope YOK, ve bu bir karar:** kimsenin istemediği bir izin modeli icat etmek, üstelik
+yarım uygulanmış hâli hiç olmamasından kötü. Gerçek sınır workspace bağı ve o her
+workspace-kapsamlı rotada zorlanıyor — sahibi diğer workspace'in gerçek üyesi olsa bile anahtar
+oraya giremiyor (test bunu JWT'nin aynı çağrıda 200 aldığını göstererek kanıtlıyor).
+
+**Küçük sapma, gerekçesiyle:** saklama `hashMcpToken('api_key', …)` değil `hashApiKey`
+(`api-key:` ayrıştırıcısı). Aynı desen, aynı dosya, aynı sır — ama API anahtarı MCP token'ı
+değil ve `mcp-api_key:` her gelecekteki okuyucuya yanlış bir şey söylerdi.
+
+**Kapı doğrulandı:** workspace bağı kasten devre dışı bırakıldı, test yakaladı
+(`expected 200 to be 403`), geri alındı.
+
+Önceki blok: 2026-08-17e (**OPH-263 KOD TAMAM — MCP yüzeyi 13 → **24 araç** + inbox
 kaynağı. API süiti **658** (+12), lint/format temiz. **İki doğrulama BLOKE** (entegrasyon
 süiti + MCP Inspector koşusu: ikisi de MySQL/Redis ister, bu makinede konteyner çalışma
 zamanı yok). **Deploy alınmadı — sahibin talimatı.** Sıradaki iş: OPH-264 (API anahtarları

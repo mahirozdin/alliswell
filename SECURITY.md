@@ -88,3 +88,36 @@ Report AI-surface issues the same way as any other vulnerability (see above);
 please include the surface (extract / chat / MCP / share / voice) and, if you
 can, a corpus case — the red-team fixture lives at
 `apps/app/test/fixtures/ai_redteam.json` and both suites run it in CI.
+
+## API keys
+
+Personal API keys (ADR-0032) let a script, a cron job or a home-automation box
+reach your own data over plain HTTP: `Authorization: Bearer awk_…`. What that
+credential is, precisely:
+
+1. **Shown once, stored as a digest.** The secret exists in exactly one HTTP
+   response, ever. The database keeps `HMAC-SHA256(secret, "api-key:" + token)`
+   plus the first 12 characters in the clear so a list can say *which* key a
+   row is. A database dump can neither read nor forge a working key, and
+   "show it again" is impossible rather than merely refused.
+2. **One key, one workspace, full authority there.** v1 has no scopes: a key
+   can do what its owner can do, in the workspace it was minted for. The
+   workspace binding is the blast radius and it is enforced on every
+   workspace-scoped route.
+3. **Three doors stay shut**, so a leaked key cannot make itself permanent or
+   turn into a bigger problem: account deletion, `/ai/*` (BYOK provider secrets
+   and your model spend), and key management itself — **a key can never mint or
+   revoke keys.**
+4. **Revocation is immediate and honest.** Revoking sets `revoked_at`; the next
+   request with that key is a 401. `last_used_at` (stamped at most once a
+   minute) is there so you can tell a live key from a forgotten one before
+   deciding.
+5. **Rate-limited per key**, not per IP (`API_KEY_RATE_LIMIT_MAX`, default
+   300/min): your script cannot exhaust your own browser's budget, and one
+   runaway key cannot throttle an instance's other clients.
+
+**If you leak a key**, revoke it in Settings → Integrations → API access; that
+is enough — nothing else needs rotating, because the key authenticates nothing
+but itself. Treat a key like a password in CI: environment variable, never a
+committed file. The `awk_` prefix exists partly so scanners can find one in a
+commit before an attacker does.

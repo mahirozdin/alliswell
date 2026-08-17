@@ -61,3 +61,19 @@ export function newOpaqueToken(bytes = 48) {
 export function hashMcpToken(kind, token, secret) {
   return crypto.createHmac('sha256', secret).update(`mcp-${kind}:${token}`).digest('hex');
 }
+
+/**
+ * API keys (OPH-264, ADR-0032 §2): the same hash-only storage, with their own
+ * domain separator.
+ *
+ * Deliberately not `hashMcpToken('api_key', …)` as the backlog sketched: same
+ * pattern, same file, same secret — but an API key is not an MCP token, and a
+ * digest separated as `mcp-api_key:` would tell every future reader something
+ * untrue about where these keys come from.
+ *
+ * @param {string} token - the raw `awk_…` secret as handed to the user, once
+ * @param {string} secret - config.auth.refreshSecret
+ */
+export function hashApiKey(token, secret) {
+  return crypto.createHmac('sha256', secret).update(`api-key:${token}`).digest('hex');
+}

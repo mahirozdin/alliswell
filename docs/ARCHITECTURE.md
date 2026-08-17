@@ -63,10 +63,16 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 - **Errors:** `@fastify/sensible` HTTP errors + stable `code` strings (e.g. `AUTH_EMAIL_TAKEN`).
 - **Observability:** pino structured logs with `x-request-id` propagation; `/health/live` and
   `/health/ready` (component-level status). Metrics endpoint is a v2 task.
-- **Security baseline:** helmet, CORS allowlist, global rate limit (tighter on auth routes),
-  argon2id password hashing, JWT (15 min) + rotating opaque refresh tokens stored hashed,
-  encrypted OAuth tokens and BYOK AI provider keys (AES-256-GCM, separate keys:
-  `CALENDAR_TOKEN_KEY` / `AI_TOKEN_KEY`), soft-delete-aware queries.
+- **Security baseline:** helmet, CORS allowlist, global rate limit (tighter on auth routes,
+  per-key for API keys), argon2id password hashing, JWT (15 min) + rotating opaque refresh
+  tokens stored hashed, encrypted OAuth tokens and BYOK AI provider keys (AES-256-GCM, separate
+  keys: `CALENDAR_TOKEN_KEY` / `AI_TOKEN_KEY`), soft-delete-aware queries.
+- **Authentication is dual-mode** (`plugins/auth.js`, ADR-0032): `Authorization: Bearer awk_…`
+  is a personal **API key** — hash-only at rest, bound to one workspace, no scopes in v1 — and
+  anything else is a JWT. The prefix decides the branch before any work happens; whichever wins,
+  the ~80 routes downstream only ever read `request.user`. A key additionally sets
+  `request.apiKeyAuth`, which `requireWorkspaceMember` checks against the target workspace and
+  `app.rejectApiKeys` uses to keep keys out of account deletion, `/ai/*` and key management.
 
 ## 4. Data layer
 

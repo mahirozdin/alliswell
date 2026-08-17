@@ -76,6 +76,9 @@ const UNIQUE_INDEXES = {
   mcp_mutations: [
     { name: 'mcp_mutations.uq_mcp_mutation', cols: ['workspace_id', 'user_id', 'idempotency_key'] },
   ],
+  // OPH-264: one secret is one row, forever — a revoked key's digest keeps
+  // occupying the tuple so the same secret can never be re-registered.
+  api_keys: [{ name: 'api_keys.uq_api_keys_hash', cols: ['key_hash'] }],
 };
 
 const OPS = {
@@ -121,6 +124,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     oauth_codes: [],
     oauth_tokens: [],
     mcp_mutations: [],
+    // OPH-264 — API keys (ADR-0032).
+    api_keys: [],
   };
 
   const columnDefaults = {
@@ -264,6 +269,7 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     oauth_codes: () => ({ resource: null, consumed_at: null }),
     oauth_tokens: () => ({ rotated_at: null, revoked_at: null, last_used_at: null }),
     mcp_mutations: () => ({ client_id: null }),
+    api_keys: () => ({ expires_at: null, revoked_at: null, last_used_at: null }),
   };
 
   function assertUnique(name, candidate, rows) {

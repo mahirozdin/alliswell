@@ -6,6 +6,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import { loadConfig } from './config.js';
+import { apiKeyRateBucket } from './lib/api-keys.js';
 import mysqlPlugin from './plugins/mysql.js';
 import redisPlugin from './plugins/redis.js';
 import authPlugin from './plugins/auth.js';
@@ -20,6 +21,7 @@ import aiPlugin from './plugins/ai.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
+import apiKeyRoutes from './routes/api-keys.js';
 import projectRoutes from './routes/projects.js';
 import tagRoutes from './routes/tags.js';
 import taskRoutes from './routes/tasks.js';
@@ -86,7 +88,16 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
     // round 3, item 1 — web task edits never reached the server).
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
-  await app.register(rateLimit, { max: config.rateLimitMax, timeWindow: '1 minute' });
+  // Key-authenticated requests get their own bucket and their own ceiling
+  // (ADR-0032 §5): a script must not spend its user's per-IP budget, and one
+  // runaway key must not throttle every other client of the instance. Both
+  // callbacks read the header rather than `request.apiKeyAuth`, because the
+  // limiter runs before authentication has decided anything.
+  await app.register(rateLimit, {
+    max: (request) => (apiKeyRateBucket(request) ? config.apiKeyRateLimitMax : config.rateLimitMax),
+    timeWindow: '1 minute',
+    keyGenerator: (request) => apiKeyRateBucket(request) ?? request.ip,
+  });
   await app.register(mysqlPlugin, { db });
   await app.register(redisPlugin, { redis });
   await app.register(storagePlugin, { storage });
@@ -127,6 +138,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(healthRoutes, { prefix: '/health' });
   await app.register(authRoutes, { prefix: '/api/v1/auth' });
   await app.register(meRoutes, { prefix: '/api/v1' });
+  await app.register(apiKeyRoutes, { prefix: '/api/v1' });
   await app.register(projectRoutes, { prefix: '/api/v1' });
   await app.register(tagRoutes, { prefix: '/api/v1' });
   await app.register(taskRoutes, { prefix: '/api/v1' });

@@ -84,6 +84,14 @@ export function serializeAiConnection(row) {
 export default async function aiRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
+  // No API key reaches ANY /ai/* route (OPH-264, ADR-0032 §4): these hold BYOK
+  // provider secrets and spend the user's model money, and a key is for the
+  // user's own data, not their wallet. A plugin-level `preHandler` covers every
+  // route in this encapsulated scope, present and future — the one place a new
+  // /ai route cannot forget to opt in. It must be preHandler, not onRequest:
+  // it has to run AFTER `authenticate` has decided what the request is.
+  app.addHook('preHandler', app.rejectApiKeys);
+
   const CODE_STATUS = {
     AI_KEY_REQUIRED: 'badRequest',
     AI_KEY_NOT_ALLOWED: 'badRequest',
