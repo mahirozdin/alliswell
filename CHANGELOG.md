@@ -18,6 +18,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Take your notes out, or bring them in — in bulk.** `export/notes` hands
+  back every note whole (both body formats, tags, links, flags, timestamps),
+  paginated; `import/notes` and `import/tasks` take up to 500 at a time. An
+  import that hits a bad row imports everything else and tells you exactly
+  which item failed and why, rather than rolling the whole thing back over one
+  typo. Imported rows are ordinary rows: they sync to your devices by
+  themselves, they are searchable immediately, and an imported urgent task with
+  a due time rings like any other (OPH-266).
 - **API keys, so your own scripts can reach your data.** Mint a key for a cron
   job, a shell script or a home-automation box and call the API with
   `Authorization: Bearer awk_…` — no OAuth dance, no token refresh. A key is

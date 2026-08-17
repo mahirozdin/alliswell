@@ -3,7 +3,31 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17g (**OPH-265 BİTTİ — API anahtarları ekranı (Ayarlar →
+**Last updated:** 2026-08-17h (**OPH-266 BİTTİ — toplu içe/dışa aktarma; **issue #3
+kapandı** (anahtarlar + belgelenmiş REST + toplu aktarım). API süiti **680** (+11),
+lint/format temiz. **P3 paketi (264→265→266) tamam.** Deploy alınmadı — sahibin talimatı.
+Sıradaki iş: OPH-267 (sürümlemenin omurgası: ADR-0031, `note_versions`, yakalama + saklama).**
+
+**Turun tek cümlesi: kısmi başarıyı raporlamak tek büyük transaction'dan hem daha zor hem
+daha doğru.** 500 satırlık bir aktarımın 37.'si ölü bir projeyi işaret ediyorsa doğru cevap
+"hiçbir şey aktarılmadı" değildir: 499 satır girer, 37. satır indeksi ve stabil koduyla
+söylenir, çağıran o tek satırı düzeltip yalnız onu gönderir. Bir yazım hatasını "aktarım
+başarısız"a çevirmek, kullanıcıya elinde hiçbir şey bırakmaz.
+
+**Aktarılmış satır ayrı bir sınıf DEĞİL:** her ikisi de domain katmanından geçiyor, yani
+aktarılmış not `?q=` ile bulunuyor (OPH-261'in `plain_text` onarımı burada da geçerli),
+sync revision'ı düşüyor ve cihazlar kendiliğinden yakınsıyor — istemcilerde tek satır
+"import" farkındalığı yok. Acil + due taşıyan aktarılmış görev gerçek alarm alıyor.
+
+**Bir sözleşme kararı:** dışa aktarma şekli `serializeNoteSnapshot` ile paylaşılmadı, ayrı
+yazıldı. Dış sözleşme; iç serializer'ın alanları uygulamanın ihtiyacıyla oynar ve o oynama
+bir script'i sessizce bozardı.
+
+**AGENTS kural 12'nin MCP yarısı, yazılı sebeple atlandı:** toplu aktarım MCP'ye girmedi —
+script şeklinde bir işlem, asistanın elinde zaten tek tek `create_note`/`create_task` var,
+ve 500 satırlık gövde ne host onay kartına ne bağlam bütçesine sığar.
+
+Önceki blok: 2026-08-17g (**OPH-265 BİTTİ — API anahtarları ekranı (Ayarlar →
 Entegrasyonlar → API erişimi) + **`docs/API.md` doğdu**. App süiti **1210** (+6),
 analyze/format/i18n temiz, `contrast.py` FAILURES: 0. **Deploy alınmadı — sahibin talimatı.**
 Sıradaki iş: OPH-266 (toplu içe/dışa aktarma — issue #3'ün kabul testi).**

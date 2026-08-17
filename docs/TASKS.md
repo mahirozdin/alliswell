@@ -8351,19 +8351,46 @@ ciddiydi: **çevrimdışı sunucuda ekran "henüz anahtar yok" diyordu.**_
 
 ### OPH-266 — Toplu içe/dışa aktarma: issue #3'ün kabul testi
 
-- [ ] `GET /api/v1/workspaces/:workspaceId/export/notes` → `{notes:[{id,title,contentFormat,
-      contentMarkdown,contentDelta,plainText,projectId,tagIds,links,isPinned,isArchived,
-      createdAt,updatedAt}]}` (sayfalı, `limit`/`cursor`; format=json v1 — zip PARK, yazılı
-      sebep: tek tek md zaten `/notes/:id/export`).
-- [ ] `POST /api/v1/workspaces/:workspaceId/import/notes` — gövde `{notes:[{title zorunlu,
-      contentMarkdown?, projectId?, tagIds?, isPinned?}]}`, tavan 500/istek; markdown-canonical
-      doğar; domain katmanından geçer → sync revision'ları düşer, cihazlar kendiliğinden
-      yakınsar; yanıt `{created:[ids], errors:[{index, code}]}` (kısmi başarı dürüst).
-- [ ] `POST /api/v1/workspaces/:workspaceId/import/tasks` — `{tasks:[{title zorunlu, dueAt?,
-      priority?, projectId?, description?, isUrgent?}]}` tavan 500; `db/tasks.js.createTask`
-      döngüsü (reminder reconcile dahil).
-- [ ] OPH-267 indikten sonra import sürümlemede `origin='import'` görünür (V8) — sıra notu:
-      bu task 267'den ÖNCE biterse origin alanı 267'de geriye dönük bağlanır (tek satır).
+_(✅ 2026-08-17 — **tamamlandı.** `routes/import-export.js`. API süiti **680** (+11),
+lint/format temiz. Entegrasyon süiti KOŞULAMADI — konteyner çalışma zamanı yok.
+Deploy alınmadı, sahibin talimatı.)_
+
+_**Turun tek cümlesi: kısmi başarıyı raporlamak, tek büyük transaction'dan daha zor ve daha
+doğru.** 500 satırlık bir aktarımın 37.'si ölü bir projeyi işaret ediyorsa doğru cevap "hiçbir
+şey aktarılmadı" değil: 499 satır girer, 37. satır indeksi ve kodu ile söylenir. Çağıran o tek
+satırı düzeltip yalnız onu tekrar gönderebilir._
+
+- [x] `GET /workspaces/:workspaceId/export/notes` — not BÜTÜN olarak çıkıyor (id, title,
+      contentFormat, **her iki gövde alanı**, plainText, projectId, tagIds, links, pin/arşiv,
+      tarihler); `limit` ≤200 + `cursor`, `includeArchived` varsayılan **true** (sessizce
+      arşivi düşüren bir dışa aktarma yanlış türde bir düzenliliktir). Sayfa başına iki
+      batched okuma (note_links + note_tags) — N+1 yok.
+      _Zip PARK, yazılı sebep: v1 JSON; tek not zaten `/notes/:id/export`'ta markdown._
+      _Dışa aktarma şekli DIŞ SÖZLEŞME olduğu için `serializeNoteSnapshot` yeniden
+      kullanılmadı, ayrı yazıldı: iç serializer'ın alanları uygulamanın ihtiyacıyla oynar._
+- [x] `POST /import/notes` — tavan 500, markdown-canonical doğar, `db/notes.js.createNote`
+      (+ tagIds varsa `setNoteTags`) üzerinden; yanıt `{created:[ids], errors:[{index, code,
+      message}]}`.
+- [x] `POST /import/tasks` — tavan 500, `db/tasks.js.createTask` döngüsü: assert'ler, urgent→
+      acknowledgement varsayılanı, etiket bağları ve **reminder reconcile** dahil. Acil + due
+      olan aktarılmış görev gerçek alarm alıyor, çünkü burada özel durum yok.
+- [x] Testler (+11, süit 669 → **680**): aktarılmış notun **`?q=` ile bulunduğu** (OPH-261
+      onarımı aktarımda da geçerli) + sync revision'ı düştüğü · kısmi başarı (2/3 girer, hata
+      indeks + kodla) · etiket bağlama ve hatalı etiketin notun KENDİ hatası olması · 501
+      satırın komple reddi · acil görevin alarm üretmesi · export'un links/tags/iki gövde
+      alanını taşıması · sayfalama (aynı satır iki kez servis edilmiyor) · yabancıya 403 ·
+      **round trip: export → import → 4 not** (issue #3'ün kabul testi) · **API anahtarıyla
+      uçtan uca** (anahtarların var olma sebebi budur).
+      _Test fixture'ında yakalanan: 25 karakterlik sahte ULID → Ajv tüm isteği 400'lüyor.
+      Doğru davranış; düzeltilen testti._
+- [x] **AGENTS kural 12 — MCP yarısı, yazılı sebep:** toplu aktarım MCP'ye GİRMEDİ. Bu
+      script şeklinde bir işlem (anahtar yüzeyi); asistanın elinde zaten `create_note`/
+      `create_task` var ve 500 satırlık bir gövdeyi tool argümanı olarak taşımak ne host
+      onay kartına ne de bağlam bütçesine sığar. `docs/API.md`'ye toplu bölüm + uç tablosu
+      eklendi (OPH-265'te "uçlar yokken yazılmaz" denmişti; artık varlar).
+- [ ] OPH-267 indikten sonra import sürümlemede `origin='import'` görünür (V8) — **sıra notu
+      gerçekleşti:** bu task 267'den ÖNCE bitti, yani origin alanı OPH-267'de geriye dönük
+      bağlanacak (tek satır: `createNote` çağrısına origin geçirmek).
 - [ ] Testler: integration round-trip (import → pull → export eşleşir), tavan/hata yolları,
       anahtarla uçtan uca (264'ün anahtarıyla curl senaryosu integration'da). `docs/API.md`
       örnekleri güncellenir. **Issue #3'e kapanış yorumu** (sevk edilen uçlar + docs/API.md

@@ -135,6 +135,74 @@ curl -s -G "$ALLISWELL_URL/api/v1/workspaces/$WS/tasks" \
   --data-urlencode 'q=fatura' --data-urlencode 'status=open' --data-urlencode 'limit=20'
 ```
 
+### Take all your notes out
+
+```bash
+curl -s -G "$ALLISWELL_URL/api/v1/workspaces/$WS/export/notes" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  --data-urlencode 'limit=200' > notes-page-1.json
+```
+
+Each note comes out whole: title, `contentFormat` and **both** body fields,
+plain text, project, tags, links, pin/archive flags and timestamps. Archived
+notes are included (pass `includeArchived=false` if you really want them out).
+Page with `cursor` until `nextCursor` is `null`:
+
+```bash
+CURSOR=$(jq -r '.nextCursor' notes-page-1.json)
+[ "$CURSOR" != "null" ] && curl -s -G "$ALLISWELL_URL/api/v1/workspaces/$WS/export/notes" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  --data-urlencode 'limit=200' --data-urlencode "cursor=$CURSOR" > notes-page-2.json
+```
+
+There is no zip archive in v1: this is JSON, and one note at a time already
+exports as markdown at `/notes/:id/export`.
+
+### Bring notes or tasks in
+
+Up to **500 items per request**. Imported notes are markdown documents, and
+imported tasks go through the same code path the app uses — an urgent task
+with a due time gets a real alarm.
+
+```bash
+curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/import/notes" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"notes": [
+        {"title": "From my old app", "contentMarkdown": "# Heading\n\nbody"},
+        {"title": "Pinned one", "contentMarkdown": "…", "isPinned": true}
+      ]}'
+```
+
+```json
+{ "created": ["01J…", "01J…"], "errors": [] }
+```
+
+**Partial success is normal and reported.** If item #37 names a project that
+does not exist, the other 499 are still imported and the response says which
+one failed and why — fix that line and retry it alone:
+
+```json
+{ "created": ["01J…"],
+  "errors": [{ "index": 37, "code": "NOTE_INVALID_PROJECT",
+               "message": "projectId does not reference a project in this workspace" }] }
+```
+
+Tasks work the same way:
+
+```bash
+curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/import/tasks" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"tasks": [
+        {"title": "Renew the domain", "dueAt": "2026-11-01T09:00:00+03:00", "isUrgent": true},
+        {"title": "Water the plants", "priority": "low"}
+      ]}'
+```
+
+Your devices converge on their own afterwards — imported rows are ordinary
+rows, so the usual sync brings them down with no import-aware client code.
+
 ## 4. Endpoint reference
 
 Everything below is under `/api/v1` and needs the `Authorization` header. Lists
@@ -197,6 +265,14 @@ are newest-first and cursor-paginated (`limit`, `cursor`, `nextCursor`).
 | PATCH · DELETE | `/files/:id` | Rename, soft delete |
 | GET · POST | `/workspaces/:ws/folders` | |
 | PATCH · DELETE | `/folders/:id` | |
+
+### Bulk import / export
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/workspaces/:ws/export/notes` | `limit` (≤200), `cursor`, `includeArchived` (default true) |
+| POST | `/workspaces/:ws/import/notes` | ≤500 items; `{ created, errors }` — partial success is reported |
+| POST | `/workspaces/:ws/import/tasks` | ≤500 items; goes through the normal task create (alarms included) |
 
 ### Reminders and shortcuts
 

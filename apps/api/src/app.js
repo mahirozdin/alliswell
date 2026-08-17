@@ -35,6 +35,7 @@ import fileRoutes from './routes/files.js';
 import folderRoutes from './routes/folders.js';
 import quickLinkRoutes from './routes/quick-links.js';
 import taskSeriesRoutes from './routes/task-series.js';
+import importExportRoutes from './routes/import-export.js';
 import aiRoutes from './routes/ai.js';
 import oauthRoutes from './routes/oauth.js';
 import mcpRoutes from './routes/mcp.js';
@@ -152,6 +153,8 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(folderRoutes, { prefix: '/api/v1' });
   await app.register(quickLinkRoutes, { prefix: '/api/v1' });
   await app.register(taskSeriesRoutes, { prefix: '/api/v1' });
+  // OPH-266: the bulk surface an API key exists for (issue #3).
+  await app.register(importExportRoutes, { prefix: '/api/v1' });
   // Conditional registration IS the AI_ENABLED gate: with the feature off,
   // every /ai/* route 404s exactly like a server that never had it (OPH-215).
   if (config.ai.enabled) {
