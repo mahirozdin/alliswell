@@ -8679,8 +8679,12 @@ artık NOTUN kendi revizyonu ("editörün gördüğü şey")._
       `reason`. **Kendi başarılı push'unun revizyonu base'i ilerletir** — art arda iki
       otosave'in sahte çakışma ÜRETMEDİĞİ testle çivili.
       _`PendingMutations` kolonu + editörün base'i taşıması istemci yarımında (aşağıda)._
-- [ ] Outbox koalesansı: aynı nota push edilmemiş ikinci `update` enqueue edilirse patch'ler
+- [x] Outbox koalesansı: aynı nota push edilmemiş ikinci `update` enqueue edilirse patch'ler
       birleşir — EN ESKİ base + EN YENİ gövde (bulgu #3'ün N-kopya patlamasının istemci ayağı).
+      _(2026-08-18 OPH-274 turunda DOĞRULANDI: `sync/outbox.dart:34-73` — en eski satır kimliği
+      kazanır (clientMutationId uçuşta olabilir), patch'ler sığ-birleşir, en eski `baseRevision`
+      korunur. Test: `sync_engine_test.dart` "unpushed edits to one note coalesce into a single
+      write". Kod Epic 25'te inmişti; **kutu işaretlenmemişti.**)_
 - [x] Sunucu `applyUpdate` (not, content intents): mutation base'i varsa notun KENDİ
       `revision`'ıyla kıyasla (workspace-imleç kıyası content için ölür — bulgu #1'in kökü).
       Eşit → uygula + sürüm. Küçük → base gövdesini `note_versions`(note_revision=base)'ten
@@ -8690,14 +8694,20 @@ artık NOTUN kendi revizyonu ("editörün gördüğü şey")._
       bölgede `jsdiff` kelime inceltme (karar #6, diff3 makalesinin tek-satır-paragraf tuzağı)
       → temiz: birleşik gövdeyi uygula (`origin='merge'`, yanıt `status:'merged'` + gövde;
       istemci replika + AÇIK editörü günceller) → örtüşme: yukarıdaki conflict yolu.
-- [ ] İstemci çakışma davranışı DEĞİŞİR (karar #8): otomatik kardeş-kopya ÜRETİLMEZ; Notes
+- [x] İstemci çakışma davranışı DEĞİŞİR (karar #8): otomatik kardeş-kopya ÜRETİLMEZ; Notes
       replika satırına yerel `conflictVersionId` işlenir → not banner'ı (OPH-269 çizer; bu
       task state+snackbar'ı koyar). Batch'te aynı nota tek çakışma işlenir (dedupe). "Kopya
       olarak ayır" seçilirse kopya `contentFormat` DAHİL doğar (bulgu #3'ün format bug'ı
       burada ölür — kopya üretimi artık kullanıcı eylemi).
-- [ ] Editör V7: pull ile gelen değişiklik AÇIK ve TEMİZ editöre yerinde iner (base ilerler);
+      _(2026-08-18 DOĞRULANDI: `sync_engine.dart:314-320` pointer'ı replikaya yazar, `:323`
+      otomatik "çakışan kopya"nın KALDIRILDIĞINI yazılı olarak kaydeder. **dedupe ayrı bir kod
+      değil, koalesansın yapısal sonucu** — bir batch'te bir nota tek outbox satırı kalır,
+      dolayısıyla tek çakışma. Kutu işaretlenmemişti.)_
+- [x] Editör V7: pull ile gelen değişiklik AÇIK ve TEMİZ editöre yerinde iner (base ilerler);
       KİRLİ editör kullanıcı metnini korur (push-time base işini yapar). `didUpdateWidget`/
       provider dinleme — bulgu #2'nin kapanışı.
+      _(2026-08-18 DOĞRULANDI: `note_editor_screen.dart:134-141` — `if (_dirty || _saving)
+      return;` kirli editörü korur, temiz olan `adoptRemote` eder. Kutu işaretlenmemişti.)_
 - [x] REST `PATCH /notes/:noteId` opsiyonel `baseRevision` kabul eder (aynı yol; 409 +
       `conflictVersionId`, `docs/API.md`'de "Conflict-safe edits" bölümü).
 - [x] **Sunucu testleri (+12, süit 697 → 709)** `test/unit/note-conflict.test.js`: merge
@@ -8750,8 +8760,16 @@ artık NOTUN kendi revizyonu ("editörün gördüğü şey")._
       sırayı bilemeyeceği bir durum — doğru cevap reddetmek. Test senaryosu düzeltildi
       (offline cihaz başlığı değiştiriyor, diğerleri listeye ekliyor) ve append-vs-append
       **ayrı bir test olarak, belgelenmiş sınır** biçiminde bırakıldı.
-- [ ] **AÇIK — app tarafı testleri:** engine settle/base-ilerletme/dedupe + editör temiz/kirli
-      davranışı. Sunucu sözleşmesi artık entegrasyonda çivili; bu kalem Flutter süitine ait.
+- [x] **App tarafı testleri.** _(2026-08-18 DOĞRULANDI — bunlar da inmişti:
+      `sync_engine_test.dart` "a merged push adopts the server body and advances the base",
+      "an applied push advances the note revision too", "unpushed edits to one note coalesce
+      into a single write"; editör temiz/kirli davranışı `note_modes_test.dart`'ta.)_
+
+> **Kalıcı ders (OPH-274 turunda ortaya çıktı): `[ ]` de bir iddiadır, kanıt değil.**
+> Bu dört madde Epic 25'te KODLANMIŞ ve TEST EDİLMİŞTİ; yalnız kutuları işaretlenmemişti —
+> yani epic "kapandı" derken dört satır hâlâ yapılacak iş gibi duruyordu. STATE'in daha önce
+> öğrendiği dersin tersi yönü: işaretli madde yalan söyleyebildiği gibi, işaretsiz madde de
+> söyleyebilir. Her ikisi de okunduğunda ölçülmeli.
 
 ### OPH-269 — Sürüm geçmişi & çakışma yüzeyi (DESIGN §35)
 
