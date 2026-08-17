@@ -62,3 +62,6 @@ firebase-debug.log
 # Python bytecode from scripts/
 __pycache__/
 *.pyc
+
+# Library packages do not commit their lockfiles (the app pins real versions).
+apps/app/packages/*/pubspec.lock
