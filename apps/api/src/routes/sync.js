@@ -25,6 +25,7 @@ import { deltaToPlainText, isValidDelta, markdownToPlainText } from '../lib/delt
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { captureNoteVersion } from '../db/note-versions.js';
+import { storeConflictVersion, threeWayNoteWrite } from '../db/notes.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { serializeFile } from './files.js';
 import { serializeFolder } from './folders.js';
@@ -296,13 +297,13 @@ export default async function syncRoutes(app) {
    * mutation asked for (the two differ whenever a field-level intent was
    * discarded as a losing write).
    */
-  const captureSyncNoteVersion = async (trx, ctx, noteId) => {
+  const captureSyncNoteVersion = async (trx, ctx, noteId, origin = 'edit') => {
     const row = await trx('notes').where({ id: noteId }).first();
     if (!row) return;
     await captureNoteVersion(trx, {
       config: app.config,
       row,
-      origin: 'edit',
+      origin,
       clientId: ctx.clientId,
       userId: ctx.userId,
     });
@@ -1121,7 +1122,8 @@ export default async function syncRoutes(app) {
       // `afterUpdate` seam and calls the SAME function the domain layer does.
       // One capture function, two call sites — not two capture policies.
       afterCreate: (trx, ctx, mutation) => captureSyncNoteVersion(trx, ctx, mutation.entityId),
-      afterUpdate: (trx, ctx, mutation) => captureSyncNoteVersion(trx, ctx, mutation.entityId),
+      afterUpdate: (trx, ctx, mutation) =>
+        captureSyncNoteVersion(trx, ctx, mutation.entityId, mutation.versionOrigin),
       // A deleted note takes its attachments — inline embeds included — with
       // it (Epic 14, ATTACHMENTS.md §5) and its shortcuts (OPH-197).
       async afterDelete(trx, ctx, row) {
@@ -1288,22 +1290,82 @@ export default async function syncRoutes(app) {
     const foreign = await foreignChangesSince(ctx, mutation.entityType, mutation.entityId);
     const overlapping = prepared.intents.filter((i) => foreign.all || foreign.fields.has(i.name));
 
+    // ── OPH-268: content writes that carry their own base ────────────────────
+    //
+    // Finding #1's root cause was WHICH revision the lock compared: the
+    // workspace pull cursor. A socket-driven pull moved that cursor past the
+    // other device's write, so the lock concluded "nothing foreign happened"
+    // and one body silently replaced another. The base now belongs to the NOTE
+    // — "what the editor saw" — and the three-way merge decides.
+    let versionOrigin = 'edit';
+    let mergedBody = null;
+    let contentResolved = false;
+    const touchesContent =
+      entity.contentIntents && prepared.intents.some((i) => entity.contentIntents.has(i.name));
+
+    if (touchesContent && mutation.baseRevision != null) {
+      const decision = await threeWayNoteWrite(app, {
+        row,
+        baseRevision: mutation.baseRevision,
+        incoming: {
+          contentMarkdown: patch.contentMarkdown,
+          contentFormat: patch.contentFormat,
+        },
+      });
+      if (decision.outcome === 'conflict') {
+        // The losing body is kept BEFORE the refusal is returned: "the
+        // overwritten body is in no table" is the bug this epic ends.
+        const conflictVersionId = await storeConflictVersion(app, {
+          row,
+          incoming: {
+            title: patch.title,
+            contentMarkdown: patch.contentMarkdown,
+            contentDelta:
+              patch.contentDelta === undefined ? undefined : JSON.stringify(patch.contentDelta),
+            contentFormat: patch.contentFormat,
+          },
+          userId: ctx.userId,
+          clientId: ctx.clientId,
+        });
+        return { ...conflict('NOTE_CONTENT_CONFLICT'), conflictVersionId, reason: decision.reason };
+      }
+      if (decision.outcome === 'merge') {
+        prepared.rowPatch.content_markdown = decision.contentMarkdown;
+        prepared.rowPatch.plain_text = markdownToPlainText(decision.contentMarkdown);
+        prepared.rowPatch.content_format = 'markdown';
+        versionOrigin = 'merge';
+        mergedBody = { contentMarkdown: decision.contentMarkdown, contentFormat: 'markdown' };
+      }
+      // Either way the content question is answered for this mutation, so the
+      // cursor-based check below must not answer it a second time.
+      contentResolved = true;
+    }
+
     const discardedFields = [];
     let keptIntents = prepared.intents;
     if (overlapping.length > 0) {
-      // Note content never merges: doc-level optimistic lock (§6.5). The
-      // client resolves by pulling and making a conflict copy (OPH-056).
-      if (entity.contentIntents && overlapping.some((i) => entity.contentIntents.has(i.name))) {
+      // Without a base, note content still never merges: doc-level optimistic
+      // lock (§6.5), and the client resolves by pulling (OPH-056).
+      if (
+        !contentResolved &&
+        entity.contentIntents &&
+        overlapping.some((i) => entity.contentIntents.has(i.name))
+      ) {
         return conflict('NOTE_CONTENT_CONFLICT');
       }
       const clientTime = mutation.localUpdatedAt ? Date.parse(mutation.localUpdatedAt) : 0;
       const serverTime = row.updated_at ? new Date(row.updated_at).getTime() : 0;
       if (clientTime <= serverTime) {
-        for (const intent of overlapping) {
+        // A merged body is not a losing write — it already contains the other
+        // side. Only the non-content intents are still LWW's business.
+        const losing = contentResolved
+          ? overlapping.filter((i) => !entity.contentIntents.has(i.name))
+          : overlapping;
+        for (const intent of losing) {
           discardedFields.push(intent.camel);
           for (const col of intent.cols) delete prepared.rowPatch[col];
         }
-        keptIntents = prepared.intents.filter((i) => !overlapping.includes(i));
+        keptIntents = prepared.intents.filter((i) => !discardedFields.includes(i.camel));
         if (keptIntents.length === 0) return conflict('SYNC_STALE_MUTATION');
       }
     }
@@ -1329,10 +1391,16 @@ export default async function syncRoutes(app) {
           revision,
           updated_at: new Date(), // server clock is canonical (§6.5)
         });
-      await entity.afterUpdate?.(trx, ctx, { ...mutation, patch }, row, keptIntents);
+      await entity.afterUpdate?.(trx, ctx, { ...mutation, patch, versionOrigin }, row, keptIntents);
       await recordRow(trx, ctx, mutation, { status: 'applied', revision });
     });
-    return { status: 'applied', revision, discardedFields, recorded: true };
+    return {
+      status: mergedBody ? 'merged' : 'applied',
+      revision,
+      discardedFields,
+      ...(mergedBody ? { merged: mergedBody } : {}),
+      recorded: true,
+    };
   }
 
   async function applyDelete(ctx, mutation, entity) {
@@ -1443,6 +1511,11 @@ export default async function syncRoutes(app) {
       errorCode: outcome.errorCode ?? null,
       replayed: false,
       ...(outcome.discardedFields?.length > 0 ? { discardedFields: outcome.discardedFields } : {}),
+      // OPH-268: the two answers a client acts on — where its refused body is
+      // kept, and the merged body it should adopt.
+      ...(outcome.conflictVersionId ? { conflictVersionId: outcome.conflictVersionId } : {}),
+      ...(outcome.reason ? { reason: outcome.reason } : {}),
+      ...(outcome.merged ? { merged: outcome.merged } : {}),
     };
   }
 
@@ -1474,6 +1547,12 @@ export default async function syncRoutes(app) {
                   operation: { type: 'string', enum: ['create', 'update', 'delete'] },
                   patch: { type: 'object' },
                   localUpdatedAt: { type: 'string', format: 'date-time' },
+                  // OPH-268: the revision of THIS entity the client was
+                  // editing — "what the editor saw". Optional on purpose: a
+                  // client that does not send it gets exactly today's
+                  // behaviour, because a protocol that breaks its own old
+                  // clients is not a protocol.
+                  baseRevision: { type: 'integer', minimum: 0 },
                 },
               },
             },
@@ -1491,11 +1570,29 @@ export default async function syncRoutes(app) {
                   type: 'object',
                   properties: {
                     clientMutationId: { type: 'string' },
-                    status: { type: 'string', enum: ['applied', 'conflict', 'rejected'] },
+                    status: {
+                      type: 'string',
+                      enum: ['applied', 'conflict', 'rejected', 'merged'],
+                    },
                     revision: { type: ['integer', 'null'] },
                     errorCode: { type: ['string', 'null'] },
                     replayed: { type: 'boolean' },
                     discardedFields: { type: 'array', items: { type: 'string' } },
+                    // OPH-268: the version row holding the body we refused —
+                    // the client points its banner at it, and NOTHING is lost.
+                    conflictVersionId: { type: ['string', 'null'] },
+                    // Why it could not merge: OVERLAP / NOT_MARKDOWN /
+                    // BASE_MISSING. The banner says different things for each.
+                    reason: { type: ['string', 'null'] },
+                    // …and, when the two sides merged cleanly, the body that
+                    // won so the replica and an open editor can take it.
+                    merged: {
+                      type: 'object',
+                      properties: {
+                        contentMarkdown: { type: 'string' },
+                        contentFormat: { type: 'string' },
+                      },
+                    },
                   },
                 },
               },

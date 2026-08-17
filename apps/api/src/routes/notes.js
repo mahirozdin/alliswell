@@ -324,12 +324,18 @@ export default async function noteRoutes(app) {
           type: 'object',
           additionalProperties: false,
           minProperties: 1,
-          properties: writableProps,
+          properties: {
+            ...writableProps,
+            // OPH-268: the note revision this edit started from. Optional —
+            // without it the write behaves exactly as it did before.
+            baseRevision: { type: 'integer', minimum: 0 },
+          },
         },
         response: {
           200: noteDetailSchema,
           400: errorResponseSchema,
           403: errorResponseSchema,
+          409: errorResponseSchema,
           404: errorResponseSchema,
         },
       },
@@ -337,11 +343,43 @@ export default async function noteRoutes(app) {
     async (request) => {
       const row = await loadNote(request.params.noteId);
       await app.requireWorkspaceMember(request, row.workspace_id);
+      // OPH-268: an API client can send the revision it was editing and get
+      // the same three-way treatment the app gets — or an honest conflict
+      // instead of silently flattening somebody's work.
+      const { baseRevision, ...body } = request.body;
+      let origin = originOf(request);
+      if (baseRevision != null) {
+        const decision = await domain.threeWayNoteWrite(app, {
+          row,
+          baseRevision,
+          incoming: { contentMarkdown: body.contentMarkdown, contentFormat: body.contentFormat },
+        });
+        if (decision.outcome === 'conflict') {
+          const conflictVersionId = await domain.storeConflictVersion(app, {
+            row,
+            incoming: body,
+            userId: request.user.id,
+          });
+          const err = coded(
+            app.httpErrors.conflict('This note changed since you loaded it'),
+            'NOTE_CONTENT_CONFLICT',
+          );
+          // The refused body is already kept — the id says where.
+          err.conflictVersionId = conflictVersionId;
+          throw err;
+        }
+        if (decision.outcome === 'merge') {
+          body.contentMarkdown = decision.contentMarkdown;
+          body.contentFormat = 'markdown';
+          origin = 'merge';
+        }
+      }
+
       await domain.updateNote(app, {
         row,
         userId: request.user.id,
-        body: request.body,
-        origin: originOf(request),
+        body,
+        origin,
       });
       return serializeNoteDetail(await loadNote(row.id));
     },

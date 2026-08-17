@@ -9,6 +9,7 @@ import {
 } from '../lib/delta.js';
 import { recordSyncWrite } from './sync.js';
 import { captureNoteVersion, isContentWrite } from './note-versions.js';
+import { mergeMarkdown } from '../lib/note-merge.js';
 
 /**
  * The note domain (OPH-261) — everything a note write does, minus HTTP.
@@ -364,6 +365,87 @@ export async function setNoteTags(app, { row, userId, tagIds }) {
       .where({ id: row.id })
       .update({ revision, updated_by: userId, updated_at: new Date() });
   });
+}
+
+/**
+ * What to do with a content write whose author had an older version of the
+ * note (OPH-268, finding #1).
+ *
+ * The base is compared against the NOTE's own revision — not the workspace
+ * pull cursor, which is what made the optimistic lock useless: a socket-driven
+ * pull moved the cursor past the other person's write, so the lock saw
+ * "nothing foreign happened" and the body was silently overwritten.
+ *
+ * Merging is only attempted when ALL THREE sides are markdown-canonical
+ * (decision #7): a Delta is a JSON op array, and line-merging JSON produces
+ * something that is not a document. Anything else takes the conflict path,
+ * which loses nothing — the incoming body is stored as a version.
+ *
+ * @returns {Promise<{outcome:'apply'}|{outcome:'merge', contentMarkdown:string}|
+ *   {outcome:'conflict', reason:'BASE_MISSING'|'NOT_MARKDOWN'|'OVERLAP'}>}
+ */
+export async function threeWayNoteWrite(app, { row, baseRevision, incoming }) {
+  const current = Number(row.revision ?? 0);
+  // No base (an older client) or an up-to-date base: nothing foreign happened
+  // to THIS note, so this is an ordinary write. A protocol that breaks its own
+  // old clients is not a protocol.
+  if (baseRevision == null || baseRevision >= current) return { outcome: 'apply' };
+
+  const incomingFormat = incoming.contentFormat ?? row.content_format ?? 'delta';
+  if (incomingFormat !== 'markdown' || (row.content_format ?? 'delta') !== 'markdown') {
+    return { outcome: 'conflict', reason: 'NOT_MARKDOWN' };
+  }
+
+  // The base body has to still exist. Retention thins old versions (ADR-0031
+  // §6), so a client that was offline for months legitimately finds nothing —
+  // an honest conflict, not a guess.
+  const base = await app
+    .db('note_versions')
+    .where({ note_id: row.id, note_revision: baseRevision })
+    .orderBy('id', 'desc')
+    .first();
+  if (!base) return { outcome: 'conflict', reason: 'BASE_MISSING' };
+  if ((base.content_format ?? 'delta') !== 'markdown') {
+    return { outcome: 'conflict', reason: 'NOT_MARKDOWN' };
+  }
+
+  const merged = mergeMarkdown(
+    base.content_markdown ?? '',
+    row.content_markdown ?? '',
+    incoming.contentMarkdown ?? '',
+  );
+  if (!merged.ok) return { outcome: 'conflict', reason: 'OVERLAP' };
+  return { outcome: 'merge', contentMarkdown: merged.text };
+}
+
+/**
+ * Stores a REFUSED body as a version (OPH-268, decision #8 / V1).
+ *
+ * Its own transaction on purpose: the write it belongs to is being rejected,
+ * and the losing side must survive that rejection — "the overwritten body is
+ * in no table" is the bug this epic exists to end. Returns the version id, so
+ * the client can be handed a `conflictVersionId` to point its banner at.
+ */
+export async function storeConflictVersion(app, { row, incoming, userId = null, clientId = null }) {
+  let versionId = null;
+  await app.db.transaction(async (trx) => {
+    const { id } = await captureNoteVersion(trx, {
+      config: app.config,
+      // The note as the CLIENT believed it to be — that is what is being kept.
+      row: {
+        ...row,
+        title: incoming.title ?? row.title,
+        content_markdown: incoming.contentMarkdown ?? row.content_markdown,
+        content_delta: incoming.contentDelta ?? row.content_delta,
+        content_format: incoming.contentFormat ?? row.content_format,
+      },
+      origin: 'conflict',
+      clientId,
+      userId,
+    });
+    versionId = id;
+  });
+  return versionId;
 }
 
 /** A note's markdown, following its canonical field (OPH-261 Repair 2). */

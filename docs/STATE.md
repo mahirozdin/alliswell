@@ -3,7 +3,37 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17i (**OPH-267 BİTTİ — sürümlemenin omurgası: ADR-0031,
+**Last updated:** 2026-08-17j (**OPH-268 SUNUCU YARIMI BİTTİ, istemci yarımı AÇIK —
+not-bazlı base, sunucuda üç yollu merge, çakışanın saklanması. API süiti **709** (+12),
+lint/format temiz. **Deploy alınmadı — sahibin talimatı.** Sıradaki iş: OPH-268'in istemci
+yarımı (drift v18 + outbox koalesansı + otomatik kopyanın ölmesi + editör V7), sonra OPH-269.**
+
+**Turun tek cümlesi: bulgu #1'in kökü kilidin YOKLUĞU değil, neyi kıyasladığıydı.** Optimistik
+kilit workspace pull imlecini kıyaslıyordu; soket kaynaklı bir pull imleci karşı tarafın
+yazımının ötesine taşıyınca kilit "yabancı bir şey olmadı" diyor ve bir gövde diğerini sessizce
+siliyordu. Base artık NOTUN kendi revizyonu — "editörün gördüğü şey" (Google Docs'un aynı
+cümlesi).
+
+**Senaryo A artık sözleşme:** iki istemci aynı base'den yazıyor, ikinci yazım `status:'merged'`
+dönüyor ve gövdede İKİ TARAF da yaşıyor. Gerçek örtüşmede reddediliyor ama **reddedilen gövde
+`origin='conflict'` sürümü olarak saklanıyor** ve yanıt `conflictVersionId` ile nerede olduğunu
+söylüyor. "Ezilen gövde hiçbir tabloda durmuyor" cümlesi bu turda öldü.
+
+**Kelime inceltmesi tercih değil zorunluluk:** diff3 makalesi garantilerinin "iyi ayrılmış"
+bölgelerde geçerli olduğunu söylüyor; markdown paragrafı TEK satır, yani aynı paragrafın iki
+ucunu düzenleyen iki kişi satır düzeyinde çakışmış görünüyor. Çakışan bölge kelime düzeyinde
+yeniden diff3'ten geçiriliyor — testte "Toplantı salı ofiste" → biri günü, diğeri yeri
+değiştiriyor, sonuç ikisini de taşıyor.
+
+**Üç dürüst sınır:** delta-canonical not merge'e girmez (JSON'a satır merge'i belge üretmez),
+saklama süpürmüşse base bulunamaz (`BASE_MISSING`), gerçek örtüşme reddedilir — üçü de kayıpsız.
+
+**Eski istemci uyumu ölçüldü:** base göndermeyen mutation bugünkü davranışı alıyor (testle
+çivili), bu yüzden sunucu yarımı tek başına sevk edilebildi. **Ama kullanıcının gördüğü
+davranış istemci yarımı inene kadar değişmiyor** — uygulama hâlâ base göndermiyor ve hâlâ
+otomatik kardeş-kopya üretiyor.
+
+Önceki blok: 2026-08-17i (**OPH-267 BİTTİ — sürümlemenin omurgası: ADR-0031,
 `note_versions`, yakalama + koalesans + saklama + REST. API süiti **697** (+17), lint/format
 temiz. **Deploy alınmadı — sahibin talimatı.** Sıradaki iş: OPH-268 (çakışma doğruluğu:
 not-bazlı base, sunucuda diff3, kopyanın emekliliği).**

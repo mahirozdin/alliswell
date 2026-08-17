@@ -8462,15 +8462,23 @@ _Bulgu #1/#2/#3 — override'ın ölçülmüş üç katmanı. Merge YALNIZ üç 
 iken (karar #7); gerisi banner/kopya yolu. Eski istemci uyumu: mutation'da base yoksa sunucu
 bugünkü davranışa düşer (kendi kendini kırmayan protokol)._
 
-- [ ] Protokol: push mutation'ına opsiyonel `baseRevision` (NOT-bazlı) alanı — Ajv şeması +
-      `PendingMutations`'a kolon (drift v18, `from >= 1` guard'sız yeni-kolon kuralı DEĞİL:
-      mevcut tabloya kolon → guard'LI; v17 emsali `database.dart:661-667`). Editör belge
-      yüklerken `note.revision`'ı alır; `store.update(..., baseRevision:)` outbox satırına
-      yazar; **kendi başarılı push'unun `result_revision`'ı base'i İLERLETİR** (ölçüsü: art
-      arda iki otosave sahte çakışma ÜRETMEZ — test).
+_(⏳ 2026-08-17 — **SUNUCU YARIMI BİTTİ**, istemci yarımı açık. API süiti **709** (+12),
+lint/format temiz. Eski istemciler etkilenmiyor: base göndermeyen mutation bugünkü davranışı
+alır, yani bu yarım tek başına sevk edilebilir ve edildi.)_
+
+_**Turun tek cümlesi: bulgu #1'in kökü kilidin varlığı değil, NEYİ kıyasladığıydı** —
+workspace pull imleci. Soket kaynaklı bir pull imleci karşı tarafın yazımının ötesine
+taşıyor, kilit "yabancı bir şey olmadı" diyor ve bir gövde diğerini sessizce siliyordu. Base
+artık NOTUN kendi revizyonu ("editörün gördüğü şey")._
+
+- [x] Protokol: push mutation'ına opsiyonel NOT-bazlı `baseRevision` (Ajv) + sonuç zarfında
+      `status:'merged'`, `merged{contentMarkdown,contentFormat}`, `conflictVersionId`,
+      `reason`. **Kendi başarılı push'unun revizyonu base'i ilerletir** — art arda iki
+      otosave'in sahte çakışma ÜRETMEDİĞİ testle çivili.
+      _`PendingMutations` kolonu + editörün base'i taşıması istemci yarımında (aşağıda)._
 - [ ] Outbox koalesansı: aynı nota push edilmemiş ikinci `update` enqueue edilirse patch'ler
       birleşir — EN ESKİ base + EN YENİ gövde (bulgu #3'ün N-kopya patlamasının istemci ayağı).
-- [ ] Sunucu `applyUpdate` (not, content intents): mutation base'i varsa notun KENDİ
+- [x] Sunucu `applyUpdate` (not, content intents): mutation base'i varsa notun KENDİ
       `revision`'ıyla kıyasla (workspace-imleç kıyası content için ölür — bulgu #1'in kökü).
       Eşit → uygula + sürüm. Küçük → base gövdesini `note_versions`(note_revision=base)'ten
       getir: bulunamadı YA DA üç taraftan biri markdown-canonical değil → `NOTE_CONTENT_CONFLICT`
@@ -8487,11 +8495,24 @@ bugünkü davranışa düşer (kendi kendini kırmayan protokol)._
 - [ ] Editör V7: pull ile gelen değişiklik AÇIK ve TEMİZ editöre yerinde iner (base ilerler);
       KİRLİ editör kullanıcı metnini korur (push-time base işini yapar). `didUpdateWidget`/
       provider dinleme — bulgu #2'nin kapanışı.
-- [ ] REST `PATCH /notes/:noteId` opsiyonel `baseRevision` kabul eder (aynı yol; API
-      istemcileri de dürüst çakışma alabilir — docs/API.md güncellenir).
-- [ ] Testler: unit sync-push (merge-temiz / merge-çakışma / base'siz eski istemci /
-      delta-canonical düşüşü / base-sürümü-inceltilmiş düşüşü); **integration: Senaryo A'nın
-      birebir reprodüksiyonu** (iki istemci çevrimiçi, soket-pull araya girer, İKİ metin de
+- [x] REST `PATCH /notes/:noteId` opsiyonel `baseRevision` kabul eder (aynı yol; 409 +
+      `conflictVersionId`, `docs/API.md`'de "Conflict-safe edits" bölümü).
+- [x] **Sunucu testleri (+12, süit 697 → 709)** `test/unit/note-conflict.test.js`: merge
+      motoru (ayrık satırlar birleşir · **tek paragrafta KELİME inceltmesi** — diff3
+      makalesinin tuzağı · gerçek örtüşme reddedilir · CRLF normalizasyonu) · **Senaryo A:
+      iki istemci, iki metin de yaşıyor** (`status:'merged'`, gövdede iki taraf da,
+      `origin='merge'` sürümü, plain_text takip ediyor) · gerçek örtüşmede reddin gövdeyi
+      SAKLADIĞI (`conflictVersionId` işaret ediyor) · art arda iki otosave sahte çakışma
+      üretmiyor · delta-canonical not merge'e girmiyor (`NOT_MARKDOWN`) · saklama süpürmüş
+      base (`BASE_MISSING`) · **base göndermeyen eski istemci bugünkü davranışı alıyor** ·
+      REST PATCH'in merge'i ve 409'u.
+- [ ] **AÇIK — istemci yarımı:** drift v18 kolonu + editörün `note.revision`'ı taşıması,
+      outbox koalesansı (aynı nota ikinci update → EN ESKİ base + EN YENİ gövde), otomatik
+      kardeş-kopyanın ÖLMESİ (yerine `conflictVersionId` + banner state), editör V7 (temiz
+      editör pull'u yerinde alır, kirli editör kullanıcı metnini korur). Sunucu yarımı
+      bunlarsız da doğru davranıyor — base göndermeyen istemci bugünkü yolu alır — ama
+      kullanıcının gördüğü davranış istemci yarımı inene kadar DEĞİŞMEZ.
+- [ ] **BLOKE — integration: Senaryo A'nın birebir reprodüksiyonu** (iki istemci çevrimiçi, soket-pull araya girer, İKİ metin de
       yaşar — bugün kaybolan test artık sözleşme) + offline reconnect senaryosu; app: engine
       settle/base-ilerletme/dedupe + editör temiz/kirli davranış testleri.
 

@@ -266,6 +266,19 @@ are newest-first and cursor-paginated (`limit`, `cursor`, `nextCursor`).
 | GET · POST | `/workspaces/:ws/folders` | |
 | PATCH · DELETE | `/folders/:id` | |
 
+### Conflict-safe edits
+
+`PATCH /notes/:id` accepts an optional **`baseRevision`** — the note revision
+your copy started from. Send it and the server does a three-way merge instead
+of overwriting: if the two sets of changes do not touch, you get 200 with both
+merged in; if they genuinely overlap, you get `409 NOTE_CONTENT_CONFLICT` and
+**your body is kept** as a version you can go back to (the response's
+`conflictVersionId` says which). Omit it and the endpoint behaves exactly as it
+always has.
+
+Merging is attempted only when the note and both bodies are markdown; a
+rich-text note takes the conflict path rather than having JSON line-merged.
+
 ### Note history
 
 | Method | Path | Notes |
