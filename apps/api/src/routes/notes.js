@@ -3,7 +3,6 @@ import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
 import { recordSyncWrite } from '../db/sync.js';
 import * as domain from '../db/notes.js';
-import { parseDelta } from '../db/notes.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
 
@@ -65,12 +64,15 @@ const noteDetailSchema = {
 
 const writableProps = {
   title: { type: 'string', minLength: 1, maxLength: 500 },
-  contentDelta: { type: ['array', 'null'], maxItems: 20000 },
+  // DEPRECATED (ADR-0033). A Quill Delta is still ACCEPTED, because the client
+  // in someone's pocket keeps sending one for weeks after we deploy — it is
+  // converted to markdown on the way in and never stored. New integrations
+  // should send `contentMarkdown` and nothing else.
+  contentDelta: { type: ['array', 'null'], maxItems: 20000, deprecated: true },
   contentMarkdown: { type: ['string', 'null'], maxLength: 1000000 },
-  // Which field is canonical (ADR-0028 §1). The schema constrains it here AND
-  // a CHECK constraint constrains it in the table: a value the app has never
-  // heard of would silently decide how somebody's note is edited.
-  contentFormat: { type: 'string', enum: ['delta', 'markdown'] },
+  // DEPRECATED with it: 'delta' is accepted and means "this body arrived as a
+  // Delta, convert it". Every note is stored as 'markdown'.
+  contentFormat: { type: 'string', enum: ['delta', 'markdown'], deprecated: true },
   projectId: { anyOf: [{ type: 'null' }, ULID_PARAM] },
   isPinned: { type: 'boolean' },
   isArchived: { type: 'boolean' },
@@ -103,12 +105,15 @@ export function serializeNoteSnapshot(row, links, tagIds = []) {
     // endpoint and no serialization — a column nobody could read or write,
     // which is §22 at the schema level.
     tagIds,
-    contentDelta: parseDelta(row.content_delta),
+    // ADR-0033: always null. The column still holds its pre-2026-08-18 rows —
+    // a lossless escape hatch a human can read — but nothing maintains them,
+    // so shipping one on every pull would be sending a second, silently
+    // diverging copy of the document down the wire. Clients that predate the
+    // change read `contentMarkdown` once the format says markdown, which after
+    // the migration it always does.
+    contentDelta: null,
     contentMarkdown: row.content_markdown ?? null,
-    // Rows written before OPH-248 have no column value in flight; 'delta' is
-    // both the table default and the right answer for anything the WYSIWYG
-    // wrote, which is every note that existed before this.
-    contentFormat: row.content_format ?? 'delta',
+    contentFormat: row.content_format ?? 'markdown',
     plainText: row.plain_text ?? null,
     links: links.map((l) => ({
       id: l.id,

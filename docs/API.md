@@ -105,8 +105,7 @@ NOTE=$(curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/notes" \
   -H 'Content-Type: application/json' \
   -d '{
         "title": "Meeting notes",
-        "contentFormat": "markdown",
-        "contentMarkdown": "# Decisions\n\n- ship it\n"
+        "contentMarkdown": "- ship it\n"
       }' | jq -r .id)
 
 curl -s -X POST "$ALLISWELL_URL/api/v1/notes/$NOTE/links" \
@@ -115,10 +114,16 @@ curl -s -X POST "$ALLISWELL_URL/api/v1/notes/$NOTE/links" \
   -d "{\"entityType\": \"task\", \"entityId\": \"$TASK_ID\"}"
 ```
 
-`contentFormat` decides which field is canonical
-([ADR-0028](adr/0028-markdown-document-model-and-renderer.md)): send
-`"markdown"` with `contentMarkdown` and the note is a markdown document
-everywhere — in search, in export, in the editor.
+A note IS markdown ([ADR-0033](adr/0033-markdown-is-the-only-note-format.md)):
+`contentMarkdown` is the whole body, and it is what search, export and the
+editor all read.
+
+The title lives in `title` and the stored body never repeats it — the `.md`
+export adds the `# heading` back, because a file that stands on its own needs
+one. `contentFormat` and `contentDelta` are **deprecated**: a Quill Delta is
+still accepted (the mobile app sends one until everyone has updated) and is
+converted on the way in, but it is never stored and responses always return
+`"contentDelta": null`, `"contentFormat": "markdown"`.
 
 ### Export a note as markdown
 
@@ -143,8 +148,10 @@ curl -s -G "$ALLISWELL_URL/api/v1/workspaces/$WS/export/notes" \
   --data-urlencode 'limit=200' > notes-page-1.json
 ```
 
-Each note comes out whole: title, `contentFormat` and **both** body fields,
-plain text, project, tags, links, pin/archive flags and timestamps. Archived
+Each note comes out whole: title, `contentMarkdown`, plain text, project,
+tags, links, pin/archive flags and timestamps. (`contentDelta` is `null` and
+`contentFormat` is `"markdown"` on every row — the export carries the
+document, not a second copy nothing maintains.) Archived
 notes are included (pass `includeArchived=false` if you really want them out).
 Page with `cursor` until `nextCursor` is `null`:
 
@@ -276,8 +283,12 @@ merged in; if they genuinely overlap, you get `409 NOTE_CONTENT_CONFLICT` and
 `conflictVersionId` says which). Omit it and the endpoint behaves exactly as it
 always has.
 
-Merging is attempted only when the note and both bodies are markdown; a
-rich-text note takes the conflict path rather than having JSON line-merged.
+Every note is markdown, so every conflict is mergeable. Until 2026-08-18 a
+note written in the app's rich editor took the conflict path instead — its
+body was a JSON op array, and line-merging one does not produce a document.
+[ADR-0033](adr/0033-markdown-is-the-only-note-format.md) removed that case
+along with the second format, and a Delta arriving from an older client is
+converted before the merge rather than refused.
 
 ### Note history
 

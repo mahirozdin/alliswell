@@ -1,112 +1,70 @@
-/// What a note is made of, and which surfaces may edit it (OPH-248).
+/// What a note is made of, and which surfaces may edit it (OPH-248, OPH-274).
 ///
-/// ADR-0028 §1 split notes by intent: a note is either **Delta-canonical**
-/// (the rich editor wrote it) or **markdown-canonical** (it came from a file,
-/// or the user converted it on purpose). That single fact decides everything
-/// this class exposes.
+/// ## One canonical form
 ///
-/// ## The D1 amendment, and why
+/// ADR-0028 §1 split notes by intent: a note was either Delta-canonical (the
+/// rich editor wrote it) or markdown-canonical (it came from a file, or the
+/// user converted it on purpose). ADR-0033 ended that split — **a note is
+/// markdown**. There is no rich editor to be the other half of it, no
+/// conversion door, and no format flag to disagree about.
 ///
-/// DESIGN §29 D1 asked for "exactly three modes: Reading · Live · Source".
-/// Under Option C a note cannot honestly offer all three at once: Live edits a
-/// Delta and Source edits markdown text, and only ONE of those is the note's
-/// canonical content. Offering the other would either lie about what gets
-/// saved or silently convert the document underneath the user.
-///
-/// So a note offers **two** modes — Reading, plus whichever editor matches its
-/// canonical form — and the third is reached through a NAMED, one-way,
-/// warned conversion. That is a narrowing of D1's scope, not of its intent: a
-/// disabled third segment would be exactly the dead affordance §22 forbids.
+/// What that removes is not just code. Under the split, every write path
+/// (saving, exporting, versioning, merging, indexing for search) had to ask
+/// which field was real and had two answers. The most expensive consequence
+/// was that the three-way merge REFUSED to run on Delta notes — so the
+/// conflict engine Epic 25 built never ran on the app's own documents.
 ///
 /// ## D3 is why the controllers live here
 ///
 /// "A mode switch preserves the caret, the scroll position and the undo
 /// history." The mechanism is not to restore that state — it is to never tear
-/// it down. The controllers are created once per document and outlive every
+/// it down. The controller is created once per document and outlives every
 /// mode switch, so the caret, the selection, the scroll offset and Flutter's
 /// own undo stack simply continue.
 library;
 
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 
-import 'delta_markdown.dart';
-import 'markdown_delta.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'note.dart';
 
-/// The canonical-content formats, as the schema spells them.
-enum NoteFormat {
-  delta,
-  markdown;
-
-  static NoteFormat parse(String? raw) =>
-      raw == 'markdown' ? NoteFormat.markdown : NoteFormat.delta;
-
-  String get wire => name;
-}
-
 /// A surface the editor can show.
+///
+/// Two, and both of them always available — which is what DESIGN §29 D1 asked
+/// for in the first place. The D1 amendment OPH-248 had to write (a note
+/// offers only the editor matching its canonical form, and the third mode is
+/// reached through a warned one-way conversion) exists only because there were
+/// two canonical forms. There is one now, so the amendment is retired.
 enum NoteMode {
-  /// The rendered document. Always available, whatever the note is made of.
+  /// The rendered document.
   reading,
 
-  /// The rich (Quill) editor — Delta-canonical notes only.
-  live,
-
-  /// The markdown source as text — markdown-canonical notes only.
+  /// The markdown source, with live syntax (OPH-274).
   source,
 }
 
 /// What the document managed to do with an uploaded file.
 ///
-/// The caller needs to know, because [NoteInsert.attachedOnly] is the one case
-/// with nothing to see in the document — the file really is attached to the
-/// note, but the surface has no way to show it, and silence there reads as a
-/// failed upload.
-enum NoteInsert { embedded, linked, attachedOnly }
+/// `attachedOnly` is gone with ADR-0033, and its disappearance is a fix. It
+/// meant "the file is attached but the surface cannot show it" — true of the
+/// rich editor, which had an image node, a video node and nothing else, so a
+/// PDF or a zip vanished into the Files tab and the caller had to apologise
+/// with a snackbar. Markdown has a link, so every file now leaves a mark in
+/// the document you can actually click.
+enum NoteInsert { embedded, linked }
 
-/// Owns a note's content and the controllers that edit it.
+/// Owns a note's content and the controller that edits it.
 class NoteDocument extends ChangeNotifier {
-  NoteDocument({NoteDetail? note})
-    : _format = NoteFormat.parse(note?.contentFormat),
-      title = TextEditingController(text: note?.title ?? ''),
-      quill = QuillController.basic(),
+  NoteDocument({NoteDetail? note, bool cameFromOutside = false})
+    : title = TextEditingController(text: note?.title ?? ''),
       source = MdSourceController(text: note?.contentMarkdown ?? '') {
-    final delta = note?.contentDelta;
-    if (delta != null && delta.isNotEmpty) {
-      quill.document = Document.fromJson(delta);
-    }
-    _mode = defaultModeFor(
-      _format,
-      cameFromOutside: _format == NoteFormat.markdown,
-    );
+    _mode = defaultModeFor(cameFromOutside: cameFromOutside);
   }
 
   final TextEditingController title;
 
-  /// Live for a Delta-canonical note. Kept alive across mode switches (D3).
-  final QuillController quill;
-
-  /// Live for a markdown-canonical note. Same lifetime, same reason.
+  /// The markdown source. Kept alive across mode switches (D3).
   final MdSourceController source;
-
-  /// The rich editor's focus node and scroll position (OPH-270).
-  ///
-  /// They live here for D3's reason — one per document, outliving every mode
-  /// switch — and for a sharper one: `QuillEditor.basic` **mints a new
-  /// `FocusNode` and `ScrollController` every time they are not supplied**
-  /// (flutter_quill 11.5.1, `editor.dart:163-164`). Since the editor is built
-  /// inside a `build()`, that meant a fresh focus node on every rebuild: the
-  /// caret was thrown away mid-sentence and the title — the first focusable in
-  /// the tree — caught the focus. Autosave's own `setState` (the D21 indicator)
-  /// is what made it happen on almost every save.
-  final FocusNode quillFocus = FocusNode(debugLabel: 'note-body');
-  final ScrollController quillScroll = ScrollController();
-
-  NoteFormat _format;
-  NoteFormat get format => _format;
 
   late NoteMode _mode;
   NoteMode get mode => _mode;
@@ -115,77 +73,52 @@ class NoteDocument extends ChangeNotifier {
   /// thing you do with someone else's file is read it. A note written here
   /// opens in its editor, because the first thing you do with yours is keep
   /// writing.
-  static NoteMode defaultModeFor(
-    NoteFormat format, {
-    required bool cameFromOutside,
-  }) {
-    if (cameFromOutside) return NoteMode.reading;
-    return format == NoteFormat.markdown ? NoteMode.source : NoteMode.live;
-  }
+  ///
+  /// This used to be computed as `format == NoteFormat.markdown`, which
+  /// equated "markdown" with "came from outside". It was wrong the day it was
+  /// written (a note the user converted on purpose opened read-only every
+  /// time — the parked OPH-270 finding) and under ADR-0033 it would have made
+  /// EVERY note open read-only. Provenance is now what it always was: a fact
+  /// the caller knows and passes.
+  static NoteMode defaultModeFor({required bool cameFromOutside}) =>
+      cameFromOutside ? NoteMode.reading : NoteMode.source;
 
-  /// The modes this note actually offers. Never contains a mode that cannot
-  /// edit its canonical content — see the D1 amendment above.
-  List<NoteMode> get availableModes => [
-    if (_format == NoteFormat.delta) NoteMode.live else NoteMode.source,
+  /// The modes this note offers. Every note offers both.
+  List<NoteMode> get availableModes => const [
+    NoteMode.source,
     NoteMode.reading,
   ];
-
-  /// The editor mode this note offers, whichever it is.
-  NoteMode get editorMode =>
-      _format == NoteFormat.delta ? NoteMode.live : NoteMode.source;
 
   /// Replaces the document's content with a note that arrived from the server
   /// (OPH-268 V7). Called ONLY when the editor is clean — a dirty editor keeps
   /// the user's text and lets the push-time three-way merge do the work.
   ///
-  /// The controllers are reused rather than rebuilt: they own the focus node
-  /// and the scroll position (OPH-270), and swapping them mid-screen is how
-  /// the caret used to jump.
+  /// The controller is reused rather than rebuilt: it owns the focus node and
+  /// the scroll position (OPH-270), and swapping it mid-screen is how the
+  /// caret used to jump.
   void adoptRemote(NoteDetail note) {
-    _format = NoteFormat.parse(note.contentFormat);
     if (title.text != note.title) title.text = note.title;
     final markdown = note.contentMarkdown ?? '';
-    if (_format == NoteFormat.markdown) {
-      if (source.text != markdown) source.text = markdown;
-    } else {
-      final delta = note.contentDelta;
-      final incoming = delta == null || delta.isEmpty
-          ? Document()
-          : Document.fromJson(delta);
-      if (jsonEncode(incoming.toDelta().toJson()) !=
-          jsonEncode(quill.document.toDelta().toJson())) {
-        quill.document = incoming;
-      }
-    }
+    if (source.text != markdown) source.text = markdown;
     notifyListeners();
   }
 
   void setMode(NoteMode next) {
-    if (next == _mode || !availableModes.contains(next)) return;
+    if (next == _mode) return;
     _mode = next;
     notifyListeners();
   }
 
-  /// The markdown the Reading view renders.
-  ///
-  /// For a markdown-canonical note this is the source itself — byte for byte,
-  /// which is what makes OPH-251's "save back to the file" honest. For a
-  /// Delta-canonical note it is DERIVED, and derived is fine here because
-  /// nothing writes it back.
-  String get markdown =>
-      _format == NoteFormat.markdown ? source.text : deltaToMarkdown(deltaJson);
+  /// The markdown the Reading view renders — the source itself, byte for byte,
+  /// which is what makes OPH-251's "save back to the file" honest.
+  String get markdown => source.text;
 
-  List<Map<String, dynamic>> get deltaJson =>
-      quill.document.toDelta().toJson().cast<Map<String, dynamic>>();
-
-  /// Puts an already-uploaded file into whichever surface is currently editing.
+  /// Puts an already-uploaded file into the document.
   ///
-  /// Live takes a Quill `BlockEmbed`; Source takes markdown text. Three things
-  /// want to do this — the toolbar's insert buttons, a dropped file, and
-  /// (once OPH-256 lands) a pasted image — and if each decided for itself,
-  /// they would drift the way the toolbar and the slash menu were about to
-  /// before `mdActions()` was made the single list. The document knows which
-  /// surface is canonical, so the choice lives here.
+  /// Three things want to do this — the toolbar's insert buttons, a dropped
+  /// file, and a pasted image — and if each decided for itself they would
+  /// drift the way the toolbar and the slash menu were about to before
+  /// `mdActions()` was made the single list.
   NoteInsert insertFile({
     required String fileId,
     required String name,
@@ -193,159 +126,39 @@ class NoteDocument extends ChangeNotifier {
   }) {
     final uri = 'alliswell://file/$fileId';
     final isImage = mime.startsWith('image/');
+    // Markdown has no video embed, so a non-image becomes a LINK rather than
+    // an `![…]()` that every renderer would draw as a broken image. The file
+    // is attached either way; this is about not lying in the document.
+    final text = isImage ? '![$name]($uri)' : '[$name]($uri)';
 
-    if (editorMode == NoteMode.source) {
-      // Markdown has no video embed, so a non-image becomes a LINK rather than
-      // an `![…]()` that every renderer would draw as a broken image. The file
-      // is attached either way; this is about not lying in the document.
-      final text = isImage ? '![$name]($uri)' : '[$name]($uri)';
-      final selection = source.selection;
-      final start = selection.isValid ? selection.start : source.text.length;
-      final end = selection.isValid ? selection.end : source.text.length;
-      source.value = TextEditingValue(
-        text: source.text.replaceRange(start, end, text),
-        selection: TextSelection.collapsed(offset: start + text.length),
-      );
-      return isImage ? NoteInsert.embedded : NoteInsert.linked;
-    }
-
-    final BlockEmbed? embed = isImage
-        ? BlockEmbed.image(uri)
-        : mime.startsWith('video/')
-        ? BlockEmbed.video(uri)
-        : null;
-    if (embed == null) return NoteInsert.attachedOnly;
-
-    final selection = quill.selection;
-    final index = selection.isValid
-        ? selection.start
-        : quill.document.length - 1;
-    final length = selection.isValid ? selection.end - selection.start : 0;
-    quill.replaceText(
-      index,
-      length,
-      embed,
-      TextSelection.collapsed(offset: index + 1),
+    final selection = source.selection;
+    final start = selection.isValid ? selection.start : source.text.length;
+    final end = selection.isValid ? selection.end : source.text.length;
+    source.value = TextEditingValue(
+      text: source.text.replaceRange(start, end, text),
+      selection: TextSelection.collapsed(offset: start + text.length),
     );
-    return NoteInsert.embedded;
-  }
-
-  /// Whether converting would change the note's canonical form in a way the
-  /// user cannot undo by switching back.
-  bool get canConvert => true;
-
-  /// The format a conversion would produce.
-  NoteFormat get convertTarget =>
-      _format == NoteFormat.delta ? NoteFormat.markdown : NoteFormat.delta;
-
-  /// Converts the note's canonical form. **One-way in effect**: going
-  /// delta → markdown flattens what Delta could hold, and coming back parses
-  /// what markdown can express. The caller is responsible for warning first;
-  /// this method does not ask.
-  void convert() {
-    if (_format == NoteFormat.delta) {
-      source.text = deltaToMarkdown(deltaJson);
-      _format = NoteFormat.markdown;
-    } else {
-      quill.document = Document.fromJson(markdownToDelta(source.text));
-      _format = NoteFormat.delta;
-    }
-    _mode = editorMode;
-    notifyListeners();
+    return isImage ? NoteInsert.embedded : NoteInsert.linked;
   }
 
   /// The body fields a save should send, keyed as the API names them.
+  ///
+  /// `contentDelta` is gone from the wire, and `contentFormat` rides along
+  /// only because the server still accepts it — a saved note says what it is
+  /// rather than letting a column default decide. The title is NOT prefixed
+  /// onto the body: it lives in its own field, and the previous release's
+  /// habit of writing `# $title` into the markdown is exactly what made
+  /// migrated notes show their title twice.
   Map<String, dynamic> bodyFor(String titleText) => {
     'title': titleText,
-    'contentDelta': deltaJson,
-    // Always sent: Reading renders markdown for BOTH formats, and search
-    // indexes it server-side. For a markdown-canonical note it is the
-    // canonical text; for a Delta one it is the export it has always been.
-    'contentMarkdown': _format == NoteFormat.markdown
-        ? source.text
-        : '# $titleText\n\n${deltaToMarkdown(deltaJson)}',
-    'contentFormat': _format.wire,
+    'contentMarkdown': source.text,
+    'contentFormat': 'markdown',
   };
 
   @override
   void dispose() {
     title.dispose();
-    quill.dispose();
     source.dispose();
-    quillFocus.dispose();
-    quillScroll.dispose();
     super.dispose();
-  }
-}
-
-/// The Source-mode text controller, with focus mode built in (DESIGN §29 D23).
-///
-/// A subclass rather than a second controller: D3 keeps ONE controller alive
-/// for the document's whole life, so focus mode has to be a property of that
-/// controller, not a swap.
-///
-/// "Focus mode dims, it does not hide." Everything outside the paragraph
-/// holding the caret fades; nothing leaves the layout, because removing text
-/// reflows the page and reflow is what makes a focus mode unusable.
-class MdSourceController extends TextEditingController {
-  MdSourceController({super.text});
-
-  bool _focusMode = false;
-  bool get focusMode => _focusMode;
-  set focusMode(bool value) {
-    if (value == _focusMode) return;
-    _focusMode = value;
-    notifyListeners();
-  }
-
-  /// The paragraph around [offset] — bounded by blank lines, the way markdown
-  /// itself decides where a paragraph ends.
-  ({int start, int end}) paragraphAt(int offset) {
-    final caret = offset.clamp(0, text.length);
-    var start = 0;
-    var end = text.length;
-    final breakRe = RegExp(r'\n[ \t]*\n');
-    for (final match in breakRe.allMatches(text)) {
-      if (match.end <= caret) {
-        start = match.end;
-      } else {
-        end = match.start;
-        break;
-      }
-    }
-    return (start: start, end: end);
-  }
-
-  @override
-  TextSpan buildTextSpan({
-    required BuildContext context,
-    TextStyle? style,
-    required bool withComposing,
-  }) {
-    if (!_focusMode || text.isEmpty) {
-      return super.buildTextSpan(
-        context: context,
-        style: style,
-        withComposing: withComposing,
-      );
-    }
-
-    final range = paragraphAt(
-      selection.baseOffset < 0 ? 0 : selection.baseOffset,
-    );
-    final dim = (style ?? const TextStyle()).copyWith(
-      color: (style?.color ?? Theme.of(context).colorScheme.onSurface)
-          .withValues(alpha: 0.35),
-    );
-    return TextSpan(
-      style: style,
-      children: [
-        if (range.start > 0)
-          TextSpan(text: text.substring(0, range.start), style: dim),
-        TextSpan(text: text.substring(range.start, range.end), style: style),
-        if (range.end < text.length)
-          TextSpan(text: text.substring(range.end), style: dim),
-      ],
-    );
   }
 }

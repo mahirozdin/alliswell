@@ -5,10 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
-import 'package:alliswell/src/features/notes/markdown/md_parse.dart';
-import 'package:alliswell/src/features/notes/markdown/md_security.dart';
-import 'package:alliswell/src/features/notes/markdown/md_unsupported.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 /// OPH-247 — a document is untrusted input (DESIGN §29 D10, ADR-0028 §Zorlama).
@@ -28,7 +25,7 @@ void main() {
   Widget host(String markdown, {void Function(Uri)? onOpen}) => MaterialApp(
     theme: buildAwTheme(Brightness.light),
     home: Scaffold(
-      body: AwMarkdown(
+      body: MarkdownView(
         document: parseMarkdown(markdown),
         shrinkWrap: true,
         onOpenLink: onOpen ?? (_) {},

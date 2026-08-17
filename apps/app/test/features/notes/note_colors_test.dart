@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/notes/data/delta_markdown.dart';
-import 'package:alliswell/src/features/notes/data/markdown_delta.dart';
 import 'package:alliswell/src/features/notes/data/note_colors.dart';
 
-/// OPH-259 — a note stores the NAME of a colour, and the theme decides what it
-/// looks like (DESIGN §33 R4).
+/// OPH-259 — a highlight stores the NAME of a colour, and the theme decides
+/// what it looks like (DESIGN §33 R4).
+///
+/// ADR-0033 took half of this away with the rich editor. TEXT colour is gone:
+/// GFM has no syntax for it, so `aw:text-*` had nowhere to live once markdown
+/// became the only canonical form (§33 R6 had already parked it, with that
+/// reason). The HIGHLIGHT survived, because markdown does have a mark —
+/// `==like this==` — and the renderer draws it from these same names.
 ///
 /// The rule this replaces promised twelve text colours legible on both themes
 /// from one hex each. Measured, that is impossible: the surface under the text
@@ -25,17 +29,6 @@ void main() {
               'is exactly what cannot be made readable',
         );
       }
-    });
-
-    test('the palette flutter_quill resolves through covers every name', () {
-      final light = awNoteColorPalette(Brightness.light);
-      final dark = awNoteColorPalette(Brightness.dark);
-
-      for (final color in kAwNoteColors) {
-        expect(light[color.id], color.light);
-        expect(dark[color.id], color.dark);
-      }
-      expect(light, hasLength(kAwNoteColors.length));
     });
 
     test('ids are unique — the palette is one map', () {
@@ -63,55 +56,27 @@ void main() {
       expect(markdown.trim(), '==dikkat==');
     });
 
-    test('markdown → delta gives it a NAME, never a hex', () {
-      final delta = markdownToDelta('==dikkat==');
-      final op = delta.firstWhere(
-        (op) => (op['attributes'] as Map?)?.containsKey('background') ?? false,
-      );
-
-      expect(op['insert'], 'dikkat');
-      expect((op['attributes'] as Map)['background'], kAwDefaultHighlightId);
+    test('the default highlight is a name the themes can resolve', () {
       expect(
         awNoteColorById(kAwDefaultHighlightId),
         isNotNull,
         reason: 'the default must be a colour the themes can resolve',
       );
     });
-
-    test('a highlight survives the round trip', () {
-      const original = [
-        {
-          'insert': 'dikkat',
-          'attributes': {'background': kAwDefaultHighlightId},
-        },
-        {'insert': '\n'},
-      ];
-
-      final back = markdownToDelta(deltaToMarkdown(original));
-      final op = back.firstWhere(
-        (op) => (op['attributes'] as Map?)?.containsKey('background') ?? false,
-      );
-
-      expect(op['insert'], 'dikkat');
-      expect((op['attributes'] as Map)['background'], kAwDefaultHighlightId);
-    });
   });
 
   group('the stock hex dialog is gone for good', () {
-    test('the toolbar config disables both colour buttons', () {
-      // The complaint that started §33: flutter_quill's own dialog carries a
-      // hex TEXT FIELD, which round 1 forbade. A config test rather than a
-      // widget test because this is a promise about configuration — and it
-      // fails the moment someone flips either flag back.
-      const config = QuillSimpleToolbarConfig(
-        showColorButton: false,
-        showBackgroundColorButton: false,
-      );
-
-      expect(config.showColorButton, isFalse);
-      expect(config.showBackgroundColorButton, isFalse);
-      // The defaults are ON, which is why they must be written out.
-      expect(const QuillSimpleToolbarConfig().showColorButton, isTrue);
+    test('there is no colour picker left to leak a hex field', () {
+      // The complaint that started §33: flutter_quill's own colour dialog
+      // carried a hex TEXT FIELD, which round 1 forbade, so OPH-259 replaced
+      // both buttons with ours. ADR-0033 removed the package entirely — the
+      // promise is now kept by the dependency not existing, which is the
+      // strongest form it can take. What remains is that every highlight the
+      // renderer can draw is a NAME.
+      for (final color in kAwNoteHighlightColors) {
+        expect(color.id, startsWith('aw:'));
+        expect(color.id, isNot(startsWith('#')));
+      }
     });
   });
 }

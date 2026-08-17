@@ -1,9 +1,9 @@
-/// The one control that switches modes (DESIGN §29 D1, OPH-248).
+/// The one control that switches modes (DESIGN §29 D1, OPH-248 / OPH-274).
 ///
 /// "One control switches them; the control shows which one is active and never
-/// hides." It shows the modes this note actually offers — two, under the D1
-/// amendment recorded in `note_document.dart` — because a disabled third
-/// segment is the dead affordance §22 exists to forbid.
+/// hides." Two segments, and both live for every note: ADR-0033 left one
+/// canonical form, so the D1 amendment that made the third segment conditional
+/// (and would have made it a dead affordance, which §22 forbids) is retired.
 library;
 
 import 'package:flutter/material.dart';
@@ -25,14 +25,12 @@ class NoteModeControl extends StatelessWidget {
 
   static String labelKey(NoteMode mode) => switch (mode) {
     NoteMode.reading => 'note.modeReading',
-    NoteMode.live => 'note.modeLive',
     NoteMode.source => 'note.modeSource',
   };
 
   static IconData iconFor(NoteMode mode) => switch (mode) {
     NoteMode.reading => Icons.menu_book_outlined,
-    NoteMode.live => Icons.edit_note_outlined,
-    NoteMode.source => Icons.data_object,
+    NoteMode.source => Icons.edit_note_outlined,
   };
 
   @override

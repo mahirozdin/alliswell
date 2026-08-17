@@ -3,8 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown/markdown.dart' as md;
 
-import 'package:alliswell/src/features/notes/markdown/md_parse.dart';
-import 'package:alliswell/src/features/notes/markdown/md_syntaxes.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 /// ADR-0028 §Zorlama — the coverage claim, enforced.
 ///

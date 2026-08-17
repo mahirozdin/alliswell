@@ -16,23 +16,26 @@ import 'package:flutter/services.dart';
 
 import 'find_replace_bar.dart';
 import 'md_command_palette.dart';
+import 'md_highlight.dart';
 import 'md_toolbar.dart';
 
-import '../../../../i18n/i18n.dart';
-import '../../../../theme/tokens.dart';
-import '../../../notes/markdown/md_actions.dart';
-import '../../../notes/markdown/md_editing.dart';
-import '../../../notes/markdown/aw_markdown.dart';
-import '../../../notes/markdown/md_parse.dart';
-import '../../data/note_document.dart';
+import 'md_actions.dart';
+import 'md_editing.dart';
+import '../render/markdown_view.dart';
+import '../render/md_parse.dart';
+import '../seams.dart';
 
 /// Below this the split view is not offered at all (D5).
 const double kNoteSplitBreakpoint = 900;
 
 class SourceMode extends StatefulWidget {
-  const SourceMode({super.key, required this.document, this.onChanged});
+  const SourceMode({super.key, required this.controller, this.onChanged});
 
-  final NoteDocument document;
+  /// The controller, not a host's document object. `SourceMode` only ever
+  /// reached through `document.source`, so taking the document meant the
+  /// package knew a type it had no use for — the single line that would have
+  /// made this widget unpublishable.
+  final MdSourceController controller;
   final VoidCallback? onChanged;
 
   @override
@@ -53,7 +56,7 @@ class _SourceModeState extends State<SourceMode> {
   /// as key events on the field — one assignment per edit, so one undo.
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
-    final controller = widget.document.source;
+    final controller = widget.controller;
     final caret = controller.selection.baseOffset;
     if (caret < 0) return KeyEventResult.ignored;
 
@@ -90,7 +93,7 @@ class _SourceModeState extends State<SourceMode> {
   /// whole new text is assigned ONCE, so a single undo restores the raw paste —
   /// "smart" paste without one-step undo is hostile.
   Future<void> _smartPaste() async {
-    final controller = widget.document.source;
+    final controller = widget.controller;
     final selection = controller.selection;
     if (!selection.isValid) return;
 
@@ -116,7 +119,7 @@ class _SourceModeState extends State<SourceMode> {
 
   void _onTextChanged() {
     widget.onChanged?.call();
-    final controller = widget.document.source;
+    final controller = widget.controller;
     final token = slashTokenAt(
       controller.text,
       controller.selection.baseOffset,
@@ -130,13 +133,13 @@ class _SourceModeState extends State<SourceMode> {
   Future<void> _openPalette() async {
     final action = await showMdCommandPalette(context);
     if (action == null || !mounted) return;
-    applyMdAction(widget.document.source, action);
+    applyMdAction(widget.controller, action);
     _onTextChanged();
   }
 
   /// Replaces the `/token` with the action's result (D19).
   void _applySlash(MdAction action) {
-    final controller = widget.document.source;
+    final controller = widget.controller;
     final caret = controller.selection.baseOffset;
     final token = slashTokenAt(controller.text, caret);
     if (token != null) {
@@ -202,7 +205,7 @@ class _SourceModeState extends State<SourceMode> {
         for (final action in mdActions())
           for (final activator in action.shortcuts)
             activator: () {
-              applyMdAction(widget.document.source, action);
+              applyMdAction(widget.controller, action);
               widget.onChanged?.call();
             },
         for (final activator in mdPaletteShortcuts)
@@ -231,15 +234,15 @@ class _SourceModeState extends State<SourceMode> {
       children: [
         if (_finding)
           FindReplaceBar(
-            target: widget.document.source,
+            target: widget.controller,
             showReplace: _replacing,
             onClose: () => setState(() => _finding = false),
           ),
         if (wide)
           Padding(
             padding: const EdgeInsets.only(
-              left: AwSpace.x5,
-              bottom: AwSpace.x1,
+              left: MdSpace.x5,
+              bottom: MdSpace.x1,
             ),
             child: Align(
               alignment: Alignment.centerLeft,
@@ -250,7 +253,7 @@ class _SourceModeState extends State<SourceMode> {
                     key: const Key('note-focus-toggle'),
                     onPressed: () => setState(() {
                       _focusMode = !_focusMode;
-                      widget.document.source.focusMode = _focusMode;
+                      widget.controller.focusMode = _focusMode;
                     }),
                     icon: Icon(
                       _focusMode
@@ -259,7 +262,9 @@ class _SourceModeState extends State<SourceMode> {
                       size: 18,
                     ),
                     label: Text(
-                      _focusMode ? 'note.focusOff'.tr() : 'note.focusOn'.tr(),
+                      _focusMode
+                          ? context.mdStrings.focusOff
+                          : context.mdStrings.focusOn,
                     ),
                   ),
                   TextButton.icon(
@@ -270,7 +275,9 @@ class _SourceModeState extends State<SourceMode> {
                       size: 18,
                     ),
                     label: Text(
-                      split ? 'note.splitOff'.tr() : 'note.splitOn'.tr(),
+                      split
+                          ? context.mdStrings.splitOff
+                          : context.mdStrings.splitOn,
                     ),
                   ),
                 ],
@@ -291,25 +298,18 @@ class _SourceModeState extends State<SourceMode> {
                 )
               : _editor(),
         ),
-        MdCountStrip(text: widget.document.source.text),
-        // D18: the phone's toolbar sits above the keyboard. On a wide screen
-        // the shortcuts do this job, so the strip would only take space.
-        if (!wide)
-          MdToolbar(
-            controller: widget.document.source,
-            onApplied: _onTextChanged,
-          ),
+        MdCountStrip(text: widget.controller.text),
       ],
     );
   }
 
   Widget _editor() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: AwSpace.x5),
+    padding: const EdgeInsets.symmetric(horizontal: MdSpace.x5),
     child: Focus(
       onKeyEvent: _onKey,
       child: TextField(
         key: const Key('note-source-field'),
-        controller: widget.document.source,
+        controller: widget.controller,
         scrollController: _sourceScroll,
         onChanged: (_) {
           _onTextChanged();
@@ -324,7 +324,7 @@ class _SourceModeState extends State<SourceMode> {
           height: 1.5,
         ),
         decoration: InputDecoration(
-          hintText: 'note.sourceHint'.tr(),
+          hintText: context.mdStrings.sourceHint,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
@@ -335,10 +335,10 @@ class _SourceModeState extends State<SourceMode> {
     ),
   );
 
-  Widget _preview() => AwMarkdown(
+  Widget _preview() => MarkdownView(
     key: const Key('note-split-preview'),
-    document: parseMarkdown(widget.document.source.text),
+    document: parseMarkdown(widget.controller.text),
     controller: _previewScroll,
-    padding: const EdgeInsets.symmetric(horizontal: AwSpace.x5),
+    padding: const EdgeInsets.symmetric(horizontal: MdSpace.x5),
   );
 }

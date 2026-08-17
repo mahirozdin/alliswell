@@ -71,7 +71,11 @@ describe('note CRUD (OPH-040)', () => {
       plainText: 'Deniz feneri gezisi Rota ve malzeme listesi',
       links: [],
     });
-    expect(body.contentDelta).toEqual(DELTA);
+    // ADR-0033: the response never carries a Delta again. This body sent BOTH
+    // fields, the way a pre-2026-08-18 client does, and the markdown is the one
+    // that survived.
+    expect(body.contentDelta).toBeNull();
+    expect(body.contentMarkdown).toBe('# Deniz feneri gezisi\nRota ve **malzeme listesi**');
     expect(tables.sync_revisions.at(-1)).toMatchObject({
       entity_type: 'note',
       operation: 'create',
@@ -236,14 +240,68 @@ describe('note CRUD (OPH-040)', () => {
   });
 });
 
-describe('content_format — which field is canonical (OPH-248, ADR-0028 §1)', () => {
-  it("defaults to 'delta', so every note that already existed is correct", async () => {
-    const res = await createNote({ title: 'Eski not', contentDelta: DELTA });
+describe('content_format — markdown is the only canonical field (OPH-274, ADR-0033)', () => {
+  it('lands as markdown even when the body arrives as a Delta', async () => {
+    const res = await createNote({ title: 'Eski istemci', contentDelta: DELTA });
 
     expect(res.statusCode).toBe(201);
-    // The migration touches zero rows precisely because of this default —
-    // anything the WYSIWYG wrote IS delta-canonical.
-    expect(res.json().contentFormat).toBe('delta');
+    // ADR-0028's split is over. A Delta is still ACCEPTED — the phone in
+    // someone's pocket keeps sending one for weeks after we deploy — but it is
+    // converted on the way in, and the note that results is a markdown note.
+    expect(res.json()).toMatchObject({
+      contentFormat: 'markdown',
+      contentDelta: null,
+      contentMarkdown: '# Deniz feneri gezisi\nRota ve **malzeme listesi**',
+    });
+  });
+
+  it('never stores the Delta it converted', async () => {
+    const res = await createNote({ title: 'Eski istemci', contentDelta: DELTA });
+
+    // The column keeps its pre-migration rows as a lossless escape hatch, but
+    // nothing writes to it again — otherwise the database would hold two
+    // bodies for one note, and only one of them would be maintained.
+    expect(tables.notes.find((n) => n.id === res.json().id).content_delta).toBeNull();
+  });
+
+  it('does not duplicate the title when a v1.6.0 client saves', async () => {
+    // The shape the previous release actually sends on every autosave
+    // (`note_document.dart` `bodyFor`): all three fields, and a markdown that
+    // it prefixed with the title because its own Reading view needed one.
+    // Storing that verbatim would make every migrated note render its title
+    // twice — once from the column, once as an H1.
+    const res = await createNote({
+      title: 'Gezi planı',
+      contentDelta: DELTA,
+      contentMarkdown: '# Gezi planı\n\n# Deniz feneri gezisi\nRota ve **malzeme listesi**',
+      contentFormat: 'delta',
+    });
+
+    expect(res.statusCode).toBe(201);
+    // The Delta is re-derived rather than trusted, so the prefix never enters.
+    expect(res.json().contentMarkdown).toBe('# Deniz feneri gezisi\nRota ve **malzeme listesi**');
+  });
+
+  it('strips a matching title heading when there is no Delta to re-derive', async () => {
+    const res = await createNote({
+      title: 'Gezi planı',
+      contentMarkdown: '# Gezi planı\n\ngövde',
+      contentFormat: 'delta',
+    });
+
+    expect(res.json().contentMarkdown).toBe('gövde');
+  });
+
+  it('keeps a heading the author actually wrote', async () => {
+    // The same first line, from a markdown-canonical write. This one was
+    // typed, so stripping it would be editing somebody's document.
+    const res = await createNote({
+      title: 'Gezi planı',
+      contentMarkdown: '# Gezi planı\n\ngövde',
+      contentFormat: 'markdown',
+    });
+
+    expect(res.json().contentMarkdown).toBe('# Gezi planı\n\ngövde');
   });
 
   it('can be set at creation for a document that came from a file', async () => {

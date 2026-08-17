@@ -4,25 +4,25 @@
 /// the OS handing us a document because AllisWell is registered for `.md`
 /// (Android `ACTION_VIEW`, iOS/macOS `CFBundleDocumentTypes`).
 ///
-/// The preview is a READ-ONLY `QuillEditor` over the very delta an import would
-/// write — not a second markdown renderer. A separate preview widget could
+/// The preview is the file's own markdown, rendered by the ONE renderer the
+/// app has (OPH-274). It used to be a read-only `QuillEditor` over the delta
+/// an import would write, which meant the preview showed what Delta could
+/// hold rather than what the file said. A second renderer could
 /// drift from the importer and show the user something they will not get; this
 /// way what you read is exactly what you save.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
-import '../../files/ui/note_media.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
 import '../../workspaces/workspaces.dart';
-import '../data/delta_markdown.dart';
-import '../data/markdown_delta.dart';
+import 'package:markdown_forge/markdown_forge.dart';
+import '../data/markdown_title.dart';
 import '../data/markdown_source.dart';
 import '../providers.dart';
 
@@ -84,7 +84,7 @@ class MarkdownImportScreen extends ConsumerStatefulWidget {
 
 class _MarkdownImportScreenState extends ConsumerState<MarkdownImportScreen> {
   MarkdownDocument? _doc;
-  QuillController? _preview;
+  String _body = '';
   late final TextEditingController _title = TextEditingController();
   String? _projectId;
   var _saving = false;
@@ -105,25 +105,24 @@ class _MarkdownImportScreenState extends ConsumerState<MarkdownImportScreen> {
     });
   }
 
+  /// OPH-274: the preview is the file's own markdown, rendered by the same
+  /// engine the note screen uses. It used to round-trip through
+  /// `markdownToDelta` into a read-only Quill editor, so the "preview" showed
+  /// what Delta could hold rather than what the file said — tables, footnotes
+  /// and math were silently missing from the one screen whose entire job is
+  /// showing you what you are about to import.
   void _load(MarkdownDocument doc) {
     final split = splitMarkdownTitle(doc.markdown, fallback: doc.baseName);
     _doc = doc;
     _title.text = split.title;
-    final controller = QuillController.basic()
-      ..readOnly = true
-      ..document = Document.fromJson(markdownToDelta(split.body));
-    _preview = controller;
+    _body = split.body;
   }
 
   @override
   void dispose() {
-    _preview?.dispose();
     _title.dispose();
     super.dispose();
   }
-
-  List<Map<String, dynamic>> get _delta =>
-      _preview!.document.toDelta().toJson().cast<Map<String, dynamic>>();
 
   Future<void> _import() async {
     final doc = _doc;
@@ -137,15 +136,17 @@ class _MarkdownImportScreenState extends ConsumerState<MarkdownImportScreen> {
       final title = _title.text.trim().isEmpty
           ? doc.baseName
           : _title.text.trim();
-      final delta = _delta;
-      final noteId = await ref
-          .read(noteStoreProvider)
-          .create(workspaces.first.id, {
-            'title': title,
-            'projectId': _projectId,
-            'contentDelta': delta,
-            'contentMarkdown': '# $title\n\n${deltaToMarkdown(delta)}',
-          });
+      final noteId = await ref.read(noteStoreProvider).create(
+        workspaces.first.id,
+        {
+          'title': title,
+          'projectId': _projectId,
+          // Byte-faithful: what the file said, minus the H1 that became the
+          // title. Nothing is re-encoded on the way in any more.
+          'contentMarkdown': _body,
+          'contentFormat': 'markdown',
+        },
+      );
       messenger.showSnackBar(
         SnackBar(content: Text('note.mdImported'.tr(args: {'name': doc.name}))),
       );
@@ -165,9 +166,8 @@ class _MarkdownImportScreenState extends ConsumerState<MarkdownImportScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final doc = _doc;
-    final preview = _preview;
 
-    if (doc == null || preview == null) {
+    if (doc == null) {
       // Reached directly (a deep link, a reload) with nothing to show.
       return Scaffold(
         appBar: AppBar(title: Text('note.mdViewerTitle'.tr())),
@@ -263,14 +263,10 @@ class _MarkdownImportScreenState extends ConsumerState<MarkdownImportScreen> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: QuillEditor.basic(
-                    controller: preview,
-                    config: QuillEditorConfig(
-                      // Reading, not editing — the import is the way to edit.
-                      showCursor: false,
-                      padding: const EdgeInsets.only(top: 4, bottom: 16),
-                      embedBuilders: awNoteEmbedBuilders(),
-                    ),
+                  child: MarkdownView(
+                    key: const Key('md-import-preview'),
+                    document: parseMarkdown(_body),
+                    padding: const EdgeInsets.only(top: 4, bottom: 16),
                   ),
                 ),
               ),

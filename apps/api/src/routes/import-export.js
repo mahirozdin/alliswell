@@ -1,5 +1,5 @@
 import { toIso } from '../lib/serialize.js';
-import { parseDelta, createNote, setNoteTags, loadNote } from '../db/notes.js';
+import { createNote, setNoteTags, loadNote } from '../db/notes.js';
 import { createTask, TASK_PRIORITIES } from '../db/tasks.js';
 
 /**
@@ -66,9 +66,13 @@ function exportNote(row, links, tagIds) {
   return {
     id: row.id,
     title: row.title,
-    contentFormat: row.content_format ?? 'delta',
+    contentFormat: row.content_format ?? 'markdown',
     contentMarkdown: row.content_markdown ?? null,
-    contentDelta: parseDelta(row.content_delta),
+    // ADR-0033: the export carries the document, and the document is the
+    // markdown. The `content_delta` column still holds pre-2026-08-18 rows,
+    // but exporting a copy nothing maintains would put two diverging bodies in
+    // the same backup file — and re-importing would have to pick one.
+    contentDelta: null,
     plainText: row.plain_text ?? null,
     projectId: row.project_id ?? null,
     tagIds,

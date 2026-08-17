@@ -38,10 +38,18 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0028](0028-markdown-document-model-and-renderer.md) | Markdown: the note model (split by intent), our own renderer over the `markdown` package, and how far diagrams go | Accepted |
 | [0029](0029-share-extension-notifies-instead-of-redirecting.md) | The share extension notifies and the app drains, instead of redirecting | Accepted — amends [0023](0023-stt-and-share-intent-dependencies.md) §3 |
 | [0030](0030-external-document-handles.md) | Owning somebody else's file: durable handles, an in-repo plugin, and where writing is refused | Accepted |
+| [0031](0031-note-versioning.md) | Note versioning: server-owned history, coalesced at the head | Accepted |
+| [0032](0032-api-keys.md) | API keys: plain Bearer, one workspace, no scopes in v1 | Accepted |
+| [0033](0033-markdown-is-the-only-note-format.md) | Markdown is the only thing a note is made of | Accepted — supersedes [0028](0028-markdown-document-model-and-renderer.md) §1 |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was
 > open, so the number could not be reused — this round had already corrected two
 > documents that gave the share decision that number. It landed on 2026-08-10.
+>
+> **It happened again.** Rows 0031 and 0032 were missing until 2026-08-18
+> (OPH-274) — the same drift, two rounds after it was first corrected, which
+> says the correction was a fix and not a guard. An ADR nobody can find from
+> the index is an ADR the next agent re-litigates.
 
 Template: [template.md](template.md)

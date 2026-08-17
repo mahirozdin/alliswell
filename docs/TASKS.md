@@ -7649,6 +7649,110 @@ README + landing'e kondu.
   görselleri; makinede Docker/MySQL olmadığı için v3 snapshot'lı taze demo verisi yerine
   30 Temmuz'un gerçek seed çıktısı kullanıldı.
 
+### OPH-274 — Notlar %100 markdown: rich text editör kaldırıldı, motor `markdown_forge` paketi oldu (ADR-0033, v1.7.0)
+
+_(✅ 2026-08-18 — **tamamlandı.** Sahibin kararı: rich text tamamen kalkıyor, notlar yalnız
+markdown. ADR-0028 §1'in split-by-intent modeli tersine çevrildi (MARKDOWN.md §4'ün o gün
+elenen Option B'si). Süitler: API unit **719** (+10), entegrasyon **81** (+7, üç ardışık koşu
+yeşil), app **1240** (+18 net; 25 delta testi ölçtükleri şeyle birlikte gitti). `flutter
+analyze` temiz, `dart format` uygulandı, `check:no-ts`/`check:i18n`/`check:docs` yeşil,
+`contrast.py` FAILURES: 0. `flutter_quill` + 11 geçişli paket ağaçtan düştü;
+`quill_native_bridge_*` iki Podfile.lock'tan da çıktı. Deploy bu turda ALINDI — sahibin plan
+onayı deploy onayıdır; `git tag v1.7.0` → release → deploy hattı.)_
+
+_**Turun tek cümlesi: iki kanonik form, her yazma yolunu ikiye böler — ve çatalın en pahalı
+dişi, Epic 25'in merge motorunun kimsenin sahip olduğu tek not türünü reddetmesiydi.**_
+
+- [x] **Sunucu: markdown tek kanonik.** `20260818090000_notes_markdown_canonical.js` —
+      `notes` VE `note_versions` delta→markdown (gömü URI'leri korunarak; etiket dosya adı
+      olur, URI olmaz), `plain_text` yeniden türetildi, `content_hash` yeni imzayla yeniden
+      hesaplandı (yoksa deploy sonrası her notun ilk düzenlemesi mükerrer sürüm yığardı),
+      kolon varsayılanı `'markdown'`. `content_delta` HİÇ silinmiyor: bir daha yazılmayan,
+      okunabilir bir kaçış ambarı — `down()` bu yüzden dürüst. Gerçek MySQL'de 11 not +
+      11 sürüm dönüştü; `notes-markdown-migration.test.js` (6 test) embed-URI/idempotans/
+      FULLTEXT kanıtlarını taşıyor.
+- [x] **Eski istemci toleransı.** v1.6.0 istemcisi haftalarca delta göndermeye devam edecek:
+      `noteMarkdownFrom` (`db/notes.js`) TEK karar noktası — REST, sync push, MCP, import,
+      conflict-capture hepsi ondan geçer. Delta gelirse sunucu kendi dönüştürücüsüyle yeniden
+      türetir (istemcinin markdown'ına güvenmez), `# başlık` önekini yalnız delta-beyanlı
+      yazmada soyar (kendi yazdığın H1 yaşar). Ajv şemaları `contentDelta`/`contentFormat`'ı
+      `deprecated` olarak kabul etmeyi sürdürür; CHECK kısıtı iki değere de izin verir.
+- [x] **Asıl kazanç ölçüldü: her çakışma birleşiyor.** `threeWayNoteWrite`'ın `NOT_MARKDOWN`
+      reddi tarihe karıştı; `note-merge.test.js` v1.6.0'ın birebir gövde şekliyle (ops +
+      başlık-önekli markdown + `contentFormat:'delta'`) push atıp `merged` alıyor. MCP
+      `update_note`'un `NOTE_NOT_MARKDOWN` reddi de gitti — asistan artık her notun gövdesini
+      yazabilir, eski gövde sürüm olarak durur (docs/MCP.md, docs/API.md güncel — Kural 12).
+- [x] **İstemci: model + drift v19.** `NoteFormat` çöktü, `NoteMode` `{source, reading}`;
+      D1'in OPH-248 tadili EMEKLİ (her not iki modu da sunar). v19 replikadaki delta satırları
+      Dart'ta dönüştürür (`convertNotesToMarkdown`) — çevrimdışı cihaz pull beklemez.
+      `cameFromOutside` artık ÇIKARIM değil parametre: `format==markdown` sezgisi park
+      kuyruğundaki OPH-270 bulgusuydu ve markdown-only'de TÜM uygulamayı salt-okunur yapardı.
+- [x] **Bulgu — çevrimdışı arama yarım kördü.** `plainText`/`bodyFold` yalnız delta dalında
+      türetiliyordu; markdown-kanonik not yerelde boş arama kolonu taşıyordu (sunucu ikizini
+      OPH-261'de almıştı, istemci hiç almamıştı). `core/markdown_text.dart` sunucuyla karakter
+      karakter aynı; create/update/v19 hepsi oradan türetir.
+- [x] **Editör: canlı sözdizimi (DESIGN §29 D24).** `MdSourceController.buildTextSpan` —
+      başlıklar alanda büyük, kalın kalın, işaretler imlecin satırı dışında `onSurfaceVariant`
+      ile sessiz. İşaretler GİZLENMEZ: `TextEditingController` `text`'in karakterlerini birebir
+      döndürmek zorunda, yoksa ilk farktan sonraki her imleç/seçim/undo/IME ofseti yanlış
+      karaktere işaret eder. Tarama satır başına tek geçiş, `text` kimliğine önbellekli;
+      ölçüldü: ~500 KB gövde < 2 sn tavanının çok altında. Odak moduyla alfa çarpımıyla
+      birleşir; kapatılabilir.
+- [x] **Toolbar her genişlikte (D18 revize).** Quill bar'ının yerine `MdEditorToolbar` — dar
+      ekranda klavye üstü davranışı korur, geniş ekranda ilk kez görünür kontrol sunar; medya
+      ekleri kaydırmanın DIŞINA sabitlendi. `h3` + `~~üstü çizili~~` eklendi; metin rengi
+      bilinçli YOK (GFM'de sözdizimi yok — §33 R6 "Settled"). `NoteInsert.attachedOnly` öldü:
+      görsel olmayan dosya artık `[ad](alliswell://file/id)` linki olur, özür snackbar'ı
+      kalktı; Okuma modunda linkler İLK KEZ gerçekten açılıyor (`awRouteForUri` + launcher —
+      eskiden §22'lik ölü yüzeydi).
+- [x] **Bulgu — `/table` İngilizce belgeye Türkçe yazıyordu.** `_tableSkeleton`'ın başlık
+      hücreleri hardcoded `'Başlık'` idi; `check:i18n` bunu GÖREMEZ çünkü string bir `Text()`
+      widget'ına değil kullanıcının BELGESİNE yazılıyor. i18n'e taşındı; OPH-259'un
+      `highlight` eylemi de çevirisiz çıkmıştı (anahtar yerine anahtar adı görünüyordu) —
+      ikisi birden kapandı.
+- [x] **PDF export markdown'dan.** `markdownToBlocks` (`markdown_blocks.dart`) `deltaToBlocks`'un
+      yerine; `note_pdf.dart` iki YENİ blok çizer: **tablo** (`flutter_quill` 11.5.1'de tablo
+      düğümü hiç yoktu — ADR-0033'ü karara bağlayan ölçüm) ve **iç içe liste girintisi**
+      (Delta'nın blok öznitelikleri düzdü). Çizilemeyen (matematik/HTML) kendini adlandırır
+      (D11 kâğıtta); mermaid bilinçli olarak KAYNAK kod basar — "unsupported"dan çok bilgi.
+- [x] **Paket: `markdown_forge` 0.1.0** (`apps/app/packages/markdown_forge`, MIT, 23 dosya;
+      bağımlılık YALNIZ `markdown`+`highlight`+`flutter_math_fork`). Üç ortam bağı dikişe
+      döndü: `AwTokens`→`MarkdownTheme`, `.tr()`→`MarkdownStrings` (ADR-0013 fold kancası
+      dahil — "baslik" "Başlık"ı ancak host fold verirse bulur), riverpod→`MarkdownImageResolver`
+      (+ link şeması allowlist'i). Uygulamanın cevapları TEK dosyada:
+      `markdown_forge_adapters.dart`; sınırı derleyici koruyor. README/CHANGELOG/LICENSE yazıldı;
+      MARKDOWN.md §9. `AwMarkdown`→`MarkdownView`; `SourceMode` artık `NoteDocument` değil
+      controller alır (paketi yayınlanamaz kılan tek satır oydu).
+- [x] **Bulgu — `ReadingMode` başlıkları `initState`'te slug'lıyordu**, fold ise
+      InheritedWidget'tan gelir; Flutter bunu yasaklar. `didChangeDependencies`'e taşındı —
+      host fold'u değiştirirse slug'lar da bedavaya yenilenir.
+- [x] **Bulgu — 500'lük import 9 kalem kaybediyordu: `ER_LOCK_DEADLOCK` (1213).** Probe ile
+      ölçüldü; InnoDB kurbanı geri sarar ve MySQL'in kendi kılavuzu "yeniden başlat" der. Not
+      domain'inin 7 transaction'ı `transactionWithRetry`'den geçer (`src/db/tx.js`; 5 deneme,
+      karesel+jitter geri çekilme — lineer 20-50 ms YETMEDİ, ölçülüp büyütüldü; 1205 bilinçle
+      denenmez: varsayılanda yalnız STATEMENT geri sarılır). Entegrasyon dosyaları artık sıralı
+      (`fileParallelism: false` yalnız `INTEGRATION=1`'de): tek MySQL'e paralel dosyalar
+      birbirinin yük testiydi ve stash'li kaynakla da üretildi — önceden var olan flake.
+      `tx-retry.test.js` (4 test) + üç ardışık tam koşu 81/81.
+- [x] **Docs + pazarlama.** ADR-0033 (gövdeler neden MySQL'de kalıyor: R2 OPSİYONEL config —
+      `STORAGE_S3_*` boşken API açılır, notlar ona bağlanamaz; FULLTEXT; merge'in base'i istek
+      işleminde okuması; pull'un gövde gömmesi — dördü de yazıldı ki yeniden tartışılmasın);
+      `adr/README.md` index'ine 0031+0032+0033 (0031/0032 EKSİKTİ — OPH-242'nin düzelttiği
+      kayma sınıfı İKİNCİ kez yaşandı, not düşüldü); MARKDOWN.md §1 yeniden ölçüldü + §4
+      "REVERSED" + §9 paket; DESIGN §29 D1-tadili emekli/D2/D15/D18 revize + D24 yeni + §33 R6;
+      ARCHITECTURE; API.md; MCP.md. Pazarlama 8 yüzey: README ×2 (+durum rozeti ×1),
+      landing `content.js`, COMPARISON, STORE-LISTING ×4 — "rich text (Quill Delta)" iddiası
+      sıfırlandı, deploy yalan sevk etmiyor.
+- [x] Sürüm kesimi: 6 yerde 1.7.0 (`pubspec 1.7.0+27`), CHANGELOG `## [1.7.0] — 2026-08-18`,
+      `flutter clean` + `pub get` + iki platformda `pod install`.
+- [ ] **AÇIK — sahibin iki adımı:** `bubiapps` GitHub org'u + `markdown_forge` public repo'su
+      (paket dizini kopyalanır) ve `dart pub publish` (Google OAuth ister — ajan yapamaz).
+      Yayın sonrası `apps/app/pubspec.yaml`'daki `path:` bağımlılığı pub.dev sürümüne döner.
+- [ ] **AÇIK — elle cihaz turu:** canlı sözdiziminin gerçek klavyede (IME/Türkçe deadkey)
+      hissi + drift v19'un gerçek cihazdaki eski replika üstünde koşusu. Kod tarafı testlerle
+      kapalı; fiziksel gözlem sahibe kalıyor.
+
+
 ## Epic 25 — İstek turu 18: MCP tam kapsama, API anahtarları, gelişmiş ayarlar, not sürümleme & çakışma yönetimi (v1.5.0)
 
 _(Doğdu 2026-08-13 — sahibin sekiz maddelik listesi. (1) **MCP her işlevi kapsasın**: bugün not

@@ -3,8 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown/markdown.dart' as md;
 
-import 'package:alliswell/src/features/notes/markdown/md_parse.dart';
-import 'package:alliswell/src/features/notes/markdown/md_syntaxes.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 /// OPH-247 — the parse layer and its source map (ADR-0028 §2).
 ///

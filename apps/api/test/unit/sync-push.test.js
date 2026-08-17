@@ -449,9 +449,12 @@ describe('POST /sync/push — field-level LWW (OPH-052)', () => {
       status: 'conflict',
       errorCode: 'NOTE_CONTENT_CONFLICT',
     });
-    expect(tables.notes.find((n) => n.id === note.id).content_delta).toBe(
-      JSON.stringify([{ insert: 'sunucu v2\n' }]),
-    );
+    // The server's body survived the refusal. Asserted on `content_markdown`
+    // because ADR-0033 converts an incoming Delta and never writes the delta
+    // column again — this push arrived as ops and was still locked out.
+    const locked = tables.notes.find((n) => n.id === note.id);
+    expect(locked.content_markdown).toBe('sunucu v2');
+    expect(locked.content_delta).toBeNull();
 
     // Metadata on the same note still LWW-merges normally.
     const pinPush = await push(

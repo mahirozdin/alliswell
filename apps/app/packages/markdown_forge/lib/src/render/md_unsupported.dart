@@ -12,9 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../i18n/i18n.dart';
-import '../../../theme/tokens.dart';
 import 'md_theme.dart';
+import '../seams.dart';
 
 class MdUnsupportedBlock extends StatelessWidget {
   const MdUnsupportedBlock({
@@ -41,10 +40,10 @@ class MdUnsupportedBlock extends StatelessWidget {
     final styles = MdStyles.of(context);
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
+      margin: const EdgeInsets.symmetric(vertical: MdSpace.x2),
       decoration: BoxDecoration(
         color: styles.scheme.surfaceContainer,
-        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+        borderRadius: const BorderRadius.all(Radius.circular(MdRadius.m)),
         border: Border.all(color: styles.hairline),
       ),
       child: Column(
@@ -52,16 +51,16 @@ class MdUnsupportedBlock extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AwSpace.x3,
-              AwSpace.x3,
-              AwSpace.x3,
-              AwSpace.x2,
+              MdSpace.x3,
+              MdSpace.x3,
+              MdSpace.x3,
+              MdSpace.x2,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(icon, size: 18, color: styles.muted),
-                const SizedBox(width: AwSpace.x2),
+                const SizedBox(width: MdSpace.x2),
                 Expanded(
                   child: Text(
                     reason,
@@ -79,10 +78,10 @@ class MdUnsupportedBlock extends StatelessWidget {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(
-                AwSpace.x3,
+                MdSpace.x3,
                 0,
-                AwSpace.x3,
-                AwSpace.x3,
+                MdSpace.x3,
+                MdSpace.x3,
               ),
               child: SelectableText(source, style: styles.code),
             ),
@@ -104,7 +103,7 @@ class MdRawHtmlBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MdUnsupportedBlock(
     icon: Icons.code_off_outlined,
-    reason: 'markdown.rawHtml'.tr(),
+    reason: context.mdStrings.rawHtml,
     source: source,
   );
 }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'features/quick_access/ui/quick_access_bubble_host.dart';
 import 'i18n/i18n.dart';
 import 'router.dart';
+import 'features/notes/markdown/markdown_forge_adapters.dart';
 import 'theme/theme.dart';
 import 'theme/tokens.dart';
 
@@ -42,7 +42,6 @@ class AllisWellApp extends ConsumerWidget {
           GlobalMaterialLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
-          ...FlutterQuillLocalizations.localizationsDelegates,
         ],
         // OPH-194: the aurora is NO LONGER painted here. A single wash below the
         // Navigator plus ~50 %-opaque scaffolds meant every route was
@@ -58,11 +57,19 @@ class AllisWellApp extends ConsumerWidget {
         // where a navigation shortcut is worth having. The host gates itself
         // (phone width, setting on, list non-empty, no modal) and otherwise
         // returns the child untouched.
+        // `AwMarkdownScope` supplies markdown_forge's three seams — tokens,
+        // strings and the image resolver (OPH-274). Mounted at the root rather
+        // than per-screen because six surfaces render markdown and a missing
+        // scope degrades SILENTLY to the package's defaults: English labels
+        // and an unresolvable `alliswell://file/{id}`, which looks like a
+        // broken image rather than a missing provider.
         builder: (context, child) => SlidableAutoCloseBehavior(
           child: ColoredBox(
             color: context.awTokens.auroraTop,
-            child: QuickAccessBubbleHost(
-              child: child ?? const SizedBox.shrink(),
+            child: AwMarkdownScope(
+              child: QuickAccessBubbleHost(
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
         ),

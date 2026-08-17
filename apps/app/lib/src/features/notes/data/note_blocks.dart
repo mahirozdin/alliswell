@@ -1,21 +1,15 @@
-/// Quill Delta → a flat block model (round 16 #3, note PDF export).
+/// The flat block model the PDF exporter renders (round 16 #3).
 ///
-/// The PDF exporter needs the document's STRUCTURE, not a string: a heading has
-/// to become a sized paragraph, a checklist item a box plus text, an image its
-/// own figure. `deltaToMarkdown` in this folder flattens all of that to text,
-/// so exporting through markdown would have thrown the structure away and then
-/// asked a markdown parser to guess it back.
+/// The exporter needs the document's STRUCTURE, not a string: a heading has to
+/// become a sized paragraph, a checklist item a box plus text, an image its
+/// own figure. The model is PURE and knows nothing about the `pdf` package, so
+/// the mapping is unit-testable on its own — and reusable by any future
+/// renderer (HTML export, print preview) without dragging a PDF dependency.
 ///
-/// This converter is PURE and knows nothing about the `pdf` package, so the
-/// mapping is unit-testable on its own — and reusable by any future renderer
-/// (HTML export, print preview) without dragging a PDF dependency along.
-///
-/// Delta semantics that drive the parsing, same as [deltaToMarkdown]:
-///  * the NEWLINE op carries the line's block attributes, not the text op;
-///  * inline attributes ride on the text ops themselves;
-///  * consecutive `code-block` lines are one visual block;
-///  * ordered lists carry no numbers — consecutive items number 1..n and the
-///    counter resets as soon as anything else interrupts them.
+/// **Producers:** `markdownToBlocks` (`markdown_blocks.dart`) is the one that
+/// runs. `deltaToBlocks`, below, survives ADR-0033 only for the tests that
+/// pin the delta era's behaviour and for anything still holding an old
+/// document; nothing in the app produces a Delta any more.
 library;
 
 /// What a line turns into on the page.
@@ -37,6 +31,13 @@ enum NoteBlockKind {
   /// Any other sourced embed (video, attachment) — rendered as a labelled
   /// reference rather than silently dropped.
   attachment,
+
+  /// A `---` rule. New with markdown (OPH-274): Delta had no such node.
+  divider,
+
+  /// A GFM table, rows-first. Also new — `flutter_quill` 11.5.1 has no table
+  /// node at all, which is the measurement that decided ADR-0033.
+  table,
 }
 
 /// A run of text sharing one set of inline attributes.
@@ -83,6 +84,8 @@ class NoteBlock {
     this.spans = const [],
     this.source,
     this.ordinal,
+    this.rows,
+    this.indent = 0,
   });
 
   final NoteBlockKind kind;
@@ -94,6 +97,14 @@ class NoteBlock {
 
   /// 1-based position within a run of [NoteBlockKind.ordered] items.
   final int? ordinal;
+
+  /// Cells for [NoteBlockKind.table], first row being the header.
+  final List<List<String>>? rows;
+
+  /// Nesting depth for list items — 0 is top level. Delta's block attributes
+  /// were flat, so a nested list was simply not expressible; markdown's are
+  /// not, and the exporter can indent.
+  final int indent;
 
   /// The block's text with formatting dropped — for alt text and tests.
   String get text => spans.map((s) => s.text).join();

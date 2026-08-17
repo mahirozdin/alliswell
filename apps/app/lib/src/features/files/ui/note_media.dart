@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart' show AwTr;
-import '../../../theme/tokens.dart';
-import '../../integrations/providers.dart' show urlLauncherProvider;
-import '../../notes/data/note_blocks.dart';
 import '../../notes/data/note_document.dart';
 import '../providers.dart';
 import 'attach_menu.dart';
-import 'image_viewer.dart';
 
 /// Inline note media (Epic 14, OPH-156 — BLUEPRINT §12.5 rev.).
 ///
@@ -17,8 +12,13 @@ import 'image_viewer.dart';
 /// presigned URL (those expire; ADR-0011). Rendering resolves the id to a
 /// fresh minted URL via [FileUrlCache]; offline or gone → an honest
 /// placeholder tile, never a broken-image glyph (DESIGN §10 F3). Foreign
-/// http(s) sources in deltas from elsewhere still render (don't break other
-/// people's documents).
+/// http(s) sources still render (don't break other people's documents).
+///
+/// ADR-0033 removed the Quill `EmbedBuilder` pair that used to live here.
+/// Markdown images go through `aw_markdown.dart`, which resolves the same
+/// scheme and builds the image viewer's gallery by walking its own document —
+/// so document order can no longer differ between the renderer and the
+/// viewer, which is what the delta walk existed to guarantee.
 
 final _fileEmbedRe = RegExp(r'^alliswell://file/([0-9A-HJKMNP-TV-Z]{26})$');
 
@@ -26,250 +26,20 @@ final _fileEmbedRe = RegExp(r'^alliswell://file/([0-9A-HJKMNP-TV-Z]{26})$');
 String? fileIdFromEmbedSource(String source) =>
     _fileEmbedRe.firstMatch(source)?.group(1);
 
-/// Embed builders for both the editor and read-only renderers (README view).
-List<EmbedBuilder> awNoteEmbedBuilders() => [
-  _AwImageEmbedBuilder(),
-  _AwVideoEmbedBuilder(),
-];
-
-class _AwImageEmbedBuilder extends EmbedBuilder {
-  @override
-  String get key => BlockEmbed.imageType;
-
-  @override
-  Widget build(BuildContext context, EmbedContext embedContext) {
-    final source = embedContext.node.value.data;
-    return AwNoteImageEmbed(
-      source: source is String ? source : '',
-      // The gallery is the note's own body order (DESIGN §30 A11), and the
-      // controller is already right here — no provider, no InheritedWidget.
-      // Every caller of awNoteEmbedBuilders() supplies one: the editor, the
-      // project README view and the markdown import preview.
-      controller: embedContext.controller,
-    );
-  }
-}
-
-class _AwVideoEmbedBuilder extends EmbedBuilder {
-  @override
-  String get key => BlockEmbed.videoType;
-
-  @override
-  Widget build(BuildContext context, EmbedContext embedContext) {
-    final source = embedContext.node.value.data;
-    return AwNoteMediaTile(source: source is String ? source : '');
-  }
-}
-
-/// An inline image: minted-URL fetch → image (tap = full-screen viewer);
-/// while fetching → soft progress tile; unavailable → placeholder tile.
-class AwNoteImageEmbed extends ConsumerWidget {
-  const AwNoteImageEmbed({super.key, required this.source, this.controller});
-
-  final String source;
-
-  /// The document this embed sits in, used only at tap time to build the
-  /// gallery in body order. Null = this image opens alone.
-  final QuillController? controller;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final fileId = fileIdFromEmbedSource(source);
-    if (fileId == null) {
-      // A foreign (http) image from someone else's delta.
-      return _framed(
-        context,
-        Image(
-          image: ref.watch(networkImageProvider)(source),
-          fit: BoxFit.contain,
-          errorBuilder: (context, _, _) => _placeholder(context, null),
-        ),
-      );
-    }
-    return ref
-        .watch(fileUrlProvider(fileId))
-        .when(
-          loading: () => _loadingTile(context),
-          error: (_, _) => _placeholder(context, fileId),
-          data: (url) => url == null
-              ? _placeholder(context, fileId)
-              : GestureDetector(
-                  onTap: () => _openViewer(context, fileId),
-                  child: _framed(
-                    context,
-                    Image(
-                      image: ref.watch(networkImageProvider)(url),
-                      fit: BoxFit.contain,
-                      loadingBuilder: (context, child, progress) =>
-                          progress == null ? child : _loadingTile(context),
-                      errorBuilder: (context, _, _) =>
-                          _placeholder(context, fileId),
-                    ),
-                  ),
-                ),
-        );
-  }
-
-  Widget _framed(BuildContext context, Widget child) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(AwRadius.m),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 320),
-        child: child,
-      ),
-    ),
-  );
-
-  Widget _loadingTile(BuildContext context) => Container(
-    height: 160,
-    margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(AwRadius.m),
-    ),
-    child: const Center(
-      child: SizedBox(
-        width: 20,
-        height: 20,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      ),
-    ),
-  );
-
-  Widget _placeholder(BuildContext context, String? fileId) =>
-      _EmbedPlaceholder(fileId: fileId, icon: Icons.image_outlined);
-
-  /// Synchronous on purpose: the viewer resolves names itself now, so there is
-  /// nothing to await before pushing — and nothing to guard with `mounted`.
-  Future<void> _openViewer(BuildContext context, String fileId) {
-    final ids = _galleryIds();
-    final at = ids.indexOf(fileId);
-    return showAwImageViewer(
-      context,
-      images: awImageRefsFromIds(at < 0 ? [fileId] : ids),
-      initialIndex: at < 0 ? 0 : at,
-    );
-  }
-
-  /// Every AllisWell image in the note, in the order it appears in the body.
-  ///
-  /// Walks the delta with [deltaToBlocks] — the same walk the PDF export uses
-  /// — rather than a bespoke scan, so document order can never drift between
-  /// the exporter and the viewer. Runs at tap time only; doing it in `build`
-  /// would be O(n²) per render. Foreign http(s) embeds drop out, matching the
-  /// body, where they are not tappable either.
-  List<String> _galleryIds() {
-    final doc = controller?.document;
-    if (doc == null) return const [];
-    final ops = doc.toDelta().toJson().cast<Map<String, dynamic>>();
-    return [
-      for (final block in deltaToBlocks(ops))
-        if (block.kind == NoteBlockKind.image && block.source != null)
-          fileIdFromEmbedSource(block.source!),
-    ].nonNulls.toList();
-  }
-}
-
-/// Video (and any non-image) embed: a tile with the file's current name and
-/// an open action — inline playback is deliberately v2 (ATTACHMENTS.md §11).
-class AwNoteMediaTile extends ConsumerWidget {
-  const AwNoteMediaTile({super.key, required this.source});
-
-  final String source;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final fileId = fileIdFromEmbedSource(source);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
-      child: Card(
-        margin: EdgeInsets.zero,
-        child: ListTile(
-          leading: Icon(
-            Icons.movie_outlined,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-          title: fileId == null
-              ? Text(source, maxLines: 1, overflow: TextOverflow.ellipsis)
-              : Text(
-                  ref.watch(fileByIdProvider(fileId)).value?.name ??
-                      'file.mediaUnavailable'.tr(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-          trailing: const Icon(Icons.open_in_new),
-          onTap: () => _open(context, ref, fileId),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _open(
-    BuildContext context,
-    WidgetRef ref,
-    String? fileId,
-  ) async {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    final url = fileId == null
-        ? source
-        : await ref.read(fileUrlCacheProvider).urlFor(fileId);
-    if (url == null) {
-      messenger?.showSnackBar(
-        SnackBar(content: Text('file.couldNotOpen'.tr())),
-      );
-      return;
-    }
-    await ref.read(urlLauncherProvider)(Uri.parse(url));
-  }
-}
-
-class _EmbedPlaceholder extends ConsumerWidget {
-  const _EmbedPlaceholder({required this.fileId, required this.icon});
-
-  final String? fileId;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final id = fileId; // local so the null check promotes
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
-      padding: const EdgeInsets.all(AwSpace.x4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(AwRadius.m),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: AwSpace.x3),
-          Expanded(
-            child: Text(
-              id == null
-                  ? 'file.mediaUnavailable'.tr()
-                  : ref.watch(fileByIdProvider(id)).value?.name ??
-                        'file.mediaUnavailable'.tr(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+/// The widgets that used to live here — `AwNoteImageEmbed`, `AwNoteMediaTile`
+/// and their placeholder — are gone with ADR-0033. They were Quill embed
+/// renderers, and the markdown renderer draws its own images and its own
+/// honest placeholder (`aw_markdown.dart`, `MdImageSource`). Keeping a second
+/// pair around for nobody to call is §22's dead affordance at the widget
+/// level: two implementations of one picture, only one of them reachable, and
+/// no way to tell which one a bug report is about.
 
 /// The editor toolbar's "insert image / insert video" buttons: pick → upload
-/// to the NOTE → insert the `alliswell://file/{id}` embed at the caret on
-/// completion (no phantom embeds while bytes are still in flight). Files that
-/// are neither image nor video still upload as note attachments — visible in
-/// the project Files tab — with an honest snackbar instead of a weird embed.
+/// to the NOTE → write the `alliswell://file/{id}` reference at the caret on
+/// completion (nothing appears while bytes are still in flight). A file that
+/// is neither image nor video becomes a LINK rather than an `![…]()` every
+/// renderer would draw as broken — it is in the document either way, and the
+/// reading view opens it.
 class NoteMediaButtons extends ConsumerWidget {
   const NoteMediaButtons({
     super.key,
@@ -317,7 +87,6 @@ class NoteMediaButtons extends ConsumerWidget {
     WidgetRef ref,
     AttachSource source,
   ) async {
-    final messenger = ScaffoldMessenger.maybeOf(context);
     final picks = await pickFrom(context, ref, source);
     if (picks.isEmpty) return;
     final target = await ensureNote();
@@ -333,16 +102,14 @@ class NoteMediaButtons extends ConsumerWidget {
             source: pick,
           );
       if (fileId == null) continue; // the upload strip shows the failure
-      final outcome = document.insertFile(
+      // Every outcome now puts something in the document — an image embeds, a
+      // video or a document becomes a link (ADR-0033) — so there is no longer
+      // a silent case to apologise for.
+      document.insertFile(
         fileId: fileId,
         name: pick.name,
         mime: pick.mime ?? mimeForName(pick.name),
       );
-      if (outcome == NoteInsert.attachedOnly) {
-        messenger?.showSnackBar(
-          SnackBar(content: Text('file.attachedNotEmbedded'.tr())),
-        );
-      }
     }
   }
 }

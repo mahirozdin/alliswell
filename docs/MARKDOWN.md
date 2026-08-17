@@ -1,6 +1,7 @@
 # MARKDOWN.md — the markdown workspace
 
-> Son güncelleme: 2026-08-09 — round 17 planning (Epic 24, OPH-246…OPH-252)
+> Son güncelleme: 2026-08-18 — OPH-274 (ADR-0033: markdown is the only format).
+> Önceki: 2026-08-09 — round 17 planning (Epic 24, OPH-246…OPH-252)
 > Kaynak: feedback round 17 #3 · Binding UI rules: [DESIGN.md §29](DESIGN.md) ·
 > Backlog: [TASKS.md Epic 24](TASKS.md) · Predecessor: [DESIGN.md §28](DESIGN.md) (OPH-241)
 
@@ -16,29 +17,33 @@ question that decides everything else: **what is a note actually made of?**
 
 ---
 
-## 1. What exists today (measured, 2026-08-09)
+## 1. What exists today (measured, 2026-08-18)
 
 | Piece | File | Reality |
 | --- | --- | --- |
-| Editor | `features/notes/ui/note_editor_screen.dart` | `flutter_quill` WYSIWYG, `QuillSimpleToolbar` with alignment/indent/direction/search **disabled**, debounced 1.5 s autosave |
-| Canonical content | `notes.content_delta` (+ derived `content_markdown`) | Quill Delta JSON is the source of truth; markdown is an **export** |
-| Delta → MD | `features/notes/data/delta_markdown.dart` | headers, bold/italic/strike/code, links, bullet/ordered/checked lists, blockquote, code fences, image/video embeds |
-| MD → Delta | `features/notes/data/markdown_delta.dart` | exact inverse of the above; round-trip tested (OPH-241) |
-| "Preview" | `_showMarkdownPreview()` | a `SelectableText` of the **raw markdown source** in monospace — not a rendered view |
-| Import viewer | `features/notes/ui/markdown_import_screen.dart` | read-only `QuillEditor` over the delta an import would write (DESIGN §28 M1) |
+| Editor | `features/notes/ui/note_editor_screen.dart` + `ui/modes/source_mode.dart` | markdown source with **live syntax** (D24), one toolbar at every width, slash menu, ⌘K palette, find & replace, split preview, 1.5 s debounced autosave |
+| Live syntax | `markdown/md_highlight.dart` | `MdSourceController.buildTextSpan` — headings sized in the field, bold bold, marks dimmed off the caret's line. **Never hidden**: a `TextEditingController` must return exactly the characters of `text` |
+| Canonical content | `notes.content_markdown` | the only source of truth (ADR-0033). `content_format` is `'markdown'` on every row |
+| Renderer | `markdown/aw_markdown.dart` (+ 11 modules, `mermaid/`) | our own widget tree over `markdown` 7.3.1, carrying a node → source-line map. GFM tables, task lists, footnotes, alerts, KaTeX, Mermaid, outline, folding |
+| Delta → MD | `features/notes/data/delta_markdown.dart` | **transitional.** Converts writes from clients that predate 2026-08-18, and the replica's old rows (drift v19). Goes when they do |
+| MD → blocks | `features/notes/data/markdown_blocks.dart` | the PDF exporter's structure — tables, nested lists and dividers included, none of which Delta could hold |
+| Search text | `core/markdown_text.dart` | `plainTextFromMarkdown`, the twin of the server's `markdownToPlainText`, character for character |
+| Import viewer | `features/notes/ui/markdown_import_screen.dart` | the file's own markdown, rendered by the one renderer — byte-faithful, stored as-is |
 | OS registration | Android `ACTION_VIEW` (mime + `pathPattern`), iOS/macOS `CFBundleDocumentTypes` | shipped in v1.3.0 |
-| Export | `note_pdf.dart` + `note_export.dart` | PDF only (Roboto + DejaVu fallback) |
+| Export | `note_export.dart` → `markdown_blocks.dart` → `note_pdf.dart`; `GET /notes/:id/export` | PDF (Roboto + DejaVu fallback) and `.md` |
 
-Two limits are already written down and both bite this round:
+**The two limits §1 used to open with are gone**, and they are worth naming
+because they were the argument for this change:
 
-- **Delta is flat.** DESIGN §28: *"nested lists are out because Quill's own
-  model is flat."*
-- **Unknown markup survives as plain text.** DESIGN §28 M2. A table pasted into
-  a note today comes back out as the literal pipe characters it went in as.
+- *"Delta is flat, so nested lists are out"* (DESIGN §28) — markdown's are not.
+  `markdownToBlocks` carries an `indent`, and the PDF prints it.
+- *"Unknown markup survives as plain text"* (DESIGN §28 M2) — a table pasted
+  into a note used to come back out as literal pipe characters. It is a table.
 
-And one that is not written down yet, measured for this doc:
-**`flutter_quill` 11.5.1 has no table node in its core document model.** Tables,
-footnotes, math and diagrams have no Delta representation at all.
+The measurement that decided it stands: **`flutter_quill` 11.5.1 has no table
+node in its core document model.** Tables, footnotes, math and diagrams had no
+Delta representation at all, so half of what a note could DISPLAY, it could
+not BE.
 
 ---
 
@@ -193,20 +198,32 @@ the WYSIWYG session and thrown away.
 - **Against:** two formats in one table, and a conversion door that must be
   explained in one sentence to a non-technical user.
 
-> **DECIDED — [ADR-0028](adr/0028-markdown-document-model-and-renderer.md),
-> 2026-08-10: Option C.** A note is either Delta-canonical or markdown-canonical,
-> recorded in a `content_format` column defaulting to `'delta'` — so the
-> migration is **zero rows**. Reading is always a real markdown renderer; Source
-> edits the markdown as text; Live (Quill) is offered only to Delta-canonical
-> notes, and moving between them is an explicit, warned, one-way conversion.
-> The conflict unit (AGENTS §6) does not change, and OPH-241's round-trip pair
-> keeps serving the import path and the conversion door — off the reading path,
-> which is what stops it growing a branch per block type.
+> **REVERSED — [ADR-0033](adr/0033-markdown-is-the-only-note-format.md),
+> 2026-08-18: Option B.** A note is markdown. There is no second form, no
+> `NoteFormat`, no conversion door, and `content_format` is `'markdown'` on
+> every row. The rich editor is gone from the tree.
 >
-> Option B was the close call: it makes the note and the file the same thing, but
-> it migrates every existing note and reflows hand-formatted files through the
-> rich editor. Option C keeps B's win where it matters — files stay
-> byte-faithful, which is the only way §6's "save back" can be honest.
+> Option C's winning argument was that its migration touched **zero rows**, and
+> that was true. What it did not price was that TWO canonical fields fork every
+> write path — saving, exporting, versioning, merging and the search index —
+> and that the fork gets more expensive each round rather than less. Two
+> measurements settled it: OPH-247…252 shipped tables, footnotes, math and
+> diagrams in the RENDERER, so half of what a note could display it could not
+> be; and Epic 25's three-way merge answered `NOT_MARKDOWN` on Delta notes,
+> which is to say it declined the only kind of note anybody had.
+>
+> B's cost was named correctly in 2026-08-10 and paid in OPH-274: every note
+> migrates. What was *wrong* in the objection is "reflows hand-formatted files
+> through the rich editor" — there is no rich editor to reflow anything, so
+> §6's "save back byte-faithfully" is now structurally true rather than
+> carefully arranged. The conflict unit (AGENTS §6) still does not change.
+>
+> **DECIDED — [ADR-0028](adr/0028-markdown-document-model-and-renderer.md),
+> 2026-08-10: Option C** *(superseded; kept for the record)*. A note was either
+> Delta-canonical or markdown-canonical, recorded in a `content_format` column
+> defaulting to `'delta'`. Reading was always a real markdown renderer; Source
+> edited the markdown as text; Live (Quill) was offered only to Delta-canonical
+> notes, and moving between them was an explicit, warned, one-way conversion.
 
 ---
 
@@ -328,7 +345,31 @@ Screenshot obligations, gaps and the harness to shoot them are OPH-252.
 
 ---
 
-## 9. Sources
+## 9. The engine is a package: `markdown_forge`
+
+OPH-274 extracted the renderer and the editor into
+[`apps/app/packages/markdown_forge`](../apps/app/packages/markdown_forge) —
+MIT-licensed, destined for `github.com/bubiapps/markdown_forge` and pub.dev,
+because nothing in it is AllisWell-specific once three seams are injected:
+
+| AllisWell had | The package asks for | We hand it |
+| --- | --- | --- |
+| `AwTokens` (Rule 11) | `MarkdownTheme` | `awMarkdownTheme()` |
+| `'key'.tr()` | `MarkdownStrings` (incl. the ADR-0013 fold hook) | `awMarkdownStrings()` |
+| riverpod's `fileUrlProvider` | `MarkdownImageResolver` | `alliswell://file/{id}` → minted URL |
+
+The adapters live in ONE file —
+`apps/app/lib/src/features/notes/markdown/markdown_forge_adapters.dart` — and
+the compiler enforces the boundary: the package cannot see `AwTokens`, `.tr()`
+or `ProviderScope`, so a change that reaches for them fails to build rather
+than quietly re-coupling. `AwMarkdownScope` mounts the seams once, at the app
+root.
+
+Publishing (owner's two steps, nothing in-repo blocks on them): create the
+`bubiapps` GitHub organisation + `markdown_forge` repo, copy the package
+directory there, `dart pub publish`. Until then the app consumes it by path.
+
+## 10. Sources
 
 Field survey: [Best Markdown Editors 2026 — hands-on comparison](https://mdclaudy.com/blog/best-markdown-editors-2026) ·
 [Best Markdown Editors in 2026: VS Code, Obsidian, Typora and more](https://mdtolink.com/blog/best-markdown-editors/) ·

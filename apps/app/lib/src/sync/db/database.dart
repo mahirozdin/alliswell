@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../../core/fold.dart';
+import '../../core/markdown_text.dart';
+import '../../features/notes/data/delta_markdown.dart';
 
 part 'database.g.dart';
 
@@ -560,8 +564,10 @@ class AwDatabase extends _$AwDatabase {
   /// history (ADR-0019 — NOT a sync entity; the decision is written).
   /// v15 → v16 (OPH-242): share_events, the share pipeline's device-local
   /// diagnostic trail — content-free, never synced.
+  /// v18 → v19 (OPH-274, ADR-0033): markdown becomes a note's only canonical
+  /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -686,6 +692,15 @@ class AwDatabase extends _$AwDatabase {
         await m.addColumn(pendingMutations, pendingMutations.baseRevision);
         await m.addColumn(notes, notes.conflictVersionId);
       }
+      // v19 (OPH-274, ADR-0033): markdown is the only canonical form. No
+      // schema change at all — `contentDelta` STAYS, unread, exactly as the
+      // server's column does, because a replica that dropped it could not be
+      // rolled back to and gains nothing by shrinking. What changes is the
+      // DATA: every Delta-canonical row is converted, in Dart, because the
+      // conversion cannot be expressed in SQL.
+      if (from < 19 && from >= 1) {
+        await convertNotesToMarkdown(this);
+      }
     },
   );
 
@@ -734,4 +749,49 @@ Future<void> backfillSearchFolds(AwDatabase db) async {
     'summary': 'summary_fold',
     'location': 'location_fold',
   });
+}
+
+/// One-time v19 conversion (OPH-274, ADR-0033): the replica's Delta-canonical
+/// notes become markdown notes.
+///
+/// The server converts its own rows in the same deploy, so most replicas would
+/// heal on the next pull anyway. Most is not all: a note sitting in the outbox,
+/// or a device that stays offline for a week, would otherwise render an empty
+/// body — its markdown column was never filled, because until now only the
+/// delta was canonical. So the replica converts itself and does not wait.
+///
+/// `plain_text`/`body_fold` are re-derived from the markdown rather than kept:
+/// they were computed from the delta, and the app's search now reads whatever
+/// the canonical field says. Doing it here also closes the case where they
+/// were simply EMPTY — a markdown-canonical note has never had a local search
+/// column, so those notes were invisible to offline search.
+Future<void> convertNotesToMarkdown(AwDatabase db) async {
+  final rows = await db
+      .customSelect(
+        "SELECT id, content_delta, content_markdown FROM notes "
+        "WHERE content_format = 'delta' OR content_format IS NULL",
+      )
+      .get();
+  for (final row in rows) {
+    final raw = row.read<String?>('content_delta');
+    String markdown;
+    if (raw == null || raw.isEmpty) {
+      markdown = row.read<String?>('content_markdown') ?? '';
+    } else {
+      try {
+        final ops = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+        markdown = deltaToMarkdown(ops);
+      } on FormatException {
+        // An unreadable delta keeps whatever markdown it had rather than
+        // becoming an empty note. The column is still there to inspect.
+        markdown = row.read<String?>('content_markdown') ?? '';
+      }
+    }
+    final plain = plainTextFromMarkdown(markdown);
+    await db.customStatement(
+      "UPDATE notes SET content_markdown = ?, content_format = 'markdown', "
+      'plain_text = ?, body_fold = ? WHERE id = ?',
+      [markdown, plain, foldSearchText(plain), row.read<String>('id')],
+    );
+  }
 }

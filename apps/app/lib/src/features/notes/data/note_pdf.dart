@@ -200,11 +200,20 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
     case NoteBlockKind.heading3:
       return padded(_rich(block, fonts, size: 13, bold: true), top: 6);
 
+    // OPH-274: `indent` is markdown's gift — Delta's block attributes were
+    // flat, so a nested list printed as a flat one and the structure was lost
+    // between the screen and the page.
     case NoteBlockKind.bullet:
-      return padded(_marker('•', _rich(block, fonts), fonts), bottom: 3);
+      return padded(
+        _indented(block, _marker('•', _rich(block, fonts), fonts)),
+        bottom: 3,
+      );
     case NoteBlockKind.ordered:
       return padded(
-        _marker('${block.ordinal ?? 1}.', _rich(block, fonts), fonts),
+        _indented(
+          block,
+          _marker('${block.ordinal ?? 1}.', _rich(block, fonts), fonts),
+        ),
         bottom: 3,
       );
 
@@ -266,12 +275,59 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
     case NoteBlockKind.attachment:
       return padded(_missingMedia(block, doc, fonts));
 
+    // Neither of these existed before markdown became canonical: Delta had no
+    // rule node and `flutter_quill` 11.5.1 has no table node at all, so a
+    // table in a note simply could not reach a PDF.
+    case NoteBlockKind.divider:
+      return padded(pw.Divider(height: 1, color: PdfColors.grey400), top: 4);
+
+    case NoteBlockKind.table:
+      return padded(_table(block, fonts), top: 4);
+
     case NoteBlockKind.paragraph:
       // An intentional blank line keeps its air; it just must not be a full
       // paragraph's worth.
       if (block.text.trim().isEmpty) return pw.SizedBox(height: 6);
       return padded(_rich(block, fonts));
   }
+}
+
+/// Shifts a list item by its nesting depth. Capped so a pathological document
+/// cannot indent itself off the right edge of the page.
+pw.Widget _indented(NoteBlock block, pw.Widget child) => block.indent <= 0
+    ? child
+    : pw.Padding(
+        padding: pw.EdgeInsets.only(left: (block.indent.clamp(0, 6)) * 16.0),
+        child: child,
+      );
+
+/// A GFM table. The first row is the header, and cells print as plain text:
+/// inline formatting inside a cell is rare and a full rich cell would need the
+/// span model to nest, which is not worth it for the page.
+pw.Widget _table(NoteBlock block, NotePdfFonts fonts) {
+  final rows = block.rows ?? const <List<String>>[];
+  if (rows.isEmpty) return pw.SizedBox();
+  return pw.Table(
+    border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+    children: [
+      for (final (index, row) in rows.indexed)
+        pw.TableRow(
+          children: [
+            for (final cell in row)
+              pw.Padding(
+                padding: const pw.EdgeInsets.all(4),
+                child: pw.Text(
+                  cell,
+                  style: pw.TextStyle(
+                    font: index == 0 ? fonts.bold : fonts.regular,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+          ],
+        ),
+    ],
+  );
 }
 
 pw.Widget _marker(String marker, pw.Widget child, NotePdfFonts fonts) => pw.Row(

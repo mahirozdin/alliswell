@@ -59,7 +59,10 @@ describe('GET /sync/pull (OPH-051)', () => {
     const taskChange = body.changes.find((c) => c.entityType === 'task');
     expect(taskChange.data).toMatchObject({ id: task.id, title: 'Bilet al', tagIds: [tag.id] });
     const noteChange = body.changes.find((c) => c.entityType === 'note');
-    expect(noteChange.data.contentDelta).toEqual([{ insert: 'içerik\n' }]);
+    // ADR-0033: the pull never ships a Delta again — it ships the document.
+    expect(noteChange.data.contentDelta).toBeNull();
+    expect(noteChange.data.contentMarkdown).toBe('içerik');
+    expect(noteChange.data.contentFormat).toBe('markdown');
     expect(noteChange.data.plainText).toBe('içerik');
     const tombstone = body.changes.find((c) => c.entityType === 'tag');
     expect(tombstone).toMatchObject({ entityId: tag.id, operation: 'delete', data: null });

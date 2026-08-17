@@ -11,7 +11,7 @@ import '../../../widgets/status_views.dart';
 import '../../../sync/providers.dart';
 import '../data/note_versions_api.dart';
 import '../providers.dart';
-import 'modes/reading_mode.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 /// Version history (OPH-269, DESIGN §35 V4–V6).
 ///

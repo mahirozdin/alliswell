@@ -1203,21 +1203,20 @@ take/later/reject inventory and the model decision are in
 
 | # | Rule | Why |
 | --- | --- | --- |
-| D1 | **Exactly three modes: Reading · Live · Source.** One control switches them; the control shows which one is active and never hides. | Obsidian's triple is the only mental model users already have. A fourth mode is a design failure, not a feature. |
+| D1 | **Exactly two modes: Source · Reading.** One control switches them; the control shows which one is active, never hides, and every note offers both. | One canonical form (ADR-0033) means one editor. A third mode would have to edit something a note is not. |
 
-> **D1 amended (OPH-248).** Three modes exist in the app; a NOTE offers **two**.
+> **D1's amendment is RETIRED (OPH-274).** OPH-248 had to narrow D1 to "three
+> modes exist in the app; a NOTE offers two", because ADR-0028 §1 made a note
+> either Delta-canonical or markdown-canonical and only one editor could honour
+> a given note's content. The third mode was reached through a named, warned,
+> one-way conversion in the overflow menu.
 >
-> ADR-0028 §1 made a note either Delta-canonical or markdown-canonical, and
-> only one editor can honour a given note's canonical content: Live edits a
-> Delta, Source edits markdown text. Offering both would either lie about what
-> gets saved or convert the document underneath the user. So a note shows
-> Reading plus whichever editor matches it, and the third is reached through a
-> **named, warned, one-way conversion** in the overflow menu.
->
-> This narrows D1's scope, not its intent. A greyed-out third segment would be
-> exactly the dead affordance §22 forbids, and "the control never hides" still
-> holds — it shows what this note can actually do.
-| D2 | **Reading is the default for a document that arrived from outside**; Live is the default for a note the user wrote here. | The first thing you do with someone else's file is read it. The first thing you do with yours is keep writing. |
+> ADR-0033 left one canonical form, so there is no second editor to be
+> unavailable, no conversion door, and no note that offers less than another.
+> D1 now reads the way it was originally intended — and the reason the
+> amendment had to exist is a useful record: **a design rule that needs an
+> exception is usually pointing at a model problem, not a UI one.**
+| D2 | **Reading is the default for a document that arrived from outside**; Source is the default for a note the user wrote here. Provenance is a fact the caller passes, never inferred from the content. | The first thing you do with someone else's file is read it; the first thing you do with yours is keep writing. Inferring it from the format is exactly the OPH-270 bug: "markdown" meant "foreign", so a note you converted yourself opened read-only forever. |
 | D3 | **A mode switch preserves the caret, the scroll position and the undo history.** | A switch that loses your place is a switch nobody uses twice. |
 | D4 | **Reading is never editable-looking.** No caret, no placeholder, no toolbar — but checkboxes in task lists ARE tappable, and ticking one writes to the document. | The one interaction people genuinely expect from a rendered task list. Everything else pretending to be editable is a lie. |
 | D5 | **Split view (Source ⇄ Reading, scroll-synced both ways) appears only ≥ 900 px** and is a toggle inside Source mode, not a fourth mode. | Zettlr/VS Code behaviour. On a phone a split pane gives two useless columns. |
@@ -1240,7 +1239,7 @@ take/later/reject inventory and the model decision are in
 | --- | --- | --- |
 | D13 | **The outline is one tap away and follows you.** A heading tree, current section highlighted, scroll-synced. Sheet on phones, side panel ≥ 900 px. | Obsidian's auto-scroll-to-current-section; a 2 000-line README is unusable without it. |
 | D14 | **Headings fold.** Collapse state is per-session, never persisted into the document. | VS Code. Folding must never mutate somebody's file. |
-| D15 | **Find & replace exists and is reachable by keyboard.** The toolbar's search button stops being disabled. | It is currently switched off in `QuillSimpleToolbarConfig` — a control that exists and does nothing (§22). |
+| D15 | **Find & replace exists and is reachable by keyboard.** | It shipped switched off in `QuillSimpleToolbarConfig` — a control that existed and did nothing (§22). The package is gone; the rule outlived it. |
 | D16 | **In-document anchors work.** `[link](#heading)` scrolls to that heading. | Otherwise every table of contents in every imported file is dead. |
 
 ### 29.4 Writing comfort
@@ -1248,12 +1247,13 @@ take/later/reject inventory and the model decision are in
 | # | Rule | Why |
 | --- | --- | --- |
 | D17 | **Lists continue themselves**, renumber themselves, and nest with Tab / Shift-Tab. | The biggest single typing-comfort win, and it is the thing the flat Delta model blocked. |
-| D18 | **On a phone, a scrolling markdown toolbar sits above the keyboard.** On desktop/web, keyboard shortcuts and a command palette do the same job. | Obsidian, Bear and iA Writer all converged here; the phone has no room for a palette. |
+| D18 | **One scrolling markdown toolbar, above the document, at every width** — with the media inserts pinned outside the scroll so they never slide out of reach. Shortcuts and the ⌘K palette are the second path, not the desktop's only one. | *Revised by OPH-274.* D18 originally put the bar above the KEYBOARD on a phone and gave a wide screen shortcuts alone, which was right while the rich editor's own toolbar owned the top of the screen. Removing that editor would have left a desktop window with no visible formatting controls at all — the rule was describing an arrangement, not a principle. |
 | D19 | **Slash commands are the second path to every toolbar action**, never the only one. | §22 reachability: an invisible command surface is not a feature. |
 | D20 | **Paste is smart and reversible.** HTML pastes as markdown; a URL over a selection makes a link; a clipboard image uploads as an attachment. One undo restores the raw paste. | "Smart" paste without one-step undo is hostile. |
 | D21 | **Save state is visible.** Autosave keeps working; a small, non-blocking indicator says saved / saving / failed. | Silent autosave plus an eventual failure is how people lose work and trust. |
 | D22 | **Word and character count are always available, never in the way.** | Ulysses; a status affordance, not a panel. |
 | D23 | **Focus mode dims, it does not hide.** Everything but the current paragraph fades; nothing is removed from the layout. | iA Writer. Hiding causes reflow; dimming does not. |
+| D24 | **The source field shows what the markdown MEANS while you type** (OPH-274): headings sized, bold bold, marks quieted off the caret's line, and full strength on the line being edited. It composes with D23 rather than replacing it, and it can be switched off. Colours come from tokens; markers use `onSurfaceVariant`, a role that clears 4.5:1 in both themes. | Obsidian/Typora. This is what replaces the WYSIWYG feedback ADR-0033 removed. **Syntax is dimmed, never hidden — that is not a preference:** a `TextEditingController` must hand the field back exactly the characters of `text`, or every caret offset, selection, undo entry and IME composition after the first difference points at the wrong character. |
 
 ### 29.5 Somebody else's file (W-rules)
 
@@ -1378,7 +1378,7 @@ anywhere remembers what you just used.
 | R3 | **Hex never appears.** No hex input, no hex label, nowhere. flutter_quill's `showColorButton`/`showBackgroundColorButton` are **off**, replaced by two buttons of our own that open `AwColorPicker`. | Round-1 rule; the stock dialog — a hex TEXT FIELD — is the measured violation this section existed to kill, and it is now unreachable. A test pins both flags, because the package defaults them ON. |
 | R4 | **A note stores the NAME of a colour; each theme resolves it.** Eight text colours and six highlights, every one checked in both themes by `scripts/design/contrast.py` — text against the surface that theme paints, highlights against the body ink that will sit on them. | **The original rule (one fixed hex per colour) was measured to be impossible and is corrected here, not quietly dropped.** The surface under text and the ink over a highlight both move with the theme, so one value has to satisfy two backgrounds: of 18 candidate text hues **zero** cleared 4.5:1 against both `#FFFFFF` and `#151F3C`, and for highlights the two ratios multiply to at most 21, so both sides reach ~4.6 only at a single mid lightness — mid-grey `#808080` measured 4.37 / 3.46 and failed both. Names fix it, and flutter_quill already supports them: `stringToColor` consults `DefaultStyles.palette` before parsing anything, so the resolution is the package's own, not a fork of its renderer. This is also what the app's `==mark==` always did — tint a token, keep the body ink — so the two ways of marking text now agree. Measured after the change: all 14 pairs pass in both themes (text 6.0–9.8, highlights 7.6–15.3). |
 | R5 | **Selection feedback is immediate**: the swatch ring marks the current value, tapping applies and closes; a "clear" affordance exists where clearing is meaningful (quick links today, editor color removal). | The old dialog's pick-then-confirm dance is why it felt clumsy. |
-| R6 | **Conversion is honest about colour.** Delta→markdown carries a highlight across as `==…==`, and markdown→delta brings it back as the default highlight NAME — so the mark survives a round trip. Text colour is not expressible in GFM and is dropped; the conversion dialog says so before it runs. The markdown toolbar gains `highlight` (`==…==`); a text-colour action is deliberately not built for markdown. | ADR-0028 made conversion "explicit, warned, one-way"; silently deleting the user's marking broke that contract. A round-trip test is what keeps the two converters honest — the same guarantee `markdown_delta_test` already relies on. |
+| R6 | **A note has a highlight and no text colour.** `==…==` is the mark, drawn from the named palette (R4) so each theme paints a value checked against the surface it lands on. Text colour is not built, because GFM has no syntax for it. | *Settled by OPH-274.* R6 used to be about making a CONVERSION honest — Delta→markdown carried the highlight across and dropped the colour, and the dialog said so first. ADR-0033 removed the conversion along with the second format, so the rule is no longer a promise about a lossy door: it is simply what a note can express. `kAwNoteTextColors` is gone with it. |
 
 ## 34. Sorting a list without spending a row (round 18 — OPH-258)
 

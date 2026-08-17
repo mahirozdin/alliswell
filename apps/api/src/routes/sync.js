@@ -21,11 +21,11 @@
 import { newId } from '../lib/ids.js';
 import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
-import { deltaToPlainText, isValidDelta, markdownToPlainText } from '../lib/delta.js';
+import { isValidDelta, markdownToPlainText } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { captureNoteVersion } from '../db/note-versions.js';
-import { storeConflictVersion, threeWayNoteWrite } from '../db/notes.js';
+import { noteMarkdownFrom, storeConflictVersion, threeWayNoteWrite } from '../db/notes.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { serializeFile } from './files.js';
 import { serializeFolder } from './folders.js';
@@ -178,17 +178,21 @@ const REMINDER_FIELDS = {
 
 const NOTE_FIELDS = {
   title: { col: 'title', ok: str(500) },
+  // All three content fields are VIRTUAL under ADR-0033: `prepare()` decides
+  // the body from them together and writes `content_markdown` /
+  // `content_format` / `plain_text` itself. `contentDelta` and the 'delta'
+  // format value are still ACCEPTED — a client that predates the change keeps
+  // sending them — but neither is ever stored.
   contentDelta: { col: 'content_delta', ok: (v) => v === null || Array.isArray(v), virtual: true },
-  contentMarkdown: { col: 'content_markdown', ok: strOrNull(1000000) },
-  // Which field is canonical (OPH-248, ADR-0028 §1). It rides with the
-  // content, not as metadata: a device that switched a note to markdown and a
-  // device that kept editing the delta disagree about what the note IS, and
-  // that is a document-level conflict, not a field to last-write-wins.
-  contentFormat: { col: 'content_format', ok: oneOf(['delta', 'markdown']) },
+  contentMarkdown: { col: 'content_markdown', ok: strOrNull(1000000), virtual: true },
+  contentFormat: { col: 'content_format', ok: oneOf(['delta', 'markdown']), virtual: true },
   projectId: { col: 'project_id', ok: ulidOrNull },
   isPinned: { col: 'is_pinned', ok: bool },
   isArchived: { col: 'is_archived', ok: bool },
 };
+
+/** The camelCase keys that together decide a note's body. */
+const NOTE_CONTENT_KEYS = new Set(['contentDelta', 'contentMarkdown', 'contentFormat']);
 
 // Round 11 (OPH-197, ADR-0018): the first user-scoped entity. `kind`,
 // `targetId` and `url` are create-only — a shortcut's target is immutable, and
@@ -230,8 +234,10 @@ const CHECKLIST_FIELDS = {
   sortOrder: { col: 'sort_order', ok: intIn(-1000000, 1000000) },
 };
 
-// Note CONTENT is doc-level locked (§6.5) — these intents never LWW-merge.
-const NOTE_CONTENT_INTENTS = new Set(['content_delta', 'content_markdown', 'content_format']);
+// Note CONTENT is doc-level locked (§6.5) — this intent never LWW-merges.
+// One name, because ADR-0033 left one canonical column and `prepare()` gives
+// all three incoming content keys that same intent name.
+const NOTE_CONTENT_INTENTS = new Set(['content_markdown']);
 
 export function serializeReminder(row) {
   return {
@@ -537,9 +543,42 @@ export default async function syncRoutes(app) {
   function prepare(entityKey, fields, patch, row) {
     const rowPatch = {};
     const intents = [];
+
+    // ADR-0033: a note has ONE canonical field, and the whole body is decided
+    // once — before the per-key loop, because the three content keys arrive
+    // together and each of them would otherwise derive `plain_text` over a
+    // megabyte of markdown again.
+    //
+    // A `contentDelta` may still arrive: the web client updates the moment we
+    // deploy, the phone in someone's pocket does not. It is converted here by
+    // the same `noteMarkdownFrom` REST uses, and `content_delta` is never
+    // written again — the column keeps its old rows as a lossless escape hatch.
+    if (entityKey === 'note' && Object.keys(patch).some((k) => NOTE_CONTENT_KEYS.has(k))) {
+      const markdown =
+        noteMarkdownFrom(patch, {
+          currentFormat: row?.content_format,
+          currentMarkdown: row?.content_markdown,
+          title: patch.title ?? row?.title,
+        }) ?? '';
+      rowPatch.content_markdown = markdown;
+      rowPatch.content_format = 'markdown';
+      // OPH-261: the search column follows the canonical field. It used to be
+      // derived only when a delta arrived, so a markdown note carried an empty
+      // one and could not be found. With one canonical field, one derivation.
+      rowPatch.plain_text = markdownToPlainText(markdown);
+    }
+
     for (const [key, value] of Object.entries(patch)) {
       const spec = fields[key];
-      const intent = { name: spec.col, camel: key, cols: [] };
+      // Every note-content key reports the SAME intent name, because they now
+      // own the same columns. The name has to be a column that is actually
+      // WRITTEN: LWW decides overlap by matching intent names against the
+      // `changed_fields` of foreign writes, so an intent still calling itself
+      // `content_delta` would never match anything again — the document-level
+      // lock would quietly stop locking.
+      const name =
+        entityKey === 'note' && NOTE_CONTENT_KEYS.has(key) ? 'content_markdown' : spec.col;
+      const intent = { name, camel: key, cols: [] };
       if (!spec.virtual) {
         rowPatch[spec.col] = spec.date ? toDate(value) : value;
         intent.cols.push(spec.col);
@@ -563,26 +602,12 @@ export default async function syncRoutes(app) {
         // JSON columns take a string, exactly like a note's delta.
         rowPatch[spec.col] = JSON.stringify(key === 'template' ? normalizeTemplate(value) : value);
       }
-      if (entityKey === 'note' && key === 'contentDelta') {
-        rowPatch.content_delta = value === null ? null : JSON.stringify(value);
-        rowPatch.plain_text = deltaToPlainText(value);
-        intent.cols.push('content_delta', 'plain_text');
-      }
-      // OPH-261: the same repair on the sync path — the app writes the whole
-      // body on every autosave, so a markdown note arrives here far more often
-      // than through REST, and it was the bigger half of the search blind spot.
-      //
-      // Guarded by the note's CANONICAL format, and that guard is the whole
-      // subtlety: the app sends `contentMarkdown` for delta notes too (it
-      // derives one for export), so deriving from it unconditionally would
-      // have quietly re-based every existing note's search column on a
-      // generated document instead of the one the user typed.
-      if (entityKey === 'note' && key === 'contentMarkdown') {
-        const format = patch.contentFormat ?? row?.content_format ?? 'delta';
-        if (format === 'markdown') {
-          rowPatch.plain_text = markdownToPlainText(value ?? '');
-          intent.cols.push('plain_text');
-        }
+      // Every note-content key now owns the same three columns, because the
+      // body above was decided from all of them together. Keeping one intent
+      // PER incoming key (rather than collapsing them into one) is what leaves
+      // the LWW bookkeeping and `discardedFields` reading exactly as before.
+      if (entityKey === 'note' && NOTE_CONTENT_KEYS.has(key)) {
+        intent.cols.push('content_markdown', 'content_format', 'plain_text');
       }
       intents.push(intent);
     }
@@ -618,6 +643,12 @@ export default async function syncRoutes(app) {
       if (!Array.isArray(changed)) return { all: true, fields }; // create/delete → everything
       for (const f of changed) fields.add(f);
     }
+    // A write recorded before ADR-0033 named the note's body `content_delta`.
+    // Nothing writes that column now, so a device pushing across the deploy
+    // boundary would compare its `content_markdown` intent against a set that
+    // only remembers the old name — and conclude nothing foreign happened to a
+    // body somebody else had just rewritten.
+    if (fields.has('content_delta')) fields.add('content_markdown');
     return { all: false, fields };
   }
 
@@ -1304,26 +1335,20 @@ export default async function syncRoutes(app) {
       entity.contentIntents && prepared.intents.some((i) => entity.contentIntents.has(i.name));
 
     if (touchesContent && mutation.baseRevision != null) {
+      // The whole patch travels, `contentDelta` included: a client that
+      // predates ADR-0033 expresses its body as a Delta, and refusing to look
+      // at it would send every one of its saves to the conflict banner.
       const decision = await threeWayNoteWrite(app, {
         row,
         baseRevision: mutation.baseRevision,
-        incoming: {
-          contentMarkdown: patch.contentMarkdown,
-          contentFormat: patch.contentFormat,
-        },
+        incoming: patch,
       });
       if (decision.outcome === 'conflict') {
         // The losing body is kept BEFORE the refusal is returned: "the
         // overwritten body is in no table" is the bug this epic ends.
         const conflictVersionId = await storeConflictVersion(app, {
           row,
-          incoming: {
-            title: patch.title,
-            contentMarkdown: patch.contentMarkdown,
-            contentDelta:
-              patch.contentDelta === undefined ? undefined : JSON.stringify(patch.contentDelta),
-            contentFormat: patch.contentFormat,
-          },
+          incoming: patch,
           userId: ctx.userId,
           clientId: ctx.clientId,
         });

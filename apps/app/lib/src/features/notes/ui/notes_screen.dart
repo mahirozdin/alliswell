@@ -266,7 +266,7 @@ Future<void> _exportRow(
     title: detail.title.trim().isEmpty
         ? 'note.untitled'.tr()
         : detail.title.trim(),
-    deltaJson: detail.contentDelta ?? const [],
+    markdown: detail.contentMarkdown ?? '',
     updatedAt: detail.updatedAt,
   );
 }

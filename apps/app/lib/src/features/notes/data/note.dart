@@ -59,9 +59,7 @@ class NoteDetail extends NoteRow {
     super.createdFromTaskId,
     super.createdAt,
     super.updatedAt,
-    this.contentDelta,
     this.contentMarkdown,
-    this.contentFormat = 'delta',
     this.links = const [],
     this.conflictVersionId,
   });
@@ -80,27 +78,18 @@ class NoteDetail extends NoteRow {
       revision: row.revision,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
-      contentDelta: (json['contentDelta'] as List?)
-          ?.cast<Map<String, dynamic>>(),
+      // `contentDelta` and `contentFormat` are still ON the wire — the server
+      // sends them as null/'markdown' so a client that predates ADR-0033 keeps
+      // parsing — and deliberately not read here. A note is markdown.
       contentMarkdown: json['contentMarkdown'] as String?,
-      contentFormat: (json['contentFormat'] as String?) ?? 'delta',
       links: ((json['links'] as List?) ?? const [])
           .map((l) => NoteLink.fromJson(l as Map<String, dynamic>))
           .toList(),
     );
   }
 
-  final List<Map<String, dynamic>>? contentDelta;
+  /// The note's content. Markdown is the only canonical form (ADR-0033).
   final String? contentMarkdown;
-
-  /// Which of the two above is CANONICAL (ADR-0028 §1) — `'delta'` or
-  /// `'markdown'`. Defaults to `'delta'`: that is what every note written
-  /// before OPH-248 is, and what the server's column default says too.
-  final String contentFormat;
-
-  /// Reading is always a real markdown renderer; this decides which EDITOR a
-  /// note may open in (DESIGN §29 D1, as amended in OPH-248).
-  bool get isMarkdownCanonical => contentFormat == 'markdown';
   final List<NoteLink> links;
 
   /// OPH-268/269: the server version holding a body of this note that was

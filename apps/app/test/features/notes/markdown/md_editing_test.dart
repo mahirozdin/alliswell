@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:alliswell/src/features/notes/markdown/md_editing.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 /// OPH-250 — typing comfort as pure transforms (DESIGN §29 D17/D20/D22).
 void main() {

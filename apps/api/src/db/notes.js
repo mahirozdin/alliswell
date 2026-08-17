@@ -1,13 +1,8 @@
 import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
-import {
-  deltaToMarkdown,
-  deltaToPlainText,
-  embedFileIds,
-  isValidDelta,
-  markdownToPlainText,
-} from '../lib/delta.js';
+import { deltaToMarkdown, isValidDelta, markdownToPlainText } from '../lib/delta.js';
 import { recordSyncWrite } from './sync.js';
+import { transactionWithRetry } from './tx.js';
 import { captureNoteVersion, isContentWrite } from './note-versions.js';
 import { mergeMarkdown } from '../lib/note-merge.js';
 
@@ -58,42 +53,103 @@ export async function assertProjectUsable(app, projectId, workspaceId) {
 }
 
 /**
+ * Drops the `# <title>` line a pre-ADR-0033 client prefixed onto the markdown
+ * it derived from a Delta (`note_document.dart` `bodyFor`).
+ *
+ * The title lives in its own column; leaving the heading in the body would
+ * make every migrated note render its title twice. Only ever applied to a
+ * write that declares itself Delta-canonical — a markdown-canonical note never
+ * had the prefix added, so a user who genuinely typed `# My title` as their
+ * first line keeps it.
+ */
+function stripTitleHeading(markdown, title) {
+  if (typeof markdown !== 'string' || typeof title !== 'string' || title.trim() === '') {
+    return markdown;
+  }
+  const [first, ...rest] = markdown.split('\n');
+  if (first.trim() !== `# ${title.trim()}`) return markdown;
+  while (rest.length > 0 && rest[0].trim() === '') rest.shift();
+  return rest.join('\n');
+}
+
+/**
+ * The markdown a write means, whatever shape it arrived in (ADR-0033).
+ *
+ * Markdown is now a note's ONLY canonical content, but a Delta may still
+ * ARRIVE: the web client updates the moment we deploy, while the phone in
+ * someone's pocket keeps running the previous release for weeks. That client
+ * sends all three of `contentDelta`, `contentMarkdown` and `contentFormat` on
+ * every save, so nothing is lost by taking the markdown and dropping the
+ * delta — a protocol that breaks its own old clients is not a protocol.
+ *
+ * For a Delta-canonical write the markdown is re-derived here rather than
+ * trusted: our converter and the client's are mirrors, but ours is the one
+ * that stays maintained, and deriving avoids the title-heading heuristic
+ * entirely. (No embed labels: resolving `alliswell://file/{id}` to file names
+ * would put a query in the write path, and the label is decoration — the URI,
+ * which is what the renderer resolves, survives either way.)
+ *
+ * @returns {string|null} null when the body carries no content at all.
+ */
+export function noteMarkdownFrom(body, { currentFormat, currentMarkdown, title } = {}) {
+  const hasMarkdown = 'contentMarkdown' in body;
+  const hasDelta = 'contentDelta' in body;
+  if (!hasMarkdown && !hasDelta) return null;
+
+  // A body that carries ONLY a delta is a Delta write whatever it says about
+  // itself: `contentFormat` is optional on the wire, and a patch that omits it
+  // while sending ops would otherwise be read as "markdown, and the markdown is
+  // missing" — which silently empties the note.
+  const declared = body.contentFormat ?? (hasMarkdown ? (currentFormat ?? 'markdown') : 'delta');
+  if (declared === 'markdown') {
+    return (hasMarkdown ? body.contentMarkdown : currentMarkdown) ?? '';
+  }
+  if (hasDelta && Array.isArray(body.contentDelta)) return deltaToMarkdown(body.contentDelta);
+  return stripTitleHeading((hasMarkdown ? body.contentMarkdown : currentMarkdown) ?? '', title);
+}
+
+/**
  * camelCase body → row values.
  *
  * @param {object} app
  * @param {object} body
  * @param {object} [opts]
  * @param {string} [opts.currentFormat] the row's format when the patch does not
- *   set one — the write has to know which field is canonical.
+ *   set one — the write has to know what shape the body it did not resend is in.
  * @param {string} [opts.currentMarkdown] the row's markdown, for the case where
- *   a note BECOMES markdown-canonical without its body being resent.
+ *   only the format is being restated.
+ * @param {string} [opts.currentTitle] the row's title, for [stripTitleHeading].
  */
-export function toRowPatch(app, body, { currentFormat, currentMarkdown } = {}) {
+export function toRowPatch(app, body, { currentFormat, currentMarkdown, currentTitle } = {}) {
   const row = {};
   if ('title' in body) row.title = body.title;
-  if ('contentDelta' in body) {
-    if (body.contentDelta !== null && !isValidDelta(body.contentDelta)) {
-      throw coded(
-        app.httpErrors.badRequest('contentDelta must be an array of Quill insert ops'),
-        'NOTE_INVALID_DELTA',
-      );
-    }
-    row.content_delta = body.contentDelta === null ? null : JSON.stringify(body.contentDelta);
-    row.plain_text = deltaToPlainText(body.contentDelta);
+  if ('contentDelta' in body && body.contentDelta !== null && !isValidDelta(body.contentDelta)) {
+    throw coded(
+      app.httpErrors.badRequest('contentDelta must be an array of Quill insert ops'),
+      'NOTE_INVALID_DELTA',
+    );
   }
-  if ('contentMarkdown' in body) row.content_markdown = body.contentMarkdown;
-  if ('contentFormat' in body) row.content_format = body.contentFormat;
-  // OPH-261: the search column follows whichever field is CANONICAL.
-  //
-  // Before this, `plain_text` was written only in the delta branch above, so a
-  // markdown-canonical note (ADR-0028) kept an empty or stale one and was
-  // invisible to `?q=`, to FULLTEXT and to the MCP search tools. It existed and
-  // could not be found — §22's reachability rule, seen from the search side.
-  const format = body.contentFormat ?? currentFormat ?? 'delta';
-  if (format === 'markdown') {
-    const markdown = 'contentMarkdown' in body ? body.contentMarkdown : currentMarkdown;
-    if (markdown !== undefined) row.plain_text = markdownToPlainText(markdown ?? '');
+
+  // ADR-0033: every content write lands as markdown, and `content_delta` is
+  // never written again. The column keeps its old rows — a lossless escape
+  // hatch — but nothing adds to them.
+  const markdown = noteMarkdownFrom(body, {
+    currentFormat,
+    currentMarkdown,
+    title: body.title ?? currentTitle,
+  });
+  if (markdown !== null) {
+    row.content_markdown = markdown;
+    row.content_format = 'markdown';
+    // OPH-261: the search column follows the canonical field. Before that it
+    // was written only when a delta arrived, so a markdown note carried an
+    // empty one and could not be found — §22's reachability rule, seen from
+    // the search side. With one canonical field there is one derivation.
+    row.plain_text = markdownToPlainText(markdown);
+  } else if ('contentFormat' in body) {
+    row.content_format = 'markdown';
   }
+
   if ('projectId' in body) row.project_id = body.projectId;
   if ('isPinned' in body) row.is_pinned = body.isPinned;
   if ('isArchived' in body) row.is_archived = body.isArchived;
@@ -138,7 +194,7 @@ export async function linkNote(app, { row, userId, entityType, entityId }) {
     throw coded(app.httpErrors.conflict('This link already exists'), 'NOTE_LINK_EXISTS');
   }
 
-  await app.db.transaction(async (trx) => {
+  await transactionWithRetry(app.db, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: row.workspace_id,
       entityType: 'note',
@@ -160,7 +216,7 @@ export async function linkNote(app, { row, userId, entityType, entityId }) {
 
 /** Removes one link row, with the note's revision bump. */
 export async function unlinkNote(app, { row, userId, link }) {
-  await app.db.transaction(async (trx) => {
+  await transactionWithRetry(app.db, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: row.workspace_id,
       entityType: 'note',
@@ -200,7 +256,7 @@ export async function createNote(
   }
 
   const id = newId();
-  await app.db.transaction(async (trx) => {
+  await transactionWithRetry(app.db, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId,
       entityType: 'note',
@@ -249,7 +305,7 @@ export async function createNote(
  */
 export async function createNoteFromTask(app, { task, userId, body }) {
   const id = newId();
-  await app.db.transaction(async (trx) => {
+  await transactionWithRetry(app.db, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: task.workspace_id,
       entityType: 'note',
@@ -290,8 +346,9 @@ export async function updateNote(app, { row, userId, body, origin = 'edit', clie
   const patch = toRowPatch(app, body, {
     currentFormat: row.content_format,
     currentMarkdown: row.content_markdown,
+    currentTitle: row.title,
   });
-  await app.db.transaction(async (trx) => {
+  await transactionWithRetry(app.db, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: row.workspace_id,
       entityType: 'note',
@@ -347,7 +404,7 @@ export async function setNoteTags(app, { row, userId, tagIds }) {
   const toRemove = current.filter((id) => !desired.includes(id));
   if (toAdd.length === 0 && toRemove.length === 0) return;
 
-  await app.db.transaction(async (trx) => {
+  await transactionWithRetry(app.db, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: row.workspace_id,
       entityType: 'note',
@@ -376,13 +433,19 @@ export async function setNoteTags(app, { row, userId, tagIds }) {
  * pull moved the cursor past the other person's write, so the lock saw
  * "nothing foreign happened" and the body was silently overwritten.
  *
- * Merging is only attempted when ALL THREE sides are markdown-canonical
- * (decision #7): a Delta is a JSON op array, and line-merging JSON produces
- * something that is not a document. Anything else takes the conflict path,
- * which loses nothing — the incoming body is stored as a version.
+ * ## ADR-0033 removed this path's biggest hole
+ *
+ * Merging used to be attempted only when ALL THREE sides were
+ * markdown-canonical (ADR-0031 decision #7) — a Delta is a JSON op array, and
+ * line-merging JSON produces something that is not a document. Since notes had
+ * two canonical forms, the common case refused to merge and every conflict
+ * between two Delta notes fell through to the banner. Now there is one form:
+ * the row is markdown, its versions are markdown, and a Delta arriving from a
+ * client that predates the change is CONVERTED on the way in rather than
+ * refused. `NOT_MARKDOWN` is gone because it can no longer happen.
  *
  * @returns {Promise<{outcome:'apply'}|{outcome:'merge', contentMarkdown:string}|
- *   {outcome:'conflict', reason:'BASE_MISSING'|'NOT_MARKDOWN'|'OVERLAP'}>}
+ *   {outcome:'conflict', reason:'BASE_MISSING'|'OVERLAP'}>}
  */
 export async function threeWayNoteWrite(app, { row, baseRevision, incoming }) {
   const current = Number(row.revision ?? 0);
@@ -391,10 +454,14 @@ export async function threeWayNoteWrite(app, { row, baseRevision, incoming }) {
   // old clients is not a protocol.
   if (baseRevision == null || baseRevision >= current) return { outcome: 'apply' };
 
-  const incomingFormat = incoming.contentFormat ?? row.content_format ?? 'delta';
-  if (incomingFormat !== 'markdown' || (row.content_format ?? 'delta') !== 'markdown') {
-    return { outcome: 'conflict', reason: 'NOT_MARKDOWN' };
-  }
+  const theirs = noteMarkdownFrom(incoming, {
+    currentFormat: row.content_format,
+    currentMarkdown: row.content_markdown,
+    title: incoming.title ?? row.title,
+  });
+  // A write that carries no body at all (a pin, a project move) has nothing to
+  // merge and nothing to lose.
+  if (theirs === null) return { outcome: 'apply' };
 
   // The base body has to still exist. Retention thins old versions (ADR-0031
   // §6), so a client that was offline for months legitimately finds nothing —
@@ -405,17 +472,22 @@ export async function threeWayNoteWrite(app, { row, baseRevision, incoming }) {
     .orderBy('id', 'desc')
     .first();
   if (!base) return { outcome: 'conflict', reason: 'BASE_MISSING' };
-  if ((base.content_format ?? 'delta') !== 'markdown') {
-    return { outcome: 'conflict', reason: 'NOT_MARKDOWN' };
-  }
 
-  const merged = mergeMarkdown(
-    base.content_markdown ?? '',
-    row.content_markdown ?? '',
-    incoming.contentMarkdown ?? '',
-  );
+  const merged = mergeMarkdown(versionMarkdown(base), row.content_markdown ?? '', theirs);
   if (!merged.ok) return { outcome: 'conflict', reason: 'OVERLAP' };
   return { outcome: 'merge', contentMarkdown: merged.text };
+}
+
+/**
+ * A stored version's markdown. The 2026-08-18 migration converted every
+ * pre-existing version row, so the delta fallback should never fire — it is
+ * here because a merge base that silently reads as empty would produce a
+ * "merge" that quietly deleted the other side's paragraphs.
+ */
+function versionMarkdown(version) {
+  if ((version.content_format ?? 'markdown') === 'markdown') return version.content_markdown ?? '';
+  const delta = parseDelta(version.content_delta);
+  return delta ? deltaToMarkdown(delta) : (version.content_markdown ?? '');
 }
 
 /**
@@ -427,18 +499,25 @@ export async function threeWayNoteWrite(app, { row, baseRevision, incoming }) {
  * the client can be handed a `conflictVersionId` to point its banner at.
  */
 export async function storeConflictVersion(app, { row, incoming, userId = null, clientId = null }) {
+  const title = incoming.title ?? row.title;
+  // Stored the way every other version is stored (ADR-0033): as markdown. A
+  // Delta from an older client is converted rather than kept, so "Restore this
+  // version" a month from now hands back a document the app can still open.
+  const markdown =
+    noteMarkdownFrom(incoming, {
+      currentFormat: row.content_format,
+      currentMarkdown: row.content_markdown,
+      title,
+    }) ??
+    row.content_markdown ??
+    '';
+
   let versionId = null;
-  await app.db.transaction(async (trx) => {
+  await transactionWithRetry(app.db, async (trx) => {
     const { id } = await captureNoteVersion(trx, {
       config: app.config,
       // The note as the CLIENT believed it to be — that is what is being kept.
-      row: {
-        ...row,
-        title: incoming.title ?? row.title,
-        content_markdown: incoming.contentMarkdown ?? row.content_markdown,
-        content_delta: incoming.contentDelta ?? row.content_delta,
-        content_format: incoming.contentFormat ?? row.content_format,
-      },
+      row: { ...row, title, content_markdown: markdown, content_format: 'markdown' },
       origin: 'conflict',
       clientId,
       userId,
@@ -448,27 +527,25 @@ export async function storeConflictVersion(app, { row, incoming, userId = null, 
   return versionId;
 }
 
-/** A note's markdown, following its canonical field (OPH-261 Repair 2). */
+/**
+ * A note as a standalone `.md` file (OPH-045, revised by ADR-0033).
+ *
+ * The body no longer needs a format branch — there is one canonical field. What
+ * it does need is its TITLE: that lives in its own column precisely so the
+ * stored body never repeats it, which means an exported file would otherwise
+ * arrive untitled. The heading is added here, at the edge, and never stored.
+ *
+ * Embed labels are no longer rewritten to the files' current names (OPH-152
+ * did that for Delta, whose embeds had no label a person could have written).
+ * In markdown the label is part of the document: `![my diagram](…)` is the
+ * author's words, and an export that replaced them with `diagram-final-2.png`
+ * would be editing the note on its way out.
+ */
 export async function exportNoteMarkdown(app, row) {
-  const delta = parseDelta(row.content_delta);
-  // Attachment embeds export with their CURRENT file name as the label
-  // (OPH-152) — the alliswell://file/{id} source stays stable either way.
-  let embedLabel;
-  const fileIds = delta ? embedFileIds(delta) : [];
-  if (fileIds.length > 0) {
-    const files = await app
-      .db('files')
-      .whereIn('id', fileIds)
-      .whereNull('deleted_at')
-      .select('id', 'name');
-    const names = new Map(files.map((f) => [`alliswell://file/${f.id}`, f.name]));
-    embedLabel = (source) => names.get(source) ?? null;
-  }
-  // The export follows `content_format`. It used to prefer the delta whenever
-  // one existed, so a markdown-canonical note — whose delta is a stale shadow
-  // of an earlier life — exported the wrong document.
-  if (row.content_format === 'markdown') return row.content_markdown ?? '';
-  return delta ? deltaToMarkdown(delta, { embedLabel }) : (row.content_markdown ?? '');
+  const body = row.content_markdown ?? '';
+  const title = (row.title ?? '').trim();
+  if (title === '') return body;
+  return body === '' ? `# ${title}\n` : `# ${title}\n\n${body}`;
 }
 
 /** JSON column that may arrive as a string, depending on the driver. */

@@ -8,10 +8,9 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:alliswell/src/features/notes/data/note.dart';
 import 'package:alliswell/src/features/notes/data/note_document.dart';
-import 'package:alliswell/src/features/notes/ui/modes/source_mode.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 import '../auth/test_support.dart';
@@ -33,7 +32,6 @@ NoteDetail _note() => const NoteDetail(
   isPinned: false,
   isArchived: false,
   revision: 1,
-  contentFormat: 'markdown',
   contentMarkdown: 'gövde',
 );
 
@@ -81,7 +79,7 @@ class _HostState extends State<_Host> {
             controller: widget.doc.title,
             maxLines: null,
           ),
-          Expanded(child: SourceMode(document: widget.doc)),
+          Expanded(child: SourceMode(controller: widget.doc.source)),
         ],
       ),
     ),
@@ -157,9 +155,9 @@ void main() {
     await tester.tap(find.text('Başlık burada'));
     await tester.pumpAndSettle();
 
-    final editor = find.byType(QuillEditor);
-    expect(editor, findsOneWidget, reason: 'a Delta note opens in Live');
-    final before = tester.widget<QuillEditor>(editor).focusNode;
+    final editor = find.byKey(const Key('note-source-field'));
+    expect(editor, findsOneWidget, reason: 'a note opens in its editor');
+    final before = tester.widget<TextField>(editor).controller;
 
     // Exactly what autosave does: a setState, plus a write that comes back
     // through the replica. Pinning is those two things behind one tap, and it
@@ -168,14 +166,19 @@ void main() {
     await tester.tap(find.byIcon(Icons.star_border));
     await tester.pumpAndSettle();
 
-    final after = tester.widget<QuillEditor>(editor).focusNode;
+    final after = tester.widget<TextField>(editor).controller;
     expect(
       identical(before, after),
       isTrue,
       reason:
-          'QuillEditor.basic mints a new FocusNode whenever one is not passed '
-          '(flutter_quill editor.dart:164), so every rebuild threw the body\'s '
-          'focus away and the title — first focusable in the tree — caught it',
+          'OPH-270, restated for the markdown editor: the controller belongs '
+          'to the document and outlives every rebuild (D3). Quill was worse — '
+          'QuillEditor.basic MINTED a new FocusNode whenever one was not '
+          'passed, so every autosave setState threw the caret away and the '
+          'title, first focusable in the tree, caught the focus. A TextField '
+          'owns its focus node in its State, so the failure mode is gone with '
+          'the package; what has to stay true is that the CONTROLLER is not '
+          'rebuilt underneath it.',
     );
     expect(
       hasFocus(tester, const Key('note-title')),
@@ -189,11 +192,7 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({});
     final api = FakeApi()
-      ..seedNote(
-        title: 'Başlık burada',
-        contentFormat: 'markdown',
-        contentMarkdown: 'gövde',
-      );
+      ..seedNote(title: 'Başlık burada', contentMarkdown: 'gövde');
     final store = InMemorySecretStore();
     await TokenStorage(store).save(fakeSession());
 

@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/files/providers.dart';
-import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
-import 'package:alliswell/src/features/notes/markdown/md_parse.dart';
+import 'package:alliswell/src/features/notes/markdown/markdown_forge_adapters.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 /// OPH-247 — images in a document (DESIGN §29 D6, §30 A7/A11).
@@ -38,10 +38,17 @@ void main() {
         return MemoryImage(onePixelPng);
       }),
     ],
+    // OPH-274: resolving a source is the HOST's job now (`MarkdownForge`'s
+    // image seam), so the scope that supplies it is part of the host.
     child: MaterialApp(
       theme: buildAwTheme(Brightness.light),
-      home: Scaffold(
-        body: AwMarkdown(document: parseMarkdown(markdown), shrinkWrap: true),
+      home: AwMarkdownScope(
+        child: Scaffold(
+          body: MarkdownView(
+            document: parseMarkdown(markdown),
+            shrinkWrap: true,
+          ),
+        ),
       ),
     ),
   );
@@ -99,7 +106,7 @@ void main() {
         child: MaterialApp(
           theme: buildAwTheme(Brightness.light),
           home: Scaffold(
-            body: AwMarkdown(
+            body: MarkdownView(
               document: parseMarkdown('![bozuk](https://example.dev/x.png)'),
               shrinkWrap: true,
             ),
@@ -128,14 +135,17 @@ void main() {
         child: MaterialApp(
           theme: buildAwTheme(Brightness.light),
           home: Scaffold(
-            body: AwMarkdown(
+            body: MarkdownView(
               document: parseMarkdown(
                 '![bir](https://e.dev/1.png)\n\n'
                 '![iki](https://e.dev/2.png)\n\n'
                 '![üç](https://e.dev/3.png)',
               ),
               shrinkWrap: true,
-              onTapImage: tapped.add,
+              // The gallery arrives whole now (OPH-274): the package hands the host
+              // every drawable image in body order plus the tapped index, and
+              // never owns a viewer of its own.
+              onTapImage: (g) => tapped.add(g.sources[g.index]),
             ),
           ),
         ),

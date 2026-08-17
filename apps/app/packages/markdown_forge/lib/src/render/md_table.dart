@@ -15,8 +15,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../theme/tokens.dart';
 import 'md_theme.dart';
+import '../seams.dart';
 
 /// A cell wider than this wraps instead of stretching the table across the
 /// screen. Long prose in one column is common in READMEs.
@@ -39,9 +39,9 @@ class MdTable extends StatelessWidget {
     if (columns == 0) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
+      margin: const EdgeInsets.symmetric(vertical: MdSpace.x2),
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+        borderRadius: const BorderRadius.all(Radius.circular(MdRadius.m)),
         border: Border.all(color: styles.hairline),
       ),
       clipBehavior: Clip.antiAlias,
@@ -90,8 +90,8 @@ class MdTable extends StatelessWidget {
         for (var i = 0; i < columns; i++)
           Padding(
             padding: const EdgeInsets.symmetric(
-              horizontal: AwSpace.x3,
-              vertical: AwSpace.x2,
+              horizontal: MdSpace.x3,
+              vertical: MdSpace.x2,
             ),
             child: Align(
               alignment: i < cells.length

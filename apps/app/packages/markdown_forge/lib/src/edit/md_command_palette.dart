@@ -14,10 +14,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../i18n/i18n.dart';
-import '../../../../theme/tokens.dart';
-import '../../../../widgets/sheets.dart';
-import '../../markdown/md_actions.dart';
+import 'md_actions.dart';
+import '../seams.dart';
 
 /// One row, fixed — so arrow-key navigation scrolls by arithmetic instead of
 /// measuring a tile that may not be laid out yet.
@@ -27,11 +25,17 @@ const double kMdPaletteRowHeight = 48;
 const int kMdPaletteVisibleRows = 7;
 
 /// The localized name the palette matches and shows.
-String mdActionLabel(MdAction action) => 'note.action.${action.id}'.tr();
+String mdActionLabel(BuildContext context, MdAction action) =>
+    context.mdStrings.action(action.id);
 
 /// Opens the palette. Resolves to the chosen action, or null if dismissed.
 Future<MdAction?> showMdCommandPalette(BuildContext context) =>
-    showAwSheet<MdAction>(context, builder: (_) => const MdCommandPalette());
+    showModalBottomSheet<MdAction>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => const MdCommandPalette(),
+    );
 
 class MdCommandPalette extends StatefulWidget {
   const MdCommandPalette({super.key});
@@ -49,7 +53,11 @@ class _MdCommandPaletteState extends State<MdCommandPalette> {
   String _query = '';
   int _selected = 0;
 
-  List<MdAction> get _matches => matchMdActions(_query, label: mdActionLabel);
+  List<MdAction> get _matches => matchMdActions(
+    _query,
+    label: (action) => mdActionLabel(context, action),
+    fold: context.mdStrings.fold,
+  );
 
   @override
   void dispose() {
@@ -128,7 +136,7 @@ class _MdCommandPaletteState extends State<MdCommandPalette> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.all(AwSpace.x4),
+            padding: const EdgeInsets.all(MdSpace.x4),
             child: TextField(
               key: const Key('md-palette-field'),
               focusNode: _focus,
@@ -140,12 +148,12 @@ class _MdCommandPaletteState extends State<MdCommandPalette> {
                 _selected = 0;
               }),
               decoration: InputDecoration(
-                hintText: 'note.paletteHint'.tr(),
+                hintText: context.mdStrings.searchCommands,
                 prefixIcon: const Icon(Icons.search, size: 20),
                 isDense: true,
                 filled: true,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AwRadius.m),
+                  borderRadius: BorderRadius.circular(MdRadius.m),
                   borderSide: BorderSide.none,
                 ),
               ),
@@ -154,12 +162,12 @@ class _MdCommandPaletteState extends State<MdCommandPalette> {
           if (matches.isEmpty)
             Padding(
               padding: const EdgeInsets.only(
-                left: AwSpace.x4,
-                right: AwSpace.x4,
-                bottom: AwSpace.x5,
+                left: MdSpace.x4,
+                right: MdSpace.x4,
+                bottom: MdSpace.x5,
               ),
               child: Text(
-                'note.paletteEmpty'.tr(),
+                context.mdStrings.noCommands,
                 key: const Key('md-palette-empty'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
@@ -190,7 +198,7 @@ class _MdCommandPaletteState extends State<MdCommandPalette> {
                     selectedColor: scheme.onSurface,
                     selectedTileColor: scheme.surfaceContainerHighest,
                     leading: Icon(action.icon, size: 18),
-                    title: Text(mdActionLabel(action)),
+                    title: Text(mdActionLabel(context, action)),
                     trailing: Text(
                       action.slash,
                       style: Theme.of(context).textTheme.bodySmall,

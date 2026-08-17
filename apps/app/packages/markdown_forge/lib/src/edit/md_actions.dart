@@ -12,8 +12,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/fold.dart';
 import 'md_editing.dart';
+import '../seams.dart';
 
 /// One thing a writer can do to the text.
 class MdAction {
@@ -100,10 +100,17 @@ MdEdit _insertBlock(String text, int start, int end, String block) {
   );
 }
 
-const _tableSkeleton = '| Başlık | Başlık |\n| --- | --- |\n|  |  |\n';
+/// The table a `/table` insert drops in.
+///
+/// The header cells were hardcoded Turkish until OPH-274 — a user-facing
+/// string that `check:i18n` cannot see, because it never reaches a `Text()`
+/// widget: it is typed INTO the user's document, which is the one place a
+/// wrong-language string is hardest to notice and most annoying to fix.
+String _tableSkeleton(String head) =>
+    '| $head | $head |\n| --- | --- |\n|  |  |\n';
 
 /// The actions, in the order the toolbar shows them.
-List<MdAction> mdActions() => [
+List<MdAction> mdActions({String tableHeader = 'Heading'}) => [
   MdAction(
     id: 'bold',
     icon: Icons.format_bold,
@@ -127,6 +134,15 @@ List<MdAction> mdActions() => [
     icon: Icons.format_color_fill,
     slash: '/highlight',
     apply: (t, s, e) => _wrap(t, s, e, '==', '=='),
+  ),
+  MdAction(
+    // GFM's own strikethrough. It had no button while Quill owned the
+    // formatting, because Quill had one — removing the rich editor without
+    // this would have quietly dropped a format the renderer already draws.
+    id: 'strike',
+    icon: Icons.strikethrough_s,
+    slash: '/strike',
+    apply: (t, s, e) => _wrap(t, s, e, '~~', '~~'),
   ),
   MdAction(
     id: 'code',
@@ -165,6 +181,12 @@ List<MdAction> mdActions() => [
     apply: (t, s, e) => _prefixLines(t, s, e, '## '),
   ),
   MdAction(
+    id: 'h3',
+    icon: Icons.text_format,
+    slash: '/h3',
+    apply: (t, s, e) => _prefixLines(t, s, e, '### '),
+  ),
+  MdAction(
     id: 'bullet',
     icon: Icons.format_list_bulleted,
     slash: '/list',
@@ -199,7 +221,7 @@ List<MdAction> mdActions() => [
     id: 'table',
     icon: Icons.table_chart_outlined,
     slash: '/table',
-    apply: (t, s, e) => _insertBlock(t, s, e, _tableSkeleton),
+    apply: (t, s, e) => _insertBlock(t, s, e, _tableSkeleton(tableHeader)),
   ),
   MdAction(
     id: 'divider',
@@ -229,6 +251,7 @@ List<MdAction> mdActions() => [
 List<MdAction> matchMdActions(
   String query, {
   String Function(MdAction)? label,
+  String Function(String) fold = defaultFold,
 }) {
   final trimmed = query.trim();
   if (trimmed.startsWith('/')) {
@@ -238,12 +261,12 @@ List<MdAction> matchMdActions(
         if (action.slash.startsWith(needle)) action,
     ];
   }
-  final needle = foldSearchText(trimmed);
+  final needle = fold(trimmed);
   if (needle.isEmpty) return mdActions();
   return [
     for (final action in mdActions())
-      if (foldSearchText(label?.call(action) ?? '').contains(needle) ||
-          foldSearchText(action.slash).contains(needle))
+      if (fold(label?.call(action) ?? '').contains(needle) ||
+          fold(action.slash).contains(needle))
         action,
   ];
 }

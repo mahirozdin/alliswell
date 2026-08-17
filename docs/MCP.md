@@ -70,10 +70,13 @@ Deliberate limits, so nothing here surprises you:
 - **Nothing can be deleted.** There is no delete tool and there never will be
   one without a new architecture decision. `unlink_note` detaches a note; it
   does not remove it.
-- **Notes you wrote in the app's editor cannot be rewritten from here.** Notes
-  the AI creates are markdown documents and it can rewrite those; a rich-text
-  note answers `NOTE_NOT_MARKDOWN` rather than being silently flattened. Its
-  title, pin and archive flags stay editable.
+- **Any note's body can be rewritten, and nothing is lost when it is.** Every
+  note is a markdown document ([ADR-0033](adr/0033-markdown-is-the-only-note-format.md)),
+  and the body being replaced is kept as a version you can restore. Until
+  2026-08-18 a note written in the app's rich editor answered
+  `NOTE_NOT_MARKDOWN` — the assistant could rename a note it was not allowed
+  to edit — because writing markdown onto a Delta would have left the body and
+  the canonical source disagreeing.
 - **Archiving a project stays in the app**, because it cascades over that
   project's tasks and notes and deserves your confirmation.
 - **File contents never leave through the connector** — no download links, no

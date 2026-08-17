@@ -1,31 +1,30 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
+import '../../../core/deep_link.dart';
 import '../../../i18n/i18n.dart';
+import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart' show UploadRowTile;
 import '../../files/ui/note_drop_target.dart';
 import '../../files/ui/note_media.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import '../../../theme/tokens.dart';
-import '../../../widgets/color_picker.dart';
+import '../markdown/markdown_forge_adapters.dart';
 import '../data/note.dart';
 import '../data/external_document.dart';
 import '../data/external_session.dart';
-import '../data/note_colors.dart';
 import '../data/note_document.dart';
 import 'external_doc_band.dart';
 import '../providers.dart';
 import 'modes/note_mode_control.dart';
-import 'modes/reading_mode.dart';
 import 'note_conflict_banner.dart';
 import 'note_versions_screen.dart';
-import 'modes/source_mode.dart';
 import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
 
@@ -108,14 +107,18 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _noteId = widget.note?.id;
     _isPinned = widget.note?.isPinned ?? false;
     _isArchived = widget.note?.isArchived ?? false;
-    _doc = NoteDocument(note: widget.note ?? _externalSeed())
-      ..addListener(_onDocChanged);
+    _doc = NoteDocument(
+      note: widget.note ?? _externalSeed(),
+      // D2's real question, asked directly now instead of being inferred from
+      // the content format (the OPH-270 finding).
+      cameFromOutside: widget.external,
+    )..addListener(_onDocChanged);
     // D1 opens a document that came from a file in Reading, which is right
     // when the OS handed it to us. This entry point is "Edit a file…", so it
     // lands on the editor instead — the mode control still offers both.
-    if (widget.external) _doc.setMode(_doc.editorMode);
+    if (widget.external) _doc.setMode(NoteMode.source);
     _doc.title.addListener(_markDirty);
-    _doc.quill.document.changes.listen((_) => _markDirty());
+    _doc.source.addListener(_markDirty);
   }
 
   /// V7 (OPH-268, finding #2): a change that arrived from another device lands
@@ -146,6 +149,8 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     if (_dirty && !widget.external) unawaited(_save());
     _doc
       ..removeListener(_onDocChanged)
+      ..title.removeListener(_markDirty)
+      ..source.removeListener(_markDirty)
       ..dispose();
     super.dispose();
   }
@@ -173,7 +178,6 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       isPinned: false,
       isArchived: false,
       revision: 0,
-      contentFormat: NoteFormat.markdown.wire,
       contentMarkdown: session.document.markdown,
     );
   }
@@ -298,47 +302,6 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     await ref.read(noteStoreProvider).update(_noteId!, {'isArchived': next});
   }
 
-  /// The conversion door (DESIGN §29 D1, as amended in OPH-248).
-  ///
-  /// Named, deliberate, and warned — never a silent reinterpretation of
-  /// somebody's note. Going to markdown flattens what Delta could hold; coming
-  /// back parses what markdown can express. Either way the OTHER form is
-  /// rebuilt from this one, so it is one-way in effect even though the button
-  /// exists in both directions.
-  Future<void> _convert() async {
-    final toMarkdown = _doc.convertTarget == NoteFormat.markdown;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      useRootNavigator: true,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          toMarkdown
-              ? 'note.convertToMarkdown'.tr()
-              : 'note.convertToRich'.tr(),
-        ),
-        content: Text(
-          toMarkdown
-              ? 'note.convertToMarkdownBody'.tr()
-              : 'note.convertToRichBody'.tr(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('common.cancel'.tr()),
-          ),
-          FilledButton(
-            key: const Key('note-convert-confirm'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('note.convertAction'.tr()),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    _doc.convert();
-    _markDirty();
-  }
-
   Future<void> _delete() async {
     final id = _noteId;
     final confirmed = await showDialog<bool>(
@@ -448,14 +411,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                       context,
                       ref,
                       title: _titleText,
-                      deltaJson: _doc.deltaJson,
+                      markdown: _doc.markdown,
                       updatedAt: widget.note?.updatedAt,
                     ),
                   );
-                  return;
-                }
-                if (value == 'convert') {
-                  unawaited(_convert());
                   return;
                 }
                 if (value == 'versions') {
@@ -486,19 +445,6 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.picture_as_pdf_outlined),
                     title: Text('note.exportPdf'.tr()),
-                  ),
-                ),
-                PopupMenuItem(
-                  key: const Key('note-convert'),
-                  value: 'convert',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.swap_horiz),
-                    title: Text(
-                      _doc.convertTarget == NoteFormat.markdown
-                          ? 'note.convertToMarkdown'.tr()
-                          : 'note.convertToRich'.tr(),
-                    ),
                   ),
                 ),
                 if (_noteId != null)
@@ -550,7 +496,17 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                 ],
               ),
             ),
-            if (_doc.mode == NoteMode.live) _liveToolbar(),
+            // The bar that used to be Quill's, in the same place (OPH-274).
+            // Reading has no toolbar (D4), so it is mounted with the editor.
+            if (_doc.mode == NoteMode.source)
+              MdEditorToolbar(
+                controller: _doc.source,
+                onApplied: _markDirty,
+                trailing: NoteMediaButtons(
+                  document: _doc,
+                  ensureNote: _ensureNote,
+                ),
+              ),
             // In-flight/failed media uploads for THIS note (F2: visible state).
             for (final job
                 in ref
@@ -615,7 +571,6 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// to the same room, not a different feature.
   Future<void> _uploadDropped(List<PickedUpload> picks) async {
     if (picks.isEmpty) return;
-    final messenger = ScaffoldMessenger.maybeOf(context);
     final target = await _ensureNote();
     if (target == null) return;
 
@@ -629,75 +584,36 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             source: pick,
           );
       if (fileId == null) continue; // the upload strip shows the failure
-      final outcome = _doc.insertFile(
+      // Every dropped file leaves a mark in the document now (ADR-0033) — an
+      // image embeds, anything else becomes a link the reading view opens.
+      _doc.insertFile(
         fileId: fileId,
         name: pick.name,
         mime: pick.mime ?? mimeForName(pick.name),
       );
-      if (outcome == NoteInsert.attachedOnly) {
-        messenger?.showSnackBar(
-          SnackBar(content: Text('file.attachedNotEmbedded'.tr())),
-        );
-      }
       _markDirty();
     }
   }
 
-  Widget _liveToolbar() => Padding(
-    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        child: Row(
-          children: [
-            Expanded(
-              child: QuillSimpleToolbar(
-                controller: _doc.quill,
-                config: const QuillSimpleToolbarConfig(
-                  multiRowsDisplay: false,
-                  showFontFamily: false,
-                  showFontSize: false,
-                  showSubscript: false,
-                  showSuperscript: false,
-                  showAlignmentButtons: false,
-                  showIndent: false,
-                  showDirection: false,
-                  // OPH-259 (§33 R3): the stock colour buttons open a dialog
-                  // with a HEX FIELD, which round 1 forbade. Ours replace
-                  // them — and store a name, not a hex, so each theme paints
-                  // its own readable value (§33 R4).
-                  showColorButton: false,
-                  showBackgroundColorButton: false,
-                  showSearchButton:
-                      true, // D15: it shipped disabled — a control that did nothing (§22).
-                ),
-              ),
-            ),
-            _NoteColorButton(
-              key: const Key('note-text-color'),
-              icon: Icons.format_color_text,
-              titleKey: 'color.text',
-              palette: kAwNoteTextColors,
-              attribute: Attribute.color,
-              controller: _doc.quill,
-              onApplied: _markDirty,
-            ),
-            _NoteColorButton(
-              key: const Key('note-highlight-color'),
-              icon: Icons.format_color_fill,
-              titleKey: 'color.highlight',
-              palette: kAwNoteHighlightColors,
-              attribute: Attribute.background,
-              controller: _doc.quill,
-              onApplied: _markDirty,
-            ),
-            // Epic 14 (OPH-156): inline images/videos.
-            NoteMediaButtons(document: _doc, ensureNote: _ensureNote),
-          ],
-        ),
-      ),
-    ),
-  );
+  /// A tap on a link in the rendered document.
+  ///
+  /// Wired in OPH-274, and not a nicety: markdown became the only way a file
+  /// reaches a note, so a non-image attachment is now written as
+  /// `[name](alliswell://file/{id})` instead of the Quill embed it used to
+  /// get. Without a handler that link would LOOK tappable and do nothing —
+  /// §22's dead affordance, introduced by the very change that was supposed to
+  /// stop hiding attachments.
+  ///
+  /// In-app schemes route (ADR-0016, `awRouteForUri`); everything the
+  /// allowlist let through goes to the OS.
+  void _openLink(Uri uri) {
+    final route = awRouteForUri(uri);
+    if (route != null) {
+      GoRouter.of(context).push(route);
+      return;
+    }
+    unawaited(ref.read(urlLauncherProvider)(uri));
+  }
 
   Widget _body() => switch (_doc.mode) {
     // D4: Reading is never editable-looking — no caret, no placeholder, no
@@ -705,124 +621,18 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     // and they need the source map this renderer already carries.)
     // D13/D14/D16 live in ReadingMode: the outline, folding and `#anchor`
     // jumps all need the same block index, so they share one owner.
-    NoteMode.reading => ReadingMode(markdown: _doc.markdown),
-    NoteMode.source => SourceMode(document: _doc, onChanged: _markDirty),
-    NoteMode.live => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: QuillEditor.basic(
-        controller: _doc.quill,
-        // OPH-270. Both of these MUST be passed: `QuillEditor.basic` builds a
-        // new FocusNode and ScrollController whenever they are absent, and this
-        // is a `build()` — so every rebuild took the caret out of the body and
-        // handed the focus to the title. They belong to the document, like
-        // every other controller here (D3).
-        focusNode: _doc.quillFocus,
-        scrollController: _doc.quillScroll,
-        config: QuillEditorConfig(
-          placeholder: 'note.startWriting'.tr(),
-          padding: const EdgeInsets.only(top: 8, bottom: 24),
-          embedBuilders: awNoteEmbedBuilders(),
-          // §33 R4: the document stores `aw:text-red`; the theme decides what
-          // that is. `stringToColor` consults this map before it tries to
-          // parse anything, so the names are resolved by the package itself.
-          customStyles: DefaultStyles(
-            palette: awNoteColorPalette(Theme.of(context).brightness),
-          ),
-        ),
-      ),
+    NoteMode.reading => ReadingMode(
+      markdown: _doc.markdown,
+      onOpenLink: _openLink,
+      onTapImage: (gallery) => awOpenMarkdownGallery(context, gallery),
+    ),
+    NoteMode.source => SourceMode(
+      controller: _doc.source,
+      onChanged: _markDirty,
     ),
   };
 }
 
-/// A note-colour button: text colour or highlight (OPH-259, §33 R1/R3).
-///
-/// Replaces flutter_quill's stock pair, whose dialog offered a **hex field** —
-/// the one thing round 1 said end users must never see. What it writes is a
-/// NAME (`aw:text-red`), not a hex, so light and dark each paint a value that
-/// has been contrast-checked against the surface it actually lands on (§33 R4).
-class _NoteColorButton extends ConsumerWidget {
-  const _NoteColorButton({
-    super.key,
-    required this.icon,
-    required this.titleKey,
-    required this.palette,
-    required this.attribute,
-    required this.controller,
-    required this.onApplied,
-  });
-
-  final IconData icon;
-  final String titleKey;
-  final List<AwNoteColor> palette;
-  final Attribute<dynamic> attribute;
-  final QuillController controller;
-  final VoidCallback onApplied;
-
-  String? get _current {
-    final value = controller.getSelectionStyle().attributes[attribute.key];
-    return value?.value as String?;
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final brightness = Theme.of(context).brightness;
-    final selected = awResolveNoteColor(_current, brightness);
-
-    void apply(String? id) {
-      controller.formatSelection(Attribute.clone(attribute, id));
-      onApplied();
-      Navigator.of(context).maybePop();
-    }
-
-    return IconButton(
-      icon: Icon(icon, color: selected),
-      tooltip: titleKey.tr(),
-      onPressed: () => showModalBottomSheet<void>(
-        context: context,
-        // OPH-212: the ROOT navigator, or the shell's own chrome paints over it.
-        useRootNavigator: true,
-        showDragHandle: true,
-        useSafeArea: true,
-        constraints: const BoxConstraints(maxWidth: 560),
-        builder: (sheetContext) => SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AwSpace.x4,
-              0,
-              AwSpace.x4,
-              AwSpace.x6,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  titleKey.tr(),
-                  style: Theme.of(sheetContext).textTheme.titleMedium,
-                ),
-                const SizedBox(height: AwSpace.x3),
-                AwColorPicker(
-                  keyPrefix: attribute.key == Attribute.background.key
-                      ? 'note-mark'
-                      : 'note-ink',
-                  palette: [for (final color in palette) color.id],
-                  selected: _current,
-                  colorOf: (id) =>
-                      awResolveNoteColor(id, brightness) ?? Colors.transparent,
-                  onPicked: apply,
-                  onCleared: () => apply(null),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// What autosave last did (D21).
 enum _SaveState { idle, saving, saved, failed }
 
 /// Small, non-blocking, and silent when there is nothing to say.

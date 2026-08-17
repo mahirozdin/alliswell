@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.6.0+26
+version: 1.7.0+27
 environment:
   sdk: ^3.12.0
 
@@ -42,7 +42,6 @@ dependencies:
   go_router: ^17.3.0
   dio: ^5.10.0
   flutter_secure_storage: ^10.3.1
-  flutter_quill: ^11.4.0
   shared_preferences: ^2.5.5
   web: ^1.1.1
   drift: ^2.34.2
@@ -67,6 +66,13 @@ dependencies:
   # MainActivity does not have to know about.
   alliswell_docref:
     path: packages/alliswell_docref
+  # The markdown renderer and source editor (OPH-274, ADR-0033). Extracted so
+  # other Flutter apps can use it; consumed by path until the first pub.dev
+  # release from github.com/bubiapps/markdown_forge. The package cannot see
+  # AwTokens, `.tr()` or riverpod — the seams are in
+  # `features/notes/markdown/markdown_forge_adapters.dart`.
+  markdown_forge:
+    path: packages/markdown_forge
   # 12.x (beta) is REQUIRED on AGP 9: 11.0.2 skips applying its own Kotlin
   # plugin when it detects AGP 9, expecting Flutter to compile its Kotlin —
   # which Flutter 3.44 does not, so the release build cannot find
@@ -143,9 +149,10 @@ dependencies:
 
   # The markdown workspace (round 17, ADR-0028 — OPH-247).
   #
-  # `markdown` was already in the tree TRANSITIVELY (via flutter_quill); it is
-  # declared directly because we now import it from lib/, and importing a
-  # transitive package trips `depend_on_referenced_packages`. It is the parser
+  # `markdown` arrived TRANSITIVELY at first (via flutter_quill, which ADR-0033
+  # removed along with eleven other packages it dragged in). It is declared
+  # directly because we import it from lib/, and importing a transitive
+  # package trips `depend_on_referenced_packages`. It is the parser
   # only — the widget tree is ours, because no renderer package exposes the
   # node -> source-line map that D4/D5/D13/D14/D16 all depend on (measured in
   # OPH-246: `scripts/markdown/measure_coverage.dart`).

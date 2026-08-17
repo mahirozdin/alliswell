@@ -672,23 +672,28 @@ describe('note tools (OPH-263)', () => {
     expect(tables.notes.filter((n) => n.title === 'Tek kere')).toHaveLength(1);
   });
 
-  it('a rich-text note refuses a body rewrite but still takes title/pin/archive', async () => {
-    // The app's own notes are delta-canonical; this is the note the user typed.
+  it('a note born from a Delta now takes a body rewrite — NOT_MARKDOWN is gone', async () => {
+    // Until ADR-0033 the assistant could rename this note but not edit it: it
+    // was delta-canonical, and writing markdown onto one would have left the
+    // body and the canonical source disagreeing. There is one canonical form
+    // now, and OPH-267's version history is what makes the write recoverable.
     const rich = await seed(owner.headers, owner.workspace.id, 'notes', {
       title: 'Elle yazılmış',
       contentDelta: [{ insert: 'biçimli metin\n' }],
     });
 
-    const refused = await callTool(app, access, 'update_note', {
+    const rewritten = await callTool(app, access, 'update_note', {
       noteId: rich.id,
-      contentMarkdown: 'düzleştirme',
+      contentMarkdown: 'asistan yazdı',
     });
-    expect(refused.isError).toBe(true);
-    expect(refused.structuredContent.code).toBe('NOTE_NOT_MARKDOWN');
-    // Nothing was flattened: the delta is untouched and the body still reads.
+    expect(rewritten.isError).toBeFalsy();
     const row = tables.notes.find((n) => n.id === rich.id);
-    expect(row.content_markdown ?? null).toBeNull();
-    expect(row.plain_text).toContain('biçimli metin');
+    expect(row.content_markdown).toBe('asistan yazdı');
+    expect(row.content_format).toBe('markdown');
+    // The search column follows the body it just replaced.
+    expect(row.plain_text).toBe('asistan yazdı');
+    // The body it replaced is not gone — it is a version.
+    expect(tables.note_versions.filter((v) => v.note_id === rich.id).length).toBeGreaterThan(1);
 
     const renamed = await callTool(app, access, 'update_note', {
       noteId: rich.id,

@@ -47,7 +47,7 @@ describe.runIf(enabled)('integration: notes with FULLTEXT search', () => {
       payload,
     });
 
-  it('round-trips delta JSON and searches via the FULLTEXT index', async () => {
+  it('converts an incoming Delta and searches via the FULLTEXT index', async () => {
     const delta = [
       { insert: 'Karadeniz yaylaları gezi rotası' },
       { insert: '\n', attributes: { header: 1 } },
@@ -55,7 +55,12 @@ describe.runIf(enabled)('integration: notes with FULLTEXT search', () => {
     ];
     const created = await createNote({ title: 'Yayla planı', contentDelta: delta });
     expect(created.statusCode).toBe(201);
-    expect(created.json().contentDelta).toEqual(delta);
+    // ADR-0033: a Delta from a client that predates the change is converted on
+    // the way in. What round-trips is the markdown it became.
+    expect(created.json().contentDelta).toBeNull();
+    expect(created.json().contentMarkdown).toBe(
+      '# Karadeniz yaylaları gezi rotası\nAyder, Pokut, Badara detayları burada.',
+    );
     expect(created.json().plainText).toContain('Karadeniz yaylaları');
 
     await createNote({ title: 'Alakasız not', contentDelta: [{ insert: 'başka konu\n' }] });

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -30,6 +29,10 @@ Ağustos sonu için **Pokut** rotası.
 - [ ] rezervasyon
 
 > Sis çökerse Pokut'ta kal.
+
+| Gün | Yer |
+| --- | --- |
+| 1   | Ayder |
 ''';
 
 Future<Widget> _app(
@@ -93,7 +96,7 @@ void main() {
     expect(find.byKey(const Key('md-source-name')), findsOneWidget);
     expect(find.text('yayla.md'), findsOneWidget);
     // Rendered as a real document, not as raw text.
-    expect(find.byType(QuillEditor), findsOneWidget);
+    expect(find.byKey(const Key('md-import-preview')), findsOneWidget);
     // The leading H1 became the title instead of repeating in the body.
     expect(
       tester
@@ -109,21 +112,19 @@ void main() {
     expect(api.notes, hasLength(1));
     final created = api.notes.single;
     expect(created['title'], 'Yayla planı');
-    // The structure survived the import — this is a note, not a wall of text.
-    final delta = (created['contentDelta'] as List)
-        .cast<Map<String, dynamic>>();
-    expect(
-      delta.any((op) => (op['attributes'] as Map?)?['list'] == 'checked'),
-      isTrue,
-    );
-    expect(
-      delta.any((op) => (op['attributes'] as Map?)?['blockquote'] == true),
-      isTrue,
-    );
-    expect(
-      delta.any((op) => (op['attributes'] as Map?)?['bold'] == true),
-      isTrue,
-    );
+    // ADR-0033: the file is stored BYTE FOR BYTE, minus the H1 that became
+    // the title. This used to round-trip through `markdownToDelta`, so an
+    // import silently kept only what Delta could hold — the assertions below
+    // were about surviving that trip. There is no trip left to survive.
+    expect(created['contentFormat'], 'markdown');
+    expect(created['contentDelta'], isNull);
+    final body = created['contentMarkdown'] as String;
+    expect(body, isNot(contains('# Yayla planı')), reason: 'title, not body');
+    expect(body, contains('- [x]'));
+    expect(body, contains('>'));
+    expect(body, contains('**'));
+    // The thing the old path COULD NOT keep, asserted for the first time.
+    expect(body, contains('|'), reason: 'the table survived');
   });
 
   testWidgets('the Notes tab can open a file itself (reachability)', (

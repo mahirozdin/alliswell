@@ -18,8 +18,8 @@
 /// hyphens.
 library;
 
-import '../../../core/fold.dart';
 import 'md_parse.dart';
+import '../seams.dart';
 
 /// One heading, and where it lives.
 class MdHeading {
@@ -54,7 +54,15 @@ class MdOutlineNode {
 }
 
 /// A document's headings, flat and in document order.
-List<MdHeading> outlineHeadings(MdDocument doc) {
+/// The heading tree, slugged with [fold] so anchors and headings agree.
+///
+/// The fold has to be the SAME on both sides or `#türkçe-başlık` will not find
+/// "Türkçe Başlık" — which is the entire point of D16, and the reason this is
+/// a parameter rather than a constant.
+List<MdHeading> outlineHeadings(
+  MdDocument doc, {
+  String Function(String) fold = defaultFold,
+}) {
   final seen = <String, int>{};
   final headings = <MdHeading>[];
 
@@ -64,7 +72,7 @@ List<MdHeading> outlineHeadings(MdDocument doc) {
     if (tag == null || !RegExp(r'^h[1-6]$').hasMatch(tag)) continue;
 
     final text = block.node.textContent.trim();
-    final base = markdownSlug(text);
+    final base = markdownSlug(text, fold: fold);
     // GitHub's own de-duplication: the second "Kurulum" is `kurulum-1`. Without
     // it two sections share an anchor and one of them is unreachable.
     final count = seen.update(base, (n) => n + 1, ifAbsent: () => 0);
@@ -106,10 +114,14 @@ List<MdOutlineNode> buildOutline(List<MdHeading> headings) {
 }
 
 /// GitHub's heading slug, with Turkish folded rather than deleted (D16).
-String markdownSlug(String heading) {
-  // Fold FIRST: `foldSearchText` lowercases and maps ı→i, ş→s, ç→c… Doing it
-  // after stripping punctuation would already have lost the letters.
-  final folded = foldSearchText(heading);
+String markdownSlug(
+  String heading, {
+  String Function(String) fold = defaultFold,
+}) {
+  // Fold FIRST: the host's fold lowercases and (in AllisWell's case) maps
+  // ı→i, ş→s, ç→c… Doing it after stripping punctuation would already have
+  // lost the letters.
+  final folded = fold(heading);
   return folded
       // GitHub keeps letters, digits, spaces and hyphens; everything else goes.
       .replaceAll(RegExp(r'[^\p{L}\p{N}\s-]', unicode: true), '')
@@ -121,8 +133,12 @@ String markdownSlug(String heading) {
 /// Compared on the SLUG, not the text: `#türkçe-başlık` and `#TÜRKÇE-BAŞLIK`
 /// name the same section, and a reader who typed the heading by hand should
 /// still land on it.
-MdHeading? headingForAnchor(List<MdHeading> headings, String anchor) {
-  final wanted = markdownSlug(_decode(anchor));
+MdHeading? headingForAnchor(
+  List<MdHeading> headings,
+  String anchor, {
+  String Function(String) fold = defaultFold,
+}) {
+  final wanted = markdownSlug(_decode(anchor), fold: fold);
   for (final heading in headings) {
     if (heading.slug == wanted) return heading;
   }

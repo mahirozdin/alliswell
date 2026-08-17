@@ -12,9 +12,8 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../i18n/i18n.dart';
-import '../../../theme/tokens.dart';
 import 'md_theme.dart';
+import '../seams.dart';
 
 class MdCallout extends StatelessWidget {
   const MdCallout({super.key, required this.kind, required this.children});
@@ -29,16 +28,16 @@ class MdCallout extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
+      margin: const EdgeInsets.symmetric(vertical: MdSpace.x2),
       padding: const EdgeInsets.fromLTRB(
-        AwSpace.x3,
-        AwSpace.x3,
-        AwSpace.x3,
-        AwSpace.x3,
+        MdSpace.x3,
+        MdSpace.x3,
+        MdSpace.x3,
+        MdSpace.x3,
       ),
       decoration: BoxDecoration(
         color: styles.alertTint(kind),
-        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+        borderRadius: const BorderRadius.all(Radius.circular(MdRadius.m)),
         border: Border(left: BorderSide(color: accent, width: 3)),
       ),
       child: Column(
@@ -47,9 +46,9 @@ class MdCallout extends StatelessWidget {
           Row(
             children: [
               Icon(styles.alertIcon(kind), size: 18, color: accent),
-              const SizedBox(width: AwSpace.x2),
+              const SizedBox(width: MdSpace.x2),
               Text(
-                styles.alertLabelKey(kind).tr(),
+                styles.alertLabel(context, kind),
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   // onSurface, not the accent: the accent fails 4.5:1 as text
                   // on its own card in light mode (warning measures 2.96).
@@ -59,7 +58,7 @@ class MdCallout extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AwSpace.x1),
+          const SizedBox(height: MdSpace.x1),
           ...children,
         ],
       ),

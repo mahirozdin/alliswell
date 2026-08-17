@@ -97,6 +97,9 @@ void main() {
       'isPinned': true,
       'isArchived': false,
       'revision': 2,
+      // ADR-0033: the server sends `contentDelta: null` now. Kept in the
+      // fixture to prove the parser IGNORES it rather than tripping over it —
+      // a client on this release must survive a server that still sends one.
       'contentDelta': [
         {'insert': 'içerik\n'},
       ],
@@ -106,7 +109,7 @@ void main() {
       ],
     });
     expect(note.isPinned, isTrue);
-    expect(note.contentDelta, hasLength(1));
+    expect(note.contentMarkdown, 'içerik');
     expect(note.links.single.entityType, 'task');
   });
 }

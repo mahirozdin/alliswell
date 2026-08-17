@@ -42,58 +42,12 @@ class AwNoteColor {
 }
 
 /// Text colours: legible on the surface each theme actually paints.
-const kAwNoteTextColors = <AwNoteColor>[
-  AwNoteColor(
-    id: 'aw:text-red',
-    labelKey: 'color.red',
-    light: Color(0xFFB3261E),
-    dark: Color(0xFFFF9E96),
-  ),
-  AwNoteColor(
-    id: 'aw:text-orange',
-    labelKey: 'color.orange',
-    light: Color(0xFFA8410A),
-    dark: Color(0xFFFFB07A),
-  ),
-  AwNoteColor(
-    id: 'aw:text-green',
-    labelKey: 'color.green',
-    light: Color(0xFF1B6E2F),
-    dark: Color(0xFF6FE08A),
-  ),
-  AwNoteColor(
-    id: 'aw:text-teal',
-    labelKey: 'color.teal',
-    light: Color(0xFF0F6E6E),
-    dark: Color(0xFF5FD9D9),
-  ),
-  AwNoteColor(
-    id: 'aw:text-blue',
-    labelKey: 'color.blue',
-    light: Color(0xFF0B54D0),
-    dark: Color(0xFF8FBEFF),
-  ),
-  AwNoteColor(
-    id: 'aw:text-purple',
-    labelKey: 'color.purple',
-    light: Color(0xFF6D28D9),
-    dark: Color(0xFFC4A7FF),
-  ),
-  AwNoteColor(
-    id: 'aw:text-pink',
-    labelKey: 'color.pink',
-    light: Color(0xFF9D174D),
-    dark: Color(0xFFFF9EC4),
-  ),
-  AwNoteColor(
-    id: 'aw:text-grey',
-    labelKey: 'color.grey',
-    light: Color(0xFF4A5568),
-    dark: Color(0xFFAEB9D4),
-  ),
-];
+/// ADR-0033 removed `kAwNoteTextColors` here. Text colour had no markdown
+/// representation (GFM has no syntax for it — §33 R6 had already parked it
+/// with that reason), so with the rich editor gone the twelve names had no
+/// writer, no renderer and no reader. The HIGHLIGHT palette below survives:
+/// `==mark==` is markdown's own, and the renderer draws it from these names.
 
-/// Highlight fills: pale under dark ink, deep under light ink.
 const kAwNoteHighlightColors = <AwNoteColor>[
   AwNoteColor(
     id: 'aw:mark-yellow',
@@ -133,7 +87,7 @@ const kAwNoteHighlightColors = <AwNoteColor>[
   ),
 ];
 
-const kAwNoteColors = [...kAwNoteTextColors, ...kAwNoteHighlightColors];
+const kAwNoteColors = kAwNoteHighlightColors;
 
 /// What a bare `==mark==` means when it becomes a Delta (OPH-259).
 ///
@@ -143,10 +97,6 @@ const kAwNoteColors = [...kAwNoteTextColors, ...kAwNoteHighlightColors];
 const kAwDefaultHighlightId = 'aw:mark-yellow';
 
 /// The map flutter_quill resolves note colours through.
-Map<String, Color> awNoteColorPalette(Brightness brightness) => {
-  for (final color in kAwNoteColors) color.id: color.forBrightness(brightness),
-};
-
 /// Looks a stored value up. Returns null for anything that is not one of ours —
 /// a raw hex written by an older build, or by another editor.
 AwNoteColor? awNoteColorById(String? id) {

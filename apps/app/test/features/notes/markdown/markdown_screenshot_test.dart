@@ -19,8 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/files/providers.dart';
-import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
-import 'package:alliswell/src/features/notes/markdown/md_parse.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 import '../../../design_screenshots_test.dart' show loadRealFontsForStore;
@@ -176,7 +175,7 @@ void main() {
               home: Scaffold(
                 body: SafeArea(
                   child: SingleChildScrollView(
-                    child: AwMarkdown(
+                    child: MarkdownView(
                       document: parseMarkdown(fixture),
                       shrinkWrap: true,
                       onOpenLink: (_) {},

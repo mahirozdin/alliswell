@@ -416,18 +416,12 @@
     "mdProject": "Proje",
     "mdProjectHint": "İsteğe bağlı — not bu projenin altına düşer",
     "modeReading": "Okuma",
-    "modeLive": "Canlı",
     "modeSource": "Kaynak",
     "sourceHint": "Markdown yaz…",
     "paletteHint": "Komut ara…",
     "paletteEmpty": "Eşleşen komut yok.",
     "splitOn": "Bölünmüş görünüm",
     "splitOff": "Tek panel",
-    "convertToMarkdown": "Markdown'a çevir",
-    "convertToRich": "Zengin metne çevir",
-    "convertToMarkdownBody": "Not, doğrudan düzenlediğin bir markdown metnine dönüşür. Zengin editörün tuttuğu ama markdown'ın ifade edemediği biçimlendirme düzleşir.",
-    "convertToRichBody": "Not, zengin metin belgesine dönüşür. Bu uygulamanın ayrıştırmadığı markdown — tablo, dipnot, HTML — düz metin olarak kalır.",
-    "convertAction": "Çevir",
     "outline": "Anahat",
     "outlineEmpty": "Henüz başlık yok.",
     "find": "Bul",
@@ -454,7 +448,11 @@
       "quote": "Alıntı",
       "codeBlock": "Kod bloğu",
       "table": "Tablo",
-      "divider": "Ayraç"
+      "divider": "Ayraç",
+      "highlight": "Vurgu",
+      "strike": "Üstü çizili",
+      "h3": "Başlık 3",
+      "tableHeader": "Başlık"
     },
     "extTitle": "Dış belge",
     "extExternal": "Başkasının dosyası — yalnız sen dediğinde kaydedilir",
@@ -485,7 +483,8 @@
     "extRecents": "Son açılanlar",
     "extRecentsEmpty": "Henüz dosya açılmadı",
     "extNoProject": "Proje yok",
-    "extLinkProject": "Bir projeye bağla"
+    "extLinkProject": "Bir projeye bağla",
+    "exportUnsupportedBlock": "Desteklenmeyen blok — görmek için notu AllisWell’de açın."
   },
   "calendar": {
     "google": "Google Takvim",

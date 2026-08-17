@@ -37,9 +37,8 @@ import 'package:highlight/languages/typescript.dart';
 import 'package:highlight/languages/xml.dart';
 import 'package:highlight/languages/yaml.dart';
 
-import '../../../i18n/i18n.dart';
-import '../../../theme/tokens.dart';
 import 'md_theme.dart';
+import '../seams.dart';
 
 /// Grammars we ship, and the aliases people actually type in a fence.
 const Map<String, String> _aliases = {
@@ -143,10 +142,10 @@ class MdCodeBlock extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
+      margin: const EdgeInsets.symmetric(vertical: MdSpace.x2),
       decoration: BoxDecoration(
         color: styles.codePanel,
-        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+        borderRadius: const BorderRadius.all(Radius.circular(MdRadius.m)),
         border: Border.all(color: styles.hairline),
       ),
       child: Column(
@@ -157,10 +156,10 @@ class MdCodeBlock extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(
-              AwSpace.x3,
+              MdSpace.x3,
               0,
-              AwSpace.x3,
-              AwSpace.x3,
+              MdSpace.x3,
+              MdSpace.x3,
             ),
             child: SelectableText.rich(
               TextSpan(children: _spans(source, resolved, styles)),
@@ -229,7 +228,7 @@ class _HeaderState extends State<_Header> {
   Widget build(BuildContext context) {
     final styles = MdStyles.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AwSpace.x3, AwSpace.x1, AwSpace.x1, 0),
+      padding: const EdgeInsets.fromLTRB(MdSpace.x3, MdSpace.x1, MdSpace.x1, 0),
       child: Row(
         children: [
           Expanded(
@@ -244,8 +243,8 @@ class _HeaderState extends State<_Header> {
           IconButton(
             key: const Key('md-copy-code'),
             tooltip: _copied
-                ? 'markdown.copied'.tr()
-                : 'markdown.copyCode'.tr(),
+                ? context.mdStrings.copied
+                : context.mdStrings.copy,
             iconSize: 18,
             visualDensity: VisualDensity.compact,
             onPressed: _copy,

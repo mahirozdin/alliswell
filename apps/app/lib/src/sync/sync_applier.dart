@@ -292,13 +292,12 @@ NotesCompanion noteCompanion(Map<String, dynamic> d) => NotesCompanion.insert(
   projectId: Value(d['projectId'] as String?),
   createdFromTaskId: Value(d['createdFromTaskId'] as String?),
   title: d['title'] as String,
-  contentDelta: Value(
-    d['contentDelta'] == null ? null : jsonEncode(d['contentDelta']),
-  ),
+  // ADR-0033: the pull carries the document, and the document is markdown.
+  // `contentDelta` is not read — a server on this release always sends null,
+  // and one that predates it sends a body its own `contentMarkdown` already
+  // mirrors. Writing it would put a second, unmaintained copy in the replica.
   contentMarkdown: Value(d['contentMarkdown'] as String?),
-  // A server that predates OPH-248 sends nothing; 'delta' is the same answer
-  // its table default gives, so the replica never disagrees with it.
-  contentFormat: Value((d['contentFormat'] as String?) ?? 'delta'),
+  contentFormat: const Value('markdown'),
   plainText: Value((d['plainText'] as String?) ?? (d['snippet'] as String?)),
   isPinned: Value((d['isPinned'] as bool?) ?? false),
   isArchived: Value((d['isArchived'] as bool?) ?? false),

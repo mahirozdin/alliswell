@@ -190,7 +190,7 @@ function leanNote(row) {
     projectId: row.project_id ?? null,
     isPinned: Boolean(row.is_pinned),
     isArchived: Boolean(row.is_archived),
-    contentFormat: row.content_format ?? 'delta',
+    contentFormat: row.content_format ?? 'markdown',
     updatedAt: isoOrNull(row.updated_at),
   };
 }
@@ -1251,7 +1251,7 @@ export const MCP_TOOLS = [
     name: 'update_note',
     title: 'Update note',
     description:
-      'Change a note: `title`, `contentMarkdown` (REPLACES the body), `isPinned`, `isArchived`. The body can only be replaced on markdown notes — a note written in the app’s rich editor answers NOTE_NOT_MARKDOWN rather than being flattened, and its title, pin and archive flags stay editable. Pass `idempotencyKey` to make retries safe.',
+      'Change a note: `title`, `contentMarkdown` (REPLACES the body), `isPinned`, `isArchived`. Every note is a markdown document, so every body can be replaced; the previous body is kept as a version and can be restored. Pass `idempotencyKey` to make retries safe.',
     annotations: OVERWRITING_WRITE,
     inputSchema: {
       type: 'object',
@@ -1284,19 +1284,12 @@ export const MCP_TOOLS = [
       if (Object.keys(body).length === 0) {
         throw new McpToolError('INVALID_ARGUMENTS', 'Pass at least one field to change');
       }
-      // ADR-0028 §1: the canonical field decides what the note IS. Writing
-      // markdown onto a delta-canonical note would leave the body and the
-      // canonical source disagreeing — the note would say two things — and
-      // converting it silently would throw away formatting the user typed.
-      // Refuse, and say which note it is. (Tasks have no version history yet;
-      // OPH-267 is what makes body writes recoverable.)
-      if (body.contentMarkdown !== undefined && (row.content_format ?? 'delta') !== 'markdown') {
-        throw new McpToolError(
-          'NOTE_NOT_MARKDOWN',
-          'This note is a rich-text document; its body cannot be replaced through MCP',
-        );
-      }
-
+      // The NOTE_NOT_MARKDOWN refusal that stood here until ADR-0033 is gone
+      // with the thing it protected. Under ADR-0028 a note could be
+      // Delta-canonical, and writing markdown onto one would have left the body
+      // and the canonical source disagreeing — so the assistant could rename a
+      // note it was not allowed to edit. There is one canonical form now, and
+      // OPH-267's version history is what makes the write recoverable.
       await updateNote(app, { row, userId: auth.userId, body, origin: 'mcp' });
       await recordMcpAction(app, auth, {
         idempotencyKey: args.idempotencyKey,

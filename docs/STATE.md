@@ -3,7 +3,47 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17p (**EKRAN GÖRÜNTÜSÜ HATTI KURULDU — `search` bloğunun yalanı
+**Last updated:** 2026-08-18a (**OPH-274 — NOTLAR %100 MARKDOWN, RICH TEXT ÖLDÜ, MOTOR
+PAKET OLDU.** Sahibin kararıyla ADR-0028 §1 tersine çevrildi → **ADR-0033**: bir not markdown'dır,
+ikinci form yok. `flutter_quill` + 11 geçişli paket ağaçtan düştü; editör canlı sözdizimli
+(Obsidian tarzı, DESIGN §29 **D24**) native Source oldu; renderer+editör **`markdown_forge`
+0.1.0** paketine çıkarıldı (MIT, `apps/app/packages/`, bağımlılık yalnız markdown+highlight+
+flutter_math_fork — AwTokens/.tr()/riverpod'u derleyici görmüyor, adaptörler tek dosyada).
+Sunucu+replika migration'ları eski notları OTOMATİK dönüştürüyor (gömü URI'leri korunarak;
+`content_delta` silinmeden emekli). Eski v1.6.0 istemcisi haftalarca delta göndermeyi sürdürür —
+`noteMarkdownFrom` tek kapıda çevirir, başlık önekini soyar. **Asıl kazanç: Epic 25'in merge
+motoru artık HER çakışmada koşuyor** — `NOT_MARKDOWN` reddi tarihe karıştı, MCP `update_note`
+her gövdeyi yazabiliyor. Süitler: API unit **719**, entegrasyon **81** (üç ardışık koşu yeşil),
+app **1240**; analyze/format/no-ts/i18n/docs/contrast hepsi yeşil. Sürüm **v1.7.0** altı yerde
+kesildi, pod'lar yenilendi. **Deploy BU TURDA ALINDI — sahibin plan onayı deploy onayıdır**
+(`git tag v1.7.0` → release → deploy). Sıradaki iş: sahibin iki adımı — `bubiapps` org'unda
+`markdown_forge` repo'su + `dart pub publish`; ve canlı sözdiziminin gerçek-klavye turu.
+
+**Turun tek cümlesi: iki kanonik form her yazma yolunu ikiye böler — ve çatalın en pahalı dişi,
+merge motorunun kimsenin sahip olduğu tek not türünü reddetmesiydi.**
+
+**LWW'nin sinsi dişlisi:** intent adı GERÇEKTEN YAZILAN bir kolon olmalı. `contentDelta`
+intent'i kendine `content_delta` demeye devam etseydi, o kolona artık kimse yazmadığı için
+"yabancı yazma" karşılaştırması hiç eşleşmeyecek ve belge-seviyesi kilit SESSİZCE kilitlemeyi
+bırakacaktı. Testin `expected 'conflict' got 'applied'` çığlığı olmasa log'suz bir veri kaybı
+sınıfıydı. Benzer ikinci mayın: sürüm dönüştürülürken `content_hash` yeniden hesaplanmasa,
+"aynı gövde üst üste binmez" (ADR-0031 §4) garantisi bozulup deploy sonrası her notun İLK
+düzenlemesi mükerrer sürüm yığacaktı.
+
+**Önceden var olan flake ÇÖZÜLDÜ (spawn edilen chip'in işi bu oturumda bitti):** 500'lük
+import'un 9 kaybı `ER_LOCK_DEADLOCK` çıktı (probe ile ölçüldü). İki katmanlı düzeltme:
+(1) not domain'inin 7 transaction'ı `transactionWithRetry`'de (5 deneme, karesel geri çekilme —
+lineer 20-50 ms ÖLÇÜLDÜ ve yetmedi; 1205 bilinçle denenmez) — bu üretim düzeltmesi, iki gerçek
+kullanıcı aynı çarpışmayı yaşar; (2) entegrasyon dosyaları tek MySQL'e karşı artık SIRALI
+(`fileParallelism` yalnız `INTEGRATION=1`'de kapalı) — paralel dosyalar birbirinin yük testiydi.
+
+**Flutter dersi:** `InheritedWidget` `initState`'ten OKUNAMAZ — `ReadingMode` slug fold'unu
+`context.mdStrings`'ten alınca patladı; `didChangeDependencies` hem yasal hem doğru yer (host
+fold'u değişirse slug'lar bedavaya yenilenir). Ve `TextEditingController.buildTextSpan`
+`text`'i KARAKTER KARAKTER döndürmek zorunda — canlı sözdiziminin "işaretleri gizle" seçeneği
+teknik olarak yok, "sessizleştir" var; bu kısıt D24'ün metnine yazıldı.
+
+Önceki blok: 2026-08-17p (**EKRAN GÖRÜNTÜSÜ HATTI KURULDU — `search` bloğunun yalanı
 bitti.** Sahip çekimi ajana açtı; API + `seed-demo.mjs` + `flutter build web --release` +
 :8080 hattı ayağa kalktı, **16 web görüntüsü yenilendi** (`search.png` yeni). Landing artık
 iddiasını gösteriyor: "muller" yazılı, **"Kickoff at Café Müller"** bulunmuş. `check:docs`

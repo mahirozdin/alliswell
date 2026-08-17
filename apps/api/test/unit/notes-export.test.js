@@ -101,17 +101,10 @@ describe('GET /notes/:id/export (OPH-045)', () => {
       payload,
     });
 
-  it('exports markdown derived from the canonical delta, not the client markdown', async () => {
+  it('exports the stored markdown, titled', async () => {
     const created = await createNote({
       title: 'Gezi Planı',
-      contentDelta: [
-        { insert: 'Deniz feneri' },
-        { insert: '\n', attributes: { header: 1 } },
-        { insert: 'Rota ve ' },
-        { insert: 'malzeme', attributes: { bold: true } },
-        { insert: '\n' },
-      ],
-      contentMarkdown: 'ESKİ VE YANLIŞ CLIENT MARKDOWNI',
+      contentMarkdown: 'Rota ve **malzeme**',
     });
     expect(created.statusCode).toBe(201);
 
@@ -125,28 +118,43 @@ describe('GET /notes/:id/export (OPH-045)', () => {
     expect(res.headers['content-type']).toBe('text/markdown; charset=utf-8');
     // slugify drops the dotless ı (no NFKD decomposition) — "gezi-plan".
     expect(res.headers['content-disposition']).toBe('attachment; filename="gezi-plan.md"');
-    expect(res.body).toBe('# Deniz feneri\nRota ve **malzeme**');
+    // ADR-0033: the title lives in its own column and the STORED body never
+    // repeats it, so a file that has to stand on its own gets its heading here.
+    expect(res.body).toBe('# Gezi Planı\n\nRota ve **malzeme**');
   });
 
-  it('falls back to stored markdown for delta-less notes, empty when neither exists', async () => {
-    const withMarkdown = await createNote({ title: 'Sade', contentMarkdown: 'elle yazılmış' });
-    const bare = await createNote({ title: 'Boş' });
+  it('converts a Delta body on the way in, so the export is already markdown', async () => {
+    const created = await createNote({
+      title: 'Eski istemci',
+      contentDelta: [
+        { insert: 'Deniz feneri' },
+        { insert: '\n', attributes: { header: 1 } },
+        { insert: 'Rota ve ' },
+        { insert: 'malzeme', attributes: { bold: true } },
+        { insert: '\n' },
+      ],
+    });
 
-    const res1 = await app.inject({
+    const res = await app.inject({
       method: 'GET',
-      url: `/api/v1/notes/${withMarkdown.json().id}/export`,
+      url: `/api/v1/notes/${created.json().id}/export?format=md`,
       headers: owner.headers,
     });
-    expect(res1.statusCode).toBe(200);
-    expect(res1.body).toBe('elle yazılmış');
 
-    const res2 = await app.inject({
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toBe('# Eski istemci\n\n# Deniz feneri\nRota ve **malzeme**');
+  });
+
+  it('titles an empty note and never returns a bare empty file', async () => {
+    const bare = await createNote({ title: 'Boş' });
+
+    const res = await app.inject({
       method: 'GET',
       url: `/api/v1/notes/${bare.json().id}/export`,
       headers: owner.headers,
     });
-    expect(res2.statusCode).toBe(200);
-    expect(res2.body).toBe('');
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toBe('# Boş\n');
   });
 
   it('rejects unknown formats, foreign notes and missing notes', async () => {

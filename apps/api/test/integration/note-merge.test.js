@@ -357,4 +357,54 @@ describe.runIf(enabled)('integration: note three-way merge (OPH-268, Scenario A)
     expect(kept.content_markdown).toBe('Üçüncü hâli.\n');
     expect(kept.origin).toBe('conflict');
   });
+
+  it('OPH-274: a device still sending Deltas merges instead of conflicting', async () => {
+    // The gap ADR-0033 closed, over real MySQL. Under ADR-0028 this push
+    // answered NOT_MARKDOWN — a Delta is a JSON op array, so the merge engine
+    // Epic 25 built refused to run on the app's OWN notes, which is every note
+    // anybody had. The base is read back out of `note_versions` inside the
+    // request, so the migration having converted history is part of what this
+    // proves; a unit test with a fake table cannot.
+    const clientA = newId();
+    const clientB = newId();
+    const { noteId, base } = await createMarkdownNote(
+      clientA,
+      'birinci satır\nikinci satır\nüçüncü satır\n',
+      'Delta gönderen cihaz',
+    );
+
+    await push(clientA, await workspaceRevision(), {
+      entityType: 'note',
+      entityId: noteId,
+      operation: 'update',
+      baseRevision: base,
+      patch: { contentMarkdown: 'SUNUCU satırı\nikinci satır\nüçüncü satır\n' },
+    });
+
+    // The old client's shape, verbatim: ops, a derived markdown carrying the
+    // title heading, and contentFormat 'delta'.
+    const res = await push(clientB, await workspaceRevision(), {
+      entityType: 'note',
+      entityId: noteId,
+      operation: 'update',
+      baseRevision: base,
+      patch: {
+        contentDelta: [{ insert: 'birinci satır\nikinci satır\nESKİ İSTEMCİ satırı\n' }],
+        contentMarkdown:
+          '# Delta gönderen cihaz\n\nbirinci satır\nikinci satır\nESKİ İSTEMCİ satırı',
+        contentFormat: 'delta',
+      },
+    });
+
+    const result = res.json().results[0];
+    expect(result.status).toBe('merged');
+    expect(result.merged.contentMarkdown).toContain('SUNUCU satırı');
+    expect(result.merged.contentMarkdown).toContain('ESKİ İSTEMCİ satırı');
+    // The title heading the old client prefixed did not survive into the body.
+    expect(result.merged.contentMarkdown).not.toContain('# Delta gönderen cihaz');
+    // And the delta column stayed empty throughout.
+    const row = await app.db('notes').where({ id: noteId }).first();
+    expect(row.content_delta).toBeNull();
+    expect(row.content_format).toBe('markdown');
+  });
 });

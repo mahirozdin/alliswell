@@ -25,6 +25,7 @@ import '../../../i18n/i18n.dart';
 import '../../../widgets/sheets.dart';
 import '../../files/providers.dart';
 import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
+import '../data/markdown_blocks.dart';
 import '../data/note_blocks.dart';
 import '../data/note_pdf.dart';
 
@@ -139,7 +140,7 @@ Future<void> exportNoteAsPdf(
   BuildContext context,
   WidgetRef ref, {
   required String title,
-  required List<Map<String, dynamic>> deltaJson,
+  required String markdown,
   DateTime? updatedAt,
 }) async {
   final navigator = Navigator.of(context, rootNavigator: true);
@@ -162,7 +163,13 @@ Future<void> exportNoteAsPdf(
 
   Uint8List bytes;
   try {
-    final blocks = deltaToBlocks(deltaJson);
+    // OPH-274: the last delta dependency outside the tests. Blocks the page
+    // cannot draw (math, diagrams, raw HTML) name themselves instead of
+    // vanishing — DESIGN §10 F3, applied to paper.
+    final blocks = markdownToBlocks(
+      markdown,
+      placeholderFor: (_) => 'note.exportUnsupportedBlock'.tr(),
+    );
     final fonts = await ref.read(notePdfFontsProvider.future);
     final images = await _resolveImages(ref, blocks);
     bytes = await buildNotePdf(

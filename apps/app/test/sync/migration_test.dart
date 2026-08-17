@@ -92,6 +92,16 @@ void main() {
       VALUES ('T1', 'W1', 'v1 tarihinden kalma iş', 'open', 'high',
               'Europe/Istanbul', 0, 0, 0, 7)
     ''');
+    // A note as the rich editor left it: a Delta, no markdown, and a
+    // `plain_text` derived from the ops. This is what every note in every
+    // replica looked like before ADR-0033, and it is what v19 has to convert.
+    await db.customStatement(r'''
+      INSERT INTO notes (id, workspace_id, title, content_delta, plain_text,
+                         is_pinned, is_archived, revision)
+      VALUES ('N1', 'W1', 'Eski not',
+              '[{"insert":"kalın","attributes":{"bold":true}},{"insert":"\n"}]',
+              'kalın', 0, 0, 3)
+    ''');
     // Timestamps are ISO text in this database (OPH-054 — DATETIME(3)
     // precision round-trips), not unix ints.
     await db.customStatement('''
@@ -173,16 +183,31 @@ void main() {
       // v16 (OPH-242): the share pipeline's diagnostic trail, same story —
       // device-local, never synced, blank until something is shared here.
       expect(await db.select(db.shareEvents).get(), isEmpty);
-      // v17 (OPH-248): a COLUMN this time, not a table — and the point of
-      // ADR-0028 §1 is that it needs no backfill. A note that existed before
-      // the column comes out of the migration already saying what it is.
-      final migratedNotes = await db.select(db.notes).get();
-      for (final note in migratedNotes) {
-        expect(note.contentFormat, 'delta');
-        // v18 (OPH-268): no note arrives from a migration in conflict — the
-        // pointer is written by a push result, never by an upgrade.
-        expect(note.conflictVersionId, null);
-      }
+      // v17 (OPH-248) added a `content_format` COLUMN with no backfill.
+      // v19 (OPH-274, ADR-0033) is the backfill it never needed until markdown
+      // became the only canonical form — and it is the one migration in this
+      // file that rewrites CONTENT, so it is worth being specific about.
+      final note = await (db.select(
+        db.notes,
+      )..where((n) => n.id.equals('N1'))).getSingle();
+      expect(note.contentFormat, 'markdown');
+      expect(
+        note.contentMarkdown,
+        '**kalın**',
+        reason:
+            'the Delta was converted in place, not left for the next pull '
+            '— a device that stays offline would otherwise render an empty '
+            'body, because its markdown column was never filled',
+      );
+      // The delta is NOT cleared: an escape hatch a human can still read.
+      expect(note.contentDelta, isNot(null));
+      // The search columns follow the new canonical field. They were derived
+      // from the delta, and offline search reads whatever is canonical.
+      expect(note.plainText, 'kalın');
+      expect(note.bodyFold, 'kalin');
+      // v18 (OPH-268): no note arrives from a migration in conflict — the
+      // pointer is written by a push result, never by an upgrade.
+      expect(note.conflictVersionId, null);
 
       // The outbox came through: nothing the user wrote offline was stranded.
       final pending = await db.select(db.pendingMutations).get();
@@ -194,7 +219,7 @@ void main() {
       expect(pending.single.baseRevision, null);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 18);
+      expect(version.data['user_version'], 19);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -240,7 +265,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 18);
+      expect(version.data['user_version'], 19);
       await db.close();
     },
   );

@@ -12,22 +12,30 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../i18n/i18n.dart';
-import '../../../../theme/tokens.dart';
-import '../../markdown/aw_markdown.dart';
-import '../../markdown/md_outline.dart';
-import '../../markdown/md_parse.dart';
-import '../../markdown/md_scroll.dart';
-import '../../markdown/md_theme.dart';
+import 'markdown_view.dart';
+import 'md_outline.dart';
+import 'md_parse.dart';
+import 'md_scroll.dart';
+import 'md_theme.dart';
+import '../seams.dart';
 
 /// The width at which the outline becomes a panel instead of a sheet.
 const double kNoteOutlineBreakpoint = 900;
 
 class ReadingMode extends StatefulWidget {
-  const ReadingMode({super.key, required this.markdown, this.onOpenLink});
+  const ReadingMode({
+    super.key,
+    required this.markdown,
+    this.onOpenLink,
+    this.onTapImage,
+  });
 
   final String markdown;
   final void Function(Uri uri)? onOpenLink;
+
+  /// A tap on an image, with the document's whole gallery in body order and
+  /// the index that was tapped. The host opens its own viewer.
+  final MdImageTap? onTapImage;
 
   @override
   State<ReadingMode> createState() => _ReadingModeState();
@@ -45,8 +53,18 @@ class _ReadingModeState extends State<ReadingMode> {
   @override
   void initState() {
     super.initState();
-    _parse();
     _controller.addListener(_onScrolled);
+  }
+
+  // NOT initState: the heading slugs come from the host's fold, which arrives
+  // by InheritedWidget (`MarkdownStrings.of`), and Flutter forbids reading one
+  // from initState. didChangeDependencies is the frame-one place that MAY —
+  // and it re-runs if the host swaps the strings, which is exactly when slugs
+  // must be recomputed anyway.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _parse();
   }
 
   @override
@@ -57,7 +75,7 @@ class _ReadingModeState extends State<ReadingMode> {
 
   void _parse() {
     _doc = parseMarkdown(widget.markdown);
-    _headings = outlineHeadings(_doc);
+    _headings = outlineHeadings(_doc, fold: context.mdStrings.fold);
     // A heading that no longer exists cannot stay folded — otherwise editing a
     // title would hide a section nobody can unhide.
     _collapsed.removeWhere((slug) => !_headings.any((h) => h.slug == slug));
@@ -101,7 +119,11 @@ class _ReadingModeState extends State<ReadingMode> {
   /// its generator drops Turkish letters entirely.
   bool _handleAnchor(Uri uri) {
     if (!uri.hasScheme && uri.fragment.isNotEmpty && uri.path.isEmpty) {
-      final heading = headingForAnchor(_headings, uri.fragment);
+      final heading = headingForAnchor(
+        _headings,
+        fold: context.mdStrings.fold,
+        uri.fragment,
+      );
       if (heading != null) {
         _goTo(heading);
         return true;
@@ -115,7 +137,7 @@ class _ReadingModeState extends State<ReadingMode> {
     final wide = MediaQuery.sizeOf(context).width >= kNoteOutlineBreakpoint;
     final current = headingAt(_headings, _controller.firstVisibleBlock);
 
-    final document = AwMarkdown(
+    final document = MarkdownView(
       key: const Key('note-reading'),
       document: _doc,
       markdownController: _controller,
@@ -124,6 +146,7 @@ class _ReadingModeState extends State<ReadingMode> {
         if (_handleAnchor(uri)) return;
         widget.onOpenLink?.call(uri);
       },
+      onTapImage: widget.onTapImage,
     );
 
     if (!wide) {
@@ -135,12 +158,12 @@ class _ReadingModeState extends State<ReadingMode> {
           document,
           if (_headings.isNotEmpty)
             Positioned(
-              right: AwSpace.x3,
-              bottom: AwSpace.x3,
+              right: MdSpace.x3,
+              bottom: MdSpace.x3,
               child: FloatingActionButton.small(
                 key: const Key('note-outline-button'),
                 heroTag: 'note-outline',
-                tooltip: 'note.outline'.tr(),
+                tooltip: context.mdStrings.outline,
                 onPressed: () => showOutlineSheet(
                   context,
                   headings: _headings,
@@ -223,9 +246,9 @@ class _OutlinePanel extends StatelessWidget {
     if (headings.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(AwSpace.x4),
+          padding: const EdgeInsets.all(MdSpace.x4),
           child: Text(
-            'note.outlineEmpty'.tr(),
+            context.mdStrings.noHeadings,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: styles.muted),
@@ -237,7 +260,7 @@ class _OutlinePanel extends StatelessWidget {
 
     return ListView.builder(
       key: const Key('note-outline'),
-      padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
+      padding: const EdgeInsets.symmetric(vertical: MdSpace.x2),
       itemCount: headings.length,
       itemBuilder: (context, i) {
         final heading = headings[i];
@@ -246,10 +269,10 @@ class _OutlinePanel extends StatelessWidget {
           onTap: () => onTap(heading),
           child: Container(
             padding: EdgeInsets.only(
-              left: AwSpace.x3 + (heading.level - 1) * 12.0,
-              right: AwSpace.x2,
-              top: AwSpace.x2,
-              bottom: AwSpace.x2,
+              left: MdSpace.x3 + (heading.level - 1) * 12.0,
+              right: MdSpace.x2,
+              top: MdSpace.x2,
+              bottom: MdSpace.x2,
             ),
             decoration: BoxDecoration(
               color: active
@@ -269,7 +292,7 @@ class _OutlinePanel extends StatelessWidget {
                     key: Key('outline-fold-${heading.slug}'),
                     onTap: () => onToggleFold!(heading),
                     child: Padding(
-                      padding: const EdgeInsets.only(right: AwSpace.x1),
+                      padding: const EdgeInsets.only(right: MdSpace.x1),
                       child: Icon(
                         collapsed.contains(heading.slug)
                             ? Icons.chevron_right

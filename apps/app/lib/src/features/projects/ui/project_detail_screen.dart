@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,8 +14,8 @@ import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
 import '../../files/ui/attach_menu.dart';
 import '../../files/ui/file_widgets.dart';
-import '../../files/ui/note_media.dart';
 import '../../notes/data/note.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import '../../notes/providers.dart';
 import '../../notes/ui/notes_screen.dart';
 import '../../tasks/providers.dart';
@@ -327,62 +326,34 @@ class _ReadmeCard extends ConsumerWidget {
 }
 
 /// Read-only rendering of the README note's rich content.
-class _ReadmeView extends StatefulWidget {
+/// A project's README, rendered (OPH-274).
+///
+/// It used to be a read-only `QuillEditor` over the note's delta, which meant
+/// the Overview tab drew documents with a DIFFERENT engine than the note
+/// screen: a table in a README was invisible here and fine one tap away. One
+/// canonical form, one renderer.
+///
+/// Stateless now. The old widget kept a `QuillController` alive purely to
+/// re-`Document.fromJson` it whenever the README was edited — the Overview tab
+/// is kept alive, so without that the body stayed at the initial (often empty)
+/// delta (feedback round 5). `AwMarkdown` takes the text as a parameter, so a
+/// rebuild IS the refresh.
+class _ReadmeView extends StatelessWidget {
   const _ReadmeView({required this.note});
 
   final NoteDetail note;
 
   @override
-  State<_ReadmeView> createState() => _ReadmeViewState();
-}
-
-class _ReadmeViewState extends State<_ReadmeView> {
-  late final QuillController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = QuillController.basic()..readOnly = true;
-    _applyDelta();
-  }
-
-  /// (Re)load the note's content into the read-only controller. Needed on
-  /// updates too: the Overview tab is kept alive, so when the README is edited
-  /// its content must refresh here instead of staying at the initial (often
-  /// empty) delta — feedback round 5.
-  void _applyDelta() {
-    final delta = widget.note.contentDelta;
-    _controller.document = (delta != null && delta.isNotEmpty)
-        ? Document.fromJson(delta)
-        : Document();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ReadmeView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!identical(widget.note, oldWidget.note)) _applyDelta();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final title = widget.note.title.trim();
-    final body = _controller.document.isEmpty()
+    final title = note.title.trim();
+    final markdown = note.contentMarkdown ?? '';
+    final body = markdown.trim().isEmpty
         ? Text('project.emptyReadme'.tr(), style: theme.textTheme.bodyMedium)
-        : QuillEditor.basic(
-            controller: _controller,
-            config: QuillEditorConfig(
-              showCursor: false,
-              padding: EdgeInsets.zero,
-              // README images/videos render like in the editor (OPH-156).
-              embedBuilders: awNoteEmbedBuilders(),
-            ),
+        : MarkdownView(
+            document: parseMarkdown(markdown),
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
           );
     // Show the note title as the document heading (feedback round 5): the
     // overview used to render only the body.

@@ -11,26 +11,21 @@
 /// ("`TextSpan` recognizers leak if nobody does"). A README has hundreds of
 /// them, so this widget owns the list and clears it on every rebuild.
 ///
-/// **A `ProviderScope` is required**, and it is a `ConsumerStatefulWidget`
-/// precisely so that requirement is visible in the type rather than discovered
-/// at runtime. Images resolve through Riverpod; before this the dependency was
-/// buried in a descendant, and the end-to-end test only passed because its
-/// viewport stopped short of the first image (OPH-254 found it).
+/// **No dependency injection.** Images resolve through the host's
+/// `MarkdownImageResolver` (see `seams.dart`), which arrives by
+/// `InheritedWidget` and has a working default. It used to be a
+/// `ConsumerStatefulWidget` so a Riverpod `ProviderScope` requirement was
+/// visible in the type rather than discovered at runtime — a real lesson
+/// (OPH-254 found an end-to-end test passing only because its viewport
+/// stopped short of the first image), and the reason the default resolver
+/// here answers "unresolvable" rather than throwing.
 library;
-
-import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown/markdown.dart' as md;
 
-import '../../../i18n/i18n.dart';
-import '../../../theme/tokens.dart';
-import '../../files/providers.dart';
-import '../../files/ui/image_viewer.dart';
-import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
 import 'md_callout.dart';
 import 'md_code_block.dart';
 import 'md_outline.dart';
@@ -42,6 +37,7 @@ import 'md_table.dart';
 import 'md_theme.dart';
 import 'md_unsupported.dart';
 import 'mermaid/mermaid_view.dart';
+import '../seams.dart';
 
 /// How a rendered document reaches the outside world.
 typedef MdLinkTap = void Function(Uri uri);
@@ -49,15 +45,20 @@ typedef MdLinkTap = void Function(Uri uri);
 /// A tap on an image. The source is passed verbatim — an `alliswell://file/{id}`
 /// embed, an absolute URL, or a relative path the caller may or may not be able
 /// to resolve.
-typedef MdImageTap = void Function(String source);
+/// A tap on an image, with the whole gallery and the tapped index — so the
+/// host opens its own viewer and this package never grows one.
+typedef MdImageTap = void Function(MdGallery gallery);
 
-class AwMarkdown extends ConsumerStatefulWidget {
-  const AwMarkdown({
+/// A tap on ONE image, by its source. What [MdImage] itself reports.
+typedef MdImageSourceTap = void Function(String source);
+
+class MarkdownView extends StatefulWidget {
+  const MarkdownView({
     super.key,
     required this.document,
     this.onOpenLink,
     this.onTapImage,
-    this.padding = const EdgeInsets.symmetric(horizontal: AwSpace.x5),
+    this.padding = const EdgeInsets.symmetric(horizontal: MdSpace.x5),
     this.shrinkWrap = false,
     this.controller,
     this.markdownController,
@@ -90,10 +91,10 @@ class AwMarkdown extends ConsumerStatefulWidget {
   final Set<String> collapsed;
 
   @override
-  ConsumerState<AwMarkdown> createState() => _AwMarkdownState();
+  State<MarkdownView> createState() => _MarkdownViewState();
 }
 
-class _AwMarkdownState extends ConsumerState<AwMarkdown> {
+class _MarkdownViewState extends State<MarkdownView> {
   final List<TapGestureRecognizer> _recognizers = [];
 
   void _clearRecognizers() {
@@ -116,7 +117,10 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
   /// document and an unfolded one are the same bytes.
   Set<int> _hiddenBlocks() {
     if (widget.collapsed.isEmpty) return const {};
-    final headings = outlineHeadings(widget.document);
+    final headings = outlineHeadings(
+      widget.document,
+      fold: context.mdStrings.fold,
+    );
     final hidden = <int>{};
     for (final heading in headings) {
       if (!widget.collapsed.contains(heading.slug)) continue;
@@ -186,8 +190,8 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         final level = int.parse(el.tag.substring(1));
         return Padding(
           padding: EdgeInsets.only(
-            top: level <= 2 ? AwSpace.x6 : AwSpace.x4,
-            bottom: AwSpace.x2,
+            top: level <= 2 ? MdSpace.x6 : MdSpace.x4,
+            bottom: MdSpace.x2,
           ),
           child: Text.rich(
             TextSpan(
@@ -219,8 +223,8 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
 
       case 'blockquote':
         return Container(
-          margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
-          padding: const EdgeInsets.only(left: AwSpace.x3),
+          margin: const EdgeInsets.symmetric(vertical: MdSpace.x2),
+          padding: const EdgeInsets.only(left: MdSpace.x3),
           decoration: BoxDecoration(
             border: Border(left: BorderSide(color: styles.hairline, width: 3)),
           ),
@@ -262,12 +266,12 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         return _table(el, styles);
 
       case 'hr':
-        return Divider(height: AwSpace.x8, color: styles.hairline);
+        return Divider(height: MdSpace.x8, color: styles.hairline);
 
       case 'section':
         // The synthesised footnote container.
         return Padding(
-          padding: const EdgeInsets.only(top: AwSpace.x6),
+          padding: const EdgeInsets.only(top: MdSpace.x6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -297,7 +301,7 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         // Nothing is dropped silently — an unknown block shows its source and
         // says so (D11). If this fires often it is a gap, not a fallback.
         return MdUnsupportedBlock(
-          reason: 'markdown.unsupportedBlock'.tr(),
+          reason: context.mdStrings.unsupportedBlock,
           source: sourceOf(widget.document, block),
         );
     }
@@ -307,7 +311,7 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
       node is md.Element && node.attributes['class'] == kMdAlertTitleClass;
 
   Widget _paragraph(List<md.Node> nodes, MdStyles styles) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: AwSpace.x1),
+    padding: const EdgeInsets.symmetric(vertical: MdSpace.x1),
     child: Text.rich(TextSpan(children: _inline(nodes, styles.body, styles))),
   );
 
@@ -318,7 +322,7 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         .toList();
 
     return Padding(
-      padding: const EdgeInsets.only(left: AwSpace.x2, top: AwSpace.x1),
+      padding: const EdgeInsets.only(left: MdSpace.x2, top: MdSpace.x1),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -384,7 +388,7 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         ),
         for (final child in nested)
           Padding(
-            padding: const EdgeInsets.only(left: AwSpace.x4),
+            padding: const EdgeInsets.only(left: MdSpace.x4),
             child: _list(child, styles, ordered: child.tag == 'ol'),
           ),
       ],
@@ -428,7 +432,7 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
   }
 
   Widget _mathBlock(String tex, MdStyles styles) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: AwSpace.x3),
+    padding: const EdgeInsets.symmetric(vertical: MdSpace.x3),
     child: Center(
       child: Math.tex(
         tex,
@@ -438,7 +442,7 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         // and says why, instead of leaving a hole in the page.
         onErrorFallback: (error) => MdUnsupportedBlock(
           icon: Icons.functions,
-          reason: 'markdown.badMath'.tr(),
+          reason: context.mdStrings.badMath,
           source: tex,
         ),
       ),
@@ -605,37 +609,33 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
         builder: (context) => MdImage(
           source: source,
           alt: alt,
-          onTap: (src) => widget.onTapImage != null
-              ? widget.onTapImage!(src)
-              : _openGallery(context, src),
+          onTap: (src) => widget.onTapImage?.call(_gallery(context, src)),
         ),
       ),
     );
   }
 
-  /// The document's images, in DOCUMENT ORDER, opened in the one viewer
-  /// (DESIGN §30 A7/A11). Walked at tap time only — doing it in `build` would
-  /// be O(n²) per render, the trap `note_media.dart` already documents.
+  /// Every drawable image in the document, in DOCUMENT ORDER, with the tapped
+  /// one's index — handed to [MarkdownView.onTapImage] so the host can open
+  /// whatever viewer it already has.
   ///
-  /// Unresolvable sources are skipped rather than paged through as blanks:
+  /// Walked at tap time only: doing it in `build` would be O(n²) per render.
+  /// Unresolvable sources are skipped rather than paged through as blanks —
   /// they cannot be drawn full-screen either, and an empty viewer page is
   /// worse than one image fewer.
-  void _openGallery(BuildContext context, String tapped) {
-    final refs = <AwImageRef>[];
+  MdGallery _gallery(BuildContext context, String tapped) {
+    final sources = <String>[];
     var index = 0;
 
     void walk(md.Node node) {
       if (node is! md.Element) return;
       if (node.tag == 'img') {
         final src = node.attributes['src'] ?? '';
-        final ref = switch (MdImageSource.of(src)) {
-          MdImageFile(:final fileId) => AwImageRef.file(fileId),
-          MdImageUrl(:final url) => AwImageRef.url(url),
-          MdImageUnresolvable() => null,
-        };
-        if (ref != null) {
-          if (src == tapped) index = refs.length;
-          refs.add(ref);
+        final imgAlt = node.attributes['alt'] ?? '';
+        if (context.mdImageResolver(src, imgAlt)
+            is! MarkdownImageUnresolvable) {
+          if (src == tapped) index = sources.length;
+          sources.add(src);
         }
         return;
       }
@@ -647,9 +647,16 @@ class _AwMarkdownState extends ConsumerState<AwMarkdown> {
     for (final block in widget.document.blocks) {
       walk(block.node);
     }
-    if (refs.isEmpty) return;
-    unawaited(showAwImageViewer(context, images: refs, initialIndex: index));
+    return MdGallery(sources: sources, index: index);
   }
+}
+
+/// A document's images and which one was tapped.
+@immutable
+class MdGallery {
+  const MdGallery({required this.sources, required this.index});
+  final List<String> sources;
+  final int index;
 }
 
 /// A YAML front-matter block, rendered as a compact strip (D12).
@@ -673,23 +680,23 @@ class _FrontMatterStrip extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: AwSpace.x4),
-      padding: const EdgeInsets.all(AwSpace.x3),
+      margin: const EdgeInsets.only(bottom: MdSpace.x4),
+      padding: const EdgeInsets.all(MdSpace.x3),
       decoration: BoxDecoration(
         color: styles.scheme.surfaceContainerLow,
-        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+        borderRadius: const BorderRadius.all(Radius.circular(MdRadius.m)),
         border: Border.all(color: styles.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'markdown.frontMatter'.tr(),
+            context.mdStrings.frontMatter,
             style: Theme.of(
               context,
             ).textTheme.labelSmall?.copyWith(color: styles.muted),
           ),
-          const SizedBox(height: AwSpace.x1),
+          const SizedBox(height: MdSpace.x1),
           for (final line in lines)
             Text(line, style: styles.code.copyWith(fontSize: 12)),
         ],
@@ -698,86 +705,46 @@ class _FrontMatterStrip extends StatelessWidget {
   }
 }
 
-/// What kind of thing a markdown `src` points at.
+/// What a markdown `src` points at is the HOST's question, answered by its
+/// `MarkdownImageResolver` (`seams.dart`). This package used to own a sealed
+/// `MdImageSource` that knew about `alliswell://file/{id}`, which is precisely
+/// the kind of application knowledge a package has no business holding.
 ///
-/// Three answers, and only two of them can be drawn today:
-///   * `alliswell://file/{id}` — one of our own files, resolved through the
-///     replica exactly like a note embed;
-///   * an absolute `http(s)` URL — drawn straight from the network;
-///   * anything relative (`./resim.png`) — **unresolvable here**, because it is
-///     relative to a folder only the document knows, and a document only
-///     carries its folder once external files do (OPH-251, W-rules). It gets a
-///     placeholder that says *that*, not a broken-image icon that would blame
-///     the file.
-sealed class MdImageSource {
-  const MdImageSource();
-
-  static MdImageSource of(String raw) {
-    final fileId = fileIdFromEmbedSource(raw);
-    if (fileId != null) return MdImageFile(fileId);
-    final uri = Uri.tryParse(raw.trim());
-    if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-      return MdImageUrl(raw.trim());
-    }
-    return const MdImageUnresolvable();
-  }
-}
-
-class MdImageFile extends MdImageSource {
-  const MdImageFile(this.fileId);
-  final String fileId;
-}
-
-class MdImageUrl extends MdImageSource {
-  const MdImageUrl(this.url);
-  final String url;
-}
-
-class MdImageUnresolvable extends MdImageSource {
-  const MdImageUnresolvable();
-}
+/// The one case worth keeping the note about: anything RELATIVE
+/// (`./resim.png`) is unresolvable, because it is relative to a folder only
+/// the document knows. It gets a placeholder that says *that*, rather than a
+/// broken-image icon that would blame the file.
 
 /// An image inside a document — real pixels, and a tap into the one viewer.
 ///
 /// Height-capped rather than free: a document is a column of text, and an
 /// image that pushes three screens of it off the page is not "rendered", it is
 /// in the way.
-class MdImage extends ConsumerWidget {
+class MdImage extends StatelessWidget {
   const MdImage({super.key, required this.source, this.alt = '', this.onTap});
 
   final String source;
   final String alt;
-  final MdImageTap? onTap;
+  final MdImageSourceTap? onTap;
 
   static const double _maxHeight = 320;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final resolved = MdImageSource.of(source);
+  Widget build(BuildContext context) {
+    // The host decides what a source MEANS (`MarkdownImageResolver`). The
+    // default resolves http(s) and refuses everything else, so a document
+    // from a stranger cannot reach a scheme nobody opted into.
+    final resolved = context.mdImageResolver(source, alt);
 
     return switch (resolved) {
-      MdImageUnresolvable() => _Chip(
+      MarkdownImageUnresolvable() => MdImageChip(
         icon: Icons.link_off_outlined,
-        label: alt.isNotEmpty ? alt : 'markdown.relativeImage'.tr(),
+        label: alt.isNotEmpty ? alt : context.mdStrings.relativeImage,
       ),
-      MdImageUrl(:final url) => _tappable(context, child: _bytes(ref, url)),
-      MdImageFile(:final fileId) => _tappable(
+      MarkdownImageUrl(:final url) => _tappable(context, child: _bytes(url)),
+      MarkdownImageWidget(:final builder) => _tappable(
         context,
-        child: ref
-            .watch(fileUrlProvider(fileId))
-            .maybeWhen(
-              data: (url) => url == null
-                  ? _Chip(
-                      icon: Icons.broken_image_outlined,
-                      label: alt.isNotEmpty ? alt : 'markdown.image'.tr(),
-                    )
-                  : _bytes(ref, url),
-              orElse: () => const SizedBox(
-                height: 48,
-                width: 48,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
+        child: Builder(builder: builder),
       ),
     };
   }
@@ -787,7 +754,7 @@ class MdImage extends ConsumerWidget {
     image: true,
     child: InkWell(
       onTap: onTap == null ? null : () => onTap!(source),
-      borderRadius: const BorderRadius.all(Radius.circular(AwRadius.s)),
+      borderRadius: const BorderRadius.all(Radius.circular(MdRadius.s)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxHeight: _maxHeight),
         child: child,
@@ -795,20 +762,27 @@ class MdImage extends ConsumerWidget {
     ),
   );
 
-  Widget _bytes(WidgetRef ref, String url) => Image(
-    image: ref.watch(networkImageProvider)(url),
+  Widget _bytes(String url) => Image(
+    image: NetworkImage(url),
     fit: BoxFit.contain,
     // A broken image says so where it stands (D11) — it does not vanish and it
     // does not leave a grey rectangle nobody can interpret.
-    errorBuilder: (context, _, _) => _Chip(
+    errorBuilder: (context, _, _) => MdImageChip(
       icon: Icons.broken_image_outlined,
-      label: alt.isNotEmpty ? alt : 'markdown.image'.tr(),
+      label: alt.isNotEmpty ? alt : context.mdStrings.brokenImage,
     ),
   );
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.icon, required this.label});
+/// The honest placeholder a document shows where a picture cannot be drawn
+/// (DESIGN §10 F3 / D11): an icon, a word, and the alt text if there is one —
+/// never a broken-image glyph, which blames the file for the app's problem.
+///
+/// Public because a host's own image resolver needs it: AllisWell mints its
+/// URLs asynchronously, so "this file is gone" is discovered inside the
+/// builder, long after the resolver has answered.
+class MdImageChip extends StatelessWidget {
+  const MdImageChip({super.key, required this.icon, required this.label});
 
   final IconData icon;
   final String label;
@@ -818,19 +792,19 @@ class _Chip extends StatelessWidget {
     final styles = MdStyles.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AwSpace.x2,
-        vertical: AwSpace.x1,
+        horizontal: MdSpace.x2,
+        vertical: MdSpace.x1,
       ),
       decoration: BoxDecoration(
         color: styles.scheme.surfaceContainer,
-        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.s)),
+        borderRadius: const BorderRadius.all(Radius.circular(MdRadius.s)),
         border: Border.all(color: styles.hairline),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: styles.muted),
-          const SizedBox(width: AwSpace.x1),
+          const SizedBox(width: MdSpace.x1),
           Flexible(
             child: Text(
               label,

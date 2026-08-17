@@ -190,35 +190,44 @@ describe('scenario A — two clients, one note', () => {
 });
 
 describe('when merging is not honest, it does not happen', () => {
-  it('a rich-text note takes the conflict path, never a line merge', async () => {
-    // Delta is a JSON op array; line-merging it produces something that is not
-    // a document (decision #7).
+  it('a note born from a Delta now MERGES — the NOT_MARKDOWN refusal is gone', async () => {
+    // Until ADR-0033 this was the common case and it could never merge: a
+    // Delta is a JSON op array, so `threeWayNoteWrite` refused with
+    // NOT_MARKDOWN and every conflict between two rich-text notes went to the
+    // banner. Epic 25 built the merge engine and this is what kept it from
+    // running. One canonical form later, the same push merges.
     const note = await app
       .inject({
         method: 'POST',
         url: `/api/v1/workspaces/${ws()}/notes`,
         headers: owner.headers,
-        payload: { title: 'Zengin metin', contentDelta: [{ insert: 'ilk\n' }] },
+        payload: {
+          title: 'Eskiden zengin metin',
+          contentDelta: [{ insert: 'ilk satır\nikinci satır\nüçüncü satır\n' }],
+        },
       })
       .then((r) => r.json());
     const base = note.revision;
+    expect(note.contentFormat).toBe('markdown');
 
+    // The other device rewrites the FIRST line.
     await app.inject({
       method: 'PATCH',
       url: `/api/v1/notes/${note.id}`,
       headers: owner.headers,
-      payload: { contentDelta: [{ insert: 'sunucu tarafı\n' }] },
+      payload: { contentMarkdown: 'sunucu satırı\nikinci satır\nüçüncü satır' },
     });
 
+    // This one rewrites the THIRD, from the same base. Disjoint regions.
     const res = await push({
       noteId: note.id,
-      body: 'istemci markdown gönderdi',
+      body: 'ilk satır\nikinci satır\nistemci satırı',
       baseRevision: base,
     });
     const result = res.json().results[0];
-    expect(result.status).toBe('conflict');
-    expect(result.reason).toBe('NOT_MARKDOWN');
-    expect(result.conflictVersionId).toBeTruthy();
+    expect(result.status).toBe('merged');
+    expect(result.merged.contentMarkdown).toContain('sunucu satırı');
+    expect(result.merged.contentMarkdown).toContain('istemci satırı');
   });
 
   it('a base that retention already swept is an honest conflict', async () => {

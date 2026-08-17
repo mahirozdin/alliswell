@@ -113,8 +113,13 @@ describe('GET /notes/:id/export with embeds', () => {
       headers: session.headers,
     });
     expect(res.statusCode).toBe(200);
-    expect(res.body).toContain(`![Şema.png](${uri(fileId)})`);
-    expect(res.body).toContain(`![](${uri(ghost)})`);
+    // ADR-0033: the export no longer relabels embeds with the file's CURRENT
+    // name. It did that for Delta, whose embeds had no label a person could
+    // have written. In markdown the label is part of the document, so
+    // rewriting it would be editing the note on its way out — what the
+    // conversion produced is what the export returns, URI intact.
+    expect(res.body).toContain(`](${uri(fileId)})`);
+    expect(res.body).toContain(`](${uri(ghost)})`);
     await app.close();
   });
 });

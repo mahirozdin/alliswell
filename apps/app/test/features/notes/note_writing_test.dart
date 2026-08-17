@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/fold.dart';
 import 'package:alliswell/src/features/notes/data/note.dart';
+import 'package:alliswell/src/features/notes/markdown/markdown_forge_adapters.dart';
 import 'package:alliswell/src/features/notes/data/note_document.dart';
-import 'package:alliswell/src/features/notes/markdown/md_actions.dart';
-import 'package:alliswell/src/features/notes/ui/modes/source_mode.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 /// OPH-250 — writing comfort on the Source surface (DESIGN §29 D17–D23).
@@ -20,7 +21,6 @@ void main() {
       isPinned: false,
       isArchived: false,
       revision: 1,
-      contentFormat: 'markdown',
       contentMarkdown: markdown,
     ),
   );
@@ -61,26 +61,29 @@ void main() {
       expect(matchSlash('table'), isEmpty, reason: 'needs the slash');
     });
 
-    testWidgets('the phone gets a toolbar; a wide screen gets shortcuts', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(500, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
+    testWidgets('the toolbar is there at EVERY width now', (tester) async {
+      // D18 originally put the bar above the keyboard on a phone and gave a
+      // wide screen nothing but shortcuts, which was fine while the rich
+      // editor owned the top of the screen. ADR-0033 took that editor away, so
+      // "shortcuts are enough" would have left a desktop window with no
+      // visible formatting controls at all. One bar, always mounted.
+      for (final width in [500.0, 1200.0]) {
+        final doc = docWith('metin');
+        addTearDown(doc.dispose);
+        await tester.pumpWidget(
+          host(MdEditorToolbar(controller: doc.source), size: Size(width, 900)),
+        );
+        await tester.pumpAndSettle();
 
-      final doc = docWith('metin');
-      addTearDown(doc.dispose);
-      await tester.pumpWidget(host(SourceMode(document: doc)));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('md-toolbar')), findsOneWidget);
+        expect(
+          find.byKey(const Key('md-toolbar')),
+          findsOneWidget,
+          reason: 'no toolbar at ${width}px',
+        );
+      }
     });
 
     testWidgets('a toolbar button wraps the selection', (tester) async {
-      tester.view.physicalSize = const Size(500, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
       final doc = docWith('kalın olacak');
       addTearDown(doc.dispose);
       doc.source.selection = const TextSelection(
@@ -88,7 +91,7 @@ void main() {
         extentOffset: 5,
       );
 
-      await tester.pumpWidget(host(SourceMode(document: doc)));
+      await tester.pumpWidget(host(MdEditorToolbar(controller: doc.source)));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('md-action-bold')));
       await tester.pumpAndSettle();
@@ -105,7 +108,7 @@ void main() {
 
       final doc = docWith('');
       addTearDown(doc.dispose);
-      await tester.pumpWidget(host(SourceMode(document: doc)));
+      await tester.pumpWidget(host(SourceMode(controller: doc.source)));
       await tester.pumpAndSettle();
 
       await tester.enterText(
@@ -135,7 +138,7 @@ void main() {
       addTearDown(doc.dispose);
       doc.source.selection = const TextSelection.collapsed(offset: 6);
 
-      await tester.pumpWidget(host(SourceMode(document: doc)));
+      await tester.pumpWidget(host(SourceMode(controller: doc.source)));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('note-source-field')));
       await tester.pumpAndSettle();
@@ -155,7 +158,7 @@ void main() {
       final doc = docWith('- bir');
       addTearDown(doc.dispose);
 
-      await tester.pumpWidget(host(SourceMode(document: doc)));
+      await tester.pumpWidget(host(SourceMode(controller: doc.source)));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('note-source-field')));
       await tester.pumpAndSettle();
@@ -176,7 +179,7 @@ void main() {
 
       final doc = docWith('bir iki üç');
       addTearDown(doc.dispose);
-      await tester.pumpWidget(host(SourceMode(document: doc)));
+      await tester.pumpWidget(host(SourceMode(controller: doc.source)));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('md-count-strip')), findsOneWidget);
@@ -219,15 +222,28 @@ void main() {
       );
 
       // Nothing is removed — that is the whole rule. Hiding causes reflow;
-      // dimming does not.
+      // dimming does not. Asserted on the TEXT rather than on the number of
+      // spans, because live syntax (OPH-274) splits the same characters into
+      // more of them: the invariant is that a TextEditingController must hand
+      // back exactly the characters of `text`, or every caret offset after the
+      // first difference points at the wrong character.
       expect(span.toPlainText(), 'bir\n\niki');
-      expect(span.children, hasLength(2));
+
+      // …and the two paragraphs really are painted differently.
+      final colors = span.children!
+          .map((c) => (c as TextSpan).style?.color)
+          .toSet();
+      expect(
+        colors.length,
+        greaterThan(1),
+        reason: 'the paragraph without the caret must be dimmed',
+      );
     });
   });
 
   group('D18 — the command palette', () {
     Future<void> openPalette(WidgetTester tester, NoteDocument doc) async {
-      await tester.pumpWidget(host(SourceMode(document: doc)));
+      await tester.pumpWidget(host(SourceMode(controller: doc.source)));
       doc.source.selection = const TextSelection(
         baseOffset: 0,
         extentOffset: 5,
@@ -289,20 +305,35 @@ void main() {
 
     test('the palette matches the localized label, folded', () {
       // ADR-0013: neither SQLite nor MySQL folds ı→i, so folding is ours —
-      // and a Turkish writer types "kalin" to find "Kalın".
+      // and a Turkish writer types "kalin" to find "Kalın". The fold is passed
+      // EXPLICITLY now (OPH-274): the package's default is plain lowercase,
+      // because a package cannot assume Turkish, and the app hands its own
+      // fold in through `MarkdownStrings.fold` — which is what this pins.
       String label(MdAction a) =>
           const {'bold': 'Kalın', 'italic': 'İtalik'}[a.id] ?? a.id;
       for (final query in ['kalin', 'KALIN', 'Kalın']) {
         expect(
-          matchMdActions(query, label: label).map((a) => a.id),
+          matchMdActions(
+            query,
+            label: label,
+            fold: foldSearchText,
+          ).map((a) => a.id),
           contains('bold'),
           reason: query,
         );
       }
       expect(
-        matchMdActions('İTALİK', label: label).map((a) => a.id),
+        matchMdActions(
+          'İTALİK',
+          label: label,
+          fold: foldSearchText,
+        ).map((a) => a.id),
         contains('italic'),
       );
+      // And the app really does hand it in: the strings the scope mounts
+      // carry ADR-0013's fold, not the package default.
+      expect(awMarkdownStrings().fold('KALIN'), 'kalin');
+      expect(awMarkdownStrings().fold('Işık'), 'isik');
     });
 
     testWidgets('Ctrl+K opens the palette and a pick applies the action', (

@@ -111,17 +111,29 @@ describe('a markdown-canonical note is searchable (Repair 1)', () => {
     expect(res.json().items.map((n) => n.title)).toEqual(['Alışveriş']);
   });
 
-  it('leaves a delta note deriving from its delta', async () => {
-    // The guard that matters: the app sends `contentMarkdown` for delta notes
-    // too, and deriving from it would silently re-base every existing note's
-    // search column on a generated document.
+  it('derives from the markdown even when a Delta rides along', async () => {
+    // ADR-0028 needed a guard here, because a note had two possible canonical
+    // fields and the app sent both on every save — deriving from the wrong one
+    // would re-base the search column on a generated document. ADR-0033 left
+    // one field, so there is one derivation and nothing to guess.
     const note = await createNote({
-      title: 'Delta',
-      contentDelta: [{ insert: 'gerçek gövde\n' }],
-      contentMarkdown: '# Delta\n\nüretilmiş gövde',
+      title: 'Eski istemci',
+      contentDelta: [{ insert: 'delta gövdesi\n' }],
+      contentMarkdown: 'markdown gövdesi',
     });
 
-    expect(note.plainText).toBe('gerçek gövde');
+    expect(note.contentFormat).toBe('markdown');
+    expect(note.plainText).toBe('markdown gövdesi');
+  });
+
+  it('derives from a converted Delta when that is all the client sent', async () => {
+    const note = await createNote({
+      title: 'Yalnız delta',
+      contentDelta: [{ insert: 'yalnızca delta\n' }],
+    });
+
+    expect(note.contentMarkdown).toBe('yalnızca delta');
+    expect(note.plainText).toBe('yalnızca delta');
   });
 });
 

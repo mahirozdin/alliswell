@@ -12,13 +12,12 @@ library;
 
 import 'package:flutter/material.dart';
 
-import '../../../../i18n/i18n.dart';
-import '../../../../theme/tokens.dart';
 import '../md_theme.dart';
 import '../md_unsupported.dart';
 import 'flow_layout.dart';
 import 'mermaid_parse.dart';
 import 'sequence_layout.dart';
+import '../../seams.dart';
 
 /// Renders the body of a ```` ```mermaid ```` fence.
 class MermaidView extends StatelessWidget {
@@ -36,12 +35,12 @@ class MermaidView extends StatelessWidget {
       // sends them to their own line.
       MermaidUnsupported(:final type) => MdUnsupportedBlock(
         icon: Icons.account_tree_outlined,
-        reason: 'markdown.mermaidUnsupported'.tr(args: {'type': type}),
+        reason: context.mdStrings.diagramUnsupported(type),
         source: source,
       ),
       MermaidParseError() => MdUnsupportedBlock(
         icon: Icons.account_tree_outlined,
-        reason: 'markdown.mermaidUnreadable'.tr(),
+        reason: context.mdStrings.diagramUnreadable,
         source: source,
       ),
       MermaidFlow() => _Canvas(diagram: diagram),
@@ -85,10 +84,10 @@ class _Canvas extends StatelessWidget {
     if (painter == null) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: AwSpace.x2),
+      margin: const EdgeInsets.symmetric(vertical: MdSpace.x2),
       decoration: BoxDecoration(
         color: styles.scheme.surfaceContainerLow,
-        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+        borderRadius: const BorderRadius.all(Radius.circular(MdRadius.m)),
         border: Border.all(color: styles.hairline),
       ),
       clipBehavior: Clip.antiAlias,
@@ -96,7 +95,7 @@ class _Canvas extends StatelessWidget {
       // scrolls sideways.
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(AwSpace.x2),
+        padding: const EdgeInsets.all(MdSpace.x2),
         child: CustomPaint(size: painter.canvasSize, painter: painter),
       ),
     );

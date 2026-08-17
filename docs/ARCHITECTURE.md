@@ -83,6 +83,10 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 - All timestamps `DATETIME(3)` in UTC; user timezones stored per user/task for alarm math.
 - Soft delete via `deleted_at`. Synced entities carry `revision BIGINT`.
 - FULLTEXT indexes on tasks(title, description) and notes(title, plain_text) for search.
+- **Notes are markdown** (`notes.content_markdown`, ADR-0033). `content_delta` keeps its
+  pre-2026-08-18 rows as a lossless escape hatch and is never written again. Bodies stay in
+  MySQL rather than object storage — the ADR records the four measurements (optional storage
+  config, FULLTEXT, the merge reading its base inside the request, the pull embedding bodies).
 - **Note history** (`note_versions`, OPH-267/ADR-0031) is server-only — never a sync entity.
   Capture is one function called from the note domain layer and, for the offline path, from the
   sync engine's own `afterCreate`/`afterUpdate` seam; the head coalesces inside a 10-minute
@@ -99,7 +103,11 @@ client mutation batches idempotently — `client_mutations` records every outcom
 (`clientId`, `clientMutationId`), and replays answer from the record. Conflict policy:
 field-level LWW for metadata (foreign changes detected via the changed-fields log with own
 writes attributed through recorded result revisions; newer wall clock wins), document-level
-optimistic lock for note content (`NOTE_CONTENT_CONFLICT` → client makes a conflict copy).
+optimistic lock for note content. A push that carries its own `baseRevision` gets a
+three-way markdown merge (OPH-268); genuine overlap answers `NOTE_CONTENT_CONFLICT` with the
+refused body kept as a version (`conflictVersionId`). **Every note is markdown (ADR-0033),
+so every conflict is mergeable** — a Delta arriving from a client older than 2026-08-18 is
+converted before the merge, never refused.
 Live updates (OPH-057): Socket.IO on the API listener (`src/plugins/socket.js`, Redis
 adapter across instances) broadcasts `sync:changed {workspaceId, toRevision}` to workspace
 rooms after commits; clients respond by pulling — the socket never carries entity payloads
@@ -203,7 +211,8 @@ share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/a
   wasm + committed `web/sqlite3.wasm`/`web/drift_worker.js` on web) + `pending_mutations`
   outbox. Feature stores (`features/*/data/*_store.dart`) write optimistically and enqueue
   in one transaction; `SyncEngine` pushes in order (backoff on failure) and pulls
-  snapshots/tombstones; conflicts surface via a stream (note content → "çakışan kopya").
+  snapshots/tombstones; a refused note body surfaces as a banner on the note itself
+  (`conflictVersionId`), never as a sibling "conflicted copy".
   UI subscribes to local DB streams — no REST calls from screens (auth, `/me` and the
   calendar integration aside: those are per-user server state, not synced entities).
 - **Replica migrations:** bump `schemaVersion` in `sync/db/database.dart` AND add the

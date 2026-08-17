@@ -2,12 +2,12 @@
 ///
 /// Rule 11 has no carve-out for third-party widgets, and this file is where
 /// that is enforced: every colour a rendered document uses is resolved here,
-/// from `AwTokens` or the `ColorScheme`. Nothing downstream writes a hex.
+/// from `MarkdownTheme` or the `ColorScheme`. Nothing downstream writes a hex.
 ///
 /// The alert palette is the part worth reading twice. The five GFM types reuse
 /// EXISTING roles rather than growing the palette — but the accent colours the
 /// **icon and the edge**, never the body text. That is not a style preference:
-/// `AwTokens.warning` (#C77700) on its own tinted card measures **2.96:1**,
+/// an amber warning (#C77700) on its own tinted card measures **2.96:1**,
 /// which is why its own doc comment calls it an icon colour. Body text stays
 /// `onSurface` and clears 13:1. The tint is the accent at [kMdAlertTintAlpha]
 /// over the surface, and `scripts/design/contrast.py` carries every one of
@@ -15,8 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
-
-import '../../../theme/tokens.dart';
+import '../seams.dart';
 
 /// How strongly an alert card is tinted by its accent.
 ///
@@ -49,7 +48,7 @@ class MdStyles {
 
   factory MdStyles.of(BuildContext context) {
     final theme = Theme.of(context);
-    final tokens = context.awTokens;
+    final tokens = context.mdTheme;
     final scheme = theme.colorScheme;
     final text = theme.textTheme;
 
@@ -87,7 +86,7 @@ class MdStyles {
   final Color hairline;
   final Color link;
   final Color muted;
-  final AwTokens tokens;
+  final MarkdownTheme tokens;
   final ColorScheme scheme;
 
   TextStyle headingFor(int level) => switch (level) {
@@ -122,10 +121,11 @@ class MdStyles {
 
   /// i18n key for an alert's label. The type is never carried by colour alone —
   /// the card says "Not" / "Uyarı" in words as well.
-  String alertLabelKey(MdAlertKind kind) => 'markdown.alert.${kind.name}';
+  String alertLabel(BuildContext context, MdAlertKind kind) =>
+      MarkdownStrings.of(context).alert(kind.name);
 
   /// highlight.js emits around thirty class names; they collapse onto six inks
-  /// (see [AwTokens.codeKeyword] and friends). A palette nobody can tell apart
+  /// (see [MarkdownTheme.codeKeyword] and friends). A palette nobody can tell apart
   /// is worse than a single colour, and every one of the six is contrast-checked
   /// against [codePanel] in both themes.
   Color? codeInk(String? className) {

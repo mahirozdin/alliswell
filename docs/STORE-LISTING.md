@@ -126,7 +126,7 @@ REMINDERS THAT DO NOT WHISPER
 
 NOTES AND FILES
 
-• Rich-text notes with inline images and video, linked to your tasks and projects, exportable as Markdown.
+• Markdown notes with live syntax as you type and a real reading view, inline images, linked to your tasks and projects, exportable as .md or PDF.
 • A full Markdown workspace: tables, checklists, code, maths and diagrams, with reading, rich and source views. Open a .md file from your device, edit it, and save it back to that file.
 • Attach files to tasks, notes and projects — up to 10 MB per file on the hosted service.
 • A workspace-wide Files section with nestable folders, plus a Files tab inside every project.
@@ -452,7 +452,7 @@ source-available. No paid tier, no ads.
 
 📝 NOTES AND FILES
 
-• Rich-text notes with inline images and video, linked to tasks and projects, exportable as Markdown.
+• Markdown notes with live syntax as you type and a real reading view, inline images, linked to tasks and projects, exportable as .md or PDF.
 • A full Markdown workspace: tables, checklists, code, maths and diagrams, with reading, rich and source views. Open a .md file from your device, edit it, and save it back to that file.
 • Attach files to tasks, notes and projects — up to 10 MB per file on the hosted service.
 • A workspace-wide Files section with nestable folders, and a Files tab in every project.
@@ -761,7 +761,7 @@ FISILDAMAYAN HATIRLATICILAR
 
 NOTLAR VE DOSYALAR
 
-• Zengin metin notları: satır içi görsel ve video, göreve ve projeye bağlama, Markdown olarak dışa aktarma.
+• Markdown notları: yazarken canlı sözdizimi, gerçek bir okuma görünümü, satır içi görsel, göreve ve projeye bağlama, .md veya PDF olarak dışa aktarma.
 • Tam bir Markdown çalışma tezgâhı: tablolar, kontrol listeleri, kod, matematik ve diyagramlar; okuma, zengin ve kaynak görünümleriyle. Cihazındaki bir .md dosyasını aç, düzenle ve o dosyaya geri kaydet.
 • Göreve, nota ve projeye dosya ekleyin — barındırılan serviste dosya başına 10 MB'a kadar.
 • Tüm çalışma alanını kapsayan, iç içe klasörlü bir Dosyalar bölümü; ayrıca her projenin kendi Dosyalar sekmesi.
@@ -887,7 +887,7 @@ Kaynağı açık. Ücretli sürüm yok, reklam yok.
 
 📝 NOTLAR VE DOSYALAR
 
-• Zengin metin notları: satır içi görsel ve video, göreve ve projeye bağlama, Markdown olarak dışa aktarma.
+• Markdown notları: yazarken canlı sözdizimi, gerçek bir okuma görünümü, satır içi görsel, göreve ve projeye bağlama, .md veya PDF olarak dışa aktarma.
 • Tam bir Markdown çalışma tezgâhı: tablolar, kontrol listeleri, kod, matematik ve diyagramlar; okuma, zengin ve kaynak görünümleriyle. Cihazındaki bir .md dosyasını aç, düzenle ve o dosyaya geri kaydet.
 • Göreve, nota ve projeye dosya ekleyin — barındırılan serviste dosya başına 10 MB'a kadar.
 • İç içe klasörlü, çalışma alanının tamamını kapsayan bir Dosyalar bölümü; her projede ayrı bir Dosyalar sekmesi.

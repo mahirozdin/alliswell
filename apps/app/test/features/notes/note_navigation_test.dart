@@ -4,10 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/notes/data/note.dart';
+import 'package:alliswell/src/features/notes/markdown/markdown_forge_adapters.dart';
 import 'package:alliswell/src/features/notes/data/note_document.dart';
-import 'package:alliswell/src/features/notes/ui/modes/find_replace_bar.dart';
-import 'package:alliswell/src/features/notes/ui/modes/reading_mode.dart';
-import 'package:alliswell/src/features/notes/ui/modes/source_mode.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 /// OPH-249 — navigating a long document (DESIGN §29 D13–D16).
@@ -24,13 +23,22 @@ void main() {
     return buffer.toString();
   }
 
+  // The scope is part of the host (OPH-274): the outline's words come from
+  // the app's MarkdownStrings, and this suite asserts on the APP's copy —
+  // "No headings yet." — not the package's English fallback.
   Widget host(Widget child, {Size size = const Size(1200, 800)}) =>
       ProviderScope(
         child: MediaQuery(
           data: MediaQueryData(size: size),
           child: MaterialApp(
             theme: buildAwTheme(Brightness.light),
-            home: Scaffold(body: child),
+            home: Builder(
+              builder: (context) => MarkdownForge(
+                theme: awMarkdownTheme(context),
+                strings: awMarkdownStrings(),
+                child: Scaffold(body: child),
+              ),
+            ),
           ),
         ),
       );
@@ -231,13 +239,12 @@ void main() {
           isPinned: false,
           isArchived: false,
           revision: 1,
-          contentFormat: 'markdown',
           contentMarkdown: 'bir iki bir',
         ),
       );
       addTearDown(doc.dispose);
 
-      await tester.pumpWidget(host(SourceMode(document: doc)));
+      await tester.pumpWidget(host(SourceMode(controller: doc.source)));
       await tester.pumpAndSettle();
       expect(find.byType(FindReplaceBar), findsNothing);
 

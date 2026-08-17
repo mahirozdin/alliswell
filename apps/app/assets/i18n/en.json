@@ -417,18 +417,12 @@
     "mdProject": "Project",
     "mdProjectHint": "Optional — the note is filed under it",
     "modeReading": "Reading",
-    "modeLive": "Live",
     "modeSource": "Source",
     "sourceHint": "Write markdown…",
     "paletteHint": "Search commands…",
     "paletteEmpty": "No command matches that.",
     "splitOn": "Split view",
     "splitOff": "Single pane",
-    "convertToMarkdown": "Convert to markdown",
-    "convertToRich": "Convert to rich text",
-    "convertToMarkdownBody": "The note becomes markdown text you edit directly. Formatting the rich editor stores but markdown cannot express is flattened.",
-    "convertToRichBody": "The note becomes a rich-text document. Markdown this app does not parse — tables, footnotes, HTML — stays as plain text.",
-    "convertAction": "Convert",
     "outline": "Outline",
     "outlineEmpty": "No headings yet.",
     "find": "Find",
@@ -455,7 +449,11 @@
       "quote": "Quote",
       "codeBlock": "Code block",
       "table": "Table",
-      "divider": "Divider"
+      "divider": "Divider",
+      "highlight": "Highlight",
+      "strike": "Strikethrough",
+      "h3": "Heading 3",
+      "tableHeader": "Heading"
     },
     "extTitle": "External document",
     "extExternal": "Somebody else's file — saved only when you say so",
@@ -486,7 +484,8 @@
     "extRecents": "Recently opened",
     "extRecentsEmpty": "No files opened yet",
     "extNoProject": "No project",
-    "extLinkProject": "Link to a project"
+    "extLinkProject": "Link to a project",
+    "exportUnsupportedBlock": "Unsupported block — open the note in AllisWell to see it."
   },
   "calendar": {
     "google": "Google Calendar",

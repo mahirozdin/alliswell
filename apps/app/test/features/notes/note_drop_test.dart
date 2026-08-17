@@ -16,7 +16,7 @@ import 'package:alliswell/src/features/notes/data/note_document.dart';
 /// everything the drop decides once the file is in hand: how it becomes an
 /// upload, and where the document puts it.
 void main() {
-  NoteDocument docWith({required NoteFormat format, String markdown = ''}) {
+  NoteDocument docWith({String markdown = ''}) {
     final doc = NoteDocument(
       note: NoteDetail(
         id: 'n',
@@ -26,7 +26,6 @@ void main() {
         isPinned: false,
         isArchived: false,
         revision: 1,
-        contentFormat: format.wire,
         contentMarkdown: markdown,
       ),
     );
@@ -34,12 +33,12 @@ void main() {
     return doc;
   }
 
-  group('one insert path, whichever surface is editing', () {
-    test('Source takes markdown: an image embeds, anything else links', () {
+  group('one insert path, because there is one surface', () {
+    test('an image embeds, anything else links', () {
       // Markdown has no video embed. `![…]()` for a video would draw a broken
       // image in every renderer — the document would be claiming something
       // untrue about its own contents.
-      final doc = docWith(format: NoteFormat.markdown, markdown: 'before ');
+      final doc = docWith(markdown: 'before ');
       doc.source.selection = const TextSelection.collapsed(offset: 7);
 
       expect(
@@ -56,35 +55,24 @@ void main() {
       expect(doc.source.text, isNot(contains('![clip.mp4]')));
     });
 
-    test('Live takes embeds, and says so when it cannot', () {
-      final doc = docWith(format: NoteFormat.delta);
+    test('a file the document cannot show is still attached, and says so', () {
+      // Markdown has no video embed and no attachment node. A zip really is
+      // attached to the note — it shows up in the project Files tab — but the
+      // body has no way to draw it, and silence there reads as a failed
+      // upload. The caller owes the reader a word, so it must be told.
+      final doc = docWith();
 
-      expect(
-        doc.insertFile(fileId: 'F1', name: 'cat.png', mime: 'image/png'),
-        NoteInsert.embedded,
-      );
-      expect(
-        doc.insertFile(fileId: 'F2', name: 'clip.mp4', mime: 'video/mp4'),
-        NoteInsert.embedded,
-      );
-      // A zip is genuinely attached to the note, but the rich editor has no way
-      // to show it — the caller owes the reader a word, so it must be told.
       expect(
         doc.insertFile(fileId: 'F3', name: 'a.zip', mime: 'application/zip'),
-        NoteInsert.attachedOnly,
+        NoteInsert.linked,
       );
-
-      final ops = doc.quill.document.toDelta().toJson();
-      final embeds = ops.map((op) => op['insert']).whereType<Map>().toList();
-      expect(embeds.any((e) => e['image'] == 'alliswell://file/F1'), isTrue);
-      expect(embeds.any((e) => e['video'] == 'alliswell://file/F2'), isTrue);
-      expect(embeds.any((e) => '$e'.contains('F3')), isFalse);
+      expect(doc.source.text, contains('[a.zip](alliswell://file/F3)'));
     });
 
     test('an invalid selection appends instead of throwing', () {
       // A drop does not move the caret first, so the selection may never have
       // been set at all.
-      final doc = docWith(format: NoteFormat.markdown, markdown: 'text');
+      final doc = docWith(markdown: 'text');
       expect(doc.source.selection.isValid, isFalse);
       doc.insertFile(fileId: 'F1', name: 'a.png', mime: 'image/png');
       expect(doc.source.text, 'text![a.png](alliswell://file/F1)');

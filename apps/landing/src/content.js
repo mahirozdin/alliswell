@@ -11,7 +11,7 @@ export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
-export const VERSION = '1.6.0';
+export const VERSION = '1.7.0';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
@@ -118,7 +118,7 @@ export const features = [
     id: 'notes',
     eyebrow: 'Notes & files',
     title: 'The document half of the job',
-    body: 'Rich-text notes with inline images and video, linked to tasks and projects, exportable as Markdown. Attach any file to anything, and browse the lot in a Files section with nestable folders.',
+    body: 'Markdown notes with live syntax while you type and a real GFM reading view — tables, task lists, KaTeX, Mermaid. Inline images, linked to tasks and projects, exportable as .md or PDF. Attach any file to anything, and browse the lot in a Files section with nestable folders.',
     points: [
       'A project’s README note becomes its overview page',
       'Attachments go straight to Cloudflare R2 or any S3 — bytes never pass through the API',

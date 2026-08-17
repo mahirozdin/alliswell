@@ -13,6 +13,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/features/files/ui/image_viewer.dart';
 import 'package:alliswell/src/features/files/ui/note_media.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/features/notes/data/delta_markdown.dart';
 
 import '../auth/test_support.dart';
@@ -111,56 +112,32 @@ void main() {
   testWidgets('an image embed without a URL renders the honest placeholder '
       'with the file name from the replica', (tester) async {
     final api = FakeApi();
-    final note = api.seedNote(
-      title: 'Görselli not',
-      contentDelta: [
-        {'insert': 'Şema:\n'},
-        {
-          'insert': {'image': ''},
-        },
-        {'insert': '\n'},
-      ],
-    );
+    final note = api.seedNote(title: 'Görselli not', contentMarkdown: 'Şema:');
     final file = api.seedFile(
       name: 'mimari-şema.png',
       targetType: 'note',
       targetId: note['id'] as String,
       mime: 'image/png',
     );
-    // Point the embed at the seeded file id.
-    (note['contentDelta'] as List)[1] = {
-      'insert': {'image': '$uri${file['id']}'},
-    };
+    // ADR-0033: an embed is markdown now, and the alt text is what the
+    // placeholder shows — the document's own words, not a filename the
+    // renderer went and looked up.
+    note['contentMarkdown'] = 'Şema:\n\n![mimari-şema.png]($uri${file['id']})';
 
     await tester.pumpWidget(await signedInAppWith(api));
     await openNote(tester, 'Görselli not');
+    await tester.tap(find.text('Reading'));
+    await tester.pumpAndSettle();
 
-    expect(find.byType(AwNoteImageEmbed), findsOneWidget);
-    // No download URL from the fake server → placeholder naming the file.
+    expect(find.byType(MdImage), findsOneWidget);
+    // No download URL from the fake server → placeholder naming the image.
     expect(find.text('mimari-şema.png'), findsOneWidget);
   });
 
   testWidgets('tapping an embed pages the note in DOCUMENT order, not upload '
       'order (OPH-245, DESIGN §30 A11)', (tester) async {
     final api = FakeApi();
-    final note = api.seedNote(
-      title: 'Üç görselli not',
-      contentDelta: [
-        {'insert': 'Başlangıç\n'},
-        {
-          'insert': {'image': ''},
-        },
-        {'insert': 'ara metin\n'},
-        {
-          'insert': {'image': ''},
-        },
-        {'insert': 'daha fazla metin\n'},
-        {
-          'insert': {'image': ''},
-        },
-        {'insert': '\n'},
-      ],
-    );
+    final note = api.seedNote(title: 'Üç görselli not', contentMarkdown: '');
     // Seeded C, B, A — so `created_at DESC` (what the attachment list would
     // give) is the exact REVERSE of body order. Wire the gallery to
     // targetFilesProvider instead of the delta walk and this goes red.
@@ -182,23 +159,25 @@ void main() {
       targetId: note['id'] as String,
       mime: 'image/png',
     );
-    final delta = note['contentDelta'] as List;
-    for (final (at, file) in [(1, first), (3, second), (5, third)]) {
-      delta[at] = {
-        'insert': {'image': '$uri${file['id']}'},
-      };
-      // The embed is only tappable once a URL mints; the bytes themselves are
-      // free to fail (the GestureDetector wraps the frame, not the Image).
+    for (final file in [first, second, third]) {
+      // The image is only tappable once a URL mints; the bytes themselves are
+      // free to fail (the InkWell wraps the frame, not the Image).
       api.downloadUrls[file['id'] as String] =
           'https://cdn.test/${file['id']}.png';
     }
+    note['contentMarkdown'] =
+        'Başlangıç\n\n![birinci.png]($uri${first['id']})\n\n'
+        'ara metin\n\n![ikinci.png]($uri${second['id']})\n\n'
+        'daha fazla metin\n\n![ucuncu.png]($uri${third['id']})';
 
     await tester.pumpWidget(await signedInAppWith(api));
     await openNote(tester, 'Üç görselli not');
+    await tester.tap(find.text('Reading'));
+    await tester.pumpAndSettle();
 
-    expect(find.byType(AwNoteImageEmbed), findsNWidgets(3));
+    expect(find.byType(MdImage), findsNWidgets(3));
     // The MIDDLE one: index 2 of 3 only if the walk followed the body.
-    await tester.tap(find.byType(AwNoteImageEmbed).at(1));
+    await tester.tap(find.byType(MdImage).at(1));
     await tester.pumpAndSettle();
 
     expect(find.byType(AwImageViewer), findsOneWidget);
@@ -206,36 +185,32 @@ void main() {
     expect(find.text('ikinci.png'), findsOneWidget);
   });
 
-  testWidgets('a video embed renders a tile with the file name and open icon', (
+  testWidgets('a video becomes a clickable link, not a broken image', (
     tester,
   ) async {
     final api = FakeApi();
-    final note = api.seedNote(
-      title: 'Videolu not',
-      contentDelta: [
-        {'insert': 'Kayıt:\n'},
-        {
-          'insert': {'video': ''},
-        },
-        {'insert': '\n'},
-      ],
-    );
+    final note = api.seedNote(title: 'Videolu not', contentMarkdown: '');
     final file = api.seedFile(
       name: 'toplantı-kaydı.mp4',
       targetType: 'note',
       targetId: note['id'] as String,
       mime: 'video/mp4',
     );
-    (note['contentDelta'] as List)[1] = {
-      'insert': {'video': '$uri${file['id']}'},
-    };
+    // ADR-0033: markdown has no video node, so a video becomes a LINK — and
+    // that is the point. An `![…]()` would draw as a broken image in every
+    // renderer, i.e. the document would claim something untrue about itself.
+    note['contentMarkdown'] =
+        'Kayıt:\n\n[toplantı-kaydı.mp4]($uri${file['id']})';
 
     await tester.pumpWidget(await signedInAppWith(api));
     await openNote(tester, 'Videolu not');
+    await tester.tap(find.text('Reading'));
+    await tester.pumpAndSettle();
 
-    expect(find.byType(AwNoteMediaTile), findsOneWidget);
-    expect(find.text('toplantı-kaydı.mp4'), findsOneWidget);
-    expect(find.byIcon(Icons.open_in_new), findsOneWidget);
+    expect(
+      find.textContaining('toplantı-kaydı.mp4', findRichText: true),
+      findsWidgets,
+    );
   });
 
   testWidgets('toolbar insert uploads to the NOTE then embeds the file id', (
@@ -264,9 +239,11 @@ void main() {
     expect(api.files, hasLength(1));
     expect(api.files.single['targetType'], 'note');
     expect(api.files.single['mime'], 'image/png');
-    // …and the embed landed in the document, rendering our builder.
-    expect(find.byType(AwNoteImageEmbed), findsOneWidget);
-    expect(find.text('çekim.png'), findsOneWidget); // placeholder names it
+    // …and the embed landed in the document, as markdown, at the caret.
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('note-source-field')),
+    );
+    expect(field.controller!.text, contains('![çekim.png](alliswell://file/'));
   });
 
   testWidgets('the toolbar buttons ask for the library they NAME (OPH-244)', (
@@ -294,7 +271,7 @@ void main() {
     ]);
   });
 
-  testWidgets('a non-media pick uploads but explains it will not embed', (
+  testWidgets('a non-media pick uploads AND links, instead of vanishing', (
     tester,
   ) async {
     final api = FakeApi();
@@ -317,10 +294,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.files, hasLength(1)); // attached (findable in Files tab)…
-    expect(find.byType(AwNoteImageEmbed), findsNothing); // …but not embedded
-    expect(
-      find.textContaining("doesn't embed inline"),
-      findsOneWidget, // the honest snackbar
+    // …and, unlike the rich editor, it left a trace you can click. The zip
+    // used to vanish into the Files tab behind an apologetic snackbar, because
+    // Delta had an image node, a video node and nothing else.
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('note-source-field')),
     );
+    expect(field.controller!.text, contains('[yedek.zip](alliswell://file/'));
+    expect(field.controller!.text, isNot(contains('![yedek.zip]')));
   });
 }

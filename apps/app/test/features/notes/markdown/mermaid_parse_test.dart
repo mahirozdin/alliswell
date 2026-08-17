@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:alliswell/src/features/notes/markdown/mermaid/mermaid_parse.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 /// OPH-254 — the mermaid subset (ADR-0028 §4).
 void main() {

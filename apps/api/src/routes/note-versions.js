@@ -81,13 +81,23 @@ function serializeVersionDetail(row) {
   return {
     ...serializeVersionRow(row),
     contentMarkdown: row.content_markdown ?? null,
-    contentDelta: parseDelta(row.content_delta),
+    // ADR-0033: never shipped. See `serializeNoteSnapshot` for the reasoning —
+    // a version viewer that could show two different bodies for one moment in
+    // a note's history would be worse than one that shows the document.
+    contentDelta: null,
   };
 }
 
-/** The text a diff compares — the canonical field, per ADR-0028 §1. */
+/**
+ * The text a diff compares.
+ *
+ * Every version is markdown after the 2026-08-18 migration (ADR-0033), so the
+ * delta branch is a floor, not a path: a diff that silently compared "" would
+ * render the whole note as newly added.
+ */
 function comparableText(snapshot, plainTextFallback = '') {
-  if (snapshot.content_format === 'markdown') return snapshot.content_markdown ?? '';
+  if ((snapshot.content_format ?? 'markdown') === 'markdown')
+    return snapshot.content_markdown ?? '';
   const delta = parseDelta(snapshot.content_delta);
   if (!delta) return plainTextFallback;
   return delta
@@ -219,9 +229,13 @@ export default async function noteVersionRoutes(app) {
       }));
       return {
         segments,
-        // A delta-canonical pair is compared as flattened text: honest, and
-        // the reason the flag exists rather than a silently poorer diff.
-        comparable: version.content_format === (note.content_format ?? 'delta'),
+        // Under ADR-0028 a version and its note could be different KINDS of
+        // document, and the pair was then compared as flattened text — this
+        // flag is what told the reader so, instead of shipping a silently
+        // poorer diff. ADR-0033 left one kind, so it is now always true; the
+        // field stays because the client renders on it and removing it is a
+        // wire-contract change with nothing to gain.
+        comparable: (version.content_format ?? 'markdown') === (note.content_format ?? 'markdown'),
       };
     },
   );

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 import '../projects/fake_api.dart';
 import 'notes_flow_test_support.dart';
@@ -46,20 +45,11 @@ void main() {
     expect(find.text('Yayla planı'), findsNothing);
   });
 
-  testWidgets('opening a note loads the quill editor with its content', (
+  testWidgets('opening a note loads the editor with its content', (
     tester,
   ) async {
     final api = FakeApi()
-      ..seedNote(
-        title: 'Detaylı not',
-        contentDelta: [
-          {
-            'insert': 'Kalın kısım',
-            'attributes': {'bold': true},
-          },
-          {'insert': '\n'},
-        ],
-      );
+      ..seedNote(title: 'Detaylı not', contentMarkdown: '**Kalın kısım**');
 
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
@@ -68,7 +58,7 @@ void main() {
     await tester.tap(find.text('Detaylı not'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(QuillEditor), findsOneWidget);
+    expect(find.byKey(const Key('note-source-field')), findsOneWidget);
     expect(
       find.widgetWithText(TextField, 'Detaylı not'),
       findsOneWidget,
@@ -83,8 +73,12 @@ void main() {
     await tester.tap(find.text('Reading'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(AwMarkdown), findsOneWidget);
-    expect(find.byType(QuillEditor), findsNothing, reason: 'D4: no editor');
+    expect(find.byType(MarkdownView), findsOneWidget);
+    expect(
+      find.byKey(const Key('note-source-field')),
+      findsNothing,
+      reason: 'D4: Reading is never editable-looking',
+    );
     expect(
       find.textContaining('Kalın kısım', findRichText: true),
       findsWidgets,
@@ -207,7 +201,7 @@ void main() {
 
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
-    expect(find.byType(QuillEditor), findsOneWidget);
+    expect(find.byKey(const Key('note-source-field')), findsOneWidget);
 
     await tester.enterText(find.byKey(const Key('note-title')), 'Sıfırdan not');
     await tester.pump(const Duration(seconds: 2));

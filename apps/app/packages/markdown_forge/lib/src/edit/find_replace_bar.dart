@@ -13,9 +13,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import '../../../../i18n/i18n.dart';
-import '../../../../theme/tokens.dart';
+import '../seams.dart';
 
 /// Every match of [needle] in [haystack], as start offsets.
 ///
@@ -132,15 +130,13 @@ class _FindReplaceBarState extends State<FindReplaceBar> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final counter = _matches.isEmpty
-        ? (_find.text.isEmpty ? '' : 'note.noMatches'.tr())
-        : 'note.matchCount'.tr(
-            args: {'index': '${_index + 1}', 'total': '${_matches.length}'},
-          );
+        ? (_find.text.isEmpty ? '' : context.mdStrings.noMatches)
+        : context.mdStrings.matchCount(_index + 1, _matches.length);
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AwSpace.x3,
-        vertical: AwSpace.x2,
+        horizontal: MdSpace.x3,
+        vertical: MdSpace.x2,
       ),
       color: scheme.surfaceContainerHigh,
       child: Row(
@@ -154,30 +150,30 @@ class _FindReplaceBarState extends State<FindReplaceBar> {
               onSubmitted: (_) => _step(1),
               decoration: InputDecoration(
                 isDense: true,
-                labelText: 'note.find'.tr(),
+                labelText: context.mdStrings.find,
               ),
             ),
           ),
           if (widget.showReplace) ...[
-            const SizedBox(width: AwSpace.x2),
+            const SizedBox(width: MdSpace.x2),
             Expanded(
               child: TextField(
                 key: const Key('note-replace-field'),
                 controller: _replace,
                 decoration: InputDecoration(
                   isDense: true,
-                  labelText: 'note.replace'.tr(),
+                  labelText: context.mdStrings.replace,
                 ),
               ),
             ),
-            const SizedBox(width: AwSpace.x2),
+            const SizedBox(width: MdSpace.x2),
             TextButton(
               key: const Key('note-replace-all'),
               onPressed: _matches.isEmpty ? null : _replaceAll,
-              child: Text('note.replaceAll'.tr()),
+              child: Text(context.mdStrings.replaceAll),
             ),
           ],
-          const SizedBox(width: AwSpace.x2),
+          const SizedBox(width: MdSpace.x2),
           Text(
             counter,
             key: const Key('note-find-counter'),
@@ -185,19 +181,19 @@ class _FindReplaceBarState extends State<FindReplaceBar> {
           ),
           IconButton(
             key: const Key('note-find-prev'),
-            tooltip: 'common.previous'.tr(),
+            tooltip: context.mdStrings.previous,
             icon: const Icon(Icons.keyboard_arrow_up),
             onPressed: _matches.isEmpty ? null : () => _step(-1),
           ),
           IconButton(
             key: const Key('note-find-next'),
-            tooltip: 'common.next'.tr(),
+            tooltip: context.mdStrings.next,
             icon: const Icon(Icons.keyboard_arrow_down),
             onPressed: _matches.isEmpty ? null : () => _step(1),
           ),
           IconButton(
             key: const Key('note-find-close'),
-            tooltip: 'common.close'.tr(),
+            tooltip: context.mdStrings.close,
             icon: const Icon(Icons.close),
             onPressed: widget.onClose,
           ),

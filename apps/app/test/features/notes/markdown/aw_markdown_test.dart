@@ -6,12 +6,8 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
-import 'package:alliswell/src/features/notes/markdown/md_callout.dart';
-import 'package:alliswell/src/features/notes/markdown/md_code_block.dart';
-import 'package:alliswell/src/features/notes/markdown/md_parse.dart';
-import 'package:alliswell/src/features/notes/markdown/md_table.dart';
-import 'package:alliswell/src/features/notes/markdown/md_unsupported.dart';
+import 'package:alliswell/src/features/notes/markdown/markdown_forge_adapters.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 /// OPH-247 — the reading view over `markdown_conformance.md`.
@@ -24,14 +20,24 @@ void main() {
     'test/fixtures/markdown_conformance.md',
   ).readAsStringSync();
 
+  // OPH-274: the renderer is a package now, and its words come from the host
+  // through `MarkdownStrings`. Without the scope it falls back to English
+  // defaults — which is the package behaving correctly and this suite
+  // measuring the wrong thing, so the scope is part of the host.
   Widget host(String markdown, {Brightness brightness = Brightness.light}) =>
       MaterialApp(
         theme: buildAwTheme(brightness),
-        home: Scaffold(
-          body: AwMarkdown(
-            document: parseMarkdown(markdown),
-            shrinkWrap: true,
-            onOpenLink: (_) {},
+        home: Builder(
+          builder: (context) => MarkdownForge(
+            theme: awMarkdownTheme(context),
+            strings: awMarkdownStrings(),
+            child: Scaffold(
+              body: MarkdownView(
+                document: parseMarkdown(markdown),
+                shrinkWrap: true,
+                onOpenLink: (_) {},
+              ),
+            ),
           ),
         ),
       );
@@ -50,7 +56,9 @@ void main() {
         ProviderScope(
           child: MaterialApp(
             theme: buildAwTheme(Brightness.light),
-            home: Scaffold(body: AwMarkdown(document: parseMarkdown(fixture))),
+            home: Scaffold(
+              body: MarkdownView(document: parseMarkdown(fixture)),
+            ),
           ),
         ),
       );
@@ -213,7 +221,7 @@ void main() {
         MaterialApp(
           theme: buildAwTheme(Brightness.light),
           home: Scaffold(
-            body: AwMarkdown(
+            body: MarkdownView(
               document: parseMarkdown("[tıkla](javascript:alert('xss'))"),
               shrinkWrap: true,
               onOpenLink: opened.add,
@@ -240,7 +248,7 @@ void main() {
         MaterialApp(
           theme: buildAwTheme(Brightness.light),
           home: Scaffold(
-            body: AwMarkdown(
+            body: MarkdownView(
               document: parseMarkdown('[site](https://alliswell.space)'),
               shrinkWrap: true,
               onOpenLink: opened.add,

@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:drift/drift.dart';
 
 import '../../../core/fold.dart';
+import '../../../core/markdown_text.dart';
 import '../../../core/list_sort.dart';
 import '../../../core/ulid.dart';
 import '../../../sync/db/database.dart';
@@ -80,8 +79,11 @@ Comparator<NoteRow> noteSortComparator(AwSortState sort) {
   };
 }
 
-/// Searchable plain text from delta ops — mirrors the server's derivation
-/// (apps/api src/lib/delta.js) so offline search matches server search.
+/// Searchable plain text from delta ops.
+///
+/// ADR-0033 left this ONE caller: the drift v19 migration, which converts the
+/// replica's Delta-canonical rows. Nothing in the running app produces a delta
+/// any more, so when the last pre-2026-08-18 client is gone this goes with it.
 String plainTextFromDelta(List<Map<String, dynamic>>? ops) {
   if (ops == null) return '';
   final text = ops
@@ -224,7 +226,10 @@ class NoteStore {
 
   Future<String> create(String workspaceId, Map<String, dynamic> body) async {
     final id = newUlid();
-    final delta = (body['contentDelta'] as List?)?.cast<Map<String, dynamic>>();
+    // ADR-0033: one canonical field, so one derivation. `contentDelta` is not
+    // read here at all — nothing in the app writes one.
+    final markdown = body['contentMarkdown'] as String?;
+    final plain = plainTextFromMarkdown(markdown);
     await _db.transaction(() async {
       await _db
           .into(_db.notes)
@@ -237,13 +242,10 @@ class NoteStore {
                 foldSearchText((body['title'] as String).trim()),
               ),
               projectId: Value(body['projectId'] as String?),
-              contentDelta: Value(delta == null ? null : jsonEncode(delta)),
-              contentMarkdown: Value(body['contentMarkdown'] as String?),
-              contentFormat: Value(
-                (body['contentFormat'] as String?) ?? 'delta',
-              ),
-              plainText: Value(plainTextFromDelta(delta)),
-              bodyFold: Value(foldSearchText(plainTextFromDelta(delta))),
+              contentMarkdown: Value(markdown),
+              contentFormat: const Value('markdown'),
+              plainText: Value(plain),
+              bodyFold: Value(foldSearchText(plain)),
               isPinned: Value((body['isPinned'] as bool?) ?? false),
               createdAt: Value(DateTime.now().toUtc()),
               updatedAt: Value(DateTime.now().toUtc()),
@@ -275,23 +277,18 @@ class NoteStore {
         titleFold: Value(foldSearchText((patch['title'] as String).trim())),
       );
     }
-    if (patch.containsKey('contentDelta')) {
-      final delta = (patch['contentDelta'] as List?)
-          ?.cast<Map<String, dynamic>>();
-      companion = companion.copyWith(
-        contentDelta: Value(delta == null ? null : jsonEncode(delta)),
-        plainText: Value(plainTextFromDelta(delta)),
-        bodyFold: Value(foldSearchText(plainTextFromDelta(delta))),
-      );
-    }
-    if (patch.containsKey('contentFormat')) {
-      companion = companion.copyWith(
-        contentFormat: Value(patch['contentFormat'] as String),
-      );
-    }
+    // ADR-0033: the body and the search columns move together, always, from
+    // the one canonical field. They used to be updated only in the delta
+    // branch, which is why a markdown note's `bodyFold` stayed empty and
+    // offline search could not see it.
     if (patch.containsKey('contentMarkdown')) {
+      final markdown = patch['contentMarkdown'] as String?;
+      final plain = plainTextFromMarkdown(markdown);
       companion = companion.copyWith(
-        contentMarkdown: Value(patch['contentMarkdown'] as String?),
+        contentMarkdown: Value(markdown),
+        contentFormat: const Value('markdown'),
+        plainText: Value(plain),
+        bodyFold: Value(foldSearchText(plain)),
       );
     }
     if (patch.containsKey('projectId')) {
@@ -335,10 +332,7 @@ class NoteStore {
   /// Whether a patch touches the body — only those need a base (a pin does
   /// not conflict with anything).
   static bool isContentPatch(Map<String, dynamic> patch) =>
-      patch.containsKey('contentDelta') ||
-      patch.containsKey('contentMarkdown') ||
-      patch.containsKey('contentFormat') ||
-      patch.containsKey('title');
+      patch.containsKey('contentMarkdown') || patch.containsKey('title');
 
   /// The user resolved a conflict banner: the pointer goes, the note stays.
   /// Never pushed — `conflictVersionId` is device-local (v18).
@@ -401,11 +395,7 @@ class NoteStore {
     revision: r.revision,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
-    contentDelta: r.contentDelta == null
-        ? null
-        : (jsonDecode(r.contentDelta!) as List).cast<Map<String, dynamic>>(),
     contentMarkdown: r.contentMarkdown,
-    contentFormat: r.contentFormat,
     links: [
       for (final l in links)
         NoteLink(id: l.id, entityType: l.entityType, entityId: l.entityId),

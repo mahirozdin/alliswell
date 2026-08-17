@@ -2,9 +2,7 @@ import 'dart:ui' show Offset, Rect, Size;
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:alliswell/src/features/notes/markdown/mermaid/flow_layout.dart';
-import 'package:alliswell/src/features/notes/markdown/mermaid/mermaid_parse.dart';
-import 'package:alliswell/src/features/notes/markdown/mermaid/sequence_layout.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 /// OPH-254 — the layered layout, measured rather than eyeballed.
 ///

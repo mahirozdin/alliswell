@@ -5,6 +5,103 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.7.0] — 2026-08-18
+
+### Changed
+
+- **Notes are markdown, and nothing else (OPH-274, ADR-0033).** The rich text
+  editor is gone — `flutter_quill` and the eleven packages it dragged in leave
+  the tree, including the `quill_native_bridge_*` pods on iOS and macOS. A note
+  has one canonical form: `content_markdown`. Every existing note is converted
+  on deploy, in `notes` **and** in `note_versions`, with embed URIs preserved;
+  `content_delta` is never written again and never dropped, so the original
+  document stays readable.
+- **The editor keeps its toolbar and gains live syntax.** Headings are sized in
+  the field, bold is bold, and the syntax marks quiet down off the line you are
+  editing (Obsidian/Typora). They are dimmed rather than hidden, which is not a
+  preference: a `TextEditingController` must return exactly the characters of
+  its text, or every caret offset after the first difference is wrong. One
+  toolbar now, at every screen width, with the image and video inserts pinned
+  outside the scroll — a wide window used to get formatting controls only from
+  the rich editor's own bar.
+- **The markdown engine is a package: `markdown_forge`** (MIT,
+  `apps/app/packages/markdown_forge`, headed for `github.com/bubiapps` and
+  pub.dev). Renderer, reading mode, live-syntax controller, editor surface,
+  toolbar, palette, find & replace — 23 files, depending only on `markdown`,
+  `highlight` and `flutter_math_fork`. The three ambient couplings became
+  injected seams (`MarkdownTheme`, `MarkdownStrings` with a fold hook,
+  `MarkdownImageResolver` + link-scheme allowlist), and the compiler now
+  enforces the boundary: the package cannot see `AwTokens`, `.tr()` or
+  riverpod. AllisWell's answers live in one adapter file.
+- **A client that has not updated keeps working.** A Delta still arriving from
+  the previous release is converted on the way in rather than refused, and the
+  `# title` heading it prefixed onto its derived markdown is stripped, so a
+  migrated note does not render its title twice.
+
+### Added
+
+- **Every note conflict can now be merged.** Epic 25's three-way merge refused
+  to run unless all three sides were markdown, which — since the app's own
+  editor wrote Deltas — meant it declined the only kind of note anybody had.
+  The `NOT_MARKDOWN` outcome is gone because it can no longer happen.
+- **The assistant can edit any note's body.** `update_note` answered
+  `NOTE_NOT_MARKDOWN` on notes written in the app, so it could rename a note it
+  was not allowed to edit. The refused body is kept as a version either way.
+- **Tables, nested lists and horizontal rules reach the exported PDF.** Export
+  ran through the Delta block model, and `flutter_quill` 11.5.1 has no table
+  node at all — a table in a note could not appear in an exported file. That
+  was a document-model gap, not a rendering one.
+- **`- [x]` heading 3 and strikethrough** join the markdown toolbar, and the
+  `highlight` action finally has a translation (it shipped in OPH-259 showing
+  its own key).
+
+### Fixed
+
+- **Offline search can find a markdown note.** The client never grew the
+  `plainTextFromMarkdown` twin the server got in OPH-261, so a
+  markdown-canonical note carried an empty local search column — it synced, it
+  rendered, it exported, and search could not see it.
+- **A note you converted yourself no longer opens read-only.** "Opens in
+  Reading" is meant to be about a document that came from OUTSIDE, but it was
+  computed as `format == markdown`, so the two were the same question. Under
+  ADR-0033 that would have made every note read-only. Provenance is now passed
+  in, not inferred (the parked OPH-270 finding).
+- **A PDF or a zip dropped on a note leaves a trace.** Delta had an image node,
+  a video node and nothing else, so anything else attached silently and
+  apologised with a snackbar. Markdown has a link, and the reading view opens
+  it — links in a rendered note are now wired at all, which they were not.
+- **The `/table` command no longer types Turkish into an English document.**
+  Its header cells were a hardcoded string, which `check:i18n` cannot see
+  because it never reaches a `Text()` widget.
+- **`docs/adr/README.md` lists ADR-0031 and ADR-0032**, missing since they
+  landed — the same drift OPH-242 corrected two rounds ago, which says that
+  correction was a fix and not a guard.
+- **A deadlocked note write restarts instead of failing (API).** InnoDB
+  resolves a deadlock by killing one participant with `ER_LOCK_DEADLOCK` and
+  rolling it back — normal operation per MySQL's own manual, and two users
+  saving notes concurrently is enough to trigger it. Measured: a 500-item bulk
+  import running beside other writers lost 9 scattered items, each surfacing
+  as an opaque `IMPORT_ITEM_FAILED`. Every note-domain transaction now retries
+  the victim (bounded, quadratic backoff — `src/db/tx.js`).
+- **The integration suite stops being its own load test.** Its files ran in
+  parallel workers against the one shared MySQL, so tests written to assert
+  exact outcomes raced each other's locks. They run sequentially now
+  (`fileParallelism: false` when `INTEGRATION=1`); unit tests keep full
+  parallelism, their database is a fake.
+
+### Tests
+
+- API **709 → 719** unit, **74 → 81** integration — three consecutive full
+  integration runs green after the deadlock fix. New: `tx-retry.test.js`;
+  `notes-markdown-migration.test.js` proves the conversion over real MySQL
+  (embed URIs intact, `note_versions` converted, content hashes recomputed,
+  idempotent); `note-merge.test.js` gains the push shaped exactly like the
+  previous release's and asserts it MERGES.
+- App **1222 → 1240**. New: `md_highlight_test.dart` (27 cases, including a
+  round-trip group proving the scan never loses a character and a cost guard
+  over a 500 KB document) and `markdown_blocks_test.dart`. The drift migration
+  test seeds a real Delta note and asserts v19 converts it in place.
+
 ### Fixed
 
 - **The landing page's Search section now shows search.** It illustrated the

@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/notes/data/note.dart';
 import 'package:alliswell/src/features/notes/data/note_document.dart';
-import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
 import 'package:alliswell/src/features/notes/ui/modes/note_mode_control.dart';
-import 'package:alliswell/src/features/notes/ui/modes/source_mode.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
-/// OPH-248 — the three modes (DESIGN §29 D1–D5).
-NoteDetail _note({
-  String format = 'delta',
-  String? markdown,
-  List<Map<String, dynamic>>? delta,
-}) => NoteDetail(
+/// The two modes (DESIGN §29 D1–D5, as ADR-0033 left them).
+NoteDetail _note({String? markdown}) => NoteDetail(
   id: 'n1',
   workspaceId: 'w1',
   title: 'Başlık',
@@ -21,67 +17,49 @@ NoteDetail _note({
   isPinned: false,
   isArchived: false,
   revision: 1,
-  contentFormat: format,
   contentMarkdown: markdown,
-  contentDelta: delta,
 );
 
 void main() {
-  group('D1, as amended — a note offers the modes it can honour', () {
-    test('a Delta-canonical note offers Live and Reading, never Source', () {
-      final doc = NoteDocument(note: _note());
-
-      expect(doc.availableModes, [NoteMode.live, NoteMode.reading]);
-      expect(doc.availableModes, isNot(contains(NoteMode.source)));
-    });
-
-    test('a markdown-canonical note offers Source and Reading, never Live', () {
-      final doc = NoteDocument(
-        note: _note(format: 'markdown', markdown: '# a'),
-      );
+  group('D1 — every note offers both modes', () {
+    test('Source and Reading, for every note there is', () {
+      // The D1 amendment OPH-248 had to write (a note offers only the editor
+      // matching its canonical form) existed because there were two canonical
+      // forms. ADR-0033 left one, so the amendment is retired and D1 reads the
+      // way it was originally written.
+      final doc = NoteDocument(note: _note(markdown: '# a'));
 
       expect(doc.availableModes, [NoteMode.source, NoteMode.reading]);
-      expect(doc.availableModes, isNot(contains(NoteMode.live)));
     });
 
-    test('asking for a mode the note cannot honour does nothing', () {
-      // Not "throws", and not "shows a disabled segment" — the mode simply is
-      // not on offer. A dead affordance is what §22 forbids.
-      final doc = NoteDocument(note: _note());
-      doc.setMode(NoteMode.source);
-
-      expect(doc.mode, isNot(NoteMode.source));
-    });
-  });
-
-  group('D2 — the default mode follows where the document came from', () {
-    test('a note written here opens in its editor', () {
-      expect(
-        NoteDocument.defaultModeFor(NoteFormat.delta, cameFromOutside: false),
-        NoteMode.live,
-      );
-      expect(
-        NoteDocument.defaultModeFor(
-          NoteFormat.markdown,
-          cameFromOutside: false,
-        ),
-        NoteMode.source,
-      );
+    test('a brand new note opens in the editor', () {
+      expect(NoteDocument().mode, NoteMode.source);
     });
 
-    test('a document from outside opens in Reading', () {
-      expect(
-        NoteDocument.defaultModeFor(NoteFormat.markdown, cameFromOutside: true),
-        NoteMode.reading,
-      );
-    });
-  });
-
-  group('D3 — a switch preserves the caret, and therefore the undo history', () {
-    test('the controllers are never torn down by a mode switch', () {
+    test('D2 — a document from outside opens in Reading', () {
       final doc = NoteDocument(
-        note: _note(format: 'markdown', markdown: 'abc'),
+        note: _note(markdown: '# someone else'),
+        cameFromOutside: true,
       );
+
+      expect(doc.mode, NoteMode.reading);
+    });
+
+    test('D2 asks about PROVENANCE, not about the content format', () {
+      // The parked OPH-270 finding: this used to be computed as
+      // `format == NoteFormat.markdown`, which equated "markdown" with "came
+      // from outside". A note the user converted on purpose opened read-only
+      // every single time — and under ADR-0033, where every note is markdown,
+      // that heuristic would have made the whole app read-only.
+      final mine = NoteDocument(note: _note(markdown: '# mine'));
+
+      expect(mine.mode, NoteMode.source);
+    });
+  });
+
+  group('D3 — a mode switch never tears the controller down', () {
+    test('the source controller, its caret and its undo stack survive', () {
+      final doc = NoteDocument(note: _note(markdown: 'abc'));
       final source = doc.source;
       source.selection = const TextSelection.collapsed(offset: 2);
 
@@ -95,89 +73,39 @@ void main() {
       expect(identical(doc.source, source), isTrue);
       expect(doc.source.selection.baseOffset, 2);
     });
-
-    test('the quill controller survives too', () {
-      final doc = NoteDocument(note: _note());
-      final quill = doc.quill;
-
-      doc
-        ..setMode(NoteMode.reading)
-        ..setMode(NoteMode.live);
-
-      expect(identical(doc.quill, quill), isTrue);
-    });
   });
 
   group('canonical content', () {
-    test('a markdown note reads back BYTE for byte, not round-tripped', () {
-      // The property OPH-251 depends on: a table is not something our Delta
-      // converters can express, so a round trip would silently eat it.
+    test('the body reads back BYTE for byte', () {
+      // The property OPH-251 depends on, and the reason ADR-0033 is a
+      // simplification rather than a trade: there is no converter between the
+      // stored text and the edited text, so there is nothing that could eat a
+      // table on the way through.
       const src = '| a | b |\n| - | - |\n| 1 | 2 |\n';
-      final doc = NoteDocument(
-        note: _note(format: 'markdown', markdown: src),
-      );
+      final doc = NoteDocument(note: _note(markdown: src));
 
       expect(doc.markdown, src);
     });
 
-    test('a delta note DERIVES its markdown for reading', () {
-      final doc = NoteDocument(
-        note: _note(
-          delta: [
-            {
-              'insert': 'kalın',
-              'attributes': {'bold': true},
-            },
-            {'insert': '\n'},
-          ],
-        ),
-      );
+    test('the save body is markdown, and does not repeat the title', () {
+      final doc = NoteDocument(note: _note(markdown: '# a'));
+      final body = doc.bodyFor('Başlık');
 
-      expect(doc.markdown, contains('**kalın**'));
+      expect(body['contentFormat'], 'markdown');
+      expect(body['contentMarkdown'], '# a');
+      expect(body['title'], 'Başlık');
+      // The previous release prefixed `# $title` onto the body it derived,
+      // which is what made migrated notes render their title twice.
+      expect(body['contentMarkdown'], isNot(contains('# Başlık')));
+      expect(body.containsKey('contentDelta'), isFalse);
     });
 
-    test('the save body always carries the format', () {
-      final doc = NoteDocument(
-        note: _note(format: 'markdown', markdown: '# a'),
-      );
+    test('a remote change lands in a clean editor', () {
+      final doc = NoteDocument(note: _note(markdown: 'ilk'));
 
-      expect(doc.bodyFor('Başlık')['contentFormat'], 'markdown');
-      expect(doc.bodyFor('Başlık')['contentMarkdown'], '# a');
-    });
-  });
+      doc.adoptRemote(_note(markdown: 'sunucudan'));
 
-  group('the conversion door', () {
-    test('delta → markdown flattens into the source, and switches mode', () {
-      final doc = NoteDocument(
-        note: _note(
-          delta: [
-            {
-              'insert': 'kalın',
-              'attributes': {'bold': true},
-            },
-            {'insert': '\n'},
-          ],
-        ),
-      );
-
-      doc.convert();
-
-      expect(doc.format, NoteFormat.markdown);
-      expect(doc.source.text, contains('**kalın**'));
-      expect(doc.mode, NoteMode.source);
-      expect(doc.availableModes, [NoteMode.source, NoteMode.reading]);
-    });
-
-    test('markdown → delta parses what markdown can express', () {
-      final doc = NoteDocument(
-        note: _note(format: 'markdown', markdown: '**kalın**\n'),
-      );
-
-      doc.convert();
-
-      expect(doc.format, NoteFormat.delta);
-      expect(doc.mode, NoteMode.live);
-      expect(doc.deltaJson.first['attributes'], containsPair('bold', true));
+      expect(doc.source.text, 'sunucudan');
     });
   });
 
@@ -193,68 +121,49 @@ void main() {
       ),
     );
 
-    testWidgets('shows exactly the modes on offer', (tester) async {
-      await tester.pumpWidget(host(NoteDocument(note: _note())));
+    testWidgets('shows both modes, and no dead third segment', (tester) async {
+      final doc = NoteDocument(note: _note(markdown: '# a'));
+      await tester.pumpWidget(host(doc));
 
-      expect(find.text('Live'), findsOneWidget);
-      expect(find.text('Reading'), findsOneWidget);
-      expect(find.text('Source'), findsNothing);
+      expect(find.byKey(const Key('note-mode-control')), findsOneWidget);
+      expect(find.byType(ButtonSegment<NoteMode>), findsNothing);
+      expect(find.text('Kaynak'), findsNothing); // English locale in tests
+      expect(doc.availableModes.length, 2);
     });
+  });
 
-    testWidgets('a markdown note shows Source instead of Live', (tester) async {
+  group('the surfaces each mode mounts', () {
+    testWidgets('Reading renders through the markdown renderer', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        host(
-          NoteDocument(
-            note: _note(format: 'markdown', markdown: 'a'),
+        ProviderScope(
+          child: MaterialApp(
+            theme: buildAwTheme(Brightness.light),
+            home: const Scaffold(body: _ReadingHost()),
           ),
         ),
       );
-
-      expect(find.text('Source'), findsOneWidget);
-      expect(find.text('Live'), findsNothing);
-    });
-  });
-
-  group('D5 — split view is wide-screen only, and syncs both ways', () {
-    Widget host(NoteDocument doc, Size size) => MediaQuery(
-      data: MediaQueryData(size: size),
-      child: MaterialApp(
-        theme: buildAwTheme(Brightness.light),
-        home: Scaffold(body: SourceMode(document: doc)),
-      ),
-    );
-
-    testWidgets('the toggle is absent on a narrow screen', (tester) async {
-      final doc = NoteDocument(
-        note: _note(format: 'markdown', markdown: 'a'),
-      );
-      await tester.pumpWidget(host(doc, const Size(500, 900)));
-
-      expect(find.byKey(const Key('note-split-toggle')), findsNothing);
-      expect(find.byKey(const Key('note-source-field')), findsOneWidget);
+      expect(find.byType(MarkdownView), findsOneWidget);
     });
 
-    testWidgets('at ≥ 900 px the toggle appears and opens a second pane', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(1200, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(tester.view.reset);
-
-      final doc = NoteDocument(
-        note: _note(format: 'markdown', markdown: '# Başlık\n\ngövde'),
+    testWidgets('Source mounts the text field', (tester) async {
+      final doc = NoteDocument(note: _note(markdown: 'gövde'));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: Scaffold(body: SourceMode(controller: doc.source)),
+        ),
       );
-      await tester.pumpWidget(host(doc, const Size(1200, 900)));
-
-      expect(find.byKey(const Key('note-split-preview')), findsNothing);
-      await tester.tap(find.byKey(const Key('note-split-toggle')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const Key('note-split-preview')), findsOneWidget);
-      expect(find.byType(AwMarkdown), findsOneWidget);
-      // Still ONE control's worth of surface: the split is a toggle inside
-      // Source, not a fourth mode.
       expect(find.byKey(const Key('note-source-field')), findsOneWidget);
     });
   });
+}
+
+class _ReadingHost extends StatelessWidget {
+  const _ReadingHost();
+
+  @override
+  Widget build(BuildContext context) =>
+      MarkdownView(document: parseMarkdown('# a'));
 }

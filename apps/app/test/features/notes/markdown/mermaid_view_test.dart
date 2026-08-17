@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:alliswell/src/features/notes/markdown/aw_markdown.dart';
-import 'package:alliswell/src/features/notes/markdown/md_parse.dart';
-import 'package:alliswell/src/features/notes/markdown/md_unsupported.dart';
-import 'package:alliswell/src/features/notes/markdown/mermaid/mermaid_view.dart';
+import 'package:alliswell/src/features/notes/markdown/markdown_forge_adapters.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 /// OPH-254 — the four mermaid cases the conformance fixture carries.
@@ -19,11 +17,20 @@ void main() {
   Widget host(String markdown, {Brightness brightness = Brightness.light}) =>
       MaterialApp(
         theme: buildAwTheme(brightness),
-        home: Scaffold(
-          body: AwMarkdown(
-            document: parseMarkdown(markdown),
-            shrinkWrap: true,
-            onOpenLink: (_) {},
+        // OPH-274: the renderer's words come from the host through
+        // `MarkdownStrings`. Without the scope the package falls back to its
+        // English defaults, and this suite would be measuring those.
+        home: Builder(
+          builder: (context) => MarkdownForge(
+            theme: awMarkdownTheme(context),
+            strings: awMarkdownStrings(),
+            child: Scaffold(
+              body: MarkdownView(
+                document: parseMarkdown(markdown),
+                shrinkWrap: true,
+                onOpenLink: (_) {},
+              ),
+            ),
           ),
         ),
       );
@@ -168,7 +175,7 @@ sequenceDiagram
       ProviderScope(
         child: MaterialApp(
           theme: buildAwTheme(Brightness.light),
-          home: Scaffold(body: AwMarkdown(document: parseMarkdown(fixture))),
+          home: Scaffold(body: MarkdownView(document: parseMarkdown(fixture))),
         ),
       ),
     );
