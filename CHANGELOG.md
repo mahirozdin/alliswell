@@ -18,6 +18,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Notes remember what they used to say.** Every edit is captured, so you can
+  look through a note's history, see exactly what changed between two points,
+  and put an older version back — either over the current one (which is itself
+  undoable, because the state you left is saved too) or as a separate copy. Ten
+  minutes of typing is one entry rather than hundreds, an identical save adds
+  nothing, and pinning or archiving a note is not an edit. History is kept on
+  the server for 90 days (a year for the entries that came from a conflict, a
+  merge, a restore or an import), and self-hosters can change all of those
+  numbers (OPH-267).
+
 - **Take your notes out, or bring them in — in bulk.** `export/notes` hands
   back every note whole (both body formats, tags, links, flags, timestamps),
   paginated; `import/notes` and `import/tasks` take up to 500 at a time. An

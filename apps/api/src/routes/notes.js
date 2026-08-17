@@ -126,6 +126,11 @@ export default async function noteRoutes(app) {
   // the serializers the sync pull also imports.
   const loadNote = (id) => domain.loadNote(app, id);
 
+  // OPH-267 (ADR-0031): who wrote this. The route is the only layer that knows
+  // whether the caller arrived with a session or with an API key, so the
+  // origin is decided here and everything downstream just records it.
+  const originOf = (request) => (request.apiKeyAuth ? 'api' : 'edit');
+
   async function serializeNoteDetail(row) {
     const { links, tagIds } = await domain.noteRelations(app, row.id);
     return serializeNoteSnapshot(row, links, tagIds);
@@ -255,6 +260,7 @@ export default async function noteRoutes(app) {
         workspaceId,
         userId: request.user.id,
         body: request.body,
+        origin: originOf(request),
       });
       return reply.code(201).send(await serializeNoteDetail(await loadNote(id)));
     },
@@ -331,7 +337,12 @@ export default async function noteRoutes(app) {
     async (request) => {
       const row = await loadNote(request.params.noteId);
       await app.requireWorkspaceMember(request, row.workspace_id);
-      await domain.updateNote(app, { row, userId: request.user.id, body: request.body });
+      await domain.updateNote(app, {
+        row,
+        userId: request.user.id,
+        body: request.body,
+        origin: originOf(request),
+      });
       return serializeNoteDetail(await loadNote(row.id));
     },
   );

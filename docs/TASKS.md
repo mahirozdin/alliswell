@@ -8388,9 +8388,9 @@ satırı düzeltip yalnız onu tekrar gönderebilir._
       `create_task` var ve 500 satırlık bir gövdeyi tool argümanı olarak taşımak ne host
       onay kartına ne de bağlam bütçesine sığar. `docs/API.md`'ye toplu bölüm + uç tablosu
       eklendi (OPH-265'te "uçlar yokken yazılmaz" denmişti; artık varlar).
-- [ ] OPH-267 indikten sonra import sürümlemede `origin='import'` görünür (V8) — **sıra notu
-      gerçekleşti:** bu task 267'den ÖNCE bitti, yani origin alanı OPH-267'de geriye dönük
-      bağlanacak (tek satır: `createNote` çağrısına origin geçirmek).
+- [x] OPH-267 indikten sonra import sürümlemede `origin='import'` görünür (V8) — **kapandı
+      aynı gün:** OPH-267 inerken `import/notes` çağrısı `origin: 'import'` geçirmeye başladı
+      (tek satır, söz verildiği gibi) ve testi OPH-267 süitinde çivili.
 - [ ] Testler: integration round-trip (import → pull → export eşleşir), tavan/hata yolları,
       anahtarla uçtan uca (264'ün anahtarıyla curl senaryosu integration'da). `docs/API.md`
       örnekleri güncellenir. **Issue #3'e kapanış yorumu** (sevk edilen uçlar + docs/API.md
@@ -8402,37 +8402,59 @@ _Bulgu #4/#5 + literatür tablosu. İLK İŞ ADR-0031: yukarıdaki karar #5-#10 
 tablo ADR'ye taşınır (araştırma raporu bağlantısıyla); "hiçbir sürümleme kodu ADR'den önce
 yazılmaz" (OPH-246 emsali)._
 
-- [ ] Migration `create_note_versions`: `id` char(26) · `workspace_id` · `note_id` (FK CASCADE)
-      · `note_revision` bigint (yakaladığı not revizyonu) · `title` · `content_delta` json NULL
-      · `content_markdown` mediumtext NULL · `content_format` varchar(16) · `origin` varchar(16)
-      (`edit|merge|restore|conflict|import|api|mcp`) · `client_id` char(26) NULL ·
-      `created_by` char(26) NULL · `content_hash` char(64) · `created_at`. Index
-      `(note_id, created_at)`, `(note_id, note_revision)`. ÜÇ içerik alanı birden — hangi
-      alanın kanonik olduğu belgenin kimliğidir (ADR-0028 tutarlılığı).
-- [ ] Yakalama TEK noktada: `db/notes.js.updateNote`/`createNote` (OPH-261'in çıkardığı yol)
-      içerik değiştiren her kabul edilen yazımda sürüm satırı düşer — REST, sync push, MCP,
-      API, import HEPSİ buradan geçtiği için V8 kendiliğinden sağlanır. Sunucu koalesansı:
-      son sürüm aynı not + aynı `client_id` + `origin='edit'` + <10 dk ise satır YERİNDE
-      güncellenir (rolling head), değilse INSERT (1.5 sn'lik otosave'in dakikada ~26 satır
-      üretmesine karşı ölçülmüş cevap — bulgu #5).
-- [ ] `content_hash` (sha256) ile özdeş gövde artarda iki satır üretmez.
-- [ ] Saklama süpürücüsü (karar #9): günlük job (dosya-GC süpürücüsü emsal); 0–7 gün dokunma,
-      7–90 gün not başına günde 1'e incelt, 90+ gün sil; `conflict|merge|restore|import` 365
-      gün; not başına tavan 500 (en eskiden incelt); env: `NOTE_VERSION_RETENTION_DAYS=90`,
-      `NOTE_VERSION_PROTECTED_DAYS=365`, `NOTE_VERSION_CAP=500`, `NOTE_VERSION_COALESCE_MIN=10`
-      → `config.js` + `.env.example`. Not silinince sürümler CASCADE gider.
-- [ ] REST: `GET /api/v1/notes/:noteId/versions` (sayfalı metadata: id, createdAt, origin,
-      clientId=bu cihaz mı işareti için, boyut) · `GET /api/v1/notes/:noteId/versions/:versionId`
-      (tam gövde) · `POST /api/v1/notes/:noteId/versions/:versionId/restore` body
-      `{mode: 'replace'|'copy'}` — replace: eski gövde YENİ head yazımı olur (`origin='restore'`,
-      karar #10), copy: yeni not döner. `GET …/versions/:id/diff` → mevcut gövdeyle kelime
-      düzeyi diff segmentleri (jsdiff; istemci yalnız çizer — karar #6).
-- [ ] Bağımlılık: `node-diff3` + `jsdiff` package.json'a bu task'ta girer (ADR-0031 gerekçeli —
-      lisans MIT/BSD, sıfır/az bağımlılık, literatür tablosundaki durum tespitiyle).
-- [ ] Testler: unit (yakalama/koalesans/hash-dedupe/origin'ler), integration (autosave
-      fırtınası → beklenen satır sayısı; süpürücü inceltmesi; restore-replace'in yeni head
-      ürettiği ve tarihçeyi DEĞİŞTİRMEDİĞİ; cascade). Sürümler sync'e AÇILMAZ (karar #5) —
-      `SNAPSHOT_LOADERS`/`ENTITIES` dokunulmaz, testle sabitlenir.
+_(✅ 2026-08-17 — **tamamlandı.** ADR-0031 + `note_versions` + yakalama + saklama + REST.
+API süiti **697** (+17), lint/format temiz. Entegrasyon süiti ve migration'ın gerçek MySQL'de
+koşması BLOKE (konteyner çalışma zamanı yok). Deploy alınmadı, sahibin talimatı.)_
+
+_**Turun tek cümlesi: bu tablo bir özellik değil, round 18'in bulgu #4'ünün cevabı** — ezilen
+not gövdesi HİÇBİR tabloda durmuyordu; `sync_revisions` yalnız hangi alanların değiştiğini
+biliyor. Çakışma kopyası da, merge de, restore da, geri alma da aynı eksik şeye ihtiyaç
+duyuyor: **önceki baytlar.**_
+
+- [x] **ADR-0031 yazıldı (task'ın İLK işi, OPH-246 emsali):** 12 ürün/sistemlik literatür
+      tablosu ADR'ye taşındı, karar #5–#10 çerçevesi sekiz maddeye açıldı (sunucu-sahipli
+      tarihçe, tek yakalama fonksiyonu, yuvarlanan baş, hash dedupe, üç içerik alanı,
+      üç kademeli saklama, tarihçeyi yeniden yazmayan restore, sunucuda diff), beş alternatif
+      (CRDT, koalesanssız, istemci-tarafı tarihçe, diff saklama, adlandırılmış sürümler)
+      gerekçeleriyle reddedildi.
+- [x] Migration `20260817160000_create_note_versions`: üç içerik alanı + `content_format`,
+      `origin`, `client_id`, `created_by`, `content_hash`, `note_revision`; üç index
+      (note+created, note+revision, workspace+created); note ve workspace FK'leri CASCADE.
+- [x] **Yakalama:** `db/notes.js.createNote`/`updateNote` — ve **yazılı istisna:** sync push
+      motoru `db/notes.js`'ten geçmiyor (OPH-218'den beri kendi ENTITIES makinesi), o yüzden
+      AYNI fonksiyonu kendi `afterCreate`/`afterUpdate` dikişinden çağırıyor. **İki çağrı
+      noktası, tek politika.** Alternatif — çevrimdışı yolun tarihçe yazmaması — en çok
+      üzerine yazan yazarın iz bırakmaması olurdu.
+- [x] Koalesans (yuvarlanan baş): aynı not + aynı `client_id` + `origin='edit'` + <10 dk →
+      satır YERİNDE güncellenir. Ölçülmüş karşılık: 6 ardışık otosave = 1 satır (testte
+      çivili), 1.5 sn debounce'un ürettiği ~260 satır değil.
+- [x] `content_hash` (sha256, **formatı da kapsıyor** — biçim dönüşümü notun ne OLDUĞUNU
+      değiştirir, ADR-0028 §1) ile özdeş gövde satır üretmez.
+- [x] **Beklenmedik bulgu — notun DOĞUŞ hâli ilk düzenlemeye yutuluyordu.** Oluşturma satırı
+      `origin='edit'` taşıyınca, 10 dakika içindeki ilk düzenleme onun İÇİNE koalesans yapıyor
+      ve "bu not geldiğinde neydi" sessizce siliniyordu. Çözüm spec'in enum'una bir değer
+      ekledi: `create`. Yuvarlanan baş yalnız `origin='edit'` satırına birleştiği için doğuş
+      satırı **yapısı gereği** birleştirilemez oldu — özel durum yazmaya gerek kalmadı.
+- [x] Saklama süpürücüsü (`plugins/note-version-gc.js`, storage-GC emsali): 0–7 gün dokunma,
+      7–90 gün not/gün başına 1'e incelt, sonrası sil; `conflict|merge|restore|import` 365 gün;
+      not başına 500 tavan. `config.js` + `.env.example` (altı knob).
+- [x] REST: `GET /notes/:id/versions` (yalnız metadata + boyut + hangi cihaz),
+      `GET …/versions/:versionId` (tam gövde), `GET …/diff` (jsdiff kelime segmentleri, sunucuda
+      — istemci yalnız çizer), `POST …/restore` `{mode: replace|copy}`.
+- [x] Bağımlılıklar `diff@9` (jsdiff) + `node-diff3@3` girdi; ADR-0031 §8 gerekçesi.
+      _node-diff3 OPH-268'in merge motoru; şimdilik kullanılmıyor, ADR'de yazılı._
+- [x] Testler (+17, süit 680 → **697**): doğuş satırı · 6 otosave = 1 satır · pencere kapanınca
+      yeni satır · özdeş gövde satır üretmez · pin/arşiv sürüm yakmaz · **her yazarın kendi
+      origin'i** (edit/api/import/mcp) · çevrimdışı push'un cihaz kimliğiyle yakalanması ·
+      liste metadata / detay gövde ayrımı · diff segmentleri · yabancıya 403 · restore-replace'in
+      YENİ baş ürettiği ve hem eski sürümü hem bıraktığımız hâli koruduğu · restore-copy'nin
+      mevcut notu ellemediği · saklama kademeleri + korumalı origin'ler · **sürümlerin sync
+      varlığı OLMADIĞI** (pull'da yok, push reddediyor).
+- [x] **Kapı doğrulaması ve ikinci bulgu:** `isContentWrite`'a `is_pinned` eklenerek kasten
+      ihlal enjekte edildi — **süit YEŞİL kaldı.** Sebep: pin yazımı zaten hash dedupe'una
+      takılıyor, yani iki katman birbirini maskeliyordu. Kuralı doğrudan çiviyen bir birim
+      testi eklendi, ihlal tekrar enjekte edildi, bu kez yakalandı, geri alındı.
+      _Ders: iki savunma iyidir; hiçbir testin ifade etmediği bir kural değildir._
 
 ### OPH-268 — Çakışma doğruluğu: not-bazlı base, sunucuda diff3, kopyanın emekliliği
 

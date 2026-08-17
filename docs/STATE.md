@@ -3,7 +3,41 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17h (**OPH-266 BİTTİ — toplu içe/dışa aktarma; **issue #3
+**Last updated:** 2026-08-17i (**OPH-267 BİTTİ — sürümlemenin omurgası: ADR-0031,
+`note_versions`, yakalama + koalesans + saklama + REST. API süiti **697** (+17), lint/format
+temiz. **Deploy alınmadı — sahibin talimatı.** Sıradaki iş: OPH-268 (çakışma doğruluğu:
+not-bazlı base, sunucuda diff3, kopyanın emekliliği).**
+
+**Turun tek cümlesi: bu tablo bir özellik değil, bulgu #4'ün cevabı.** Ezilen not gövdesi
+hiçbir tabloda durmuyordu — `sync_revisions` yalnız hangi alanların değiştiğini biliyor.
+Çakışma kopyası da, merge de, restore da, geri alma da aynı eksik şeye ihtiyaç duyuyor:
+**önceki baytlar.** ADR önce yazıldı (OPH-246 emsali), 12 ürünlük literatür tablosu oraya
+taşındı, sonra kod.
+
+**İki ölçülmüş sayı mekanizmayı belirledi:** editör 1.5 sn boşluk debounce'uyla TAM gövde
+yolluyor, yani on dakikalık bir yazma seansı ~260 yazım demek. Yuvarlanan baş (aynı not + aynı
+cihaz + `edit` + <10 dk → satırı YERİNDE güncelle) bunu tek satıra indiriyor; hash dedupe'u da
+imleç oynatınca tetiklenen otosave'i sıfır satıra. 10 dakika Joplin'in sayısı — taramadaki tek
+"on yıllık üretim" rakamı.
+
+**Beklenmedik bulgu: notun DOĞUŞ hâli ilk düzenlemeye yutuluyordu.** Oluşturma satırı
+`origin='edit'` taşıyınca ilk düzenleme onun içine koalesans yapıyor, "bu not geldiğinde
+neydi" sessizce siliniyordu. Spec'in enum'una `create` eklendi: yuvarlanan baş yalnız `edit`
+satırına birleştiği için doğuş satırı **yapısı gereği** birleştirilemez oldu — özel durum
+yazmadan.
+
+**İkinci bulgu, kapı enjeksiyonundan çıktı:** `isContentWrite`'a `is_pinned` eklenerek kural
+kasten bozuldu ve **süit yeşil kaldı** — çünkü pin yazımı zaten hash dedupe'una takılıyordu.
+İki savunma birbirini maskeliyordu. Kuralı doğrudan ifade eden bir birim testi yazıldı, ihlal
+tekrar enjekte edildi, bu kez yakalandı. _İki savunma iyidir; hiçbir testin ifade etmediği bir
+kural değildir._
+
+**Yazılı istisna:** sync push motoru `db/notes.js`'ten geçmiyor (OPH-218'den beri kendi
+ENTITIES makinesi), o yüzden AYNI yakalama fonksiyonunu kendi `afterCreate`/`afterUpdate`
+dikişinden çağırıyor. İki çağrı noktası, tek politika — alternatifi, en çok üzerine yazan
+yazarın hiç iz bırakmamasıydı.
+
+Önceki blok: 2026-08-17h (**OPH-266 BİTTİ — toplu içe/dışa aktarma; **issue #3
 kapandı** (anahtarlar + belgelenmiş REST + toplu aktarım). API süiti **680** (+11),
 lint/format temiz. **P3 paketi (264→265→266) tamam.** Deploy alınmadı — sahibin talimatı.
 Sıradaki iş: OPH-267 (sürümlemenin omurgası: ADR-0031, `note_versions`, yakalama + saklama).**

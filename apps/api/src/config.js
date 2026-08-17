@@ -97,6 +97,23 @@ export function loadConfig(env = process.env) {
     // Per KEY, not per IP (OPH-264, ADR-0032 §5). Same ceiling as the global
     // per-IP limit: a key is one client, and this is what one client gets.
     apiKeyRateLimitMax: toInt(env.API_KEY_RATE_LIMIT_MAX, 300, 'API_KEY_RATE_LIMIT_MAX'),
+    // Note history (OPH-267, ADR-0031 §6). Retention is a SERVER policy: when
+    // it is negotiated across devices it collapses to the minimum any device
+    // kept, which is how an offline phone truncates a laptop's history.
+    noteVersions: Object.freeze({
+      // Days where nothing is thinned at all.
+      keepAllDays: toInt(env.NOTE_VERSION_KEEP_ALL_DAYS, 7, 'NOTE_VERSION_KEEP_ALL_DAYS'),
+      // After this many days ordinary `edit` versions are deleted.
+      retentionDays: toInt(env.NOTE_VERSION_RETENTION_DAYS, 90, 'NOTE_VERSION_RETENTION_DAYS'),
+      // conflict/merge/restore/import rows live this long — they are the ones
+      // somebody comes looking for.
+      protectedDays: toInt(env.NOTE_VERSION_PROTECTED_DAYS, 365, 'NOTE_VERSION_PROTECTED_DAYS'),
+      cap: toInt(env.NOTE_VERSION_CAP, 500, 'NOTE_VERSION_CAP'),
+      // The rolling-head window: a 1.5 s autosave debounce would otherwise
+      // leave ~260 rows per ten minutes of typing (finding #5).
+      coalesceMin: toInt(env.NOTE_VERSION_COALESCE_MIN, 10, 'NOTE_VERSION_COALESCE_MIN'),
+      sweepSec: toInt(env.NOTE_VERSION_SWEEP_SEC, 86400, 'NOTE_VERSION_SWEEP_SEC'),
+    }),
     database: Object.freeze({
       host: env.DATABASE_HOST ?? '127.0.0.1',
       port: toInt(env.DATABASE_PORT, 3306, 'DATABASE_PORT'),

@@ -83,6 +83,10 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 - All timestamps `DATETIME(3)` in UTC; user timezones stored per user/task for alarm math.
 - Soft delete via `deleted_at`. Synced entities carry `revision BIGINT`.
 - FULLTEXT indexes on tasks(title, description) and notes(title, plain_text) for search.
+- **Note history** (`note_versions`, OPH-267/ADR-0031) is server-only — never a sync entity.
+  Capture is one function called from the note domain layer and, for the offline path, from the
+  sync engine's own `afterCreate`/`afterUpdate` seam; the head coalesces inside a 10-minute
+  window and identical bodies do not stack. A daily sweep applies the retention tiers.
 - Migrations: knex, append-only, ESM `up`/`down`. Full table list in [TASKS.md](TASKS.md) Epic 02.
 
 ## 5. Sync engine (live end to end)

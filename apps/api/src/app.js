@@ -16,6 +16,7 @@ import calendarSyncPlugin from './plugins/calendar-sync.js';
 import storagePlugin from './plugins/storage.js';
 import storageGcPlugin from './plugins/storage-gc.js';
 import accountGcPlugin from './plugins/account-gc.js';
+import noteVersionGcPlugin from './plugins/note-version-gc.js';
 import seriesGcPlugin from './plugins/series-gc.js';
 import aiPlugin from './plugins/ai.js';
 import healthRoutes from './routes/health.js';
@@ -36,6 +37,7 @@ import folderRoutes from './routes/folders.js';
 import quickLinkRoutes from './routes/quick-links.js';
 import taskSeriesRoutes from './routes/task-series.js';
 import importExportRoutes from './routes/import-export.js';
+import noteVersionRoutes from './routes/note-versions.js';
 import aiRoutes from './routes/ai.js';
 import oauthRoutes from './routes/oauth.js';
 import mcpRoutes from './routes/mcp.js';
@@ -104,6 +106,7 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(storagePlugin, { storage });
   await app.register(storageGcPlugin);
   await app.register(accountGcPlugin);
+  await app.register(noteVersionGcPlugin);
   await app.register(seriesGcPlugin);
   await app.register(authPlugin);
   await app.register(aiPlugin);
@@ -144,6 +147,8 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(tagRoutes, { prefix: '/api/v1' });
   await app.register(taskRoutes, { prefix: '/api/v1' });
   await app.register(noteRoutes, { prefix: '/api/v1' });
+  // OPH-267: note history — an online surface (ADR-0031 §1).
+  await app.register(noteVersionRoutes, { prefix: '/api/v1' });
   await app.register(syncRoutes, { prefix: '/api/v1' });
   await app.register(notificationDeviceRoutes, { prefix: '/api/v1' });
   await app.register(reminderRoutes, { prefix: '/api/v1' });

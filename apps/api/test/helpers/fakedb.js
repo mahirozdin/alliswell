@@ -126,6 +126,8 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     mcp_mutations: [],
     // OPH-264 — API keys (ADR-0032).
     api_keys: [],
+    // OPH-267 — note history (ADR-0031).
+    note_versions: [],
   };
 
   const columnDefaults = {
@@ -270,6 +272,15 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     oauth_tokens: () => ({ rotated_at: null, revoked_at: null, last_used_at: null }),
     mcp_mutations: () => ({ client_id: null }),
     api_keys: () => ({ expires_at: null, revoked_at: null, last_used_at: null }),
+    note_versions: () => ({
+      note_revision: 0,
+      content_delta: null,
+      content_markdown: null,
+      content_format: 'delta',
+      origin: 'edit',
+      client_id: null,
+      created_by: null,
+    }),
   };
 
   function assertUnique(name, candidate, rows) {

@@ -8,6 +8,7 @@ import {
   markdownToPlainText,
 } from '../lib/delta.js';
 import { recordSyncWrite } from './sync.js';
+import { captureNoteVersion, isContentWrite } from './note-versions.js';
 
 /**
  * The note domain (OPH-261) — everything a note write does, minus HTTP.
@@ -182,7 +183,15 @@ export async function unlinkNote(app, { row, userId, link }) {
  */
 export async function createNote(
   app,
-  { workspaceId, userId, body, createdFromTaskId = null, links = [] },
+  {
+    workspaceId,
+    userId,
+    body,
+    createdFromTaskId = null,
+    links = [],
+    origin = 'edit',
+    clientId = null,
+  },
 ) {
   if (body.projectId) await assertProjectUsable(app, body.projectId, workspaceId);
   for (const link of links) {
@@ -214,6 +223,16 @@ export async function createNote(
         linked_entity_id: link.entityId,
       });
     }
+    // OPH-267: the note's first state is version one — without it there is
+    // nothing to restore an over-eager first edit back to.
+    const fresh = await trx('notes').where({ id }).first();
+    await captureNoteVersion(trx, {
+      config: app.config,
+      row: fresh,
+      origin,
+      clientId,
+      userId,
+    });
   });
   return id;
 }
@@ -256,8 +275,15 @@ export async function createNoteFromTask(app, { task, userId, body }) {
   return id;
 }
 
-/** Applies a patch to a live note row, with revision + changed-field bookkeeping. */
-export async function updateNote(app, { row, userId, body }) {
+/**
+ * Applies a patch to a live note row, with revision + changed-field bookkeeping
+ * — and, when the write touched content, one version row (OPH-267, ADR-0031).
+ *
+ * `origin`/`clientId` travel from the caller because they are the only ones who
+ * know: REST edit vs API key vs MCP tool vs sync push vs import vs restore.
+ * Everything else about history is decided here, once.
+ */
+export async function updateNote(app, { row, userId, body, origin = 'edit', clientId = null }) {
   if (body.projectId) await assertProjectUsable(app, body.projectId, row.workspace_id);
 
   const patch = toRowPatch(app, body, {
@@ -275,6 +301,18 @@ export async function updateNote(app, { row, userId, body }) {
     await trx('notes')
       .where({ id: row.id })
       .update({ ...patch, revision, updated_by: userId, updated_at: new Date() });
+    // A pin, an archive or a project move is not content: those must not burn
+    // a version (or the history screen becomes a log of flag toggles).
+    if (isContentWrite(patch)) {
+      const fresh = await trx('notes').where({ id: row.id }).first();
+      await captureNoteVersion(trx, {
+        config: app.config,
+        row: fresh,
+        origin,
+        clientId,
+        userId,
+      });
+    }
   });
 }
 

@@ -24,6 +24,7 @@ import { slugify } from '../lib/slug.js';
 import { deltaToPlainText, isValidDelta, markdownToPlainText } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
+import { captureNoteVersion } from '../db/note-versions.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { serializeFile } from './files.js';
 import { serializeFolder } from './folders.js';
@@ -289,6 +290,24 @@ function parseJson(value) {
 }
 
 export default async function syncRoutes(app) {
+  /**
+   * OPH-267: one snapshot for a note the offline path just wrote. Reads the
+   * post-write row so the version records what the note IS, not what the
+   * mutation asked for (the two differ whenever a field-level intent was
+   * discarded as a losing write).
+   */
+  const captureSyncNoteVersion = async (trx, ctx, noteId) => {
+    const row = await trx('notes').where({ id: noteId }).first();
+    if (!row) return;
+    await captureNoteVersion(trx, {
+      config: app.config,
+      row,
+      origin: 'edit',
+      clientId: ctx.clientId,
+      userId: ctx.userId,
+    });
+  };
+
   const auth = { onRequest: [app.authenticate] };
 
   // ══ OPH-051 — incremental pull ═════════════════════════════════════════════
@@ -1093,6 +1112,16 @@ export default async function syncRoutes(app) {
       }),
       updateExtra: (ctx) => ({ updated_by: ctx.userId }),
       deleteExtra: (ctx) => ({ updated_by: ctx.userId }),
+      // OPH-267: history, from the offline path too.
+      //
+      // The honest note (ADR-0031 §2): this engine is the ONE writer that does
+      // not go through `db/notes.js` — the generic ENTITIES machinery has been
+      // its own implementation since OPH-218, and that duplication is recorded
+      // rather than hidden. So capture rides the engine's own `afterCreate`/
+      // `afterUpdate` seam and calls the SAME function the domain layer does.
+      // One capture function, two call sites — not two capture policies.
+      afterCreate: (trx, ctx, mutation) => captureSyncNoteVersion(trx, ctx, mutation.entityId),
+      afterUpdate: (trx, ctx, mutation) => captureSyncNoteVersion(trx, ctx, mutation.entityId),
       // A deleted note takes its attachments — inline embeds included — with
       // it (Epic 14, ATTACHMENTS.md §5) and its shortcuts (OPH-197).
       async afterDelete(trx, ctx, row) {

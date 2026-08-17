@@ -266,6 +266,21 @@ are newest-first and cursor-paginated (`limit`, `cursor`, `nextCursor`).
 | GET · POST | `/workspaces/:ws/folders` | |
 | PATCH · DELETE | `/folders/:id` | |
 
+### Note history
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/notes/:id/versions` | Metadata only: origin, size, when, which device |
+| GET | `/notes/:id/versions/:versionId` | One version's full body |
+| GET | `/notes/:id/versions/:versionId/diff` | Word-level segments against the note as it is now |
+| POST | `/notes/:id/versions/:versionId/restore` | `{ mode: "replace" \| "copy" }` |
+
+Every content-changing write leaves a version, wherever it came from — the app,
+a script with a key, an assistant, an import. A typing session collapses into
+one row and an identical body writes none ([ADR-0031](adr/0031-note-versioning.md)).
+`restore` with `replace` applies the old body as a **new** write, so the state
+you are leaving is captured too and the restore is itself undoable.
+
 ### Bulk import / export
 
 | Method | Path | Notes |

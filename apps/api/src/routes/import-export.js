@@ -223,6 +223,9 @@ export default async function importExportRoutes(app) {
         const id = await createNote(app, {
           workspaceId,
           userId: request.user.id,
+          // OPH-267: the version row says where this came from — and the
+          // ordering note in OPH-266 said this line would land here.
+          origin: 'import',
           body: {
             title: item.title,
             // Imported notes are markdown documents (ADR-0028): the caller

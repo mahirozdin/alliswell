@@ -1216,6 +1216,8 @@ export const MCP_TOOLS = [
       const noteId = await createNote(app, {
         workspaceId: auth.workspaceId,
         userId: auth.userId,
+        // OPH-267: history records that an assistant wrote this.
+        origin: 'mcp',
         body: {
           title: args.title,
           // ADR-0028: MCP notes are born markdown-canonical. The model writes
@@ -1295,7 +1297,7 @@ export const MCP_TOOLS = [
         );
       }
 
-      await updateNote(app, { row, userId: auth.userId, body });
+      await updateNote(app, { row, userId: auth.userId, body, origin: 'mcp' });
       await recordMcpAction(app, auth, {
         idempotencyKey: args.idempotencyKey,
         entityType: 'note',
