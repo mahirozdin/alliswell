@@ -156,8 +156,12 @@ Two tracks, one rule: **the model gets no write tools; every write goes through 
 card / the local-first stores.** Track A is a **remote MCP server** (`/mcp`, hand-rolled
 Streamable HTTP — stateless POST-only JSON-RPC, ADR-0022) behind our **own OAuth 2.1 AS**
 (`/oauth/*`: PKCE, dynamic client registration, opaque rotating tokens with family revocation);
-its tools are an allowlist (`search`, `list_tasks`, `get_*`, `create_task`, `complete_task`) with
-**no delete**, and workspace membership is re-checked per request. Track B is **in-app BYOK**:
+its tools are an allowlist — readers (`search`, `list_tasks`, `get_*`) plus the task write wave
+(`create_task`, `update_task`, `complete_task`, `reopen_task`, `snooze_task`, the two checklist
+tools, `acknowledge_reminder`) — with **no delete**, and workspace membership is re-checked per
+request. Writes never touch SQL directly: they call the same domain layer REST does
+(`db/tasks.js`, `db/notes.js`, `db/reminders.js` — ADR-0022 §4), and the audit + idempotency
+bookkeeping every one of them owes lives in one place (`lib/mcp/actions.js`, OPH-262). Track B is **in-app BYOK**:
 thin fetch adapters (no SDKs, ADR-0019) for Anthropic/OpenAI/Gemini/OpenRouter/Ollama behind one
 `chatStream/extract/verify/listModels` contract, keys encrypted at rest (AES-256-GCM under
 `AI_TOKEN_KEY`, only last-4 exposed). Chat streams over **SSE-on-POST** (Socket.IO room for web),

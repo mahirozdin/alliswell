@@ -3,7 +3,45 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17c (**OPH-261'in üç onarımı sevk edildi, domain çıkarımı
+**Last updated:** 2026-08-17d (**OPH-262 BİTTİ — MCP yüzeyi 7 → 13 araç. API süiti
+**646** (+14), lint/format temiz. Entegrasyon süiti bu makinede KOŞULAMADI (konteyner
+çalışma zamanı yok) — CI kapısı. **Deploy alınmadı — sahibin talimatı.**
+Sıradaki iş: OPH-263 (not/proje/etiket araçları, listeler, ADR-0022 amendment'ı).**
+
+**Turun tek cümlesi: altı yeni araç yazmak işin küçük yarısıydı; büyük yarısı o araçların
+konuşacağı katmanı var etmekti.** ADR-0022 §4 "MCP ham SQL değil domain katmanını çağırır"
+diyor, ama OPH-218 yalnız create/complete/detail'i çıkarmıştı — PATCH, snooze, checklist ve
+acknowledge hâlâ route closure'larının içindeydi. `update_task`'in önündeki iki seçenek de
+yasaktı: mantığı kopyalamak ya da katmanın yanından uzanmak. Bu yüzden sıra şu oldu: önce
+`db/tasks.js`'e `updateTask`/`reopenTask`/`snoozeTask`/`setTaskTags`/checklist üçlüsü ve
+`db/reminders.js`'e `acknowledgeReminder` indi, **632 test dokunulmadan yeşil kaldı**, sonra
+araçlar yazıldı. Refactor'ün kanıtı yine yeni test değil, eskilerin sessizliğiydi.
+
+**Beklenmedik bulgu: `acknowledge_reminder` ULAŞILAMAZ doğuyordu.** Araç bir alarm id'si
+istiyor, ama hiçbir okuma aracı alarm id'si vermiyordu — yani yazılabilir ama çağrılamaz bir
+tool. Round 10'un dersi (DESIGN §22: insan/host dokunamıyorsa özellik değildir) MCP yüzeyinde
+de geçerli. `get_task` artık görevin alarmlarını da döndürüyor (yalnız metadata: id, kind,
+status, remindAt, snoozedUntil, requiresAcknowledgement — serbest metin yok). Test de bunu
+çiviledi: id tablodan değil **okuma aracının çıktısından** alınıyor.
+
+**İkinci karar: domain reddi modelin okuyabildiği bir kod oldu.** Domain katmanı HTTP
+terimleriyle reddediyor (REST onun diğer çağıranı), bu yüzden `routes/mcp.js` dispatch'i 4xx
++ stabil `code` taşıyan hatayı tool sonucuna çeviriyor — `TASK_ARCHIVED`,
+`TASK_INVALID_TRANSITION`, `TASK_SNOOZE_IN_PAST`. 5xx opak kalıyor: iç arıza modelin
+düzelteceği şey değil. Annotation'larda da dürüstlük: metin EZEBİLEN iki araç
+(`update_task`, `set_checklist_item`) `destructiveHint: true` taşıyor — görevlerde sürüm
+geçmişi yok (notlarınki OPH-267'de), yani ezilen başlık gitmiştir; durum geçişleri değil.
+
+**Yazarken kendi açtığım bir kapı:** etiket-yalnız bir `update_task` çağrısı `updateTask`'e
+hiç uğramıyor, yani arşiv kuralını atlıyordu — REST'in `PUT /tasks/:id/tags` ucu bunu
+reddederken MCP arşivli görevin etiketlerini yeniden yazabilirdi. Kural route'tan `setTaskTags`
+domain fonksiyonuna indi; testi de yazıldı. Ders eski ama tazelendi: **bir kural, onu atlayan
+yol çıktığı anda yanlış yerde durduğunu gösterir.**
+
+**Kapı doğrulandı:** `snooze_task`'ten `requireScope` kasten silindi, "her yazma aracı
+read-only token'ı reddeder" testi yakaladı, geri alındı.
+
+Önceki blok: 2026-08-17c (**OPH-261'in üç onarımı sevk edildi, domain çıkarımı
 AÇIK. API süiti **632** (+12), lint/format temiz. **Deploy alınmadı — sahibin talimatı.**
 Sıradaki iş: OPH-261'in kalan yarısı (çıkarım), sonra OPH-262.**
 

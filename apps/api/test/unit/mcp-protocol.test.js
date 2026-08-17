@@ -102,6 +102,9 @@ describe('protocol negotiation and envelope rules', () => {
 
   it('tools/list carries schemas and annotations; resources/list the two views', async () => {
     const tools = (await rpc(app, access, 'tools/list')).json().result.tools;
+    // The allowlist ON THE WIRE — this list IS the surface (ADR-0022 §3), so a
+    // tool may only appear here by an epic that meant to add it. OPH-262 added
+    // the task write wave.
     expect(tools.map((t) => t.name)).toEqual([
       'search',
       'list_tasks',
@@ -110,10 +113,29 @@ describe('protocol negotiation and envelope rules', () => {
       'get_project',
       'create_task',
       'complete_task',
+      'update_task',
+      'reopen_task',
+      'snooze_task',
+      'add_checklist_item',
+      'set_checklist_item',
+      'acknowledge_reminder',
     ]);
     const createTool = tools.find((t) => t.name === 'create_task');
     expect(createTool.annotations.destructiveHint).toBe(false);
     expect(createTool.inputSchema.properties.projectName).toBeDefined();
+    // Every write tool carries the full annotation quadruple hosts read before
+    // showing an approval prompt — an absent hint is not "false", it is
+    // "unknown", and a host may then run the tool silently.
+    for (const tool of tools.filter((t) => !t.annotations.readOnlyHint)) {
+      expect(Object.keys(tool.annotations).sort(), tool.name).toEqual([
+        'destructiveHint',
+        'idempotentHint',
+        'openWorldHint',
+        'readOnlyHint',
+      ]);
+    }
+    // Overwriting user-authored text is declared as such (OPH-262).
+    expect(tools.find((t) => t.name === 'update_task').annotations.destructiveHint).toBe(true);
     // No delete tool — the permanent decision, visible on the wire.
     expect(tools.some((t) => t.name.includes('delete'))).toBe(false);
 

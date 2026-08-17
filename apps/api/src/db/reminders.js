@@ -1,4 +1,5 @@
 import { newId } from '../lib/ids.js';
+import { coded } from '../lib/errors.js';
 import { recordSyncWrite } from './sync.js';
 
 /** Statuses that still mean "this alarm will (or may) fire". */
@@ -150,4 +151,44 @@ async function reconcileOne(trx, { workspaceId, task, kind, remindAt }) {
     operation: 'create',
   });
   await trx('reminders').insert({ id, task_id: task.id, kind, ...desired, revision });
+}
+
+/** Loads a live reminder row, or throws the route's own 404. */
+export async function loadReminder(app, id) {
+  const row = await app.db('reminders').where({ id }).whereNull('deleted_at').first();
+  if (!row) throw coded(app.httpErrors.notFound('Reminder not found'), 'REMINDER_NOT_FOUND');
+  return row;
+}
+
+/**
+ * Acknowledges one alarm (OPH-063). Idempotent: acknowledging twice changes
+ * nothing and costs no revision. Returns whether this call was the one that
+ * changed it. Extracted in OPH-262 so the MCP `acknowledge_reminder` tool and
+ * REST share the transition rules (ADR-0022 §4).
+ */
+export async function acknowledgeReminder(app, { row, workspaceId }) {
+  if (row.status === 'cancelled' || row.status === 'completed') {
+    throw coded(
+      app.httpErrors.conflict('This alarm is no longer active'),
+      'REMINDER_INVALID_TRANSITION',
+    );
+  }
+  if (row.status === 'acknowledged') return false;
+
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'reminder',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: ['status', 'acknowledged_at'],
+    });
+    await trx('reminders').where({ id: row.id }).update({
+      status: 'acknowledged',
+      acknowledged_at: new Date(),
+      revision,
+      updated_at: new Date(),
+    });
+  });
+  return true;
 }

@@ -23,20 +23,31 @@ Every self-hosted instance is its own connector at `https://<your-instance>/mcp`
 
 ## What the AI can do
 
-Seven tools, no delete tool — by design (loosening it needs a new ADR):
+Thirteen tools, no delete tool — by design (loosening it needs a new ADR):
 
 | Tool | What it does |
 | --- | --- |
 | `search` | Find tasks, notes and projects (Turkish-aware folding) |
 | `list_tasks` | Filtered list, plus `today` / `overdue` in your timezone |
-| `get_task` / `get_note` / `get_project` | Full detail of one item |
+| `get_task` / `get_note` / `get_project` | Full detail of one item — a task comes with its checklist, tags and alarms |
 | `create_task` | Create a task; an unknown/ambiguous project creates nothing and asks |
-| `complete_task` | Mark a task done (idempotent) |
+| `update_task` | Change a task's title, description, status, priority, dates, urgency, project or tags |
+| `complete_task` / `reopen_task` | Mark a task done, or put a finished one back to open |
+| `snooze_task` | Push a task's alarms out (5 min / 30 min / 1 hour / tomorrow morning, or a time you name) |
+| `add_checklist_item` / `set_checklist_item` | Add a checklist item, tick it, or rename it |
+| `acknowledge_reminder` | Answer an urgent alarm that is waiting for you |
 
 Plus two read-only resources: **today** and **overdue** task views.
 
 Write tools are annotated so Claude/ChatGPT show you an approval prompt before
-they run, and every AI-made change is recorded in AllisWell's action log.
+they run, and every AI-made change is recorded in AllisWell's action log. The
+two that can overwrite text you wrote — `update_task` and `set_checklist_item`
+— say so in their annotations, so hosts treat them with more ceremony than a
+status change. Tools that create something accept an idempotency key, so a
+host's retry never gives you the task or the checklist item twice.
+
+Notably absent, and staying that way: deleting anything, and reading file
+bytes. Project and note *writing* arrive in the next wave.
 
 ## Self-hosting notes
 

@@ -167,8 +167,9 @@ export default async function mcpRoutes(app) {
           serverInfo: { name: 'alliswell', title: 'AllisWell', version: app.pkg.version },
           instructions:
             'AllisWell is a personal task/notes workspace. Read tools are free to use; ' +
-            'create_task and complete_task modify the workspace and should follow the ' +
-            'user’s intent. There is no delete tool, by design.',
+            'the create_/update_/complete_/reopen_/snooze_ tools, the checklist tools and ' +
+            'acknowledge_reminder modify the workspace and should follow the user’s intent. ' +
+            'There is no delete tool, by design.',
         });
       }
       case 'ping':
@@ -206,6 +207,18 @@ export default async function mcpRoutes(app) {
           return rpcResult(id, toolResult(payload));
         } catch (err) {
           if (err instanceof McpToolError) {
+            return rpcResult(
+              id,
+              toolResult({ code: err.code, message: err.message }, { isError: true }),
+            );
+          }
+          // OPH-262: the domain layer refuses in HTTP terms (`coded()` +
+          // @fastify/sensible) because REST is its other caller. A 4xx from it
+          // is a REFUSAL the model can act on — "this task is archived",
+          // "only completed tasks can be reopened" — so it becomes a tool
+          // result carrying the same stable code, exactly like McpToolError.
+          // 5xx stays opaque: an internal failure is not the model's to fix.
+          if (err?.statusCode >= 400 && err.statusCode < 500 && typeof err.code === 'string') {
             return rpcResult(
               id,
               toolResult({ code: err.code, message: err.message }, { isError: true }),

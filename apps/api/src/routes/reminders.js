@@ -1,5 +1,6 @@
-import { coded } from '../lib/errors.js';
-import { recordSyncWrite } from '../db/sync.js';
+// OPH-262: the transition rules live in the domain layer so the MCP
+// `acknowledge_reminder` tool and REST are one implementation (ADR-0022 §4).
+import { acknowledgeReminder, loadReminder } from '../db/reminders.js';
 import { serializeReminder } from './sync.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
@@ -61,42 +62,11 @@ export default async function reminderRoutes(app) {
       },
     },
     async (request) => {
-      const row = await app
-        .db('reminders')
-        .where({ id: request.params.reminderId })
-        .whereNull('deleted_at')
-        .first();
-      if (!row) {
-        throw coded(app.httpErrors.notFound('Reminder not found'), 'REMINDER_NOT_FOUND');
-      }
+      const row = await loadReminder(app, request.params.reminderId);
       const task = await app.db('tasks').where({ id: row.task_id }).first('workspace_id');
       await app.requireWorkspaceMember(request, task.workspace_id);
 
-      if (row.status === 'cancelled' || row.status === 'completed') {
-        throw coded(
-          app.httpErrors.conflict('This alarm is no longer active'),
-          'REMINDER_INVALID_TRANSITION',
-        );
-      }
-
-      // Idempotent: acknowledging twice changes nothing and costs no revision.
-      if (row.status !== 'acknowledged') {
-        await app.db.transaction(async (trx) => {
-          const revision = await recordSyncWrite(trx, {
-            workspaceId: task.workspace_id,
-            entityType: 'reminder',
-            entityId: row.id,
-            operation: 'update',
-            changedFields: ['status', 'acknowledged_at'],
-          });
-          await trx('reminders').where({ id: row.id }).update({
-            status: 'acknowledged',
-            acknowledged_at: new Date(),
-            revision,
-            updated_at: new Date(),
-          });
-        });
-      }
+      await acknowledgeReminder(app, { row, workspaceId: task.workspace_id });
 
       return serializeReminder(await app.db('reminders').where({ id: row.id }).first());
     },

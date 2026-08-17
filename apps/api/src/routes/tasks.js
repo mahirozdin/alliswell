@@ -1,34 +1,19 @@
-import { newId } from '../lib/ids.js';
-import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
-import { nextMorningIn } from '../lib/time.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
-import { SERIES_SCOPES, occurrenceDayOf, propagateSeriesScope } from '../db/task-series.js';
-// OPH-218: create/transition/detail logic lives in the domain layer so the
-// MCP tools and REST are one implementation (ADR-0022 §4).
+import { SERIES_SCOPES, occurrenceDayOf } from '../db/task-series.js';
+// OPH-218 (extended by OPH-262): create/update/transition/snooze/tags/
+// checklist and the detail loader live in the domain layer so the MCP tools
+// and REST are one implementation (ADR-0022 §4).
 import * as taskDb from '../db/tasks.js';
-import { toRowPatch, completionPatch } from '../db/tasks.js';
+import { SNOOZE_PRESETS, TASK_STATUSES, TASK_PRIORITIES } from '../db/tasks.js';
 import { COLOR_PATTERN } from './projects.js';
 
-// Snooze presets (BLUEPRINT §4.9): fixed offsets in minutes, plus
-// tomorrow_morning which is 09:00 next day on the TASK's wall clock.
-const SNOOZE_PRESET_MINUTES = { '5_min': 5, '30_min': 30, '1_hour': 60 };
-export const SNOOZE_PRESETS = [...Object.keys(SNOOZE_PRESET_MINUTES), 'tomorrow_morning'];
-
-export const TASK_STATUSES = [
-  'inbox',
-  'open',
-  'scheduled',
-  'in_progress',
-  'waiting',
-  'completed',
-  'cancelled',
-  'archived',
-];
-export const TASK_PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'];
+// The vocabulary moved to the domain layer in OPH-262; routes/sync.js and the
+// suites keep importing it from here.
+export { SNOOZE_PRESETS, TASK_STATUSES, TASK_PRIORITIES };
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 const MAX_PAGE_SIZE = 200;
@@ -206,14 +191,7 @@ export default async function taskRoutes(app) {
   // Thin delegates: the implementations moved to db/tasks.js (OPH-218) so the
   // MCP tools share them; the local names keep every call site unchanged.
   const loadTask = (id) => taskDb.loadTask(app, id);
-  const assertValidTimezone = (tz) => taskDb.assertValidTimezone(app, tz);
   const assertNotArchived = (row) => taskDb.assertNotArchived(app, row);
-  const assertProjectUsable = (projectId, workspaceId) =>
-    taskDb.assertProjectUsable(app, projectId, workspaceId);
-  const assertParentUsable = (parentTaskId, workspaceId, childId) =>
-    taskDb.assertParentUsable(app, parentTaskId, workspaceId, childId);
-  const assertTagsUsable = (tagIds, workspaceId) =>
-    taskDb.assertTagsUsable(app, tagIds, workspaceId);
 
   // ── Collection: create + filtered, cursor-paginated list ─────────────────
 
@@ -382,55 +360,7 @@ export default async function taskRoutes(app) {
     async (request) => {
       const row = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, row.workspace_id);
-
-      const body = request.body;
-      // Archived tasks accept exactly one write: a lone `status` unarchiving them.
-      const isUnarchive =
-        Object.keys(body).length === 1 && body.status !== undefined && body.status !== 'archived';
-      if (!isUnarchive) assertNotArchived(row);
-
-      if (body.projectId) await assertProjectUsable(body.projectId, row.workspace_id);
-      if (body.parentTaskId) await assertParentUsable(body.parentTaskId, row.workspace_id, row.id);
-      if (body.timezone !== undefined) assertValidTimezone(body.timezone);
-      // Turning a task urgent defaults acknowledgement on unless set explicitly.
-      if (body.isUrgent === true && body.requiresAcknowledgement === undefined) {
-        body.requiresAcknowledgement = true;
-      }
-
-      const patch = {
-        ...toRowPatch(body),
-        ...(body.status !== undefined ? completionPatch(row.status, body.status) : {}),
-      };
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId: row.workspace_id,
-          entityType: 'task',
-          entityId: row.id,
-          operation: 'update',
-          changedFields: Object.keys(patch),
-        });
-        await trx('tasks')
-          .where({ id: row.id })
-          .update({
-            ...patch,
-            revision,
-            updated_by: request.user.id,
-            updated_at: new Date(),
-          });
-        const fresh = await trx('tasks').where({ id: row.id }).first();
-        await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
-        // …and, when the user answered the scope question with more than
-        // "just this one", the rest of the series follows in the SAME
-        // transaction (OPH-206) — a half-applied scope would be a lie.
-        await propagateSeriesScope(trx, {
-          workspaceId: row.workspace_id,
-          task: fresh,
-          patch: body,
-          scope: body.seriesScope,
-          userId: request.user.id,
-        });
-      });
-
+      await taskDb.updateTask(app, { row, userId: request.user.id, body: request.body });
       return taskDetail(row.id);
     },
   );
@@ -463,15 +393,7 @@ export default async function taskRoutes(app) {
   app.post('/tasks/:taskId/reopen', { ...auth, schema: transitionSchema }, async (request) => {
     const row = await loadTask(request.params.taskId);
     await app.requireWorkspaceMember(request, row.workspace_id);
-    assertNotArchived(row);
-
-    if (row.status !== 'completed' && row.status !== 'cancelled') {
-      throw coded(
-        app.httpErrors.conflict('Only completed or cancelled tasks can be reopened'),
-        'TASK_INVALID_TRANSITION',
-      );
-    }
-    await applyTransition(request, row, 'open');
+    await taskDb.reopenTask(app, { userId: request.user.id, row });
     return taskDetail(row.id);
   });
 
@@ -511,75 +433,13 @@ export default async function taskRoutes(app) {
     async (request) => {
       const row = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, row.workspace_id);
-      assertNotArchived(row);
-      if (row.status === 'completed' || row.status === 'cancelled') {
-        throw coded(
-          app.httpErrors.conflict('Completed or cancelled tasks cannot be snoozed'),
-          'TASK_INVALID_TRANSITION',
-        );
-      }
-
-      const { preset, snoozeUntil } = request.body;
-      let until;
-      if (snoozeUntil) {
-        until = new Date(snoozeUntil);
-        if (until.getTime() <= Date.now()) {
-          throw coded(
-            app.httpErrors.badRequest('snoozeUntil must be in the future'),
-            'TASK_SNOOZE_IN_PAST',
-          );
-        }
-      } else if (preset === 'tomorrow_morning') {
-        until = nextMorningIn(row.timezone);
-      } else {
-        until = new Date(Date.now() + SNOOZE_PRESET_MINUTES[preset] * 60 * 1000);
-      }
-
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId: row.workspace_id,
-          entityType: 'task',
-          entityId: row.id,
-          operation: 'update',
-          changedFields: ['snoozed_until'],
-        });
-        await trx('tasks').where({ id: row.id }).update({
-          snoozed_until: until,
-          revision,
-          updated_by: request.user.id,
-          updated_at: new Date(),
-        });
-
-        // Silence the live alarm(s) until the same moment. A task can own two
-        // (reminder + deadline, OPH-175): snooze the one that asked, or all of
-        // them when nobody named one.
-        const query = trx('reminders')
-          .where({ task_id: row.id })
-          .whereNull('deleted_at')
-          .whereIn('status', ['scheduled', 'snoozed', 'delivered']);
-        if (request.body.reminderId) query.where({ id: request.body.reminderId });
-        const active = await query.orderBy('created_at', 'desc').select();
-        for (const alarm of active) {
-          const reminderRevision = await recordSyncWrite(trx, {
-            workspaceId: row.workspace_id,
-            entityType: 'reminder',
-            entityId: alarm.id,
-            operation: 'update',
-            changedFields: ['status', 'snoozed_until', 'snooze_count'],
-          });
-          await trx('reminders')
-            .where({ id: alarm.id })
-            .update({
-              status: 'snoozed',
-              snoozed_until: until,
-              // Which round the next ring is (OPH-177) — the alert says so.
-              snooze_count: Number(alarm.snooze_count ?? 0) + 1,
-              revision: reminderRevision,
-              updated_at: new Date(),
-            });
-        }
+      await taskDb.snoozeTask(app, {
+        row,
+        userId: request.user.id,
+        preset: request.body.preset,
+        snoozeUntil: request.body.snoozeUntil,
+        reminderId: request.body.reminderId,
       });
-
       return taskDetail(row.id);
     },
   );
@@ -669,39 +529,11 @@ export default async function taskRoutes(app) {
       await app.requireWorkspaceMember(request, row.workspace_id);
       assertNotArchived(row);
 
-      const desired = [...new Set(request.body.tagIds)];
-      await assertTagsUsable(desired, row.workspace_id);
-
-      const current = (await app.db('task_tags').where({ task_id: row.id }).select('tag_id')).map(
-        (r) => r.tag_id,
-      );
-      const toAdd = desired.filter((id) => !current.includes(id));
-      const toRemove = current.filter((id) => !desired.includes(id));
-
-      if (toAdd.length > 0 || toRemove.length > 0) {
-        await app.db.transaction(async (trx) => {
-          const revision = await recordSyncWrite(trx, {
-            workspaceId: row.workspace_id,
-            entityType: 'task',
-            entityId: row.id,
-            operation: 'update',
-            changedFields: ['tags'],
-          });
-          if (toRemove.length > 0) {
-            await trx('task_tags').where({ task_id: row.id }).whereIn('tag_id', toRemove).delete();
-          }
-          if (toAdd.length > 0) {
-            await trx('task_tags').insert(
-              toAdd.map((tagId) => ({ task_id: row.id, tag_id: tagId })),
-            );
-          }
-          await trx('tasks').where({ id: row.id }).update({
-            revision,
-            updated_by: request.user.id,
-            updated_at: new Date(),
-          });
-        });
-      }
+      await taskDb.setTaskTags(app, {
+        row,
+        userId: request.user.id,
+        tagIds: request.body.tagIds,
+      });
 
       return taskDetail(row.id);
     },
@@ -709,17 +541,7 @@ export default async function taskRoutes(app) {
 
   // ── Checklist sub-resource ────────────────────────────────────────────────
 
-  async function loadChecklistItem(taskId, itemId) {
-    const item = await app
-      .db('checklist_items')
-      .where({ id: itemId, task_id: taskId })
-      .whereNull('deleted_at')
-      .first();
-    if (!item) {
-      throw coded(app.httpErrors.notFound('Checklist item not found'), 'CHECKLIST_ITEM_NOT_FOUND');
-    }
-    return item;
-  }
+  const loadChecklistItem = (taskId, itemId) => taskDb.loadChecklistItem(app, taskId, itemId);
 
   app.post(
     '/tasks/:taskId/checklist',
@@ -742,23 +564,11 @@ export default async function taskRoutes(app) {
     async (request, reply) => {
       const task = await loadTask(request.params.taskId);
       await app.requireWorkspaceMember(request, task.workspace_id);
-      assertNotArchived(task);
 
-      const id = newId();
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId: task.workspace_id,
-          entityType: 'checklist_item',
-          entityId: id,
-          operation: 'create',
-        });
-        await trx('checklist_items').insert({
-          id,
-          task_id: task.id,
-          title: request.body.title,
-          ...(request.body.sortOrder !== undefined ? { sort_order: request.body.sortOrder } : {}),
-          revision,
-        });
+      const id = await taskDb.addChecklistItem(app, {
+        task,
+        title: request.body.title,
+        sortOrder: request.body.sortOrder,
       });
 
       return reply.code(201).send(serializeChecklistItem(await loadChecklistItem(task.id, id)));
@@ -790,23 +600,7 @@ export default async function taskRoutes(app) {
       assertNotArchived(task);
       const item = await loadChecklistItem(task.id, request.params.itemId);
 
-      const patch = {};
-      if ('title' in request.body) patch.title = request.body.title;
-      if ('isDone' in request.body) patch.is_done = request.body.isDone;
-      if ('sortOrder' in request.body) patch.sort_order = request.body.sortOrder;
-
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId: task.workspace_id,
-          entityType: 'checklist_item',
-          entityId: item.id,
-          operation: 'update',
-          changedFields: Object.keys(patch),
-        });
-        await trx('checklist_items')
-          .where({ id: item.id })
-          .update({ ...patch, revision, updated_at: new Date() });
-      });
+      await taskDb.updateChecklistItem(app, { task, item, body: request.body });
 
       return serializeChecklistItem(await loadChecklistItem(task.id, item.id));
     },

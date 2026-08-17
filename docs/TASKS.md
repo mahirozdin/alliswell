@@ -8095,25 +8095,84 @@ yükleniyorsa öyle). Etiketler not PUSH protokolüne girmiyor; bu bilinçli ve 
 _Bulgu #7/#8. ADR-0022'nin kendi cümlesi genişlemeye izin veriyor: "v1.5 write tools slot into
 the same dispatch + annotation + audit path; `delete_*` never does."_
 
-- [ ] `lib/mcp/actions.js` → `recordMcpAction(app, auth, {idempotencyKey, entityType, entityId,
-      proposal, entityRefs})`: `mcp_mutations` replay kontrolü + `ai_action_log(source='mcp')`
-      insert'ini TEK yere alır ("ledger LAST" sırası korunur — `tools.js:529-530` notu);
-      `create_task`/`complete_task` buna taşınır (davranış değişmez, testler sabit kalır).
-- [ ] Yeni araçlar (hepsi: annotation dörtlüsü + `requireScope('mcp:write')` + Ajv +
+_(✅ 2026-08-17 — **tamamlandı.** Yüzey 7 → **13 araç**. API süiti **646** (+14),
+lint/format/check:no-ts temiz; entegrasyon süiti bu makinede KOŞULAMADI (konteyner çalışma
+zamanı yok) — CI kapısı. Deploy alınmadı, sahibin talimatı.)_
+
+_**Turun tek cümlesi: yeni araç yazmak işin küçük yarısıydı; büyük yarısı araçların
+konuşacağı domain katmanını var etmekti.** ADR-0022 §4 "MCP ham SQL değil domain
+çağırır" diyor ama OPH-218 yalnız create/complete/detail'i çıkarmıştı — PATCH, snooze,
+checklist, acknowledge hâlâ route closure'larının içindeydi. Yani altı yeni aracın önünde
+iki seçenek vardı: mantığı kopyalamak ya da katmanın yanından uzanmak. İkisi de yasak._
+
+- [x] **`lib/mcp/actions.js` doğdu.** `findMcpReplay()` (yazımdan ÖNCE `mcp_mutations`
+      replay kontrolü) + `recordMcpAction()` (yazımdan SONRA `ai_action_log(source='mcp')`
+      + idempotency satırı, `ER_DUP_ENTRY` yutulur). "Ledger LAST" sırası ve gerekçesi
+      artık modülün başında yazılı, iki handler'a kopyalanmış hâlde değil.
+      `create_task`/`complete_task` buna taşındı — **davranışları değişmedi, o iki testin
+      tek satırı bile değişmedi.**
+- [x] **Domain çıkarımı (asıl iş).** `db/tasks.js`: `updateTask` (arşiv kuralı + assert'ler
+      + urgent→acknowledgement varsayılanı + completionPatch + reconcileTaskReminder +
+      `propagateSeriesScope` aynı transaction'da), `reopenTask`, `snoozeTask` (preset
+      matematiği + canlı alarmların susturulması), `setTaskTags` (OPH-261'in `setNoteTags`
+      ikizi), `loadChecklistItem`/`addChecklistItem`/`updateChecklistItem`;
+      `db/reminders.js`: `loadReminder` + `acknowledgeReminder`. `TASK_STATUSES`/
+      `TASK_PRIORITIES`/`SNOOZE_PRESETS` de domain'e indi (lib → routes importu ters
+      bağımlılık olurdu; `lib/ai/schema.js` bunu zaten yazıyor), route re-export ediyor.
+      **Kanıt: çıkarımdan sonra 632 testin hiçbiri değişmeden yeşil kaldı** — sonra araçlar
+      yazıldı.
+- [x] Yeni araçlar (hepsi: annotation dörtlüsü + `requireScope('mcp:write')` + Ajv +
       workspace-scope + `recordMcpAction` + DATA_NOTE):
-      **`update_task`** — `writableProps`'un MCP-güvenli alt kümesi: `title`, `description`,
-      `status`, `priority`, `dueAt`, `remindAt`, `startAt`, `isUrgent` (acil alarm buradan),
-      `requiresAcknowledgement`, `projectName` (id değil — `matchProject`, belirsizse aday
-      listesiyle RED, K5), `tags[]` (yalnız var olana çözülür, sessiz yaratma yok), `timezone`.
-      Domain: mevcut PATCH yolu `db/tasks.js`'e `updateTask` olarak iner (reconcileTaskReminder
-      dahil). **`reopen_task`**, **`snooze_task`** (preset enum'u REST'le aynı: `5_min|30_min|
-      1_hour|tomorrow_morning` ya da `snoozeUntil`), **`add_checklist_item`**,
-      **`set_checklist_item`** (`isDone`/`title`), **`acknowledge_reminder`**.
-- [ ] Red-team: `mcp-injection.test.js` her yeni aracı düşman başlık korpusuyla çağırır,
-      `tableSnapshot()` değişmezliği genişletilir (bulgu #8'in CI sözleşmesi, SECURITY.md:89-90).
-- [ ] Unit testler `mcp-tools.test.js` deseninde: mutlu yol + scope reddi + cross-workspace
-      NOT_FOUND + idempotency replay + belirsiz proje reddi. `docs/MCP.md` tablosu bu dalganın
-      araçlarıyla güncellenir (kalan güncelleme OPH-263'te).
+      **`update_task`** (MCP-güvenli alt küme: `title`, `description`, `status`, `priority`,
+      `dueAt`, `remindAt`, `startAt`, `isUrgent`, `requiresAcknowledgement`, `projectName`
+      — id değil, belirsizse aday listesiyle RED K5 —, `tags[]` replace-set/yalnız var olana
+      çözülür, `timezone`), **`reopen_task`**, **`snooze_task`** (`oneOf` preset|snoozeUntil,
+      REST'le birebir), **`add_checklist_item`** (idempotencyKey'li), **`set_checklist_item`**,
+      **`acknowledge_reminder`**.
+      _Bilinçli dışarıda: `parentTaskId`/`sortOrder` (yapı insan hareketidir), `colorRgb`
+      (UI kararı), `calendarMirrorEnabled`/`alarmsMutedAt` (cihaz anahtarları) ve
+      `seriesScope` — bir seri düzenlemesinin diğer günlere uzanması uygulamanın kapsam
+      sorusunu ister, modelin tahminini değil._
+- [x] **Beklenmedik bulgu — `acknowledge_reminder` ULAŞILAMAZ doğuyordu:** hiçbir okuma
+      aracı bir alarm id'si vermiyordu, yani araç yazılır ama çağrılamazdı (DESIGN §22).
+      `get_task` artık görevin alarmlarını da veriyor (id/kind/status/remindAt/snoozedUntil/
+      requiresAcknowledgement — metin yok, yalnız metadata). Testi de böyle yazıldı: id
+      tablodan değil **okuma aracının çıktısından** alınıyor.
+- [x] **İkinci bulgu — kendi açtığım kapı:** etiket-yalnız bir `update_task` çağrısı
+      `updateTask`'e uğramadığı için ARŞİV kuralını atlıyordu (REST'in `PUT /tags` ucu
+      reddederken MCP arşivli görevin etiketlerini yeniden yazabiliyordu). Kural route'tan
+      `setTaskTags`'in içine indi + testi yazıldı. _Bir kural, onu atlayan ikinci yol
+      çıktığı anda yanlış yerde durduğunu söyler._
+- [x] **Domain reddi artık modelin okuyabildiği bir kod.** Domain katmanı HTTP terimleriyle
+      reddediyor (`coded()` + sensible), çünkü REST onun diğer çağıranı. `routes/mcp.js`
+      dispatch'i 4xx + stabil `code` taşıyan hatayı tool sonucuna çeviriyor (`TASK_ARCHIVED`,
+      `TASK_INVALID_TRANSITION`, `TASK_SNOOZE_IN_PAST`…); 5xx opak kalıyor — iç arıza modelin
+      düzelteceği şey değil.
+- [x] Red-team: `mcp-injection.test.js` yazma dalgasını düşman korpusla çağırıyor
+      (`update_task` her başlık vakasıyla, `add_checklist_item`), `tableSnapshot()`
+      checklist/ticked/reminders/snoozed/tagLinks ile genişledi; **tek delta istenen satır**.
+      Her alanı düşman olan bir görevin okunması da inert (SECURITY.md:89-90 sözleşmesi).
+- [x] Unit testler (+14, süit 632 → **646**): mutlu yol (revision + reconcile + tag
+      replace-set + ledger) · belirsiz proje reddinin TOTAL olduğu (istenen başlık da
+      yazılmaz) · idempotency replay · boş çağrı, arşivli görev ve arşivli etiket yazımı
+      kod döndürür ·
+      reopen/snooze geçiş kuralları · checklist ekle-replay-tikle + yabancı madde NOT_FOUND ·
+      acknowledge idempotent · **her yazma aracı read-only token'ı reddeder** (tablo bazlı) ·
+      **her yazma aracı başka workspace'in id'sine NOT_FOUND der ve hiçbir satırı oynatmaz**.
+      Kapı doğrulaması: `snooze_task`'ten `requireScope` kasten silindi → süit yakaladı
+      (`expected 'NOT_FOUND' to be 'MCP_SCOPE_REQUIRED'`) → geri alındı.
+      `mcp-protocol.test.js`'in yüzey listesi 13 araca güncellendi + yazma araçlarının
+      annotation dörtlüsünün TAM olduğu iddiası eklendi (eksik hint "false" değil
+      "bilinmiyor" demektir — host sessizce çalıştırabilir).
+- [x] `docs/MCP.md` tablosu bu dalganın araçlarıyla güncellendi ("Seven tools" → thirteen;
+      "no delete tool, by design" cümlesi KALDI), `docs/AI.md` §8 K5'in eski "v1.5 may add"
+      cümlesi gerçekle değiştirildi, `routes/mcp.js` `instructions` metni yeni yüzeyi
+      söylüyor. ADR-0022 amendment'ı bilinçle OPH-263'e bırakıldı (yüzey tam olduğunda tek
+      not; ADR'nin kendi Consequences cümlesi bu dalgaya zaten izin veriyor).
+      **Kural 12'nin REST yarısı:** yeni bir kullanıcı yeteneği eklenmedi — altı aracın
+      altısının da REST karşılığı zaten vardı (`PATCH /tasks/:id`, `/reopen`, `/snooze`,
+      `/checklist`, `PATCH /checklist/:itemId`, `/reminders/:id/acknowledge`), yani
+      backfill edilecek uç yok; `docs/API.md` OPH-265'te doğacak.
 
 ### OPH-263 — MCP genişleme 2. dalga: not/proje/etiket araçları, listeler, dokümantasyon
 

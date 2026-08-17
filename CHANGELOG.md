@@ -18,6 +18,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Claude and ChatGPT can now change a task, not just make one.** The
+  connector grew six tools: edit a task (title, notes, status, priority, dates,
+  urgency, project, tags), reopen a finished one, snooze its alarms, add and
+  tick checklist items, and answer an urgent alarm. Asking the AI to "push
+  tomorrow's dentist appointment to Friday" no longer means it creates a second
+  task. As before, your assistant shows you an approval prompt first, every
+  change is written to the action log, and **there is still no way for it to
+  delete anything** (OPH-262).
 - **Notes can carry tags.** The table has been there since the first release
   with no way to read or write it; there is now an endpoint, and a note's tags
   travel to your devices with the rest of it (OPH-261).

@@ -1,13 +1,24 @@
 import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
+import { nextMorningIn } from '../lib/time.js';
 import { recordSyncWrite } from './sync.js';
 import { reconcileTaskReminder } from './reminders.js';
+import { propagateSeriesScope } from './task-series.js';
 
 /**
- * The task domain layer (OPH-218, ADR-0022 §4): create, status transitions
- * and the detail loader, extracted from routes/tasks.js so REST and the MCP
- * tools are ONE implementation — same asserts, same revision bookkeeping,
- * same reminder reconcile, in the same transaction shape.
+ * The task domain layer (OPH-218, ADR-0022 §4): create, update, status
+ * transitions, snooze, tags, checklist and the detail loader, extracted from
+ * routes/tasks.js so REST and the MCP tools are ONE implementation — same
+ * asserts, same revision bookkeeping, same reminder reconcile, in the same
+ * transaction shape.
+ *
+ * OPH-218 moved create/complete/detail (all the MCP surface of the day needed).
+ * OPH-262 moved the rest of the write verbs, because the second wave of tools
+ * (`update_task`, `snooze_task`, checklist) would otherwise have had to choose
+ * between duplicating the route closures and reaching past them — the exact
+ * choice ADR-0022 §4 exists to remove. Same contract as the OPH-261 note
+ * extraction: identical behaviour, and the proof is that the route suites pass
+ * untouched.
  *
  * routes/sync.js still carries its own generic ENTITIES engine (different
  * shapes, LWW semantics); unifying it is deliberately out of scope here —
@@ -16,6 +27,27 @@ import { reconcileTaskReminder } from './reminders.js';
  * Serialization stays in routes/tasks.js (`serializeTask` — the module
  * routes/sync.js already imports from); this module returns rows.
  */
+
+// Snooze presets (BLUEPRINT §4.9): fixed offsets in minutes, plus
+// tomorrow_morning which is 09:00 next day on the TASK's wall clock.
+const SNOOZE_PRESET_MINUTES = { '5_min': 5, '30_min': 30, '1_hour': 60 };
+export const SNOOZE_PRESETS = [...Object.keys(SNOOZE_PRESET_MINUTES), 'tomorrow_morning'];
+
+// The task vocabulary. It lived in routes/tasks.js until OPH-262; the MCP tool
+// schemas need it too, and a lib → routes import would be upside down
+// (lib/ai/schema.js says so in as many words), so the domain layer owns it and
+// the route re-exports for its existing importers.
+export const TASK_STATUSES = [
+  'inbox',
+  'open',
+  'scheduled',
+  'in_progress',
+  'waiting',
+  'completed',
+  'cancelled',
+  'archived',
+];
+export const TASK_PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'];
 
 const CAMEL_TO_SNAKE = {
   title: 'title',
@@ -202,6 +234,55 @@ export async function createTask(app, { workspaceId, userId, body: rawBody }) {
   return id;
 }
 
+/**
+ * Applies a patch to a live task row: the asserts, the archived rule, the
+ * urgent→acknowledgement default, the completion side effect, the revision and
+ * the reminder reconcile — plus the series propagation, in the SAME
+ * transaction (a half-applied scope would be a lie, OPH-206).
+ *
+ * `body` is the REST PATCH body (camelCase); `seriesScope` rides along in it.
+ */
+export async function updateTask(app, { row, userId, body }) {
+  // Archived tasks accept exactly one write: a lone `status` unarchiving them.
+  const isUnarchive =
+    Object.keys(body).length === 1 && body.status !== undefined && body.status !== 'archived';
+  if (!isUnarchive) assertNotArchived(app, row);
+
+  if (body.projectId) await assertProjectUsable(app, body.projectId, row.workspace_id);
+  if (body.parentTaskId) await assertParentUsable(app, body.parentTaskId, row.workspace_id, row.id);
+  if (body.timezone !== undefined) assertValidTimezone(app, body.timezone);
+  // Turning a task urgent defaults acknowledgement on unless set explicitly.
+  if (body.isUrgent === true && body.requiresAcknowledgement === undefined) {
+    body.requiresAcknowledgement = true;
+  }
+
+  const patch = {
+    ...toRowPatch(body),
+    ...(body.status !== undefined ? completionPatch(row.status, body.status) : {}),
+  };
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: Object.keys(patch),
+    });
+    await trx('tasks')
+      .where({ id: row.id })
+      .update({ ...patch, revision, updated_by: userId, updated_at: new Date() });
+    const fresh = await trx('tasks').where({ id: row.id }).first();
+    await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
+    await propagateSeriesScope(trx, {
+      workspaceId: row.workspace_id,
+      task: fresh,
+      patch: body,
+      scope: body.seriesScope,
+      userId,
+    });
+  });
+}
+
 /** One status transition with the shared revision + reminder bookkeeping. */
 export async function applyStatusTransition(app, { userId, row, toStatus }) {
   const patch = { status: toStatus, ...completionPatch(row.status, toStatus) };
@@ -232,6 +313,193 @@ export async function completeTask(app, { userId, row }) {
   if (row.status === 'completed') return false;
   await applyStatusTransition(app, { userId, row, toStatus: 'completed' });
   return true;
+}
+
+/** Back to `open` — only a finished task can be reopened (OPH-033). */
+export async function reopenTask(app, { userId, row }) {
+  assertNotArchived(app, row);
+  if (row.status !== 'completed' && row.status !== 'cancelled') {
+    throw coded(
+      app.httpErrors.conflict('Only completed or cancelled tasks can be reopened'),
+      'TASK_INVALID_TRANSITION',
+    );
+  }
+  await applyStatusTransition(app, { userId, row, toStatus: 'open' });
+}
+
+/**
+ * Snoozes a task and silences its live alarm(s) until the same moment
+ * (OPH-035/OPH-175). Exactly one of `preset` / `snoozeUntil` is used; a task
+ * can own two alarms (reminder + deadline) — `reminderId` silences just that
+ * one, omitting it silences all of them. Returns the instant chosen.
+ */
+export async function snoozeTask(app, { row, userId, preset, snoozeUntil, reminderId }) {
+  assertNotArchived(app, row);
+  if (row.status === 'completed' || row.status === 'cancelled') {
+    throw coded(
+      app.httpErrors.conflict('Completed or cancelled tasks cannot be snoozed'),
+      'TASK_INVALID_TRANSITION',
+    );
+  }
+
+  let until;
+  if (snoozeUntil) {
+    until = new Date(snoozeUntil);
+    if (until.getTime() <= Date.now()) {
+      throw coded(
+        app.httpErrors.badRequest('snoozeUntil must be in the future'),
+        'TASK_SNOOZE_IN_PAST',
+      );
+    }
+  } else if (preset === 'tomorrow_morning') {
+    until = nextMorningIn(row.timezone);
+  } else {
+    until = new Date(Date.now() + SNOOZE_PRESET_MINUTES[preset] * 60 * 1000);
+  }
+
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: ['snoozed_until'],
+    });
+    await trx('tasks').where({ id: row.id }).update({
+      snoozed_until: until,
+      revision,
+      updated_by: userId,
+      updated_at: new Date(),
+    });
+
+    const query = trx('reminders')
+      .where({ task_id: row.id })
+      .whereNull('deleted_at')
+      .whereIn('status', ['scheduled', 'snoozed', 'delivered']);
+    if (reminderId) query.where({ id: reminderId });
+    const active = await query.orderBy('created_at', 'desc').select();
+    for (const alarm of active) {
+      const reminderRevision = await recordSyncWrite(trx, {
+        workspaceId: row.workspace_id,
+        entityType: 'reminder',
+        entityId: alarm.id,
+        operation: 'update',
+        changedFields: ['status', 'snoozed_until', 'snooze_count'],
+      });
+      await trx('reminders')
+        .where({ id: alarm.id })
+        .update({
+          status: 'snoozed',
+          snoozed_until: until,
+          // Which round the next ring is (OPH-177) — the alert says so.
+          snooze_count: Number(alarm.snooze_count ?? 0) + 1,
+          revision: reminderRevision,
+          updated_at: new Date(),
+        });
+    }
+  });
+
+  return until;
+}
+
+/**
+ * Replace-set of a task's tags — the `setNoteTags` twin (OPH-261). The links
+ * are their own rows, so the revision is stamped on the TASK: that is what a
+ * client pulls to learn its tags changed.
+ */
+export async function setTaskTags(app, { row, userId, tagIds }) {
+  // The archived rule belongs HERE, not in the route: a tags-only `update_task`
+  // from MCP never passes through [updateTask], and an archived task would have
+  // slipped through with its tags rewritten while REST refused the same edit.
+  assertNotArchived(app, row);
+  const desired = [...new Set(tagIds)];
+  await assertTagsUsable(app, desired, row.workspace_id);
+
+  const current = (await app.db('task_tags').where({ task_id: row.id }).select('tag_id')).map(
+    (r) => r.tag_id,
+  );
+  const toAdd = desired.filter((id) => !current.includes(id));
+  const toRemove = current.filter((id) => !desired.includes(id));
+  if (toAdd.length === 0 && toRemove.length === 0) return false;
+
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: ['tags'],
+    });
+    if (toRemove.length > 0) {
+      await trx('task_tags').where({ task_id: row.id }).whereIn('tag_id', toRemove).delete();
+    }
+    if (toAdd.length > 0) {
+      await trx('task_tags').insert(toAdd.map((tagId) => ({ task_id: row.id, tag_id: tagId })));
+    }
+    await trx('tasks').where({ id: row.id }).update({
+      revision,
+      updated_by: userId,
+      updated_at: new Date(),
+    });
+  });
+  return true;
+}
+
+/** Loads one live checklist item of a task, or throws the route's 404. */
+export async function loadChecklistItem(app, taskId, itemId) {
+  const item = await app
+    .db('checklist_items')
+    .where({ id: itemId, task_id: taskId })
+    .whereNull('deleted_at')
+    .first();
+  if (!item) {
+    throw coded(app.httpErrors.notFound('Checklist item not found'), 'CHECKLIST_ITEM_NOT_FOUND');
+  }
+  return item;
+}
+
+/** Adds one checklist item to a live task. Returns the new id. */
+export async function addChecklistItem(app, { task, title, sortOrder }) {
+  assertNotArchived(app, task);
+  const id = newId();
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: task.workspace_id,
+      entityType: 'checklist_item',
+      entityId: id,
+      operation: 'create',
+    });
+    await trx('checklist_items').insert({
+      id,
+      task_id: task.id,
+      title,
+      ...(sortOrder !== undefined ? { sort_order: sortOrder } : {}),
+      revision,
+    });
+  });
+  return id;
+}
+
+/** Patches one checklist item (`title` / `isDone` / `sortOrder`). */
+export async function updateChecklistItem(app, { task, item, body }) {
+  assertNotArchived(app, task);
+  const patch = {};
+  if ('title' in body) patch.title = body.title;
+  if ('isDone' in body) patch.is_done = body.isDone;
+  if ('sortOrder' in body) patch.sort_order = body.sortOrder;
+
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: task.workspace_id,
+      entityType: 'checklist_item',
+      entityId: item.id,
+      operation: 'update',
+      changedFields: Object.keys(patch),
+    });
+    await trx('checklist_items')
+      .where({ id: item.id })
+      .update({ ...patch, revision, updated_at: new Date() });
+  });
 }
 
 /** The detail loader's rows: task + sorted tag ids + live checklist rows. */
