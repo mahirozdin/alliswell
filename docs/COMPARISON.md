@@ -5,8 +5,10 @@ README, the landing page and the store listings can be traced to something the
 code actually does — and so the places where a competitor is genuinely better
 are written down instead of quietly avoided.
 
-Written against **v1.4.0** (2026-08-12). Competitor behaviour is stated as of
-mid-2026; re-check before a release cycle, because half of it changes yearly.
+Researched and written against **v1.4.0** (2026-08-12) — that is provenance, not
+our current version; the live figure is in the table at §5. <!-- docs-check-ignore -->
+Competitor behaviour is stated as of mid-2026; re-check before a release cycle,
+because half of it changes yearly.
 
 **Contents:** [1. What we built](#1-what-we-built-the-full-inventory) ·
 [2. The field](#2-the-field) · [3. Feature matrix](#3-feature-matrix) ·
@@ -133,7 +135,7 @@ list every screenshot, the landing page and the store copy draw from.
 | **Six platforms from one Flutter codebase** — iOS, Android, Web, macOS, Windows, Linux            | Epic 01 |
 | **Local-first**: SQLite replica, mutation outbox, revision log, idempotent push, field-level LWW  | Epic 06 |
 | Realtime fan-out over Socket.IO                                                                   | Epic 06 |
-| Home-screen widgets: iOS, Android, macOS — with today's open count and tick-off without opening the app | Epic 12 |
+| Home-screen widgets: iOS and Android — with today's open count and tick-off without opening the app | Epic 12 |
 | English + Turkish, auto-detected; a new language is one JSON file                                 | Epic 11 |
 | Light + dark, contrast-verified by a script on every UI change (DESIGN §5)                        | Rule 11 |
 | **Self-hosted**: your MySQL/MariaDB, one `docker compose up`, free for personal use                | Epic 09 |
@@ -295,7 +297,7 @@ Writing these down is what makes §4 trustworthy.
 | **Invitations, RSVPs, free/busy, rooms** | Google & Apple Calendar | Out of scope — we mirror to your calendar and let it do this. |
 | **Natural-language date entry, everywhere** | Todoist, Things 3 | Partial: magic-parse exists in quick-add, and it currently leans on AI. |
 | **Real collaboration** — assignees, comments, shared lists | Todoist, Apple Reminders, Google | Workspaces exist in the model; the sharing UI is not built. Single-user today. |
-| **Maturity** — a decade of edge cases, App Store trust, an ecosystem | all of them | We are at 1.4.0. This is a young product. |
+| **Maturity** — a decade of edge cases, App Store trust, an ecosystem | all of them | We are at 1.6.0. This is a young product. |
 | **Ecosystem reach** — Siri, Gmail side panel, Watch complications | Apple, Google | Widgets ship; Siri/Watch integration is designed (OPH-183), not delivered. |
 | **Design polish over years** | Things 3 | We took their model and our own design system is strict — but they have had ten years to sand the corners. |
 | **Localisation breadth** | all of them | Two languages. Adding one is a JSON file, which is the point, but the file has to be written. |

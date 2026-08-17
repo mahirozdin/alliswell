@@ -3,7 +3,35 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17n (**KONTRAST KAPISININ KÖR NOKTASI KAPANDI — ve kapatırken
+**Last updated:** 2026-08-17o (**PAZARLAMA DOKÜMANLARININ ÇELİŞKİLERİ — bir kez düzeltilmiş,
+kaymıştı; bu kez KAPIYA BAĞLANDI.** `npm run check:docs` (`scripts/docs/check.mjs`) yazıldı ve
+CI'a eklendi. Düzeltilen üç canlı yanlış: `COMPARISON.md`'nin **macOS widget** iddiası (öyle bir
+target yok), §5'in "We are at 1.4.0"u (gerçek 1.6.0), README'nin bayat test sayıları.
+**Deploy alınmadı — sahibin talimatı.** Sıradaki iş: landing `search` bloğunun ekran görüntüsü —
+**bloke**, çekim ister (API + seed + `flutter build web` + :8080).
+
+**Turun tek cümlesi: `[x]` bir iddiadır, kanıt değil.** Bu tablo bir kez düzeltilip
+işaretlenmişti; günler içinde yeniden kaymıştı — ve README'nin test sayılarını **kendi son iki
+commit'im** bayatlattı. Elle tutulan her rakam, tutmayı bırakan ilk günde yalan olur.
+
+**Task metninin kendisi üç yerde bayattı — körü körüne uysaydım dokümanı TERS yönde
+yanlışlayacaktım.** (1) "`AppIntent` yok, widget salt-okunur" artık doğru değil: iOS
+`AWWidgetCompleteIntent` (OPH-233) ve Android `ACTION_ROW → "complete"` ikisi de uygulamayı
+açmadan tamamlıyor, yani "tick-off" iddiası DOĞRU; yanlış olan yalnız **macOS**'tu. (2) macOS
+iddiası "iki yer" değil tek yerde kalmıştı (satır 241 zaten "● iOS/Android" diyor). (3) "#5
+landing'de hiç görünmüyor" yanlış: `recurrence` bloğu render'dan filtreleniyor **çünkü yerine
+`RecurrenceProof` tablosu çiziliyor** — ekran görüntüsünden daha iyi bir kanıt.
+
+**Kapının kapsamı bilinçle dar tutuldu.** Sürüm iddiaları tek doğruluk kaynağıyla
+(`package.json`) karşılaştırılıyor: iki manifest + dokümanlardaki canlı cümleler; tarihsel
+cümleler için `docs-check-ignore` kaçışı. **Test sayıları kasten kapıya alınmadı** — doğrulaması
+tam süit koşusu ister; çözüm gate değil, çürümeyen ifade oldu ("1,200+ · 700+ · 70+"). Geniş bir
+"herhangi bir X.Y.Z" taraması rakip sürümlerini yakalardı, ve boşuna öten bir kapı yok sayılır.
+
+**Kapı doğrulaması:** iki kasıtlı ihlal — doküman "1.4.0" ve `pubspec.yaml` "1.5.0" — ikisi de
+dosya:satır ile yakalandı, çıkış kodu 1; geri alındı, temizde 0.
+
+Önceki blok: 2026-08-17n (**KONTRAST KAPISININ KÖR NOKTASI KAPANDI — ve kapatırken
 SEVK EDİLMİŞ BİR HATA çıktı.** Epic 24'ün açık kontrast kalemi alındı; `contrast.py` 127 → **137
 çift** (+10), `FAILURES: 0`, çıkış kodu 0. App süiti **1222** (değişmedi), `flutter analyze` temiz,
 `dart format` 0 değişiklik, `check:i18n` temiz. **Deploy alınmadı — sahibin talimatı.**

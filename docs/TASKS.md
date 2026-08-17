@@ -7481,6 +7481,34 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
       | `README.md` durum satırı | "887 app tests" | bayat (STATE: 1093+) |
       | landing `search` bloğu | Search bloğu **Projects ekran görüntüsü** kullanıyor | kabul kriteri: eşleşen, gerçek görüntü |
       | landing `recurrence` bloğu | `shot: 'web/home-dark.jpg'` — Home görüntüsü tekrar iddiasının yerine geçiyor, üstelik blok `App.vue`'da render'dan **filtreleniyor** | #5 landing'de hiç görünmüyor |
+
+- [x] **Tablo yeniden DENETLENDİ (2026-08-17o) — bir kez düzeltilmişti, kaymıştı.**
+      `[x]` bir iddiadır, kanıt değil: yedi satırın üçü hâlâ/yeniden yanlıştı, üçü ise
+      **artık geçersizdi** (task metni bayattı). Düzeltilenler: `COMPARISON.md` "iOS,
+      Android, **macOS**" → macOS widget target'ı yok, kaldırıldı · `COMPARISON.md` §5
+      "We are at 1.4.0" → **1.6.0** · `README` "1148 app tests · 620 backend unit · 58
+      integration" → gerçek 1222/709/74, ama sayı **elle tutulan her rakam gibi iki
+      commit'te iki kez çürüdüğü için** çürümeyen biçime alındı ("1,200+ · 700+ · 70+").
+- [x] **Bulgu — task metninin kendisi üç yerde bayattı; körü körüne uysaydım dokümanı
+      TERS yönde yanlışlayacaktım.** (1) "`AppIntent` yok, widget salt-okunur" **artık
+      doğru değil**: iOS `AWWidgetCompleteIntent` (OPH-233) ve Android `ACTION_ROW` →
+      `"complete"` ikisi de uygulamayı açmadan tamamlıyor — yani "tick-off" iddiası
+      DOĞRU, yalnız macOS yanlıştı. (2) "COMPARISON iki yer" → macOS iddiası tek yerde
+      kalmış; satır 241 zaten "● iOS/Android" diyor. (3) "#5 landing'de hiç görünmüyor"
+      → görünüyor: `recurrence` bloğu render'dan filtreleniyor **çünkü yerine
+      `RecurrenceProof` tablosu çiziliyor** ("The 31st should mean month end"), ki bir
+      ekran görüntüsünden daha iyi bir kanıt. Filtrelenen bloğun `shot` alanı ölü veri.
+- [x] **Denetim script'i — `npm run check:docs` (`scripts/docs/check.mjs`), CI'a bağlandı.**
+      Aynı tutarsızlığa ikinci kez düşüldüğü için elle düzeltme bırakıldı. Kapı sürüm
+      iddialarını tek doğruluk kaynağıyla (`package.json`) karşılaştırıyor: `apps/api`
+      ve `pubspec.yaml` manifestleri + dokümanlardaki canlı iddialar ("We are at X",
+      "Project status — `vX`"). Tarihsel cümleler için kaçış: `docs-check-ignore`.
+      Desenler bilinçle dar — geniş bir "herhangi bir X.Y.Z" taraması rakip sürümlerini
+      ve changelog'u yakalar, ve boşuna öten bir kapı yok sayılır. **Test sayıları
+      kasten kapıya alınmadı:** doğrulaması tam süit koşusu ister, o yüzden çözüm
+      gate değil, çürümeyen ifade oldu.
+      Kapı doğrulaması: iki kasıtlı ihlal (doküman "1.4.0", pubspec "1.5.0") → ikisi de
+      dosya:satır ile yakalandı, çıkış kodu 1 → geri alındı.
 - [ ] **Ekran görüntüleri**: mevcut set (`screenshots/`, `docs/store/`, `store/`) bu beş
       başlığa göre denetlenir; **eksik olanlar** çekilir, **bayat olanlar** yenilenir.
       Çekim `scripts/screenshots/web.mjs` (`--only` bayrağı var; önkoşullar dosyanın

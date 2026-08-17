@@ -13,6 +13,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   4.5:1 minimum for text and below even the 3:1 floor for icons. They now use
   the banner surface's own ink (6.68:1 dark, 7.71:1 light). Nothing about the
   buttons' behaviour changed.
+- **The docs no longer promise a macOS home-screen widget.** There is no macOS
+  widget target; `docs/COMPARISON.md` listed one. The tick-off claim beside it
+  is real and stays — both the iOS and the Android widget complete a task
+  without opening the app.
+- **`docs/COMPARISON.md` said the product was at 1.4.0 while it was at 1.6.0**,
+  and the README's exact test counts were two releases stale. The counts are
+  now stated in a form that does not rot, because a hand-maintained number went
+  wrong twice in two commits.
+
+### Added
+
+- **`npm run check:docs`** — a CI gate that fails when the documentation claims
+  a version the repo has moved past, comparing the docs and the `apps/api` and
+  `pubspec.yaml` manifests against `package.json`. A deliberately historical
+  line opts out with `docs-check-ignore`.
 
 ### Changed
 

@@ -48,7 +48,7 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
 
 > **Project status — `v1.6.0`, live.** Everything on this page is built, tested
-> (**1148 app tests · 620 backend unit · 58 integration, green**) and deployed to
+> (**1,200+ app tests · 700+ backend unit · 70+ integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
 > ⭐ Star the repo to follow along.
