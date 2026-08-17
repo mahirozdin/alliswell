@@ -5,7 +5,9 @@ import { reconcileTaskReminder } from '../db/reminders.js';
 import { cascadeDeleteFiles } from '../db/files.js';
 import { cascadeDeleteQuickLinks } from '../db/quick-links.js';
 
-export const PROJECT_STATUSES = ['active', 'paused', 'completed', 'archived'];
+// The vocabulary moved to the domain layer in OPH-263 (the MCP project tools
+// need it); routes/sync.js and the suites keep importing it from here.
+export const { PROJECT_STATUSES } = domain;
 // Non-terminal task statuses the archive cascade sweeps (OPH-110); terminal
 // ones (completed/cancelled/already-archived) are left untouched.
 const CASCADE_TASK_STATUSES = ['inbox', 'open', 'scheduled', 'in_progress', 'waiting'];

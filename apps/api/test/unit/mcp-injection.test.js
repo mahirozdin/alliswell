@@ -36,6 +36,11 @@ function tableSnapshot() {
     completed: tables.tasks.filter((t) => t.status === 'completed').length,
     deleted: tables.tasks.filter((t) => t.deleted_at).length,
     notes: tables.notes.length,
+    archivedNotes: tables.notes.filter((n) => n.is_archived).length,
+    // OPH-263: notes gained links, and projects/tags gained write tools.
+    noteLinks: tables.note_links.length,
+    projects: tables.projects.length,
+    tags: tables.tags.length,
     // OPH-262: the write wave gave the tools three more tables to damage, so
     // the invariance contract has to see them too.
     checklist: tables.checklist_items.length,
@@ -151,6 +156,33 @@ describe('MCP tools resist injection', () => {
     // nothing deleted, no alarm moved, no tag invented.
     expect(after).toEqual({ ...before, checklist: before.checklist + 1 });
     expect(tables.tasks.find((t) => t.id === bystander.id).title).toBe('Karışmayan görev');
+  });
+
+  it('a note written BY the model from hostile text is stored, not obeyed', async () => {
+    const exfil = corpus.cases.find((c) => c.id === 'exfil-url');
+    const fence = corpus.cases.find((c) => c.id === 'fence-escape');
+    const before = tableSnapshot();
+
+    const created = await callTool(app, access, 'create_note', {
+      title: fence.text,
+      contentMarkdown: exfil.text,
+    });
+    expect(created.structuredContent.created).toBe(true);
+    const noteId = created.structuredContent.note.id;
+
+    // Round-trips verbatim: a fence-escape attempt is a title, an exfil URL is
+    // body text — and nothing followed either of them.
+    const detail = await callTool(app, access, 'get_note', { noteId });
+    expect(detail.structuredContent.note.title).toBe(fence.text);
+    expect(detail.structuredContent.note.text).toContain('evil.example');
+    expect(detail.structuredContent.note.linkedTo).toEqual([]);
+    expect(detail.structuredContent.note).not.toHaveProperty('action');
+
+    await callTool(app, access, 'update_note', { noteId, contentMarkdown: exfil.text });
+
+    // The only delta is the one note we asked for: no project appeared, no tag
+    // was invented, nothing was linked, nothing archived.
+    expect(tableSnapshot()).toEqual({ ...before, notes: before.notes + 1 });
   });
 
   it('reading a task whose every field is hostile stays inert', async () => {

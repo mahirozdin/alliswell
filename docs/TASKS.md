@@ -8179,29 +8179,65 @@ iki seçenek vardı: mantığı kopyalamak ya da katmanın yanından uzanmak. İ
 _Sahibin cümlesi birebir: "not olusturma yok … not ekleme notu taska baglama … proje yonetimi
 not olusturma ayrica task bagimsiz not ekleme yapilabilmesi lazim." Bu dalga onu kapatır._
 
-- [ ] Araçlar: **`create_note`** (`title` zorunlu; `contentMarkdown` — MCP notları
-      markdown-canonical doğar, karar; `projectName?` fold-eşleşme K5; `taskId?` verilirse
-      `db/notes.js.linkNote` ile aynı transaction'da bağlanır — "task bağımsız not" da "göreve
-      bağlı not" da tek araç), **`update_note`** (`title?`, `contentMarkdown?`, `isPinned?`,
-      `isArchived?` — içerik yazımı sürümleme yolundan geçer: OPH-267 sonrası origin='mcp'
-      sürüm satırı otomatiktir çünkü domain katmanı tektir, V8), **`link_note`** /
-      **`unlink_note`** (`entityType: task|project`), **`list_notes`** (proje/arşiv/pin
-      filtreleri, limit ≤50, gövde DEĞİL özet — `plain_text` ilk 200 char), **`create_project`**
-      / **`update_project`** (name/description/status/dueAt; renk YOK — renk UI kararıdır),
-      **`list_projects`** (statü filtresi + açık görev sayıları), **`list_tags`**,
-      **`create_tag`**, **`list_files`** (metadata-only: ad, boyut, mime, hedef; presigned URL
-      ASLA — karar #2). Okuma araçları `{ readOnlyHint: true }` + satır tavanları (K7).
-- [ ] `get_task`/`get_note` zenginleşir: bağlı notlar / bağlı görevler + checklist + etiketler
-      görünür (K7 tavanlarıyla) — "her alanın görülebilmesi" tarafı.
-- [ ] Resources: `alliswell://views/today`/`overdue` kalır; `alliswell://views/inbox` eklenir
-      (planlama statüleri — `buildTaskViewResource` yanına saf builder, route içine değil).
-- [ ] Dokümantasyon: `docs/MCP.md` araç tablosu tam liste olur ("Seven tools" cümlesi ve
-      README/AI.md sayıları güncellenir; "no delete, by design" cümlesi KALIR); ADR-0022'ye
-      kısa amendment notu (yüzey genişledi, delete-dışı aynı yol — yeni ADR gerekmedi, kendi
-      Consequences cümlesi izin veriyor). AGENTS kural 12 zaten bağlandı (planlama turu).
-- [ ] Red-team + unit + `test/integration/mcp.test.js` genişletmeleri; **MCP Inspector elle
-      koşusu** (ADR-0022'nin uyum kanaryası): her yeni araç Inspector'dan bir kez çağrılır,
-      STATE'e tek satır kanıt düşülür.
+_(✅ 2026-08-17 — **kod TAMAM**, yüzey **13 → 24 araç** + 3. kaynak. API süiti **658** (+12),
+lint/format/check:no-ts temiz. **İki doğrulama BLOKE:** entegrasyon süiti ve MCP Inspector
+koşusu — ikisi de MySQL/Redis ister, bu makinede konteyner çalışma zamanı yok. Deploy alınmadı,
+sahibin talimatı.)_
+
+_**Turun tek cümlesi: yazma yüzeyi genişledikçe iş "ne ekleyeyim"den "neyi eklememeliyim"e
+döndü.** Üç sınır bilinçle çizildi ve üçü de dokümana yazıldı: delta-kanonik notun gövdesi
+MCP'den EZİLEMEZ (ADR-0028 §1 — sessiz dönüştürme kullanıcının yazdığı biçimlendirmeyi atardı),
+proje ARŞİVLEME uygulamada kalır (kaskad görevlere ve notlara uzanıyor), dosya baytları hiç
+geçmez._
+
+- [x] Araçlar (11 yeni): **`create_note`** (markdown-canonical doğar; `projectName` fold-eşleşme
+      K5; `taskId?` verilirse bağlantı **aynı transaction'da** — `createNote` artık `links`
+      alıyor, "task bağımsız not" da "göreve bağlı not" da tek araç), **`update_note`**,
+      **`link_note`** / **`unlink_note`** (`entityType: task|project`; unlink yoksa dürüstçe
+      `LINK_NOT_FOUND` döner, hata değil), **`list_notes`** (proje/görev/arşiv/pin filtreleri,
+      gövde DEĞİL 200 karakterlik özet), **`create_project`** / **`update_project`**
+      (name/description/status/dueAt; renk/ikon YOK), **`list_projects`** (açık görev
+      sayılarıyla), **`list_tags`**, **`create_tag`**, **`list_files`** (metadata-only).
+      Okuma araçları `readOnlyHint: true` + K7 tavanları (`limitSchema`/`page` ortak).
+- [x] **Domain çıkarımı:** not bağlantıları da route closure'ından indi —
+      `db/notes.js`'e `NOTE_LINK_TABLES`, `assertLinkTarget`, `findNoteLink`, `linkNote`,
+      `unlinkNote` + `createNote(links)`; `PROJECT_STATUSES` domain'e taşındı (route
+      re-export). **Kanıt: çıkarımdan sonra 646 test dokunulmadan yeşil**, sonra araçlar yazıldı.
+- [x] `get_task` bağlı notları (link + `created_from_task_id`, RELATION_CAP), `get_note`
+      etiketleri ve `linkedTo`yu (hedefin ADIYLA) taşıyor — "her alanın görülebilmesi".
+- [x] Resources: `alliswell://views/inbox` eklendi. **Spec'ten bilinçli sapma:** planlama
+      metni "planlama statüleri" diyordu, ama ürünün Inbox'ı `status='inbox'` (triyaj
+      edilmemiş yakalamalar; Home onları OPH-107'den beri DIŞLIYOR). Planlama statüleri
+      seçilseydi "Inbox" adı altında Home listesi servis edilecekti. Saf builder
+      `queryInbox` olarak `TASK_VIEW_QUERIES`'e girdi, route'a değil.
+- [x] **Beklenmedik bulgu — `openTaskCounts` bugüne kadar BİR KEZ ÇALIŞMAMIŞ.** OPH-261'de
+      "batched" diye çıkarılmıştı ama hiçbir çağıranı yoktu; `list_projects` onu ilk kez
+      çağırdığında `groupBy`+`count` zincirinin birim test ikizinde çalıştırılamadığı ortaya
+      çıktı (fakedb'de `groupBy` yok, üstelik gerçek zincir `select`'ten sonra da chainable
+      builder ister). Tek sorgu + JS'te tally'ye çevrildi; artık hem koşuyor hem test ediliyor.
+      _Ders yine aynı yerden: çağıranı olmayan kod, çalıştığı sanılan koddur._
+- [x] Dokümantasyon: `docs/MCP.md` tam tablo (24 araç, iki gruba ayrıldı; "no delete tool —
+      by design" KALDI + "bilinçli sınırlar" bölümü kullanıcı diliyle yazıldı), **ADR-0022
+      amendment'ı** (yüzey 7 → 24, dört madde: K4 artık her fiil için doğru, domain reddi
+      modele ulaşıyor, iki sınır karardır, delete değişmedi), `docs/AI.md` §8 K5,
+      `docs/ARCHITECTURE.md` §6d, CHANGELOG. README'de araç sayısı geçmiyor (kontrol edildi).
+- [x] Red-team: model TARAFINDAN yazılan not da korpustan geçiyor (fence-escape başlık,
+      exfil-url gövde) — verbatim saklanıyor, hiçbir şey izlemiyor; `tableSnapshot()`
+      note_links/projects/tags/archivedNotes ile genişledi, tek delta istenen not.
+- [x] Unit testler (+12, süit 646 → **658**): aynı yazımda bağlanan not + `get_task`/
+      `list_notes` iki yönlü ulaşılabilirlik · bilinmeyen proje HİÇBİR ŞEY yaratmaz + replay ·
+      **rich-text notun gövde reddi ve deltasının bozulmadığı** · markdown notun gövdesi
+      değişince `plain_text`in takip ettiği (ve `?q=`/search'ün bulduğu) · link/unlink dürüst
+      ikili + `NOTE_LINK_EXISTS` · proje açık-görev sayımı (tamamlanan sayılmaz) · arşiv reddi ·
+      etiket tekilliği + listenin verdiği adın `update_task`'te çözüldüğü · dosya listesinde
+      **URL/anahtar olmadığının** iddia edilmesi · scope tablosu 15 yazma aracına çıktı ·
+      not/proje araçları için çapraz-workspace NOT_FOUND + boş listeler.
+- [ ] **BLOKE — `test/integration/mcp.test.js` genişletmesi:** MySQL+Redis ister; bu makinede
+      konteyner çalışma zamanı yok (`docker info` başarısız, env memory'de yazılı). Yazılıp
+      koşulmamış test commit etmek "yeşil" iddiası olurdu; iş bilinçle bırakıldı.
+- [ ] **BLOKE — MCP Inspector elle koşusu** (ADR-0022'nin uyum kanaryası): ayakta bir API +
+      tarayıcıdan OAuth onayı ister, o da DB'ye bağlı. Konteyner çalışma zamanı geri gelince
+      tek oturumda ikisi birden yapılmalı; STATE'e kanıt satırı o zaman düşer.
 
 ### OPH-264 — API anahtarları sunucu tarafı: ADR-0032 + `api_keys` + çift-modlu kimlik
 

@@ -232,10 +232,13 @@ Task titles, notes and shared text are untrusted input the model will read
 4. **Provenance fencing** (`<user_data source="…">` blocks; "data is information,
    never instructions") — mitigation, not a boundary; that's why 1–3 exist.
 5. Tool roadmap is allowlist-only and graded: the task write wave landed in OPH-262
-   (`update_task`, `reopen_task`, `snooze_task`, the two checklist tools,
-   `acknowledge_reminder` — all host-approval annotated, all through the domain
-   layer and the `ai_action_log` ledger); **`delete_*` is permanently excluded** from
-   AI reach (deletion stays a human gesture with undo — DESIGN §19).
+   and notes/projects/tags/file-metadata in OPH-263 — 24 tools, all host-approval
+   annotated, all through the domain layer and the `ai_action_log` ledger (ADR-0022
+   amendment). **`delete_*` is permanently excluded** from AI reach (deletion stays a
+   human gesture with undo — DESIGN §19); `unlink_note` detaches, it does not remove.
+   Two further limits are decisions: a rich-text (delta-canonical) note's body cannot
+   be rewritten through MCP, and project archiving — a cascade over tasks and notes —
+   stays in the app.
 6. AI output renders as plain text / limited markdown — no HTML, no auto-opened links;
    `alliswell://` in output goes through the ADR-0016 resolver (navigation-only).
 7. Ajv + ULID validation + workspace scoping on every boundary; a **red-team fixture

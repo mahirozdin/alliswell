@@ -18,6 +18,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Your assistant can now write notes, projects and tags too.** Ask Claude or
+  ChatGPT to take a note — standalone, filed under a project, or attached to a
+  task in one step — to rewrite or pin one, to attach it to a project, to open
+  a project, or to add a tag. It can also list what is in your Inbox and see
+  which files are attached to something. Notes you wrote in the app's own
+  editor are protected: the AI can rename, pin or archive them but cannot
+  overwrite their body, and it still cannot delete anything or read a file's
+  contents (OPH-263).
 - **Claude and ChatGPT can now change a task, not just make one.** The
   connector grew six tools: edit a task (title, notes, status, priority, dates,
   urgency, project, tags), reopen a finished one, snooze its alarms, add and

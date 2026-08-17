@@ -18,6 +18,25 @@ import {
   updateTask,
 } from '../../db/tasks.js';
 import { acknowledgeReminder, loadReminder } from '../../db/reminders.js';
+import {
+  NOTE_LINK_TABLES,
+  createNote,
+  findNoteLink,
+  linkNote,
+  loadNote,
+  noteRelations,
+  unlinkNote,
+  updateNote,
+} from '../../db/notes.js';
+import {
+  PROJECT_STATUSES,
+  createProject,
+  listProjects,
+  loadProject,
+  openTaskCounts,
+  updateProject,
+} from '../../db/projects.js';
+import { createTag, listTags } from '../../db/tags.js';
 import { wallClockParts, zonedWallTimeToUtc } from '../time.js';
 import { findMcpReplay, recordMcpAction } from './actions.js';
 import { McpToolError } from './jsonrpc.js';
@@ -53,6 +72,19 @@ const DATA_NOTE =
 const NOTE_TEXT_CAP = 8000;
 const SNIPPET_CAP = 200;
 const REMINDER_CAP = 10;
+// K7 row caps for the OPH-263 lists and the relation fan-outs on get_*.
+const LIST_CAP = 50;
+const RELATION_CAP = 20;
+
+/** A `limit` property with the product's ceiling (K7). */
+function limitSchema(max = LIST_CAP) {
+  return { type: 'integer', minimum: 1, maximum: max };
+}
+
+/** rows → capped page + an honest `truncated` flag. */
+function page(rows, limit, map) {
+  return { items: rows.slice(0, limit).map(map), truncated: rows.length > limit };
+}
 
 const OPEN_STATUSES = ['inbox', 'open', 'scheduled', 'in_progress', 'waiting'];
 
@@ -121,6 +153,76 @@ async function resolveProjectName(app, auth, projectName) {
     };
   }
   return { projectId: outcome.match.id };
+}
+
+/** One live note of THIS workspace, or NOT_FOUND (the [requireTask] rule). */
+async function requireNote(app, auth, noteId) {
+  let row;
+  try {
+    row = await loadNote(app, noteId);
+  } catch {
+    throw new McpToolError('NOT_FOUND', 'No such note in this workspace');
+  }
+  if (row.workspace_id !== auth.workspaceId) {
+    throw new McpToolError('NOT_FOUND', 'No such note in this workspace');
+  }
+  return row;
+}
+
+/** One live project of THIS workspace, or NOT_FOUND. */
+async function requireProject(app, auth, projectId) {
+  let row;
+  try {
+    row = await loadProject(app, projectId);
+  } catch {
+    throw new McpToolError('NOT_FOUND', 'No such project in this workspace');
+  }
+  if (row.workspace_id !== auth.workspaceId) {
+    throw new McpToolError('NOT_FOUND', 'No such project in this workspace');
+  }
+  return row;
+}
+
+function leanNote(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    projectId: row.project_id ?? null,
+    isPinned: Boolean(row.is_pinned),
+    isArchived: Boolean(row.is_archived),
+    contentFormat: row.content_format ?? 'delta',
+    updatedAt: isoOrNull(row.updated_at),
+  };
+}
+
+function leanProject(row, openTaskCount) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? null,
+    status: row.status,
+    dueAt: isoOrNull(row.due_at),
+    ...(openTaskCount === undefined ? {} : { openTaskCount }),
+    updatedAt: isoOrNull(row.updated_at),
+  };
+}
+
+/**
+ * camelCase → project row values for the MCP-writable subset.
+ *
+ * `db/projects.js` takes the mapper from its caller (REST passes its own,
+ * which covers colour, icon, sort order, favourite and the README note). MCP
+ * writes a deliberately narrower set: colour and icon are UI decisions, sort
+ * order is a human gesture, and the README note is a structural link the app
+ * makes when you attach one.
+ */
+function projectRowPatch(body) {
+  const row = {};
+  if ('name' in body) row.name = body.name;
+  if ('description' in body) row.description = body.description;
+  if ('status' in body) row.status = body.status;
+  if ('dueAt' in body) row.due_at = body.dueAt == null ? null : new Date(body.dueAt);
+  return row;
 }
 
 /**
@@ -224,7 +326,24 @@ async function queryToday(app, workspaceId, { start, end }) {
     .select();
 }
 
-export const TASK_VIEW_QUERIES = { queryOverdue, queryToday, dayBounds };
+/**
+ * The capture box (OPH-263). `inbox` is a task STATUS, not a date window: the
+ * app's Inbox holds what has been captured and not yet triaged, and Home
+ * deliberately excludes those rows (OPH-107). The Epic 25 planning note said
+ * "planning statuses" here, which would have been the Home list under an Inbox
+ * name — the product's own Inbox is this.
+ */
+async function queryInbox(app, workspaceId) {
+  return app
+    .db('tasks')
+    .where({ workspace_id: workspaceId, status: 'inbox' })
+    .whereNull('deleted_at')
+    .orderBy('id', 'desc')
+    .limit(60)
+    .select();
+}
+
+export const TASK_VIEW_QUERIES = { queryOverdue, queryToday, queryInbox, dayBounds };
 
 export const MCP_TOOLS = [
   {
@@ -435,7 +554,7 @@ export const MCP_TOOLS = [
         // Same shape as unknown — existence never leaks across workspaces.
         throw new McpToolError('NOT_FOUND', 'No such task in this workspace');
       }
-      const [project, tags, alarms] = await Promise.all([
+      const [project, tags, alarms, noteLinks, bornNotes] = await Promise.all([
         detail.row.project_id
           ? app.db('projects').where({ id: detail.row.project_id }).first('id', 'name')
           : null,
@@ -452,7 +571,24 @@ export const MCP_TOOLS = [
           .orderBy('created_at', 'asc')
           .limit(REMINDER_CAP)
           .select(),
+        // OPH-263: the notes hanging off this task — linked explicitly…
+        app
+          .db('note_links')
+          .where({ linked_entity_type: 'task', linked_entity_id: args.taskId })
+          .select('note_id'),
+        // …or born from it ("turn this task into a note").
+        app
+          .db('notes')
+          .where({ created_from_task_id: args.taskId })
+          .whereNull('deleted_at')
+          .select('id'),
       ]);
+      const noteIds = [
+        ...new Set([...noteLinks.map((l) => l.note_id), ...bornNotes.map((n) => n.id)]),
+      ].slice(0, RELATION_CAP);
+      const notes = noteIds.length
+        ? await app.db('notes').whereIn('id', noteIds).whereNull('deleted_at').select()
+        : [];
       return {
         task: {
           ...leanTask(detail.row),
@@ -473,6 +609,7 @@ export const MCP_TOOLS = [
             snoozedUntil: isoOrNull(alarm.snoozed_until),
             requiresAcknowledgement: Boolean(alarm.requires_acknowledgement),
           })),
+          notes: notes.map((note) => ({ id: note.id, title: note.title })),
         },
       };
     },
@@ -498,15 +635,35 @@ export const MCP_TOOLS = [
       if (!row) throw new McpToolError('NOT_FOUND', 'No such note in this workspace');
       const text = row.plain_text ?? '';
       const capped = text.length > NOTE_TEXT_CAP;
+
+      // OPH-263: what the note is attached to, and what it is filed under —
+      // the "every field can be seen" half. Titles come along so the model
+      // does not have to call get_task per link.
+      const { links, tagIds } = await noteRelations(app, row.id);
+      const [tags, linkTargets] = await Promise.all([
+        tagIds.length ? app.db('tags').whereIn('id', tagIds).select('id', 'name') : [],
+        Promise.all(
+          links.slice(0, RELATION_CAP).map(async (link) => {
+            const table = NOTE_LINK_TABLES[link.linked_entity_type];
+            const target = table
+              ? await app.db(table).where({ id: link.linked_entity_id }).first()
+              : null;
+            return {
+              entityType: link.linked_entity_type,
+              entityId: link.linked_entity_id,
+              title: target?.title ?? target?.name ?? null,
+            };
+          }),
+        ),
+      ]);
+
       return {
         note: {
-          id: row.id,
-          title: row.title,
-          projectId: row.project_id ?? null,
-          isPinned: Boolean(row.is_pinned),
-          updatedAt: isoOrNull(row.updated_at),
+          ...leanNote(row),
           text: capped ? `${text.slice(0, NOTE_TEXT_CAP)}\n[… truncated]` : text,
           truncated: capped,
+          tags: tags.map((t) => t.name),
+          linkedTo: linkTargets,
         },
       };
     },
@@ -961,6 +1118,508 @@ export const MCP_TOOLS = [
         },
         alreadyAcknowledged: !changed,
       };
+    },
+  },
+
+  // ── OPH-263: notes, projects, tags, files ─────────────────────────────────
+
+  {
+    name: 'list_notes',
+    title: 'List notes',
+    description: `List notes newest-first with a short summary — never the body (use \`get_note\` for that). Archived notes are excluded unless you ask for them. ${DATA_NOTE}`,
+    annotations: { readOnlyHint: true },
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        projectId: ULID_SCHEMA,
+        taskId: ULID_SCHEMA,
+        isPinned: { type: 'boolean' },
+        isArchived: { type: 'boolean' },
+        limit: limitSchema(),
+      },
+    },
+    async handler(app, auth, args) {
+      const limit = args.limit ?? 20;
+      let query = app
+        .db('notes')
+        .where({ workspace_id: auth.workspaceId })
+        .whereNull('deleted_at')
+        .orderBy('id', 'desc')
+        .limit(limit + 1);
+      if (args.projectId) query = query.where({ project_id: args.projectId });
+      if (args.isPinned !== undefined) query = query.where({ is_pinned: args.isPinned });
+      // The archive is a place you go to, not a thing you stumble into.
+      query = query.where({ is_archived: args.isArchived ?? false });
+      if (args.taskId) {
+        // Linked to the task explicitly OR born from it — the REST rule.
+        const links = await app
+          .db('note_links')
+          .where({ linked_entity_type: 'task', linked_entity_id: args.taskId })
+          .select('note_id');
+        const ids = new Set(links.map((l) => l.note_id));
+        const born = await app
+          .db('notes')
+          .where({ created_from_task_id: args.taskId })
+          .whereNull('deleted_at')
+          .select('id');
+        for (const row of born) ids.add(row.id);
+        query = query.whereIn('id', [...ids]);
+      }
+      const rows = await query.select();
+      const { items, truncated } = page(rows, limit, (row) => ({
+        ...leanNote(row),
+        summary: (row.plain_text ?? '').slice(0, SNIPPET_CAP),
+      }));
+      return { notes: items, truncated };
+    },
+  },
+
+  {
+    name: 'create_note',
+    title: 'Create note',
+    description:
+      'Create ONE note. Notes made here are markdown documents. `projectName` is matched with Turkish-aware folding; an unknown or ambiguous name creates NOTHING and returns candidates. Pass `taskId` to attach the note to a task in the same write — a standalone note and a note about a task are the same tool. Pass `idempotencyKey` to make retries safe.',
+    annotations: WRITE_ANNOTATIONS,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['title'],
+      properties: {
+        title: { type: 'string', minLength: 1, maxLength: 500 },
+        contentMarkdown: { type: 'string', maxLength: 200000 },
+        projectName: { type: 'string', minLength: 1, maxLength: 120 },
+        taskId: ULID_SCHEMA,
+        isPinned: { type: 'boolean' },
+        idempotencyKey: IDEMPOTENCY_KEY_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+
+      const seen = await findMcpReplay(app, auth, args.idempotencyKey);
+      if (seen) {
+        const row = await app.db('notes').where({ id: seen.entity_id }).first();
+        return { created: false, replayed: true, note: row ? leanNote(row) : null };
+      }
+
+      let projectId = null;
+      if (args.projectName) {
+        const outcome = await resolveProjectName(app, auth, args.projectName);
+        if (outcome.refusal) return { created: false, ...outcome.refusal };
+        projectId = outcome.projectId;
+      }
+      // Fail before writing if the task is not ours — the link is part of what
+      // was asked for, so a note without it would be a different answer.
+      if (args.taskId) await requireTask(app, auth, args.taskId);
+
+      const noteId = await createNote(app, {
+        workspaceId: auth.workspaceId,
+        userId: auth.userId,
+        body: {
+          title: args.title,
+          // ADR-0028: MCP notes are born markdown-canonical. The model writes
+          // markdown; making the delta canonical would mean converting text we
+          // never saw the user type.
+          contentFormat: 'markdown',
+          contentMarkdown: args.contentMarkdown ?? '',
+          ...(projectId ? { projectId } : {}),
+          ...(args.isPinned !== undefined ? { isPinned: args.isPinned } : {}),
+        },
+        links: args.taskId ? [{ entityType: 'task', entityId: args.taskId }] : [],
+      });
+
+      await recordMcpAction(app, auth, {
+        idempotencyKey: args.idempotencyKey,
+        entityType: 'note',
+        entityId: noteId,
+        proposal: { tool: 'create_note', ...args },
+        entityRefs: [
+          { type: 'note', id: noteId },
+          ...(args.taskId ? [{ type: 'task', id: args.taskId }] : []),
+        ],
+      });
+
+      const row = await loadNote(app, noteId);
+      return { created: true, note: leanNote(row), linkedTaskId: args.taskId ?? null };
+    },
+  },
+
+  {
+    name: 'update_note',
+    title: 'Update note',
+    description:
+      'Change a note: `title`, `contentMarkdown` (REPLACES the body), `isPinned`, `isArchived`. The body can only be replaced on markdown notes — a note written in the app’s rich editor answers NOTE_NOT_MARKDOWN rather than being flattened, and its title, pin and archive flags stay editable. Pass `idempotencyKey` to make retries safe.',
+    annotations: OVERWRITING_WRITE,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['noteId'],
+      properties: {
+        noteId: ULID_SCHEMA,
+        title: { type: 'string', minLength: 1, maxLength: 500 },
+        contentMarkdown: { type: 'string', maxLength: 200000 },
+        isPinned: { type: 'boolean' },
+        isArchived: { type: 'boolean' },
+        idempotencyKey: IDEMPOTENCY_KEY_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+
+      const seen = await findMcpReplay(app, auth, args.idempotencyKey);
+      if (seen) {
+        const row = await app.db('notes').where({ id: seen.entity_id }).first();
+        return { updated: false, replayed: true, note: row ? leanNote(row) : null };
+      }
+
+      const row = await requireNote(app, auth, args.noteId);
+
+      const body = {};
+      for (const field of ['title', 'contentMarkdown', 'isPinned', 'isArchived']) {
+        if (args[field] !== undefined) body[field] = args[field];
+      }
+      if (Object.keys(body).length === 0) {
+        throw new McpToolError('INVALID_ARGUMENTS', 'Pass at least one field to change');
+      }
+      // ADR-0028 §1: the canonical field decides what the note IS. Writing
+      // markdown onto a delta-canonical note would leave the body and the
+      // canonical source disagreeing — the note would say two things — and
+      // converting it silently would throw away formatting the user typed.
+      // Refuse, and say which note it is. (Tasks have no version history yet;
+      // OPH-267 is what makes body writes recoverable.)
+      if (body.contentMarkdown !== undefined && (row.content_format ?? 'delta') !== 'markdown') {
+        throw new McpToolError(
+          'NOTE_NOT_MARKDOWN',
+          'This note is a rich-text document; its body cannot be replaced through MCP',
+        );
+      }
+
+      await updateNote(app, { row, userId: auth.userId, body });
+      await recordMcpAction(app, auth, {
+        idempotencyKey: args.idempotencyKey,
+        entityType: 'note',
+        entityId: row.id,
+        proposal: { tool: 'update_note', ...args },
+      });
+      return { updated: true, note: leanNote(await loadNote(app, row.id)) };
+    },
+  },
+
+  {
+    name: 'link_note',
+    title: 'Link note',
+    description:
+      'Attach an existing note to a task or a project. Linking the same pair twice answers NOTE_LINK_EXISTS.',
+    annotations: WRITE_ANNOTATIONS,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['noteId', 'entityType', 'entityId'],
+      properties: {
+        noteId: ULID_SCHEMA,
+        entityType: { enum: Object.keys(NOTE_LINK_TABLES) },
+        entityId: ULID_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+      const row = await requireNote(app, auth, args.noteId);
+      // Resolve the target through the workspace guards, so a foreign id is
+      // NOT_FOUND rather than a domain error that admits it exists.
+      if (args.entityType === 'task') await requireTask(app, auth, args.entityId);
+      else await requireProject(app, auth, args.entityId);
+
+      await linkNote(app, {
+        row,
+        userId: auth.userId,
+        entityType: args.entityType,
+        entityId: args.entityId,
+      });
+      await recordMcpAction(app, auth, {
+        entityType: 'note',
+        entityId: row.id,
+        proposal: { tool: 'link_note', ...args },
+        entityRefs: [
+          { type: 'note', id: row.id },
+          { type: args.entityType, id: args.entityId },
+        ],
+      });
+      return { linked: true, noteId: row.id, entityType: args.entityType, entityId: args.entityId };
+    },
+  },
+
+  {
+    name: 'unlink_note',
+    title: 'Unlink note',
+    description:
+      'Detach a note from a task or project. The note itself is untouched — there is no delete tool.',
+    annotations: IDEMPOTENT_WRITE,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['noteId', 'entityType', 'entityId'],
+      properties: {
+        noteId: ULID_SCHEMA,
+        entityType: { enum: Object.keys(NOTE_LINK_TABLES) },
+        entityId: ULID_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+      const row = await requireNote(app, auth, args.noteId);
+      const link = await findNoteLink(app, row.id, {
+        entityType: args.entityType,
+        entityId: args.entityId,
+      });
+      if (!link) return { unlinked: false, reason: 'LINK_NOT_FOUND', noteId: row.id };
+
+      await unlinkNote(app, { row, userId: auth.userId, link });
+      await recordMcpAction(app, auth, {
+        entityType: 'note',
+        entityId: row.id,
+        proposal: { tool: 'unlink_note', ...args },
+        entityRefs: [
+          { type: 'note', id: row.id },
+          { type: args.entityType, id: args.entityId },
+        ],
+      });
+      return { unlinked: true, noteId: row.id };
+    },
+  },
+
+  {
+    name: 'list_projects',
+    title: 'List projects',
+    description: `List projects in the user's own order, each with its open-task count. ${DATA_NOTE}`,
+    annotations: { readOnlyHint: true },
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        status: { enum: PROJECT_STATUSES },
+        limit: limitSchema(),
+      },
+    },
+    async handler(app, auth, args) {
+      const limit = args.limit ?? 20;
+      const rows = await listProjects(app, auth.workspaceId, { status: args.status });
+      const visible = rows.slice(0, limit);
+      const counts = await openTaskCounts(
+        app,
+        visible.map((r) => r.id),
+      );
+      return {
+        projects: visible.map((row) => leanProject(row, counts.get(row.id) ?? 0)),
+        truncated: rows.length > limit,
+      };
+    },
+  },
+
+  {
+    name: 'create_project',
+    title: 'Create project',
+    description:
+      'Create ONE project. Colour and icon are not settable here — those are choices the user makes in the app. Pass `idempotencyKey` to make retries safe.',
+    annotations: WRITE_ANNOTATIONS,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name'],
+      properties: {
+        name: { type: 'string', minLength: 1, maxLength: 255 },
+        description: { type: 'string', maxLength: 65535 },
+        status: { enum: PROJECT_STATUSES },
+        dueAt: TIMESTAMP_SCHEMA,
+        idempotencyKey: IDEMPOTENCY_KEY_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+
+      const seen = await findMcpReplay(app, auth, args.idempotencyKey);
+      if (seen) {
+        const row = await app.db('projects').where({ id: seen.entity_id }).first();
+        return { created: false, replayed: true, project: row ? leanProject(row) : null };
+      }
+
+      const body = {};
+      for (const field of ['name', 'description', 'status', 'dueAt']) {
+        if (args[field] !== undefined) body[field] = args[field];
+      }
+      const projectId = await createProject(app, {
+        workspaceId: auth.workspaceId,
+        userId: auth.userId,
+        body,
+        toRowPatch: projectRowPatch,
+      });
+
+      await recordMcpAction(app, auth, {
+        idempotencyKey: args.idempotencyKey,
+        entityType: 'project',
+        entityId: projectId,
+        proposal: { tool: 'create_project', ...args },
+      });
+      return { created: true, project: leanProject(await loadProject(app, projectId), 0) };
+    },
+  },
+
+  {
+    name: 'update_project',
+    title: 'Update project',
+    description:
+      'Change a project’s name, description, status or due date. Project ids come from `list_projects` or `search`.',
+    annotations: OVERWRITING_WRITE,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['projectId'],
+      properties: {
+        projectId: ULID_SCHEMA,
+        name: { type: 'string', minLength: 1, maxLength: 255 },
+        description: { type: ['string', 'null'], maxLength: 65535 },
+        status: { enum: PROJECT_STATUSES },
+        dueAt: { anyOf: [{ type: 'null' }, TIMESTAMP_SCHEMA] },
+        idempotencyKey: IDEMPOTENCY_KEY_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+
+      const seen = await findMcpReplay(app, auth, args.idempotencyKey);
+      if (seen) {
+        const row = await app.db('projects').where({ id: seen.entity_id }).first();
+        return { updated: false, replayed: true, project: row ? leanProject(row) : null };
+      }
+
+      const row = await requireProject(app, auth, args.projectId);
+      const body = {};
+      for (const field of ['name', 'description', 'status', 'dueAt']) {
+        if (args[field] !== undefined) body[field] = args[field];
+      }
+      if (Object.keys(body).length === 0) {
+        throw new McpToolError('INVALID_ARGUMENTS', 'Pass at least one field to change');
+      }
+      // Archiving a project cascades over its tasks and notes with its own
+      // confirmation semantics in the app; that cascade lives in the route and
+      // is NOT what this write does, so MCP does not offer it as a status.
+      if (body.status === 'archived') {
+        throw new McpToolError(
+          'PROJECT_ARCHIVE_NOT_SUPPORTED',
+          'Archiving a project also archives its tasks and notes — do that in the app',
+        );
+      }
+
+      await updateProject(app, { row, userId: auth.userId, body, toRowPatch: projectRowPatch });
+      await recordMcpAction(app, auth, {
+        idempotencyKey: args.idempotencyKey,
+        entityType: 'project',
+        entityId: row.id,
+        proposal: { tool: 'update_project', ...args },
+      });
+      return { updated: true, project: leanProject(await loadProject(app, row.id)) };
+    },
+  },
+
+  {
+    name: 'list_tags',
+    title: 'List tags',
+    description: `Every tag in the workspace, alphabetically. Tag names are what \`create_task\` and \`update_task\` resolve against. ${DATA_NOTE}`,
+    annotations: { readOnlyHint: true },
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { limit: limitSchema(100) },
+    },
+    async handler(app, auth, args) {
+      const limit = args.limit ?? 50;
+      const rows = await listTags(app, auth.workspaceId);
+      const { items, truncated } = page(rows, limit, (row) => ({ id: row.id, name: row.name }));
+      return { tags: items, truncated };
+    },
+  },
+
+  {
+    name: 'create_tag',
+    title: 'Create tag',
+    description:
+      'Create ONE tag. A name that already exists in the workspace answers TAG_SLUG_TAKEN — tags are not duplicated. Colour is a choice the user makes in the app.',
+    annotations: WRITE_ANNOTATIONS,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['name'],
+      properties: {
+        name: { type: 'string', minLength: 1, maxLength: 60 },
+        idempotencyKey: IDEMPOTENCY_KEY_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+
+      const seen = await findMcpReplay(app, auth, args.idempotencyKey);
+      if (seen) {
+        const row = await app.db('tags').where({ id: seen.entity_id }).first();
+        return {
+          created: false,
+          replayed: true,
+          tag: row ? { id: row.id, name: row.name } : null,
+        };
+      }
+
+      const tagId = await createTag(app, {
+        workspaceId: auth.workspaceId,
+        body: { name: args.name },
+      });
+      await recordMcpAction(app, auth, {
+        idempotencyKey: args.idempotencyKey,
+        entityType: 'tag',
+        entityId: tagId,
+        proposal: { tool: 'create_tag', ...args },
+      });
+      const row = await app.db('tags').where({ id: tagId }).first();
+      return { created: true, tag: { id: row.id, name: row.name } };
+    },
+  },
+
+  {
+    name: 'list_files',
+    title: 'List attachments',
+    description: `Attachment metadata — name, type, size and what it hangs off. File CONTENTS never leave through MCP: there are no download links here, by design. ${DATA_NOTE}`,
+    annotations: { readOnlyHint: true },
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        targetType: { enum: ['project', 'task', 'note'] },
+        targetId: ULID_SCHEMA,
+        limit: limitSchema(),
+      },
+      // A target is a pair; half of one is a question nobody can answer.
+      dependencies: { targetType: ['targetId'], targetId: ['targetType'] },
+    },
+    async handler(app, auth, args) {
+      const limit = args.limit ?? 20;
+      let query = app
+        .db('files')
+        .where({ workspace_id: auth.workspaceId, status: 'ready' })
+        .whereNull('deleted_at')
+        .orderBy('id', 'desc')
+        .limit(limit + 1);
+      if (args.targetType) {
+        query = query.where({ target_type: args.targetType, target_id: args.targetId });
+      }
+      const rows = await query.select();
+      const { items, truncated } = page(rows, limit, (row) => ({
+        id: row.id,
+        name: row.name,
+        mime: row.mime,
+        sizeBytes: Number(row.size_bytes),
+        targetType: row.target_type,
+        targetId: row.target_id,
+        createdAt: isoOrNull(row.created_at),
+      }));
+      return { files: items, truncated };
     },
   },
 ];

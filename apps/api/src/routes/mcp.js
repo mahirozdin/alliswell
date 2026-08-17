@@ -39,6 +39,13 @@ const RESOURCES = [
     description: 'Open tasks whose due time is already in the past.',
     mimeType: 'application/json',
   },
+  {
+    uri: 'alliswell://views/inbox',
+    name: 'inbox',
+    title: 'Inbox',
+    description: 'Captured tasks that have not been triaged yet.',
+    mimeType: 'application/json',
+  },
 ];
 
 export default async function mcpRoutes(app) {
@@ -143,6 +150,9 @@ export default async function mcpRoutes(app) {
     } else if (uri === 'alliswell://views/overdue') {
       view = 'overdue';
       rows = await TASK_VIEW_QUERIES.queryOverdue(app, auth.workspaceId, now);
+    } else if (uri === 'alliswell://views/inbox') {
+      view = 'inbox';
+      rows = await TASK_VIEW_QUERIES.queryInbox(app, auth.workspaceId);
     } else {
       return null;
     }

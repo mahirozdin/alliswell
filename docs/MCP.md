@@ -23,31 +23,59 @@ Every self-hosted instance is its own connector at `https://<your-instance>/mcp`
 
 ## What the AI can do
 
-Thirteen tools, no delete tool — by design (loosening it needs a new ADR):
+Twenty-four tools, no delete tool — by design (loosening it needs a new ADR):
+
+**Tasks**
 
 | Tool | What it does |
 | --- | --- |
-| `search` | Find tasks, notes and projects (Turkish-aware folding) |
 | `list_tasks` | Filtered list, plus `today` / `overdue` in your timezone |
-| `get_task` / `get_note` / `get_project` | Full detail of one item — a task comes with its checklist, tags and alarms |
+| `get_task` | One task in full — checklist, tags, project, alarms and its notes |
 | `create_task` | Create a task; an unknown/ambiguous project creates nothing and asks |
-| `update_task` | Change a task's title, description, status, priority, dates, urgency, project or tags |
+| `update_task` | Change title, description, status, priority, dates, urgency, project or tags |
 | `complete_task` / `reopen_task` | Mark a task done, or put a finished one back to open |
 | `snooze_task` | Push a task's alarms out (5 min / 30 min / 1 hour / tomorrow morning, or a time you name) |
 | `add_checklist_item` / `set_checklist_item` | Add a checklist item, tick it, or rename it |
 | `acknowledge_reminder` | Answer an urgent alarm that is waiting for you |
 
-Plus two read-only resources: **today** and **overdue** task views.
+**Notes, projects, tags, files**
+
+| Tool | What it does |
+| --- | --- |
+| `search` | Find tasks, notes and projects (Turkish-aware folding) |
+| `list_notes` / `get_note` | Notes with a short summary; one note in full, with its tags and what it is attached to |
+| `create_note` | Write a note — standalone, filed under a project, or attached to a task in the same write |
+| `update_note` | Retitle, rewrite, pin or archive a note (see the rich-text note below) |
+| `link_note` / `unlink_note` | Attach a note to a task or project, or detach it |
+| `list_projects` / `get_project` | Projects with their open-task counts |
+| `create_project` / `update_project` | Make a project, change its name, description, status or due date |
+| `list_tags` / `create_tag` | See the tags you use; add a new one |
+| `list_files` | Attachment names, types and sizes — **never** the file contents |
+
+Plus three read-only resources: **today**, **overdue** and **inbox** task views.
 
 Write tools are annotated so Claude/ChatGPT show you an approval prompt before
 they run, and every AI-made change is recorded in AllisWell's action log. The
-two that can overwrite text you wrote — `update_task` and `set_checklist_item`
-— say so in their annotations, so hosts treat them with more ceremony than a
-status change. Tools that create something accept an idempotency key, so a
-host's retry never gives you the task or the checklist item twice.
+ones that can overwrite text you wrote — `update_task`, `update_note`,
+`update_project`, `set_checklist_item` — say so in their annotations, so hosts
+treat them with more ceremony than a status change. Tools that create
+something accept an idempotency key, so a host's retry never gives you the same
+note or task twice.
 
-Notably absent, and staying that way: deleting anything, and reading file
-bytes. Project and note *writing* arrive in the next wave.
+Deliberate limits, so nothing here surprises you:
+
+- **Nothing can be deleted.** There is no delete tool and there never will be
+  one without a new architecture decision. `unlink_note` detaches a note; it
+  does not remove it.
+- **Notes you wrote in the app's editor cannot be rewritten from here.** Notes
+  the AI creates are markdown documents and it can rewrite those; a rich-text
+  note answers `NOTE_NOT_MARKDOWN` rather than being silently flattened. Its
+  title, pin and archive flags stay editable.
+- **Archiving a project stays in the app**, because it cascades over that
+  project's tasks and notes and deserves your confirmation.
+- **File contents never leave through the connector** — no download links, no
+  bytes, only metadata.
+- Colours and icons are not settable by the AI: those are yours to pick.
 
 ## Self-hosting notes
 

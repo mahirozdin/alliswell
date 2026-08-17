@@ -3,7 +3,38 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17d (**OPH-262 BİTTİ — MCP yüzeyi 7 → 13 araç. API süiti
+**Last updated:** 2026-08-17e (**OPH-263 KOD TAMAM — MCP yüzeyi 13 → **24 araç** + inbox
+kaynağı. API süiti **658** (+12), lint/format temiz. **İki doğrulama BLOKE** (entegrasyon
+süiti + MCP Inspector koşusu: ikisi de MySQL/Redis ister, bu makinede konteyner çalışma
+zamanı yok). **Deploy alınmadı — sahibin talimatı.** Sıradaki iş: OPH-264 (API anahtarları
+sunucu tarafı: ADR-0032 + `api_keys` + çift-modlu kimlik).**
+
+**Turun tek cümlesi: yüzey genişledikçe iş "ne ekleyeyim"den "neyi eklememeliyim"e döndü.**
+Üç sınır bilinçle çizildi, üçü de kullanıcı diliyle dokümana girdi: (1) uygulamanın kendi
+editöründe yazılmış **delta-kanonik notun gövdesi MCP'den EZİLEMEZ** — `NOTE_NOT_MARKDOWN`
+döner; sessizce markdown'a çevirmek kullanıcının yazdığı biçimlendirmeyi çöpe atmak olurdu
+(ADR-0028 §1). Başlık/pin/arşiv yine düzenlenebilir. (2) **Proje arşivleme uygulamada kalır**:
+kaskad görevlere ve notlara uzanıyor ve kendi onay semantiği var. (3) Dosya baytları hiç
+geçmez — `list_files` yalnız metadata, ve bunu bir test İDDİA ediyor (çıktıda `http` ya da
+`storage_key` yok).
+
+**Beklenmedik bulgu: `openTaskCounts` bugüne dek bir kez bile çalışmamış.** OPH-261'de
+"batched, never N+1" diye çıkarılmıştı ama çağıranı yoktu; `list_projects` onu ilk kez
+çağırınca `groupBy`+`count` zincirinin birim test ikizinde ÇALIŞTIRILAMADIĞI ortaya çıktı.
+Tek sorgu + JS tally'ye çevrildi (kişisel bir workspace için maliyeti yok), artık hem koşuyor
+hem test ediliyor. **Bu epic'in üçüncü kez aynı dersi vermesi:** çağıranı olmayan kod,
+çalıştığı SANILAN koddur (OPH-262'de `acknowledge_reminder` ulaşılamazdı, round 10'da görev
+silme motoru).
+
+**Spec'ten bilinçli sapma (yazıldı, sessizce yapılmadı):** planlama metni
+`alliswell://views/inbox`'ı "planlama statüleri" diye tarif ediyordu; ürünün Inbox'ı ise
+`status='inbox'` — triyaj edilmemiş yakalamalar, Home onları OPH-107'den beri dışlıyor.
+Planlama statüleri seçilseydi "Inbox" adı altında Home listesi servis edilirdi.
+
+**Sıradaki oturumun ilk işi bu olmalı:** konteyner çalışma zamanı geri geldiğinde entegrasyon
+süiti + MCP Inspector koşusu tek oturumda yapılır ve OPH-263'ün son iki kutusu kapanır.
+
+Önceki blok: 2026-08-17d (**OPH-262 BİTTİ — MCP yüzeyi 7 → 13 araç. API süiti
 **646** (+14), lint/format temiz. Entegrasyon süiti bu makinede KOŞULAMADI (konteyner
 çalışma zamanı yok) — CI kapısı. **Deploy alınmadı — sahibin talimatı.**
 Sıradaki iş: OPH-263 (not/proje/etiket araçları, listeler, ADR-0022 amendment'ı).**

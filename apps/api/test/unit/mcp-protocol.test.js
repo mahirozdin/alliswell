@@ -104,7 +104,7 @@ describe('protocol negotiation and envelope rules', () => {
     const tools = (await rpc(app, access, 'tools/list')).json().result.tools;
     // The allowlist ON THE WIRE — this list IS the surface (ADR-0022 §3), so a
     // tool may only appear here by an epic that meant to add it. OPH-262 added
-    // the task write wave.
+    // the task write wave; OPH-263 the notes, projects, tags and files.
     expect(tools.map((t) => t.name)).toEqual([
       'search',
       'list_tasks',
@@ -119,7 +119,20 @@ describe('protocol negotiation and envelope rules', () => {
       'add_checklist_item',
       'set_checklist_item',
       'acknowledge_reminder',
+      'list_notes',
+      'create_note',
+      'update_note',
+      'link_note',
+      'unlink_note',
+      'list_projects',
+      'create_project',
+      'update_project',
+      'list_tags',
+      'create_tag',
+      'list_files',
     ]);
+    // Not one of them hands out file bytes or a URL to them (AI.md §7).
+    expect(JSON.stringify(tools)).not.toMatch(/presigned|downloadUrl/i);
     const createTool = tools.find((t) => t.name === 'create_task');
     expect(createTool.annotations.destructiveHint).toBe(false);
     expect(createTool.inputSchema.properties.projectName).toBeDefined();
@@ -143,6 +156,7 @@ describe('protocol negotiation and envelope rules', () => {
     expect(resources.map((r) => r.uri)).toEqual([
       'alliswell://views/today',
       'alliswell://views/overdue',
+      'alliswell://views/inbox',
     ]);
 
     const unknown = await rpc(app, access, 'resources/read', { uri: 'alliswell://views/nope' });

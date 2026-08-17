@@ -13,6 +13,11 @@ import { recordSyncWrite } from './sync.js';
  * allows. Recorded rather than silently skipped.
  */
 
+// The project vocabulary. Like the task statuses in OPH-262, it lives in the
+// domain layer because the MCP tool schemas need it and a lib → routes import
+// would be upside down; routes/projects.js re-exports for its own importers.
+export const PROJECT_STATUSES = ['active', 'paused', 'completed', 'archived'];
+
 export async function loadProject(app, id) {
   const row = await app.db('projects').where({ id }).whereNull('deleted_at').first();
   if (!row) throw coded(app.httpErrors.notFound('Project not found'), 'PROJECT_NOT_FOUND');
@@ -45,7 +50,18 @@ export async function listProjects(app, workspaceId, { status } = {}) {
   return query.select();
 }
 
-/** Open (not completed/cancelled/archived) task counts, batched — never N+1. */
+/**
+ * Open (not completed/cancelled/archived) task counts, batched — never N+1.
+ *
+ * ONE query for every project, tallied in JS. It was written in OPH-261 as a
+ * `groupBy` + `count` aggregate and had no caller until OPH-263 tried to use
+ * it — at which point it turned out no unit test could ever have run it: the
+ * in-memory knex double has no `groupBy`, and the real chain
+ * (`.groupBy().select().count()`) needs a builder that stays chainable after
+ * `select`. A tally over one column of one query costs a personal workspace
+ * nothing and can actually be exercised; an aggregate nobody can test is how
+ * this function reached today unreached.
+ */
 export async function openTaskCounts(app, projectIds) {
   if (projectIds.length === 0) return new Map();
   const rows = await app
@@ -53,10 +69,12 @@ export async function openTaskCounts(app, projectIds) {
     .whereIn('project_id', projectIds)
     .whereNull('deleted_at')
     .whereNotIn('status', ['completed', 'cancelled', 'archived'])
-    .groupBy('project_id')
-    .select('project_id')
-    .count({ count: '*' });
-  return new Map(rows.map((r) => [r.project_id, Number(r.count)]));
+    .select('project_id');
+  const counts = new Map();
+  for (const row of rows) {
+    counts.set(row.project_id, (counts.get(row.project_id) ?? 0) + 1);
+  }
+  return counts;
 }
 
 export async function createProject(app, { workspaceId, userId, body, toRowPatch }) {

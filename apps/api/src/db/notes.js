@@ -98,9 +98,96 @@ export function toRowPatch(app, body, { currentFormat, currentMarkdown } = {}) {
   return row;
 }
 
-/** Creates a note with its sync revision, in one transaction. Returns the id. */
-export async function createNote(app, { workspaceId, userId, body, createdFromTaskId = null }) {
+/** What a note may be linked to (OPH-041): v1 targets are tasks and projects. */
+export const NOTE_LINK_TABLES = { task: 'tasks', project: 'projects' };
+
+export async function assertLinkTarget(app, entityType, entityId, workspaceId) {
+  const table = NOTE_LINK_TABLES[entityType];
+  const row = await app
+    .db(table)
+    .where({ id: entityId, workspace_id: workspaceId })
+    .whereNull('deleted_at')
+    .first('id');
+  if (!row) {
+    throw coded(
+      app.httpErrors.badRequest(`${entityType} not found in this workspace`),
+      'NOTE_INVALID_LINK_TARGET',
+    );
+  }
+}
+
+/** One link row of a note, by id or by what it points at. */
+export async function findNoteLink(app, noteId, { id, entityType, entityId }) {
+  const where = { note_id: noteId };
+  if (id) where.id = id;
+  if (entityType) where.linked_entity_type = entityType;
+  if (entityId) where.linked_entity_id = entityId;
+  return (await app.db('note_links').where(where).first()) ?? null;
+}
+
+/**
+ * Links a note to a task or project (OPH-041, extracted in OPH-263). The link
+ * is a note field as far as sync is concerned: the revision lands on the NOTE,
+ * because that is the row a client pulls to learn the link exists.
+ */
+export async function linkNote(app, { row, userId, entityType, entityId }) {
+  await assertLinkTarget(app, entityType, entityId, row.workspace_id);
+  if (await findNoteLink(app, row.id, { entityType, entityId })) {
+    throw coded(app.httpErrors.conflict('This link already exists'), 'NOTE_LINK_EXISTS');
+  }
+
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'note',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: ['links'],
+    });
+    await trx('note_links').insert({
+      id: newId(),
+      note_id: row.id,
+      linked_entity_type: entityType,
+      linked_entity_id: entityId,
+    });
+    await trx('notes')
+      .where({ id: row.id })
+      .update({ revision, updated_by: userId, updated_at: new Date() });
+  });
+}
+
+/** Removes one link row, with the note's revision bump. */
+export async function unlinkNote(app, { row, userId, link }) {
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'note',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: ['links'],
+    });
+    await trx('note_links').where({ id: link.id }).delete();
+    await trx('notes')
+      .where({ id: row.id })
+      .update({ revision, updated_by: userId, updated_at: new Date() });
+  });
+}
+
+/**
+ * Creates a note with its sync revision, in one transaction. Returns the id.
+ *
+ * `links` (OPH-263) are inserted in the SAME transaction, because a note that
+ * arrived without the link the caller asked for would be a different thing
+ * than what was requested — the `createNoteFromTask` argument, generalized.
+ */
+export async function createNote(
+  app,
+  { workspaceId, userId, body, createdFromTaskId = null, links = [] },
+) {
   if (body.projectId) await assertProjectUsable(app, body.projectId, workspaceId);
+  for (const link of links) {
+    await assertLinkTarget(app, link.entityType, link.entityId, workspaceId);
+  }
 
   const id = newId();
   await app.db.transaction(async (trx) => {
@@ -119,6 +206,14 @@ export async function createNote(app, { workspaceId, userId, body, createdFromTa
       updated_by: userId,
       revision,
     });
+    for (const link of links) {
+      await trx('note_links').insert({
+        id: newId(),
+        note_id: id,
+        linked_entity_type: link.entityType,
+        linked_entity_id: link.entityId,
+      });
+    }
   });
   return id;
 }

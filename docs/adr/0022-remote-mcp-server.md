@@ -106,3 +106,39 @@ hostile titles are data, never instructions.
   directory applications.
 - v1.5 write tools (`reschedule_task`, …) slot into the same dispatch +
   annotation + audit path; `delete_*` never does.
+
+## Amendment — 2026-08-17 (OPH-262, OPH-263)
+
+The surface grew from the seven tools of Decision 3 to **twenty-four**: the
+task write wave (`update_task`, `reopen_task`, `snooze_task`,
+`add_checklist_item`, `set_checklist_item`, `acknowledge_reminder`) and then
+notes, projects, tags and file metadata (`list_notes`, `create_note`,
+`update_note`, `link_note`, `unlink_note`, `list_projects`, `create_project`,
+`update_project`, `list_tags`, `create_tag`, `list_files`), plus an
+`alliswell://views/inbox` resource. **No new ADR was needed** — the last
+Consequences line above authorises exactly this, and every addition rode the
+same dispatch, the same annotations and the same audit path.
+
+What the two waves added to the decisions, rather than merely extending them:
+
+1. **Decision 4 became true for every verb.** It had only ever been true for
+   create/complete: PATCH, snooze, checklist, acknowledge and the note links
+   still lived in route closures, so a new tool's only options were to copy
+   them or reach past them. They now live in `db/tasks.js`, `db/reminders.js`
+   and `db/notes.js`, and `lib/mcp/actions.js` holds the audit + idempotency
+   bookkeeping every write owes (`findMcpReplay` before, `recordMcpAction`
+   after — "ledger LAST" preserved).
+2. **Domain refusals reach the model.** The domain layer refuses in HTTP terms
+   because REST is its other caller; the dispatch turns a 4xx carrying a stable
+   `code` into a tool result (`TASK_ARCHIVED`, `NOTE_NOT_MARKDOWN`,
+   `TAG_SLUG_TAKEN`, …). 5xx stays opaque — an internal failure is not the
+   model's to correct.
+3. **Two limits are decisions, not omissions.** A delta-canonical note's body
+   cannot be rewritten through MCP (ADR-0028 §1: the canonical field decides
+   what the note *is*, and converting it silently would discard formatting the
+   user typed — revisit after ADR-0031's `note_versions` makes body writes
+   recoverable). Project *archiving* is refused because its cascade reaches
+   tasks and notes and carries its own confirmation semantics in the app.
+4. **`delete_*` is unchanged and permanent.** `unlink_note` detaches; nothing
+   removes. Raw file bytes and presigned URLs still never cross the boundary
+   (AI.md §7) — `list_files` is metadata only, asserted by test.
