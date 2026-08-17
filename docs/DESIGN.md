@@ -221,6 +221,38 @@ an icon colour; this is the first surface that tried to use it as text and got
 caught. 10% rather than 14% for the same reason — at 14% even the light warning
 ICON lands on 2.96.
 
+### 7.1 A component on a container surface takes that container's ink
+
+**Binding rule.** When a component paints itself onto a `*Container` role
+(`tertiaryContainer`, `primaryContainer`, …), every foreground inside it —
+text, icons **and button labels** — comes from that role's own `on*` colour.
+`AwTokens.link` and the other global inks are tuned against `surface`; they
+carry no guarantee anywhere else. Set `foregroundColor` on the button rather
+than wrapping it in a `TextButtonTheme`: a widget-level style merges over the
+ambient theme, while a nested theme replaces it wholesale and silently drops
+the global 44 px minimum tap target.
+
+This is written down because it shipped wrong. The note conflict banner
+(§35) sits on `tertiaryContainer`; its four action buttons inherited the global
+link and measured **2.79:1** in dark — below 4.5, below even the 3:1 icon
+floor — while the role's own ink measures 6.68 dark / 7.71 light.
+
+**And the reason nobody saw it is the more important half:** a surface is not
+verified because its name appears in `contrast.py`. It is verified when the
+pairs the UI **actually paints on it** are listed. `tertiaryContainer` was in
+no pair at all, so the banner was never green — it was unmeasured, which reads
+identically in a `FAILURES: 0` line. `surfaceContainerHigh` was worse camouflage:
+it was present, but only as "input fill", so the band, `MdToolbar`,
+`MdSlashMenu`, find/replace and the export sheet all drew on a surface the guard
+believed it was covering. The hand-check that preceded this measured the
+banner's *text* and passed it; the buttons were never in anyone's head.
+
+The inverse is equally a lie: **do not add a pair nobody paints.** While
+closing this, `link` on `surfaceContainerHighest` measured 4.23 and looked like
+a second bug — but nothing puts a text button on that surface, so listing it
+would have failed the gate over an imaginary screen. Check the widget, then
+write the pair.
+
 ## 8. Widget design (home-screen / desktop — Epic 12)
 
 _(Added 2026-07-17, feedback round 5. Full plan: [WIDGETS.md](WIDGETS.md);

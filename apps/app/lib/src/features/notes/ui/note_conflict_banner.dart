@@ -84,21 +84,25 @@ class _NoteConflictBannerState extends ConsumerState<NoteConflictBanner> {
               children: [
                 TextButton(
                   key: const Key('conflict-show-diff'),
+                  style: _actionStyle(theme),
                   onPressed: _busy ? null : _showDiff,
                   child: Text('conflict.showDiff'.tr()),
                 ),
                 TextButton(
                   key: const Key('conflict-use-mine'),
+                  style: _actionStyle(theme),
                   onPressed: _busy ? null : () => _resolve('replace'),
                   child: Text('conflict.useMine'.tr()),
                 ),
                 TextButton(
                   key: const Key('conflict-use-theirs'),
+                  style: _actionStyle(theme),
                   onPressed: _busy ? null : _useTheirs,
                   child: Text('conflict.useTheirs'.tr()),
                 ),
                 TextButton(
                   key: const Key('conflict-keep-both'),
+                  style: _actionStyle(theme),
                   onPressed: _busy ? null : () => _resolve('copy'),
                   child: Text('conflict.keepBoth'.tr()),
                 ),
@@ -109,6 +113,24 @@ class _NoteConflictBannerState extends ConsumerState<NoteConflictBanner> {
       ),
     );
   }
+
+  /// The banner's actions sit on `tertiaryContainer`, so they take that role's
+  /// own ink — NOT the global `tokens.link`, which is tuned for `surface`.
+  ///
+  /// Measured, because this shipped wrong once (OPH-269): link on the dark
+  /// `tertiaryContainer` is **2.79:1** — under 4.5 and under even the 3:1 icon
+  /// floor — while `onTertiaryContainer` is 6.68 dark / 7.71 light. It was
+  /// missed because `tertiaryContainer` was not in `contrast.py` at all and the
+  /// hand-check measured the banner's TEXT, not the pair its BUTTONS paint.
+  /// Both pairs are in the guard now.
+  ///
+  /// Only `foregroundColor` is set: a widget-level style merges over the
+  /// ambient theme, so the global 44 px minimum tap target and stadium shape
+  /// survive. Wrapping these in a `TextButtonTheme` would have replaced that
+  /// theme wholesale and dropped both.
+  ButtonStyle _actionStyle(ThemeData theme) => TextButton.styleFrom(
+    foregroundColor: theme.colorScheme.onTertiaryContainer,
+  );
 
   void _showDiff() {
     Navigator.of(context).push(

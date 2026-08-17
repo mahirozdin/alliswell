@@ -198,6 +198,38 @@ PAIRS = [
     ('D note mark pink', '#EAF0FD', '#5A2340', 4.5),
     ('D note mark purple', '#EAF0FD', '#3B2A66', 4.5),
     ('D note mark grey', '#EAF0FD', '#333B52', 4.5),
+
+    # ── Shared raised surfaces (round 18 follow-up, Epic 24 + OPH-269) ──
+    # `surfaceContainerHigh` (#E7EEFA / #1F2C51) was already here, but only ever
+    # as "input fill" — so the OTHER things drawn on it were outside the guard:
+    # the external-document band, `MdToolbar`, `MdSlashMenu`, the find/replace
+    # bar and the export sheet. A surface is not measured because its name
+    # appears once; it is measured when the pairs somebody actually PAINTS on it
+    # appear. These are exact colours (opaque `Color`s), not blended estimates,
+    # so OPH-247's "hand-invented ground" trap does not apply.
+    ('L body on raised container', '#0F1B2E', '#E7EEFA', 4.5),
+    ('D body on raised container', '#EAF0FD', '#1F2C51', 4.5),
+    # find/replace puts a TextButton on this surface.
+    ('L link on raised container', '#0B54D0', '#E7EEFA', 4.5),
+    ('D link on raised container', '#3E9BFF', '#1F2C51', 4.5),
+    # `surfaceContainerHighest` beyond the code panel: file tiles, the command
+    # palette's selected row. Secondary ink, not measured here before.
+    ('L variant ink on highest container', '#44536F', '#DEE8F8', 4.5),
+    ('D variant ink on highest container', '#AAB6D6', '#26345E', 4.5),
+
+    # ── Note conflict banner (OPH-269, DESIGN §35) ──
+    # This whole block exists because the banner shipped with a real failure
+    # nobody could see: `tertiaryContainer` was in NO pair, so the surface was
+    # not green, it was unmeasured. The banner's TEXT was checked by hand and
+    # passed (7.71 / 6.68) — but its four ACTION BUTTONS inherited the global
+    # `tokens.link`, which lands on **2.79:1** over the dark container. Fixed in
+    # `note_conflict_banner.dart` by taking the container's own ink; both the
+    # ink and the action label are pinned below so the next surface added to
+    # this banner cannot repeat it.
+    ('L banner ink on tertiary container', '#084F44', '#BFF2E6', 4.5),
+    ('D banner ink on tertiary container', '#BDF6EC', '#0E5B4F', 4.5),
+    ('L banner action label', '#084F44', '#BFF2E6', 4.5),
+    ('D banner action label', '#BDF6EC', '#0E5B4F', 4.5),
 ]
 
 

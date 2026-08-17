@@ -7427,15 +7427,28 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
       (`FileRows`) ve **bir kopyayı R2'ye yükler**, ki bu "dış dosyayı bağlamak" değil
       kopyalamak. Çözüm: recents girdisine `projectId` alanı (yerel, senkronsuz — tutamak
       zaten cihaza özel); `ProjectPickerField` yeniden kullanılır.
-- [ ] **Kontrast**: bant yeni bir yüzey → `contrast.py` çiftlerine eklenir.
-      **YAPILMADI, ölçülerek:** `contrast.py` bugün `surfaceContainerHigh` üzerine
-      hiçbir çift taşımıyor (`grep` ile doğrulandı, 0 eşleşme) — yani bant yeşil
-      görünüyor çünkü **hiç ölçülmüyor**, OPH-247'nin yakaladığı yalanın aynısı.
-      Bu bant tarafından yaratılmadı: `MdToolbar` ve `MdSlashMenu` da aynı yüzeyi
-      kullanıyor ve onlar da kapının dışında. Yani iş "bir çift eklemek" değil,
-      **paylaşılan bir yüzeyi kapıya sokmak** — kendi turunu hak ediyor. OPH-247'nin
-      dersi bağlayıcı: **elle uydurulmuş bir zemini ölçmek `FAILURES: 0` yalanı söyler** —
-      bandın gerçekten çizdiği karışım hesaplanır.
+- [x] **Kontrast — KAPANDI (2026-08-17n), ve bir GERÇEK HATA çıkardı.**
+      `contrast.py` +10 çift (127 → 137), `FAILURES: 0`, script çıkış kodu 0.
+      **Düzeltme (bu turun asıl işi):** çakışma banner'ı (OPH-269) `tertiaryContainer`
+      üzerinde oturuyor ama dört eylem düğmesi global `tokens.link`'i miras alıyordu →
+      karanlıkta **2.79:1**. 4.5 bir yana, 3:1 ikon tabanının bile altında. Düğmeler
+      artık `onTertiaryContainer` alıyor (6.68 karanlık / 7.71 aydınlık).
+      `TextButtonTheme` yerine düğme-başına `foregroundColor`: widget stili ambient
+      temanın ÜSTÜNE birleşiyor, iç tema ise onu bütünüyle değiştirip global 44 px
+      dokunma hedefini sessizce düşürürdü.
+- [x] **Bulgu — kapının kör noktası "yeşil" ile aynı görünüyor.** `tertiaryContainer`
+      hiçbir çiftte yoktu, yani banner yeşil değildi, **ölçüsüzdü** — ve bu bir
+      `FAILURES: 0` satırında birebir aynı okunuyor. `surfaceContainerHigh` daha kötü
+      bir kamuflajdı: kapıda VARDI, ama yalnız "input fill" adıyla; bant, `MdToolbar`,
+      `MdSlashMenu`, find/replace ve dışa aktarma sayfası hepsi kapının kapsadığını
+      sandığı bir yüzeye çiziyordu. Geçen oturumdaki elle ölçüm banner'ın METNİNİ
+      ölçüp geçirmişti; düğmeler kimsenin aklına gelmemişti. DESIGN §7.1 bağlayıcı
+      kural olarak yazıldı.
+- [x] **Bulgu — tersi de yalan: kimsenin çizmediği çifti EKLEME.** Kapatırken
+      `link` × `surfaceContainerHighest` 4.23 ölçtü ve ikinci bir hata gibi durdu;
+      ama o yüzeye hiçbir metin düğmesi konmuyor (komut paleti `onTap`/ListTile,
+      file_widgets ikon/metin). Eklenseydi kapı **var olmayan bir ekran yüzünden**
+      kırmızı yanacaktı. Kural: önce widget'a bak, sonra çifti yaz.
 - [x] Testler (seam/fake/recents birim testleri OPH-255'e taşındı — burada **arayüz**):
       bant üç modda da görünüyor ve dosya adını taşıyor; salt-okunur dosyada kaydet eylemi
       **hiç build edilmiyor** (finder boş, `enabled: false` değil); altından değişen

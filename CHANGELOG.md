@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **The conflict banner's four buttons are readable in dark mode.** "Show
+  diff", "Use mine", "Use the other one" and "Keep both" were drawn in the
+  app's global link blue on the banner's teal background — 2.79:1, below the
+  4.5:1 minimum for text and below even the 3:1 floor for icons. They now use
+  the banner surface's own ink (6.68:1 dark, 7.71:1 light). Nothing about the
+  buttons' behaviour changed.
+
+### Changed
+
+- **The contrast guard now covers the surfaces it believed it was covering.**
+  Ten pairs were added for the raised containers shared by the
+  external-document band, the markdown toolbar and slash menu, find/replace,
+  the export sheet, file tiles and the conflict banner. The banner's surface
+  was in no pair at all, so it was never green — it was unmeasured, which reads
+  the same as passing. `docs/DESIGN.md` §7.1 now states the rule this came
+  from: a component on a container surface takes that container's own ink.
+
 ### Tests
 
 - **Epic 25's five infrastructure-blocked verifications: four are now run, not

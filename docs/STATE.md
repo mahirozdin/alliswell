@@ -3,7 +3,36 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17m (**EPIC 25'İN DOCKER BORCU ÖDENDİ — beş doğrulama kaleminin
+**Last updated:** 2026-08-17n (**KONTRAST KAPISININ KÖR NOKTASI KAPANDI — ve kapatırken
+SEVK EDİLMİŞ BİR HATA çıktı.** Epic 24'ün açık kontrast kalemi alındı; `contrast.py` 127 → **137
+çift** (+10), `FAILURES: 0`, çıkış kodu 0. App süiti **1222** (değişmedi), `flutter analyze` temiz,
+`dart format` 0 değişiklik, `check:i18n` temiz. **Deploy alınmadı — sahibin talimatı.**
+Sıradaki iş: Epic 24'ün kalan açık kalemleri (ekran görüntüleri denetimi, landing tutarsızlıkları)
+ya da elle/sahip kalemleri — kodsal engel yok.
+
+**Turun tek cümlesi: bir kapının kör noktası, `FAILURES: 0` satırında yeşille birebir aynı
+okunuyor.** Çakışma banner'ı (dün OPH-269'da sevk edildi) `tertiaryContainer` üzerinde oturuyor
+ama dört eylem düğmesi global `tokens.link`'i miras alıyordu → karanlıkta **2.79:1**; 4.5 bir
+yana, 3:1 ikon tabanının bile altında. Düğmeler artık `onTertiaryContainer` alıyor (6.68 / 7.71).
+
+**Bunu neden kimse görmedi, asıl ders orada:** `tertiaryContainer` hiçbir çiftte yoktu, yani
+banner yeşil değildi — **ölçüsüzdü.** `surfaceContainerHigh` daha sinsi bir kamuflajdı: kapıda
+VARDI ama yalnız "input fill" adıyla, dolayısıyla bant / `MdToolbar` / `MdSlashMenu` /
+find-replace / dışa aktarma sayfası hepsi kapının kapsadığını sandığı bir yüzeye çiziyordu.
+**Ve elle ölçümü geçen oturum ben yaptım** — banner'ın METNİNİ ölçüp (7.71/6.68) "tamam" dedim;
+düğmeler aklıma gelmedi. OPH-247'nin uyardığı yalanın tam olarak aynısı.
+
+**Tersi de yalan, ve az kalsın ona düşüyordum:** `link` × `surfaceContainerHighest` 4.23 ölçtü,
+ikinci bir hata gibi durdu. Ama o yüzeye hiçbir metin düğmesi konmuyor (komut paleti
+`onTap`/ListTile, file_widgets ikon/metin). Eklenseydi kapı **var olmayan bir ekran yüzünden**
+kırmızı yanacaktı. Kural: önce widget'a bak, sonra çifti yaz.
+
+**Kapı doğrulaması:** özgün hata çifte geri yazıldı (`#3E9BFF` on `#0E5B4F`) → `FAIL 2.79`,
+`FAILURES: 1` → geri alındı, temizde çıkış kodu 0. DESIGN **§7.1** bağlayıcı kural olarak
+yazıldı (container yüzeyindeki bileşen o rolün kendi mürekkebini alır; `TextButtonTheme` değil
+düğme-başına `foregroundColor`, yoksa global 44 px dokunma hedefi sessizce düşüyor).
+
+Önceki blok: 2026-08-17m (**EPIC 25'İN DOCKER BORCU ÖDENDİ — beş doğrulama kaleminin
 DÖRDÜ kanıtlı kapandı.** Bu makinede konteyner çalışma zamanı yeniden kuruldu (colima 0.10.3
 + Docker 29.7.2 + Compose 5.4.0; VM 4 CPU / 6 GB / 30 GB, vz). MySQL 8.4 **3307**, Redis 6379,
 MinIO **9010** — üçü de healthy. `npm run db:migrate` → **Batch 1 run: 25 migrations**, yani
