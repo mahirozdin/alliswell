@@ -3,7 +3,36 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17k (**OPH-268 TAMAMEN BİTTİ — istemci yarımı da indi: drift v18,
+**Last updated:** 2026-08-17l (**OPH-269 BİTTİ → **EPIC 25 KAPANDI** (OPH-257…273, 17 iş).
+App süiti **1222** (+9), API **709**, analyze/format/i18n temiz, contrast FAILURES: 0.
+**Deploy alınmadı — sahibin talimatı.** Sıradaki iş: epic kapanış turu — sürüm kesimi (v1.7.0)
+sahibin kararı; ondan önce Docker'a bağlı beş doğrulama kalemi duruyor.**
+
+**Turun tek cümlesi: sürüm geçmişi ekranı yeni bir renderer GETİRMEDİ** — önizleme notun kendi
+okuma modunu bütün olarak kullanıyor (V4). Bir belgeyi iki yerde çizmek, ikisinin ayrı ayrı
+yanlış olması demektir.
+
+**Çakışma banner'ının dört eylemi de kayıpsız, ve banner bunu yazıyor.** "Diğerini kullan"
+hiçbir yazım yapmıyor (sunucununki zaten kazandı, benimki tarihçede duruyor); "Benimkini
+kullan" sıradan bir restore, yani kendisi de tarihçeye giriyor; "Kopya olarak ayır" Dropbox'ın
+kopyası — ama artık SEÇİLMİŞ sonuç olarak, otomatik değil.
+
+**Bulgu:** önizleme `ReadingMode`'u bir `SingleChildScrollView` içine koymuştu; ReadingMode
+kendi kaydırıcısını taşıyor, sonuç "unbounded height" çökmesi. Testler yakaladı. _Bir bileşeni
+bütün olarak yeniden kullanmak, onun neyi zaten yaptığını bilmeyi gerektiriyor._
+
+**Kontrast, elle ölçülen kalem:** banner'ın `tertiaryContainer` çifti `contrast.py`'nin
+listesinde yok (Epic 24'ün açık kalemi). Elle ölçüldü: light 7.71, dark 6.68 — ikisi de ≥4.5.
+Diff'te renk tek taşıyıcı değil: eklenen altı çizili, silinen üstü çizili.
+
+**Epic 25'in kapanış tablosu:** 257…260 uygulama cilası · 261…263 domain çıkarımı + MCP (7 →
+24 araç) · 264…266 API anahtarları + belgelenmiş REST + toplu aktarım (issue #3 kapandı) ·
+267…269 sürümleme, çakışma doğruluğu ve yüzeyi · 270…273 sıra dışı aciller.
+**Docker'a bağlı beş doğrulama kalemi açık:** 263'ün entegrasyonu + MCP Inspector koşusu,
+264'ün migration'ı, 266'nın entegrasyonu, 268'in Senaryo A reprodüksiyonu — artı 269'un
+iki-cihaz elle provası.
+
+Önceki blok: 2026-08-17k (**OPH-268 TAMAMEN BİTTİ — istemci yarımı da indi: drift v18,
 base taşıma, outbox koalesansı, otomatik kopyanın emekliliği, editör V7. App süiti **1213**
 (+3), API **709**, analyze/format/i18n temiz, contrast FAILURES: 0. **Deploy alınmadı —
 sahibin talimatı.** Sıradaki iş: OPH-269 (sürüm geçmişi & çakışma yüzeyi, DESIGN §35) — Epic

@@ -1054,5 +1054,40 @@
     "emptyTitle": "No keys yet",
     "emptyBody": "Create one when you want a script, a cron job or a home-automation box to reach your tasks and notes.",
     "couldNotLoad": "Could not reach the server, so your keys cannot be shown."
+  },
+  "versions": {
+    "title": "Version history",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "originThisDevice": "This device",
+    "originOtherDevice": "Another device",
+    "originCreate": "Created",
+    "originMerge": "Merged",
+    "originConflict": "Conflict",
+    "originRestore": "Restored",
+    "originImport": "Imported",
+    "originApi": "API",
+    "originAi": "Assistant",
+    "showDiff": "Show what changed",
+    "restore": "Restore",
+    "restoreCopy": "Restore as a copy",
+    "restored": "Restored — the version you left is saved too",
+    "restoredCopy": "Restored as a new note",
+    "restoreConfirmTitle": "Restore this version?",
+    "restoreConfirmBody": "It becomes the note's current text. Nothing is lost: the version you are leaving is saved to history too, so you can come back.",
+    "emptyTitle": "No history yet",
+    "emptyBody": "Edits are saved here as you make them.",
+    "offlineTitle": "History is available online",
+    "offlineBody": "Older versions live on the server, not on this device. Reconnect to read them."
+  },
+  "conflict": {
+    "bannerTitle": "This note was edited on another device too",
+    "bannerBody": "Both versions are saved. Choose which text the note should keep — nothing is deleted either way.",
+    "showDiff": "See the difference",
+    "useMine": "Use mine",
+    "useTheirs": "Use the other one",
+    "keepBoth": "Keep both",
+    "usedMine": "Your version is the note's text now",
+    "keptBoth": "Your version was saved as a separate note"
   }
 }

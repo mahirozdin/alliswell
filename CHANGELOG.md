@@ -31,6 +31,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Notes now have a history you can read and go back to.** Open a note's
+  **Version history** from its menu: entries grouped by day, each labelled with
+  where it came from — this device, another device, a merge, a conflict, an
+  import, your assistant. Tap one to read it as the note looked then, switch to
+  "what changed" for a word-by-word comparison with the current text, and
+  restore it either over the note or as a separate copy. Restoring never erases
+  anything: the version you are leaving is saved too. History lives on the
+  server, so the screen says so plainly when you are offline (OPH-269).
+
 - **Notes remember what they used to say.** Every edit is captured, so you can
   look through a note's history, see exactly what changed between two points,
   and put an older version back — either over the current one (which is itself

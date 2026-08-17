@@ -273,6 +273,94 @@ class FakeApi {
   // Mirrors apps/api/src/routes/integrations-google.js. Not part of the sync
   // protocol: calendar accounts are per-user server state.
 
+  // ── Note versions (OPH-267/269, ADR-0031) — server-only history ──────────
+  /// Rows in the server's version shape, newest first. Never synced: this is
+  /// an online surface, and the fake mirrors that.
+  final List<Map<String, dynamic>> noteVersions = [];
+
+  /// What `…/diff` answers. The client only draws segments (ADR-0031 §8), so
+  /// the fake supplies them the way the server would.
+  List<Map<String, dynamic>> noteDiffSegments = [
+    {'type': 'equal', 'value': 'ortak '},
+    {'type': 'removed', 'value': 'eski'},
+    {'type': 'added', 'value': 'yeni'},
+  ];
+
+  /// Restores the fake received, so a test can assert the MODE that was sent.
+  final List<Map<String, String>> restoreCalls = [];
+
+  int _versionSeq = 0;
+
+  Map<String, dynamic> seedNoteVersion({
+    required String noteId,
+    String origin = 'edit',
+    String? clientId,
+    String markdown = 'gövde',
+    DateTime? createdAt,
+  }) {
+    final row = {
+      'id': 'VER${(_versionSeq++).toString().padLeft(23, '0')}',
+      'noteId': noteId,
+      'title': 'Not',
+      'origin': origin,
+      'clientId': clientId,
+      'contentFormat': 'markdown',
+      'contentMarkdown': markdown,
+      'sizeBytes': markdown.length,
+      'createdAt': (createdAt ?? DateTime.utc(2026, 8, 17, 9))
+          .toIso8601String(),
+    };
+    noteVersions.add(row);
+    return row;
+  }
+
+  ResponseBody? _noteVersionRoutes(
+    String path,
+    RequestOptions options,
+    Map<String, dynamic>? body,
+  ) {
+    final list = RegExp(r'^/api/v1/notes/([^/]+)/versions$').firstMatch(path);
+    if (list != null && options.method == 'GET') {
+      final noteId = list.group(1);
+      return jsonBody(200, {
+        'items': [
+          for (final v in noteVersions)
+            if (v['noteId'] == noteId) v,
+        ],
+        'nextCursor': null,
+      });
+    }
+    final diff = RegExp(
+      r'^/api/v1/notes/([^/]+)/versions/([^/]+)/diff$',
+    ).firstMatch(path);
+    if (diff != null && options.method == 'GET') {
+      return jsonBody(200, {'segments': noteDiffSegments, 'comparable': true});
+    }
+    final restore = RegExp(
+      r'^/api/v1/notes/([^/]+)/versions/([^/]+)/restore$',
+    ).firstMatch(path);
+    if (restore != null && options.method == 'POST') {
+      restoreCalls.add({
+        'noteId': restore.group(1)!,
+        'versionId': restore.group(2)!,
+        'mode': (body?['mode'] as String?) ?? 'replace',
+      });
+      return jsonBody(200, {'id': restore.group(1), 'title': 'Not'});
+    }
+    final detail = RegExp(
+      r'^/api/v1/notes/([^/]+)/versions/([^/]+)$',
+    ).firstMatch(path);
+    if (detail != null && options.method == 'GET') {
+      final row = noteVersions.firstWhere(
+        (v) => v['id'] == detail.group(2),
+        orElse: () => <String, dynamic>{},
+      );
+      if (row.isEmpty) return jsonBody(404, {'code': 'NOTE_VERSION_NOT_FOUND'});
+      return jsonBody(200, row);
+    }
+    return null;
+  }
+
   // ── API keys (OPH-264/265, ADR-0032) — per-user server state, online only ─
   /// Rows in the server's `apiKeySchema` shape. The secret is NOT in here:
   /// like the real server, the fake hands it out once and forgets it.
@@ -730,6 +818,9 @@ class FakeApi {
 
     final apiKeysRes = _apiKeysRoutes(path, options, body);
     if (apiKeysRes != null) return apiKeysRes;
+
+    final versionsRes = _noteVersionRoutes(path, options, body);
+    if (versionsRes != null) return versionsRes;
 
     final ai = _ai(path, options, body);
     if (ai != null) return ai;

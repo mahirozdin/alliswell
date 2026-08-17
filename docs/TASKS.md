@@ -8537,25 +8537,45 @@ artık NOTUN kendi revizyonu ("editörün gördüğü şey")._
 
 ### OPH-269 — Sürüm geçmişi & çakışma yüzeyi (DESIGN §35)
 
-- [ ] Editör menüsüne "Sürüm geçmişi" (`note-quick-menu`'ye öğe) → `/notes/:id/versions`
-      ekranı: gün başlıklı liste (Bugün/Dün/tarih), satır = saat + origin çipi (Bu cihaz ·
-      Diğer cihaz · Birleştirme · Çakışma · Geri yükleme · İçe aktarma — clientId kıyasıyla) ·
-      tık = mevcut OKUMA moduyla önizleme + "Farkı gör" (sunucunun diff segmentleri, kelime
-      düzeyi vurgulama) · "Geri yükle" (onaylı; yeni head — V5 cümlesi diyalogda) · "Kopya
-      olarak geri yükle". Çevrimdışıysa dürüst boş durum (V6, status_views).
-- [ ] Çakışma banner'ı (V3): `conflictVersionId` taşıyan not editörde açılınca üst bant —
-      "Bu not başka bir cihazda da düzenlendi" + Farkı gör · Benimkini kullan · Diğerini
-      kullan · Kopya olarak ayır. Her seçim çözümü sürümleme yolundan yazar (hiçbir seçim
-      veri kaybetmez — kaybeden taraf zaten sürümde, V1).
-- [ ] i18n en+tr (`versions.*`, `conflict.*`); light+dark + `contrast.py` (origin çipleri +
-      banner `surfaceContainerHigh` üstündeyse Epic 24'ün açık kalemiyle birleşme notu:
-      o yüzeyin kapıya girme işi hâlâ ayrı turdadır, bu task kendi çiftlerini geçici olarak
-      elle doğrular ve STATE'e yazar).
-- [ ] Testler: widget (liste gruplama, önizleme, restore onayı → store çağrısı, banner üç
-      eylemi, offline boş durum — `sync_overrides` + sahte REST); i18n anahtar denetimi.
-- [ ] Yüzey: editör menü öğesi + sürüm ekranı + çakışma banner'ı. **Elle prova (cihaz):** iki
-      cihaz/simülatör, uçak modu senaryosu — temiz merge, örtüşen çakışma banner'ı, restore;
-      STATE'e kanıt satırları.
+_(✅ 2026-08-17 — **tamamlandı. Epic 25 KAPANDI.** App süiti **1222** (+9),
+analyze/format/i18n temiz, `contrast.py` FAILURES: 0 + banner çifti elle ölçüldü.
+Deploy alınmadı, sahibin talimatı.)_
+
+_**Turun tek cümlesi: bu ekran yeni bir renderer getirmedi** — önizleme notun KENDİ okuma
+modunu kullanıyor (V4). Bir belgeyi iki yerde çizmek, ikisinin ayrı ayrı yanlış olması demek._
+
+- [x] Editör menüsüne "Sürüm geçmişi" (`note-versions`) → `NoteVersionsScreen`: **gün başlıklı**
+      liste (Bugün/Dün/tarih), satır = saat + origin etiketi (Bu cihaz · Diğer cihaz ·
+      Birleştirme · Çakışma · Geri yükleme · İçe aktarma · API · Asistan — `clientId`
+      kıyasıyla; cihaz kimliği `syncClientIdProvider`'dan geliyor) · tık = **mevcut okuma
+      renderer'ıyla** önizleme + "Neyin değiştiğini gör" (sunucunun kelime segmentleri) ·
+      "Geri yükle" (onaylı; diyalog V5'in cümlesini söylüyor: bıraktığın sürüm de saklanır) ·
+      "Kopya olarak geri yükle".
+- [x] **Çevrimdışı dürüst boş durum (V6):** "Geçmiş çevrimiçi kullanılabilir" — boş liste
+      göstermek yalan olurdu, çünkü gövdeler sunucuda ve replikaya inmiyor.
+- [x] Çakışma banner'ı (V3): `conflictVersionId` taşıyan not editörde açılınca üst bant +
+      dört eylem. **Hiçbiri veri kaybetmiyor ve banner bunu yazıyor:** "Farkı gör" ·
+      "Benimkini kullan" (reddedilen gövdem restore-replace ile yeni head olur) · "Diğerini
+      kullan" (sunucununki zaten kazandı — yalnız yerel işaret temizlenir, HİÇBİR yazım yok)
+      · "Kopya olarak ayır" (Dropbox tarzı kopya, ama SEÇİLMİŞ sonuç olarak).
+- [x] i18n `versions.*` + `conflict.*` (27 anahtar, en+tr), `check:i18n` yeşil.
+- [x] **Kontrast:** `contrast.py` FAILURES: 0. Banner `tertiaryContainer` çifti script'in
+      listesinde yok (Epic 24'ün açık kalemi), o yüzden **elle ölçüldü ve yazıldı:**
+      light `#084F44` on `#BFF2E6` = **7.71**, dark `#BDF6EC` on `#0E5B4F` = **6.68**
+      (ikisi de ≥4.5). Diff segmentlerinde renk TEK taşıyıcı değil: eklenen altı çizili,
+      silinen üstü çizili (§3).
+- [x] Testler (+9, süit 1213 → **1222**): gün gruplaması + origin adları · önizlemenin
+      okuma renderer'ıyla çizilmesi · restore'un ÖNCE sorması, iptalin hiçbir çağrı
+      yapmaması, onayın `mode:'replace'` göndermesi · "kopya olarak" → `mode:'copy'` ·
+      diff segmentlerinin çizilmesi · **çevrimdışı boş-durum yalanının olmaması** · banner'ın
+      dört eylemi ve **"diğerini kullan"ın HİÇBİR yazım yapmaması**.
+- [x] **Bulgu:** önizleme `ReadingMode`'u bir `SingleChildScrollView` içine koymuştu —
+      ReadingMode kendi kaydırıcısını taşıyor, yani "unbounded height" çökmesi. Testler
+      yakaladı; sarmalayıcı `Padding`'e indi. _Bir bileşeni bütün olarak yeniden kullanmak,
+      onun neyi zaten yaptığını bilmeyi gerektiriyor._
+- [ ] **AÇIK — elle cihaz provası:** iki cihaz/simülatör, uçak modu senaryosu (temiz merge,
+      örtüşen çakışma banner'ı, restore). Kod tarafı testlerle kapalı; fiziksel iki-cihaz
+      turu sahibe kalıyor — Senaryo A'nın entegrasyon reprodüksiyonuyla aynı oturumda.
 
 ## Backlog / v2 parking lot
 

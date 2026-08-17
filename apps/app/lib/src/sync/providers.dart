@@ -36,6 +36,15 @@ final syncDebounceProvider = Provider<Duration>(
 
 /// One engine per signed-in workspace; null while signed out. Anything that
 /// watches it keeps background sync alive.
+/// This device's sync client id (OPH-269): the engine stamps it on every push,
+/// so a version row carrying it was written HERE. That is what lets the history
+/// say "This device" instead of showing a ULID nobody can read.
+final syncClientIdProvider = FutureProvider<String?>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final rows = await db.select(db.syncStates).get();
+  return rows.isEmpty ? null : rows.first.clientId;
+});
+
 final syncEngineProvider = Provider<SyncEngine?>((ref) {
   final workspace = ref.watch(currentWorkspaceProvider).value;
   if (workspace == null) return null;

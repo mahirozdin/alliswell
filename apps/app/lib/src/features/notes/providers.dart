@@ -4,8 +4,10 @@ import '../../core/list_sort.dart';
 import '../../core/persisted_prefs.dart';
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
+import '../auth/providers.dart';
 import 'data/note.dart';
 import 'data/note_store.dart';
+import 'data/note_versions_api.dart';
 
 export 'data/note_store.dart'
     show NotesFilter, NotesQuery, kNoteSortChoices, noteSortComparator;
@@ -18,6 +20,36 @@ final noteStoreProvider = Provider<NoteStore>(
     () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
   ),
 );
+
+/// Note history (OPH-269) — an ONLINE surface: the list is fetched when the
+/// screen opens and never cached in the replica (DESIGN §35 V6, the OPH-265
+/// rule). Every mutation invalidates rather than patching a local list.
+final noteVersionsApiProvider = Provider<NoteVersionsApi>(
+  (ref) => NoteVersionsApi(ref.watch(apiClientProvider)),
+);
+
+final noteVersionsProvider =
+    FutureProvider.family<List<NoteVersionSummary>, String>(
+      (ref, noteId) => ref.watch(noteVersionsApiProvider).list(noteId),
+    );
+
+final noteVersionDiffProvider =
+    FutureProvider.family<
+      List<NoteDiffSegment>,
+      ({String noteId, String versionId})
+    >(
+      (ref, arg) =>
+          ref.watch(noteVersionsApiProvider).diff(arg.noteId, arg.versionId),
+    );
+
+final noteVersionDetailProvider =
+    FutureProvider.family<
+      NoteVersionDetail,
+      ({String noteId, String versionId})
+    >(
+      (ref, arg) =>
+          ref.watch(noteVersionsApiProvider).detail(arg.noteId, arg.versionId),
+    );
 
 class NotesQueryController extends Notifier<NotesQuery> {
   @override

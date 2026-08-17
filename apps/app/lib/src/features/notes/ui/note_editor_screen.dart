@@ -23,6 +23,8 @@ import 'external_doc_band.dart';
 import '../providers.dart';
 import 'modes/note_mode_control.dart';
 import 'modes/reading_mode.dart';
+import 'note_conflict_banner.dart';
+import 'note_versions_screen.dart';
 import 'modes/source_mode.dart';
 import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
@@ -456,6 +458,16 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                   unawaited(_convert());
                   return;
                 }
+                if (value == 'versions') {
+                  if (_noteId case final id?) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => NoteVersionsScreen(noteId: id),
+                      ),
+                    );
+                  }
+                  return;
+                }
                 if (_noteId case final id?) {
                   toggleQuickAccess(
                     context,
@@ -489,6 +501,16 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                     ),
                   ),
                 ),
+                if (_noteId != null)
+                  PopupMenuItem(
+                    key: const Key('note-versions'),
+                    value: 'versions',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.history),
+                      title: Text('versions.title'.tr()),
+                    ),
+                  ),
                 if (_noteId case final id?)
                   quickAccessMenuItem(
                     value: 'quick',
@@ -506,6 +528,13 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             // Source alike — "which file am I changing" stops being a nicety
             // the moment editing is possible.
             if (widget.external) ExternalDocBand(dirty: _dirty),
+            // V3: the conflict lives ON the note, where the user's attention
+            // already is — not in a sibling note they have to go find.
+            if (!widget.external && widget.note?.conflictVersionId != null)
+              NoteConflictBanner(
+                noteId: _noteId!,
+                conflictVersionId: widget.note!.conflictVersionId!,
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
               child: Row(

@@ -63,6 +63,7 @@ class NoteDetail extends NoteRow {
     this.contentMarkdown,
     this.contentFormat = 'delta',
     this.links = const [],
+    this.conflictVersionId,
   });
 
   factory NoteDetail.fromJson(Map<String, dynamic> json) {
@@ -101,6 +102,10 @@ class NoteDetail extends NoteRow {
   /// note may open in (DESIGN §29 D1, as amended in OPH-248).
   bool get isMarkdownCanonical => contentFormat == 'markdown';
   final List<NoteLink> links;
+
+  /// OPH-268/269: the server version holding a body of this note that was
+  /// refused. Device-local — its presence raises the conflict banner.
+  final String? conflictVersionId;
 }
 
 class NoteLink {

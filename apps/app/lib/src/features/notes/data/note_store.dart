@@ -410,6 +410,7 @@ class NoteStore {
       for (final l in links)
         NoteLink(id: l.id, entityType: l.entityType, entityId: l.entityId),
     ],
+    conflictVersionId: r.conflictVersionId,
   );
 
   String _snippet(String? plainText) {

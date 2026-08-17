@@ -1053,5 +1053,40 @@
     "emptyTitle": "Henüz anahtar yok",
     "emptyBody": "Bir script'in, cron job'ın ya da ev otomasyonunun görevlerine ve notlarına ulaşmasını istediğinde bir tane oluştur.",
     "couldNotLoad": "Sunucuya ulaşılamadı, anahtarların gösterilemiyor."
+  },
+  "versions": {
+    "title": "Sürüm geçmişi",
+    "today": "Bugün",
+    "yesterday": "Dün",
+    "originThisDevice": "Bu cihaz",
+    "originOtherDevice": "Diğer cihaz",
+    "originCreate": "Oluşturuldu",
+    "originMerge": "Birleştirme",
+    "originConflict": "Çakışma",
+    "originRestore": "Geri yükleme",
+    "originImport": "İçe aktarma",
+    "originApi": "API",
+    "originAi": "Asistan",
+    "showDiff": "Neyin değiştiğini gör",
+    "restore": "Geri yükle",
+    "restoreCopy": "Kopya olarak geri yükle",
+    "restored": "Geri yüklendi — bıraktığın sürüm de saklandı",
+    "restoredCopy": "Yeni not olarak geri yüklendi",
+    "restoreConfirmTitle": "Bu sürüm geri yüklensin mi?",
+    "restoreConfirmBody": "Notun güncel metni bu olur. Hiçbir şey kaybolmaz: bıraktığın sürüm de geçmişe kaydedilir, istediğinde geri dönebilirsin.",
+    "emptyTitle": "Henüz geçmiş yok",
+    "emptyBody": "Düzenlemelerin yaptıkça buraya kaydedilir.",
+    "offlineTitle": "Geçmiş çevrimiçi kullanılabilir",
+    "offlineBody": "Eski sürümler sunucuda duruyor, bu cihazda değil. Okumak için bağlan."
+  },
+  "conflict": {
+    "bannerTitle": "Bu not başka bir cihazda da düzenlendi",
+    "bannerBody": "İki sürüm de saklandı. Notun hangi metni tutacağını seç — hiçbir şey silinmiyor.",
+    "showDiff": "Farkı gör",
+    "useMine": "Benimkini kullan",
+    "useTheirs": "Diğerini kullan",
+    "keepBoth": "Kopya olarak ayır",
+    "usedMine": "Notun metni artık senin sürümün",
+    "keptBoth": "Senin sürümün ayrı bir not olarak kaydedildi"
   }
 }
