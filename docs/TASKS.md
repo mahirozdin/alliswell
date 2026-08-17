@@ -8232,12 +8232,28 @@ geçmez._
       etiket tekilliği + listenin verdiği adın `update_task`'te çözüldüğü · dosya listesinde
       **URL/anahtar olmadığının** iddia edilmesi · scope tablosu 15 yazma aracına çıktı ·
       not/proje araçları için çapraz-workspace NOT_FOUND + boş listeler.
-- [ ] **BLOKE — `test/integration/mcp.test.js` genişletmesi:** MySQL+Redis ister; bu makinede
-      konteyner çalışma zamanı yok (`docker info` başarısız, env memory'de yazılı). Yazılıp
-      koşulmamış test commit etmek "yeşil" iddiası olurdu; iş bilinçle bırakıldı.
+- [x] **`test/integration/mcp.test.js` genişletmesi — KOŞTU (2026-08-17m).** Konteyner çalışma
+      zamanı bu oturumda kuruldu (colima 0.10.3 + Docker 29.7.2); dosya 2 → **6 test**. Gerçek
+      MySQL'in çürütebileceği dört şey: **Türkçe fold'un app-owned olduğu** (aşağıdaki bulgu),
+      tek dansta proje→görev→not çapraz ulaşılabilirliği + `NOTE_LINK_EXISTS`'in ikinci satır
+      YARATMADIĞI, MCP not/proje yazımlarının `/sync/pull`'a düştüğü (eskiden yalnız görev),
+      `list_files`'ın storage anahtarını da URL'i de vermediği (AI.md §7).
+- [x] **Bulgu — "MySQL ı→i katlıyor mu?" sorusunu YANLIŞ ölçmenin kolay yolu.** Fold testini
+      yazarken önce premise'i ölçtüm ve ADR-0013 §3'ü çürütür göründü. Kök neden ölçüm
+      aracındaydı: **dizge sabitleri kolonun değil BAĞLANTININ collation'ını alır**, mysql2'nin
+      varsayılan bağlantı collation'ı ise `utf8mb4_general_ci` — o da ı=i yapıyor.
+      Ölçüm: `@@collation_connection = utf8mb4_general_ci`, `@@collation_database =
+      utf8mb4_0900_ai_ci`; `('ışık'='isik')` → **1**, ama `COLLATE utf8mb4_0900_ai_ci` ile
+      zorlanınca → **0**. Kolon üzerinden (yani uygulamanın gerçekten ürettiği sorgu biçimi)
+      `title LIKE '%isik%'` → 0 ve `MATCH(title, plain_text) AGAINST('sigir*')` → 0.
+      **ADR-0013 §3 doğru, düzeltme gerekmiyor**; yanlış olan sabit-sabit probe'uydu — bu yüzden
+      test artık premise'i KOLON üzerinden ölçüyor ve tuzağı yorumda adıyla yazıyor.
+      (İkinci tuzak: `docker compose exec mysql` CLI'ı da utf8mb4 olmayan bir bağlantı kuruyor,
+      yani oradan yapılan Türkçe ölçüm de güvenilmez.)
 - [ ] **BLOKE — MCP Inspector elle koşusu** (ADR-0022'nin uyum kanaryası): ayakta bir API +
-      tarayıcıdan OAuth onayı ister, o da DB'ye bağlı. Konteyner çalışma zamanı geri gelince
-      tek oturumda ikisi birden yapılmalı; STATE'e kanıt satırı o zaman düşer.
+      tarayıcıdan OAuth onayı ister. Altyapı artık hazır (DB ayakta), **kalan tek engel canlı
+      sunucu başlatmak** — 2026-08-17m oturumunda sahip başlatmayı istemedi. Protokol dansının
+      kendisi entegrasyonda koşuyor; Inspector'ın eklediği şey resmî istemciyle uyum kanıtı.
 
 ### OPH-264 — API anahtarları sunucu tarafı: ADR-0032 + `api_keys` + çift-modlu kimlik
 
@@ -8300,10 +8316,15 @@ tamamı regresyon kanıtı olarak koşuldu.**_
 - [x] `SECURITY.md`'ye "API keys" bölümü (beş madde: tek gösterim + digest, tek workspace/
       scope yok, üç kapalı kapı, iptalin anlığı, anahtar-başına limit) + sızan anahtarda ne
       yapılacağı. ADR-0032, ARCHITECTURE §3, CHANGELOG, `.env.example`.
-- [ ] **BLOKE — migration'ın gerçek MySQL'de koşması ve entegrasyon testleri:** bu makinede
-      konteyner çalışma zamanı yok (`docker info` başarısız). Migration konvansiyonlara birebir
-      uyuyor (`resolveCollation`, char(26), FK adlandırma) ama **çalıştırılmadı**; CI'ın
-      migrate adımı ilk gerçek kanıttır. OPH-263'ün iki bloke maddesiyle aynı oturumda kapanmalı.
+- [x] **Migration gerçek MySQL'de KOŞTU + entegrasyon testleri indi (2026-08-17m).**
+      `npm run db:migrate` → **Batch 1 run: 25 migrations**, temiz. `SHOW CREATE TABLE api_keys`
+      tasarımla birebir: `char(26)` id/user/workspace, `uq_api_keys_hash` tekil indeksi,
+      `idx_api_keys_workspace_user`, iki FK `ON DELETE CASCADE`, collation `resolveCollation`
+      yoluyla `utf8mb4_0900_ai_ci`. Entegrasyon (import-export.test.js içinde, anahtar
+      senaryosuyla aynı yerde): anahtarla uçtan uca yazma+okuma · anahtar anahtar üretemez
+      (403, ve `api_keys` sayımı 1'de kalıyor) · yabancı workspace 403 · `last_used_at` gerçekten
+      doluyor · iptal sonrası 401 `AUTH_API_KEY_REVOKED` · **tekil indeksin gerçekliği** (aynı
+      hash'i ikinci kez yazmak reddediliyor) · kullanıcı silinince anahtarların FK ile gitmesi.
 
 ### OPH-265 — API anahtarları ekranı (Entegrasyonlar) + `docs/API.md`
 
@@ -8391,10 +8412,16 @@ satırı düzeltip yalnız onu tekrar gönderebilir._
 - [x] OPH-267 indikten sonra import sürümlemede `origin='import'` görünür (V8) — **kapandı
       aynı gün:** OPH-267 inerken `import/notes` çağrısı `origin: 'import'` geçirmeye başladı
       (tek satır, söz verildiği gibi) ve testi OPH-267 süitinde çivili.
-- [ ] Testler: integration round-trip (import → pull → export eşleşir), tavan/hata yolları,
-      anahtarla uçtan uca (264'ün anahtarıyla curl senaryosu integration'da). `docs/API.md`
-      örnekleri güncellenir. **Issue #3'e kapanış yorumu** (sevk edilen uçlar + docs/API.md
-      bağlantısı + sürüm) — issue bu task'la kapanır.
+- [x] **Testler indi ve KOŞTU (2026-08-17m):** `test/integration/import-export.test.js`, 6 test.
+      Round-trip (import → `/sync/pull` görüyor → export aynı belgeyi geri veriyor; arşivli not
+      dahil, `contentFormat: 'markdown'`) · kısmi başarı (ölü proje TEK maddeyi düşürüyor, 2
+      satır gerçekten yaratılıyor, reddedilen HİÇBİR ŞEY bırakmıyor) · tavanlar (501 → 400,
+      boş → 400, `?limit=201` → 400, **500 → 200** yani tavan off-by-one değil) · imleçli
+      sayfalama 25 notu tekrarsız/eksiksiz veriyor · 264'ün anahtarıyla uçtan uca senaryo.
+      Kapı doğrulaması: `origin: 'import'` satırı kasten silindi → süit yakaladı
+      (`Set{'create'}` ≠ `Set{'import'}`) → geri alındı.
+- [ ] **AÇIK — sahibe kalan:** **Issue #3'e kapanış yorumu** (sevk edilen uçlar + docs/API.md
+      bağlantısı + sürüm) ve issue'nun kapatılması. Dış iletişim; ajan kendiliğinden yazmaz.
 
 ### OPH-267 — Sürümlemenin omurgası: ADR-0031, `note_versions`, yakalama + saklama
 
@@ -8531,9 +8558,24 @@ artık NOTUN kendi revizyonu ("editörün gördüğü şey")._
       gövde silinip giderdi. Silme artık `localUpdatedAt` eşleşmesine bağlı (compare-and-
       delete): satır push'tan sonra değiştiyse silinmiyor, bir sonraki turda birleşmiş
       gövdeyle gidiyor. _Tam da bu task'ın bitirdiği arıza sınıfı._
-- [ ] **BLOKE — integration: Senaryo A'nın birebir reprodüksiyonu** (iki istemci çevrimiçi, soket-pull araya girer, İKİ metin de
-      yaşar — bugün kaybolan test artık sözleşme) + offline reconnect senaryosu; app: engine
-      settle/base-ilerletme/dedupe + editör temiz/kirli davranış testleri.
+- [x] **Senaryo A'nın birebir reprodüksiyonu İNDİ ve KOŞUYOR (2026-08-17m)** —
+      `test/integration/note-merge.test.js`, 6 test. Reprodüksiyonun çekirdeği: her push
+      **TAZE bir üst-seviye `baseRevision`** (soket pull'un ilerlettiği workspace imleci) ve
+      **BAYAT bir mutation `baseRevision`** (editörün gördüğü not revizyonu) taşıyor — eski kod
+      tam da bu ayrımı kaçırıyordu. Kapsam: Senaryo A (iki metin de yaşıyor, `status:'merged'`,
+      sürüm zinciri `create→edit→merge`) · kelime düzeyi (tek paragrafın iki ucu) · gerçek
+      örtüşme reddi + reddedilen gövdenin `origin='conflict'` olarak saklanması · offline
+      reconnect · `BASE_MISSING`. **Kapı doğrulaması: özgün hata geri enjekte edildi**
+      (`baseRevision: ctx.baseRevision`) → 6 testin 6'sı `applied` diyerek düştü, yani sessiz
+      ezme aynen geri geldi → geri alındı (`git diff` boş).
+- [x] **Bulgu — append-vs-append gerçekten çakışmadır, kusur değil.** İlk yazdığım offline
+      testi iki cihazın AYNI listenin sonuna farklı madde eklemesiydi ve `OVERLAP` aldı.
+      Ölçtüm (`mergeMarkdown` doğrudan): aynı ekleme noktasına iki farklı içerik, diff3'ün
+      sırayı bilemeyeceği bir durum — doğru cevap reddetmek. Test senaryosu düzeltildi
+      (offline cihaz başlığı değiştiriyor, diğerleri listeye ekliyor) ve append-vs-append
+      **ayrı bir test olarak, belgelenmiş sınır** biçiminde bırakıldı.
+- [ ] **AÇIK — app tarafı testleri:** engine settle/base-ilerletme/dedupe + editör temiz/kirli
+      davranışı. Sunucu sözleşmesi artık entegrasyonda çivili; bu kalem Flutter süitine ait.
 
 ### OPH-269 — Sürüm geçmişi & çakışma yüzeyi (DESIGN §35)
 
@@ -8575,7 +8617,9 @@ modunu kullanıyor (V4). Bir belgeyi iki yerde çizmek, ikisinin ayrı ayrı yan
       onun neyi zaten yaptığını bilmeyi gerektiriyor._
 - [ ] **AÇIK — elle cihaz provası:** iki cihaz/simülatör, uçak modu senaryosu (temiz merge,
       örtüşen çakışma banner'ı, restore). Kod tarafı testlerle kapalı; fiziksel iki-cihaz
-      turu sahibe kalıyor — Senaryo A'nın entegrasyon reprodüksiyonuyla aynı oturumda.
+      turu sahibe kalıyor. **Not (2026-08-17m):** beklediği Senaryo A entegrasyon
+      reprodüksiyonu artık indi ve yeşil (`note-merge.test.js`), yani sunucu davranışı
+      kanıtlanmış durumda — bu kalemde geriye YALNIZ fiziksel gözlem kaldı.
 
 ## Backlog / v2 parking lot
 

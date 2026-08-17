@@ -34,6 +34,15 @@ DUCET 9.0.0 tables, FTS5 fold source) before this decision:
    (`0131 → 1D36` vs `0069 → 1D32`). The Turkish tailoring
    `utf8mb4_tr_0900_ai_ci` is WORSE for folding (ç≠c, ü≠u — they are distinct
    Turkish alphabet letters). (https://www.unicode.org/Public/UCA/9.0.0/allkeys.txt)
+
+   **How to re-measure this without fooling yourself** (learned 2026-08-17, OPH-263):
+   a probe written as two string LITERALS answers the wrong question. Literals take
+   the *connection* collation, and mysql2 (and the `docker compose exec mysql` CLI)
+   default it to `utf8mb4_general_ci` — which DOES fold ı→i. So `('ışık'='isik')`
+   returns 1 and appears to refute this section. Measure against a COLUMN, or force
+   the collation: with `COLLATE utf8mb4_0900_ai_ci` the same comparison returns 0,
+   as do `column LIKE '%isik%'` and `MATCH(...) AGAINST('isik*')` — the shapes the
+   app actually issues. `apps/api/test/integration/mcp.test.js` pins this.
 4. **Measured scan costs** (100k rows × ~124-char folded text, desktop; phones
    ≈3–6× slower): infix `LIKE '%q%'` full scan ≈ 12–21 ms (→ ~50–120 ms on a
    phone; ~5–15 ms at 10k rows). FTS5 MATCH is 0.05–3 ms but only matches token

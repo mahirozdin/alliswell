@@ -3,7 +3,53 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17l (**OPH-269 BİTTİ → **EPIC 25 KAPANDI** (OPH-257…273, 17 iş).
+**Last updated:** 2026-08-17m (**EPIC 25'İN DOCKER BORCU ÖDENDİ — beş doğrulama kaleminin
+DÖRDÜ kanıtlı kapandı.** Bu makinede konteyner çalışma zamanı yeniden kuruldu (colima 0.10.3
++ Docker 29.7.2 + Compose 5.4.0; VM 4 CPU / 6 GB / 30 GB, vz). MySQL 8.4 **3307**, Redis 6379,
+MinIO **9010** — üçü de healthy. `npm run db:migrate` → **Batch 1 run: 25 migrations**, yani
+`api_keys` ve `note_versions` ilk kez GERÇEK MySQL'de doğdu ve şemaları tasarımla birebir.
+API entegrasyon süiti **24 dosya / 58 test → 26 dosya / 74 test**, hepsi yeşil; unit **709**
+değişmedi; lint/format/check:no-ts temiz. **Deploy alınmadı — sahibin talimatı.**
+Sıradaki iş: kalan iki elle kalem (MCP Inspector koşusu + iki-cihaz provası), sonra sürüm
+kesimi (v1.7.0) — ikisi de sahibin kararına bağlı.**
+
+**Turun tek cümlesi: "BLOKE" yazan beş satırın ortak kökü tek bir eksik araçtı** — beş ayrı
+iş değil, bir kurulum. Kurulunca dördü aynı oturumda kapandı.
+
+**Kapanan dört kalem, kanıtıyla:** (1) **OPH-264** migration gerçek MySQL'de koştu —
+`uq_api_keys_hash`, iki `ON DELETE CASCADE` FK, `resolveCollation` → `utf8mb4_0900_ai_ci`;
+(2) **OPH-266** `import-export.test.js` (6 test): round-trip, kısmi başarı, tavanlar
+(500→200 / 501→400, yani off-by-one değil), imleçli sayfalama, anahtarla uçtan uca;
+(3) **OPH-268** `note-merge.test.js` (6 test) — Senaryo A birebir; (4) **OPH-263**
+`mcp.test.js` 2 → 6 test.
+
+**Senaryo A'nın çekirdeği, testte de kod kadar keskin:** her push TAZE bir üst-seviye
+`baseRevision` (soket pull'un ilerlettiği workspace imleci) ve BAYAT bir mutation
+`baseRevision` (editörün gördüğü not revizyonu) taşıyor. **Özgün hata geri enjekte edildi**
+(`baseRevision: ctx.baseRevision`) → 6 testin 6'sı `applied` diyerek düştü, sessiz ezme
+aynen geri geldi → geri alındı, `git diff` boş. Aynı disiplin OPH-266'da da uygulandı:
+`origin: 'import'` silindi → süit yakaladı → geri alındı.
+
+**Bulgu #1 — append-vs-append gerçekten çakışmadır.** İlk yazdığım offline testi iki cihazın
+aynı listenin sonuna farklı madde eklemesiydi; `OVERLAP` aldı ve bir an kusur sandım. Ölçtüm:
+aynı ekleme noktasına iki farklı içerik, diff3'ün sırayı bilemeyeceği durum — **doğru cevap
+reddetmek.** Senaryo düzeltildi, append-vs-append ayrı bir test olarak belgelenmiş sınır
+biçiminde bırakıldı. _Testin kırmızı yanması her zaman kodun yanlış olduğu anlamına gelmiyor._
+
+**Bulgu #2 — ölçüm aracının kendisi yalan söyleyebilir.** Fold testinin premise'ini ölçerken
+ADR-0013 §3'ü ("MySQL ı=i yapmaz") çürütür göründüm. Kök neden: **dizge sabitleri kolonun
+değil BAĞLANTININ collation'ını alır**; mysql2'nin varsayılanı `utf8mb4_general_ci` ve o ı=i
+yapıyor. `@@collation_database` ise `utf8mb4_0900_ai_ci`. `('ışık'='isik')` → 1, ama
+`COLLATE utf8mb4_0900_ai_ci` ile → 0; kolon üzerinden `LIKE '%isik%'` → 0 ve
+`MATCH(...) AGAINST('sigir*')` → 0. **ADR-0013 doğru; yanlış olan probe'du.** Test artık
+premise'i KOLON üzerinden ölçüyor, ADR-0013'e "kendini kandırmadan nasıl ölçersin" notu
+düştü. (Aynı tuzak `docker compose exec mysql` CLI'ında da var.)
+
+**Açık kalan iki elle kalem:** MCP Inspector koşusu (altyapı hazır; tek engel canlı sunucu
+başlatmak — bu oturumda sahip istemedi) ve OPH-269'un iki-cihaz provası (fiziksel gözlem).
+Ayrıca issue #3'ün kapanış yorumu sahibe ait (dış iletişim).
+
+Önceki blok: 2026-08-17l (**OPH-269 BİTTİ → **EPIC 25 KAPANDI** (OPH-257…273, 17 iş).
 App süiti **1222** (+9), API **709**, analyze/format/i18n temiz, contrast FAILURES: 0.
 **Deploy alınmadı — sahibin talimatı.** Sıradaki iş: epic kapanış turu — sürüm kesimi (v1.7.0)
 sahibin kararı; ondan önce Docker'a bağlı beş doğrulama kalemi duruyor.**

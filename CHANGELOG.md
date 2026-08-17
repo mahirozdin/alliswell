@@ -5,6 +5,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Tests
+
+- **Epic 25's five infrastructure-blocked verifications: four are now run, not
+  asserted.** A container runtime was restored on the development machine, so
+  the note-versioning migration executed against real MySQL 8.4 for the first
+  time and the API integration suite grew from 58 to 74 tests (OPH-263, OPH-264,
+  OPH-266, OPH-268). New coverage: the note conflict Scenario A reproduced
+  verbatim — two clients online, a socket pull moving the cursor past the other
+  write, and both texts surviving — plus the word-level merge, the honest
+  refusal on a genuine overlap, offline reconnect, bulk import/export
+  round-trip, and an API key driving a whole script end to end. Each gate was
+  checked by reintroducing the original defect and watching the suite fail.
+- **ADR-0013 now says how to re-measure its own claim without being misled.** A
+  Turkish-folding probe written with string literals reads the *connection*
+  collation (`utf8mb4_general_ci`, which folds ı→i) rather than the column's
+  (`utf8mb4_0900_ai_ci`, which does not), and so appears to refute the decision
+  the whole fold mechanism rests on.
+
 ### Fixed
 
 - **Notes written in markdown can be found again.** Search only ever indexed
