@@ -11,7 +11,7 @@ export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
-export const VERSION = '1.4.0';
+export const VERSION = '1.6.0';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
@@ -164,8 +164,8 @@ export const features = [
       'Handles the letters database engines get wrong, so results do not depend on your server’s collation',
       'Offline, because the index is local',
     ],
-    shot: 'web/projects.jpg',
-    alt: 'AllisWell Projects with colour-coded projects and favourites',
+    shot: 'web/search.jpg',
+    alt: 'Searching AllisWell notes for “muller” and finding “Kickoff at Café Müller”',
   },
   {
     id: 'widget',

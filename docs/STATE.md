@@ -3,7 +3,44 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-17o (**PAZARLAMA DOKÜMANLARININ ÇELİŞKİLERİ — bir kez düzeltilmiş,
+**Last updated:** 2026-08-17p (**EKRAN GÖRÜNTÜSÜ HATTI KURULDU — `search` bloğunun yalanı
+bitti.** Sahip çekimi ajana açtı; API + `seed-demo.mjs` + `flutter build web --release` +
+:8080 hattı ayağa kalktı, **16 web görüntüsü yenilendi** (`search.png` yeni). Landing artık
+iddiasını gösteriyor: "muller" yazılı, **"Kickoff at Café Müller"** bulunmuş. `check:docs`
+genişletildi ve iki gerçek kayma yakaladı. **Deploy alınmadı — sahibin talimatı.**
+Sıradaki iş: kalan çekimler (markdown okuma görünümü, görev eki/görsel görüntüleyici) +
+MCP Inspector koşusu — ikisi de artık teknik olarak açık.
+
+**Turun tek cümlesi: mismatch'in kökü görüntü değil VERİYDİ.** Landing "Type 'muller' and
+find Müller" diyor ama demo workspace'inde TEK bir aksanlı satır yoktu — yani bu iddia
+gösterilemezdi, ancak başka bir ekranın görüntüsüyle "temsil" edilebilirdi. Seed'e
+`Café Müller` notu eklendi (Müller · café · Straße · résumé · Zürich); fold önce ölçüldü.
+
+**`check:docs` dünkü hâliyle en görünür kaymayı kaçırıyordu.** Landing hero'su **V1.4.0**
+gösteriyordu ve `@alliswell/landing` paketi iki sürüm boyunca 1.4.0'da kalmıştı — çünkü kapı
+yalnız `README + docs/*.md` tarıyor ve manifest listesi ELLE yazılmıştı. Genişletildi:
+manifestler `workspaces` alanından okunuyor, `content.js`'in `export const VERSION` satırı
+taranıyor. İkisi de düzeltildi, ikisi de enjeksiyonla doğrulandı.
+
+**`web.mjs`'in ilk ve tek koordinatı.** Her yüzey route ya da seeded pref ile açılıyor;
+aramanın ikisi de yok (`AwSearchAction._open` yerel state). Tıklama şart oldu — koordinat ve
+kırılganlığı `SEARCH_ACTION`'da yazılı, ve alan dolmadıysa çekim **hata veriyor**, sessiz
+düşmüyor. Kendi hatam: `flt-text-editing` TAG değil CLASS; tag olarak sorgulayınca sağlıklı
+sayfada null dönüyor ve "tık ıskaladı" gibi okunuyor.
+
+**DÜRÜST SINIR — landing bölümünü tarayıcıda GÖRSEL olarak doğrulayamadım.** Browser pane'de
+`window.innerHeight` **0** dönüyor, bu yüzden `loading="lazy"` arkasındaki IntersectionObserver
+hiç tetiklenmiyor ve fold altındaki **16 görüntünün hepsi** (benimkinden önce var olanlar dahil)
+boş kalıyor; sonra kaydırma da yanıt vermez oldu. Bunun yerine ölçülenler: dosya `dist`te var,
+HTTP 200, sayfada 1600 px doğal genişlikle **yükleniyor** (lazy bypass edilince 16/16), bölüm
+düzeninde 649×405 çiziliyor, alt metni doğru, ve **CI'ın kendi kapısı** (`/shots/...`
+referanslarının `dist`te çözülmesi) yeşil. Hero'nun V1.6.0'ı ekran görüntüsüyle doğrulandı.
+
+**İki küçük açık bulgu:** `AwSearchField` ölü kod (tanımlı, hiçbir yerden çağrılmıyor — arama
+`AwSearchAction`'a taşınmış) · `apps/landing`in `lint` script'i çalışmıyor (eslint 9 config'i
+yok) ve CI onu koşmadığı için sessiz.
+
+Önceki blok: 2026-08-17o (**PAZARLAMA DOKÜMANLARININ ÇELİŞKİLERİ — bir kez düzeltilmiş,
 kaymıştı; bu kez KAPIYA BAĞLANDI.** `npm run check:docs` (`scripts/docs/check.mjs`) yazıldı ve
 CI'a eklendi. Düzeltilen üç canlı yanlış: `COMPARISON.md`'nin **macOS widget** iddiası (öyle bir
 target yok), §5'in "We are at 1.4.0"u (gerçek 1.6.0), README'nin bayat test sayıları.

@@ -73,6 +73,11 @@ const SHOTS = [
   { name: 'settings', route: '/settings', ...DESKTOP },
   { name: 'reminders', route: '/settings/reminders', ...DESKTOP },
   { name: 'ai-settings', route: '/settings/ai', ...DESKTOP },
+  // The one shot that cannot be reached by route or preference. Search lives in
+  // an app-bar action whose open/closed state is local widget state, so it has
+  // to be clicked and typed into for real — see `openSearch`, and the warning
+  // there about what makes this the only coordinate in this file.
+  { name: 'search', route: '/notes', ...DESKTOP, interact: (page) => openSearch(page, 'muller') },
   { name: 'phone-home-light', route: '/home', ...PHONE },
   { name: 'phone-home-dark', route: '/home', dark: true, ...PHONE },
   { name: 'phone-projects', route: '/projects', ...PHONE },
@@ -261,6 +266,7 @@ async function main() {
 
       await waitForApp(page);
       await sleep(1200); // let the aurora and the list settle
+      if (shot.interact) await shot.interact(page);
 
       const { data } = await page.send('Page.captureScreenshot', {
         format: 'png',
@@ -278,6 +284,63 @@ async function main() {
     }
     chrome.kill();
     await rm(profile, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+/**
+ * Opens the Notes app-bar search and types `query` into it.
+ *
+ * **This is the only place in this file that clicks a coordinate, and it is a
+ * deliberate exception.** Everywhere else a surface is reached by route or by a
+ * seeded preference, because coordinates rot the moment a layout moves. Search
+ * has neither: `AwSearchAction` keeps `_open` in local widget state, so no
+ * route and no `localStorage` key can put it on screen — only a click can.
+ *
+ * If this shot ever comes back showing the plain Notes list, an app-bar action
+ * was added or removed and X below is off by one icon (~66 px per action,
+ * counted from the right edge). It fails loudly rather than silently: the
+ * result-count assertion at the end refuses to screenshot a list that did not
+ * filter.
+ *
+ * Typing goes through `Input.insertText` into the hidden `flt-text-editing`
+ * textarea Flutter keeps for IME and the clipboard — dispatching key events
+ * one character at a time races the 250 ms debounce.
+ */
+const SEARCH_ACTION = { x: 1271, y: 28 }; // CSS px at 1440×900, Notes app bar
+
+async function openSearch(page, query) {
+  for (const type of ['mousePressed', 'mouseReleased']) {
+    await page.send('Input.dispatchMouseEvent', {
+      type,
+      x: SEARCH_ACTION.x,
+      y: SEARCH_ACTION.y,
+      button: 'left',
+      clickCount: 1,
+    });
+  }
+  await sleep(600); // the field expands and takes focus
+
+  await page.send('Input.insertText', { text: query });
+
+  // Park the pointer over dead space: left where it clicked, the neighbouring
+  // action keeps its hover tooltip open and the shot ships with a stray
+  // "Cancel" bubble floating over the results.
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 700, y: 700 });
+  await sleep(1400); // 250 ms debounce + the query + the list rebuild
+
+  // Prove the shot shows what it claims: the list must have narrowed. Flutter
+  // paints to a canvas, so the DOM cannot be asked — the semantics tree can.
+  // `.flt-text-editing` is a CLASS on an <input>, not a tag — querying it as a
+  // tag returns null on a perfectly healthy page and reads as "the click
+  // missed", which cost a debug round here.
+  const typed = await page
+    .evaluate(`document.querySelector('.flt-text-editing')?.value ?? ''`)
+    .catch(() => '');
+  if (!String(typed).includes(query)) {
+    throw new Error(
+      `search shot: "${query}" never reached the field (got ${JSON.stringify(typed)}) — ` +
+        'the app-bar action probably moved; see SEARCH_ACTION',
+    );
   }
 }
 

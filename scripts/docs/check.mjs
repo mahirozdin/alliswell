@@ -46,10 +46,14 @@ const CLAIMS = [
   /\bProject status\s*[—-]\s*`v(\d+\.\d+\.\d+)`/g,
   /\bcurrently (?:at|on)\s+v?(\d+\.\d+\.\d+)/g,
   /\bThe current (?:release|version) is\s+v?(\d+\.\d+\.\d+)/g,
+  // The landing page's own banner. Not markdown, and the most VISIBLE version
+  // claim we ship — it sat at 1.4.0 through two releases, in the hero, while
+  // the first draft of this guard was busy reading only `docs/*.md`.
+  /^export const VERSION = '(\d+\.\d+\.\d+)'/gm,
 ];
 
-function markdownFiles() {
-  const out = [join(ROOT, 'README.md')];
+function claimFiles() {
+  const out = [join(ROOT, 'README.md'), join(ROOT, 'apps/landing/src/content.js')];
   const docs = join(ROOT, 'docs');
   for (const entry of readdirSync(docs)) {
     if (entry.endsWith('.md') && !SKIP_FILES.has(entry)) out.push(join(docs, entry));
@@ -57,12 +61,18 @@ function markdownFiles() {
   return out;
 }
 
-/** package.json, the API workspace and pubspec must agree with each other. */
+/** Every workspace manifest and pubspec must agree with the root version. */
 function manifestProblems() {
   const problems = [];
-  const api = JSON.parse(read(join(ROOT, 'apps/api/package.json'))).version;
-  if (api !== VERSION) {
-    problems.push(`apps/api/package.json: version ${api} != root ${VERSION}`);
+  // Read the list from `workspaces` rather than naming packages here: hardcoding
+  // two of them is how `@alliswell/landing` sat at 1.4.0 through two releases.
+  const root = JSON.parse(read(join(ROOT, 'package.json')));
+  for (const workspace of root.workspaces ?? []) {
+    const manifest = join(ROOT, workspace, 'package.json');
+    const { version } = JSON.parse(read(manifest));
+    if (version !== VERSION) {
+      problems.push(`${workspace}/package.json: version ${version} != root ${VERSION}`);
+    }
   }
   // pubspec carries a build number too: `1.6.0+26`.
   const pubspec = read(join(ROOT, 'apps/app/pubspec.yaml'));
@@ -76,7 +86,7 @@ function manifestProblems() {
 
 function docProblems() {
   const problems = [];
-  for (const file of markdownFiles()) {
+  for (const file of claimFiles()) {
     const lines = read(file).split('\n');
     lines.forEach((line, i) => {
       if (line.includes('docs-check-ignore')) return;

@@ -7509,7 +7509,38 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
       gate değil, çürümeyen ifade oldu.
       Kapı doğrulaması: iki kasıtlı ihlal (doküman "1.4.0", pubspec "1.5.0") → ikisi de
       dosya:satır ile yakalandı, çıkış kodu 1 → geri alındı.
-- [ ] **Ekran görüntüleri**: mevcut set (`screenshots/`, `docs/store/`, `store/`) bu beş
+- [x] **Web seti ÇEKİLDİ ve `search` bloğunun yalanı bitti (2026-08-17p).** Konteynerler +
+      API + `seed-demo.mjs` + `flutter build web --release` + :8080 hattı kuruldu; 16 web
+      görüntüsü yenilendi (**`search.png` yeni**). `search` bloğu artık Projects görüntüsü
+      değil, iddiasının kendisini gösteriyor: "muller" yazılmış, **"Kickoff at Café Müller"**
+      bulunmuş. CI'ın kendi kapısı yeşil — `apps/landing/src`teki 7 `/shots/...` referansının
+      hepsi `dist`te çözülüyor.
+- [x] **Bulgu — demo verisinde TEK bir aksanlı satır yoktu.** Landing "Type 'muller' and find
+      Müller" diyor ama seed'de ne `ü` ne `é` vardı; yani bu iddia **gösterilemezdi**, ancak
+      başka bir ekranın görüntüsüyle "temsil" edilebilirdi — mismatch'in kökü buydu.
+      `seed-demo.mjs`'e "Kickoff at Café Müller" notu eklendi (Müller · café · Straße ·
+      résumé · Zürich). Fold önce ölçüldü: `Müller→muller`, `café→cafe`, `Straße→strasse`.
+- [x] **Bulgu — `web.mjs`'in ilk ve tek koordinatı.** Diğer her yüzey route ya da seeded
+      pref ile açılıyor; aramanın ikisi de yok (`AwSearchAction._open` yerel widget state).
+      Tek çare tıklamak. Koordinat ve kırılganlığı `SEARCH_ACTION`'da yazılı, ve shot sessiz
+      düşmüyor: alan gerçekten dolmadıysa çekim **hata veriyor**. (Yazarken kendi hatam:
+      `flt-text-editing` bir TAG değil CLASS — tag olarak sorgulayınca sağlıklı sayfada null
+      dönüyor ve "tık ıskaladı" gibi okunuyor; bir tur debug'a mal oldu, yorumda yazılı.)
+- [x] **Bulgu — sürüm kaymasının EN GÖRÜNÜR yeri kapının dışındaydı.** Landing hero'su
+      **"V1.4.0"** gösteriyordu (ürün 1.6.0) ve `@alliswell/landing` paketi de iki sürüm
+      boyunca 1.4.0'da kalmıştı. Dünkü `check:docs` bunları kaçırıyordu çünkü yalnız
+      `README + docs/*.md` tarıyor ve manifest listesi elle yazılmıştı. İkisi de düzeltildi
+      **ve kapı genişletildi**: manifestler artık `workspaces` alanından okunuyor (elle liste
+      tam da bu kaymanın sebebiydi) ve `content.js`'in `export const VERSION` satırı taranıyor.
+      Kapı doğrulaması: landing sürümü 1.4.0'a çevrildi → dosya:satır ile yakalandı → geri alındı.
+- [ ] **Bulgu (AÇIK, küçük) — `AwSearchField` ölü kod.** Tanımlı ama hiçbir yerden
+      çağrılmıyor; arama round 13'te `AwSearchAction`'a (app bar) taşınmış. DESIGN §22'nin
+      ulaşılabilirlik kuralının tersi: burada kullanıcı değil, KOD ulaşılamaz durumda.
+      Silinmeli ya da kullanılmalı — bu turun kapsamı dışında bırakıldı.
+- [ ] **Bulgu (AÇIK, küçük) — `apps/landing`in `lint` script'i çalışmıyor** (eslint 9 için
+      `eslint.config.*` yok, "couldn't find" ile düşüyor). CI onu koşmadığı için sessiz;
+      yani depo "lint'i var" sanıyor. Ya config eklenmeli ya script kaldırılmalı.
+- [ ] **Kalan ekran görüntüleri**: mevcut set (`screenshots/`, `docs/store/`, `store/`) bu beş
       başlığa göre denetlenir; **eksik olanlar** çekilir, **bayat olanlar** yenilenir.
       Çekim `scripts/screenshots/web.mjs` (`--only` bayrağı var; önkoşullar dosyanın
       başında: API + `seed-demo.mjs` + `flutter build web --release` + :8080). Yeni

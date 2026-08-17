@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **The landing page's Search section now shows search.** It illustrated the
+  accent-insensitive claim with a screenshot of the Projects screen — its own
+  alt text said so. It now shows the query "muller" finding "Kickoff at Café
+  Müller", and the demo workspace gained the accented note that makes that
+  demonstrable at all (there was previously not one accented row to find).
+- **The landing page advertised v1.4.0** in its hero badge while the product
+  was at 1.6.0, and the `@alliswell/landing` package had sat at 1.4.0 through
+  two releases. `npm run check:docs` now reads the workspace list from
+  `package.json` instead of naming packages by hand, and covers the landing
+  page's own version constant — the most visible version claim we ship, and the
+  one the first version of that guard could not see.
+
+### Fixed
+
 - **The conflict banner's four buttons are readable in dark mode.** "Show
   diff", "Use mine", "Use the other one" and "Keep both" were drawn in the
   app's global link blue on the banner's teal background — 2.79:1, below the

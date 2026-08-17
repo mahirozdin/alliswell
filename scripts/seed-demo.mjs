@@ -517,6 +517,20 @@ const NOTES = [
     ],
   },
   {
+    // The demo workspace has to contain the thing the landing page claims:
+    // search that folds diacritics ("muller" finds Müller, "cafe" finds café).
+    // Without a single accented row, that claim could only be illustrated with
+    // a screenshot of something else — which is exactly the mismatch this
+    // seeded note was added to end.
+    title: 'Kickoff at Café Müller',
+    project: 'acme',
+    body: [
+      'Met Ana Müller at the café on Rosenthaler Straße to walk through the retainer scope.',
+      '',
+      'She wants the reporting view first; the import can wait. Next: send the résumé of the timeline and the Zürich travel dates.',
+    ],
+  },
+  {
     title: 'Renovation measurements',
     project: 'home',
     body: ['Kitchen 3.20 × 4.10 m · hallway 1.10 m wide · counter run 2.60 m.', '', 'Ceiling height 2.74 m — the wall units fit with 6 cm to spare.'],
