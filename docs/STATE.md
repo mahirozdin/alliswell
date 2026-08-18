@@ -43,6 +43,18 @@ fold'u değişirse slug'lar bedavaya yenilenir). Ve `TextEditingController.build
 `text`'i KARAKTER KARAKTER döndürmek zorunda — canlı sözdiziminin "işaretleri gizle" seçeneği
 teknik olarak yok, "sessizleştir" var; bu kısıt D24'ün metnine yazıldı.
 
+**DEPLOY DOĞRULANDI, VE DOĞRULAMA BİR ŞEY BULDU.** `v1.7.0` release'i 18m13s'te tam yeşil
+(beş test gate işi + publish + iki çok-mimarili imaj + deploy). Canlı ölçüm: API
+`/health/ready` `status:ok` (mysql+redis up), site/`/app`/derin rota 200, JS bundle
+`sn="1.7.0"` ve hero `v1.7.0` çiziyor — **deploy indi.** Ama landing'in **JSON-LD
+`softwareVersion`'ı 1.6.0 sevk etti**: `index.html`'e elle yazılı, ve `check:docs` geçen tur
+tam da bu sınıf için genişletilmişken bir kat altını görmüyordu (çünkü `content.js`'i tarıyor,
+HTML kabuğunu değil). **Kalıcı ders: bir kapıyı genişletmek, yanındaki aynı iddiayı
+kapsadığı anlamına gelmiyor** — banner doğruydu, altındaki structured data yanlıştı, ve
+arama motorlarının okuduğu ikincisi. Değer düzeltildi + kapı kabuğa genişletildi +
+enjeksiyonla doğrulandı (sahte 1.5.0 yakalandı). **Canlıya bir sonraki deploy'da iner**
+(deploy etikete bağlı, `main` push'una değil) — o ana kadar canlı JSON-LD 1.6.0 diyor.
+
 Önceki blok: 2026-08-17p (**EKRAN GÖRÜNTÜSÜ HATTI KURULDU — `search` bloğunun yalanı
 bitti.** Sahip çekimi ajana açtı; API + `seed-demo.mjs` + `flutter build web --release` +
 :8080 hattı ayağa kalktı, **16 web görüntüsü yenilendi** (`search.png` yeni). Landing artık

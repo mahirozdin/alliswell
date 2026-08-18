@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **The landing page's JSON-LD announced 1.6.0 inside the v1.7.0 deploy.**
+  `index.html`'s `softwareVersion` is hand-written, and `check:docs` — extended
+  last round to catch the hero banner — scans `content.js`, not the HTML shell.
+  The banner was correct; the structured data one layer below it was not, and
+  that is the version claim search engines read. Value fixed and the guard
+  widened to the shell, verified by injecting a wrong version and watching it
+  fail. **Lands on the next deploy** (deploy runs on a tag, not on a `main`
+  push), so the live JSON-LD reads 1.6.0 until then.
+
 ## [1.7.0] — 2026-08-18
 
 ### Changed
