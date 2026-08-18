@@ -29,7 +29,12 @@ import '../seams.dart';
 const double kNoteSplitBreakpoint = 900;
 
 class SourceMode extends StatefulWidget {
-  const SourceMode({super.key, required this.controller, this.onChanged});
+  const SourceMode({
+    super.key,
+    required this.controller,
+    this.onChanged,
+    this.onPasteImage,
+  });
 
   /// The controller, not a host's document object. `SourceMode` only ever
   /// reached through `document.source`, so taking the document meant the
@@ -37,6 +42,10 @@ class SourceMode extends StatefulWidget {
   /// made this widget unpublishable.
   final MdSourceController controller;
   final VoidCallback? onChanged;
+
+  /// Uploads a pasted image and returns the markdown to insert. Absent = a
+  /// pasted image falls back to whatever text came with it.
+  final MarkdownImagePasteHandler? onPasteImage;
 
   @override
   State<SourceMode> createState() => _SourceModeState();
@@ -89,20 +98,42 @@ class _SourceModeState extends State<SourceMode> {
 
   /// Paste, made smart and still reversible (D20).
   ///
-  /// HTML becomes markdown; a URL dropped on a selection becomes a link. The
-  /// whole new text is assigned ONCE, so a single undo restores the raw paste —
-  /// "smart" paste without one-step undo is hostile.
+  /// HTML becomes markdown; an IMAGE becomes an embed; a URL dropped on a
+  /// selection becomes a link. The whole new text is assigned ONCE, so a
+  /// single undo restores the raw paste — "smart" paste without one-step undo
+  /// is hostile.
+  ///
+  /// Both interesting flavours arrive through the host (`MarkdownForge`'s
+  /// clipboard seam). This used to call `Clipboard.getData('text/html')`
+  /// directly, which returns null on EVERY platform — Flutter's clipboard
+  /// channel implements `text/plain` and nothing else — so the HTML branch had
+  /// never run once and `htmlToMarkdown` was reachable only from its own unit
+  /// test. One seam revives both.
   Future<void> _smartPaste() async {
     final controller = widget.controller;
     final selection = controller.selection;
     if (!selection.isValid) return;
 
-    final html = await Clipboard.getData('text/html');
-    final plain = await Clipboard.getData(Clipboard.kTextPlain);
-    final pasted = html?.text != null && html!.text!.isNotEmpty
-        ? htmlToMarkdown(html.text!)
-        : (plain?.text ?? '');
-    if (pasted.isEmpty || !mounted) return;
+    final clipboard = await context.mdClipboardReader();
+    final onImage = widget.onPasteImage;
+    if (clipboard.isEmpty || !mounted) return;
+
+    var pasted = '';
+    final bytes = clipboard.imageBytes;
+    if (bytes != null && bytes.isNotEmpty && onImage != null) {
+      // The upload is the host's, and it can fail or be declined; when it
+      // does, fall through to the text that came with the image rather than
+      // pasting nothing and leaving the user wondering.
+      pasted = await onImage(bytes, clipboard.imageName) ?? '';
+      if (!mounted) return;
+    }
+    if (pasted.isEmpty) {
+      final html = clipboard.html;
+      pasted = html != null && html.isNotEmpty
+          ? htmlToMarkdown(html)
+          : (clipboard.text ?? '');
+    }
+    if (pasted.isEmpty) return;
 
     final edit = pasteOverSelection(
       controller.text,

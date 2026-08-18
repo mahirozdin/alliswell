@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -595,6 +596,32 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     }
   }
 
+  /// A pasted image (D20's other half, OPH-274).
+  ///
+  /// Same road as the toolbar's insert button and a dropped file: upload to
+  /// THIS note, then write the `alliswell://file/{id}` reference. Returning
+  /// the markdown rather than inserting it is what keeps the paste a single
+  /// undo — `SourceMode` assigns the whole new text once, and an insert of our
+  /// own here would make it two.
+  Future<String?> _pasteImage(Uint8List bytes, String? name) async {
+    final target = await _ensureNote();
+    if (target == null) return null;
+    final fileName = name ?? 'pano.png';
+    final fileId = await ref
+        .read(uploadsProvider.notifier)
+        .start(
+          workspaceId: target.workspaceId,
+          targetType: 'note',
+          targetId: target.noteId,
+          source: PickedUpload.fromBytes(name: fileName, bytes: bytes),
+        );
+    // A failed upload is already visible in the upload strip (F2); returning
+    // null lets the paste fall back to the clipboard's text instead of
+    // writing a reference to a file that does not exist.
+    if (fileId == null) return null;
+    return '![$fileName](alliswell://file/$fileId)';
+  }
+
   /// A tap on a link in the rendered document.
   ///
   /// Wired in OPH-274, and not a nicety: markdown became the only way a file
@@ -629,6 +656,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     NoteMode.source => SourceMode(
       controller: _doc.source,
       onChanged: _markDirty,
+      onPasteImage: _pasteImage,
     ),
   };
 }

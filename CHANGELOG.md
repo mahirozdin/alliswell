@@ -5,6 +5,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **Pasting an image into a note works, and pasting HTML finally does too.**
+  The HTML half had shipped and never executed once:
+  `Clipboard.getData('text/html')` returns null on every platform, because
+  Flutter's clipboard channel implements `text/plain` and nothing else — so
+  the branch looked like a feature and `htmlToMarkdown` was reachable only
+  from its own unit test. Both flavours now come through our own plugin (the
+  one ADR-0030 already built for external documents), and a pasted image
+  uploads to the note and lands as an embed. A failed upload falls back to the
+  clipboard's text rather than pasting nothing, and the whole result is one
+  controller assignment — one paste stays one undo (DESIGN §29 D20).
+
+### Changed
+
+- **The landing site is actually linted.** Its `lint` script had been broken
+  since the workspace was created (no eslint flat config) and CI never called
+  it, so nothing said so. Config added, first run reported 0 errors and 8
+  auto-fixable warnings, and CI runs it now. *A script CI does not run is a
+  claim, not a check.*
+
+### Removed
+
+- **`AwSearchField`** — 66 lines with no caller anywhere in `lib/` or `test/`
+  since round 13 moved search into the app bar. §22's mirror: not an
+  affordance the user cannot reach, but code the READER cannot.
+
 ### Fixed
 
 - **The landing page's JSON-LD announced 1.6.0 inside the v1.7.0 deploy.**

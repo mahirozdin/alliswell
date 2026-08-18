@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_forge/markdown_forge.dart';
 
@@ -20,6 +21,7 @@ import '../../../core/fold.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../files/providers.dart';
+import '../data/external_docref.dart';
 import '../../files/ui/image_viewer.dart';
 import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
 
@@ -43,6 +45,7 @@ class AwMarkdownScope extends ConsumerWidget {
     // the next scheme nobody thought of (`vbscript:`, `intent:`, `blob:`) is
     // the one that matters (DESIGN §29 D10).
     linkSchemes: const {'http', 'https', 'mailto', 'alliswell'},
+    clipboardReader: awReadClipboard,
     child: child,
   );
 }
@@ -209,6 +212,56 @@ MarkdownImage _resolveImage(WidgetRef ref, String source, String alt) {
           ),
     ),
   );
+}
+
+/// The clipboard, through OUR platform channel (OPH-274, D20's other half).
+///
+/// Flutter's own clipboard implements `text/plain` and nothing else, so
+/// `Clipboard.getData('text/html')` returns null on every platform — the HTML
+/// branch of smart paste had never executed once, and `htmlToMarkdown` was
+/// reachable only from its own unit test. `alliswell_docref.clipboardRead()`
+/// (ADR-0030's plugin, which already existed for external documents) reads the
+/// real pasteboard: HTML flavour and image bytes.
+///
+/// `super_clipboard` was rejected for this: `super_native_extensions` would
+/// put a Rust toolchain into six platform builds and into CI, to reach a
+/// pasteboard we already have a channel to.
+Future<MarkdownPaste> awReadClipboard() async {
+  final plain = await Clipboard.getData(Clipboard.kTextPlain);
+  try {
+    final rich = await const DocRefSource(maxBytes: 0).clipboardRead();
+    return MarkdownPaste(
+      html: rich.html,
+      text: plain?.text,
+      imageBytes: rich.imageBytes,
+      imageName: _pastedImageName(rich.imageMime),
+    );
+  } on PlatformException {
+    // A platform without the channel (web, Linux, Windows) still pastes text.
+    return MarkdownPaste(text: plain?.text);
+  } on MissingPluginException {
+    return MarkdownPaste(text: plain?.text);
+  }
+}
+
+/// A pasted image has no file name — the pasteboard carries bytes and a type.
+/// The name becomes the alt text AND the uploaded file's name, so it has to be
+/// something a person can recognise in the Files tab a week later.
+String _pastedImageName(String? mime) {
+  final ext = switch (mime) {
+    'image/jpeg' => 'jpg',
+    'image/gif' => 'gif',
+    'image/webp' => 'webp',
+    _ => 'png',
+  };
+  final now = DateTime.now();
+  final stamp =
+      '${now.year}-${now.month.toString().padLeft(2, '0')}-'
+      '${now.day.toString().padLeft(2, '0')}-'
+      '${now.hour.toString().padLeft(2, '0')}'
+      '${now.minute.toString().padLeft(2, '0')}'
+      '${now.second.toString().padLeft(2, '0')}';
+  return 'pano-$stamp.$ext';
 }
 
 /// The app's own image viewer, opened from a tap in a rendered document

@@ -7146,7 +7146,24 @@ geçtikten sonraki her karar.)_
       düz bir `StatefulWidget`, ne `ref`i ne `_ensureNote`ı var — drop hedefi
       `_NoteEditorState.build`'in gövdesine konur, orada ikisi de var ve tek sarmalayış
       Live + Source + başlığı birden kapsar.
-- [ ] **Panodan görsel + HTML** (D20'nin yapılmayan yarısı) — kendi kanalımız
+- [x] **Panodan görsel + HTML** (D20'nin yapılmayan yarısı) — **BİTTİ (2026-08-18, OPH-274'ün
+      kuyruğunda).** Kanal zaten hazırmış: `alliswell_docref.clipboardRead()` iOS/macOS/Android
+      üçünde de native olarak uygulanmıştı ve Dart sarmalayıcısı vardı — eksik olan tek şey
+      BAĞLANTIYDI. `markdown_forge`'a pano dikişi eklendi (`MarkdownClipboardReader` ambient,
+      `SourceMode.onPasteImage` not-başına, çünkü yüklemenin NEREYE gittiği belgeye bağlı);
+      AllisWell adaptörü gerçek panoyu okuyor, editör `_pasteImage` ile bu nota yükleyip
+      `![ad](alliswell://file/{id})` döndürüyor. Yükleme dönmek yerine EKLEMİYOR — tek undo
+      kuralı bunu gerektiriyor (`SourceMode` yeni metnin tamamını bir kez atar). Başarısız
+      yükleme panodaki METNE düşer, hiçliğe değil (yükleme şeridi hatayı zaten gösteriyor).
+      Testler +8 (`paste_test.dart`, süit 1240 → **1248**): HTML→markdown, görsel→embed,
+      görselin metin lezzetini yenmesi, başarısız yüklemenin geri düşmesi, işleyicisiz durum,
+      tek-atama, boş pano, ve **varsayılan okuyucunun Flutter'ın gerçekten yapabildiğiyle
+      sınırlı kalması**. `super_clipboard` kararı korundu (Rust toolchain'i altı platform
+      build'ine sokardı). _Ölü koda dair not: bağlantıyı kurmayı ilk denememde `dart format`
+      çağrıyı çok satıra bölmüştü ve `sed` eşleşmem tutmamıştı — `_pasteImage` bir tur boyunca
+      hiçbir yerden çağrılmadı. Analyzer'ın `unused_element` uyarısı yakaladı; yani bu turda
+      sildiğim ölü kodun aynısını üretmekten beni gene bir kapı kurtardı._
+      _Aşağıdaki orijinal ölçüm ve karar, kayıt için:_ kendi kanalımız
       (`alliswell_docref.clipboardRead()`, bkz. OPH-255/256; **karar: `super_clipboard`
       DEĞİL** — `super_native_extensions` bir Rust toolchain'ini altı platform build'ine
       ve CI'a sokardı). **Ölçüm:** `source_mode.dart` `Clipboard.getData('text/html')`

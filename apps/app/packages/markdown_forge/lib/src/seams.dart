@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Colours and type for rendered markdown.
 ///
@@ -317,6 +318,62 @@ MarkdownImage defaultImageResolver(String source, [String alt = '']) {
       : const MarkdownImageUnresolvable();
 }
 
+/// What a paste actually contains.
+///
+/// [imageBytes] is the case Flutter alone cannot give you: its clipboard
+/// platform channel implements `text/plain` and nothing else, so
+/// `Clipboard.getData('text/html')` returns null on EVERY platform — a branch
+/// that reads like a feature and has never once run. A host that wants HTML or
+/// images has to reach the pasteboard itself.
+@immutable
+class MarkdownPaste {
+  const MarkdownPaste({this.html, this.text, this.imageBytes, this.imageName});
+
+  /// HTML flavour, if the clipboard had one. Converted with `htmlToMarkdown`.
+  final String? html;
+
+  /// Plain text flavour.
+  final String? text;
+
+  /// Raw image bytes, if the clipboard held a picture.
+  final Uint8List? imageBytes;
+
+  /// A name to give it — the alt text and the uploaded file's name.
+  final String? imageName;
+
+  bool get isEmpty =>
+      (html?.isEmpty ?? true) &&
+      (text?.isEmpty ?? true) &&
+      (imageBytes?.isEmpty ?? true);
+}
+
+/// Reads the clipboard for [SourceMode].
+///
+/// The seam exists because the useful flavours are out of Flutter's reach
+/// (see [MarkdownPaste.imageBytes]) and reaching them is a PLATFORM-CHANNEL
+/// decision the host has already made once — AllisWell pastes through its own
+/// `alliswell_docref` plugin rather than adding a package that would drag a
+/// Rust toolchain into six platform builds.
+typedef MarkdownClipboardReader = Future<MarkdownPaste> Function();
+
+/// What a host does with a pasted image: upload it, then return the markdown
+/// to insert (`![alt](your-scheme://…)`), or null if it could not.
+///
+/// Two steps, because only the host can do either: the bytes have to go
+/// somewhere, and only the host knows what URL scheme its renderer resolves.
+///
+/// Passed to [SourceMode] rather than to [MarkdownForge]: where an upload
+/// LANDS depends on the document being edited, so this is per-instance state,
+/// not ambient configuration.
+typedef MarkdownImagePasteHandler =
+    Future<String?> Function(Uint8List bytes, String? name);
+
+/// The default: plain text, which is all Flutter's own channel provides.
+Future<MarkdownPaste> defaultClipboardReader() async {
+  final data = await Clipboard.getData(Clipboard.kTextPlain);
+  return MarkdownPaste(text: data?.text);
+}
+
 /// Supplies the seams to everything beneath it.
 ///
 /// Optional: every widget falls back to a sane default, so a host that wants
@@ -329,12 +386,20 @@ class MarkdownForge extends StatelessWidget {
     this.strings,
     this.imageResolver,
     this.linkSchemes,
+    this.clipboardReader,
   });
 
   final Widget child;
   final MarkdownTheme? theme;
   final MarkdownStrings? strings;
   final MarkdownImageResolver? imageResolver;
+
+  /// Where a paste's HTML and image flavours come from. Defaults to plain text.
+  ///
+  /// Ambient, unlike [SourceMode.onPasteImage]: reading the pasteboard is the
+  /// same operation everywhere in an app, while UPLOADING a pasted image
+  /// depends on which document you are in.
+  final MarkdownClipboardReader? clipboardReader;
 
   /// Schemes a rendered document may turn into a TAPPABLE link. An allowlist,
   /// never a denylist — the next scheme nobody thought of (`vbscript:`,
@@ -347,6 +412,7 @@ class MarkdownForge extends StatelessWidget {
     strings: strings,
     imageResolver: imageResolver,
     linkSchemes: linkSchemes,
+    clipboardReader: clipboardReader,
     child: child,
   );
 }
@@ -358,19 +424,22 @@ class _MarkdownScope extends InheritedWidget {
     this.strings,
     this.imageResolver,
     this.linkSchemes,
+    this.clipboardReader,
   });
 
   final MarkdownTheme? theme;
   final MarkdownStrings? strings;
   final MarkdownImageResolver? imageResolver;
   final Set<String>? linkSchemes;
+  final MarkdownClipboardReader? clipboardReader;
 
   @override
   bool updateShouldNotify(_MarkdownScope old) =>
       theme != old.theme ||
       strings != old.strings ||
       imageResolver != old.imageResolver ||
-      linkSchemes != old.linkSchemes;
+      linkSchemes != old.linkSchemes ||
+      clipboardReader != old.clipboardReader;
 }
 
 extension MarkdownForgeContext on BuildContext {
@@ -379,6 +448,9 @@ extension MarkdownForgeContext on BuildContext {
   MarkdownImageResolver get mdImageResolver =>
       dependOnInheritedWidgetOfExactType<_MarkdownScope>()?.imageResolver ??
       defaultImageResolver;
+  MarkdownClipboardReader get mdClipboardReader =>
+      dependOnInheritedWidgetOfExactType<_MarkdownScope>()?.clipboardReader ??
+      defaultClipboardReader;
   Set<String> get mdLinkSchemes =>
       dependOnInheritedWidgetOfExactType<_MarkdownScope>()?.linkSchemes ??
       const {'http', 'https', 'mailto'};
