@@ -50,10 +50,21 @@ const CLAIMS = [
   // claim we ship — it sat at 1.4.0 through two releases, in the hero, while
   // the first draft of this guard was busy reading only `docs/*.md`.
   /^export const VERSION = '(\d+\.\d+\.\d+)'/gm,
+  // The landing page's JSON-LD. Hand-written in `index.html`, one layer below
+  // the banner above — and the guard that was extended to catch the banner
+  // walked straight past it, because it scans `content.js` and not the HTML
+  // shell. It shipped 1.6.0 into the v1.7.0 deploy (OPH-274). This is the
+  // version claim SEARCH ENGINES read, so it is the one that outlives a
+  // reader noticing.
+  /"softwareVersion":\s*"(\d+\.\d+\.\d+)"/g,
 ];
 
 function claimFiles() {
-  const out = [join(ROOT, 'README.md'), join(ROOT, 'apps/landing/src/content.js')];
+  const out = [
+    join(ROOT, 'README.md'),
+    join(ROOT, 'apps/landing/src/content.js'),
+    join(ROOT, 'apps/landing/index.html'),
+  ];
   const docs = join(ROOT, 'docs');
   for (const entry of readdirSync(docs)) {
     if (entry.endsWith('.md') && !SKIP_FILES.has(entry)) out.push(join(docs, entry));
