@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Enterprise overlay seam (EE-002).** The API can now load an extension overlay from
+  `ee/` at boot — after infrastructure plugins, before any route — through one neutral
+  hook: `config.ee` + `src/lib/ee.js`, app-scoped sync/MCP/permission registries, and
+  merge points in `/sync` and `/mcp`. No overlay = the CE build, byte for byte (726 unit +
+  81 integration tests green); a broken overlay fails open to CE loudly instead of taking
+  the boot down. Contract tests ride fixture overlays, including a deliberately hostile one.
+
 - **Enterprise Edition dışarıda-tutma kapısı: `check:no-ee`.** EE ayrı bir private
   repoda, `ee/` iç içe checkout'u olarak yaşamaya başladı; public `.gitignore`'a `/ee/`
   girdi ve yeni kapı CI'da `ee`'nin izlenmediğini garanti ediyor. Kapının kanıtı ilk

@@ -3,7 +3,25 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-18b (**EE OVERLAY KİLİDİ — public repo artık `ee/` iç içe
+**Last updated:** 2026-08-18c (**EE-002 — OVERLAY SEAM ÇEKİRDEKTE (Round; EE tarafının işi,
+public'e yalnız nötr seam indi).** `config.ee` (EE_ENABLED/EE_DIR; test'te varsayılan KAPALI —
+suite determinizmi: overlay checkout'u olan makine ile olmayan CI birebir aynı koşmalı) +
+`src/lib/ee.js` loader'ı: altyapı plugin'lerinden SONRA, tüm route'lardan ÖNCE — sıralama
+sözleşmenin kendisi. Kayıt defterleri app-scoped `app.ee`'de (module-level registry iki
+test app'inde çakışma korumasını kendine tetikletirdi — ölçülüp reddedildi); /sync ve /mcp
+kendi literal'lerinden sonra uzantıları birleştirir, yerleşik tipler ezilemez. Bozuk overlay
+= fail-open-to-CE + log.error + `app.ee.error` (asla boot hatası — asla-brick). fakedb'ye
+nötr `extraTables` opsiyonu girdi (sabit tablo listesi uzantı testine izin vermiyordu).
+Süitler: unit 719→**726** (7 yeni seam testi, 2'si kasıtlı düşman fixture), entegrasyon **81**,
+lint/format/no-ts/no-ee/docs hepsi yeşil. Testin yakaladıkları: MCP handler'ları ÇIPLAK payload
+döndürür (`toolResult` sarar — fixture çift sarmalamıştı), push şeması `clientId`'yi ULID
+tipler. Sıradaki iş (core): değişmedi — sahibin iki adımı (org'da markdown_forge + publish;
+D24 gerçek-klavye turu).)
+
+**Turun tek cümlesi: seam'de asıl taşıyıcı API değil SIRALAMA — "altyapıdan sonra,
+route'lardan önce" garantisi, uzantı hook'larının core route'lara ulaşmasının tek dayanağı.**
+
+Önceki blok: 2026-08-18b (**EE OVERLAY KİLİDİ — public repo artık `ee/` iç içe
 checkout'unu makine garantisiyle dışarıda tutuyor (Round, ayrı OPH yok; "direkt yap").**
 Enterprise Edition ayrı PRIVATE repoda doğdu ve `ee/` altında nested checkout olarak
 yaşayacak; public tarafın bu turdaki TEK dokunuşu koruma kilidi: `.gitignore`'a `/ee/` +

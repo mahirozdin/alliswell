@@ -90,7 +90,7 @@ const OPS = {
   like: (a, b) => typeof a === 'string' && new RegExp(`^${String(b).replace(/%/g, '.*')}$`).test(a),
 };
 
-export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
+export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {}) {
   const tables = {
     users: [],
     workspaces: [],
@@ -129,6 +129,10 @@ export function fakeDb({ hideUsersFromPrecheck = false } = {}) {
     // OPH-267 — note history (ADR-0031).
     note_versions: [],
   };
+  // Extension-owned tables (the EE-002 seam tests, future overlay suites):
+  // the fixed list above stays the contract for core code — an unknown-table
+  // throw is a real bug signal — but a test may declare extras up front.
+  for (const name of extraTables) tables[name] ??= [];
 
   const columnDefaults = {
     users: () => ({ timezone: 'Europe/Istanbul', locale: 'tr-TR' }),

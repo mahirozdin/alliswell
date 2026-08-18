@@ -74,6 +74,20 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
   `request.apiKeyAuth`, which `requireWorkspaceMember` checks against the target workspace and
   `app.rejectApiKeys` uses to keep keys out of account deletion, `/ai/*` and key management.
 
+## 3b. Enterprise overlay seam (EE-002)
+
+The API can load an **extension overlay** from a sibling checkout at `<repo root>/ee`
+(relocatable via `EE_DIR`; kill-switch `EE_ENABLED`, default off under `NODE_ENV=test` so
+suites are deterministic with or without a checkout). `src/lib/ee.js` imports
+`<dir>/server/index.js` and calls `register(app, seam)` **after every infrastructure plugin
+and before any route** — that ordering is the contract: overlay hooks reach core routes, and
+overlay-registered sync entities / MCP tools land before `/sync` and `/mcp` snapshot their
+registries. Registries are app-scoped on `app.ee` (never module-level — two test apps must
+not share registrations). An absent overlay is simply the CE build; a broken one fails open
+to CE with a loud log and `app.ee.error` — never a boot failure. Contract tests:
+`test/unit/ee-seam.test.js` with fixture overlays under `test/fixtures/ee-overlay*`.
+The overlay's own repository is private; only this neutral seam lives here.
+
 ## 4. Data layer
 
 - MySQL 8.4 (development target) **or MariaDB 10.11+**, utf8mb4. The table collation is resolved

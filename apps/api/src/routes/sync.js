@@ -1226,6 +1226,19 @@ export default async function syncRoutes(app) {
     },
   };
 
+  // EE-002: overlay-registered sync entities join both registries here —
+  // after the built-in literals, before the server ever answers. Built-in
+  // types are not overridable: a colliding registration is dropped loudly
+  // rather than letting an overlay redefine what a `task` is.
+  for (const [type, def] of Object.entries(app.ee?.syncEntities ?? {})) {
+    if (type in SNAPSHOT_LOADERS || type in ENTITIES) {
+      app.log.error({ type }, 'sync extension collides with a built-in entity — ignored');
+      continue;
+    }
+    if (def.loader) SNAPSHOT_LOADERS[type] = def.loader;
+    if (def.entity) ENTITIES[type] = def.entity;
+  }
+
   async function findRecorded(ctx, mutation) {
     const row = await app
       .db('client_mutations')

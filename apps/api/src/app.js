@@ -38,6 +38,7 @@ import quickLinkRoutes from './routes/quick-links.js';
 import taskSeriesRoutes from './routes/task-series.js';
 import importExportRoutes from './routes/import-export.js';
 import noteVersionRoutes from './routes/note-versions.js';
+import { loadEeOverlay } from './lib/ee.js';
 import aiRoutes from './routes/ai.js';
 import oauthRoutes from './routes/oauth.js';
 import mcpRoutes from './routes/mcp.js';
@@ -113,6 +114,14 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(socketPlugin);
   await app.register(mirrorPlugin);
   await app.register(calendarSyncPlugin);
+
+  // Enterprise overlay seam (EE-002): a sibling checkout may extend the app —
+  // routes, sync entities, MCP tools — through one neutral hook, loaded HERE
+  // on purpose: after every infrastructure plugin (the overlay sees the full
+  // decorator surface) and before any route (its hooks reach core routes, its
+  // registrations precede the /sync and /mcp registry snapshots). Absent or
+  // disabled overlay = a CE build; a broken one logs and boots as CE.
+  await loadEeOverlay(app);
 
   app.get(
     '/',

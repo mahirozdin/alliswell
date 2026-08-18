@@ -247,6 +247,17 @@ export function loadConfig(env = process.env) {
       codeTtlSec: 60,
       rateLimitMax: toInt(env.MCP_RATE_LIMIT_MAX, 120, 'MCP_RATE_LIMIT_MAX'),
     }),
+    // Enterprise overlay seam (EE-002). The overlay is a sibling checkout the
+    // loader (src/lib/ee.js) imports at boot when present; absence IS the CE
+    // build — nothing changes, no flag needed. Two knobs only: EE_ENABLED as
+    // an ops kill-switch, EE_DIR to relocate the checkout. Default is OFF
+    // under NODE_ENV=test so suites behave identically on a machine that has
+    // an overlay checked out and in CI, which does not — seam tests opt in
+    // with an explicit fixture EE_DIR.
+    ee: Object.freeze({
+      enabled: toBool(env.EE_ENABLED, (env.NODE_ENV ?? 'development') !== 'test', 'EE_ENABLED'),
+      dir: env.EE_DIR || null,
+    }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
       // 64 hex chars → 32 bytes. Dev fallback is labeled insecure on purpose.

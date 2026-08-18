@@ -59,8 +59,12 @@ export default async function mcpRoutes(app) {
     (app.config.env !== 'production' || publicUrl.startsWith('https://'));
 
   const ajv = new Ajv({ allErrors: true, strict: false });
+  // EE-002: overlay tools join the surface before schemas compile — the
+  // loader runs before this plugin registers, so the list is complete here.
+  // Name collisions are the seam's problem (registration rejects them).
+  const allTools = [...MCP_TOOLS, ...(app.ee?.mcpTools ?? [])];
   const toolIndex = new Map(
-    MCP_TOOLS.map((tool) => [tool.name, { ...tool, validate: ajv.compile(tool.inputSchema) }]),
+    allTools.map((tool) => [tool.name, { ...tool, validate: ajv.compile(tool.inputSchema) }]),
   );
 
   function assertConfigured() {
@@ -186,7 +190,7 @@ export default async function mcpRoutes(app) {
         return rpcResult(id, {});
       case 'tools/list':
         return rpcResult(id, {
-          tools: MCP_TOOLS.map((tool) => ({
+          tools: allTools.map((tool) => ({
             name: tool.name,
             title: tool.title,
             description: tool.description,
