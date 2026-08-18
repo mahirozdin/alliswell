@@ -45,8 +45,18 @@ export function verifyLicenseFile({ path, raw, publicKeyBase64, now = new Date()
   if (text == null) {
     try {
       text = readFileSync(path, 'utf8');
-    } catch {
-      return { state: 'none', payload: null, error: null }; // absent = CE, not an error
+    } catch (err) {
+      // ONLY a missing file is the silent CE mode. Everything else — EISDIR
+      // (a bad bind mount materializes as an empty directory), EACCES, EIO —
+      // is a real deployment fault and must reach the operator's log, or the
+      // paid features vanish with no trace. Measured, not guessed: a Docker
+      // volume whose source the VM cannot see mounts as a directory.
+      if (err.code === 'ENOENT') return { state: 'none', payload: null, error: null };
+      return {
+        state: 'none',
+        payload: null,
+        error: `license unreadable: ${err.code ?? err.message}`,
+      };
     }
   }
 

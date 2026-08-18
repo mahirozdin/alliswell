@@ -186,6 +186,15 @@ describe('license source (EE-004)', () => {
     expect(app.entitlements.list()).toEqual(['teams', 'itsm']); // named, not erased
   });
 
+  it('a license path that is a DIRECTORY surfaces an error instead of silent CE', () => {
+    // The bad-bind-mount shape: Docker materializes an unshared volume source
+    // as an empty directory at the target. That must not read as "no license".
+    const dir = mkdtempSync(path.join(tmpdir(), 'aw-ee-dirlic-'));
+    const result = verifyLicenseFile({ path: dir, publicKeyBase64: 'AA==' });
+    expect(result.state).toBe('none');
+    expect(result.error).toMatch(/unreadable/);
+  });
+
   it('a license naming an unknown feature reads as CE (dictionary is law)', async () => {
     const { raw, publicBase64 } = ephemeralLicense({
       ...payloadAt('2099-01-01T00:00:00.000Z'),
