@@ -536,12 +536,35 @@ const NOTES = [
     body: ['Kitchen 3.20 × 4.10 m · hallway 1.10 m wide · counter run 2.60 m.', '', 'Ceiling height 2.74 m — the wall units fit with 6 cm to spare.'],
   },
   {
+    // The one note that is a real DOCUMENT rather than a few paragraphs —
+    // headings, a table, a task list, a quote and inline formatting. It exists
+    // so the markdown reading view has something to be a screenshot OF: a
+    // feature the landing page now promises ("tables, task lists, KaTeX,
+    // Mermaid") cannot be illustrated with three lines of prose.
     title: 'Reading notes — Shape Up',
     project: 'reading',
     body: [
-      'Appetite, not estimate: decide how much time something is worth and shape the work to fit it.',
+      '## Appetite, not estimate',
       '',
-      'Circuit breaker: a project that runs over does not get an extension by default.',
+      'Decide how much time something is **worth** and shape the work to fit it.',
+      'The number comes first; the scope bends to it.',
+      '',
+      '| Bet | Appetite | Shaped by |',
+      '| --- | --- | --- |',
+      '| Search v2 | 6 weeks | Alex |',
+      '| Offline notes | 2 weeks | Sam |',
+      '',
+      '## Circuit breaker',
+      '',
+      '> A project that runs over does not get an extension by default.',
+      '',
+      'What that buys you, in practice:',
+      '',
+      '- [x] the deadline stays real',
+      '- [x] scope is the variable, not the date',
+      '- [ ] and the next cycle starts clean',
+      '',
+      'The shaping happens *before* the bet, never during it.',
     ],
   },
   {
@@ -759,15 +782,14 @@ async function main() {
       noteId[n.title] = hit.id;
       continue;
     }
-    // Quill Delta: the first line carries the H1 the editor shows as a title.
-    const delta = [];
-    n.body.forEach((line, i) => {
-      delta.push({ insert: `${line}\n` });
-      if (i === 0) delta[delta.length - 1] = { insert: `${line}\n`, attributes: undefined };
-    });
+    // A note is markdown (ADR-0033). This posted a Quill Delta until OPH-274 —
+    // which still WORKS, because the server converts an incoming Delta from a
+    // client that has not updated, but demo data that exercises the
+    // compatibility path instead of the real one is demo data that stops
+    // demonstrating the product. (It also built a `delta` array it never sent.)
     const created = await post(`/workspaces/${workspaceId}/notes`, {
       title: n.title,
-      contentDelta: n.body.flatMap((line) => [{ insert: `${line}\n` }]),
+      contentMarkdown: n.body.join('\n'),
       ...(n.project ? { projectId: projectId[n.project] } : {}),
       ...(n.pinned ? { isPinned: true } : {}),
     });

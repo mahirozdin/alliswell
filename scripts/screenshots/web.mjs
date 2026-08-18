@@ -55,6 +55,14 @@ const CHROME =
 
 /** Desktop shots at 1440×900, phone shots at 390×844 — both at 2× (retina). */
 const DESKTOP = { width: 1440, height: 900 };
+
+/// Ids `seed-demo.mjs` creates deterministically enough to route to. Overridable
+/// so a re-seeded workspace does not need this file edited:
+///   node scripts/screenshots/web.mjs --note <id> --project <id>
+const DEMO = {
+  note: flag('note', '01M082TWMPTFHV47HX4DS6F5NM'),
+  project: flag('project', '01M082TVRN2M67C6AW4W3B12MR'),
+};
 const PHONE = { width: 390, height: 844 };
 
 /**
@@ -78,6 +86,16 @@ const SHOTS = [
   // to be clicked and typed into for real — see `openSearch`, and the warning
   // there about what makes this the only coordinate in this file.
   { name: 'search', route: '/notes', ...DESKTOP, interact: (page) => openSearch(page, 'muller') },
+  // OPH-274: the two surfaces the marketing copy started promising when notes
+  // became markdown, and which nothing had a picture of. Both are reached by
+  // ROUTE — no coordinates. The note editor opens in Source (ADR-0033), which
+  // is exactly the shot worth having: live syntax, in the field, while you
+  // type. The project overview renders its README through the same markdown
+  // renderer, so it shows the READING side (tables, task lists, a quote)
+  // without needing a tap on the mode control — a click this file has no way
+  // to verify, and an unverified click ships a wrong screenshot silently.
+  { name: 'note-editor', route: `/notes/${DEMO.note}`, ...DESKTOP },
+  { name: 'project-readme', route: `/projects/${DEMO.project}`, ...DESKTOP },
   { name: 'phone-home-light', route: '/home', ...PHONE },
   { name: 'phone-home-dark', route: '/home', dark: true, ...PHONE },
   { name: 'phone-projects', route: '/projects', ...PHONE },
@@ -171,10 +189,57 @@ async function preflight() {
     throw new Error(`cannot sign in as ${EMAIL} — run: node scripts/seed-demo.mjs`);
   }
   const { user, tokens } = await login.json();
+  await silenceDueAlarms(tokens.accessToken);
   return { user, tokens };
 }
 
 // ── Run ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Mutes any alarm that is already due, before a single shot is taken.
+ *
+ * Found the hard way (OPH-274): the demo seed creates an urgent reminder at
+ * 21:00, and the foreground alarm overlay is a FULL-SCREEN takeover. Shoot
+ * after that time and every surface in this file — home, projects, notes,
+ * settings, all of them — comes out as the alarm ring screen, under a filename
+ * promising something else. The script still prints a cheerful ✓ for each one.
+ *
+ * The existing set survived only because it was shot at 17:48. That is not a
+ * property of the pipeline, it is the time of day.
+ *
+ * Muting through the REAL API rather than overriding
+ * `alarmOverlayAutoShowProvider`: this drives a RELEASE bundle, where that
+ * provider is a constant, and a product flag added for a screenshot tool would
+ * be a worse trade than a demo task that is silenced the way a user would
+ * silence it.
+ */
+async function silenceDueAlarms(accessToken) {
+  const headers = {
+    authorization: `Bearer ${accessToken}`,
+    'content-type': 'application/json',
+  };
+  const me = await (await fetch(`${API_URL}/api/v1/me`, { headers })).json();
+  const workspace = me.workspaces?.[0]?.id ?? me.workspace?.id;
+  if (!workspace) return;
+
+  const url = `${API_URL}/api/v1/workspaces/${workspace}/tasks?limit=200`;
+  const tasks = (await (await fetch(url, { headers })).json()).items ?? [];
+  const now = Date.now();
+  const due = tasks.filter(
+    (t) => t.isUrgent && !t.alarmsMutedAt && t.remindAt && Date.parse(t.remindAt) <= now,
+  );
+
+  for (const task of due) {
+    await fetch(`${API_URL}/api/v1/tasks/${task.id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ alarmsMutedAt: new Date().toISOString() }),
+    });
+  }
+  if (due.length > 0) {
+    console.log(`  muted ${due.length} due alarm(s) so they cannot cover a shot`);
+  }
+}
 
 async function main() {
   const session = await preflight();

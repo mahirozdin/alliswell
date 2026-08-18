@@ -131,15 +131,15 @@ export const features = [
     id: 'markdown',
     eyebrow: 'Notes',
     title: 'A markdown workspace, not a text box',
-    body: 'Notes render GitHub-flavoured markdown properly — tables with their alignment, task lists, callouts, real mathematics, syntax-coloured code, and Mermaid diagrams drawn as diagrams. One document, three ways to look at it: Reading, the rich editor, and the markdown source with a live preview beside it.',
+    body: 'Notes render GitHub-flavoured markdown properly — tables with their alignment, task lists, callouts, real mathematics, syntax-coloured code, and Mermaid diagrams drawn as diagrams. One document, two ways to look at it: Reading, and the markdown source with live syntax as you type.',
     points: [
       'Open a .md file from your own computer, edit it, and save it back to that file',
       'The file is never written behind your back — and if something else changed it, you choose what happens',
       'Outline, folding, find and replace, a command palette, and slash commands everywhere',
     ],
     ratio: '1440 / 900',
-    shot: 'web/notes.jpg',
-    alt: 'A note open in AllisWell with markdown rendered as a document',
+    shot: 'web/project-readme.jpg',
+    alt: 'A project’s README in AllisWell, with its markdown rendered as a document — headings, a table, a task list and a quote',
   },
   {
     id: 'files',

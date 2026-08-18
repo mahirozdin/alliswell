@@ -7563,23 +7563,34 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
       **0 hata, 8 uyarı** (hepsi `vue/attributes-order`), `--fix` ile kapandı; landing build'i
       sağlam. **Ve CI artık onu KOŞUYOR** (`Landing site (lint, build)`) — sessiz kalmasının
       asıl sebebi buydu: _CI'ın koşmadığı bir script bir kontrol değil, bir iddiadır._
-- [ ] **Kalan ekran görüntüleri**: mevcut set (`screenshots/`, `docs/store/`, `store/`) bu beş
-      başlığa göre denetlenir; **eksik olanlar** çekilir, **bayat olanlar** yenilenir.
-      Çekim `scripts/screenshots/web.mjs` (`--only` bayrağı var; önkoşullar dosyanın
-      başında: API + `seed-demo.mjs` + `flutter build web --release` + :8080). Yeni
-      görüntüler `/screenshots/<platform>/*.png` altına — `apps/landing/public/shots/`
-      gitignore'lu, `sync-screenshots.mjs` build'de kendisi üretiyor.
-      **Uyarı:** `docs/screenshots/markdown-reading-{light,dark}.png` bir *conformance
-      belgesinin* golden render'ı (1800×10400, 1:5.8) — `ScreenshotFrame`'de kullanılamaz;
-      uygulama kabuğu çekimi ayrı iştir.
-
-      | Özellik | Hedef | Durum |
-      | --- | --- | --- |
-      | 1 görevler+projeler | landing `tasks` bloğu (**yeni**), README | `web/projects.png` var — `search` bloğundan alınır |
-      | 2 markdown | landing `markdown` bloğu (**hiç yok**), README | **çekilecek:** okuma görünümü *uygulama kabuğunda*, üç mod, dış dosya bandı |
-      | 3 alarmlar | `alarms` | `web/reminders.png` + `android/09-alarm-ring.png` var |
-      | 4 dosyalar | `files` | `web/files.png` var; **çekilecek:** görev eki + görsel görüntüleyici |
-      | 5 tekrar | `recurrence` (filtre kaldırılır ya da `RecurrenceProof` görselle beslenir) | `ios/07-task-detail-repeat.png` + `08-repeat-dialog.png` **var ama hiç kullanılmıyor** |
+- [x] **Kalan ekran görüntüleri — İKİSİ ÇEKİLDİ (2026-08-18) ve hat bir arıza verdi.**
+      Eksik olan ikisi bu turda değişen yüzeydi: `note-editor` (Kaynak modu, **canlı
+      sözdizimi** — `##` sönük, başlık büyük, `**worth**` kalın) ve `project-readme`
+      (**render edilmiş markdown**: tablo, görev listesi, alıntı — yani pazarlama metninin
+      vaat ettiği şey). İkisi de ROTA ile çekiliyor, koordinat yok: not editörü ADR-0033
+      sonrası Kaynak'ta açılıyor, README ise aynı renderer'ı `/projects/:id`de çiziyor.
+      Okuma modunu tıklamak koordinat isterdi ve bu dosyanın doğrulayamayacağı bir tık
+      sessizce yanlış görüntü sevk eder.
+- [x] **Bulgu (BÜYÜK) — çekim hattı GÜNÜN SAATİNE bağlıymış.** İlk denemede iki görüntü de
+      **alarm zil ekranı** çıktı: demo seed'i 21:00'e acil hatırlatma koyuyor, ön plan alarm
+      kaplaması tam ekran devralıyor, ve betik her dosya için neşeyle `✓` basıyor. Mevcut 16
+      görüntü yalnız 17:48'de çekildikleri için kurtulmuş — bu hattın özelliği değil, saatin.
+      `silenceDueAlarms()` eklendi: çekimden önce vadesi geçmiş alarmlar GERÇEK API üzerinden
+      susturuluyor (release bundle'da `alarmOverlayAutoShowProvider` sabit; bir çekim aracı
+      için ürüne bayrak eklemek daha kötü bir takas olurdu). _Ders: betiğin `✓`'si "dosya
+      yazıldı" demek, "doğru şeyi gösteriyor" demek değil — ikisine de BAKTIM._
+- [x] **Bulgu — kendi pazarlama taramam iki yalan kaçırmış.** `content.js`'in markdown
+      bölümü **"Reading, the rich editor, and the markdown source"** diyordu (rich editor
+      gitti) ve alt metni "markdown rendered as a document" vaat ederken görsel notlar
+      LİSTESİYDİ. İlk sweep'im `rich.?text|zengin metin|quill` arıyordu; "the rich editor"
+      desene takılmadı. Metin iki moda indirildi, görsel yeni `project-readme`ye bağlandı —
+      alt metnin baştan beri anlattığı görüntü artık gerçekten var. _Ders: bir grep deseni,
+      aradığı şeyin tüm söyleniş biçimlerini bilmez._
+- [x] **Bulgu — `seed-demo.mjs` hâlâ Delta gönderiyordu** (sunucu çeviriyordu, yani
+      çalışıyordu ama uyumluluk yolunu egzersiz ediyordu) ve gönderilmeyen bir `delta` dizisi
+      kuruyordu. `contentMarkdown`a alındı; "Reading notes — Shape Up" ve Launch README'si
+      gerçek belgelere dönüştürüldü (başlık, tablo, görev listesi, alıntı) — üç satır düz
+      nesirle markdown okuma görünümü GÖSTERİLEMEZDİ.
 - [x] `docs/COMPARISON.md`: §1 "Notes & files" altına markdown satırı (OPH-246…251) + §3
       matrisine markdown satırı + **landing'in kendi ikinci karşılaştırma tablosuna**
       (`content.js` `comparison`) — iki tablo var, biri unutulursa sapıyorlar.

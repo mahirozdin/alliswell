@@ -26,6 +26,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   auto-fixable warnings, and CI runs it now. *A script CI does not run is a
   claim, not a check.*
 
+### Fixed
+
+- **The screenshot pipeline depended on the time of day.** The demo seed
+  creates an urgent reminder at 21:00 and the foreground alarm overlay is a
+  full-screen takeover, so any shot taken after that hour came out as the
+  alarm ring screen — under a filename promising something else, with a
+  cheerful ✓ printed for each one. The existing set survived because it was
+  taken at 17:48. Due alarms are now muted through the API before the first
+  shot.
+- **The landing page still described "the rich editor".** The markdown
+  section promised "three ways to look at it: Reading, the rich editor, and
+  the markdown source", and illustrated a rendered document with a picture of
+  the notes LIST. Two ways now, and the picture is the document its own alt
+  text had always described.
+
 ### Removed
 
 - **`AwSearchField`** — 66 lines with no caller anywhere in `lib/` or `test/`
