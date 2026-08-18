@@ -3,7 +3,25 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-18d (**EE-003/004/005 — ENTITLEMENTS + LİSANS + MIGRATION SEAM'İ
+**Last updated:** 2026-08-18e (**EE-008 — APP TARAFI ENTITLEMENT KEŞFİ (Round; overlay
+tarafının işi, public'e nötr mekanizma indi).** `eeStatusProvider` aiStatus emsalinin
+birebir izinde: `/ee/status` localKv'ye KULLANICI-BAZLI cache'lenir (paylaşılan cihazda
+hesap değişimi önceki hesabın listesini miras alamaz), soğuk açılış ağ cevap vermeden son
+bilinen gerçeği görür, offline onu korur, 404 (uca sahip olmayan eski sunucu) "hiçbir şey
+açık değil" okunur — hata değil. `eeFeatureProvider('<ad>')` gelecekteki yüzeylerin tek
+çekilme anahtarı; sunucunun `has()` semantiği aynen taşındı (yalnız active|grace açar;
+readonly adları listeler ama false). `sections.dart`/router'a DOKUNULMADI — CE'ye bağlı
+app piksel piksel aynı (tam widget süiti bunun kanıtı: hepsi CE varsayılanına karşı koşar).
+Ortak `ee.*` i18n ad alanı açıldı (en+tr, extraction testinde assert'li). Süitler: app
+**1256** (7 yeni provider testi; biri test-sırası kontaminasyonunu yakaladı — localKv
+singleton cache'i `setMockInitialValues`'tan etkilenmez, ev deseni `localKv.remove` setUp'a
+girdi), analyze/format/i18n/no-ts/no-ee/docs yeşil. Sıradaki iş (core): değişmedi —
+sahibin iki adımı.)
+
+**Turun tek cümlesi: yetenek keşfinde 404 ile boş liste AYNI cevaptır — istemci "sunucu
+eski" ile "lisans yok"u ayırt etmeye çalışmaz, ikisi de dürüstçe "kapalı" demektir.**
+
+Önceki blok: 2026-08-18d (**EE-003/004/005 — ENTITLEMENTS + LİSANS + MIGRATION SEAM'İ
 (Round; overlay tarafının işleri, public'e nötr mekanizma indi).** Tek kapı `app.entitlements`
 (`has()` bilinmeyen isimde FIRLATIR — sözlük `src/lib/entitlements.js`, yasa odur); besleme:
 dev override (`EE_DEV_ENTITLEMENTS`, production'da BOOT HATASI — unutulmuş override ücretli

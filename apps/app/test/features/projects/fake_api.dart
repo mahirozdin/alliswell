@@ -436,6 +436,15 @@ class FakeApi {
     return null;
   }
 
+  // ── Instance entitlements (/ee/status, EE-008) ────────────────────────────
+  /// What `/api/v1/ee/status` answers. Defaults mirror a CE server: empty
+  /// list, `state: none`, still a plain 200 (capability discovery is never an
+  /// error). Set `eeStatusCode = 404` to play a server that predates the
+  /// endpoint entirely.
+  String eeState = 'none';
+  List<String> eeFeatures = [];
+  int? eeStatusCode;
+
   // ── AI (Epic 20) — per-user server state, like the calendar accounts ──────
   /// Is AI enabled on the server? Defaults OFF so the many existing feature
   /// flows are unperturbed by a second (AI) FAB; AI tests opt in with
@@ -808,6 +817,21 @@ class FakeApi {
             'role': 'owner',
           },
         ],
+      });
+    }
+
+    if (path == '/api/v1/ee/status' && options.method == 'GET') {
+      if (eeStatusCode != null) {
+        return jsonBody(eeStatusCode!, {
+          'code': 'NOT_FOUND',
+          'message': 'Not found',
+        });
+      }
+      return jsonBody(200, {
+        'state': eeState,
+        'features': eeFeatures,
+        'expiresAt': null,
+        'overlay': 'disabled',
       });
     }
 

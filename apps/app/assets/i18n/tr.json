@@ -1087,5 +1087,9 @@
     "keepBoth": "Kopya olarak ayır",
     "usedMine": "Notun metni artık senin sürümün",
     "keptBoth": "Senin sürümün ayrı bir not olarak kaydedildi"
+  },
+  "ee": {
+    "badge": "Enterprise",
+    "locked": "Bu özellik kurumsal lisans gerektirir."
   }
 }

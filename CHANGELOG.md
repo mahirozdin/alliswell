@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **App-side entitlement discovery (EE-008).** The Flutter app now mirrors
+  `GET /api/v1/ee/status` the way it mirrors the AI status: cached in localKv per user, so
+  a fresh launch has a last-known truth before the network answers, offline keeps it, and
+  a 404 (a server that predates the endpoint) reads as "nothing enabled" — not an error.
+  `eeFeatureProvider('<name>')` is the one switch future surfaces watch; no screen or
+  route consults it yet, so a CE-connected app is pixel-identical. The shared `ee.*`
+  i18n namespace opens with it.
+
 - **Instance entitlements + offline license verification (EE-003, EE-004, EE-005).**
   `app.entitlements` is the one gate enterprise features consult, fed by a development
   override (refused in production) or an Ed25519-signed license file verified fully

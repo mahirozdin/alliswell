@@ -98,6 +98,12 @@ join knex as a second directory (`src/db/knexconfig.js`) under the single
 `knex_migrations` table; the overlay repo gates filename collisions on its side.
 The overlay's own repository is private; only this neutral seam lives here.
 
+The app mirrors the discovery end (EE-008): `features/ee/` holds `eeStatusProvider`
+(the aiStatus pattern — `/ee/status` cached in localKv per user, offline keeps the
+last-known truth, a 404 from a pre-endpoint server reads as nothing-enabled) and
+`eeFeatureProvider('<name>')`, the single withdrawal switch future surfaces watch.
+No screen or route consults it yet.
+
 ## 4. Data layer
 
 - MySQL 8.4 (development target) **or MariaDB 10.11+**, utf8mb4. The table collation is resolved

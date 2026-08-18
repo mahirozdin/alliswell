@@ -1088,5 +1088,9 @@
     "keepBoth": "Keep both",
     "usedMine": "Your version is the note's text now",
     "keptBoth": "Your version was saved as a separate note"
+  },
+  "ee": {
+    "badge": "Enterprise",
+    "locked": "This feature requires an enterprise license."
   }
 }

@@ -230,4 +230,16 @@ void main() {
       expect('ai.bubble.offlineTitle'.tr(), 'Çevrimdışısın');
     });
   });
+
+  // EE-008: the shared `ee.*` namespace is opened before any surface uses it,
+  // so the keys are asserted here (no widget references them yet).
+  group('ee common strings', () {
+    test('resolve in both languages', () {
+      expect('ee.badge'.tr(), 'Enterprise');
+      expect('ee.locked'.tr(), contains('license'));
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect('ee.badge'.tr(), 'Enterprise');
+      expect('ee.locked'.tr(), contains('lisans'));
+    });
+  });
 }
