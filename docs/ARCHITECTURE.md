@@ -86,6 +86,16 @@ registries. Registries are app-scoped on `app.ee` (never module-level — two te
 not share registrations). An absent overlay is simply the CE build; a broken one fails open
 to CE with a loud log and `app.ee.error` — never a boot failure. Contract tests:
 `test/unit/ee-seam.test.js` with fixture overlays under `test/fixtures/ee-overlay*`.
+
+Entitlements ride the same seam (EE-003/EE-004): `app.entitlements` resolves the ONE
+feature dictionary (`src/lib/entitlements.js`) from a development override
+(`EE_DEV_ENTITLEMENTS`, refused in production) or a signed Ed25519 license file verified
+offline (`src/lib/ee-license.js` — the public key only verifies; nothing phones home).
+`GET /api/v1/ee/status` is ALWAYS registered: a CE instance answers an empty 200, because
+capability discovery must not look like an error. License expiry walks
+`active → grace → readonly` and never bricks. When the overlay is present its migrations
+join knex as a second directory (`src/db/knexconfig.js`) under the single
+`knex_migrations` table; the overlay repo gates filename collisions on its side.
 The overlay's own repository is private; only this neutral seam lives here.
 
 ## 4. Data layer

@@ -3,7 +3,25 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-18c (**EE-002 — OVERLAY SEAM ÇEKİRDEKTE (Round; EE tarafının işi,
+**Last updated:** 2026-08-18d (**EE-003/004/005 — ENTITLEMENTS + LİSANS + MIGRATION SEAM'İ
+(Round; overlay tarafının işleri, public'e nötr mekanizma indi).** Tek kapı `app.entitlements`
+(`has()` bilinmeyen isimde FIRLATIR — sözlük `src/lib/entitlements.js`, yasa odur); besleme:
+dev override (`EE_DEV_ENTITLEMENTS`, production'da BOOT HATASI — unutulmuş override ücretli
+özellik dağıtamaz) ya da imzalı Ed25519 lisans dosyası (OFFLINE doğrulanır, eve telefon yok;
+public key `ee-license.js`'te gömülü + test/rotasyon için env override). Süre `active → grace
+→ readonly` yürür, HİÇBİR durumda brick yok; readonly özellik adlarını korur (mesajlaşma
+için) ama `has()` false döner. `/ee/status` HER build'de kayıtlı — CE boş 200; yetenek
+keşfi hata gibi görünemez. Knex `directory` artık overlay varsa iki dizin (tek
+`knex_migrations`; çakışma kapısı overlay tarafında, iki ihlal sınıfıyla KIRMIZI kanıtlı).
+Zincir kanıtları ATILABİLİR veritabanlarında koşuldu (dev veri korunarak): MySQL 8.4
+migrate→rollback→migrate ✔, MariaDB 10.11 aynı zincir ✔ (collation fallback dahil).
+Süitler: unit 726→**735** (9 yeni: status/lisans/saat-matrisi), entegrasyon **81**,
+lint/format/no-ts/no-ee/docs yeşil. Sıradaki iş (core): değişmedi — sahibin iki adımı.)
+
+**Turun tek cümlesi: lisans doğrulamanın açık kod olması zayıflık değil tasarımdır —
+asimetrik imzada public key yalnız DOĞRULAR, ve kapalı ağda çalışan fabrika tam da bunu satın alır.**
+
+Önceki blok: 2026-08-18c (**EE-002 — OVERLAY SEAM ÇEKİRDEKTE (Round; EE tarafının işi,
 public'e yalnız nötr seam indi).** `config.ee` (EE_ENABLED/EE_DIR; test'te varsayılan KAPALI —
 suite determinizmi: overlay checkout'u olan makine ile olmayan CI birebir aynı koşmalı) +
 `src/lib/ee.js` loader'ı: altyapı plugin'lerinden SONRA, tüm route'lardan ÖNCE — sıralama

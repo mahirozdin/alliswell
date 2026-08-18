@@ -39,6 +39,8 @@ import taskSeriesRoutes from './routes/task-series.js';
 import importExportRoutes from './routes/import-export.js';
 import noteVersionRoutes from './routes/note-versions.js';
 import { loadEeOverlay } from './lib/ee.js';
+import entitlementsPlugin from './plugins/entitlements.js';
+import eeRoutes from './routes/ee.js';
 import aiRoutes from './routes/ai.js';
 import oauthRoutes from './routes/oauth.js';
 import mcpRoutes from './routes/mcp.js';
@@ -114,6 +116,10 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(socketPlugin);
   await app.register(mirrorPlugin);
   await app.register(calendarSyncPlugin);
+  // Entitlements resolve BEFORE the overlay loads (EE-003): overlay modules
+  // gate their own registration on `app.entitlements.has(...)` — the 404
+  // idiom needs the answer at register time.
+  await app.register(entitlementsPlugin);
 
   // Enterprise overlay seam (EE-002): a sibling checkout may extend the app —
   // routes, sync entities, MCP tools — through one neutral hook, loaded HERE
@@ -169,6 +175,9 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(taskSeriesRoutes, { prefix: '/api/v1' });
   // OPH-266: the bulk surface an API key exists for (issue #3).
   await app.register(importExportRoutes, { prefix: '/api/v1' });
+  // ALWAYS registered (EE-003): /ee/status is capability discovery, and a CE
+  // instance answering 404 here would be indistinguishable from an old server.
+  await app.register(eeRoutes, { prefix: '/api/v1' });
   // Conditional registration IS the AI_ENABLED gate: with the feature off,
   // every /ai/* route 404s exactly like a server that never had it (OPH-215).
   if (config.ai.enabled) {

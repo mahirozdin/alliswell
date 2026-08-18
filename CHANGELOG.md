@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Instance entitlements + offline license verification (EE-003, EE-004, EE-005).**
+  `app.entitlements` is the one gate enterprise features consult, fed by a development
+  override (refused in production) or an Ed25519-signed license file verified fully
+  offline — expiry degrades `active → grace → readonly` and never bricks. `GET
+  /api/v1/ee/status` always answers (CE = empty 200; capability discovery is not an
+  error). Overlay migrations join knex as a second directory when present. Unknown
+  feature names are boot errors or thrown calls — the dictionary is law.
+
 - **Enterprise overlay seam (EE-002).** The API can now load an extension overlay from
   `ee/` at boot — after infrastructure plugins, before any route — through one neutral
   hook: `config.ee` + `src/lib/ee.js`, app-scoped sync/MCP/permission registries, and

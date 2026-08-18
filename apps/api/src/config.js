@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { EE_FEATURES } from './lib/entitlements.js';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 
@@ -84,6 +85,28 @@ function validateProductionSecret(name, value) {
  *
  * @param {Record<string, string | undefined>} env
  */
+function parseDevEntitlements(env) {
+  const raw = env.EE_DEV_ENTITLEMENTS;
+  if (!raw) return null;
+  if ((env.NODE_ENV ?? 'development') === 'production') {
+    throw new Error(
+      'EE_DEV_ENTITLEMENTS is a development override and must not be set in production',
+    );
+  }
+  const names = Object.freeze(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  for (const name of names) {
+    if (!EE_FEATURES.includes(name)) {
+      throw new Error(`EE_DEV_ENTITLEMENTS: unknown feature "${name}"`);
+    }
+  }
+  return names.length > 0 ? names : null;
+}
+
 export function loadConfig(env = process.env) {
   const config = {
     env: env.NODE_ENV ?? 'development',
@@ -257,6 +280,16 @@ export function loadConfig(env = process.env) {
     ee: Object.freeze({
       enabled: toBool(env.EE_ENABLED, (env.NODE_ENV ?? 'development') !== 'test', 'EE_ENABLED'),
       dir: env.EE_DIR || null,
+      // Development override (EE-003): comma-separated feature names, refused
+      // outright in production — a leftover override must never hand out paid
+      // features. Names are validated against the ONE dictionary so a typo is
+      // a boot error, not a silently-missing feature.
+      devEntitlements: parseDevEntitlements(env),
+      // Signed license file (EE-004). Default path is <overlay dir>/license.json,
+      // resolved by the entitlements plugin; the public key override exists for
+      // tests and a future rotation.
+      licensePath: env.EE_LICENSE_PATH || null,
+      licensePublicKey: env.EE_LICENSE_PUBLIC_KEY || null,
     }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):

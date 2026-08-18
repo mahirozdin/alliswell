@@ -9,6 +9,13 @@ import { MCP_TOOLS } from './mcp/tools.js';
 // through the same code path — only EE_DIR moves it.
 const DEFAULT_DIR = fileURLToPath(new URL('../../../../ee', import.meta.url));
 
+/** The overlay's resolved home, or null when the seam is off. Shared with the
+ * knex config so runtime and CLI agree on where EE migrations live. */
+export function resolveEeDir(config) {
+  if (!config.ee.enabled) return null;
+  return config.ee.dir || DEFAULT_DIR;
+}
+
 /**
  * Enterprise overlay loader (EE-002). Imports `<dir>/server/index.js` and
  * calls its `register(app, seam)` BEFORE any core route registers — that
@@ -36,7 +43,7 @@ export async function loadEeOverlay(app) {
   app.decorate('ee', state);
   if (!state.enabled) return;
 
-  const dir = app.config.ee.dir || DEFAULT_DIR;
+  const dir = resolveEeDir(app.config);
   state.dir = dir;
   const entry = path.join(dir, 'server', 'index.js');
   if (!existsSync(entry)) {
