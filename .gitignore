@@ -65,3 +65,9 @@ __pycache__/
 
 # Library packages do not commit their lockfiles (the app pins real versions).
 apps/app/packages/*/pubspec.lock
+
+# ── Enterprise Edition overlay (private repo, nested checkout) ──────────────
+# The EE repo lives at ee/ as its own git checkout ("nearest .git wins"). It
+# must NEVER enter the public tree — that is the entire point of the overlay.
+# The check:no-ee gate makes the one dangerous accident (git add -f) fail CI.
+/ee/

@@ -65,6 +65,9 @@ jobs:
       - name: Policy — no TypeScript
         run: npm run check:no-ts
 
+      - name: Policy — no EE overlay files tracked
+        run: npm run check:no-ee
+
       - name: Policy — no hardcoded app strings (i18n)
         run: npm run check:i18n
 

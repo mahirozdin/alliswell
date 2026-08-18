@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Enterprise Edition dışarıda-tutma kapısı: `check:no-ee`.** EE ayrı bir private
+  repoda, `ee/` iç içe checkout'u olarak yaşamaya başladı; public `.gitignore`'a `/ee/`
+  girdi ve yeni kapı CI'da `ee`'nin izlenmediğini garanti ediyor. Kapının kanıtı ilk
+  pathspec'in (`'ee/*'`) `git add -f ee`'nin ürettiği gitlink girdisine kör olduğunu
+  yakaladı — çıplak `ee` pathspec'ine düzeltilip iki yönlü enjeksiyonla kanıtlandı.
+
 - **Pasting an image into a note works, and pasting HTML finally does too.**
   The HTML half had shipped and never executed once:
   `Clipboard.getData('text/html')` returns null on every platform, because

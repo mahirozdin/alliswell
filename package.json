@@ -28,6 +28,7 @@
     "db:migrate": "npm run db:migrate -w @alliswell/api",
     "db:rollback": "npm run db:rollback -w @alliswell/api",
     "check:no-ts": "bash scripts/check-no-ts.sh",
+    "check:no-ee": "bash scripts/check-no-ee.sh",
     "check:i18n": "node scripts/i18n/check.mjs",
     "check:docs": "node scripts/docs/check.mjs"
   },
