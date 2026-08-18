@@ -240,7 +240,7 @@ jobs:
         run: bash scripts/android/assert-permissions.sh
 
   landing:
-    name: Landing site (build)
+    name: Landing site (lint, build)
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -254,6 +254,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      # OPH-274: this step is why the landing's `lint` script could sit broken
+      # since the workspace was created — it existed, it failed, and nothing
+      # ever called it. A script CI does not run is a claim, not a check.
+      - name: Lint
+        run: npm run lint -w @alliswell/landing
 
       - name: Build
         run: npm run landing:build

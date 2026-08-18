@@ -4,7 +4,7 @@ import { download, selfHost } from '../content.js';
 </script>
 
 <template>
-  <section id="get" class="aw-section get" v-reveal>
+  <section id="get" v-reveal class="aw-section get">
     <div class="aw-shell">
       <header class="get__head">
         <p class="aw-eyebrow">{{ download.eyebrow }}</p>

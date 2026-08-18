@@ -18,7 +18,7 @@ const shots = [
 </script>
 
 <template>
-  <section class="aw-section mob" v-reveal>
+  <section v-reveal class="aw-section mob">
     <div class="aw-shell">
       <header class="mob__head">
         <p class="aw-eyebrow">One codebase</p>

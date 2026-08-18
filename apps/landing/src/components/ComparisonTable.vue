@@ -11,7 +11,7 @@ function cell(value) {
 </script>
 
 <template>
-  <section id="compare" class="aw-section" v-reveal>
+  <section id="compare" v-reveal class="aw-section">
     <div class="aw-shell">
       <header class="cmp__head">
         <p class="aw-eyebrow">Honest comparison</p>

@@ -17,7 +17,7 @@ const months = [
 </script>
 
 <template>
-  <section class="proof aw-section" v-reveal>
+  <section v-reveal class="proof aw-section">
     <div class="aw-shell proof__inner">
       <div class="proof__copy">
         <p class="aw-eyebrow">Recurrence</p>

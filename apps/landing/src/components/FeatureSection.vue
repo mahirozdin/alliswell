@@ -13,7 +13,7 @@ defineProps({
 </script>
 
 <template>
-  <article class="feature" :class="{ 'feature--flip': flip }" v-reveal>
+  <article v-reveal class="feature" :class="{ 'feature--flip': flip }">
     <div class="feature__copy">
       <p class="aw-eyebrow">{{ feature.eyebrow }}</p>
       <h2>{{ feature.title }}</h2>

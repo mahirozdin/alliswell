@@ -3,7 +3,7 @@ import { faq } from '../content.js';
 </script>
 
 <template>
-  <section class="aw-section" v-reveal>
+  <section v-reveal class="aw-section">
     <div class="aw-shell faq">
       <h2>Questions people actually ask</h2>
       <div class="faq__list">

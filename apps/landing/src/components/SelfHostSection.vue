@@ -20,7 +20,7 @@ async function copy() {
 </script>
 
 <template>
-  <section id="self-host" class="aw-section" v-reveal>
+  <section id="self-host" v-reveal class="aw-section">
     <div class="aw-shell host">
       <div class="host__copy">
         <p class="aw-eyebrow">{{ selfHost.eyebrow }}</p>

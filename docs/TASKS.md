@@ -7533,13 +7533,19 @@ macOS için önce imzalama sorununun çözülmesi gerekiyor._)
       **ve kapı genişletildi**: manifestler artık `workspaces` alanından okunuyor (elle liste
       tam da bu kaymanın sebebiydi) ve `content.js`'in `export const VERSION` satırı taranıyor.
       Kapı doğrulaması: landing sürümü 1.4.0'a çevrildi → dosya:satır ile yakalandı → geri alındı.
-- [ ] **Bulgu (AÇIK, küçük) — `AwSearchField` ölü kod.** Tanımlı ama hiçbir yerden
-      çağrılmıyor; arama round 13'te `AwSearchAction`'a (app bar) taşınmış. DESIGN §22'nin
-      ulaşılabilirlik kuralının tersi: burada kullanıcı değil, KOD ulaşılamaz durumda.
-      Silinmeli ya da kullanılmalı — bu turun kapsamı dışında bırakıldı.
-- [ ] **Bulgu (AÇIK, küçük) — `apps/landing`in `lint` script'i çalışmıyor** (eslint 9 için
-      `eslint.config.*` yok, "couldn't find" ile düşüyor). CI onu koşmadığı için sessiz;
-      yani depo "lint'i var" sanıyor. Ya config eklenmeli ya script kaldırılmalı.
+- [x] **Bulgu — `AwSearchField` ölü kod. SİLİNDİ (2026-08-18, OPH-274 turunun kuyruğunda).**
+      66 satır, `lib/` ve `test/`te tek çağıran yok; arama round 13'te `AwSearchAction`'a
+      taşınmıştı. §22'nin aynası: kullanıcı değil OKUR ulaşamıyordu — ve çağrılmayan canlı bir
+      widget, aramayı değiştirecek bir sonraki kişiye "iki arama alanı var, hangisi gerçek?"
+      diye okunur. Yerine ne olduğunu ve NEDEN gittiğini anlatan bir not bırakıldı
+      (`widgets/search_field.dart`), `flutter analyze` temiz.
+- [x] **Bulgu — `apps/landing`in `lint`i çalışmıyordu. GERÇEKTEN LİNT'LENİYOR (2026-08-18).**
+      Config eklendi (`apps/landing/eslint.config.js` — `apps/api`nin deseni + `eslint-plugin-vue`
+      flat/recommended; farklar yalnız gerçekten farklı olan iki şey: tarayıcı globalleri ve
+      `.vue` dosyaları), eslint+globals+plugin devDependency olarak geldi. İlk koşu:
+      **0 hata, 8 uyarı** (hepsi `vue/attributes-order`), `--fix` ile kapandı; landing build'i
+      sağlam. **Ve CI artık onu KOŞUYOR** (`Landing site (lint, build)`) — sessiz kalmasının
+      asıl sebebi buydu: _CI'ın koşmadığı bir script bir kontrol değil, bir iddiadır._
 - [ ] **Kalan ekran görüntüleri**: mevcut set (`screenshots/`, `docs/store/`, `store/`) bu beş
       başlığa göre denetlenir; **eksik olanlar** çekilir, **bayat olanlar** yenilenir.
       Çekim `scripts/screenshots/web.mjs` (`--only` bayrağı var; önkoşullar dosyanın

@@ -3,7 +3,7 @@ import { aiSection } from '../content.js';
 </script>
 
 <template>
-  <section id="ai" class="aw-section ai" v-reveal>
+  <section id="ai" v-reveal class="aw-section ai">
     <div class="aw-shell">
       <header class="ai__head">
         <p class="aw-eyebrow">{{ aiSection.eyebrow }}</p>
