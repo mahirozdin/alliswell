@@ -38,7 +38,7 @@ import quickLinkRoutes from './routes/quick-links.js';
 import taskSeriesRoutes from './routes/task-series.js';
 import importExportRoutes from './routes/import-export.js';
 import noteVersionRoutes from './routes/note-versions.js';
-import { loadEeOverlay } from './lib/ee.js';
+import { corsOriginAllowed, loadEeOverlay } from './lib/ee.js';
 import entitlementsPlugin from './plugins/entitlements.js';
 import eeRoutes from './routes/ee.js';
 import aiRoutes from './routes/ai.js';
@@ -88,7 +88,13 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
   await app.register(sensible);
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, {
-    origin: config.corsOrigin,
+    // With the extension seam off this stays the plain static value — CE is
+    // bit-identical by construction. With it on, the option becomes a
+    // callback so extension-registered origin checks are consulted at
+    // request time (this plugin registers before the overlay loads).
+    origin: config.ee.enabled
+      ? (origin, cb) => cb(null, corsOriginAllowed(app, origin))
+      : config.corsOrigin,
     // @fastify/cors defaults to the CORS-safelisted methods (GET/HEAD/POST),
     // which silently blocks browser PATCH/PUT/DELETE preflights (feedback
     // round 3, item 1 — web task edits never reached the server).

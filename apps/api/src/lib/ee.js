@@ -39,6 +39,7 @@ export async function loadEeOverlay(app) {
     syncEntities: Object.create(null),
     mcpTools: [],
     permissions: [],
+    corsOriginChecks: [],
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -64,6 +65,21 @@ export async function loadEeOverlay(app) {
     state.error = err?.message ?? String(err);
     app.log.error({ err, dir }, 'EE overlay failed to load — continuing as CE');
   }
+}
+
+/**
+ * The dynamic half of the CORS `origin` option (EE-013): reproduces the
+ * static value's semantics (true = allow, list = exact match) and then
+ * consults extension-registered checks. Requests without an Origin header
+ * answer true — the plugin sets no CORS headers for them either way.
+ */
+export function corsOriginAllowed(app, origin) {
+  if (!origin) return true;
+  const configured = app.config.corsOrigin;
+  if (configured === true) return true;
+  const list = Array.isArray(configured) ? configured : [configured];
+  if (list.includes(origin)) return true;
+  return app.ee.corsOriginChecks.some((check) => check(origin) === true);
 }
 
 function buildSeam(state) {
@@ -101,6 +117,19 @@ function buildSeam(state) {
         throw new Error(`registerMcpTool(${tool.name}): name already taken`);
       }
       state.mcpTools.push(tool);
+    },
+
+    /**
+     * Extra CORS origin check: `(origin: string) => boolean`. Consulted at
+     * REQUEST time (the CORS plugin registers before the overlay loads), only
+     * for origins the static allowlist did not already admit. Never receives
+     * an absent origin.
+     */
+    registerCorsOriginCheck(check) {
+      if (typeof check !== 'function') {
+        throw new Error('registerCorsOriginCheck: a function is required');
+      }
+      state.corsOriginChecks.push(check);
     },
 
     /** Collection point only — enforcing permissions is the overlay's business. */

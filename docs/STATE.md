@@ -3,7 +3,16 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-19a (**EE-012 dokunuşu — `config.ee.baseDomain` (Round; overlay
+**Last updated:** 2026-08-19b (**EE-013 dokunuşu — CORS origin seçeneği uzantı
+check'lerine danışır (Round; nötr seam eklemesi).** Seam'e `registerCorsOriginCheck(fn)`
+girdi; `ee.enabled` iken CORS `origin` seçeneği İSTEK anında çalışan callback olur (statik
+`CORS_ORIGIN` semantiği önce, sonra check'ler — CORS plugin'i overlay'den önce register
+olduğu için tembel okuma şart), değilken bit-bit eski statik değer. Fixture overlay'e
+check + 2 yeni seam testi (statik liste + check kabulü + reddi; CE yansıtma regresyonu).
+Süitler: unit **738**, lint/format yeşil. Sıradaki iş (core): değişmedi — sahibin iki
+adımı.)
+
+Önceki blok: 2026-08-19a (**EE-012 dokunuşu — `config.ee.baseDomain` (Round; overlay
 tarafının işi, public'e TEK nötr alan indi).** `EE_BASE_DOMAIN` → `config.ee.baseDomain`
 (lowercase, varsayılan null); core görmezden gelir, uzantılar host-tabanlı istek bağlamı
 türetebilir. Süitler: unit **736**, lint/format yeşil. Sıradaki iş (core): değişmedi —

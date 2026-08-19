@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Extension CORS origin checks (EE-013).** The overlay seam gains
+  `registerCorsOriginCheck(fn)`: with the seam enabled, the CORS `origin` option becomes
+  a request-time callback that first honors the static `CORS_ORIGIN` semantics and then
+  consults extension-registered checks. Seam off = the plain static value, bit for bit.
+
 - **`config.ee.baseDomain` (EE-012).** One additive knob: the apex domain an instance
   serves (`EE_BASE_DOMAIN`, lowercased, default null). Core ignores it; extensions may
   derive host-based request context from it.

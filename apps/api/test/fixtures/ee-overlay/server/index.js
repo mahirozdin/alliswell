@@ -69,6 +69,9 @@ export async function register(app, seam) {
     { id: 'probe.view', label: 'seam.probe.view', description: 'test-only' },
   ]);
 
+  // EE-013: origin checks are consulted at request time, after the static list.
+  seam.registerCorsOriginCheck((origin) => origin === 'https://seam-allowed.example');
+
   // The ordering guarantee made visible: this hook is added before ANY core
   // route registers, so every response carries the marker.
   app.addHook('onSend', async (request, reply, payload) => {

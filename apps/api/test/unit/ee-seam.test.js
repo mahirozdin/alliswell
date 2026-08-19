@@ -139,4 +139,41 @@ describe('EE overlay seam (EE-002)', () => {
     const health = await app.inject({ method: 'GET', url: '/health/live' });
     expect(health.statusCode).toBe(200);
   });
+
+  it('consults overlay CORS origin checks after the static list (EE-013)', async () => {
+    // A restrictive static list + the fixture's extra check.
+    ({ app } = await buildTestApp({
+      config: loadConfig({
+        NODE_ENV: 'test',
+        RATE_LIMIT_AUTH_MAX: '1000',
+        EE_ENABLED: '1',
+        EE_DIR: FIXTURE_DIR,
+        CORS_ORIGIN: 'https://static.example',
+      }),
+    }));
+    const preflight = (origin) =>
+      app.inject({
+        method: 'OPTIONS',
+        url: '/api/v1/__seam-probe',
+        headers: { origin, 'access-control-request-method': 'GET' },
+      });
+
+    const viaStatic = await preflight('https://static.example');
+    expect(viaStatic.headers['access-control-allow-origin']).toBe('https://static.example');
+    const viaCheck = await preflight('https://seam-allowed.example');
+    expect(viaCheck.headers['access-control-allow-origin']).toBe('https://seam-allowed.example');
+    const denied = await preflight('https://evil.example');
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('CE keeps the plain static CORS value — allow-all default reflects, checks never exist', async () => {
+    ({ app } = await buildTestApp()); // EE disabled under test env
+    const res = await app.inject({
+      method: 'OPTIONS',
+      url: '/health/live',
+      headers: { origin: 'https://anything.example', 'access-control-request-method': 'GET' },
+    });
+    // Default CORS_ORIGIN unset → true → reflect: unchanged CE behavior.
+    expect(res.headers['access-control-allow-origin']).toBe('https://anything.example');
+  });
 });
