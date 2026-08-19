@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fakeDb } from '../helpers/fakedb.js';
-import { recordSyncWrite, withRevision } from '../../src/db/sync.js';
+import { recordSyncWrite, recordSyncWrites, withRevision } from '../../src/db/sync.js';
 
 const WS = '01WORKSPACE0000000000000AA';
 
@@ -95,5 +95,71 @@ describe('db/sync withRevision (OPH-050)', () => {
         changed_fields: null,
       }),
     ).rejects.toMatchObject({ code: 'ER_DUP_ENTRY' });
+  });
+});
+
+describe('db/sync recordSyncWrites — the bulk form', () => {
+  it('assigns consecutive revisions in order and logs one row per write', async () => {
+    const { db, tables } = fakeDb();
+    seedWorkspace(tables);
+
+    let revisions;
+    await db.transaction(async (trx) => {
+      await withRevision(trx, WS, 'task', 'T0'.padEnd(26, '0'), 'create'); // → 1
+      revisions = await recordSyncWrites(trx, WS, [
+        { entityType: 'tag', entityId: 'G1'.padEnd(26, '0'), operation: 'create' },
+        {
+          entityType: 'tag',
+          entityId: 'G2'.padEnd(26, '0'),
+          operation: 'update',
+          changedFields: ['name'],
+        },
+        { entityType: 'tag', entityId: 'G3'.padEnd(26, '0'), operation: 'delete' },
+      ]);
+    });
+
+    // A puller cannot tell this apart from three single calls.
+    expect(revisions).toEqual([2, 3, 4]);
+    expect(tables.workspaces[0].revision).toBe(4);
+    expect(tables.sync_revisions).toHaveLength(4);
+    expect(tables.sync_revisions[2]).toMatchObject({
+      workspace_id: WS,
+      revision: 3,
+      entity_type: 'tag',
+      entity_id: 'G2'.padEnd(26, '0'),
+      operation: 'update',
+      changed_fields: JSON.stringify(['name']),
+    });
+    expect(tables.sync_revisions[3]).toMatchObject({ revision: 4, operation: 'delete' });
+  });
+
+  it('an empty batch is a no-op: no revision burned', async () => {
+    const { db, tables } = fakeDb();
+    seedWorkspace(tables);
+    await db.transaction(async (trx) => {
+      expect(await recordSyncWrites(trx, WS, [])).toEqual([]);
+    });
+    expect(tables.workspaces[0].revision).toBe(0);
+    expect(tables.sync_revisions).toHaveLength(0);
+  });
+
+  it('keeps counters per workspace, exactly like the single-write path', async () => {
+    const { db, tables } = fakeDb();
+    const otherWs = '01WORKSPACE0000000000000BB';
+    seedWorkspace(tables);
+    seedWorkspace(tables, otherWs);
+
+    await db.transaction(async (trx) => {
+      await recordSyncWrites(trx, WS, [
+        { entityType: 'note', entityId: 'N1'.padEnd(26, '0'), operation: 'create' },
+        { entityType: 'note', entityId: 'N2'.padEnd(26, '0'), operation: 'create' },
+      ]);
+      await recordSyncWrites(trx, otherWs, [
+        { entityType: 'note', entityId: 'N3'.padEnd(26, '0'), operation: 'create' },
+      ]);
+    });
+
+    expect(tables.workspaces.find((w) => w.id === WS).revision).toBe(2);
+    expect(tables.workspaces.find((w) => w.id === otherWs).revision).toBe(1);
   });
 });

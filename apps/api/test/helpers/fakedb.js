@@ -90,6 +90,9 @@ const OPS = {
   like: (a, b) => typeof a === 'string' && new RegExp(`^${String(b).replace(/%/g, '.*')}$`).test(a),
 };
 
+/** Ordering compares primitives — Dates become their millisecond value. */
+const sortValue = (value) => (value instanceof Date ? value.getTime() : value);
+
 export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {}) {
   const tables = {
     users: [],
@@ -318,7 +321,15 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
       if (orderings.length > 0) {
         rows = [...rows].sort((a, b) => {
           for (const { col, dir } of orderings) {
-            const [av, bv] = [a[col], b[col]];
+            // Compare VALUES, not references: two Date objects for the same
+            // millisecond are never `===`, so the old check skipped straight
+            // to `>` — which answers false both ways and made the comparator
+            // inconsistent, silently dropping the secondary sort key. MySQL
+            // compares DATETIME(3) by value and falls through to the next
+            // key; `note-versions` (created_at desc, id desc) relied on that
+            // and flaked here roughly one run in four.
+            const av = sortValue(a[col]);
+            const bv = sortValue(b[col]);
             if (av === bv) continue;
             const cmp = av > bv ? 1 : -1;
             return dir === 'desc' ? -cmp : cmp;

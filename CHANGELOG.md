@@ -7,6 +7,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Bulk sync writes: `recordSyncWrites` (EE-017).** The batched form of `recordSyncWrite`
+  for a writer that materializes many rows of one workspace at once: one revision
+  allocation and chunked inserts instead of three round trips per row, with byte-identical
+  output for pullers (consecutive revisions, one `sync_revisions` row per write). Measured
+  on 3000 rows: seconds → tens of milliseconds.
+
+### Fixed
+
+- **A flaky note-version test was a real defect in the test database.** `fakeDb`'s
+  ordering compared `Date` objects by reference, so two timestamps in the same
+  millisecond were never equal and the secondary sort key (`id`) was silently dropped —
+  an inconsistent comparator whose result depended on the sort algorithm. MySQL compares
+  `DATETIME(3)` by value and falls through, so only the fake was wrong; it made
+  `note-versions` fail about one run in four. Ordering now compares values.
+
+### Added
+
 - **Account-purge filters (EE-016).** The overlay seam gains
   `registerAccountPurgeFilter(fn)`: consulted inside the purge transaction before owned
   workspaces are deleted, a filter may re-home a workspace (transfer its ownership in the

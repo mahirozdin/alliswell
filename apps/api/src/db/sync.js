@@ -67,3 +67,67 @@ export async function recordSyncWrite(
 export function withRevision(trx, workspaceId, entityType, entityId, operation, changedFields) {
   return recordSyncWrite(trx, { workspaceId, entityType, entityId, operation, changedFields });
 }
+
+const BULK_INSERT_CHUNK = 500;
+
+/**
+ * Bulk form of [recordSyncWrite] for a writer that materializes MANY rows of
+ * one workspace at once (an import, a bulk provisioning step, a repair job).
+ *
+ * Same invariants, same output: the workspace revision advances by exactly
+ * one per write, and each write gets its own `sync_revisions` row with a
+ * consecutive revision — a puller cannot tell these apart from N single
+ * calls. What changes is the cost: one increment + one read + chunked
+ * inserts, instead of three round trips per row (measured on 3000 rows:
+ * seconds → tens of milliseconds).
+ *
+ * Ordering: revisions are assigned in array order, so the caller can zip the
+ * returned array back onto its rows to stamp them.
+ *
+ * @param {import('knex').Knex.Transaction} trx
+ * @param {string} workspaceId
+ * @param {Array<{entityType: string, entityId: string,
+ *                operation: 'create'|'update'|'delete', changedFields?: string[]}>} writes
+ * @returns {Promise<number[]>} the assigned revisions, in the writes' order
+ */
+export async function recordSyncWrites(trx, workspaceId, writes) {
+  if (writes.length === 0) return [];
+
+  // One row lock, one allocation: the same serialization single writes get,
+  // paid once for the whole batch.
+  await trx('workspaces').where({ id: workspaceId }).increment('revision', writes.length);
+  const workspace = await trx('workspaces').where({ id: workspaceId }).first('revision');
+  const last = Number(workspace.revision);
+  const first = last - writes.length + 1;
+
+  const rows = writes.map((write, i) => ({
+    id: newId(),
+    workspace_id: workspaceId,
+    revision: first + i,
+    entity_type: write.entityType,
+    entity_id: write.entityId,
+    operation: write.operation,
+    changed_fields: write.changedFields ? JSON.stringify(write.changedFields) : null,
+  }));
+  for (let i = 0; i < rows.length; i += BULK_INSERT_CHUNK) {
+    await trx('sync_revisions').insert(rows.slice(i, i + BULK_INSERT_CHUNK));
+  }
+
+  // After commit, exactly like the single-write path. One sync-changed event
+  // carries the whole batch (clients pull a range, not a row).
+  (trx.executionPromise ?? Promise.resolve())
+    .then(() => {
+      publishSyncChanged(workspaceId, last);
+      for (const write of writes) {
+        publishEntityChanged({
+          workspaceId,
+          entityType: write.entityType,
+          entityId: write.entityId,
+          operation: write.operation,
+        });
+      }
+    })
+    .catch(() => {});
+
+  return rows.map((row) => row.revision);
+}

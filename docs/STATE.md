@@ -3,7 +3,19 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-19c (**EE-016 dokunuşu — hesap purge'ına uzantı filtresi (Round;
+**Last updated:** 2026-08-19d (**EE-017 dokunuşu — `recordSyncWrites` + fakedb sıralama
+kusuru (Round).** (1) Toplu sync yazımı: tek revision tahsisi + parçalı insert; çıktı
+puller için BİREBİR aynı (ardışık revision, yazım başına bir `sync_revisions` satırı) ama
+3000 satırda saniyeler yerine on milisaniyeler — ölçüm 2800ms → 346ms. (2) **Flaky
+`note-versions` testi gerçek bir kusurmuş:** `fakeDb` sıralaması `Date`'leri REFERANSLA
+karşılaştırıyordu; aynı milisaniyedeki iki tarih asla eşit sayılmayınca ikincil anahtar
+(`id`) sessizce düşüyor ve karşılaştırıcı tutarsız kalıyordu (sonuç sort algoritmasına
+bağlıydı → ~4 koşuda 1 kırmızı). MySQL DATETIME(3)'ü değerle karşılaştırıp ikincil
+anahtara düştüğü için kusur YALNIZ sahte veritabanındaydı; artık değerle karşılaştırıyor —
+6/6 yeşil, tam süit iki kez **742**. lint/format/no-ts/no-ee/docs yeşil. Sıradaki iş
+(core): değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-19c (**EE-016 dokunuşu — hesap purge'ına uzantı filtresi (Round;
 nötr seam eklemesi).** Seam'e `registerAccountPurgeFilter(fn)`: purge TRANSACTION'ının
 içinde, sahip olunan workspace'ler silinmeden önce danışılır; filtre workspace'i aynı
 trx'te yeniden-sahiplendirip (owner transferi) muaf listesine yazabilir. Filtresiz davranış
