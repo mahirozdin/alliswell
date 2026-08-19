@@ -66,7 +66,25 @@ describe('GET /ee/status (EE-003)', () => {
       features: [],
       expiresAt: null,
       overlay: 'disabled',
+      baseDomain: null, // no EE_BASE_DOMAIN configured — nothing to discover
     });
+  });
+
+  it('reports the configured apex domain so a client can recognize tenant hosts', async () => {
+    ({ app } = await buildTestApp({
+      config: loadConfig({
+        NODE_ENV: 'test',
+        RATE_LIMIT_AUTH_MAX: '1000',
+        EE_BASE_DOMAIN: 'Example.COM',
+      }),
+    }));
+    const owner = await registerUser(app, { email: 'base-domain@example.com' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/ee/status',
+      headers: owner.headers,
+    });
+    expect(res.json().baseDomain).toBe('example.com'); // lowercased at config
   });
 
   it('requires authentication', async () => {

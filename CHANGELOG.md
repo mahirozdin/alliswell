@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Team-aware sign-in in the app (EE-018).** When an instance serves an apex domain,
+  `/ee/status` now reports it (`baseDomain`), and the app recognizes a tenant address
+  (`https://acme.example.com`) for what it is: the section app bar carries a team chip
+  (name + stable colour) and `/join/:token` is a real destination instead of a routing
+  error. Switching teams is switching servers — the address flow self-hosters already use,
+  so nothing new is stored. A CE server or a plain host draws nothing at all.
+
 - **Bulk sync writes: `recordSyncWrites` (EE-017).** The batched form of `recordSyncWrite`
   for a writer that materializes many rows of one workspace at once: one revision
   allocation and chunked inserts instead of three round trips per row, with byte-identical

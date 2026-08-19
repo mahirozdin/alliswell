@@ -1091,6 +1091,18 @@
   },
   "ee": {
     "badge": "Enterprise",
-    "locked": "This feature requires an enterprise license."
+    "locked": "This feature requires an enterprise license.",
+    "team": {
+      "tooltip": "Team: {team}"
+    },
+    "join": {
+      "title": "Join a team",
+      "pendingTitle": "Invite received",
+      "pendingBody": "This invite cannot be redeemed yet. Ask your team admin to send it again once invites are enabled on this server.",
+      "pendingBodyTeam": "This invite is for {team}. It cannot be redeemed yet — ask your team admin to send it again once invites are enabled.",
+      "unavailableTitle": "Invites are not available here",
+      "unavailableBody": "This server does not run teams, so an invite link has nothing to join.",
+      "goHome": "Go to Home"
+    }
   }
 }

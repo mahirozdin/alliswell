@@ -8,6 +8,7 @@ class EeStatus {
     this.features = const [],
     this.expiresAt,
     this.overlay = 'disabled',
+    this.baseDomain,
   });
 
   /// License lifecycle: `none | active | grace | readonly`.
@@ -21,6 +22,11 @@ class EeStatus {
 
   /// Overlay diagnostics: `disabled | absent | loaded | error`.
   final String overlay;
+
+  /// The apex domain this instance serves, when it serves one. A client
+  /// cannot tell a tenant host from an ordinary one by looking at it, so the
+  /// server says it rather than the app guessing from label counts.
+  final String? baseDomain;
 
   /// The CE truth — also what a 404 (a server that predates the endpoint)
   /// maps to: nothing enabled, not an error.
@@ -37,6 +43,7 @@ class EeStatus {
     features: ((json['features'] as List?) ?? const []).cast<String>(),
     expiresAt: json['expiresAt'] as String?,
     overlay: (json['overlay'] as String?) ?? 'disabled',
+    baseDomain: json['baseDomain'] as String?,
   );
 
   Map<String, dynamic> toJson() => {
@@ -44,5 +51,6 @@ class EeStatus {
     'features': features,
     'expiresAt': expiresAt,
     'overlay': overlay,
+    'baseDomain': baseDomain,
   };
 }

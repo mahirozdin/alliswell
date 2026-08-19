@@ -21,6 +21,12 @@ export default async function eeRoutes(app) {
               features: { type: 'array', items: { type: 'string' } },
               expiresAt: { type: ['string', 'null'] },
               overlay: { type: 'string', enum: ['disabled', 'absent', 'loaded', 'error'] },
+              // The apex domain this instance serves, when it serves one.
+              // Capability discovery, not decoration: a client cannot tell
+              // `acme.example.com` (one tenant of example.com) from an
+              // ordinary host by looking at it, and guessing from the label
+              // count would misread `api.alliswell.space` as a tenant.
+              baseDomain: { type: ['string', 'null'] },
             },
           },
         },
@@ -30,6 +36,7 @@ export default async function eeRoutes(app) {
       state: app.entitlements.state,
       features: app.entitlements.list(),
       expiresAt: app.entitlements.expiresAt?.toISOString() ?? null,
+      baseDomain: app.config.ee.baseDomain,
       overlay: !app.ee?.enabled
         ? 'disabled'
         : app.ee.error

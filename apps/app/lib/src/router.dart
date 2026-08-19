@@ -7,6 +7,7 @@ import 'core/modal_observer.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
+import 'features/ee/ui/join_screen.dart';
 import 'features/files/ui/files_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/notes/ui/markdown_import_screen.dart';
@@ -181,6 +182,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (context, state) => _page(const RegisterScreen()),
+      ),
+      // EE-018: a team invite's landing place. Not in `_authLocations` on
+      // purpose — an invite arriving signed-out is remembered by the pending
+      // deep-link machinery and replayed after sign-in, which is exactly the
+      // flow an invite wants.
+      GoRoute(
+        path: '/join/:token',
+        builder: (context, state) =>
+            _page(JoinTeamScreen(token: state.pathParameters['token'] ?? '')),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

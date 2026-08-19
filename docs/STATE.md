@@ -3,7 +3,21 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-19d (**EE-017 dokunuşu — `recordSyncWrites` + fakedb sıralama
+**Last updated:** 2026-08-19e (**EE-018 — APP TARAFI TEAM FARKINDALIĞI (Round).**
+`/ee/status`'a `baseDomain` (instance hangi apex'i sunuyor — istemci tenant host'u
+tahminle ayırt edemez: `api.alliswell.space` ile `acme.example.com` aynı şekle sahip).
+App: `features/ee/team_origin.dart` saf türetim (sunucunun host kurallarının aynası —
+tek ekstra etiket, DNS-strict, rezerve adlar dışarıda) + bölüm app bar'ında team chip'i
+(ad + sabit renk; palet ve FNV-1a sunucunun profil rengiyle AYNI) + `/join/:token`
+gerçek bir varış noktası (davet akışı E04'te; şimdilik dürüst "henüz kullanılamıyor" /
+"bu sunucuda takım yok" durumu). Team değiştirmek = sunucu değiştirmek (self-host akışı;
+yeni kalıcı state YOK). CE'de HİÇBİR ŞEY çizilmiyor — testle. Süitler: app **1265**
+(9 yeni), core **743**, analyze/format/i18n/docs/no-ee yeşil. **Bulgu:** widget testinde
+gerçek async kurulum (auth restore'un `.timeout(4s)` timer'ı) sahte saat altında hiç
+tamamlanmıyordu — kurulum `tester.runAsync` içine alındı; testler asılmak yerine geçiyor.
+Sıradaki iş (core): değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-19d (**EE-017 dokunuşu — `recordSyncWrites` + fakedb sıralama
 kusuru (Round).** (1) Toplu sync yazımı: tek revision tahsisi + parçalı insert; çıktı
 puller için BİREBİR aynı (ardışık revision, yazım başına bir `sync_revisions` satırı) ama
 3000 satırda saniyeler yerine on milisaniyeler — ölçüm 2800ms → 346ms. (2) **Flaky

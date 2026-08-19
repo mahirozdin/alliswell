@@ -1090,6 +1090,18 @@
   },
   "ee": {
     "badge": "Enterprise",
-    "locked": "Bu özellik kurumsal lisans gerektirir."
+    "locked": "Bu özellik kurumsal lisans gerektirir.",
+    "team": {
+      "tooltip": "Takım: {team}"
+    },
+    "join": {
+      "title": "Takıma katıl",
+      "pendingTitle": "Davet alındı",
+      "pendingBody": "Bu davet henüz kullanılamıyor. Sunucuda davetler açıldığında takım yöneticinden tekrar göndermesini iste.",
+      "pendingBodyTeam": "Bu davet {team} takımı için. Henüz kullanılamıyor — davetler açıldığında takım yöneticinden tekrar göndermesini iste.",
+      "unavailableTitle": "Burada davet kullanılamıyor",
+      "unavailableBody": "Bu sunucuda takım özelliği çalışmıyor, dolayısıyla davet bağlantısının katılacağı bir yer yok.",
+      "goHome": "Ana Sayfa'ya git"
+    }
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/persisted_prefs.dart';
+import '../features/ee/ui/team_chip.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
 import '../features/calendar/apple/providers.dart';
 import '../features/ai/data/ai_context_builder.dart';
@@ -505,6 +506,9 @@ AppBar buildSectionAppBar(
   return AppBar(
     title: Text(title),
     actions: [
+      // EE-018: which team this window belongs to. Renders nothing on a CE
+      // server or a plain host, so the community build is untouched.
+      const AwTeamChip(),
       ...leadingActions,
       if (onRefresh != null && wide) AwRefreshAction(onRefresh: onRefresh),
       ...trailingActions,
