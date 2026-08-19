@@ -166,6 +166,49 @@ describe('EE overlay seam (EE-002)', () => {
     expect(denied.headers['access-control-allow-origin']).toBeUndefined();
   });
 
+  it('an overlay purge filter spares re-homed workspaces; CE purges them all (EE-016)', async () => {
+    const { purgeAccount } = await import('../../src/db/accounts.js');
+    const seed = (tables) => {
+      tables.users.push(
+        { id: 'U1'.padEnd(26, '0'), email: 'seam-holder@example.com', deleted_at: null },
+        { id: 'U2'.padEnd(26, '0'), email: 'seam-doomed@example.com', deleted_at: null },
+      );
+      tables.workspaces.push(
+        {
+          id: 'W1'.padEnd(26, '0'),
+          owner_id: 'U2'.padEnd(26, '0'),
+          slug: 'seam-keep-team',
+          deleted_at: null,
+        },
+        {
+          id: 'W2'.padEnd(26, '0'),
+          owner_id: 'U2'.padEnd(26, '0'),
+          slug: 'personal-space',
+          deleted_at: null,
+        },
+      );
+    };
+
+    // With the fixture overlay: the marked workspace is spared and re-homed.
+    let built = await buildTestApp({ config: eeConfig(FIXTURE_DIR) });
+    app = built.app;
+    seed(built.tables);
+    let result = await purgeAccount(app, 'U2'.padEnd(26, '0'));
+    expect(result.workspaces).toBe(1); // only the personal one counted
+    expect(built.tables.workspaces.map((w) => w.slug)).toEqual(['seam-keep-team']);
+    expect(built.tables.workspaces[0].owner_id).toBe('U1'.padEnd(26, '0'));
+    expect(built.tables.users.map((u) => u.email)).toEqual(['seam-holder@example.com']);
+    await app.close();
+
+    // CE: no filters exist, both owned workspaces purge — unchanged behavior.
+    built = await buildTestApp();
+    app = built.app;
+    seed(built.tables);
+    result = await purgeAccount(app, 'U2'.padEnd(26, '0'));
+    expect(result.workspaces).toBe(2);
+    expect(built.tables.workspaces).toHaveLength(0);
+  });
+
   it('CE keeps the plain static CORS value — allow-all default reflects, checks never exist', async () => {
     ({ app } = await buildTestApp()); // EE disabled under test env
     const res = await app.inject({

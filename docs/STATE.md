@@ -3,7 +3,15 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-19b (**EE-013 dokunuşu — CORS origin seçeneği uzantı
+**Last updated:** 2026-08-19c (**EE-016 dokunuşu — hesap purge'ına uzantı filtresi (Round;
+nötr seam eklemesi).** Seam'e `registerAccountPurgeFilter(fn)`: purge TRANSACTION'ının
+içinde, sahip olunan workspace'ler silinmeden önce danışılır; filtre workspace'i aynı
+trx'te yeniden-sahiplendirip (owner transferi) muaf listesine yazabilir. Filtresiz davranış
+bit-bit eski; muaf kalan workspace'in dosyaları da silinmez (anahtar toplama filtreden
+SONRA). Fixture overlay'e filtre + seam testi (muaf+transfer / CE'de tam purge). Süitler:
+unit **739**, lint/format yeşil. Sıradaki iş (core): değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-19b (**EE-013 dokunuşu — CORS origin seçeneği uzantı
 check'lerine danışır (Round; nötr seam eklemesi).** Seam'e `registerCorsOriginCheck(fn)`
 girdi; `ee.enabled` iken CORS `origin` seçeneği İSTEK anında çalışan callback olur (statik
 `CORS_ORIGIN` semantiği önce, sonra check'ler — CORS plugin'i overlay'den önce register

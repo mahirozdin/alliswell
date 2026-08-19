@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Account-purge filters (EE-016).** The overlay seam gains
+  `registerAccountPurgeFilter(fn)`: consulted inside the purge transaction before owned
+  workspaces are deleted, a filter may re-home a workspace (transfer its ownership in the
+  same transaction) and return it as spared. No filters = the exact previous behavior;
+  spared workspaces keep their files.
+
 - **Extension CORS origin checks (EE-013).** The overlay seam gains
   `registerCorsOriginCheck(fn)`: with the seam enabled, the CORS `origin` option becomes
   a request-time callback that first honors the static `CORS_ORIGIN` semantics and then

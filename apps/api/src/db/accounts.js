@@ -80,7 +80,16 @@ export async function purgeAccount(app, userId) {
 
   await app.db.transaction(async (trx) => {
     const owned = await trx('workspaces').where({ owner_id: userId }).select('id');
-    const workspaceIds = owned.map((w) => w.id);
+    let workspaceIds = owned.map((w) => w.id);
+
+    // Extensions may spare owned workspaces (re-homing them inside this
+    // transaction) — a spared workspace is not this account's data to erase.
+    for (const filter of app.ee?.accountPurgeFilters ?? []) {
+      const spared = await filter(trx, { userId, workspaceIds });
+      if (Array.isArray(spared) && spared.length > 0) {
+        workspaceIds = workspaceIds.filter((id) => !spared.includes(id));
+      }
+    }
     workspaceCount = workspaceIds.length;
 
     if (workspaceIds.length > 0) {

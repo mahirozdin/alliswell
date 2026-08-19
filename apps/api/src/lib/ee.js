@@ -40,6 +40,7 @@ export async function loadEeOverlay(app) {
     mcpTools: [],
     permissions: [],
     corsOriginChecks: [],
+    accountPurgeFilters: [],
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -130,6 +131,20 @@ function buildSeam(state) {
         throw new Error('registerCorsOriginCheck: a function is required');
       }
       state.corsOriginChecks.push(check);
+    },
+
+    /**
+     * Account-purge filter: `async (trx, { userId, workspaceIds }) => ids to
+     * SPARE`. Consulted inside the purge transaction before owned workspaces
+     * are deleted; a filter that spares a workspace must also re-home it
+     * (update its ownership) in the same trx, or the user-row delete will
+     * hit the owner FK. Core without filters behaves exactly as before.
+     */
+    registerAccountPurgeFilter(filter) {
+      if (typeof filter !== 'function') {
+        throw new Error('registerAccountPurgeFilter: a function is required');
+      }
+      state.accountPurgeFilters.push(filter);
     },
 
     /** Collection point only — enforcing permissions is the overlay's business. */

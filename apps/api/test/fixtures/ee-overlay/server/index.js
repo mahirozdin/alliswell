@@ -72,6 +72,23 @@ export async function register(app, seam) {
   // EE-013: origin checks are consulted at request time, after the static list.
   seam.registerCorsOriginCheck((origin) => origin === 'https://seam-allowed.example');
 
+  // EE-016: spare 'seam-keep*' workspaces from an account purge by re-homing
+  // them to the designated holder (the contract: sparing = re-homing).
+  seam.registerAccountPurgeFilter(async (trx, { workspaceIds }) => {
+    if (workspaceIds.length === 0) return [];
+    const holder = await trx('users').where({ email: 'seam-holder@example.com' }).first();
+    if (!holder) return [];
+    const rows = await trx('workspaces')
+      .whereIn('id', workspaceIds)
+      .where('slug', 'like', 'seam-keep%')
+      .select('id');
+    const ids = rows.map((r) => r.id);
+    if (ids.length > 0) {
+      await trx('workspaces').whereIn('id', ids).update({ owner_id: holder.id });
+    }
+    return ids;
+  });
+
   // The ordering guarantee made visible: this hook is added before ANY core
   // route registers, so every response carries the marker.
   app.addHook('onSend', async (request, reply, payload) => {
