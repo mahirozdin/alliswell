@@ -11,6 +11,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   `workspaceId`, so a test signing in a user who belongs to more than one workspace can
   answer the consent page's question instead of failing on the re-render.
 
+- **A reusable history tab in the app (EE-026).** Any screen can now show "who did what,
+  when" with two strings: the tab renders the actor's name, colour and initials from the
+  roster the server already keeps, translates every verb, and admits when older entries
+  remain on the server. Because history is server-only, an unreachable server produces an
+  ERROR rather than an empty list that would read as "nothing ever happened here".
+
 - **Team-aware sign-in in the app (EE-018).** When an instance serves an apex domain,
   `/ee/status` now reports it (`baseDomain`), and the app recognizes a tenant address
   (`https://acme.example.com`) for what it is: the section app bar carries a team chip

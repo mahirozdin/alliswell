@@ -1102,6 +1102,31 @@
       "unavailableTitle": "Burada davet kullanılamıyor",
       "unavailableBody": "Bu sunucuda takım özelliği çalışmıyor, dolayısıyla davet bağlantısının katılacağı bir yer yok.",
       "goHome": "Ana Sayfa'ya git"
+    },
+    "history": {
+      "couldNotLoad": "Geçmiş yüklenemedi.",
+      "emptyTitle": "Henüz kayıt yok",
+      "emptyBody": "Bu kayıttaki değişiklikler, kimin ne zaman yaptığıyla birlikte burada görünecek.",
+      "moreOnServer": "Daha eski kayıtlar sunucuda saklanıyor.",
+      "actorSystem": "AllisWell",
+      "actorUnknown": "Biri"
+    },
+    "verb": {
+      "created": "bunu oluşturdu",
+      "updated": "bunu güncelledi",
+      "deleted": "bunu sildi",
+      "assigned": "bunu atadı",
+      "released": "bunu bıraktı",
+      "transferred": "bunu devretti",
+      "status_changed": "durumu değiştirdi",
+      "suspended": "bunu askıya aldı",
+      "reactivated": "bunu yeniden etkinleştirdi",
+      "member_added": "bir üye ekledi",
+      "member_removed": "bir üyeyi çıkardı",
+      "role_changed": "bir rolü değiştirdi",
+      "repaired": "üyelikleri onardı",
+      "archived": "bunu arşivledi",
+      "restored": "bunu geri aldı"
     }
   }
 }

@@ -1103,6 +1103,31 @@
       "unavailableTitle": "Invites are not available here",
       "unavailableBody": "This server does not run teams, so an invite link has nothing to join.",
       "goHome": "Go to Home"
+    },
+    "history": {
+      "couldNotLoad": "History could not be loaded.",
+      "emptyTitle": "Nothing recorded yet",
+      "emptyBody": "Changes to this item will appear here, with who made them and when.",
+      "moreOnServer": "Older entries are kept on the server.",
+      "actorSystem": "AllisWell",
+      "actorUnknown": "Someone"
+    },
+    "verb": {
+      "created": "created this",
+      "updated": "updated this",
+      "deleted": "deleted this",
+      "assigned": "assigned this",
+      "released": "released this",
+      "transferred": "transferred this",
+      "status_changed": "changed the status",
+      "suspended": "suspended this",
+      "reactivated": "reactivated this",
+      "member_added": "added a member",
+      "member_removed": "removed a member",
+      "role_changed": "changed a role",
+      "repaired": "repaired membership",
+      "archived": "archived this",
+      "restored": "restored this"
     }
   }
 }

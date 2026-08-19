@@ -3,7 +3,17 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-19e (**EE-018 — APP TARAFI TEAM FARKINDALIĞI (Round).**
+**Last updated:** 2026-08-20a (**EE-026 — HISTORY SEKMESİ (Round; overlay tarafının işi).**
+Yeniden kullanılabilir sekme: aktör adı/rengi/baş harfleri roster'dan, fiiller sözlükten
+(15 fiil × 2 dil), kesilen sayfa "gerisi sunucuda" der. Tarih server-only olduğu için
+ulaşılamayan sunucu HATA gösterir — boş liste "hiç bir şey olmadı" iddiası olurdu ve o
+iddiayı yapamayız (api_keys dersi). Sistem aktörü kişi değildir: baş harf yerine ikon.
+İki temada şot üretildi; ilk çekimde koyu tema düz gri çıktı çünkü `scaffoldBackgroundColor`
+VEIL'dir (aurora üstüne binen örtü) ve çıplak Scaffold onu boşluğa çiziyordu — şot gerçek
+router sarmalıyla (`AwPageBackground`) yenilendi. Süitler: app **1271** (6 yeni + 2 şot),
+analyze/i18n yeşil. Sıradaki iş (core): değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-19e (**EE-018 — APP TARAFI TEAM FARKINDALIĞI (Round).**
 `/ee/status`'a `baseDomain` (instance hangi apex'i sunuyor — istemci tenant host'u
 tahminle ayırt edemez: `api.alliswell.space` ile `acme.example.com` aynı şekle sahip).
 App: `features/ee/team_origin.dart` saf türetim (sunucunun host kurallarının aynası —
