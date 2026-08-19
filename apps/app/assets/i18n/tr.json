@@ -1126,7 +1126,11 @@
       "role_changed": "bir rolü değiştirdi",
       "repaired": "üyelikleri onardı",
       "archived": "bunu arşivledi",
-      "restored": "bunu geri aldı"
+      "restored": "bunu geri aldı",
+      "authenticated": "oturum açtı",
+      "sign_in_failed": "oturum açamadı",
+      "locked": "kilitlendi",
+      "revoked": "bir oturumu sonlandırdı"
     }
   }
 }

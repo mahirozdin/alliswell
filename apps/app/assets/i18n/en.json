@@ -1127,7 +1127,11 @@
       "role_changed": "changed a role",
       "repaired": "repaired membership",
       "archived": "archived this",
-      "restored": "restored this"
+      "restored": "restored this",
+      "authenticated": "signed in",
+      "sign_in_failed": "could not sign in",
+      "locked": "was locked out",
+      "revoked": "ended a session"
     }
   }
 }
