@@ -290,6 +290,9 @@ export function loadConfig(env = process.env) {
       // tests and a future rotation.
       licensePath: env.EE_LICENSE_PATH || null,
       licensePublicKey: env.EE_LICENSE_PUBLIC_KEY || null,
+      // The apex domain this instance serves (e.g. "example.com"). Extensions
+      // may derive host-based request context from it; core ignores it.
+      baseDomain: env.EE_BASE_DOMAIN ? env.EE_BASE_DOMAIN.toLowerCase() : null,
     }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):

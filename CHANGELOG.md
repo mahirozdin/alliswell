@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **`config.ee.baseDomain` (EE-012).** One additive knob: the apex domain an instance
+  serves (`EE_BASE_DOMAIN`, lowercased, default null). Core ignores it; extensions may
+  derive host-based request context from it.
+
 - **App-side entitlement discovery (EE-008).** The Flutter app now mirrors
   `GET /api/v1/ee/status` the way it mirrors the AI status: cached in localKv per user, so
   a fresh launch has a last-known truth before the network answers, offline keeps it, and

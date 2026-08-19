@@ -3,7 +3,13 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-18e (**EE-008 — APP TARAFI ENTITLEMENT KEŞFİ (Round; overlay
+**Last updated:** 2026-08-19a (**EE-012 dokunuşu — `config.ee.baseDomain` (Round; overlay
+tarafının işi, public'e TEK nötr alan indi).** `EE_BASE_DOMAIN` → `config.ee.baseDomain`
+(lowercase, varsayılan null); core görmezden gelir, uzantılar host-tabanlı istek bağlamı
+türetebilir. Süitler: unit **736**, lint/format yeşil. Sıradaki iş (core): değişmedi —
+sahibin iki adımı.)
+
+Önceki blok: 2026-08-18e (**EE-008 — APP TARAFI ENTITLEMENT KEŞFİ (Round; overlay
 tarafının işi, public'e nötr mekanizma indi).** `eeStatusProvider` aiStatus emsalinin
 birebir izinde: `/ee/status` localKv'ye KULLANICI-BAZLI cache'lenir (paylaşılan cihazda
 hesap değişimi önceki hesabın listesini miras alamaz), soğuk açılış ağ cevap vermeden son
