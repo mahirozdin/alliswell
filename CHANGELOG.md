@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The MCP dance helper can pick a workspace (EE-021).** `fullDance`/`authorize` accept
+  `workspaceId`, so a test signing in a user who belongs to more than one workspace can
+  answer the consent page's question instead of failing on the re-render.
+
 - **Team-aware sign-in in the app (EE-018).** When an instance serves an apex domain,
   `/ee/status` now reports it (`baseDomain`), and the app recognizes a tenant address
   (`https://acme.example.com`) for what it is: the section app bar carries a team chip

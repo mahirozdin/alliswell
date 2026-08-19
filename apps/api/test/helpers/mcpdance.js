@@ -36,7 +36,7 @@ export const FORM_HEADERS = { 'content-type': 'application/x-www-form-urlencoded
 
 export async function authorize(
   app,
-  { clientId, challenge, email, password, scope, state = 'st1' },
+  { clientId, challenge, email, password, scope, state = 'st1', workspaceId },
 ) {
   const query = new URLSearchParams({
     client_id: clientId,
@@ -54,7 +54,16 @@ export async function authorize(
     method: 'POST',
     url: '/oauth/authorize',
     headers: FORM_HEADERS,
-    payload: formEncode({ formToken, email, password, decision: 'approve' }),
+    // A user with more than one workspace is asked WHICH one the connection
+    // is for; the page re-renders with radios instead of redirecting. Tests
+    // that sign in such a user must say which workspace they mean.
+    payload: formEncode({
+      formToken,
+      email,
+      password,
+      decision: 'approve',
+      ...(workspaceId ? { workspaceId } : {}),
+    }),
   });
   if (post.statusCode !== 302)
     throw new Error(`authorize POST failed: ${post.statusCode} ${post.body}`);
@@ -79,7 +88,10 @@ export async function exchangeCode(app, { clientId, code, verifier }) {
 }
 
 /** register → authorize → exchange; returns {client, tokens}. */
-export async function fullDance(app, { email, password = 'test-password-1', scope } = {}) {
+export async function fullDance(
+  app,
+  { email, password = 'test-password-1', scope, workspaceId } = {},
+) {
   const client = await registerMcpClient(app);
   const { verifier, challenge } = pkcePair();
   const { code } = await authorize(app, {
@@ -88,6 +100,7 @@ export async function fullDance(app, { email, password = 'test-password-1', scop
     email,
     password,
     scope,
+    workspaceId,
   });
   const res = await exchangeCode(app, { clientId: client.client_id, code, verifier });
   if (res.statusCode !== 200) throw new Error(`token exchange failed: ${res.body}`);
