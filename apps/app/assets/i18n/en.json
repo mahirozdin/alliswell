@@ -1093,7 +1093,21 @@
     "badge": "Enterprise",
     "locked": "This feature requires an enterprise license.",
     "team": {
-      "tooltip": "Team: {team}"
+      "tooltip": "Team: {team}",
+      "settings": {
+        "title": "Team settings",
+        "name": "Team name",
+        "slugFixed": "Address stays {slug} — links people saved keep working",
+        "language": "Team language",
+        "languageUnset": "Follow each person’s own choice",
+        "timezone": "Time zone",
+        "timezoneUnset": "Not set (UTC)",
+        "timezoneHelp": "Used for deadlines and reports",
+        "color": "Team colour",
+        "colorUnset": "Derived from the address",
+        "logoPick": "Choose logo",
+        "logoRemove": "Remove"
+      }
     },
     "join": {
       "title": "Join a team",

@@ -1092,7 +1092,21 @@
     "badge": "Enterprise",
     "locked": "Bu özellik kurumsal lisans gerektirir.",
     "team": {
-      "tooltip": "Takım: {team}"
+      "tooltip": "Takım: {team}",
+      "settings": {
+        "title": "Takım ayarları",
+        "name": "Takım adı",
+        "slugFixed": "Adres {slug} olarak kalır — kaydedilen bağlantılar çalışmaya devam eder",
+        "language": "Takım dili",
+        "languageUnset": "Herkes kendi seçimini kullansın",
+        "timezone": "Saat dilimi",
+        "timezoneUnset": "Seçilmedi (UTC)",
+        "timezoneHelp": "Son tarihler ve raporlar için kullanılır",
+        "color": "Takım rengi",
+        "colorUnset": "Adresten türetilir",
+        "logoPick": "Logo seç",
+        "logoRemove": "Kaldır"
+      }
     },
     "join": {
       "title": "Takıma katıl",

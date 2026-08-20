@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A team settings screen in the app (EE-037).** An instance that serves teams gets a
+  form for the team's name, logo, language, time zone and colour, on top of the extension's
+  own endpoints. Two rules shape it: an unchosen setting is shown as unchosen rather than
+  as a default nobody picked, and the server's stored answer replaces the form after every
+  save — a refused change cannot leave the screen claiming a value that was never taken.
+  The logo reuses the existing upload transport, so bytes go straight to object storage
+  exactly as attachments do. Nothing is drawn on a server without the capability.
+
 - **The MCP dance helper can pick a workspace (EE-021).** `fullDance`/`authorize` accept
   `workspaceId`, so a test signing in a user who belongs to more than one workspace can
   answer the consent page's question instead of failing on the re-render.
