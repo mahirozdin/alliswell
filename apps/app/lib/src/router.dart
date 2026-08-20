@@ -7,6 +7,12 @@ import 'core/modal_observer.dart';
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
+import 'features/ee/admin/admin_providers.dart';
+import 'features/ee/admin/ui/admin_login_screen.dart';
+import 'features/ee/admin/ui/admin_packages_screen.dart';
+import 'features/ee/admin/ui/admin_shell.dart';
+import 'features/ee/admin/ui/admin_teams_screen.dart';
+import 'features/ee/admin/ui/admin_usage_screen.dart';
 import 'features/ee/ui/join_screen.dart';
 import 'features/files/ui/files_screen.dart';
 import 'features/home/home_screen.dart';
@@ -43,14 +49,34 @@ const String _kNotFound = '/not-found';
 /// rather than trusted to each screen.
 Widget _page(Widget child) => AwPageBackground(child: child);
 
+/// The operator console lives on its own realm (EE-033): a different identity
+/// table, a different token audience, and therefore a different session on
+/// this device. `/admin` is reachable while the app is signed OUT — on a
+/// self-hosted install the operator may hold no AllisWell account at all —
+/// and is NOT reachable by a signed-in workspace user, who has none of the
+/// credentials it needs.
+const String kAdminRoot = '/admin';
+const String kAdminLogin = '/admin/login';
+
+bool isAdminLocation(String location) =>
+    location == kAdminRoot || location.startsWith('$kAdminRoot/');
+
 /// Pure redirect policy (unit-tested in test/router_redirect_test.dart):
-/// restoring → splash; signed out → login/register only; signed in → keep
-/// auth/splash pages unreachable.
+/// admin locations answer to the operator session ALONE; then restoring →
+/// splash; signed out → login/register only; signed in → keep auth/splash
+/// pages unreachable.
 String? computeAuthRedirect({
   required bool isRestoring,
   required bool isLoggedIn,
   required String location,
+  bool isInstanceAdmin = false,
 }) {
+  // Answered FIRST and entirely on its own terms: the person's session — even
+  // mid-restore — decides nothing here, in either direction.
+  if (isAdminLocation(location)) {
+    if (location == kAdminLogin) return isInstanceAdmin ? kAdminRoot : null;
+    return isInstanceAdmin ? null : kAdminLogin;
+  }
   if (isRestoring) return location == '/splash' ? null : '/splash';
   if (!isLoggedIn) {
     return _authLocations.contains(location) ? null : '/login';
@@ -98,6 +124,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   // go_router re-evaluates `redirect` whenever this notifier fires.
   final authChanged = ValueNotifier(0);
   ref.listen(authControllerProvider, (_, _) => authChanged.value++);
+  // The operator session moves the router too — signing in or out of the
+  // console must land somewhere without a manual navigation (EE-033).
+  ref.listen(adminSessionProvider, (_, _) => authChanged.value++);
   ref.onDispose(authChanged.dispose);
 
   final router = GoRouter(
@@ -114,7 +143,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         isRestoring: auth.isLoading,
         isLoggedIn: auth.value != null,
         location: state.matchedLocation,
+        isInstanceAdmin: ref.read(isInstanceAdminProvider),
       );
+      // The operator console never participates in the deep-link replay or
+      // the pending-destination machinery below: those exist to carry a
+      // PERSON back to what they tapped, and an operator's session is not
+      // theirs.
+      if (isAdminLocation(state.matchedLocation)) return decision;
       // OPH-189: a deep link that arrived signed-out waits, then wins once the
       // session exists. `computeAuthRedirect` stays pure and separately tested;
       // this is the one stateful layer on top of it.
@@ -191,6 +226,38 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/join/:token',
         builder: (context, state) =>
             _page(JoinTeamScreen(token: state.pathParameters['token'] ?? '')),
+      ),
+      // EE-033 — the instance-operator console. Outside the shell on purpose:
+      // it is not one of the person's five sections, it has its own frame,
+      // and nothing in it should be reachable from theirs.
+      GoRoute(
+        path: kAdminLogin,
+        builder: (context, state) => _page(const AdminLoginScreen()),
+      ),
+      ShellRoute(
+        builder: (context, state, child) =>
+            _page(AdminShell(location: state.matchedLocation, child: child)),
+        routes: [
+          GoRoute(
+            path: kAdminRoot,
+            builder: (context, state) => const AdminUsageScreen(),
+          ),
+          GoRoute(
+            path: '/admin/teams',
+            builder: (context, state) => const AdminTeamsScreen(),
+            routes: [
+              GoRoute(
+                path: ':teamId',
+                builder: (context, state) =>
+                    AdminTeamDetailScreen(teamId: state.pathParameters['teamId'] ?? ''),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/admin/packages',
+            builder: (context, state) => const AdminPackagesScreen(),
+          ),
+        ],
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

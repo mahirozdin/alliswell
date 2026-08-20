@@ -1131,6 +1131,85 @@
       "sign_in_failed": "oturum açamadı",
       "locked": "kilitlendi",
       "revoked": "bir oturumu sonlandırdı"
+    },
+    "admin": {
+      "title": "Instance konsolu",
+      "signOut": "Çıkış yap",
+      "signIn": {
+        "title": "Operatör girişi",
+        "subtitle": "Bu konsol instance operatörünündür; bir workspace hesabının değil.",
+        "email": "E-posta",
+        "password": "Parola",
+        "code": "Doğrulayıcı kodu",
+        "codeHelp": "Doğrulayıcı uygulamandaki altı hane",
+        "action": "Giriş yap",
+        "working": "Giriliyor…"
+      },
+      "nav": {
+        "usage": "Kullanım",
+        "teams": "Takımlar",
+        "packages": "Paketler"
+      },
+      "status": {
+        "active": "Etkin",
+        "suspended": "Askıda",
+        "pendingDelete": "Silinmek üzere"
+      },
+      "seats": {
+        "count": "{max} koltuğun {used} tanesi",
+        "unlimited": "{used} koltuk · sınırsız"
+      },
+      "usage": {
+        "instance": "Bu instance'taki takımlar",
+        "teams": "Takım bazında",
+        "emptyTitle": "Henüz takım yok",
+        "emptyBody": "İlkini Takımlar sayfasından oluştur."
+      },
+      "teams": {
+        "emptyTitle": "Henüz takım yok",
+        "emptyBody": "Takım burada oluşturulur, ilk yöneticisi e-postayla davet edilir.",
+        "noPackage": "Paket yok",
+        "goneTitle": "Bu takım yok",
+        "goneBody": "Silme penceresi dolduktan sonra süpürülmüş olabilir.",
+        "scheduled": "Bu takım silinmek üzere. Geri almak için Geri Al'a bas.",
+        "suspend": "Askıya al",
+        "suspendTitle": "Bu takım askıya alınsın mı?",
+        "suspendBody": "{team} salt-okunur olacak. Kimse çıkış yapmaz, hiçbir veri silinmez.",
+        "resume": "Devam ettir",
+        "restore": "Geri al",
+        "delete": "Silmeyi planla",
+        "deleteTitle": "Bu takım silinmek üzere işaretlensin mi?",
+        "deleteBody": "{team} şimdi salt-okunur olur ve instance'ın penceresi dolunca silinir. O ana kadar geri alabilirsin."
+      },
+      "invite": {
+        "title": "İlk yöneticiyi davet et",
+        "email": "E-posta",
+        "action": "Davet et",
+        "mintedTitle": "Davet oluşturuldu",
+        "onceWarning": "Link ve kod bir kez gösterilir. Hiçbir yerden geri okunamaz.",
+        "code": "Kod: {code}",
+        "separately": "Linki ve kodu FARKLI yollardan gönder — link tek başına yetmemeli.",
+        "copyLink": "Linki kopyala"
+      },
+      "packages": {
+        "default": "Varsayılan",
+        "limitCount": "{n} limit tanımlı",
+        "help": "Boş bırakmak “bu paket bu konuda konuşmuyor” demektir. Sınırsız için - yaz.",
+        "notEnforced": "Saklanıyor, henüz zorlanmıyor",
+        "saved": "Paket kaydedildi"
+      },
+      "limit": {
+        "seats": "Koltuk",
+        "workspaces": "Workspace",
+        "portal_links_active": "Etkin portal bağlantısı",
+        "portal_created_monthly": "Aylık portal kaydı",
+        "audit_retention_days": "Tarih saklama",
+        "transcribe_minutes_monthly": "Aylık deşifre dakikası"
+      },
+      "teamsBar": {
+        "count": "{max} takımın {used} tanesi",
+        "unlimited": "{used} takım · sınırsız"
+      }
     }
   }
 }

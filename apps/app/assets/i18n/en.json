@@ -1132,6 +1132,85 @@
       "sign_in_failed": "could not sign in",
       "locked": "was locked out",
       "revoked": "ended a session"
+    },
+    "admin": {
+      "title": "Instance console",
+      "signOut": "Sign out",
+      "signIn": {
+        "title": "Operator sign-in",
+        "subtitle": "This console belongs to the instance operator, not to a workspace account.",
+        "email": "E-mail",
+        "password": "Password",
+        "code": "Authenticator code",
+        "codeHelp": "Six digits from your authenticator app",
+        "action": "Sign in",
+        "working": "Signing in…"
+      },
+      "nav": {
+        "usage": "Usage",
+        "teams": "Teams",
+        "packages": "Packages"
+      },
+      "status": {
+        "active": "Active",
+        "suspended": "Suspended",
+        "pendingDelete": "Scheduled for deletion"
+      },
+      "seats": {
+        "count": "{used} of {max} seats",
+        "unlimited": "{used} seats · no limit"
+      },
+      "usage": {
+        "instance": "Teams on this instance",
+        "teams": "By team",
+        "emptyTitle": "No teams yet",
+        "emptyBody": "Create the first one from the Teams page."
+      },
+      "teams": {
+        "emptyTitle": "No teams yet",
+        "emptyBody": "A team is created here and its first admin is invited by e-mail.",
+        "noPackage": "No package",
+        "goneTitle": "This team is gone",
+        "goneBody": "It may have been purged after its deletion window passed.",
+        "scheduled": "This team is scheduled for deletion. Restore it to cancel.",
+        "suspend": "Suspend",
+        "suspendTitle": "Suspend this team?",
+        "suspendBody": "{team} will become read-only. Nobody is signed out and no data is removed.",
+        "resume": "Resume",
+        "restore": "Restore",
+        "delete": "Schedule deletion",
+        "deleteTitle": "Schedule this team for deletion?",
+        "deleteBody": "{team} becomes read-only now and is erased after the instance's window. You can restore it until then."
+      },
+      "invite": {
+        "title": "Invite the first admin",
+        "email": "E-mail",
+        "action": "Invite",
+        "mintedTitle": "Invitation created",
+        "onceWarning": "The link and the code are shown once. Nothing can read them back.",
+        "code": "Code: {code}",
+        "separately": "Send the link and the code by different routes — a link on its own must not be enough.",
+        "copyLink": "Copy link"
+      },
+      "packages": {
+        "default": "Default",
+        "limitCount": "{n} limits set",
+        "help": "Leave a field empty for “this package does not say”. Type - for no limit.",
+        "notEnforced": "Stored, not enforced yet",
+        "saved": "Package saved"
+      },
+      "limit": {
+        "seats": "Seats",
+        "workspaces": "Workspaces",
+        "portal_links_active": "Active portal links",
+        "portal_created_monthly": "Portal items per month",
+        "audit_retention_days": "History retention",
+        "transcribe_minutes_monthly": "Transcription minutes per month"
+      },
+      "teamsBar": {
+        "count": "{used} of {max} teams",
+        "unlimited": "{used} teams · no limit"
+      }
     }
   }
 }
