@@ -107,6 +107,34 @@ function parseDevEntitlements(env) {
   return names.length > 0 ? names : null;
 }
 
+/**
+ * Outgoing mail is all-or-nothing. `storage` may be partially set and simply
+ * stays off, and that is right for it: a missing bucket makes uploads
+ * impossible and everybody finds out on the next attempt. Mail is the
+ * opposite — a half-filled block looks configured to the operator who filled
+ * it in, and the failure surfaces as "the message never arrived", days later,
+ * to somebody who cannot see the logs. So it is a boot error, and it names
+ * the fields that are missing.
+ */
+function assertSmtpComplete(config) {
+  const { smtp } = config.ee;
+  const required = { EE_SMTP_HOST: smtp.host, EE_SMTP_FROM: smtp.from };
+  if (!Object.values(required).some(Boolean)) return; // not configured at all
+  const missing = Object.entries(required)
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  // An anonymous relay is legitimate; half a credential is not.
+  if (Boolean(smtp.user) !== Boolean(smtp.password)) {
+    missing.push(smtp.user ? 'EE_SMTP_PASSWORD' : 'EE_SMTP_USER');
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `SMTP is half-configured: ${missing.join(', ')} missing. ` +
+        'Set the whole block or none of it — a partly-filled one silently stops sending mail.',
+    );
+  }
+}
+
 export function loadConfig(env = process.env) {
   const config = {
     env: env.NODE_ENV ?? 'development',
@@ -293,6 +321,19 @@ export function loadConfig(env = process.env) {
       // The apex domain this instance serves (e.g. "example.com"). Extensions
       // may derive host-based request context from it; core ignores it.
       baseDomain: env.EE_BASE_DOMAIN ? env.EE_BASE_DOMAIN.toLowerCase() : null,
+      // Outgoing mail for extensions that send any (core sends none). Read
+      // like `storage`: absent means the capability is simply off. Unlike
+      // storage it is ALL-OR-NOTHING — see assertSmtpComplete below for why a
+      // half-filled block has to be a boot error rather than a quiet no-op.
+      smtp: Object.freeze({
+        host: env.EE_SMTP_HOST || null,
+        port: env.EE_SMTP_HOST ? toInt(env.EE_SMTP_PORT, 587, 'EE_SMTP_PORT') : null,
+        user: env.EE_SMTP_USER || null,
+        password: env.EE_SMTP_PASSWORD || null,
+        from: env.EE_SMTP_FROM || null,
+        // STARTTLS on 587 by default; set false only for a local relay.
+        secure: toBool(env.EE_SMTP_SECURE, false, 'EE_SMTP_SECURE'),
+      }),
     }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
@@ -326,6 +367,7 @@ export function loadConfig(env = process.env) {
   if (!/^[0-9a-fA-F]{64}$/.test(config.ai.tokenKey)) {
     throw new Error('AI_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
+  assertSmtpComplete(config);
   if (config.ai.heartbeatMs < 1000 || config.ai.heartbeatMs > 60000) {
     throw new Error('AI_HEARTBEAT_MS must be between 1000 and 60000 (proxies time out above that)');
   }

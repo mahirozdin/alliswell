@@ -7,6 +7,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Optional SMTP settings for extensions (EE-040).** `EE_SMTP_*` describes an outgoing mail
+  relay for extensions that send any; core itself sends none and ignores the block when it is
+  absent. Unlike the storage settings it is validated all-or-nothing: a half-filled block
+  stops the server at boot and names the missing fields, because a mailer that is silently
+  off is discovered days later by somebody who cannot read the logs.
+
 - **A history sentence for accepted invitations (EE-039).** The verb dictionary gains
   `accepted`, translated in both shipped languages, so a history entry written when somebody
   joins reads as a sentence rather than a raw key.
