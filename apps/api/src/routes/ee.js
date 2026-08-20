@@ -32,18 +32,32 @@ export default async function eeRoutes(app) {
         },
       },
     },
-    async () => ({
-      state: app.entitlements.state,
-      features: app.entitlements.list(),
-      expiresAt: app.entitlements.expiresAt?.toISOString() ?? null,
-      baseDomain: app.config.ee.baseDomain,
-      overlay: !app.ee?.enabled
-        ? 'disabled'
-        : app.ee.error
-          ? 'error'
-          : app.ee.loaded
-            ? 'loaded'
-            : 'absent',
-    }),
+    async (request) => {
+      const status = {
+        state: app.entitlements.state,
+        features: app.entitlements.list(),
+        expiresAt: app.entitlements.expiresAt?.toISOString() ?? null,
+        baseDomain: app.config.ee.baseDomain,
+        overlay: !app.ee?.enabled
+          ? 'disabled'
+          : app.ee.error
+            ? 'error'
+            : app.ee.loaded
+              ? 'loaded'
+              : 'absent',
+      };
+      // An extension that serves several customers from one instance can
+      // narrow this to the caller's own list. It may only NARROW: the
+      // instance answer is the ceiling, and a decorator that fails leaves it
+      // untouched rather than taking the endpoint down with it.
+      for (const decorate of app.ee?.statusDecorators ?? []) {
+        try {
+          Object.assign(status, (await decorate(request, status)) ?? {});
+        } catch (err) {
+          app.log.warn({ err: err.message }, 'EE status decorator failed — instance answer stands');
+        }
+      }
+      return status;
+    },
   );
 }

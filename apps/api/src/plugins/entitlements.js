@@ -20,6 +20,9 @@ import { resolveEeDir } from '../lib/ee.js';
  * A plan/package feed for the hosted service joins the chain later (EE-034)
  * through the overlay, which is why `refresh()` exists already.
  */
+const numberOrNull = (value) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
+
 export default fp(
   async function entitlementsPlugin(app) {
     const { ee } = app.config;
@@ -51,6 +54,13 @@ export default fp(
         state: result.state,
         features: result.payload?.features ?? [],
         expiresAt: result.payload ? new Date(result.payload.expiresAt) : null,
+        // The license's own numbers, carried rather than dropped: a file that
+        // says "100 seats" is stating a ceiling, and an extension that hands
+        // out capacity needs to know what it may not exceed.
+        allowances: {
+          seats: numberOrNull(result.payload?.seats),
+          teams: numberOrNull(result.payload?.teams),
+        },
         licenseError: result.error,
       };
     }
@@ -67,6 +77,14 @@ export default fp(
         );
       },
       list: () => [...current.features],
+      /**
+       * `{ seats, teams }` from the license, or nulls when there is none.
+       * Read-only and deliberately unopinionated: what a ceiling MEANS is the
+       * caller's business — core only reports what the file said.
+       */
+      get allowances() {
+        return { ...(current.allowances ?? { seats: null, teams: null }) };
+      },
       get state() {
         return current.state;
       },

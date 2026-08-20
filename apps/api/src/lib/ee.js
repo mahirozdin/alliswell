@@ -41,6 +41,7 @@ export async function loadEeOverlay(app) {
     permissions: [],
     corsOriginChecks: [],
     accountPurgeFilters: [],
+    statusDecorators: [],
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -145,6 +146,27 @@ function buildSeam(state) {
         throw new Error('registerAccountPurgeFilter: a function is required');
       }
       state.accountPurgeFilters.push(filter);
+    },
+
+    /**
+     * Capability-discovery contributor: `async (request, status) => partial`.
+     *
+     * `/ee/status` answers what THIS INSTANCE is licensed for, which is all a
+     * single-tenant install can be asked. An extension that serves several
+     * customers from one instance knows something core cannot: which of them
+     * is asking. Registered decorators are consulted per request and their
+     * result is merged over the instance answer, so the endpoint keeps one
+     * shape while gaining a narrower truth where one exists.
+     *
+     * A decorator that throws is ignored (logged): capability discovery is
+     * the endpoint clients cache their whole surface from, and it degrades to
+     * the instance answer rather than failing.
+     */
+    registerStatusDecorator(decorator) {
+      if (typeof decorator !== 'function') {
+        throw new Error('registerStatusDecorator: a function is required');
+      }
+      state.statusDecorators.push(decorator);
     },
 
     /** Collection point only — enforcing permissions is the overlay's business. */

@@ -89,6 +89,21 @@ export async function register(app, seam) {
     return ids;
   });
 
+  // EE-034: capability discovery may be narrowed per request. Both probes are
+  // gated on a header so the fixture stays inert for every OTHER seam test —
+  // a decorator that fired unconditionally would rewrite /ee/status for all
+  // of them.
+  seam.registerStatusDecorator(async (request, status) => {
+    if (request.headers['x-seam-narrow'] !== '1') return null;
+    return { features: status.features.filter((feature) => feature === 'teams') };
+  });
+  seam.registerStatusDecorator(async (request) => {
+    // The failure path: capability discovery must degrade to the instance
+    // answer rather than take the endpoint down with it.
+    if (request.headers['x-seam-narrow'] !== '1') return null;
+    throw new Error('seam probe: decorator failure is survivable');
+  });
+
   // The ordering guarantee made visible: this hook is added before ANY core
   // route registers, so every response carries the marker.
   app.addHook('onSend', async (request, reply, payload) => {

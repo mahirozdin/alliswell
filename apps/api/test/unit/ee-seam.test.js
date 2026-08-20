@@ -56,6 +56,40 @@ describe('EE overlay seam (EE-002)', () => {
     expect(app.ee.permissions).toEqual([expect.objectContaining({ id: 'probe.view' })]);
   });
 
+  it('lets an overlay narrow capability discovery — and survives one that fails (EE-034)', async () => {
+    ({ app } = await buildTestApp({
+      config: loadConfig({
+        NODE_ENV: 'test',
+        RATE_LIMIT_AUTH_MAX: '1000',
+        EE_ENABLED: '1',
+        EE_DIR: FIXTURE_DIR,
+        EE_DEV_ENTITLEMENTS: 'teams,itsm',
+      }),
+    }));
+    const owner = await registerUser(app, { email: 'seam-status@example.com' });
+
+    // Untouched by default: the instance answer is what a single-tenant
+    // install has always received.
+    const plain = await app.inject({
+      method: 'GET',
+      url: '/api/v1/ee/status',
+      headers: owner.headers,
+    });
+    expect(plain.json().features.sort()).toEqual(['itsm', 'teams']);
+
+    // Narrowed for this caller — and the fixture's SECOND decorator throws,
+    // which must cost nothing: discovery degrades, it does not fail.
+    const narrowed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/ee/status',
+      headers: { ...owner.headers, 'x-seam-narrow': '1' },
+    });
+    expect(narrowed.statusCode).toBe(200);
+    expect(narrowed.json().features).toEqual(['teams']);
+    // The instance's own truth is not rewritten by a decorator.
+    expect(narrowed.json().overlay).toBe('loaded');
+  });
+
   it('flows an overlay sync entity through /sync/pull', async () => {
     ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
     const owner = await registerUser(app, { email: 'seam@example.com' });
