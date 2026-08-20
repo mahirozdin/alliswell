@@ -74,6 +74,12 @@ void main() {
     // S1: the root is an index — the settings themselves moved down a level.
     expect(find.byKey(const Key('settings-language')), findsNothing);
     expect(find.byKey(const Key('notification-privacy')), findsNothing);
+    // EE-042: the sixth row exists only where there is a team AND the caller
+    // runs it. On a plain instance — which is what this fixture is — the
+    // capability does not exist, so neither does the row. (The house idiom:
+    // no entitlement, no surface. Its presence is covered where the feature
+    // lives, in test/features/ee.)
+    expect(find.byKey(const Key('settings-group-team')), findsNothing);
   });
 
   testWidgets('every row that existed still exists, on exactly one page', (

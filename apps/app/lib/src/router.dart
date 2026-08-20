@@ -27,6 +27,9 @@ import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
+import 'features/ee/ui/team_settings_screen.dart';
+import 'features/ee/ui/team_members_screen.dart';
+import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
 import 'features/ai/ui/share_log_screen.dart';
 import 'notifications/alarm_log_screen.dart';
@@ -388,6 +391,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/completed',
         builder: (context, state) => _page(const CompletedScreen()),
+      ),
+      // EE-042: the team-admin area. Real routes like every other settings
+      // group (§32 S3), so a team URL keeps working and each page is
+      // somewhere somebody can be sent. Nothing links here unless the
+      // instance is entitled AND the caller is a team admin — but the routes
+      // themselves exist, because a 404 on a link an admin was sent is worse
+      // than a screen that says "not yours".
+      GoRoute(
+        path: '/settings/team',
+        builder: (context, state) => _page(const EeTeamSettingsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/team/members',
+        builder: (context, state) => _page(const EeTeamMembersScreen()),
+      ),
+      GoRoute(
+        path: '/settings/team/invites',
+        builder: (context, state) => _page(const EeTeamInvitesScreen()),
       ),
       // OPH-220: AI settings — connections, models, the MCP connector URL.
       GoRoute(

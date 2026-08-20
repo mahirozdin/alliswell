@@ -16,6 +16,7 @@ import '../features/settings/account_locale.dart';
 import '../features/quick_access/ui/quick_access_bubble.dart';
 import '../features/quick_access/ui/quick_access_row.dart';
 import '../features/settings/server_url_sheet.dart';
+import '../features/ee/team_admin_providers.dart';
 import '../i18n/i18n.dart';
 import '../notifications/gateway.dart';
 import '../notifications/providers.dart';
@@ -94,6 +95,20 @@ class SettingsScreen extends ConsumerWidget {
                 subtitleKey: 'settings.group.dataSub',
                 path: '/settings/data',
               ),
+              // EE-042: present only where there is a team AND the caller
+              // runs it. Both halves matter — the entitlement decides whether
+              // the capability exists, the role decides whether this person
+              // has anything to do there. A member who sees an admin group
+              // and meets a 403 behind it has been told a small lie by their
+              // own app.
+              if (ref.watch(eeTeamAdminProvider))
+                _GroupRow(
+                  keyName: 'settings-group-team',
+                  icon: Icons.groups_outlined,
+                  titleKey: 'settings.group.team',
+                  subtitleKey: 'settings.group.teamSub',
+                  path: '/settings/team',
+                ),
               // Kept on the root, and kept a dialog: it is one screenful of
               // facts, not a place with settings in it.
               AboutListTile(

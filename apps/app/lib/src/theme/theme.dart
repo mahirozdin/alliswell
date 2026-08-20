@@ -267,6 +267,11 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
       foregroundColor: scheme.onPrimary,
       elevation: 4,
       highlightElevation: 2,
+      // NOTE (EE-042): this applies to EVERY flavour of FAB, including
+      // `.extended` ones, and this Flutter's theme data has no separate slot
+      // for them. An extended FAB must therefore pass its own StadiumBorder
+      // at the call site, or the circle clips it and the label spills past
+      // the edge. Found in a screenshot, which is what screenshots are for.
       shape: const CircleBorder(),
     ),
     checkboxTheme: CheckboxThemeData(

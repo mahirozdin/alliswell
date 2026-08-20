@@ -25,7 +25,8 @@
     "undo": "Geri al",
     "undoTooLate": "Çok geç — o kayıt silindi.",
     "previous": "Önceki",
-    "next": "Sonraki"
+    "next": "Sonraki",
+    "copy": "Kopyala"
   },
   "sort": {
     "sectionTitle": "Sıralama",
@@ -151,7 +152,9 @@
       "integrationsSub": "Google Takvim, Apple Takvim, yapay zekâ",
       "data": "Veri",
       "dataSub": "Tamamlananlar, paylaşım günlüğü",
-      "account": "Hesap"
+      "account": "Hesap",
+      "team": "Takım",
+      "teamSub": "Ayarlar, üyeler ve davetler"
     }
   },
   "shell": {
@@ -1106,6 +1109,51 @@
         "colorUnset": "Adresten türetilir",
         "logoPick": "Logo seç",
         "logoRemove": "Kaldır"
+      },
+      "role": {
+        "owner": "Sahip",
+        "admin": "Yönetici",
+        "member": "Üye"
+      },
+      "open": {
+        "members": "Üyeler",
+        "membersSub": "Takımda kim var, neler yapabilir",
+        "invites": "Davetler",
+        "invitesSub": "Davet gönder, daveti iptal et"
+      },
+      "members": {
+        "title": "Üyeler",
+        "deactivated": "devre dışı",
+        "deactivate": "Devre dışı bırak",
+        "reactivate": "Yeniden etkinleştir",
+        "promote": "Yönetici yap",
+        "demote": "Üye yap",
+        "remove": "Çıkar",
+        "removeTitle": "Takımdan çıkarılsın mı?",
+        "removeBody": "{name} erişimini hemen kaybeder. Yazdıkları takımda kalır, ama geri dönüş yeni bir davet gerektirir — geçici olabilecekse devre dışı bırakmayı tercih edin."
+      },
+      "seats": {
+        "count": "{max} koltuktan {used} tanesi dolu",
+        "unlimited": "{used} kişi, koltuk sınırı yok",
+        "over": "Plan aşıldı. Kimse erişimini kaybetmez — ama yeni kimse katılamaz.",
+        "room": "Yeni kişiler için yer var.",
+        "pending": "{n} davet hâlâ bekliyor"
+      },
+      "invites": {
+        "title": "Davetler",
+        "new": "Davet et",
+        "email": "E-posta adresi",
+        "role": "Şu rolle katılır",
+        "send": "Daveti oluştur",
+        "revoke": "Daveti iptal et",
+        "emptyTitle": "Henüz davet yok",
+        "emptyBody": "E-posta adresiyle davet edin. Katılım bir bağlantı ve ondan ayrı bir kodla olur.",
+        "readyTitle": "Davet hazır",
+        "mailed": "{email} adresine bir ileti yola çıktı.",
+        "manual": "Bu sunucu e-posta göndermiyor; aşağıdakileri {email} adresine kendiniz iletin.",
+        "link": "Bağlantı",
+        "code": "Kod",
+        "separately": "Bağlantıyı ve kodu farklı yollardan gönderin. Bir kez gösterilir — ikisi de geri okunamaz."
       }
     },
     "join": {
@@ -1224,6 +1272,15 @@
       "teamsBar": {
         "count": "{max} takımın {used} tanesi",
         "unlimited": "{used} takım · sınırsız"
+      }
+    },
+    "invite": {
+      "state": {
+        "pending": "bekliyor",
+        "accepted": "kabul edildi",
+        "revoked": "iptal edildi",
+        "expired": "süresi doldu",
+        "burned": "çok yanlış kod sonrası kilitlendi"
       }
     }
   }

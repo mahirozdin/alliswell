@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Team administration screens (EE-042).** On an instance that serves teams, an admin gets
+  settings, a member roster and invitations under `/settings/team`, with the Settings index
+  showing a Team group only when the capability exists AND the person actually administers a
+  team. The invitation sheet shows the link and the code separately and copies them
+  separately — there is deliberately no "copy both", since one button would put a complete
+  credential on the clipboard. A screenshot of the new screens also turned up a real theme
+  bug: the app's circular FAB shape applies to extended FABs too, clipping their labels.
+
 - **Optional SMTP settings for extensions (EE-040).** `EE_SMTP_*` describes an outgoing mail
   relay for extensions that send any; core itself sends none and ignores the block when it is
   absent. Unlike the storage settings it is validated all-or-nothing: a half-filled block

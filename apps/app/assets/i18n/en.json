@@ -26,7 +26,8 @@
     "undo": "Undo",
     "undoTooLate": "Too late — that one is already deleted.",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "copy": "Copy"
   },
   "sort": {
     "sectionTitle": "Sort by",
@@ -152,7 +153,9 @@
       "integrationsSub": "Google Calendar, Apple Calendar, AI",
       "data": "Data",
       "dataSub": "Completed work, share log",
-      "account": "Account"
+      "account": "Account",
+      "team": "Team",
+      "teamSub": "Settings, members and invitations"
     }
   },
   "shell": {
@@ -1107,6 +1110,51 @@
         "colorUnset": "Derived from the address",
         "logoPick": "Choose logo",
         "logoRemove": "Remove"
+      },
+      "role": {
+        "owner": "Owner",
+        "admin": "Admin",
+        "member": "Member"
+      },
+      "open": {
+        "members": "Members",
+        "membersSub": "Who is in the team, and what they may do",
+        "invites": "Invitations",
+        "invitesSub": "Invite people, and cancel invitations"
+      },
+      "members": {
+        "title": "Members",
+        "deactivated": "deactivated",
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate",
+        "promote": "Make admin",
+        "demote": "Make member",
+        "remove": "Remove",
+        "removeTitle": "Remove from the team?",
+        "removeBody": "{name} loses access right away. Their work stays with the team, but coming back needs a new invitation — deactivate them instead if this might be temporary."
+      },
+      "seats": {
+        "count": "{used} of {max} seats used",
+        "unlimited": "{used} people, no seat limit",
+        "over": "Over the plan. Nobody loses access — but nobody new can join.",
+        "room": "There is room for more people.",
+        "pending": "{n} invitation(s) still outstanding"
+      },
+      "invites": {
+        "title": "Invitations",
+        "new": "Invite",
+        "email": "E-mail address",
+        "role": "Joins as",
+        "send": "Create invitation",
+        "revoke": "Cancel invitation",
+        "emptyTitle": "No invitations yet",
+        "emptyBody": "Invite someone by e-mail address. They join with a link and a separate code.",
+        "readyTitle": "Invitation ready",
+        "mailed": "A message is on its way to {email}.",
+        "manual": "This server sends no e-mail, so pass these to {email} yourself.",
+        "link": "Link",
+        "code": "Code",
+        "separately": "Send the link and the code by different routes. Shown once — neither can be read back."
       }
     },
     "join": {
@@ -1225,6 +1273,15 @@
       "teamsBar": {
         "count": "{used} of {max} teams",
         "unlimited": "{used} teams · no limit"
+      }
+    },
+    "invite": {
+      "state": {
+        "pending": "waiting",
+        "accepted": "accepted",
+        "revoked": "cancelled",
+        "expired": "expired",
+        "burned": "locked after too many wrong codes"
       }
     }
   }
