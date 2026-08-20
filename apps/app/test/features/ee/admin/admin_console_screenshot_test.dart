@@ -40,7 +40,14 @@ final _usage = InstanceUsage.fromJson({
     'teams': {'used': 4, 'max': 5},
   },
   'teams': [
-    _team(id: 'T1', name: 'Acme Endüstri', slug: 'acme', used: 12, max: 10, exceeded: true),
+    _team(
+      id: 'T1',
+      name: 'Acme Endüstri',
+      slug: 'acme',
+      used: 12,
+      max: 10,
+      exceeded: true,
+    ),
     _team(id: 'T2', name: 'Globex', slug: 'globex', used: 47, max: 50),
     _team(id: 'T3', name: 'Initech', slug: 'initech', used: 6, max: null),
     _team(
@@ -107,12 +114,18 @@ void main() {
             ],
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
-              theme: buildAwTheme(brightness, fontFamilyOverride: _screenshotFamily),
+              theme: buildAwTheme(
+                brightness,
+                fontFamilyOverride: _screenshotFamily,
+              ),
               // Same lesson as the history shot: every route is wrapped in the
               // page background, and a bare Scaffold renders the veil against
               // nothing — a flat grey that exists nowhere in the product.
               home: AwPageBackground(
-                child: AdminShell(location: '/admin', child: const AdminUsageScreen()),
+                child: AdminShell(
+                  location: '/admin',
+                  child: const AdminUsageScreen(),
+                ),
               ),
             ),
           ),
@@ -121,7 +134,9 @@ void main() {
 
         await expectLater(
           find.byType(AdminShell),
-          matchesGoldenFile('../../../goldens/ee-admin-console-${brightness.name}.png'),
+          matchesGoldenFile(
+            '../../../goldens/ee-admin-console-${brightness.name}.png',
+          ),
         );
       } finally {
         debugDisableShadows = true;

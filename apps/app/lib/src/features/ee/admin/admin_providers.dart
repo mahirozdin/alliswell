@@ -37,7 +37,9 @@ class AdminSessionStore {
     final raw = await _store.read(storageKey);
     if (raw == null) return null;
     try {
-      final session = AdminSession.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      final session = AdminSession.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
       if (session.isExpired) {
         await clear();
         return null;
@@ -60,7 +62,9 @@ final adminSessionStoreProvider = Provider<AdminSessionStore>(
 );
 
 final adminSessionProvider =
-    AsyncNotifierProvider<AdminSessionController, AdminSession?>(AdminSessionController.new);
+    AsyncNotifierProvider<AdminSessionController, AdminSession?>(
+      AdminSessionController.new,
+    );
 
 class AdminSessionController extends AsyncNotifier<AdminSession?> {
   @override
@@ -80,7 +84,9 @@ class AdminSessionController extends AsyncNotifier<AdminSession?> {
 
   Future<void> signOut() async {
     final session = state.value;
-    if (session != null) await ref.read(adminApiProvider).signOut(session.refreshToken);
+    if (session != null) {
+      await ref.read(adminApiProvider).signOut(session.refreshToken);
+    }
     await ref.read(adminSessionStoreProvider).clear();
     state = const AsyncData(null);
   }
@@ -93,7 +99,9 @@ class AdminSessionController extends AsyncNotifier<AdminSession?> {
     final session = state.value;
     if (session == null) return null;
     try {
-      final next = await ref.read(adminApiProvider).refresh(session.refreshToken);
+      final next = await ref
+          .read(adminApiProvider)
+          .refresh(session.refreshToken);
       await ref.read(adminSessionStoreProvider).save(next);
       state = AsyncData(next);
       return next.accessToken;
@@ -119,25 +127,33 @@ final adminConsoleAvailableProvider = Provider<bool>(
 
 String? _token(Ref ref) => ref.watch(adminSessionProvider).value?.accessToken;
 
-final adminUsageProvider = FutureProvider.autoDispose<InstanceUsage>((ref) async {
+final adminUsageProvider = FutureProvider.autoDispose<InstanceUsage>((
+  ref,
+) async {
   final token = _token(ref);
   if (token == null) throw StateError('no admin session');
   return ref.watch(adminApiProvider).usage(token);
 });
 
-final adminTeamsProvider = FutureProvider.autoDispose<List<AdminTeam>>((ref) async {
+final adminTeamsProvider = FutureProvider.autoDispose<List<AdminTeam>>((
+  ref,
+) async {
   final token = _token(ref);
   if (token == null) throw StateError('no admin session');
   return ref.watch(adminApiProvider).teams(token);
 });
 
-final adminPackagesProvider = FutureProvider.autoDispose<List<AdminPackage>>((ref) async {
+final adminPackagesProvider = FutureProvider.autoDispose<List<AdminPackage>>((
+  ref,
+) async {
   final token = _token(ref);
   if (token == null) throw StateError('no admin session');
   return ref.watch(adminApiProvider).packages(token);
 });
 
-final adminLimitKeysProvider = FutureProvider.autoDispose<List<LimitKeyInfo>>((ref) async {
+final adminLimitKeysProvider = FutureProvider.autoDispose<List<LimitKeyInfo>>((
+  ref,
+) async {
   final token = _token(ref);
   if (token == null) throw StateError('no admin session');
   return ref.watch(adminApiProvider).limitKeys(token);

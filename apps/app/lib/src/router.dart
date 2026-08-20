@@ -248,8 +248,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: ':teamId',
-                builder: (context, state) =>
-                    AdminTeamDetailScreen(teamId: state.pathParameters['teamId'] ?? ''),
+                builder: (context, state) => AdminTeamDetailScreen(
+                  teamId: state.pathParameters['teamId'] ?? '',
+                ),
               ),
             ],
           ),

@@ -52,8 +52,17 @@ void main() {
       // Signed in as a PERSON is not signed in as the OPERATOR. The console
       // holds the buttons that suspend customers, and a workspace session
       // grants none of them.
-      for (final at in ['/admin', '/admin/teams', '/admin/teams/abc', '/admin/packages']) {
-        expect(adminRedirect(loggedIn: true, at: at), '/admin/login', reason: at);
+      for (final at in [
+        '/admin',
+        '/admin/teams',
+        '/admin/teams/abc',
+        '/admin/packages',
+      ]) {
+        expect(
+          adminRedirect(loggedIn: true, at: at),
+          '/admin/login',
+          reason: at,
+        );
       }
     });
 
@@ -67,17 +76,29 @@ void main() {
 
     test('an operator passes, with or without a personal session', () {
       for (final loggedIn in [true, false]) {
-        expect(adminRedirect(isAdmin: true, loggedIn: loggedIn, at: '/admin'), isNull);
-        expect(adminRedirect(isAdmin: true, loggedIn: loggedIn, at: '/admin/teams'), isNull);
+        expect(
+          adminRedirect(isAdmin: true, loggedIn: loggedIn, at: '/admin'),
+          isNull,
+        );
+        expect(
+          adminRedirect(isAdmin: true, loggedIn: loggedIn, at: '/admin/teams'),
+          isNull,
+        );
         // Already in: the sign-in page is not a place to stay.
-        expect(adminRedirect(isAdmin: true, loggedIn: loggedIn, at: '/admin/login'), '/admin');
+        expect(
+          adminRedirect(isAdmin: true, loggedIn: loggedIn, at: '/admin/login'),
+          '/admin',
+        );
       }
     });
 
     test('restoring the PERSON does not park the console on /splash', () {
       // The two sessions restore independently; parking the operator on the
       // app's splash would tie one realm's readiness to the other's.
-      expect(adminRedirect(restoring: true, isAdmin: true, at: '/admin'), isNull);
+      expect(
+        adminRedirect(restoring: true, isAdmin: true, at: '/admin'),
+        isNull,
+      );
       expect(adminRedirect(restoring: true, at: '/admin'), '/admin/login');
       // ...while everything else still parks, unchanged.
       expect(adminRedirect(restoring: true, at: '/home'), '/splash');

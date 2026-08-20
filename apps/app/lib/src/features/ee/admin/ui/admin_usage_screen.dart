@@ -32,7 +32,10 @@ class AdminUsageScreen extends ConsumerWidget {
           children: [
             _InstanceCard(report: report),
             const SizedBox(height: AwSpace.x4),
-            Text('ee.admin.usage.teams'.tr(), style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'ee.admin.usage.teams'.tr(),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: AwSpace.x2),
             if (report.rows.isEmpty)
               AwEmptyState(
@@ -74,7 +77,8 @@ class AdminUsageScreen extends ConsumerWidget {
       return row.seats.used / max;
     }
 
-    final sorted = [...rows]..sort((a, b) => pressure(b).compareTo(pressure(a)));
+    final sorted = [...rows]
+      ..sort((a, b) => pressure(b).compareTo(pressure(a)));
     return sorted;
   }
 }
@@ -92,12 +96,17 @@ class _InstanceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ee.admin.usage.instance'.tr(), style: theme.textTheme.titleMedium),
+            Text(
+              'ee.admin.usage.instance'.tr(),
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: AwSpace.x2),
             AdminSeatBar(
               used: report.teamsUsed,
               max: report.teamsMax,
-              exceeded: report.teamsMax != null && report.teamsUsed > report.teamsMax!,
+              exceeded:
+                  report.teamsMax != null &&
+                  report.teamsUsed > report.teamsMax!,
               countKey: 'ee.admin.teamsBar.count',
               unlimitedKey: 'ee.admin.teamsBar.unlimited',
             ),
@@ -116,20 +125,32 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final (label, color) = switch (status) {
-      AdminTeamStatus.active => ('ee.admin.status.active', theme.colorScheme.primary),
-      AdminTeamStatus.suspended => ('ee.admin.status.suspended', theme.colorScheme.error),
+      AdminTeamStatus.active => (
+        'ee.admin.status.active',
+        theme.colorScheme.primary,
+      ),
+      AdminTeamStatus.suspended => (
+        'ee.admin.status.suspended',
+        theme.colorScheme.error,
+      ),
       AdminTeamStatus.pendingDelete => (
         'ee.admin.status.pendingDelete',
         theme.colorScheme.error,
       ),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3, vertical: AwSpace.x1),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AwSpace.x3,
+        vertical: AwSpace.x1,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AwRadius.pill),
       ),
-      child: Text(label.tr(), style: theme.textTheme.labelSmall?.copyWith(color: color)),
+      child: Text(
+        label.tr(),
+        style: theme.textTheme.labelSmall?.copyWith(color: color),
+      ),
     );
   }
 }

@@ -63,11 +63,11 @@ class AdminPackagesScreen extends ConsumerWidget {
                 ],
               ),
               subtitle: Text(
-                'ee.admin.packages.limitCount'.tr(args: {'n': '${row.limits.length}'}),
+                'ee.admin.packages.limitCount'.tr(
+                  args: {'n': '${row.limits.length}'},
+                ),
               ),
-              children: [
-                _PackageForm(package: row, dictionary: dictionary),
-              ],
+              children: [_PackageForm(package: row, dictionary: dictionary)],
             ),
           ),
       ],
@@ -139,7 +139,9 @@ class _PackageFormState extends ConsumerState<_PackageForm> {
           );
       ref.invalidate(adminPackagesProvider);
       ref.invalidate(adminUsageProvider);
-      messenger.showSnackBar(SnackBar(content: Text('ee.admin.packages.saved'.tr())));
+      messenger.showSnackBar(
+        SnackBar(content: Text('ee.admin.packages.saved'.tr())),
+      );
     } on ApiException catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(localizedError(e))));
     } finally {
@@ -163,7 +165,9 @@ class _PackageFormState extends ConsumerState<_PackageForm> {
               child: TextField(
                 controller: _fields[info.key],
                 keyboardType: TextInputType.text,
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))],
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
+                ],
                 decoration: InputDecoration(
                   labelText: 'ee.admin.limit.${info.key}'.tr(),
                   suffixText: info.unit,

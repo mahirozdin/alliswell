@@ -17,17 +17,20 @@ import 'package:alliswell/src/theme/theme.dart';
 /// SHOW: that the second factor is not optional on the form, that a seat
 /// banner tells the truth in both directions, and that a limit nothing
 /// enforces says so instead of implying it does.
-Widget harness(Widget child, {List<Override> overrides = const []}) => ProviderScope(
-  overrides: overrides,
-  child: MaterialApp(
-    theme: buildAwTheme(Brightness.light),
-    home: Scaffold(body: child),
-  ),
-);
+Widget harness(Widget child, {List<Override> overrides = const []}) =>
+    ProviderScope(
+      overrides: overrides,
+      child: MaterialApp(
+        theme: buildAwTheme(Brightness.light),
+        home: Scaffold(body: child),
+      ),
+    );
 
 InstanceUsage usage({int used = 8, int? max = 10, bool exceeded = false}) =>
     InstanceUsage.fromJson({
-      'instance': {'teams': {'used': 2, 'max': 5}},
+      'instance': {
+        'teams': {'used': 2, 'max': 5},
+      },
       'teams': [
         {
           'id': 'T1',
@@ -88,7 +91,9 @@ void main() {
       harness(
         const AdminUsageScreen(),
         overrides: [
-          adminUsageProvider.overrideWith((ref) async => usage(used: 9, max: 10)),
+          adminUsageProvider.overrideWith(
+            (ref) async => usage(used: 9, max: 10),
+          ),
         ],
       ),
     );
@@ -105,7 +110,9 @@ void main() {
     expect(find.text('Suspended'), findsOneWidget);
   });
 
-  testWidgets('being over the plan reads differently from being full', (tester) async {
+  testWidgets('being over the plan reads differently from being full', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       harness(
         const AdminUsageScreen(),
@@ -125,7 +132,9 @@ void main() {
     expect(label.style?.color, theme.colorScheme.error);
   });
 
-  testWidgets('the package editor is built from the server dictionary', (tester) async {
+  testWidgets('the package editor is built from the server dictionary', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       harness(
         const AdminPackagesScreen(),

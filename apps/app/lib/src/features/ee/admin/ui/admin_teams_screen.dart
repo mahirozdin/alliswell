@@ -48,9 +48,14 @@ class AdminTeamsScreen extends ConsumerWidget {
                     ),
                     trailing: Text(
                       team.seatsLimit == null
-                          ? 'ee.admin.seats.unlimited'.tr(args: {'used': '${team.seatsUsed}'})
+                          ? 'ee.admin.seats.unlimited'.tr(
+                              args: {'used': '${team.seatsUsed}'},
+                            )
                           : 'ee.admin.seats.count'.tr(
-                              args: {'used': '${team.seatsUsed}', 'max': '${team.seatsLimit}'},
+                              args: {
+                                'used': '${team.seatsUsed}',
+                                'max': '${team.seatsLimit}',
+                              },
                             ),
                     ),
                   ),
@@ -67,7 +72,8 @@ class AdminTeamDetailScreen extends ConsumerStatefulWidget {
   final String teamId;
 
   @override
-  ConsumerState<AdminTeamDetailScreen> createState() => _AdminTeamDetailScreenState();
+  ConsumerState<AdminTeamDetailScreen> createState() =>
+      _AdminTeamDetailScreenState();
 }
 
 class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
@@ -90,7 +96,11 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
     }
   }
 
-  Future<bool> _confirm(String titleKey, String bodyKey, {required String name}) async {
+  Future<bool> _confirm(
+    String titleKey,
+    String bodyKey, {
+    required String name,
+  }) async {
     final answer = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -138,7 +148,9 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
     if (email == null || email.isEmpty) return;
 
     await _run((token) async {
-      final minted = await ref.read(adminApiProvider).invite(token, team.id, email);
+      final minted = await ref
+          .read(adminApiProvider)
+          .invite(token, team.id, email);
       if (!mounted) return;
       // Shown exactly once, and the screen says so: nothing can read the
       // credential back (EE-031 stores only digests).
@@ -153,7 +165,10 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
             children: [
               Text('ee.admin.invite.onceWarning'.tr()),
               const SizedBox(height: AwSpace.x4),
-              SelectableText(minted.token, style: const TextStyle(fontFamily: 'monospace')),
+              SelectableText(
+                minted.token,
+                style: const TextStyle(fontFamily: 'monospace'),
+              ),
               const SizedBox(height: AwSpace.x2),
               SelectableText(
                 'ee.admin.invite.code'.tr(args: {'code': minted.code}),
@@ -168,7 +183,8 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Clipboard.setData(ClipboardData(text: minted.token)),
+              onPressed: () =>
+                  Clipboard.setData(ClipboardData(text: minted.token)),
               child: Text('ee.admin.invite.copyLink'.tr()),
             ),
             FilledButton(
@@ -216,7 +232,9 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
                 child: AdminSeatBar(
                   used: found.seatsUsed,
                   max: found.seatsLimit,
-                  exceeded: found.seatsLimit != null && found.seatsUsed > found.seatsLimit!,
+                  exceeded:
+                      found.seatsLimit != null &&
+                      found.seatsUsed > found.seatsLimit!,
                 ),
               ),
             ),
@@ -240,7 +258,9 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
                               'ee.admin.teams.suspendBody',
                               name: found.name,
                             )) {
-                              await _run((t) => api.teamAction(t, found.id, 'suspend'));
+                              await _run(
+                                (t) => api.teamAction(t, found.id, 'suspend'),
+                              );
                             }
                           },
                     icon: const Icon(Icons.pause_circle_outline),
@@ -250,7 +270,9 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
                   FilledButton.icon(
                     onPressed: _busy
                         ? null
-                        : () => _run((t) => api.teamAction(t, found.id, 'resume')),
+                        : () => _run(
+                            (t) => api.teamAction(t, found.id, 'resume'),
+                          ),
                     icon: const Icon(Icons.play_circle_outline),
                     label: Text('ee.admin.teams.resume'.tr()),
                   ),
@@ -258,7 +280,9 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
                   FilledButton.icon(
                     onPressed: _busy
                         ? null
-                        : () => _run((t) => api.teamAction(t, found.id, 'restore')),
+                        : () => _run(
+                            (t) => api.teamAction(t, found.id, 'restore'),
+                          ),
                     icon: const Icon(Icons.restore),
                     label: Text('ee.admin.teams.restore'.tr()),
                   ),
@@ -277,7 +301,9 @@ class _AdminTeamDetailScreenState extends ConsumerState<AdminTeamDetailScreen> {
                               'ee.admin.teams.deleteBody',
                               name: found.name,
                             )) {
-                              await _run((t) => api.scheduleTeamDeletion(t, found.id));
+                              await _run(
+                                (t) => api.scheduleTeamDeletion(t, found.id),
+                              );
                             }
                           },
                     icon: const Icon(Icons.delete_outline),

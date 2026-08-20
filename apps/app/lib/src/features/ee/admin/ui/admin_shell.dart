@@ -17,9 +17,21 @@ class AdminShell extends ConsumerWidget {
   final String location;
 
   static const destinations = <({String path, IconData icon, String label})>[
-    (path: '/admin', icon: Icons.insights_outlined, label: 'ee.admin.nav.usage'),
-    (path: '/admin/teams', icon: Icons.groups_outlined, label: 'ee.admin.nav.teams'),
-    (path: '/admin/packages', icon: Icons.inventory_2_outlined, label: 'ee.admin.nav.packages'),
+    (
+      path: '/admin',
+      icon: Icons.insights_outlined,
+      label: 'ee.admin.nav.usage',
+    ),
+    (
+      path: '/admin/teams',
+      icon: Icons.groups_outlined,
+      label: 'ee.admin.nav.teams',
+    ),
+    (
+      path: '/admin/packages',
+      icon: Icons.inventory_2_outlined,
+      label: 'ee.admin.nav.packages',
+    ),
   ];
 
   int get _index {
@@ -46,7 +58,10 @@ class AdminShell extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
               child: Center(
-                child: Text(email, style: Theme.of(context).textTheme.labelMedium),
+                child: Text(
+                  email,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
               ),
             ),
           IconButton(
@@ -129,7 +144,9 @@ class AdminSeatBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: ratio,
             minHeight: 6,
-            color: exceeded ? theme.colorScheme.error : theme.colorScheme.primary,
+            color: exceeded
+                ? theme.colorScheme.error
+                : theme.colorScheme.primary,
             backgroundColor: theme.colorScheme.surfaceContainerHighest,
           ),
         ),

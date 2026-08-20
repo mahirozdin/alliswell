@@ -85,13 +85,17 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                   controller: _email,
                   autofillHints: const [AutofillHints.email],
                   keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(labelText: 'ee.admin.signIn.email'.tr()),
+                  decoration: InputDecoration(
+                    labelText: 'ee.admin.signIn.email'.tr(),
+                  ),
                 ),
                 const SizedBox(height: AwSpace.x4),
                 TextField(
                   controller: _password,
                   obscureText: true,
-                  decoration: InputDecoration(labelText: 'ee.admin.signIn.password'.tr()),
+                  decoration: InputDecoration(
+                    labelText: 'ee.admin.signIn.password'.tr(),
+                  ),
                 ),
                 const SizedBox(height: AwSpace.x4),
                 TextField(
@@ -110,14 +114,18 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                   Text(
                     _error!,
                     key: const Key('admin-login-error'),
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
                   ),
                 ],
                 const SizedBox(height: AwSpace.x6),
                 FilledButton(
                   onPressed: _busy ? null : _submit,
                   child: Text(
-                    _busy ? 'ee.admin.signIn.working'.tr() : 'ee.admin.signIn.action'.tr(),
+                    _busy
+                        ? 'ee.admin.signIn.working'.tr()
+                        : 'ee.admin.signIn.action'.tr(),
                   ),
                 ),
               ],

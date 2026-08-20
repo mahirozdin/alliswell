@@ -37,13 +37,16 @@ class AdminSession {
     'refreshExpiresAt': refreshExpiresAt.toIso8601String(),
   };
 
-  AdminSession copyWith({String? accessToken, String? refreshToken, DateTime? refreshExpiresAt}) =>
-      AdminSession(
-        email: email,
-        accessToken: accessToken ?? this.accessToken,
-        refreshToken: refreshToken ?? this.refreshToken,
-        refreshExpiresAt: refreshExpiresAt ?? this.refreshExpiresAt,
-      );
+  AdminSession copyWith({
+    String? accessToken,
+    String? refreshToken,
+    DateTime? refreshExpiresAt,
+  }) => AdminSession(
+    email: email,
+    accessToken: accessToken ?? this.accessToken,
+    refreshToken: refreshToken ?? this.refreshToken,
+    refreshExpiresAt: refreshExpiresAt ?? this.refreshExpiresAt,
+  );
 }
 
 /// The seat banner. `exceeded` is "already over"; `canAdd` is "may one more
@@ -84,7 +87,10 @@ class SeatStatus {
   );
 }
 
-enum AdminTeamStatus { active, suspended, pendingDelete;
+enum AdminTeamStatus {
+  active,
+  suspended,
+  pendingDelete;
 
   static AdminTeamStatus parse(String? raw) => switch (raw) {
     'suspended' => AdminTeamStatus.suspended,
@@ -122,7 +128,9 @@ class AdminTeam {
     packageName: json['packageName'] as String?,
     seatsUsed: (json['seatsUsed'] as num?)?.toInt() ?? 0,
     seatsLimit: (json['seatsLimit'] as num?)?.toInt(),
-    pendingDeleteAt: DateTime.tryParse(json['pendingDeleteAt'] as String? ?? ''),
+    pendingDeleteAt: DateTime.tryParse(
+      json['pendingDeleteAt'] as String? ?? '',
+    ),
   );
 }
 
@@ -147,7 +155,8 @@ class AdminPackage {
     id: json['id'] as String? ?? '',
     name: json['name'] as String? ?? '',
     limits: {
-      for (final entry in (json['limits'] as Map<String, dynamic>? ?? const {}).entries)
+      for (final entry
+          in (json['limits'] as Map<String, dynamic>? ?? const {}).entries)
         entry.key: (entry.value as num?)?.toInt(),
     },
     isDefault: json['isDefault'] as bool? ?? false,
@@ -182,15 +191,20 @@ class LimitKeyInfo {
 }
 
 class InstanceUsage {
-  const InstanceUsage({required this.teamsUsed, required this.teamsMax, required this.rows});
+  const InstanceUsage({
+    required this.teamsUsed,
+    required this.teamsMax,
+    required this.rows,
+  });
 
   final int teamsUsed;
   final int? teamsMax;
   final List<TeamUsage> rows;
 
   factory InstanceUsage.fromJson(Map<String, dynamic> json) {
-    final teams = (json['instance'] as Map<String, dynamic>? ?? const {})['teams'] as
-        Map<String, dynamic>? ??
+    final teams =
+        (json['instance'] as Map<String, dynamic>? ?? const {})['teams']
+            as Map<String, dynamic>? ??
         const {};
     return InstanceUsage(
       teamsUsed: (teams['used'] as num?)?.toInt() ?? 0,
@@ -228,14 +242,20 @@ class TeamUsage {
     slug: json['slug'] as String? ?? '',
     status: AdminTeamStatus.parse(json['status'] as String?),
     packageName: json['packageName'] as String?,
-    seats: SeatStatus.fromJson(json['seats'] as Map<String, dynamic>? ?? const {}),
+    seats: SeatStatus.fromJson(
+      json['seats'] as Map<String, dynamic>? ?? const {},
+    ),
     workspaces: (json['workspaces'] as num?)?.toInt() ?? 0,
   );
 }
 
 /// A minted invitation. Both halves are shown ONCE and never fetched again.
 class MintedInvite {
-  const MintedInvite({required this.email, required this.token, required this.code});
+  const MintedInvite({
+    required this.email,
+    required this.token,
+    required this.code,
+  });
 
   final String email;
   final String token;

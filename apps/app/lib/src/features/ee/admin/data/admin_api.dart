@@ -14,7 +14,8 @@ class AdminApi {
   const AdminApi(this._dio);
   final Dio _dio;
 
-  Options _auth(String token) => Options(headers: {'Authorization': 'Bearer $token'});
+  Options _auth(String token) =>
+      Options(headers: {'Authorization': 'Bearer $token'});
 
   Future<AdminSession> signIn({
     required String email,
@@ -96,7 +97,11 @@ class AdminApi {
     }
   }
 
-  Future<AdminTeam> teamAction(String token, String teamId, String action) async {
+  Future<AdminTeam> teamAction(
+    String token,
+    String teamId,
+    String action,
+  ) async {
     try {
       final res = await _dio.post<Map<String, dynamic>>(
         '/api/v1/ee/admin/teams/$teamId/$action',
