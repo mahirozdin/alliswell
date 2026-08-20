@@ -1132,6 +1132,7 @@
       "assigned": "bunu atadı",
       "released": "bunu bıraktı",
       "transferred": "bunu devretti",
+      "accepted": "bir daveti kabul etti",
       "status_changed": "durumu değiştirdi",
       "suspended": "bunu askıya aldı",
       "reactivated": "bunu yeniden etkinleştirdi",

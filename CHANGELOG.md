@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A history sentence for accepted invitations (EE-039).** The verb dictionary gains
+  `accepted`, translated in both shipped languages, so a history entry written when somebody
+  joins reads as a sentence rather than a raw key.
+
 - **A team settings screen in the app (EE-037).** An instance that serves teams gets a
   form for the team's name, logo, language, time zone and colour, on top of the extension's
   own endpoints. Two rules shape it: an unchosen setting is shown as unchosen rather than

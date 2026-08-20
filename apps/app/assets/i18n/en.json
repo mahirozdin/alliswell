@@ -1133,6 +1133,7 @@
       "assigned": "assigned this",
       "released": "released this",
       "transferred": "transferred this",
+      "accepted": "accepted an invitation",
       "status_changed": "changed the status",
       "suspended": "suspended this",
       "reactivated": "reactivated this",
