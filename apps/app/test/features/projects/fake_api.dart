@@ -449,6 +449,15 @@ class FakeApi {
   /// no host can be read as a team origin.
   String? eeBaseDomain;
 
+  // ── Per-user permissions (/ee/me/permissions, EE-052) ────────────────────
+  /// `governed: false` is the plain-build answer and the default: nothing is
+  /// asking, so every `can()` is true. Set [eePermissions] (and leave
+  /// [eeGoverned] true) to play a narrowed role. `eeMePermissionsCode = 404`
+  /// plays a server that predates the endpoint.
+  bool eeGoverned = false;
+  List<String> eePermissions = [];
+  int? eeMePermissionsCode;
+
   // ── AI (Epic 20) — per-user server state, like the calendar accounts ──────
   /// Is AI enabled on the server? Defaults OFF so the many existing feature
   /// flows are unperturbed by a second (AI) FAB; AI tests opt in with
@@ -821,6 +830,20 @@ class FakeApi {
             'role': 'owner',
           },
         ],
+      });
+    }
+
+    if (path == '/api/v1/ee/me/permissions' && options.method == 'GET') {
+      if (eeMePermissionsCode != null) {
+        return jsonBody(eeMePermissionsCode!, {
+          'code': 'NOT_FOUND',
+          'message': 'Not found',
+        });
+      }
+      return jsonBody(200, {
+        'workspaceId': workspaceId,
+        'governed': eeGoverned,
+        'permissions': eePermissions,
       });
     }
 

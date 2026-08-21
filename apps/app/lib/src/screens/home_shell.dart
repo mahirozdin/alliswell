@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/persisted_prefs.dart';
+import '../features/ee/providers.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
 import '../features/calendar/apple/providers.dart';
@@ -112,8 +113,21 @@ class HomeShell extends ConsumerWidget {
     );
   }
 
+  /// EE-052: a create button belongs to a verb, and a role that lacks the
+  /// verb should not be shown the button at all.
+  ///
+  /// HIDDEN rather than disabled, and only here: a greyed-out "+" invites the
+  /// question "why can't I?" every time the screen is drawn, while a create
+  /// affordance that is simply absent reads as "this is not your job here".
+  /// Controls that act on something already on screen are disabled instead
+  /// (the urgent-alarm switch), because there the thing is visible and its
+  /// unavailability is the information.
   Widget? _sectionFab(BuildContext context, WidgetRef ref) {
     return switch (AppSection.values[navigationShell.currentIndex]) {
+      AppSection.home when !ref.watch(canProvider('tasks.create')) => null,
+      AppSection.projects when !ref.watch(canProvider('projects.create')) =>
+        null,
+      AppSection.notes when !ref.watch(canProvider('notes.create')) => null,
       AppSection.home => FloatingActionButton(
         tooltip: 'shell.fabNewTask'.tr(),
         onPressed: () {

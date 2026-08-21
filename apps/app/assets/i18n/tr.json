@@ -1329,5 +1329,9 @@
         "burned": "çok yanlış kod sonrası kilitlendi"
       }
     }
+  },
+  "perm": {
+    "deniedUrgentAlarm": "Rolün acil alarm kuramıyor",
+    "denied": "Rolün buna izin vermiyor"
   }
 }

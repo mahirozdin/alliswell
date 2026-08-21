@@ -20,4 +20,23 @@ class EeApi {
       throw asApiException(e);
     }
   }
+
+  /// What the signed-in person may do in [workspaceId] (EE-052).
+  ///
+  /// A 404 means the endpoint is not there — a plain build, or a server that
+  /// predates it — and that maps to UNGOVERNED, not to "no permissions". The
+  /// difference is the whole point: a missing feature must never take an
+  /// ability away.
+  Future<EePermissions> myPermissions(String workspaceId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/me/permissions',
+        queryParameters: {'workspaceId': workspaceId},
+      );
+      return EePermissions.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return EePermissions.unknown;
+      throw asApiException(e);
+    }
+  }
 }

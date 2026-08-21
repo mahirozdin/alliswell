@@ -54,3 +54,49 @@ class EeStatus {
     'baseDomain': baseDomain,
   };
 }
+
+
+/// What THIS person may do in ONE workspace (EE-052) — the client mirror of
+/// `GET /api/v1/ee/me/permissions`.
+///
+/// [governed] is the field that keeps this honest, and it is not the same as
+/// an empty [permissions] list. `governed: false` means nothing is asking:
+/// a personal workspace, a plain build, an instance without the feature. Then
+/// every [can] answers TRUE, because that is exactly what the product does
+/// today and a permission layer must not remove abilities where it is not
+/// installed. An empty list under `governed: true` is the opposite — a role
+/// that really may do nothing.
+class EePermissions {
+  const EePermissions({
+    required this.workspaceId,
+    required this.governed,
+    this.permissions = const [],
+  });
+
+  factory EePermissions.fromJson(Map<String, dynamic> json) => EePermissions(
+    workspaceId: (json['workspaceId'] as String?) ?? '',
+    governed: (json['governed'] as bool?) ?? false,
+    permissions: ((json['permissions'] as List?) ?? const []).cast<String>(),
+  );
+
+  final String workspaceId;
+  final bool governed;
+  final List<String> permissions;
+
+  /// The answer a screen asks for before it draws a button.
+  bool can(String permission) =>
+      !governed || permissions.contains(permission);
+
+  /// Ungoverned: the honest answer while signed out, offline with no cache,
+  /// or on an instance that has no such feature.
+  static const EePermissions unknown = EePermissions(
+    workspaceId: '',
+    governed: false,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'workspaceId': workspaceId,
+    'governed': governed,
+    'permissions': permissions,
+  };
+}

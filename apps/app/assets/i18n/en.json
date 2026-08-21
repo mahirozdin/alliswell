@@ -1330,5 +1330,9 @@
         "burned": "locked after too many wrong codes"
       }
     }
+  },
+  "perm": {
+    "deniedUrgentAlarm": "Your role cannot raise urgent alarms",
+    "denied": "Your role does not allow this"
   }
 }

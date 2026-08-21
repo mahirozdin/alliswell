@@ -16,6 +16,7 @@ import '../../files/ui/file_widgets.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
 import '../../tags/ui/tag_input.dart';
+import '../../ee/providers.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../data/task_defaults.dart';
@@ -488,18 +489,37 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 },
               ),
               const SizedBox(height: 8),
-              _SheetSurface(
-                child: SwitchListTile(
-                  key: const Key('task-sheet-urgent'),
-                  title: Text('task.urgentAlarm'.tr()),
-                  subtitle: Text('task.urgentAlarmSub'.tr()),
-                  secondary: Icon(
-                    Icons.notification_important_outlined,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  value: _isUrgent,
-                  onChanged: (v) => setState(() => _isUrgent = v),
-                ),
+              // EE-052: item 3's own example, on screen. The switch stays
+              // VISIBLE and goes dead when the role lacks the verb — the
+              // alarm is a property of the task in front of you, so hiding it
+              // would just make the setting look like it does not exist.
+              // The subtitle says why, because a dead control with no reason
+              // is indistinguishable from a bug.
+              Builder(
+                builder: (context) {
+                  final canUrgent = ref.watch(
+                    canProvider('alarms.create_urgent'),
+                  );
+                  return _SheetSurface(
+                    child: SwitchListTile(
+                      key: const Key('task-sheet-urgent'),
+                      title: Text('task.urgentAlarm'.tr()),
+                      subtitle: Text(
+                        canUrgent
+                            ? 'task.urgentAlarmSub'.tr()
+                            : 'perm.deniedUrgentAlarm'.tr(),
+                      ),
+                      secondary: Icon(
+                        Icons.notification_important_outlined,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      value: _isUrgent && canUrgent,
+                      onChanged: canUrgent
+                          ? (v) => setState(() => _isUrgent = v)
+                          : null,
+                    ),
+                  );
+                },
               ),
               // OPH-208 (DESIGN §25 R1): the Repeat switch, in the create
               // sheet too. Editing an existing task keeps its rule on the
