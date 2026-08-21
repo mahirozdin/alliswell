@@ -1275,7 +1275,8 @@
         "create": "Görev oluştur",
         "edit": "Görevleri düzenle",
         "complete": "Görevleri tamamla ve yeniden aç",
-        "delete": "Görevleri sil"
+        "delete": "Görevleri sil",
+        "assign": "Görevi başkasına ver ya da üstünden al"
       },
       "team": {
         "manage_invites": "Davetleri yönet",

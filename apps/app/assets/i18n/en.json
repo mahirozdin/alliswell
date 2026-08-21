@@ -1276,7 +1276,8 @@
         "create": "Create tasks",
         "edit": "Edit tasks",
         "complete": "Complete and reopen tasks",
-        "delete": "Delete tasks"
+        "delete": "Delete tasks",
+        "assign": "Put a task on someone else, or take one off them"
       },
       "team": {
         "manage_invites": "Manage invitations",
