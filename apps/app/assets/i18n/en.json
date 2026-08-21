@@ -1256,6 +1256,10 @@
           "create": "Create workspaces",
           "view": "View workspaces"
         }
+      },
+      "units": {
+        "manage": "Manage units",
+        "manage_members": "Manage the people in a unit"
       }
     },
     "permDomain": {

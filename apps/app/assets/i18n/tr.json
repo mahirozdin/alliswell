@@ -1255,6 +1255,10 @@
           "create": "Çalışma alanı oluştur",
           "view": "Çalışma alanlarını gör"
         }
+      },
+      "units": {
+        "manage": "Birimleri yönet",
+        "manage_members": "Bir birimdeki kişileri yönet"
       }
     },
     "permDomain": {
