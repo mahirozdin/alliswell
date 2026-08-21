@@ -96,6 +96,13 @@ capability discovery must not look like an error. License expiry walks
 `active → grace → readonly` and never bricks. When the overlay is present its migrations
 join knex as a second directory (`src/db/knexconfig.js`) under the single
 `knex_migrations` table; the overlay repo gates filename collisions on its side.
+An extension may also register a **permission resolver** (EE-049):
+`app.requirePermission(request, workspaceId, verb)` runs `requireWorkspaceMember` first and
+then asks the registered resolvers, so with none registered — the plain build — it is that
+membership check byte for byte. A resolver may answer `null` ("not a workspace I govern"),
+which behaves the same way; only a governed workspace whose member lacks the verb produces
+the one new refusal, `403 PERM_DENIED`. Grants are cached per request, never beyond it.
+
 The overlay's own repository is private; only this neutral seam lives here.
 
 The app mirrors the discovery end (EE-008): `features/ee/` holds `eeStatusProvider`

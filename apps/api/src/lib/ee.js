@@ -39,6 +39,7 @@ export async function loadEeOverlay(app) {
     syncEntities: Object.create(null),
     mcpTools: [],
     permissions: [],
+    permissionResolvers: [],
     corsOriginChecks: [],
     accountPurgeFilters: [],
     statusDecorators: [],
@@ -167,6 +168,26 @@ function buildSeam(state) {
         throw new Error('registerStatusDecorator: a function is required');
       }
       state.statusDecorators.push(decorator);
+    },
+
+    /**
+     * Permission resolver: `async (request, workspaceId) => Set<string> | null`.
+     *
+     * Consulted by `app.requirePermission` AFTER membership has been
+     * established, and only then — the answer to "who may be here" is core's
+     * and does not move. `null` means the resolver has no opinion about this
+     * workspace (it is not one it governs), which is how a personal
+     * workspace behaves identically with and without an extension.
+     *
+     * With no resolver registered, `requirePermission` IS
+     * `requireWorkspaceMember`, byte for byte. That equivalence is the whole
+     * compatibility promise of this member and it has its own test.
+     */
+    registerPermissionResolver(resolver) {
+      if (typeof resolver !== 'function') {
+        throw new Error('registerPermissionResolver: a function is required');
+      }
+      state.permissionResolvers.push(resolver);
     },
 
     /** Collection point only — enforcing permissions is the overlay's business. */

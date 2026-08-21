@@ -183,3 +183,33 @@ describe('app.requireWorkspaceMember (OPH-023)', () => {
     await app.close();
   });
 });
+
+describe('app.requirePermission on a plain build', () => {
+  it('is requireWorkspaceMember — the same answers, for members and outsiders alike', async () => {
+    // The compatibility promise, stated as a test: with no extension
+    // registering a resolver, asking for a verb asks nothing extra. Every
+    // route that adopts this decorator therefore keeps behaving exactly as it
+    // does today until something is actually installed.
+    const { app, tables, registered } = await appWithSession();
+    const request = { user: { id: registered.user.id } };
+    const workspaceId = registered.workspace.id;
+    expect(app.ee.permissionResolvers).toEqual([]);
+
+    await expect(
+      app.requirePermission(request, workspaceId, 'anything.at.all'),
+    ).resolves.toMatchObject({ role: 'owner' });
+
+    // A verb nobody has ever heard of is still granted — there is nothing to
+    // ask, and inventing a refusal here would BE the regression.
+    tables.workspace_members[0].role = 'member';
+    await expect(
+      app.requirePermission(request, workspaceId, 'tasks.create'),
+    ).resolves.toMatchObject({ role: 'member' });
+
+    await expect(
+      app.requirePermission({ user: { id: 'someone-else' } }, workspaceId, 'tasks.view'),
+    ).rejects.toMatchObject({ statusCode: 403, code: 'AUTH_WORKSPACE_FORBIDDEN' });
+
+    await app.close();
+  });
+});

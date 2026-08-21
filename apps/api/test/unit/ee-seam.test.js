@@ -90,6 +90,40 @@ describe('EE overlay seam (EE-002)', () => {
     expect(narrowed.json().overlay).toBe('loaded');
   });
 
+  it('lets an overlay add a verb to the membership check — and only that (EE-049)', async () => {
+    ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
+    const owner = await registerUser(app, { email: 'seam-perm@example.com' });
+    const outsider = await registerUser(app, { email: 'seam-perm-outsider@example.com' });
+    const ws = owner.workspace.id;
+    const ask = (who, workspaceId = ws) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/v1/__seam-perm/${workspaceId}`,
+        headers: who.headers,
+      });
+
+    // A workspace the resolver has no opinion about behaves like a plain
+    // build: membership is the whole question, and the verb is not asked.
+    expect((await ask(owner)).statusCode).toBe(200);
+
+    // Governed, and the verb is granted.
+    app.seamGrants.set(ws, ['probe.view']);
+    expect((await ask(owner)).statusCode).toBe(200);
+
+    // Governed, and it is not. This is the ONE answer the decorator adds.
+    app.seamGrants.set(ws, ['probe.something-else']);
+    const denied = await ask(owner);
+    expect(denied.statusCode).toBe(403);
+    expect(denied.json()).toMatchObject({ code: 'PERM_DENIED' });
+
+    // Membership is still core's question and its answer did not move: an
+    // outsider is refused for not being here, never for lacking a verb.
+    app.seamGrants.set(ws, ['probe.view']);
+    const stranger = await ask(outsider);
+    expect(stranger.statusCode).toBe(403);
+    expect(stranger.json()).toMatchObject({ code: 'AUTH_WORKSPACE_FORBIDDEN' });
+  });
+
   it('flows an overlay sync entity through /sync/pull', async () => {
     ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
     const owner = await registerUser(app, { email: 'seam@example.com' });

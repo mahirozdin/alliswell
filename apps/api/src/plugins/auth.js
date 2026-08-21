@@ -15,6 +15,8 @@ const LAST_USED_THROTTLE_MS = 60_000;
  * - `app.signAccessToken({ id, email })` → 15-minute JWT (`sub` = user id)
  * - `app.authenticate` — onRequest/preHandler guard; sets `request.user = { id, email }`
  * - `app.requireWorkspaceMember(request, workspaceId, { roles })` — authz helper
+ * - `app.requirePermission(request, workspaceId, verb)` — the same check plus a
+ *   verb, when an extension has registered a resolver; identical without one
  * - `app.rejectApiKeys` — preHandler for the routes keys may never reach
  * Refresh tokens are opaque and DB-backed — see src/lib/tokens.js.
  *
@@ -151,6 +153,60 @@ export default fp(
           throw err;
         }
         return member;
+      },
+    );
+
+    /**
+     * `requireWorkspaceMember` plus a verb.
+     *
+     * The rule this follows is worth stating precisely, because it IS the
+     * compatibility promise: **the permission check never changes an answer
+     * that would have been given without it.** It adds one refusal to a path
+     * that would otherwise have succeeded, and nothing else moves:
+     *
+     *   • not a member                → 403 AUTH_WORKSPACE_FORBIDDEN, exactly
+     *     as before (membership is core's question and its answer does not
+     *     depend on any extension);
+     *   • no resolver registered      → returns the member row, byte for byte
+     *     `requireWorkspaceMember`. This is the plain build, and the
+     *     equivalence is tested rather than assumed;
+     *   • a resolver with no opinion  → same as above (a workspace it does
+     *     not govern — a personal one, say — behaves identically either way);
+     *   • a member without the verb   → 403 PERM_DENIED, naming the verb.
+     *
+     * Why 403 and not 404 for the last one: membership has already told this
+     * caller the workspace exists, so hiding it now would be theatre. And
+     * routes that resolve a ROW first keep answering 404 for an id they
+     * cannot find — that 404 is decided before this function is ever called,
+     * which is the same sentence as the rule above.
+     *
+     * Grants are resolved once per request per workspace and cached on the
+     * request. There is no cache beyond it, so a grant change takes effect on
+     * the next request with no invalidation protocol to get wrong.
+     */
+    app.decorate(
+      'requirePermission',
+      async function requirePermission(request, workspaceId, permission) {
+        const member = await app.requireWorkspaceMember(request, workspaceId);
+        const resolvers = app.ee?.permissionResolvers ?? [];
+        if (resolvers.length === 0) return member;
+
+        request.grantCache ??= new Map();
+        let grants = request.grantCache.get(workspaceId);
+        if (grants === undefined) {
+          grants = null;
+          for (const resolve of resolvers) {
+            const answer = await resolve(request, workspaceId);
+            if (!answer) continue;
+            grants = grants ? new Set([...grants, ...answer]) : answer;
+          }
+          request.grantCache.set(workspaceId, grants);
+        }
+        if (grants === null || grants.has(permission)) return member;
+
+        const err = app.httpErrors.forbidden(`Missing permission: ${permission}`);
+        err.code = 'PERM_DENIED';
+        throw err;
       },
     );
   },

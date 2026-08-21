@@ -69,6 +69,25 @@ export async function register(app, seam) {
     { id: 'probe.view', label: 'seam.probe.view', description: 'test-only' },
   ]);
 
+  // A resolver, plus the knob a test turns. `governed` decides which
+  // workspaces this overlay has an opinion about at all — an ungoverned one
+  // must behave exactly like a plain build, which is half of what the seam
+  // test checks.
+  const governed = new Map();
+  app.decorate('seamGrants', governed);
+  seam.registerPermissionResolver(async (request, workspaceId) =>
+    governed.has(workspaceId) ? new Set(governed.get(workspaceId)) : null,
+  );
+
+  app.get(
+    `${seam.apiPrefix}/__seam-perm/:workspaceId`,
+    { onRequest: [app.authenticate] },
+    async (request) => {
+      await app.requirePermission(request, request.params.workspaceId, 'probe.view');
+      return { ok: true };
+    },
+  );
+
   // EE-013: origin checks are consulted at request time, after the static list.
   seam.registerCorsOriginCheck((origin) => origin === 'https://seam-allowed.example');
 
