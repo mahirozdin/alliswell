@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/kv/local_kv.dart';
+
 import '../../core/api_exception.dart';
 import '../auth/providers.dart';
 
@@ -50,13 +52,58 @@ final workspacesProvider = FutureProvider<List<WorkspaceSummary>>((ref) async {
   }
 });
 
-/// v1 works in a single workspace: the first one (the personal space created
-/// at registration). Multi-workspace switching arrives with Epic 09+.
-final currentWorkspaceProvider = Provider<AsyncValue<WorkspaceSummary?>>(
-  (ref) => ref
-      .watch(workspacesProvider)
-      .whenData((list) => list.isEmpty ? null : list.first),
-);
+/// Which workspace this person last chose — persisted, and keyed PER USER.
+///
+/// One device serves two people (the permission cache learned this first), so
+/// a single global key would hand the second person the first one's choice.
+/// Null means "not chosen yet", which is not the same as "chose the first
+/// one": the fallback below has to keep working for somebody who never picked.
+class SelectedWorkspace extends Notifier<String?> {
+  static const _prefix = 'alliswell_selected_workspace';
+
+  String? _key(String? userId) => userId == null ? null : '$_prefix::$userId';
+
+  @override
+  String? build() {
+    _hydrate(_key(ref.watch(currentUserIdProvider)));
+    return null;
+  }
+
+  Future<void> _hydrate(String? key) async {
+    if (key == null) return;
+    final stored = await localKv.get(key);
+    // The list may already have moved on (a fast switch, a sign-out): only
+    // adopt the stored value if nothing newer has been chosen.
+    if (stored != null && state == null) state = stored;
+  }
+
+  Future<void> select(String workspaceId) async {
+    state = workspaceId;
+    final key = _key(ref.read(currentUserIdProvider));
+    if (key != null) await localKv.set(key, workspaceId);
+  }
+}
+
+final selectedWorkspaceIdProvider =
+    NotifierProvider<SelectedWorkspace, String?>(SelectedWorkspace.new);
+
+/// The workspace everything else reads (16 call sites) — so switching is one
+/// provider changing, and the sync engine follows because it WATCHES this.
+///
+/// EE-061 lifted the v1 constraint that lived here as `list.first`. What
+/// replaced it is deliberately forgiving in one direction: an unknown or
+/// vanished selection falls back to the first workspace rather than resolving
+/// to null. That case is not hypothetical — losing a unit removes a workspace
+/// from this list (EE-058), and a person whose selected unit was revoked must
+/// land somewhere, not on an empty app.
+final currentWorkspaceProvider = Provider<AsyncValue<WorkspaceSummary?>>((ref) {
+  final selected = ref.watch(selectedWorkspaceIdProvider);
+  return ref.watch(workspacesProvider).whenData((list) {
+    if (list.isEmpty) return null;
+    if (selected == null) return list.first;
+    return list.firstWhere((w) => w.id == selected, orElse: () => list.first);
+  });
+});
 
 /// The signed-in user's id, or null while signed out / restoring (OPH-198).
 ///

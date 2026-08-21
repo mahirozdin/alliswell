@@ -553,6 +553,34 @@ class RejectedMutations extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// An item another unit shared with this one (EE-060/EE-061).
+///
+/// A REFERENCE, never a copy: `entityId` + `sourceWorkspaceId` say where the
+/// truth is, and `title` is a cached label so the row renders with no network.
+/// The replica never writes it — the server refuses a push of this type — so
+/// there is exactly one writable row for the shared fact, at the source.
+class SharedItems extends Table {
+  TextColumn get id => text()();
+
+  /// The workspace this row was DELIVERED into — the one being synced.
+  TextColumn get workspaceId => text()();
+  TextColumn get shareId => text()();
+
+  /// Where the item actually lives. Editing goes through the server to there.
+  TextColumn get sourceWorkspaceId => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+
+  /// view | edit — a CEILING, not a grant: the ordinary permission still applies.
+  TextColumn get rights => text().withDefault(const Constant('view'))();
+  TextColumn get title => text().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Projects,
@@ -575,6 +603,7 @@ class RejectedMutations extends Table {
     PendingMutations,
     RejectedMutations,
     SyncStates,
+    SharedItems,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -596,9 +625,11 @@ class AwDatabase extends _$AwDatabase {
   /// v15 → v16 (OPH-242): share_events, the share pipeline's device-local
   /// diagnostic trail — content-free, never synced.
   /// v18 → v19 (OPH-274, ADR-0033): markdown becomes a note's only canonical
+  /// v20 → v21 (EE-061): shared_items — what another unit shared with this
+  /// one. Pull-only; the replica never authors one.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -736,6 +767,7 @@ class AwDatabase extends _$AwDatabase {
       // A brand-new table, so no `from >= 1` guard is needed — createTable on
       // a fresh database is what `onCreate` already did.
       if (from < 20) await m.createTable(rejectedMutations);
+      if (from < 21) await m.createTable(sharedItems);
     },
   );
 

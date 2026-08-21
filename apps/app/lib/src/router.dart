@@ -28,6 +28,7 @@ import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
 import 'features/ee/ui/team_roles_screen.dart';
+import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
@@ -416,6 +417,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/roles',
         builder: (context, state) => _page(const EeTeamRolesScreen()),
+      ),
+      // EE-061: what other units shared with this one. Reachable by anyone in
+      // a unit — receiving something is not an admin act.
+      GoRoute(
+        path: '/settings/team/shared',
+        builder: (context, state) => _page(const EeSharedWithMeScreen()),
       ),
       // EE-057: units. The one team route a NON-admin can legitimately reach
       // — a delegated unit manager is an ordinary member everywhere else, so

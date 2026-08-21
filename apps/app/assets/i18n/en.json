@@ -1126,7 +1126,9 @@
         "roles": "Roles and permissions",
         "rolesSub": "What each role may do",
         "units": "Units",
-        "unitsSub": "Departments and the people in them"
+        "unitsSub": "Departments and the people in them",
+        "shared": "Shared with me",
+        "sharedSub": "Content from other units"
       },
       "members": {
         "title": "Members",
@@ -1389,10 +1391,31 @@
         "expired": "expired",
         "burned": "locked after too many wrong codes"
       }
+    },
+    "shared": {
+      "title": "Shared with me",
+      "intro": "Content shared from other units. These are REFERENCES — the item itself stays in its own unit.",
+      "emptyTitle": "Nothing shared yet",
+      "emptyBody": "When another unit shares something with you, it turns up here.",
+      "untitled": "(untitled)",
+      "canEdit": "you can edit",
+      "readOnly": "read-only",
+      "kind": {
+        "task": "Task",
+        "note": "Note",
+        "project": "Project",
+        "file": "File"
+      }
     }
   },
   "perm": {
     "deniedUrgentAlarm": "Your role cannot raise urgent alarms",
     "denied": "Your role does not allow this"
+  },
+  "workspace": {
+    "switcher": {
+      "title": "Choose a workspace",
+      "tooltip": "{workspace} — tap to switch"
+    }
   }
 }

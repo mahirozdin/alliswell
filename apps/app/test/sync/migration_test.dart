@@ -223,8 +223,13 @@ void main() {
       // been refused has nothing parked.
       expect(await db.select(db.rejectedMutations).get(), isEmpty);
 
+      // v21 (EE-061): shared_items — what another unit shared with this one.
+      // Also empty on an upgrade: the rows arrive by pull, never by migration,
+      // because the replica does not author them (they are pull-only).
+      expect(await db.select(db.sharedItems).get(), isEmpty);
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 20);
+      expect(version.data['user_version'], 21);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -270,7 +275,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 20);
+      expect(version.data['user_version'], 21);
       await db.close();
     },
   );

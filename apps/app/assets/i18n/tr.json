@@ -1125,7 +1125,9 @@
         "roles": "Roller ve izinler",
         "rolesSub": "Hangi rol neyi yapabilir",
         "units": "Birimler",
-        "unitsSub": "Departmanlar ve içlerindeki kişiler"
+        "unitsSub": "Departmanlar ve içlerindeki kişiler",
+        "shared": "Benimle paylaşılanlar",
+        "sharedSub": "Başka birimlerden gelen içerik"
       },
       "members": {
         "title": "Üyeler",
@@ -1388,10 +1390,31 @@
         "expired": "süresi doldu",
         "burned": "çok yanlış kod sonrası kilitlendi"
       }
+    },
+    "shared": {
+      "title": "Benimle paylaşılanlar",
+      "intro": "Başka birimlerden paylaşılan içerik. Bunlar birer REFERANS — asıl içerik kendi biriminde duruyor.",
+      "emptyTitle": "Paylaşılan bir şey yok",
+      "emptyBody": "Başka bir birim size bir şey paylaştığında burada görünür.",
+      "untitled": "(başlıksız)",
+      "canEdit": "düzenleyebilirsiniz",
+      "readOnly": "salt okunur",
+      "kind": {
+        "task": "Görev",
+        "note": "Not",
+        "project": "Proje",
+        "file": "Dosya"
+      }
     }
   },
   "perm": {
     "deniedUrgentAlarm": "Rolün acil alarm kuramıyor",
     "denied": "Rolün buna izin vermiyor"
+  },
+  "workspace": {
+    "switcher": {
+      "title": "Çalışma alanı seç",
+      "tooltip": "{workspace} — değiştirmek için dokunun"
+    }
   }
 }

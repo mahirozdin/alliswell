@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../core/persisted_prefs.dart';
 import '../features/ee/providers.dart';
 import '../features/ee/ui/team_chip.dart';
+import '../features/workspaces/ui/workspace_switcher.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
 import '../features/calendar/apple/providers.dart';
 import '../features/ai/data/ai_context_builder.dart';
@@ -522,6 +523,9 @@ AppBar buildSectionAppBar(
     actions: [
       // EE-018: which team this window belongs to. Renders nothing on a CE
       // server or a plain host, so the community build is untouched.
+      // EE-061: which unit this window is showing, next to which team it
+      // belongs to — the two identity questions live in one corner.
+      const AwWorkspaceSwitcher(),
       const AwTeamChip(),
       ...leadingActions,
       if (onRefresh != null && wide) AwRefreshAction(onRefresh: onRefresh),

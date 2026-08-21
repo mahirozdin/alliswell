@@ -13146,6 +13146,627 @@ class SyncStatesCompanion extends UpdateCompanion<SyncState> {
   }
 }
 
+class $SharedItemsTable extends SharedItems
+    with TableInfo<$SharedItemsTable, SharedItem> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SharedItemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _shareIdMeta = const VerificationMeta(
+    'shareId',
+  );
+  @override
+  late final GeneratedColumn<String> shareId = GeneratedColumn<String>(
+    'share_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceWorkspaceIdMeta = const VerificationMeta(
+    'sourceWorkspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceWorkspaceId =
+      GeneratedColumn<String>(
+        'source_workspace_id',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rightsMeta = const VerificationMeta('rights');
+  @override
+  late final GeneratedColumn<String> rights = GeneratedColumn<String>(
+    'rights',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('view'),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    shareId,
+    sourceWorkspaceId,
+    entityType,
+    entityId,
+    rights,
+    title,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'shared_items';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SharedItem> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('share_id')) {
+      context.handle(
+        _shareIdMeta,
+        shareId.isAcceptableOrUnknown(data['share_id']!, _shareIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_shareIdMeta);
+    }
+    if (data.containsKey('source_workspace_id')) {
+      context.handle(
+        _sourceWorkspaceIdMeta,
+        sourceWorkspaceId.isAcceptableOrUnknown(
+          data['source_workspace_id']!,
+          _sourceWorkspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceWorkspaceIdMeta);
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('rights')) {
+      context.handle(
+        _rightsMeta,
+        rights.isAcceptableOrUnknown(data['rights']!, _rightsMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SharedItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SharedItem(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      shareId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}share_id'],
+      )!,
+      sourceWorkspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_workspace_id'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      rights: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rights'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $SharedItemsTable createAlias(String alias) {
+    return $SharedItemsTable(attachedDatabase, alias);
+  }
+}
+
+class SharedItem extends DataClass implements Insertable<SharedItem> {
+  final String id;
+
+  /// The workspace this row was DELIVERED into — the one being synced.
+  final String workspaceId;
+  final String shareId;
+
+  /// Where the item actually lives. Editing goes through the server to there.
+  final String sourceWorkspaceId;
+  final String entityType;
+  final String entityId;
+
+  /// view | edit — a CEILING, not a grant: the ordinary permission still applies.
+  final String rights;
+  final String? title;
+  final int revision;
+  final DateTime? updatedAt;
+  const SharedItem({
+    required this.id,
+    required this.workspaceId,
+    required this.shareId,
+    required this.sourceWorkspaceId,
+    required this.entityType,
+    required this.entityId,
+    required this.rights,
+    this.title,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['share_id'] = Variable<String>(shareId);
+    map['source_workspace_id'] = Variable<String>(sourceWorkspaceId);
+    map['entity_type'] = Variable<String>(entityType);
+    map['entity_id'] = Variable<String>(entityId);
+    map['rights'] = Variable<String>(rights);
+    if (!nullToAbsent || title != null) {
+      map['title'] = Variable<String>(title);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  SharedItemsCompanion toCompanion(bool nullToAbsent) {
+    return SharedItemsCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      shareId: Value(shareId),
+      sourceWorkspaceId: Value(sourceWorkspaceId),
+      entityType: Value(entityType),
+      entityId: Value(entityId),
+      rights: Value(rights),
+      title: title == null && nullToAbsent
+          ? const Value.absent()
+          : Value(title),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory SharedItem.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SharedItem(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      shareId: serializer.fromJson<String>(json['shareId']),
+      sourceWorkspaceId: serializer.fromJson<String>(json['sourceWorkspaceId']),
+      entityType: serializer.fromJson<String>(json['entityType']),
+      entityId: serializer.fromJson<String>(json['entityId']),
+      rights: serializer.fromJson<String>(json['rights']),
+      title: serializer.fromJson<String?>(json['title']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'shareId': serializer.toJson<String>(shareId),
+      'sourceWorkspaceId': serializer.toJson<String>(sourceWorkspaceId),
+      'entityType': serializer.toJson<String>(entityType),
+      'entityId': serializer.toJson<String>(entityId),
+      'rights': serializer.toJson<String>(rights),
+      'title': serializer.toJson<String?>(title),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  SharedItem copyWith({
+    String? id,
+    String? workspaceId,
+    String? shareId,
+    String? sourceWorkspaceId,
+    String? entityType,
+    String? entityId,
+    String? rights,
+    Value<String?> title = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => SharedItem(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    shareId: shareId ?? this.shareId,
+    sourceWorkspaceId: sourceWorkspaceId ?? this.sourceWorkspaceId,
+    entityType: entityType ?? this.entityType,
+    entityId: entityId ?? this.entityId,
+    rights: rights ?? this.rights,
+    title: title.present ? title.value : this.title,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  SharedItem copyWithCompanion(SharedItemsCompanion data) {
+    return SharedItem(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      shareId: data.shareId.present ? data.shareId.value : this.shareId,
+      sourceWorkspaceId: data.sourceWorkspaceId.present
+          ? data.sourceWorkspaceId.value
+          : this.sourceWorkspaceId,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      rights: data.rights.present ? data.rights.value : this.rights,
+      title: data.title.present ? data.title.value : this.title,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SharedItem(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('shareId: $shareId, ')
+          ..write('sourceWorkspaceId: $sourceWorkspaceId, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('rights: $rights, ')
+          ..write('title: $title, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    shareId,
+    sourceWorkspaceId,
+    entityType,
+    entityId,
+    rights,
+    title,
+    revision,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SharedItem &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.shareId == this.shareId &&
+          other.sourceWorkspaceId == this.sourceWorkspaceId &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.rights == this.rights &&
+          other.title == this.title &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SharedItemsCompanion extends UpdateCompanion<SharedItem> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> shareId;
+  final Value<String> sourceWorkspaceId;
+  final Value<String> entityType;
+  final Value<String> entityId;
+  final Value<String> rights;
+  final Value<String?> title;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const SharedItemsCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.shareId = const Value.absent(),
+    this.sourceWorkspaceId = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.rights = const Value.absent(),
+    this.title = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SharedItemsCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String shareId,
+    required String sourceWorkspaceId,
+    required String entityType,
+    required String entityId,
+    this.rights = const Value.absent(),
+    this.title = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       shareId = Value(shareId),
+       sourceWorkspaceId = Value(sourceWorkspaceId),
+       entityType = Value(entityType),
+       entityId = Value(entityId);
+  static Insertable<SharedItem> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? shareId,
+    Expression<String>? sourceWorkspaceId,
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<String>? rights,
+    Expression<String>? title,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (shareId != null) 'share_id': shareId,
+      if (sourceWorkspaceId != null) 'source_workspace_id': sourceWorkspaceId,
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (rights != null) 'rights': rights,
+      if (title != null) 'title': title,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SharedItemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? shareId,
+    Value<String>? sourceWorkspaceId,
+    Value<String>? entityType,
+    Value<String>? entityId,
+    Value<String>? rights,
+    Value<String?>? title,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SharedItemsCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      shareId: shareId ?? this.shareId,
+      sourceWorkspaceId: sourceWorkspaceId ?? this.sourceWorkspaceId,
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      rights: rights ?? this.rights,
+      title: title ?? this.title,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (shareId.present) {
+      map['share_id'] = Variable<String>(shareId.value);
+    }
+    if (sourceWorkspaceId.present) {
+      map['source_workspace_id'] = Variable<String>(sourceWorkspaceId.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (rights.present) {
+      map['rights'] = Variable<String>(rights.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SharedItemsCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('shareId: $shareId, ')
+          ..write('sourceWorkspaceId: $sourceWorkspaceId, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('rights: $rights, ')
+          ..write('title: $title, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -13174,6 +13795,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $RejectedMutationsTable rejectedMutations =
       $RejectedMutationsTable(this);
   late final $SyncStatesTable syncStates = $SyncStatesTable(this);
+  late final $SharedItemsTable sharedItems = $SharedItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -13199,6 +13821,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     pendingMutations,
     rejectedMutations,
     syncStates,
+    sharedItems,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -19452,6 +20075,304 @@ typedef $$SyncStatesTableProcessedTableManager =
       SyncState,
       PrefetchHooks Function()
     >;
+typedef $$SharedItemsTableCreateCompanionBuilder =
+    SharedItemsCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String shareId,
+      required String sourceWorkspaceId,
+      required String entityType,
+      required String entityId,
+      Value<String> rights,
+      Value<String?> title,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SharedItemsTableUpdateCompanionBuilder =
+    SharedItemsCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> shareId,
+      Value<String> sourceWorkspaceId,
+      Value<String> entityType,
+      Value<String> entityId,
+      Value<String> rights,
+      Value<String?> title,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$SharedItemsTableFilterComposer
+    extends Composer<_$AwDatabase, $SharedItemsTable> {
+  $$SharedItemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get shareId => $composableBuilder(
+    column: $table.shareId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceWorkspaceId => $composableBuilder(
+    column: $table.sourceWorkspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rights => $composableBuilder(
+    column: $table.rights,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SharedItemsTableOrderingComposer
+    extends Composer<_$AwDatabase, $SharedItemsTable> {
+  $$SharedItemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get shareId => $composableBuilder(
+    column: $table.shareId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceWorkspaceId => $composableBuilder(
+    column: $table.sourceWorkspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rights => $composableBuilder(
+    column: $table.rights,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SharedItemsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $SharedItemsTable> {
+  $$SharedItemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get shareId =>
+      $composableBuilder(column: $table.shareId, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceWorkspaceId => $composableBuilder(
+    column: $table.sourceWorkspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get rights =>
+      $composableBuilder(column: $table.rights, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SharedItemsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $SharedItemsTable,
+          SharedItem,
+          $$SharedItemsTableFilterComposer,
+          $$SharedItemsTableOrderingComposer,
+          $$SharedItemsTableAnnotationComposer,
+          $$SharedItemsTableCreateCompanionBuilder,
+          $$SharedItemsTableUpdateCompanionBuilder,
+          (
+            SharedItem,
+            BaseReferences<_$AwDatabase, $SharedItemsTable, SharedItem>,
+          ),
+          SharedItem,
+          PrefetchHooks Function()
+        > {
+  $$SharedItemsTableTableManager(_$AwDatabase db, $SharedItemsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SharedItemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SharedItemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SharedItemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> shareId = const Value.absent(),
+                Value<String> sourceWorkspaceId = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String> rights = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SharedItemsCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                shareId: shareId,
+                sourceWorkspaceId: sourceWorkspaceId,
+                entityType: entityType,
+                entityId: entityId,
+                rights: rights,
+                title: title,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String shareId,
+                required String sourceWorkspaceId,
+                required String entityType,
+                required String entityId,
+                Value<String> rights = const Value.absent(),
+                Value<String?> title = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SharedItemsCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                shareId: shareId,
+                sourceWorkspaceId: sourceWorkspaceId,
+                entityType: entityType,
+                entityId: entityId,
+                rights: rights,
+                title: title,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SharedItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $SharedItemsTable,
+      SharedItem,
+      $$SharedItemsTableFilterComposer,
+      $$SharedItemsTableOrderingComposer,
+      $$SharedItemsTableAnnotationComposer,
+      $$SharedItemsTableCreateCompanionBuilder,
+      $$SharedItemsTableUpdateCompanionBuilder,
+      (SharedItem, BaseReferences<_$AwDatabase, $SharedItemsTable, SharedItem>),
+      SharedItem,
+      PrefetchHooks Function()
+    >;
 
 class $AwDatabaseManager {
   final _$AwDatabase _db;
@@ -19495,4 +20416,6 @@ class $AwDatabaseManager {
       $$RejectedMutationsTableTableManager(_db, _db.rejectedMutations);
   $$SyncStatesTableTableManager get syncStates =>
       $$SyncStatesTableTableManager(_db, _db.syncStates);
+  $$SharedItemsTableTableManager get sharedItems =>
+      $$SharedItemsTableTableManager(_db, _db.sharedItems);
 }

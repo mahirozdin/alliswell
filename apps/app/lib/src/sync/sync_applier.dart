@@ -107,6 +107,10 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       // The occurrences arrive as their own task tombstones — the server
       // decides which of them go (OPH-206), so nothing cascades here.
       await (db.delete(db.taskSeries)..where((s) => s.id.equals(id))).go();
+    case 'ee_shared_item':
+      // A revoked share arrives here. Only the REFERENCE goes: the item it
+      // pointed at belongs to another unit and was never ours to delete.
+      await (db.delete(db.sharedItems)..where((s) => s.id.equals(id))).go();
   }
 }
 
@@ -158,8 +162,32 @@ Future<void> _applySnapshot(
       await db
           .into(db.taskSeries)
           .insertOnConflictUpdate(taskSeriesCompanion(data));
+    case 'ee_shared_item':
+      await db
+          .into(db.sharedItems)
+          .insertOnConflictUpdate(sharedItemCompanion(data));
   }
 }
+
+/// EE-060's mirror, as the replica stores it. A reference with a cached label
+/// — never the item itself, and never authored here.
+SharedItemsCompanion sharedItemCompanion(Map<String, dynamic> data) =>
+    SharedItemsCompanion.insert(
+      id: data['id'] as String,
+      workspaceId: data['workspaceId'] as String,
+      shareId: data['shareId'] as String,
+      sourceWorkspaceId: data['sourceWorkspaceId'] as String,
+      entityType: data['entityType'] as String,
+      entityId: data['entityId'] as String,
+      rights: Value((data['rights'] as String?) ?? 'view'),
+      title: Value(data['title'] as String?),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: Value(
+        data['updatedAt'] == null
+            ? null
+            : DateTime.parse(data['updatedAt'] as String).toUtc(),
+      ),
+    );
 
 /// Replace-set of a task's tag joins — shared by the applier and optimistic
 /// local writes.
