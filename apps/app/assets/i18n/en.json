@@ -1197,6 +1197,38 @@
       "revoked": "ended a session"
     },
     "perm": {
+      "alarms": {
+        "create_urgent": "Raise an urgent alarm"
+      },
+      "calendar": {
+        "view": "See calendar connections",
+        "manage": "Connect and disconnect calendars"
+      },
+      "files": {
+        "view": "See files",
+        "upload": "Upload files",
+        "edit": "Rename and move files",
+        "delete": "Delete files"
+      },
+      "notes": {
+        "view": "See notes",
+        "create": "Create notes",
+        "edit": "Edit notes",
+        "delete": "Delete notes"
+      },
+      "projects": {
+        "view": "See projects",
+        "create": "Create projects",
+        "edit": "Edit projects",
+        "archive": "Archive and restore projects"
+      },
+      "tasks": {
+        "view": "See tasks",
+        "create": "Create tasks",
+        "edit": "Edit tasks",
+        "complete": "Complete and reopen tasks",
+        "delete": "Delete tasks"
+      },
       "team": {
         "manage_invites": "Manage invitations",
         "manage_members": "Manage members",

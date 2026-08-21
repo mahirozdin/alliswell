@@ -1196,6 +1196,38 @@
       "revoked": "bir oturumu sonlandırdı"
     },
     "perm": {
+      "alarms": {
+        "create_urgent": "Acil alarm kur"
+      },
+      "calendar": {
+        "view": "Takvim bağlantılarını gör",
+        "manage": "Takvim bağla ve kaldır"
+      },
+      "files": {
+        "view": "Dosyaları gör",
+        "upload": "Dosya yükle",
+        "edit": "Dosyaları yeniden adlandır ve taşı",
+        "delete": "Dosyaları sil"
+      },
+      "notes": {
+        "view": "Notları gör",
+        "create": "Not oluştur",
+        "edit": "Notları düzenle",
+        "delete": "Notları sil"
+      },
+      "projects": {
+        "view": "Projeleri gör",
+        "create": "Proje oluştur",
+        "edit": "Projeleri düzenle",
+        "archive": "Projeleri arşivle ve geri al"
+      },
+      "tasks": {
+        "view": "Görevleri gör",
+        "create": "Görev oluştur",
+        "edit": "Görevleri düzenle",
+        "complete": "Görevleri tamamla ve yeniden aç",
+        "delete": "Görevleri sil"
+      },
       "team": {
         "manage_invites": "Davetleri yönet",
         "manage_members": "Üyeleri yönet",
