@@ -154,7 +154,9 @@
       "dataSub": "Tamamlananlar, paylaşım günlüğü",
       "account": "Hesap",
       "team": "Takım",
-      "teamSub": "Ayarlar, üyeler ve davetler"
+      "teamSub": "Ayarlar, üyeler ve davetler",
+      "units": "Birimler",
+      "unitsSub": "Yönettiğiniz birimler"
     }
   },
   "shell": {
@@ -1121,7 +1123,9 @@
         "invites": "Davetler",
         "invitesSub": "Davet gönder, daveti iptal et",
         "roles": "Roller ve izinler",
-        "rolesSub": "Hangi rol neyi yapabilir"
+        "rolesSub": "Hangi rol neyi yapabilir",
+        "units": "Birimler",
+        "unitsSub": "Departmanlar ve içlerindeki kişiler"
       },
       "members": {
         "title": "Üyeler",
@@ -1170,6 +1174,29 @@
         "deleteTitle": "Bu rol silinsin mi?",
         "deleteBody": "{n} kişi bu rolü taşıyor. Takımdaki yerleri kalıyor, {anchor} rolüne düşüyorlar.",
         "open": "Roller ve izinler"
+      },
+      "units": {
+        "title": "Birimler",
+        "create": "Yeni birim",
+        "rename": "Yeniden adlandır",
+        "name": "Birim adı",
+        "archive": "Arşivle",
+        "unarchive": "Arşivden çıkar",
+        "archived": "arşivlendi",
+        "youManage": "sizin biriminiz",
+        "manager": "Birim yöneticisi",
+        "promote": "Birim yöneticisi yap",
+        "demote": "Üye yap",
+        "addMember": "Kişi ekle",
+        "removeMember": "Birimden çıkar",
+        "memberCount": "{count} kişi",
+        "noCandidates": "Eklenecek kimse kalmadı — takımdaki herkes bu birimde.",
+        "intro": "Bir birim kendi workspace’idir: içeriği yalnız birimdeki kişiler görür. Birime eklemek, kişinin cihazının o içeriği eşitlemeye başlaması demektir.",
+        "introManager": "Yönettiğiniz birimler. Kimlerin içinde olduğunu siz belirlersiniz; birimin kendisini takım yöneticisi açar ve adlandırır.",
+        "emptyTitle": "Henüz birim yok",
+        "emptyBody": "İlk birimi açın — bir departman, bir saha ekibi, ayrı çalışan herhangi bir grup.",
+        "noneTitle": "Burada yönetebileceğiniz bir birim yok",
+        "noneBody": "Bir birimin yöneticisi yapıldıysanız uygulamayı yenileyin; değilse bu sayfa size ait değil."
       }
     },
     "join": {

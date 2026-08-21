@@ -17,6 +17,7 @@ import '../features/quick_access/ui/quick_access_bubble.dart';
 import '../features/quick_access/ui/quick_access_row.dart';
 import '../features/settings/server_url_sheet.dart';
 import '../features/ee/team_admin_providers.dart';
+import '../features/ee/units_providers.dart';
 import '../i18n/i18n.dart';
 import '../notifications/gateway.dart';
 import '../notifications/providers.dart';
@@ -108,6 +109,21 @@ class SettingsScreen extends ConsumerWidget {
                   titleKey: 'settings.group.team',
                   subtitleKey: 'settings.group.teamSub',
                   path: '/settings/team',
+                ),
+              // EE-057: a delegated unit manager is an ordinary member
+              // everywhere else, so the Team group above never opens for them
+              // — and the units they run would be unreachable. Their own row,
+              // shown only when they are NOT an admin: an admin already has
+              // the same destination inside the group, and two doors to one
+              // room is a list that reads as a mistake.
+              if (!ref.watch(eeTeamAdminProvider) &&
+                  ref.watch(eeUnitsVisibleProvider))
+                _GroupRow(
+                  keyName: 'settings-group-units',
+                  icon: Icons.apartment_outlined,
+                  titleKey: 'settings.group.units',
+                  subtitleKey: 'settings.group.unitsSub',
+                  path: '/settings/team/units',
                 ),
               // Kept on the root, and kept a dialog: it is one screenful of
               // facts, not a place with settings in it.

@@ -155,7 +155,9 @@
       "dataSub": "Completed work, share log",
       "account": "Account",
       "team": "Team",
-      "teamSub": "Settings, members and invitations"
+      "teamSub": "Settings, members and invitations",
+      "units": "Units",
+      "unitsSub": "The units you run"
     }
   },
   "shell": {
@@ -1122,7 +1124,9 @@
         "invites": "Invitations",
         "invitesSub": "Invite people, and cancel invitations",
         "roles": "Roles and permissions",
-        "rolesSub": "What each role may do"
+        "rolesSub": "What each role may do",
+        "units": "Units",
+        "unitsSub": "Departments and the people in them"
       },
       "members": {
         "title": "Members",
@@ -1171,6 +1175,29 @@
         "deleteTitle": "Delete this role?",
         "deleteBody": "{n} people hold it. They keep their place in the team and fall back to {anchor}.",
         "open": "Roles and permissions"
+      },
+      "units": {
+        "title": "Units",
+        "create": "New unit",
+        "rename": "Rename",
+        "name": "Unit name",
+        "archive": "Archive",
+        "unarchive": "Restore",
+        "archived": "archived",
+        "youManage": "you run this one",
+        "manager": "Unit manager",
+        "promote": "Make unit manager",
+        "demote": "Make member",
+        "addMember": "Add someone",
+        "removeMember": "Remove from unit",
+        "memberCount": "{count} people",
+        "noCandidates": "Nobody left to add — everyone in the team is already here.",
+        "intro": "A unit is its own workspace: only the people in it see its content. Adding someone means their device starts syncing that content.",
+        "introManager": "The units you run. You decide who is in them; the team admin opens and names the unit itself.",
+        "emptyTitle": "No units yet",
+        "emptyBody": "Open the first one — a department, a field crew, any group that works apart.",
+        "noneTitle": "No unit here is yours to manage",
+        "noneBody": "If you were just made a manager, refresh the app; otherwise this page is not for you."
       }
     },
     "join": {
