@@ -23,6 +23,7 @@ import 'package:alliswell/src/features/ee/data/team_admin_models.dart';
 import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_invites_screen.dart';
 import 'package:alliswell/src/features/ee/ui/team_members_screen.dart';
+import 'package:alliswell/src/features/ee/ui/team_roles_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/widgets/glass.dart';
@@ -97,6 +98,58 @@ final _invites = [
   ),
 ];
 
+/// EE-053 — the roles a team has, as a picture. The shot exists because two
+/// of this screen's rules are only checkable by eye: `owner` has to read as
+/// CLOSED rather than broken, and a role's member count has to be as legible
+/// as its name — narrowing a role is a decision made against who is in it.
+final _roles = [
+  const EeRole(
+    key: 'owner',
+    name: 'owner',
+    base: true,
+    anchor: 'owner',
+    editable: false,
+    grants: ['tasks.view', 'tasks.create', 'notes.view', 'team.manage_roles'],
+    memberCount: 1,
+  ),
+  const EeRole(
+    key: 'admin',
+    name: 'admin',
+    base: true,
+    anchor: 'admin',
+    editable: true,
+    grants: ['tasks.view', 'tasks.create', 'notes.view'],
+    memberCount: 2,
+  ),
+  const EeRole(
+    key: 'member',
+    name: 'member',
+    base: true,
+    anchor: 'member',
+    editable: true,
+    grants: ['tasks.view'],
+    memberCount: 8,
+  ),
+  const EeRole(
+    key: '01ROLE0000000000000000000A',
+    name: 'Destek Uzmanı',
+    base: false,
+    anchor: 'member',
+    editable: true,
+    grants: ['tasks.view', 'tasks.complete', 'notes.view'],
+    memberCount: 4,
+  ),
+  const EeRole(
+    key: '01ROLE0000000000000000000B',
+    name: 'Vardiya Sorumlusu',
+    base: false,
+    anchor: 'admin',
+    editable: true,
+    grants: ['tasks.view', 'tasks.create', 'tasks.complete'],
+    memberCount: 2,
+  ),
+];
+
 void main() {
   if (!_enabled) return;
 
@@ -161,6 +214,12 @@ void main() {
         eeInvitesProvider.overrideWith(() => _FixedInvites(_invites)),
       ], const EeTeamInvitesScreen());
     });
+
+    testWidgets('team roles — ${brightness.name}', (tester) async {
+      await shoot(tester, brightness, 'ee-team-roles', [
+        eeTeamRolesProvider.overrideWith(() => _FixedRoles(_roles)),
+      ], const EeTeamRolesScreen());
+    });
   }
 }
 
@@ -169,6 +228,13 @@ class _FixedRoster extends EeRosterController {
   final EeTeamRoster _value;
   @override
   Future<EeTeamRoster> build() async => _value;
+}
+
+class _FixedRoles extends EeRolesController {
+  _FixedRoles(this._value);
+  final List<EeRole> _value;
+  @override
+  Future<List<EeRole>> build() async => _value;
 }
 
 class _FixedInvites extends EeInvitesController {

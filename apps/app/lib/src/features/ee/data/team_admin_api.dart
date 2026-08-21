@@ -33,13 +33,71 @@ class EeTeamAdminApi {
     return EeTeamRoster.fromJson(res.data ?? const {});
   });
 
-  Future<void> setRole({required String userId, required String role}) =>
-      _run(() async {
-        await _dio.patch<Map<String, dynamic>>(
-          '$_team/members/$userId/role',
-          data: {'role': role},
-        );
-      });
+  Future<void> setRole({
+    required String userId,
+    required String role,
+    String? customRoleId,
+    bool clearCustomRole = false,
+  }) => _run(() async {
+    await _dio.patch<Map<String, dynamic>>(
+      '$_team/members/$userId/role',
+      data: {
+        'role': role,
+        // Absent leaves it alone, null CLEARS it — so the two intents need
+        // two spellings, and a bool is the only honest way to say "null".
+        'customRoleId': ?customRoleId,
+        if (clearCustomRole) 'customRoleId': null,
+      },
+    );
+  });
+
+  // ── Roles (EE-053) ───────────────────────────────────────────────────────
+
+  Future<List<EeRole>> roles() => _run(() async {
+    final res = await _dio.get<Map<String, dynamic>>('$_team/roles');
+    return ((res.data?['roles'] as List?) ?? const [])
+        .map((r) => EeRole.fromJson(r as Map<String, dynamic>))
+        .toList();
+  });
+
+  /// The full vocabulary — what a grant matrix draws its rows from.
+  Future<List<EePermissionDef>> catalogue() => _run(() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/ee/permissions',
+    );
+    return ((res.data?['permissions'] as List?) ?? const [])
+        .map((p) => EePermissionDef.fromJson(p as Map<String, dynamic>))
+        .toList();
+  });
+
+  Future<void> createRole({
+    required String name,
+    required String anchor,
+    required List<String> grants,
+  }) => _run(() async {
+    await _dio.post<Map<String, dynamic>>(
+      '$_team/roles',
+      data: {'name': name, 'anchor': anchor, 'grants': grants},
+    );
+  });
+
+  /// Full sets, not deltas: the server translates. A client that computed
+  /// departures from the defaults would be reimplementing a rule it cannot
+  /// see (PERMISSIONS.md, EE-048).
+  Future<void> updateRole({
+    required String roleKey,
+    String? name,
+    List<String>? grants,
+  }) => _run(() async {
+    await _dio.patch<Map<String, dynamic>>(
+      '$_team/roles/$roleKey',
+      data: {'name': ?name, 'grants': ?grants},
+    );
+  });
+
+  Future<void> deleteRole(String roleKey) => _run(() async {
+    await _dio.delete<Map<String, dynamic>>('$_team/roles/$roleKey');
+  });
 
   Future<void> deactivate(String userId) => _run(() async {
     await _dio.post<Map<String, dynamic>>('$_team/members/$userId/deactivate');

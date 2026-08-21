@@ -27,6 +27,7 @@ import 'features/tasks/ui/task_list_screen.dart';
 import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
+import 'features/ee/ui/team_roles_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_invites_screen.dart';
@@ -409,6 +410,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/invites',
         builder: (context, state) => _page(const EeTeamInvitesScreen()),
+      ),
+      // EE-053: roles and their grant matrix.
+      GoRoute(
+        path: '/settings/team/roles',
+        builder: (context, state) => _page(const EeTeamRolesScreen()),
       ),
       // OPH-220: AI settings — connections, models, the MCP connector URL.
       GoRoute(

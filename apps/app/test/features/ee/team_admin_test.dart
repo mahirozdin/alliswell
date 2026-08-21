@@ -62,7 +62,44 @@ class FakeApi implements EeTeamAdminApi {
       EeTeamRoster(members: _members, seats: _seats);
 
   @override
-  Future<void> setRole({required String userId, required String role}) async {
+  Future<List<EeRole>> roles() async => const [
+    EeRole(
+      key: 'member',
+      name: 'member',
+      base: true,
+      anchor: 'member',
+      editable: true,
+    ),
+  ];
+
+  @override
+  Future<List<EePermissionDef>> catalogue() async => const [];
+
+  @override
+  Future<void> createRole({
+    required String name,
+    required String anchor,
+    required List<String> grants,
+  }) async => calls.add('role-create:$name');
+
+  @override
+  Future<void> updateRole({
+    required String roleKey,
+    String? name,
+    List<String>? grants,
+  }) async => calls.add('role-update:$roleKey');
+
+  @override
+  Future<void> deleteRole(String roleKey) async =>
+      calls.add('role-delete:$roleKey');
+
+  @override
+  Future<void> setRole({
+    required String userId,
+    required String role,
+    String? customRoleId,
+    bool clearCustomRole = false,
+  }) async {
     calls.add('role:$userId:$role');
     _members = _members
         .map(

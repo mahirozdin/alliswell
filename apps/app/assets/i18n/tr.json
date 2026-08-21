@@ -1119,7 +1119,9 @@
         "members": "Üyeler",
         "membersSub": "Takımda kim var, neler yapabilir",
         "invites": "Davetler",
-        "invitesSub": "Davet gönder, daveti iptal et"
+        "invitesSub": "Davet gönder, daveti iptal et",
+        "roles": "Roller ve izinler",
+        "rolesSub": "Hangi rol neyi yapabilir"
       },
       "members": {
         "title": "Üyeler",
@@ -1130,7 +1132,8 @@
         "demote": "Üye yap",
         "remove": "Çıkar",
         "removeTitle": "Takımdan çıkarılsın mı?",
-        "removeBody": "{name} erişimini hemen kaybeder. Yazdıkları takımda kalır, ama geri dönüş yeni bir davet gerektirir — geçici olabilecekse devre dışı bırakmayı tercih edin."
+        "removeBody": "{name} erişimini hemen kaybeder. Yazdıkları takımda kalır, ama geri dönüş yeni bir davet gerektirir — geçici olabilecekse devre dışı bırakmayı tercih edin.",
+        "assignRole": "Rol ata…"
       },
       "seats": {
         "count": "{max} koltuktan {used} tanesi dolu",
@@ -1154,6 +1157,19 @@
         "link": "Bağlantı",
         "code": "Kod",
         "separately": "Bağlantıyı ve kodu farklı yollardan gönderin. Bir kez gösterilir — ikisi de geri okunamaz."
+      },
+      "roles": {
+        "title": "Roller",
+        "create": "Yeni rol",
+        "name": "Rol adı",
+        "anchor": "Şunun üstünde",
+        "anchorHelp": "Takımdaki rütbeyi ve her workspace’in gördüğü rolü belirler",
+        "intro": "Rol, insanların yapabileceği şeylerin adlandırılmış bir kümesidir. Baz roller silinemez; sahip her zaman her şeye sahiptir.",
+        "summary": "{grants} izin · {members} üye",
+        "locked": "Her zaman her şey",
+        "deleteTitle": "Bu rol silinsin mi?",
+        "deleteBody": "{n} kişi bu rolü taşıyor. Takımdaki yerleri kalıyor, {anchor} rolüne düşüyorlar.",
+        "open": "Roller ve izinler"
       }
     },
     "join": {
@@ -1240,6 +1256,15 @@
           "view": "Çalışma alanlarını gör"
         }
       }
+    },
+    "permDomain": {
+      "alarms": "Alarmlar",
+      "calendar": "Takvim",
+      "files": "Dosyalar",
+      "notes": "Notlar",
+      "projects": "Projeler",
+      "tasks": "Görevler",
+      "team": "Takım"
     },
     "admin": {
       "title": "Instance konsolu",

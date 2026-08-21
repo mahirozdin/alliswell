@@ -60,8 +60,20 @@ class EeRosterController extends AsyncNotifier<EeTeamRoster> {
     });
   }
 
-  Future<void> setRole(String userId, String role) => _then(
-    () => ref.read(eeTeamAdminApiProvider).setRole(userId: userId, role: role),
+  Future<void> setRole(
+    String userId,
+    String role, {
+    String? customRoleId,
+    bool clearCustomRole = false,
+  }) => _then(
+    () => ref
+        .read(eeTeamAdminApiProvider)
+        .setRole(
+          userId: userId,
+          role: role,
+          customRoleId: customRoleId,
+          clearCustomRole: clearCustomRole,
+        ),
   );
 
   Future<void> deactivate(String userId) =>
@@ -104,3 +116,59 @@ class EeInvitesController extends AsyncNotifier<List<EeInvite>> {
     });
   }
 }
+
+
+/// The team's roles (EE-053).
+final eeTeamRolesProvider =
+    AsyncNotifierProvider<EeRolesController, List<EeRole>>(
+      EeRolesController.new,
+    );
+
+class EeRolesController extends AsyncNotifier<List<EeRole>> {
+  @override
+  Future<List<EeRole>> build() => ref.watch(eeTeamAdminApiProvider).roles();
+
+  /// Same re-read discipline as the roster: the server resolves effective
+  /// grants from the registry's defaults plus this team's departures, so
+  /// patching the list in place would mean reimplementing that rule here —
+  /// and the two copies would disagree the first time a permission shipped.
+  Future<void> _then(Future<void> Function() action) async {
+    state = await AsyncValue.guard(() async {
+      await action();
+      // A role change can move what the CALLER may do (they might have edited
+      // their own role), so the gates are re-asked too.
+      ref.invalidate(eePermissionsProvider);
+      return ref.read(eeTeamAdminApiProvider).roles();
+    });
+  }
+
+  Future<void> create({
+    required String name,
+    required String anchor,
+    required List<String> grants,
+  }) => _then(
+    () => ref
+        .read(eeTeamAdminApiProvider)
+        .createRole(name: name, anchor: anchor, grants: grants),
+  );
+
+  Future<void> edit(String roleKey, {String? name, List<String>? grants}) =>
+      _then(
+        () => ref
+            .read(eeTeamAdminApiProvider)
+            .updateRole(roleKey: roleKey, name: name, grants: grants),
+      );
+
+  Future<void> remove(String roleKey) =>
+      _then(() => ref.read(eeTeamAdminApiProvider).deleteRole(roleKey));
+}
+
+/// The permission vocabulary this instance knows — the matrix's rows.
+///
+/// Separate from [eeTeamRolesProvider] because it does not change when a role
+/// does: it is the SYSTEM's list, and re-fetching it on every save would be
+/// asking the same question again.
+final eePermissionCatalogueProvider =
+    FutureProvider<List<EePermissionDef>>(
+      (ref) => ref.watch(eeTeamAdminApiProvider).catalogue(),
+    );

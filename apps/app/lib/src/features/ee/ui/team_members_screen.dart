@@ -114,7 +114,9 @@ class _MemberTile extends ConsumerWidget {
         title: Text(member.label),
         subtitle: Text(
           [
-            'ee.team.role.${member.role}'.tr(),
+            // A custom role's name is a VALUE somebody typed; a base role's
+            // is a KEY. Translating the first would be translating data.
+            member.customRoleName ?? 'ee.team.role.${member.role}'.tr(),
             if (dimmed) 'ee.team.members.deactivated'.tr(),
             if (member.email != null) member.email!,
           ].join(' · '),
@@ -143,6 +145,12 @@ class _MemberTile extends ConsumerWidget {
                 value: 'demote',
                 child: Text('ee.team.members.demote'.tr()),
               ),
+            // EE-053: promote/demote move somebody between BASE roles;
+            // this is the door to the team's own named roles.
+            PopupMenuItem(
+              value: 'assign',
+              child: Text('ee.team.members.assignRole'.tr()),
+            ),
             PopupMenuItem(
               value: 'remove',
               child: Text('ee.team.members.remove'.tr()),
@@ -159,6 +167,50 @@ class _MemberTile extends ConsumerWidget {
     EeRosterController controller,
     String action,
   ) async {
+    if (action == 'assign') {
+      final roles = await ref.read(eeTeamRolesProvider.future);
+      if (!context.mounted) return;
+      final chosen = await showModalBottomSheet<EeRole>(
+        context: context,
+        builder: (context) => SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final role in roles)
+                // `owner` is not assignable from here: moving somebody to the
+                // top role is the promote path, which the role lattice checks
+                // (roles.js). This sheet is for the team's own named roles.
+                if (role.key != 'owner')
+                  ListTile(
+                    key: Key('assign-${role.key}'),
+                    title: Text(
+                      role.base ? 'ee.team.role.${role.key}'.tr() : role.name,
+                    ),
+                    subtitle: Text(
+                      'ee.team.roles.summary'.tr(
+                        args: {
+                          'grants': '${role.grants.length}',
+                          'members': '${role.memberCount}',
+                        },
+                      ),
+                    ),
+                    onTap: () => Navigator.of(context).pop(role),
+                  ),
+            ],
+          ),
+        ),
+      );
+      if (chosen == null) return;
+      await controller.setRole(
+        member.userId,
+        chosen.anchor,
+        customRoleId: chosen.base ? null : chosen.key,
+        // Moving somebody onto a BASE role has to clear the custom one, and
+        // "leave it alone" and "clear it" are different requests.
+        clearCustomRole: chosen.base,
+      );
+      return;
+    }
     // The one action that cannot be undone asks first, and says why in the
     // same breath — deactivation is right there and it IS reversible.
     if (action == 'remove') {

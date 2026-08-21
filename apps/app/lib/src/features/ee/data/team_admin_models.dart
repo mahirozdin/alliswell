@@ -95,6 +95,8 @@ class EeTeamMember {
   const EeTeamMember({
     required this.userId,
     required this.role,
+    this.customRoleId,
+    this.customRoleName,
     required this.active,
     this.email,
     this.displayName,
@@ -106,6 +108,11 @@ class EeTeamMember {
 
   final String userId;
   final String role;
+
+  /// EE-053 — the role this person is actually IN, when it has a name of its
+  /// own. `role` stays the anchor it is built on.
+  final String? customRoleId;
+  final String? customRoleName;
 
   /// False for a deactivated member: their row and role survive, their access
   /// does not, and their seat is free.
@@ -120,9 +127,16 @@ class EeTeamMember {
   String get label =>
       displayName?.trim().isNotEmpty == true ? displayName! : (email ?? userId);
 
+  /// What to show as this person's role: their custom role's name when they
+  /// hold one, otherwise the base role's label key.
+  String get roleLabel =>
+      customRoleName ?? 'ee.team.role.$role';
+
   factory EeTeamMember.fromJson(Map<String, dynamic> json) => EeTeamMember(
     userId: (json['userId'] as String?) ?? '',
     role: (json['role'] as String?) ?? 'member',
+    customRoleId: json['customRoleId'] as String?,
+    customRoleName: json['customRoleName'] as String?,
     active: json['active'] as bool? ?? true,
     email: json['email'] as String?,
     displayName: json['displayName'] as String?,
@@ -220,4 +234,81 @@ class EeMintedInvite {
     link: (json['link'] as String?) ?? '',
     delivery: (json['delivery'] as String?) ?? 'manual',
   );
+}
+
+
+/// One role a team has (EE-053) — the client mirror of `GET /ee/team/roles`.
+///
+/// [grants] is the EFFECTIVE set, already resolved on the server from the
+/// registry's defaults plus this team's departures from them. The client never
+/// computes it: a screen that recomputed effective grants would be a second
+/// implementation of the rule, and the two would disagree the first time a
+/// permission was added.
+class EeRole {
+  const EeRole({
+    required this.key,
+    required this.name,
+    required this.base,
+    required this.anchor,
+    required this.editable,
+    this.grants = const [],
+    this.memberCount = 0,
+  });
+
+  factory EeRole.fromJson(Map<String, dynamic> json) => EeRole(
+    key: json['key'] as String,
+    name: json['name'] as String,
+    base: (json['base'] as bool?) ?? false,
+    anchor: (json['anchor'] as String?) ?? 'member',
+    editable: (json['editable'] as bool?) ?? false,
+    grants: ((json['grants'] as List?) ?? const []).cast<String>(),
+    memberCount: (json['memberCount'] as int?) ?? 0,
+  );
+
+  /// A base role name (`owner` / `admin` / `member`) or a custom role's id.
+  final String key;
+  final String name;
+  final bool base;
+
+  /// The base role this one is built on — its rank, and the role core
+  /// materializes into `workspace_members`.
+  final String anchor;
+
+  /// `owner` is false: a team must not be able to lock itself out.
+  final bool editable;
+  final List<String> grants;
+  final int memberCount;
+
+  bool get deletable => !base;
+}
+
+/// One entry in the permission catalogue (`GET /ee/permissions`).
+class EePermissionDef {
+  const EePermissionDef({
+    required this.id,
+    required this.label,
+    required this.description,
+    this.defaultGrants = const [],
+  });
+
+  factory EePermissionDef.fromJson(Map<String, dynamic> json) =>
+      EePermissionDef(
+        id: json['id'] as String,
+        label: json['label'] as String,
+        description: (json['description'] as String?) ?? '',
+        defaultGrants: ((json['defaultGrants'] as List?) ?? const [])
+            .cast<String>(),
+      );
+
+  final String id;
+
+  /// An i18n KEY (`ee.perm.tasks.create`), not a sentence: the server owns the
+  /// dictionary and the app owns the words.
+  final String label;
+  final String description;
+  final List<String> defaultGrants;
+
+  /// `tasks.create` → `tasks`. The matrix groups by this, because a screen of
+  /// thirty flat checkboxes is a screen nobody reads.
+  String get domain => id.split('.').first;
 }
