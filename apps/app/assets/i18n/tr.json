@@ -156,7 +156,9 @@
       "team": "Takım",
       "teamSub": "Ayarlar, üyeler ve davetler",
       "units": "Birimler",
-      "unitsSub": "Yönettiğiniz birimler"
+      "unitsSub": "Yönettiğiniz birimler",
+      "assignments": "Bana atananlar",
+      "assignmentsSub": "Şu anda üzerinizde olan işler"
     }
   },
   "shell": {
@@ -1406,6 +1408,17 @@
         "project": "Proje",
         "file": "Dosya"
       }
+    },
+    "assign": {
+      "section": "Atananlar",
+      "title": "Bu işte kimler var",
+      "nobody": "Bu işte henüz kimse yok",
+      "manage": "Bu işte kimlerin olacağını değiştir",
+      "noRoster": "Burada atanacak kimse yok.",
+      "formerMember": "Artık bu birimde değil",
+      "mineTitle": "Bana atananlar",
+      "mineEmptyTitle": "Üzerinizde iş yok",
+      "mineEmptyBody": "Size verilen ya da kendi üstünüze aldığınız işler burada görünür."
     }
   },
   "perm": {

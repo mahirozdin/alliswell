@@ -226,6 +226,30 @@ PAIRS = [
     # `note_conflict_banner.dart` by taking the container's own ink; both the
     # ink and the action label are pinned below so the next surface added to
     # this banner cannot repeat it.
+    # EE-068 — the assignee avatar (item 9's round icons under a task card).
+    #
+    # The roster palette ships one colour per person and its own comment claims
+    # every entry clears contrast in both themes. Measured with the function
+    # above, it does not: white initials fail 4.5 on five of the ten fills
+    # (worst #CA8A04 at 2.94), picking the better ink per fill still leaves
+    # #0284C7 at 4.22, and as a BARE SHAPE the fills fail 3:1 on both surfaces
+    # (2.94 light, 2.58 dark). So the avatar takes OPH-199's answer for an
+    # arbitrary colour: the colour is a 20% TINT, a neutral `outline` ring
+    # carries the shape, and the initials are ordinary surface ink.
+    #
+    # The two ink rows below are the WORST tint of the ten in each theme —
+    # #DC2626 on light, #CA8A04 on dark — so nothing in the palette can be
+    # worse than what is pinned here.
+    ('L avatar initials on worst tint', '#0F1B2E', '#F8D4D4', 4.5),
+    ('D avatar initials on worst tint', '#EAF0FD', '#393431', 4.5),
+    ('L avatar ring on surface', '#63789E', '#FFFFFF', 3.0),
+    ('D avatar ring on surface', '#7186B5', '#151F3C', 3.0),
+    # The tombstone avatar: somebody who left the unit but still holds the
+    # assignment. Neutral fill, so it is a plain ink-on-container pair.
+    ('L former-member avatar ink', '#44536F', '#DEE8F8', 4.5),
+    ('D former-member avatar ink', '#AAB6D6', '#26345E', 4.5),
+    ('L former-member avatar ring', '#63789E', '#DEE8F8', 3.0),
+    ('D former-member avatar ring', '#7186B5', '#26345E', 3.0),
     ('L banner ink on tertiary container', '#084F44', '#BFF2E6', 4.5),
     ('D banner ink on tertiary container', '#BDF6EC', '#0E5B4F', 4.5),
     ('L banner action label', '#084F44', '#BFF2E6', 4.5),

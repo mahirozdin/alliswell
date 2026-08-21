@@ -29,6 +29,8 @@ import '../providers.dart';
 import 'task_tile.dart' show deleteTaskWithUndo;
 import 'repeat_row.dart';
 import 'task_visuals.dart';
+import '../../ee/assignments_providers.dart';
+import '../../ee/ui/assignee_avatars.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
 /// replica instantly and sync in the background (OPH-054/055).
@@ -466,6 +468,20 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 ),
               ),
               const SizedBox(height: AwSpace.x3),
+              // EE-068 / item 9: who is on this task. The section is present
+              // only where there IS a roster, so a personal workspace and a
+              // plain build never see a card they cannot use.
+              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ??
+                  false) ...[
+                _SectionCard(
+                  title: 'ee.assign.section'.tr(),
+                  child: AwAssigneeSection(
+                    workspaceId: task.workspaceId,
+                    taskId: task.id,
+                  ),
+                ),
+                const SizedBox(height: AwSpace.x3),
+              ],
               _SectionCard(
                 title: 'task.checklist'.tr(),
                 child: _Checklist(

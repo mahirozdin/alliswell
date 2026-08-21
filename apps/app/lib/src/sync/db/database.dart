@@ -581,6 +581,66 @@ class SharedItems extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// A person in this workspace, as the roster delivers them (EE-017).
+///
+/// The server has been syncing this type since EE-017 and the replica dropped
+/// it on the floor: `sync_applier`'s switch had no case for it and there was
+/// no table to put it in, so every device threw the roster away silently. It
+/// is here now because EE-068 needs it — an avatar with no name and no colour
+/// is a grey circle — and the lesson is the older one: an applier that ignores
+/// what it does not know cannot tell "not mine" from "not implemented".
+///
+/// `colorRgb` and `initials` are the SERVER's, deliberately: one person keeps
+/// one colour on every device they own, which is the whole point of an avatar.
+class MemberProfiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get userId => text()();
+  TextColumn get displayName => text().nullable()();
+
+  /// Up to two letters, derived server-side (Unicode-aware — Ö stays Ö).
+  TextColumn get initials => text().nullable()();
+
+  /// `#RRGGBB` from the roster's fixed palette, chosen by a stable hash.
+  TextColumn get colorRgb => text()();
+  TextColumn get avatarUrl => text().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Who is on a task (EE-066/EE-068) — item 9's avatar row, as data.
+///
+/// Push-CAPABLE, unlike [SharedItems]: taking a task is the one act most
+/// likely to happen with no signal, so the replica may author one of these and
+/// the outbox carries it. Authority is decided when the write lands, and a
+/// refusal arrives as an ordinary rejection (EE-051 keeps it rather than
+/// dropping it).
+///
+/// A release is a TOMBSTONE, not a flag: the row is deleted here, exactly as
+/// the server soft-deletes it, so an avatar disappears by the same path
+/// everything else does.
+class TaskAssignments extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get taskId => text()();
+
+  /// The person. Joined against [MemberProfiles] for a name and a colour —
+  /// and a MISS is meaningful: somebody who left the unit still has their
+  /// assignment until a sweep releases it, and the row renders as a neutral
+  /// tombstone avatar rather than vanishing.
+  TextColumn get userId => text()();
+  TextColumn get assignedBy => text().nullable()();
+  DateTimeColumn get assignedAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Projects,
@@ -604,6 +664,8 @@ class SharedItems extends Table {
     RejectedMutations,
     SyncStates,
     SharedItems,
+    MemberProfiles,
+    TaskAssignments,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -627,9 +689,12 @@ class AwDatabase extends _$AwDatabase {
   /// v18 → v19 (OPH-274, ADR-0033): markdown becomes a note's only canonical
   /// v20 → v21 (EE-061): shared_items — what another unit shared with this
   /// one. Pull-only; the replica never authors one.
+  /// v21 → v22 (EE-068): member_profiles + task_assignments — who the people
+  /// are and who is on what. The roster half is a REPAIR: the server has been
+  /// sending it since EE-017 and the replica had nowhere to put it.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -768,6 +833,14 @@ class AwDatabase extends _$AwDatabase {
       // a fresh database is what `onCreate` already did.
       if (from < 20) await m.createTable(rejectedMutations);
       if (from < 21) await m.createTable(sharedItems);
+      // v22 (EE-068): the roster and the assignments. Two new tables, so
+      // nothing existing is touched — and BOTH fill from the next pull
+      // rather than a backfill, because the server has been sending the
+      // roster all along and a full pull is what a fresh table gets anyway.
+      if (from < 22) {
+        await m.createTable(memberProfiles);
+        await m.createTable(taskAssignments);
+      }
     },
   );
 

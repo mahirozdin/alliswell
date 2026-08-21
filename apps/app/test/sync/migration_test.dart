@@ -228,8 +228,16 @@ void main() {
       // because the replica does not author them (they are pull-only).
       expect(await db.select(db.sharedItems).get(), isEmpty);
 
+      // v22 (EE-068): member_profiles + task_assignments. Empty for the same
+      // reason — both fill from the next pull. The roster half is a REPAIR:
+      // the server has been sending `ee_member_profile` since EE-017 and the
+      // applier had no case for it, so every device threw it away. An upgraded
+      // device gets it on the first pull after this migration.
+      expect(await db.select(db.memberProfiles).get(), isEmpty);
+      expect(await db.select(db.taskAssignments).get(), isEmpty);
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 21);
+      expect(version.data['user_version'], 22);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -275,7 +283,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 21);
+      expect(version.data['user_version'], 22);
       await db.close();
     },
   );

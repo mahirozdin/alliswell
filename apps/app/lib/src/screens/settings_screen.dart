@@ -23,6 +23,7 @@ import '../notifications/gateway.dart';
 import '../notifications/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
+import '../features/ee/assignments_providers.dart';
 
 /// Settings, as an index (OPH-260, DESIGN §32).
 ///
@@ -124,6 +125,19 @@ class SettingsScreen extends ConsumerWidget {
                   titleKey: 'settings.group.units',
                   subtitleKey: 'settings.group.unitsSub',
                   path: '/settings/team/units',
+                ),
+              // EE-068: "assigned to me". Shown to anyone whose workspace has
+              // a roster — being given work is not an admin act, and the
+              // person most likely to want this list is the one with the
+              // fewest other team rows. The test is the REPLICA's own data,
+              // so it is right offline and absent on a plain build.
+              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+                _GroupRow(
+                  keyName: 'settings-group-assignments',
+                  icon: Icons.assignment_ind_outlined,
+                  titleKey: 'settings.group.assignments',
+                  subtitleKey: 'settings.group.assignmentsSub',
+                  path: '/settings/team/assignments',
                 ),
               // Kept on the root, and kept a dialog: it is one screenful of
               // facts, not a place with settings in it.

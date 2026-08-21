@@ -157,7 +157,9 @@
       "team": "Team",
       "teamSub": "Settings, members and invitations",
       "units": "Units",
-      "unitsSub": "The units you run"
+      "unitsSub": "The units you run",
+      "assignments": "Assigned to me",
+      "assignmentsSub": "The work that is on you right now"
     }
   },
   "shell": {
@@ -1407,6 +1409,17 @@
         "project": "Project",
         "file": "File"
       }
+    },
+    "assign": {
+      "section": "Assignees",
+      "title": "Who is on this task",
+      "nobody": "Nobody is on this yet",
+      "manage": "Change who is on this task",
+      "noRoster": "There is nobody to assign here yet.",
+      "formerMember": "No longer in this unit",
+      "mineTitle": "Assigned to me",
+      "mineEmptyTitle": "Nothing on your plate",
+      "mineEmptyBody": "Tasks people put on you — or that you take yourself — show up here."
     }
   },
   "perm": {

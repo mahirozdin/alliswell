@@ -28,6 +28,7 @@ import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
 import 'features/ee/ui/team_roles_screen.dart';
+import 'features/ee/ui/assigned_to_me_screen.dart';
 import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
@@ -423,6 +424,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/shared',
         builder: (context, state) => _page(const EeSharedWithMeScreen()),
+      ),
+      // EE-068: "assigned to me". Not an admin route and not a settings
+      // screen in spirit — it is a work list — but it lives under the team
+      // path because it only exists where there is a team to be assigned by.
+      GoRoute(
+        path: '/settings/team/assignments',
+        builder: (context, state) => _page(const EeAssignedToMeScreen()),
       ),
       // EE-057: units. The one team route a NON-admin can legitimately reach
       // — a delegated unit manager is an ordinary member everywhere else, so

@@ -111,6 +111,15 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       // A revoked share arrives here. Only the REFERENCE goes: the item it
       // pointed at belongs to another unit and was never ours to delete.
       await (db.delete(db.sharedItems)..where((s) => s.id.equals(id))).go();
+    case 'ee_member_profile':
+      // Somebody left the unit. Their assignments are NOT cascaded here: an
+      // assignment the server still holds is still true, and dropping it
+      // locally would make the task look unowned on this device and owned on
+      // every other one. It renders as a tombstone avatar until the server
+      // releases it (EE-070) and sends that tombstone too.
+      await (db.delete(db.memberProfiles)..where((p) => p.id.equals(id))).go();
+    case 'ee_task_assignment':
+      await (db.delete(db.taskAssignments)..where((a) => a.id.equals(id))).go();
   }
 }
 
@@ -166,6 +175,14 @@ Future<void> _applySnapshot(
       await db
           .into(db.sharedItems)
           .insertOnConflictUpdate(sharedItemCompanion(data));
+    case 'ee_member_profile':
+      await db
+          .into(db.memberProfiles)
+          .insertOnConflictUpdate(memberProfileCompanion(data));
+    case 'ee_task_assignment':
+      await db
+          .into(db.taskAssignments)
+          .insertOnConflictUpdate(taskAssignmentCompanion(data));
   }
 }
 
@@ -447,4 +464,48 @@ FoldersCompanion folderCompanion(Map<String, dynamic> d) =>
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),
+    );
+
+/// EE-017's roster, as the replica stores it (landed here by EE-068).
+///
+/// The colour and the initials are the SERVER's answer, not a local
+/// derivation: one person must look the same on every device they own, and
+/// two clients deriving initials from a name would eventually disagree about
+/// a name with a middle word in it.
+MemberProfilesCompanion memberProfileCompanion(Map<String, dynamic> data) =>
+    MemberProfilesCompanion.insert(
+      id: data['id'] as String,
+      workspaceId: data['workspaceId'] as String,
+      userId: data['userId'] as String,
+      displayName: Value(data['displayName'] as String?),
+      initials: Value(data['initials'] as String?),
+      colorRgb: data['colorRgb'] as String,
+      avatarUrl: Value(data['avatarUrl'] as String?),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: Value(
+        data['updatedAt'] == null
+            ? null
+            : DateTime.parse(data['updatedAt'] as String),
+      ),
+    );
+
+/// EE-066's assignment: one row per person on one task.
+TaskAssignmentsCompanion taskAssignmentCompanion(Map<String, dynamic> data) =>
+    TaskAssignmentsCompanion.insert(
+      id: data['id'] as String,
+      workspaceId: data['workspaceId'] as String,
+      taskId: data['taskId'] as String,
+      userId: data['userId'] as String,
+      assignedBy: Value(data['assignedBy'] as String?),
+      assignedAt: Value(
+        data['assignedAt'] == null
+            ? null
+            : DateTime.parse(data['assignedAt'] as String),
+      ),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: Value(
+        data['updatedAt'] == null
+            ? null
+            : DateTime.parse(data['updatedAt'] as String),
+      ),
     );

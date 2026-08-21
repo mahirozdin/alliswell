@@ -7,6 +7,8 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../ai/data/ai_quick_add.dart';
+import '../../ee/assignments_providers.dart';
+import '../../ee/ui/assignee_avatars.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_badge.dart';
 import '../../tags/tags.dart';
@@ -70,6 +72,12 @@ class TaskTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final dateFormat = ref.watch(dateFormatProvider);
+    // `select` keeps a change on one task from rebuilding the whole list.
+    final assignees = ref.watch(
+      workspaceAssigneesProvider.select(
+        (value) => value.value?[task.id] ?? const <Assignee>[],
+      ),
+    );
     final due = task.dueAt?.toLocal();
     // OPH-185 (DESIGN §20 C2): a completed row stays, but it goes quiet — the
     // whole row, not just the title. Everything below reads this flag.
@@ -144,8 +152,17 @@ class TaskTile extends ConsumerWidget {
                 )
               : null,
         ),
+        // Item 9's avatar row lives in the subtitle, so it sits UNDER the
+        // title exactly as the mandate describes — and `assignees` joins the
+        // subtitle's own emptiness test, because a task whose only extra fact
+        // is "three people are on it" still owes the reader that row.
         subtitle:
-            (due == null && rowTags.isEmpty && !snoozed && !muted && !recurring)
+            (due == null &&
+                rowTags.isEmpty &&
+                !snoozed &&
+                !muted &&
+                !recurring &&
+                assignees.isEmpty)
             ? null
             : Wrap(
                 spacing: AwSpace.x2,
@@ -254,6 +271,14 @@ class TaskTile extends ConsumerWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                    ),
+                  // EE-068 — who is on it. Nothing at all when nobody is
+                  // (item 9: "atanmamışsa boş"), and nothing ever on a build
+                  // with no overlay, because the table is empty there.
+                  if (assignees.isNotEmpty)
+                    AwAssigneeAvatarRow(
+                      key: Key('assignees-${task.id}'),
+                      taskId: task.id,
                     ),
                 ],
               ),
