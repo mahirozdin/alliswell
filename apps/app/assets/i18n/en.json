@@ -1196,6 +1196,20 @@
       "locked": "was locked out",
       "revoked": "ended a session"
     },
+    "perm": {
+      "team": {
+        "manage_invites": "Manage invitations",
+        "manage_members": "Manage members",
+        "manage_roles": "Manage roles",
+        "manage_settings": "Team settings",
+        "view_audit": "View team history",
+        "workspace": {
+          "archive": "Archive workspaces",
+          "create": "Create workspaces",
+          "view": "View workspaces"
+        }
+      }
+    },
     "admin": {
       "title": "Instance console",
       "signOut": "Sign out",

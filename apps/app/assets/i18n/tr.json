@@ -1195,6 +1195,20 @@
       "locked": "kilitlendi",
       "revoked": "bir oturumu sonlandırdı"
     },
+    "perm": {
+      "team": {
+        "manage_invites": "Davetleri yönet",
+        "manage_members": "Üyeleri yönet",
+        "manage_roles": "Rolleri yönet",
+        "manage_settings": "Takım ayarları",
+        "view_audit": "Takım geçmişini gör",
+        "workspace": {
+          "archive": "Çalışma alanlarını arşivle",
+          "create": "Çalışma alanı oluştur",
+          "view": "Çalışma alanlarını gör"
+        }
+      }
+    },
     "admin": {
       "title": "Instance konsolu",
       "signOut": "Çıkış yap",
