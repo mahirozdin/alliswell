@@ -40,6 +40,7 @@ export async function loadEeOverlay(app) {
     mcpTools: [],
     permissions: [],
     permissionResolvers: [],
+    syncMutationGuards: [],
     corsOriginChecks: [],
     accountPurgeFilters: [],
     statusDecorators: [],
@@ -188,6 +189,27 @@ function buildSeam(state) {
         throw new Error('registerPermissionResolver: a function is required');
       }
       state.permissionResolvers.push(resolver);
+    },
+
+    /**
+     * Sync push guard: `async (ctx, mutation) => errorCode | null`.
+     *
+     * Consulted for every push mutation AFTER the entity, operation and patch
+     * have been validated and BEFORE anything is written, so a refusal costs
+     * no transaction. A returned code becomes an ordinary `rejected` outcome
+     * — the same shape the protocol has always had — which is what keeps an
+     * older client from looping: it settles a rejection the way it settles
+     * any other answer, and the result is recorded per clientMutationId, so a
+     * replay returns the recorded refusal instead of re-deciding it.
+     *
+     * `ctx.request` is the originating request, for guards that need to ask
+     * `app.requirePermission`.
+     */
+    registerSyncMutationGuard(guard) {
+      if (typeof guard !== 'function') {
+        throw new Error('registerSyncMutationGuard: a function is required');
+      }
+      state.syncMutationGuards.push(guard);
     },
 
     /** Collection point only — enforcing permissions is the overlay's business. */

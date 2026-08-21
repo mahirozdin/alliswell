@@ -240,6 +240,170 @@ void main() {
     );
   });
 
+  group('a refused write is kept, and the replica is rebased (EE-051)', () {
+    /// The failure this group exists to end: a push the server refuses used to
+    /// be DELETED from the outbox while the local row kept the edit nobody
+    /// accepted. Pull is incremental — the server row did not change, so it
+    /// appears in no future page — and the replica stayed wrong forever.
+
+    test('a refused CREATE stops existing locally, and is not forgotten', () async {
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: id('T9'),
+              workspaceId: ws,
+              title: 'hayalet görev',
+              createdAt: Value(DateTime.now().toUtc()),
+              updatedAt: Value(DateTime.now().toUtc()),
+            ),
+          );
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'task',
+        entityId: id('T9'),
+        operation: 'create',
+        patch: {'title': 'hayalet görev'},
+      );
+      api.onPush = (mutations) => [
+        for (final m in mutations)
+          SyncPushResult(
+            clientMutationId: m.clientMutationId,
+            status: 'rejected',
+            replayed: false,
+            errorCode: 'PERM_DENIED',
+            rebase: SyncRebase(
+              entityType: 'task',
+              entityId: id('T9'),
+              present: false,
+            ),
+          ),
+      ];
+
+      await engine.start();
+
+      // The phantom is gone from the replica...
+      expect(await db.select(db.tasks).get(), isEmpty);
+      // ...the outbox is settled, so nothing loops...
+      expect(await db.select(db.pendingMutations).get(), isEmpty);
+      // ...and what the person wrote is still here.
+      final parked = await db.select(db.rejectedMutations).getSingle();
+      expect(parked.entityType, 'task');
+      expect(parked.operation, 'create');
+      expect(parked.errorCode, 'PERM_DENIED');
+      expect(jsonDecode(parked.patchJson!), {'title': 'hayalet görev'});
+    });
+
+    test('a refused UPDATE is rolled back to what the server holds', () async {
+      await applyPulledChanges(
+        db,
+        workspaceId: ws,
+        toRevision: 1,
+        changes: [
+          SyncChange(
+            revision: 1,
+            entityType: 'task',
+            entityId: id('T8'),
+            operation: 'upsert',
+            data: taskSnapshot(id('T8'), title: 'sunucudaki ad'),
+          ),
+        ],
+      );
+      // The optimistic local edit, exactly as a screen would leave it.
+      await (db.update(db.tasks)..where((t) => t.id.equals(id('T8')))).write(
+        const TasksCompanion(title: Value('iyimser ad')),
+      );
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'task',
+        entityId: id('T8'),
+        operation: 'update',
+        patch: {'title': 'iyimser ad'},
+      );
+      api.onPush = (mutations) => [
+        for (final m in mutations)
+          SyncPushResult(
+            clientMutationId: m.clientMutationId,
+            status: 'rejected',
+            replayed: false,
+            errorCode: 'PERM_DENIED',
+            rebase: SyncRebase(
+              entityType: 'task',
+              entityId: id('T8'),
+              present: true,
+              data: taskSnapshot(id('T8'), title: 'sunucudaki ad'),
+            ),
+          ),
+      ];
+
+      await engine.start();
+
+      final task = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id('T8')))).getSingle();
+      expect(task.title, 'sunucudaki ad');
+      final parked = await db.select(db.rejectedMutations).getSingle();
+      expect(jsonDecode(parked.patchJson!), {'title': 'iyimser ad'});
+    });
+
+    test('a replayed refusal is not parked twice', () async {
+      // The server repeating an answer this client already had is not new
+      // news — showing the same refusal again would be.
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'task',
+        entityId: id('T7'),
+        operation: 'update',
+        patch: {'title': 'tekrar'},
+      );
+      api.onPush = (mutations) => [
+        for (final m in mutations)
+          SyncPushResult(
+            clientMutationId: m.clientMutationId,
+            status: 'rejected',
+            replayed: true,
+            errorCode: 'PERM_DENIED',
+          ),
+      ];
+
+      await engine.start();
+
+      expect(await db.select(db.rejectedMutations).get(), isEmpty);
+      expect(await db.select(db.pendingMutations).get(), isEmpty);
+    });
+
+    test('a rejection with no rebase hint still keeps the mutation', () async {
+      // An older server (or a refusal about an entity type with no loader)
+      // says nothing about the row. Keeping the person's typing does not
+      // depend on that hint.
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'tag',
+        entityId: id('G1'),
+        operation: 'create',
+        patch: {'name': 'etiket'},
+      );
+      api.onPush = (mutations) => [
+        for (final m in mutations)
+          SyncPushResult(
+            clientMutationId: m.clientMutationId,
+            status: 'rejected',
+            replayed: false,
+            errorCode: 'SYNC_INVALID_VALUE',
+          ),
+      ];
+
+      await engine.start();
+
+      final parked = await db.select(db.rejectedMutations).getSingle();
+      expect(parked.errorCode, 'SYNC_INVALID_VALUE');
+    });
+  });
+
   group('outbox push (OPH-055)', () {
     test('drains the outbox in order and clears applied mutations', () async {
       await enqueueMutation(

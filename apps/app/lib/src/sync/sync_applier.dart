@@ -43,6 +43,35 @@ Future<void> applyPulledChanges(
   });
 }
 
+/// EE-051 — put ONE entity back the way the server has it.
+///
+/// A refused push leaves the replica holding a write nobody accepted, and
+/// incremental pull will never correct it (the server row did not change, so
+/// it is not in any future page). This is the correction, and it deliberately
+/// reuses the two functions pull already goes through rather than growing a
+/// second, divergent way to write the same tables.
+Future<void> applyRebase(
+  AwDatabase db, {
+  required String entityType,
+  required String entityId,
+  required bool present,
+  Map<String, dynamic>? data,
+}) async {
+  if (present && data != null) {
+    await _applySnapshot(db, entityType, data);
+    return;
+  }
+  await _applyTombstone(
+    db,
+    SyncChange(
+      revision: 0,
+      entityType: entityType,
+      entityId: entityId,
+      operation: 'delete',
+    ),
+  );
+}
+
 Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
   final id = change.entityId;
   switch (change.entityType) {

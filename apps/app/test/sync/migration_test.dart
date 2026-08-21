@@ -218,8 +218,13 @@ void main() {
       // is exactly the old-client path the server still honours.
       expect(pending.single.baseRevision, null);
 
+      // v20 (EE-051): a brand-new table for refused writes. It arrives empty
+      // on an upgrade, which is the honest state — a device that has never
+      // been refused has nothing parked.
+      expect(await db.select(db.rejectedMutations).get(), isEmpty);
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 19);
+      expect(version.data['user_version'], 20);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -265,7 +270,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 19);
+      expect(version.data['user_version'], 20);
       await db.close();
     },
   );

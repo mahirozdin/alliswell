@@ -253,6 +253,16 @@ class SyncEngine {
       await _settleNote(row, result);
     }
 
+    // EE-051: a refusal is KEPT, not forgotten. Settling the outbox row is
+    // what stops an old client looping on an answer it does not understand —
+    // but settling used to mean deleting, and the person's typing went with
+    // it while the replica quietly kept showing a write the server never
+    // accepted. So: park the mutation, then put the row back the way the
+    // server has it.
+    if (result.status == 'rejected' && !result.replayed) {
+      await _parkRejection(row, result);
+    }
+
     // OPH-268: delete ONLY if this row has not been rewritten since it was
     // read for the push. Outbox coalescing can merge a newer body into a row
     // that is already in flight, and an unconditional delete would throw that
@@ -278,6 +288,49 @@ class SyncEngine {
         ),
       );
     }
+  }
+
+  /// EE-051 — the two halves of "refused, and nothing lost".
+  ///
+  /// KEEP: the refused patch goes into `rejected_mutations` with the server's
+  /// code, so what the person wrote survives the refusal and something can
+  /// offer it back to them.
+  ///
+  /// REBASE: the local row is put back the way the server actually has it.
+  /// Without this the replica keeps an edit that was never accepted and
+  /// incremental pull never corrects it — the server row did not change, so
+  /// it appears in no future page. A refused CREATE is the loudest case: a
+  /// task that exists on exactly one device, forever.
+  ///
+  /// A REPLAYED result is skipped: the server is repeating an answer this
+  /// client was already given, and parking it twice would show the same
+  /// refusal to the user again.
+  Future<void> _parkRejection(PendingMutation row, SyncPushResult result) async {
+    await db
+        .into(db.rejectedMutations)
+        .insert(
+          RejectedMutationsCompanion.insert(
+            id: row.id,
+            workspaceId: workspaceId,
+            entityType: row.entityType,
+            entityId: row.entityId,
+            operation: row.operation,
+            patchJson: Value(row.patchJson),
+            errorCode: Value(result.errorCode),
+            rejectedAt: DateTime.now().toUtc(),
+          ),
+          mode: InsertMode.insertOrReplace,
+        );
+
+    final rebase = result.rebase;
+    if (rebase == null) return;
+    await applyRebase(
+      db,
+      entityType: rebase.entityType,
+      entityId: rebase.entityId,
+      present: rebase.present,
+      data: rebase.data,
+    );
   }
 
   /// What a note's own push result does to the replica (OPH-268).

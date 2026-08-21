@@ -99,6 +99,7 @@ class SyncPushResult {
     this.conflictVersionId,
     this.reason,
     this.mergedMarkdown,
+    this.rebase,
   });
 
   factory SyncPushResult.fromJson(Map<String, dynamic> json) => SyncPushResult(
@@ -114,6 +115,9 @@ class SyncPushResult {
     mergedMarkdown:
         (json['merged'] as Map<String, dynamic>?)?['contentMarkdown']
             as String?,
+    rebase: json['rebase'] == null
+        ? null
+        : SyncRebase.fromJson(json['rebase'] as Map<String, dynamic>),
   );
 
   final String clientMutationId;
@@ -129,8 +133,39 @@ class SyncPushResult {
   final String? reason;
   final String? mergedMarkdown;
 
+  /// EE-051 — what the row really looks like after a refusal. Present on
+  /// rejections so the replica can stop showing a write nobody accepted.
+  final SyncRebase? rebase;
+
   bool get applied => status == 'applied' || status == 'merged';
   bool get merged => status == 'merged';
+}
+
+/// The server's answer to "so what IS this row?" after it refused a write.
+///
+/// `present: false` means there is nothing there — which is the refused
+/// CREATE, and the local row is a phantom that has to go. Otherwise `data` is
+/// the same serialized shape `/sync/pull` delivers, so it goes through the
+/// applier the client already has instead of a second, divergent code path.
+class SyncRebase {
+  const SyncRebase({
+    required this.entityType,
+    required this.entityId,
+    required this.present,
+    this.data,
+  });
+
+  factory SyncRebase.fromJson(Map<String, dynamic> json) => SyncRebase(
+    entityType: json['entityType'] as String,
+    entityId: json['entityId'] as String,
+    present: (json['present'] as bool?) ?? false,
+    data: json['data'] as Map<String, dynamic>?,
+  );
+
+  final String entityType;
+  final String entityId;
+  final bool present;
+  final Map<String, dynamic>? data;
 }
 
 class SyncPushResponse {

@@ -103,6 +103,15 @@ membership check byte for byte. A resolver may answer `null` ("not a workspace I
 which behaves the same way; only a governed workspace whose member lacks the verb produces
 the one new refusal, `403 PERM_DENIED`. Grants are cached per request, never beyond it.
 
+An extension may also guard `/sync/push` mutations
+(`registerSyncMutationGuard`, EE-051): the guard runs after validation and before any write,
+and a refusal becomes an ordinary `rejected` outcome — no new result shape, and the existing
+per-`clientMutationId` record means a replay returns the recorded answer instead of a fresh
+decision. Independently of extensions, every REJECTED push result now carries a `rebase`
+hint (`{entityType, entityId, present, data?}`) built from the same snapshot loaders `/sync/pull`
+uses: a client writes optimistically, so a refusal leaves its replica holding a write nobody
+accepted, and incremental pull can never correct it.
+
 The overlay's own repository is private; only this neutral seam lives here.
 
 The app mirrors the discovery end (EE-008): `features/ee/` holds `eeStatusProvider`

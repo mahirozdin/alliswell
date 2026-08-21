@@ -523,6 +523,36 @@ class AppleEventLinks extends Table {
   Set<Column<Object>> get primaryKey => {taskId};
 }
 
+/// A write the server REFUSED (EE-051).
+///
+/// The outbox row is settled either way — that is what keeps a client from
+/// looping on a rejection it does not understand. But settling used to mean
+/// forgetting: the mutation was deleted, the replica kept the optimistic edit
+/// nobody accepted, and the user's typing was gone with no way back.
+///
+/// So a refusal lands HERE instead of in the bin. The replica is rebased to
+/// what the server actually holds, and this row keeps what the person wrote,
+/// with the reason it was refused, until they decide what to do with it.
+class RejectedMutations extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get entityType => text()();
+  TextColumn get entityId => text()();
+
+  /// create | update | delete
+  TextColumn get operation => text()();
+
+  /// The JSON patch that was refused — the user's content, kept verbatim.
+  TextColumn get patchJson => text().nullable()();
+
+  /// The server's stable code, e.g. `PERM_DENIED`.
+  TextColumn get errorCode => text().nullable()();
+  DateTimeColumn get rejectedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Projects,
@@ -543,6 +573,7 @@ class AppleEventLinks extends Table {
     AiMessages,
     ShareEvents,
     PendingMutations,
+    RejectedMutations,
     SyncStates,
   ],
 )
@@ -567,7 +598,7 @@ class AwDatabase extends _$AwDatabase {
   /// v18 → v19 (OPH-274, ADR-0033): markdown becomes a note's only canonical
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -701,6 +732,10 @@ class AwDatabase extends _$AwDatabase {
       if (from < 19 && from >= 1) {
         await convertNotesToMarkdown(this);
       }
+      // v20 (EE-051): refused writes stop being deleted and start being kept.
+      // A brand-new table, so no `from >= 1` guard is needed — createTable on
+      // a fresh database is what `onCreate` already did.
+      if (from < 20) await m.createTable(rejectedMutations);
     },
   );
 

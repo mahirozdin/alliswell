@@ -1510,6 +1510,17 @@ export default async function syncRoutes(app) {
       }
     }
 
+    // Extension guards (EE-051). They run after validation and before any
+    // write, and they answer the same way everything else here does — a
+    // `rejected` outcome with a code. Deliberately BEFORE the row lookup, so
+    // a refusal reads identically whether or not the entity exists: this
+    // endpoint takes ids from a client's own outbox, and a refusal that
+    // varied with existence would turn the push channel into a probe.
+    for (const guard of app.ee?.syncMutationGuards ?? []) {
+      const code = await guard(ctx, mutation);
+      if (code) return rejected(code);
+    }
+
     switch (mutation.operation) {
       case 'create':
         return applyCreate(ctx, mutation, entity);
@@ -1518,6 +1529,42 @@ export default async function syncRoutes(app) {
       default:
         return applyDelete(ctx, mutation, entity);
     }
+  }
+
+  /**
+   * What the row ACTUALLY looks like right now — attached to a rejection so
+   * the client can stop being wrong about it.
+   *
+   * A client writes optimistically: the local row already shows the edit
+   * before the push leaves. When a push is refused, the outbox row is settled
+   * and the local row keeps an edit the server never accepted — and because
+   * pull is incremental, nothing will ever correct it. The replica is quietly
+   * wrong for as long as the app is installed.
+   *
+   * So a refusal answers with the truth: `{ present: false }` means the row is
+   * not there (drop the local one — this is the refused CREATE), and
+   * `{ present: true, data }` is the same serialized shape `/sync/pull`
+   * delivers, so a client applies it through the code path it already has.
+   *
+   * Attached to every rejection, not to a particular error code: a client's
+   * replica can be wrong after any of them, and core has no business knowing
+   * WHY something was refused.
+   */
+  async function rebaseFor(ctx, mutation) {
+    const entry = SNAPSHOT_LOADERS[mutation.entityType];
+    if (!entry) return null;
+    const load = typeof entry === 'function' ? entry : entry.load;
+    const { rows, serialize } = await load([mutation.entityId], { userId: ctx.userId });
+    const row = rows.find((r) => r.id === mutation.entityId);
+    if (!row || row.deleted_at != null || row.workspace_id !== ctx.workspaceId) {
+      return { entityType: mutation.entityType, entityId: mutation.entityId, present: false };
+    }
+    return {
+      entityType: mutation.entityType,
+      entityId: mutation.entityId,
+      present: true,
+      data: serialize(row),
+    };
   }
 
   async function processMutation(ctx, mutation) {
@@ -1548,6 +1595,11 @@ export default async function syncRoutes(app) {
       revision: outcome.revision ?? null,
       errorCode: outcome.errorCode ?? null,
       replayed: false,
+      // A refused mutation leaves the caller's replica holding an edit that
+      // was never accepted; incremental pull will never correct it.
+      ...(outcome.status === 'rejected'
+        ? { rebase: (await rebaseFor(ctx, mutation)) ?? undefined }
+        : {}),
       ...(outcome.discardedFields?.length > 0 ? { discardedFields: outcome.discardedFields } : {}),
       // OPH-268: the two answers a client acts on — where its refused body is
       // kept, and the merged body it should adopt.
@@ -1619,6 +1671,18 @@ export default async function syncRoutes(app) {
                     // OPH-268: the version row holding the body we refused —
                     // the client points its banner at it, and NOTHING is lost.
                     conflictVersionId: { type: ['string', 'null'] },
+                    // What the row really looks like after a refusal, so a
+                    // client can rebase instead of keeping a write nobody
+                    // accepted. `present: false` = drop your local copy.
+                    rebase: {
+                      type: 'object',
+                      properties: {
+                        entityType: { type: 'string' },
+                        entityId: { type: 'string' },
+                        present: { type: 'boolean' },
+                        data: { type: 'object', additionalProperties: true },
+                      },
+                    },
                     // Why it could not merge: OVERLAP / NOT_MARKDOWN /
                     // BASE_MISSING. The banner says different things for each.
                     reason: { type: ['string', 'null'] },
@@ -1649,6 +1713,9 @@ export default async function syncRoutes(app) {
         baseRevision,
         userId: request.user.id,
         role: member.role,
+        // Carried for extension guards, which may need to ask an authz
+        // helper that is request-scoped (its per-request cache lives there).
+        request,
       };
 
       // Sequential on purpose: the outbox is ordered (create-before-update),
