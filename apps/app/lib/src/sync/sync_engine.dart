@@ -5,10 +5,12 @@ import 'dart:math';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
+import '../core/api_exception.dart';
 import '../core/fold.dart';
 import '../core/ulid.dart';
 import 'db/database.dart';
 import 'sync_api.dart';
+import 'revocation.dart';
 import 'sync_applier.dart';
 
 /// A push outcome the user may need to know about (OPH-056): the server
@@ -145,6 +147,19 @@ class SyncEngine {
       await _pullAll();
       _consecutiveFailures = 0;
       converged = true;
+    } on ApiException catch (e) {
+      // EE-058 — the one failure that is not a hiccup. `AUTH_WORKSPACE_FORBIDDEN`
+      // on sync means this workspace is no longer this person's, and no amount
+      // of backing off will change that. Treated as offline (which it was
+      // until now) it leaves a full replica of content they may no longer see
+      // on the device, forever, while the engine retries a permanent
+      // condition. Nothing else about the error path changes.
+      if (e.code == kWorkspaceForbiddenCode) {
+        await _revoke();
+      } else {
+        _consecutiveFailures += 1;
+        _scheduleRetry();
+      }
     } catch (_) {
       // Offline or a server hiccup: retry the whole round with backoff. The
       // outbox is durable, so nothing is lost while we wait.
@@ -168,6 +183,28 @@ class SyncEngine {
       syncNow,
     );
   }
+
+  /// Access to this workspace is gone (EE-058, ADR-0008 D2).
+  ///
+  /// Drop the replica, park what was unsent, and STOP — re-arming the timer
+  /// here would be the same permanent-condition loop in a smaller shape.
+  /// The engine is not restarted by anything short of a fresh one being built
+  /// for a workspace this person actually has.
+  Future<void> _revoke() async {
+    _revokedParkedCount = await revokeWorkspaceReplica(db, workspaceId);
+    _revoked = true;
+    stop();
+  }
+
+  /// True once the server has told this engine the workspace is not ours.
+  /// Read by the UI, which owes the person a sentence about it.
+  bool get revoked => _revoked;
+  bool _revoked = false;
+
+  /// How many unsent mutations were parked when that happened. They are in
+  /// `rejected_mutations`, not gone.
+  int get revokedParkedCount => _revokedParkedCount;
+  int _revokedParkedCount = 0;
 
   Future<SyncState> _ensureState() async {
     final existing = await (db.select(
