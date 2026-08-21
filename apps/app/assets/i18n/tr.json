@@ -1264,6 +1264,10 @@
         "edit": "Projeleri düzenle",
         "archive": "Projeleri arşivle ve geri al"
       },
+      "shares": {
+        "create": "İçerik paylaş",
+        "revoke": "Paylaşımı geri al"
+      },
       "tasks": {
         "view": "Görevleri gör",
         "create": "Görev oluştur",

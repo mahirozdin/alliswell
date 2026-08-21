@@ -1265,6 +1265,10 @@
         "edit": "Edit projects",
         "archive": "Archive and restore projects"
       },
+      "shares": {
+        "create": "Share an item",
+        "revoke": "Take back a share"
+      },
       "tasks": {
         "view": "See tasks",
         "create": "Create tasks",
