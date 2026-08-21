@@ -62,9 +62,7 @@ class EeTeamAdminApi {
 
   /// The full vocabulary — what a grant matrix draws its rows from.
   Future<List<EePermissionDef>> catalogue() => _run(() async {
-    final res = await _dio.get<Map<String, dynamic>>(
-      '/api/v1/ee/permissions',
-    );
+    final res = await _dio.get<Map<String, dynamic>>('/api/v1/ee/permissions');
     return ((res.data?['permissions'] as List?) ?? const [])
         .map((p) => EePermissionDef.fromJson(p as Map<String, dynamic>))
         .toList();

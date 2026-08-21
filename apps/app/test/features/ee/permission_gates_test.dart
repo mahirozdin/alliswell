@@ -26,7 +26,8 @@ import '../../support/sync_overrides.dart';
 ///     of you — hiding it would make the setting look like it does not exist.
 ///
 /// And the case that must never regress: a plain build shows everything.
-const _cacheKey = 'alliswell_ee_permissions::user-1::01WSAAAAAAAAAAAAAAAAAAAAAA';
+const _cacheKey =
+    'alliswell_ee_permissions::user-1::01WSAAAAAAAAAAAAAAAAAAAAAA';
 
 Future<Widget> signedInApp(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});

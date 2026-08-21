@@ -55,9 +55,7 @@ class EeTeamRolesScreen extends ConsumerWidget {
                 key: Key('role-${role.key}'),
                 child: ListTile(
                   leading: Icon(
-                    role.base
-                        ? Icons.shield_outlined
-                        : Icons.badge_outlined,
+                    role.base ? Icons.shield_outlined : Icons.badge_outlined,
                   ),
                   title: Text(_roleName(role)),
                   subtitle: Text(
@@ -241,9 +239,7 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
           TextField(
             key: const Key('role-name'),
             controller: _name,
-            decoration: InputDecoration(
-              labelText: 'ee.team.roles.name'.tr(),
-            ),
+            decoration: InputDecoration(labelText: 'ee.team.roles.name'.tr()),
           ),
         if (_isCreate) ...[
           const SizedBox(height: AwSpace.x3),

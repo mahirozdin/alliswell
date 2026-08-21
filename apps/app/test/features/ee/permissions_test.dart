@@ -22,7 +22,8 @@ import '../projects/fake_api.dart';
 /// and there every `can()` must answer true, because a permission layer that
 /// is not installed must never take an ability away. An empty list under
 /// `governed: true` is the opposite and the only case that removes anything.
-const _cacheKey = 'alliswell_ee_permissions::user-1::01WSAAAAAAAAAAAAAAAAAAAAAA';
+const _cacheKey =
+    'alliswell_ee_permissions::user-1::01WSAAAAAAAAAAAAAAAAAAAAAA';
 
 Future<ProviderContainer> signedInContainer(FakeApi api) async {
   final store = InMemorySecretStore();
@@ -87,20 +88,23 @@ void main() {
     expect(api.requests, contains('GET /api/v1/ee/me/permissions'));
   });
 
-  test('a change lands on the next refresh — there is nothing to invalidate', () async {
-    final api = FakeApi()
-      ..eeGoverned = true
-      ..eePermissions = ['tasks.view'];
-    final container = await signedInContainer(api);
-    await container.read(eePermissionsProvider.future);
-    expect(container.read(canProvider('tasks.create')), isFalse);
+  test(
+    'a change lands on the next refresh — there is nothing to invalidate',
+    () async {
+      final api = FakeApi()
+        ..eeGoverned = true
+        ..eePermissions = ['tasks.view'];
+      final container = await signedInContainer(api);
+      await container.read(eePermissionsProvider.future);
+      expect(container.read(canProvider('tasks.create')), isFalse);
 
-    // The team granted the verb; the client learns on its next ask.
-    api.eePermissions = ['tasks.view', 'tasks.create'];
-    await container.read(eePermissionsProvider.notifier).refresh();
+      // The team granted the verb; the client learns on its next ask.
+      api.eePermissions = ['tasks.view', 'tasks.create'];
+      await container.read(eePermissionsProvider.notifier).refresh();
 
-    expect(container.read(canProvider('tasks.create')), isTrue);
-  });
+      expect(container.read(canProvider('tasks.create')), isTrue);
+    },
+  );
 
   test('offline keeps the last known answer', () async {
     final api = FakeApi()
@@ -118,17 +122,20 @@ void main() {
     expect(container.read(canProvider('tasks.create')), isFalse);
   });
 
-  test('a first launch with no network and no cache is ungoverned, not crippled', () async {
-    // The fallback that matters most: somebody with every right to use the
-    // app must not meet a locked-down one because a request failed.
-    final api = FakeApi()..eeMePermissionsCode = 500;
-    final container = await signedInContainer(api);
+  test(
+    'a first launch with no network and no cache is ungoverned, not crippled',
+    () async {
+      // The fallback that matters most: somebody with every right to use the
+      // app must not meet a locked-down one because a request failed.
+      final api = FakeApi()..eeMePermissionsCode = 500;
+      final container = await signedInContainer(api);
 
-    final perms = await container.read(eePermissionsProvider.future);
+      final perms = await container.read(eePermissionsProvider.future);
 
-    expect(perms.governed, isFalse);
-    expect(container.read(canProvider('tasks.create')), isTrue);
-  });
+      expect(perms.governed, isFalse);
+      expect(container.read(canProvider('tasks.create')), isTrue);
+    },
+  );
 
   test('the cache is written per user AND per workspace', () async {
     final api = FakeApi()
@@ -139,9 +146,8 @@ void main() {
 
     final raw = await localKv.get(_cacheKey);
     expect(raw, isNotNull);
-    expect(
-      (jsonDecode(raw!) as Map<String, dynamic>)['permissions'],
-      ['notes.view'],
-    );
+    expect((jsonDecode(raw!) as Map<String, dynamic>)['permissions'], [
+      'notes.view',
+    ]);
   });
 }

@@ -129,8 +129,7 @@ class EeTeamMember {
 
   /// What to show as this person's role: their custom role's name when they
   /// hold one, otherwise the base role's label key.
-  String get roleLabel =>
-      customRoleName ?? 'ee.team.role.$role';
+  String get roleLabel => customRoleName ?? 'ee.team.role.$role';
 
   factory EeTeamMember.fromJson(Map<String, dynamic> json) => EeTeamMember(
     userId: (json['userId'] as String?) ?? '',
@@ -235,7 +234,6 @@ class EeMintedInvite {
     delivery: (json['delivery'] as String?) ?? 'manual',
   );
 }
-
 
 /// One role a team has (EE-053) — the client mirror of `GET /ee/team/roles`.
 ///

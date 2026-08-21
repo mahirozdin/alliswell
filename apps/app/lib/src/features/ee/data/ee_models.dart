@@ -55,7 +55,6 @@ class EeStatus {
   };
 }
 
-
 /// What THIS person may do in ONE workspace (EE-052) — the client mirror of
 /// `GET /api/v1/ee/me/permissions`.
 ///
@@ -84,8 +83,7 @@ class EePermissions {
   final List<String> permissions;
 
   /// The answer a screen asks for before it draws a button.
-  bool can(String permission) =>
-      !governed || permissions.contains(permission);
+  bool can(String permission) => !governed || permissions.contains(permission);
 
   /// Ungoverned: the honest answer while signed out, offline with no cache,
   /// or on an instance that has no such feature.

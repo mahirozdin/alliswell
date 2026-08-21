@@ -78,7 +78,6 @@ final eeFeatureProvider = Provider.family<bool, String>(
   (ref, feature) => ref.watch(eeStatusProvider).value?.has(feature) ?? false,
 );
 
-
 const String _kEePermissionsCachePrefix = 'alliswell_ee_permissions::';
 
 /// What the signed-in person may do in the CURRENT workspace (EE-052).

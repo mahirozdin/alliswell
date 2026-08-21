@@ -117,7 +117,6 @@ class EeInvitesController extends AsyncNotifier<List<EeInvite>> {
   }
 }
 
-
 /// The team's roles (EE-053).
 final eeTeamRolesProvider =
     AsyncNotifierProvider<EeRolesController, List<EeRole>>(
@@ -168,7 +167,6 @@ class EeRolesController extends AsyncNotifier<List<EeRole>> {
 /// Separate from [eeTeamRolesProvider] because it does not change when a role
 /// does: it is the SYSTEM's list, and re-fetching it on every save would be
 /// asking the same question again.
-final eePermissionCatalogueProvider =
-    FutureProvider<List<EePermissionDef>>(
-      (ref) => ref.watch(eeTeamAdminApiProvider).catalogue(),
-    );
+final eePermissionCatalogueProvider = FutureProvider<List<EePermissionDef>>(
+  (ref) => ref.watch(eeTeamAdminApiProvider).catalogue(),
+);

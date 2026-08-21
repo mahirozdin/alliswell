@@ -305,7 +305,10 @@ class SyncEngine {
   /// A REPLAYED result is skipped: the server is repeating an answer this
   /// client was already given, and parking it twice would show the same
   /// refusal to the user again.
-  Future<void> _parkRejection(PendingMutation row, SyncPushResult result) async {
+  Future<void> _parkRejection(
+    PendingMutation row,
+    SyncPushResult result,
+  ) async {
     await db
         .into(db.rejectedMutations)
         .insert(

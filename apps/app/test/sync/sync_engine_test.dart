@@ -246,54 +246,57 @@ void main() {
     /// accepted. Pull is incremental — the server row did not change, so it
     /// appears in no future page — and the replica stayed wrong forever.
 
-    test('a refused CREATE stops existing locally, and is not forgotten', () async {
-      await db
-          .into(db.tasks)
-          .insert(
-            TasksCompanion.insert(
-              id: id('T9'),
-              workspaceId: ws,
-              title: 'hayalet görev',
-              createdAt: Value(DateTime.now().toUtc()),
-              updatedAt: Value(DateTime.now().toUtc()),
+    test(
+      'a refused CREATE stops existing locally, and is not forgotten',
+      () async {
+        await db
+            .into(db.tasks)
+            .insert(
+              TasksCompanion.insert(
+                id: id('T9'),
+                workspaceId: ws,
+                title: 'hayalet görev',
+                createdAt: Value(DateTime.now().toUtc()),
+                updatedAt: Value(DateTime.now().toUtc()),
+              ),
+            );
+        await enqueueMutation(
+          db,
+          workspaceId: ws,
+          entityType: 'task',
+          entityId: id('T9'),
+          operation: 'create',
+          patch: {'title': 'hayalet görev'},
+        );
+        api.onPush = (mutations) => [
+          for (final m in mutations)
+            SyncPushResult(
+              clientMutationId: m.clientMutationId,
+              status: 'rejected',
+              replayed: false,
+              errorCode: 'PERM_DENIED',
+              rebase: SyncRebase(
+                entityType: 'task',
+                entityId: id('T9'),
+                present: false,
+              ),
             ),
-          );
-      await enqueueMutation(
-        db,
-        workspaceId: ws,
-        entityType: 'task',
-        entityId: id('T9'),
-        operation: 'create',
-        patch: {'title': 'hayalet görev'},
-      );
-      api.onPush = (mutations) => [
-        for (final m in mutations)
-          SyncPushResult(
-            clientMutationId: m.clientMutationId,
-            status: 'rejected',
-            replayed: false,
-            errorCode: 'PERM_DENIED',
-            rebase: SyncRebase(
-              entityType: 'task',
-              entityId: id('T9'),
-              present: false,
-            ),
-          ),
-      ];
+        ];
 
-      await engine.start();
+        await engine.start();
 
-      // The phantom is gone from the replica...
-      expect(await db.select(db.tasks).get(), isEmpty);
-      // ...the outbox is settled, so nothing loops...
-      expect(await db.select(db.pendingMutations).get(), isEmpty);
-      // ...and what the person wrote is still here.
-      final parked = await db.select(db.rejectedMutations).getSingle();
-      expect(parked.entityType, 'task');
-      expect(parked.operation, 'create');
-      expect(parked.errorCode, 'PERM_DENIED');
-      expect(jsonDecode(parked.patchJson!), {'title': 'hayalet görev'});
-    });
+        // The phantom is gone from the replica...
+        expect(await db.select(db.tasks).get(), isEmpty);
+        // ...the outbox is settled, so nothing loops...
+        expect(await db.select(db.pendingMutations).get(), isEmpty);
+        // ...and what the person wrote is still here.
+        final parked = await db.select(db.rejectedMutations).getSingle();
+        expect(parked.entityType, 'task');
+        expect(parked.operation, 'create');
+        expect(parked.errorCode, 'PERM_DENIED');
+        expect(jsonDecode(parked.patchJson!), {'title': 'hayalet görev'});
+      },
+    );
 
     test('a refused UPDATE is rolled back to what the server holds', () async {
       await applyPulledChanges(
