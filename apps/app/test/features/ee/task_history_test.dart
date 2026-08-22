@@ -112,6 +112,10 @@ void main() {
       find.textContaining('changed the status', findRichText: true),
       findsOneWidget,
     );
+    // EE-071: WHICH subtask. Without this line "changed the status" cannot be
+    // told from a task being completed, and item 10 names "alt işi tamamladı"
+    // as an act of its own — so the row that carries it has to say so.
+    expect(find.text('Kabloyu çek'), findsOneWidget);
     // When — "saatleriyle" is the part of the mandate a list of verbs alone
     // would quietly drop. Rendered through the app's own formatter, so the
     // row shows the user's chosen format rather than a second one invented

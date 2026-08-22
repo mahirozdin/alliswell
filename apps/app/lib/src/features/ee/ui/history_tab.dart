@@ -8,6 +8,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/history_models.dart';
 import '../history_providers.dart';
+import 'assignee_avatars.dart';
 
 /// The reusable history tab (EE-026). E07's units and E09's tickets attach it
 /// with two strings and get the same tab — one implementation, so "who did
@@ -117,6 +118,22 @@ class _HistoryRow extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
+                // The ONE diff key this tab reads, and it earns the exception:
+                // item 10 names "alt işi tamamladı" as an act of its own, and
+                // a row saying only "changed the status" cannot tell a
+                // finished subtask from a finished task. Everything else in a
+                // diff stays the entity's private business.
+                if (event.diff?['subtask'] case final List<dynamic> subtask
+                    when subtask.isNotEmpty && subtask.first is String)
+                  Text(
+                    subtask.first as String,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 Text(
                   // The user's own date preference — history is not the place
                   // to invent a second format.
@@ -158,19 +175,17 @@ class _Avatar extends StatelessWidget {
         ),
       );
     }
-    final color = event.actorColor ?? scheme.primary;
-    return CircleAvatar(
-      radius: 16,
-      backgroundColor: color,
-      child: Text(
-        event.actorInitials ?? '?',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          // White on every palette entry: the server's ten colours are all
-          // dark enough for it, and one rule beats per-colour guessing.
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+    // EE-071: the shared primitive. This used to fill the circle with the
+    // roster colour and draw WHITE initials, on the claim that all ten of the
+    // server's colours were dark enough. Measured, five of them are not (worst
+    // #CA8A04 at 2.94:1), so half a roster read its own history through
+    // initials it could not see. Same circle as a task's assignees now, same
+    // measured guarantee (DESIGN §36 W2).
+    return AwPersonAvatar(
+      label: event.actorName ?? event.actorInitials ?? '',
+      initials: event.actorInitials,
+      colorRgb: event.actorColorRgb,
+      size: 32,
     );
   }
 }

@@ -1417,3 +1417,19 @@ revisions, server-side three-way merge, and version history as the safety net.
 
 
 
+
+## 36. Who is on this (round 19 — the assignee avatar)
+
+A task can carry people, and a card has to say so at a glance without saying it
+twice. The avatar row is the smallest surface in the product that renders a
+value the **server** chose, so it is the one place where §23 Q8's rule ("colour
+is an accent, never a text colour") has to be argued again from scratch rather
+than inherited.
+
+| # | Rule | Why |
+|---|---|---|
+| W1 | **Under the card, and nothing when empty.** The avatars sit in the row's subtitle — under the title, where the mandate puts them — and an unassigned task draws NO placeholder, no ghost circle, no "unassigned" label. | Most tasks in most workspaces have nobody on them. A placeholder per empty task is a per-row cost paid by every user to tell them nothing. The card that OFFERS the action (task detail) does state the empty case in words, because there the blank has a meaning to explain. |
+| W2 | **The colour is a tint; a neutral ring carries the contrast.** The person's colour fills the circle at 20 % over the surface, a 1 px `outline`-token ring draws the boundary, and the initials are ordinary `onSurface` ink. | §23 Q8a's finding, met a second time and measured the same way: the roster palette's own comment claimed both themes were safe and they are not — **white initials fail 4.5:1 on 5 of the 10 fills** (worst `#CA8A04` at 2.94), best-ink-per-fill still leaves `#0284C7` at 4.22, and as a bare shape the fills miss 3:1 in both themes (2.94 / 2.58). Changing the palette would change people's colours for a rendering reason; the ring is the boundary WCAG 1.4.11 actually measures, so the ring is what carries it. Pinned pairs: worst ink 12.63 / 10.75, ring 4.46 / 4.47. |
+| W3 | **A person who left still shows.** When the roster has no row for an assignee, the circle goes neutral (`surfaceContainerHighest` + `onSurfaceVariant` + an em dash) rather than disappearing. | The assignment is still true until the server releases it (EE-070). Dropping the avatar would show the task unowned on this device and owned on every other one — a replica that quietly disagrees is worse than one that shows an unfamiliar face. |
+| W4 | **Four faces, then a count.** Beyond four the row ends in `+N` in caption ink. | A row is read at a glance (§17 D4's reasoning, applied to people): five small circles stop being individuals and become texture. |
+| W5 | **Two named sizes, not literals** — 24 in a list row, 32 on the detail card and in the picker. | The same face at two scales is one decision; three call sites repeating `32` is three decisions waiting to drift. |

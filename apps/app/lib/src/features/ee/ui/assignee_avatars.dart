@@ -22,20 +22,44 @@ import '../assignments_providers.dart';
 /// a neutral `outline` ring carries the shape's 3:1, and the initials are drawn
 /// in ordinary surface ink, which clears 4.5:1 by a wide margin (worst ≈ 10.7).
 /// One idiom in the app instead of two, and the pairs are pinned in the gate.
+/// The row-under-a-card size, and the detail card's larger one. Two named
+/// sizes rather than a literal repeated at three call sites (DESIGN §36).
 const double _kAvatarSize = 24;
+const double _kAvatarSizeLarge = 32;
 const double _kTintAlpha = 0.20;
 const int _kMaxAvatars = 4;
 
-/// One person, as a circle.
-class AwAssigneeAvatar extends StatelessWidget {
-  const AwAssigneeAvatar({
+/// One person as a circle — the primitive, used by the assignment row AND by
+/// the history tab (EE-071 made them one).
+///
+/// They were two. EE-026's history avatar filled the circle with the roster
+/// colour and drew WHITE initials on it, under a comment saying "the server's
+/// ten colours are all dark enough for it, and one rule beats per-colour
+/// guessing". Measured with `scripts/design/contrast.py`'s own function, five
+/// of the ten fail 4.5:1 (worst #CA8A04 at 2.94) — so half a roster has been
+/// reading its own history through unreadable initials, and the sentence
+/// claiming otherwise is exactly why nobody looked. One primitive now, so this
+/// contrast decision cannot be made twice and drift once (DESIGN §36 W2/W5).
+class AwPersonAvatar extends StatelessWidget {
+  const AwPersonAvatar({
     super.key,
-    required this.assignee,
+    required this.label,
+    this.initials,
+    this.colorRgb,
+    this.known = true,
     this.size = _kAvatarSize,
+    this.avatarKey,
   });
 
-  final Assignee assignee;
+  /// Tooltip and semantics — a face with no name is not accessible.
+  final String label;
+  final String? initials;
+  final String? colorRgb;
+
+  /// False when this person is no longer in the roster: the neutral tombstone.
+  final bool known;
   final double size;
+  final Key? avatarKey;
 
   static Color? parseColor(String? rgb) {
     if (rgb == null) return null;
@@ -49,29 +73,22 @@ class AwAssigneeAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final colour = parseColor(assignee.colorRgb);
-    // The tombstone case (churn grace): the roster has no row for this person
-    // any more, but the assignment is still true until the server releases it.
-    // A neutral circle says "somebody who is no longer here" — which is the
-    // honest answer — instead of the row quietly losing an assignee.
-    final known = assignee.isKnown && colour != null;
-    final fill = known
+    final colour = parseColor(colorRgb);
+    final isKnown = known && colour != null;
+    final fill = isKnown
         ? Color.alphaBlend(
             colour.withValues(alpha: _kTintAlpha),
             scheme.surface,
           )
         : scheme.surfaceContainerHighest;
-    final ink = known ? scheme.onSurface : scheme.onSurfaceVariant;
-    final label = known
-        ? (assignee.displayName ?? assignee.initials ?? '')
-        : 'ee.assign.formerMember'.tr();
+    final ink = isKnown ? scheme.onSurface : scheme.onSurfaceVariant;
 
     return Tooltip(
       message: label,
       child: Semantics(
         label: label,
         child: Container(
-          key: Key('assignee-${assignee.userId}'),
+          key: avatarKey,
           width: size,
           height: size,
           alignment: Alignment.center,
@@ -82,7 +99,7 @@ class AwAssigneeAvatar extends StatelessWidget {
             border: Border.all(color: scheme.outline, width: 1),
           ),
           child: Text(
-            known ? (assignee.initials ?? '?') : '—',
+            isKnown ? (initials ?? '?') : '—',
             style: theme.textTheme.labelSmall?.copyWith(
               color: ink,
               fontWeight: FontWeight.w700,
@@ -91,6 +108,37 @@ class AwAssigneeAvatar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// One assignee, as a circle.
+class AwAssigneeAvatar extends StatelessWidget {
+  const AwAssigneeAvatar({
+    super.key,
+    required this.assignee,
+    this.size = _kAvatarSize,
+  });
+
+  final Assignee assignee;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    // The tombstone case (churn grace): the roster has no row for this person
+    // any more, but the assignment is still true until the server releases it.
+    // A neutral circle says "somebody who is no longer here" — the honest
+    // answer — instead of the row quietly losing an assignee.
+    final known = assignee.isKnown;
+    return AwPersonAvatar(
+      avatarKey: Key('assignee-${assignee.userId}'),
+      label: known
+          ? (assignee.displayName ?? assignee.initials ?? '')
+          : 'ee.assign.formerMember'.tr(),
+      initials: assignee.initials,
+      colorRgb: assignee.colorRgb,
+      known: known,
+      size: size,
     );
   }
 }
@@ -184,7 +232,10 @@ class AwAssigneeSection extends ConsumerWidget {
                   runSpacing: AwSpace.x2,
                   children: [
                     for (final assignee in assignees)
-                      AwAssigneeAvatar(assignee: assignee, size: 32),
+                      AwAssigneeAvatar(
+                        assignee: assignee,
+                        size: _kAvatarSizeLarge,
+                      ),
                   ],
                 ),
         ),
@@ -265,7 +316,7 @@ class _AssigneePicker extends ConsumerWidget {
                   initials: person.initials,
                   colorRgb: person.colorRgb,
                 ),
-                size: 32,
+                size: _kAvatarSizeLarge,
               ),
               onChanged: (checked) async {
                 // The write is local-first and the server decides on arrival.
