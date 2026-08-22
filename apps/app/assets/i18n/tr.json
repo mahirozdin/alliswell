@@ -1218,7 +1218,8 @@
       "emptyBody": "Bu kayıttaki değişiklikler, kimin ne zaman yaptığıyla birlikte burada görünecek.",
       "moreOnServer": "Daha eski kayıtlar sunucuda saklanıyor.",
       "actorSystem": "AllisWell",
-      "actorUnknown": "Biri"
+      "actorUnknown": "Biri",
+      "taskTitle": "Task geçmişi"
     },
     "verb": {
       "created": "bunu oluşturdu",

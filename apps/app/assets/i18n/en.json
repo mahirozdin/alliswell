@@ -1219,7 +1219,8 @@
       "emptyBody": "Changes to this item will appear here, with who made them and when.",
       "moreOnServer": "Older entries are kept on the server.",
       "actorSystem": "AllisWell",
-      "actorUnknown": "Someone"
+      "actorUnknown": "Someone",
+      "taskTitle": "Task history"
     },
     "verb": {
       "created": "created this",

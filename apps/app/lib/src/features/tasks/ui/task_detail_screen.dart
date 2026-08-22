@@ -145,6 +145,16 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
       appBar: AppBar(
         title: Text('task.detailTitle'.tr()),
         actions: [
+          // EE-069 / item 10: the task's own history. Present only where there
+          // is a team to have made it — on a personal workspace nothing has
+          // ever been recorded and the button would open an empty room.
+          if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+            IconButton(
+              key: const Key('task-history'),
+              tooltip: 'ee.history.taskTitle'.tr(),
+              icon: const Icon(Icons.history),
+              onPressed: () => context.push('/tasks/${task.id}/history'),
+            ),
           IconButton(
             tooltip: task.isCompleted
                 ? 'task.reopen'.tr()

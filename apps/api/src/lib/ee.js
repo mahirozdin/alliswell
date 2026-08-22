@@ -41,6 +41,7 @@ export async function loadEeOverlay(app) {
     permissions: [],
     permissionResolvers: [],
     syncMutationGuards: [],
+    entityWriteObservers: [],
     corsOriginChecks: [],
     accountPurgeFilters: [],
     statusDecorators: [],
@@ -212,6 +213,32 @@ function buildSeam(state) {
       state.syncMutationGuards.push(guard);
     },
 
+    /**
+     * Entity write observers: `async (trx, change) => void`, called INSIDE the
+     * write transaction, AFTER the row has changed.
+     *
+     * `change` is `{ workspaceId, entityType, entityId, operation, actorId,
+     * before, after }` — `before`/`after` are whatever the write path chose to
+     * describe, so an observer can say what changed rather than only that
+     * something did. Core registers none and reads none: this exists so an
+     * extension can derive a record (an activity trail, a webhook, a search
+     * index) from a change without every write path having to know about it.
+     *
+     * IN the transaction is the point, not a detail. A post-commit hook would
+     * let the derived record and the change it describes disagree whenever the
+     * process died in between — and `entity:changed` (OPH-072) already covers
+     * the post-commit case for anything that only needs to be told later.
+     *
+     * A throwing observer rolls the write back. That is deliberate: a change
+     * nobody could account for should not be committed.
+     */
+    registerEntityWriteObserver(observer) {
+      if (typeof observer !== 'function') {
+        throw new Error('registerEntityWriteObserver: a function is required');
+      }
+      state.entityWriteObservers.push(observer);
+    },
+
     /** Collection point only — enforcing permissions is the overlay's business. */
     registerPermissions(defs) {
       if (!Array.isArray(defs)) throw new Error('registerPermissions: an array is required');
@@ -221,4 +248,21 @@ function buildSeam(state) {
       }
     },
   });
+}
+
+/**
+ * Tell the registered observers that a row changed (see
+ * `registerEntityWriteObserver`). A no-op with no extension loaded, which is
+ * every plain build.
+ *
+ * @param {import('fastify').FastifyInstance} app
+ * @param {import('knex').Knex.Transaction} trx the WRITE's transaction
+ * @param {{workspaceId: string, entityType: string, entityId: string,
+ *          operation: 'create'|'update'|'delete', actorId?: string|null,
+ *          before?: object|null, after?: object|null}} change
+ */
+export async function notifyEntityWrite(app, trx, change) {
+  const observers = app.ee?.entityWriteObservers;
+  if (!observers || observers.length === 0) return;
+  for (const observer of observers) await observer(trx, change);
 }

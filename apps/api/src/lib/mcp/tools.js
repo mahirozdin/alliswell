@@ -1054,7 +1054,7 @@ export const MCP_TOOLS = [
       const body = {};
       if (args.isDone !== undefined) body.isDone = args.isDone;
       if (args.title !== undefined) body.title = args.title;
-      await updateChecklistItem(app, { task, item, body });
+      await updateChecklistItem(app, { task, item, body, userId: auth.userId });
 
       await recordMcpAction(app, auth, {
         entityType: 'checklist_item',

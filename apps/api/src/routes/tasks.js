@@ -600,7 +600,12 @@ export default async function taskRoutes(app) {
       assertNotArchived(task);
       const item = await loadChecklistItem(task.id, request.params.itemId);
 
-      await taskDb.updateChecklistItem(app, { task, item, body: request.body });
+      await taskDb.updateChecklistItem(app, {
+        task,
+        item,
+        body: request.body,
+        userId: request.user.id,
+      });
 
       return serializeChecklistItem(await loadChecklistItem(task.id, item.id));
     },

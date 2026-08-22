@@ -28,6 +28,7 @@ import 'screens/home_shell.dart';
 import 'features/settings/reminder_settings_screen.dart';
 import 'features/ai/ui/ai_settings_screen.dart';
 import 'features/ee/ui/team_roles_screen.dart';
+import 'features/ee/ui/task_history_screen.dart';
 import 'features/ee/ui/assigned_to_me_screen.dart';
 import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
@@ -424,6 +425,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/shared',
         builder: (context, state) => _page(const EeSharedWithMeScreen()),
+      ),
+      // EE-069: one task's whole story. A route rather than a tab on the
+      // detail screen — see the screen's own header for why.
+      GoRoute(
+        path: '/tasks/:taskId/history',
+        builder: (context, state) =>
+            _page(EeTaskHistoryScreen(taskId: state.pathParameters['taskId']!)),
       ),
       // EE-068: "assigned to me". Not an admin route and not a settings
       // screen in spirit — it is a work list — but it lives under the team

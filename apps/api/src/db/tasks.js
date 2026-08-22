@@ -2,6 +2,7 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { nextMorningIn } from '../lib/time.js';
 import { recordSyncWrite } from './sync.js';
+import { notifyEntityWrite } from '../lib/ee.js';
 import { reconcileTaskReminder } from './reminders.js';
 import { propagateSeriesScope } from './task-series.js';
 
@@ -304,6 +305,17 @@ export async function applyStatusTransition(app, { userId, row, toStatus }) {
       });
     const fresh = await trx('tasks').where({ id: row.id }).first();
     await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
+    // A status change is the one task edit that reads as an EVENT rather than
+    // a revision, so it is described for observers rather than merely counted.
+    await notifyEntityWrite(app, trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'update',
+      actorId: userId,
+      before: { status: row.status },
+      after: { status: toStatus },
+    });
   });
 }
 
@@ -481,7 +493,7 @@ export async function addChecklistItem(app, { task, title, sortOrder }) {
 }
 
 /** Patches one checklist item (`title` / `isDone` / `sortOrder`). */
-export async function updateChecklistItem(app, { task, item, body }) {
+export async function updateChecklistItem(app, { task, item, body, userId = null }) {
   assertNotArchived(app, task);
   const patch = {};
   if ('title' in body) patch.title = body.title;
@@ -499,6 +511,19 @@ export async function updateChecklistItem(app, { task, item, body }) {
     await trx('checklist_items')
       .where({ id: item.id })
       .update({ ...patch, revision, updated_at: new Date() });
+    await notifyEntityWrite(app, trx, {
+      workspaceId: task.workspace_id,
+      entityType: 'checklist_item',
+      entityId: item.id,
+      operation: 'update',
+      actorId: userId,
+      // The parent is part of the change here: a subtask being ticked is a
+      // fact about the TASK, and an observer that had to look it up would be
+      // querying inside somebody else's transaction to learn something the
+      // caller already had.
+      before: { isDone: Boolean(item.is_done), taskId: task.id, title: item.title },
+      after: { isDone: Boolean(patch.is_done ?? item.is_done), taskId: task.id, title: patch.title ?? item.title },
+    });
   });
 }
 

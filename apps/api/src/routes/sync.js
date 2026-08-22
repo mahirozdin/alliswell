@@ -23,6 +23,7 @@ import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
 import { isValidDelta, markdownToPlainText } from '../lib/delta.js';
 import { recordSyncWrite } from '../db/sync.js';
+import { notifyEntityWrite } from '../lib/ee.js';
 import { reconcileTaskReminder } from '../db/reminders.js';
 import { captureNoteVersion } from '../db/note-versions.js';
 import { noteMarkdownFrom, storeConflictVersion, threeWayNoteWrite } from '../db/notes.js';
@@ -1309,6 +1310,15 @@ export default async function syncRoutes(app) {
         revision,
       });
       await entity.afterCreate?.(trx, ctx, { ...mutation, patch });
+      await notifyEntityWrite(app, trx, {
+        workspaceId: ctx.workspaceId,
+        entityType: mutation.entityType,
+        entityId: mutation.entityId,
+        operation: 'create',
+        actorId: ctx.userId,
+        before: null,
+        after: rowPatch,
+      });
       await recordRow(trx, ctx, mutation, { status: 'applied', revision });
     });
     return { status: 'applied', revision, recorded: true };
@@ -1430,6 +1440,19 @@ export default async function syncRoutes(app) {
           updated_at: new Date(), // server clock is canonical (§6.5)
         });
       await entity.afterUpdate?.(trx, ctx, { ...mutation, patch, versionOrigin }, row, keptIntents);
+      // OPH — extensions observe the write here, inside the transaction, with
+      // both sides of it. The offline path and the REST path therefore look
+      // identical to an observer, which is the only way a derived record can
+      // be complete.
+      await notifyEntityWrite(app, trx, {
+        workspaceId: ctx.workspaceId,
+        entityType: mutation.entityType,
+        entityId: mutation.entityId,
+        operation: 'update',
+        actorId: ctx.userId,
+        before: row,
+        after: { ...row, ...prepared.rowPatch },
+      });
       await recordRow(trx, ctx, mutation, { status: 'applied', revision });
     });
     return {
@@ -1478,6 +1501,15 @@ export default async function syncRoutes(app) {
             updated_at: new Date(),
           });
         await entity.afterDelete?.(trx, ctx, row);
+        await notifyEntityWrite(app, trx, {
+          workspaceId: ctx.workspaceId,
+          entityType: mutation.entityType,
+          entityId: mutation.entityId,
+          operation: 'delete',
+          actorId: ctx.userId,
+          before: row,
+          after: null,
+        });
       }
       await recordRow(trx, ctx, mutation, { status: 'applied', revision });
     });
