@@ -25,6 +25,29 @@ abstract final class AlarmLogEvent {
   /// We know delivery is degraded (permission off, exact alarms denied, a sound
   /// the OS could not resolve).
   static const degraded = 'degraded';
+
+  /// A pending request left the OS queue AFTER its fire time — so the OS
+  /// presented it (round 19, OPH-277).
+  ///
+  /// Inference, not observation, and the header's "never claim a delivery we
+  /// cannot observe" rule is why it took this shape rather than a hopeful
+  /// `scheduled → delivered` write at schedule time: the OS is *asked* whether
+  /// the request is still pending, and the two possible answers ([delivered]
+  /// and [dropped]) are told apart by the clock, which is the only honest
+  /// distinction available on iOS.
+  static const delivered = 'delivered';
+
+  /// A pending request left the OS queue BEFORE its fire time, and we did not
+  /// cancel it. That is the OS throwing it away — iOS keeps only the 64
+  /// soonest, and says nothing when it prunes the rest.
+  ///
+  /// This is the row that answers "it just never went off", and until round 19
+  /// there was no way to write it.
+  static const dropped = 'dropped';
+
+  /// A test alarm the user asked for from Settings (OPH-277). Its own event so
+  /// a real alarm's history is never confused with a rehearsal.
+  static const test = 'test';
 }
 
 /// Which surface an event belongs to.

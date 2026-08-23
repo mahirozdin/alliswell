@@ -255,7 +255,113 @@ void main() {
       expect(akRows.where((e) => e.event == AlarmLogEvent.scheduled), isEmpty);
       expect(
         akRows.singleWhere((e) => e.event == AlarmLogEvent.degraded).detail,
-        'limit_reached',
+        // The detail now names the CONSEQUENCE as well as the cause, because
+        // the consequence changed in round 19: the alarm keeps its chain.
+        'limit_reached — notification chain keeps it',
+      );
+    });
+
+    // ── Round 19 K1 — the report: "urgent alarms stopped ringing" ───────────
+    //
+    // The excluded set was computed from what we INTENDED to put on this lane,
+    // so an alarm AlarmKit refused was scheduled on neither lane. The log said
+    // `degraded` and nothing rang. These four pin the arbitration.
+    test('a REFUSED alarm falls back to the notification chain', () async {
+      alarmKit.scheduleFailure = 'limit_reached';
+      scheduler = build();
+      await scheduler.start();
+
+      alarms.add([alarm('R1', urgent: true)]);
+      await pump();
+
+      expect(alarmKit.scheduled, isEmpty);
+      expect(
+        gateway.scheduled,
+        hasLength(ReminderProfile.factory.offsets.length),
+        reason: 'refused by AlarmKit → the notification chain must cover it',
+      );
+    });
+
+    test('an ACCEPTED alarm is not also scheduled as notifications', () async {
+      scheduler = build();
+      await scheduler.start();
+
+      alarms.add([alarm('R1', urgent: true)]);
+      await pump();
+
+      expect(alarmKit.scheduled, hasLength(1));
+      expect(gateway.scheduled, isEmpty, reason: 'it would ring twice');
+    });
+
+    test(
+      'authorization revoked mid-session returns the alarm to notifications',
+      () async {
+        scheduler = build();
+        await scheduler.start();
+        alarms.add([alarm('R1', urgent: true)]);
+        await pump();
+        expect(alarmKit.scheduled, hasLength(1));
+
+        // The user turns it off in iOS Settings. Nothing tells the app; the next
+        // apply has to notice by READING the grant (never by re-asking).
+        alarmKit.authorized = false;
+        alarms.add([alarm('R1', urgent: true), alarm('R2')]);
+        await pump();
+
+        expect(
+          gateway.scheduled.values.where((n) => n.urgent),
+          hasLength(ReminderProfile.factory.offsets.length),
+        );
+        expect(
+          alarmKit.authorizationRequested,
+          isTrue,
+          reason: 'asked once at start…',
+        );
+      },
+    );
+
+    test(
+      'an unreadable AlarmKit lane leaves every urgent alarm ringing',
+      () async {
+        // If we cannot say what this lane holds, we must not tell the other lane
+        // to skip anything. Two quiet alarms is a worse failure than one loud one.
+        alarmKit.scheduledIdsThrows = true;
+        scheduler = build();
+        await scheduler.start();
+
+        alarms.add([alarm('R1', urgent: true)]);
+        await pump();
+
+        expect(
+          gateway.scheduled,
+          hasLength(ReminderProfile.factory.offsets.length),
+        );
+      },
+    );
+
+    // ── Round 19 K2 — one bad schedule used to abort the whole pass ─────────
+    test('one failing schedule does not cancel the rest of the pass', () async {
+      alarmKit = FakeAlarmKitHost(supported: false);
+      gateway.failScheduleFor = (n) => n.reminderId == 'R2'.padRight(26, '0');
+      scheduler = build();
+      await scheduler.start();
+
+      alarms.add([alarm('R1'), alarm('R2'), alarm('R3')]);
+      await pump();
+
+      expect(
+        gateway.scheduled.values.map((n) => n.reminderId),
+        containsAll(<String>['R1'.padRight(26, '0'), 'R3'.padRight(26, '0')]),
+        reason: 'R2 threw; R1 and R3 must still be scheduled',
+      );
+      final rows = await log.recent();
+      expect(
+        rows.where(
+          (e) =>
+              e.event == AlarmLogEvent.degraded &&
+              (e.detail ?? '').contains('schedule failed'),
+        ),
+        hasLength(1),
       );
     });
 
@@ -275,5 +381,133 @@ void main() {
       expect(scheduled.level, 'alarmkit');
       expect(scheduled.sound, isNotNull);
     });
+  });
+
+  // ── Round 19 / OPH-277 — "did it actually go off?" ────────────────────────
+  //
+  // iOS gives an app no delivery callback for a notification nobody tapped, so
+  // this question has never been answerable and round 19's report could not be
+  // investigated. It IS answerable indirectly: a request we scheduled and did
+  // not cancel left the pending queue for exactly one of two reasons.
+  group('delivery reconciliation', () {
+    late FakeAlarmKitHost alarmKit;
+    late AwDatabase db;
+    late AlarmLog log;
+    var clock = now;
+
+    NotificationScheduler build() => NotificationScheduler(
+      gateway: gateway,
+      alarmKit: alarmKit,
+      alarms: alarms.stream,
+      privacyMode: false,
+      log: log,
+      clock: () => clock,
+    );
+
+    setUp(() {
+      clock = now;
+      alarmKit = FakeAlarmKitHost(supported: false);
+      db = AwDatabase(
+        DatabaseConnection(
+          NativeDatabase.memory(),
+          closeStreamsSynchronously: true,
+        ),
+      );
+      log = AlarmLog(db);
+    });
+
+    tearDown(() => db.close());
+
+    test(
+      'a request that leaves the queue AFTER its time was delivered',
+      () async {
+        scheduler = build();
+        await scheduler.start();
+        alarms.add([alarm('R1', after: const Duration(minutes: 30))]);
+        await pump();
+        final id = gateway.scheduled.keys.single;
+
+        // The OS presented it: it is gone from pending, and its instant passed.
+        gateway.vanished.add(id);
+        clock = now.add(const Duration(hours: 2));
+        alarms.add([alarm('R1', after: const Duration(minutes: 30))]);
+        await pump();
+
+        final rows = await log.recent();
+        expect(
+          rows.where((e) => e.event == AlarmLogEvent.delivered),
+          hasLength(1),
+        );
+        expect(rows.where((e) => e.event == AlarmLogEvent.dropped), isEmpty);
+      },
+    );
+
+    test(
+      'a request that vanishes BEFORE its time was dropped by the OS',
+      () async {
+        // iOS keeps only the 64 soonest pending requests and prunes the rest in
+        // silence. This row is the first time the app can say that happened.
+        scheduler = build();
+        await scheduler.start();
+        alarms.add([alarm('R1', after: const Duration(hours: 6))]);
+        await pump();
+        final id = gateway.scheduled.keys.single;
+
+        gateway.vanished.add(id);
+        alarms.add([alarm('R1', after: const Duration(hours: 6))]);
+        await pump();
+
+        final rows = await log.recent();
+        expect(
+          rows.where((e) => e.event == AlarmLogEvent.dropped),
+          hasLength(1),
+        );
+      },
+    );
+
+    test('our own cancellation is not reported as a delivery', () async {
+      scheduler = build();
+      await scheduler.start();
+      alarms.add([alarm('R1', after: const Duration(hours: 6))]);
+      await pump();
+
+      // The reminder leaves the active set — we cancel it ourselves.
+      alarms.add(const []);
+      await pump();
+
+      final rows = await log.recent();
+      expect(rows.where((e) => e.event == AlarmLogEvent.delivered), isEmpty);
+      expect(rows.where((e) => e.event == AlarmLogEvent.dropped), isEmpty);
+      expect(
+        rows.where((e) => e.event == AlarmLogEvent.cancelled),
+        hasLength(1),
+      );
+    });
+  });
+
+  // Round 19 K3: the window only ever moved when the replica emitted, so a
+  // week with no task edits was a week with no re-fill.
+  test('coming back to the foreground re-fills the window', () async {
+    void Function()? resume;
+    final scheduler = NotificationScheduler(
+      gateway: gateway,
+      alarms: alarms.stream,
+      privacyMode: false,
+      clock: () => now,
+      onForeground: (callback) {
+        resume = callback;
+        return () => resume = null;
+      },
+    );
+    addTearDown(scheduler.dispose);
+    await scheduler.start();
+    alarms.add([alarm('R1')]);
+    await pump();
+
+    // The OS quietly forgot it while the app was away.
+    gateway.scheduled.clear();
+    resume!();
+    await pump();
+    expect(gateway.scheduled, hasLength(1));
   });
 }

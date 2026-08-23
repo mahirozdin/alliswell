@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/persisted_prefs.dart';
@@ -181,6 +182,14 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
     // The AlarmKit alert has room for ONE snooze button (OPH-182), so it offers
     // whichever the user put first in their own order.
     snoozePreset: ref.watch(snoozePresetOrderProvider).first,
+    // Round 19 K3: NOTIFICATIONS §2 has always said the window re-fills "on
+    // every app foreground", and nothing was doing it — the plan only ever
+    // moved when the replica emitted. Injected rather than reached for inside
+    // the scheduler so a pure scheduler test needs no `WidgetsBinding`.
+    onForeground: (onResume) {
+      final listener = AppLifecycleListener(onResume: onResume);
+      return listener.dispose;
+    },
   );
   unawaited(scheduler.start());
   ref.onDispose(scheduler.dispose);

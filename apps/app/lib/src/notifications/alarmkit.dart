@@ -113,6 +113,17 @@ abstract class AlarmKitHost {
   /// keeps URGENT alarms on the notification lane rather than dropping them.
   Future<bool> requestAuthorization();
 
+  /// The current grant, read WITHOUT prompting (round 19 K4).
+  ///
+  /// The scheduler consulted [requestAuthorization] exactly once, at start, and
+  /// cached the answer for the whole session. Revoke the permission in iOS
+  /// Settings and every urgent alarm kept being routed to a lane that would
+  /// refuse it — silence on both lanes, which is the failure this round is
+  /// about. Cheap enough to ask on every apply, and it must never prompt:
+  /// a permission dialog appearing because a task's due date changed would be
+  /// its own bug.
+  Future<bool> isAuthorized();
+
   Future<Set<int>> scheduledIds();
 
   Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm);
@@ -136,6 +147,9 @@ class UnsupportedAlarmKitHost implements AlarmKitHost {
 
   @override
   Future<bool> requestAuthorization() async => false;
+
+  @override
+  Future<bool> isAuthorized() async => false;
 
   @override
   Future<Set<int>> scheduledIds() async => const <int>{};
@@ -200,6 +214,9 @@ class MethodChannelAlarmKitHost implements AlarmKitHost {
 
   @override
   Future<bool> requestAuthorization() => _flag('requestAuthorization');
+
+  @override
+  Future<bool> isAuthorized() => _flag('isAuthorized');
 
   Future<bool> _flag(String method) async {
     try {

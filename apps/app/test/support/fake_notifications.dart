@@ -9,6 +9,15 @@ class FakeNotificationsGateway implements NotificationsGateway {
   final Map<int, PlannedNotification> scheduled = {};
   final List<int> cancelled = [];
   bool permissionsRequested = false;
+
+  /// Makes `schedule` throw for the notifications this says yes to — the
+  /// round-19 K2 case, where ONE bad request used to abort the whole pass and
+  /// leave every later alarm unscheduled.
+  bool Function(PlannedNotification)? failScheduleFor;
+
+  /// Ids the OS is pretending to have thrown away — round 19's `dropped`
+  /// reconciliation, which is otherwise unobservable.
+  final Set<int> vanished = {};
   final _events = StreamController<NotificationEvent>.broadcast(sync: true);
 
   @override
@@ -27,15 +36,44 @@ class FakeNotificationsGateway implements NotificationsGateway {
   );
 
   @override
-  Future<Set<int>> pendingIds() async => scheduled.keys.toSet();
+  Future<Set<int>> pendingIds() async =>
+      scheduled.keys.toSet().difference(vanished);
 
   @override
   Future<ScheduledDelivery> schedule(PlannedNotification notification) async {
+    if (failScheduleFor?.call(notification) ?? false) {
+      throw StateError('the OS refused ${notification.id}');
+    }
     scheduled[notification.id] = notification;
     // The same pure decision the real gateway makes (OPH-176), so tests see the
     // loudness contract rather than a stub.
     return awDeliveryFor(urgent: notification.urgent, criticalEnabled: false);
   }
+
+  @override
+  Future<ScheduledDelivery> scheduleTestAlarm({
+    required String title,
+    required String body,
+    required Duration after,
+    String? soundName,
+  }) async {
+    testAlarms.add(after);
+    return schedule(
+      PlannedNotification(
+        id: kAlarmTestNotificationId,
+        title: title,
+        body: body,
+        fireAt: DateTime.now().toUtc().add(after),
+        urgent: true,
+        payload: '{"test":true}',
+        kind: 'test',
+        soundName: soundName,
+      ),
+    );
+  }
+
+  /// How far ahead each rehearsal was asked for.
+  final List<Duration> testAlarms = [];
 
   @override
   Future<void> cancel(int id) async {
@@ -76,7 +114,17 @@ class FakeAlarmKitHost implements AlarmKitHost {
   }
 
   @override
-  Future<Set<int>> scheduledIds() async => scheduled.keys.toSet();
+  Future<bool> isAuthorized() async => authorized;
+
+  /// Set to make `scheduledIds` throw the way a dead channel does — the case
+  /// that must leave every urgent alarm on the notification chain (round 19).
+  bool scheduledIdsThrows = false;
+
+  @override
+  Future<Set<int>> scheduledIds() async {
+    if (scheduledIdsThrows) throw StateError('channel gone');
+    return scheduled.keys.toSet();
+  }
 
   @override
   Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) async {
