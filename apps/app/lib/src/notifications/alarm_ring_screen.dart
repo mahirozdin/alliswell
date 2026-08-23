@@ -25,12 +25,23 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
     super.key,
     required this.alarm,
     required this.onHandled,
+    this.missed = false,
   });
 
   final AlarmInput alarm;
 
   /// Called after any action so the host dismisses the overlay at once.
   final void Function(String reminderId) onHandled;
+
+  /// Opened from Home's missed-alarm card rather than by the alarm coming due
+  /// (round 19 #2).
+  ///
+  /// Same screen, same buttons — an alarm from Tuesday still has to be
+  /// acknowledged, snoozed or completed. What changes is that it does not make
+  /// a sound, does not buzz, and says how long ago it was instead of
+  /// announcing itself as happening now. Ringing an alarm whose moment passed
+  /// three days ago is the bug; hiding it would be a different one.
+  final bool missed;
 
   @override
   ConsumerState<AlarmRingScreen> createState() => _AlarmRingScreenState();
@@ -41,7 +52,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
+  );
   // Held in a field so dispose() never touches `ref` (unsafe once unmounting).
   AlarmFeedback? _feedback;
   bool _busy = false;
@@ -49,7 +60,13 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   @override
   void initState() {
     super.initState();
-    final feedback = ref.read(alarmFeedbackProvider);
+    if (!widget.missed) _pulse.repeat(reverse: true);
+    // A missed alarm is reviewed, not answered under pressure: silent, and the
+    // seam still exists so the "start sound" affordance has something to talk
+    // to if the screen is ever reused.
+    final feedback = widget.missed
+        ? const SilentAlarmFeedback()
+        : ref.read(alarmFeedbackProvider);
     _feedback = feedback;
     feedback.start();
     // The one alarm surface we can prove rang (OPH-176): this screen.
@@ -202,7 +219,9 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
 
     return PopScope(
       // The alarm must be answered with a button; back does not dismiss it.
-      canPop: false,
+      // A MISSED one may be backed out of — it is history being reviewed, and
+      // trapping someone in a screen about Tuesday would be its own bug.
+      canPop: widget.missed,
       child: Material(
         key: const Key('alarm-ring'),
         color: background,
@@ -242,7 +261,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                     ),
                     const SizedBox(height: AwSpace.x5),
                     Text(
-                      'alarm.ringing.label'.tr().toUpperCase(),
+                      (widget.missed
+                              ? 'alarm.missed.label'.tr()
+                              : 'alarm.ringing.label'.tr())
+                          .toUpperCase(),
                       style: text.labelLarge?.copyWith(
                         color: tokens.prioUrgent,
                         fontWeight: FontWeight.w800,
@@ -269,7 +291,17 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                         ),
                         const SizedBox(width: AwSpace.x1),
                         Text(
-                          time,
+                          widget.missed
+                              ? 'alarm.missed.ago'.tr(
+                                  args: {
+                                    'time': time,
+                                    'ago': awRelativePast(
+                                      alarmFireAt(widget.alarm),
+                                      ref.read(alarmClockProvider)(),
+                                    ),
+                                  },
+                                )
+                              : time,
                           style: text.titleMedium?.copyWith(
                             color: scheme.onSurfaceVariant,
                           ),

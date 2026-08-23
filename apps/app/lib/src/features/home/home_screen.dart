@@ -8,6 +8,7 @@ import '../../core/pending_deletes.dart';
 import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
 import '../../notifications/alarm_banner.dart';
+import '../../notifications/missed_alarm_card.dart';
 import '../../screens/home_shell.dart';
 import '../../sections.dart';
 import '../../sync/refresh.dart';
@@ -263,8 +264,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           );
 
           // Honest alarm-degradation banner (OPH-143): only shown when the OS
-          // can't ring urgent alarms reliably; nothing otherwise.
-          const banner = AlarmDegradationBanner();
+          // can't ring urgent alarms reliably; nothing otherwise. Below it, the
+          // alarm that already went unanswered (round 19 #2) — which used to
+          // seize the whole screen and ring, days after its moment.
+          const banner = Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [AlarmDegradationBanner(), MissedAlarmCard()],
+          );
 
           return LayoutBuilder(
             builder: (context, constraints) {

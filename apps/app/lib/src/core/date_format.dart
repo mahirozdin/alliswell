@@ -149,3 +149,25 @@ DateTime awInitialPickerDate({
   // (and DST never shifts the calendar day the way `add(Duration(days: 1))` can).
   return DateTime(now.year, now.month, now.day + 1);
 }
+
+/// "3 days ago" for an instant in the past (round 19 #2).
+///
+/// Coarse on purpose: it is used where the exact number of minutes does not
+/// matter — a missed-alarm card whose job is to say "this is history, not an
+/// emergency" — and the clock time is always printed beside it, so precision is
+/// available where precision is wanted.
+///
+/// Plurals go through separate keys rather than a `{n}` in one string: Turkish
+/// does not pluralise the noun after a number ("3 gün önce"), English does
+/// ("3 days ago"), and a single template cannot be right in both.
+String awRelativePast(DateTime at, DateTime now) {
+  final elapsed = now.difference(at.toLocal());
+  if (elapsed.inMinutes < 1) return 'time.ago.justNow'.tr();
+  if (elapsed.inHours < 1) {
+    return 'time.ago.minutes'.tr(args: {'n': '${elapsed.inMinutes}'});
+  }
+  if (elapsed.inHours < 24) {
+    return 'time.ago.hours'.tr(args: {'n': '${elapsed.inHours}'});
+  }
+  return 'time.ago.days'.tr(args: {'n': '${elapsed.inDays}'});
+}
