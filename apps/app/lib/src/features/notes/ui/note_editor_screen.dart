@@ -120,6 +120,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     if (widget.external) _doc.setMode(NoteMode.source);
     _doc.title.addListener(_markDirty);
     _doc.source.addListener(_markDirty);
+    // Round 19 #4: the source field's styling is a device preference, not a
+    // property of the note. Read once here (the provider hydrates async, so
+    // the `ref.listen` in build() carries any later value in).
+    _doc.source.styling = ref.read(noteSourceStylingChoiceProvider);
   }
 
   /// V7 (OPH-268, finding #2): a change that arrived from another device lands
@@ -345,6 +349,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Listen rather than watch-and-assign: the setter calls `notifyListeners`,
+    // and doing that inside build() is the "markNeedsBuild during build" crash.
+    ref.listen<MdSyntaxStyling>(
+      noteSourceStylingChoiceProvider,
+      (_, next) => _doc.source.styling = next,
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text(

@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 
 import '../../core/list_sort.dart';
 import '../../core/persisted_prefs.dart';
@@ -117,4 +118,15 @@ final noteDetailProvider = StreamProvider.family<NoteDetail, String>((
 ) {
   ref.watch(syncEngineProvider);
   return ref.watch(noteStoreProvider).watchDetail(noteId);
+});
+
+/// The parsed source-editor styling (round 19 #4). A junk or retired name
+/// resolves to the default rather than to a broken editor — the `parseTaskTime`
+/// rule, applied to a display preference.
+final noteSourceStylingChoiceProvider = Provider<MdSyntaxStyling>((ref) {
+  final raw = ref.watch(noteSourceStylingProvider);
+  return MdSyntaxStyling.values.firstWhere(
+    (value) => value.name == raw,
+    orElse: () => MdSyntaxStyling.markersOnly,
+  );
 });

@@ -66,6 +66,25 @@ final notesViewModeProvider = NotifierProvider<PersistedChoice, String>(
   () => PersistedChoice('alliswell_notes_view_mode', fallback: 'list'),
 );
 
+/// How long after its instant an urgent alarm may still seize the screen, in
+/// minutes. Empty (the default) derives it from the user's re-alert chain —
+/// see `alarmStaleWindowFor` (round 19 #2).
+final alarmStaleWindowRawProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_alarm_stale_window', fallback: ''),
+);
+
+/// How much formatting the note SOURCE editor paints (round 19 #4) — one of
+/// `MdSyntaxStyling`'s names.
+///
+/// Device-local, like every other display preference: it changes how this
+/// screen looks, not what the note IS. `markersOnly` is the default the report
+/// asked for — the `**` stays readable, the words between them do not turn
+/// bold until you switch to Reading mode.
+final noteSourceStylingProvider = NotifierProvider<PersistedChoice, String>(
+  () =>
+      PersistedChoice('alliswell_note_source_styling', fallback: 'markersOnly'),
+);
+
 /// How the notes list is ordered (OPH-258, DESIGN §34 L1/L3) — `field:dir`.
 ///
 /// Last edited, newest first: the note you touched last is the note you want

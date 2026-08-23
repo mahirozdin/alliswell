@@ -192,6 +192,31 @@ List<MdToken> scanMarkdown(String text) {
   return tokens;
 }
 
+/// How much of the document's formatting the SOURCE field paints (round 19 #4).
+///
+/// Round 19 asked the question this enum answers: "I bolded a selection and the
+/// editor bolded it too — but that is the editing surface, not the reading
+/// one." Both readings are legitimate (Obsidian paints, a code editor does
+/// not), so it stops being a hardcoded taste and becomes a choice.
+///
+/// The old `bool liveSyntax` could express only the two ends of this and was
+/// wired to nothing — a switch with no handle, always on. [markersOnly] is the
+/// middle the report is actually asking for, and the new default.
+enum MdSyntaxStyling {
+  /// No colour at all. The raw text, the way a plain editor shows it.
+  plain,
+
+  /// **Colour only.** `#`, `**`, `>` and a link's target step back in
+  /// `onSurfaceVariant`; a heading takes the accent ink. Nothing changes
+  /// WEIGHT, SIZE, SLANT, BACKGROUND or DECORATION — those belong to Reading
+  /// mode, which is the whole point of having two modes.
+  markersOnly,
+
+  /// The Obsidian/Typora treatment: headings are large, bold is bold,
+  /// highlight is highlighted, right there in the field.
+  live,
+}
+
 /// The Source-mode text controller: live syntax, plus focus mode.
 ///
 /// A subclass rather than a second controller: D3 keeps ONE controller alive
@@ -208,15 +233,14 @@ class MdSourceController extends TextEditingController {
     notifyListeners();
   }
 
-  bool _liveSyntax = true;
+  MdSyntaxStyling _styling = MdSyntaxStyling.markersOnly;
 
-  /// Live syntax can be turned off — some people want the raw text and
-  /// nothing else, and a preference that cannot be switched off is a hazard
-  /// rather than a feature.
-  bool get liveSyntax => _liveSyntax;
-  set liveSyntax(bool value) {
-    if (value == _liveSyntax) return;
-    _liveSyntax = value;
+  /// What the field paints. The host owns this (AllisWell persists it as a
+  /// setting); the package only obeys.
+  MdSyntaxStyling get styling => _styling;
+  set styling(MdSyntaxStyling value) {
+    if (value == _styling) return;
+    _styling = value;
     notifyListeners();
   }
 
@@ -268,7 +292,7 @@ class MdSourceController extends TextEditingController {
     TextStyle? style,
     required bool withComposing,
   }) {
-    if (text.isEmpty || (!_liveSyntax && !_focusMode)) {
+    if (text.isEmpty || (_styling == MdSyntaxStyling.plain && !_focusMode)) {
       return super.buildTextSpan(
         context: context,
         style: style,
@@ -295,7 +319,7 @@ class MdSourceController extends TextEditingController {
       return s.copyWith(color: color.withValues(alpha: color.a * 0.35));
     }
 
-    if (!_liveSyntax) {
+    if (_styling == MdSyntaxStyling.plain) {
       // Focus mode alone — the three-span tree this file used to build.
       return TextSpan(
         style: base,
@@ -319,7 +343,7 @@ class MdSourceController extends TextEditingController {
           TextSpan(
             text: text.substring(token.start, token.end),
             style: dim(
-              palette.styleFor(token.kind, token.line == caretLine),
+              palette.styleFor(token.kind, token.line == caretLine, _styling),
               token.start,
             ),
           ),
@@ -371,46 +395,70 @@ class _MdSourcePalette {
   /// [onCaretLine] is what makes the syntax step forward as you reach it:
   /// markers take full body ink on the line you are editing and fall back to
   /// the muted role everywhere else.
-  TextStyle styleFor(MdTokenKind kind, bool onCaretLine) {
+  ///
+  /// [styling] decides how far the painting goes. Under
+  /// [MdSyntaxStyling.markersOnly] this method may return a `color` and
+  /// **nothing else** — no weight, size, slant, background or decoration.
+  /// `md_highlight_test.dart` asserts exactly that over every token kind, so
+  /// "the editor stopped being a preview" cannot regress one case at a time.
+  TextStyle styleFor(
+    MdTokenKind kind,
+    bool onCaretLine,
+    MdSyntaxStyling styling,
+  ) {
+    final quiet = styling == MdSyntaxStyling.markersOnly;
     switch (kind) {
       case MdTokenKind.plain:
         return base;
       case MdTokenKind.marker:
         return base.copyWith(color: onCaretLine ? body : marker);
       case MdTokenKind.heading1:
+        if (quiet) return base.copyWith(color: accent);
         return base.copyWith(
           fontSize: (base.fontSize ?? 14) * 1.5,
           fontWeight: FontWeight.w700,
           color: accent,
         );
       case MdTokenKind.heading2:
+        if (quiet) return base.copyWith(color: accent);
         return base.copyWith(
           fontSize: (base.fontSize ?? 14) * 1.3,
           fontWeight: FontWeight.w700,
           color: accent,
         );
       case MdTokenKind.heading3:
+        if (quiet) return base.copyWith(color: accent);
         return base.copyWith(
           fontSize: (base.fontSize ?? 14) * 1.15,
           fontWeight: FontWeight.w600,
           color: accent,
         );
       case MdTokenKind.headingSmall:
+        if (quiet) return base.copyWith(color: accent);
         return base.copyWith(fontWeight: FontWeight.w600, color: accent);
+      // The four the round-19 report is about. Under `markersOnly` the `**`,
+      // `*`, `~~` and `==` stay VISIBLE (they are markers) but the text they
+      // wrap is not restyled — that is Reading mode's job.
       case MdTokenKind.bold:
+        if (quiet) return base;
         return base.copyWith(fontWeight: FontWeight.w700);
       case MdTokenKind.italic:
+        if (quiet) return base;
         return base.copyWith(fontStyle: FontStyle.italic);
       case MdTokenKind.strike:
+        if (quiet) return base;
         return base.copyWith(decoration: TextDecoration.lineThrough);
       case MdTokenKind.mark:
+        if (quiet) return base;
         return base.copyWith(backgroundColor: markTint);
       case MdTokenKind.code:
       case MdTokenKind.codeBlock:
         return base.copyWith(color: codeInk);
       case MdTokenKind.link:
+        if (quiet) return base.copyWith(color: link);
         return base.copyWith(color: link, decoration: TextDecoration.underline);
       case MdTokenKind.quote:
+        if (quiet) return base.copyWith(color: marker);
         return base.copyWith(fontStyle: FontStyle.italic, color: marker);
     }
   }

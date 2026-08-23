@@ -130,7 +130,8 @@ void main() {
     testWidgets('the span tree carries the text verbatim', (tester) async {
       await pumpHost(tester);
       const src = '# Başlık\n\n**kalın**';
-      final controller = MdSourceController(text: src);
+      final controller = MdSourceController(text: src)
+        ..styling = MdSyntaxStyling.live;
       addTearDown(controller.dispose);
 
       final span = controller.buildTextSpan(
@@ -172,7 +173,10 @@ void main() {
 
     testWidgets('headings are visibly bigger IN the field', (tester) async {
       await pumpHost(tester);
-      final controller = MdSourceController(text: '# Başlık\ngövde');
+      // Opt in: round 19 made `markersOnly` the default, so the Obsidian-style
+      // painting is now something a reader asks for rather than gets.
+      final controller = MdSourceController(text: '# Başlık\ngövde')
+        ..styling = MdSyntaxStyling.live;
       addTearDown(controller.dispose);
 
       final span = controller.buildTextSpan(
@@ -191,7 +195,7 @@ void main() {
     testWidgets('live syntax can be switched off', (tester) async {
       await pumpHost(tester);
       final controller = MdSourceController(text: '# Başlık')
-        ..liveSyntax = false;
+        ..styling = MdSyntaxStyling.plain;
       addTearDown(controller.dispose);
 
       final span = controller.buildTextSpan(
@@ -202,6 +206,61 @@ void main() {
 
       expect(span.toPlainText(), '# Başlık');
       expect(span.children, isNull, reason: 'the plain, unstyled span tree');
+    });
+
+    // Round 19 #4: "I bolded a selection in the WRITING mode and it bolded it
+    // there too — that is the viewing mode's job." `markersOnly` is the answer,
+    // and this is its contract: colour is allowed, everything else is not.
+    testWidgets('markersOnly paints colour and nothing else', (tester) async {
+      await pumpHost(tester);
+      const src =
+          '# Başlık\n'
+          '**kalın** *eğik* ~~üstü~~ ==vurgu== `kod`\n'
+          '> alıntı\n'
+          '[etiket](https://a.dev)';
+      final controller = MdSourceController(text: src);
+      addTearDown(controller.dispose);
+
+      final span = controller.buildTextSpan(
+        context: ctx,
+        style: const TextStyle(fontSize: 14, color: Color(0xFF101010)),
+        withComposing: false,
+      );
+
+      for (final child in span.children!.cast<TextSpan>()) {
+        final style = child.style!;
+        expect(style.fontWeight, isNull, reason: child.text);
+        expect(style.fontSize, 14, reason: child.text);
+        expect(style.fontStyle, isNull, reason: child.text);
+        expect(style.backgroundColor, isNull, reason: child.text);
+        expect(
+          style.decoration ?? TextDecoration.none,
+          TextDecoration.none,
+          reason: child.text,
+        );
+      }
+      // …and the source is still all there, byte for byte. A controller that
+      // drops a `**` breaks every caret offset after it.
+      expect(span.toPlainText(), src);
+    });
+
+    testWidgets('markersOnly still fades the syntax marks', (tester) async {
+      await pumpHost(tester);
+      final controller = MdSourceController(text: '# Başlık')
+        ..selection = const TextSelection.collapsed(offset: -1);
+      addTearDown(controller.dispose);
+
+      final span = controller.buildTextSpan(
+        context: ctx,
+        style: const TextStyle(fontSize: 14, color: Color(0xFF101010)),
+        withComposing: false,
+      );
+      final children = span.children!.cast<TextSpan>();
+      final marker = children.firstWhere((c) => c.text == '# ');
+      final heading = children.firstWhere((c) => c.text == 'Başlık');
+
+      expect(marker.style!.color, isNot(const Color(0xFF101010)));
+      expect(heading.style!.color, isNotNull);
     });
 
     testWidgets('focus mode composes with it instead of replacing it', (
