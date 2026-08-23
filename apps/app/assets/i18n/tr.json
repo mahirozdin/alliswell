@@ -103,10 +103,14 @@
     "alarms": {
       "title": "Acil alarmlar",
       "checking": "Kontrol ediliyor…",
-      "off": "Bildirimler kapalı — alarm çalamaz. Düzeltmek için dokun.",
-      "exact": "Alarmlar tam saatinde çalsın diye \"Alarmlar ve hatırlatıcılar\" iznini vermek için dokun.",
       "readyCritical": "Hazır — telefon sessizde bile çalar.",
-      "ready": "Hazır — Uyku ve Odak modlarını deler. Sessiz anahtarı açıksa iOS ses çaldırmaz."
+      "ready": "Hazır — Uyku ve Odak modlarını deler. Sessiz anahtarı açıksa iOS ses çaldırmaz.",
+      "test": "Test alarmı",
+      "testSub": "Gerçek bir acil alarmı {seconds} saniye sonrası için kurar — telefonu kilitleyin ve dinleyin.",
+      "testTitle": "⏰ Test alarmı",
+      "testBody": "Bunu duyabiliyorsanız acil alarmlar bu cihazda çalışıyor.",
+      "testArmed": "Test alarmı kuruldu — {seconds} saniye sonra çalacak.",
+      "testFailed": "Test alarmı kurulamadı. Alarm günlüğüne bakın."
     },
     "signOut": "Çıkış yap",
     "aboutBody": "Açık kaynak, kendi sunucunda barındırılan üretkenlik merkezi — görevler, projeler, notlar, takvim ve hatırlatıcılar.",
@@ -159,6 +163,12 @@
       "unitsSub": "Yönettiğiniz birimler",
       "assignments": "Bana atananlar",
       "assignmentsSub": "Şu anda üzerinizde olan işler"
+    },
+    "noteSourceStyling": {
+      "title": "Editör biçimlendirmesi",
+      "plain": "Düz metin — hiç renk yok",
+      "markersOnly": "Sadece işaretler — söz dizimi görünür, metin düz kalır",
+      "live": "Canlı — başlık, kalın ve vurgu yazarken boyanır"
     }
   },
   "shell": {
@@ -604,8 +614,6 @@
       "snooze": "Ertele"
     },
     "banner": {
-      "notificationsOff": "Bildirimler kapalı — uyarılmayacaksın. Açmak için dokun.",
-      "exactOff": "Alarmlar geç gelebilir — \"Alarmlar ve hatırlatıcılar\" iznini ver. Düzeltmek için dokun.",
       "fix": "Düzelt"
     },
     "snoozeRingsAt": "{time}’de çalar",
@@ -613,7 +621,32 @@
     "snoozeCustom": "Saat seç…",
     "silence": "Süresiz ertele",
     "startSound": "Sesi başlat",
-    "snoozePast": "O saat geçmiş — ileri bir saat seçin."
+    "snoozePast": "O saat geçmiş — ileri bir saat seçin.",
+    "problem": {
+      "notificationsOff": "Bildirimler kapalı — hiçbir şey size ulaşamaz. Düzeltmek için dokunun.",
+      "provisional": "Bildirimler sessiz geliyor — ne banner ne ses. Düzeltmek için dokunun.",
+      "soundOff": "AllisWell için ses kapalı — alarmlar sessiz geliyor. Düzeltmek için dokunun.",
+      "alertOff": "Banner'lar kapalı — alarmlar yalnızca Bildirim Merkezi'nde görünüyor. Düzeltmek için dokunun.",
+      "exactAlarmsOff": "Alarmlar geç gelebilir — “Alarmlar ve anımsatıcılar” iznini verin. Düzeltmek için dokunun.",
+      "timeSensitiveOff": "Zaman Duyarlı kapalı — Odak ve Uyku modları alarmlarınızı gömecek. Düzeltmek için dokunun.",
+      "alarmKitOff": "Alarm izni kapalı — acil alarmlar sessiz düğmesiyle susturulabilir. Düzeltmek için dokunun."
+    },
+    "fix": {
+      "open": "Ayarları aç",
+      "notificationsOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Bildirimlere İzin Ver”i açın.",
+      "provisional": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın, “Öne Çıkararak Teslim Et”i seçin ve Sesler'i açın.",
+      "soundOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Sesler”i açın. Kapalıyken alarm yine gelir — sessizce.",
+      "alertOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın; “Kilit Ekranı” ve “Banner'lar”ı açın.",
+      "exactAlarmsOff": "“Alarmlar ve anımsatıcılar” iznini verin ki alarm sistemin bir sonraki uyanışında değil, tam dakikasında çalsın.",
+      "timeSensitiveOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Zaman Duyarlı Bildirimler”i açın. Kapalıyken Uyku dahil her Odak modu alarmlarınızı gizler.",
+      "alarmKitOff": "Ayarlar ▸ AllisWell'i açın ve Alarmlara izin verin. Acil bir alarmın sessiz modu ve Odak'ı aşarak çalmasını sağlayan izin budur."
+    },
+    "missed": {
+      "label": "Kaçırılan alarm",
+      "ago": "{time} · {ago}",
+      "cardTitle": "Kaçırılan alarm",
+      "cardMore": "+{n} tane daha"
+    }
   },
   "alarmLog": {
     "title": "Alarm günlüğü",
@@ -1430,6 +1463,14 @@
     "switcher": {
       "title": "Çalışma alanı seç",
       "tooltip": "{workspace} — değiştirmek için dokunun"
+    }
+  },
+  "time": {
+    "ago": {
+      "justNow": "az önce",
+      "minutes": "{n} dk önce",
+      "hours": "{n} saat önce",
+      "days": "{n} gün önce"
     }
   }
 }

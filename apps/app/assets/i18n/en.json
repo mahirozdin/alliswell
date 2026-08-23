@@ -104,10 +104,14 @@
     "alarms": {
       "title": "Urgent alarms",
       "checking": "Checking…",
-      "off": "Notifications are off — alarms cannot ring. Tap to fix.",
-      "exact": "Tap to grant \"Alarms & reminders\" so alarms ring exactly on time.",
       "readyCritical": "Ready — rings even when the phone is on silent.",
-      "ready": "Ready — breaks through Sleep and Focus modes. If the mute switch is on, iOS plays no sound."
+      "ready": "Ready — breaks through Sleep and Focus modes. If the mute switch is on, iOS plays no sound.",
+      "test": "Test alarm",
+      "testSub": "Arms a real urgent alarm {seconds} seconds from now — lock the phone and listen.",
+      "testTitle": "⏰ Test alarm",
+      "testBody": "If you can hear this, urgent alarms work on this device.",
+      "testArmed": "Test alarm armed — it rings in {seconds} seconds.",
+      "testFailed": "The test alarm could not be scheduled. See the alarm log."
     },
     "signOut": "Sign out",
     "aboutBody": "Open-source, self-hosted productivity hub — tasks, projects, notes, calendar and reminders.",
@@ -160,6 +164,12 @@
       "unitsSub": "The units you run",
       "assignments": "Assigned to me",
       "assignmentsSub": "The work that is on you right now"
+    },
+    "noteSourceStyling": {
+      "title": "Editor formatting",
+      "plain": "Plain text — no colour at all",
+      "markersOnly": "Markers only — syntax stays visible, text stays plain",
+      "live": "Live — headings, bold and highlight painted as you type"
     }
   },
   "shell": {
@@ -605,8 +615,6 @@
       "snooze": "Snooze"
     },
     "banner": {
-      "notificationsOff": "Notifications are off — you won't be alerted. Tap to turn them on.",
-      "exactOff": "Alarms may arrive late — allow \"Alarms & reminders\". Tap to fix.",
       "fix": "Fix"
     },
     "snoozeRingsAt": "rings at {time}",
@@ -614,7 +622,32 @@
     "snoozeCustom": "Pick a time…",
     "silence": "Silence indefinitely",
     "startSound": "Start the sound",
-    "snoozePast": "That time has already passed — pick a later one."
+    "snoozePast": "That time has already passed — pick a later one.",
+    "problem": {
+      "notificationsOff": "Notifications are off — nothing can reach you. Tap to fix.",
+      "provisional": "Notifications arrive silently — no banner, no sound. Tap to fix.",
+      "soundOff": "Sound is off for AllisWell — alarms arrive without a sound. Tap to fix.",
+      "alertOff": "Banners are off — alarms only appear in Notification Centre. Tap to fix.",
+      "exactAlarmsOff": "Alarms may arrive late — allow “Alarms & reminders”. Tap to fix.",
+      "timeSensitiveOff": "Time Sensitive is off — Focus and Sleep will bury your alarms. Tap to fix.",
+      "alarmKitOff": "Alarm permission is off — urgent alarms can be silenced by the mute switch. Tap to fix."
+    },
+    "fix": {
+      "open": "Open settings",
+      "notificationsOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Allow Notifications”.",
+      "provisional": "Open Settings ▸ Notifications ▸ AllisWell and choose “Deliver Prominently”, then turn on Sounds.",
+      "soundOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Sounds”. Without it an alarm still arrives — in silence.",
+      "alertOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Lock Screen” and “Banners”.",
+      "exactAlarmsOff": "Grant “Alarms & reminders” so an alarm can ring at the exact minute instead of whenever the system next wakes up.",
+      "timeSensitiveOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Time Sensitive Notifications”. Without it every Focus mode — including Sleep — hides your alarms.",
+      "alarmKitOff": "Open Settings ▸ AllisWell and allow Alarms. This is what lets an urgent alarm ring through silent mode and Focus."
+    },
+    "missed": {
+      "label": "Missed alarm",
+      "ago": "{time} · {ago}",
+      "cardTitle": "Missed alarm",
+      "cardMore": "+{n} more"
+    }
   },
   "alarmLog": {
     "title": "Alarm log",
@@ -1431,6 +1464,14 @@
     "switcher": {
       "title": "Choose a workspace",
       "tooltip": "{workspace} — tap to switch"
+    }
+  },
+  "time": {
+    "ago": {
+      "justNow": "just now",
+      "minutes": "{n} min ago",
+      "hours": "{n} h ago",
+      "days": "{n} days ago"
     }
   }
 }

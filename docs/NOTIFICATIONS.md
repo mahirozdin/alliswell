@@ -280,6 +280,50 @@ an over-limit urgent alarm fall between the two lanes. Both the overflow and any
 `limit_reached` refusal are written to the alarm log, and a refusal is recorded
 as `degraded`, never as `scheduled` (§6).
 
+### 2b.2 The lane leak — why urgent alarms went quiet (round 19, OPH-276)
+
+Round 19's report was "urgent alarms stopped ringing on my iPhone". The cause was
+in the **arbitration between the two lanes**, not in either lane.
+
+`planNotifications` takes a set of reminder ids to skip, because an alarm on
+AlarmKit must not also ring as a notification. That set was built from
+`planAlarmKitAlarms`' output — the alarms we **intended** to hand over. So an
+alarm AlarmKit then **refused** at runtime was scheduled on neither lane: the
+alarm log recorded a `degraded` row and nothing ever rang. §2b.1's own sentence
+("what does not fit keeps its notification chain") was true of the *cap*, which
+`planAlarmKitAlarms` applies before returning, and false of every other way this
+lane can say no — `limit_reached`, a grant revoked in Settings, any
+`PlatformException`, or a `scheduledIds` call that throws.
+
+**The rule now: the skip set is what AlarmKit ACCEPTED**, never what we asked
+it to take. `_applyAlarmKit` converges the lane first and returns the reminder
+ids it actually holds. When it cannot even read its own state, it returns the
+empty set — if we do not know what that lane holds, we must not tell the other
+lane to skip anything; two quiet alarms is a worse failure than one loud one.
+
+Three neighbouring silences were fixed with it, all of the same shape — an error
+that stopped work without stopping anything from *looking* fine:
+
+- **One bad request aborted the pass.** `_apply`'s loops sat inside a single
+  outer `catch`, so one throwing `schedule()` left every later alarm in that
+  pass unscheduled until the next replica change. Each call now stands alone and
+  a failure is a log row, not an exit.
+- **A failed `initialize` was permanent.** `start()` returned on any throw, so
+  the alarm subscription was never created and the device scheduled nothing for
+  the rest of the session. It now records and subscribes anyway; `_apply`
+  retries `initialize` every pass.
+- **The grant was read once.** `_alarmKitActive` was set at start and never
+  re-read, so revoking the permission in Settings left urgent alarms routed to a
+  lane that would refuse them. There is now a non-prompting `isAuthorized`
+  bridge method (`AlarmManager.shared.authorizationState`), consulted every pass.
+
+**And the window only moved when the replica did.** §2 has always said the
+scheduling window re-fills "on every app foreground, sync apply, and
+`BGAppRefresh` pass". Only the middle one was true. A week in which no task was
+edited was a week in which the 40-slot window never advanced. There is now an
+`AppLifecycleListener` and a six-hour heartbeat, both injected as a seam so a
+pure scheduler test needs no `WidgetsBinding`.
+
 ## 2c. User-supplied sounds — what is actually possible (round 9, OPH-181)
 
 Round 9 asks for a user-selectable ringtone, uploadable through our own storage.
@@ -344,6 +388,75 @@ in the picker.
   haptics are a Watch setting. That is the whole deliverable that does not need
   hardware; the measurement, and therefore the companion decision, waits for a
   real watch on OPH-182's device pass.
+
+## 2e. Diagnostics you can act on (round 19, OPH-277)
+
+The report ended with the sentence this section exists for: *"if it is a
+permission problem it should at least warn me, and I should be able to know
+where to open it."* Two things were missing and they compounded.
+
+**The probe was throwing away most of the answer.** `checkPermissions()` returns
+six facts in one object; `alarmSupport()` kept two. A phone with notifications
+ON and **sound OFF** reported "ready to ring" — the exact sentence round 19
+proved wrong. `AlarmSupport` now carries `soundEnabled`, `alertEnabled`,
+`provisionalOnly`, `alarmKitAuthorized` and `pendingCount`, plus
+`timeSensitiveEnabled` over the Runner bridge — the plugin does not surface
+`UNNotificationSettings.timeSensitiveSetting`, and §2 has called Time Sensitive
+"the most common silent failure" since the entitlement was added while nothing
+was checking it. It rides `AlarmKitBridge.swift` because that is the only Runner
+source already in the Xcode target; a second file means `project.pbxproj`
+surgery, which this repo has a scar from.
+
+**The warning that did appear could not fix anything.** The Home banner's tap
+re-ran `requestPermissions()`, and iOS never shows that prompt twice — so once
+the user had answered, the "Fix" button was inert. It now opens a sheet that
+names the switch, writes the steps, and deep-links `app-settings:`.
+
+The cascade itself (`AlarmSupport.worstProblem` → `AlarmProblem`) lives on the
+model rather than in the two widgets that render it. The banner and the Settings
+row each carried their own two-branch `if`; the five conditions this round added
+would have been five chances for them to disagree about which problem to name.
+
+**Delivery is now recorded, honestly.** iOS gives an app no delivery callback
+for a local notification nobody tapped, which is why "did it actually go off?"
+was unanswerable and this report could not be investigated. It is answerable
+*indirectly*: a request we scheduled and did not cancel leaves the pending queue
+for exactly one of two reasons.
+
+| Left the queue | Fire time | Row | Means |
+| --- | --- | --- | --- |
+| yes | passed | `delivered` | the OS presented it |
+| yes | still ahead | `dropped` | the OS threw it away — iOS keeps only the 64 soonest and prunes the rest in silence |
+
+Neither says how LOUD it was; nothing on iOS can. Paired with the permission
+probe, "scheduled → delivered, sound off" is a complete answer where there used
+to be none. Settings ▸ Notifications can also arm a **test alarm** 15 seconds
+out, through `schedule` rather than around it — a rehearsal on a different code
+path would be a rehearsal of the wrong thing.
+
+## 2f. A missed alarm is not a ringing one (round 19, OPH-278)
+
+`ringingAlarm` had no lower bound: any urgent alarm whose instant had passed
+counted as ringing, forever. Open the app on Friday and Tuesday's alarm seized
+the screen and sounded the bed — which is half of round 19's report, and it made
+a device whose alarms had *stopped working* look like they finally had.
+
+The ring window is derived from the user's own chain rather than fixed:
+`max(15 min, last slot + 5 min)`. An `insistent` profile re-alerts up to 40
+minutes out, and a flat window would have declared an alarm missed while the OS
+was still ringing it. It is overridable
+(`alliswell_alarm_stale_window`).
+
+Older than that, the alarm appears on Home as a **missed alarm** card and opens
+the ring screen in a silent mode: no sound, no haptics, no pulse, dismissible,
+and it says how long ago instead of announcing itself as now. The buttons are
+the same, because Tuesday's alarm still has to be acknowledged.
+
+The card looks back **24 hours** — a bound a test found rather than one that was
+reasoned out. Without it, an urgent task overdue since March showed a "missed
+alarm" card forever; `tasks_flow_test` caught it as a duplicated title on Home.
+The card answers "did I sleep through something?"; "what is overdue?" is a
+different question the task list already answers.
 
 ## 3. Other platforms
 

@@ -47,7 +47,7 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | 🐳 **Self-host**   | Live now          | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data).                                                      |
 | 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
 
-> **Project status — `v1.7.0`, live.** Everything on this page is built, tested
+> **Project status — `v1.8.0`, live.** Everything on this page is built, tested
 > (**1,200+ app tests · 700+ backend unit · 70+ integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).

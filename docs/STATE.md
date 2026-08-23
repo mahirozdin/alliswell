@@ -3,7 +3,29 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-20a (**EE-026 — HISTORY SEKMESİ (Round; overlay tarafının işi).**
+**Last updated:** 2026-08-24 (**Epic 26 — İSTEK TURU 19 (Round; yalnız `apps/app`, EE'ye
+dokunmuyor). v1.8.0+28.** Sahibin dört raporu, dördünün de kök nedeni kodda okunarak
+doğrulandı. **(1) OPH-275 — PDF'e resim gelmiyordu:** yürüyücü resmi yalnız paragrafın TEK
+çocuğuysa figüre çeviriyordu; cümlenin içine yazılmış resim (uygulamanın kendi "resim ekle"
+düğmesinin ürettiği şey) satır-içi span dalına düşüyor, o da bilinmeyen elemanın çocuklarına
+iniyor, `img`'ın çocuğu yok → sessizce yok oluyordu. Paragraf artık resmin etrafından bölünüyor.
+Ayrıca mermaid + blok matematik ekran dışı rasterize edilip PDF'e gömülüyor (ADR-0034); metin
+vektör kalıyor, üretilemezse kaynak basılıyor. **(2) OPH-276 — acil alarm iOS'ta çalmıyordu:**
+dışlanan küme AlarmKit'e koymayı NİYET ETTİKLERİMİZDEN hesaplanıyordu, kabul edilenlerden değil
+— reddedilen alarm iki hat arasına düşüyordu; ayrıca tek bir hata turun kalanını iptal ediyordu,
+başarısız bir `initialize` zamanlayıcıyı oturum boyu susturuyordu, ve AlarmKit yetkisi oturum
+başına bir kez okunuyordu. Pencere de yalnız replika değişince yenileniyordu (NOTIFICATIONS §2
+"her ön plana gelişte" diyor, kanca yoktu). **(3) OPH-277 — sonda altı cevaptan dördünü çöpe
+atıyordu:** sesi kapalı bir telefon "çalmaya hazır" diyordu. `worstProblem` kademesi + native
+`timeSensitiveEnabled` sondası + `app-settings:` derin bağlantılı düzeltme sayfası + "şimdi test
+alarmı kur" + `delivered`/`dropped` mutabakatı. **(4) OPH-278/279/280:** bayat alarm ekranı
+kaplamıyor (pencere zincirden türüyor; 24 saatlik geriye bakış sınırını bir TEST buldu, akıl
+yürütme değil), kod bloğu seçimi silmiyor (+ `mdActions()` için sınıf-geneli değişmez testi),
+kaynak modu varsayılanı `markersOnly`. Süitler: app **1402** (+20 net), `flutter analyze` temiz,
+`dart format` uygulandı, `check:i18n`/`check:docs`/`check:no-ee` yeşil. Sıradaki iş (core):
+değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-20a (**EE-026 — HISTORY SEKMESİ (Round; overlay tarafının işi).**
 Yeniden kullanılabilir sekme: aktör adı/rengi/baş harfleri roster'dan, fiiller sözlükten
 (15 fiil × 2 dil), kesilen sayfa "gerisi sunucuda" der. Tarih server-only olduğu için
 ulaşılamayan sunucu HATA gösterir — boş liste "hiç bir şey olmadı" iddiası olurdu ve o

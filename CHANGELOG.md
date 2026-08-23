@@ -5,7 +5,75 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Exported PDFs lost every image written inside a sentence (OPH-275).** The markdown walker
+  promoted an image to a figure only when it was the *only* thing in its paragraph. An image
+  written mid-sentence — which is exactly what the app's own "insert image" button produces,
+  since it writes the embed at the caret — fell through to the inline walker, which handles an
+  unknown element by recursing into its children. An `img` has none, so it contributed nothing
+  and vanished in silence. Paragraphs now split around images.
+
+- **Urgent alarms could be scheduled on neither lane (OPH-276).** On iOS 26 the scheduler
+  excluded from the notification chain every alarm it *intended* to give AlarmKit — not the
+  ones AlarmKit accepted. An alarm the OS refused at runtime (the undocumented per-app
+  ceiling, a permission revoked in Settings, any platform error) was therefore dropped from
+  both lanes: the alarm log recorded a degradation and nothing rang. Three related silences
+  went with it. One failing schedule aborted the rest of that pass, so every alarm after the
+  first bad one stayed unscheduled. A failed `initialize` at launch made the scheduler go
+  permanently dormant for the whole session. And the AlarmKit grant was read once at start,
+  so revoking it in Settings left urgent alarms routed to a lane that would refuse them.
+
+- **The alarm window only ever moved when a task changed (OPH-276).** The plan covers the
+  soonest 40 fire times and `docs/NOTIFICATIONS.md` has always said it re-fills "on every app
+  foreground" — nothing was doing it. A week in which nothing was edited was a week in which
+  the window never advanced. It now re-fills on foreground and on a six-hour heartbeat.
+
+- **A long-gone alarm seized the screen and rang (OPH-278).** `ringingAlarm` had no lower
+  bound, so an urgent alarm from three days ago still counted as ringing the moment the app
+  opened. Worse than merely wrong: it made a device whose alarms had stopped working look like
+  they finally had. The ring window is now derived from the user's own re-alert chain
+  (`max(15 min, last slot + 5 min)`), and anything older appears on Home as a **missed alarm**
+  card — silent, dated, and offering the same acknowledge / snooze / complete buttons.
+
+- **The code-block button deleted the text you selected (OPH-279).** Select a paragraph, press
+  the code button, and the paragraph was replaced by an empty fence. It now wraps the
+  selection, and unwraps it when pressed again; `/table` and `/divider` land after the
+  selection instead of on top of it. A class-wide invariant test now runs every action in
+  `mdActions()` against a selection and fails if any of them loses text.
+
 ### Added
+
+- **Diagrams and formulas reach the exported PDF as pictures (OPH-275, ADR-0034).** A mermaid
+  diagram used to print as its own source in a code panel and a display formula printed the
+  words "unsupported block" — honest, and not what the note looks like. Both are now drawn
+  off-screen with the same widgets the reading view uses and embedded as images. Only those
+  blocks become pixels: every heading, paragraph, list, table and link stays real PDF text,
+  selectable and searchable. If a figure cannot be drawn, the page prints its source.
+
+- **The alarm status row says which switch is off, and opens the page that holds it
+  (OPH-277).** The permission probe was asking iOS for six answers and keeping two, so a phone
+  with notifications on and **sound off** reported "ready to ring". It now reports sound,
+  banners, provisional (quiet) authorization, iOS 15+ Time Sensitive — which iOS silently
+  demotes without, burying every alarm under any Focus mode — the AlarmKit grant, and how full
+  the 64-request queue is. The Home banner and the Settings row share one ordered cascade
+  instead of carrying a copy each, and tapping either opens a sheet that names the switch and
+  deep-links to the app's own Settings page. The old "Fix" button re-ran the permission
+  request, which does nothing once the prompt has been answered.
+
+- **A test alarm, and a delivery record (OPH-277).** Settings ▸ Notifications can arm a real
+  urgent alarm 15 seconds out through the real scheduling path. And because iOS gives an app
+  no delivery callback for a notification nobody tapped, the scheduler now reconciles: a
+  request that leaves the pending queue after its instant was **delivered**, one that vanishes
+  before it was **dropped** by the OS — iOS keeps only the 64 soonest and says nothing when it
+  prunes the rest. "It just never went off" is answerable for the first time.
+
+- **The note editor no longer paints your formatting for you (OPH-280).** Bolding a selection
+  in Source mode added `**…**` *and* made the text bold in the field — which is Reading mode's
+  job. `Settings ▸ General ▸ Editor formatting` now offers three levels, defaulting to
+  **markers only**: the `**`, `#` and `>` stay legible in a quiet colour, and nothing changes
+  weight, size, slant or background. The old switch for this existed in the code and was
+  wired to nothing.
 
 - **Team administration screens (EE-042).** On an instance that serves teams, an admin gets
   settings, a member roster and invitations under `/settings/team`, with the Settings index

@@ -500,9 +500,17 @@ its text.
 - **A4 — Degradation banner is honest, at the top of Home.** When the OS can't
   ring reliably, `AlarmDegradationBanner` says so on `errorContainer`
   (`onErrorContainer` ink, `alarm_off` icon, radius `m`) with a one-tap fix —
-  worst-problem-first (notifications off → exact-alarm denied), the same cascade
-  as the Settings status row (OPH-139). Healthy delivery shows nothing: never
-  nag a user whose alarms already work.
+  worst-problem-first, the same cascade as the Settings status row (OPH-139).
+  Healthy delivery shows nothing: never nag a user whose alarms already work.
+  **Round 19 (OPH-277)** widened it and moved the cascade onto the model
+  (`AlarmSupport.worstProblem`): notifications off → provisional (quiet) grant →
+  sound off → banners off → exact alarms denied → Time Sensitive off → AlarmKit
+  declined. Both surfaces read one ordered list, because the banner and the
+  Settings row each carried their own copy and five new conditions would have
+  been five chances to disagree. The tap now opens a sheet that NAMES the switch
+  and deep-links to it (`app-settings:`) — it used to re-run the permission
+  request, which iOS ignores once the prompt has been answered, so the "Fix"
+  button could not fix anything.
 - **A5 — Silencing is a state, not a disappearance (round 9, OPH-178).** An
   alarm the user muted indefinitely ("Süresiz ertele") must keep saying so: the
   task row carries a `notifications_off` chip with a one-tap "Geri aç", the
@@ -516,7 +524,29 @@ its text.
   event for an untouched notification, so the log shows what was **scheduled**,
   what the user **interacted** with, and what rang **in-app** — it never claims
   delivery it cannot observe. Copy-to-clipboard, no charts: this surface exists
-  to make the next device round evidence-based.
+  to make the next device round evidence-based. **Round 19 (OPH-277)** added the
+  two rows that make it answer the question it was built for: a request that
+  leaves the OS queue after its instant is `delivered`, one that vanishes before
+  it is `dropped`. Still never a claim about LOUDNESS — nothing on iOS can say
+  that — but "scheduled → delivered, sound off" is now a complete sentence.
+- **A7 — A rehearsal, on the real path (round 19, OPH-277).** Settings ▸
+  Bildirimler arms a genuine urgent alarm 15 seconds out, through the same
+  `schedule` call every other alarm uses. The row states the delay rather than
+  implying immediacy, and a failure to arm is reported as a failure — saying
+  "armed" for something the OS refused is the exact lie A6 exists against.
+- **A8 — A missed alarm is history, not an emergency (round 19, OPH-278).** An
+  urgent alarm whose moment passed longer ago than the re-alert chain lasts
+  (`max(15 min, last slot + 5 min)`) must NOT take over the screen and must not
+  make a sound: it appears as a card at the top of Home, under the degradation
+  banner. The card carries the **urgency wash**, not `errorContainer` — A4 owns
+  the error colour, and a missed alarm is not a broken app but a task still
+  waiting. It names the newest one, counts the rest, and says how long ago.
+  Tapping it opens A1's screen in a silent mode: no bed, no haptics, no pulse,
+  `canPop: true`, and the time reads "09:00 · 8 h ago". The buttons are
+  unchanged, because the alarm still has to be answered. The card looks back 24
+  hours and then stops — beyond that the task is simply overdue, and the task
+  list is where overdue lives (§22: the same fact in two places, one of which
+  never clears, is a dead affordance).
 
 ## 15. Pull to refresh (round 9 — OPH-171)
 
@@ -1253,7 +1283,7 @@ take/later/reject inventory and the model decision are in
 | D21 | **Save state is visible.** Autosave keeps working; a small, non-blocking indicator says saved / saving / failed. | Silent autosave plus an eventual failure is how people lose work and trust. |
 | D22 | **Word and character count are always available, never in the way.** | Ulysses; a status affordance, not a panel. |
 | D23 | **Focus mode dims, it does not hide.** Everything but the current paragraph fades; nothing is removed from the layout. | iA Writer. Hiding causes reflow; dimming does not. |
-| D24 | **The source field shows what the markdown MEANS while you type** (OPH-274): headings sized, bold bold, marks quieted off the caret's line, and full strength on the line being edited. It composes with D23 rather than replacing it, and it can be switched off. Colours come from tokens; markers use `onSurfaceVariant`, a role that clears 4.5:1 in both themes. | Obsidian/Typora. This is what replaces the WYSIWYG feedback ADR-0033 removed. **Syntax is dimmed, never hidden — that is not a preference:** a `TextEditingController` must hand the field back exactly the characters of `text`, or every caret offset, selection, undo entry and IME composition after the first difference points at the wrong character. |
+| D24 | **How much the source field paints is the reader's choice, and it defaults to LESS** (OPH-274, amended round 19 by OPH-280). Three levels: `plain` (no colour), **`markersOnly` — the default** (colour only: `#`, `**`, `>` and a link's target step back in `onSurfaceVariant`, a heading takes accent ink, and **nothing** changes weight, size, slant, background or decoration), and `live` (the original: headings sized, bold bold). The amendment is a report, not a preference change: bolding a selection in the WRITING surface also bolded it there, and the reader's objection — *"that is the editor, not the view; it should be bold in view mode"* — is right that rendering belongs to Reading mode. It composes with D23 rather than replacing it. The old switch for this existed and was wired to nothing, which is why it is a setting with a picker now, and why the picker renders the same sample line in each level with the REAL controller. Colours come from tokens; markers use `onSurfaceVariant`, a role that clears 4.5:1 in both themes. | Obsidian/Typora. This is what replaces the WYSIWYG feedback ADR-0033 removed. **Syntax is dimmed, never hidden — that is not a preference:** a `TextEditingController` must hand the field back exactly the characters of `text`, or every caret offset, selection, undo entry and IME composition after the first difference points at the wrong character. |
 
 ### 29.5 Somebody else's file (W-rules)
 
@@ -1358,7 +1388,7 @@ and split into sub-pages, "Entegrasyonlar" being the named example.
 | # | Rule | Why |
 | --- | --- | --- |
 | S1 | **The root Settings screen is an index, not a form.** It shows the account header, then one row per group — icon + title + a subtitle naming what lives inside ("Google Takvim, Apple Takvim, Yapay zeka, API erişimi") — then the sign-out card and the About row. Nothing else stays on the root. | An index the eye can scan in one pass; the subtitle is the map, so nobody has to open a group to learn what it holds. |
-| S2 | **Six groups, fixed:** Hesap (account header target, server URL, account deletion) · Genel (language, date format, default task time, quick-access bubble, app tour) · Bildirimler & Alarmlar (notification privacy, alarm permission status, reminder system, alarm log) · Entegrasyonlar (Google Calendar, Apple Calendar, AI — whose screen keeps the MCP connector card —, API access) · Veri (completed tasks, share log; import/export lands here when it ships) · Hakkında (version + licences, the existing About dialog). | Grouping is by what the user is trying to do, not by which subsystem implements it. Every existing row keeps its widget `Key` and i18n string — this is a re-homing, not a rewrite (§22: nothing becomes unreachable). |
+| S2 | **Six groups, fixed:** Hesap (account header target, server URL, account deletion) · Genel (language, date format, default task time, **editor formatting** — round 19 —, quick-access bubble, app tour) · Bildirimler & Alarmlar (notification privacy, alarm permission status, **test alarm** — round 19 —, reminder system, alarm log) · Entegrasyonlar (Google Calendar, Apple Calendar, AI — whose screen keeps the MCP connector card —, API access) · Veri (completed tasks, share log; import/export lands here when it ships) · Hakkında (version + licences, the existing About dialog). | Grouping is by what the user is trying to do, not by which subsystem implements it. Every existing row keeps its widget `Key` and i18n string — this is a re-homing, not a rewrite (§22: nothing becomes unreachable). |
 | S3 | **Sub-pages are real routes** (`/settings/account`, `/settings/general`, `/settings/notifications`, `/settings/integrations`, `/settings/data`), pushed with `context.push` like the five settings routes that already exist; existing deep routes (`/settings/reminders`, `/settings/alarm-log`, `/settings/share-log`, `/settings/completed`, `/settings/ai`) stay valid and are linked from their new group pages. | Deep links, widget tests and muscle memory survive. A settings URL that worked yesterday works tomorrow. |
 | S4 | **Sign out stays on the root**, error-coloured, below the groups. | The one action people arrive stressed for does not get buried a level down. |
 | S5 | **No invented rows.** There is no theme switch today (`themeMode` is hardcoded to system — measured); regrouping must not smuggle new settings in. A group with one row is still a group. | This task's scope is architecture, not features; anything new gets its own task and its own row *inside* the structure. |

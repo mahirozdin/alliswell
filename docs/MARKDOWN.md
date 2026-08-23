@@ -369,6 +369,68 @@ Publishing (owner's two steps, nothing in-repo blocks on them): create the
 `bubiapps` GitHub organisation + `markdown_forge` repo, copy the package
 directory there, `dart pub publish`. Until then the app consumes it by path.
 
+## 11. Round 19: what the page shows, and what the field shows
+
+Two reports, and they are the same question asked from opposite ends: **which
+surface renders formatting, and which one shows you the source?**
+
+### The page renders everything (OPH-275, ADR-0034)
+
+Export lost images and flattened diagrams. Two causes.
+
+`markdownToBlocks` promoted an image to a figure only when it was the sole child
+of its paragraph. An image written mid-sentence — which is what the app's own
+"insert image" button produces, since it writes `![](alliswell://file/{id})` at
+the caret — reached the inline-span walker, whose `default:` branch recurses
+into an element's children. An `img` has none, so it produced nothing and
+vanished. Paragraphs now **split** around images: text before, figure, text
+after. On screen the renderer keeps them inline as a `WidgetSpan`; at page width
+a figure reads better and loses nothing.
+
+Mermaid and display math had no `pdf` widget at all, so they printed their own
+source. They are now **rasterized off-screen** with the same widgets the reading
+view uses and embedded as images — only those blocks, so every heading,
+paragraph, list, table and link stays real, selectable PDF text. ADR-0034 has
+the mechanics and the alternatives. Inline math stays inline as code-marked
+text: splitting a sentence around `$x^2$` reads worse than the LaTeX does.
+
+The honest fallback is unchanged (DESIGN §10 F3): if no picture can be made, the
+page prints the block's source — the diagram's own mermaid, or the LaTeX — which
+is strictly more use to a reader than "unsupported block".
+
+### The field shows source (OPH-280)
+
+Bolding a selection in Source mode inserted `**…**` **and** drew the text bold.
+Both readings of that are legitimate — Obsidian and Typora paint, a code editor
+does not — so it stopped being a hardcoded taste and became a setting.
+
+`MdSourceController` had a `bool liveSyntax` that could express only the two
+ends of this, and it was **wired to nothing**: a switch with no handle, always
+on. It is now `MdSyntaxStyling`:
+
+| Level | What the field does |
+| --- | --- |
+| `plain` | no colour at all — the raw text |
+| `markersOnly` **(default)** | **colour only.** `#`, `**`, `>` and a link's target step back in `onSurfaceVariant`; a heading takes the accent ink. Nothing changes weight, size, slant, background or decoration. |
+| `live` | the Obsidian treatment: headings large, bold bold, highlight highlighted |
+
+`markersOnly`'s contract is asserted over every token kind in
+`md_highlight_test.dart`, so "the editor stopped being a preview" cannot come
+back one case at a time. The picker in Settings ▸ General renders the same
+markdown line in each level using the **real** controller — a preview that can
+disagree with the editor is worse than no preview.
+
+### The toolbar never destroys text (OPH-279)
+
+`_insertBlock` used `replaceRange(start, end, …)`, so the code-block button
+replaced a selected paragraph with an empty fence. `/table` and `/divider`
+shared the helper, and every future block action would have inherited it. The
+code button now wraps (and unwraps) the selection; the other two land after it.
+
+The durable part is the guard, not the fix: one test runs **every** entry in
+`mdActions()` against a selection and fails if the selected substring, the text
+before it, or the text after it is missing from the result.
+
 ## 10. Sources
 
 Field survey: [Best Markdown Editors 2026 — hands-on comparison](https://mdclaudy.com/blog/best-markdown-editors-2026) ·

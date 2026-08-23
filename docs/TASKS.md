@@ -8849,6 +8849,148 @@ modunu kullanıyor (V4). Bir belgeyi iki yerde çizmek, ikisinin ayrı ayrı yan
       reprodüksiyonu artık indi ve yeşil (`note-merge.test.js`), yani sunucu davranışı
       kanıtlanmış durumda — bu kalemde geriye YALNIZ fiziksel gözlem kaldı.
 
+## Epic 26 — İstek turu 19: PDF sadakati, iOS alarm sessizliği, MD editör eylemleri (v1.8.0)
+
+_Sahibin dört raporu, hepsi `apps/app` — EE katmanına dokunmuyor. Dördünün de kök nedeni
+kodda okunarak doğrulandı; hiçbiri tahmin değil. Turun kuralı: her düzeltmenin yanına aynı
+kusur SINIFININ sessizce geri gelmesini engelleyen bir kapı koyuldu (değişmez testi, paylaşılan
+kademe, mutabakat turu)._
+
+_**Turun tek cümlesi: dört raporun üçünde arıza kodun yaptığı şey değil, yapmadığını kimseye
+söylemeyişiydi — kayıp resim, iki hat arasına düşen alarm ve kapalı bir ses anahtarı, hepsi
+sessizce başarılı görünüyordu.**_
+
+### OPH-275 — PDF: notu göründüğü gibi bas — resim, mermaid, matematik (ADR-0034)
+
+- [x] **Satır-içi resim kaybı.** `markdown_blocks.dart` `_spans()`'ın `default:` dalı bilinmeyen
+  bir elemanın ÇOCUKLARINA iniyor; `img`'ın çocuğu yok → cümlenin içine yazılmış bir resim
+  hiçbir şeye katkı vermeden yok oluyordu. Ve uygulamanın kendi "resim ekle" düğmesi tam olarak
+  bunu üretiyor: imlecin olduğu yere `![](alliswell://file/{id})`. Paragraf artık resmin
+  etrafından BÖLÜNÜYOR (`_paragraph`); ekranda satır-içi duran resim kâğıtta tam genişlik figür
+  oluyor — hiçbir içerik kaybolmadan.
+- [x] **`NoteBlockKind.figure`.** Raster anahtarı + rasterleyici başarısız olursa basılacak
+  kaynak. `note_pdf.dart` tek `case` kazandı ve hâlâ ne widget ne platform kanalı tanıyor.
+- [x] **Mermaid diyagram, matematik formül.** `pre > code.language-mermaid` ve `aw-math-block`
+  artık figür. `_undrawable` yalnız `aw-raw-html`'e daraldı; satır-içi `$x^2$` cümlesinde
+  kalıyor (kod işaretli), çünkü iki karakterlik bir formül için cümle bölmek LaTeX'ten kötü okur.
+- [x] **Ekran-dışı rasterleyici** (`ui/note_figure_raster.dart`). Uygulamanın kendi
+  `Overlay`'ine `left: -100000`, `RepaintBoundary`, iki kare, `toImage(pixelRatio: 3)`.
+  `BuildOwner` el işi DEĞİL: `MermaidView` ve `Math.tex` `MdStyles`/`mdTheme` okuyor, onları
+  elle yeniden sağlamak sessizce ve sonradan bozulan türden bir iş. Tüm figürler TEK overlay
+  girdisinde (figür başına bir kare beklemek, on diyagramlı bir notta vsync saatini izlemek olurdu).
+  Alt ağaçta iki şey zorlanıyor: **her zaman açık tema** (baskı açıktır; beyaz kâğıtta koyu tema
+  diyagramı görünmez bir diyagramdır) ve `TextScaler.noScaling`.
+- [x] **Dürüst geri düşüş korundu** (DESIGN §10 F3): resim üretilemezse sayfa kaynağı basar —
+  "desteklenmiyor" yazısı değil. Overlay'i olmayan bir yüzeyde (başsız test) da böyle davranır.
+- [x] Testler: `markdown_blocks_test` (satır-içi resim → 3 blok; iki resim → iki figür; mermaid;
+  `$$…$$`; satır-içi matematik; konumsal anahtarlar), `note_pdf_test` (baytlı → resim,
+  baytsız → kaynak paneli), `note_export_flow_test` (sahte rasterleyici seam'i ile uçtan uca).
+
+### OPH-276 — Alarm hattı: hiçbir alarm iki hat arasına düşmesin
+
+_Rapor: "acil olarak işaretlediğim tasklar artık iOS'ta çalmıyor." Dördü de kod kusuru,
+hiçbiri izin sorunu._
+
+- [x] **K1 — AlarmKit reddedince alarm HİÇBİR hatta kalmıyordu (asıl arıza).** Dışlanan küme
+  AlarmKit'e koymayı *niyet ettiğimiz* alarmlardan hesaplanıyordu; `planNotifications` hepsini
+  atıyordu. Çalışma zamanında reddedilen bir alarm (`limit_reached`, iptal edilmiş yetki,
+  herhangi bir `PlatformException`) ne AlarmKit'te ne bildirimde kalıyor, günlüğe `degraded`
+  yazılıp unutuluyordu — ve dosyanın kendi yorumu tersini iddia ediyordu. Yorum KAPASİTE için
+  doğruydu (`planAlarmKitAlarms` en fazla 8 döndürür, kalanı zincirini korur) ve bu hattın hayır
+  diyebileceği diğer her yol için yanlıştı. `_applyAlarmKit` artık **kabul edileni** döndürüyor.
+- [x] **K2 — tek bir zamanlama hatası turun tamamını iptal ediyordu.** `_apply`'ın döngüleri tek
+  bir dış `try/catch (_)` içindeydi; bir `schedule()` fırlatınca o turdaki kalan tüm alarmlar
+  kurulmuyordu. Her çağrı artık kendi `try/catch`'inde, hata `degraded` olarak yazılıp döngü devam ediyor.
+- [x] **K3 — pencere yalnızca replika değişince yenileniyordu.** NOTIFICATIONS §2 "her ön plana
+  gelişte yenilenir" diyor; böyle bir kanca YOKTU. `AppLifecycleListener` + 6 saatlik güvenlik
+  zamanlayıcısı eklendi (seam olarak enjekte — saf bir zamanlayıcı testinin `WidgetsBinding`'i yok).
+  `start()` de artık `initialize()` fırlattığında sessizce ölmüyor: hatayı yazıp yine abone oluyor.
+- [x] **K4 — AlarmKit yetkisi oturum başına bir kez okunuyordu.** iOS Ayarlar'dan iptal
+  edildiğinde acil alarmlar hâlâ reddedecek bir hatta yönlendiriliyordu. Swift köprüsüne
+  **istemsiz** `isAuthorized` (`AlarmManager.shared.authorizationState`) eklendi; her `_apply`
+  okuyor. `requestAuthorization` yalnız ilk sorma için kaldı.
+- [x] Testler: reddedilen alarm zincirini KORUR · kabul edilen çift kurulmaz · oturum içi yetki
+  iptali alarmı bildirime döndürür · okunamayan bir AlarmKit hattı hiçbir şeyi dışlamaz · bir
+  başarısız zamanlama kalan turu iptal etmez · ön plana dönüş pencereyi yeniler.
+
+### OPH-277 — "Neden çalmadı?" bir daha cevapsız kalmasın
+
+- [x] **Sonda dört cevabı çöpe atıyordu.** `checkPermissions()` hepsini tek nesnede döndürüyor;
+  `alarmSupport()` `isEnabled` ve `isCriticalEnabled` dışında hepsini atıyordu. Bildirimleri
+  AÇIK, sesi KAPALI bir telefon "çalmaya hazır" diyordu — raporun kendisi.
+  Eklenenler: `soundEnabled` · `alertEnabled` · `provisionalOnly` · `alarmKitAuthorized` ·
+  `pendingCount` · `timeSensitiveEnabled`.
+- [x] **`timeSensitiveEnabled` native sonda.** Plugin `UNNotificationSettings.timeSensitiveSetting`'i
+  sunmuyor; izin olmadan iOS `.timeSensitive`'i sessizce `.active`'e düşürür ve Uyku dahil her
+  Odak modu alarmı gömer — NOTIFICATIONS §2'nin "en yaygın sessiz arıza" dediği şey.
+  `AlarmKitBridge.swift`'e bindi, çünkü hedefte olan tek Runner kaynağı o; ikinci bir dosya
+  `project.pbxproj` cerrahisi demek ve bu depo o yaradan bir kez ders aldı.
+- [x] **Tek kademe, iki yüzey.** `AlarmSupport.worstProblem` → `AlarmProblem`. Ana ekran bandı ve
+  Ayarlar satırı kendi `if`'lerini taşıyordu; bu turun eklediği beş koşul, ikisinin anlaşmazlığa
+  düşmesi için beş fırsat olurdu.
+- [x] **Bandın "Düzelt" düğmesi düzeltebiliyor artık.** Eskiden `requestPermissions()`'ı yeniden
+  çağırıyordu — kullanıcı bir kez cevapladıktan sonra iOS o istemi ASLA tekrar göstermez, yani
+  hiçbir şey yapamayan bir düğmeydi. Şimdi `alarm_fix_sheet.dart`: sorunu adıyla söyler, hangi
+  anahtarın nerede olduğunu yazar, `app-settings:` ile o sayfayı açar.
+- [x] **"Şimdi test alarmı kur"** (Ayarlar ▸ Bildirimler). Gerçek `schedule` yolundan, gerçek
+  `urgent` yükle, 15 sn sonrası. Sabit id, planlayıcının aralığının dışında: ikinci deneme
+  birincinin yerine geçer ve set-diff bir sonraki turda temizler.
+- [x] **Teslim kaydı** — `AlarmLogEvent.delivered` / `dropped` / `test` + `_reconcile`.
+  iOS dokunulmayan bir bildirim için teslim geri çağrısı VERMEZ, yani "gerçekten çaldı mı"
+  hiç cevaplanamıyordu. Dolaylı olarak cevaplanabiliyor: kurduğumuz ve iptal etmediğimiz bir
+  istek bekleyen listeden yalnız iki sebeple düşer — zamanı geçtiyse OS onu sundu (`delivered`),
+  geçmediyse OS onu attı (`dropped`; iOS yalnız en yakın 64'ü tutar ve budadığını söylemez).
+  Ne kadar YÜKSEK sesle çaldığını söylemez; iOS'ta hiçbir şey söyleyemez. İzin sondasıyla birlikte
+  "scheduled → delivered, ses kapalı" hiç olmayan bir yerde tam bir cevap.
+
+### OPH-278 — Geçmiş alarm ekranı kaplamasın; "kaçırıldı" olarak dursun
+
+- [x] **`ringingAlarm`'ın alt sınırı yoktu.** Salı'nın alarmı Cuma günü hâlâ "çalıyor" sayılıyor,
+  ekranı kaplıyor ve yatağı çalıyordu — raporun ikinci yarısı. Daha kötüsü: alarmları ÇALIŞMAYAN
+  bir cihazı nihayet çalışmış gibi gösteriyordu.
+- [x] **Pencere zincirden TÜRÜYOR, sabit değil.** `alarmStaleWindowFor(profile)` =
+  `max(15 dk, son slot + 5 dk)`. `insistent` profili 40 dakikaya kadar yeniden uyarır; düz bir
+  15 dakikalık pencere, OS hâlâ çalarken alarmı "kaçırıldı" ilan ederdi.
+  Ayarlanabilir: `alliswell_alarm_stale_window`.
+- [x] **`missedAlarms` + Ana ekranda kart** (`missed_alarm_card.dart`). Dokununca ring ekranı
+  **missed** kipinde açılır: ses yok, titreşim yok, nabız yok, geri çıkılabilir, başlıkta ne
+  kadar geçtiği yazar — düğmeler aynı, çünkü Salı'nın alarmı hâlâ onaylanmalı.
+- [x] **Geriye bakış sınırı 24 saat — ve bunu bir test buldu, akıl yürütme değil.** Sınırsızken
+  Mart'tan beri gecikmiş acil bir görev sonsuza dek "kaçırılan alarm" kartı gösteriyordu;
+  `tasks_flow_test` bunu Ana ekranda ikizlenmiş bir başlık olarak yakaladı. Kart "bir şeyi
+  uyuyakaldım mı?" sorusunu cevaplar; "ne gecikti?" başka bir soru ve görev listesi zaten
+  cevaplıyor.
+- [x] Kartın rengi `errorContainer` DEĞİL, aciliyet yıkaması: bozulma bandı hata rengini
+  kullanıyor ve kaçırılan bir alarm bozuk bir uygulama değil — hâlâ bekleyen bir görev.
+- [x] `awRelativePast` (`core/date_format.dart`) + `time.ago.*`. Çoğullar ayrı anahtar:
+  Türkçe sayıdan sonra adı çoğullamaz ("3 gün önce"), İngilizce çoğullar — tek şablon ikisinde
+  birden doğru olamaz.
+
+### OPH-279 — Hiçbir biçimlendirme eylemi metin silmesin
+
+- [x] **Rapor:** bir paragraf seçip kod bloğu düğmesine basınca paragraf gidiyor, yerine boş bir
+  fence geliyordu. `_insertBlock` `replaceRange(start, end, …)` yapıyordu — ve `/table` ile
+  `/divider` de aynı yardımcıyı paylaşıyordu, yani gelecekteki her blok eylemi bunu miras alacaktı.
+- [x] `codeBlock` artık **sarıyor** ve zaten fence'liyse **açıyor** (bold gibi bir aç/kapa);
+  seçim yoksa eski boş fence. `table`/`divider` seçimin ARKASINA düşüyor.
+- [x] **Kapı (asıl kazanç):** `mdActions()`'ın HER eylemi için sınıf-geneli değişmez —
+  seçimli bir metne uygulandığında seçili alt dizge çıktıda hâlâ var olmalı, öncesi ve sonrası
+  da, ve imleç belgenin içinde kalmalı. Tek test, aynı kusuru gelecekte eklenecek her eylemde
+  imkânsız kılıyor.
+
+### OPH-280 — Kaynak modu: biçim görüntüsü Okuma modunun işi
+
+- [x] **Rapor:** yazı modunda seçimi kalınlaştırınca `**…**` ekleniyor VE metin editörde de
+  kalınlaşıyor — "orası normal editör kısmı, görünüm modu değil ki."
+- [x] `bool liveSyntax` → `enum MdSyntaxStyling { plain, markersOnly, live }`. Eski bayrak
+  **depoda hiçbir yerden çağrılmıyordu** — kolu olmayan, hep açık bir anahtar.
+- [x] **`markersOnly` yeni varsayılan ve sözleşmesi kesin:** yalnız `color` döndürebilir —
+  `fontWeight`, `fontSize`, `fontStyle`, `backgroundColor`, `decoration` yok. `**`, `#`, `>`
+  görünür kalır, sardıkları metin düz kalır. Test her token türü üzerinde bunu doğruluyor, yani
+  "editör önizleme olmaktan çıktı" tek vaka hâlinde geri gelemez.
+- [x] Ayarlar ▸ Genel'de üç satırlık seçici; her satır AYNI markdown örneğini o kipte, GERÇEK
+  controller ile boyuyor — editörle çelişebilen bir önizleme, önizleme olmamasından kötüdür.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
