@@ -89,16 +89,73 @@ MdEdit _prefixLines(String text, int start, int end, String prefix) {
   );
 }
 
+/// Drops [block] on a line of its own, **without touching the selection**.
+///
+/// It used to `replaceRange(start, end, …)`, which silently DELETED whatever
+/// was selected: select a paragraph, press the code-block button, and the
+/// paragraph was gone — replaced by an empty fence (round 19 #3). Every other
+/// action wraps or prefixes, so this one read as data loss rather than as a
+/// different kind of insert.
+///
+/// The rule this file now holds: **a formatting action may add, wrap or
+/// reorder; it may never destroy the document.** `mdActionsPreserveText` in
+/// `note_writing_test.dart` proves it for every entry in [mdActions], so a
+/// future action cannot reintroduce the bug.
+///
+/// A block needs its own line, so the insert lands after the selection's LAST
+/// line rather than at the caret — a table in the middle of a sentence is not
+/// something any renderer reads as a table.
 MdEdit _insertBlock(String text, int start, int end, String block) {
-  // A block needs its own line; pasting a table into the middle of a sentence
-  // produces something no renderer will read as a table.
-  final atLineStart = start == 0 || text[start - 1] == '\n';
+  final lineEndRaw = text.indexOf('\n', end);
+  final at = lineEndRaw < 0 ? text.length : lineEndRaw;
+  final atLineStart = at == 0 || text[at - 1] == '\n';
   final inserted = atLineStart ? block : '\n$block';
+  return MdEdit(text.replaceRange(at, at, inserted), at + inserted.length);
+}
+
+/// The fenced-code toggle: wrap the selection, or unwrap it when it is already
+/// a fence.
+///
+/// A toggle rather than a plain insert because that is what the button LOOKS
+/// like sitting next to bold and italic — and because "select, press, press
+/// again" has to return the document to where it started.
+MdEdit _fence(String text, int start, int end) {
+  final selected = text.substring(start, end);
+  if (selected.isEmpty) {
+    // Nothing selected: the old empty fence, caret on the body line.
+    return _insertBlock(text, start, end, '```\n\n```\n');
+  }
+  final unwrapped = _unfence(selected);
+  if (unwrapped != null) {
+    return MdEdit(
+      text.replaceRange(start, end, unwrapped),
+      start + unwrapped.length,
+    );
+  }
+  // Trailing newline stripped before wrapping, so the closing fence does not
+  // end up with a blank line above it when the writer selected a whole
+  // paragraph including its line break.
+  final body = selected.endsWith('\n')
+      ? selected.substring(0, selected.length - 1)
+      : selected;
+  final inserted = '```\n$body\n```';
   return MdEdit(
     text.replaceRange(start, end, inserted),
     start + inserted.length,
   );
 }
+
+/// The body of [selected] when it is exactly one fenced block, else null.
+String? _unfence(String selected) {
+  final lines = selected.trimRight().split('\n');
+  if (lines.length < 2) return null;
+  if (!_fenceLine.hasMatch(lines.first) || !_fenceLine.hasMatch(lines.last)) {
+    return null;
+  }
+  return lines.sublist(1, lines.length - 1).join('\n');
+}
+
+final _fenceLine = RegExp(r'^\s{0,3}(```|~~~)\s*[A-Za-z0-9_+-]*\s*$');
 
 /// The table a `/table` insert drops in.
 ///
@@ -215,7 +272,9 @@ List<MdAction> mdActions({String tableHeader = 'Heading'}) => [
     id: 'codeBlock',
     icon: Icons.data_object,
     slash: '/codeblock',
-    apply: (t, s, e) => _insertBlock(t, s, e, '```\n\n```\n'),
+    // WRAPS the selection (and unwraps an existing fence) instead of replacing
+    // it — see [_fence]. Every other inline action already behaved this way.
+    apply: _fence,
   ),
   MdAction(
     id: 'table',

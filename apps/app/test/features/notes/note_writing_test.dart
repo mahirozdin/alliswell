@@ -46,6 +46,61 @@ void main() {
       expect(slashes.toSet().length, slashes.length, reason: 'no duplicates');
     });
 
+    // Round 19 #3: the code-block button REPLACED the selection with an empty
+    // fence. One report, but a whole class of bug — `_insertBlock` was shared
+    // by /table and /divider too, and any future block action would have
+    // inherited it. So the guard is class-wide rather than a case for the one
+    // button that was reported.
+    test('no action destroys the selected text', () {
+      const before = 'önce\n';
+      const selected = 'seçili satır';
+      const after = '\nsonra';
+      const text = '$before$selected$after';
+      const start = before.length;
+      const end = start + selected.length;
+
+      for (final action in mdActions()) {
+        final edit = action.apply(text, start, end);
+        expect(
+          edit.text,
+          contains(selected),
+          reason: '${action.id} lost the selection',
+        );
+        expect(edit.text, contains('önce'), reason: '${action.id} lost before');
+        expect(edit.text, contains('sonra'), reason: '${action.id} lost after');
+        expect(
+          edit.selection,
+          inInclusiveRange(0, edit.text.length),
+          reason: '${action.id} put the caret outside the document',
+        );
+      }
+    });
+
+    test('the code button wraps the selection, and unwraps it again', () {
+      final code = mdActions().firstWhere((a) => a.id == 'codeBlock');
+      const text = 'bir satır';
+      final wrapped = code.apply(text, 0, text.length);
+      expect(wrapped.text, '```\nbir satır\n```');
+
+      // Pressing it a second time on the same selection returns the original.
+      final unwrapped = code.apply(wrapped.text, 0, wrapped.text.length);
+      expect(unwrapped.text, text);
+    });
+
+    test('an empty selection still gets the empty fence', () {
+      final code = mdActions().firstWhere((a) => a.id == 'codeBlock');
+      expect(code.apply('', 0, 0).text, '```\n\n```\n');
+    });
+
+    test('/table and /divider land after the selection, not on top of it', () {
+      const text = 'gövde metni';
+      final table = mdActions().firstWhere((a) => a.id == 'table');
+      expect(table.apply(text, 0, text.length).text, startsWith('$text\n|'));
+
+      final divider = mdActions().firstWhere((a) => a.id == 'divider');
+      expect(divider.apply(text, 0, text.length).text, '$text\n---\n');
+    });
+
     test('a slash token is only recognised at a word boundary', () {
       // Otherwise a URL opens a command menu mid-typing.
       expect(slashTokenAt('/ta', 3), '/ta');
