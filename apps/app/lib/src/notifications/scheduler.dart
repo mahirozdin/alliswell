@@ -219,6 +219,11 @@ class NotificationScheduler {
       await _reconcile(pending);
 
       for (final id in pending.difference(desiredById.keys.toSet())) {
+        // The rehearsal is not part of the plan, so the set-diff would cancel
+        // it — within the 15 seconds it is waiting to prove something, if any
+        // replica change or foreground lands in between. A diagnostic the
+        // system under test can quietly delete diagnoses nothing.
+        if (id == kAlarmTestNotificationId) continue;
         // K2: one failure used to abort the whole pass, so every alarm after
         // the first bad one was silently left unscheduled. Each call now stands
         // or falls on its own.

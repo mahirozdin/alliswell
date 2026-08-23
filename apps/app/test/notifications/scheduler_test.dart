@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/notifications/alarm_log.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
+import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/reminder_profile.dart';
 import 'package:alliswell/src/notifications/scheduler.dart';
@@ -509,5 +510,24 @@ void main() {
     resume!();
     await pump();
     expect(gateway.scheduled, hasLength(1));
+  });
+
+  // OPH-277: the rehearsal is not in the plan, so the set-diff would cancel it
+  // — during the 15 seconds it is waiting to prove something.
+  test('a test alarm survives the next planning pass', () async {
+    await scheduler.start();
+    await gateway.scheduleTestAlarm(
+      title: 'test',
+      body: 'test',
+      after: kAlarmTestDelay,
+    );
+    expect(gateway.scheduled.containsKey(kAlarmTestNotificationId), isTrue);
+
+    // Anything at all makes the scheduler re-plan.
+    alarms.add([alarm('R1')]);
+    await pump();
+
+    expect(gateway.cancelled, isNot(contains(kAlarmTestNotificationId)));
+    expect(gateway.scheduled.containsKey(kAlarmTestNotificationId), isTrue);
   });
 }

@@ -187,11 +187,12 @@ const Duration kAlarmTestDelay = Duration(seconds: 15);
 
 /// The id every test alarm reuses (OPH-277).
 ///
-/// Fixed rather than hashed, and deliberately outside the planner's range: a
-/// second rehearsal replaces the first instead of stacking, and the scheduler's
-/// set-diff — which cancels every pending id it did not plan — will clear it on
-/// the next pass, so a test alarm can never outlive the session that asked for
-/// it.
+/// Fixed rather than hashed, and negative so it can never collide with a
+/// planned notification: a second rehearsal replaces the first instead of
+/// stacking. The scheduler's set-diff SKIPS this id — it cancels every pending
+/// id it did not plan, and the rehearsal is by definition not in the plan, so
+/// without the exemption the system under test could quietly delete the
+/// diagnostic during the 15 seconds it is waiting to prove something.
 const int kAlarmTestNotificationId = -424242;
 
 /// The bundled 28 s alarm bed's name in the log (the file itself is per
