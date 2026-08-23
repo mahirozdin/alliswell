@@ -522,7 +522,11 @@ export async function updateChecklistItem(app, { task, item, body, userId = null
       // querying inside somebody else's transaction to learn something the
       // caller already had.
       before: { isDone: Boolean(item.is_done), taskId: task.id, title: item.title },
-      after: { isDone: Boolean(patch.is_done ?? item.is_done), taskId: task.id, title: patch.title ?? item.title },
+      after: {
+        isDone: Boolean(patch.is_done ?? item.is_done),
+        taskId: task.id,
+        title: patch.title ?? item.title,
+      },
     });
   });
 }

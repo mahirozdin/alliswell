@@ -5,9 +5,13 @@
   (ADR-0025): AllisWell ships every line of Firebase wiring and none of the
   identifiers that point at the maintainer's project.
 
-  Get yours: Firebase console > Project settings > Your apps > iOS, or
-    firebase apps:sdkconfig IOS <appId> --project <yourProject> \
-      --out apps/app/ios/Runner/GoogleService-Info.plist
+  Get yours: Firebase console > Project settings > Your apps > iOS, or run
+  `firebase apps:sdkconfig IOS` with your app id, project and an output path of
+  apps/app/ios/Runner/GoogleService-Info.plist. The copy-pastable command lives
+  in docs/FIREBASE.md, not here: an XML comment may not contain a double hyphen,
+  and this file spent a while being invalid XML because a CLI flag does. That is
+  not cosmetic — the Podfile PARSES this file when the real one is absent, so a
+  fresh clone could not run `pod install` at all.
 
   WITHOUT this file the app still builds and runs — initialisation is guarded and
   Firebase reports itself unconfigured. See docs/FIREBASE.md.
