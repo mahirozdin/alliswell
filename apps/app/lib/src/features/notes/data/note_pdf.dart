@@ -272,6 +272,43 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
         bottom: 10,
       );
 
+    // Round 19 #1 (ADR-0034). The bytes are made by the exporter's off-screen
+    // rasterizer, not fetched — but they arrive through the same `images` map,
+    // so this file still knows nothing about widgets or platform channels.
+    case NoteBlockKind.figure:
+      final drawn = doc.images[block.source];
+      if (drawn != null) {
+        return padded(
+          pw.Center(
+            child: pw.ConstrainedBox(
+              constraints: const pw.BoxConstraints(maxHeight: 420),
+              child: pw.Image(pw.MemoryImage(drawn), fit: pw.BoxFit.contain),
+            ),
+          ),
+          top: 6,
+          bottom: 10,
+        );
+      }
+      // No picture: print the SOURCE, not an apology. A reader holding a
+      // diagram's mermaid has strictly more than one holding "unsupported".
+      return padded(
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(8),
+          decoration: const pw.BoxDecoration(color: _codeBg),
+          child: pw.Text(
+            block.text,
+            style: pw.TextStyle(
+              font: fonts.regular,
+              fontFallback: fonts.fallback,
+              fontSize: 9.5,
+              color: _muted,
+              lineSpacing: 2,
+            ),
+          ),
+        ),
+      );
+
     case NoteBlockKind.attachment:
       return padded(_missingMedia(block, doc, fonts));
 

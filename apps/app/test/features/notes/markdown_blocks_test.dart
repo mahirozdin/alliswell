@@ -113,16 +113,93 @@ void main() {
 
     test('a block the page cannot draw NAMES itself', () {
       // DESIGN §10 F3, applied to paper. Silence is indistinguishable from a
-      // bug; a labelled gap is not.
+      // bug; a labelled gap is not. Raw HTML is the last block in this
+      // category — round 19 moved math and mermaid out of it, into figures.
       final out = markdownToBlocks(
-        '\$\$x^2\$\$',
-        placeholderFor: (kind) => 'unsupported:$kind',
+        '<div>merhaba</div>',
+        placeholderFor: (kind) => 'unsupported:\$kind',
       );
       expect(out.map((b) => b.text).join(), contains('unsupported:'));
     });
 
     test('and stays silent when the caller has nothing to say', () {
-      expect(markdownToBlocks('\$\$x^2\$\$'), isEmpty);
+      expect(markdownToBlocks('<div>merhaba</div>'), isEmpty);
+    });
+  });
+
+  // Round 19 #1 — "the MD file has to export the way it LOOKS: graphics and
+  // images, all of it."
+  group('figures the page has to be given a picture of', () {
+    test('an image INSIDE a sentence is not swallowed', () {
+      // The reported bug, exactly: `_spans` walked unknown elements by
+      // recursing into their children, and an `img` has none — so an image
+      // written mid-paragraph contributed nothing at all to the PDF.
+      final out = blocks('burada olması lazım![](alliswell://file/01ABC) son');
+      expect(out.map((b) => b.kind), [
+        NoteBlockKind.paragraph,
+        NoteBlockKind.image,
+        NoteBlockKind.paragraph,
+      ]);
+      expect(out.first.text.trim(), 'burada olması lazım');
+      expect(out[1].source, 'alliswell://file/01ABC');
+      expect(out.last.text.trim(), 'son');
+    });
+
+    test('an image alone on its line is still one figure, as before', () {
+      final out = blocks('![alt](x)');
+      expect(out.single.kind, NoteBlockKind.image);
+      expect(out.single.source, 'x');
+    });
+
+    test('two images in one paragraph are two figures', () {
+      final out = blocks('![a](1) arada ![b](2)');
+      expect(out.map((b) => b.kind), [
+        NoteBlockKind.image,
+        NoteBlockKind.paragraph,
+        NoteBlockKind.image,
+      ]);
+    });
+
+    test('a mermaid fence is a diagram, not source code', () {
+      final out = blocks('```mermaid\ngraph TD\nA-->B\n```');
+      expect(out.single.kind, NoteBlockKind.figure);
+      expect(out.single.figureKind, NoteFigureKind.mermaid);
+      expect(out.single.source, noteFigureKey(NoteFigureKind.mermaid, 0));
+      // The fallback the page prints when no picture could be made.
+      expect(out.single.text, contains('graph TD'));
+    });
+
+    test('any other fence is still code', () {
+      final out = blocks('```dart\nvoid main() {}\n```');
+      expect(out.single.kind, NoteBlockKind.code);
+      expect(out.single.text, contains('void main'));
+    });
+
+    test('display math is a figure carrying its LaTeX', () {
+      final out = blocks('\$\$x^2\$\$');
+      expect(out.single.kind, NoteBlockKind.figure);
+      expect(out.single.figureKind, NoteFigureKind.math);
+      expect(out.single.text, 'x^2');
+    });
+
+    test('INLINE math stays in its sentence', () {
+      // Splitting a line of prose around `\$x\$` would read worse than the
+      // LaTeX does; it is marked as code so it is visibly a formula.
+      final out = blocks('alan \$x^2\$ kadardır');
+      expect(out.single.kind, NoteBlockKind.paragraph);
+      expect(out.single.text, 'alan x^2 kadardır');
+      expect(out.single.spans.any((s) => s.code && s.text == 'x^2'), isTrue);
+    });
+
+    test('figure keys are positional, so two identical diagrams differ', () {
+      final out = blocks(
+        '```mermaid\ngraph TD\nA-->B\n```\n\n'
+        '```mermaid\ngraph TD\nA-->B\n```',
+      );
+      expect(out.map((b) => b.source), [
+        noteFigureKey(NoteFigureKind.mermaid, 0),
+        noteFigureKey(NoteFigureKind.mermaid, 1),
+      ]);
     });
   });
 

@@ -28,6 +28,7 @@ import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
 import '../data/markdown_blocks.dart';
 import '../data/note_blocks.dart';
 import '../data/note_pdf.dart';
+import 'note_figure_raster.dart';
 
 /// How long we wait for ONE embedded image before exporting without it. An
 /// export that hangs on a dead attachment is worse than one that prints an
@@ -163,15 +164,25 @@ Future<void> exportNoteAsPdf(
 
   Uint8List bytes;
   try {
-    // OPH-274: the last delta dependency outside the tests. Blocks the page
-    // cannot draw (math, diagrams, raw HTML) name themselves instead of
-    // vanishing — DESIGN §10 F3, applied to paper.
+    // OPH-274: the last delta dependency outside the tests. Round 19 narrowed
+    // `placeholderFor` to raw HTML alone — diagrams and formulas are now drawn
+    // (ADR-0034) rather than named. What is still named is named, because
+    // silence is indistinguishable from a bug (DESIGN §10 F3).
     final blocks = markdownToBlocks(
       markdown,
       placeholderFor: (_) => 'note.exportUnsupportedBlock'.tr(),
     );
     final fonts = await ref.read(notePdfFontsProvider.future);
-    final images = await _resolveImages(ref, blocks);
+    // Two sources of pictures, one map. Fetched media and drawn figures are the
+    // same thing to the layout engine — bytes under a key — which is what keeps
+    // `note_pdf.dart` free of both the network and the widget tree.
+    final images = {
+      ...await _resolveImages(ref, blocks),
+      if (context.mounted)
+        ...await ref
+            .read(noteFigureRasterizerProvider)
+            .rasterize(context, blocks),
+    };
     bytes = await buildNotePdf(
       NotePdfDocument(
         title: title,

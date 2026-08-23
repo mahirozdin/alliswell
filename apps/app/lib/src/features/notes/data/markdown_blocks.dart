@@ -36,6 +36,10 @@ class _BlockWalker {
   final String Function(String kind)? _placeholderFor;
   final List<NoteBlock> _out = [];
 
+  /// How many figures of each kind have been emitted — the figures' raster
+  /// keys are positional (see [noteFigureKey]).
+  final Map<NoteFigureKind, int> _figures = {};
+
   List<NoteBlock> run(MdDocument document) {
     for (final block in document.blocks) {
       _node(block.node);
@@ -72,17 +76,7 @@ class _BlockWalker {
         // smallest rather than falling back to body text and losing the rank.
         _out.add(NoteBlock(NoteBlockKind.heading3, spans: _spans(node)));
       case 'p':
-        // A paragraph whose only child is an image is a FIGURE, not a line of
-        // text with a picture in it — `![alt](src)` on its own line is how
-        // every markdown author writes one. Block math arrives wrapped the
-        // same way (`p > aw-math-block`), and unwrapping it is what stops a
-        // formula from being flattened into its own source text.
-        final only = _lone(node);
-        if (only != null && (only.tag == 'img' || _undrawable(only.tag))) {
-          _node(only, listDepth: listDepth);
-        } else {
-          _out.add(NoteBlock(NoteBlockKind.paragraph, spans: _spans(node)));
-        }
+        _paragraph(node, listDepth: listDepth);
       case 'blockquote':
         for (final child in node.children ?? const <md.Node>[]) {
           if (child is md.Element && child.tag == 'p') {
@@ -92,7 +86,7 @@ class _BlockWalker {
           }
         }
       case 'pre':
-        _out.add(NoteBlock(NoteBlockKind.code, spans: [NoteSpan(_raw(node))]));
+        _pre(node);
       case 'hr':
         _out.add(const NoteBlock(NoteBlockKind.divider));
       case 'ul':
@@ -103,6 +97,11 @@ class _BlockWalker {
         _table(node);
       case 'img':
         _image(node);
+      // Round 19 #1: display math USED to print "unsupported block". It is
+      // drawn on screen in pure Flutter, so it can be drawn for the page too —
+      // the exporter rasterizes the same widget (ADR-0034).
+      case kMdMathBlock:
+        _figure(NoteFigureKind.math, node.textContent);
       default:
         // Math, diagrams and raw HTML have no page representation. Saying so
         // beats a silent gap the reader cannot distinguish from a bug.
@@ -114,6 +113,93 @@ class _BlockWalker {
         }
     }
   }
+
+  /// A paragraph, split around anything that owns its own line.
+  ///
+  /// Round 19 #1: an image written INSIDE a sentence
+  /// (`…olması lazım![](alliswell://file/…)`) used to vanish from the PDF
+  /// entirely. `_spans` walks unknown elements by recursing into their
+  /// children, and an `img` has none — so it contributed nothing and no test
+  /// noticed, because the only image case anyone wrote was an image alone on
+  /// its line. The screen renders it as an inline `WidgetSpan`; on paper it
+  /// becomes a full-width figure between the two halves of the paragraph,
+  /// which loses no content and reads better at page width.
+  void _paragraph(md.Element node, {required int listDepth}) {
+    final children = node.children ?? const <md.Node>[];
+    final run = <md.Node>[];
+    var split = false;
+
+    void flush() {
+      if (run.isEmpty) return;
+      final spans = _spansOf(run);
+      run.clear();
+      // A paragraph that is nothing but the whitespace around a figure is not
+      // a paragraph; emitting it would put a blank line beside every image.
+      if (spans.every((s) => s.text.trim().isEmpty)) return;
+      _out.add(NoteBlock(NoteBlockKind.paragraph, spans: spans));
+    }
+
+    for (final child in children) {
+      if (child is md.Element && _ownsItsLine(child.tag)) {
+        flush();
+        _node(child, listDepth: listDepth);
+        split = true;
+        continue;
+      }
+      run.add(child);
+    }
+
+    if (!split) {
+      // The overwhelmingly common shape, byte-identical to before: an EMPTY
+      // paragraph still emits, because `note_pdf` turns it into the blank
+      // line's worth of air the writer asked for.
+      _out.add(NoteBlock(NoteBlockKind.paragraph, spans: _spansOf(children)));
+      return;
+    }
+    flush();
+  }
+
+  /// A fenced block. `mermaid` is a diagram (ADR-0028 §4), so it becomes a
+  /// figure the exporter can rasterize; anything else is code.
+  void _pre(md.Element node) {
+    md.Element? code;
+    for (final child in node.children ?? const <md.Node>[]) {
+      if (child is md.Element) {
+        code = child;
+        break;
+      }
+    }
+    final language = (code?.attributes['class'] ?? '')
+        .replaceFirst('language-', '')
+        .toLowerCase();
+    final body = code == null ? _raw(node) : _raw(code);
+    if (language == 'mermaid') {
+      _figure(NoteFigureKind.mermaid, body);
+      return;
+    }
+    _out.add(NoteBlock(NoteBlockKind.code, spans: [NoteSpan(body)]));
+  }
+
+  /// A block that has to be DRAWN rather than typeset. [fallbackSource] is what
+  /// prints when the rasterizer could not produce a picture — the diagram's own
+  /// mermaid, or the LaTeX. Strictly more use than "unsupported block", which
+  /// is what both of these printed before round 19.
+  void _figure(NoteFigureKind kind, String fallbackSource) {
+    final index = _figures[kind] ?? 0;
+    _figures[kind] = index + 1;
+    _out.add(
+      NoteBlock(
+        NoteBlockKind.figure,
+        figureKind: kind,
+        source: noteFigureKey(kind, index),
+        spans: [NoteSpan(fallbackSource)],
+      ),
+    );
+  }
+
+  /// Tags that interrupt a paragraph instead of flowing inside it.
+  static bool _ownsItsLine(String tag) =>
+      tag == 'img' || tag == kMdMathBlock || tag == kMdRawHtml;
 
   void _list(md.Element list, {required bool ordered, required int depth}) {
     var ordinal = 0;
@@ -174,26 +260,6 @@ class _BlockWalker {
     );
   }
 
-  /// Tags with no representation on a page.
-  ///
-  /// Math is drawn in pure Flutter on screen and there is no such widget for
-  /// the `pdf` package; raw HTML is shown as inert source on screen (D10) and
-  /// dumping markup into a PDF would be noise. A fenced `mermaid` block is
-  /// deliberately NOT here: it prints as code, and a reader who gets the
-  /// diagram's source has strictly more than one who gets "unsupported".
-  static bool _undrawable(String tag) =>
-      tag.startsWith('aw-math') || tag == 'aw-raw-html';
-
-  /// The single element child of [node], when that is all it has.
-  md.Element? _lone(md.Element node) {
-    final children = (node.children ?? const <md.Node>[])
-        .where((c) => !(c is md.Text && c.text.trim().isEmpty))
-        .toList();
-    if (children.length != 1) return null;
-    final only = children.first;
-    return only is md.Element ? only : null;
-  }
-
   /// GFM task-list state, or null when this item is not a task.
   bool? _checkbox(md.Element item) {
     for (final child in item.children ?? const <md.Node>[]) {
@@ -221,9 +287,29 @@ class _BlockWalker {
     bool strike = false,
     bool code = false,
     String? link,
+  }) => _spansOf(
+    element.children ?? const <md.Node>[],
+    skipNested: skipNested,
+    bold: bold,
+    italic: italic,
+    strike: strike,
+    code: code,
+    link: link,
+  );
+
+  /// The same, over a HALF of a node's children — what paragraph splitting
+  /// needs, and the reason this is a separate entry point.
+  List<NoteSpan> _spansOf(
+    List<md.Node> children, {
+    bool skipNested = false,
+    bool bold = false,
+    bool italic = false,
+    bool strike = false,
+    bool code = false,
+    String? link,
   }) {
     final spans = <NoteSpan>[];
-    for (final child in element.children ?? const <md.Node>[]) {
+    for (final child in children) {
       if (child is md.Text) {
         if (child.text.isEmpty) continue;
         spans.add(
@@ -261,6 +347,12 @@ class _BlockWalker {
             _spans(child, bold: bold, italic: italic, strike: true, link: link),
           );
         case 'code':
+          spans.add(NoteSpan(_raw(child), code: true, link: link));
+        // `$x^2$` inside a sentence stays in the sentence — splitting a line of
+        // prose around a two-character formula would read worse than the LaTeX
+        // does. Marked as code so it is visibly a formula rather than prose
+        // that happens to contain a caret.
+        case kMdMathInline:
           spans.add(NoteSpan(_raw(child), code: true, link: link));
         case 'a':
           spans.addAll(

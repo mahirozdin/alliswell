@@ -38,7 +38,28 @@ enum NoteBlockKind {
   /// A GFM table, rows-first. Also new — `flutter_quill` 11.5.1 has no table
   /// node at all, which is the measurement that decided ADR-0033.
   table,
+
+  /// A block the page cannot DRAW from text — a mermaid diagram, a display
+  /// formula — carried as "a picture we will try to make, plus the source to
+  /// print if we cannot" (round 19 #1, ADR-0034).
+  ///
+  /// [NoteBlock.source] is the raster KEY (`aw-figure:<kind>:<n>`), not a URL:
+  /// nothing fetches it, the exporter's rasterizer fills it in. [NoteBlock.text]
+  /// is the honest fallback — the diagram's own mermaid source, or the LaTeX —
+  /// which is strictly more use to a reader than "unsupported block".
+  figure,
 }
+
+/// Which off-screen widget a [NoteBlockKind.figure] should be drawn with.
+enum NoteFigureKind { mermaid, math }
+
+/// The raster key for the [index]th figure of [kind] in a document.
+///
+/// Deterministic and position-based rather than content-based: two identical
+/// diagrams in one note are two figures, and a key collision would silently
+/// print the first one twice.
+String noteFigureKey(NoteFigureKind kind, int index) =>
+    'aw-figure:${kind.name}:$index';
 
 /// A run of text sharing one set of inline attributes.
 class NoteSpan {
@@ -86,6 +107,7 @@ class NoteBlock {
     this.ordinal,
     this.rows,
     this.indent = 0,
+    this.figureKind,
   });
 
   final NoteBlockKind kind;
@@ -105,6 +127,9 @@ class NoteBlock {
   /// were flat, so a nested list was simply not expressible; markdown's are
   /// not, and the exporter can indent.
   final int indent;
+
+  /// Which renderer draws a [NoteBlockKind.figure]; null for every other kind.
+  final NoteFigureKind? figureKind;
 
   /// The block's text with formatting dropped — for alt text and tests.
   String get text => spans.map((s) => s.text).join();

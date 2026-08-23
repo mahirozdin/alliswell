@@ -11,7 +11,9 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/notes/data/note_blocks.dart';
 import 'package:alliswell/src/features/notes/data/note_pdf.dart';
+import 'package:alliswell/src/features/notes/ui/note_figure_raster.dart';
 import 'package:alliswell/src/features/notes/ui/note_export.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -49,6 +51,103 @@ class _RecordingSink implements NotePdfSink {
   }
 }
 
+/// Round 19 #1: stands in for the off-screen drawing pass.
+///
+/// The real one needs two real frames and a live overlay; what this test is
+/// about is the WIRING — that the figures the walker found reach the layout
+/// engine as bytes under their raster keys.
+class _FakeRasterizer implements NoteFigureRasterizer {
+  final asked = <String>[];
+
+  @override
+  Future<Map<String, Uint8List>> rasterize(
+    BuildContext context,
+    List<NoteBlock> blocks,
+  ) async {
+    final out = <String, Uint8List>{};
+    for (final block in blocks) {
+      if (block.kind != NoteBlockKind.figure || block.source == null) continue;
+      asked.add(block.source!);
+      out[block.source!] = _onePixelPng;
+    }
+    return out;
+  }
+}
+
+/// A 1x1 opaque PNG — enough for `pw.MemoryImage` to decode.
+final Uint8List _onePixelPng = Uint8List.fromList(const [
+  137,
+  80,
+  78,
+  71,
+  13,
+  10,
+  26,
+  10,
+  0,
+  0,
+  0,
+  13,
+  73,
+  72,
+  68,
+  82,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  1,
+  8,
+  6,
+  0,
+  0,
+  0,
+  31,
+  21,
+  196,
+  137,
+  0,
+  0,
+  0,
+  13,
+  73,
+  68,
+  65,
+  84,
+  120,
+  218,
+  99,
+  252,
+  207,
+  192,
+  80,
+  15,
+  0,
+  4,
+  133,
+  1,
+  128,
+  132,
+  169,
+  140,
+  33,
+  0,
+  0,
+  0,
+  0,
+  73,
+  69,
+  78,
+  68,
+  174,
+  66,
+  96,
+  130,
+]);
+
 /// The real faces, read the way the app reads them.
 ///
 /// Through `rootBundle`, NOT `dart:io`: inside `testWidgets` the clock is fake,
@@ -69,6 +168,7 @@ Future<Widget> _app(
   FakeApi api,
   _RecordingSink sink, {
   Duration fontDelay = Duration.zero,
+  NoteFigureRasterizer? rasterizer,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
@@ -82,6 +182,8 @@ Future<Widget> _app(
         fakeDio(FakeHttpClientAdapter(api.handle)),
       ),
       notePdfSinkProvider.overrideWithValue(sink),
+      if (rasterizer != null)
+        noteFigureRasterizerProvider.overrideWithValue(rasterizer),
       // In a test the whole export resolves in microtasks, so the progress
       // dialog would be pushed and popped without ever being built. Slowing
       // ONE await puts the timing under the test's control instead of leaving
@@ -211,5 +313,30 @@ void main() {
     expect(pdfFileName('   '), 'note.pdf');
     expect(pdfFileName('satır\nkırma'), 'satır kırma.pdf');
     expect(pdfFileName('x' * 200).length, 84); // 80 + '.pdf'
+  });
+
+  // Round 19 #1: "the MD file has to export the way it LOOKS."
+  testWidgets('a diagram reaches the page as a picture, not as source', (
+    tester,
+  ) async {
+    final api = FakeApi()
+      ..seedNote(
+        title: 'Akış',
+        contentMarkdown:
+            'öncesi\n\n```mermaid\ngraph TD\nA-->B\n```\n\nsonrası',
+      );
+    final sink = _RecordingSink();
+    final rasterizer = _FakeRasterizer();
+
+    await tester.pumpWidget(await _app(api, sink, rasterizer: rasterizer));
+    await _openTheNote(tester, 'Akış');
+    await _chooseExport(tester);
+
+    // The walker found the diagram and the exporter asked for its picture.
+    expect(rasterizer.asked, ['aw-figure:mermaid:0']);
+
+    await tester.tap(find.byKey(const Key('note-export-share')));
+    await tester.pumpAndSettle();
+    expect(String.fromCharCodes(sink.lastBytes!.take(5)), '%PDF-');
   });
 }

@@ -10,6 +10,81 @@ import 'package:alliswell/src/features/notes/data/note_pdf.dart';
 
 /// Round 16 #3. `buildNotePdf` touches no platform channel, so the real
 /// document — real fonts, real layout — is produced right here.
+/// A 1x1 opaque PNG — the smallest thing `pw.MemoryImage` will decode. The
+/// figure tests care that the bytes reach the page, not what they look like.
+final Uint8List _onePixelPng = Uint8List.fromList(const [
+  137,
+  80,
+  78,
+  71,
+  13,
+  10,
+  26,
+  10,
+  0,
+  0,
+  0,
+  13,
+  73,
+  72,
+  68,
+  82,
+  0,
+  0,
+  0,
+  1,
+  0,
+  0,
+  0,
+  1,
+  8,
+  6,
+  0,
+  0,
+  0,
+  31,
+  21,
+  196,
+  137,
+  0,
+  0,
+  0,
+  13,
+  73,
+  68,
+  65,
+  84,
+  120,
+  218,
+  99,
+  252,
+  207,
+  192,
+  80,
+  15,
+  0,
+  4,
+  133,
+  1,
+  128,
+  132,
+  169,
+  140,
+  33,
+  0,
+  0,
+  0,
+  0,
+  73,
+  69,
+  78,
+  68,
+  174,
+  66,
+  96,
+  130,
+]);
+
 Future<NotePdfFonts> _fonts() async {
   Future<pw.Font> load(String name) async => pw.Font.ttf(
     ByteData.sublistView(await File('assets/fonts/$name.ttf').readAsBytes()),
@@ -232,5 +307,51 @@ void main() {
       await _fonts(),
     );
     expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+  });
+
+  // Round 19 #1 (ADR-0034): a figure is "a picture if we could make one, the
+  // source if we could not". Both halves are pinned, because the fallback is
+  // the half a reader only ever sees when something has already gone wrong.
+  group('figures', () {
+    test('a figure with bytes draws the picture', () async {
+      final bytes = await buildNotePdf(
+        NotePdfDocument(
+          title: 'Diyagram',
+          blocks: [
+            NoteBlock(
+              NoteBlockKind.figure,
+              figureKind: NoteFigureKind.mermaid,
+              source: noteFigureKey(NoteFigureKind.mermaid, 0),
+              spans: const [NoteSpan('graph TD\nA-->B')],
+            ),
+          ],
+          images: {noteFigureKey(NoteFigureKind.mermaid, 0): _onePixelPng},
+        ),
+        await _fonts(),
+      );
+      expect(bytes.length, greaterThan(1000));
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+    });
+
+    test('a figure with no bytes prints its SOURCE, not an apology', () async {
+      // "unsupported block" tells a reader nothing they can act on; the
+      // diagram's own mermaid tells them everything.
+      const source = 'graph TD\n  A[Başla] --> B[Bitir]';
+      final doc = NotePdfDocument(
+        title: 'Diyagram',
+        blocks: const [
+          NoteBlock(
+            NoteBlockKind.figure,
+            figureKind: NoteFigureKind.mermaid,
+            source: 'aw-figure:mermaid:0',
+            spans: [NoteSpan(source)],
+          ),
+        ],
+        // Deliberately empty: this is the rasterizer-failed path.
+      );
+      final bytes = await buildNotePdf(doc, await _fonts());
+      expect(bytes.length, greaterThan(1000));
+      expect(doc.blocks.single.text, source);
+    });
   });
 }
