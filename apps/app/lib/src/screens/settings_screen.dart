@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:markdown_forge/markdown_forge.dart';
 import '../core/app_version.dart';
 import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
@@ -10,6 +11,7 @@ import '../features/ai/ui/ai_settings_card.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
+import '../features/notes/providers.dart' show noteSourceStylingChoiceProvider;
 import '../features/onboarding/tour.dart';
 import '../features/settings/account_deletion.dart';
 import '../features/settings/account_locale.dart';
@@ -19,6 +21,8 @@ import '../features/settings/server_url_sheet.dart';
 import '../features/ee/team_admin_providers.dart';
 import '../features/ee/units_providers.dart';
 import '../i18n/i18n.dart';
+import '../notifications/alarm_fix_sheet.dart';
+import '../notifications/alarm_log.dart';
 import '../notifications/gateway.dart';
 import '../notifications/providers.dart';
 import '../theme/tokens.dart';
@@ -342,6 +346,20 @@ class SettingsGeneralScreen extends ConsumerWidget {
                   await ref.read(defaultTaskTimeProvider.notifier).set(value);
                 },
               ),
+              // Round 19 #4: what the note SOURCE editor paints. A display
+              // preference like the two above it — the note itself is
+              // unaffected, only how the writing surface looks.
+              ListTile(
+                key: const Key('settings-note-source-styling'),
+                leading: const Icon(Icons.edit_note_outlined),
+                title: Text('settings.noteSourceStyling.title'.tr()),
+                subtitle: Text(
+                  'settings.noteSourceStyling.${ref.watch(noteSourceStylingChoiceProvider).name}'
+                      .tr(),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showNoteSourceStylingPicker(context),
+              ),
               // OPH-200 (DESIGN §23 Q5): the floating shortcut button is
               // optional, and turning it off does not remove the feature — the
               // Home app bar grows a ⚡ entry instead. A gesture is never the
@@ -652,6 +670,7 @@ class _AlarmStatusTile extends ConsumerStatefulWidget {
 
 class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
   late Future<AlarmSupport> _support;
+  bool _testing = false;
 
   @override
   void initState() {
@@ -689,31 +708,109 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
       future: _support,
       builder: (context, snapshot) {
         final support = snapshot.data;
+        // OPH-277: the cascade is `AlarmSupport.worstProblem` now — one ordered
+        // list, shared with the Home banner. This row used to carry its own
+        // copy of a two-branch `if` and would have needed five more.
+        final problem = support?.worstProblem;
         final subtitle = support == null
             ? 'settings.alarms.checking'.tr()
-            : !support.notificationsEnabled
-            ? 'settings.alarms.off'.tr()
-            : support.exactAlarmsEnabled == false
-            ? 'settings.alarms.exact'.tr()
+            : problem != null
+            ? 'alarm.problem.${problem.name}'.tr()
             : support.criticalAlertsEnabled
             ? 'settings.alarms.readyCritical'.tr()
             : 'settings.alarms.ready'.tr();
-        final warn =
-            support != null &&
-            (!support.notificationsEnabled ||
-                support.exactAlarmsEnabled == false);
-        return ListTile(
-          key: const Key('alarm-status'),
-          leading: Icon(
-            warn ? Icons.alarm_off_outlined : Icons.alarm_on_outlined,
-            color: warn ? Theme.of(context).colorScheme.error : null,
-          ),
-          title: Text('settings.alarms.title'.tr()),
-          subtitle: Text(subtitle),
-          onTap: _request,
+        return Column(
+          children: [
+            ListTile(
+              key: const Key('alarm-status'),
+              leading: Icon(
+                problem != null
+                    ? Icons.alarm_off_outlined
+                    : Icons.alarm_on_outlined,
+                color: problem != null
+                    ? Theme.of(context).colorScheme.error
+                    : null,
+              ),
+              title: Text('settings.alarms.title'.tr()),
+              subtitle: Text(subtitle),
+              // A healthy row is not a dead affordance: re-running the request
+              // is still how Android grants "Alarms & reminders", and a re-probe
+              // is a reasonable thing to want.
+              onTap: problem == null
+                  ? _request
+                  : () => showAlarmFixSheet(context, ref, problem),
+            ),
+            // OPH-277: the thing a report about a silent alarm never had — a way
+            // to make it happen on purpose, right now, with the log watching.
+            ListTile(
+              key: const Key('alarm-test'),
+              leading: const Icon(Icons.play_circle_outline),
+              title: Text('settings.alarms.test'.tr()),
+              subtitle: Text(
+                'settings.alarms.testSub'.tr(
+                  args: {'seconds': '${kAlarmTestDelay.inSeconds}'},
+                ),
+              ),
+              onTap: _testing ? null : _runTest,
+            ),
+          ],
         );
       },
     );
+  }
+
+  Future<void> _runTest() async {
+    setState(() => _testing = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final delivery = await ref
+          .read(notificationsGatewayProvider)
+          .scheduleTestAlarm(
+            title: 'settings.alarms.testTitle'.tr(),
+            body: 'settings.alarms.testBody'.tr(),
+            after: kAlarmTestDelay,
+            soundName:
+                (await ref
+                        .read(alarmSoundResolverProvider)
+                        .resolve(ref.read(alarmSoundChoiceProvider)))
+                    .name,
+          );
+      await ref
+          .read(alarmLogProvider)
+          .record(
+            event: AlarmLogEvent.test,
+            lane: AlarmLogLane.notification,
+            urgent: true,
+            sound: delivery.sound,
+            level: delivery.level,
+            fireAt: DateTime.now().toUtc().add(kAlarmTestDelay),
+            detail: 'user-requested rehearsal',
+          );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'settings.alarms.testArmed'.tr(
+              args: {'seconds': '${kAlarmTestDelay.inSeconds}'},
+            ),
+          ),
+        ),
+      );
+    } on Object catch (error) {
+      // The failure IS the diagnosis — saying "armed" here would be the lie
+      // this whole round is about.
+      await ref
+          .read(alarmLogProvider)
+          .record(
+            event: AlarmLogEvent.degraded,
+            lane: AlarmLogLane.notification,
+            detail: 'test alarm failed: $error',
+          );
+      messenger.showSnackBar(
+        SnackBar(content: Text('settings.alarms.testFailed'.tr())),
+      );
+    } finally {
+      if (mounted) setState(() => _testing = false);
+    }
   }
 }
 
@@ -778,6 +875,109 @@ class _DateFormatPickerSheet extends ConsumerWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Round 19 #4: the source-editor styling picker.
+///
+/// Every row renders the SAME markdown line in the style it names, for the
+/// reason the date-format picker shows dates rather than patterns: a person is
+/// choosing a result, and "markersOnly" is a technical concept that must never
+/// reach the end user by itself.
+Future<void> showNoteSourceStylingPicker(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    showDragHandle: true,
+    constraints: const BoxConstraints(maxWidth: 560),
+    builder: (context) => const _NoteSourceStylingSheet(),
+  );
+}
+
+/// One line with a bit of everything the report was about: a heading marker,
+/// a bold run and a highlight. Not localized — it is markdown SOURCE, and the
+/// point is to see the `#`/`**`/`==` characters themselves.
+const String _kSourceStylingSample = '# Başlık **kalın** ==vurgu==';
+
+class _NoteSourceStylingSheet extends ConsumerWidget {
+  const _NoteSourceStylingSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(noteSourceStylingChoiceProvider);
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              AwSpace.x1,
+              AwSpace.x4,
+              AwSpace.x2,
+            ),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'settings.noteSourceStyling.title'.tr(),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+          for (final styling in MdSyntaxStyling.values)
+            ListTile(
+              key: Key('note-source-styling-${styling.name}'),
+              title: _SourceStylingSample(styling: styling),
+              subtitle: Text('settings.noteSourceStyling.${styling.name}'.tr()),
+              trailing: styling == current ? const Icon(Icons.check) : null,
+              onTap: () async {
+                await ref
+                    .read(noteSourceStylingProvider.notifier)
+                    .set(styling.name);
+                if (context.mounted) Navigator.of(context).pop();
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The sample, painted by the REAL controller rather than a hand-made
+/// imitation — a preview that can disagree with the editor is worse than none.
+class _SourceStylingSample extends StatefulWidget {
+  const _SourceStylingSample({required this.styling});
+
+  final MdSyntaxStyling styling;
+
+  @override
+  State<_SourceStylingSample> createState() => _SourceStylingSampleState();
+}
+
+class _SourceStylingSampleState extends State<_SourceStylingSample> {
+  late final MdSourceController _controller =
+      MdSourceController(text: _kSourceStylingSample)
+        ..styling = widget.styling
+        ..selection = const TextSelection.collapsed(offset: -1);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context).textTheme.bodyLarge!;
+    return Text.rich(
+      _controller.buildTextSpan(
+        context: context,
+        style: base,
+        withComposing: false,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

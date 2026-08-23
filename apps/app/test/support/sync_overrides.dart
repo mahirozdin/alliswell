@@ -7,6 +7,7 @@ import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/features/onboarding/tour.dart';
 import 'package:alliswell/src/features/widgets/widget_host.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
+import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
@@ -37,6 +38,12 @@ List<Override> syncTestOverrides({
   /// Swap in a real (or recording) feedback to test the audible half — OPH-180.
   /// Default: silence, so no audio plugin or haptic timer outlives a test.
   AlarmFeedback? alarmFeedback,
+
+  /// A gateway the test can inspect (round 19). Default: a throwaway fake, as
+  /// before. A parameter rather than a second override at the call site,
+  /// because Riverpod refuses two overrides of one provider and the failure
+  /// reads as an unrelated widget-build assertion.
+  NotificationsGateway? notificationsGateway,
 
   /// The AI chat transport (OPH-221). Default: null, so the bubble treats
   /// streaming as unavailable unless a test injects a scripted client.
@@ -80,7 +87,7 @@ List<Override> syncTestOverrides({
   syncSocketFactoryProvider.overrideWithValue(socketFactory),
   // No platform channels: notifications go to an in-memory fake.
   notificationsGatewayProvider.overrideWith(
-    (ref) => FakeNotificationsGateway(),
+    (ref) => notificationsGateway ?? FakeNotificationsGateway(),
   ),
   // No platform channels: AlarmKit (OPH-141) reports unsupported, so the
   // scheduler keeps urgent alarms on the (fake) notification lane.

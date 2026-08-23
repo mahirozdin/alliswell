@@ -64,6 +64,12 @@ class AlarmSupport {
     required this.notificationsEnabled,
     required this.criticalAlertsEnabled,
     this.exactAlarmsEnabled,
+    this.soundEnabled,
+    this.alertEnabled,
+    this.provisionalOnly = false,
+    this.timeSensitiveEnabled,
+    this.alarmKitAuthorized,
+    this.pendingCount,
   });
 
   final bool notificationsEnabled;
@@ -75,6 +81,87 @@ class AlarmSupport {
 
   /// Android: the "Alarms & reminders" special access (null elsewhere).
   final bool? exactAlarmsEnabled;
+
+  // ── Round 19 (OPH-277) ──────────────────────────────────────────────────
+  //
+  // The probe already ASKED the OS for all of these — `checkPermissions()`
+  // returns them in one object — and then threw every one away except
+  // `isEnabled` and `isCriticalEnabled`. So a phone with notifications ON and
+  // sounds OFF reported "ready to ring", which is the exact sentence round 19
+  // proved wrong. Each is nullable because only Darwin can answer it.
+
+  /// iOS/macOS: may a notification make a SOUND. Off means the alarm still
+  /// arrives and is still silent — the failure mode with no symptom.
+  final bool? soundEnabled;
+
+  /// iOS/macOS: may a notification draw a banner. Off means it lands in
+  /// Notification Center and nowhere else.
+  final bool? alertEnabled;
+
+  /// iOS: authorization is PROVISIONAL — granted quietly, delivered quietly.
+  /// No banner, no sound, straight to Notification Center, by design.
+  final bool provisionalOnly;
+
+  /// iOS 15+: the per-app Time Sensitive allowance. Without it the OS silently
+  /// demotes `.timeSensitive` to `.active` and every Focus mode buries the
+  /// alarm — NOTIFICATIONS §2 calls this "the most common silent failure", and
+  /// nothing was checking it. Null where the platform cannot say.
+  final bool? timeSensitiveEnabled;
+
+  /// iOS 26+: the AlarmKit grant. Null off iOS 26, false when the user
+  /// declined or revoked it — in which case urgent alarms are back on the
+  /// notification lane, which the mute switch can silence.
+  final bool? alarmKitAuthorized;
+
+  /// How many requests the OS is holding for us. iOS keeps only the 64
+  /// soonest; a number near that ceiling is a warning in its own right.
+  final int? pendingCount;
+
+  /// The worst thing wrong with delivery right now, or null when nothing is.
+  ///
+  /// One ordered cascade, in ONE place: the Home banner and the Settings row
+  /// disagreed about which problem to name first for as long as there were two
+  /// of them, and adding five more conditions to both would have guaranteed it.
+  /// Ordered by how completely each one silences an alarm.
+  AlarmProblem? get worstProblem {
+    if (!notificationsEnabled) return AlarmProblem.notificationsOff;
+    if (provisionalOnly) return AlarmProblem.provisional;
+    if (soundEnabled == false) return AlarmProblem.soundOff;
+    if (alertEnabled == false) return AlarmProblem.alertOff;
+    if (exactAlarmsEnabled == false) return AlarmProblem.exactAlarmsOff;
+    if (timeSensitiveEnabled == false) return AlarmProblem.timeSensitiveOff;
+    if (alarmKitAuthorized == false) return AlarmProblem.alarmKitOff;
+    return null;
+  }
+}
+
+/// What is stopping an alarm from being heard (OPH-277).
+///
+/// An enum rather than a pre-rendered sentence: the banner, the Settings row
+/// and the "how do I fix this" sheet each say it at a different length, and a
+/// string decided in the gateway would have to be all three.
+enum AlarmProblem {
+  /// Nothing gets through at all.
+  notificationsOff,
+
+  /// iOS granted us the quiet kind of permission: no banner, no sound.
+  provisional,
+
+  /// It arrives, on time, in silence.
+  soundOff,
+
+  /// It makes a sound with nothing on screen to explain it.
+  alertOff,
+
+  /// Android's "Alarms & reminders" special access.
+  exactAlarmsOff,
+
+  /// iOS demotes our time-sensitive alarms; any Focus mode then buries them.
+  timeSensitiveOff,
+
+  /// iOS 26+ AlarmKit declined — urgent alarms drop back to a lane the mute
+  /// switch can silence.
+  alarmKitOff,
 }
 
 /// What the OS was actually asked for (OPH-176) — the loudness half of the
@@ -90,6 +177,22 @@ class ScheduledDelivery {
   /// implied by the event's `urgent` flag (alarm channel vs reminders channel).
   final String level;
 }
+
+/// How far ahead a rehearsal alarm is armed (OPH-277).
+///
+/// Long enough to lock the phone and put it down — which is the state most
+/// silent-alarm reports are actually about — and short enough that nobody has
+/// to remember they started one.
+const Duration kAlarmTestDelay = Duration(seconds: 15);
+
+/// The id every test alarm reuses (OPH-277).
+///
+/// Fixed rather than hashed, and deliberately outside the planner's range: a
+/// second rehearsal replaces the first instead of stacking, and the scheduler's
+/// set-diff — which cancels every pending id it did not plan — will clear it on
+/// the next pass, so a test alarm can never outlive the session that asked for
+/// it.
+const int kAlarmTestNotificationId = -424242;
 
 /// The bundled 28 s alarm bed's name in the log (the file itself is per
 /// platform: `aw_alarm.caf` on iOS, `res/raw/aw_alarm` on Android).
@@ -129,6 +232,21 @@ abstract class NotificationsGateway {
 
   /// Probe what delivery the OS currently allows (see [AlarmSupport]).
   Future<AlarmSupport> alarmSupport();
+
+  /// Schedules a real alarm [after] from now, through the real lane, and
+  /// returns what it asked the OS for (OPH-277).
+  ///
+  /// The one thing a bug report about a silent alarm never had: a way to make
+  /// the failure happen on purpose, right now, with the log watching. It is a
+  /// gateway method rather than a call the settings screen assembles, so the
+  /// rehearsal cannot accidentally take a different code path from the thing it
+  /// is rehearsing.
+  Future<ScheduledDelivery> scheduleTestAlarm({
+    required String title,
+    required String body,
+    required Duration after,
+    String? soundName,
+  });
 
   Future<Set<int>> pendingIds();
 

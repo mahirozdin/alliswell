@@ -9,7 +9,11 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 
+import 'package:alliswell/src/notifications/gateway.dart';
+
+import 'settings_nav.dart';
 import '../auth/test_support.dart';
+import '../../support/fake_notifications.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
 
@@ -92,11 +96,13 @@ void main() {
         'settings-language',
         'settings-date-format',
         'settings-default-task-time',
+        'settings-note-source-styling',
         'quick-bubble-toggle',
         'replay-tour',
       ],
       'settings-group-notifications': [
         'alarm-status',
+        'alarm-test',
         'notification-privacy',
         'settings-reminder-system',
         'settings-alarm-log',
@@ -163,5 +169,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Alarm log'), findsWidgets);
+  });
+
+  // Round 19 (OPH-277): the rehearsal. A report about a silent alarm never had
+  // a way to make the failure happen on purpose, with the log watching.
+  testWidgets('the test alarm goes through the real lane', (tester) async {
+    final gateway = FakeNotificationsGateway();
+    SharedPreferences.setMockInitialValues({});
+    final store = InMemorySecretStore();
+    await TokenStorage(store).save(fakeSession());
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: awRetry,
+        overrides: [
+          // Through the harness's own parameter: Riverpod refuses two
+          // overrides of one provider, and `syncTestOverrides` already supplies
+          // a gateway.
+          ...syncTestOverrides(notificationsGateway: gateway),
+          secretStoreProvider.overrideWithValue(store),
+          apiClientProvider.overrideWithValue(
+            fakeDio(FakeHttpClientAdapter(FakeApi().handle)),
+          ),
+        ],
+        child: const AllisWellApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await openSettingsGroup(tester, kSettingsNotifications);
+
+    await tester.tap(find.byKey(const Key('alarm-test')));
+    await tester.pumpAndSettle();
+
+    expect(gateway.testAlarms, [kAlarmTestDelay]);
+    // Urgent, through `schedule` — a rehearsal of a different code path would
+    // be a rehearsal of the wrong thing.
+    final armed = gateway.scheduled[kAlarmTestNotificationId];
+    expect(armed, isNotNull);
+    expect(armed!.urgent, isTrue);
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -235,6 +236,10 @@ class LocalNotificationsGateway implements NotificationsGateway {
     _initialized = true;
   }
 
+  /// The Runner's own channel. Shared with the AlarmKit lane because that
+  /// bridge is the one Swift file already wired into the target.
+  static const _runner = MethodChannel('alliswell/alarmkit');
+
   AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
       .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin
@@ -305,6 +310,7 @@ class LocalNotificationsGateway implements NotificationsGateway {
 
   @override
   Future<AlarmSupport> alarmSupport() async {
+    final pending = await _pendingCount();
     final android = _android;
     if (android != null) {
       final enabled = await android.areNotificationsEnabled() ?? true;
@@ -313,23 +319,97 @@ class LocalNotificationsGateway implements NotificationsGateway {
         notificationsEnabled: enabled,
         criticalAlertsEnabled: false,
         exactAlarmsEnabled: exact,
+        pendingCount: pending,
       );
     }
     try {
       final options =
           await _ios?.checkPermissions() ?? await _macos?.checkPermissions();
       if (options != null) {
+        // OPH-277: the plugin has always returned all of these in one object
+        // and this method threw four of them away. A phone with notifications
+        // ON and sounds OFF reported "ready to ring" — round 19's report, in
+        // one line of missing code.
         return AlarmSupport(
+          // `isEnabled` is true for a PROVISIONAL grant too (the plugin says so
+          // in its own doc comment), which is why provisional is reported
+          // separately rather than folded in here.
           notificationsEnabled: options.isEnabled,
           criticalAlertsEnabled: options.isCriticalEnabled,
+          soundEnabled: options.isSoundEnabled,
+          alertEnabled: options.isAlertEnabled,
+          provisionalOnly:
+              options.isProvisionalEnabled && !options.isAlertEnabled,
+          timeSensitiveEnabled: await _probeTimeSensitive(),
+          alarmKitAuthorized: await _probeAlarmKit(),
+          pendingCount: pending,
         );
       }
     } catch (_) {
       // fall through to the optimistic default below
     }
-    return const AlarmSupport(
+    return AlarmSupport(
       notificationsEnabled: true,
       criticalAlertsEnabled: false,
+      pendingCount: pending,
+    );
+  }
+
+  Future<int?> _pendingCount() async {
+    try {
+      return (await _plugin.pendingNotificationRequests()).length;
+    } on Object {
+      return null;
+    }
+  }
+
+  /// iOS 15+ Time Sensitive, over the Runner bridge.
+  ///
+  /// `flutter_local_notifications` does not surface
+  /// `UNNotificationSettings.timeSensitiveSetting`, and NOTIFICATIONS §2 calls
+  /// this "the most common silent failure": without the allowance iOS demotes
+  /// `.timeSensitive` to `.active` and every Focus mode buries the alarm. It
+  /// rides the alarm bridge's channel because that file is already in the Xcode
+  /// target — a second Runner source file means editing `project.pbxproj`, and
+  /// this repo has a scar from the last time something did that.
+  Future<bool?> _probeTimeSensitive() async {
+    try {
+      return await _runner.invokeMethod<bool>('timeSensitiveEnabled');
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<bool?> _probeAlarmKit() async {
+    try {
+      if (await _runner.invokeMethod<bool>('isSupported') != true) return null;
+      return await _runner.invokeMethod<bool>('isAuthorized');
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<ScheduledDelivery> scheduleTestAlarm({
+    required String title,
+    required String body,
+    required Duration after,
+    String? soundName,
+  }) async {
+    await initialize();
+    // Through `schedule`, not around it: a rehearsal that took its own code
+    // path would be a rehearsal of the wrong thing.
+    return schedule(
+      PlannedNotification(
+        id: kAlarmTestNotificationId,
+        title: title,
+        body: body,
+        fireAt: DateTime.now().toUtc().add(after),
+        urgent: true,
+        payload: '{"test":true}',
+        kind: 'test',
+        soundName: soundName,
+      ),
     );
   }
 

@@ -10,6 +10,7 @@ import Foundation
 #endif
 #if canImport(UIKit)
   import UIKit
+  import UserNotifications
 #endif
 
 /// Runner-side bridge for the iOS 26+ AlarmKit URGENT lane (OPH-141 wrote it,
@@ -65,6 +66,10 @@ final class AlarmKitBridge {
       }
     case "requestAuthorization":
       requestAuthorization(result)
+    case "isAuthorized":
+      isAuthorized(result)
+    case "timeSensitiveEnabled":
+      timeSensitiveEnabled(result)
     case "scheduledIds":
       scheduledIds(result)
     case "schedule":
@@ -175,6 +180,56 @@ final class AlarmKitBridge {
             result(false)
           }
         }
+        return
+      }
+    #endif
+    result(false)
+  }
+
+  /// The iOS 15+ Time Sensitive allowance (round 19, OPH-277).
+  ///
+  /// Not an AlarmKit question, and it lives here anyway: this file is the only
+  /// Runner source already in the Xcode target, and adding a second one means
+  /// editing `project.pbxproj` — which this project has been bitten by before
+  /// (see the `flutter_launcher_icons` note in `pubspec.yaml`).
+  ///
+  /// It matters because the failure is invisible. Without the allowance iOS
+  /// silently demotes `.timeSensitive` to `.active`, and from then on every
+  /// Focus mode — including Sleep — buries the alarm with no error anywhere.
+  /// NOTIFICATIONS §2 has called this "the most common silent failure" since
+  /// the entitlement was added, and nothing was checking it.
+  private func timeSensitiveEnabled(_ result: @escaping FlutterResult) {
+    #if canImport(UIKit)
+      if #available(iOS 15.0, *) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+          switch settings.timeSensitiveSetting {
+          case .enabled:
+            result(true)
+          case .disabled:
+            result(false)
+          default:
+            // `.notSupported` — the device cannot answer, so neither can we.
+            // Reporting `false` here would nag every iPad on an old OS.
+            result(nil)
+          }
+        }
+        return
+      }
+    #endif
+    result(nil)
+  }
+
+  /// The grant, READ rather than requested (round 19 K4).
+  ///
+  /// `requestAuthorization` is documented to answer from the OS record after
+  /// the first decision, but it is still the *asking* call, and the scheduler
+  /// now consults this on every apply — a permission dialog that appears
+  /// because a task's due date changed would be its own bug. So this reads the
+  /// state and never prompts.
+  private func isAuthorized(_ result: @escaping FlutterResult) {
+    #if canImport(AlarmKit)
+      if #available(iOS 26.0, *) {
+        result(AlarmManager.shared.authorizationState == .authorized)
         return
       }
     #endif
