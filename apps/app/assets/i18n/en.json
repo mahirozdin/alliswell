@@ -1316,6 +1316,7 @@
         "assign": "Put a task on someone else, or take one off them"
       },
       "team": {
+        "manage_deliveries": "Notification deliveries",
         "manage_invites": "Manage invitations",
         "manage_members": "Manage members",
         "manage_roles": "Manage roles",
