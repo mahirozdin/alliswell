@@ -334,6 +334,18 @@ export function loadConfig(env = process.env) {
         // STARTTLS on 587 by default; set false only for a local relay.
         secure: toBool(env.EE_SMTP_SECURE, false, 'EE_SMTP_SECURE'),
       }),
+      // Mobile push for extensions that send any (core sends none — the app's
+      // own reminders are local, OPH-061). A BOOLEAN rather than a block, and
+      // deliberately: the only thing this decides is whether an extension may
+      // queue a push at all, and a block would make `Boolean(config.ee.push)`
+      // true the moment it existed. Provider credentials belong to whoever
+      // turns this on, and arrive with that work rather than sitting here
+      // unread.
+      //
+      // Default OFF. With it off nothing is enqueued — not a row nobody sends,
+      // no row at all — which is what makes "zero effect" a number a test can
+      // assert instead of a claim.
+      push: toBool(env.EE_PUSH_ENABLED, false, 'EE_PUSH_ENABLED'),
     }),
     calendar: Object.freeze({
       // AES-256-GCM key for OAuth tokens at rest (SECURITY.md / ADR-0006):
