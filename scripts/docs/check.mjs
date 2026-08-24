@@ -92,6 +92,19 @@ function manifestProblems() {
   else if (found[1] !== VERSION) {
     problems.push(`apps/app/pubspec.yaml: version ${found[1]} != root ${VERSION}`);
   }
+  // The string the app SHOWS in Settings > About. `release.yml` has gated on
+  // this since it sat at 0.1.0 for three releases — but only at TAG time, which
+  // means the first anyone learned of a drift was a failed release. Round 19
+  // hit exactly that. Checking it here moves the discovery to `npm run
+  // check:docs`, where every other version claim is already caught.
+  const shownFile = join(ROOT, 'apps/app/lib/src/core/app_version.dart');
+  const shown = /^const kAppVersion = '(\d+\.\d+\.\d+)'/m.exec(read(shownFile));
+  if (!shown) problems.push('apps/app/lib/src/core/app_version.dart: no parsable `kAppVersion`');
+  else if (shown[1] !== VERSION) {
+    problems.push(
+      `apps/app/lib/src/core/app_version.dart: kAppVersion ${shown[1]} != root ${VERSION}`,
+    );
+  }
   return problems;
 }
 

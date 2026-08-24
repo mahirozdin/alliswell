@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [1.8.0] — 2026-08-24
+
 ### Fixed
 
 - **Exported PDFs lost every image written inside a sentence (OPH-275).** The markdown walker
