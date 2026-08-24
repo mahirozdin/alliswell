@@ -150,8 +150,8 @@
     "group": {
       "general": "Genel",
       "generalSub": "Dil, tarih, varsayılan saat, tur",
-      "notifications": "Bildirimler & alarmlar",
-      "notificationsSub": "Çalma, gizlilik, alarm günlüğü",
+      "notifications": "Bildirimler",
+      "notificationsSub": "Merkez ve tercihler",
       "integrations": "Entegrasyonlar",
       "integrationsSub": "Google Takvim, Apple Takvim, yapay zekâ",
       "data": "Veri",
@@ -1453,6 +1453,81 @@
       "mineTitle": "Bana atananlar",
       "mineEmptyTitle": "Üzerinizde iş yok",
       "mineEmptyBody": "Size verilen ya da kendi üstünüze aldığınız işler burada görünür."
+    },
+    "notif": {
+      "centerTitle": "Bildirimler",
+      "centerSub": "Size ne olduğunu gösterir",
+      "emptyTitle": "Henüz bildirim yok",
+      "emptyBody": "Size bir iş atandığında ya da bir SLA süresi aştığında burada görürsünüz.",
+      "markAllRead": "Tümünü okundu işaretle",
+      "markedAllRead": "{count} bildirim okundu işaretlendi",
+      "unreadBadge": "{count} okunmamış bildirim",
+      "prefsTitle": "Bildirim tercihleri",
+      "prefsSub": "Hangi bildirimin e-posta olarak geleceği ve sessiz saatler",
+      "prefsEmail": "E-posta",
+      "prefsPush": "Mobil bildirim",
+      "prefsLocked": "Bu bildirim kapatılamaz",
+      "prefsLockedWhy": "SLA ihlali ve davet bir taahhüttür; sessize alınamaz.",
+      "quietTitle": "Sessiz saatler",
+      "quietBody": "Bu aralıkta gelen e-postalar silinmez, aralık bitince gönderilir.",
+      "quietOff": "Kapalı",
+      "quietRange": "{from} – {to} ({zone})",
+      "quietStart": "Başlangıç",
+      "quietEnd": "Bitiş",
+      "quietSame": "Başlangıç ve bitiş aynı olamaz",
+      "saved": "Tercihler kaydedildi",
+      "task": {
+        "assigned": {
+          "title": "Size atandı: {taskTitle}",
+          "body": "{actorName}, bu işi size verdi."
+        }
+      },
+      "sla": {
+        "warned": {
+          "title": "SLA süresi yaklaşıyor: {ticketRef}",
+          "body": "Son tarih {dueAt}."
+        },
+        "breached": {
+          "title": "SLA ihlali: {ticketRef}",
+          "body": "{serviceName} kaydı süresini aştı."
+        }
+      },
+      "ticket": {
+        "routed": {
+          "title": "{unitName} birimine yeni kayıt: {ticketRef}",
+          "body": "{subject}"
+        }
+      },
+      "share": {
+        "received": {
+          "title": "Sizinle paylaşıldı: {itemTitle}",
+          "body": "{fromUnitName} biriminden geldi."
+        }
+      },
+      "class": {
+        "task": {
+          "assigned": "Bir iş size atandığında"
+        },
+        "invite": {
+          "created": "Bir davet gönderildiğinde"
+        },
+        "ticket": {
+          "routed": "Biriminize yeni kayıt düştüğünde"
+        },
+        "sla": {
+          "warned": "Bir SLA süresi yaklaştığında",
+          "breached": "Bir SLA ihlal edildiğinde"
+        },
+        "share": {
+          "received": "Sizinle bir şey paylaşıldığında"
+        }
+      },
+      "time": {
+        "now": "şimdi",
+        "minutes": "{n} dk",
+        "hours": "{n} sa",
+        "days": "{n} g"
+      }
     }
   },
   "perm": {

@@ -14864,6 +14864,779 @@ class TaskAssignmentsCompanion extends UpdateCompanion<TaskAssignment> {
   }
 }
 
+class $NotificationsTable extends Notifications
+    with TableInfo<$NotificationsTable, NotificationRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _eventClassMeta = const VerificationMeta(
+    'eventClass',
+  );
+  @override
+  late final GeneratedColumn<String> eventClass = GeneratedColumn<String>(
+    'event_class',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleKeyMeta = const VerificationMeta(
+    'titleKey',
+  );
+  @override
+  late final GeneratedColumn<String> titleKey = GeneratedColumn<String>(
+    'title_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyKeyMeta = const VerificationMeta(
+    'bodyKey',
+  );
+  @override
+  late final GeneratedColumn<String> bodyKey = GeneratedColumn<String>(
+    'body_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _paramsMeta = const VerificationMeta('params');
+  @override
+  late final GeneratedColumn<String> params = GeneratedColumn<String>(
+    'params',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  @override
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  @override
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<DateTime> readAt = GeneratedColumn<DateTime>(
+    'read_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    userId,
+    eventClass,
+    titleKey,
+    bodyKey,
+    params,
+    entityType,
+    entityId,
+    readAt,
+    createdAt,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notifications';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NotificationRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('event_class')) {
+      context.handle(
+        _eventClassMeta,
+        eventClass.isAcceptableOrUnknown(data['event_class']!, _eventClassMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventClassMeta);
+    }
+    if (data.containsKey('title_key')) {
+      context.handle(
+        _titleKeyMeta,
+        titleKey.isAcceptableOrUnknown(data['title_key']!, _titleKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleKeyMeta);
+    }
+    if (data.containsKey('body_key')) {
+      context.handle(
+        _bodyKeyMeta,
+        bodyKey.isAcceptableOrUnknown(data['body_key']!, _bodyKeyMeta),
+      );
+    }
+    if (data.containsKey('params')) {
+      context.handle(
+        _paramsMeta,
+        params.isAcceptableOrUnknown(data['params']!, _paramsMeta),
+      );
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    }
+    if (data.containsKey('read_at')) {
+      context.handle(
+        _readAtMeta,
+        readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NotificationRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      eventClass: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_class'],
+      )!,
+      titleKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_key'],
+      )!,
+      bodyKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body_key'],
+      ),
+      params: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}params'],
+      ),
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      ),
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      ),
+      readAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}read_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $NotificationsTable createAlias(String alias) {
+    return $NotificationsTable(attachedDatabase, alias);
+  }
+}
+
+class NotificationRecord extends DataClass
+    implements Insertable<NotificationRecord> {
+  final String id;
+  final String workspaceId;
+
+  /// Always this device's owner (see above). Kept for diagnosis, not filtering.
+  final String userId;
+
+  /// 'task.assigned', 'sla.breached', … — the routing vocabulary, shared with
+  /// the server's outbox so one word means one thing on both sides.
+  final String eventClass;
+  final String titleKey;
+  final String? bodyKey;
+
+  /// The server's JSON object, stored as it arrived. Parsed at draw time.
+  final String? params;
+
+  /// Where tapping it goes. Polymorphic, so no foreign key — the same reason
+  /// [QuickLinks].targetId has none.
+  final String? entityType;
+  final String? entityId;
+
+  /// Null means unread, and the badge counts exactly these.
+  final DateTime? readAt;
+  final DateTime? createdAt;
+  final int revision;
+  final DateTime? updatedAt;
+  const NotificationRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.userId,
+    required this.eventClass,
+    required this.titleKey,
+    this.bodyKey,
+    this.params,
+    this.entityType,
+    this.entityId,
+    this.readAt,
+    this.createdAt,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['user_id'] = Variable<String>(userId);
+    map['event_class'] = Variable<String>(eventClass);
+    map['title_key'] = Variable<String>(titleKey);
+    if (!nullToAbsent || bodyKey != null) {
+      map['body_key'] = Variable<String>(bodyKey);
+    }
+    if (!nullToAbsent || params != null) {
+      map['params'] = Variable<String>(params);
+    }
+    if (!nullToAbsent || entityType != null) {
+      map['entity_type'] = Variable<String>(entityType);
+    }
+    if (!nullToAbsent || entityId != null) {
+      map['entity_id'] = Variable<String>(entityId);
+    }
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<DateTime>(readAt);
+    }
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  NotificationsCompanion toCompanion(bool nullToAbsent) {
+    return NotificationsCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      userId: Value(userId),
+      eventClass: Value(eventClass),
+      titleKey: Value(titleKey),
+      bodyKey: bodyKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bodyKey),
+      params: params == null && nullToAbsent
+          ? const Value.absent()
+          : Value(params),
+      entityType: entityType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(entityType),
+      entityId: entityId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(entityId),
+      readAt: readAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(readAt),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory NotificationRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      userId: serializer.fromJson<String>(json['userId']),
+      eventClass: serializer.fromJson<String>(json['eventClass']),
+      titleKey: serializer.fromJson<String>(json['titleKey']),
+      bodyKey: serializer.fromJson<String?>(json['bodyKey']),
+      params: serializer.fromJson<String?>(json['params']),
+      entityType: serializer.fromJson<String?>(json['entityType']),
+      entityId: serializer.fromJson<String?>(json['entityId']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'userId': serializer.toJson<String>(userId),
+      'eventClass': serializer.toJson<String>(eventClass),
+      'titleKey': serializer.toJson<String>(titleKey),
+      'bodyKey': serializer.toJson<String?>(bodyKey),
+      'params': serializer.toJson<String?>(params),
+      'entityType': serializer.toJson<String?>(entityType),
+      'entityId': serializer.toJson<String?>(entityId),
+      'readAt': serializer.toJson<DateTime?>(readAt),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  NotificationRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? userId,
+    String? eventClass,
+    String? titleKey,
+    Value<String?> bodyKey = const Value.absent(),
+    Value<String?> params = const Value.absent(),
+    Value<String?> entityType = const Value.absent(),
+    Value<String?> entityId = const Value.absent(),
+    Value<DateTime?> readAt = const Value.absent(),
+    Value<DateTime?> createdAt = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => NotificationRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    userId: userId ?? this.userId,
+    eventClass: eventClass ?? this.eventClass,
+    titleKey: titleKey ?? this.titleKey,
+    bodyKey: bodyKey.present ? bodyKey.value : this.bodyKey,
+    params: params.present ? params.value : this.params,
+    entityType: entityType.present ? entityType.value : this.entityType,
+    entityId: entityId.present ? entityId.value : this.entityId,
+    readAt: readAt.present ? readAt.value : this.readAt,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  NotificationRecord copyWithCompanion(NotificationsCompanion data) {
+    return NotificationRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      eventClass: data.eventClass.present
+          ? data.eventClass.value
+          : this.eventClass,
+      titleKey: data.titleKey.present ? data.titleKey.value : this.titleKey,
+      bodyKey: data.bodyKey.present ? data.bodyKey.value : this.bodyKey,
+      params: data.params.present ? data.params.value : this.params,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('userId: $userId, ')
+          ..write('eventClass: $eventClass, ')
+          ..write('titleKey: $titleKey, ')
+          ..write('bodyKey: $bodyKey, ')
+          ..write('params: $params, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('readAt: $readAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    userId,
+    eventClass,
+    titleKey,
+    bodyKey,
+    params,
+    entityType,
+    entityId,
+    readAt,
+    createdAt,
+    revision,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.userId == this.userId &&
+          other.eventClass == this.eventClass &&
+          other.titleKey == this.titleKey &&
+          other.bodyKey == this.bodyKey &&
+          other.params == this.params &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.readAt == this.readAt &&
+          other.createdAt == this.createdAt &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class NotificationsCompanion extends UpdateCompanion<NotificationRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> userId;
+  final Value<String> eventClass;
+  final Value<String> titleKey;
+  final Value<String?> bodyKey;
+  final Value<String?> params;
+  final Value<String?> entityType;
+  final Value<String?> entityId;
+  final Value<DateTime?> readAt;
+  final Value<DateTime?> createdAt;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const NotificationsCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.eventClass = const Value.absent(),
+    this.titleKey = const Value.absent(),
+    this.bodyKey = const Value.absent(),
+    this.params = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotificationsCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String userId,
+    required String eventClass,
+    required String titleKey,
+    this.bodyKey = const Value.absent(),
+    this.params = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       userId = Value(userId),
+       eventClass = Value(eventClass),
+       titleKey = Value(titleKey);
+  static Insertable<NotificationRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? userId,
+    Expression<String>? eventClass,
+    Expression<String>? titleKey,
+    Expression<String>? bodyKey,
+    Expression<String>? params,
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<DateTime>? readAt,
+    Expression<DateTime>? createdAt,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (userId != null) 'user_id': userId,
+      if (eventClass != null) 'event_class': eventClass,
+      if (titleKey != null) 'title_key': titleKey,
+      if (bodyKey != null) 'body_key': bodyKey,
+      if (params != null) 'params': params,
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (readAt != null) 'read_at': readAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotificationsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? userId,
+    Value<String>? eventClass,
+    Value<String>? titleKey,
+    Value<String?>? bodyKey,
+    Value<String?>? params,
+    Value<String?>? entityType,
+    Value<String?>? entityId,
+    Value<DateTime?>? readAt,
+    Value<DateTime?>? createdAt,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return NotificationsCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      userId: userId ?? this.userId,
+      eventClass: eventClass ?? this.eventClass,
+      titleKey: titleKey ?? this.titleKey,
+      bodyKey: bodyKey ?? this.bodyKey,
+      params: params ?? this.params,
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      readAt: readAt ?? this.readAt,
+      createdAt: createdAt ?? this.createdAt,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (eventClass.present) {
+      map['event_class'] = Variable<String>(eventClass.value);
+    }
+    if (titleKey.present) {
+      map['title_key'] = Variable<String>(titleKey.value);
+    }
+    if (bodyKey.present) {
+      map['body_key'] = Variable<String>(bodyKey.value);
+    }
+    if (params.present) {
+      map['params'] = Variable<String>(params.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (readAt.present) {
+      map['read_at'] = Variable<DateTime>(readAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationsCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('userId: $userId, ')
+          ..write('eventClass: $eventClass, ')
+          ..write('titleKey: $titleKey, ')
+          ..write('bodyKey: $bodyKey, ')
+          ..write('params: $params, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('readAt: $readAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -14897,6 +15670,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $TaskAssignmentsTable taskAssignments = $TaskAssignmentsTable(
     this,
   );
+  late final $NotificationsTable notifications = $NotificationsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -14925,6 +15699,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     sharedItems,
     memberProfiles,
     taskAssignments,
+    notifications,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -22021,6 +22796,368 @@ typedef $$TaskAssignmentsTableProcessedTableManager =
       TaskAssignment,
       PrefetchHooks Function()
     >;
+typedef $$NotificationsTableCreateCompanionBuilder =
+    NotificationsCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String userId,
+      required String eventClass,
+      required String titleKey,
+      Value<String?> bodyKey,
+      Value<String?> params,
+      Value<String?> entityType,
+      Value<String?> entityId,
+      Value<DateTime?> readAt,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$NotificationsTableUpdateCompanionBuilder =
+    NotificationsCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> userId,
+      Value<String> eventClass,
+      Value<String> titleKey,
+      Value<String?> bodyKey,
+      Value<String?> params,
+      Value<String?> entityType,
+      Value<String?> entityId,
+      Value<DateTime?> readAt,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$NotificationsTableFilterComposer
+    extends Composer<_$AwDatabase, $NotificationsTable> {
+  $$NotificationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventClass => $composableBuilder(
+    column: $table.eventClass,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleKey => $composableBuilder(
+    column: $table.titleKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bodyKey => $composableBuilder(
+    column: $table.bodyKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get params => $composableBuilder(
+    column: $table.params,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NotificationsTableOrderingComposer
+    extends Composer<_$AwDatabase, $NotificationsTable> {
+  $$NotificationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventClass => $composableBuilder(
+    column: $table.eventClass,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get titleKey => $composableBuilder(
+    column: $table.titleKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bodyKey => $composableBuilder(
+    column: $table.bodyKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get params => $composableBuilder(
+    column: $table.params,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NotificationsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $NotificationsTable> {
+  $$NotificationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get eventClass => $composableBuilder(
+    column: $table.eventClass,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get titleKey =>
+      $composableBuilder(column: $table.titleKey, builder: (column) => column);
+
+  GeneratedColumn<String> get bodyKey =>
+      $composableBuilder(column: $table.bodyKey, builder: (column) => column);
+
+  GeneratedColumn<String> get params =>
+      $composableBuilder(column: $table.params, builder: (column) => column);
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$NotificationsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $NotificationsTable,
+          NotificationRecord,
+          $$NotificationsTableFilterComposer,
+          $$NotificationsTableOrderingComposer,
+          $$NotificationsTableAnnotationComposer,
+          $$NotificationsTableCreateCompanionBuilder,
+          $$NotificationsTableUpdateCompanionBuilder,
+          (
+            NotificationRecord,
+            BaseReferences<
+              _$AwDatabase,
+              $NotificationsTable,
+              NotificationRecord
+            >,
+          ),
+          NotificationRecord,
+          PrefetchHooks Function()
+        > {
+  $$NotificationsTableTableManager(_$AwDatabase db, $NotificationsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NotificationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NotificationsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> eventClass = const Value.absent(),
+                Value<String> titleKey = const Value.absent(),
+                Value<String?> bodyKey = const Value.absent(),
+                Value<String?> params = const Value.absent(),
+                Value<String?> entityType = const Value.absent(),
+                Value<String?> entityId = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotificationsCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                userId: userId,
+                eventClass: eventClass,
+                titleKey: titleKey,
+                bodyKey: bodyKey,
+                params: params,
+                entityType: entityType,
+                entityId: entityId,
+                readAt: readAt,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String userId,
+                required String eventClass,
+                required String titleKey,
+                Value<String?> bodyKey = const Value.absent(),
+                Value<String?> params = const Value.absent(),
+                Value<String?> entityType = const Value.absent(),
+                Value<String?> entityId = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotificationsCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                userId: userId,
+                eventClass: eventClass,
+                titleKey: titleKey,
+                bodyKey: bodyKey,
+                params: params,
+                entityType: entityType,
+                entityId: entityId,
+                readAt: readAt,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NotificationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $NotificationsTable,
+      NotificationRecord,
+      $$NotificationsTableFilterComposer,
+      $$NotificationsTableOrderingComposer,
+      $$NotificationsTableAnnotationComposer,
+      $$NotificationsTableCreateCompanionBuilder,
+      $$NotificationsTableUpdateCompanionBuilder,
+      (
+        NotificationRecord,
+        BaseReferences<_$AwDatabase, $NotificationsTable, NotificationRecord>,
+      ),
+      NotificationRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AwDatabaseManager {
   final _$AwDatabase _db;
@@ -22070,4 +23207,6 @@ class $AwDatabaseManager {
       $$MemberProfilesTableTableManager(_db, _db.memberProfiles);
   $$TaskAssignmentsTableTableManager get taskAssignments =>
       $$TaskAssignmentsTableTableManager(_db, _db.taskAssignments);
+  $$NotificationsTableTableManager get notifications =>
+      $$NotificationsTableTableManager(_db, _db.notifications);
 }

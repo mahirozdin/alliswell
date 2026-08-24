@@ -236,8 +236,14 @@ void main() {
       expect(await db.select(db.memberProfiles).get(), isEmpty);
       expect(await db.select(db.taskAssignments).get(), isEmpty);
 
+      // v23 (EE-077): notifications — the inbox behind the centre and its
+      // badge. Empty for the same reason as every table above it: the rows
+      // arrive by pull. A device that upgrades mid-week gets its whole inbox
+      // on the first sync after, because the server keeps it.
+      expect(await db.select(db.notifications).get(), isEmpty);
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 22);
+      expect(version.data['user_version'], 23);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -283,7 +289,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 22);
+      expect(version.data['user_version'], 23);
       await db.close();
     },
   );

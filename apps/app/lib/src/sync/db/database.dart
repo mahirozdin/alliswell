@@ -641,6 +641,64 @@ class TaskAssignments extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// A notification addressed to the person using this device (EE-073/EE-077).
+///
+/// USER-SCOPED, which is the one thing that makes this table different from
+/// every other synced one here: the server hands a row only to the person it
+/// belongs to, and rows belonging to anybody else are DROPPED from the pull
+/// rather than tombstoned. So this table can only ever hold my own — there is
+/// no filtering left to do on the device, and no `userId` predicate anywhere
+/// in the UI. The column is kept anyway, because a replica that cannot say
+/// whose row it is holding cannot be debugged.
+///
+/// TEXT IS KEYS, NOT PROSE. `titleKey`/`bodyKey` are i18n ids and `params`
+/// carries their interpolation values, so a notification from last year draws
+/// in the language this device is set to TODAY. The e-mail channel does the
+/// opposite (it freezes its wording) and the reason is the difference between
+/// a record and a live object: an e-mail is what was sent, this is what is.
+///
+/// `readAt` is the only column a device may write. The push half accepts that
+/// field and nothing else — a device cannot author a notification, because an
+/// alert somebody's own phone could invent is an alert nobody can trust.
+///
+/// The `@DataClassName` is not decoration: drift would name the row class
+/// `Notification`, which is ALSO a Flutter widget class
+/// (`package:flutter/widgets.dart`). Any file importing both would then have
+/// to disambiguate, and the error it produces first — "the returned type
+/// `List<dynamic>` isn't returnable" — points nowhere near the cause. The house
+/// suffix (`ProjectRecord`, `TaskRecord`, …) exists for exactly this.
+@DataClassName('NotificationRecord')
+class Notifications extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+
+  /// Always this device's owner (see above). Kept for diagnosis, not filtering.
+  TextColumn get userId => text()();
+
+  /// 'task.assigned', 'sla.breached', … — the routing vocabulary, shared with
+  /// the server's outbox so one word means one thing on both sides.
+  TextColumn get eventClass => text()();
+  TextColumn get titleKey => text()();
+  TextColumn get bodyKey => text().nullable()();
+
+  /// The server's JSON object, stored as it arrived. Parsed at draw time.
+  TextColumn get params => text().nullable()();
+
+  /// Where tapping it goes. Polymorphic, so no foreign key — the same reason
+  /// [QuickLinks].targetId has none.
+  TextColumn get entityType => text().nullable()();
+  TextColumn get entityId => text().nullable()();
+
+  /// Null means unread, and the badge counts exactly these.
+  DateTimeColumn get readAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Projects,
@@ -666,6 +724,7 @@ class TaskAssignments extends Table {
     SharedItems,
     MemberProfiles,
     TaskAssignments,
+    Notifications,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -692,9 +751,11 @@ class AwDatabase extends _$AwDatabase {
   /// v21 → v22 (EE-068): member_profiles + task_assignments — who the people
   /// are and who is on what. The roster half is a REPAIR: the server has been
   /// sending it since EE-017 and the replica had nowhere to put it.
+  /// v22 → v23 (EE-077): notifications — the inbox, so the centre and its
+  /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -841,6 +902,10 @@ class AwDatabase extends _$AwDatabase {
         await m.createTable(memberProfiles);
         await m.createTable(taskAssignments);
       }
+      // v23 (EE-077): the notification inbox. A new table, so no `from >= 1`
+      // guard — and no backfill: the server sends every row this device may
+      // see on the next full pull, which is what a fresh table gets anyway.
+      if (from < 23) await m.createTable(notifications);
     },
   );
 

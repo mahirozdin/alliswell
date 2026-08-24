@@ -30,6 +30,8 @@ import 'features/ai/ui/ai_settings_screen.dart';
 import 'features/ee/ui/team_roles_screen.dart';
 import 'features/ee/ui/task_history_screen.dart';
 import 'features/ee/ui/assigned_to_me_screen.dart';
+import 'features/ee/ui/notification_center_screen.dart';
+import 'features/ee/ui/notification_prefs_screen.dart';
 import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
@@ -432,6 +434,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/tasks/:taskId/history',
         builder: (context, state) =>
             _page(EeTaskHistoryScreen(taskId: state.pathParameters['taskId']!)),
+      ),
+      // EE-077: the notification centre and its preferences. Two routes
+      // rather than a screen with a tab: the centre is a work surface people
+      // reach constantly and the preferences are a settings page they visit
+      // twice, and a tab bar would charge the first for the second.
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => _page(const EeNotificationCenterScreen()),
+      ),
+      // `/settings/team/...` and not `/settings/notifications`: that path is
+      // already core's, for the device's own alarms. Two different things share
+      // the word "notification" here — a local reminder this phone rings, and a
+      // message the server sends about other people's actions — and giving them
+      // one screen would make "turn these off" ambiguous in the only place it
+      // must not be.
+      GoRoute(
+        path: '/settings/team/notifications',
+        builder: (context, state) => _page(const EeNotificationPrefsScreen()),
       ),
       // EE-068: "assigned to me". Not an admin route and not a settings
       // screen in spirit — it is a work list — but it lives under the team

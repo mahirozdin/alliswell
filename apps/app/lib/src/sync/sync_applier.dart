@@ -120,6 +120,11 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.memberProfiles)..where((p) => p.id.equals(id))).go();
     case 'ee_task_assignment':
       await (db.delete(db.taskAssignments)..where((a) => a.id.equals(id))).go();
+    case 'ee_notification':
+      // Retention removed it server-side (or a later dismiss did). The row
+      // goes here too — a notification the server no longer holds must not
+      // live forever on one phone.
+      await (db.delete(db.notifications)..where((n) => n.id.equals(id))).go();
   }
 }
 
@@ -183,6 +188,10 @@ Future<void> _applySnapshot(
       await db
           .into(db.taskAssignments)
           .insertOnConflictUpdate(taskAssignmentCompanion(data));
+    case 'ee_notification':
+      await db
+          .into(db.notifications)
+          .insertOnConflictUpdate(notificationCompanion(data));
   }
 }
 
@@ -481,6 +490,42 @@ MemberProfilesCompanion memberProfileCompanion(Map<String, dynamic> data) =>
       initials: Value(data['initials'] as String?),
       colorRgb: data['colorRgb'] as String,
       avatarUrl: Value(data['avatarUrl'] as String?),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: Value(
+        data['updatedAt'] == null
+            ? null
+            : DateTime.parse(data['updatedAt'] as String),
+      ),
+    );
+
+/// EE-073's notification: one row per thing that happened to this person.
+///
+/// `params` is stored as the RAW JSON string the server sent. Decoding it here
+/// would mean deciding what a malformed value does at sync time, in a code path
+/// whose job is to write rows; the screen decodes it instead, where "this one
+/// notification will not draw" is a recoverable answer rather than a stalled
+/// pull.
+NotificationsCompanion notificationCompanion(Map<String, dynamic> data) =>
+    NotificationsCompanion.insert(
+      id: data['id'] as String,
+      workspaceId: data['workspaceId'] as String,
+      userId: data['userId'] as String,
+      eventClass: data['eventClass'] as String,
+      titleKey: data['titleKey'] as String,
+      bodyKey: Value(data['bodyKey'] as String?),
+      params: Value(data['params'] == null ? null : jsonEncode(data['params'])),
+      entityType: Value(data['entityType'] as String?),
+      entityId: Value(data['entityId'] as String?),
+      readAt: Value(
+        data['readAt'] == null
+            ? null
+            : DateTime.parse(data['readAt'] as String),
+      ),
+      createdAt: Value(
+        data['createdAt'] == null
+            ? null
+            : DateTime.parse(data['createdAt'] as String),
+      ),
       revision: Value((data['revision'] as num?)?.toInt() ?? 0),
       updatedAt: Value(
         data['updatedAt'] == null

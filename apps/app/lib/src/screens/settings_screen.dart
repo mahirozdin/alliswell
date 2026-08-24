@@ -19,6 +19,7 @@ import '../features/quick_access/ui/quick_access_bubble.dart';
 import '../features/quick_access/ui/quick_access_row.dart';
 import '../features/settings/server_url_sheet.dart';
 import '../features/ee/team_admin_providers.dart';
+import '../features/ee/ui/notification_badge.dart';
 import '../features/ee/units_providers.dart';
 import '../i18n/i18n.dart';
 import '../notifications/alarm_fix_sheet.dart';
@@ -130,6 +131,19 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.unitsSub',
                   path: '/settings/team/units',
                 ),
+              // EE-077: the notification centre and its preferences. Gated
+              // the same way the assignments row is — by the REPLICA's own
+              // roster — so it is right offline and simply absent on a plain
+              // build, with no entitlement check to get wrong.
+              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+                _GroupRow(
+                  keyName: 'settings-group-notifications',
+                  icon: Icons.notifications_active_outlined,
+                  titleKey: 'settings.group.notifications',
+                  subtitleKey: 'settings.group.notificationsSub',
+                  path: '/notifications',
+                  trailing: const AwNotificationBadge(),
+                ),
               // EE-068: "assigned to me". Shown to anyone whose workspace has
               // a roster — being given work is not an admin act, and the
               // person most likely to want this list is the one with the
@@ -185,6 +199,7 @@ class _GroupRow extends StatelessWidget {
     required this.titleKey,
     required this.subtitleKey,
     required this.path,
+    this.trailing,
   });
 
   final String keyName;
@@ -193,13 +208,23 @@ class _GroupRow extends StatelessWidget {
   final String subtitleKey;
   final String path;
 
+  /// Shown BEFORE the chevron, for a row that carries live state — the unread
+  /// badge (EE-077) is the only one so far. The chevron stays: it is what says
+  /// "this goes somewhere", and a badge is not a replacement for that.
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) => ListTile(
     key: Key(keyName),
     leading: Icon(icon),
     title: Text(titleKey.tr()),
     subtitle: Text(subtitleKey.tr()),
-    trailing: const Icon(Icons.chevron_right),
+    trailing: trailing == null
+        ? const Icon(Icons.chevron_right)
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [trailing!, const Icon(Icons.chevron_right)],
+          ),
     onTap: () => context.push(path),
   );
 }

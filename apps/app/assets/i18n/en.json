@@ -151,8 +151,8 @@
     "group": {
       "general": "General",
       "generalSub": "Language, dates, default time, tour",
-      "notifications": "Notifications & alarms",
-      "notificationsSub": "Ringing, privacy, alarm log",
+      "notifications": "Notifications",
+      "notificationsSub": "Centre and preferences",
       "integrations": "Integrations",
       "integrationsSub": "Google Calendar, Apple Calendar, AI",
       "data": "Data",
@@ -1454,6 +1454,81 @@
       "mineTitle": "Assigned to me",
       "mineEmptyTitle": "Nothing on your plate",
       "mineEmptyBody": "Tasks people put on you — or that you take yourself — show up here."
+    },
+    "notif": {
+      "centerTitle": "Notifications",
+      "centerSub": "What happened to you",
+      "emptyTitle": "Nothing yet",
+      "emptyBody": "When work is assigned to you, or an SLA runs out, it shows up here.",
+      "markAllRead": "Mark all as read",
+      "markedAllRead": "Marked {count} as read",
+      "unreadBadge": "{count} unread notifications",
+      "prefsTitle": "Notification preferences",
+      "prefsSub": "Which notifications arrive by e-mail, and quiet hours",
+      "prefsEmail": "E-mail",
+      "prefsPush": "Push",
+      "prefsLocked": "This one cannot be switched off",
+      "prefsLockedWhy": "An SLA breach and an invitation are commitments; they cannot be silenced.",
+      "quietTitle": "Quiet hours",
+      "quietBody": "E-mail that arrives in this window is not dropped — it is sent when the window ends.",
+      "quietOff": "Off",
+      "quietRange": "{from} – {to} ({zone})",
+      "quietStart": "Start",
+      "quietEnd": "End",
+      "quietSame": "Start and end cannot be the same",
+      "saved": "Preferences saved",
+      "task": {
+        "assigned": {
+          "title": "Assigned to you: {taskTitle}",
+          "body": "{actorName} put you on it."
+        }
+      },
+      "sla": {
+        "warned": {
+          "title": "SLA due soon: {ticketRef}",
+          "body": "The deadline is {dueAt}."
+        },
+        "breached": {
+          "title": "SLA breached: {ticketRef}",
+          "body": "{serviceName} has passed its deadline."
+        }
+      },
+      "ticket": {
+        "routed": {
+          "title": "New ticket for {unitName}: {ticketRef}",
+          "body": "{subject}"
+        }
+      },
+      "share": {
+        "received": {
+          "title": "Shared with you: {itemTitle}",
+          "body": "From {fromUnitName}."
+        }
+      },
+      "class": {
+        "task": {
+          "assigned": "Work is assigned to you"
+        },
+        "invite": {
+          "created": "An invitation is sent"
+        },
+        "ticket": {
+          "routed": "A ticket lands on your unit"
+        },
+        "sla": {
+          "warned": "An SLA deadline is approaching",
+          "breached": "An SLA is breached"
+        },
+        "share": {
+          "received": "Something is shared with you"
+        }
+      },
+      "time": {
+        "now": "now",
+        "minutes": "{n}m",
+        "hours": "{n}h",
+        "days": "{n}d"
+      }
     }
   },
   "perm": {

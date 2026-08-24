@@ -244,6 +244,20 @@ PAIRS = [
     ('D avatar initials on worst tint', '#EAF0FD', '#393431', 4.5),
     ('L avatar ring on surface', '#63789E', '#FFFFFF', 3.0),
     ('D avatar ring on surface', '#7186B5', '#151F3C', 3.0),
+    # EE-077 — the unread badge. Small, coloured, and carrying a NUMBER, which
+    # is the exact shape of the thing that passes an eye and fails a
+    # measurement. E07 learned that twice on the avatar directly above: half
+    # the roster palette could not carry white initials, and the comment above
+    # that code said it could.
+    #
+    # The badge takes no hand-picked red. It uses the scheme's own error/onError
+    # pair, so the number is measured here and nowhere else has to be trusted.
+    ('L unread badge label', '#FFFFFF', '#D70015', 4.5),
+    ('D unread badge label', '#450603', '#FF5147', 4.5),
+    # The unread DOT is a bare shape with no text in it, so 3:1 — the same
+    # threshold the avatar ring takes, for the same reason.
+    ('L unread dot on surface', '#0A5CFF', '#FFFFFF', 3.0),
+    ('D unread dot on surface', '#3E9BFF', '#151F3C', 3.0),
     # The tombstone avatar: somebody who left the unit but still holds the
     # assignment. Neutral fill, so it is a plain ink-on-container pair.
     ('L former-member avatar ink', '#44536F', '#DEE8F8', 4.5),
