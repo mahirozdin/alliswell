@@ -40,6 +40,12 @@ jobs:
       SSH_PORT: ${{ vars.DEPLOY_SSH_PORT || '22' }}
       API_URL: ${{ vars.DEPLOY_API_URL }}
       DEPLOY_REF: ${{ inputs.ref }}
+      # Optional private overlay (the extension seam of src/lib/ee.js, deployed).
+      # Empty repo slug = this instance runs the plain build and every overlay
+      # stage below is skipped, byte for byte as before these steps existed.
+      OVERLAY_REPO: ${{ secrets.DEPLOY_OVERLAY_REPO }}
+      OVERLAY_REF: ${{ vars.DEPLOY_OVERLAY_REF || 'main' }}
+      WILDCARD_ALIAS: ${{ vars.DEPLOY_WILDCARD_ALIAS }}
 
     steps:
       - uses: actions/checkout@v5
@@ -101,13 +107,49 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -p "$SSH_PORT" -H "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
+      # Values that travel to the server as one-line shell arguments. Anything
+      # multi-line (a data file, a block of KEY=VALUE lines) or containing a
+      # quote would break the `VAR='...' bash` form the remote steps use, so it
+      # is base64'd here and decoded there.
+      #
+      # GitHub masks a secret's LITERAL text in logs; it does not know that a
+      # base64 of that secret is the same secret. So each encoding is registered
+      # as a mask of its own — otherwise the first `set -x` or accidental echo
+      # publishes a credential in a public log.
+      - name: Prepare the overlay payload
+        if: env.OVERLAY_REPO != ''
+        env:
+          OVERLAY_TOKEN: ${{ secrets.DEPLOY_OVERLAY_TOKEN }}
+          OVERLAY_LICENSE: ${{ secrets.DEPLOY_OVERLAY_LICENSE }}
+          OVERLAY_ENV: ${{ vars.DEPLOY_OVERLAY_ENV }}
+          OVERLAY_ENV_SECRET: ${{ secrets.DEPLOY_OVERLAY_ENV_SECRET }}
+        run: |
+          test -n "$OVERLAY_TOKEN" || { echo "::error::secrets.DEPLOY_OVERLAY_TOKEN is not set — the private overlay cannot be fetched"; exit 1; }
+          emit() { # $1 = output name, $2 = value ('' → empty output, no mask)
+            if [ -z "$2" ]; then echo "$1=" >> "$GITHUB_ENV"; return; fi
+            b64=$(printf '%s' "$2" | base64 | tr -d '\n')
+            echo "::add-mask::$b64"
+            echo "$1=$b64" >> "$GITHUB_ENV"
+          }
+          emit OVERLAY_TOKEN_B64   "$OVERLAY_TOKEN"
+          emit OVERLAY_LICENSE_B64 "$OVERLAY_LICENSE"
+          # Public (vars) and secret (secrets) env lines are merged, secrets
+          # LAST so a secret always wins over a same-named plain value.
+          merged=$(printf '%s\n%s\n' "$OVERLAY_ENV" "$OVERLAY_ENV_SECRET")
+          # Two empty inputs still make two newlines. Encoding that would send
+          # the server a payload whose only effect is a pointless .env backup.
+          case "$merged" in *=*) : ;; *) merged="" ;; esac
+          emit OVERLAY_ENV_B64 "$merged"
+          echo "overlay: $OVERLAY_REPO@$OVERLAY_REF"
+          [ -n "$OVERLAY_LICENSE" ] || echo "::warning::secrets.DEPLOY_OVERLAY_LICENSE is empty — the overlay will load, but without entitlements it behaves like the plain build"
+
       # Everything that touches the server runs as ONE script, so a failure
       # anywhere (set -e) stops before the next stage.
       - name: Back up the database, migrate and restart the API
         run: |
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' bash -euo pipefail" <<'REMOTE'
+            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' OVERLAY_REPO='$OVERLAY_REPO' OVERLAY_REF='$OVERLAY_REF' OVERLAY_TOKEN_B64='$OVERLAY_TOKEN_B64' OVERLAY_LICENSE_B64='$OVERLAY_LICENSE_B64' OVERLAY_ENV_B64='$OVERLAY_ENV_B64' bash -euo pipefail" <<'REMOTE'
           cd "$APP_DIR"
 
           # A non-interactive SSH session sources no login profile, and panels
@@ -259,6 +301,111 @@ jobs:
           git checkout -f "$TAG"
           echo "checked out: $(git describe --tags --always)"
 
+          # 2b. The optional private overlay, BEFORE dependencies and schema.
+          #     This ordering is not a preference, it is the contract:
+          #     resolveEeDir() feeds the knexfile as well as the runtime loader
+          #     (src/lib/ee.js), so `db:migrate` only sees the overlay's
+          #     migrations when the checkout is already on disk. Sync it after
+          #     `git checkout` and the migration runs once, over both sets.
+          #
+          #     `/ee/` is gitignored by this repo, so the checkout above never
+          #     disturbs it — that ignore rule is an operational guarantee, not
+          #     only a policy one.
+          OVERLAY_DIR="$APP_DIR/ee"
+          if [ -n "${OVERLAY_REPO:-}" ]; then
+            TOKEN=$(printf '%s' "${OVERLAY_TOKEN_B64:-}" | base64 -d)
+            # The token lives in the fetch URL for the length of one command and
+            # is never written to .git/config: `origin` keeps the clean URL, so
+            # a credential cannot be read back off the server later.
+            AUTH_URL="https://x-access-token:$TOKEN@github.com/$OVERLAY_REPO.git"
+            CLEAN_URL="https://github.com/$OVERLAY_REPO.git"
+            if [ ! -d "$OVERLAY_DIR/.git" ]; then
+              rm -rf "$OVERLAY_DIR"
+              git clone --quiet "$AUTH_URL" "$OVERLAY_DIR"
+              git -C "$OVERLAY_DIR" remote set-url origin "$CLEAN_URL"
+            fi
+            git -C "$OVERLAY_DIR" fetch --quiet --tags --force --prune "$AUTH_URL" \
+              "+refs/heads/*:refs/remotes/origin/*"
+            unset TOKEN AUTH_URL
+            # A ref may be a tag or a branch. Resolve it once, then move to the
+            # exact commit — `checkout <branch>` would leave the tree tracking a
+            # branch whose next commit lands unannounced on the next restart.
+            if ! SHA=$(git -C "$OVERLAY_DIR" rev-parse --verify --quiet "refs/tags/$OVERLAY_REF^{commit}"); then
+              SHA=$(git -C "$OVERLAY_DIR" rev-parse --verify --quiet "refs/remotes/origin/$OVERLAY_REF^{commit}") || {
+                echo "ERROR: overlay ref '$OVERLAY_REF' is neither a tag nor a branch on $OVERLAY_REPO." >&2
+                exit 1
+              }
+            fi
+            git -C "$OVERLAY_DIR" checkout -f --quiet "$SHA"
+            echo "overlay: $OVERLAY_REPO@$OVERLAY_REF → $(git -C "$OVERLAY_DIR" describe --tags --always)"
+            case "$OVERLAY_REF" in
+              v*|ee-v*) : ;;
+              *) echo "::warning::the overlay is deployed from '$OVERLAY_REF', not a tag — this instance runs a moving target while the core half runs a release" ;;
+            esac
+            # An explicit `if`, not `[ -f … ] && …`: under `set -e` an AND-list
+            # whose test fails is survivable in the middle of a script and FATAL
+            # as its last command (measured). Nothing here is last today, and
+            # nothing should have to stay last for this to keep working.
+            if [ -f "$OVERLAY_DIR/package-lock.json" ]; then
+              ( cd "$OVERLAY_DIR" && npm ci --omit=dev --silent )
+            fi
+            # The signed data file the overlay reads at boot. Written whole and
+            # moved into place so a half-written file can never be read, and
+            # kept 0600 because it is a delivered commercial artifact.
+            if [ -n "${OVERLAY_LICENSE_B64:-}" ]; then
+              printf '%s' "$OVERLAY_LICENSE_B64" | base64 -d > "$OVERLAY_DIR/.license.incoming"
+              chmod 600 "$OVERLAY_DIR/.license.incoming"
+              node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$OVERLAY_DIR/.license.incoming" \
+                || { echo "ERROR: the supplied licence is not valid JSON — leaving the existing one alone." >&2; rm -f "$OVERLAY_DIR/.license.incoming"; exit 1; }
+              mv "$OVERLAY_DIR/.license.incoming" "$OVERLAY_DIR/license.json"
+              echo "licence file: $(wc -c < "$OVERLAY_DIR/license.json") bytes"
+            fi
+          elif [ -d "$OVERLAY_DIR" ]; then
+            # Nothing is removed: an overlay put there by hand keeps working.
+            # Say so, because a silently un-managed directory is the kind of
+            # thing a deploy log should never leave to inference.
+            echo "::warning::$OVERLAY_DIR exists but no overlay repo is configured — it is NOT managed by this deploy"
+          fi
+
+          # 2c. Deploy-managed .env keys. The application's .env stays the one
+          #     source of truth for credentials; this only reconciles the keys
+          #     the deploy owns, so a server never has to be edited by hand to
+          #     change a hostname. Values are never printed — only key names.
+          ENV_FILE="$APP_DIR/apps/api/.env"
+          if [ -n "${OVERLAY_ENV_B64:-}" ]; then
+            printf '%s' "$OVERLAY_ENV_B64" | base64 -d > /tmp/aw-env-lines.$$
+            touched=""
+            cp -a "$ENV_FILE" "$ENV_FILE.pre-$TAG"
+            while IFS= read -r line; do
+              case "$line" in ''|'#'*) continue ;; esac
+              key=${line%%=*}
+              # A malformed line must not become a key named after half a
+              # sentence: only a real shell-style identifier is accepted.
+              case "$key" in
+                *[!A-Za-z0-9_]*|'') echo "::warning::ignoring a malformed deploy-managed env line"; continue ;;
+              esac
+              if grep -qE "^$key=" "$ENV_FILE"; then
+                # Rewrite in place, value-blind: the replacement is passed as an
+                # argument, never interpolated into a sed expression, so a value
+                # containing / or & cannot corrupt the file.
+                node -e '
+                  const fs = require("fs");
+                  const [file, key, value] = process.argv.slice(1);
+                  const out = fs.readFileSync(file, "utf8").split("\n")
+                    .map((l) => (l.startsWith(key + "=") ? key + "=" + value : l))
+                    .join("\n");
+                  fs.writeFileSync(file, out);
+                ' "$ENV_FILE" "$key" "${line#*=}"
+              else
+                printf '%s\n' "$line" >> "$ENV_FILE"
+              fi
+              touched="$touched $key"
+            done < /tmp/aw-env-lines.$$
+            rm -f /tmp/aw-env-lines.$$
+            echo "env keys reconciled:${touched:- (none)}  (backup: $ENV_FILE.pre-$TAG)"
+            ls -1t "$APP_DIR/apps/api/.env.pre-"* 2>/dev/null | tail -n +6 | xargs -r rm --
+          fi
+
           # 3. Dependencies + schema. knex/mysql2 are prod deps, so --omit=dev
           #    still migrates. Migrations are append-only: data is preserved.
           npm ci --omit=dev
@@ -315,6 +462,57 @@ jobs:
             # Never leave apache with a conf it rejects — restore what was there.
             if [ "$had_conf" = 1 ]; then cp "$PREV" "$CONF"; else rm -f "$CONF"; fi
             echo "::warning::apache config test failed — SSE conf NOT applied; AI chat will keep buffering"
+          fi
+          rm -f "$PREV"
+          REMOTE
+
+      # The API answers on one hostname today. An instance that derives request
+      # context from the Host header needs every name under an apex to reach it,
+      # which on Apache is one ServerAlias — and `ProxyPreserveHost On`, without
+      # which every request arrives as the apex and host-derived context is
+      # silently empty. That is the single most common misconfiguration of this
+      # layout, so the conf asserts it rather than assuming the vhost has it.
+      #
+      # Same shape as the SSE conf above: deploy-managed, written into the
+      # vhost's IncludeOptional'd directory, and only ever kept if apachectl
+      # blesses the result.
+      - name: Ensure the API answers on every host under the apex
+        if: vars.DEPLOY_WILDCARD_ALIAS != ''
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+            "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "WILDCARD_ALIAS='$WILDCARD_ALIAS' bash -euo pipefail" <<'REMOTE'
+          PROXY_DIR=/www/server/panel/vhost/apache/proxy/api.alliswell.space
+          if [ ! -d "$PROXY_DIR" ]; then
+            echo "::warning::no aaPanel apache proxy dir — add the ServerAlias by hand (SELF-HOSTING §3)"
+            exit 0
+          fi
+          CONF="$PROXY_DIR/zz-alliswell-wildcard.conf"
+          WANT=$(mktemp)
+          {
+            echo '# AllisWell (deploy-managed — edits here are overwritten).'
+            echo '# Every name under the apex reaches this vhost, and reaches it'
+            echo '# carrying its ORIGINAL Host: request context is derived from'
+            echo '# that header and nothing else can reconstruct it downstream.'
+            echo "ServerAlias $WILDCARD_ALIAS"
+            echo 'ProxyPreserveHost On'
+          } > "$WANT"
+          if [ -f "$CONF" ] && cmp -s "$WANT" "$CONF"; then
+            echo "wildcard alias already in place ($WILDCARD_ALIAS)"
+            rm -f "$WANT"; exit 0
+          fi
+          PREV=$(mktemp); had_conf=0
+          [ -f "$CONF" ] && { cp "$CONF" "$PREV"; had_conf=1; }
+          cp "$WANT" "$CONF"; rm -f "$WANT"
+          APACHECTL=/www/server/apache/bin/apachectl
+          if [ -x "$APACHECTL" ] && "$APACHECTL" -t; then
+            "$APACHECTL" -k graceful || true
+            echo "wildcard alias installed ($WILDCARD_ALIAS) and apache gracefully reloaded"
+          else
+            # An IncludeOptional that lands OUTSIDE <VirtualHost> makes
+            # ServerAlias a fatal directive. Never leave apache unable to start.
+            if [ "$had_conf" = 1 ]; then cp "$PREV" "$CONF"; else rm -f "$CONF"; fi
+            echo "::warning::apache rejected the config — wildcard alias NOT applied; add ServerAlias/ProxyPreserveHost to the vhost by hand"
           fi
           rm -f "$PREV"
           REMOTE
@@ -432,4 +630,42 @@ jobs:
             esac
           done
 
+          exit $fail
+
+      # DNS, certificate and proxy for the wildcard, proved on a name that has
+      # never been configured anywhere. That is the point: a host nobody has
+      # heard of must still resolve, present a valid certificate and reach the
+      # API, because that is what a name created later will have to do.
+      #
+      # What this does NOT prove is Host preservation — /health/live answers the
+      # same whatever host it arrives as. The proxy header half is checked by
+      # the vhost conf above and by the instance's own acceptance run.
+      - name: Verify the wildcard reaches the API
+        if: vars.DEPLOY_WILDCARD_ALIAS != ''
+        run: |
+          apex="${WILDCARD_ALIAS#\*.}"
+          fail=0
+          # Two different labels: one pass could be a single-name certificate
+          # that happens to match; two cannot.
+          for label in deploy-probe never-registered-$(date +%s); do
+            host="$label.$apex"
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://$host/health/live" 2>/tmp/curl.err || true)
+            if [ "$code" = "200" ]; then
+              echo "✓ https://$host/health/live → 200 (DNS, TLS and proxy all answer)"
+            else
+              echo "::error::https://$host/health/live → ${code:-no response}. $(cat /tmp/curl.err)"
+              case "$code" in
+                # 52x are the EDGE's own codes when a CDN fronts this instance,
+                # and 526 is precise: the edge reached the origin and refused
+                # the certificate it presented. No vhost or proxy change moves
+                # it — the origin needs a certificate that covers *.$apex.
+                526) echo "  526: the edge rejected the ORIGIN's certificate. It must cover *.$apex (an edge-issued origin cert, or certbot DNS-01), or the zone must leave strict origin validation." ;;
+                521|522|523) echo "  $code: the edge could not reach the origin at all — firewall, or nothing listening." ;;
+                000) echo "  No HTTP happened: DNS or the client-facing TLS handshake failed." ;;
+                404|503) echo "  The request reached a vhost that is not the API — check the ServerAlias step above." ;;
+                *) echo "  Expected 200." ;;
+              esac
+              fail=1
+            fi
+          done
           exit $fail

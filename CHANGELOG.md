@@ -5,7 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- **The deploy pipeline can carry an optional private extension checkout.** When an
+  instance is configured with one, the deploy syncs it to the exact commit, installs its
+  dependencies and reconciles the deploy-owned `.env` keys *before* the schema step — the
+  extension seam feeds the knex config as well as the runtime loader, so migrations only
+  see the extension's when the checkout is already on disk. It can also install a wildcard
+  `ServerAlias` (with `ProxyPreserveHost On`, without which every request arrives as the
+  apex) and proves the result afterwards on hostnames that were never configured anywhere.
+  Instances with no extension configured take a byte-identical path to before.
 
 ## [1.8.0] — 2026-08-24
 
