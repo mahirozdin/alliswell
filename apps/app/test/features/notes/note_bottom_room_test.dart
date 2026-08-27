@@ -5,6 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_forge/markdown_forge.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
+import '../projects/fake_api.dart';
+import 'notes_flow_test_support.dart';
+
 /// Round 19c — "I scrolled to the end of a long note and could not tap there."
 ///
 /// Two failures wear the same face, and only one is about comfort:
@@ -150,5 +153,30 @@ void main() {
     await tester.tapAt(Offset(field.center.dx, field.bottom - 20));
     await tester.pumpAndSettle();
     expect(controller.selection.baseOffset, controller.text.length);
+  });
+
+  // The synthetic host above proves the geometry. This proves the INSET
+  // actually survives the real app's nested scaffolds — the shell's floating
+  // bar reports itself through `MediaQuery.padding.bottom`, and a Scaffold
+  // strips that from its body when it has a bottom bar of its own. The note
+  // editor's does not, so it passes through; that is a fact about Flutter's
+  // Scaffold, and facts about other people's code are worth measuring.
+  testWidgets('the host chrome inset reaches the editor through the shell', (
+    tester,
+  ) async {
+    _phone(tester);
+    final api = FakeApi()
+      ..seedNote(title: 'Uzun not', contentMarkdown: _longNote());
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openNotes(tester);
+    await tester.tap(find.text('Uzun not'));
+    await tester.pumpAndSettle();
+
+    final tail = find.byKey(const Key('note-source-tail'));
+    expect(tail, findsOneWidget, reason: 'the editor opens in Source mode');
+
+    // Whatever the shell reports, the tail is real room rather than a token.
+    expect(tester.getRect(tail).height, greaterThan(120));
   });
 }
