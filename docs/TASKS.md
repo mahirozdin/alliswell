@@ -9032,6 +9032,50 @@ o hizasızlığı aramak, rapor edilmemiş dört SESSİZ kaybı daha ortaya çı
   için verdi: yalnız çizilemeyen bloklar piksel olur). Doğru cevap, sayfanın STİLİNİ okuma
   görünümüne hizalamak — bu iş de odur.
 
+### OPH-282 — Notun sonuna dokunabilmek (tur 19c, v1.8.3)
+
+_Rapor: "uzun bir nota geldim, sonuna tıklayamıyorum — son kısım zaten menünün altında, altında
+olmasa bile o kadar aşağıya rahat tıklayamıyorum. Bittiği yerden sonra en az yarım ekran daha
+kaydırılabilir olsa rahat tıklanır."_
+
+_**Turun tek cümlesi: aynı yüzü taşıyan iki ayrı arıza vardı ve yalnız biri konforla ilgiliydi —
+diğerinde içerik erişilemezdi.**_
+
+- [x] **Erişim — son satırlar tuhaf değil, YOKTU.** Shell `Scaffold(extendBody: true)` kullanıyor:
+  gövde yüzen cam çubuğun ALTINA uzanıyor. Flutter bu örtüşmeyi gövdeye
+  `MediaQuery.padding.bottom` olarak bildiriyor ve depo bunun için `awListPadding` yardımcısını
+  yazmış — ama `MarkdownView.padding` varsayılanı `symmetric(horizontal:)`, yani **alt boşluk
+  sıfır**. Her uzun notun son paragrafları kalıcı olarak çubuğun altındaydı. Bu bir tercih değil,
+  kusur: okunamıyor ve dokunulamıyordu.
+- [x] **Nişan — belgenin sonu kötü bir dokunma hedefi.** Çubuktan kurtulsa bile kaydırılmış bir
+  belgenin son satırı ekranın en alt kenarında ~20 px'lik bir şerit. Yazması keyifli her editör
+  sonun ÖTESİNE kaydırma bırakır: VS Code buna `editor.scrollBeyondLastLine` diyor ve **açık**
+  gönderiyor; iA Writer/Ulysses aynı fikri typewriter scrolling'e kadar götürüyor (imleç ekranın
+  ortasında → en az yarım ekran kuyruk); Obsidian kullanıcıları tam bu yüzden
+  `padding-bottom: 50vh` snippet'ine uzanıyor. Sahibin "en az yarım ekran" tahmini bu ailenin
+  orta noktası. Bu yüzden pay bir SABİT değil, **görünürlüğün kesri** — telefonda ve masaüstünde
+  aynı şeyi ifade etsin, ve klavye ekranın yarısını aldığında kendiliğinden küçülsün diye
+  (kuyruğun en az istendiği, alanın en değerli olduğu an).
+- [x] **Kolay yanlış yapılan kısım: boşluk kaydırılabilir İÇERİK olmalı, sabit iç boşluk değil.**
+  `expands: true` olan bir `TextField` kendi içinde kaydırıyor, dolayısıyla `contentPadding.bottom`
+  görünür metin alanını KALICI olarak küçültürdü — şerit her durumda orada durur ve son satır yine
+  daha kısa bir kutunun dibine çakılırdı. `SourceMode` artık alanı bir `SingleChildScrollView`
+  içine koyup boşluğu ondan SONRA veriyor. `minHeight` kısa notun eski davranışını koruyor: alan
+  ekranın kalanını dolduruyor, metnin altına dokunmak yine sona imleç koyuyor.
+- [x] **İmleç koymayan boşluk ölü affordance'tır (§22).** Kuyruk, imleci belgenin sonuna koyup
+  klavyeyi açan bir dokunma hedefiyle sarılı — Apple Notes'un davranışı ve "yazmaya devam etmek
+  için metnin altına dokun" jestini çalıştıran şey.
+- [x] **Sayaç şeridi de çubuğun altındaydı.** Chrome payı SourceMode sütununun tamamı için BİR KEZ
+  temizleniyor; editör onu ikinci kez temizlemiyor (yoksa boşluk iki katına çıkardı).
+- [x] Kapı: dört test — okuma modunun son satırı çubuğu geçmiyor · uzun not sonun ötesine
+  kaydırılabiliyor ve kuyruk ekranın %75'inin üstünde başlıyor · kuyruğa dokunmak imleci sona
+  koyuyor · **kısa not hâlâ ekranı dolduruyor** (alanı bir kaydırma görünümüne taşırken kaybedilme
+  ihtimali en yüksek olan davranış).
+- [x] **Bulgu (test artefaktı, ama önemli):** alan artık ekrandan uzun olduğu için `getCenter`'ı
+  ekran DIŞINDA — ona nişan alan bir sürükleme hiçbir yere düşmüyor. Testler görünürlüğü
+  sürüklüyor; bu zaten parmağın dokunduğu piksel ve metnin üzerinden kaydırmanın çalışmaya devam
+  ettiğini kanıtlayan durum (ölçüldü: `max=2545`, sürükleme sonrası `offset=280`).
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

@@ -3,7 +3,21 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-27 (**OPH-281 dokunuşu — sayfanın paleti uygulamanın paleti (Round).
+**Last updated:** 2026-08-27b (**OPH-282 — NOTUN SONUNA DOKUNABİLMEK (Round; sıra dışı).
+v1.8.3+31.** Rapor: uzun notun sonuna tıklanamıyor. Aynı yüzü taşıyan İKİ arıza: (1) shell
+`extendBody: true` ile çubuğu gövdenin üstüne yüzdürüyor ve `MarkdownView.padding` varsayılanı
+alt boşluk taşımıyordu — son paragraflar çubuğun altında, erişilemez (depoda `awListPadding`
+yardımcısı tam bunun için var, notlar kullanmıyordu); (2) çubuktan kurtulsa bile belgenin sonu
+ekranın alt kenarında ince bir hedef. İkincisinin adı **scroll past end** — VS Code'da
+`editor.scrollBeyondLastLine` (varsayılan açık), iA Writer/Ulysses'te typewriter scrolling.
+**Kolay yanlış yapılan kısım:** boşluk kaydırılabilir İÇERİK olmalı; `expands: true` +
+`contentPadding` görünür alanı kalıcı küçültür ve son satırı yine dibe çakardı — bu yüzden alan
+bir `SingleChildScrollView` içine alındı, `minHeight` kısa notun eski davranışını koruyor.
+Kuyruk imleci sona koyan bir dokunma hedefiyle sarılı (imleç koymayan boşluk ölü affordance,
+§22). Sayaç şeridi de çubuğun altındaydı; chrome payı sütun için bir kez temizleniyor.
+Süitler: app **1427** (+4), analyze temiz. Sıradaki iş (core): değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-27 (**OPH-281 dokunuşu — sayfanın paleti uygulamanın paleti (Round).
 v1.8.2+30.** Parite düzeltmesi kendi yaklaşıklığını getirmişti: onay kutusu için elle seçilmiş
 bir yeşil ve dört uydurma uyarı rengi — yani sayfa hâlâ ekranın rengi değildi, sadece bir beden
 küçük aynı hizasızlık. Artık açık temadan BİREBİR alınıyor (`AwTokens.light.success`/`.warning`,

@@ -35,6 +35,7 @@ export 'src/render/mermaid/flow_layout.dart';
 export 'src/render/mermaid/sequence_layout.dart';
 
 export 'src/edit/md_actions.dart';
+export 'src/edit/md_bottom_room.dart';
 export 'src/edit/md_editing.dart';
 export 'src/edit/md_highlight.dart';
 export 'src/edit/md_toolbar.dart';

@@ -7,6 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// It cannot drift: the release workflow refuses to publish a tag unless the
 /// tag, `pubspec.yaml` and this constant all agree — which is exactly the check
 /// the Settings screen's hardcoded "0.1.0" went three releases without.
-const kAppVersion = '1.8.2';
+const kAppVersion = '1.8.3';
 
 final appVersionProvider = Provider<String>((_) => kAppVersion);

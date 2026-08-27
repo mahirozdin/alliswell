@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 
 import 'markdown_view.dart';
 import 'md_outline.dart';
+import '../edit/md_bottom_room.dart';
 import 'md_parse.dart';
 import 'md_scroll.dart';
 import 'md_theme.dart';
@@ -137,8 +138,23 @@ class _ReadingModeState extends State<ReadingMode> {
     final wide = MediaQuery.sizeOf(context).width >= kNoteOutlineBreakpoint;
     final current = headingAt(_headings, _controller.firstVisibleBlock);
 
+    // Round 19c. The default padding was horizontal only, so a host with
+    // floating chrome — AllisWell's `extendBody: true` glass bar — buried the
+    // last paragraphs of every long note under it. Reach plus a little room to
+    // read the ending somewhere other than the bottom edge; see
+    // `md_bottom_room.dart`.
     final document = MarkdownView(
       key: const Key('note-reading'),
+      padding: EdgeInsets.fromLTRB(
+        MdSpace.x5,
+        0,
+        MdSpace.x5,
+        mdBottomRoom(
+          viewportHeight: MediaQuery.sizeOf(context).height,
+          chromeInset: mdChromeInset(context),
+          reachFraction: kMdReadingReachFraction,
+        ),
+      ),
       document: _doc,
       markdownController: _controller,
       collapsed: _collapsed,

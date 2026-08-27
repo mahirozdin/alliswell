@@ -297,7 +297,7 @@ Writing these down is what makes §4 trustworthy.
 | **Invitations, RSVPs, free/busy, rooms** | Google & Apple Calendar | Out of scope — we mirror to your calendar and let it do this. |
 | **Natural-language date entry, everywhere** | Todoist, Things 3 | Partial: magic-parse exists in quick-add, and it currently leans on AI. |
 | **Real collaboration** — assignees, comments, shared lists | Todoist, Apple Reminders, Google | Workspaces exist in the model; the sharing UI is not built. Single-user today. |
-| **Maturity** — a decade of edge cases, App Store trust, an ecosystem | all of them | We are at 1.8.2. This is a young product. |
+| **Maturity** — a decade of edge cases, App Store trust, an ecosystem | all of them | We are at 1.8.3. This is a young product. |
 | **Ecosystem reach** — Siri, Gmail side panel, Watch complications | Apple, Google | Widgets ship; Siri/Watch integration is designed (OPH-183), not delivered. |
 | **Design polish over years** | Things 3 | We took their model and our own design system is strict — but they have had ten years to sand the corners. |
 | **Localisation breadth** | all of them | Two languages. Adding one is a JSON file, which is the point, but the file has to be written. |

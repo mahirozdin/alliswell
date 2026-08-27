@@ -7,6 +7,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 _Nothing yet._
 
+## [1.8.3] — 2026-08-27
+
+### Fixed
+
+- **The end of a long note is reachable again (OPH-282).** The shell floats its glass bar over
+  the document, and the note surfaces were not leaving room for it — so the last paragraphs of
+  a long note sat *under* the bar, where they could be neither read nor tapped. Reading and
+  editing both clear it now, and the word count no longer hides there either.
+
+### Added
+
+- **Room to scroll past the end of a note (OPH-282).** Even clear of the bar, the last line of
+  a scrolled document is a thin target at the very bottom edge of the screen. Both modes now
+  keep empty space after the last line — a share of the viewport, so it means the same thing on
+  a phone and a desktop and shrinks on its own when the keyboard takes half the screen. It is
+  the pattern VS Code ships as `editor.scrollBeyondLastLine` and iA Writer takes further as
+  typewriter scrolling. In the editor the space is a tap target that puts the caret at the end
+  of the note, so "tap below the text to keep writing" works the way every note app trains you
+  to expect — blank space that places no caret would be an affordance that lies.
+
 ## [1.8.2] — 2026-08-27
 
 ### Fixed

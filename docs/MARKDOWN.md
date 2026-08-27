@@ -479,6 +479,47 @@ call for diagrams: **only the blocks that cannot be typeset become pixels.**
 The right answer to "the reading view looks better" is to move the page's
 styling to it, which is what this round is.
 
+## 13. Round 19c: the end of a note has to be reachable
+
+"I came to a long note and could not tap the end of it." Two failures wearing
+one face, and only one of them was about comfort.
+
+**The last lines were not awkward — they were gone.** The shell uses
+`Scaffold(extendBody: true)` so the body extends under its floating glass bar.
+Flutter reports that overlap to the body as `MediaQuery.padding.bottom`, and the
+app already has `awListPadding` for exactly this — but `MarkdownView.padding`
+defaulted to `symmetric(horizontal:)`, i.e. **no bottom at all**. Every long
+note ended underneath the bar. That is a defect, not a preference: the text
+could be neither read nor tapped.
+
+**And the end of a document is a bad tap target.** Clear of the bar, the last
+line of a scrolled document is a ~20 px strip at the very bottom edge. The
+established answer is room to scroll *past* the end — VS Code ships it as
+`editor.scrollBeyondLastLine` (on by default), iA Writer and Ulysses take it to
+its limit with typewriter scrolling, which keeps the caret near the middle of
+the screen and therefore implies at least half a viewport of tail. The room is a
+**share of the viewport** rather than a constant, so it means the same thing on
+a phone and a desktop — and because the caller measures the real box, it shrinks
+by itself when a keyboard takes half the screen, which is when a tail is least
+wanted and space is most precious.
+
+### The part that is easy to get wrong
+
+The room has to be scrollable **content**, not a fixed inset.
+
+A `TextField` with `expands: true` fills its box and scrolls the text *inside*
+it, so `contentPadding.bottom` cannot express "scroll further": it carves a
+permanent blank strip out of the visible area, in every state, and the last line
+is still pinned to the bottom of a shorter box. So `SourceMode` puts the field
+in a `SingleChildScrollView` and the room after it. A `minHeight` keeps what
+`expands` used to give for free — a one-line note still offers a full-height
+place to write, and tapping below the text still lands in the field.
+
+And the tail is wrapped in a tap target that moves the caret to the end of the
+document. Blank space that places no caret is DESIGN §22's dead affordance, and
+"tap below the last line to keep writing" is the gesture every note app trains
+people to expect.
+
 ## 10. Sources
 
 Field survey: [Best Markdown Editors 2026 — hands-on comparison](https://mdclaudy.com/blog/best-markdown-editors-2026) ·

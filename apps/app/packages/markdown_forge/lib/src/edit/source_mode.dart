@@ -20,6 +20,7 @@ import 'md_highlight.dart';
 import 'md_toolbar.dart';
 
 import 'md_actions.dart';
+import 'md_bottom_room.dart';
 import 'md_editing.dart';
 import '../render/markdown_view.dart';
 import '../render/md_parse.dart';
@@ -53,6 +54,7 @@ class SourceMode extends StatefulWidget {
 
 class _SourceModeState extends State<SourceMode> {
   final ScrollController _sourceScroll = ScrollController();
+  final FocusNode _fieldFocus = FocusNode();
   final ScrollController _previewScroll = ScrollController();
   bool _split = false;
   bool _syncing = false;
@@ -195,6 +197,7 @@ class _SourceModeState extends State<SourceMode> {
   void dispose() {
     _sourceScroll.dispose();
     _previewScroll.dispose();
+    _fieldFocus.dispose();
     super.dispose();
   }
 
@@ -330,40 +333,97 @@ class _SourceModeState extends State<SourceMode> {
               : _editor(),
         ),
         MdCountStrip(text: widget.controller.text),
+        // The host's floating chrome, cleared ONCE for the column — otherwise
+        // the count strip is the thing hidden under the bar and the editor
+        // would have to clear it a second time. 0 where nothing floats.
+        SizedBox(height: mdChromeInset(context)),
       ],
     );
   }
 
-  Widget _editor() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: MdSpace.x5),
-    child: Focus(
-      onKeyEvent: _onKey,
-      child: TextField(
-        key: const Key('note-source-field'),
-        controller: widget.controller,
-        scrollController: _sourceScroll,
-        onChanged: (_) {
-          _onTextChanged();
-          if (_split) setState(() {}); // the preview follows the text
-        },
-        maxLines: null,
-        expands: true,
-        textAlignVertical: TextAlignVertical.top,
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontFamilyFallback: ['Menlo', 'Consolas', 'Courier New'],
-          height: 1.5,
+  /// Puts the caret at the end and opens the keyboard.
+  ///
+  /// What the blank space under the text is FOR. Space that places no caret is
+  /// a dead affordance (§22), and "tap below the last line to keep writing" is
+  /// the gesture every note app trains people to expect.
+  void _caretToEnd() {
+    _fieldFocus.requestFocus();
+    widget.controller.selection = TextSelection.collapsed(
+      offset: widget.controller.text.length,
+    );
+  }
+
+  /// The editor, in a scroll view rather than scrolling inside itself.
+  ///
+  /// It used to be `expands: true`, which fills the box and scrolls the text
+  /// within it — and that shape cannot express "scroll past the end" at all:
+  /// `contentPadding.bottom` would carve a permanent blank strip out of the
+  /// visible area instead of adding scrollable room after it, and the last line
+  /// would still be pinned to the bottom of a shorter box. See
+  /// `md_bottom_room.dart` for what the room is for.
+  ///
+  /// `minHeight` keeps the old behaviour for a SHORT note: the field still
+  /// fills what is left of the screen, so tapping anywhere below the text lands
+  /// in the field and the caret goes to the end, exactly as before.
+  Widget _editor() => LayoutBuilder(
+    builder: (context, constraints) {
+      final room = mdBottomRoom(
+        viewportHeight: constraints.maxHeight,
+        // The chrome is cleared once for the whole column (see `build`), so
+        // this is reach only — adding it twice would double the gap.
+        chromeInset: 0,
+        reachFraction: kMdEditorReachFraction,
+      );
+      final minField = (constraints.maxHeight - room).clamp(
+        0.0,
+        constraints.maxHeight,
+      );
+      return SingleChildScrollView(
+        controller: _sourceScroll,
+        padding: const EdgeInsets.symmetric(horizontal: MdSpace.x5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(minHeight: minField),
+              child: Focus(
+                onKeyEvent: _onKey,
+                child: TextField(
+                  key: const Key('note-source-field'),
+                  controller: widget.controller,
+                  focusNode: _fieldFocus,
+                  onChanged: (_) {
+                    _onTextChanged();
+                    if (_split) setState(() {}); // the preview follows the text
+                  },
+                  maxLines: null,
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontFamilyFallback: ['Menlo', 'Consolas', 'Courier New'],
+                    height: 1.5,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: context.mdStrings.sourceHint,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ),
+            GestureDetector(
+              key: const Key('note-source-tail'),
+              behavior: HitTestBehavior.opaque,
+              onTap: _caretToEnd,
+              child: SizedBox(height: room),
+            ),
+          ],
         ),
-        decoration: InputDecoration(
-          hintText: context.mdStrings.sourceHint,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          filled: false,
-          isDense: true,
-        ),
-      ),
-    ),
+      );
+    },
   );
 
   Widget _preview() => MarkdownView(
