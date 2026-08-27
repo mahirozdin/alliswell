@@ -102,19 +102,34 @@ const _accent = PdfColor.fromInt(0xFF0A5CFF);
 const _rule = PdfColor.fromInt(0xFFD8DEEA);
 const _codeBg = PdfColor.fromInt(0xFFF2F4F9);
 
-// Round 19b: the reading view's own roles, as print equivalents. A checked box
-// is `success` there, not the accent — see [_checkItem].
-const _success = PdfColor.fromInt(0xFF1B8A5A);
-const _markBg = PdfColor.fromInt(0xFFFFF1B8);
+// Round 19b: the reading view's own roles, copied VALUE FOR VALUE from the
+// app's LIGHT theme rather than eyeballed — the whole point of this round is
+// that the page and the screen agree, and an approximate green would have been
+// the same class of mismatch in a smaller size. Light, because print is
+// (`_ink` and friends above say so).
+//
+//   _success  = AwTokens.light.success   (theme/tokens.dart)
+//   _warning  = AwTokens.light.warning
+//   _secondary/_error = the light ColorScheme (theme/theme.dart)
+//   _accent   = the light primary, already here since round 16
+const _success = PdfColor.fromInt(0xFF0D7A33);
+const _warning = PdfColor.fromInt(0xFFC77700);
+const _secondary = PdfColor.fromInt(0xFF5A50E0);
+const _error = PdfColor.fromInt(0xFFD70015);
 
-/// The edge colour of a GFM alert, by its kind. Same five roles the reading
-/// view uses; unknown kinds take the neutral one rather than vanishing.
+/// A highlight's tint. `AwTokens.warning` at the same alpha the source editor
+/// uses, pre-blended onto white — a PDF text background cannot carry alpha.
+const _markBg = PdfColor.fromInt(0xFFFDF0D5);
+
+/// The edge colour of a GFM alert, by its kind — the same five roles
+/// `MdStyles.alertAccent` maps on screen. An unknown kind takes the neutral
+/// one rather than vanishing.
 PdfColor _calloutEdge(String? kind) => switch (kind) {
   'tip' => _success,
-  'important' => const PdfColor.fromInt(0xFF7C3AED),
-  'warning' => const PdfColor.fromInt(0xFFB45309),
-  'caution' => const PdfColor.fromInt(0xFFB91C1C),
-  _ => _accent,
+  'important' => _secondary,
+  'warning' => _warning,
+  'caution' => _error,
+  _ => _accent, // `note`, and anything the parser invents later
 };
 
 const _bodySize = 11.0;

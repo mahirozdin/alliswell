@@ -3,7 +3,18 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-24b (**OPH-281 — PDF OKUMA MODUYLA AYNI GÖRÜNSÜN (Round; sıra dışı,
+**Last updated:** 2026-08-27 (**OPH-281 dokunuşu — sayfanın paleti uygulamanın paleti (Round).
+v1.8.2+30.** Parite düzeltmesi kendi yaklaşıklığını getirmişti: onay kutusu için elle seçilmiş
+bir yeşil ve dört uydurma uyarı rengi — yani sayfa hâlâ ekranın rengi değildi, sadece bir beden
+küçük aynı hizasızlık. Artık açık temadan BİREBİR alınıyor (`AwTokens.light.success`/`.warning`,
+açık `ColorScheme`'in `secondary`/`error`/`primary`'si) ve `note_pdf_palette_test.dart` her
+kaynağı doğruluyor — saf bir dosyaya kopyalanan sabitler bir tema değişimini başka türlü fark
+edemez ve arıza biçimi, her süit yeşilken tonu ton eksilen bir PDF olurdu. Ayrıca CHANGELOG
+düzeltmesi: v1.8.1 etiketlendiğinde main'de olan EE girdileri `[Unreleased]` altında kalmıştı,
+`[1.8.1]`'e taşındı — gerçekten orada yayımlandılar. Süitler: app **1423** (+1). Sıradaki iş
+(core): değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-24b (**OPH-281 — PDF OKUMA MODUYLA AYNI GÖRÜNSÜN (Round; sıra dışı,
 yalnız `apps/app`). v1.8.1+29.** Rapor: PDF'te tamamlanan todo'nun üstü çizik, okuma modunda ise
 yeşil tik — okuma modundaki görünüm daha iyi. Kök neden: `_checkItem` gerekçe olarak DESIGN
 §20'yi gösteriyordu ama §20 uygulamadaki GÖREV SATIRININ kuralı; not gövdesindeki kontrol

@@ -5,18 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
-### Changed
+_Nothing yet._
 
-- **The deploy pipeline can carry an optional private extension checkout.** When an
-  instance is configured with one, the deploy syncs it to the exact commit, installs its
-  dependencies and reconciles the deploy-owned `.env` keys *before* the schema step — the
-  extension seam feeds the knex config as well as the runtime loader, so migrations only
-  see the extension's when the checkout is already on disk. It can also install a wildcard
-  `ServerAlias` (with `ProxyPreserveHost On`, without which every request arrives as the
-  apex) and proves the result afterwards on hostnames that were never configured anywhere.
-  Instances with no extension configured take a byte-identical path to before.
+## [1.8.2] — 2026-08-27
+
+### Fixed
+
+- **The exported PDF's colours are now the app's, exactly (OPH-281).** 1.8.1 aligned the page
+  with the reading view but picked its greens and alert colours by hand, so the page was still
+  not quite the colour the screen is — the same mismatch one size down. They are taken from the
+  light theme value for value now, and a test asserts each source so a token that moves fails by
+  name instead of letting the export drift a shade at a time.
 
 ## [1.8.1] — 2026-08-24
+
 
 ### Fixed
 
@@ -35,6 +37,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   footnote reference printed as a stray digit in the middle of its sentence. All five now
   print, with the alert taking its label from the same source the reading view uses so the
   two surfaces cannot call the same box different things.
+
+### Changed
+- **The deploy pipeline can carry an optional private extension checkout.** When an
+  instance is configured with one, the deploy syncs it to the exact commit, installs its
+  dependencies and reconciles the deploy-owned `.env` keys *before* the schema step — the
+  extension seam feeds the knex config as well as the runtime loader, so migrations only
+  see the extension's when the checkout is already on disk. It can also install a wildcard
+  `ServerAlias` (with `ProxyPreserveHost On`, without which every request arrives as the
+  apex) and proves the result afterwards on hostnames that were never configured anywhere.
+  Instances with no extension configured take a byte-identical path to before.
 
 ## [1.8.0] — 2026-08-24
 
