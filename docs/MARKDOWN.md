@@ -431,6 +431,54 @@ The durable part is the guard, not the fix: one test runs **every** entry in
 `mdActions()` against a selection and fails if the selected substring, the text
 before it, or the text after it is missing from the result.
 
+## 12. Round 19b: the page and the screen must agree
+
+Round 19 made the exported PDF *carry* everything (images, diagrams, formulas).
+This round made it *look* like what it was exported from.
+
+The report was one line — a completed checklist item printed struck through,
+while the reading view draws a green tick and leaves the text alone. The cause
+was a rule applied to the wrong surface: `note_pdf.dart` cited **DESIGN §20**
+("done means done, on paper too"), and §20 governs the **task row in the app**.
+A checklist inside a note body is a §29 object, and §29's renderer is the
+reading view — which is, by definition, the thing the reader is looking at when
+they press Export. So the reading view wins.
+
+Then the same comparison — inline case for inline case, block case for block
+case — found **four more divergences, none of them reported**, and all of one
+kind: the screen drew something and the page did not.
+
+| Construct | The page did | The page does |
+| --- | --- | --- |
+| `==highlight==` | dropped it to plain text | tint behind the ink |
+| `> [!WARNING]` alert | printed "unsupported block" | tinted panel, coloured edge, localized label |
+| footnote section | printed "unsupported block" | a rule, then the notes |
+| front matter | printed "unsupported block" | its own quiet strip |
+| footnote ref (`sup`) | a stray digit mid-sentence | raised, 0.75× |
+
+The highlight is the instructive one. `_spansOf`'s `default:` branch handles an
+unknown element by recursing into its children — so a `mark` node yielded its
+own text with the tint quietly gone. That is the **exact mechanism** that lost
+inline images in OPH-275, one round earlier, in the same function. A `default:`
+that recurses is a silent-loss machine for anything the walker has not been
+taught, which is why the guard is now a comparison of the two renderers' case
+lists rather than a test for the one case that was reported.
+
+The alert's label comes from `awMarkdownStrings().alert` — the same map the
+reading view reads. Two sources would be two chances for the page to call a box
+something the screen does not, and the parser's own English title paragraph is
+dropped for the same reason: a Turkish document would otherwise read
+"Uyarı / Warning".
+
+### "Can we just export the reading view?"
+
+Asked, and answered no on purpose. Rasterizing the whole page is one code path
+instead of two, and it throws away selectable text, searchable text, working
+links and roughly an order of magnitude of file size. ADR-0034 made the same
+call for diagrams: **only the blocks that cannot be typeset become pixels.**
+The right answer to "the reading view looks better" is to move the page's
+styling to it, which is what this round is.
+
 ## 10. Sources
 
 Field survey: [Best Markdown Editors 2026 — hands-on comparison](https://mdclaudy.com/blog/best-markdown-editors-2026) ·

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'package:alliswell/src/features/notes/data/markdown_blocks.dart';
 import 'package:alliswell/src/features/notes/data/note_blocks.dart';
 import 'package:alliswell/src/features/notes/data/note_pdf.dart';
 
@@ -352,6 +353,62 @@ void main() {
       final bytes = await buildNotePdf(doc, await _fonts());
       expect(bytes.length, greaterThan(1000));
       expect(doc.blocks.single.text, source);
+    });
+  });
+
+  // Round 19b (OPH-281) — the report: "in reading mode a done item has a green
+  // tick and is NOT struck through; that looks better."
+  //
+  // The page had been citing DESIGN §20 ("done means done, on paper too"), but
+  // §20 governs the TASK ROW in the app. A checklist inside a note body is
+  // §29's reading view, and that is the surface the reader was looking at when
+  // they pressed Export. These pin the rule at the model level, which is where
+  // it can be asserted without reading pixels.
+  group('a checklist prints the way the reading view draws it', () {
+    test('a done item carries no strikethrough of its own', () {
+      final out = markdownToBlocks('- [x] bitti\n- [ ] bitmedi');
+      expect(out.first.kind, NoteBlockKind.checked);
+      expect(out.last.kind, NoteBlockKind.unchecked);
+      // The walker never sets `strike` for a checked item — the page used to
+      // force it on at render time, which is exactly what the report was about.
+      expect(
+        out.expand((b) => b.spans).any((s) => s.strike),
+        isFalse,
+        reason: 'a completed item is ticked, not crossed out',
+      );
+    });
+
+    test('an EXPLICIT strikethrough still prints', () {
+      // The fix must not throw out `~~…~~`, which is a different thing the
+      // author asked for by hand.
+      final out = markdownToBlocks('- [x] ~~gerçekten çizili~~');
+      expect(out.single.spans.any((s) => s.strike), isTrue);
+    });
+
+    test('both states render without throwing, in Turkish', () async {
+      final bytes = await buildNotePdf(
+        NotePdfDocument(
+          title: 'Yapılacaklar',
+          blocks: markdownToBlocks('- [x] bitti ığüşöç\n- [ ] bitmedi'),
+        ),
+        await _fonts(),
+      );
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
+      expect(bytes.length, greaterThan(1000));
+    });
+
+    test('a callout and a highlight reach the page', () async {
+      final bytes = await buildNotePdf(
+        NotePdfDocument(
+          title: 'Uyarı',
+          blocks: markdownToBlocks(
+            '> [!CAUTION]\n> dikkat\n\nbir ==vurgu== daha',
+            alertLabelFor: (_) => 'Dikkat',
+          ),
+        ),
+        await _fonts(),
+      );
+      expect(String.fromCharCodes(bytes.take(5)), '%PDF-');
     });
   });
 }

@@ -223,4 +223,74 @@ void main() {
       ]);
     });
   });
+
+  // Round 19b (OPH-281) — "the reading view's look is better; can the PDF have
+  // it?" Comparing the two renderers found five divergences, only one of which
+  // had been reported. Four were SILENT: the page either dropped the construct
+  // or printed "unsupported block" where the screen drew something.
+  group('what the screen draws, the page must carry', () {
+    test('a highlight survives instead of flattening to plain text', () {
+      // `_spansOf` had no `mark` case, so `default:` recursed straight past it
+      // into the plain text underneath and the tint was simply gone.
+      final out = blocks('bir ==vurgulu== söz');
+      final marked = out.single.spans.where((s) => s.mark).toList();
+      expect(marked, hasLength(1));
+      expect(marked.single.text, 'vurgulu');
+      expect(out.single.text, 'bir vurgulu söz', reason: 'no text is lost');
+    });
+
+    test('a highlight keeps the formatting nested inside it', () {
+      final out = blocks('==**kalın** vurgu==');
+      final bold = out.single.spans.firstWhere((s) => s.bold);
+      expect(bold.mark, isTrue, reason: 'bold inside a highlight is both');
+    });
+
+    test('a footnote reference is raised, not a stray digit', () {
+      final out = blocks('gövde[^1]\n\n[^1]: dipnot');
+      final sup = out
+          .expand((b) => b.spans)
+          .where((s) => s.superscript)
+          .toList();
+      expect(sup, isNotEmpty);
+    });
+
+    test('a GFM alert is a callout, not "unsupported block"', () {
+      final out = markdownToBlocks(
+        '> [!WARNING]\n> dikkat et',
+        placeholderFor: (kind) => 'unsupported:\$kind',
+        alertLabelFor: (kind) => {'warning': 'Uyarı'}[kind] ?? kind,
+      );
+      final callout = out.firstWhere((b) => b.kind == NoteBlockKind.callout);
+      expect(callout.calloutKind, 'warning');
+      expect(callout.text, contains('Uyarı'));
+      expect(callout.text, contains('dikkat et'));
+      expect(
+        out.map((b) => b.text).join(),
+        isNot(contains('unsupported:')),
+        reason:
+            'an alert is the paragraph you cannot skip — never a placeholder',
+      );
+    });
+
+    test("the alert's own English title is dropped, not printed twice", () {
+      // The parser emits a `<p class="markdown-alert-title">Warning</p>`; the
+      // reading view drops it and draws the localized label. If the page kept
+      // it, a Turkish document would read "Uyarı / Warning".
+      final out = markdownToBlocks(
+        '> [!WARNING]\n> dikkat et',
+        alertLabelFor: (_) => 'Uyarı',
+      );
+      final callout = out.firstWhere((b) => b.kind == NoteBlockKind.callout);
+      expect(callout.text, isNot(contains('Warning')));
+    });
+
+    test('front matter is its own strip, not body text', () {
+      final out = markdownToBlocks(
+        '---\ntitle: Deneme\n---\n\ngövde',
+        placeholderFor: (kind) => 'unsupported:\$kind',
+      );
+      expect(out.first.kind, NoteBlockKind.frontMatter);
+      expect(out.first.text, contains('title: Deneme'));
+    });
+  });
 }

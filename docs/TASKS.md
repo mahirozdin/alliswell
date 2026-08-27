@@ -8991,6 +8991,47 @@ hiçbiri izin sorunu._
 - [x] Ayarlar ▸ Genel'de üç satırlık seçici; her satır AYNI markdown örneğini o kipte, GERÇEK
   controller ile boyuyor — editörle çelişebilen bir önizleme, önizleme olmamasından kötüdür.
 
+### OPH-281 — PDF, ekranda bakılan şeyi bassın (tur 19b, v1.8.1)
+
+_Rapor: "bölünmüş görünümde solda MD sağda okuma modu; PDF'e yazdırınca stil kayması oluyor.
+Okuma modundaki görünüm daha iyi — todo bitti işaretlenenlerin üstünü çizmiş, okuma modundaysa
+yeşil tik var, üstü çizik değil. Bunun için bir çalışma yapabilir miyiz?"_
+
+_**Turun tek cümlesi: sayfa, bir yüzeyin kuralını başka bir yüzeyin içeriğine uyguluyordu — ve
+o hizasızlığı aramak, rapor edilmemiş dört SESSİZ kaybı daha ortaya çıkardı.**_
+
+- [x] **Onay kutusu — rapor edilen kusur.** `_checkItem` metni gri yapıp üstünü çiziyor ve
+  gerekçe olarak DESIGN §20'yi gösteriyordu. Ama §20 uygulamadaki **görev satırının** kuralı;
+  not gövdesindeki bir kontrol listesi §29'un okuma görünümüne ait bir nesne. Yani sayfa, bir
+  yüzeyin kuralını başka bir yüzeyin içeriğine uyguluyordu ve sonuç, ihraç edildiği ekranla
+  görünür biçimde çelişen bir PDF'ti: orada yeşil çerçeveli tik ve olağan metin, burada mavi
+  dolu kutu ve üstü çizili gri. Okuma görünümü kazanır — Dışa Aktar'a basıldığında bakılan
+  şey odur. Yeşil çerçeve, içinde tik, metne dokunulmuyor.
+- [x] **`~~gerçekten çizili~~` korundu.** Yazarın elle istediği üstü çizik bambaşka bir şey;
+  düzeltme onu atmıyor — testle sabitlendi.
+- [x] **`==vurgu==` sessizce düşüyordu.** `_spansOf`'un `mark` dalı yoktu, `default:` bilinmeyen
+  elemanın çocuklarına inip düz metne ulaşıyordu. Ekran OPH-247'den beri çiziyor, sayfa hiç
+  basmıyordu. `NoteSpan.mark` + sayfada mürekkebin ARKASINA tint (mürekkebin kendisine değil —
+  ekranın kuralı, kontrast iki yerde de korunsun diye). İç içe biçimlendirme de taşınıyor.
+- [x] **GFM uyarısı (`> [!WARNING]`) "unsupported block" basıyordu.** Bir uyarının bütün işi
+  atlanamayan paragraf olmak; yer tutucuya dönüşmesi kaybedilebilecek en kötü blok.
+  `NoteBlockKind.callout` + tint + renkli kenar + yerelleştirilmiş başlık. Başlık, okuma
+  görünümünün kullandığı **aynı** kaynaktan (`awMarkdownStrings().alert`) — iki kaynak, sayfanın
+  bir kutuya ekranın demediği bir ad vermesi için iki fırsat olurdu. Ayrıştırıcının kendi
+  İngilizce başlık paragrafı düşürülüyor, yoksa Türkçe belge "Uyarı / Warning" okurdu.
+- [x] **Dipnot bölümü ve `sup`.** `section` yine "unsupported block"tu; artık bir çizgi + notlar.
+  `sup` da düz metne düşüyordu, yani dipnot numarası cümlenin ortasında başıboş bir rakam
+  olarak basılıyordu; artık 0.75× yükseltilmiş.
+- [x] **Front matter** kendi sessiz şeridini alıyor, gövde metni ya da yer tutucu değil.
+- [x] **Kapı:** iki renderer'ın satır-içi kapsamı testle karşılaştırılıyor. Rapor edilen tek
+  ayrışmayı düzeltip geçmek, kalan dördünü sessiz bırakırdı — nitekim dördü de rapor
+  edilmemişti ve dördü de aynı aileden: ekranın çizdiği bir şey, sayfada yok.
+- [x] **"Doğrudan okuma modunu PDF'e aktaramaz mıyız?" — hayır, ve bilerek.** Bütün sayfayı
+  rasterize etmek tek kod yolu olurdu ve seçilebilir metni, aranabilir metni, çalışan
+  bağlantıları ve dosya boyutunun bir mertebesini çöpe atardı (ADR-0034 aynı kararı diyagramlar
+  için verdi: yalnız çizilemeyen bloklar piksel olur). Doğru cevap, sayfanın STİLİNİ okuma
+  görünümüne hizalamak — bu iş de odur.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

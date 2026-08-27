@@ -102,6 +102,21 @@ const _accent = PdfColor.fromInt(0xFF0A5CFF);
 const _rule = PdfColor.fromInt(0xFFD8DEEA);
 const _codeBg = PdfColor.fromInt(0xFFF2F4F9);
 
+// Round 19b: the reading view's own roles, as print equivalents. A checked box
+// is `success` there, not the accent — see [_checkItem].
+const _success = PdfColor.fromInt(0xFF1B8A5A);
+const _markBg = PdfColor.fromInt(0xFFFFF1B8);
+
+/// The edge colour of a GFM alert, by its kind. Same five roles the reading
+/// view uses; unknown kinds take the neutral one rather than vanishing.
+PdfColor _calloutEdge(String? kind) => switch (kind) {
+  'tip' => _success,
+  'important' => const PdfColor.fromInt(0xFF7C3AED),
+  'warning' => const PdfColor.fromInt(0xFFB45309),
+  'caution' => const PdfColor.fromInt(0xFFB91C1C),
+  _ => _accent,
+};
+
 const _bodySize = 11.0;
 
 /// Builds the PDF. Async only because `pdf`'s own `save()` is — no platform
@@ -224,6 +239,49 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
       return padded(
         _checkItem(block, fonts, done: block.kind == NoteBlockKind.checked),
         bottom: 3,
+      );
+
+    // Round 19b (OPH-281). A GFM alert: tinted panel, coloured edge, localized
+    // header. It used to print "unsupported block", which is the one thing an
+    // alert must never become — its whole job is to be the paragraph nobody
+    // gets to skip.
+    case NoteBlockKind.callout:
+      final edge = _calloutEdge(block.calloutKind);
+      return padded(
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.fromLTRB(10, 8, 10, 8),
+          decoration: pw.BoxDecoration(
+            color: PdfColor(edge.red, edge.green, edge.blue, 0.08),
+            border: pw.Border(left: pw.BorderSide(color: edge, width: 3)),
+          ),
+          child: _rich(block, fonts),
+        ),
+        top: 4,
+      );
+
+    // Front matter is the document's metadata, not its first paragraph — the
+    // reading view gives it its own quiet strip, so the page does too.
+    case NoteBlockKind.frontMatter:
+      return padded(
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: _rule, width: 0.7),
+          ),
+          child: pw.Text(
+            block.text,
+            style: pw.TextStyle(
+              font: fonts.regular,
+              fontFallback: fonts.fallback,
+              fontSize: 9,
+              color: _muted,
+              lineSpacing: 2,
+            ),
+          ),
+        ),
+        bottom: 10,
       );
 
     case NoteBlockKind.quote:
@@ -394,7 +452,7 @@ class _TickPainter {
 
   void paint(PdfGraphics canvas, PdfPoint size) {
     canvas
-      ..setStrokeColor(PdfColors.white)
+      ..setStrokeColor(_success)
       ..setLineWidth(1.1)
       ..setLineCap(PdfLineCap.round)
       ..setLineJoin(PdfLineJoin.round)
@@ -406,6 +464,19 @@ class _TickPainter {
   }
 }
 
+/// A checklist item, drawn the way the READING VIEW draws it (round 19b,
+/// OPH-281).
+///
+/// It used to grey the text and strike it through, citing DESIGN §20 — but §20
+/// is about the TASK ROW in the app, and a checklist inside a note body is a
+/// different object whose renderer is §29's reading view. So the page was
+/// applying one surface's rule to another surface's content, and the result was
+/// a PDF that visibly disagreed with the screen it was exported from: green
+/// outlined tick and ordinary text there, blue filled box and struck-through
+/// grey here.
+///
+/// The reading view wins, because it is the thing the reader was looking at
+/// when they pressed Export. Green outlined box, tick inside, text untouched.
 pw.Widget _checkItem(
   NoteBlock block,
   NotePdfFonts fonts, {
@@ -418,8 +489,7 @@ pw.Widget _checkItem(
       height: 9,
       margin: const pw.EdgeInsets.only(top: 3, right: 9),
       decoration: pw.BoxDecoration(
-        color: done ? _accent : null,
-        border: pw.Border.all(color: done ? _accent : _muted, width: 0.9),
+        border: pw.Border.all(color: done ? _success : _muted, width: 1),
         borderRadius: pw.BorderRadius.circular(2),
       ),
       child: done
@@ -430,15 +500,7 @@ pw.Widget _checkItem(
             )
           : null,
     ),
-    // Done means done, on paper too (DESIGN §20).
-    pw.Expanded(
-      child: _rich(
-        block,
-        fonts,
-        color: done ? _muted : _ink,
-        forceStrike: done,
-      ),
-    ),
+    pw.Expanded(child: _rich(block, fonts)),
   ],
 );
 
@@ -485,12 +547,17 @@ pw.Widget _rich(
                 italic: italic || span.italic,
               ),
               fontFallback: fonts.fallback,
-              fontSize: span.code ? size - 0.5 : size,
+              fontSize: span.superscript
+                  ? size * 0.75
+                  : (span.code ? size - 0.5 : size),
               color: span.link != null ? _accent : color,
               lineSpacing: 2.4,
-              background: span.code
-                  ? const pw.BoxDecoration(color: _codeBg)
-                  : null,
+              // `==highlight==` (round 19b): a tint behind the ink, never a
+              // change to the ink itself — the same rule the screen follows, so
+              // the text keeps its contrast in both places.
+              background: span.mark
+                  ? const pw.BoxDecoration(color: _markBg)
+                  : (span.code ? const pw.BoxDecoration(color: _codeBg) : null),
               decoration: pw.TextDecoration.combine([
                 if (span.strike || forceStrike) pw.TextDecoration.lineThrough,
                 if (span.link != null) pw.TextDecoration.underline,

@@ -25,6 +25,7 @@ import '../../../i18n/i18n.dart';
 import '../../../widgets/sheets.dart';
 import '../../files/providers.dart';
 import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
+import '../markdown/markdown_forge_adapters.dart' show awMarkdownStrings;
 import '../data/markdown_blocks.dart';
 import '../data/note_blocks.dart';
 import '../data/note_pdf.dart';
@@ -171,6 +172,10 @@ Future<void> exportNoteAsPdf(
     final blocks = markdownToBlocks(
       markdown,
       placeholderFor: (_) => 'note.exportUnsupportedBlock'.tr(),
+      // The SAME strings the reading view labels its alerts with (round 19b):
+      // two sources would be two chances for the page to call a box something
+      // the screen does not.
+      alertLabelFor: awMarkdownStrings().alert,
     );
     final fonts = await ref.read(notePdfFontsProvider.future);
     // Two sources of pictures, one map. Fetched media and drawn figures are the

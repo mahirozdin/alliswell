@@ -3,7 +3,22 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-24 (**Epic 26 — İSTEK TURU 19 (Round; yalnız `apps/app`, EE'ye
+**Last updated:** 2026-08-24b (**OPH-281 — PDF OKUMA MODUYLA AYNI GÖRÜNSÜN (Round; sıra dışı,
+yalnız `apps/app`). v1.8.1+29.** Rapor: PDF'te tamamlanan todo'nun üstü çizik, okuma modunda ise
+yeşil tik — okuma modundaki görünüm daha iyi. Kök neden: `_checkItem` gerekçe olarak DESIGN
+§20'yi gösteriyordu ama §20 uygulamadaki GÖREV SATIRININ kuralı; not gövdesindeki kontrol
+listesi §29'un okuma görünümüne ait. Sayfa bir yüzeyin kuralını başka bir yüzeyin içeriğine
+uyguluyordu. **Hizasızlığı ararken rapor edilmemiş DÖRT sessiz kayıp daha çıktı**, hepsi aynı
+aileden (ekranın çizdiği bir şey sayfada yok): `==vurgu==` düz metne düşüyordu, GFM uyarısı /
+dipnot bölümü / front matter "unsupported block" basıyordu, `sup` başıboş rakam oluyordu.
+Uyarı başlığı okuma görünümüyle AYNI kaynaktan alınıyor (`awMarkdownStrings().alert`).
+"Doğrudan okuma modunu PDF'e aktaralım" bilerek reddedildi: bütün sayfayı rasterize etmek
+seçilebilir/aranabilir metni, bağlantıları ve dosya boyutunun bir mertebesini çöpe atardı —
+ADR-0034 aynı kararı diyagramlar için vermişti. Süitler: app **1422** (+10), analyze temiz,
+`check:docs`/`check:i18n` yeşil — yeni `kAppVersion` kapısı sürüm artışında ilk turda tuttu.
+Sıradaki iş (core): değişmedi — sahibin iki adımı.)
+
+Önceki blok: 2026-08-24 (**Epic 26 — İSTEK TURU 19 (Round; yalnız `apps/app`, EE'ye
 dokunmuyor). v1.8.0+28.** Sahibin dört raporu, dördünün de kök nedeni kodda okunarak
 doğrulandı. **(1) OPH-275 — PDF'e resim gelmiyordu:** yürüyücü resmi yalnız paragrafın TEK
 çocuğuysa figüre çeviriyordu; cümlenin içine yazılmış resim (uygulamanın kendi "resim ekle"

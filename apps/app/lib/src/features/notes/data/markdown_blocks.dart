@@ -28,12 +28,20 @@ import 'note_blocks.dart';
 List<NoteBlock> markdownToBlocks(
   String markdown, {
   String Function(String kind)? placeholderFor,
-}) => _BlockWalker(placeholderFor).run(parseMarkdown(markdown));
+
+  /// A GFM alert's localized header (`note` → "Not"). Injected for the same
+  /// reason `placeholderFor` is — this file must not carry a locale — and the
+  /// caller passes the SAME source the reading view uses
+  /// (`awMarkdownStrings().alert`), so the two surfaces cannot end up calling
+  /// the same box different things.
+  String Function(String alertKind)? alertLabelFor,
+}) => _BlockWalker(placeholderFor, alertLabelFor).run(parseMarkdown(markdown));
 
 class _BlockWalker {
-  _BlockWalker(this._placeholderFor);
+  _BlockWalker(this._placeholderFor, this._alertLabelFor);
 
   final String Function(String kind)? _placeholderFor;
+  final String Function(String alertKind)? _alertLabelFor;
   final List<NoteBlock> _out = [];
 
   /// How many figures of each kind have been emitted — the figures' raster
@@ -102,6 +110,24 @@ class _BlockWalker {
       // the exporter rasterizes the same widget (ADR-0034).
       case kMdMathBlock:
         _figure(NoteFigureKind.math, node.textContent);
+      // Round 19b (OPH-281) — four constructs the reading view draws and the
+      // page called "unsupported block". An alert whose whole job is to be the
+      // paragraph you cannot skip is the worst of them to lose.
+      case 'div':
+        _div(node, listDepth: listDepth);
+      case 'section':
+        // The synthesised footnote container: a rule, then the notes.
+        _out.add(const NoteBlock(NoteBlockKind.divider));
+        for (final child in node.children ?? const <md.Node>[]) {
+          _node(child, listDepth: listDepth);
+        }
+      case kMdFrontMatter:
+        _out.add(
+          NoteBlock(
+            NoteBlockKind.frontMatter,
+            spans: [NoteSpan(node.textContent.trim())],
+          ),
+        );
       default:
         // Math, diagrams and raw HTML have no page representation. Saying so
         // beats a silent gap the reader cannot distinguish from a bug.
@@ -179,6 +205,46 @@ class _BlockWalker {
     }
     _out.add(NoteBlock(NoteBlockKind.code, spans: [NoteSpan(body)]));
   }
+
+  /// A `div`: a GFM alert, or an ordinary grouping.
+  ///
+  /// The parser emits its own English title paragraph inside the alert; the
+  /// reading view drops it and draws the localized label itself, so this does
+  /// the same — otherwise a Turkish document would print "Warning" above a
+  /// box the screen labels "Uyarı".
+  void _div(md.Element node, {required int listDepth}) {
+    final kind = mdAlertKindFrom(node.attributes['class']);
+    if (kind == null) {
+      // Not an alert — just a grouping. Its children are the document.
+      for (final child in node.children ?? const <md.Node>[]) {
+        _node(child, listDepth: listDepth);
+      }
+      return;
+    }
+
+    final spans = <NoteSpan>[];
+    final label = _alertLabelFor?.call(kind.name);
+    if (label != null && label.isNotEmpty) {
+      spans.add(NoteSpan(label, bold: true));
+      spans.add(const NoteSpan('\n'));
+    }
+    for (final child in node.children ?? const <md.Node>[]) {
+      if (child is md.Element && _isAlertTitle(child)) continue;
+      if (child is md.Element) {
+        if (spans.isNotEmpty && spans.last.text != '\n') {
+          spans.add(const NoteSpan('\n'));
+        }
+        spans.addAll(_spans(child));
+      }
+    }
+    _out.add(
+      NoteBlock(NoteBlockKind.callout, spans: spans, calloutKind: kind.name),
+    );
+  }
+
+  /// The parser's own English title paragraph inside an alert.
+  static bool _isAlertTitle(md.Element node) =>
+      (node.attributes['class'] ?? '').contains(kMdAlertTitleClass);
 
   /// A block that has to be DRAWN rather than typeset. [fallbackSource] is what
   /// prints when the rasterizer could not produce a picture — the diagram's own
@@ -287,6 +353,8 @@ class _BlockWalker {
     bool strike = false,
     bool code = false,
     String? link,
+    bool mark = false,
+    bool superscript = false,
   }) => _spansOf(
     element.children ?? const <md.Node>[],
     skipNested: skipNested,
@@ -295,6 +363,8 @@ class _BlockWalker {
     strike: strike,
     code: code,
     link: link,
+    mark: mark,
+    superscript: superscript,
   );
 
   /// The same, over a HALF of a node's children — what paragraph splitting
@@ -307,6 +377,8 @@ class _BlockWalker {
     bool strike = false,
     bool code = false,
     String? link,
+    bool mark = false,
+    bool superscript = false,
   }) {
     final spans = <NoteSpan>[];
     for (final child in children) {
@@ -320,6 +392,8 @@ class _BlockWalker {
             strike: strike,
             code: code,
             link: link,
+            mark: mark,
+            superscript: superscript,
           ),
         );
         continue;
@@ -336,15 +410,33 @@ class _BlockWalker {
               italic: italic,
               strike: strike,
               link: link,
+              mark: mark,
+              superscript: superscript,
             ),
           );
         case 'em':
           spans.addAll(
-            _spans(child, bold: bold, italic: true, strike: strike, link: link),
+            _spans(
+              child,
+              bold: bold,
+              italic: true,
+              strike: strike,
+              link: link,
+              mark: mark,
+              superscript: superscript,
+            ),
           );
         case 'del':
           spans.addAll(
-            _spans(child, bold: bold, italic: italic, strike: true, link: link),
+            _spans(
+              child,
+              bold: bold,
+              italic: italic,
+              strike: true,
+              link: link,
+              mark: mark,
+              superscript: superscript,
+            ),
           );
         case 'code':
           spans.add(NoteSpan(_raw(child), code: true, link: link));
@@ -353,7 +445,45 @@ class _BlockWalker {
         // does. Marked as code so it is visibly a formula rather than prose
         // that happens to contain a caret.
         case kMdMathInline:
-          spans.add(NoteSpan(_raw(child), code: true, link: link));
+          spans.add(
+            NoteSpan(
+              _raw(child),
+              code: true,
+              link: link,
+              mark: mark,
+              superscript: superscript,
+            ),
+          );
+        // `==highlight==`. Drawn on screen since OPH-247; the page dropped it
+        // silently, because `default:` recurses past an unknown element into
+        // its children and a `mark`'s children are plain text (round 19b).
+        case 'mark':
+          spans.addAll(
+            _spansOf(
+              child.children ?? const <md.Node>[],
+              bold: bold,
+              italic: italic,
+              strike: strike,
+              code: code,
+              link: link,
+              mark: true,
+            ),
+          );
+        // A footnote reference. Without this it printed as a stray digit in
+        // the middle of the sentence it belongs to.
+        case 'sup':
+          spans.addAll(
+            _spansOf(
+              child.children ?? const <md.Node>[],
+              bold: bold,
+              italic: italic,
+              strike: strike,
+              code: code,
+              link: link,
+              mark: mark,
+              superscript: true,
+            ),
+          );
         case 'a':
           spans.addAll(
             _spans(
@@ -362,6 +492,8 @@ class _BlockWalker {
               italic: italic,
               strike: strike,
               link: child.attributes['href'],
+              mark: mark,
+              superscript: superscript,
             ),
           );
         case 'input':
@@ -377,6 +509,8 @@ class _BlockWalker {
               strike: strike,
               code: code,
               link: link,
+              mark: mark,
+              superscript: superscript,
             ),
           );
       }

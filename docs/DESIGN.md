@@ -765,7 +765,12 @@ bir yerden görmek gibi bişey olabilmeli".)_
   leaves the planning lists immediately — "Geciken" holding a struck-through row
   says nothing ("the task was late, and now it is done" is the archive's
   sentence, not the planner's). Its address is §C4 from the moment of the tap._
-- **C2 — Done work is quiet, not dead.** The whole row calms down together:
+- **C2 — Done work is quiet, not dead.** _Scope, made explicit 2026-08-24
+  (OPH-281): this section is about the TASK ROW. A checklist inside a note body
+  is a §29 object and follows the reading view — green tick, text untouched. The
+  PDF exporter cited C2 for a note's checklist and so printed something the
+  screen it was exported from visibly disagreed with._ The whole row calms down
+  together:
   `surfaceContainerLow` card, struck-through title in `onSurfaceVariant`, muted
   date/subtitle, and the alarm chips (urgent marker, snoozed, muted) **removed** —
   a finished task has no alarms, so showing them would be a false claim (§11 A5),

@@ -48,6 +48,18 @@ enum NoteBlockKind {
   /// is the honest fallback — the diagram's own mermaid source, or the LaTeX —
   /// which is strictly more use to a reader than "unsupported block".
   figure,
+
+  /// A GFM alert (`> [!WARNING]`) — a tinted box with a coloured edge and a
+  /// localized label (round 19b, OPH-281).
+  ///
+  /// The reading view draws these as `MdCallout`. The page printed
+  /// "unsupported block", which is the one thing an alert must never become:
+  /// its whole job is to be the paragraph you cannot skip.
+  callout,
+
+  /// A document's front matter, shown as its own quiet strip rather than as
+  /// body text (round 19b) — the reading view's `_FrontMatterStrip`.
+  frontMatter,
 }
 
 /// Which off-screen widget a [NoteBlockKind.figure] should be drawn with.
@@ -70,6 +82,8 @@ class NoteSpan {
     this.strike = false,
     this.code = false,
     this.link,
+    this.mark = false,
+    this.superscript = false,
   });
 
   final String text;
@@ -79,6 +93,15 @@ class NoteSpan {
   final bool code;
   final String? link;
 
+  /// `==highlight==`. The screen has drawn this since OPH-247 and the page
+  /// dropped it silently — `_spansOf` had no `mark` case, so the walker's
+  /// `default:` branch recursed past it into plain text (round 19b, OPH-281).
+  final bool mark;
+
+  /// A footnote reference (`sup`). Small, raised, and until round 19b printed
+  /// as a stray digit in the middle of a sentence.
+  final bool superscript;
+
   @override
   bool operator ==(Object other) =>
       other is NoteSpan &&
@@ -87,10 +110,13 @@ class NoteSpan {
       other.italic == italic &&
       other.strike == strike &&
       other.code == code &&
-      other.link == link;
+      other.link == link &&
+      other.mark == mark &&
+      other.superscript == superscript;
 
   @override
-  int get hashCode => Object.hash(text, bold, italic, strike, code, link);
+  int get hashCode =>
+      Object.hash(text, bold, italic, strike, code, link, mark, superscript);
 
   @override
   String toString() =>
@@ -108,6 +134,7 @@ class NoteBlock {
     this.rows,
     this.indent = 0,
     this.figureKind,
+    this.calloutKind,
   });
 
   final NoteBlockKind kind;
@@ -130,6 +157,10 @@ class NoteBlock {
 
   /// Which renderer draws a [NoteBlockKind.figure]; null for every other kind.
   final NoteFigureKind? figureKind;
+
+  /// A [NoteBlockKind.callout]'s GFM alert name (`note`/`tip`/`important`/
+  /// `warning`/`caution`), which picks its edge colour.
+  final String? calloutKind;
 
   /// The block's text with formatting dropped — for alt text and tests.
   String get text => spans.map((s) => s.text).join();

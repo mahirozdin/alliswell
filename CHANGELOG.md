@@ -16,6 +16,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   apex) and proves the result afterwards on hostnames that were never configured anywhere.
   Instances with no extension configured take a byte-identical path to before.
 
+## [1.8.1] — 2026-08-24
+
+### Fixed
+
+- **An exported PDF now looks like the note you were reading (OPH-281).** A completed
+  checklist item printed grey and struck through, while the reading view — the surface you
+  are looking at when you press Export — draws a green tick and leaves the text alone. The
+  page had been citing the design rule for the app's TASK ROW, which is a different object
+  from a checklist inside a note body. The reading view wins. A `~~strikethrough~~` you typed
+  yourself still prints, because that is something else entirely.
+
+- **Four things the screen drew and the page silently did not (OPH-281).** Looking for the
+  reported mismatch turned up four more, none of them reported and all the same shape.
+  `==Highlight==` was dropped to plain text. A GFM alert (`> [!WARNING]`) printed
+  "unsupported block" — the one thing an alert must never become, since its whole job is to
+  be the paragraph nobody skips. So did the footnote section, and front matter. And a
+  footnote reference printed as a stray digit in the middle of its sentence. All five now
+  print, with the alert taking its label from the same source the reading view uses so the
+  two surfaces cannot call the same box different things.
+
 ## [1.8.0] — 2026-08-24
 
 ### Fixed
