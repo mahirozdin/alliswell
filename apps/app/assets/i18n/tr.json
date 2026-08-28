@@ -1302,6 +1302,9 @@
         "edit": "Projeleri düzenle",
         "archive": "Projeleri arşivle ve geri al"
       },
+      "services": {
+        "manage": "Servisleri yönet ve hangi birimin baktığını belirle"
+      },
       "shares": {
         "create": "İçerik paylaş",
         "revoke": "Paylaşımı geri al"
@@ -1338,8 +1341,11 @@
       "files": "Dosyalar",
       "notes": "Notlar",
       "projects": "Projeler",
+      "services": "Servisler",
+      "shares": "Paylaşım",
       "tasks": "Görevler",
-      "team": "Takım"
+      "team": "Takım",
+      "units": "Birimler"
     },
     "admin": {
       "title": "Instance konsolu",

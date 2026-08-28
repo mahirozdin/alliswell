@@ -1303,6 +1303,9 @@
         "edit": "Edit projects",
         "archive": "Archive and restore projects"
       },
+      "services": {
+        "manage": "Manage services and decide which units answer them"
+      },
       "shares": {
         "create": "Share an item",
         "revoke": "Take back a share"
@@ -1339,8 +1342,11 @@
       "files": "Files",
       "notes": "Notes",
       "projects": "Projects",
+      "services": "Services",
+      "shares": "Sharing",
       "tasks": "Tasks",
-      "team": "Team"
+      "team": "Team",
+      "units": "Units"
     },
     "admin": {
       "title": "Instance console",
