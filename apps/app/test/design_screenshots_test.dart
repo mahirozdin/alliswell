@@ -52,15 +52,39 @@ Future<void> _loadRealFonts() async {
       )..addFont(Future.value(ByteData.view(bytes.buffer)))).load();
     }
   }
+  // The REPO's own fonts, not the host's. This used to read
+  // `/System/Library/Fonts/Supplemental/Arial.ttf`, which exists on exactly one
+  // of the platforms this suite runs on: on Linux every path was skipped, the
+  // family loaded EMPTY, and `--update-goldens` cheerfully wrote a full set of
+  // pictures in which every glyph is a box. Nothing failed — the absence of a
+  // font was read as success, which is the same class of bug as a contrast
+  // gate that passes on a surface it never checked.
+  //
+  // `assets/fonts/` is shipped for the PDF exporter (Roboto + DejaVu, both with
+  // their licences) and is therefore present on every machine that has the
+  // repository — which is the only property a screenshot font actually needs.
   final loader = FontLoader(_family);
+  var loaded = 0;
   for (final path in [
-    '/System/Library/Fonts/Supplemental/Arial.ttf',
-    '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+    'assets/fonts/Roboto-Regular.ttf',
+    'assets/fonts/Roboto-Bold.ttf',
+    // Turkish and the symbol set the app draws (→ ✓ ★ ☐) — the same pairing
+    // the PDF exporter needs, and for the same reason.
+    'assets/fonts/DejaVuSans.ttf',
   ]) {
     final file = File(path);
     if (!file.existsSync()) continue;
     final bytes = file.readAsBytesSync();
     loader.addFont(Future.value(ByteData.view(bytes.buffer)));
+    loaded++;
+  }
+  // Loudly, not silently: a shot with no font is a picture of nothing, and the
+  // whole point of these files is that a human looks at them afterwards.
+  if (loaded == 0) {
+    throw StateError(
+      'No screenshot font could be loaded from assets/fonts — run this from '
+      'apps/app so the relative paths resolve. Every glyph would be a box.',
+    );
   }
   await loader.load();
 }

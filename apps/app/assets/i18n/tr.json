@@ -162,7 +162,9 @@
       "units": "Birimler",
       "unitsSub": "Yönettiğiniz birimler",
       "assignments": "Bana atananlar",
-      "assignmentsSub": "Şu anda üzerinizde olan işler"
+      "assignmentsSub": "Şu anda üzerinizde olan işler",
+      "services": "Servisler",
+      "servicesSub": "Talep katalogu ve hangi birimin baktığı"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -1234,6 +1236,45 @@
         "emptyBody": "İlk birimi açın — bir departman, bir saha ekibi, ayrı çalışan herhangi bir grup.",
         "noneTitle": "Burada yönetebileceğiniz bir birim yok",
         "noneBody": "Bir birimin yöneticisi yapıldıysanız uygulamayı yenileyin; değilse bu sayfa size ait değil."
+      },
+      "services": {
+        "title": "Servisler",
+        "intro": "Bir servis, çalışanların ne isteyebileceğidir. Hangi birimin baktığını siz belirlersiniz — birim atanmamış bir servis talep alamaz.",
+        "create": "Yeni servis",
+        "rename": "Düzenle",
+        "name": "Servis adı",
+        "description": "Açıklama",
+        "archive": "Arşivle",
+        "unarchive": "Arşivden çıkar",
+        "archived": "arşivde",
+        "noUnits": "Birim atanmadı — bu servise talep açılamaz",
+        "noneTitle": "Bu katalog sizin değil",
+        "noneBody": "Servisleri yalnızca takım yöneticileri düzenleyebilir.",
+        "emptyTitle": "Henüz servis yok",
+        "emptyBody": "İlk servisi ekleyin: çalışanların ne isteyebileceği ve hangi birimin baktığı.",
+        "units": "Bakan birimler",
+        "unitsHint": "Bu servise açılan talepler seçtiğiniz birimlerin kuyruğuna düşer.",
+        "fields": "Özel alanlar",
+        "fieldsHint": "Bu servise özel sorular. Boş bırakılırsa yalnızca konu ve açıklama sorulur.",
+        "fieldsNone": "Özel alan yok.",
+        "fieldCount": "{count} özel alan",
+        "fieldAdd": "Alan ekle",
+        "fieldRemove": "Alanı kaldır",
+        "fieldLabel": "Soru",
+        "fieldKey": "Anahtar",
+        "fieldKeyHint": "Boş bırakılırsa sorudan üretilir.",
+        "fieldRequired": "Zorunlu",
+        "fieldOptions": "Seçenekler",
+        "fieldOptionsHint": "Virgülle ayırın.",
+        "fieldDuplicate": "Bu anahtar zaten kullanılıyor.",
+        "fieldType": {
+          "text": "Metin",
+          "number": "Sayı",
+          "date": "Tarih",
+          "checkbox": "Evet/Hayır",
+          "select": "Listeden seç"
+        },
+        "fieldTypeLabel": "Tür"
       }
     },
     "join": {

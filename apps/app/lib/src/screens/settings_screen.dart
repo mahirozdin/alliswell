@@ -18,6 +18,7 @@ import '../features/settings/account_locale.dart';
 import '../features/quick_access/ui/quick_access_bubble.dart';
 import '../features/quick_access/ui/quick_access_row.dart';
 import '../features/settings/server_url_sheet.dart';
+import '../features/ee/providers.dart' show canProvider;
 import '../features/ee/team_admin_providers.dart';
 import '../features/ee/ui/notification_badge.dart';
 import '../features/ee/units_providers.dart';
@@ -130,6 +131,26 @@ class SettingsScreen extends ConsumerWidget {
                   titleKey: 'settings.group.units',
                   subtitleKey: 'settings.group.unitsSub',
                   path: '/settings/team/units',
+                ),
+              // EE-082: the service catalogue. `services.manage` is a plain
+              // role verb, so `canProvider` is honest here — unlike the units
+              // row above, which had to ask the server because a delegated
+              // manager holds no role that says so.
+              //
+              // PROVISIONAL PLACEMENT. This is a team-admin screen and it
+              // belongs behind the Team group, next to members, invites and
+              // roles — except that group's landing page is the settings FORM
+              // and has no links onward, so those three screens are reachable
+              // only by URL today. Rather than add a fourth unreachable
+              // screen, this row is its door until that hub exists; the task
+              // that builds it absorbs this row.
+              if (ref.watch(canProvider('services.manage')))
+                _GroupRow(
+                  keyName: 'settings-group-services',
+                  icon: Icons.support_agent_outlined,
+                  titleKey: 'settings.group.services',
+                  subtitleKey: 'settings.group.servicesSub',
+                  path: '/settings/team/services',
                 ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own

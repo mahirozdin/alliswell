@@ -163,7 +163,9 @@
       "units": "Units",
       "unitsSub": "The units you run",
       "assignments": "Assigned to me",
-      "assignmentsSub": "The work that is on you right now"
+      "assignmentsSub": "The work that is on you right now",
+      "services": "Services",
+      "servicesSub": "The request catalogue and which unit answers it"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -1235,6 +1237,45 @@
         "emptyBody": "Open the first one — a department, a field crew, any group that works apart.",
         "noneTitle": "No unit here is yours to manage",
         "noneBody": "If you were just made a manager, refresh the app; otherwise this page is not for you."
+      },
+      "services": {
+        "title": "Services",
+        "intro": "A service is what people can ask for. You decide which unit answers it — a service with no unit assigned can receive nothing.",
+        "create": "New service",
+        "rename": "Edit",
+        "name": "Service name",
+        "description": "Description",
+        "archive": "Archive",
+        "unarchive": "Restore",
+        "archived": "archived",
+        "noUnits": "No unit assigned — nothing can be filed against this service",
+        "noneTitle": "This catalogue is not yours",
+        "noneBody": "Only team admins can edit services.",
+        "emptyTitle": "No services yet",
+        "emptyBody": "Add the first one: what people can ask for, and which unit answers it.",
+        "units": "Units that answer",
+        "unitsHint": "Requests for this service land in the queues of the units you pick.",
+        "fields": "Custom fields",
+        "fieldsHint": "Extra questions for this service. Leave empty to ask only for a subject and a description.",
+        "fieldsNone": "No custom fields.",
+        "fieldCount": "{count} custom fields",
+        "fieldAdd": "Add field",
+        "fieldRemove": "Remove field",
+        "fieldLabel": "Question",
+        "fieldKey": "Key",
+        "fieldKeyHint": "Derived from the question if left empty.",
+        "fieldRequired": "Required",
+        "fieldOptions": "Options",
+        "fieldOptionsHint": "Separate with commas.",
+        "fieldDuplicate": "That key is already used.",
+        "fieldType": {
+          "text": "Text",
+          "number": "Number",
+          "date": "Date",
+          "checkbox": "Yes/No",
+          "select": "Pick from a list"
+        },
+        "fieldTypeLabel": "Type"
       }
     },
     "join": {

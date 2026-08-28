@@ -36,6 +36,7 @@ import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
+import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
 import 'features/ai/ui/share_log_screen.dart';
@@ -421,6 +422,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/roles',
         builder: (context, state) => _page(const EeTeamRolesScreen()),
+      ),
+      // EE-082: the service catalogue — what people may ask for, and which
+      // unit answers each one.
+      GoRoute(
+        path: '/settings/team/services',
+        builder: (context, state) => _page(const EeTeamServicesScreen()),
       ),
       // EE-061: what other units shared with this one. Reachable by anyone in
       // a unit — receiving something is not an admin act.
