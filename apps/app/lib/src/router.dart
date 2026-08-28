@@ -37,6 +37,7 @@ import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
+import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
@@ -471,6 +472,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/assignments',
         builder: (context, state) => _page(const EeAssignedToMeScreen()),
+      ),
+      // EE-087: "my requests". Reachable by anyone in a team — asking for
+      // something is the least privileged act in the product.
+      GoRoute(
+        path: '/settings/team/my-tickets',
+        builder: (context, state) => _page(const EeMyTicketsScreen()),
       ),
       // EE-057: units. The one team route a NON-admin can legitimately reach
       // — a delegated unit manager is an ordinary member everywhere else, so

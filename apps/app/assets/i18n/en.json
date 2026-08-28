@@ -167,7 +167,9 @@
       "assignments": "Assigned to me",
       "assignmentsSub": "The work that is on you right now",
       "services": "Services",
-      "servicesSub": "The request catalogue and which unit answers it"
+      "servicesSub": "The request catalogue and which unit answers it",
+      "myTickets": "My requests",
+      "myTicketsSub": "The requests you opened, and where they stand"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -1624,7 +1626,10 @@
         "normal": "Normal",
         "high": "High",
         "urgent": "Urgent"
-      }
+      },
+      "mineTitle": "My requests",
+      "mineEmptyTitle": "You have not opened any requests",
+      "mineEmptyBody": "Requests you open, and where they have got to, appear here."
     }
   },
   "perm": {

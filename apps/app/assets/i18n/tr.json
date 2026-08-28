@@ -166,7 +166,9 @@
       "assignments": "Bana atananlar",
       "assignmentsSub": "Şu anda üzerinizde olan işler",
       "services": "Servisler",
-      "servicesSub": "Talep katalogu ve hangi birimin baktığı"
+      "servicesSub": "Talep katalogu ve hangi birimin baktığı",
+      "myTickets": "Taleplerim",
+      "myTicketsSub": "Açtığınız talepler ve durumları"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -1623,7 +1625,10 @@
         "normal": "Normal",
         "high": "Yüksek",
         "urgent": "Acil"
-      }
+      },
+      "mineTitle": "Taleplerim",
+      "mineEmptyTitle": "Henüz talep açmadınız",
+      "mineEmptyBody": "Açtığınız talepler ve hangi aşamada oldukları burada görünür."
     }
   },
   "perm": {

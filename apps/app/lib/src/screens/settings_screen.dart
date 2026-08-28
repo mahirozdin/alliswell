@@ -132,6 +132,18 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.unitsSub',
                   path: '/settings/team/units',
                 ),
+              // EE-087: "my requests". Shown to anyone whose workspace has a
+              // roster — asking for something is the least privileged act in
+              // the product, and the person most likely to want this list is
+              // the one with the fewest other team rows.
+              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+                _GroupRow(
+                  keyName: 'settings-group-my-tickets',
+                  icon: Icons.help_outline,
+                  titleKey: 'settings.group.myTickets',
+                  subtitleKey: 'settings.group.myTicketsSub',
+                  path: '/settings/team/my-tickets',
+                ),
               // EE-082: the service catalogue. `services.manage` is a plain
               // role verb, so `canProvider` is honest here — unlike the units
               // row above, which had to ask the server because a delegated
