@@ -1371,6 +1371,11 @@
           "view": "Çalışma alanlarını gör"
         }
       },
+      "tickets": {
+        "create": "Talep aç",
+        "comment": "Talebe yaz",
+        "close": "Talebi kapat veya iptal et"
+      },
       "units": {
         "manage": "Birimleri yönet",
         "manage_members": "Bir birimdeki kişileri yönet"
@@ -1386,6 +1391,7 @@
       "shares": "Paylaşım",
       "tasks": "Görevler",
       "team": "Takım",
+      "tickets": "Talepler",
       "units": "Birimler"
     },
     "admin": {

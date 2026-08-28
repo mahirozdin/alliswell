@@ -1372,6 +1372,11 @@
           "view": "View workspaces"
         }
       },
+      "tickets": {
+        "create": "Open a request",
+        "comment": "Write on a request",
+        "close": "Close or cancel a request"
+      },
       "units": {
         "manage": "Manage units",
         "manage_members": "Manage the people in a unit"
@@ -1387,6 +1392,7 @@
       "shares": "Sharing",
       "tasks": "Tasks",
       "team": "Team",
+      "tickets": "Requests",
       "units": "Units"
     },
     "admin": {
