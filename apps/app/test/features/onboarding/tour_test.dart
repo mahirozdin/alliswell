@@ -49,20 +49,43 @@ void main() {
   });
 
   group('TourController (OPH-111)', () {
-    test('the script is welcome + one step per section + farewell (≤7)', () {
-      expect(kTourSteps.length, 7); // welcome + 5 sections + done (OPH-162/170)
-      expect(kTourSteps.first.section, isNull);
-      expect(kTourSteps.last.section, isNull);
-      for (final s in kTourSteps) {
-        expect(s.title, isNotEmpty);
-        expect(s.body, isNotEmpty);
-      }
-      final sections = kTourSteps
-          .map((s) => s.section)
-          .whereType<AppSection>()
-          .toSet();
-      expect(sections, AppSection.values.toSet());
-    });
+    test(
+      'the script is welcome + one step per ALWAYS-ON section + farewell',
+      () {
+        expect(
+          kTourSteps.length,
+          7,
+        ); // welcome + 5 sections + done (OPH-162/170)
+        expect(kTourSteps.first.section, isNull);
+        expect(kTourSteps.last.section, isNull);
+        for (final s in kTourSteps) {
+          expect(s.title, isNotEmpty);
+          expect(s.body, isNotEmpty);
+        }
+        final sections = kTourSteps
+            .map((s) => s.section)
+            .whereType<AppSection>()
+            .toSet();
+        // Not `AppSection.values`: a first-run tour walks somebody through what
+        // their app actually has, and EE-084 added a section most installs never
+        // see (`hiddenWithoutEntitlement`). Introducing a stranger to a room
+        // that is not in their house is worse than saying nothing.
+        //
+        // Written against the FLAG rather than by excluding `tickets` by name,
+        // so the test keeps its teeth in the direction that matters: a new
+        // always-on section still fails here until onboarding owes it a step,
+        // while a new gated one correctly does not.
+        expect(
+          sections,
+          AppSection.values.where((s) => !s.hiddenWithoutEntitlement).toSet(),
+        );
+        expect(
+          sections.any((s) => s.hiddenWithoutEntitlement),
+          isFalse,
+          reason: 'a gated section must not appear in the first-run tour',
+        );
+      },
+    );
 
     test(
       'next advances; finishing on the last step persists the seen flag',

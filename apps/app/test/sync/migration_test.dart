@@ -242,8 +242,22 @@ void main() {
       // on the first sync after, because the server keeps it.
       expect(await db.select(db.notifications).get(), isEmpty);
 
+      // v24/v25 (EE-084, EE-086): the service desk. Three tables, all empty
+      // for the same reason as everything above — the rows arrive by pull, and
+      // an upgrading device gets its unit's queue on the first sync after.
+      //
+      // These are listed one by one rather than trusted to the version number,
+      // because that is the whole point of this test: a step that creates no
+      // table still bumps `user_version`, so only naming the tables proves the
+      // step ran. (E09 shipped three of them and this file was not updated —
+      // the assertion below went red on CI and nowhere else, which is how the
+      // gap was found.)
+      expect(await db.select(db.tickets).get(), isEmpty);
+      expect(await db.select(db.ticketComments).get(), isEmpty);
+      expect(await db.select(db.ticketAssignments).get(), isEmpty);
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 23);
+      expect(version.data['user_version'], 25);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -289,7 +303,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 23);
+      expect(version.data['user_version'], 25);
       await db.close();
     },
   );
