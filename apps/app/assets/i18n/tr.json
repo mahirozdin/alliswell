@@ -1553,8 +1553,20 @@
         }
       },
       "ticket": {
+        "assigned": {
+          "title": "Size atandı: {ticketRef}",
+          "body": "{subject}"
+        },
+        "commented": {
+          "title": "{ticketRef} için yeni yanıt",
+          "body": "{subject}"
+        },
         "routed": {
           "title": "{unitName} birimine yeni kayıt: {ticketRef}",
+          "body": "{subject}"
+        },
+        "status_changed": {
+          "title": "{ticketRef} artık {statusLabel}",
           "body": "{subject}"
         }
       },

@@ -1554,8 +1554,20 @@
         }
       },
       "ticket": {
+        "assigned": {
+          "title": "Assigned to you: {ticketRef}",
+          "body": "{subject}"
+        },
+        "commented": {
+          "title": "New reply on {ticketRef}",
+          "body": "{subject}"
+        },
         "routed": {
           "title": "New ticket for {unitName}: {ticketRef}",
+          "body": "{subject}"
+        },
+        "status_changed": {
+          "title": "{ticketRef} is now {statusLabel}",
           "body": "{subject}"
         }
       },
