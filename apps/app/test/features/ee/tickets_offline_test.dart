@@ -165,50 +165,57 @@ void main() {
     return row.data['n'] as int;
   }
 
-  test('the queue opens with the server unreachable, and it is not empty', () async {
-    await pulled([
-      SyncChange(
-        revision: 1,
-        entityType: 'ee_ticket',
-        entityId: id('T1'),
-        operation: 'upsert',
-        data: ticket(id('T1')),
-      ),
-      SyncChange(
-        revision: 2,
-        entityType: 'ee_ticket',
-        entityId: id('T2'),
-        operation: 'upsert',
-        data: ticket(id('T2'), subject: 'Kompresör sesi', priority: 'normal'),
-      ),
-      // Another unit's ticket, which this device should never have been given
-      // and must not show even if it somehow arrives.
-      SyncChange(
-        revision: 3,
-        entityType: 'ee_ticket',
-        entityId: id('T3'),
-        operation: 'upsert',
-        data: ticket(id('T3'), workspaceId: otherWs, subject: 'Başka birim'),
-      ),
-    ]);
+  test(
+    'the queue opens with the server unreachable, and it is not empty',
+    () async {
+      await pulled([
+        SyncChange(
+          revision: 1,
+          entityType: 'ee_ticket',
+          entityId: id('T1'),
+          operation: 'upsert',
+          data: ticket(id('T1')),
+        ),
+        SyncChange(
+          revision: 2,
+          entityType: 'ee_ticket',
+          entityId: id('T2'),
+          operation: 'upsert',
+          data: ticket(id('T2'), subject: 'Kompresör sesi', priority: 'normal'),
+        ),
+        // Another unit's ticket, which this device should never have been given
+        // and must not show even if it somehow arrives.
+        SyncChange(
+          revision: 3,
+          entityType: 'ee_ticket',
+          entityId: id('T3'),
+          operation: 'upsert',
+          data: ticket(id('T3'), workspaceId: otherWs, subject: 'Başka birim'),
+        ),
+      ]);
 
-    // The shift starts. There is no signal, and there will not be one.
-    api.pullThrows = Exception('offline');
-    api.pushThrows = Exception('offline');
-    await engine.syncNow();
+      // The shift starts. There is no signal, and there will not be one.
+      api.pullThrows = Exception('offline');
+      api.pushThrows = Exception('offline');
+      await engine.syncNow();
 
-    final rows = await queue();
-    expect(rows, hasLength(2), reason: 'the unit queue reads from the replica');
-    expect(
-      rows.map((t) => t.subject),
-      containsAll(<String>['Pano ışıkları yanmıyor', 'Kompresör sesi']),
-    );
-    expect(
-      rows.every((t) => t.workspaceId == ws),
-      isTrue,
-      reason: 'a unit boundary is not something the network enforces',
-    );
-  });
+      final rows = await queue();
+      expect(
+        rows,
+        hasLength(2),
+        reason: 'the unit queue reads from the replica',
+      );
+      expect(
+        rows.map((t) => t.subject),
+        containsAll(<String>['Pano ışıkları yanmıyor', 'Kompresör sesi']),
+      );
+      expect(
+        rows.every((t) => t.workspaceId == ws),
+        isTrue,
+        reason: 'a unit boundary is not something the network enforces',
+      );
+    },
+  );
 
   test('a write made offline is queued, not lost', () async {
     await pulled([
