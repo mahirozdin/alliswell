@@ -1377,7 +1377,8 @@
       "tickets": {
         "create": "Open a request",
         "comment": "Write on a request",
-        "close": "Close or cancel a request"
+        "close": "Close or cancel a request",
+        "convert": "Turn a request into a task in the unit"
       },
       "units": {
         "manage": "Manage units",

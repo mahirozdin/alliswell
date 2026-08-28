@@ -1376,7 +1376,8 @@
       "tickets": {
         "create": "Talep aç",
         "comment": "Talebe yaz",
-        "close": "Talebi kapat veya iptal et"
+        "close": "Talebi kapat veya iptal et",
+        "convert": "Talebi işe dönüştür"
       },
       "units": {
         "manage": "Birimleri yönet",
