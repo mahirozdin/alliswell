@@ -37,6 +37,7 @@ import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
+import 'features/ee/ui/ticket_queue_screen.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
 import 'features/ai/ui/share_log_screen.dart';
@@ -289,6 +290,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     AppSection.files => const FilesScreen(),
                     AppSection.projects => const ProjectsScreen(),
                     AppSection.notes => const NotesScreen(),
+                    // EE-084. The BRANCH always exists — only the navigation
+                    // destination is conditional (see `home_shell`), because
+                    // dropping a branch would renumber every one after it.
+                    AppSection.tickets => const EeTicketQueueScreen(),
                   },
                   routes: [
                     // OPH-199: a folder shortcut needs an ADDRESS, not a

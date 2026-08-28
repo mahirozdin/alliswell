@@ -15637,6 +15637,1345 @@ class NotificationsCompanion extends UpdateCompanion<NotificationRecord> {
   }
 }
 
+class $TicketsTable extends Tickets
+    with TableInfo<$TicketsTable, TicketRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TicketsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serviceIdMeta = const VerificationMeta(
+    'serviceId',
+  );
+  @override
+  late final GeneratedColumn<String> serviceId = GeneratedColumn<String>(
+    'service_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _requesterIdMeta = const VerificationMeta(
+    'requesterId',
+  );
+  @override
+  late final GeneratedColumn<String> requesterId = GeneratedColumn<String>(
+    'requester_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _subjectMeta = const VerificationMeta(
+    'subject',
+  );
+  @override
+  late final GeneratedColumn<String> subject = GeneratedColumn<String>(
+    'subject',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _priorityMeta = const VerificationMeta(
+    'priority',
+  );
+  @override
+  late final GeneratedColumn<String> priority = GeneratedColumn<String>(
+    'priority',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _terminalAtMeta = const VerificationMeta(
+    'terminalAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> terminalAt = GeneratedColumn<DateTime>(
+    'terminal_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    serviceId,
+    requesterId,
+    subject,
+    body,
+    status,
+    priority,
+    source,
+    terminalAt,
+    createdAt,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tickets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TicketRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('service_id')) {
+      context.handle(
+        _serviceIdMeta,
+        serviceId.isAcceptableOrUnknown(data['service_id']!, _serviceIdMeta),
+      );
+    }
+    if (data.containsKey('requester_id')) {
+      context.handle(
+        _requesterIdMeta,
+        requesterId.isAcceptableOrUnknown(
+          data['requester_id']!,
+          _requesterIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('subject')) {
+      context.handle(
+        _subjectMeta,
+        subject.isAcceptableOrUnknown(data['subject']!, _subjectMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subjectMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('priority')) {
+      context.handle(
+        _priorityMeta,
+        priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_priorityMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('terminal_at')) {
+      context.handle(
+        _terminalAtMeta,
+        terminalAt.isAcceptableOrUnknown(data['terminal_at']!, _terminalAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TicketRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TicketRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      serviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}service_id'],
+      ),
+      requesterId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}requester_id'],
+      ),
+      subject: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      priority: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}priority'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      terminalAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}terminal_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $TicketsTable createAlias(String alias) {
+    return $TicketsTable(attachedDatabase, alias);
+  }
+}
+
+class TicketRecord extends DataClass implements Insertable<TicketRecord> {
+  final String id;
+  final String workspaceId;
+
+  /// What was asked for. Nullable because a ticket outlives its service being
+  /// restructured (the server sets it null rather than deleting the row).
+  final String? serviceId;
+
+  /// Who asked. Joined against [MemberProfiles] for a name — and a MISS is
+  /// ordinary here rather than exceptional: a requester is usually NOT in the
+  /// unit that answers them, so their profile never reaches this replica.
+  final String? requesterId;
+  final String subject;
+  final String? body;
+
+  /// One of `TicketStatus` — stored as the server's own word so the two sides
+  /// cannot drift into two vocabularies.
+  final String status;
+  final String priority;
+  final String source;
+
+  /// When it stopped. Null while alive; the server stamps it on the move into
+  /// a terminal state, and the archive sweep reads the pair.
+  final DateTime? terminalAt;
+  final DateTime? createdAt;
+  final int revision;
+  final DateTime? updatedAt;
+  const TicketRecord({
+    required this.id,
+    required this.workspaceId,
+    this.serviceId,
+    this.requesterId,
+    required this.subject,
+    this.body,
+    required this.status,
+    required this.priority,
+    required this.source,
+    this.terminalAt,
+    this.createdAt,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    if (!nullToAbsent || serviceId != null) {
+      map['service_id'] = Variable<String>(serviceId);
+    }
+    if (!nullToAbsent || requesterId != null) {
+      map['requester_id'] = Variable<String>(requesterId);
+    }
+    map['subject'] = Variable<String>(subject);
+    if (!nullToAbsent || body != null) {
+      map['body'] = Variable<String>(body);
+    }
+    map['status'] = Variable<String>(status);
+    map['priority'] = Variable<String>(priority);
+    map['source'] = Variable<String>(source);
+    if (!nullToAbsent || terminalAt != null) {
+      map['terminal_at'] = Variable<DateTime>(terminalAt);
+    }
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  TicketsCompanion toCompanion(bool nullToAbsent) {
+    return TicketsCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      serviceId: serviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serviceId),
+      requesterId: requesterId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(requesterId),
+      subject: Value(subject),
+      body: body == null && nullToAbsent ? const Value.absent() : Value(body),
+      status: Value(status),
+      priority: Value(priority),
+      source: Value(source),
+      terminalAt: terminalAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(terminalAt),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory TicketRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TicketRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      serviceId: serializer.fromJson<String?>(json['serviceId']),
+      requesterId: serializer.fromJson<String?>(json['requesterId']),
+      subject: serializer.fromJson<String>(json['subject']),
+      body: serializer.fromJson<String?>(json['body']),
+      status: serializer.fromJson<String>(json['status']),
+      priority: serializer.fromJson<String>(json['priority']),
+      source: serializer.fromJson<String>(json['source']),
+      terminalAt: serializer.fromJson<DateTime?>(json['terminalAt']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'serviceId': serializer.toJson<String?>(serviceId),
+      'requesterId': serializer.toJson<String?>(requesterId),
+      'subject': serializer.toJson<String>(subject),
+      'body': serializer.toJson<String?>(body),
+      'status': serializer.toJson<String>(status),
+      'priority': serializer.toJson<String>(priority),
+      'source': serializer.toJson<String>(source),
+      'terminalAt': serializer.toJson<DateTime?>(terminalAt),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  TicketRecord copyWith({
+    String? id,
+    String? workspaceId,
+    Value<String?> serviceId = const Value.absent(),
+    Value<String?> requesterId = const Value.absent(),
+    String? subject,
+    Value<String?> body = const Value.absent(),
+    String? status,
+    String? priority,
+    String? source,
+    Value<DateTime?> terminalAt = const Value.absent(),
+    Value<DateTime?> createdAt = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => TicketRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    serviceId: serviceId.present ? serviceId.value : this.serviceId,
+    requesterId: requesterId.present ? requesterId.value : this.requesterId,
+    subject: subject ?? this.subject,
+    body: body.present ? body.value : this.body,
+    status: status ?? this.status,
+    priority: priority ?? this.priority,
+    source: source ?? this.source,
+    terminalAt: terminalAt.present ? terminalAt.value : this.terminalAt,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  TicketRecord copyWithCompanion(TicketsCompanion data) {
+    return TicketRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      serviceId: data.serviceId.present ? data.serviceId.value : this.serviceId,
+      requesterId: data.requesterId.present
+          ? data.requesterId.value
+          : this.requesterId,
+      subject: data.subject.present ? data.subject.value : this.subject,
+      body: data.body.present ? data.body.value : this.body,
+      status: data.status.present ? data.status.value : this.status,
+      priority: data.priority.present ? data.priority.value : this.priority,
+      source: data.source.present ? data.source.value : this.source,
+      terminalAt: data.terminalAt.present
+          ? data.terminalAt.value
+          : this.terminalAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TicketRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('serviceId: $serviceId, ')
+          ..write('requesterId: $requesterId, ')
+          ..write('subject: $subject, ')
+          ..write('body: $body, ')
+          ..write('status: $status, ')
+          ..write('priority: $priority, ')
+          ..write('source: $source, ')
+          ..write('terminalAt: $terminalAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    serviceId,
+    requesterId,
+    subject,
+    body,
+    status,
+    priority,
+    source,
+    terminalAt,
+    createdAt,
+    revision,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TicketRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.serviceId == this.serviceId &&
+          other.requesterId == this.requesterId &&
+          other.subject == this.subject &&
+          other.body == this.body &&
+          other.status == this.status &&
+          other.priority == this.priority &&
+          other.source == this.source &&
+          other.terminalAt == this.terminalAt &&
+          other.createdAt == this.createdAt &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TicketsCompanion extends UpdateCompanion<TicketRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String?> serviceId;
+  final Value<String?> requesterId;
+  final Value<String> subject;
+  final Value<String?> body;
+  final Value<String> status;
+  final Value<String> priority;
+  final Value<String> source;
+  final Value<DateTime?> terminalAt;
+  final Value<DateTime?> createdAt;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const TicketsCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.serviceId = const Value.absent(),
+    this.requesterId = const Value.absent(),
+    this.subject = const Value.absent(),
+    this.body = const Value.absent(),
+    this.status = const Value.absent(),
+    this.priority = const Value.absent(),
+    this.source = const Value.absent(),
+    this.terminalAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TicketsCompanion.insert({
+    required String id,
+    required String workspaceId,
+    this.serviceId = const Value.absent(),
+    this.requesterId = const Value.absent(),
+    required String subject,
+    this.body = const Value.absent(),
+    required String status,
+    required String priority,
+    required String source,
+    this.terminalAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       subject = Value(subject),
+       status = Value(status),
+       priority = Value(priority),
+       source = Value(source);
+  static Insertable<TicketRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? serviceId,
+    Expression<String>? requesterId,
+    Expression<String>? subject,
+    Expression<String>? body,
+    Expression<String>? status,
+    Expression<String>? priority,
+    Expression<String>? source,
+    Expression<DateTime>? terminalAt,
+    Expression<DateTime>? createdAt,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (serviceId != null) 'service_id': serviceId,
+      if (requesterId != null) 'requester_id': requesterId,
+      if (subject != null) 'subject': subject,
+      if (body != null) 'body': body,
+      if (status != null) 'status': status,
+      if (priority != null) 'priority': priority,
+      if (source != null) 'source': source,
+      if (terminalAt != null) 'terminal_at': terminalAt,
+      if (createdAt != null) 'created_at': createdAt,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TicketsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String?>? serviceId,
+    Value<String?>? requesterId,
+    Value<String>? subject,
+    Value<String?>? body,
+    Value<String>? status,
+    Value<String>? priority,
+    Value<String>? source,
+    Value<DateTime?>? terminalAt,
+    Value<DateTime?>? createdAt,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return TicketsCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      serviceId: serviceId ?? this.serviceId,
+      requesterId: requesterId ?? this.requesterId,
+      subject: subject ?? this.subject,
+      body: body ?? this.body,
+      status: status ?? this.status,
+      priority: priority ?? this.priority,
+      source: source ?? this.source,
+      terminalAt: terminalAt ?? this.terminalAt,
+      createdAt: createdAt ?? this.createdAt,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (serviceId.present) {
+      map['service_id'] = Variable<String>(serviceId.value);
+    }
+    if (requesterId.present) {
+      map['requester_id'] = Variable<String>(requesterId.value);
+    }
+    if (subject.present) {
+      map['subject'] = Variable<String>(subject.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (priority.present) {
+      map['priority'] = Variable<String>(priority.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (terminalAt.present) {
+      map['terminal_at'] = Variable<DateTime>(terminalAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TicketsCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('serviceId: $serviceId, ')
+          ..write('requesterId: $requesterId, ')
+          ..write('subject: $subject, ')
+          ..write('body: $body, ')
+          ..write('status: $status, ')
+          ..write('priority: $priority, ')
+          ..write('source: $source, ')
+          ..write('terminalAt: $terminalAt, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TicketCommentsTable extends TicketComments
+    with TableInfo<$TicketCommentsTable, TicketCommentRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TicketCommentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ticketIdMeta = const VerificationMeta(
+    'ticketId',
+  );
+  @override
+  late final GeneratedColumn<String> ticketId = GeneratedColumn<String>(
+    'ticket_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorIdMeta = const VerificationMeta(
+    'authorId',
+  );
+  @override
+  late final GeneratedColumn<String> authorId = GeneratedColumn<String>(
+    'author_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _internalMeta = const VerificationMeta(
+    'internal',
+  );
+  @override
+  late final GeneratedColumn<bool> internal = GeneratedColumn<bool>(
+    'internal',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("internal" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    ticketId,
+    authorId,
+    body,
+    internal,
+    createdAt,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ticket_comments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TicketCommentRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('ticket_id')) {
+      context.handle(
+        _ticketIdMeta,
+        ticketId.isAcceptableOrUnknown(data['ticket_id']!, _ticketIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ticketIdMeta);
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(
+        _authorIdMeta,
+        authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta),
+      );
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('internal')) {
+      context.handle(
+        _internalMeta,
+        internal.isAcceptableOrUnknown(data['internal']!, _internalMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TicketCommentRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TicketCommentRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      ticketId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ticket_id'],
+      )!,
+      authorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_id'],
+      ),
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      internal: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}internal'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $TicketCommentsTable createAlias(String alias) {
+    return $TicketCommentsTable(attachedDatabase, alias);
+  }
+}
+
+class TicketCommentRecord extends DataClass
+    implements Insertable<TicketCommentRecord> {
+  final String id;
+  final String workspaceId;
+  final String ticketId;
+  final String? authorId;
+  final String body;
+  final bool internal;
+  final DateTime? createdAt;
+  final int revision;
+  final DateTime? updatedAt;
+  const TicketCommentRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.ticketId,
+    this.authorId,
+    required this.body,
+    required this.internal,
+    this.createdAt,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['ticket_id'] = Variable<String>(ticketId);
+    if (!nullToAbsent || authorId != null) {
+      map['author_id'] = Variable<String>(authorId);
+    }
+    map['body'] = Variable<String>(body);
+    map['internal'] = Variable<bool>(internal);
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  TicketCommentsCompanion toCompanion(bool nullToAbsent) {
+    return TicketCommentsCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      ticketId: Value(ticketId),
+      authorId: authorId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authorId),
+      body: Value(body),
+      internal: Value(internal),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory TicketCommentRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TicketCommentRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      ticketId: serializer.fromJson<String>(json['ticketId']),
+      authorId: serializer.fromJson<String?>(json['authorId']),
+      body: serializer.fromJson<String>(json['body']),
+      internal: serializer.fromJson<bool>(json['internal']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'ticketId': serializer.toJson<String>(ticketId),
+      'authorId': serializer.toJson<String?>(authorId),
+      'body': serializer.toJson<String>(body),
+      'internal': serializer.toJson<bool>(internal),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  TicketCommentRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? ticketId,
+    Value<String?> authorId = const Value.absent(),
+    String? body,
+    bool? internal,
+    Value<DateTime?> createdAt = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => TicketCommentRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    ticketId: ticketId ?? this.ticketId,
+    authorId: authorId.present ? authorId.value : this.authorId,
+    body: body ?? this.body,
+    internal: internal ?? this.internal,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  TicketCommentRecord copyWithCompanion(TicketCommentsCompanion data) {
+    return TicketCommentRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      ticketId: data.ticketId.present ? data.ticketId.value : this.ticketId,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      body: data.body.present ? data.body.value : this.body,
+      internal: data.internal.present ? data.internal.value : this.internal,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TicketCommentRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('ticketId: $ticketId, ')
+          ..write('authorId: $authorId, ')
+          ..write('body: $body, ')
+          ..write('internal: $internal, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    ticketId,
+    authorId,
+    body,
+    internal,
+    createdAt,
+    revision,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TicketCommentRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.ticketId == this.ticketId &&
+          other.authorId == this.authorId &&
+          other.body == this.body &&
+          other.internal == this.internal &&
+          other.createdAt == this.createdAt &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> ticketId;
+  final Value<String?> authorId;
+  final Value<String> body;
+  final Value<bool> internal;
+  final Value<DateTime?> createdAt;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const TicketCommentsCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.ticketId = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.body = const Value.absent(),
+    this.internal = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TicketCommentsCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String ticketId,
+    this.authorId = const Value.absent(),
+    required String body,
+    this.internal = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       ticketId = Value(ticketId),
+       body = Value(body);
+  static Insertable<TicketCommentRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? ticketId,
+    Expression<String>? authorId,
+    Expression<String>? body,
+    Expression<bool>? internal,
+    Expression<DateTime>? createdAt,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (ticketId != null) 'ticket_id': ticketId,
+      if (authorId != null) 'author_id': authorId,
+      if (body != null) 'body': body,
+      if (internal != null) 'internal': internal,
+      if (createdAt != null) 'created_at': createdAt,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TicketCommentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? ticketId,
+    Value<String?>? authorId,
+    Value<String>? body,
+    Value<bool>? internal,
+    Value<DateTime?>? createdAt,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return TicketCommentsCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      ticketId: ticketId ?? this.ticketId,
+      authorId: authorId ?? this.authorId,
+      body: body ?? this.body,
+      internal: internal ?? this.internal,
+      createdAt: createdAt ?? this.createdAt,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (ticketId.present) {
+      map['ticket_id'] = Variable<String>(ticketId.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (internal.present) {
+      map['internal'] = Variable<bool>(internal.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TicketCommentsCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('ticketId: $ticketId, ')
+          ..write('authorId: $authorId, ')
+          ..write('body: $body, ')
+          ..write('internal: $internal, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -15671,6 +17010,8 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     this,
   );
   late final $NotificationsTable notifications = $NotificationsTable(this);
+  late final $TicketsTable tickets = $TicketsTable(this);
+  late final $TicketCommentsTable ticketComments = $TicketCommentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -15700,6 +17041,8 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     memberProfiles,
     taskAssignments,
     notifications,
+    tickets,
+    ticketComments,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -23158,6 +24501,643 @@ typedef $$NotificationsTableProcessedTableManager =
       NotificationRecord,
       PrefetchHooks Function()
     >;
+typedef $$TicketsTableCreateCompanionBuilder =
+    TicketsCompanion Function({
+      required String id,
+      required String workspaceId,
+      Value<String?> serviceId,
+      Value<String?> requesterId,
+      required String subject,
+      Value<String?> body,
+      required String status,
+      required String priority,
+      required String source,
+      Value<DateTime?> terminalAt,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$TicketsTableUpdateCompanionBuilder =
+    TicketsCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String?> serviceId,
+      Value<String?> requesterId,
+      Value<String> subject,
+      Value<String?> body,
+      Value<String> status,
+      Value<String> priority,
+      Value<String> source,
+      Value<DateTime?> terminalAt,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$TicketsTableFilterComposer
+    extends Composer<_$AwDatabase, $TicketsTable> {
+  $$TicketsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serviceId => $composableBuilder(
+    column: $table.serviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get requesterId => $composableBuilder(
+    column: $table.requesterId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get terminalAt => $composableBuilder(
+    column: $table.terminalAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TicketsTableOrderingComposer
+    extends Composer<_$AwDatabase, $TicketsTable> {
+  $$TicketsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serviceId => $composableBuilder(
+    column: $table.serviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get requesterId => $composableBuilder(
+    column: $table.requesterId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subject => $composableBuilder(
+    column: $table.subject,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get priority => $composableBuilder(
+    column: $table.priority,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get terminalAt => $composableBuilder(
+    column: $table.terminalAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TicketsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $TicketsTable> {
+  $$TicketsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get serviceId =>
+      $composableBuilder(column: $table.serviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get requesterId => $composableBuilder(
+    column: $table.requesterId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get subject =>
+      $composableBuilder(column: $table.subject, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get priority =>
+      $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get terminalAt => $composableBuilder(
+    column: $table.terminalAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TicketsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $TicketsTable,
+          TicketRecord,
+          $$TicketsTableFilterComposer,
+          $$TicketsTableOrderingComposer,
+          $$TicketsTableAnnotationComposer,
+          $$TicketsTableCreateCompanionBuilder,
+          $$TicketsTableUpdateCompanionBuilder,
+          (
+            TicketRecord,
+            BaseReferences<_$AwDatabase, $TicketsTable, TicketRecord>,
+          ),
+          TicketRecord,
+          PrefetchHooks Function()
+        > {
+  $$TicketsTableTableManager(_$AwDatabase db, $TicketsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TicketsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TicketsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TicketsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String?> serviceId = const Value.absent(),
+                Value<String?> requesterId = const Value.absent(),
+                Value<String> subject = const Value.absent(),
+                Value<String?> body = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> priority = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<DateTime?> terminalAt = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TicketsCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                serviceId: serviceId,
+                requesterId: requesterId,
+                subject: subject,
+                body: body,
+                status: status,
+                priority: priority,
+                source: source,
+                terminalAt: terminalAt,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                Value<String?> serviceId = const Value.absent(),
+                Value<String?> requesterId = const Value.absent(),
+                required String subject,
+                Value<String?> body = const Value.absent(),
+                required String status,
+                required String priority,
+                required String source,
+                Value<DateTime?> terminalAt = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TicketsCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                serviceId: serviceId,
+                requesterId: requesterId,
+                subject: subject,
+                body: body,
+                status: status,
+                priority: priority,
+                source: source,
+                terminalAt: terminalAt,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TicketsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $TicketsTable,
+      TicketRecord,
+      $$TicketsTableFilterComposer,
+      $$TicketsTableOrderingComposer,
+      $$TicketsTableAnnotationComposer,
+      $$TicketsTableCreateCompanionBuilder,
+      $$TicketsTableUpdateCompanionBuilder,
+      (TicketRecord, BaseReferences<_$AwDatabase, $TicketsTable, TicketRecord>),
+      TicketRecord,
+      PrefetchHooks Function()
+    >;
+typedef $$TicketCommentsTableCreateCompanionBuilder =
+    TicketCommentsCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String ticketId,
+      Value<String?> authorId,
+      required String body,
+      Value<bool> internal,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$TicketCommentsTableUpdateCompanionBuilder =
+    TicketCommentsCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> ticketId,
+      Value<String?> authorId,
+      Value<String> body,
+      Value<bool> internal,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$TicketCommentsTableFilterComposer
+    extends Composer<_$AwDatabase, $TicketCommentsTable> {
+  $$TicketCommentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ticketId => $composableBuilder(
+    column: $table.ticketId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get internal => $composableBuilder(
+    column: $table.internal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TicketCommentsTableOrderingComposer
+    extends Composer<_$AwDatabase, $TicketCommentsTable> {
+  $$TicketCommentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ticketId => $composableBuilder(
+    column: $table.ticketId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get internal => $composableBuilder(
+    column: $table.internal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TicketCommentsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $TicketCommentsTable> {
+  $$TicketCommentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ticketId =>
+      $composableBuilder(column: $table.ticketId, builder: (column) => column);
+
+  GeneratedColumn<String> get authorId =>
+      $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<bool> get internal =>
+      $composableBuilder(column: $table.internal, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$TicketCommentsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $TicketCommentsTable,
+          TicketCommentRecord,
+          $$TicketCommentsTableFilterComposer,
+          $$TicketCommentsTableOrderingComposer,
+          $$TicketCommentsTableAnnotationComposer,
+          $$TicketCommentsTableCreateCompanionBuilder,
+          $$TicketCommentsTableUpdateCompanionBuilder,
+          (
+            TicketCommentRecord,
+            BaseReferences<
+              _$AwDatabase,
+              $TicketCommentsTable,
+              TicketCommentRecord
+            >,
+          ),
+          TicketCommentRecord,
+          PrefetchHooks Function()
+        > {
+  $$TicketCommentsTableTableManager(_$AwDatabase db, $TicketCommentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TicketCommentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TicketCommentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TicketCommentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> ticketId = const Value.absent(),
+                Value<String?> authorId = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<bool> internal = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TicketCommentsCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                ticketId: ticketId,
+                authorId: authorId,
+                body: body,
+                internal: internal,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String ticketId,
+                Value<String?> authorId = const Value.absent(),
+                required String body,
+                Value<bool> internal = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TicketCommentsCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                ticketId: ticketId,
+                authorId: authorId,
+                body: body,
+                internal: internal,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TicketCommentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $TicketCommentsTable,
+      TicketCommentRecord,
+      $$TicketCommentsTableFilterComposer,
+      $$TicketCommentsTableOrderingComposer,
+      $$TicketCommentsTableAnnotationComposer,
+      $$TicketCommentsTableCreateCompanionBuilder,
+      $$TicketCommentsTableUpdateCompanionBuilder,
+      (
+        TicketCommentRecord,
+        BaseReferences<_$AwDatabase, $TicketCommentsTable, TicketCommentRecord>,
+      ),
+      TicketCommentRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AwDatabaseManager {
   final _$AwDatabase _db;
@@ -23209,4 +25189,8 @@ class $AwDatabaseManager {
       $$TaskAssignmentsTableTableManager(_db, _db.taskAssignments);
   $$NotificationsTableTableManager get notifications =>
       $$NotificationsTableTableManager(_db, _db.notifications);
+  $$TicketsTableTableManager get tickets =>
+      $$TicketsTableTableManager(_db, _db.tickets);
+  $$TicketCommentsTableTableManager get ticketComments =>
+      $$TicketCommentsTableTableManager(_db, _db.ticketComments);
 }

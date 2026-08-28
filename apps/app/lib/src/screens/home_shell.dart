@@ -86,6 +86,12 @@ class HomeShell extends ConsumerWidget {
     navigationShell.goBranch(index, initialLocation: true);
   }
 
+  /// Destination position → branch index (EE-084). The two lists stopped being
+  /// the same one when the service desk arrived; `sections.dart` holds the
+  /// conversion and says why.
+  void _goVisible(List<AppSection> visible, int index) =>
+      _goBranch(branchIndexFor(visible, index));
+
   /// The current section's create action, rendered by the shell's OWN Scaffold
   /// so Flutter positions it above the glass bottom bar. The section screens
   /// used to own these FABs, but as nested Scaffolds their FAB was painted
@@ -125,6 +131,12 @@ class HomeShell extends ConsumerWidget {
   /// unavailability is the information.
   Widget? _sectionFab(BuildContext context, WidgetRef ref) {
     return switch (AppSection.values[navigationShell.currentIndex]) {
+      // EE-084: no "new request" button on the agent's queue. Opening a ticket
+      // means naming a SERVICE, and the catalogue is admin-gated — an agent
+      // cannot read it. The requester's own filing surface is EE-087's, and
+      // giving this screen a button that could not resolve a destination would
+      // be exactly the "greyed-out affordance" this method exists to avoid.
+      AppSection.tickets => null,
       AppSection.home when !ref.watch(canProvider('tasks.create')) => null,
       AppSection.projects when !ref.watch(canProvider('projects.create')) =>
         null,
@@ -191,6 +203,11 @@ class HomeShell extends ConsumerWidget {
     // OPH-130: republish the home-screen widget snapshot on task/project change
     // (self-disables off iOS/Android/macOS).
     ref.watch(widgetSyncProvider);
+    // EE-084: which sections are DRAWN. Not the same list as the branches —
+    // see `_visible` / `_selectedIn` above for why that distinction exists.
+    final visibleSections = visibleAppSections(
+      itsm: ref.watch(eeFeatureProvider('itsm')),
+    );
     ref.listen(syncConflictsProvider, (_, next) {
       final conflict = next.value;
       if (conflict == null) return;
@@ -265,8 +282,12 @@ class HomeShell extends ConsumerWidget {
                         labelType: extendedRail
                             ? NavigationRailLabelType.none
                             : NavigationRailLabelType.all,
-                        selectedIndex: navigationShell.currentIndex,
-                        onDestinationSelected: _goBranch,
+                        selectedIndex: destinationIndexFor(
+                          visibleSections,
+                          navigationShell.currentIndex,
+                        ).clamp(0, visibleSections.length - 1),
+                        onDestinationSelected: (i) =>
+                            _goVisible(visibleSections, i),
                         minWidth: 84,
                         groupAlignment: -0.9,
                         // OPH-199: the shortcut section sits right under the
@@ -283,7 +304,7 @@ class HomeShell extends ConsumerWidget {
                               : const QuickAccessRailButton(),
                         ),
                         destinations: [
-                          for (final section in AppSection.values)
+                          for (final section in visibleSections)
                             NavigationRailDestination(
                               icon: KeyedSubtree(
                                 key: _navKeys[section]!.icon,
@@ -330,10 +351,13 @@ class HomeShell extends ConsumerWidget {
                   Radius.circular(AwRadius.pill),
                 ),
                 child: NavigationBar(
-                  selectedIndex: navigationShell.currentIndex,
-                  onDestinationSelected: _goBranch,
+                  selectedIndex: destinationIndexFor(
+                    visibleSections,
+                    navigationShell.currentIndex,
+                  ).clamp(0, visibleSections.length - 1),
+                  onDestinationSelected: (i) => _goVisible(visibleSections, i),
                   destinations: [
-                    for (final section in AppSection.values)
+                    for (final section in visibleSections)
                       NavigationDestination(
                         icon: KeyedSubtree(
                           key: _navKeys[section]!.icon,

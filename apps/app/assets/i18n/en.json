@@ -69,7 +69,9 @@
     "notes": "Notes",
     "notesDesc": "Rich notes, linkable to tasks and projects.",
     "files": "Files",
-    "filesDesc": "Every file in your space — folders, uploads, attachments"
+    "filesDesc": "Every file in your space — folders, uploads, attachments",
+    "tickets": "Requests",
+    "ticketsDesc": "The unit's inbox"
   },
   "auth": {
     "signInTitle": "Sign in to your space",
@@ -1582,6 +1584,44 @@
         "minutes": "{n}m",
         "hours": "{n}h",
         "days": "{n}d"
+      }
+    },
+    "tickets": {
+      "queueTitle": "Requests",
+      "detailTitle": "Request",
+      "emptyTitle": "The queue is empty",
+      "emptyBody": "Nothing has been filed with this unit yet.",
+      "emptyFilteredTitle": "No request matches the filter",
+      "emptyFilteredBody": "Clear the selected filters and look again.",
+      "filterClear": "Clear filter",
+      "goneTitle": "This request is no longer on the device",
+      "goneBody": "Closed requests are dropped from the device after a while; the record is still on the server.",
+      "thread": "Thread",
+      "threadEmpty": "Nothing said yet.",
+      "internalNote": "Internal note — the requester cannot see this",
+      "tabThread": "Thread",
+      "tabHistory": "History",
+      "closedOn": "Closed on {date}",
+      "filter": {
+        "new": "New",
+        "in_progress": "In progress",
+        "waiting": "Waiting",
+        "done": "Finished"
+      },
+      "status": {
+        "new": "New",
+        "triage": "Triage",
+        "in_progress": "In progress",
+        "waiting": "Waiting",
+        "resolved": "Resolved",
+        "closed": "Closed",
+        "cancelled": "Cancelled"
+      },
+      "priority": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High",
+        "urgent": "Urgent"
       }
     }
   },

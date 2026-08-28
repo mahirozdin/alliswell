@@ -31,7 +31,12 @@ Future<bool> refreshSection(WidgetRef ref, AppSection section) async {
       } catch (_) {
         ok = false;
       }
-    case AppSection.inbox || AppSection.projects || AppSection.notes:
+    case AppSection.inbox ||
+        AppSection.projects ||
+        AppSection.notes ||
+        // EE-084: the queue is drawn from the replica and nothing else, which
+        // is the whole point of D5 — the sync round above IS the refresh.
+        AppSection.tickets:
       break; // the replica is the whole truth here
   }
   return ok;

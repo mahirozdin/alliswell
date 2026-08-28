@@ -68,7 +68,9 @@
     "notes": "Notlar",
     "notesDesc": "Görevlere ve projelere bağlanabilen zengin notlar.",
     "files": "Dosyalar",
-    "filesDesc": "Alanındaki her dosya — klasörler, yüklemeler, ekler"
+    "filesDesc": "Alanındaki her dosya — klasörler, yüklemeler, ekler",
+    "tickets": "Talepler",
+    "ticketsDesc": "Birimin gelen kutusu"
   },
   "auth": {
     "signInTitle": "Alanına giriş yap",
@@ -1581,6 +1583,44 @@
         "minutes": "{n} dk",
         "hours": "{n} sa",
         "days": "{n} g"
+      }
+    },
+    "tickets": {
+      "queueTitle": "Talepler",
+      "detailTitle": "Talep",
+      "emptyTitle": "Kuyruk boş",
+      "emptyBody": "Bu birime henüz talep düşmedi.",
+      "emptyFilteredTitle": "Filtreye uyan talep yok",
+      "emptyFilteredBody": "Seçili filtreleri kaldırıp tekrar bakın.",
+      "filterClear": "Filtreyi temizle",
+      "goneTitle": "Bu talep artık cihazda değil",
+      "goneBody": "Kapanmış talepler bir süre sonra cihazdan düşürülür; kaydı sunucuda duruyor.",
+      "thread": "Yazışma",
+      "threadEmpty": "Henüz yazılmadı.",
+      "internalNote": "İç not — talep eden görmez",
+      "tabThread": "Yazışma",
+      "tabHistory": "Geçmiş",
+      "closedOn": "{date} tarihinde kapandı",
+      "filter": {
+        "new": "Yeni",
+        "in_progress": "Devam eden",
+        "waiting": "Beklemede",
+        "done": "Bitmiş"
+      },
+      "status": {
+        "new": "Yeni",
+        "triage": "İnceleniyor",
+        "in_progress": "Devam ediyor",
+        "waiting": "Beklemede",
+        "resolved": "Çözüldü",
+        "closed": "Kapandı",
+        "cancelled": "İptal"
+      },
+      "priority": {
+        "low": "Düşük",
+        "normal": "Normal",
+        "high": "Yüksek",
+        "urgent": "Acil"
       }
     }
   },

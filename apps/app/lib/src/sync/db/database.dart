@@ -699,6 +699,75 @@ class Notifications extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// A service-desk request, as the replica holds it (EE-081/EE-084, D5).
+///
+/// This is the table the product's distinctive promise rests on: the unit's
+/// queue is drawn from HERE, so it opens on a factory floor with no signal.
+/// ADR-0011 priced that promise — a year of tickets and their comments
+/// outweighs every task, note and project on the device — which is why the
+/// server's archive sweep (EE-091) exists and why these rows are expected to
+/// leave again.
+///
+/// `@DataClassName` for the same reason `NotificationRecord` has one: `Ticket`
+/// is a plausible name for half a dozen other things in an app this size, and
+/// the house suffix keeps one word meaning one thing.
+@DataClassName('TicketRecord')
+class Tickets extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+
+  /// What was asked for. Nullable because a ticket outlives its service being
+  /// restructured (the server sets it null rather than deleting the row).
+  TextColumn get serviceId => text().nullable()();
+
+  /// Who asked. Joined against [MemberProfiles] for a name — and a MISS is
+  /// ordinary here rather than exceptional: a requester is usually NOT in the
+  /// unit that answers them, so their profile never reaches this replica.
+  TextColumn get requesterId => text().nullable()();
+  TextColumn get subject => text()();
+  TextColumn get body => text().nullable()();
+
+  /// One of `TicketStatus` — stored as the server's own word so the two sides
+  /// cannot drift into two vocabularies.
+  TextColumn get status => text()();
+  TextColumn get priority => text()();
+  TextColumn get source => text()();
+
+  /// When it stopped. Null while alive; the server stamps it on the move into
+  /// a terminal state, and the archive sweep reads the pair.
+  DateTimeColumn get terminalAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// One utterance on a ticket (EE-081).
+///
+/// `internal` reaches this device on purpose: everybody pulling this workspace
+/// is a member of the unit, i.e. an agent. The requester who must never see an
+/// internal note is not on this stream at all — their view is a server-side
+/// projection (ADR-0011 §3). What the flag decides HERE is only how the row is
+/// drawn, and it has to be unmistakable: an agent who mistakes an internal note
+/// for a reply to the customer has said the wrong thing to the wrong person.
+@DataClassName('TicketCommentRecord')
+class TicketComments extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get ticketId => text()();
+  TextColumn get authorId => text().nullable()();
+  TextColumn get body => text()();
+  BoolColumn get internal => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Projects,
@@ -725,6 +794,8 @@ class Notifications extends Table {
     MemberProfiles,
     TaskAssignments,
     Notifications,
+    Tickets,
+    TicketComments,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -755,7 +826,7 @@ class AwDatabase extends _$AwDatabase {
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -906,6 +977,13 @@ class AwDatabase extends _$AwDatabase {
       // guard — and no backfill: the server sends every row this device may
       // see on the next full pull, which is what a fresh table gets anyway.
       if (from < 23) await m.createTable(notifications);
+      // v24 (EE-084): the service desk's replica. Two new tables, so nothing
+      // existing is touched and the next pull fills them — the queue is empty
+      // until then, which is the honest state rather than a broken one.
+      if (from < 24) {
+        await m.createTable(tickets);
+        await m.createTable(ticketComments);
+      }
     },
   );
 

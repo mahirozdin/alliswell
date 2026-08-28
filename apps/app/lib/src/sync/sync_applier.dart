@@ -125,6 +125,18 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       // goes here too — a notification the server no longer holds must not
       // live forever on one phone.
       await (db.delete(db.notifications)..where((n) => n.id.equals(id))).go();
+    case 'ee_ticket':
+      // The archive sweep (EE-091) reaches the device as an ordinary
+      // tombstone, and this is where the replica actually gets smaller. The
+      // comments go WITH it: the server moved the whole thread, and leaving
+      // orphaned rows here would keep exactly the weight the sweep exists to
+      // remove.
+      await (db.delete(
+        db.ticketComments,
+      )..where((c) => c.ticketId.equals(id))).go();
+      await (db.delete(db.tickets)..where((t) => t.id.equals(id))).go();
+    case 'ee_ticket_comment':
+      await (db.delete(db.ticketComments)..where((c) => c.id.equals(id))).go();
   }
 }
 
@@ -192,6 +204,12 @@ Future<void> _applySnapshot(
       await db
           .into(db.notifications)
           .insertOnConflictUpdate(notificationCompanion(data));
+    case 'ee_ticket':
+      await db.into(db.tickets).insertOnConflictUpdate(ticketCompanion(data));
+    case 'ee_ticket_comment':
+      await db
+          .into(db.ticketComments)
+          .insertOnConflictUpdate(ticketCommentCompanion(data));
   }
 }
 
@@ -553,4 +571,36 @@ TaskAssignmentsCompanion taskAssignmentCompanion(Map<String, dynamic> data) =>
             ? null
             : DateTime.parse(data['updatedAt'] as String),
       ),
+    );
+
+/// EE-081's ticket, as it arrives. Every field is the server's own word —
+/// `status` and `priority` especially, because the transition table lives on
+/// the server and a client that translated them would be a second vocabulary.
+TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
+  id: Value(data['id'] as String),
+  workspaceId: Value(data['workspaceId'] as String),
+  serviceId: Value(data['serviceId'] as String?),
+  requesterId: Value(data['requesterId'] as String?),
+  subject: Value(data['subject'] as String),
+  body: Value(data['body'] as String?),
+  status: Value(data['status'] as String),
+  priority: Value(data['priority'] as String),
+  source: Value(data['source'] as String),
+  terminalAt: _dateValue(data['terminalAt']),
+  createdAt: _dateValue(data['createdAt']),
+  revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+  updatedAt: _dateValue(data['updatedAt']),
+);
+
+TicketCommentsCompanion ticketCommentCompanion(Map<String, dynamic> data) =>
+    TicketCommentsCompanion(
+      id: Value(data['id'] as String),
+      workspaceId: Value(data['workspaceId'] as String),
+      ticketId: Value(data['ticketId'] as String),
+      authorId: Value(data['authorId'] as String?),
+      body: Value(data['body'] as String),
+      internal: Value((data['internal'] as bool?) ?? false),
+      createdAt: _dateValue(data['createdAt']),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: _dateValue(data['updatedAt']),
     );
