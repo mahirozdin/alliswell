@@ -1378,7 +1378,8 @@
         "create": "Open a request",
         "comment": "Write on a request",
         "close": "Close or cancel a request",
-        "convert": "Turn a request into a task in the unit"
+        "convert": "Turn a request into a task in the unit",
+        "assign": "Put a request on someone else, or take one off them"
       },
       "units": {
         "manage": "Manage units",

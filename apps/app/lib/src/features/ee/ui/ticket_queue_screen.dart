@@ -6,7 +6,9 @@ import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../assignments_providers.dart' show Assignee;
 import '../tickets_providers.dart';
+import 'assignee_avatars.dart';
 import 'ticket_detail_screen.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
@@ -152,6 +154,13 @@ class _TicketCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final finished = ticket.terminalAt != null;
+    // `select` so one ticket gaining an assignee does not rebuild every other
+    // row in the queue — the same idiom the task list uses.
+    final assignees = ref.watch(
+      ticketAssigneesProvider.select(
+        (value) => value.value?[ticket.id] ?? const <Assignee>[],
+      ),
+    );
     return Card(
       key: Key('ticket-${ticket.id}'),
       child: ListTile(
@@ -168,12 +177,21 @@ class _TicketCard extends ConsumerWidget {
                 )
               : null,
         ),
-        subtitle: Text(
-          [
-            'ee.tickets.status.${ticket.status}'.tr(),
-            'ee.tickets.priority.${ticket.priority}'.tr(),
-          ].join(' · '),
-          style: theme.textTheme.bodySmall,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              [
+                'ee.tickets.status.${ticket.status}'.tr(),
+                'ee.tickets.priority.${ticket.priority}'.tr(),
+              ].join(' · '),
+              style: theme.textTheme.bodySmall,
+            ),
+            // Item 9's avatars, on the ticket card. Empty when nobody is on it
+            // — the widget draws nothing rather than a placeholder, because
+            // "unassigned" is a real and common state of a queue.
+            AwAssigneeStrip(assignees: assignees),
+          ],
         ),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(

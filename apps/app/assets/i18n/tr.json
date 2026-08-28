@@ -1377,7 +1377,8 @@
         "create": "Talep aç",
         "comment": "Talebe yaz",
         "close": "Talebi kapat veya iptal et",
-        "convert": "Talebi işe dönüştür"
+        "convert": "Talebi işe dönüştür",
+        "assign": "Talebi başkasına ver ya da üstünden al"
       },
       "units": {
         "manage": "Birimleri yönet",

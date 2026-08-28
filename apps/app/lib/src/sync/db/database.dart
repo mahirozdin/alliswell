@@ -752,6 +752,28 @@ class Tickets extends Table {
 /// projection (ADR-0011 §3). What the flag decides HERE is only how the row is
 /// drawn, and it has to be unmistakable: an agent who mistakes an internal note
 /// for a reply to the customer has said the wrong thing to the wrong person.
+/// Who is on a request (EE-086) — the ticket half of item 9's avatar row.
+///
+/// The same columns as [TaskAssignments] and for the same reason the SERVER
+/// keeps two tables: the shape is shared, the owner is not. On this side the
+/// duplication is four columns; the behaviour that matters (the join to
+/// [MemberProfiles] for a name and a colour, the tombstone-avatar miss) is one
+/// widget, not two.
+@DataClassName('TicketAssignmentRecord')
+class TicketAssignments extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get ticketId => text()();
+  TextColumn get userId => text()();
+  TextColumn get assignedBy => text().nullable()();
+  DateTimeColumn get assignedAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('TicketCommentRecord')
 class TicketComments extends Table {
   TextColumn get id => text()();
@@ -796,6 +818,7 @@ class TicketComments extends Table {
     Notifications,
     Tickets,
     TicketComments,
+    TicketAssignments,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -826,7 +849,7 @@ class AwDatabase extends _$AwDatabase {
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 24;
+  int get schemaVersion => 25;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -984,6 +1007,10 @@ class AwDatabase extends _$AwDatabase {
         await m.createTable(tickets);
         await m.createTable(ticketComments);
       }
+      // v25 (EE-086): who is on a request. New table; the next pull fills it,
+      // and until then a ticket simply shows no avatars — which is also what a
+      // ticket with nobody on it shows, so there is no wrong intermediate state.
+      if (from < 25) await m.createTable(ticketAssignments);
     },
   );
 

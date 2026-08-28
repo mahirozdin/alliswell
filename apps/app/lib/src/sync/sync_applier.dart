@@ -137,6 +137,10 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.tickets)..where((t) => t.id.equals(id))).go();
     case 'ee_ticket_comment':
       await (db.delete(db.ticketComments)..where((c) => c.id.equals(id))).go();
+    case 'ee_ticket_assignment':
+      await (db.delete(
+        db.ticketAssignments,
+      )..where((a) => a.id.equals(id))).go();
   }
 }
 
@@ -210,6 +214,10 @@ Future<void> _applySnapshot(
       await db
           .into(db.ticketComments)
           .insertOnConflictUpdate(ticketCommentCompanion(data));
+    case 'ee_ticket_assignment':
+      await db
+          .into(db.ticketAssignments)
+          .insertOnConflictUpdate(ticketAssignmentCompanion(data));
   }
 }
 
@@ -604,3 +612,19 @@ TicketCommentsCompanion ticketCommentCompanion(Map<String, dynamic> data) =>
       revision: Value((data['revision'] as num?)?.toInt() ?? 0),
       updatedAt: _dateValue(data['updatedAt']),
     );
+
+/// EE-086's assignment, as it arrives. The server serialises `ticketId` where
+/// the task's says `taskId`; everything else is the same shape, because both
+/// come out of one module.
+TicketAssignmentsCompanion ticketAssignmentCompanion(
+  Map<String, dynamic> data,
+) => TicketAssignmentsCompanion(
+  id: Value(data['id'] as String),
+  workspaceId: Value(data['workspaceId'] as String),
+  ticketId: Value(data['ticketId'] as String),
+  userId: Value(data['userId'] as String),
+  assignedBy: Value(data['assignedBy'] as String?),
+  assignedAt: _dateValue(data['assignedAt']),
+  revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+  updatedAt: _dateValue(data['updatedAt']),
+);

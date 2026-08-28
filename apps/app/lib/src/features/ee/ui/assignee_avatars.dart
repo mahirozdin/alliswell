@@ -165,6 +165,28 @@ class AwAssigneeAvatarRow extends ConsumerWidget {
         (value) => value.value?[taskId] ?? const <Assignee>[],
       ),
     );
+    return AwAssigneeStrip(assignees: assignees, size: size);
+  }
+}
+
+/// The row, given the people — with no opinion about what they are on.
+///
+/// Split out by EE-086 so a TICKET card can draw the same avatars as a task
+/// card. The two owners keep separate tables (ADR-0011 §4, measured), but the
+/// contrast decision above — tint, neutral ring, ordinary ink — must not be
+/// made twice and drift once (DESIGN §36 W2/W5).
+class AwAssigneeStrip extends StatelessWidget {
+  const AwAssigneeStrip({
+    super.key,
+    required this.assignees,
+    this.size = _kAvatarSize,
+  });
+
+  final List<Assignee> assignees;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
     if (assignees.isEmpty) return const SizedBox.shrink();
     final shown = assignees.take(_kMaxAvatars).toList();
     final overflow = assignees.length - shown.length;

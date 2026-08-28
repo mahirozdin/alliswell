@@ -1,9 +1,13 @@
-import 'package:drift/drift.dart' show OrderingTerm;
+// The whole surface, not a `show` list: the join predicate below uses
+// drift's `&` on Expression<bool>, which is an extension the narrowed import
+// does not carry.
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../sync/db/database.dart';
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
+import 'assignments_providers.dart' show Assignee;
 
 /// The unit's queue, read from the REPLICA (EE-084, D5).
 ///
@@ -105,14 +109,16 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
   final filter = ref.watch(ticketFilterProvider);
   return ref.watch(ticketQueueProvider).whenData((rows) {
     final kept = rows.where((t) {
-      if (filter.statuses.isNotEmpty && !filter.statuses.contains(t.status))
+      if (filter.statuses.isNotEmpty && !filter.statuses.contains(t.status)) {
         return false;
+      }
       if (filter.priorities.isNotEmpty &&
           !filter.priorities.contains(t.priority)) {
         return false;
       }
-      if (filter.serviceId != null && t.serviceId != filter.serviceId)
+      if (filter.serviceId != null && t.serviceId != filter.serviceId) {
         return false;
+      }
       return true;
     }).toList();
     // Finished work sinks. Within each half the newest is first, which the
@@ -161,3 +167,56 @@ final queueServiceIdsProvider = Provider<List<String>>(
       .toSet()
       .toList(),
 );
+
+/// Who is on each request in this workspace (EE-086) — item 9's avatar row,
+/// the ticket half.
+///
+/// The same shape as `workspaceAssigneesProvider`: ONE query for the whole
+/// queue rather than one per card, and a `select` at the call site so a ticket
+/// gaining an assignee does not rebuild every other row in the list.
+///
+/// It is also the entitlement gate by construction: on a build with no overlay
+/// the table is simply empty, so every card draws nothing and no screen has to
+/// ask whether the feature exists.
+final ticketAssigneesProvider = StreamProvider<Map<String, List<Assignee>>>((
+  ref,
+) {
+  final workspace = ref.watch(currentWorkspaceProvider).value;
+  if (workspace == null) return Stream.value(const <String, List<Assignee>>{});
+  final db = ref.watch(databaseProvider);
+  final assignments = db.select(db.ticketAssignments)
+    ..where((a) => a.workspaceId.equals(workspace.id))
+    ..orderBy([(a) => OrderingTerm.asc(a.assignedAt)]);
+  return assignments
+      .join([
+        // A MISS here is meaningful rather than exceptional: the roster only
+        // carries people in this unit, and an assignment can outlive somebody's
+        // membership by the length of one sweep. The avatar renders as a
+        // neutral tombstone instead of vanishing.
+        leftOuterJoin(
+          db.memberProfiles,
+          db.memberProfiles.userId.equalsExp(db.ticketAssignments.userId) &
+              db.memberProfiles.workspaceId.equalsExp(
+                db.ticketAssignments.workspaceId,
+              ),
+        ),
+      ])
+      .watch()
+      .map((rows) {
+        final out = <String, List<Assignee>>{};
+        for (final row in rows) {
+          final a = row.readTable(db.ticketAssignments);
+          final p = row.readTableOrNull(db.memberProfiles);
+          (out[a.ticketId] ??= []).add(
+            Assignee(
+              assignmentId: a.id,
+              userId: a.userId,
+              displayName: p?.displayName,
+              initials: p?.initials,
+              colorRgb: p?.colorRgb,
+            ),
+          );
+        }
+        return out;
+      });
+});

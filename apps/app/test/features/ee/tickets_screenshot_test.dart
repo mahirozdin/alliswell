@@ -29,6 +29,8 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/assignments_providers.dart'
+    show Assignee;
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -102,8 +104,40 @@ final _queue = [
   ),
 ];
 
+/// EE-086's avatars, on two of the four rows: an assigned ticket and an
+/// unassigned one have to be tellable apart at a glance, and "nobody is on it"
+/// is the commonest state of a live queue rather than an edge case.
+const _assignees = {
+  'T1': [
+    Assignee(
+      assignmentId: 'A1',
+      userId: 'U1',
+      displayName: 'Barış Servis',
+      initials: 'BS',
+      colorRgb: '#0A5CFF',
+    ),
+    Assignee(
+      assignmentId: 'A2',
+      userId: 'U2',
+      displayName: 'Deniz Koordinatör',
+      initials: 'DK',
+      colorRgb: '#7C3AED',
+    ),
+  ],
+  'T2': [
+    Assignee(
+      assignmentId: 'A3',
+      userId: 'U1',
+      displayName: 'Barış Servis',
+      initials: 'BS',
+      colorRgb: '#0A5CFF',
+    ),
+  ],
+};
+
 List<Override> _overrides(List<TicketRecord> rows, {TicketFilter? filter}) => [
   ticketQueueProvider.overrideWith((ref) => Stream.value(rows)),
+  ticketAssigneesProvider.overrideWith((ref) => Stream.value(_assignees)),
   if (filter != null)
     ticketFilterProvider.overrideWith(() => _FixedFilter(filter)),
 ];
