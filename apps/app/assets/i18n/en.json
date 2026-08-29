@@ -1309,6 +1309,7 @@
       "transferred": "transferred this",
       "accepted": "accepted an invitation",
       "status_changed": "changed the status",
+      "breached": "missed an SLA target",
       "suspended": "suspended this",
       "reactivated": "reactivated this",
       "member_added": "added a member",

@@ -1308,6 +1308,7 @@
       "transferred": "bunu devretti",
       "accepted": "bir daveti kabul etti",
       "status_changed": "durumu değiştirdi",
+      "breached": "SLA hedefini kaçırdı",
       "suspended": "bunu askıya aldı",
       "reactivated": "bunu yeniden etkinleştirdi",
       "member_added": "bir üye ekledi",
