@@ -1352,6 +1352,9 @@
       "services": {
         "manage": "Manage services and decide which units answer them"
       },
+      "sla": {
+        "manage": "Edit SLA policies, business calendars and health monitors"
+      },
       "shares": {
         "create": "Share an item",
         "revoke": "Take back a share"

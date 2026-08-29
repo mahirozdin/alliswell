@@ -1351,6 +1351,9 @@
       "services": {
         "manage": "Servisleri yönet ve hangi birimin baktığını belirle"
       },
+      "sla": {
+        "manage": "SLA politikalarını, mesai takvimlerini ve izleyicileri düzenle"
+      },
       "shares": {
         "create": "İçerik paylaş",
         "revoke": "Paylaşımı geri al"
