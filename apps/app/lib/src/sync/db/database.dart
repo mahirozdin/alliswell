@@ -1026,8 +1026,15 @@ class AwDatabase extends _$AwDatabase {
       // and until then a ticket simply shows no avatars — which is also what a
       // ticket with nobody on it shows, so there is no wrong intermediate state.
       if (from < 25) await m.createTable(ticketAssignments);
-      if (from < 26) {
-        // EE-097: the SLA badge rides on the ticket row (ADR-0012 §7).
+      // v26 (EE-097): the SLA badge rides on the ticket row (ADR-0012 §7).
+      //
+      // `from >= 24` is the guard this file has needed since OPH-170, and CI
+      // is where its absence showed: `createTable` builds with TODAY'S
+      // definition, so a device coming from v1 gets `tickets` complete with
+      // these two columns at step 24 — and adding them again here throws
+      // `duplicate column name`. Only a device that already HAD the table
+      // before this release needs the ALTER.
+      if (from >= 24 && from < 26) {
         await m.addColumn(tickets, tickets.slaDueAt);
         await m.addColumn(tickets, tickets.slaStatus);
       }
