@@ -1642,6 +1642,16 @@
       "mineTitle": "Taleplerim",
       "mineEmptyTitle": "Henüz talep açmadınız",
       "mineEmptyBody": "Açtığınız talepler ve hangi aşamada oldukları burada görünür."
+    },
+    "sla": {
+      "breached": "SLA aşıldı",
+      "met": "SLA tutuldu",
+      "dueIn": "{time} kaldı",
+      "overdueBy": "{time} gecikti",
+      "hoursMinutes": "{h} sa {m} dk",
+      "minutes": "{m} dk",
+      "days": "{d} gün",
+      "dueLabel": "Yanıt süresi"
     }
   },
   "perm": {

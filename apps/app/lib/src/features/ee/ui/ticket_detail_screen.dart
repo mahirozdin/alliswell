@@ -9,6 +9,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
+import 'sla_chip.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
 ///
@@ -113,6 +114,9 @@ class _Thread extends ConsumerWidget {
               ),
           ],
         ),
+        // EE-097: the countdown, under the chips and above the request itself.
+        // An agent deciding what to pick up next reads it before the body.
+        AwSlaCountdown(ticket: ticket),
         if (ticket.body != null && ticket.body!.isNotEmpty) ...[
           const SizedBox(height: AwSpace.x4),
           Text(ticket.body!, style: theme.textTheme.bodyMedium),

@@ -54,6 +54,8 @@ TicketRecord _ticket({
   required String priority,
   DateTime? terminalAt,
   String? serviceId,
+  String? slaStatus,
+  DateTime? slaDueAt,
 }) => TicketRecord(
   id: id,
   workspaceId: 'W1',
@@ -65,6 +67,8 @@ TicketRecord _ticket({
   priority: priority,
   source: 'internal',
   terminalAt: terminalAt,
+  slaStatus: slaStatus,
+  slaDueAt: slaDueAt,
   createdAt: DateTime.utc(2026, 8, 20, 9),
   revision: 1,
   updatedAt: DateTime.utc(2026, 8, 20, 9),
@@ -79,6 +83,11 @@ final _queue = [
     status: 'new',
     priority: 'urgent',
     serviceId: 'S1',
+    // EE-097: one shot, all four badge states — a breach has to be findable in
+    // a photograph of a screen taken across a plant floor, and the amber row
+    // below has to be legible in the same picture without taking the accent
+    // into its text.
+    slaStatus: 'breached',
   ),
   _ticket(
     id: 'T2',
@@ -86,6 +95,8 @@ final _queue = [
     status: 'in_progress',
     priority: 'high',
     serviceId: 'S1',
+    slaStatus: 'warned',
+    slaDueAt: DateTime.utc(2026, 8, 20, 11),
   ),
   _ticket(
     id: 'T3',
@@ -93,6 +104,8 @@ final _queue = [
     status: 'waiting',
     priority: 'normal',
     serviceId: 'S2',
+    // Paused: a promise with no countdown, which is a state of its own.
+    slaStatus: 'ok',
   ),
   _ticket(
     id: 'T4',
@@ -101,6 +114,7 @@ final _queue = [
     priority: 'low',
     terminalAt: DateTime.utc(2026, 8, 19, 16),
     serviceId: 'S2',
+    slaStatus: 'met',
   ),
 ];
 

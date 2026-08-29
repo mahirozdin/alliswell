@@ -736,6 +736,21 @@ class Tickets extends Table {
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   DateTimeColumn get terminalAt => dateTime().nullable()();
+
+  /// The nearest deadline still RUNNING on this ticket, and what the badge
+  /// says (EE-097, ADR-0012 §7).
+  ///
+  /// They live on the ticket rather than in a replicated clock table for the
+  /// reason the whole ITSM epic exists: this queue is drawn from the replica,
+  /// so a due chip has to be here or it is a chip that only works with signal.
+  /// Server-owned — the push entity does not list them, so nothing on this
+  /// side may write them.
+  ///
+  /// `slaDueAt` is null while nothing counts (paused, settled, never
+  /// promised); `slaStatus` is one of `ok | warned | breached | met`, and
+  /// `breached` is sticky once earned.
+  DateTimeColumn get slaDueAt => dateTime().nullable()();
+  TextColumn get slaStatus => text().nullable()();
   DateTimeColumn get createdAt => dateTime().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -849,7 +864,7 @@ class AwDatabase extends _$AwDatabase {
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 25;
+  int get schemaVersion => 26;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1011,6 +1026,11 @@ class AwDatabase extends _$AwDatabase {
       // and until then a ticket simply shows no avatars — which is also what a
       // ticket with nobody on it shows, so there is no wrong intermediate state.
       if (from < 25) await m.createTable(ticketAssignments);
+      if (from < 26) {
+        // EE-097: the SLA badge rides on the ticket row (ADR-0012 §7).
+        await m.addColumn(tickets, tickets.slaDueAt);
+        await m.addColumn(tickets, tickets.slaStatus);
+      }
     },
   );
 

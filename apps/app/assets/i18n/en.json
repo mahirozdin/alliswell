@@ -1643,6 +1643,16 @@
       "mineTitle": "My requests",
       "mineEmptyTitle": "You have not opened any requests",
       "mineEmptyBody": "Requests you open, and where they have got to, appear here."
+    },
+    "sla": {
+      "breached": "SLA missed",
+      "met": "SLA met",
+      "dueIn": "{time} left",
+      "overdueBy": "{time} over",
+      "hoursMinutes": "{h} h {m} m",
+      "minutes": "{m} m",
+      "days": "{d} d",
+      "dueLabel": "Response due"
     }
   },
   "perm": {

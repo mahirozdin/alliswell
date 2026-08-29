@@ -15745,6 +15745,28 @@ class $TicketsTable extends Tickets
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _slaDueAtMeta = const VerificationMeta(
+    'slaDueAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> slaDueAt = GeneratedColumn<DateTime>(
+    'sla_due_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _slaStatusMeta = const VerificationMeta(
+    'slaStatus',
+  );
+  @override
+  late final GeneratedColumn<String> slaStatus = GeneratedColumn<String>(
+    'sla_status',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -15791,6 +15813,8 @@ class $TicketsTable extends Tickets
     priority,
     source,
     terminalAt,
+    slaDueAt,
+    slaStatus,
     createdAt,
     revision,
     updatedAt,
@@ -15882,6 +15906,18 @@ class $TicketsTable extends Tickets
         terminalAt.isAcceptableOrUnknown(data['terminal_at']!, _terminalAtMeta),
       );
     }
+    if (data.containsKey('sla_due_at')) {
+      context.handle(
+        _slaDueAtMeta,
+        slaDueAt.isAcceptableOrUnknown(data['sla_due_at']!, _slaDueAtMeta),
+      );
+    }
+    if (data.containsKey('sla_status')) {
+      context.handle(
+        _slaStatusMeta,
+        slaStatus.isAcceptableOrUnknown(data['sla_status']!, _slaStatusMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -15949,6 +15985,14 @@ class $TicketsTable extends Tickets
         DriftSqlType.dateTime,
         data['${effectivePrefix}terminal_at'],
       ),
+      slaDueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sla_due_at'],
+      ),
+      slaStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sla_status'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -15994,6 +16038,21 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   final DateTime? terminalAt;
+
+  /// The nearest deadline still RUNNING on this ticket, and what the badge
+  /// says (EE-097, ADR-0012 §7).
+  ///
+  /// They live on the ticket rather than in a replicated clock table for the
+  /// reason the whole ITSM epic exists: this queue is drawn from the replica,
+  /// so a due chip has to be here or it is a chip that only works with signal.
+  /// Server-owned — the push entity does not list them, so nothing on this
+  /// side may write them.
+  ///
+  /// `slaDueAt` is null while nothing counts (paused, settled, never
+  /// promised); `slaStatus` is one of `ok | warned | breached | met`, and
+  /// `breached` is sticky once earned.
+  final DateTime? slaDueAt;
+  final String? slaStatus;
   final DateTime? createdAt;
   final int revision;
   final DateTime? updatedAt;
@@ -16008,6 +16067,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     required this.priority,
     required this.source,
     this.terminalAt,
+    this.slaDueAt,
+    this.slaStatus,
     this.createdAt,
     required this.revision,
     this.updatedAt,
@@ -16032,6 +16093,12 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     map['source'] = Variable<String>(source);
     if (!nullToAbsent || terminalAt != null) {
       map['terminal_at'] = Variable<DateTime>(terminalAt);
+    }
+    if (!nullToAbsent || slaDueAt != null) {
+      map['sla_due_at'] = Variable<DateTime>(slaDueAt);
+    }
+    if (!nullToAbsent || slaStatus != null) {
+      map['sla_status'] = Variable<String>(slaStatus);
     }
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
@@ -16061,6 +16128,12 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       terminalAt: terminalAt == null && nullToAbsent
           ? const Value.absent()
           : Value(terminalAt),
+      slaDueAt: slaDueAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(slaDueAt),
+      slaStatus: slaStatus == null && nullToAbsent
+          ? const Value.absent()
+          : Value(slaStatus),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
           : Value(createdAt),
@@ -16087,6 +16160,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       priority: serializer.fromJson<String>(json['priority']),
       source: serializer.fromJson<String>(json['source']),
       terminalAt: serializer.fromJson<DateTime?>(json['terminalAt']),
+      slaDueAt: serializer.fromJson<DateTime?>(json['slaDueAt']),
+      slaStatus: serializer.fromJson<String?>(json['slaStatus']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       revision: serializer.fromJson<int>(json['revision']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -16106,6 +16181,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       'priority': serializer.toJson<String>(priority),
       'source': serializer.toJson<String>(source),
       'terminalAt': serializer.toJson<DateTime?>(terminalAt),
+      'slaDueAt': serializer.toJson<DateTime?>(slaDueAt),
+      'slaStatus': serializer.toJson<String?>(slaStatus),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'revision': serializer.toJson<int>(revision),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -16123,6 +16200,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     String? priority,
     String? source,
     Value<DateTime?> terminalAt = const Value.absent(),
+    Value<DateTime?> slaDueAt = const Value.absent(),
+    Value<String?> slaStatus = const Value.absent(),
     Value<DateTime?> createdAt = const Value.absent(),
     int? revision,
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -16137,6 +16216,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     priority: priority ?? this.priority,
     source: source ?? this.source,
     terminalAt: terminalAt.present ? terminalAt.value : this.terminalAt,
+    slaDueAt: slaDueAt.present ? slaDueAt.value : this.slaDueAt,
+    slaStatus: slaStatus.present ? slaStatus.value : this.slaStatus,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     revision: revision ?? this.revision,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -16159,6 +16240,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       terminalAt: data.terminalAt.present
           ? data.terminalAt.value
           : this.terminalAt,
+      slaDueAt: data.slaDueAt.present ? data.slaDueAt.value : this.slaDueAt,
+      slaStatus: data.slaStatus.present ? data.slaStatus.value : this.slaStatus,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       revision: data.revision.present ? data.revision.value : this.revision,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -16178,6 +16261,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           ..write('priority: $priority, ')
           ..write('source: $source, ')
           ..write('terminalAt: $terminalAt, ')
+          ..write('slaDueAt: $slaDueAt, ')
+          ..write('slaStatus: $slaStatus, ')
           ..write('createdAt: $createdAt, ')
           ..write('revision: $revision, ')
           ..write('updatedAt: $updatedAt')
@@ -16197,6 +16282,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     priority,
     source,
     terminalAt,
+    slaDueAt,
+    slaStatus,
     createdAt,
     revision,
     updatedAt,
@@ -16215,6 +16302,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           other.priority == this.priority &&
           other.source == this.source &&
           other.terminalAt == this.terminalAt &&
+          other.slaDueAt == this.slaDueAt &&
+          other.slaStatus == this.slaStatus &&
           other.createdAt == this.createdAt &&
           other.revision == this.revision &&
           other.updatedAt == this.updatedAt);
@@ -16231,6 +16320,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
   final Value<String> priority;
   final Value<String> source;
   final Value<DateTime?> terminalAt;
+  final Value<DateTime?> slaDueAt;
+  final Value<String?> slaStatus;
   final Value<DateTime?> createdAt;
   final Value<int> revision;
   final Value<DateTime?> updatedAt;
@@ -16246,6 +16337,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     this.priority = const Value.absent(),
     this.source = const Value.absent(),
     this.terminalAt = const Value.absent(),
+    this.slaDueAt = const Value.absent(),
+    this.slaStatus = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -16262,6 +16355,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     required String priority,
     required String source,
     this.terminalAt = const Value.absent(),
+    this.slaDueAt = const Value.absent(),
+    this.slaStatus = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -16283,6 +16378,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Expression<String>? priority,
     Expression<String>? source,
     Expression<DateTime>? terminalAt,
+    Expression<DateTime>? slaDueAt,
+    Expression<String>? slaStatus,
     Expression<DateTime>? createdAt,
     Expression<int>? revision,
     Expression<DateTime>? updatedAt,
@@ -16299,6 +16396,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       if (priority != null) 'priority': priority,
       if (source != null) 'source': source,
       if (terminalAt != null) 'terminal_at': terminalAt,
+      if (slaDueAt != null) 'sla_due_at': slaDueAt,
+      if (slaStatus != null) 'sla_status': slaStatus,
       if (createdAt != null) 'created_at': createdAt,
       if (revision != null) 'revision': revision,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -16317,6 +16416,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Value<String>? priority,
     Value<String>? source,
     Value<DateTime?>? terminalAt,
+    Value<DateTime?>? slaDueAt,
+    Value<String?>? slaStatus,
     Value<DateTime?>? createdAt,
     Value<int>? revision,
     Value<DateTime?>? updatedAt,
@@ -16333,6 +16434,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       priority: priority ?? this.priority,
       source: source ?? this.source,
       terminalAt: terminalAt ?? this.terminalAt,
+      slaDueAt: slaDueAt ?? this.slaDueAt,
+      slaStatus: slaStatus ?? this.slaStatus,
       createdAt: createdAt ?? this.createdAt,
       revision: revision ?? this.revision,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -16373,6 +16476,12 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     if (terminalAt.present) {
       map['terminal_at'] = Variable<DateTime>(terminalAt.value);
     }
+    if (slaDueAt.present) {
+      map['sla_due_at'] = Variable<DateTime>(slaDueAt.value);
+    }
+    if (slaStatus.present) {
+      map['sla_status'] = Variable<String>(slaStatus.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -16401,6 +16510,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
           ..write('priority: $priority, ')
           ..write('source: $source, ')
           ..write('terminalAt: $terminalAt, ')
+          ..write('slaDueAt: $slaDueAt, ')
+          ..write('slaStatus: $slaStatus, ')
           ..write('createdAt: $createdAt, ')
           ..write('revision: $revision, ')
           ..write('updatedAt: $updatedAt, ')
@@ -25038,6 +25149,8 @@ typedef $$TicketsTableCreateCompanionBuilder =
       required String priority,
       required String source,
       Value<DateTime?> terminalAt,
+      Value<DateTime?> slaDueAt,
+      Value<String?> slaStatus,
       Value<DateTime?> createdAt,
       Value<int> revision,
       Value<DateTime?> updatedAt,
@@ -25055,6 +25168,8 @@ typedef $$TicketsTableUpdateCompanionBuilder =
       Value<String> priority,
       Value<String> source,
       Value<DateTime?> terminalAt,
+      Value<DateTime?> slaDueAt,
+      Value<String?> slaStatus,
       Value<DateTime?> createdAt,
       Value<int> revision,
       Value<DateTime?> updatedAt,
@@ -25117,6 +25232,16 @@ class $$TicketsTableFilterComposer
 
   ColumnFilters<DateTime> get terminalAt => $composableBuilder(
     column: $table.terminalAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get slaDueAt => $composableBuilder(
+    column: $table.slaDueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get slaStatus => $composableBuilder(
+    column: $table.slaStatus,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -25195,6 +25320,16 @@ class $$TicketsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get slaDueAt => $composableBuilder(
+    column: $table.slaDueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get slaStatus => $composableBuilder(
+    column: $table.slaStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -25256,6 +25391,12 @@ class $$TicketsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<DateTime> get slaDueAt =>
+      $composableBuilder(column: $table.slaDueAt, builder: (column) => column);
+
+  GeneratedColumn<String> get slaStatus =>
+      $composableBuilder(column: $table.slaStatus, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -25307,6 +25448,8 @@ class $$TicketsTableTableManager
                 Value<String> priority = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<DateTime?> terminalAt = const Value.absent(),
+                Value<DateTime?> slaDueAt = const Value.absent(),
+                Value<String?> slaStatus = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -25322,6 +25465,8 @@ class $$TicketsTableTableManager
                 priority: priority,
                 source: source,
                 terminalAt: terminalAt,
+                slaDueAt: slaDueAt,
+                slaStatus: slaStatus,
                 createdAt: createdAt,
                 revision: revision,
                 updatedAt: updatedAt,
@@ -25339,6 +25484,8 @@ class $$TicketsTableTableManager
                 required String priority,
                 required String source,
                 Value<DateTime?> terminalAt = const Value.absent(),
+                Value<DateTime?> slaDueAt = const Value.absent(),
+                Value<String?> slaStatus = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -25354,6 +25501,8 @@ class $$TicketsTableTableManager
                 priority: priority,
                 source: source,
                 terminalAt: terminalAt,
+                slaDueAt: slaDueAt,
+                slaStatus: slaStatus,
                 createdAt: createdAt,
                 revision: revision,
                 updatedAt: updatedAt,

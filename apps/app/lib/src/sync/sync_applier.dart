@@ -595,6 +595,11 @@ TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   priority: Value(data['priority'] as String),
   source: Value(data['source'] as String),
   terminalAt: _dateValue(data['terminalAt']),
+  // EE-097: server-owned, read-only here. `slaStatus` stays the server's own
+  // word for the same reason `status` does — a client that translated it would
+  // be a second vocabulary.
+  slaDueAt: _dateValue(data['slaDueAt']),
+  slaStatus: Value(data['slaStatus'] as String?),
   createdAt: _dateValue(data['createdAt']),
   revision: Value((data['revision'] as num?)?.toInt() ?? 0),
   updatedAt: _dateValue(data['updatedAt']),

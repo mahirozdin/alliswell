@@ -9,6 +9,7 @@ import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
+import 'sla_chip.dart';
 import 'ticket_detail_screen.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
@@ -180,12 +181,25 @@ class _TicketCard extends ConsumerWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              [
-                'ee.tickets.status.${ticket.status}'.tr(),
-                'ee.tickets.priority.${ticket.priority}'.tr(),
-              ].join(' · '),
-              style: theme.textTheme.bodySmall,
+            // EE-097: the due chip sits with the status line rather than on a
+            // row of its own — a queue is scanned vertically, and a fourth
+            // line per card would cost the screen about three tickets.
+            // `Wrap` because Turkish labels are longer and a narrow phone must
+            // fold rather than clip.
+            Wrap(
+              spacing: 8,
+              runSpacing: 2,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  [
+                    'ee.tickets.status.${ticket.status}'.tr(),
+                    'ee.tickets.priority.${ticket.priority}'.tr(),
+                  ].join(' · '),
+                  style: theme.textTheme.bodySmall,
+                ),
+                AwSlaChip(ticket: ticket, muted: finished),
+              ],
             ),
             // Item 9's avatars, on the ticket card. Empty when nobody is on it
             // — the widget draws nothing rather than a placeholder, because

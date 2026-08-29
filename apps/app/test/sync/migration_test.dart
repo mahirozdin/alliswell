@@ -256,8 +256,15 @@ void main() {
       expect(await db.select(db.ticketComments).get(), isEmpty);
       expect(await db.select(db.ticketAssignments).get(), isEmpty);
 
+      // v26 (EE-097): the SLA badge, as two COLUMNS rather than a table — so
+      // the idiom above cannot prove it. An empty `select` would pass whether
+      // or not the ALTER ran; naming the columns in SQL throws if it did not,
+      // which is the same "prove the step, not the number" rule read on a
+      // migration that adds no table.
+      await db.customSelect('SELECT sla_due_at, sla_status FROM tickets').get();
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 25);
+      expect(version.data['user_version'], 26);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -303,7 +310,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 25);
+      expect(version.data['user_version'], 26);
       await db.close();
     },
   );

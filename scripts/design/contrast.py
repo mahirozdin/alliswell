@@ -103,6 +103,23 @@ PAIRS = [
     # The filled check circle keeps its full-strength success fill: muting it
     # toward the surface would drop the check glyph below 3:1 (measured), and a
     # done row that cannot be read as done is not calm, it is broken.
+    # EE-097 — the SLA badge on a ticket card. Registered by NAME even where
+    # the colour pair already appears above, because DESIGN §7.1's failure mode
+    # is a surface nobody listed: a chip whose colour changes must break a line
+    # that says "chip", not silently inherit somebody else's pass.
+    #
+    # The amber state is a MARK, not a sentence, and the numbers are why:
+    # `warning` #C77700 on the light surface measures 3.46 — enough for a 3.0
+    # icon and short of the 4.5 a label needs. So the warned label is drawn in
+    # ordinary body colour and only the icon takes the accent.
+    ('L SLA breach label on card', '#D70015', '#FFFFFF', 4.5),
+    ('D SLA breach label on card', '#FF5147', '#151F3C', 4.5),
+    ('L SLA met label on card', '#0D7A33', '#FFFFFF', 4.5),
+    ('D SLA met label on card', '#30D158', '#151F3C', 4.5),
+    ('L SLA warning mark on card', '#C77700', '#FFFFFF', 3.0),
+    ('D SLA warning mark on card', '#FFC400', '#151F3C', 3.0),
+    ('L SLA countdown label on card', '#44536F', '#FFFFFF', 4.5),
+    ('D SLA countdown label on card', '#AAB6D6', '#151F3C', 4.5),
     ('L check glyph on success fill', '#FFFFFF', '#0D7A33', 3.0),
     ('D check glyph on success fill', '#052E1B', '#30D158', 3.0),
     ('L success fill on done row', '#0D7A33', '#F6F9FF', 3.0),
