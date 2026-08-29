@@ -1653,6 +1653,21 @@
       "minutes": "{m} m",
       "days": "{d} d",
       "dueLabel": "Response due"
+    },
+    "slaDash": {
+      "title": "SLA dashboard",
+      "compliance": "Promises kept",
+      "complianceOf": "across {total} requests",
+      "complianceNone": "Nothing judged yet",
+      "byUnit": "By desk",
+      "byService": "By service",
+      "breaches": "Missed targets",
+      "noBreaches": "No missed targets. Every promise on this desk is still standing.",
+      "noUnits": "No desks with requests yet.",
+      "noServices": "No services with requests yet.",
+      "noService": "No service",
+      "unavailable": "No dashboard here",
+      "unavailableBody": "This address has no team, or you are not on a desk that reports into one."
     }
   },
   "perm": {

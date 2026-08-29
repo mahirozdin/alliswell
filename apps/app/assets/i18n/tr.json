@@ -1652,6 +1652,21 @@
       "minutes": "{m} dk",
       "days": "{d} gün",
       "dueLabel": "Yanıt süresi"
+    },
+    "slaDash": {
+      "title": "SLA panosu",
+      "compliance": "Tutulan sözler",
+      "complianceOf": "{total} talep üzerinden",
+      "complianceNone": "Henüz değerlendirilen yok",
+      "byUnit": "Birime göre",
+      "byService": "Servise göre",
+      "breaches": "Aşılan süreler",
+      "noBreaches": "Aşılan süre yok. Bu masadaki her söz hâlâ ayakta.",
+      "noUnits": "Henüz talebi olan birim yok.",
+      "noServices": "Henüz talebi olan servis yok.",
+      "noService": "Servissiz",
+      "unavailable": "Burada pano yok",
+      "unavailableBody": "Bu adreste bir takım yok ya da bir masaya bağlı değilsiniz."
     }
   },
   "perm": {

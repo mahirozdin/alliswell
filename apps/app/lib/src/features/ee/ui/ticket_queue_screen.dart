@@ -10,6 +10,7 @@ import '../assignments_providers.dart' show Assignee;
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
 import 'sla_chip.dart';
+import 'sla_dashboard_screen.dart';
 import 'ticket_detail_screen.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
@@ -40,6 +41,21 @@ class EeTicketQueueScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text('ee.tickets.queueTitle'.tr()),
         actions: [
+          // EE-098. Reachability (DESIGN §22): a dashboard nothing opens is
+          // not a feature, and the queue is where the person who wants it is
+          // already standing. No permission gate — counting is membership
+          // (ADR-0007 §1), and the endpoint scopes itself to the caller's own
+          // desks, so everyone sees a true screen rather than a forbidden one.
+          IconButton(
+            key: const Key('ticket-sla-dashboard'),
+            tooltip: 'ee.slaDash.title'.tr(),
+            icon: const Icon(Icons.query_stats_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const EeSlaDashboardScreen(),
+              ),
+            ),
+          ),
           if (!filter.isEmpty)
             TextButton(
               key: const Key('ticket-filter-clear'),

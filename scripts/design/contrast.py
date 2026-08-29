@@ -120,6 +120,15 @@ PAIRS = [
     ('D SLA warning mark on card', '#FFC400', '#151F3C', 3.0),
     ('L SLA countdown label on card', '#44536F', '#FFFFFF', 4.5),
     ('D SLA countdown label on card', '#AAB6D6', '#151F3C', 4.5),
+    # EE-098 — the SLA dashboard's headline figure, on a card. Named for the
+    # same reason the chip's pairs are: a surface nobody listed is the gate's
+    # blind spot, and this number is the one a customer is shown.
+    ('L SLA compliance below target', '#D70015', '#FFFFFF', 4.5),
+    ('D SLA compliance below target', '#FF5147', '#151F3C', 4.5),
+    ('L SLA compliance on target', '#0D7A33', '#FFFFFF', 4.5),
+    ('D SLA compliance on target', '#30D158', '#151F3C', 4.5),
+    ('L SLA dashboard row label', '#0F1B2E', '#FFFFFF', 4.5),
+    ('D SLA dashboard row label', '#EAF0FD', '#151F3C', 4.5),
     ('L check glyph on success fill', '#FFFFFF', '#0D7A33', 3.0),
     ('D check glyph on success fill', '#052E1B', '#30D158', 3.0),
     ('L success fill on done row', '#0D7A33', '#F6F9FF', 3.0),
