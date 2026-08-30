@@ -1577,6 +1577,10 @@
           "title": "New ticket for {unitName}: {ticketRef}",
           "body": "{subject}"
         },
+        "routed_public": {
+          "title": "New public request for {unitName}: {ticketRef}",
+          "body": "{subject}"
+        },
         "status_changed": {
           "title": "{ticketRef} is now {statusLabel}",
           "body": "{subject}"

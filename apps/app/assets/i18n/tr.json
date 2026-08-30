@@ -1576,6 +1576,10 @@
           "title": "{unitName} birimine yeni kayıt: {ticketRef}",
           "body": "{subject}"
         },
+        "routed_public": {
+          "title": "{unitName} birimine dışarıdan yeni talep: {ticketRef}",
+          "body": "{subject}"
+        },
         "status_changed": {
           "title": "{ticketRef} artık {statusLabel}",
           "body": "{subject}"
