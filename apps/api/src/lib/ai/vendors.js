@@ -31,7 +31,14 @@ export const AI_PROVIDERS = Object.freeze([
  * Transcription-only vendors: no `chatStream()`, so they are never connectable
  * as a chat provider, and every one of them still costs money that the meter
  * has to be able to name.
+ *
+ * Deepgram was here and is not any more (2026-08-31). It lost on the axis it
+ * was picked for: on the two published multi-speaker benchmarks built from
+ * real meeting audio it places seventh and second-to-last, and of the
+ * candidates it is the only one whose Turkish arrived in 2026 and whose
+ * Turkish is absent from its code-switching model. Its genuine strength is
+ * latency, and transcribing a recording is not a latency problem.
  */
-export const AI_TRANSCRIBE_ONLY_PROVIDERS = Object.freeze(['assemblyai', 'deepgram']);
+export const AI_TRANSCRIBE_ONLY_PROVIDERS = Object.freeze(['assemblyai', 'elevenlabs']);
 
 export const AI_USAGE_PROVIDERS = Object.freeze([...AI_PROVIDERS, ...AI_TRANSCRIBE_ONLY_PROVIDERS]);

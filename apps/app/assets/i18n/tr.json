@@ -1843,7 +1843,9 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "openrouter": "OpenRouter",
-        "ollama": "Ollama"
+        "ollama": "Ollama",
+        "assemblyai": "AssemblyAI (toplantı deşifresi)",
+        "elevenlabs": "ElevenLabs Scribe (toplantı deşifresi)"
       }
     }
   },

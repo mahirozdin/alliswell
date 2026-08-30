@@ -105,7 +105,7 @@ export function upstreamMessage(err) {
 /**
  * @param {string} url
  * @param {{
- *   method?: string, headers?: Record<string, string>, json?: unknown,
+ *   method?: string, headers?: Record<string, string>, json?: unknown, body?: BodyInit,
  *   signal?: AbortSignal, stream?: boolean, timeoutMs?: number, maxAttempts?: number,
  * }} options
  * @returns {Promise<any>} parsed JSON body, or the raw Response when `stream`
@@ -114,6 +114,18 @@ export function upstreamMessage(err) {
  * Stream requests retry ONLY the handshake (non-2xx before any body byte) —
  * a mid-stream retry would replay text the user already saw, so a broken
  * stream throws and the client resends.
+ *
+ * `json` and `body` are alternatives. `json` is the common case and sets the
+ * content-type; `body` is for the vendor whose endpoint is not JSON — a
+ * `FormData` in particular, where the content-type must be left ALONE so that
+ * `fetch` can append the multipart boundary it generated. Setting it by hand
+ * produces a request the server cannot parse and an error that blames the
+ * payload. Passing both is a caller bug and throws rather than silently
+ * preferring one.
+ *
+ * A retried `body` must be replayable: `FormData` and strings are, a stream is
+ * not. Nothing here consumes a stream body today and the day something does,
+ * it will want `maxAttempts: 1` rather than a guess made here.
  */
 export async function aiFetch(
   url,
@@ -121,12 +133,16 @@ export async function aiFetch(
     method = 'POST',
     headers = {},
     json,
+    body,
     signal,
     stream = false,
     timeoutMs = 15000,
     maxAttempts = MAX_ATTEMPTS,
   } = {},
 ) {
+  if (json !== undefined && body !== undefined) {
+    throw new TypeError('aiFetch: pass `json` or `body`, not both');
+  }
   for (let attempt = 0; ; attempt += 1) {
     // The timeout guards the HANDSHAKE only: it is disarmed the moment headers
     // arrive, so a long-lived stream is governed by the caller's signal alone.
@@ -139,7 +155,7 @@ export async function aiFetch(
       res = await fetch(url, {
         method,
         headers: json === undefined ? headers : { 'content-type': 'application/json', ...headers },
-        body: json === undefined ? undefined : JSON.stringify(json),
+        body: json === undefined ? body : JSON.stringify(json),
         signal: combined,
       });
     } catch (err) {

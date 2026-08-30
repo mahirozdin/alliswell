@@ -1844,7 +1844,9 @@
         "openai": "OpenAI",
         "gemini": "Google Gemini",
         "openrouter": "OpenRouter",
-        "ollama": "Ollama"
+        "ollama": "Ollama",
+        "assemblyai": "AssemblyAI (meeting transcription)",
+        "elevenlabs": "ElevenLabs Scribe (meeting transcription)"
       }
     }
   },
