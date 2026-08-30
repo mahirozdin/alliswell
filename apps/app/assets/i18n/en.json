@@ -173,7 +173,9 @@
       "sla": "SLA management",
       "slaSub": "Policies, business calendars and health monitors",
       "portal": "Public request links",
-      "portalSub": "Let people outside your team send requests without an account"
+      "portalSub": "Let people outside your team send requests without an account",
+      "teamAi": "Team AI keys",
+      "teamAiSub": "One key for the whole team, and whether members may bring their own"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -1782,6 +1784,40 @@
         "disabled": "Paused",
         "expired": "Expired",
         "revoked": "Revoked"
+      }
+    },
+    "teamAi": {
+      "title": "Team AI keys",
+      "unavailable": "No team here",
+      "unavailableBody": "Team AI keys are managed from your team's address, and only by someone who may manage them.",
+      "add": "Add a key",
+      "replace": "Replace this key",
+      "emptyTitle": "No team key yet",
+      "emptyBody": "Add a provider key and everyone in the team can use AI without one of their own.",
+      "policyTitle": "Allow personal keys",
+      "policyOn": "Members may add and use their own provider keys. The team's key is used when they have none.",
+      "policyOff": "Only the team's key works here. A member's own key is refused, even if they choose it by name.",
+      "strandedBody": "Nobody in this team can use AI right now: personal keys are off and no team key is configured.",
+      "keyMask": "•••• {last4}",
+      "remove": "Remove",
+      "removeTitle": "Remove this key?",
+      "removeBody": "The team stops using this provider. Members fall back to their own keys if the policy allows it.",
+      "providerLabel": "Provider",
+      "keyLabel": "API key",
+      "keyHelp": "Stored encrypted. It is never shown again — you can replace it, not read it back.",
+      "keyReplaceHelp": "Leave empty to keep the stored key and change only the rest.",
+      "baseUrlLabel": "Base URL",
+      "baseUrlHelp": "Optional. Use it to reach a regional endpoint, or a provider you host yourself.",
+      "status": {
+        "active": "Working",
+        "error": "Key refused"
+      },
+      "provider": {
+        "anthropic": "Anthropic",
+        "openai": "OpenAI",
+        "gemini": "Google Gemini",
+        "openrouter": "OpenRouter",
+        "ollama": "Ollama"
       }
     }
   },

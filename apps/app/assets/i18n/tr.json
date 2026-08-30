@@ -172,7 +172,9 @@
       "sla": "SLA yönetimi",
       "slaSub": "Politikalar, mesai takvimleri ve izleyiciler",
       "portal": "Herkese açık talep bağlantıları",
-      "portalSub": "Takımınız dışındaki kişiler hesap açmadan talep gönderebilsin"
+      "portalSub": "Takımınız dışındaki kişiler hesap açmadan talep gönderebilsin",
+      "teamAi": "Takım yapay zekâ anahtarları",
+      "teamAiSub": "Tüm takım için tek anahtar, ve üyeler kendi anahtarını getirebilir mi"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -1781,6 +1783,40 @@
         "disabled": "Duraklatıldı",
         "expired": "Süresi doldu",
         "revoked": "İptal edildi"
+      }
+    },
+    "teamAi": {
+      "title": "Takım yapay zekâ anahtarları",
+      "unavailable": "Burada takım yok",
+      "unavailableBody": "Takım anahtarları takımınızın adresinden ve yalnızca yönetme yetkisi olan biri tarafından yönetilir.",
+      "add": "Anahtar ekle",
+      "replace": "Anahtarı değiştir",
+      "emptyTitle": "Henüz takım anahtarı yok",
+      "emptyBody": "Bir sağlayıcı anahtarı ekleyin; takımdaki herkes kendi anahtarı olmadan yapay zekâyı kullanabilsin.",
+      "policyTitle": "Kişisel anahtarlara izin ver",
+      "policyOn": "Üyeler kendi sağlayıcı anahtarlarını ekleyip kullanabilir. Anahtarı olmayan takımınkini kullanır.",
+      "policyOff": "Burada yalnızca takımın anahtarı çalışır. Üyenin kendi anahtarı, adıyla seçse bile reddedilir.",
+      "strandedBody": "Şu anda bu takımda kimse yapay zekâyı kullanamaz: kişisel anahtarlar kapalı ve takım anahtarı yok.",
+      "keyMask": "•••• {last4}",
+      "remove": "Kaldır",
+      "removeTitle": "Bu anahtar kaldırılsın mı?",
+      "removeBody": "Takım bu sağlayıcıyı kullanmayı bırakır. Politika izin veriyorsa üyeler kendi anahtarlarına döner.",
+      "providerLabel": "Sağlayıcı",
+      "keyLabel": "API anahtarı",
+      "keyHelp": "Şifrelenerek saklanır. Bir daha gösterilmez — değiştirebilirsiniz, geri okuyamazsınız.",
+      "keyReplaceHelp": "Saklı anahtarı korumak ve yalnız diğer alanları değiştirmek için boş bırakın.",
+      "baseUrlLabel": "Temel adres",
+      "baseUrlHelp": "İsteğe bağlı. Bölgesel bir uca ya da kendi barındırdığınız bir sağlayıcıya ulaşmak için.",
+      "status": {
+        "active": "Çalışıyor",
+        "error": "Anahtar reddedildi"
+      },
+      "provider": {
+        "anthropic": "Anthropic",
+        "openai": "OpenAI",
+        "gemini": "Google Gemini",
+        "openrouter": "OpenRouter",
+        "ollama": "Ollama"
       }
     }
   },

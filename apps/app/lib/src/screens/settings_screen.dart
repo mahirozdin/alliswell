@@ -188,6 +188,17 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.portalSub',
                   path: '/settings/team/portal',
                 ),
+              // EE-111: the team's AI keys and the personal-key policy. Same
+              // gate shape as the two rows above — a permission, not an
+              // entitlement, so the door is absent rather than forbidden.
+              if (ref.watch(canProvider('team.manage_ai_keys')))
+                _GroupRow(
+                  keyName: 'settings-group-team-ai',
+                  icon: Icons.vpn_key_outlined,
+                  titleKey: 'settings.group.teamAi',
+                  subtitleKey: 'settings.group.teamAiSub',
+                  path: '/settings/team/ai-keys',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain

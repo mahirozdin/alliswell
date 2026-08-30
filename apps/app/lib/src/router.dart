@@ -38,6 +38,7 @@ import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
+import 'features/ee/ui/team_ai_keys_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
@@ -449,6 +450,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/portal',
         builder: (context, state) => _page(const EePortalLinksScreen()),
+      ),
+      // EE-111: the team's AI provider keys and the personal-key policy,
+      // behind `team.manage_ai_keys`. A key goes in once and is never shown
+      // again — the server can recover it and declines to, so the screen shows
+      // four characters and offers to replace rather than to reveal.
+      GoRoute(
+        path: '/settings/team/ai-keys',
+        builder: (context, state) => _page(const EeTeamAiKeysScreen()),
       ),
       // EE-061: what other units shared with this one. Reachable by anyone in
       // a unit — receiving something is not an admin act.
