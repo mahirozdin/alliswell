@@ -125,7 +125,9 @@ export async function runChat({
     if (resolution.authMode === 'instance_env') {
       await app.ai.dailyCap.add(userId, (inputTokens ?? 0) + (outputTokens ?? 0));
     }
-    if (authFailed) {
+    // `connectionId` is null when an extension supplied the credential: there
+    // is no row here to flag, and the extension owns that state.
+    if (authFailed && resolution.connectionId) {
       try {
         await app
           .db('ai_connections')

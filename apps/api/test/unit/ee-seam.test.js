@@ -124,6 +124,70 @@ describe('EE overlay seam (EE-002)', () => {
     expect(stranger.json()).toMatchObject({ code: 'AUTH_WORKSPACE_FORBIDDEN' });
   });
 
+  it('lets an overlay answer which AI credential a request uses (EE-110)', async () => {
+    ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
+    const user = await registerUser(app, { email: 'seam-ai@example.com' });
+    const url = `/api/v1/workspaces/${user.workspace.id}/ai/models`;
+
+    // Silent overlay = the CE answer, unchanged: this member owns no key.
+    const quiet = await app.inject({ method: 'GET', url, headers: user.headers });
+    expect(quiet.statusCode).toBe(503);
+    expect(quiet.json().code).toBe('AI_NOT_CONFIGURED');
+
+    // Answering overlay: the same member resolves, still owning nothing.
+    const answered = await app.inject({
+      method: 'GET',
+      url,
+      headers: { ...user.headers, 'x-seam-ai': '1' },
+    });
+    expect(answered.statusCode).toBe(200);
+    expect(answered.json()).toMatchObject({
+      provider: 'anthropic',
+      // No row stands behind it, and the meter's FK is why that must be null.
+      connectionId: null,
+      source: 'catalog',
+      defaults: { chat: `seam:${user.workspace.id}` },
+    });
+    // Nothing was created on the member's behalf — the credential is borrowed.
+    const own = await app.inject({
+      method: 'GET',
+      url: `/api/v1/workspaces/${user.workspace.id}/ai/connections`,
+      headers: user.headers,
+    });
+    expect(own.json().items).toEqual([]);
+  });
+
+  it("a pinned connection still names the caller's own row, resolver or not (EE-110)", async () => {
+    ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
+    const user = await registerUser(app, { email: 'seam-ai-pin@example.com' });
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${user.workspace.id}/ai/connections`,
+      headers: user.headers,
+      payload: { provider: 'openai', apiKey: 'sk-my-own-key', consentAcknowledged: true },
+    });
+    expect(created.statusCode).toBe(201);
+    const connectionId = created.json().id;
+
+    // Pinning is an explicit choice out of the user's OWN list, so the chain
+    // must not overrule it — even with the resolver armed and answering.
+    const pinned = await app.inject({
+      method: 'GET',
+      url: `/api/v1/workspaces/${user.workspace.id}/ai/models?connectionId=${connectionId}`,
+      headers: { ...user.headers, 'x-seam-ai': '1' },
+    });
+    expect(pinned.statusCode).toBe(200);
+    expect(pinned.json()).toMatchObject({ provider: 'openai', connectionId });
+
+    // Unpinned, the same armed resolver wins over that very row.
+    const unpinned = await app.inject({
+      method: 'GET',
+      url: `/api/v1/workspaces/${user.workspace.id}/ai/models`,
+      headers: { ...user.headers, 'x-seam-ai': '1' },
+    });
+    expect(unpinned.json()).toMatchObject({ provider: 'anthropic', connectionId: null });
+  });
+
   it('flows an overlay sync entity through /sync/pull', async () => {
     ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
     const owner = await registerUser(app, { email: 'seam@example.com' });

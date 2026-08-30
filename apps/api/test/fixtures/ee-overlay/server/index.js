@@ -123,6 +123,22 @@ export async function register(app, seam) {
     throw new Error('seam probe: decorator failure is survivable');
   });
 
+  // EE-110: an extension may say which credential a request uses, before the
+  // caller's own connections are consulted. Header-gated like the status
+  // decorators above, so the fixture stays inert for every OTHER seam test —
+  // a resolver that answered unconditionally would give every AI test in this
+  // file a connection it never created. The model id echoes the workspace it
+  // was asked about, which is how the test proves the second argument is real
+  // rather than merely present.
+  seam.registerAiConnectionResolver(async (request, workspaceId) => {
+    if (request.headers['x-seam-ai'] !== '1') return null;
+    return {
+      provider: 'anthropic',
+      apiKey: 'seam-provided-key',
+      models: { chat: `seam:${workspaceId}` },
+    };
+  });
+
   // The ordering guarantee made visible: this hook is added before ANY core
   // route registers, so every response carries the marker.
   app.addHook('onSend', async (request, reply, payload) => {

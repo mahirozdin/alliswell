@@ -40,6 +40,7 @@ export async function loadEeOverlay(app) {
     mcpTools: [],
     permissions: [],
     permissionResolvers: [],
+    aiConnectionResolvers: [],
     syncMutationGuards: [],
     entityWriteObservers: [],
     corsOriginChecks: [],
@@ -190,6 +191,46 @@ function buildSeam(state) {
         throw new Error('registerPermissionResolver: a function is required');
       }
       state.permissionResolvers.push(resolver);
+    },
+
+    /**
+     * AI connection resolver: `async (request, workspaceId) => credential | null`.
+     *
+     * Consulted by `app.ai.resolveConnection` BEFORE the caller's own stored
+     * connections are looked at, and only when the caller did not PIN one.
+     * Pinning names a specific `ai_connections` row by id — an explicit choice
+     * out of the user's own list — so it stays exactly what it always was; the
+     * chain governs the DEFAULT choice, which is the one an extension can have
+     * a better answer to (a credential the caller may use but does not own).
+     *
+     * `null` means this resolver has no opinion, which is how a request
+     * behaves identically with and without an extension. With none registered,
+     * `resolveConnection` IS the function it has always been, byte for byte —
+     * that equivalence is this member's whole compatibility promise and it has
+     * its own test.
+     *
+     * The credential is a DESCRIPTION, not a resolution:
+     *
+     *     { provider, apiKey?, baseUrl?, models?: { chat?, fast? } }
+     *
+     * Core builds the resolution around it, which is deliberate on two counts.
+     * The shape callers depend on stays owned by one file, so a field added
+     * here later cannot break an extension that never knew about it. And there
+     * is no way to supply a connection id: `ai_usage_events.connection_id` is a
+     * foreign key into `ai_connections`, so an id from anywhere else would be a
+     * constraint violation at the meter. Not accepting one makes that
+     * impossible to write rather than merely wrong to write.
+     *
+     * A resolver that THROWS fails the request — unlike a status decorator,
+     * which is ignored. The difference is what the answer is for: capability
+     * discovery degrades to a narrower truth, but a credential lookup that
+     * failed must not fall through to a different payer's key.
+     */
+    registerAiConnectionResolver(resolver) {
+      if (typeof resolver !== 'function') {
+        throw new Error('registerAiConnectionResolver: a function is required');
+      }
+      state.aiConnectionResolvers.push(resolver);
     },
 
     /**

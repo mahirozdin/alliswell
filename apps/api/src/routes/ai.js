@@ -4,7 +4,7 @@ import { toIso } from '../lib/serialize.js';
 import { encryptSecret } from '../lib/crypto.js';
 import { formatInstantWithOffset } from '../lib/time.js';
 import { parseJsonColumn } from '../db/task-series.js';
-import { MODEL_CATALOG, catalogDefaults } from '../lib/ai/models.js';
+import { MODEL_CATALOG } from '../lib/ai/models.js';
 import { upstreamMessage } from '../lib/ai/http.js';
 import { buildExtractionPrompt, extractTasks } from '../lib/ai/extract.js';
 import {
@@ -423,7 +423,10 @@ export default async function aiRoutes(app) {
             type: 'object',
             properties: {
               provider: { type: 'string' },
-              connectionId: { type: 'string' },
+              // Null when the connection came from an extension resolver
+              // rather than a row of this user's own (the seam's
+              // `registerAiConnectionResolver`).
+              connectionId: { type: ['string', 'null'] },
               source: { type: 'string', enum: ['catalog', 'live'] },
               models: {
                 type: 'object',
@@ -479,23 +482,23 @@ export default async function aiRoutes(app) {
           // A self-host usually pulls one model; fast = chat there.
           models: { chat: options, fast: options },
           defaults: {
-            chat: resolution.row.default_chat_model ?? first,
-            fast: resolution.row.default_fast_model ?? first,
+            chat: resolution.row?.default_chat_model ?? first,
+            fast: resolution.row?.default_fast_model ?? first,
           },
         };
       }
 
       const entry = MODEL_CATALOG[resolution.provider];
-      const defaults = catalogDefaults(resolution.provider);
       return {
         provider: resolution.provider,
         connectionId: resolution.connectionId,
         source: 'catalog',
         models: { chat: entry.chat, fast: entry.fast },
-        defaults: {
-          chat: resolution.row.default_chat_model ?? defaults.chat,
-          fast: resolution.row.default_fast_model ?? defaults.fast,
-        },
+        // The resolution already answered this: `row.default_* ?? catalog
+        // default` is precisely how it built `models`, so re-deriving it here
+        // was a second copy of one rule — and the copy read a row, which an
+        // extension-resolved connection does not have.
+        defaults: { chat: resolution.models.chat, fast: resolution.models.fast },
       };
     },
   );

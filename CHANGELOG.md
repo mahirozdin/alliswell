@@ -5,7 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Extension-resolved AI connections (EE-110).** The overlay seam gains
+  `registerAiConnectionResolver(fn)`: consulted by `resolveConnection` before the caller's
+  own stored connections, and only when the caller did not pin one by id — pinning names a
+  row out of the user's own list and keeps meaning exactly that. A resolver answers with a
+  credential (`{ provider, apiKey?, baseUrl?, models? }`) and core builds the resolution
+  around it, so the shape callers depend on stays owned by one file and no id can reach
+  `ai_usage_events.connection_id` that its foreign key would reject. No resolvers = the
+  previous path, byte for byte, and that equivalence has its own test.
+
+### Changed
+
+- **The model list stops re-deriving its own defaults.** `GET …/ai/models` computed
+  `defaults` from the connection row plus the catalog, which is precisely how
+  `resolveConnection` had already computed `models` a moment earlier — one rule, two
+  copies. It now reports what the resolution says. Identical output for every stored
+  connection; `connectionId` is nullable in the response schema, because a connection can
+  now come from somewhere other than a row.
 
 ## [1.8.3] — 2026-08-27
 

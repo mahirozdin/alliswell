@@ -36,6 +36,62 @@ export default fp(
     }
 
     /**
+     * Builds a resolution around a credential an extension supplied
+     * (`seam.registerAiConnectionResolver`). Core owns this shape, so the
+     * extension describes a credential and nothing more.
+     *
+     * `row` and `connectionId` are null and stay null: there is no
+     * `ai_connections` row behind this credential. Every core path that
+     * touches them already tolerates it — the meter's `connection_id` is
+     * nullable (and `provider` is denormalized beside it for exactly this
+     * kind of reason), and `touchConnection` returns early.
+     *
+     * `authMode` is `api_key` because the only thing core reads it for is
+     * whether the INSTANCE's daily token budget applies, and it does not: an
+     * extension that brought its own credential is not spending the
+     * operator's. A ceiling on that credential is the extension's to enforce.
+     */
+    function extensionResolution(credential) {
+      const provider = credential?.provider;
+      const adapter = providers[provider];
+      if (!adapter) {
+        throw new Error(
+          `AI connection resolver returned an unknown provider "${provider}" — ` +
+            `known: ${Object.keys(providers).join(', ')}`,
+        );
+      }
+      const defaults = catalogDefaults(provider);
+      return {
+        row: null,
+        connectionId: null,
+        provider,
+        adapter,
+        authMode: 'api_key',
+        apiKey: credential.apiKey ?? null,
+        baseUrl: credential.baseUrl ?? ai.baseUrls[provider] ?? null,
+        models: {
+          chat: credential.models?.chat ?? defaults.chat,
+          fast: credential.models?.fast ?? defaults.fast,
+        },
+      };
+    }
+
+    /**
+     * The extension chain. Empty on every plain build, which is why the
+     * function below is unchanged for CE: an empty array short-circuits
+     * before anything is asked.
+     */
+    async function resolveFromExtensions(request, workspaceId) {
+      const resolvers = app.ee?.aiConnectionResolvers;
+      if (!resolvers || resolvers.length === 0) return null;
+      for (const resolver of resolvers) {
+        const credential = await resolver(request, workspaceId);
+        if (credential) return extensionResolution(credential);
+      }
+      return null;
+    }
+
+    /**
      * Resolves the connection a request should use and hands back everything
      * an adapter call needs. `connectionId` pins one (workspaceId optional —
      * derived from the row after a membership re-check); otherwise the
@@ -64,6 +120,12 @@ export default fp(
           );
         }
       } else {
+        // Before the caller's own list: an extension may hold a credential
+        // this caller may use without owning it. Pinned requests never get
+        // here — see `registerAiConnectionResolver`.
+        const extension = await resolveFromExtensions(request, workspaceId);
+        if (extension) return extension;
+
         const rows = await app
           .db('ai_connections')
           .where({ workspace_id: workspaceId, user_id: request.user.id })
@@ -142,6 +204,9 @@ export default fp(
 
     /** last_used_at bump — plain UPDATE, not a sync entity, fire-and-forget. */
     async function touchConnection(connectionId) {
+      // An extension-resolved connection has no row here (and `where id = null`
+      // would be a pointless query rather than a wrong one).
+      if (!connectionId) return;
       try {
         await app
           .db('ai_connections')
