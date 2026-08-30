@@ -1,8 +1,10 @@
 /*
- * Styling for the generated legal/support pages (privacy, support, and their
- * Turkish twins). Standalone rather than part of the Vue bundle: these pages
- * are static HTML on purpose — a store reviewer must be able to read them with
- * JavaScript off — so they cannot import the app's CSS module.
+ * The shared base for every page scripts/static-pages.js generates — the legal
+ * and support pages and their Turkish twins, and /enterprise, which layers
+ * enterprise.css on top of this one. Standalone rather than part of the Vue
+ * bundle: these pages are static HTML on purpose — a store reviewer must be
+ * able to read them with JavaScript off, and a search engine must be able to
+ * read /enterprise the same way — so they cannot import the app's CSS module.
  *
  * The tokens are the same values as src/style.css (DESIGN §3.1). Duplicated
  * deliberately and kept short: two dozen custom properties are cheaper than
@@ -11,6 +13,10 @@
 
 :root {
   color-scheme: light dark;
+  /* The measure of every generated page. A page that wants a different one
+     overrides this single token instead of re-stating the three places the
+     column width is applied (header, article, footer) — see enterprise.css. */
+  --aw-doc-width: 46rem;
   --aw-primary: #0b54d0;
   --aw-bg-top: #e9f2ff;
   --aw-bg-bottom: #f1ebff;
@@ -58,7 +64,7 @@ body {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  max-width: 46rem;
+  max-width: var(--aw-doc-width);
   margin: 0 auto;
   padding: 1.25rem 0;
 }
@@ -94,7 +100,7 @@ body {
 }
 
 .doc {
-  max-width: 46rem;
+  max-width: var(--aw-doc-width);
   margin: 0 auto;
   padding: clamp(1.75rem, 4vw, 3rem);
   background: var(--aw-surface);
@@ -201,7 +207,7 @@ body {
 }
 
 .doc__foot {
-  max-width: 46rem;
+  max-width: var(--aw-doc-width);
   margin: 2rem auto 0;
   font-size: 0.85rem;
   color: var(--aw-text-dim);

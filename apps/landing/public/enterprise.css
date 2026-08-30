@@ -1,0 +1,94 @@
+/*
+ * The /enterprise pages, layered over legal.css.
+ *
+ * Both are generated from markdown by scripts/static-pages.js, so they share a
+ * shell, a token set and a chrome. What they do not share is a reader. A
+ * privacy policy is read under duress, line by line, and 46rem of narrow
+ * measure is the right shape for that. A page that has to explain a service
+ * desk to someone deciding whether to ask for a quote is skimmed instead —
+ * headings first, then the row that matches the problem they came with.
+ *
+ * So this file changes four things and nothing else: the measure, the lede,
+ * the rules between sections, and the way a bolded term at the head of a list
+ * item reads. Everything else — colours, dark mode, focus rings, tables, the
+ * header and footer — stays inherited, which is the point of layering rather
+ * than forking the stylesheet.
+ */
+
+:root {
+  /* legal.css applies this in three places (header, article, footer); one
+     override moves all three together. */
+  --aw-doc-width: 58rem;
+}
+
+/* The first paragraph after the title is the lede. It is the only sentence
+   most readers finish, so it gets the full-strength text colour that the rest
+   of the body deliberately does not. */
+.doc > h1 + p {
+  font-size: 1.2rem;
+  line-height: 1.55;
+  color: var(--aw-text);
+  margin-bottom: 1.8rem;
+}
+
+/* legal.css rules a hairline above every h2 — the visual grammar of a contract
+   with numbered clauses. Sections here are chapters of an argument, so they get
+   air and a coloured mark instead of a divider. */
+.doc h2 {
+  border-top: 0;
+  padding-top: 0;
+  margin: 3rem 0 0.9rem;
+  font-size: 1.45rem;
+}
+
+.doc h2::before {
+  content: '';
+  display: block;
+  width: 2.25rem;
+  height: 3px;
+  margin-bottom: 0.85rem;
+  border-radius: 999px;
+  background: var(--aw-primary);
+}
+
+.doc h3 {
+  font-size: 1.12rem;
+  color: var(--aw-text);
+  margin: 1.8rem 0 0.35rem;
+}
+
+/* Feature rows are written as "**Name** — what it does". The term is the thing
+   a skimmer scans for, so it gets its own line's worth of weight and the body
+   keeps the dimmer colour it has everywhere else. */
+.doc li {
+  margin: 0.6rem 0;
+}
+
+.doc li > strong:first-child {
+  color: var(--aw-text);
+  font-size: 1.02em;
+}
+
+/* The closing call to action is a blockquote in the markdown — the only one on
+   the page — so it is styled as a panel rather than a pull-quote. */
+.doc blockquote {
+  border-left: 0;
+  border: 1px solid var(--aw-hairline);
+  border-radius: 16px;
+  padding: 1.4rem 1.6rem;
+  margin: 2.4rem 0 0.5rem;
+  text-align: center;
+  background: var(--aw-surface-2);
+}
+
+.doc blockquote strong {
+  font-size: 1.1rem;
+}
+
+/* At the wider measure the two-column comparison tables stop needing to scroll,
+   so let them lay out normally instead of as their own scroll container. */
+@media (min-width: 60rem) {
+  .doc table {
+    display: table;
+  }
+}

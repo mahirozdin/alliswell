@@ -4,7 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-import { legalPagesPlugin } from './scripts/legal-pages.js';
+import { staticPagesPlugin } from './scripts/static-pages.js';
 
 /**
  * Vite's `public/` copy step SKIPS dotfiles, so `.htaccess` — the one file that
@@ -37,7 +37,7 @@ function copyDotfilesFromPublic() {
  */
 export default defineConfig({
   base: '/',
-  plugins: [vue(), legalPagesPlugin(), copyDotfilesFromPublic()],
+  plugins: [vue(), staticPagesPlugin(), copyDotfilesFromPublic()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

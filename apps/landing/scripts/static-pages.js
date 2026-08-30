@@ -4,24 +4,51 @@ import { fileURLToPath } from 'node:url';
 import { marked } from 'marked';
 
 /**
- * Renders the repo's legal/support markdown into real static HTML pages.
+ * Renders repo markdown into real static HTML pages.
  *
- * The App Store and Google Play both fetch the privacy and support URLs during
- * review and reject a 404 or a redirect to raw GitHub — so these have to be
- * pages on our own domain. They are generated from `docs/*.md` rather than
- * retyped into components for one reason: a privacy policy that says one thing
- * in the repo and another on the website is worse than having only one of them.
- * One source, two renderings.
+ * It began as the legal pages only. The App Store and Google Play both fetch
+ * the privacy and support URLs during review and reject a 404 or a redirect to
+ * raw GitHub — so those have to be pages on our own domain. They are generated
+ * from `docs/*.md` rather than retyped into components for one reason: a
+ * privacy policy that says one thing in the repo and another on the website is
+ * worse than having only one of them. One source, two renderings.
  *
- * Static HTML, not a Vue route: legal text has no interactivity, and a page a
- * reviewer can read with JavaScript disabled is one less thing to explain.
+ * `/enterprise` (EE-119) joined them because it wants exactly the same three
+ * properties and none of the Vue app's: it must be indexable, it must read
+ * with JavaScript off, and it must exist in Turkish. The Vue site has no i18n
+ * layer at all — `src/content.js` is one English file that has always said the
+ * copy could be "translated later", and later never came — so the only route
+ * to a Turkish page on this site is the one the legal pages already take: a
+ * second markdown source at a second route, with hreflang between them.
+ *
+ * What it did NOT want was the legal chrome. A privacy policy and a sales page
+ * are both documents, but they are not the same document: one is read under
+ * duress at 46rem, the other is skimmed. So `shell()` now takes its
+ * stylesheets from the page instead of hard-coding one, and `enterprise.css`
+ * layers over the shared base rather than replacing it. Copying this file into
+ * a near-identical sibling was the other option and it is the one this repo has
+ * already paid for once (see sync-screenshots.mjs on why two copies drift).
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../../..');
 
-/** route → { source markdown, <title>, description, and its language twin } */
-export const LEGAL_PAGES = [
+/** The shared document base. Every generated page loads it. */
+const BASE_STYLES = ['/legal.css'];
+
+/**
+ * Every page this plugin emits — the single list the build, the dev server and
+ * CI all read.
+ *
+ * CI reads it by importing this module rather than repeating the routes in
+ * bash. That is deliberate: the gate that guarded these pages used to carry its
+ * own hand-typed copy of the list, so a page added here was a page nothing
+ * checked. A gate whose set excludes the new thing is indistinguishable from a
+ * passing gate — this repo has now watched that happen five times.
+ *
+ * route → { source markdown, <title>, description, language twin, stylesheets }
+ */
+export const STATIC_PAGES = [
   {
     route: 'privacy',
     file: 'docs/PRIVACY.md',
@@ -70,7 +97,46 @@ export const LEGAL_PAGES = [
       { label: 'Türkçe', href: '/support/tr' },
     ],
   },
+  {
+    route: 'enterprise',
+    file: 'docs/ENTERPRISE.md',
+    title: 'AllisWell Enterprise — service desk, units and SLAs on your own servers',
+    description:
+      'Teams, subdomains, permissions, units, ITSM with SLAs and service health, a public request portal and meeting-note AI — self-hosted, offline-first, on your own database.',
+    lang: 'en',
+    styles: [...BASE_STYLES, '/enterprise.css'],
+    alternates: [
+      { label: 'English', href: '/enterprise' },
+      { label: 'Türkçe', href: '/enterprise/tr' },
+    ],
+  },
+  {
+    route: 'enterprise/tr',
+    file: 'docs/ENTERPRISE.tr.md',
+    title: 'AllisWell Enterprise — kendi sunucunuzda servis masası, birimler ve SLA',
+    description:
+      "Team'ler, subdomain, izinler, birimler, SLA'lı ve sağlık izlemeli ITSM, public talep portalı ve toplantı notu AI'ı — kendi veritabanınızda, çevrimdışı çalışan bir kurulum.",
+    lang: 'tr',
+    styles: [...BASE_STYLES, '/enterprise.css'],
+    alternates: [
+      { label: 'English', href: '/enterprise' },
+      { label: 'Türkçe', href: '/enterprise/tr' },
+    ],
+  },
 ];
+
+/**
+ * The subset Apple and Google FETCH during review. They carry obligations the
+ * marketing pages do not (a reachable contact address, a named data
+ * controller), so the CI gate that asserts those reads this list and not the
+ * one above.
+ */
+export const STORE_REQUIRED_ROUTES = Object.freeze([
+  'privacy',
+  'privacy/tr',
+  'support',
+  'support/tr',
+]);
 
 /**
  * Rewrites the markdown's repo-relative links so they work on the website.
@@ -79,14 +145,12 @@ export const LEGAL_PAGES = [
  * root as `../SECURITY.md`. On the site the first must become a route and the
  * second must point at GitHub — otherwise every link in a legal document 404s,
  * which is exactly what a store reviewer clicks.
+ *
+ * The filename→route map is DERIVED from STATIC_PAGES rather than typed out
+ * again, so adding a page cannot leave its inbound links pointing at a raw .md.
  */
 const REPO = 'https://github.com/mahirozdin/alliswell/blob/main';
-const ROUTE_FOR = new Map([
-  ['PRIVACY.md', '/privacy'],
-  ['PRIVACY.tr.md', '/privacy/tr'],
-  ['SUPPORT.md', '/support'],
-  ['SUPPORT.tr.md', '/support/tr'],
-]);
+const ROUTE_FOR = new Map(STATIC_PAGES.map((p) => [path.basename(p.file), `/${p.route}`]));
 
 function rewriteLink(href) {
   if (/^(https?:|mailto:|#|\/)/.test(href)) return href;
@@ -97,7 +161,7 @@ function rewriteLink(href) {
   return `${REPO}/docs/${base}${hash ? `#${hash}` : ''}`;
 }
 
-function shell({ title, description, lang, alternates, route, body }) {
+function shell({ title, description, lang, alternates, route, body, styles = BASE_STYLES }) {
   const canonical = `https://alliswell.space/${route}`;
   const nav = alternates
     .map(
@@ -120,7 +184,7 @@ ${alternates.map((a) => `<link rel="alternate" hreflang="${a.href.endsWith('/tr'
 <meta property="og:description" content="${description}">
 <meta property="og:url" content="${canonical}">
 <link rel="icon" type="image/svg+xml" href="/logo.svg">
-<link rel="stylesheet" href="/legal.css">
+${styles.map((s) => `<link rel="stylesheet" href="${s}">`).join('\n')}
 </head>
 <body>
 <header class="doc__top">
@@ -174,7 +238,7 @@ function keepEmailsReadable(html) {
   return `<!--email_off-->\n${html}\n<!--/email_off-->`;
 }
 
-export function renderLegalPage(page) {
+export function renderStaticPage(page) {
   const md = readFileSync(path.join(repoRoot, page.file), 'utf8');
 
   const renderer = new marked.Renderer();
@@ -188,27 +252,27 @@ export function renderLegalPage(page) {
 }
 
 /**
- * Vite plugin: emits every legal page into the bundle, and serves them from the
- * dev server so `npm run landing:dev` shows the same thing the deploy will.
+ * Vite plugin: emits every static page into the bundle, and serves them from
+ * the dev server so `npm run landing:dev` shows the same thing the deploy will.
  */
-export function legalPagesPlugin() {
+export function staticPagesPlugin() {
   return {
-    name: 'alliswell-legal-pages',
+    name: 'alliswell-static-pages',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '').split('?')[0].replace(/\/$/, '');
-        const page = LEGAL_PAGES.find((p) => url === `/${p.route}`);
+        const page = STATIC_PAGES.find((p) => url === `/${p.route}`);
         if (!page) return next();
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.end(renderLegalPage(page));
+        res.end(renderStaticPage(page));
       });
     },
     generateBundle() {
-      for (const page of LEGAL_PAGES) {
+      for (const page of STATIC_PAGES) {
         this.emitFile({
           type: 'asset',
           fileName: `${page.route}/index.html`,
-          source: renderLegalPage(page),
+          source: renderStaticPage(page),
         });
       }
     },
