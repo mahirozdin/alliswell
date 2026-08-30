@@ -54,6 +54,14 @@ açıktır: bir birim diğerine belirli bir şeye erişim verir, karşı taraf t
 verilen hakları alır, ve bu yetki sonradan geri alındığında erişim karşı tarafta
 gerçekten kaybolur.
 
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/units-admin-dark-tr.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/units-admin-light-tr.jpg" alt="Birimler ekranı: üye sayılarıyla dört birim; biri sizin yönettiğiniz, biri arşivlenmiş" loading="lazy" width="900">
+  </picture>
+  <figcaption>Birimler kurumun şeklidir. İçerik kişiyi değil, birimi izler.</figcaption>
+</figure>
+
 ### Servis masası
 
 Bir servis kataloğu, her birimin ne sunduğunu ve o hizmete gelen talebin nereye
@@ -66,6 +74,14 @@ cihazda okunabilir ve düzenlenebilir durumdadır. Sahada tek çubuk çeken, ofi
 olan bir binada bu küçük bir ayrıntı değil: telefonun hiç susmamasının sebebi, yalnızca
 masa başında çalışan servis masasıdır.
 
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/ticket-queue-dark-tr.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/ticket-queue-light-tr.jpg" alt="Talep kuyruğu: öncelik noktası, durum ve SLA bilgisiyle dört talep; biri SLA aşıldı, biri SLA tutuldu ile kapanmış" loading="lazy" width="900">
+  </picture>
+  <figcaption>Bir birimin üzerinde çalıştığı kuyruk. Her satırda öncelik, durum ve verilen söz.</figcaption>
+</figure>
+
 ### SLA ve servis sağlığı
 
 Yanıt ve çözüm hedefleri **duvar saatiyle değil, mesai takvimiyle** işler — çalışma
@@ -76,6 +92,14 @@ sayıdır. Yaz saati geçişleri yaklaşık olarak değil, doğru şekilde ele a
 Servisler bir sağlık adresinden izlenebilir. Biri düştüğünde bir olay açılır; bir dakika
 sonra hâlâ düşükse ikincisi açılmaz.
 
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/sla-dashboard-dark-tr.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/sla-dashboard-light-tr.jpg" alt="SLA panosu: 314 talep üzerinden tutulan sözlerin yüzdesi, birime ve servise göre kırılım, altında aşılan süreler" loading="lazy" width="900">
+  </picture>
+  <figcaption>Ne söz verildi, ne oldu — birime ve servise göre.</figcaption>
+</figure>
+
 ### Public talep portalı
 
 Size bir şey sormak zorunda olan herkesin hesabı yoktur, ve bir tedarikçiye kullanıcı
@@ -83,6 +107,14 @@ hesabı vermek çoğu zaman yanlış cevaptır. Bir team, bir birime yönlenen t
 public bir adreste yayımlayabilir — son kullanma tarihi, iptal düğmesi ve ne kadar
 kullanılabileceğine dair bir üst sınırla birlikte. Talebi giren kişi, talebini takip
 edebileceği bir link alır.
+
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/portal-links-dark-tr.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/portal-links-light-tr.jpg" alt="Public talep portalı yönetim ekranı: yayımlanmış talep formları, süreleri, kotaya göre kullanımları ve iptal düğmeleri" loading="lazy" width="900">
+  </picture>
+  <figcaption>Her public formun bir süresi, bir üst sınırı ve bir iptal düğmesi var.</figcaption>
+</figure>
 
 Kimlik doğrulaması olmayan bu yüzey tesadüfen değil, bilerek tasarlandı: üründe
 kimliksiz açık olan tek kapı odur ve öyle muamele görür.

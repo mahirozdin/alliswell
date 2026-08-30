@@ -281,6 +281,8 @@ jobs:
       - name: Every referenced screenshot exists
         run: |
           missing=0
+
+          # Shape 1: literal paths, written out in the markup.
           for ref in $(grep -rhoE "/shots/[A-Za-z0-9/_.-]+\.(jpg|png)" \
                          --include='*.html' --include='*.js' --include='*.css' \
                          apps/landing/dist | sort -u); do
@@ -289,6 +291,22 @@ jobs:
               missing=1
             fi
           done
+
+          # Shape 2: paths the feature section COMPOSES at render time —
+          # `:src="`/shots/${feature.shot}`"` — with the filenames living in
+          # content.js without the /shots/ prefix. No literal to grep, so the
+          # scan above never saw a single one of them: it found 7 of the 18
+          # references this site actually makes, and had done since the gate was
+          # written. Renaming a screenshot in content.js shipped a broken frame
+          # with CI green. Read the fields from content.js rather than repeating
+          # them here, so a new feature row is covered the day it is added.
+          for ref in $(node -e "import('./apps/landing/src/content.js').then(m=>m.features.flatMap(f=>[f.shot,f.shotDark]).filter(Boolean).forEach(s=>console.log(s)))" | sort -u); do
+            if [ ! -f "apps/landing/dist/shots/$ref" ]; then
+              echo "::error::missing /shots/$ref — referenced from content.js"
+              missing=1
+            fi
+          done
+
           exit $missing
 
       - name: The docroot contract holds

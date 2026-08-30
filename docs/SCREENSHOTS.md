@@ -155,6 +155,48 @@ Three things this harness got wrong once, all of them silent:
 | Navigating by visible label | OPH-213 turned Home's `List \| Board` segmented control into an app-bar icon whose only text is a tooltip. `find.text('Board')` had nothing to tap. Navigate by `Key`, not by label. |
 | A phone-sized workspace on a 13" canvas | Two notes and two files leave two-thirds of the frame empty. The seed carries six of each so the tablet shots read as a workspace in use. |
 
+## 4b. Enterprise — `screenshots/ee/`
+
+These are the only images here that are **not** captured from a running app on a
+device or a browser. They are rendered by the app's own widget tests: the real
+screens, the real theme, the repo's own fonts, in both colour schemes, writing
+PNGs to `apps/app/test/goldens/`. That is deliberate rather than a shortcut —
+reaching these screens through the product needs a licensed instance with a
+team, units, a service catalogue, tickets with SLA clocks running and a
+published portal link, and a screenshot of that is a screenshot of one seeding
+script's opinion. The widget tests already fix those states, and their fixtures
+are part of what they assert.
+
+```bash
+cd apps/app
+flutter pub get                                   # and once per packages/*/
+
+# English (for /enterprise) and Turkish (for /enterprise/tr)
+flutter test --update-goldens --dart-define=screenshots=true --dart-define=shotLocale=en \
+    test/features/ee/tickets_screenshot_test.dart \
+    test/features/ee/sla_dashboard_screenshot_test.dart \
+    test/features/ee/units_screenshot_test.dart \
+    test/features/ee/portal_links_screenshot_test.dart
+# → apps/app/test/goldens/ee-*.png   (repeat with shotLocale=tr)
+```
+
+`shotLocale` defaults to whatever each file already pinned, so a run that does
+not pass it behaves exactly as before. Copy the four screens into
+`screenshots/ee/` as `<screen>-<light|dark>-<en|tr>.png`; the site's markup asks
+for `.jpg` and `sync-screenshots.mjs` produces that name either way.
+
+**The chrome translates; the sample content does not.** Ticket titles and unit
+names stay Turkish in both languages because they are test fixtures, and those
+fixtures are the tests' own — the ticket queue's are written to be "a
+photograph of a screen taken in a plant". Rewriting them to flatter a marketing
+page would edit an assertion to improve a picture.
+
+Only screens a customer sees belong here. The operator-side console (packages,
+instance limits) is deliberately **not** in this set: it shows how the product
+is metered rather than what it does, and that is not the landing page's story.
+
+---
+
 ## 5. Store assets — `store/`
 
 ```bash

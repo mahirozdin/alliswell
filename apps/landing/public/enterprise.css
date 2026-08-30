@@ -92,3 +92,28 @@
     display: table;
   }
 }
+
+/* Screenshots (EE-122). Rendered at 900px wide from the app's own widget tests,
+   so they arrive sharper than they are shown and need no upscaling guard.
+   The dark twin is swapped by <picture> rather than CSS, because these pages
+   have to be right with JavaScript off and a <source media> query is the only
+   swap that survives that. */
+.doc .shot {
+  margin: 1.4rem 0 1.8rem;
+}
+
+.doc .shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--aw-hairline);
+  box-shadow: var(--aw-shadow);
+}
+
+.doc .shot figcaption {
+  margin-top: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--aw-text-dim);
+  text-align: center;
+}

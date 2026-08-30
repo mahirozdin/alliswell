@@ -416,6 +416,23 @@ Future<void> _openSection(WidgetTester tester, String label) async {
 /// that can drift.
 Future<void> loadRealFontsForStore() => _loadRealFonts();
 
+/// The locale a shot renders in, overridable from the command line:
+///
+///   flutter test --update-goldens --dart-define=screenshots=true \
+///       --dart-define=shotLocale=en test/features/ee/
+///
+/// EE-122: the enterprise page exists in both languages, and the screenshots on
+/// it have to match the prose around them — an English page illustrated with a
+/// Turkish interface reads as a page nobody checked. The shot files used to pin
+/// their locale as a literal, so producing the other language meant editing
+/// them; the default keeps whatever each file already chose, so nothing changes
+/// for a run that does not ask.
+Locale screenshotLocale([String fallback = 'tr']) => Locale(
+  const String.fromEnvironment('shotLocale').isEmpty
+      ? fallback
+      : const String.fromEnvironment('shotLocale'),
+);
+
 /// Flip Home into the board view. Keyed, not by label: OPH-213 moved the
 /// list/board switch out of a segmented control and into an app-bar icon whose
 /// only text is a tooltip, which silently broke the old `find.text` lookup.

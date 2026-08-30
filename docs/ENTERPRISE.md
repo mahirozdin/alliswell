@@ -55,6 +55,14 @@ another access to something specific, the counterparty gets exactly the rights t
 granted, and the grant can be withdrawn later with the access disappearing on the other
 side.
 
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/units-admin-dark-en.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/units-admin-light-en.jpg" alt="The units screen: four units with member counts, one marked as the one you run and one archived" loading="lazy" width="900">
+  </picture>
+  <figcaption>Units are the shape of the organisation. Content follows the unit, not the person.</figcaption>
+</figure>
+
 ### The service desk
 
 A service catalogue describes what each unit offers and where a request for it should
@@ -67,6 +75,14 @@ editable, before the network comes back. This is not a small detail in a buildin
 the shop floor has one bar of signal and the office has fibre: the service desk that only
 works at a desk is the reason the phone call never stopped.
 
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/ticket-queue-dark-en.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/ticket-queue-light-en.jpg" alt="The request queue: four tickets with priority dots, status and SLA state, one marked SLA missed and one closed with SLA met" loading="lazy" width="900">
+  </picture>
+  <figcaption>The queue a unit works from. Priority, status and the SLA promise on every row.</figcaption>
+</figure>
+
 ### SLAs and service health
 
 Response and resolution targets run on a **business calendar, not a wall clock** — working
@@ -77,12 +93,28 @@ against a nine-to-five. Daylight-saving transitions are handled rather than appr
 Services can be watched at a health URL. When one goes down, an incident is opened; when
 it is still down a minute later, another one is not.
 
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/sla-dashboard-dark-en.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/sla-dashboard-light-en.jpg" alt="The SLA dashboard: percentage of promises kept over 314 requests, broken down by unit and by service, with the breached requests listed underneath" loading="lazy" width="900">
+  </picture>
+  <figcaption>What was promised against what happened — by unit, and by service.</figcaption>
+</figure>
+
 ### A public request portal
 
 Not everyone who needs to ask you for something has an account, and giving a supplier a
 login is often the wrong answer. A team can publish a request form at a public URL that
 routes into a unit, with an expiry date, a revoke switch and a cap on how much it can be
 used. The person who files a request gets a link they can use to follow it.
+
+<figure class="shot">
+  <picture>
+    <source srcset="/shots/ee/portal-links-dark-en.jpg" media="(prefers-color-scheme: dark)">
+    <img src="/shots/ee/portal-links-light-en.jpg" alt="The public request portal admin screen: published request forms with their expiry, usage against quota and revoke controls" loading="lazy" width="900">
+  </picture>
+  <figcaption>Each public form has an expiry, a cap and a revoke switch.</figcaption>
+</figure>
 
 The anonymous surface was designed on purpose rather than by accident: it is the one door
 in the product that is open without authentication, and it is treated that way.
