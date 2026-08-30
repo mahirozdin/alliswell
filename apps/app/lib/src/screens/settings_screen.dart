@@ -164,6 +164,18 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.servicesSub',
                   path: '/settings/team/services',
                 ),
+              // EE-099: SLA policies, calendars and monitors. Gated on the
+              // verb itself — `sla.manage` is a plain role-based permission,
+              // so `canProvider` is the honest gate and an admin who lacks it
+              // sees no door rather than a forbidden one.
+              if (ref.watch(canProvider('sla.manage')))
+                _GroupRow(
+                  keyName: 'settings-group-sla',
+                  icon: Icons.gavel_outlined,
+                  titleKey: 'settings.group.sla',
+                  subtitleKey: 'settings.group.slaSub',
+                  path: '/settings/team/sla',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain

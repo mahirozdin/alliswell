@@ -37,6 +37,7 @@ import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
+import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
 import 'features/ee/ui/team_invites_screen.dart';
@@ -434,6 +435,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/services',
         builder: (context, state) => _page(const EeTeamServicesScreen()),
+      ),
+      // EE-099: what an admin may edit about a promise — policies, business
+      // calendars and health monitors, all behind `sla.manage`.
+      GoRoute(
+        path: '/settings/team/sla',
+        builder: (context, state) => _page(const EeSlaAdminScreen()),
       ),
       // EE-061: what other units shared with this one. Reachable by anyone in
       // a unit — receiving something is not an admin act.
