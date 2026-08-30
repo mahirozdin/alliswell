@@ -53,8 +53,9 @@ class EePortalLinksApi {
   Future<void> revoke(String id) =>
       _run(() => _dio.post<void>('$_links/$id/revoke'));
 
-  Future<void> extend(String id, int ttlHours) =>
-      _run(() => _dio.post<void>('$_links/$id/extend', data: {'ttlHours': ttlHours}));
+  Future<void> extend(String id, int ttlHours) => _run(
+    () => _dio.post<void>('$_links/$id/extend', data: {'ttlHours': ttlHours}),
+  );
 
   Future<void> setEnabled(String id, bool enabled) =>
       _run(() => _dio.patch<void>('$_links/$id', data: {'enabled': enabled}));

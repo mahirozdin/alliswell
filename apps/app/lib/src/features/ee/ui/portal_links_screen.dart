@@ -129,7 +129,10 @@ class _QuotaCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ee.portal.quotaTitle'.tr(), style: theme.textTheme.titleSmall),
+            Text(
+              'ee.portal.quotaTitle'.tr(),
+              style: theme.textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             _QuotaRow(label: 'ee.portal.quotaLinks'.tr(), quota: links),
             _QuotaRow(label: 'ee.portal.quotaTickets'.tr(), quota: tickets),
@@ -184,7 +187,10 @@ class _LinkTile extends ConsumerWidget {
     // with an expiry is supposed to do.
     final (icon, colour) = switch (link.state) {
       EePortalLinkState.active => (Icons.check_circle_outline, tokens.success),
-      EePortalLinkState.disabled => (Icons.pause_circle_outline, theme.disabledColor),
+      EePortalLinkState.disabled => (
+        Icons.pause_circle_outline,
+        theme.disabledColor,
+      ),
       EePortalLinkState.expired => (Icons.schedule, theme.disabledColor),
       EePortalLinkState.revoked => (Icons.block, theme.colorScheme.error),
     };
@@ -198,7 +204,9 @@ class _LinkTile extends ConsumerWidget {
           // And the WORD, in body colour.
           'ee.portal.state.${link.state.name}'.tr(),
           if (link.state != EePortalLinkState.revoked)
-            'ee.portal.expiresAt'.tr(args: {'date': _date(context, link.expiresAt)}),
+            'ee.portal.expiresAt'.tr(
+              args: {'date': _date(context, link.expiresAt)},
+            ),
           if (link.hasCustomFields) 'ee.portal.customFields'.tr(),
         ].join(' · '),
         maxLines: 2,
@@ -218,8 +226,14 @@ class _LinkTile extends ConsumerWidget {
                         : 'ee.portal.resume'.tr(),
                   ),
                 ),
-                PopupMenuItem(value: 'extend', child: Text('ee.portal.extend'.tr())),
-                PopupMenuItem(value: 'revoke', child: Text('ee.portal.revoke'.tr())),
+                PopupMenuItem(
+                  value: 'extend',
+                  child: Text('ee.portal.extend'.tr()),
+                ),
+                PopupMenuItem(
+                  value: 'revoke',
+                  child: Text('ee.portal.revoke'.tr()),
+                ),
               ],
             )
           // Nothing can be done to a revoked link, so it carries no controls
@@ -232,7 +246,10 @@ class _LinkTile extends ConsumerWidget {
     final controller = ref.read(eePortalLinksProvider.notifier);
     switch (action) {
       case 'toggle':
-        await _guard(context, () => controller.setEnabled(link.id, !link.enabled));
+        await _guard(
+          context,
+          () => controller.setEnabled(link.id, !link.enabled),
+        );
       case 'extend':
         await _guard(context, () => controller.extend(link.id, 48));
       case 'revoke':
@@ -272,7 +289,10 @@ String _date(BuildContext context, DateTime at) =>
 /// The refusals on this surface are all actionable — "choose which unit",
 /// "assign one before publishing", "revoke one or move to a larger plan" — and
 /// replacing them with a generic failure would throw away the only useful part.
-Future<void> _guard(BuildContext context, Future<void> Function() action) async {
+Future<void> _guard(
+  BuildContext context,
+  Future<void> Function() action,
+) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   try {
     await action();
@@ -349,7 +369,9 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
                     for (final hours in [24, 48, 168, 720])
                       DropdownMenuItem(
                         value: hours,
-                        child: Text('ee.portal.ttlHours'.tr(args: {'hours': '$hours'})),
+                        child: Text(
+                          'ee.portal.ttlHours'.tr(args: {'hours': '$hours'}),
+                        ),
                       ),
                   ],
                   onChanged: (value) => setState(() => ttlHours = value ?? 48),

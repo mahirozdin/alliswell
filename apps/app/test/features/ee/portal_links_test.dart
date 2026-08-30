@@ -142,7 +142,9 @@ void main() {
       expect(find.textContaining('Expired'), findsOneWidget);
     });
 
-    testWidgets('a live link is marked with the success colour', (tester) async {
+    testWidgets('a live link is marked with the success colour', (
+      tester,
+    ) async {
       await _pump(
         tester,
         EePortalLinksData(
@@ -198,7 +200,10 @@ void main() {
     test('an unknown state from a newer server reads as shut, not open', () {
       // The safe misreading of "I do not know what this is" on a door to the
       // public is "assume it is closed".
-      expect(EePortalLinkState.parse('something_new'), EePortalLinkState.revoked);
+      expect(
+        EePortalLinkState.parse('something_new'),
+        EePortalLinkState.revoked,
+      );
       expect(EePortalLinkState.parse(null), EePortalLinkState.revoked);
       expect(EePortalLinkState.parse('active'), EePortalLinkState.active);
     });
