@@ -100,12 +100,19 @@ function walkSchemas(node, visit) {
 }
 
 /**
- * The canonical schema, shaped for one provider's constrained-output mode.
+ * A canonical schema, shaped for one provider's constrained-output mode.
  * Whatever a provider ignores or rejects, Ajv enforces afterwards — the
  * canonical schema stays authoritative.
+ *
+ * `source` defaults to the task proposal because that is what every caller
+ * wanted until now. It is a parameter rather than a constant because the
+ * DIALECT rules below are about the provider, not about the payload: an
+ * extension asking a model for a different constrained shape needs the same
+ * four adaptations, and the alternative is a second copy of them that drifts
+ * the first time a vendor changes its mind about `additionalProperties`.
  */
-export function providerSchema(provider) {
-  const schema = clone(TASK_PROPOSAL_SCHEMA);
+export function providerSchema(provider, source = TASK_PROPOSAL_SCHEMA) {
+  const schema = clone(source);
   delete schema.$id;
 
   if (provider === 'openai' || provider === 'openrouter') {

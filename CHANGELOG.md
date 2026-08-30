@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **`providerSchema` shapes any schema, not just the task proposal (EE-114).** The four
+  dialect adaptations it performs are facts about a PROVIDER — OpenAI's strict mode,
+  Gemini's OpenAPI subset, what Anthropic tolerates, what Ollama ignores — and nothing
+  about the payload. It now takes the canonical schema as a parameter, defaulting to the
+  one every existing caller passes implicitly, so a second constrained shape does not
+  need a second copy of those rules to drift out of step with these.
+
 ### Added
 
 - **One shape for a diarized transcript, and a way to produce one (EE-112).** Adapters
