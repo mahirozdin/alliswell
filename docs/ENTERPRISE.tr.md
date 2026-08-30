@@ -131,9 +131,59 @@ bir sonuçtur:
   Enterprise tek bir sürüm olarak satılır ve kurulur, ayrı ayrı satın alınabilen
   modüller olarak değil.
 
-> **İlgileniyor musunuz?** Enterprise ticari lisanslıdır ve indirilerek değil, sizinle
-> birlikte kurulur. **[info@bubiapps.com](mailto:info@bubiapps.com)** adresine kaç kişi ve
-> kaç birim olduğunuzu yazın — başlamak için bu yeterli.
+## Lisans
 
-Ücretsiz sürümün lisansı [PolyForm Noncommercial](../LICENSE)'dır; Enterprise ayrı bir
-sözleşmedir.
+İşin içinde iki lisans var, ve birini almak diğerini değiştirmiyor.
+
+**Ücretsiz sürüm**, [PolyForm Noncommercial 1.0.0](../LICENSE) ile kaynağı açık
+(source-available). Buradaki "ücretsiz" bir **kişi** için ücretsiz demek: kendi hayatınız,
+kendi makineniz, hobi projeleri, öğrenmek, kendi kurulumunuzu kendiniz barındırmak.
+Vakıflar, okullar, üniversiteler, kamu araştırma kurumları ve devlet kurumları için de
+ücretsiz. **Ücretsiz olmadığı yer**: bir şirketin onu kendi ekibi için çalıştırması — kaç
+kişi olursa olsun — ya da onu satması veya başkalarına hizmet olarak sunması. Bunlar ticari
+lisans gerektirir.
+
+Buraya ücretsiz sürümden geldiyseniz iki kez okunacak cümle şu: **size ücretsiz,
+işvereninize değil.** Kimin kapsandığını gösteren tam tablo ve lisansın gerekçesi — AGPL
+neden seçilmedi dahil — README'nin
+[Licence and commercial use](../README.md#-licence--commercial-use) bölümünde ve
+[ADR-0024](adr/0024-license-polyform-noncommercial.md)'te.
+
+Bir lisans bölümüne ait olan, dipnota değil: proje v1.0.0'a kadar AGPL-3.0'dı ve
+**v0.9.0 ve öncesi sürümler, onları almış olan herkes için AGPL-3.0 kalır.** Verilmiş bir
+lisans geri alınamaz. Bugünkü şartlar ileriye işler, geriye değil.
+
+Etiket konusunda açık olmak gerekirse: PolyForm Noncommercial **kaynağı açık**tır, OSI
+anlamında "açık kaynak" değil — ticari kullanımı ayırt ediyor, ki Açık Kaynak Tanımı bunu
+yasaklar. "Kaynağı açık" diyoruz çünkü öbür kelime doğru olmazdı.
+
+**Enterprise** tescilli ve ayrıdır. Yalnızca BubiApps ile imzalanmış yazılı bir
+**AllisWell Enterprise Sözleşmesi** kapsamında kullanılır; ona erişmek tek başına hiçbir
+hak vermez. Ücretsiz sürümün şartlarını iki yönde de değiştirmez — public depo PolyForm
+Noncommercial altında kalır, ve elinizde olan bir kopya, hangi lisansla aldıysanız onunla
+sizindir.
+
+Ticari lisans, ayrıca ücretsiz katmanda olmayan self-hosting desteğiyle gelir.
+
+### Paketler
+
+Üründe bir paket kavramı var ve taze bir kurulum üçü tanımlı olarak geliyor: **Starter**,
+**Business** ve **Enterprise**. Bunlar birer **şekil**, fiyat listesi değil — koltuk sayısı,
+workspace sayısı, bir team'in talep portalını ne kadar kullanabileceği, tarihçenin ne kadar
+saklanacağı. Instance'ı işleten operatör bunları düzenler, yeniden adlandırır ya da kendi
+paketini ekler; bir team bir pakete konur ve ürün o paketin taşıdığı limitleri raporlar ve
+uygular.
+
+Yani bu sayfa "paket" derken o mekanizmayı kastediyor — altında fiyat yazan üç kutuyu
+değil. Kurumunuzun neye hak kazandığı sözleşmenizde yazar.
+
+### Ne kadar
+
+Bu sayfada fiyat listesi yok, ve bu bir şey gizlendiği için değil. Enterprise bir indirme
+ve ödeme adımı değil; sizinle birlikte, sizin donanımınızda kuruluyor ve sözleşmenin şekli
+kaç kişi ve kaç birim olduğuna bağlı. O konuşma kısa sürüyor — ve gerçek cevabı "kurumunuza
+göre değişir" olan bir soruya dürüst yanıt bu.
+
+> **İlgileniyor musunuz?** **[info@bubiapps.com](mailto:info@bubiapps.com)** adresine kaç
+> kişi ve kaç birim olduğunuzu yazın — başlamak için bu yeterli. İhtiyacınız Enterprise
+> değil de ücretsiz sürüm için bir ticari lisanssa, aynı adres onu da karşılıyor.

@@ -9,7 +9,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | # | Title | Status |
 | --- | --- | --- |
 | [0001](0001-stack-and-monorepo.md) | Stack & monorepo baseline | Accepted |
-| [0002](0002-license-agpl-3.0.md) | AGPL-3.0 license | Accepted |
+| [0002](0002-license-agpl-3.0.md) | AGPL-3.0 license | Superseded by [0024](0024-license-polyform-noncommercial.md) |
 | [0003](0003-product-name-and-blueprint-deviations.md) | Product name "AllisWell" & blueprint deviations | Accepted |
 | [0004](0004-ids-timestamps-schema-conventions.md) | ULID ids, UTC timestamps, schema conventions | Accepted |
 | [0005](0005-alliswell-glass-design-system.md) | "AllisWell Glass" design system (permanent visual language) | Accepted |

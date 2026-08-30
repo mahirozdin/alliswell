@@ -3,7 +3,7 @@
   "version": "1.8.3",
   "private": true,
   "description": "AllisWell marketing site — served at the root of alliswell.space, with the Flutter web app under /app.",
-  "license": "AGPL-3.0-only",
+  "license": "LicenseRef-PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {
     "sync:shots": "node scripts/sync-screenshots.mjs",
