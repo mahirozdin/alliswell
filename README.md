@@ -395,6 +395,37 @@ The markdown files (STATE / TASKS / CHANGELOG) are the single source of truth �
 
 ---
 
+## 🏢 Enterprise edition
+
+Everything above is the free edition, and it is built for one person's work. **AllisWell
+Enterprise** is a separate, commercially licensed edition for organisations where work is
+filed between departments rather than kept on one list:
+
+- **Teams on their own subdomains** — one instance, several organisations, isolated on the
+  server rather than in the interface.
+- **Permissions and units** — named permissions that roles are assembled from, and a unit
+  per department, workshop or site, with explicit sharing between them.
+- **A service desk** — a service catalogue routed to units, tickets that stay distinct from
+  tasks, SLA targets that run on a shift-aware business calendar, and health checks that
+  open an incident when a service goes down.
+- **A public request portal** — a request form at a public URL, with expiry, revocation and
+  quotas, for the people who should not have accounts.
+- **Meeting recordings that become work** — a speaker-separated note with the decisions
+  pulled out, and a decision that turns into a ticket.
+
+It is self-hosted exactly like the rest of AllisWell: your hardware, your database, no
+request leaving the building unless you decide it should.
+
+**→ [What the Enterprise edition includes](docs/ENTERPRISE.md)**
+&nbsp;·&nbsp; **[Türkçe](docs/ENTERPRISE.tr.md)**
+&nbsp;·&nbsp; [info@bubiapps.com](mailto:info@bubiapps.com)
+
+It does not change the free edition in either direction — this repository stays under
+PolyForm Noncommercial, and Enterprise is used under a separate written agreement. The
+section below is the rule for both.
+
+---
+
 ## ⚖️ Licence & commercial use
 
 **AllisWell is free for you, and not free for your employer.** That is the whole
@@ -415,6 +446,8 @@ it as a service, or run it as part of a commercial operation.
 | Reselling it, or offering it to others as a hosted service                    | ❌ Needs a commercial licence |
 
 **Enterprise, or anything commercial → [info@bubiapps.com](mailto:info@bubiapps.com).**
+What the Enterprise edition actually adds is one section up, and in
+[docs/ENTERPRISE.md](docs/ENTERPRISE.md).
 Commercial licences exist, they are not expensive, and they come with the
 self-hosting support the free tier does not.
 

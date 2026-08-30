@@ -14,6 +14,7 @@ const columns = [
       { label: 'Get it on Google Play', href: PLAY_URL },
       { label: 'Features', href: '#features' },
       { label: 'Comparison', href: '#compare' },
+      { label: 'Enterprise', href: '/enterprise' },
       { label: 'Roadmap', href: `${REPO_URL}/blob/main/ROADMAP.md` },
       { label: 'Changelog', href: `${REPO_URL}/blob/main/CHANGELOG.md` },
     ],

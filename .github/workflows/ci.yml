@@ -341,6 +341,30 @@ jobs:
           done
           exit $fail
 
+      # EE-121: the enterprise page is reached from three places, and all three
+      # are prose or a config array that nothing else would notice going stale.
+      # The page could quietly become an orphan — present in the bundle, passing
+      # the check above, and linked from nowhere.
+      #
+      # The site's two links are asserted against the BUILT bundle rather than
+      # the components, so a refactor that drops them from the rendered output
+      # fails here even if the source array still looks right. The two document
+      # links are asserted as file references that resolve, because README and
+      # SELF-HOSTING are read on GitHub long before the site redeploys.
+      - name: The enterprise page is reachable from all three sources
+        run: |
+          fail=0
+          grep -rq "/enterprise" apps/landing/dist/assets/*.js \
+            || { echo "::error::the marketing bundle no longer links to /enterprise"; fail=1; }
+          grep -q "docs/ENTERPRISE.md" README.md \
+            || { echo "::error::README no longer links to the enterprise page"; fail=1; }
+          grep -q "(ENTERPRISE.md)" docs/SELF-HOSTING.md \
+            || { echo "::error::SELF-HOSTING no longer points at the enterprise page"; fail=1; }
+          for f in docs/ENTERPRISE.md docs/ENTERPRISE.tr.md; do
+            test -f "$f" || { echo "::error::$f is missing — the links above point at nothing"; fail=1; }
+          done
+          exit $fail
+
       # Apple and Google both FETCH these URLs during review and reject a 404.
       # They are generated from docs/*.md, so a rename there silently removes a
       # store requirement — this is the check that notices. The subset comes
