@@ -130,7 +130,13 @@ export async function register(app, seam) {
   // file a connection it never created. The model id echoes the workspace it
   // was asked about, which is how the test proves the second argument is real
   // rather than merely present.
-  seam.registerAiConnectionResolver(async (request, workspaceId) => {
+  seam.registerAiConnectionResolver(async (request, { workspaceId }) => {
+    // A refusal, and the header that asks for one: the pinned path consults
+    // the chain precisely so an extension can say no to a connection the
+    // caller owns, which is the one thing a credential cannot express.
+    if (request.headers['x-seam-ai-refuse'] === '1') {
+      throw new Error('seam probe: this caller may not use their own key');
+    }
     if (request.headers['x-seam-ai'] !== '1') return null;
     return {
       provider: 'anthropic',

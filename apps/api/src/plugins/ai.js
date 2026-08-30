@@ -80,12 +80,20 @@ export default fp(
      * The extension chain. Empty on every plain build, which is why the
      * function below is unchanged for CE: an empty array short-circuits
      * before anything is asked.
+     *
+     * Consulted on EVERY resolution, including a pinned one — but a pinned
+     * resolution only honours a REFUSAL (a resolver that throws), never a
+     * credential. Pinning names a row out of the caller's own list and core
+     * keeps that promise; what an extension may still say is "not this one,
+     * not here", which is an authorisation answer rather than a resolution.
+     * Consulting only the unpinned path would have made that refusal
+     * bypassable by naming a connection, which is not a refusal at all.
      */
-    async function resolveFromExtensions(request, workspaceId) {
+    async function resolveFromExtensions(request, { workspaceId, connectionId }) {
       const resolvers = app.ee?.aiConnectionResolvers;
       if (!resolvers || resolvers.length === 0) return null;
       for (const resolver of resolvers) {
-        const credential = await resolver(request, workspaceId);
+        const credential = await resolver(request, { workspaceId, connectionId });
         if (credential) return extensionResolution(credential);
       }
       return null;
@@ -98,6 +106,12 @@ export default fp(
      * caller's most recently used live connection in `workspaceId` wins.
      */
     async function resolveConnection({ request, workspaceId = null, connectionId = null }) {
+      // Before anything else, so a refusal costs no query and a pinned
+      // request cannot outrun it. The value is used only when nothing was
+      // pinned — see `resolveFromExtensions`.
+      const extension = await resolveFromExtensions(request, { workspaceId, connectionId });
+      if (extension && !connectionId) return extension;
+
       let row;
       if (connectionId) {
         row = await app
@@ -120,12 +134,6 @@ export default fp(
           );
         }
       } else {
-        // Before the caller's own list: an extension may hold a credential
-        // this caller may use without owning it. Pinned requests never get
-        // here — see `registerAiConnectionResolver`.
-        const extension = await resolveFromExtensions(request, workspaceId);
-        if (extension) return extension;
-
         const rows = await app
           .db('ai_connections')
           .where({ workspace_id: workspaceId, user_id: request.user.id })

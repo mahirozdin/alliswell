@@ -194,14 +194,25 @@ function buildSeam(state) {
     },
 
     /**
-     * AI connection resolver: `async (request, workspaceId) => credential | null`.
+     * AI connection resolver:
+     * `async (request, { workspaceId, connectionId }) => credential | null`.
      *
      * Consulted by `app.ai.resolveConnection` BEFORE the caller's own stored
-     * connections are looked at, and only when the caller did not PIN one.
-     * Pinning names a specific `ai_connections` row by id — an explicit choice
-     * out of the user's own list — so it stays exactly what it always was; the
-     * chain governs the DEFAULT choice, which is the one an extension can have
-     * a better answer to (a credential the caller may use but does not own).
+     * connections are looked at, on every resolution — but what it may DO
+     * depends on `connectionId`:
+     *
+     *   • **nothing pinned** — a returned credential WINS. This is the default
+     *     choice, and the one an extension can have a better answer to (a
+     *     credential the caller may use but does not own).
+     *   • **a connection pinned** — a returned credential is IGNORED. Pinning
+     *     names a specific `ai_connections` row by id, an explicit choice out
+     *     of the user's own list, and core keeps that promise.
+     *
+     * A resolver that THROWS refuses the request either way, and that is why
+     * the pinned path consults the chain at all: "this caller may not use
+     * their own key here" is an authorisation answer, not a resolution, and a
+     * refusal that could be sidestepped by naming a connection would not be
+     * one.
      *
      * `null` means this resolver has no opinion, which is how a request
      * behaves identically with and without an extension. With none registered,
@@ -221,10 +232,10 @@ function buildSeam(state) {
      * constraint violation at the meter. Not accepting one makes that
      * impossible to write rather than merely wrong to write.
      *
-     * A resolver that THROWS fails the request — unlike a status decorator,
-     * which is ignored. The difference is what the answer is for: capability
-     * discovery degrades to a narrower truth, but a credential lookup that
-     * failed must not fall through to a different payer's key.
+     * A refusal is never swallowed — unlike a status decorator, which is
+     * ignored when it throws. The difference is what the answer is for:
+     * capability discovery degrades to a narrower truth, but a credential
+     * lookup that failed must not fall through to a different payer's key.
      */
     registerAiConnectionResolver(resolver) {
       if (typeof resolver !== 'function') {

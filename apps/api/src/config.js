@@ -59,14 +59,33 @@ const DEV_REFRESH_SECRET = 'insecure-dev-refresh-secret-never-use-in-production'
 const DEV_CALENDAR_TOKEN_KEY = 'deaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead';
 // Same shape, different pattern — AI keys must not share the calendar key.
 const DEV_AI_TOKEN_KEY = 'feedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed';
+// Extensions that store provider credentials of their own get their own key,
+// not this instance's. Separate blast radius, separate rotation.
+const DEV_EE_AI_TOKEN_KEY = 'beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef';
 const INSECURE_SECRETS = new Set([
   DEV_ACCESS_SECRET,
   DEV_REFRESH_SECRET,
   DEV_CALENDAR_TOKEN_KEY,
   DEV_AI_TOKEN_KEY,
+  DEV_EE_AI_TOKEN_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
 ]);
+
+/**
+ * Is this one of the development placeholders shipped in this file?
+ *
+ * `validateProductionSecret` asks the same question of core's own secrets and
+ * refuses to boot. It is exported because an extension can store secrets core
+ * knows nothing about, and it must be able to refuse for the same reason —
+ * but at the moment it would WRITE one, not at boot. Requiring a new secret
+ * at boot would turn an upgrade into a boot failure for every instance that
+ * never uses the feature, and "upgrades must never turn into boot failures"
+ * is a house rule, not a preference.
+ */
+export function isPlaceholderSecret(value) {
+  return !value || INSECURE_SECRETS.has(value);
+}
 
 function validateProductionSecret(name, value) {
   if (!value || INSECURE_SECRETS.has(value)) {
@@ -321,6 +340,12 @@ export function loadConfig(env = process.env) {
       // The apex domain this instance serves (e.g. "example.com"). Extensions
       // may derive host-based request context from it; core ignores it.
       baseDomain: env.EE_BASE_DOMAIN ? env.EE_BASE_DOMAIN.toLowerCase() : null,
+      // AES-256-GCM key for provider credentials an extension stores on
+      // somebody's behalf. Deliberately NOT `ai.tokenKey`: those two protect
+      // secrets with different owners and different lifetimes, and sharing one
+      // key would mean rotating either forces re-encrypting both. Core stores
+      // nothing under it and never reads it.
+      aiTokenKey: env.EE_AI_TOKEN_KEY || DEV_EE_AI_TOKEN_KEY,
       // Outgoing mail for extensions that send any (core sends none). Read
       // like `storage`: absent means the capability is simply off. Unlike
       // storage it is ALL-OR-NOTHING — see assertSmtpComplete below for why a
@@ -378,6 +403,9 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ai.tokenKey)) {
     throw new Error('AI_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.ee.aiTokenKey)) {
+    throw new Error('EE_AI_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   assertSmtpComplete(config);
   if (config.ai.heartbeatMs < 1000 || config.ai.heartbeatMs > 60000) {

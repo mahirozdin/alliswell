@@ -188,6 +188,42 @@ describe('EE overlay seam (EE-002)', () => {
     expect(unpinned.json()).toMatchObject({ provider: 'anthropic', connectionId: null });
   });
 
+  it('lets an overlay refuse a connection the caller owns — pinned included (EE-110)', async () => {
+    ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
+    const user = await registerUser(app, { email: 'seam-ai-refuse@example.com' });
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${user.workspace.id}/ai/connections`,
+      headers: user.headers,
+      payload: { provider: 'openai', apiKey: 'sk-my-own-key', consentAcknowledged: true },
+    });
+    const connectionId = created.json().id;
+    const url = `/api/v1/workspaces/${user.workspace.id}/ai/models`;
+
+    // Pinning must not outrun the refusal: naming the connection is exactly
+    // what a caller would try if the unpinned path told them no.
+    for (const target of [url, `${url}?connectionId=${connectionId}`]) {
+      const res = await app.inject({
+        method: 'GET',
+        url: target,
+        headers: { ...user.headers, 'x-seam-ai-refuse': '1' },
+      });
+      // 500 because the fixture throws a plain Error: core does not translate a
+      // refusal into a status of its own, it declines to swallow it. A real
+      // overlay throws an http error and gets the status it chose.
+      expect(res.statusCode).toBe(500);
+    }
+
+    // Without the refusal the very same pinned request still works.
+    const fine = await app.inject({
+      method: 'GET',
+      url: `${url}?connectionId=${connectionId}`,
+      headers: user.headers,
+    });
+    expect(fine.statusCode).toBe(200);
+    expect(fine.json()).toMatchObject({ provider: 'openai', connectionId });
+  });
+
   it('flows an overlay sync entity through /sync/pull', async () => {
     ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
     const owner = await registerUser(app, { email: 'seam@example.com' });
