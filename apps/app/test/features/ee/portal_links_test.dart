@@ -79,6 +79,16 @@ Future<void> _pump(
   await tester.pumpAndSettle();
 }
 
+/// Text inside ONE tile.
+///
+/// The quota card above the list says "Live links", so an unscoped
+/// `textContaining('Live')` matches twice — which is how CI found this. A
+/// state word is a claim about a ROW, so the finder is scoped to the row.
+Finder _inTile(String id, String text) => find.descendant(
+  of: find.byKey(Key('portal-link-$id')),
+  matching: find.textContaining(text),
+);
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -134,7 +144,7 @@ void main() {
       expect(icon.icon, Icons.schedule);
       expect(icon.color, theme.disabledColor);
       // …and the meaning is a word, in body colour.
-      expect(find.textContaining('Expired'), findsOneWidget);
+      expect(_inTile('L1', 'Expired'), findsOneWidget);
     });
 
     testWidgets('a live link is marked with the success colour', (
@@ -151,7 +161,7 @@ void main() {
       final tokens = buildAwTheme(Brightness.light).extension<AwTokens>()!;
       final icon = tester.widget<Icon>(find.byKey(const Key('portal-mark-L1')));
       expect(icon.color, tokens.success);
-      expect(find.textContaining('Live'), findsOneWidget);
+      expect(_inTile('L1', 'Live'), findsOneWidget);
     });
 
     testWidgets('A REVOKED LINK CARRIES NO CONTROLS AT ALL', (tester) async {
@@ -165,7 +175,7 @@ void main() {
       );
       // Every action would refuse; offering them would be a menu of dead ends.
       expect(find.byKey(const Key('portal-menu-L1')), findsNothing);
-      expect(find.textContaining('Revoked'), findsOneWidget);
+      expect(_inTile('L1', 'Revoked'), findsOneWidget);
     });
 
     testWidgets('a paused link offers to resume, not to pause again', (
