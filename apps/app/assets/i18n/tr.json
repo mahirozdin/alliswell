@@ -170,7 +170,9 @@
       "myTickets": "Taleplerim",
       "myTicketsSub": "Açtığınız talepler ve durumları",
       "sla": "SLA yönetimi",
-      "slaSub": "Politikalar, mesai takvimleri ve izleyiciler"
+      "slaSub": "Politikalar, mesai takvimleri ve izleyiciler",
+      "portal": "Herkese açık talep bağlantıları",
+      "portalSub": "Takımınız dışındaki kişiler hesap açmadan talep gönderebilsin"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -1344,6 +1346,9 @@
         "edit": "Notları düzenle",
         "delete": "Notları sil"
       },
+      "portal": {
+        "manage_links": "Herkese açık talep bağlantıları oluştur, iptal et ve süresini uzat"
+      },
       "projects": {
         "view": "Projeleri gör",
         "create": "Proje oluştur",
@@ -1734,6 +1739,43 @@
         "5": "Cum",
         "6": "Cmt",
         "7": "Paz"
+      }
+    },
+    "portal": {
+      "title": "Herkese açık talep bağlantıları",
+      "create": "Yeni bağlantı",
+      "service": "Servis",
+      "unit": "Hangi birim bakacak",
+      "unitHelp": "Bu servise iki veya daha fazla birim bakıyor. Formu dolduran kişiye soramayız, o yüzden burada seçin.",
+      "ttl": "Geçerlilik",
+      "ttlHours": "{hours} saat",
+      "createdTitle": "Bağlantı oluşturuldu",
+      "createdOnce": "Bu adres yalnızca şimdi gösteriliyor. Hemen kopyalayın — bizde bir kopyası kalmıyor ve tekrar gösterilemez.",
+      "copy": "Kopyala",
+      "copied": "Kopyalandı",
+      "quotaTitle": "Planınız",
+      "quotaLinks": "Yaşayan bağlantı",
+      "quotaTickets": "Bu ayki talep",
+      "ofMax": "{max} üzerinden {used}",
+      "unlimited": "{used} · sınırsız",
+      "expiresAt": "{date} tarihine kadar",
+      "customFields": "özel alanlar",
+      "unknownService": "Bilinmeyen servis",
+      "pause": "Duraklat",
+      "resume": "Yeniden aç",
+      "extend": "48 saat uzat",
+      "revoke": "İptal et",
+      "revokeTitle": "Bağlantı iptal edilsin mi?",
+      "revokeBody": "Bağlantıyı elinde tutan kimse formu artık açamayacak. Bu işlem geri alınamaz — yeni bir bağlantı oluşturmanız gerekir.",
+      "emptyTitle": "Henüz açık bağlantı yok",
+      "emptyBody": "Takımınız dışındaki kişilerin hesap açmadan talep gönderebilmesi için bir bağlantı oluşturun.",
+      "unavailable": "Kullanılamıyor",
+      "unavailableBody": "Bu takımın açık bağlantılarını yönetme izniniz yok.",
+      "state": {
+        "active": "Yayında",
+        "disabled": "Duraklatıldı",
+        "expired": "Süresi doldu",
+        "revoked": "İptal edildi"
       }
     }
   },

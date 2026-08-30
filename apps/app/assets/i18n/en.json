@@ -171,7 +171,9 @@
       "myTickets": "My requests",
       "myTicketsSub": "The requests you opened, and where they stand",
       "sla": "SLA management",
-      "slaSub": "Policies, business calendars and health monitors"
+      "slaSub": "Policies, business calendars and health monitors",
+      "portal": "Public request links",
+      "portalSub": "Let people outside your team send requests without an account"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -1345,6 +1347,9 @@
         "edit": "Edit notes",
         "delete": "Delete notes"
       },
+      "portal": {
+        "manage_links": "Create, revoke and extend public request links"
+      },
       "projects": {
         "view": "See projects",
         "create": "Create projects",
@@ -1735,6 +1740,43 @@
         "5": "Fri",
         "6": "Sat",
         "7": "Sun"
+      }
+    },
+    "portal": {
+      "title": "Public request links",
+      "create": "New link",
+      "service": "Service",
+      "unit": "Which unit answers it",
+      "unitHelp": "Two or more units answer this service. The person filling the form cannot be asked, so choose here.",
+      "ttl": "Valid for",
+      "ttlHours": "{hours} hours",
+      "createdTitle": "Link created",
+      "createdOnce": "This is the only time this address is shown. Copy it now — we keep no copy, and it cannot be shown again.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "quotaTitle": "Your plan",
+      "quotaLinks": "Live links",
+      "quotaTickets": "Requests this month",
+      "ofMax": "{used} of {max}",
+      "unlimited": "{used} · unlimited",
+      "expiresAt": "until {date}",
+      "customFields": "custom fields",
+      "unknownService": "Unknown service",
+      "pause": "Pause",
+      "resume": "Resume",
+      "extend": "Extend by 48 hours",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke this link?",
+      "revokeBody": "Anyone still holding it will no longer be able to open the form. This cannot be undone — you would have to create a new link.",
+      "emptyTitle": "No public links yet",
+      "emptyBody": "Create one to let people outside your team send you requests without an account.",
+      "unavailable": "Not available",
+      "unavailableBody": "You do not have permission to manage public links for this team.",
+      "state": {
+        "active": "Live",
+        "disabled": "Paused",
+        "expired": "Expired",
+        "revoked": "Revoked"
       }
     }
   },

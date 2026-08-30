@@ -176,6 +176,18 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.slaSub',
                   path: '/settings/team/sla',
                 ),
+              // EE-106: the public request links. Same gate shape as the SLA
+              // row above — `portal.manage_links` is a plain role permission,
+              // so an admin who lacks it sees no door rather than a forbidden
+              // one.
+              if (ref.watch(canProvider('portal.manage_links')))
+                _GroupRow(
+                  keyName: 'settings-group-portal',
+                  icon: Icons.add_link,
+                  titleKey: 'settings.group.portal',
+                  subtitleKey: 'settings.group.portalSub',
+                  path: '/settings/team/portal',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain

@@ -37,6 +37,7 @@ import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
+import 'features/ee/ui/portal_links_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
@@ -441,6 +442,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/sla',
         builder: (context, state) => _page(const EeSlaAdminScreen()),
+      ),
+      // EE-106: the public request links — create, pause, extend, revoke,
+      // behind `portal.manage_links`. The URL a link carries is shown once at
+      // creation and never again, because the server keeps only its digest.
+      GoRoute(
+        path: '/settings/team/portal',
+        builder: (context, state) => _page(const EePortalLinksScreen()),
       ),
       // EE-061: what other units shared with this one. Reachable by anyone in
       // a unit — receiving something is not an admin act.
