@@ -28,7 +28,13 @@ const headers = (apiKey, extra = {}) => ({
 
 export default {
   name: 'anthropic',
-  capabilities: () => ({ chat: true, extract: true, transcribe: false, liveModels: false }),
+  capabilities: () => ({
+    chat: true,
+    extract: true,
+    transcribe: false,
+    diarize: false,
+    liveModels: false,
+  }),
 
   async *chatStream({ baseUrl, apiKey, model, system, messages, maxTokens, signal }) {
     const res = await aiFetch(`${baseUrl}/v1/messages`, {

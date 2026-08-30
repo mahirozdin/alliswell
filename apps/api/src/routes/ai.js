@@ -5,6 +5,7 @@ import { encryptSecret } from '../lib/crypto.js';
 import { formatInstantWithOffset } from '../lib/time.js';
 import { parseJsonColumn } from '../db/task-series.js';
 import { MODEL_CATALOG } from '../lib/ai/models.js';
+import { AI_PROVIDERS } from '../lib/ai/vendors.js';
 import { upstreamMessage } from '../lib/ai/http.js';
 import { buildExtractionPrompt, extractTasks } from '../lib/ai/extract.js';
 import {
@@ -17,7 +18,7 @@ import {
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
-export const AI_PROVIDERS = ['anthropic', 'openai', 'gemini', 'openrouter', 'ollama'];
+export { AI_PROVIDERS } from '../lib/ai/vendors.js';
 
 const errorResponseSchema = {
   type: 'object',

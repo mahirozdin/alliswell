@@ -7,6 +7,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **One shape for a diarized transcript, and a way to produce one (EE-112).** Adapters
+  that can turn audio into speaker-labelled segments now answer in a single normalized
+  shape (`lib/ai/transcript.js`) — millisecond integers, an opaque speaker label, a
+  speaker list derived from the segments rather than from a vendor's own count — and
+  `transcribe()` joins the provider contract as its first optional member, offered only
+  where `capabilities().transcribe` says so. Gemini implements it. `capabilities()` also
+  distinguishes `transcribe` from `diarize`, because a model that turns audio into words
+  is not necessarily one that can be held to telling speakers apart, and choosing on that
+  guarantee rather than on a feature list is the point.
+
+- **The usage meter can name vendors it cannot chat with (EE-112).** `ai_usage_events`
+  accepts transcription-only vendors, which `ai_connections` deliberately does not: one
+  is a record of what was spent, the other is a credential for a conversation. Without
+  this the meter would quietly omit them — `recordUsage` swallows its own failures by
+  design, so an unknown vendor produced a warning and a missing row rather than an error.
+  It now says which vendor and why, before writing.
+
 - **Extension-resolved AI connections (EE-110).** The overlay seam gains
   `registerAiConnectionResolver(fn)`: consulted by `resolveConnection` before the caller's
   own stored connections, and only when the caller did not pin one by id — pinning names a

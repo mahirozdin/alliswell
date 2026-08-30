@@ -22,7 +22,13 @@ const withSystem = (system, messages) =>
 
 export default {
   name: 'ollama',
-  capabilities: () => ({ chat: true, extract: true, transcribe: false, liveModels: true }),
+  capabilities: () => ({
+    chat: true,
+    extract: true,
+    transcribe: false,
+    diarize: false,
+    liveModels: true,
+  }),
 
   async *chatStream({ baseUrl, apiKey, model, system, messages, maxTokens, signal }) {
     const res = await aiFetch(`${baseUrl}/api/chat`, {

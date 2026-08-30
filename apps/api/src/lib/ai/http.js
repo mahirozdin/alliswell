@@ -25,6 +25,14 @@ const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
  */
 export const CHAT_HANDSHAKE_TIMEOUT_MS = 30000;
 export const EXTRACT_TIMEOUT_MS = 90000;
+/**
+ * Transcription is `extract`'s problem an order of magnitude larger: a
+ * non-streaming call whose headers arrive only when the generation is done,
+ * and the generation is an hour of speech. Ten minutes is a ceiling on ONE
+ * attempt, not a promise about a file — a pipeline that must survive longer
+ * recordings resumes rather than waits (the job runner's business).
+ */
+export const TRANSCRIBE_TIMEOUT_MS = 600000;
 
 export class AiProviderError extends Error {
   /**

@@ -30,7 +30,13 @@ export function createOpenAiDialectAdapter({
 
   return {
     name,
-    capabilities: () => ({ chat: true, extract: true, transcribe: false, liveModels: false }),
+    capabilities: () => ({
+      chat: true,
+      extract: true,
+      transcribe: false,
+      diarize: false,
+      liveModels: false,
+    }),
 
     async *chatStream({ baseUrl, apiKey, model, system, messages, maxTokens, signal }) {
       const res = await aiFetch(`${baseUrl}${chatPath}`, {

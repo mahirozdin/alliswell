@@ -5,6 +5,7 @@ import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { decryptSecret } from '../lib/crypto.js';
 import { providers } from '../lib/ai/providers/index.js';
+import { AI_USAGE_PROVIDERS } from '../lib/ai/vendors.js';
 import { catalogDefaults } from '../lib/ai/models.js';
 import { createRateLimiter, createDailyCap } from '../lib/ai/ratelimit.js';
 
@@ -191,6 +192,17 @@ export default fp(
       durationMs = null,
       requestId = null,
     }) {
+      // Named before it is written. The insert would fail on an unknown vendor
+      // anyway, but it would fail as `ER_DATA_TRUNCATED` in a swallowed catch,
+      // which is a warning nobody can act on — and the vendor list is exactly
+      // the thing somebody forgets to widen when they add an adapter.
+      if (!AI_USAGE_PROVIDERS.includes(provider)) {
+        app.log.warn(
+          { provider },
+          'ai usage row skipped — vendor is not in AI_USAGE_PROVIDERS (lib/ai/vendors.js)',
+        );
+        return;
+      }
       try {
         await app.db('ai_usage_events').insert({
           id: newId(),
