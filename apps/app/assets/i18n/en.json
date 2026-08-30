@@ -1786,6 +1786,28 @@
         "revoked": "Revoked"
       }
     },
+    "meeting": {
+      "title": "Meeting",
+      "untitled": "Untitled meeting",
+      "unavailable": "Meeting notes are not available here",
+      "unavailableBody": "This instance is not licensed for meeting notes, or this is not your team's address.",
+      "summary": "Summary",
+      "decisions": "Decisions",
+      "ideas": "Ideas",
+      "transcript": "Transcript",
+      "nameSpeaker": "Who is {label}?",
+      "speakerName": "Name",
+      "speakerNameHelp": "Applies to everything this speaker said. Leave empty to remove the name.",
+      "status": {
+        "awaitingUpload": "Waiting for the recording",
+        "queued": "Queued",
+        "transcribing": "Transcribing",
+        "transcribed": "Transcribed — the note is still being written",
+        "summarizing": "Writing the note",
+        "ready": "Ready",
+        "failed": "Failed"
+      }
+    },
     "teamAi": {
       "title": "Team AI keys",
       "unavailable": "No team here",

@@ -1785,6 +1785,28 @@
         "revoked": "İptal edildi"
       }
     },
+    "meeting": {
+      "title": "Toplantı",
+      "untitled": "Adsız toplantı",
+      "unavailable": "Toplantı notları burada yok",
+      "unavailableBody": "Bu kurulumun toplantı notu lisansı yok, ya da burası takımınızın adresi değil.",
+      "summary": "Özet",
+      "decisions": "Kararlar",
+      "ideas": "Fikirler",
+      "transcript": "Deşifre",
+      "nameSpeaker": "{label} kim?",
+      "speakerName": "Ad",
+      "speakerNameHelp": "Bu konuşmacının söylediği her şeye uygulanır. Adı kaldırmak için boş bırakın.",
+      "status": {
+        "awaitingUpload": "Kayıt bekleniyor",
+        "queued": "Sırada",
+        "transcribing": "Deşifre ediliyor",
+        "transcribed": "Deşifre edildi — not henüz yazılıyor",
+        "summarizing": "Not yazılıyor",
+        "ready": "Hazır",
+        "failed": "Başarısız"
+      }
+    },
     "teamAi": {
       "title": "Takım yapay zekâ anahtarları",
       "unavailable": "Burada takım yok",

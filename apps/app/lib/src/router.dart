@@ -38,6 +38,7 @@ import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
+import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
@@ -458,6 +459,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/ai-keys',
         builder: (context, state) => _page(const EeTeamAiKeysScreen()),
+      ),
+      // EE-115: one meeting — what it decided, and who said what. A route
+      // rather than a tab, for the reason EE-069's task history is one: this
+      // is a destination people link to and come back to, not a mode of
+      // another screen.
+      GoRoute(
+        path: '/meetings/:meetingId',
+        builder: (context, state) => _page(
+          EeMeetingScreen(meetingId: state.pathParameters['meetingId']!),
+        ),
       ),
       // EE-061: what other units shared with this one. Reachable by anyone in
       // a unit — receiving something is not an admin act.
