@@ -1375,6 +1375,7 @@
         "assign": "Put a task on someone else, or take one off them"
       },
       "team": {
+        "manage_ai_keys": "Manage the team's AI provider keys and the personal-key policy",
         "manage_deliveries": "Notification deliveries",
         "manage_invites": "Manage invitations",
         "manage_members": "Manage members",

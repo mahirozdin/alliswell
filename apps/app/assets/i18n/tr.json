@@ -1374,6 +1374,7 @@
         "assign": "Görevi başkasına ver ya da üstünden al"
       },
       "team": {
+        "manage_ai_keys": "Takımın yapay zekâ sağlayıcı anahtarlarını ve kişisel anahtar politikasını yönet",
         "manage_deliveries": "Bildirim teslimleri",
         "manage_invites": "Davetleri yönet",
         "manage_members": "Üyeleri yönet",
