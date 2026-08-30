@@ -1487,7 +1487,9 @@
         "portal_links_active": "Active portal links",
         "portal_created_monthly": "Portal items per month",
         "audit_retention_days": "History retention",
-        "transcribe_minutes_monthly": "Transcription minutes per month"
+        "ticket_archive_days": "Request archiving window",
+        "transcribe_minutes_monthly": "Transcription minutes per month",
+        "transcribe_file_minutes_max": "Longest single recording"
       },
       "teamsBar": {
         "count": "{used} of {max} teams",

@@ -1486,7 +1486,9 @@
         "portal_links_active": "Etkin portal bağlantısı",
         "portal_created_monthly": "Aylık portal kaydı",
         "audit_retention_days": "Tarih saklama",
-        "transcribe_minutes_monthly": "Aylık deşifre dakikası"
+        "ticket_archive_days": "Talep arşivleme süresi",
+        "transcribe_minutes_monthly": "Aylık deşifre dakikası",
+        "transcribe_file_minutes_max": "En uzun tek kayıt"
       },
       "teamsBar": {
         "count": "{max} takımın {used} tanesi",
