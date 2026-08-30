@@ -130,12 +130,7 @@ void main() {
         ),
       );
       final theme = buildAwTheme(Brightness.light);
-      final icon = tester.widget<Icon>(
-        find.descendant(
-          of: find.byKey(const Key('portal-link-L1')),
-          matching: find.byType(Icon),
-        ),
-      );
+      final icon = tester.widget<Icon>(find.byKey(const Key('portal-mark-L1')));
       expect(icon.icon, Icons.schedule);
       expect(icon.color, theme.disabledColor);
       // …and the meaning is a word, in body colour.
@@ -154,12 +149,7 @@ void main() {
         ),
       );
       final tokens = buildAwTheme(Brightness.light).extension<AwTokens>()!;
-      final icon = tester.widget<Icon>(
-        find.descendant(
-          of: find.byKey(const Key('portal-link-L1')),
-          matching: find.byType(Icon),
-        ),
-      );
+      final icon = tester.widget<Icon>(find.byKey(const Key('portal-mark-L1')));
       expect(icon.color, tokens.success);
       expect(find.textContaining('Live'), findsOneWidget);
     });

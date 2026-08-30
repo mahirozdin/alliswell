@@ -197,7 +197,9 @@ class _LinkTile extends ConsumerWidget {
 
     return ListTile(
       key: Key('portal-link-${link.id}'),
-      leading: Icon(icon, color: colour),
+      // Keyed: the tile also carries a menu icon, so "the state mark" has
+      // to be findable as itself rather than as "the first Icon in here".
+      leading: Icon(icon, key: Key('portal-mark-${link.id}'), color: colour),
       title: Text(serviceName ?? 'ee.portal.unknownService'.tr()),
       subtitle: Text(
         [
