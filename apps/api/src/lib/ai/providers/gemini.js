@@ -67,6 +67,9 @@ export default {
     extract: true,
     transcribe: true,
     diarize: false,
+    // One synchronous generation, no job id: an attempt that dies has nothing
+    // to come back to, so a caller that retries is starting over.
+    resumable: false,
     liveModels: false,
   }),
 
