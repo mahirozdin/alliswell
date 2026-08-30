@@ -57,6 +57,27 @@ class EeMeetingsApi {
     }
   }
 
+  /// Turns a decision into work (EE-116).
+  ///
+  /// Returns what the server MADE, which is a ticket where the instance is
+  /// licensed for the service desk and a task where it is not. The client does
+  /// not ask for one or the other: an app holding a stale idea of this
+  /// instance's entitlements would ask for the wrong one on exactly the day it
+  /// matters.
+  Future<EeDecisionRecord> createRecord(
+    String meetingId,
+    int decisionIndex,
+  ) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '$_base/$meetingId/decisions/$decisionIndex/record',
+      );
+      return EeDecisionRecord.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
   /// A short-lived link to the recording, minted on demand.
   ///
   /// Never cached in a model: it is a credential with an expiry, and a field

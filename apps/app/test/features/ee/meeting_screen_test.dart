@@ -40,6 +40,7 @@ EeMeetingDetail _detail({
   Map<String, String> names = const {},
   bool withTranscript = true,
   String? failureMessage,
+  EeDecisionRecord? record,
 }) => EeMeetingDetail(
   summary: EeMeetingSummary(
     id: 'M1',
@@ -55,10 +56,11 @@ EeMeetingDetail _detail({
     noteId: 'N1',
     failureMessage: failureMessage,
   ),
-  decisions: const [
+  decisions: [
     EeMeetingDecision(
       text: 'Bakım vardiyası bir saat öne alınacak',
       owner: 'B',
+      record: record,
     ),
   ],
   ideas: const ['Titreşim sensörü denemesi'],
@@ -221,6 +223,61 @@ void main() {
     expect(find.byKey(const Key('meeting-segment-0')), findsNothing);
     expect(find.byKey(const Key('meeting-speaker-A')), findsNothing);
   });
+
+  testWidgets('a decision with no record yet offers the button', (
+    tester,
+  ) async {
+    await _pump(tester, _detail());
+    expect(find.byKey(const Key('meeting-decision-create-0')), findsOneWidget);
+    expect(find.byKey(const Key('meeting-decision-record-0')), findsNothing);
+  });
+
+  testWidgets(
+    'a decision that became a request says so instead of offering again',
+    (tester) async {
+      await _pump(
+        tester,
+        _detail(
+          record: const EeDecisionRecord(entityType: 'ticket', entityId: 'T1'),
+        ),
+      );
+      // A second press would be answered with the same record, and offering that
+      // is offering a no-op dressed as an action.
+      expect(find.byKey(const Key('meeting-decision-create-0')), findsNothing);
+      // The key is ON the Text, so read the widget rather than looking for
+      // a descendant of it — and reading it beats an unscoped
+      // `find.text`, which would pass on a label that happened to
+      // appear somewhere else on the screen.
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('meeting-decision-record-0')))
+            .data,
+        'Request opened',
+      );
+    },
+  );
+
+  testWidgets(
+    'and a decision that became a task says THAT — the fall is visible',
+    (tester) async {
+      await _pump(
+        tester,
+        _detail(
+          record: const EeDecisionRecord(entityType: 'task', entityId: 'K1'),
+        ),
+      );
+      // The key is ON the Text, so read the widget rather than looking for
+      // a descendant of it — and reading it beats an unscoped
+      // `find.text`, which would pass on a label that happened to
+      // appear somewhere else on the screen.
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('meeting-decision-record-0')))
+            .data,
+        'Task created',
+      );
+    },
+  );
 
   testWidgets('no licence, no screen: the door says why', (tester) async {
     await _pump(tester, null);

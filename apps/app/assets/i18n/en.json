@@ -1806,7 +1806,12 @@
         "summarizing": "Writing the note",
         "ready": "Ready",
         "failed": "Failed"
-      }
+      },
+      "createRecord": "Create a record",
+      "isTicket": "Request opened",
+      "isTask": "Task created",
+      "ticketCreated": "A request was opened for this decision.",
+      "taskCreated": "A task was created for this decision."
     },
     "teamAi": {
       "title": "Team AI keys",

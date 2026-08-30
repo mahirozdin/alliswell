@@ -95,16 +95,11 @@ class _Body extends StatelessWidget {
         if (detail.decisions.isNotEmpty) ...[
           _SectionTitle('ee.meeting.decisions'.tr()),
           for (final (index, decision) in detail.decisions.indexed)
-            ListTile(
-              key: Key('meeting-decision-$index'),
-              leading: const Icon(Icons.check_circle_outline),
-              title: Text(decision.text),
-              subtitle: decision.owner == null
-                  ? null
-                  // The owner is a speaker LABEL, so it goes through the same
-                  // lookup the transcript does — naming a speaker renames them
-                  // here too, which is the whole point of one map.
-                  : Text(detail.displayName(decision.owner!)),
+            _DecisionRow(
+              meetingId: meetingId,
+              index: index,
+              decision: decision,
+              detail: detail,
             ),
         ],
         if (detail.ideas.isNotEmpty) ...[
@@ -132,6 +127,103 @@ class _Body extends StatelessWidget {
         ],
       ],
     );
+  }
+}
+
+/// A decision, and the one button that turns it into work (EE-116).
+///
+/// The button never disappears. What it CREATES changes with the licence — a
+/// service-desk request where the instance has one, a task where it does not —
+/// and the server decides that, not this screen: an app holding a stale idea of
+/// this instance's entitlements would offer the wrong thing on exactly the day
+/// it matters. So the label says "create a record" until there IS one, and then
+/// says which kind it turned out to be.
+class _DecisionRow extends ConsumerStatefulWidget {
+  const _DecisionRow({
+    required this.meetingId,
+    required this.index,
+    required this.decision,
+    required this.detail,
+  });
+  final String meetingId;
+  final int index;
+  final EeMeetingDecision decision;
+  final EeMeetingDetail detail;
+
+  @override
+  ConsumerState<_DecisionRow> createState() => _DecisionRowState();
+}
+
+class _DecisionRowState extends ConsumerState<_DecisionRow> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final decision = widget.decision;
+    final record = decision.record;
+
+    return ListTile(
+      key: Key('meeting-decision-${widget.index}'),
+      leading: const Icon(Icons.check_circle_outline),
+      title: Text(decision.text),
+      subtitle: decision.owner == null
+          ? null
+          // The owner is a speaker LABEL, so it goes through the same lookup
+          // the transcript does — naming a speaker renames them here too,
+          // which is the whole point of one map.
+          : Text(widget.detail.displayName(decision.owner!)),
+      trailing: record != null
+          // Already work. A word, not another button: pressing it again would
+          // be answered with the same record, and offering that is offering a
+          // no-op dressed as an action.
+          ? Text(
+              key: Key('meeting-decision-record-${widget.index}'),
+              record.isTicket
+                  ? 'ee.meeting.isTicket'.tr()
+                  : 'ee.meeting.isTask'.tr(),
+              style: Theme.of(context).textTheme.labelSmall,
+            )
+          : IconButton(
+              key: Key('meeting-decision-create-${widget.index}'),
+              tooltip: 'ee.meeting.createRecord'.tr(),
+              icon: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_task),
+              onPressed: _busy ? null : _create,
+            ),
+    );
+  }
+
+  Future<void> _create() async {
+    setState(() => _busy = true);
+    try {
+      final record = await createDecisionRecord(
+        ref,
+        widget.meetingId,
+        widget.index,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            record.isTicket
+                ? 'ee.meeting.ticketCreated'.tr()
+                : 'ee.meeting.taskCreated'.tr(),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(localizedError(error))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
 

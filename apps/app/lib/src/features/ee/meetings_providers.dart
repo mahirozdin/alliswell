@@ -35,6 +35,19 @@ final eeMeetingProvider = FutureProvider.family<EeMeetingDetail?, String>((
 /// optimistic value is the idiom EE-099 settled — and it earns its keep here,
 /// because the server trims and refuses names, so what comes back is what is
 /// true rather than what was hoped for.
+/// Turns a decision into work, then re-reads so the row shows what it became.
+Future<EeDecisionRecord> createDecisionRecord(
+  WidgetRef ref,
+  String meetingId,
+  int decisionIndex,
+) async {
+  final record = await ref
+      .read(eeMeetingsApiProvider)
+      .createRecord(meetingId, decisionIndex);
+  ref.invalidate(eeMeetingProvider(meetingId));
+  return record;
+}
+
 Future<void> nameMeetingSpeakers(
   WidgetRef ref,
   String meetingId,

@@ -1805,7 +1805,12 @@
         "summarizing": "Not yazılıyor",
         "ready": "Hazır",
         "failed": "Başarısız"
-      }
+      },
+      "createRecord": "Kayıt oluştur",
+      "isTicket": "Talep açıldı",
+      "isTask": "Görev oluşturuldu",
+      "ticketCreated": "Bu karar için bir talep açıldı.",
+      "taskCreated": "Bu karar için bir görev oluşturuldu."
     },
     "teamAi": {
       "title": "Takım yapay zekâ anahtarları",

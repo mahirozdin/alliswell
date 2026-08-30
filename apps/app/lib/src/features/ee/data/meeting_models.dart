@@ -139,18 +139,42 @@ class EeTranscript {
 }
 
 class EeMeetingDecision {
-  const EeMeetingDecision({required this.text, this.owner});
+  const EeMeetingDecision({required this.text, this.owner, this.record});
 
   factory EeMeetingDecision.fromJson(Map<String, dynamic> json) =>
       EeMeetingDecision(
         text: json['text'] as String,
         owner: json['owner'] as String?,
+        record: json['record'] == null
+            ? null
+            : EeDecisionRecord.fromJson(json['record'] as Map<String, dynamic>),
       );
 
   final String text;
 
   /// The transcript's own word for who owes it — a speaker LABEL, not a user.
   final String? owner;
+
+  /// What this decision became, once somebody turned it into work (EE-116).
+  /// Null means "not yet", never "not allowed".
+  final EeDecisionRecord? record;
+}
+
+/// A request or a task — never both, and which one is the SERVER's answer from
+/// the licence rather than the client's from a cached idea of it.
+class EeDecisionRecord {
+  const EeDecisionRecord({required this.entityType, required this.entityId});
+
+  factory EeDecisionRecord.fromJson(Map<String, dynamic> json) =>
+      EeDecisionRecord(
+        entityType: json['entityType'] as String,
+        entityId: json['entityId'] as String,
+      );
+
+  final String entityType;
+  final String entityId;
+
+  bool get isTicket => entityType == 'ticket';
 }
 
 class EeMeetingDetail {
