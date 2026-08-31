@@ -1,5 +1,13 @@
 # ADR-0019 — AI provider architecture: two tracks, BYOK-first, adapters not SDKs
 
+> **One dated fact below has since changed.** The context paragraph calls the app
+> "self-hostable (AGPL)" because that was true when this was written in July 2026.
+> AllisWell moved to **PolyForm Noncommercial 1.0.0** at v1.0.0
+> ([ADR-0024](0024-license-polyform-noncommercial.md)); releases up to and
+> including v0.9.0 remain AGPL-3.0 for anyone who received them. Self-hostable is
+> still true, and nothing in the decision depended on which licence it was. The
+> record below is kept as written; it is history, not current policy.
+
 - **Status:** Accepted
 - **Date:** 2026-07-29 (planning, request round 11 — researched by a dedicated
   max-effort pass; evidence links in [AI.md](../AI.md) §1)
