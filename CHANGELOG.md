@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-09-01
+
 ### Added
 
 - **The identity settings screen leads with whether it is working (OPH-289).** It used
