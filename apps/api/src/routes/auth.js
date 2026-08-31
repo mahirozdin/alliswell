@@ -6,6 +6,12 @@ import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.j
 import { newRefreshToken, hashRefreshToken } from '../lib/tokens.js';
 import { uniqueSlug } from '../lib/slug.js';
 import {
+  familyOfToken,
+  listUserSessions,
+  revokeOtherSessions,
+  revokeSession,
+} from '../db/sessions.js';
+import {
   confirmTotpEnrolment,
   disableTotp,
   regenerateRecoveryCodes,
@@ -190,7 +196,27 @@ function mfaError(app, code, message) {
  * Inserts a refresh-token row (via `db` or an open trx) and returns the raw token.
  * Every login/register starts a new rotation family; refresh (OPH-022) keeps the family.
  */
-async function createRefreshRecord(executor, auth, { userId, familyId, ip }) {
+/**
+ * What to write in `device_name` (OPH-284).
+ *
+ * The column has existed since the first migration and NOTHING had ever
+ * written to it — measured, not assumed. A session list whose every row says
+ * "unknown device" answers no question, so sign-in now records the
+ * User-Agent, truncated to the column.
+ *
+ * Stored RAW rather than parsed into "Chrome on macOS". Parsing a User-Agent
+ * is guessing, the guesses rot as browsers change their strings, and a wrong
+ * guess in this list is worse than a long one: the whole point is that
+ * somebody recognises their own device, and a client can shorten a string it
+ * can see. It cannot recover one we threw away.
+ */
+function deviceLabel(request) {
+  const ua = request?.headers?.['user-agent'];
+  if (typeof ua !== 'string' || ua.trim() === '') return null;
+  return ua.trim().slice(0, 255);
+}
+
+async function createRefreshRecord(executor, auth, { userId, familyId, ip, deviceName = null }) {
   const token = newRefreshToken();
   const expiresAt = new Date(Date.now() + auth.refreshTtlDays * 24 * 60 * 60 * 1000);
   await executor('refresh_tokens').insert({
@@ -200,6 +226,7 @@ async function createRefreshRecord(executor, auth, { userId, familyId, ip }) {
     token_hash: hashRefreshToken(token, auth.refreshSecret),
     expires_at: expiresAt,
     created_ip: ip ?? null,
+    device_name: deviceName,
   });
   return { token, expiresAt };
 }
@@ -302,6 +329,7 @@ export default async function authRoutes(app) {
             userId,
             familyId: newId(),
             ip: request.ip,
+            deviceName: deviceLabel(request),
           });
         });
       } catch (err) {
@@ -404,6 +432,7 @@ export default async function authRoutes(app) {
           userId: user.id,
           familyId: newId(),
           ip: request.ip,
+          deviceName: deviceLabel(request),
         });
       });
     } else if (linkable) {
@@ -422,6 +451,7 @@ export default async function authRoutes(app) {
           userId: user.id,
           familyId: newId(),
           ip: request.ip,
+          deviceName: deviceLabel(request),
         });
       });
     } else {
@@ -474,6 +504,7 @@ export default async function authRoutes(app) {
             userId,
             familyId: newId(),
             ip: request.ip,
+            deviceName: deviceLabel(request),
           });
         });
       } catch (err) {
@@ -575,6 +606,7 @@ export default async function authRoutes(app) {
       userId: user.id,
       familyId: newId(),
       ip: request.ip,
+      deviceName: deviceLabel(request),
     });
 
     return {
@@ -618,6 +650,12 @@ export default async function authRoutes(app) {
         userId: user.id,
         familyId: row.family_id,
         ip: request.ip,
+        // The family KEEPS the device it was born on. A rotation is the same
+        // session on the same machine, so re-reading the User-Agent buys
+        // nothing — and costs the name outright when a client sends none on
+        // its refresh calls, which is common and is how this line was found.
+        // The fallback covers families that predate this column being written.
+        deviceName: row.device_name ?? deviceLabel(request),
       });
     });
     if (claimed === 0) {
@@ -918,6 +956,116 @@ export default async function authRoutes(app) {
           .update({ revoked_at: now });
       });
       return reply.code(204).send();
+    },
+  );
+
+  // ── OPH-284: where am I signed in, and closing one of them ──────────────
+  //
+  // A session here is a refresh FAMILY, not a token row — `db/sessions.js`
+  // says why at length. The short version: rows are rotations, and a list of
+  // rotations tells somebody they are signed in ninety-six times.
+  const sessionSchema = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      id: { type: 'string' },
+      deviceName: { type: ['string', 'null'] },
+      createdIp: { type: ['string', 'null'] },
+      lastIp: { type: ['string', 'null'] },
+      createdAt: { type: 'string' },
+      lastSeenAt: { type: 'string' },
+      expiresAt: { type: 'string' },
+      revokedAt: { type: ['string', 'null'] },
+      current: { type: 'boolean' },
+    },
+  };
+
+  app.get(
+    '/sessions',
+    {
+      ...selfAuth,
+      schema: {
+        // The caller may name their own session so the list can mark it. An
+        // access token carries no family claim, and adding one to spare this
+        // parameter would widen what a stolen access token reveals.
+        querystring: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { refreshToken: { type: 'string', minLength: 20, maxLength: 512 } },
+        },
+        response: { 200: { type: 'array', items: sessionSchema } },
+      },
+    },
+    async (request) => {
+      const currentFamilyId = request.query.refreshToken
+        ? await familyOfToken(
+            app.db,
+            hashRefreshToken(request.query.refreshToken, auth.refreshSecret),
+          )
+        : null;
+      return listUserSessions(app.db, request.user.id, { currentFamilyId });
+    },
+  );
+
+  app.delete(
+    '/sessions/:id',
+    {
+      ...selfAuth,
+      schema: {
+        params: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['id'],
+          properties: { id: { type: 'string', minLength: 26, maxLength: 26 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      // Scoped by user as well as family: a family id is something the owner's
+      // own screen shows them, and it must never end anybody else's session.
+      const revoked = await revokeSession(app.db, {
+        userId: request.user.id,
+        familyId: request.params.id,
+      });
+      if (revoked === 0) throw app.httpErrors.notFound('Not found');
+      return reply.code(204).send();
+    },
+  );
+
+  app.post(
+    '/sessions/revoke-others',
+    {
+      ...selfAuth,
+      config: authRateLimit,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          // Optional, and its absence is meaningful: no token named means keep
+          // nothing, which is "sign me out everywhere including here".
+          properties: { refreshToken: { type: 'string', minLength: 20, maxLength: 512 } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            additionalProperties: false,
+            properties: { revoked: { type: 'integer' } },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const keepFamilyId = request.body?.refreshToken
+        ? await familyOfToken(
+            app.db,
+            hashRefreshToken(request.body.refreshToken, auth.refreshSecret),
+          )
+        : null;
+      const revoked = await revokeOtherSessions(app.db, {
+        userId: request.user.id,
+        keepFamilyId,
+      });
+      return { revoked };
     },
   );
 }

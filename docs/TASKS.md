@@ -9112,6 +9112,35 @@ kimliğini yalnız bir parolayla soruyordu ve o parolayı **değiştirmenin hiç
   Migration `down()` iki yönde de koşuldu.
 
 
+### OPH-284 — "Nerede oturum açığım?" ve birini kapatmak (tur 19d, v1.8.3)
+
+_Bir oturum listesi, var olmakla iki iddia ediyor: listenin insanın "oturum" dediği şey
+olduğu, ve birini kapatmanın onu gerçekten bitirdiği. İkisi de aynı yönde yanlış yapılmaya
+müsait._
+
+- [x] **Bir oturum bir SATIR değil, bir AİLEDİR.** `refresh_tokens` her yenilemede bir satır
+  daha yazıyor (eskisi `rotated_at`, yenisi aynı `family_id`), yani on beş dakikada bir
+  yenileyen bir telefon günde ~100 satır üretiyor. Satırları listeleyen bir ekran, insana
+  **doksan altı cihazda açık** olduğunu söylerdi. Birim aile.
+- [x] **Kapatmak da aile başına.** Tek satırı iptal etmek, ailenin yeni satırlarını canlı
+  bırakırdı — istemci bir kez yenilediğinde "o oturumu kapattım" yanlış olurdu.
+- [x] **`device_name` ÖLÜ BİR KOLONDU** — ilk migration'dan beri var ve **hiçbir şey
+  yazmıyordu** (ölçüldü). Her satırı "bilinmeyen cihaz" diyen bir liste hiçbir soruyu
+  cevaplamaz; artık giriş User-Agent'ı yazıyor. **Ayrıştırılmadan**, ham: User-Agent
+  ayrıştırmak tahmindir, tahminler tarayıcılar değiştikçe çürür, ve burada yanlış bir tahmin
+  uzun bir dizeden kötüdür — istemci gördüğü bir dizeyi kısaltabilir, attığımızı geri
+  getiremez.
+- [x] **Yenileme cihaz adını KORUYOR.** İlk hâli her yenilemede User-Agent'ı yeniden
+  okuyordu; yenileme çağrılarında UA göndermeyen bir istemci (yaygın) adı kaybediyordu —
+  ve bunu bulan şey testti. Aile doğduğu cihazı taşıyor.
+- [x] **Uçlar:** `GET /auth/sessions` (isteğe bağlı `refreshToken` ile kendi oturumunu
+  işaretletebiliyorsun — access token'da aile iddiası YOK ve bu parametreyi kurtarmak için
+  eklemek, çalınmış bir access token'ın açığa çıkardığını genişletirdi),
+  `DELETE /auth/sessions/:id`, `POST /auth/sessions/revoke-others`.
+- [x] **Kapatma kullanıcı VE aile ile kapsanıyor:** bir aile kimliği sahibinin kendi ekranında
+  gördüğü bir şey; onu bilmek başkasının oturumunu bitirmeye yetmemeli (testli, 404).
+- **Doğrulama:** entegrasyon **97 → 104**. Migration YOK — kolonların hepsi zaten vardı.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

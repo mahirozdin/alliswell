@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **You can see where you are signed in, and close any of it (OPH-284).** A list of your
+  sessions with the device each one signed in from, where it started, where it was last
+  used, and when — plus a button to end one, and one to end all the others at once. Ending
+  a session is immediate: the app on that device stops working at its next refresh rather
+  than at the end of the month.
+  One session means one sign-in, however long it has been going. Behind the scenes the
+  app renews its credentials constantly; those renewals are the same session, not ninety
+  new ones, and the list says so.
+
 - **Two-factor authentication, and a way to change your password (OPH-283).** You can turn
   on an authenticator app from your account settings: scan the code, type the six digits
   once to prove it works, and keep the ten recovery codes it hands back — they are shown
