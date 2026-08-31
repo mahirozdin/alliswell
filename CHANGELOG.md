@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The identity settings screen leads with whether it is working (OPH-289).** It used
+  to show only what was configured and what had most recently failed, which left the
+  most common question unanswered: an empty failure list looks identical whether
+  everything is fine or nothing has run in weeks. The screen now opens with the counts
+  that answer it, and lists recent refusals underneath with the address and the reason
+  each was refused.
+
 - **Starting a session is no longer private to one route file (OPH-288).** The three
   functions that mint one — the refresh record, the token bundle, the device label —
   lived inside `routes/auth.js` and are about SESSIONS rather than about routing.

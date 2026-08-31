@@ -29,6 +29,43 @@ class _Fixed extends EeIdentityController {
   Future<List<EeIdentityProvider>?> build() async => _value;
 }
 
+class _FixedStatus extends EeIdentityStatusController {
+  _FixedStatus(this._value);
+  final EeIdentityStatus? _value;
+  @override
+  Future<EeIdentityStatus?> build() async => _value;
+}
+
+EeIdentityStatus _status({
+  List<EeIdentityEvent> events = const [],
+  List<EeScimClient> clients = const [],
+  int linked = 3,
+  int total = 4,
+}) => EeIdentityStatus(
+  providers: const [],
+  scimClients: clients,
+  events: events,
+  totalMembers: total,
+  inactiveMembers: 0,
+  linkedMembers: linked,
+);
+
+EeIdentityEvent _event({
+  String id = 'E1',
+  String outcome = 'refused',
+  String code = 'NO_MEMBER_ACCOUNT',
+  String? subject = 'ada@corp.example',
+  String? detail = 'no account here, and this provider may not create one',
+}) => EeIdentityEvent(
+  id: id,
+  kind: 'sign_in',
+  outcome: outcome,
+  code: code,
+  subject: subject,
+  detail: detail,
+  at: DateTime(2026, 9, 1, 9, 15),
+);
+
 EeIdentityProvider _provider({
   String id = 'P1',
   String type = 'ldap',
@@ -59,11 +96,13 @@ Future<void> _pump(
   WidgetTester tester,
   List<EeIdentityProvider>? value, {
   Brightness brightness = Brightness.light,
+  EeIdentityStatus? status,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         eeIdentityProvidersProvider.overrideWith(() => _Fixed(value)),
+        eeIdentityStatusProvider.overrideWith(() => _FixedStatus(status)),
       ],
       child: MaterialApp(
         theme: buildAwTheme(brightness),
@@ -185,6 +224,64 @@ void main() {
       await _pump(tester, null);
       expect(find.textContaining('No team here'), findsOneWidget);
       expect(find.byKey(const Key('identity-add')), findsNothing);
+    });
+  });
+
+  group('the status section (OPH-289)', () {
+    testWidgets('SAYS WHETHER ANYTHING IS HAPPENING, not only whether it broke', (
+      tester,
+    ) async {
+      // The failure this section is named after is a sync that stops
+      // silently, and an empty error list looks exactly like a healthy one.
+      await _pump(
+        tester,
+        [_provider()],
+        status: _status(
+          linked: 0,
+          total: 40,
+          clients: const [EeScimClient(id: 'C1', name: 'Entra', enabled: true)],
+        ),
+      );
+      // Zero of forty is a configuration that has never once worked, and it
+      // is legible without a single error row.
+      expect(find.textContaining('0'), findsWidgets);
+      expect(find.textContaining('never provisioned'), findsOneWidget);
+      expect(find.byKey(const Key('identity-no-problems')), findsOneWidget);
+    });
+
+    testWidgets('A REFUSAL NAMES THE PERSON AND THE REASON', (tester) async {
+      // "Sign-in refused" answers nothing at nine in the morning.
+      await _pump(tester, [_provider()], status: _status(events: [_event()]));
+      expect(find.textContaining('ada@corp.example'), findsOneWidget);
+      expect(find.textContaining('may not create one'), findsOneWidget);
+    });
+
+    testWidgets('shows the address AS IT ARRIVED, not a tidied one', (tester) async {
+      // EE-123's import-report rule: a report that shows the cleaned value
+      // cannot explain what was wrong with the value.
+      await _pump(
+        tester,
+        [_provider()],
+        status: _status(events: [_event(subject: '  Ada@CORP.example ')]),
+      );
+      expect(find.textContaining('Ada@CORP.example'), findsOneWidget);
+    });
+
+    testWidgets('successful events are not shown as problems', (tester) async {
+      await _pump(
+        tester,
+        [_provider()],
+        status: _status(events: [_event(id: 'E9', outcome: 'ok', code: 'CONNECTED')]),
+      );
+      expect(find.byKey(const Key('identity-no-problems')), findsOneWidget);
+      expect(find.byKey(const Key('identity-event-E9')), findsNothing);
+    });
+
+    testWidgets('and the section is absent entirely when there is no team', (
+      tester,
+    ) async {
+      await _pump(tester, [_provider()], status: null);
+      expect(find.byKey(const Key('identity-linked-count')), findsNothing);
     });
   });
 }

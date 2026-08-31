@@ -114,3 +114,124 @@ class EeIdentityTestResult {
   final String? reason;
   final String? error;
 }
+
+/// What a provisioning client has been doing (OPH-289).
+///
+/// No token and no way to ask for one: the server keeps a digest. What a
+/// screen may know is the name, whether it is on, four characters, and — the
+/// number this whole surface exists for — WHEN IT LAST DID ANYTHING. A client
+/// that stopped calling is the failure nobody notices, and it looks exactly
+/// like a quiet week unless somebody can see the date.
+class EeScimClient {
+  const EeScimClient({
+    required this.id,
+    required this.name,
+    required this.enabled,
+    this.tokenLast4,
+    this.lastUsedAt,
+  });
+
+  factory EeScimClient.fromJson(Map<String, dynamic> json) => EeScimClient(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    enabled: json['enabled'] as bool? ?? false,
+    tokenLast4: json['tokenLast4'] as String?,
+    lastUsedAt: json['lastUsedAt'] == null
+        ? null
+        : DateTime.parse(json['lastUsedAt'] as String).toLocal(),
+  );
+
+  final String id;
+  final String name;
+  final bool enabled;
+  final String? tokenLast4;
+  final DateTime? lastUsedAt;
+}
+
+/// One thing that did not work, and why (OPH-289).
+///
+/// `subject` is whatever the provider or the client actually sent — an
+/// address, a userName, a distinguished name — kept as it arrived, because a
+/// report that shows the cleaned value cannot explain what was wrong with the
+/// value. That is EE-123's rule about its import report, and it is the same
+/// rule here.
+class EeIdentityEvent {
+  const EeIdentityEvent({
+    required this.id,
+    required this.kind,
+    required this.outcome,
+    required this.code,
+    required this.at,
+    this.detail,
+    this.subject,
+  });
+
+  factory EeIdentityEvent.fromJson(Map<String, dynamic> json) =>
+      EeIdentityEvent(
+        id: json['id'] as String,
+        kind: json['kind'] as String,
+        outcome: json['outcome'] as String,
+        code: json['code'] as String,
+        detail: json['detail'] as String?,
+        subject: json['subject'] as String?,
+        at: DateTime.parse(json['at'] as String).toLocal(),
+      );
+
+  final String id;
+
+  /// `sign_in`, `provision`, `deprovision`, `group_sync`, `connection`.
+  final String kind;
+
+  /// `refused` (we said no), `failed` (something broke), `ok`.
+  final String outcome;
+  final String code;
+  final String? detail;
+  final String? subject;
+  final DateTime at;
+}
+
+/// The whole picture: what is configured, what is calling, and what is failing.
+class EeIdentityStatus {
+  const EeIdentityStatus({
+    required this.providers,
+    required this.scimClients,
+    required this.events,
+    required this.totalMembers,
+    required this.inactiveMembers,
+    required this.linkedMembers,
+  });
+
+  factory EeIdentityStatus.fromJson(Map<String, dynamic> json) {
+    final members = Map<String, dynamic>.from(
+      json['members'] as Map? ?? const <String, dynamic>{},
+    );
+    return EeIdentityStatus(
+      providers: (json['providers'] as List? ?? const [])
+          .map((e) => EeIdentityProvider.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false),
+      scimClients: (json['scimClients'] as List? ?? const [])
+          .map((e) => EeScimClient.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false),
+      events: (json['events'] as List? ?? const [])
+          .map((e) => EeIdentityEvent.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false),
+      totalMembers: members['total'] as int? ?? 0,
+      inactiveMembers: members['inactive'] as int? ?? 0,
+      linkedMembers: members['linked'] as int? ?? 0,
+    );
+  }
+
+  final List<EeIdentityProvider> providers;
+  final List<EeScimClient> scimClients;
+  final List<EeIdentityEvent> events;
+  final int totalMembers;
+  final int inactiveMembers;
+
+  /// How many members a directory or provider actually vouches for. The number
+  /// that says whether the integration is doing anything at all — zero linked
+  /// members with a provider switched on is a working configuration that has
+  /// never worked.
+  final int linkedMembers;
+
+  bool get quiet => events.isEmpty;
+}

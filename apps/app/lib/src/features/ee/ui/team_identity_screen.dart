@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_format.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
@@ -72,7 +74,10 @@ class EeTeamIdentityScreen extends ConsumerWidget {
           }
           return ListView(
             padding: const EdgeInsets.only(bottom: 88),
-            children: [for (final item in items) _ProviderTile(provider: item)],
+            children: [
+              const _StatusCard(),
+              for (final item in items) _ProviderTile(provider: item),
+            ],
           );
         },
       ),
@@ -492,5 +497,126 @@ class _EditorState extends ConsumerState<_Editor> {
         context,
       ).showSnackBar(SnackBar(content: Text(localizedError(error))));
     }
+  }
+}
+
+/// What the sign-in and provisioning paths have actually been doing (OPH-289).
+///
+/// ── A SCREEN THAT SHOWS ONLY ERRORS CANNOT SAY "NOTHING IS WRONG" ────────
+///
+/// The failure this section is named after is a sync that stops silently, and
+/// an empty error list looks exactly like a healthy one. So the first thing
+/// here is not a problem list — it is two facts that say whether anything is
+/// happening at all: how many members a provider actually vouches for, and
+/// when each provisioning client last called. Zero linked members under a
+/// switched-on provider is a configuration that has never once worked, and
+/// nothing else on this screen would tell you.
+///
+/// ── AND A REFUSAL SHOWS WHO IT WAS ABOUT ─────────────────────────────────
+///
+/// "Sign-in refused" answers nothing at nine in the morning. The row carries
+/// the address exactly as it arrived, and the sentence — EE-123's
+/// import-report rule, which is the same rule.
+class _StatusCard extends ConsumerWidget {
+  const _StatusCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final value = ref.watch(eeIdentityStatusProvider).value;
+    if (value == null) return const SizedBox.shrink();
+    final tokens = context.awTokens;
+    final dateFormat = ref.watch(dateFormatProvider);
+    final problems = value.events
+        .where((e) => e.outcome != 'ok')
+        .take(5)
+        .toList(growable: false);
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ee.identity.statusTitle'.tr(),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              key: const Key('identity-linked-count'),
+              'ee.identity.linkedCount'.tr(
+                args: {
+                  'linked': '${value.linkedMembers}',
+                  'total': '${value.totalMembers}',
+                },
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            for (final client in value.scimClients)
+              Padding(
+                key: Key('identity-client-${client.id}'),
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  client.lastUsedAt == null
+                      ? 'ee.identity.clientNeverUsed'.tr(
+                          args: {'name': client.name},
+                        )
+                      : 'ee.identity.clientLastUsed'.tr(
+                          args: {
+                            'name': client.name,
+                            'when': awFormatDateTime(
+                              client.lastUsedAt!,
+                              format: dateFormat,
+                            ),
+                          },
+                        ),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            const SizedBox(height: 8),
+            if (problems.isEmpty)
+              Text(
+                key: const Key('identity-no-problems'),
+                'ee.identity.noProblems'.tr(),
+                style: Theme.of(context).textTheme.bodySmall,
+              )
+            else
+              for (final event in problems)
+                Padding(
+                  key: Key('identity-event-${event.id}'),
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 16,
+                        color: tokens.warning,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // The person it was about, exactly as it arrived.
+                            Text(
+                              event.subject ?? event.code,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            Text(
+                              event.detail ?? event.code,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
   }
 }

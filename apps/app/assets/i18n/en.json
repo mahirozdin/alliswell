@@ -1909,7 +1909,12 @@
         "ldap": "Directory (LDAP / Active Directory)",
         "saml": "Single sign-on (SAML)",
         "oidc": "Single sign-on (OpenID Connect)"
-      }
+      },
+      "statusTitle": "How it is going",
+      "linkedCount": "{linked} of {total} members sign in through an identity source",
+      "clientLastUsed": "{name} last provisioned somebody on {when}",
+      "clientNeverUsed": "{name} has never provisioned anybody",
+      "noProblems": "Nothing has been refused recently."
     }
   },
   "perm": {

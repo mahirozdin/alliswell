@@ -99,3 +99,23 @@ class EeIdentityController extends AsyncNotifier<List<EeIdentityProvider>?> {
     });
   }
 }
+
+/// The status view (OPH-289).
+///
+/// A second provider rather than a field on the first, because the two answer
+/// different questions and are wanted at different moments: the list is what
+/// an administrator edits, the status is what they open when somebody says
+/// "why is Ada not in?". Folding them together would make every edit re-read a
+/// refusal log nobody asked for.
+final eeIdentityStatusProvider =
+    AsyncNotifierProvider<EeIdentityStatusController, EeIdentityStatus?>(
+      EeIdentityStatusController.new,
+    );
+
+class EeIdentityStatusController extends AsyncNotifier<EeIdentityStatus?> {
+  @override
+  Future<EeIdentityStatus?> build() async {
+    if (!ref.watch(eeFeatureProvider('directory'))) return null;
+    return ref.watch(eeIdentityApiProvider).status();
+  }
+}

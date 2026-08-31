@@ -1908,7 +1908,12 @@
         "ldap": "Dizin (LDAP / Active Directory)",
         "saml": "Çoklu oturum açma (SAML)",
         "oidc": "Çoklu oturum açma (OpenID Connect)"
-      }
+      },
+      "statusTitle": "Durum",
+      "linkedCount": "{total} üyenin {linked} tanesi bir kimlik kaynağı üzerinden giriyor",
+      "clientLastUsed": "{name} en son {when} tarihinde birini açtı",
+      "clientNeverUsed": "{name} henüz kimseyi açmadı",
+      "noProblems": "Son zamanlarda reddedilen bir şey yok."
     }
   },
   "perm": {

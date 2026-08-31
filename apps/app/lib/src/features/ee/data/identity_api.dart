@@ -19,6 +19,20 @@ class EeIdentityApi {
 
   static const _base = '/api/v1/ee/team/identity/providers';
 
+  /// Everything the sign-in and provisioning paths write, read back at once.
+  Future<EeIdentityStatus?> status() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/team/identity/status',
+      );
+      return EeIdentityStatus.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 403 || code == 404) return null;
+      throw asApiException(e);
+    }
+  }
+
   Future<List<EeIdentityProvider>?> list() async {
     try {
       final res = await _dio.get<List<dynamic>>(_base);
