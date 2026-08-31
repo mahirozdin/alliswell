@@ -46,6 +46,9 @@ export async function loadEeOverlay(app) {
     corsOriginChecks: [],
     accountPurgeFilters: [],
     statusDecorators: [],
+    signInRequirements: [],
+    passwordRequirements: [],
+    signInFailureObservers: [],
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -289,6 +292,73 @@ function buildSeam(state) {
         throw new Error('registerEntityWriteObserver: a function is required');
       }
       state.entityWriteObservers.push(observer);
+    },
+
+    /**
+     * Sign-in requirements: `async (ctx) => null | { code, message }`.
+     *
+     * Consulted by `/auth/login` AFTER the password and any second factor have
+     * been checked, and only then — whether the credentials are right is
+     * core's question and does not move. `ctx` is
+     * `{ db, user, request, factors: { totpEnrolled, totpVerified } }`, and a
+     * check that returns null has no opinion about this sign-in, which is how
+     * an install with no extension behaves exactly as before.
+     *
+     * The order matters and is the whole design: a requirement runs on a
+     * sign-in that has ALREADY proven the password. It can therefore say
+     * "correct password, and still no" — which is what a policy is — without
+     * ever being able to say "wrong password, but yes".
+     *
+     * A throwing check refuses the sign-in. That is deliberate and the
+     * opposite of `registerStatusDecorator`'s degrade-to-core: a capability
+     * list that loses an entry is a smaller answer, but a policy that fails
+     * open is not a policy.
+     */
+    registerSignInRequirement(check) {
+      if (typeof check !== 'function') {
+        throw new Error('registerSignInRequirement: a function is required');
+      }
+      state.signInRequirements.push(check);
+    },
+
+    /**
+     * Failed sign-in observers: `async ({ db, email, user, request }) => void`.
+     *
+     * Called when `/auth/login` refuses a password — including for an address
+     * with no account, where `user` is null. Core keeps no per-account failure
+     * state of its own (its brute-force answer is the auth rate limit, which
+     * is per IP), so this exists for an extension that must: an account
+     * lockout is a policy, and a policy needs to see the failures.
+     *
+     * Observers CANNOT change the outcome and their errors are swallowed: the
+     * request has already been refused, and a counter that fails must not turn
+     * a 401 into a 500 — that difference is itself an oracle.
+     */
+    registerSignInFailureObserver(observer) {
+      if (typeof observer !== 'function') {
+        throw new Error('registerSignInFailureObserver: a function is required');
+      }
+      state.signInFailureObservers.push(observer);
+    },
+
+    /**
+     * Password requirements: `async (ctx) => null | { code, message }`.
+     *
+     * Consulted when somebody SETS a password, after the right to set it has
+     * been established (the current password proven, or an invitation
+     * redeemed). `ctx` is `{ db, user, request, password }`.
+     *
+     * Core enforces a floor of its own (8 characters, in the route schema) and
+     * nothing else: what makes a good password is a policy, policies differ per
+     * install, and a product that hard-codes one is a product that argues with
+     * its customer's security team. This is where that argument gets settled by
+     * whoever is running the thing.
+     */
+    registerPasswordRequirement(check) {
+      if (typeof check !== 'function') {
+        throw new Error('registerPasswordRequirement: a function is required');
+      }
+      state.passwordRequirements.push(check);
     },
 
     /** Collection point only — enforcing permissions is the overlay's business. */

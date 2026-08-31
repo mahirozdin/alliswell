@@ -24,6 +24,9 @@ For contributors — the standing rules (BLUEPRINT §15.3, enforced through revi
 - Calendar OAuth tokens encrypted at rest (AES-256-GCM, key from env, never committed).
 - AI provider keys (BYOK) encrypted at rest with the same AES-256-GCM pattern under a
   separate `AI_TOKEN_KEY`; serializers only ever expose the key's last 4 characters.
+- Optional TOTP second factor (RFC 6238): the secret encrypted at rest under its own
+  `AUTH_TOTP_KEY`, the recovery codes stored only as keyed digests and spent once each,
+  and a used code refused for the rest of its window so it cannot be replayed.
 - All input Ajv-validated; SQL only through knex bindings (no string interpolation).
 - Notes render with XSS-safe pipelines; web builds ship CSP.
 - Notification payloads contain IDs only, never task content.

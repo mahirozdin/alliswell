@@ -59,6 +59,7 @@ const DEV_REFRESH_SECRET = 'insecure-dev-refresh-secret-never-use-in-production'
 const DEV_CALENDAR_TOKEN_KEY = 'deaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddeaddead';
 // Same shape, different pattern — AI keys must not share the calendar key.
 const DEV_AI_TOKEN_KEY = 'feedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeedfeed';
+const DEV_TOTP_KEY = 'cafecafecafecafecafecafecafecafecafecafecafecafecafecafecafecafe';
 // Extensions that store provider credentials of their own get their own key,
 // not this instance's. Separate blast radius, separate rotation.
 const DEV_EE_AI_TOKEN_KEY = 'beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef';
@@ -67,6 +68,7 @@ const INSECURE_SECRETS = new Set([
   DEV_REFRESH_SECRET,
   DEV_CALENDAR_TOKEN_KEY,
   DEV_AI_TOKEN_KEY,
+  DEV_TOTP_KEY,
   DEV_EE_AI_TOKEN_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
@@ -220,6 +222,12 @@ export function loadConfig(env = process.env) {
       refreshSecret: env.JWT_REFRESH_SECRET || DEV_REFRESH_SECRET,
       accessTtlSec: toInt(env.AUTH_ACCESS_TTL_SEC, 900, 'AUTH_ACCESS_TTL_SEC'),
       refreshTtlDays: toInt(env.AUTH_REFRESH_TTL_DAYS, 30, 'AUTH_REFRESH_TTL_DAYS'),
+      // OPH-283 — AES-256-GCM key for TOTP secrets at rest, and the HMAC key
+      // for recovery-code digests. Its OWN key, for the reason ADR-0006 gives
+      // every time: a calendar-key or AI-key compromise must not hand somebody
+      // every second factor in the install. Dev fallback is labeled insecure
+      // like its siblings.
+      totpKey: env.AUTH_TOTP_KEY || DEV_TOTP_KEY,
     }),
     // Google Calendar (Epic 08). The integration is OPTIONAL — endpoints answer
     // GOOGLE_NOT_CONFIGURED without credentials. Base URLs are configurable so
@@ -403,6 +411,9 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ai.tokenKey)) {
     throw new Error('AI_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.auth.totpKey)) {
+    throw new Error('AUTH_TOTP_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.aiTokenKey)) {
     throw new Error('EE_AI_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');

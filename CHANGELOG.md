@@ -7,6 +7,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Two-factor authentication, and a way to change your password (OPH-283).** You can turn
+  on an authenticator app from your account settings: scan the code, type the six digits
+  once to prove it works, and keep the ten recovery codes it hands back — they are shown
+  that once and never again, each works exactly once, and they are the answer to a lost
+  phone. A code that has been used is refused for the rest of its window, so one read over
+  your shoulder is not good for another minute and a half. Turning it off, or asking for
+  fresh recovery codes, costs a live code — a session somebody else is holding should not
+  be able to remove the thing that would have stopped them.
+  Alongside it: `POST /auth/password`, which is the first way this product has had to
+  change a password. It asks for the current one and ends every other session.
+  Self-hosters: set `AUTH_TOTP_KEY` (`openssl rand -hex 32`) before anybody enrols —
+  it encrypts the secrets, and changing it later locks those people out.
+
 - **An `/enterprise` page, in English and Turkish (EE-119).** A real route rather than a
   section of the marketing page: generated from `docs/ENTERPRISE.md` and its Turkish twin
   into static HTML, so it is indexable, readable with JavaScript off, and translatable

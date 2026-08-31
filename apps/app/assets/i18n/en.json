@@ -1383,6 +1383,7 @@
         "manage_invites": "Manage invitations",
         "manage_members": "Manage members",
         "manage_roles": "Manage roles",
+        "manage_security": "Set password rules and require two-factor authentication",
         "manage_settings": "Team settings",
         "view_audit": "View team history",
         "workspace": {

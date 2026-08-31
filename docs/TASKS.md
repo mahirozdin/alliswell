@@ -9076,6 +9076,42 @@ diğerinde içerik erişilemezdi.**_
   sürüklüyor; bu zaten parmağın dokunduğu piksel ve metnin üzerinden kaydırmanın çalışmaya devam
   ettiğini kanıtlayan durum (ölçüldü: `max=2545`, sürükleme sonrası `offset=280`).
 
+### OPH-283 — İki adımlı doğrulama ve parola değiştirme (tur 19d, v1.8.3)
+
+_Bu iki iş bir arada, çünkü ikisi de aynı boşluğun yarısıydı: ürün, bir hesabın sahibinin
+kimliğini yalnız bir parolayla soruyordu ve o parolayı **değiştirmenin hiçbir yolu yoktu**
+(`/auth` = register · oauth · login · refresh · logout — ölçüldü)._
+
+- [x] **TOTP (RFC 6238), `node:crypto` üstünde.** Bağımlılık alınmadı: iki RFC ve bir base32
+  kodlayıcı ~110 satır, ve o kadarı için her kuruluma kalıcı bir paket taşımak takas
+  değil. Doğruluğu kendi üretimine karşı değil **RFC'nin kendi vektörlerine** karşı
+  kanıtlandı (Appendix B'nin altı SHA-1 satırı) — "ürettiğini doğruluyor" bir HMAC
+  hatasını asla göstermezdi.
+- [x] **Kayıt iki adımlı, ve aradaki durum GERÇEK bir durum.** Sunucu sırrı üretip
+  gösteriyor (`enrolled_at` NULL — hiçbir şeyi korumuyor, hiçbir şeyi engellemiyor),
+  kişi authenticator'ının aynı kodu ürettiğini kanıtlayınca açılıyor. Aradaki durum
+  olmasaydı, kurulumu yarıda bırakan biri hiç onaylamadığı bir faktörle dışarıda kalırdı.
+- [x] **Kullanılan kod ölüyor.** `verifyTotp` eşleşen ADIMI döndürüyor ve o adım yazılıyor;
+  altındaki her şey reddediliyor. Bu olmadan omuz üstünden okunan bir kod doksan saniye
+  boyunca çalışır.
+- [x] **Kurtarma kodları:** on tane, bir kez gösteriliyor, yalnız **anahtarlı özet** olarak
+  saklanıyor (`api_keys` ve `refresh_tokens` ile aynı kalıp), her biri bir kez çalışıyor.
+  Tek kullanım bir koşullu UPDATE — iki eşzamanlı deneme veritabanında yarışıyor, uygulamada
+  değil. Tireler ve büyük/küçük harf normalleştiriliyor: bunu bir kâğıttan, stres altında
+  yazıyor birisi.
+- [x] **Sır AES-256-GCM ile şifreli, KENDİ anahtarıyla** (`AUTH_TOTP_KEY`) — ADR-0006'nın
+  her seferinde verdiği gerekçe: takvim anahtarının ya da AI anahtarının düşmesi, kurulumun
+  bütün ikinci faktörlerini teslim etmemeli.
+- [x] **`POST /auth/password`:** mevcut parolayı soruyor (çalınmış bir access token on beş
+  dakika yaşıyor; bu kontrol olmasa o on beş dakika hesabı kalıcı olarak almaya yeterdi) ve
+  **bütün oturumları** sonlandırıyor — parola değiştirmek, birinin eskisini bildiğini
+  düşündüğün için yapılan bir şeydir.
+- [x] **`users.password_changed_at`** eklendi: "bu parola eski" diyebilmek isteyen her şeyin
+  ihtiyacı olan tarih.
+- **Doğrulama:** birim **769 → 783** (RFC vektörleri dahil), entegrasyon **81 → 97**.
+  Migration `down()` iki yönde de koşuldu.
+
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

@@ -209,6 +209,10 @@ URL) in Settings, so the instance needs no AI credentials of its own. What the
 instance owner controls:
 
 - **`AI_TOKEN_KEY`** (`openssl rand -hex 32`) encrypts stored user keys at rest.
+- **`AUTH_TOTP_KEY`** (`openssl rand -hex 32`) does the same for two-factor secrets, and
+  signs the recovery-code digests. Its own key on purpose: losing one of these must not
+  cost you the others. Set it before anybody enrols — changing it later makes every
+  existing authenticator and recovery code unreadable, which locks those people out.
   **Required in production while AI is enabled (the default)** — upgrading to
   v0.9.0 means either generating this key or setting `AI_ENABLED=false`.
 - **`AI_ENABLED=false`** withdraws the feature honestly: every `/ai/*` endpoint

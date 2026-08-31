@@ -77,3 +77,24 @@ export function hashMcpToken(kind, token, secret) {
 export function hashApiKey(token, secret) {
   return crypto.createHmac('sha256', secret).update(`api-key:${token}`).digest('hex');
 }
+
+/**
+ * TOTP recovery codes (OPH-283): the same hash-only storage, its own separator.
+ *
+ * A recovery code is only ever COMPARED, never read back, so it is stored
+ * exactly like the two above and for the same reason — a database dump can
+ * neither read one nor forge one.
+ *
+ * The code is normalised before hashing (upper-cased, dashes and spaces
+ * dropped) because somebody is typing this off a printout under stress, and
+ * "the dashes matter" is a rule nobody should have to know. The normalisation
+ * belongs HERE rather than at the call sites: two call sites that disagree
+ * about it would store a digest neither could match.
+ *
+ * @param {string} code - as the person typed it
+ * @param {string} secret - config.auth.totpKey
+ */
+export function hashRecoveryCode(code, secret) {
+  const normalised = String(code).toUpperCase().replace(/[\s-]/g, '');
+  return crypto.createHmac('sha256', secret).update(`totp-recovery:${normalised}`).digest('hex');
+}

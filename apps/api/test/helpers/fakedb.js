@@ -131,6 +131,11 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
     api_keys: [],
     // OPH-267 — note history (ADR-0031).
     note_versions: [],
+    // OPH-283 — the second factor. Present here because sign-in ASKS about it
+    // on every login, so a fake database without these tables makes every
+    // unit-level login a 500 — which is how this line got written.
+    user_totp: [],
+    user_totp_recovery_codes: [],
   };
   // Extension-owned tables (the EE-002 seam tests, future overlay suites):
   // the fixed list above stays the contract for core code — an unknown-table

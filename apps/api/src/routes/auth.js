@@ -5,6 +5,14 @@ import { hashPassword, verifyPassword } from '../lib/passwords.js';
 import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.js';
 import { newRefreshToken, hashRefreshToken } from '../lib/tokens.js';
 import { uniqueSlug } from '../lib/slug.js';
+import {
+  confirmTotpEnrolment,
+  disableTotp,
+  regenerateRecoveryCodes,
+  startTotpEnrolment,
+  totpStatus,
+  verifyUserTotp,
+} from '../db/totp.js';
 
 const errorResponseSchema = {
   type: 'object',
@@ -80,6 +88,12 @@ const loginSchema = {
       email: { type: 'string', format: 'email', maxLength: 255 },
       // No policy checks here — any stored password must remain loggable-in.
       password: { type: 'string', minLength: 1, maxLength: 128 },
+      // OPH-283. Optional because most accounts have no second factor; when
+      // one is enrolled its absence is a 401 with its own code, so a client
+      // knows to ask rather than to say the password was wrong.
+      // Wide enough for a recovery code, which is the other thing this field
+      // legitimately carries.
+      totpCode: { type: 'string', minLength: 6, maxLength: 32 },
     },
   },
   response: {
@@ -153,6 +167,22 @@ async function revokeFamily(db, familyId) {
 function invalidCredentialsError(app) {
   const err = app.httpErrors.unauthorized('Invalid email or password');
   err.code = 'AUTH_INVALID_CREDENTIALS';
+  return err;
+}
+
+/**
+ * OPH-283 — the refusals that come AFTER a correct password.
+ *
+ * Deliberately distinguishable from `AUTH_INVALID_CREDENTIALS`, and the reason
+ * is not convenience: a client that cannot tell "your password is wrong" from
+ * "now give me your code" has to guess, and every guess it makes is a worse
+ * prompt for the person typing. The disclosure this costs is real and small —
+ * it tells somebody who ALREADY HAS the right password that the account has a
+ * second factor, which they were about to discover anyway.
+ */
+function mfaError(app, code, message) {
+  const err = app.httpErrors.unauthorized(message);
+  err.code = code;
   return err;
 }
 
@@ -487,7 +517,59 @@ export default async function authRoutes(app) {
       user?.password_hash ?? timingSafeDummyHash,
       request.body.password,
     );
-    if (!user || !user.password_hash || !passwordOk) throw invalidCredentialsError(app);
+    if (!user || !user.password_hash || !passwordOk) {
+      // OPH-283: tell whoever is counting, then refuse exactly as before.
+      // Errors are swallowed on purpose — a counter that throws would turn
+      // this 401 into a 500 and hand an attacker an oracle.
+      for (const observe of app.ee.signInFailureObservers) {
+        try {
+          await observe({ db: app.db, email, user: user ?? null, request });
+        } catch (err) {
+          request.log.warn({ err: err.message }, 'sign-in failure observer threw');
+        }
+      }
+      throw invalidCredentialsError(app);
+    }
+
+    // ── OPH-283: the second factor, and then the policy ──────────────────
+    //
+    // Both run only after the password is right. A factor check on an unknown
+    // address would answer a question the caller has not earned, and a policy
+    // consulted before the password would let an extension refuse sign-ins for
+    // accounts whose credentials were never presented.
+    const factors = await totpStatus(app.db, user.id);
+    let totpVerified = false;
+    if (factors.enrolled) {
+      if (!request.body.totpCode) {
+        throw mfaError(app, 'AUTH_MFA_REQUIRED', 'This account needs its authenticator code');
+      }
+      const check = await verifyUserTotp(app.db, {
+        userId: user.id,
+        code: request.body.totpCode,
+        key: app.config.auth.totpKey,
+      });
+      if (!check.ok) throw mfaError(app, 'AUTH_MFA_INVALID', 'That code is not right');
+      totpVerified = true;
+    }
+
+    for (const requirement of app.ee.signInRequirements) {
+      // No try/catch: a policy that throws refuses the sign-in, which is the
+      // seam's documented contract. Failing open here would make the policy
+      // a suggestion.
+      const refusal = await requirement({
+        db: app.db,
+        user,
+        request,
+        factors: { totpEnrolled: factors.enrolled, totpVerified },
+      });
+      if (refusal) {
+        throw mfaError(
+          app,
+          refusal.code ?? 'AUTH_SIGN_IN_REFUSED',
+          refusal.message ?? 'Sign-in refused',
+        );
+      }
+    }
 
     const refresh = await createRefreshRecord(app.db, auth, {
       userId: user.id,
@@ -571,4 +653,271 @@ export default async function authRoutes(app) {
     }
     return reply.code(204).send();
   });
+
+  // ── OPH-283: managing your own second factor, and your own password ─────
+  //
+  // Every route here is about the CALLER's account and takes its subject from
+  // the token, never from the body. "Whose factor is this?" is not a question
+  // a request gets to answer.
+  //
+  // `rejectApiKeys` on all of them, following `api-keys.js`: a long-lived
+  // machine credential must not be able to change the credentials of the
+  // person who issued it. An API key is delegated access to data, not to an
+  // identity.
+  const selfAuth = { onRequest: [app.authenticate], preHandler: [app.rejectApiKeys] };
+  const mfaStatusSchema = {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      enrolled: { type: 'boolean' },
+      staged: { type: 'boolean' },
+      recoveryCodesLeft: { type: 'integer' },
+    },
+  };
+
+  app.get(
+    '/mfa/totp',
+    { ...selfAuth, schema: { response: { 200: mfaStatusSchema } } },
+    async (request) => totpStatus(app.db, request.user.id),
+  );
+
+  // Step one: mint a secret and show it. Nothing is protected yet.
+  app.post(
+    '/mfa/totp',
+    {
+      ...selfAuth,
+      config: authRateLimit,
+      schema: {
+        response: {
+          201: {
+            type: 'object',
+            additionalProperties: false,
+            properties: { secret: { type: 'string' }, uri: { type: 'string' } },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = await app.db('users').where({ id: request.user.id }).first('id', 'email');
+      if (!user) throw app.httpErrors.notFound('Not found');
+      try {
+        const started = await startTotpEnrolment(app.db, {
+          userId: user.id,
+          email: user.email,
+          key: app.config.auth.totpKey,
+        });
+        return reply.code(201).send(started);
+      } catch (err) {
+        if (err.code === 'TOTP_ALREADY_ENROLLED') {
+          throw coded(app.httpErrors.conflict(err.message), err.code);
+        }
+        throw err;
+      }
+    },
+  );
+
+  // Step two: prove the authenticator agrees. The recovery codes are in this
+  // response and in no other, ever.
+  app.post(
+    '/mfa/totp/confirm',
+    {
+      ...selfAuth,
+      config: authRateLimit,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['code'],
+          properties: { code: { type: 'string', minLength: 6, maxLength: 10 } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              enrolled: { type: 'boolean' },
+              recoveryCodes: { type: 'array', items: { type: 'string' } },
+            },
+          },
+        },
+      },
+    },
+    async (request) => {
+      try {
+        const { recoveryCodes } = await confirmTotpEnrolment(app.db, {
+          userId: request.user.id,
+          code: request.body.code,
+          key: app.config.auth.totpKey,
+        });
+        return { enrolled: true, recoveryCodes };
+      } catch (err) {
+        if (err.code === 'TOTP_CODE_WRONG') {
+          throw coded(app.httpErrors.unauthorized(err.message), err.code);
+        }
+        if (err.code === 'TOTP_NOT_STAGED') {
+          throw coded(app.httpErrors.badRequest(err.message), err.code);
+        }
+        if (err.code === 'TOTP_ALREADY_ENROLLED') {
+          throw coded(app.httpErrors.conflict(err.message), err.code);
+        }
+        throw err;
+      }
+    },
+  );
+
+  // Turning it off asks for a live code, for the same reason turning it on
+  // did: a session somebody else is holding must not be able to remove the
+  // thing that would have stopped them.
+  app.delete(
+    '/mfa/totp',
+    {
+      ...selfAuth,
+      config: authRateLimit,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['code'],
+          properties: { code: { type: 'string', minLength: 6, maxLength: 32 } },
+        },
+      },
+    },
+    async (request, reply) => {
+      const status = await totpStatus(app.db, request.user.id);
+      if (!status.enrolled) throw app.httpErrors.notFound('Not found');
+      const check = await verifyUserTotp(app.db, {
+        userId: request.user.id,
+        code: request.body.code,
+        key: app.config.auth.totpKey,
+      });
+      if (!check.ok) throw mfaError(app, 'AUTH_MFA_INVALID', 'That code is not right');
+      await disableTotp(app.db, request.user.id);
+      return reply.code(204).send();
+    },
+  );
+
+  // A fresh set, when the old paper is lost or half spent. Asks for a code
+  // because handing out ten new keys is exactly as sensitive as the first ten.
+  app.post(
+    '/mfa/totp/recovery-codes',
+    {
+      ...selfAuth,
+      config: authRateLimit,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['code'],
+          properties: { code: { type: 'string', minLength: 6, maxLength: 32 } },
+        },
+        response: {
+          200: {
+            type: 'object',
+            additionalProperties: false,
+            properties: { recoveryCodes: { type: 'array', items: { type: 'string' } } },
+          },
+        },
+      },
+    },
+    async (request) => {
+      const status = await totpStatus(app.db, request.user.id);
+      if (!status.enrolled) throw app.httpErrors.notFound('Not found');
+      const check = await verifyUserTotp(app.db, {
+        userId: request.user.id,
+        code: request.body.code,
+        key: app.config.auth.totpKey,
+      });
+      if (!check.ok) throw mfaError(app, 'AUTH_MFA_INVALID', 'That code is not right');
+      const recoveryCodes = await regenerateRecoveryCodes(app.db, {
+        userId: request.user.id,
+        key: app.config.auth.totpKey,
+      });
+      return { recoveryCodes };
+    },
+  );
+
+  /**
+   * Changing your own password (OPH-283).
+   *
+   * It asks for the current one, and that is the whole security story: a
+   * stolen access token lives fifteen minutes, and without this check those
+   * fifteen minutes would be enough to take the account permanently.
+   *
+   * EVERY refresh family is revoked, the caller's included. A password change
+   * is what somebody does BECAUSE they think another person has the old one,
+   * and leaving any family alive would make the act ceremonial. Sparing the
+   * caller's own would need the family id on the access token, which it does
+   * not carry — and adding it to spare somebody one sign-in would be paying in
+   * the token's blast radius for a convenience.
+   */
+  app.post(
+    '/password',
+    {
+      ...selfAuth,
+      config: authRateLimit,
+      schema: {
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['currentPassword', 'newPassword'],
+          properties: {
+            currentPassword: { type: 'string', minLength: 1, maxLength: 128 },
+            newPassword: { type: 'string', minLength: 8, maxLength: 128 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = await app
+        .db('users')
+        .where({ id: request.user.id })
+        .whereNull('deleted_at')
+        .first('id', 'password_hash');
+      if (!user) throw app.httpErrors.notFound('Not found');
+      // An account with no password (a provider-only one, OPH-283's other
+      // caller) cannot "change" one — there is nothing to prove.
+      if (!user.password_hash) {
+        throw coded(
+          app.httpErrors.conflict('This account signs in through a provider'),
+          'AUTH_NO_PASSWORD',
+        );
+      }
+      const ok = await verifyPassword(user.password_hash, request.body.currentPassword);
+      if (!ok) throw invalidCredentialsError(app);
+
+      // Extensions get to refuse a new password (length, reuse, a team's own
+      // rules). Same contract as sign-in: it runs only once the CURRENT
+      // password has been proven, so it can say "no, pick a better one" and
+      // never "wrong password, but here is a policy hint".
+      for (const requirement of app.ee.passwordRequirements ?? []) {
+        const refusal = await requirement({
+          db: app.db,
+          user,
+          request,
+          password: request.body.newPassword,
+        });
+        if (refusal) {
+          throw coded(
+            app.httpErrors.badRequest(refusal.message ?? 'That password is not allowed'),
+            refusal.code ?? 'AUTH_PASSWORD_REJECTED',
+          );
+        }
+      }
+
+      const now = new Date();
+      await app.db.transaction(async (trx) => {
+        await trx('users')
+          .where({ id: user.id })
+          .update({
+            password_hash: await hashPassword(request.body.newPassword),
+            password_changed_at: now,
+          });
+        await trx('refresh_tokens')
+          .where({ user_id: user.id })
+          .whereNull('revoked_at')
+          .update({ revoked_at: now });
+      });
+      return reply.code(204).send();
+    },
+  );
 }
