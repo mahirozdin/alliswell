@@ -335,6 +335,11 @@ export function loadConfig(env = process.env) {
     ee: Object.freeze({
       enabled: toBool(env.EE_ENABLED, (env.NODE_ENV ?? 'development') !== 'test', 'EE_ENABLED'),
       dir: env.EE_DIR || null,
+      // EE-129: an optional fence around the operator console. Comma-separated
+      // addresses and IPv4 CIDRs; empty means no fence at all (the overlay's
+      // own module says why the default is not "nowhere"). Core stores the
+      // string and never reads it.
+      adminIpAllowlist: env.EE_ADMIN_IP_ALLOWLIST || null,
       // Development override (EE-003): comma-separated feature names, refused
       // outright in production — a leftover override must never hand out paid
       // features. Names are validated against the ONE dictionary so a typo is
