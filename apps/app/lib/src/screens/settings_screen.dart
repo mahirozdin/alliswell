@@ -199,6 +199,17 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.teamAiSub',
                   path: '/settings/team/ai-keys',
                 ),
+              // OPH-287: the team's identity sources. Same gate shape as the
+              // rows above — a permission, not an entitlement, so the door is
+              // absent rather than forbidden for somebody who cannot use it.
+              if (ref.watch(canProvider('team.manage_identity')))
+                _GroupRow(
+                  keyName: 'settings-group-team-identity',
+                  icon: Icons.account_tree_outlined,
+                  titleKey: 'settings.group.teamIdentity',
+                  subtitleKey: 'settings.group.teamIdentitySub',
+                  path: '/settings/team/identity',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain

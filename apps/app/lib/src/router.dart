@@ -40,6 +40,7 @@ import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
 import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
+import 'features/ee/ui/team_identity_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
@@ -459,6 +460,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/ai-keys',
         builder: (context, state) => _page(const EeTeamAiKeysScreen()),
+      ),
+      // OPH-287: the team's identity sources — connect, TEST, then switch on,
+      // behind `team.manage_identity`. Its own row rather than a section of
+      // the security screen: which system answers "is this person who they
+      // say" is a different authority from the password rules, and often a
+      // different person's job.
+      GoRoute(
+        path: '/settings/team/identity',
+        builder: (context, state) => _page(const EeTeamIdentityScreen()),
       ),
       // EE-115: one meeting — what it decided, and who said what. A route
       // rather than a tab, for the reason EE-069's task history is one: this

@@ -174,7 +174,9 @@
       "portal": "Herkese açık talep bağlantıları",
       "portalSub": "Takımınız dışındaki kişiler hesap açmadan talep gönderebilsin",
       "teamAi": "Takım yapay zekâ anahtarları",
-      "teamAiSub": "Tüm takım için tek anahtar, ve üyeler kendi anahtarını getirebilir mi"
+      "teamAiSub": "Tüm takım için tek anahtar, ve üyeler kendi anahtarını getirebilir mi",
+      "teamIdentity": "Kimlik kaynakları",
+      "teamIdentitySub": "Şirketin kendi dizini ve çoklu oturum açma ile giriş"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -1862,6 +1864,50 @@
         "ollama": "Ollama",
         "assemblyai": "AssemblyAI (toplantı deşifresi)",
         "elevenlabs": "ElevenLabs Scribe (toplantı deşifresi)"
+      }
+    },
+    "identity": {
+      "title": "Kimlik kaynakları",
+      "unavailable": "Burada takım yok",
+      "unavailableBody": "Kimlik kaynakları takımınızın adresinden ve yalnızca yönetme yetkisi olan biri tarafından yönetilir.",
+      "emptyTitle": "Henüz kimlik kaynağı yok",
+      "emptyBody": "Şirket dizininizi bağlayın; herkes hâlihazırda kullandığı parolayla girsin.",
+      "add": "Kaynak bağla",
+      "addTitle": "Kimlik kaynağı bağla",
+      "editTitle": "Bu kaynağı düzenle",
+      "edit": "Düzenle",
+      "test": "Test et",
+      "remove": "Kaldır",
+      "removeTitle": "Bu kaynak kaldırılsın mı?",
+      "removeBody": "Buradan giren kişiler artık giremez. Burada parolası olanlar parolasını korur.",
+      "on": "Açık",
+      "off": "Kapalı",
+      "secretMask": "•••• {last4}",
+      "incomplete": "Eksik: {fields}",
+      "testOk": "Dizin cevap verdi.",
+      "testRefused": "Dizin reddetti: {reason}",
+      "testUnreachable": "Dizine ulaşılamadı: {error}",
+      "typeLabel": "Tür",
+      "nameLabel": "Ad",
+      "nameHelp": "Bu kaynağın giriş ekranındaki adı.",
+      "urlLabel": "Adres",
+      "urlHelp": "ldaps:// kullanın — şifresiz bağlantı parolaları açık metin gönderir.",
+      "baseDnLabel": "Arama kökü",
+      "bindDnLabel": "Servis hesabı",
+      "bindDnHelp": "Bu sunucunun arama yaparken kullandığı hesap. Parolası aşağıya.",
+      "issuerLabel": "Issuer",
+      "clientIdLabel": "Client ID",
+      "secretLabel": "Parola veya client secret",
+      "secretHelp": "Şifreli saklanır. Bir daha gösterilmez — değiştirebilirsiniz, geri okuyamazsınız.",
+      "secretReplaceHelp": "Saklananı korumak ve yalnız gerisini değiştirmek için boş bırakın.",
+      "status": {
+        "active": "Çalışıyor",
+        "error": "Cevap vermiyor"
+      },
+      "type": {
+        "ldap": "Dizin (LDAP / Active Directory)",
+        "saml": "Çoklu oturum açma (SAML)",
+        "oidc": "Çoklu oturum açma (OpenID Connect)"
       }
     }
   },

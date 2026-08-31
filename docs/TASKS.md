@@ -9199,6 +9199,29 @@ reddeder) hiçbir şekilde giriş yapamıyordu._
   kırmızı verdi; geri alındıktan sonra 13/13 yeşil. `format:check` ilk koşuda yeni test
   dosyasını yakaladı (E26'nın kendi dersi: biçim adımı testlerden önce koşuyor).
 
+### OPH-287 — Kimlik kaynağı ekranı (tur 19f, v1.8.3)
+
+_OPH-286 uzantıların bir kimliği doğrulayabilmesini sağladı, ama bir uzantının yapılandırma
+yüzeyi yoktu: bir kurulum kimlik kaynağını yalnız veritabanına satır koyarak bağlayabiliyordu.
+DESIGN §22'nin kuralı burada birebir geçerli — insan dokunamıyorsa özellik değildir._
+
+- [x] **Ayarlar → Kimlik kaynakları**, kendi izniyle kapılı ekran: bağla, **test et**, sonra
+  aç. Yeni bir kaynak **kapalı** başlar ve açma anahtarı, sunucu eksik alan bildirdiği sürece
+  **çalışmaz** — sıra bir tercih değil: açık bir kimlik kaynağı kendisine ait adreslerin tek
+  otoritesidir, yani yarım doldurulmuş bir formu açmak, hesabı orada duran herkes için bir
+  kesinti demektir.
+- [x] **Kimlik bilgisi bir daha gösterilmez.** Son dört karakter ve "saklı mı" bilgisi —
+  değiştirilebilir, geri okunamaz. Liste yüzeyinde tek bir metin kutusu **yok**: bir kutu,
+  eski değerin içine geri okunabileceğini ima ederdi.
+- [x] **"Neyin eksik" sunucudan gelir**, ekran hesaplamaz. Kuralın sahibi tek bir yerdir ve
+  kendi kopyasını tutan bir ekran, ilk alan eklendiğinde onunla anlaşmazlığa düşerdi.
+- **Kabul:** eksik bir kaynak açılamaz, ve bu ekranın kendisinde — sunucu turuna gitmeden —
+  reddedilir. Çevirip geri zıplayan bir anahtar, insanlara o anahtarı yoksaymayı öğretir.
+  → **12 widget testi**; `dart analyze` temiz, `contrast.py` **FAILURES: 0**.
+- **Doğrulama:** Flutter süiti CI'da (bu makinede koşmuyor). Bir çakışma analizle yakalandı:
+  kontrolcünün `update` metodu riverpod'un kendi `AsyncNotifier.update`'iyle çakışıyordu ve
+  **invalid override** veriyordu — `patch` oldu.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

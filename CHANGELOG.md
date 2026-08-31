@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A screen for connecting an identity source (OPH-287).** The previous change let
+  an extension check somebody's password against a system this server does not own;
+  it left no way to SET one up, so a self-hoster could only do it by writing rows
+  into the database. Settings now has the screen, behind its own permission.
+  The order it enforces is deliberate: connect, TEST, then switch on. A source that
+  is on is the only authority for the addresses it covers, so saving a half-filled
+  form and enabling it in one press would be an outage for everybody whose account
+  lives there. A new source starts OFF, the screen names what is still missing, and
+  the switch does not move until it is finished.
+  The credential you type is never shown again — four characters, replaceable, not
+  readable. And when a test fails you get one of two sentences, not one: the
+  directory refused, or the directory could not be reached. They call for different
+  things.
+
 - **An extension can now authenticate somebody against a system this server does not
   own (OPH-286).** Self-hosters running an extension could already have it refuse a
   sign-in, count failed ones, or veto a new password — but not APPROVE one, so an

@@ -175,7 +175,9 @@
       "portal": "Public request links",
       "portalSub": "Let people outside your team send requests without an account",
       "teamAi": "Team AI keys",
-      "teamAiSub": "One key for the whole team, and whether members may bring their own"
+      "teamAiSub": "One key for the whole team, and whether members may bring their own",
+      "teamIdentity": "Identity sources",
+      "teamIdentitySub": "Sign in with the company's own directory, and single sign-on"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -1863,6 +1865,50 @@
         "ollama": "Ollama",
         "assemblyai": "AssemblyAI (meeting transcription)",
         "elevenlabs": "ElevenLabs Scribe (meeting transcription)"
+      }
+    },
+    "identity": {
+      "title": "Identity sources",
+      "unavailable": "No team here",
+      "unavailableBody": "Identity sources are managed from your team's address, and only by someone who may manage them.",
+      "emptyTitle": "No identity source yet",
+      "emptyBody": "Connect your company directory and people sign in with the password they already have.",
+      "add": "Connect a source",
+      "addTitle": "Connect an identity source",
+      "editTitle": "Edit this source",
+      "edit": "Edit",
+      "test": "Test",
+      "remove": "Remove",
+      "removeTitle": "Remove this source?",
+      "removeBody": "People who sign in through it will no longer be able to. Anyone with a password here keeps it.",
+      "on": "On",
+      "off": "Off",
+      "secretMask": "•••• {last4}",
+      "incomplete": "Still needs: {fields}",
+      "testOk": "The directory answered.",
+      "testRefused": "The directory refused: {reason}",
+      "testUnreachable": "Could not reach the directory: {error}",
+      "typeLabel": "Kind",
+      "nameLabel": "Name",
+      "nameHelp": "What this source is called on the sign-in screen.",
+      "urlLabel": "Address",
+      "urlHelp": "Use ldaps:// — a plain connection would send passwords in the clear.",
+      "baseDnLabel": "Search base",
+      "bindDnLabel": "Service account",
+      "bindDnHelp": "The account this server searches as. Its password goes below.",
+      "issuerLabel": "Issuer",
+      "clientIdLabel": "Client ID",
+      "secretLabel": "Password or client secret",
+      "secretHelp": "Stored encrypted. It is never shown again — you can replace it, not read it back.",
+      "secretReplaceHelp": "Leave empty to keep the stored one and change only the rest.",
+      "status": {
+        "active": "Working",
+        "error": "Not answering"
+      },
+      "type": {
+        "ldap": "Directory (LDAP / Active Directory)",
+        "saml": "Single sign-on (SAML)",
+        "oidc": "Single sign-on (OpenID Connect)"
       }
     }
   },
