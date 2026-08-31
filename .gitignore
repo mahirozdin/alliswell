@@ -33,6 +33,21 @@ apps/app/android/key.properties
 **/*.jks
 **/*.keystore
 
+# --- Any other private key, wherever it lands ---
+# The three lines above name the signing material we already knew about, and
+# that is the weakness: an ignore list only protects the keys someone thought
+# of. A private key that arrives in a directory nobody added a rule for is
+# untracked — which looks safe — and is one `git add -A` away from being
+# published in a PUBLIC repository, permanently, in the history.
+# Measured 2026-08-31: a key in the tree here was not covered by any rule
+# (`git check-ignore` exit 1). Nothing tracked matches these extensions, so the
+# safe default is to ignore the SHAPE of a secret rather than its location.
+**/*.key
+**/*.pem
+**/*.p8
+**/*.p12
+**/*.pfx
+
 # --- Screenshot & deploy pipeline outputs ---
 # `screenshots/` and `store/` ARE committed: the README, the landing page and the
 # store listings all point at them, and a fresh clone should render correctly.
