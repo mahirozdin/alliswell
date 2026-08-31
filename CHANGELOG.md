@@ -5,7 +5,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **An `/enterprise` page, in English and Turkish (EE-119).** A real route rather than a
+  section of the marketing page: generated from `docs/ENTERPRISE.md` and its Turkish twin
+  into static HTML, so it is indexable, readable with JavaScript off, and translatable
+  without an i18n layer the Vue site does not have. The generator that already produced
+  the legal pages was widened rather than copied — it takes its stylesheets from the page
+  now, and the document measure became one token, so a sales page can be wider than a
+  privacy policy without restating the three places the column width is applied.
+- **A licensing section on that page (EE-120).** Which licence covers what, stated for the
+  reader who arrived from the free edition: free for a person, not free for a company
+  running it for its team at any size. The paid edition is used under a written agreement
+  and changes nothing about the free one in either direction. No price list, and no empty
+  placeholder either — the section says why a price would be the wrong answer there.
+- **The page is reachable from four places (EE-121).** The site nav, the footer's product
+  column, a README section, and a note at the top of the self-hosting guide for anyone
+  installing this inside a company.
+- **Screenshots of the enterprise screens (EE-122).** Four screens, two themes, two
+  languages, chosen with a `picture` element so the dark variant is picked without
+  JavaScript. They are rendered by the app's own widget tests — the real screens, the real
+  theme, the repo's own fonts — because reaching them through a running instance would
+  need a seeded team, units, a service catalogue and live SLA clocks, and a picture of
+  that is a picture of one seeding script's opinion. `docs/SCREENSHOTS.md` carries the
+  commands.
+
 ### Changed
+
+- **The landing package declared the wrong licence (EE-120).** It still said
+  `AGPL-3.0-only`, which the project left at v1.0.0 — the only machine-readable licence
+  field the site has, on the very package that now carries the licensing copy. The
+  lockfile repeated it and had the workspace versions three releases behind; the ADR index
+  listed ADR-0002 as accepted while the ADR itself says it was superseded. A sweep for the
+  old licence across every JSON now comes back empty, and `docs/adr/0019` carries a note
+  saying which of its dated facts has moved.
+- **Three checks on the landing job were looking at the wrong set (EE-119, EE-121,
+  EE-122).** The screenshot check scanned only the Vue source, so nothing a generator
+  produced was ever examined, and it matched only literal paths, so the feature section —
+  which composes its paths from `content.js` — was invisible too: it was checking 7 of the
+  18 references this site makes. The page-exists check carried its own typed copy of four
+  routes, so a route added to the generator was a route nothing verified. All of them read
+  the real source now, a fourth asserts the page is reachable from every place that claims
+  to link it, and each was broken on purpose to confirm it goes red.
 
 - **`providerSchema` shapes any schema, not just the task proposal (EE-114).** The four
   dialect adaptations it performs are facts about a PROVIDER — OpenAI's strict mode,
