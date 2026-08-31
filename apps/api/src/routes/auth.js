@@ -3,13 +3,16 @@ import { coded } from '../lib/errors.js';
 import { newId } from '../lib/ids.js';
 import { hashPassword, verifyPassword } from '../lib/passwords.js';
 import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.js';
-import { newRefreshToken, hashRefreshToken } from '../lib/tokens.js';
+import { hashRefreshToken } from '../lib/tokens.js';
 import { uniqueSlug } from '../lib/slug.js';
 import {
+  createRefreshRecord,
+  deviceLabel,
   familyOfToken,
   listUserSessions,
   revokeOtherSessions,
   revokeSession,
+  sessionTokens,
 } from '../db/sessions.js';
 import {
   confirmTotpEnrolment,
@@ -190,54 +193,6 @@ function mfaError(app, code, message) {
   const err = app.httpErrors.unauthorized(message);
   err.code = code;
   return err;
-}
-
-/**
- * Inserts a refresh-token row (via `db` or an open trx) and returns the raw token.
- * Every login/register starts a new rotation family; refresh (OPH-022) keeps the family.
- */
-/**
- * What to write in `device_name` (OPH-284).
- *
- * The column has existed since the first migration and NOTHING had ever
- * written to it — measured, not assumed. A session list whose every row says
- * "unknown device" answers no question, so sign-in now records the
- * User-Agent, truncated to the column.
- *
- * Stored RAW rather than parsed into "Chrome on macOS". Parsing a User-Agent
- * is guessing, the guesses rot as browsers change their strings, and a wrong
- * guess in this list is worse than a long one: the whole point is that
- * somebody recognises their own device, and a client can shorten a string it
- * can see. It cannot recover one we threw away.
- */
-function deviceLabel(request) {
-  const ua = request?.headers?.['user-agent'];
-  if (typeof ua !== 'string' || ua.trim() === '') return null;
-  return ua.trim().slice(0, 255);
-}
-
-async function createRefreshRecord(executor, auth, { userId, familyId, ip, deviceName = null }) {
-  const token = newRefreshToken();
-  const expiresAt = new Date(Date.now() + auth.refreshTtlDays * 24 * 60 * 60 * 1000);
-  await executor('refresh_tokens').insert({
-    id: newId(),
-    user_id: userId,
-    family_id: familyId,
-    token_hash: hashRefreshToken(token, auth.refreshSecret),
-    expires_at: expiresAt,
-    created_ip: ip ?? null,
-    device_name: deviceName,
-  });
-  return { token, expiresAt };
-}
-
-function sessionTokens(app, user, refresh) {
-  return {
-    accessToken: app.signAccessToken(user),
-    accessTokenExpiresInSec: app.config.auth.accessTtlSec,
-    refreshToken: refresh.token,
-    refreshTokenExpiresAt: refresh.expiresAt.toISOString(),
-  };
 }
 
 const oauthResultSchema = {

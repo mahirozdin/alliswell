@@ -9222,6 +9222,22 @@ DESIGN §22'nin kuralı burada birebir geçerli — insan dokunamıyorsa özelli
   kontrolcünün `update` metodu riverpod'un kendi `AsyncNotifier.update`'iyle çakışıyordu ve
   **invalid override** veriyordu — `patch` oldu.
 
+### OPH-288 — Oturum açmak artık rota dosyasının tekelinde değil (tur 19g, v1.8.3)
+
+_`createRefreshRecord`, `sessionTokens` ve `deviceLabel` `routes/auth.js`'de modül-özeldi.
+Oturumla ilgili şeyler, yönlendirmeyle değil — ve bu, o dosyanın dışındaki bir şeyin oturum
+açması gerektiği anda üslup meselesi olmaktan çıktı._
+
+- [x] **Üçü de `db/sessions.js`'e taşındı ve dışa açıldı.** O dosya zaten "bir oturum bir
+  SATIR değil bir AİLEDİR" diyen yerdir; birini listelemek, iptal etmek ve **açmak** aynı
+  kavramdır.
+- [x] **BİREBİR taşındı — imzalar dahil.** Her çağrı yeri tek bir import satırı kadar
+  değişti. Aynı anda onları "iyileştiren" bir refactor, diff'i bir davranış değişikliğinin
+  saklanabileceği bir yer yapardı.
+- **Kabul:** davranış değişmemeli. → auth süitleri **42/42**; taşımadan sonra `eslint`
+  route dosyasında **ölü bir import** buldu (`newRefreshToken`) ve kaldırıldı.
+- **Doğrulama:** birim süiti **796**, `format:check` + `eslint` yeşil.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

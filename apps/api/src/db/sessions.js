@@ -22,6 +22,9 @@
  * detection has always killed the whole chain.
  */
 
+import { newId } from '../lib/ids.js';
+import { hashRefreshToken, newRefreshToken } from '../lib/tokens.js';
+
 /** What a client shows about one session. Never the token, never its digest. */
 function serialize(rows, { currentFamilyId = null } = {}) {
   const live = rows.find((r) => !r.rotated_at && !r.revoked_at) ?? rows.at(-1);
@@ -114,4 +117,70 @@ export function revokeOtherSessions(db, { userId, keepFamilyId = null, at = new 
 export async function countUserSessions(db, userId, { at = new Date() } = {}) {
   const sessions = await listUserSessions(db, userId, { at });
   return sessions.length;
+}
+
+/**
+ * ── ISSUING ONE, WHICH USED TO LIVE IN THE ROUTE (OPH-288) ────────────────
+ *
+ * The three functions below were private to `routes/auth.js` and are about
+ * SESSIONS rather than about routing, which stopped being a stylistic point
+ * the moment something outside that file needed to start one: a redirect-based
+ * sign-in ends at an endpoint the route file does not own, and the alternative
+ * was a second place that writes `refresh_tokens` — the exact thing every
+ * other caller in this product has been careful not to do.
+ *
+ * Moved VERBATIM, signatures included, so every existing call site changed by
+ * one import line and nothing else. A refactor that also improved them would
+ * have made the diff a place where a behaviour change could hide.
+ */
+/**
+ * Inserts a refresh-token row (via `db` or an open trx) and returns the raw token.
+ * Every login/register starts a new rotation family; refresh (OPH-022) keeps the family.
+ */
+/**
+ * What to write in `device_name` (OPH-284).
+ *
+ * The column has existed since the first migration and NOTHING had ever
+ * written to it — measured, not assumed. A session list whose every row says
+ * "unknown device" answers no question, so sign-in now records the
+ * User-Agent, truncated to the column.
+ *
+ * Stored RAW rather than parsed into "Chrome on macOS". Parsing a User-Agent
+ * is guessing, the guesses rot as browsers change their strings, and a wrong
+ * guess in this list is worse than a long one: the whole point is that
+ * somebody recognises their own device, and a client can shorten a string it
+ * can see. It cannot recover one we threw away.
+ */
+export function deviceLabel(request) {
+  const ua = request?.headers?.['user-agent'];
+  if (typeof ua !== 'string' || ua.trim() === '') return null;
+  return ua.trim().slice(0, 255);
+}
+
+export async function createRefreshRecord(
+  executor,
+  auth,
+  { userId, familyId, ip, deviceName = null },
+) {
+  const token = newRefreshToken();
+  const expiresAt = new Date(Date.now() + auth.refreshTtlDays * 24 * 60 * 60 * 1000);
+  await executor('refresh_tokens').insert({
+    id: newId(),
+    user_id: userId,
+    family_id: familyId,
+    token_hash: hashRefreshToken(token, auth.refreshSecret),
+    expires_at: expiresAt,
+    created_ip: ip ?? null,
+    device_name: deviceName,
+  });
+  return { token, expiresAt };
+}
+
+export function sessionTokens(app, user, refresh) {
+  return {
+    accessToken: app.signAccessToken(user),
+    accessTokenExpiresInSec: app.config.auth.accessTtlSec,
+    refreshToken: refresh.token,
+    refreshTokenExpiresAt: refresh.expiresAt.toISOString(),
+  };
 }

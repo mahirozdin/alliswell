@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Starting a session is no longer private to one route file (OPH-288).** The three
+  functions that mint one — the refresh record, the token bundle, the device label —
+  lived inside `routes/auth.js` and are about SESSIONS rather than about routing.
+  That stopped being a stylistic point the moment something outside that file needed
+  to start one: the alternative was a second place in this codebase that writes
+  `refresh_tokens`, which is exactly what every other caller has been careful not to
+  do. They moved verbatim, signatures included, so every call site changed by one
+  import line and nothing else.
+
 - **A screen for connecting an identity source (OPH-287).** The previous change let
   an extension check somebody's password against a system this server does not own;
   it left no way to SET one up, so a self-hoster could only do it by writing rows
