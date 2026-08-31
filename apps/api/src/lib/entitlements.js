@@ -16,6 +16,11 @@ export const EE_FEATURES = Object.freeze([
   'meetings',
   'audit',
   'reports',
+  // Signing in against an organisation's own identity source, and keeping the
+  // member list in step with it. Coarse on purpose like the rest: whether that
+  // means a directory bind, a federated assertion or a provisioning client is
+  // the overlay's business.
+  'directory',
 ]);
 
 export function assertKnownFeature(name) {

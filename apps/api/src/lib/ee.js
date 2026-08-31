@@ -49,6 +49,7 @@ export async function loadEeOverlay(app) {
     signInRequirements: [],
     passwordRequirements: [],
     signInFailureObservers: [],
+    credentialVerifiers: [],
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -359,6 +360,65 @@ function buildSeam(state) {
         throw new Error('registerPasswordRequirement: a function is required');
       }
       state.passwordRequirements.push(check);
+    },
+
+    /**
+     * Credential verifiers: `async (ctx) => null | { ok: false } | { ok: true, userId }`.
+     *
+     * The other three auth hooks REFUSE or OBSERVE; this one ANSWERS. It is
+     * the only place an extension can say "this credential is right" about a
+     * credential core cannot check itself — a directory bind, a federated
+     * assertion — and it exists because none of the other three can: a
+     * requirement runs after core has already proven the password, and an
+     * account whose password lives somewhere else has no password here to
+     * prove (`users.password_hash` is null for it, which core refuses).
+     *
+     * ── THREE ANSWERS, NOT TWO ───────────────────────────────────────────
+     *
+     *   • `null` (or undefined) — NOT MINE. Core carries on exactly as it
+     *     would with no extension loaded: one argon2 verify against the real
+     *     or the dummy hash, and the same refusal. This is the answer that
+     *     keeps a CE install and an install whose verifiers all decline
+     *     byte-identical, so it is the default for anything a verifier does
+     *     not recognise.
+     *   • `{ ok: false }` — MINE, AND NO. Core refuses with its ordinary
+     *     invalid-credentials error and runs the failure observers, so a
+     *     lockout counter sees a directory refusal the same as a local one.
+     *     There is deliberately no way to return a custom message here: a
+     *     refusal worded per address is an account-existence oracle, and the
+     *     one thing this seam must not do is make the login endpoint chatty.
+     *   • `{ ok: true, userId }` — MINE, AND YES. Core then re-reads that
+     *     user from its OWN tables and refuses if the row is missing or
+     *     deleted. A verifier names who signed in; it cannot conjure an
+     *     account, because the account in MySQL is the source of truth (the
+     *     same stance `lib/oauth-identity.js` takes for Google and Apple).
+     *
+     * ── WHERE IT RUNS, AND WHY THAT IS BEFORE ────────────────────────────
+     *
+     * Verifiers are consulted BEFORE core checks the password, for EVERY
+     * address presented — including addresses with no account here. Both
+     * halves matter. Running first means one authority decides one identity;
+     * running after core's refusal would make this a hook that OVERTURNS a
+     * no, which is a far more dangerous thing to hold. Running for every
+     * address means the mere fact that a verifier was consulted says nothing
+     * about whether an account exists.
+     *
+     * The FIRST verifier to claim the address wins and the rest are not
+     * consulted. Which source owns which identity is a policy, and policies
+     * belong to the extension that has the customer's configuration — core
+     * only guarantees the order it asks in is the order they registered in.
+     *
+     * A THROWING verifier refuses the sign-in, like a sign-in requirement and
+     * for the same reason: a credential source that fails open is not a
+     * credential source. It surfaces as a server error rather than a 401 on
+     * purpose — an unreachable directory is not a wrong password, and an
+     * operator watching status codes should be able to tell them apart.
+     */
+    registerCredentialVerifier(verify) {
+      if (typeof verify !== 'function') {
+        throw new Error('registerCredentialVerifier: a function is required');
+      }
+      state.credentialVerifiers.push(verify);
     },
 
     /** Collection point only — enforcing permissions is the overlay's business. */

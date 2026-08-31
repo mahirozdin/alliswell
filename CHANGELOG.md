@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **An extension can now authenticate somebody against a system this server does not
+  own (OPH-286).** Self-hosters running an extension could already have it refuse a
+  sign-in, count failed ones, or veto a new password — but not APPROVE one, so an
+  account whose password lives in another system (a company directory, say) had no
+  way in at all. There is now an extension point that can answer, with three
+  answers rather than two: not mine, mine and no, mine and yes.
+  **Nothing changes for an install without one**, and that is asserted rather than
+  assumed: with no verifier registered the sign-in path is the one that was here
+  before, down to which refusals look identical to each other. A verifier names who
+  signed in; it cannot conjure an account, because the account in this database is
+  still the source of truth — one naming a deleted or unknown person is refused.
+  Extensions that store the credentials they check against get their own key,
+  `EE_IDENTITY_KEY` — keep it with your backups like the others.
+
 - **A backup section that says how to get back, not just how to take a dump (OPH-285).**
   What to back up (the database, the objects, and the keys in `.env`), the command, how to
   restore it, and how to prove your backup works before you need it.

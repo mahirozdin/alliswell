@@ -9160,6 +9160,45 @@ alacağınızı hiçbir yerde söylemiyordu._
 - **Doğrulama:** prosedür taze bir veritabanında baştan sona koşuldu (dump → DROP DATABASE →
   restore → doğrulama).
 
+### OPH-286 — Uzantı seam'i bir kimliği DOĞRULAYABİLİR (tur 19e, v1.8.3)
+
+_Seam'in on üç uzantı noktası vardı ve auth tarafındaki üçü de aynı aileden: reddetme ve
+gözlem. `registerSignInRequirement` core parolayı doğruladıktan **sonra** koşuyor,
+`registerPasswordRequirement` biri parola belirlerken, `registerSignInFailureObserver`
+başarısızlıkları sayarken. Yani bir uzantı "hayır" diyebiliyordu, "evet" diyemiyordu — ve
+parolası bu sunucuda **olmayan** bir hesap (`users.password_hash` null, core her zaman
+reddeder) hiçbir şekilde giriş yapamıyordu._
+
+- [x] **`registerCredentialVerifier` — üç cevaplı, iki değil.** `null` = "bu adres benim
+  değil" (core'un parola yolu **bit-birebir eskisi** gibi koşar), `{ ok: false }` = "benim,
+  ve hayır" (olağan geçersiz-kimlik hatası + başarısızlık gözlemcileri), `{ ok: true,
+  userId }` = "benim, ve evet". Üçüncüsünde core kullanıcıyı **kendi tablosundan yeniden
+  okur** ve satır yoksa ya da silinmişse reddeder: bir doğrulayıcı kimin girdiğini
+  **adlandırır**, hesabı **var edemez**. Hesap MySQL'de kalır — `lib/oauth-identity.js`'in
+  Google/Apple için aldığı duruşun aynısı.
+- [x] **Nerede koştuğu bir güvenlik kararı, kolaylık değil.** Doğrulayıcılar parola
+  kontrolünden **önce** ve sunulan **her** adres için sorulur. Önce sorulması bir kimliğin
+  tek otoritesi olmasını sağlar; sonra sorulsaydı seam core'un "hayır"ını **çeviren** bir
+  kanca olurdu. Her adres için sorulması, çağrılmış olmasının **hesap-var-mı kehanetine**
+  dönüşmesini engeller. Fırlatan bir doğrulayıcı girişi reddeder ve bunu **5xx** olarak
+  yapar: erişilemeyen bir kimlik kaynağı yanlış bir parola değildir.
+- [x] **`EE_IDENTITY_KEY`** — bir uzantının, insanları **karşısında** doğruladığı sistemin
+  kimlik bilgilerini şifrelemesi için kendi anahtarı. `EE_AI_TOKEN_KEY`'den ayrı, o
+  anahtarın yanında zaten yazılı olan sebeple: farklı sahipler, farklı ömürler, ve birini
+  döndürmek diğerini yeniden şifrelemeye zorlamamalı. Core bu anahtarın altına hiçbir şey
+  yazmaz ve onu hiç okumaz.
+- [x] **Yeni yetkilendirme anahtarı** `directory` — listedeki diğerleri gibi kaba bir ürün
+  alanı adı.
+- **Kabul:** kayıtlı doğrulayıcı **yokken** giriş yolu değişmemiş olmalı.
+  → 13 test (`test/unit/auth-credential-verifier.test.js`): doğru parola, yanlış parola,
+  bilinmeyen adres, parolasız hesap, ve başarısızlık gözlemcilerinin **argümanları** tek tek
+  iddia ediliyor; yanlış parola ile bilinmeyen adresin **kodu ve mesajı aynı** olduğu ayrıca
+  iddia ediliyor (uç bir kehanete dönüşmemeli).
+- **Doğrulama:** birim süiti **783 → 796**. **Enjeksiyonla kanıt:** yeniden okumadan
+  `deleted_at` kontrolü kaldırıldığında "silinmiş hesap giremez" testi **200** aldı ve
+  kırmızı verdi; geri alındıktan sonra 13/13 yeşil. `format:check` ilk koşuda yeni test
+  dosyasını yakaladı (E26'nın kendi dersi: biçim adımı testlerden önce koşuyor).
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

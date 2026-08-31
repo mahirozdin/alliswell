@@ -536,30 +536,72 @@ export default async function authRoutes(app) {
   app.post('/login', { schema: loginSchema, config: authRateLimit }, async (request) => {
     const email = request.body.email.toLowerCase();
 
-    const user = await app
+    const found = await app
       .db('users')
       .where({ email })
       .whereNull('deleted_at')
       .first('id', 'email', 'password_hash', 'display_name');
 
-    // Always run one argon2 verify, even for unknown emails (timing-safe failure path).
-    // A null password_hash (future OAuth-only accounts) also verifies against the dummy.
-    const passwordOk = await verifyPassword(
-      user?.password_hash ?? timingSafeDummyHash,
-      request.body.password,
-    );
-    if (!user || !user.password_hash || !passwordOk) {
+    // ── OPH-286: is this credential ours to check at all? ────────────────
+    //
+    // Asked BEFORE the password and for EVERY address, including ones with no
+    // account here — see `registerCredentialVerifier`. With none registered
+    // (every CE install) the loop does not run, `claim` stays null, and every
+    // line below is the one that was here before.
+    let claim = null;
+    for (const verify of app.ee.credentialVerifiers) {
+      const outcome = await verify({
+        db: app.db,
+        email,
+        password: request.body.password,
+        user: found ?? null,
+        request,
+      });
+      // Anything falsy means "not mine" — the answer that keeps this seam
+      // invisible. The first verifier to claim the address settles it.
+      if (outcome) {
+        claim = outcome;
+        break;
+      }
+    }
+
+    const refuse = async () => {
       // OPH-283: tell whoever is counting, then refuse exactly as before.
       // Errors are swallowed on purpose — a counter that throws would turn
       // this 401 into a 500 and hand an attacker an oracle.
       for (const observe of app.ee.signInFailureObservers) {
         try {
-          await observe({ db: app.db, email, user: user ?? null, request });
+          await observe({ db: app.db, email, user: found ?? null, request });
         } catch (err) {
           request.log.warn({ err: err.message }, 'sign-in failure observer threw');
         }
       }
       throw invalidCredentialsError(app);
+    };
+
+    let user;
+    if (claim === null) {
+      // Always run one argon2 verify, even for unknown emails (timing-safe failure path).
+      // A null password_hash (future OAuth-only accounts) also verifies against the dummy.
+      const passwordOk = await verifyPassword(
+        found?.password_hash ?? timingSafeDummyHash,
+        request.body.password,
+      );
+      if (!found || !found.password_hash || !passwordOk) await refuse();
+      user = found;
+    } else if (!claim.ok) {
+      await refuse();
+    } else {
+      // A verifier names who signed in; core decides whether that person
+      // exists. Re-read rather than trusting the handed-back row: the account
+      // in MySQL is the source of truth, so a claim naming a deleted or
+      // unknown id is a refusal, not a session.
+      user = await app
+        .db('users')
+        .where({ id: claim.userId })
+        .whereNull('deleted_at')
+        .first('id', 'email', 'password_hash', 'display_name');
+      if (!user) await refuse();
     }
 
     // ── OPH-283: the second factor, and then the policy ──────────────────

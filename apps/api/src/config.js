@@ -63,6 +63,10 @@ const DEV_TOTP_KEY = 'cafecafecafecafecafecafecafecafecafecafecafecafecafecafeca
 // Extensions that store provider credentials of their own get their own key,
 // not this instance's. Separate blast radius, separate rotation.
 const DEV_EE_AI_TOKEN_KEY = 'beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef';
+// And a credential an extension checks people AGAINST is a third owner again:
+// one belongs to a team's spending, this one to whoever runs the company's
+// accounts. Same rule as the line above, applied once more.
+const DEV_EE_IDENTITY_KEY = 'a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11c';
 const INSECURE_SECRETS = new Set([
   DEV_ACCESS_SECRET,
   DEV_REFRESH_SECRET,
@@ -70,6 +74,7 @@ const INSECURE_SECRETS = new Set([
   DEV_AI_TOKEN_KEY,
   DEV_TOTP_KEY,
   DEV_EE_AI_TOKEN_KEY,
+  DEV_EE_IDENTITY_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
 ]);
@@ -359,6 +364,12 @@ export function loadConfig(env = process.env) {
       // key would mean rotating either forces re-encrypting both. Core stores
       // nothing under it and never reads it.
       aiTokenKey: env.EE_AI_TOKEN_KEY || DEV_EE_AI_TOKEN_KEY,
+      // AES-256-GCM key for the credentials an extension needs in order to
+      // check somebody's sign-in against a system it does not own. Separate
+      // from `aiTokenKey` for the reason stated there: different owners,
+      // different lifetimes, and rotating one must not re-encrypt the other.
+      // Core stores nothing under it and never reads it.
+      identityKey: env.EE_IDENTITY_KEY || DEV_EE_IDENTITY_KEY,
       // Outgoing mail for extensions that send any (core sends none). Read
       // like `storage`: absent means the capability is simply off. Unlike
       // storage it is ALL-OR-NOTHING — see assertSmtpComplete below for why a
@@ -422,6 +433,9 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.aiTokenKey)) {
     throw new Error('EE_AI_TOKEN_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.ee.identityKey)) {
+    throw new Error('EE_IDENTITY_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   assertSmtpComplete(config);
   if (config.ai.heartbeatMs < 1000 || config.ai.heartbeatMs > 60000) {
