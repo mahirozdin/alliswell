@@ -1380,6 +1380,7 @@
         "import_members": "Import members in bulk from a file",
         "manage_ai_keys": "Manage the team's AI provider keys and the personal-key policy",
         "manage_deliveries": "Notification deliveries",
+        "export_data": "Download everything the team has, as one file",
         "force_logout": "See a member's sessions and sign them out",
         "manage_invites": "Manage invitations",
         "manage_members": "Manage members",
