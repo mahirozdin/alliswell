@@ -7,6 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A backup section that says how to get back, not just how to take a dump (OPH-285).**
+  What to back up (the database, the objects, and the keys in `.env`), the command, how to
+  restore it, and how to prove your backup works before you need it.
+  Two things it is explicit about. The dump command now carries `--no-tablespaces`: without
+  it the application's database user makes mysqldump print a line starting with `Error:`
+  and **still exit 0 with a complete dump** — which is worse than a failure, because you
+  either panic at a healthy backup or learn to ignore stderr from backup jobs.
+  And: **back up `.env` with the database.** Calendar tokens, AI keys and two-factor
+  secrets are encrypted under keys that are not in the dump. Restore with different keys
+  and everything looks perfect while everyone who set up an authenticator can no longer
+  sign in.
+
 - **You can see where you are signed in, and close any of it (OPH-284).** A list of your
   sessions with the device each one signed in from, where it started, where it was last
   used, and when — plus a button to end one, and one to end all the others at once. Ending

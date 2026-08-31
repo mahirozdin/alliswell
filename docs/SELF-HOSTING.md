@@ -161,6 +161,73 @@ docker compose -f docker-compose.selfhost.yml exec -T mysql \
   | gzip > alliswell-backup-$(date +%F).sql.gz
 ```
 
+## 4b. Backups, and getting back
+
+Three things have to survive, and only one of them is the database.
+
+| What | Where it lives | If you lose it |
+|---|---|---|
+| **The database** | MySQL | Everything |
+| **The objects** | your S3 bucket / `storage` volume | Every attachment; the rows that name them survive and point at nothing |
+| **The keys in `.env`** | `.env` | Explained below, and it is the one people miss |
+
+### Take a backup
+
+```bash
+docker compose -f docker-compose.selfhost.yml exec -T mysql \
+  mysqldump -ualliswell -p"$DATABASE_PASSWORD" \
+  --single-transaction --no-tablespaces alliswell \
+  | gzip > alliswell-backup-$(date +%F).sql.gz
+```
+
+`--single-transaction` takes the dump from one consistent point without locking
+anybody out. `--no-tablespaces` is there because the application's own database
+user has no `PROCESS` privilege: without the flag mysqldump prints a line
+beginning with `Error:` about tablespaces, and **still exits 0 with a complete
+dump**. That is worse than a failure — an operator either panics at a healthy
+backup or learns to ignore stderr from backup jobs, and the second one is how a
+real failure gets missed a year later.
+
+### Put it back
+
+```bash
+gzip -dc alliswell-backup-2026-08-31.sql.gz \
+  | docker compose -f docker-compose.selfhost.yml exec -T mysql \
+    mysql -ualliswell -p"$DATABASE_PASSWORD" alliswell
+```
+
+Restore into an EMPTY database. The dump carries `DROP TABLE IF EXISTS` for what
+it knows about, and nothing for what it does not — restoring over a newer schema
+leaves the tables that were added since, half-populated and unaccounted for.
+
+### **Back up `.env` with the database, or the restore is half a restore**
+
+Several things in the database are encrypted at rest, each under its own key
+from `.env`: calendar tokens (`CALENDAR_TOKEN_KEY`), AI provider keys
+(`AI_TOKEN_KEY`), two-factor secrets (`AUTH_TOTP_KEY`). Those keys are **not in
+the dump** — that is the point of them.
+
+Restore a database with different keys and the restore looks perfect: every
+table is back, every row is there, and the encrypted columns are permanently
+unreadable. For two-factor secrets that means **everybody who set up an
+authenticator can no longer sign in**, with correct passwords, into a database
+that is entirely intact.
+
+Keep `.env` wherever you keep the dumps, and keep them together.
+
+### Prove it, before you need it
+
+A backup nobody has restored is a hope with a filename. Once — on a scratch
+database, not production:
+
+```bash
+gzip -dc alliswell-backup-2026-08-31.sql.gz | mysql -uroot -p scratch_db
+```
+
+then check that a row you recognise is in there. The one number worth writing
+down is how long the restore took, because that is your recovery time and it is
+the only figure in this section you cannot guess.
+
 ## 5. Optional: file attachments (Cloudflare R2 / any S3)
 
 Attachments are off until you configure a bucket; the app says so honestly

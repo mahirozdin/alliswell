@@ -9141,6 +9141,25 @@ müsait._
   gördüğü bir şey; onu bilmek başkasının oturumunu bitirmeye yetmemeli (testli, 404).
 - **Doğrulama:** entegrasyon **97 → 104**. Migration YOK — kolonların hepsi zaten vardı.
 
+### OPH-285 — Yedek bölümü: nasıl geri dönüleceği (tur 19d, v1.8.3)
+
+_SELF-HOSTING.md'nin dokuz bölümünün hiçbiri yedek değildi; "backup" kelimesi dosyada bir
+kez, §4'ün içindeki bir dosya adında geçiyordu. Yani ürün, verinizi nasıl geri
+alacağınızı hiçbir yerde söylemiyordu._
+
+- [x] **§4b eklendi:** neyin yedekleneceği (veritabanı · nesneler · `.env`'deki anahtarlar),
+  komut, geri yükleme, ve "ihtiyacın olmadan önce kanıtla".
+- [x] **Belgelenmiş komut düzeltildi ve sebebi yazıldı.** `--no-tablespaces` olmadan komut
+  `Error: … PROCESS privilege` yazıyor ve **0 ile çıkıp eksiksiz bir dump üretiyor**
+  (ölçüldü: 86 tablo / 86 `CREATE TABLE`). Bu bozuk bir yedek değil, **korkutucu** bir
+  yedek — ve daha sinsi: operatör ya sağlıklı bir yedekte paniğe kapılır ya da yedek
+  işlerinin stderr'ini yok saymayı öğrenir.
+- [x] **`.env` uyarısı.** Takvim token'ları, AI anahtarları ve iki adımlı doğrulama sırları
+  dump'ta olmayan anahtarlarla şifreli. Farklı anahtarlarla geri yükleme kusursuz görünür ve
+  authenticator kuran herkesi dışarıda bırakır. Ölçümle kanıtlandı.
+- **Doğrulama:** prosedür taze bir veritabanında baştan sona koşuldu (dump → DROP DATABASE →
+  restore → doğrulama).
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
