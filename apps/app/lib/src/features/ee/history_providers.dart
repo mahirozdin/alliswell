@@ -33,19 +33,16 @@ typedef EeAuditFilters = ({
   DateTime? to,
 });
 
-const eeAuditNoFilters = (
-  verb: null,
-  entityType: null,
-  from: null,
-  to: null,
-);
+const eeAuditNoFilters = (verb: null, entityType: null, from: null, to: null);
 
 final eeTeamAuditProvider =
     FutureProvider.family<EeHistoryPage, EeAuditFilters>((ref, filters) {
-      return ref.watch(eeHistoryApiProvider).teamFeed(
-        verb: filters.verb,
-        entityType: filters.entityType,
-        from: filters.from,
-        to: filters.to,
-      );
+      return ref
+          .watch(eeHistoryApiProvider)
+          .teamFeed(
+            verb: filters.verb,
+            entityType: filters.entityType,
+            from: filters.from,
+            to: filters.to,
+          );
     });

@@ -157,7 +157,10 @@ class _FilterBar extends StatelessWidget {
             hint: Text('ee.audit.anyAction'.tr()),
             onChanged: onVerb,
             items: [
-              DropdownMenuItem(value: null, child: Text('ee.audit.anyAction'.tr())),
+              DropdownMenuItem(
+                value: null,
+                child: Text('ee.audit.anyAction'.tr()),
+              ),
               for (final v in verbs)
                 DropdownMenuItem(value: v, child: Text('ee.verb.$v'.tr())),
             ],
@@ -168,7 +171,10 @@ class _FilterBar extends StatelessWidget {
             hint: Text('ee.audit.anything'.tr()),
             onChanged: onEntityType,
             items: [
-              DropdownMenuItem(value: null, child: Text('ee.audit.anything'.tr())),
+              DropdownMenuItem(
+                value: null,
+                child: Text('ee.audit.anything'.tr()),
+              ),
               for (final t in entityTypes)
                 DropdownMenuItem(value: t, child: Text(t)),
             ],

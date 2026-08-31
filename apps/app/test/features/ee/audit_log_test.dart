@@ -125,9 +125,7 @@ void main() {
     ) async {
       await _pump(
         tester,
-        page: EeHistoryPage(
-          items: [_event(actor: 'system', actorName: null)],
-        ),
+        page: EeHistoryPage(items: [_event(actor: 'system', actorName: null)]),
       );
       // Not "System": the product names itself, because a sweep is the
       // PRODUCT acting and "System" is a word every app uses for something
