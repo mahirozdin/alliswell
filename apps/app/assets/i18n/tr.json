@@ -1141,6 +1141,16 @@
     "keptBoth": "Senin sürümün ayrı bir not olarak kaydedildi"
   },
   "ee": {
+    "audit": {
+      "anyAction": "Her işlem",
+      "anything": "Her şey",
+      "clear": "Filtreleri temizle",
+      "couldNotLoad": "Geçmiş yüklenemedi.",
+      "empty": "Henüz hiçbir şey kaydedilmedi.",
+      "emptyFiltered": "Bu filtrelere uyan olay yok.",
+      "moreOnServer": "Sunucuda daha fazlası var — görmek için filtreleri daraltın.",
+      "title": "Takım geçmişi"
+    },
     "badge": "Enterprise",
     "locked": "Bu özellik kurumsal lisans gerektirir.",
     "team": {

@@ -23,3 +23,29 @@ final eeHistoryProvider = FutureProvider.family<EeHistoryPage, EeHistoryTarget>(
         .forEntity(entityType: target.entityType, entityId: target.entityId);
   },
 );
+
+/// The team-wide feed's filters (EE-130). A record so the family key compares
+/// by value: the same filters asked for twice are one request.
+typedef EeAuditFilters = ({
+  String? verb,
+  String? entityType,
+  DateTime? from,
+  DateTime? to,
+});
+
+const eeAuditNoFilters = (
+  verb: null,
+  entityType: null,
+  from: null,
+  to: null,
+);
+
+final eeTeamAuditProvider =
+    FutureProvider.family<EeHistoryPage, EeAuditFilters>((ref, filters) {
+      return ref.watch(eeHistoryApiProvider).teamFeed(
+        verb: filters.verb,
+        entityType: filters.entityType,
+        from: filters.from,
+        to: filters.to,
+      );
+    });

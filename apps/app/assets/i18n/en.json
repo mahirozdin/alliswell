@@ -1142,6 +1142,16 @@
     "keptBoth": "Your version was saved as a separate note"
   },
   "ee": {
+    "audit": {
+      "anyAction": "Any action",
+      "anything": "Anything",
+      "clear": "Clear filters",
+      "couldNotLoad": "The history could not be loaded.",
+      "empty": "Nothing has been recorded yet.",
+      "emptyFiltered": "No events match these filters.",
+      "moreOnServer": "There is more on the server — narrow the filters to see it.",
+      "title": "Team history"
+    },
     "badge": "Enterprise",
     "locked": "This feature requires an enterprise license.",
     "team": {
