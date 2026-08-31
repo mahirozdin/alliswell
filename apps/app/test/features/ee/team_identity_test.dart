@@ -228,26 +228,29 @@ void main() {
   });
 
   group('the status section (OPH-289)', () {
-    testWidgets('SAYS WHETHER ANYTHING IS HAPPENING, not only whether it broke', (
-      tester,
-    ) async {
-      // The failure this section is named after is a sync that stops
-      // silently, and an empty error list looks exactly like a healthy one.
-      await _pump(
-        tester,
-        [_provider()],
-        status: _status(
-          linked: 0,
-          total: 40,
-          clients: const [EeScimClient(id: 'C1', name: 'Entra', enabled: true)],
-        ),
-      );
-      // Zero of forty is a configuration that has never once worked, and it
-      // is legible without a single error row.
-      expect(find.textContaining('0'), findsWidgets);
-      expect(find.textContaining('never provisioned'), findsOneWidget);
-      expect(find.byKey(const Key('identity-no-problems')), findsOneWidget);
-    });
+    testWidgets(
+      'SAYS WHETHER ANYTHING IS HAPPENING, not only whether it broke',
+      (tester) async {
+        // The failure this section is named after is a sync that stops
+        // silently, and an empty error list looks exactly like a healthy one.
+        await _pump(
+          tester,
+          [_provider()],
+          status: _status(
+            linked: 0,
+            total: 40,
+            clients: const [
+              EeScimClient(id: 'C1', name: 'Entra', enabled: true),
+            ],
+          ),
+        );
+        // Zero of forty is a configuration that has never once worked, and it
+        // is legible without a single error row.
+        expect(find.textContaining('0'), findsWidgets);
+        expect(find.textContaining('never provisioned'), findsOneWidget);
+        expect(find.byKey(const Key('identity-no-problems')), findsOneWidget);
+      },
+    );
 
     testWidgets('A REFUSAL NAMES THE PERSON AND THE REASON', (tester) async {
       // "Sign-in refused" answers nothing at nine in the morning.
@@ -256,14 +259,14 @@ void main() {
       expect(find.textContaining('may not create one'), findsOneWidget);
     });
 
-    testWidgets('shows the address AS IT ARRIVED, not a tidied one', (tester) async {
+    testWidgets('shows the address AS IT ARRIVED, not a tidied one', (
+      tester,
+    ) async {
       // EE-123's import-report rule: a report that shows the cleaned value
       // cannot explain what was wrong with the value.
-      await _pump(
-        tester,
-        [_provider()],
-        status: _status(events: [_event(subject: '  Ada@CORP.example ')]),
-      );
+      await _pump(tester, [
+        _provider(),
+      ], status: _status(events: [_event(subject: '  Ada@CORP.example ')]));
       expect(find.textContaining('Ada@CORP.example'), findsOneWidget);
     });
 
@@ -271,7 +274,9 @@ void main() {
       await _pump(
         tester,
         [_provider()],
-        status: _status(events: [_event(id: 'E9', outcome: 'ok', code: 'CONNECTED')]),
+        status: _status(
+          events: [_event(id: 'E9', outcome: 'ok', code: 'CONNECTED')],
+        ),
       );
       expect(find.byKey(const Key('identity-no-problems')), findsOneWidget);
       expect(find.byKey(const Key('identity-event-E9')), findsNothing);
