@@ -297,7 +297,7 @@ class _EeServiceRoutingScreenState
             a[i].label == b[i].label &&
             a[i].type == b[i].type &&
             a[i].required == b[i].required &&
-            a[i].options.join(' ') == b[i].options.join(' '),
+            a[i].options.join('\x00') == b[i].options.join('\x00'),
       );
 
   Future<void> _save() async {

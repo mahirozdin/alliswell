@@ -260,7 +260,7 @@ _Chains _chainSpanningEdges(
     final chain = <String>[];
     var previous = edge.from;
     for (var rank = a + step; rank != b; rank += step) {
-      final id = ' v$i@$rank';
+      final id = '\x00v$i@$rank';
       virtualRanks[id] = rank;
       // Zero-width: a waypoint should steer the edge, never widen the picture.
       sizes[id] = Size.zero;
