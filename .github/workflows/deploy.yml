@@ -413,6 +413,18 @@ jobs:
               node -e 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"))' "$OVERLAY_DIR/.license.incoming" \
                 || { echo "ERROR: the supplied licence is not valid JSON — leaving the existing one alone." >&2; rm -f "$OVERLAY_DIR/.license.incoming"; exit 1; }
               mv "$OVERLAY_DIR/.license.incoming" "$OVERLAY_DIR/license.json"
+              # Readable by the user the API actually runs as. The staging file
+              # above is 600 because it is written by the deploy user and only
+              # they need it; the installed licence is read by pm2's user, which
+              # is a DIFFERENT account — and 600 there means the API logs
+              # "license unreadable: EACCES" and quietly runs as CE. Measured on
+              # v1.9.0's first successful deploy: every table migrated, every
+              # route absent.
+              #
+              # 644 is right rather than merely convenient: a licence is a
+              # SIGNED document handed to the customer, and its integrity comes
+              # from the signature. Secrecy was never what protected it.
+              chmod 644 "$OVERLAY_DIR/license.json"
               echo "licence file: $(wc -c < "$OVERLAY_DIR/license.json") bytes"
             fi
           elif [ -d "$OVERLAY_DIR" ]; then
