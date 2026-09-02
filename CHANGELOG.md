@@ -5,6 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **A screen for connecting your own mail server (OPH-290).** Settings gains a row
+  for it, behind its own permission. It opens with whether mail is currently
+  going out rather than with a form, and when it is not, it says plainly that
+  nothing is lost meanwhile — messages wait and go out once a working server is
+  saved. The password goes in once and is never shown again; the screen displays
+  its last four characters, and replacing it means typing a new one.
+
+
 ## [1.9.0] — 2026-09-01
 
 ### Added

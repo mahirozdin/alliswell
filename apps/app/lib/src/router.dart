@@ -41,6 +41,7 @@ import 'features/ee/ui/portal_links_screen.dart';
 import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
 import 'features/ee/ui/team_identity_screen.dart';
+import 'features/ee/ui/team_mail_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
@@ -469,6 +470,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/identity',
         builder: (context, state) => _page(const EeTeamIdentityScreen()),
+      ),
+      // OPH-290: the team's own mail relay. Its own row for the reason the one
+      // above has one — this hands us a credential for the company's mail
+      // system and decides which server every notification leaves through,
+      // which is not the authority that picks a logo.
+      GoRoute(
+        path: '/settings/team/mail',
+        builder: (context, state) => _page(const EeTeamMailScreen()),
       ),
       // EE-115: one meeting — what it decided, and who said what. A route
       // rather than a tab, for the reason EE-069's task history is one: this

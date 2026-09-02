@@ -210,6 +210,18 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.teamIdentitySub',
                   path: '/settings/team/identity',
                 ),
+              // OPH-290: the team's own mail relay, gated the same way. Until
+              // this existed every team's notifications left through the
+              // operator's server; now a team that has not filled this in
+              // sends nothing, so the row has to be findable.
+              if (ref.watch(canProvider('team.manage_mail')))
+                _GroupRow(
+                  keyName: 'settings-group-team-mail',
+                  icon: Icons.outgoing_mail,
+                  titleKey: 'ee.mail.settingsRow',
+                  subtitleKey: 'ee.mail.settingsRowHint',
+                  path: '/settings/team/mail',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain

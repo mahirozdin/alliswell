@@ -67,6 +67,7 @@ const DEV_EE_AI_TOKEN_KEY = 'beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbee
 // one belongs to a team's spending, this one to whoever runs the company's
 // accounts. Same rule as the line above, applied once more.
 const DEV_EE_IDENTITY_KEY = 'a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11c';
+const DEV_EE_MAIL_KEY = 'facefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeed';
 const INSECURE_SECRETS = new Set([
   DEV_ACCESS_SECRET,
   DEV_REFRESH_SECRET,
@@ -75,6 +76,7 @@ const INSECURE_SECRETS = new Set([
   DEV_TOTP_KEY,
   DEV_EE_AI_TOKEN_KEY,
   DEV_EE_IDENTITY_KEY,
+  DEV_EE_MAIL_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
 ]);
@@ -370,6 +372,9 @@ export function loadConfig(env = process.env) {
       // different lifetimes, and rotating one must not re-encrypt the other.
       // Core stores nothing under it and never reads it.
       identityKey: env.EE_IDENTITY_KEY || DEV_EE_IDENTITY_KEY,
+      // EE-141: a team's own SMTP password. Its own key, like the two above —
+      // rotating one must not force re-encrypting the others.
+      mailKey: env.EE_MAIL_KEY || DEV_EE_MAIL_KEY,
       // Outgoing mail for extensions that send any (core sends none). Read
       // like `storage`: absent means the capability is simply off. Unlike
       // storage it is ALL-OR-NOTHING — see assertSmtpComplete below for why a
@@ -436,6 +441,9 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.identityKey)) {
     throw new Error('EE_IDENTITY_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.ee.mailKey)) {
+    throw new Error('EE_MAIL_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   assertSmtpComplete(config);
   if (config.ai.heartbeatMs < 1000 || config.ai.heartbeatMs > 60000) {
