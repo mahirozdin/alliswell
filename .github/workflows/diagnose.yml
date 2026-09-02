@@ -132,8 +132,24 @@ jobs:
           echo "  toplevel: $(git rev-parse --show-toplevel 2>&1 | head -1)"
           # Host and path only. A url can carry a credential; a host cannot.
           git remote -v 2>/dev/null | awk '{print $1, $2}' | sed -E 's#https://[^@]*@#https://<redacted>@#' | sort -u | sed 's/^/  remote: /' || echo "  remote: none"
+          # The pair that separates "this remote" from "fetch itself": the same
+          # url reached BY NAME and BY VALUE, in the same directory, as the same
+          # user. `ls-remote <url>` already succeeds from this box, so if the
+          # named form fails and the literal one does not, the answer is in the
+          # remote's configuration and nowhere else.
+          echo "  ls-remote BY NAME (origin):"
+          GIT_TERMINAL_PROMPT=0 git -c credential.helper= ls-remote origin HEAD 2>&1 | head -1 | sed 's/^/    /' || true
+          echo "  ls-remote BY URL (same address):"
+          GIT_TERMINAL_PROMPT=0 git -c credential.helper= ls-remote "$(git config --get remote.origin.url)" HEAD 2>&1 | head -1 | sed 's/^/    /' || true
           echo "  fetch (dry run), first line:"
-          GIT_TERMINAL_PROMPT=0 git -c credential.helper= fetch --dry-run --tags origin 2>&1 | head -2 | sed 's/^/    /'
+          GIT_TERMINAL_PROMPT=0 git -c credential.helper= fetch --dry-run --tags origin 2>&1 | head -2 | sed 's/^/    /' || true
+          # Every auth-ish key git will consult, WITH the file it came from —
+          # including the system file the earlier probe never looked at. Names
+          # and origins only; `--name-only` keeps values out of a public log.
+          echo "  auth-ish config, by file:"
+          git config --list --show-origin --name-only 2>/dev/null \
+            | grep -aE 'credential|extraheader|^[^ ]+\turl\.|askpass|http\.' \
+            | head -12 | sed 's/^/    /' || echo "    (none)"
           echo
 
           echo "── github, anonymously, from this box (v1.9.0's deploy died here) ──"
