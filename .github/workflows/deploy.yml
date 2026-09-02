@@ -43,6 +43,9 @@ jobs:
       # Optional private overlay (the extension seam of src/lib/ee.js, deployed).
       # Empty repo slug = this instance runs the plain build and every overlay
       # stage below is skipped, byte for byte as before these steps existed.
+      # The canonical public URL of THIS repository. Sent so the server's
+      # `origin` can be normalised to it before fetching — see below.
+      CORE_URL: https://github.com/${{ github.repository }}.git
       OVERLAY_REPO: ${{ secrets.DEPLOY_OVERLAY_REPO }}
       OVERLAY_REF: ${{ vars.DEPLOY_OVERLAY_REF || 'main' }}
       WILDCARD_ALIAS: ${{ vars.DEPLOY_WILDCARD_ALIAS }}
@@ -149,7 +152,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' OVERLAY_REPO='$OVERLAY_REPO' OVERLAY_REF='$OVERLAY_REF' OVERLAY_TOKEN_B64='$OVERLAY_TOKEN_B64' OVERLAY_LICENSE_B64='$OVERLAY_LICENSE_B64' OVERLAY_ENV_B64='$OVERLAY_ENV_B64' bash -euo pipefail" <<'REMOTE'
+            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' CORE_URL='$CORE_URL' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' OVERLAY_REPO='$OVERLAY_REPO' OVERLAY_REF='$OVERLAY_REF' OVERLAY_TOKEN_B64='$OVERLAY_TOKEN_B64' OVERLAY_LICENSE_B64='$OVERLAY_LICENSE_B64' OVERLAY_ENV_B64='$OVERLAY_ENV_B64' bash -euo pipefail" <<'REMOTE'
           cd "$APP_DIR"
 
           # A non-interactive SSH session sources no login profile, and panels
@@ -297,6 +300,23 @@ jobs:
 
           # 2. Check out the EXACT released tag (detached HEAD on purpose — the
           #    server runs a release, not "whatever main happens to be").
+          # `origin` is normalised to the canonical PUBLIC url first, and that
+          # is not tidiness. A credential embedded in that url — from a clone
+          # somebody did by hand once — keeps working until it expires, and
+          # then GitHub answers 401 and git asks for a username a
+          # non-interactive shell can never give it. The deploy dies with
+          # "could not read Username", which reads as a network or permissions
+          # problem and is neither. Measured 2026-09-02, on the first deploy in
+          # five weeks, after the backup and before anything was published.
+          #
+          # This repository is public, so the fetch needs no credential at all
+          # — and the overlay's clone below already keeps its own origin clean
+          # for a neighbouring reason.
+          case "$(git remote get-url origin)" in
+            *@github.com*) echo "origin carried an embedded credential - replaced with the public url" ;;
+            *) : ;;
+          esac
+          git remote set-url origin "$CORE_URL"
           git fetch --tags --force --prune origin
           git checkout -f "$TAG"
           echo "checked out: $(git describe --tags --always)"
