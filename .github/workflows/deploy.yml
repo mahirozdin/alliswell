@@ -338,8 +338,21 @@ jobs:
           # `credential.helper=` empties the helper chain for this command and
           # GIT_TERMINAL_PROMPT=0 turns "I would ask a human" into an error a
           # log can explain, instead of a hang or a cryptic username prompt.
+          # Fetched BY URL, not by remote name — the overlay's clone below has
+          # always done it this way and the core half now does too.
+          #
+          # Measured on 2026-09-02, from this box, as this user: an anonymous
+          # GET of info/refs answers 200, the POST to git-upload-pack answers
+          # 200, `git ls-remote` succeeds both by name and by url, and every
+          # auth-related git config key is absent. Only `git fetch origin`
+          # asked for a username. Whatever state that remote carries, the
+          # release does not need it: the address is known, it is public, and
+          # naming it directly removes the whole question.
           GIT_TERMINAL_PROMPT=0 git -c credential.helper= \
-            fetch --tags --force --prune origin
+            fetch --tags --force --prune "$CORE_URL"
+          # `--prune` above prunes nothing when fetching by url, so the stale
+          # remote-tracking refs are left alone deliberately: the checkout below
+          # goes to a TAG, and a tag is not a branch that can drift.
           git checkout -f "$TAG"
           echo "checked out: $(git describe --tags --always)"
 
