@@ -146,6 +146,16 @@ jobs:
           # Every auth-ish key git will consult, WITH the file it came from —
           # including the system file the earlier probe never looked at. Names
           # and origins only; `--name-only` keeps values out of a public log.
+          # `ls-remote` does one GET; `fetch` does that GET and then a POST to
+          # git-upload-pack. If the GET is 200 and the POST is 401, nothing
+          # about git or its configuration is wrong — something between this
+          # box and GitHub treats the two verbs differently.
+          echo "  the two requests a fetch makes:"
+          curl -s -o /dev/null -w '    GET  info/refs:      HTTP %{http_code}\n' --max-time 15 \
+            'https://github.com/mahirozdin/alliswell.git/info/refs?service=git-upload-pack' || true
+          printf '0000' | curl -s -o /dev/null -w '    POST git-upload-pack: HTTP %{http_code}\n' --max-time 15 \
+            -X POST -H 'Content-Type: application/x-git-upload-pack-request' \
+            --data-binary @- 'https://github.com/mahirozdin/alliswell.git/git-upload-pack' || true
           echo "  auth-ish config, by file:"
           git config --list --show-origin --name-only 2>/dev/null \
             | grep -aE 'credential|extraheader|^[^ ]+\turl\.|askpass|http\.' \
