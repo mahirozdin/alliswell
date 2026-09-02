@@ -122,6 +122,25 @@ jobs:
           curl -s -o /dev/null -w 'openai completions: HTTP %{http_code} in %{time_total}s\n' --max-time 10 -X POST https://api.openai.com/v1/chat/completions || echo "openai completions: unreachable"
           echo
 
+          echo "── github, anonymously, from this box (v1.9.0's deploy died here) ──"
+          # A public repository fetches with no credential from anywhere. On
+          # 2026-09-02 three deploys died at `git fetch` with "could not read
+          # Username", and the git configuration on this box was proven clean —
+          # no extraheader, no credential helper, no url rewrite. So the
+          # question is what GitHub (or something between) answers to an
+          # anonymous request from HERE. Status codes only; no credential is
+          # sent and none is printed.
+          getent hosts github.com | awk '{print "  dns github.com -> "$1}' | head -3 || echo "  dns github.com: no answer"
+          curl -s -o /dev/null -w '  info/refs (public repo): HTTP %{http_code} in %{time_total}s\n' --max-time 15 \
+            'https://github.com/mahirozdin/alliswell.git/info/refs?service=git-upload-pack' \
+            || echo "  info/refs: unreachable"
+          curl -s -o /dev/null -w '  api.github.com/zen:      HTTP %{http_code}\n' --max-time 10 https://api.github.com/zen \
+            || echo "  api.github.com: unreachable"
+          # And what git itself says, first line only.
+          GIT_TERMINAL_PROMPT=0 git -c credential.helper= ls-remote \
+            https://github.com/mahirozdin/alliswell.git HEAD 2>&1 | head -1 | sed 's/^/  git ls-remote: /'
+          echo
+
           echo "── apache conf for api.alliswell.space (directives only) ──"
           V=/www/server/panel/vhost/apache
           for f in "$V"/api.alliswell.space.conf "$V"/proxy/api.alliswell.space/*.conf; do
