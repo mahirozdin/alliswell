@@ -15,7 +15,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   its last four characters, and replacing it means typing a new one.
 
 
-## [1.9.0] — 2026-09-01
+## [1.9.0] — 2026-09-02
 
 ### Added
 
