@@ -133,7 +133,14 @@ void main() {
     );
     final today = DateTime.now();
     final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
-    await tester.tap(find.text('$targetDay'));
+    final target = DateTime(today.year, today.month, targetDay);
+    // By full date, not by number: the grid shows adjacent months, so "7" is
+    // two cells whenever the window reaches next month's 7th.
+    await tester.tap(
+      find.byKey(
+        Key('calendar-day-${target.year}-${target.month}-${target.day}'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(container.read(selectedDayProvider), isNotNull);
 

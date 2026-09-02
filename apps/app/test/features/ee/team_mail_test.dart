@@ -70,6 +70,21 @@ Future<void> _pump(WidgetTester tester, EeTeamMail? value) async {
   await tester.pumpAndSettle();
 }
 
+/// The enable switch and the test button sit below the fold of an 800x600 test
+/// viewport, and a `ListView` does not BUILD what it has not laid out — so
+/// `find.byKey` returns nothing and the failure reads as "the widget is
+/// missing" rather than "the widget is further down". Scroll to it first, the
+/// idiom `share_log_screen_test` already uses.
+Future<Finder> _reveal(WidgetTester tester, Key key) async {
+  final target = find.byKey(key);
+  await tester.scrollUntilVisible(
+    target,
+    200,
+    scrollable: find.byType(Scrollable).first,
+  );
+  return target;
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -101,7 +116,7 @@ void main() {
       await _pump(tester, _mail(missingRequired: const ['host', 'password']));
 
       final sw = tester.widget<SwitchListTile>(
-        find.byKey(const Key('ee-mail-enabled')),
+        await _reveal(tester, const Key('ee-mail-enabled')),
       );
       // Refuses BEFORE the round trip: a switch that flips and snaps back
       // teaches people to ignore it.
@@ -120,7 +135,7 @@ void main() {
   testWidgets('a complete relay CAN be switched on', (tester) async {
     await _pump(tester, _mail());
     final sw = tester.widget<SwitchListTile>(
-      find.byKey(const Key('ee-mail-enabled')),
+      await _reveal(tester, const Key('ee-mail-enabled')),
     );
     expect(sw.onChanged, isNotNull);
   });
@@ -142,26 +157,31 @@ void main() {
     expect(obscured.single.controller?.text ?? '', isEmpty);
   });
 
-  testWidgets(
-    'a relay that is on says so, and one that failed says that instead',
-    (tester) async {
-      await _pump(tester, _mail(enabled: true));
-      expect(find.text('ee.mail.stateOn'.tr()), findsOneWidget);
+  // Two tests rather than two pumps in one: a second `pumpWidget` reuses the
+  // ProviderScope's container, so the override does not take and the screen
+  // keeps rendering the first value. The failure reads as "the error state is
+  // missing" when what actually happened is that it was never shown.
+  testWidgets('a relay that is on says so', (tester) async {
+    await _pump(tester, _mail(enabled: true));
+    expect(find.text('ee.mail.stateOn'.tr()), findsOneWidget);
+  });
 
-      await _pump(
-        tester,
-        _mail(
-          enabled: true,
-          status: 'error',
-          lastError: '535 authentication failed',
-        ),
-      );
-      expect(find.text('ee.mail.stateError'.tr()), findsOneWidget);
-      // The relay's own words, not a generic failure — that string is what
-      // somebody pastes into a search or hands to their mail admin.
-      expect(find.text('535 authentication failed'), findsOneWidget);
-    },
-  );
+  testWidgets('...and one that failed says that, in the relay OWN words', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _mail(
+        enabled: true,
+        status: 'error',
+        lastError: '535 authentication failed',
+      ),
+    );
+    expect(find.text('ee.mail.stateError'.tr()), findsOneWidget);
+    // Not a generic failure: that string is what somebody pastes into a search
+    // or hands to their mail admin.
+    expect(find.text('535 authentication failed'), findsOneWidget);
+  });
 
   testWidgets('testing is refused until something is saved', (tester) async {
     await _pump(
@@ -169,7 +189,7 @@ void main() {
       _mail(configured: false, host: null, fromAddress: null),
     );
     final button = tester.widget<OutlinedButton>(
-      find.byKey(const Key('ee-mail-test')),
+      await _reveal(tester, const Key('ee-mail-test')),
     );
     // Testing an unsaved host would prove something about a relay this team is
     // not using.

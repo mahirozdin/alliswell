@@ -49,6 +49,13 @@ Future<void> wideSurface(WidgetTester tester) async {
   addTearDown(() => tester.binding.setSurfaceSize(null));
 }
 
+/// The grid shows adjacent months, so a day NUMBER matches more than one cell
+/// whenever the window reaches the same date next month — which depends on
+/// today's date, and is why these taps were ambiguous on 2026-09-02 and not
+/// before. The full date is unique.
+Finder _calendarDay(DateTime day) =>
+    find.byKey(Key('calendar-day-${day.year}-${day.month}-${day.day}'));
+
 void main() {
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
@@ -142,7 +149,7 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('$targetDay'));
+    await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Selected day ·'), findsOneWidget);
@@ -188,7 +195,7 @@ void main() {
     );
 
     // Tapping the same day again clears the selection.
-    await tester.tap(find.text('$targetDay'));
+    await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
     expect(find.textContaining('Selected day ·'), findsNothing);
   });
@@ -237,11 +244,12 @@ void main() {
   ) async {
     await wideSurface(tester);
     final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
+    final target = DateTime(today.year, today.month, targetDay);
     final api = FakeApi();
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('$targetDay'));
+    await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('home-quick-add')),
@@ -277,6 +285,7 @@ void main() {
   testWidgets('quick-add honors the default-task-time setting', (tester) async {
     await wideSurface(tester);
     final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
+    final target = DateTime(today.year, today.month, targetDay);
     final api = FakeApi();
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
@@ -288,7 +297,7 @@ void main() {
     );
     await container.read(defaultTaskTimeProvider.notifier).set('07:15');
 
-    await tester.tap(find.text('$targetDay'));
+    await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('home-quick-add')),

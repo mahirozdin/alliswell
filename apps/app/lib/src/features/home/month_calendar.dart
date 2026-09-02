@@ -175,6 +175,14 @@ class _DayCell extends StatelessWidget {
         : scheme.onSurfaceVariant.withValues(alpha: 0.55);
 
     return InkWell(
+      // A day number is NOT unique on this grid: a six-row month shows the
+      // days either side of it, so "7" can be both the 7th of this month and
+      // the 7th of the next one — dimmed, but there. A finder that goes by the
+      // number picks between them by luck, and which month is even VISIBLE
+      // depends on today's date. Found on 2026-09-02, when September's grid
+      // reached 7 October and three tests that had been green for weeks went
+      // ambiguous on the same morning.
+      key: Key('calendar-day-${day.year}-${day.month}-${day.day}'),
       customBorder: const CircleBorder(),
       onTap: () => onTap(day),
       child: Semantics(
