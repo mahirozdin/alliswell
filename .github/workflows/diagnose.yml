@@ -122,6 +122,20 @@ jobs:
           curl -s -o /dev/null -w 'openai completions: HTTP %{http_code} in %{time_total}s\n' --max-time 10 -X POST https://api.openai.com/v1/chat/completions || echo "openai completions: unreachable"
           echo
 
+          echo "── the app dir as a git repository (paths and hosts, never urls) ──"
+          # GitHub answers this box fine (below), so the failure is specific to
+          # the checkout in APP_DIR. These four facts separate the candidates:
+          # is it even a repo, is it the one we think, where does origin point,
+          # and does a fetch of it work when run by hand.
+          echo "  APP_DIR: $APP_DIR"
+          echo "  is a git work tree: $(git rev-parse --is-inside-work-tree 2>&1 | head -1)"
+          echo "  toplevel: $(git rev-parse --show-toplevel 2>&1 | head -1)"
+          # Host and path only. A url can carry a credential; a host cannot.
+          git remote -v 2>/dev/null | awk '{print $1, $2}' | sed -E 's#https://[^@]*@#https://<redacted>@#' | sort -u | sed 's/^/  remote: /' || echo "  remote: none"
+          echo "  fetch (dry run), first line:"
+          GIT_TERMINAL_PROMPT=0 git -c credential.helper= fetch --dry-run --tags origin 2>&1 | head -2 | sed 's/^/    /'
+          echo
+
           echo "── github, anonymously, from this box (v1.9.0's deploy died here) ──"
           # A public repository fetches with no credential from anywhere. On
           # 2026-09-02 three deploys died at `git fetch` with "could not read
