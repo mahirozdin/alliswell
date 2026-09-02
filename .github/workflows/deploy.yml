@@ -317,7 +317,29 @@ jobs:
             *) : ;;
           esac
           git remote set-url origin "$CORE_URL"
-          git fetch --tags --force --prune origin
+
+          # A public fetch must not depend on ambient credentials, and on this
+          # box it did. With origin already clean, `git fetch` still answered
+          # "could not read Username" — so something in the git configuration
+          # was making an anonymous request authenticated and GitHub was
+          # answering 401. The usual culprit is an `extraheader` left behind by
+          # tooling that once ran here, carrying a token that has since expired.
+          #
+          # Names only, never values: the log of a public repository is a
+          # public document.
+          echo "git auth config in play:"
+          git config --local  --name-only --get-regexp 'http\..*github\.com.*' 2>/dev/null | sed 's/^/  local  /' || true
+          git config --global --name-only --get-regexp 'http\..*github\.com.*' 2>/dev/null | sed 's/^/  global /' || true
+          git config --local  --name-only --get-regexp '^credential\.'          2>/dev/null | sed 's/^/  local  /' || true
+          git config --global --name-only --get-regexp '^credential\.'          2>/dev/null | sed 's/^/  global /' || true
+          git config --global --name-only --get-regexp '^url\.'                 2>/dev/null | sed 's/^/  global /' || true
+          git config --local --unset-all 'http.https://github.com/.extraheader' 2>/dev/null || true
+
+          # `credential.helper=` empties the helper chain for this command and
+          # GIT_TERMINAL_PROMPT=0 turns "I would ask a human" into an error a
+          # log can explain, instead of a hang or a cryptic username prompt.
+          GIT_TERMINAL_PROMPT=0 git -c credential.helper= \
+            fetch --tags --force --prune origin
           git checkout -f "$TAG"
           echo "checked out: $(git describe --tags --always)"
 
