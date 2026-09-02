@@ -122,6 +122,26 @@ jobs:
           curl -s -o /dev/null -w 'openai completions: HTTP %{http_code} in %{time_total}s\n' --max-time 10 -X POST https://api.openai.com/v1/chat/completions || echo "openai completions: unreachable"
           echo
 
+          echo "── the EE overlay at runtime (v1.9.0 shipped it; the routes are absent) ──"
+          # The schema migrated through the overlay and its licence file is on
+          # disk, yet an anonymous EE route answers fastify's plain 404 — the
+          # same answer an instance without the overlay gives. So the question
+          # is what the API said about it at boot. Messages and codes only.
+          echo "  overlay checkout: $( [ -d "$APP_DIR/ee/.git" ] && git -C "$APP_DIR/ee" describe --tags --always 2>/dev/null || echo 'absent' )"
+          echo "  licence file: $( [ -f "$APP_DIR/ee/license.json" ] && wc -c < "$APP_DIR/ee/license.json" || echo 0 ) bytes"
+          echo "  overlay deps present:"
+          for m in nodemailer ldapts @node-saml/node-saml; do
+            printf '    %-24s %s\n' "$m" "$( [ -d "$APP_DIR/node_modules/$m" ] || [ -d "$APP_DIR/ee/node_modules/$m" ] && echo present || echo MISSING )"
+          done
+          echo "  EE_ keys present in apps/api/.env (names only):"
+          grep -oE '^[[:space:]]*EE_[A-Z0-9_]+' "$APP_DIR/apps/api/.env" 2>/dev/null | tr -d ' ' | sort | sed 's/^/    /' || echo "    (none)"
+          echo "  what the API logged about the overlay (last 4000 lines):"
+          tail -n 4000 /home/www/.pm2/logs/alliswellapi-out.log 2>/dev/null \
+            | grep -aiE '\bee\b.*(overlay|loaded|entitle|licen)|overlay' | tail -6 | cut -c1-220 | sed 's/^/    /' || echo "    (nothing)"
+          tail -n 4000 /home/www/.pm2/logs/alliswellapi-error.log 2>/dev/null \
+            | grep -aiE 'overlay|ee/index|ERR_MODULE|Cannot find' | tail -6 | cut -c1-220 | sed 's/^/    /' || true
+          echo
+
           echo "── the app dir as a git repository (paths and hosts, never urls) ──"
           # GitHub answers this box fine (below), so the failure is specific to
           # the checkout in APP_DIR. These four facts separate the candidates:
