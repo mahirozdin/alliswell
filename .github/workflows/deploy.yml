@@ -126,6 +126,7 @@ jobs:
           OVERLAY_LICENSE: ${{ secrets.DEPLOY_OVERLAY_LICENSE }}
           OVERLAY_ENV: ${{ vars.DEPLOY_OVERLAY_ENV }}
           OVERLAY_ENV_SECRET: ${{ secrets.DEPLOY_OVERLAY_ENV_SECRET }}
+          CORE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           test -n "$OVERLAY_TOKEN" || { echo "::error::secrets.DEPLOY_OVERLAY_TOKEN is not set — the private overlay cannot be fetched"; exit 1; }
           emit() { # $1 = output name, $2 = value ('' → empty output, no mask)
@@ -135,6 +136,19 @@ jobs:
             echo "$1=$b64" >> "$GITHUB_ENV"
           }
           emit OVERLAY_TOKEN_B64   "$OVERLAY_TOKEN"
+          # EE-141 follow-up: the core fetch is authenticated too, and not
+          # because the repository is private — it is public. Anonymous git
+          # operations are rate limited per IP, and this box also runs three
+          # other projects. Measured on 2026-09-02: the same fetch succeeded
+          # twice and then began answering "could not read Username" while
+          # curl, ls-remote and info/refs all still returned 200 from the same
+          # machine. A release must not depend on how many anonymous requests
+          # the address happened to make that hour.
+          #
+          # GITHUB_TOKEN is scoped to this repository and dies with the job, so
+          # it cannot be reused off the box later — which is why it rides the
+          # same one-command path the overlay's does, never .git/config.
+          emit CORE_TOKEN_B64      "$CORE_TOKEN"
           emit OVERLAY_LICENSE_B64 "$OVERLAY_LICENSE"
           # Public (vars) and secret (secrets) env lines are merged, secrets
           # LAST so a secret always wins over a same-named plain value.
@@ -152,7 +166,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' CORE_URL='$CORE_URL' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' OVERLAY_REPO='$OVERLAY_REPO' OVERLAY_REF='$OVERLAY_REF' OVERLAY_TOKEN_B64='$OVERLAY_TOKEN_B64' OVERLAY_LICENSE_B64='$OVERLAY_LICENSE_B64' OVERLAY_ENV_B64='$OVERLAY_ENV_B64' bash -euo pipefail" <<'REMOTE'
+            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' CORE_URL='$CORE_URL' CORE_TOKEN_B64='$CORE_TOKEN_B64' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' OVERLAY_REPO='$OVERLAY_REPO' OVERLAY_REF='$OVERLAY_REF' OVERLAY_TOKEN_B64='$OVERLAY_TOKEN_B64' OVERLAY_LICENSE_B64='$OVERLAY_LICENSE_B64' OVERLAY_ENV_B64='$OVERLAY_ENV_B64' bash -euo pipefail" <<'REMOTE'
           cd "$APP_DIR"
 
           # A non-interactive SSH session sources no login profile, and panels
@@ -348,8 +362,15 @@ jobs:
           # asked for a username. Whatever state that remote carries, the
           # release does not need it: the address is known, it is public, and
           # naming it directly removes the whole question.
+          CORE_TOKEN=$(printf '%s' "${CORE_TOKEN_B64:-}" | base64 -d)
+          if [ -n "$CORE_TOKEN" ]; then
+            CORE_FETCH_URL="https://x-access-token:$CORE_TOKEN@${CORE_URL#https://}"
+          else
+            CORE_FETCH_URL="$CORE_URL"
+          fi
           GIT_TERMINAL_PROMPT=0 git -c credential.helper= \
-            fetch --tags --force --prune "$CORE_URL"
+            fetch --tags --force --prune "$CORE_FETCH_URL"
+          unset CORE_TOKEN CORE_FETCH_URL
           # `--prune` above prunes nothing when fetching by url, so the stale
           # remote-tracking refs are left alone deliberately: the checkout below
           # goes to a TAG, and a tag is not a branch that can drift.
