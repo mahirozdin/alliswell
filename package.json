@@ -30,7 +30,8 @@
     "check:no-ts": "bash scripts/check-no-ts.sh",
     "check:no-ee": "bash scripts/check-no-ee.sh",
     "check:i18n": "node scripts/i18n/check.mjs",
-    "check:docs": "node scripts/docs/check.mjs"
+    "check:docs": "node scripts/docs/check.mjs",
+    "check:fab": "node scripts/design/check-extended-fab.mjs"
   },
   "repository": {
     "type": "git",

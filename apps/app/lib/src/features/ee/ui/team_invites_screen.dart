@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
@@ -27,12 +28,10 @@ class EeTeamInvitesScreen extends ConsumerWidget {
     final invites = ref.watch(eeInvitesProvider);
     return Scaffold(
       appBar: AppBar(title: Text('ee.team.invites.title'.tr())),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: AwExtendedFab(
         key: const Key('invite-create'),
-        // The app theme sets a CircleBorder for every FAB and this Flutter
-        // has no separate slot for the extended one, so the pill has to be
-        // asked for here — without it the label spills past a circle.
-        shape: const StadiumBorder(),
+        // The StadiumBorder this screen used to pass by hand now lives in
+        // AwExtendedFab, so it is no longer one call site's private memory.
         onPressed: () => _create(context, ref),
         icon: const Icon(Icons.person_add_alt),
         label: Text('ee.team.invites.new'.tr()),

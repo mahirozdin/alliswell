@@ -74,6 +74,9 @@ jobs:
       - name: Policy — docs do not claim a stale version
         run: npm run check:docs
 
+      - name: Policy — no bare extended FABs (the theme's circle eats the icon)
+        run: npm run check:fab
+
       - name: Lint
         run: npm run lint
 
