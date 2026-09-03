@@ -387,6 +387,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/integrations',
         builder: (context, state) => _page(const SettingsIntegrationsScreen()),
       ),
+      // OPH-292: Developer — API access and the public reference. A real
+      // route like its five siblings, so it can be linked and deep-linked.
+      GoRoute(
+        path: '/settings/developer',
+        builder: (context, state) => _page(const SettingsDeveloperScreen()),
+      ),
       GoRoute(
         path: '/settings/data',
         builder: (context, state) => _page(const SettingsDataScreen()),

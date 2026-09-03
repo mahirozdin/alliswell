@@ -8,6 +8,7 @@ import '../core/app_version.dart';
 import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
 import '../features/ai/ui/ai_settings_card.dart';
+import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
@@ -95,6 +96,19 @@ class SettingsScreen extends ConsumerWidget {
                 titleKey: 'settings.group.integrations',
                 subtitleKey: 'settings.group.integrationsSub',
                 path: '/settings/integrations',
+              ),
+              // OPH-292 (DESIGN §32 S2, amended): the API stopped being an
+              // "integration" the moment it grew public documentation and a
+              // Postman collection. An integration is something this app
+              // talks TO; this is a surface other software is written
+              // AGAINST, and the person looking for it is looking for their
+              // own keys, not for Google Calendar.
+              _GroupRow(
+                keyName: 'settings-group-developer',
+                icon: Icons.terminal_outlined,
+                titleKey: 'settings.group.developer',
+                subtitleKey: 'settings.group.developerSub',
+                path: '/settings/developer',
               ),
               _GroupRow(
                 keyName: 'settings-group-data',
@@ -580,17 +594,40 @@ class SettingsIntegrationsScreen extends StatelessWidget {
       // OPH-220: AI — hides itself when the server has AI disabled. The MCP
       // connector card lives inside it and stays there.
       const AiSettingsCard(),
-      const SizedBox(height: AwSpace.x3),
-      // OPH-265: the space OPH-260 left here, now filled — the door to the
-      // keys a person hands to their own scripts (ADR-0032).
+      // OPH-292: API access used to sit here. It moved up to its own
+      // top-level group — see the Developer row on the root screen.
+    ],
+  );
+}
+
+/// Geliştirici: the surfaces other software is written against (§32 S2,
+/// amended by OPH-292).
+///
+/// Two rows today, and the pairing is the point: the keys are useless
+/// without the reference, and the reference is abstract without a key. A
+/// person arriving here wants to automate something, and both halves of
+/// that are in one place.
+class SettingsDeveloperScreen extends StatelessWidget {
+  const SettingsDeveloperScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => _SettingsPage(
+    title: 'settings.group.developer'.tr(),
+    children: [
       Card(
-        child: ListTile(
-          key: const Key('settings-api-keys'),
-          leading: const Icon(Icons.vpn_key_outlined),
-          title: Text('apiKeys.title'.tr()),
-          subtitle: Text('apiKeys.sub'.tr()),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => context.push('/settings/api-keys'),
+        child: Column(
+          children: [
+            ListTile(
+              key: const Key('settings-api-keys'),
+              leading: const Icon(Icons.vpn_key_outlined),
+              title: Text('apiKeys.title'.tr()),
+              subtitle: Text('apiKeys.sub'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/api-keys'),
+            ),
+            const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
+            const ApiDocsRow(),
+          ],
         ),
       ),
     ],

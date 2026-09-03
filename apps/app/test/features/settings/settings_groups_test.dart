@@ -58,7 +58,7 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  testWidgets('the root names five places and keeps sign out', (tester) async {
+  testWidgets('the root names six places and keeps sign out', (tester) async {
     wide(tester);
     await tester.pumpWidget(await app(FakeApi()));
     await tester.pumpAndSettle();
@@ -69,6 +69,10 @@ void main() {
       'settings-group-general',
       'settings-group-notifications',
       'settings-group-integrations',
+      // OPH-292: §32 S2 said "six groups, fixed" and put API access inside
+      // Integrations. It is a top-level group now — the rule is amended in
+      // DESIGN, not quietly contradicted here.
+      'settings-group-developer',
       'settings-group-data',
     ]) {
       expect(find.byKey(Key(key)), findsOneWidget, reason: '$key is the index');
@@ -108,6 +112,11 @@ void main() {
         'settings-alarm-log',
       ],
       'settings-group-data': ['settings-completed', 'settings-share-log'],
+      // OPH-292: API access moved here out of Integrations, and gained the
+      // reference beside it. Censused now precisely because it was NOT
+      // before — the row moved between pages without a single test noticing,
+      // which is the failure mode this census exists to catch.
+      'settings-group-developer': ['settings-api-keys', 'settings-api-docs'],
     };
 
     await tester.pumpWidget(await app(FakeApi()));
@@ -155,6 +164,23 @@ void main() {
     // and AI hides itself when the server has it disabled, so neither is
     // asserted here — that is their own behaviour, not this task's.
     expect(find.text('Google Calendar'), findsOneWidget);
+    // OPH-292: and API access is NOT here any more. The census above proves
+    // it arrived somewhere; this proves it left, which is the other half of
+    // "on exactly one page".
+    expect(find.byKey(const Key('settings-api-keys')), findsNothing);
+  });
+
+  testWidgets('Developer pairs the keys with the reference', (tester) async {
+    wide(tester);
+    await tester.pumpWidget(await app(FakeApi()));
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    await openGroup(tester, 'settings-group-developer');
+
+    // OPH-296: the complaint was "I made a key and there is no
+    // documentation". The two rows are deliberately adjacent.
+    expect(find.byKey(const Key('settings-api-keys')), findsOneWidget);
+    expect(find.byKey(const Key('settings-api-docs')), findsOneWidget);
   });
 
   testWidgets('a settings URL still works — the deep routes did not move', (
