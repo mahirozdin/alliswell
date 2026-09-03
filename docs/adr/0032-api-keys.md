@@ -56,7 +56,7 @@ of the 78 routes** goes through `onRequest: [app.authenticate]` and reads
    workspace-scoped route (`requireWorkspaceMember` compares the key's
    workspace to the target and answers 403 `AUTH_APIKEY_WORKSPACE`).
    Adding scopes later is an additive column plus a revision of this ADR.
-4. **Three doors stay shut to keys** (defence in depth, not paranoia):
+4. **Four doors stay shut to keys** (defence in depth, not paranoia):
    - **Account deletion** (`DELETE /me`, `/me/deletion/cancel`) — a leaked key
      must not be able to erase the account it leaked from.
    - **`/ai/*`** — those routes hold BYOK provider secrets and spend the user's
@@ -64,8 +64,23 @@ of the 78 routes** goes through `onRequest: [app.authenticate]` and reads
    - **Key management itself** — a key cannot mint or revoke keys. Otherwise
      one leaked key is permanent: the attacker issues a second one, and
      revoking the first changes nothing.
+   - **Your own credentials** *(added 2026-09-04 — see the amendment below)* —
+     password, two-factor enrolment and session management (`/auth/password`,
+     `/auth/mfa/*`, `/auth/sessions*`). A holder who could rotate the password
+     or close every other session would own the account rather than borrow it.
+
    Everything else — tasks, notes, projects, tags, files, sync, calendar — is
    open to a key, because that is the point.
+
+   **Amendment (OPH-294).** This section said "three doors" and listed three,
+   from 2026-08-17 until 2026-09-04. The fourth arrived with two-factor auth
+   and session management (OPH-283, OPH-284), which correctly applied
+   `rejectApiKeys` in `routes/auth.js` — but neither this ADR nor `docs/API.md`
+   was updated, so both documents understated the guarantee by nine endpoints
+   for two releases. Nobody noticed because nothing could: the count existed
+   only in prose. The route table is now read out of the code by
+   `scripts/api/openapi.mjs` and gated in CI ([ADR-0035](0035-api-docs-are-generated.md)),
+   which is the actual fix — this paragraph is only the record.
 5. **Per-key rate limiting.** Key-authenticated requests are bucketed by the
    key's digest rather than by IP (`API_KEY_RATE_LIMIT_MAX`, default 300/min —
    the same ceiling as the global per-IP limit). A script behind the same NAT

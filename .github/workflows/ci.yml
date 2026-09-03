@@ -77,6 +77,20 @@ jobs:
       - name: Policy — no bare extended FABs (the theme's circle eats the icon)
         run: npm run check:fab
 
+      # OPH-294: the reference, the spec and the Postman collection are all
+      # generated from the route schemas. These three gates are what make that
+      # true tomorrow as well — a route whose schema changes without the docs
+      # being regenerated fails here, which is the only reason a generated
+      # reference is worth more than a hand-written one.
+      - name: Docs — the OpenAPI spec matches the routes
+        run: npm run check:openapi
+
+      - name: Docs — the API reference matches the spec
+        run: npm run check:apidocs
+
+      - name: Docs — the Postman collection matches the spec
+        run: npm run check:postman
+
       - name: Lint
         run: npm run lint
 

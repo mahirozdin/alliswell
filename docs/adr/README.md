@@ -42,6 +42,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0032](0032-api-keys.md) | API keys: plain Bearer, one workspace, no scopes in v1 | Accepted |
 | [0033](0033-markdown-is-the-only-note-format.md) | Markdown is the only thing a note is made of | Accepted — supersedes [0028](0028-markdown-document-model-and-renderer.md) §1 |
 | [0034](0034-pdf-export-rasterizes-what-it-cannot-typeset.md) | The PDF exporter draws what it cannot typeset | Accepted — extends [0028](0028-markdown-document-model-and-renderer.md) §3 |
+| [0035](0035-api-docs-are-generated.md) | The API reference is generated from the routes | Accepted — amends [0032](0032-api-keys.md) §4 |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was
