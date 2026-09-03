@@ -48,6 +48,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
+    "@fastify/swagger": "^9.4.2",
     "eslint": "^9.30.0",
     "eslint-config-prettier": "^10.1.5",
     "globals": "^16.3.0",

@@ -66,8 +66,23 @@ function loggerOptions(config) {
  *
  *   const app = await buildApp({ config, db: fakeDb, redis: fakeRedis });
  *   const res = await app.inject({ method: 'GET', url: '/health/ready' });
+ *
+ * `instrument` runs against the bare instance BEFORE any plugin or route is
+ * registered, which is the only moment an `onRoute` hook can still see every
+ * route. It exists for `scripts/api/openapi.mjs` (OPH-294): the OpenAPI spec
+ * is generated from these route schemas rather than hand-copied beside them,
+ * because a reference nobody can verify mechanically WILL drift — that is
+ * how docs/API.md came to describe a 409 body the server does not send.
+ * Undefined everywhere else, including production, where it costs nothing.
  */
-export async function buildApp({ config = loadConfig(), logger, db, redis, storage } = {}) {
+export async function buildApp({
+  config = loadConfig(),
+  logger,
+  db,
+  redis,
+  storage,
+  instrument,
+} = {}) {
   const app = Fastify({
     logger: logger ?? loggerOptions(config),
     requestIdHeader: 'x-request-id',
@@ -84,6 +99,10 @@ export async function buildApp({ config = loadConfig(), logger, db, redis, stora
 
   app.decorate('config', config);
   app.decorate('pkg', { name: pkg.name, version: pkg.version });
+
+  // Before everything: the last point at which a route-collecting hook can
+  // still be installed ahead of the routes it needs to see.
+  if (instrument) await instrument(app);
 
   await app.register(sensible);
   await app.register(helmet, { contentSecurityPolicy: false });

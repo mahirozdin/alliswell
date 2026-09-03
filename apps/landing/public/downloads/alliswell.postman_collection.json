@@ -1,0 +1,4149 @@
+{
+  "info": {
+    "_postman_id": "7096efc4-0000-4000-8000-7096efc40000",
+    "name": "AllisWell REST API v1.9.0",
+    "description": "Generated from the AllisWell OpenAPI spec — see https://alliswell.space/docs/api\n\nSet `apiKey` to a personal key (Settings → API access and management) and `workspaceId` to the workspace it belongs to; `GET /api/v1/me` lists yours. The few endpoints a key may not open are marked and use `sessionJwt` instead.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{apiKey}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.alliswell.space",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "workspaceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionJwt",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Account",
+      "item": [
+        {
+          "name": "GET /api/v1/me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/me",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locale\": \"tr\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/me",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/me/deletion/cancel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/me/deletion/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me",
+                "deletion",
+                "cancel"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "POST /api/v1/ai/actions/{actionId}/decision",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/actions/:actionId/decision",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "actions",
+                ":actionId",
+                "decision"
+              ],
+              "variable": [
+                {
+                  "key": "actionId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accepted\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/ai/connections/{connectionId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/connections/:connectionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "connections",
+                ":connectionId"
+              ],
+              "variable": [
+                {
+                  "key": "connectionId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"apiKey\": \"string\",\n  \"baseUrl\": \"string\",\n  \"defaultChatModel\": \"string\",\n  \"defaultFastModel\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/ai/connections/{connectionId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/connections/:connectionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "connections",
+                ":connectionId"
+              ],
+              "variable": [
+                {
+                  "key": "connectionId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/ai/connections/{connectionId}/test",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ai/connections/:connectionId/test",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ai",
+                "connections",
+                ":connectionId",
+                "test"
+              ],
+              "variable": [
+                {
+                  "key": "connectionId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/ai/chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/ai/chat",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "chat"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"string\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/ai/chat/{requestId}/cancel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/ai/chat/:requestId/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "chat",
+                ":requestId",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "requestId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/ai/connections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/ai/connections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "connections"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/ai/connections",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/ai/connections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "connections"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"anthropic\",\n  \"consentAcknowledged\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/ai/extract",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/ai/extract",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "extract"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"string\",\n  \"source\": \"bubble\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/ai/models",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/ai/models",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "models"
+              ],
+              "query": [
+                {
+                  "key": "connectionId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/ai/status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/ai/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "ai",
+                "status"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "API keys",
+      "item": [
+        {
+          "name": "POST /api/v1/api-keys/{keyId}/revoke",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/api-keys/:keyId/revoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "api-keys",
+                ":keyId",
+                "revoke"
+              ],
+              "variable": [
+                {
+                  "key": "keyId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/api-keys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/api-keys",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "api-keys"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/api-keys",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/api-keys",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "api-keys"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "POST /api/v1/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "No credentials required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"you@example.com\",\n  \"password\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "query": [
+                {
+                  "key": "all",
+                  "value": "false",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "No credentials required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/auth/mfa/totp",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mfa/totp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mfa",
+                "totp"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/mfa/totp",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mfa/totp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mfa",
+                "totp"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/auth/mfa/totp",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mfa/totp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mfa",
+                "totp"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/mfa/totp/confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mfa/totp/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mfa",
+                "totp",
+                "confirm"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/mfa/totp/recovery-codes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/mfa/totp/recovery-codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "mfa",
+                "totp",
+                "recovery-codes"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/oauth",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/oauth",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "oauth"
+              ]
+            },
+            "description": "No credentials required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"provider\": \"google\",\n  \"idToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "password"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"string\",\n  \"newPassword\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "No credentials required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "No credentials required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"you@example.com\",\n  \"password\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/auth/sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sessions"
+              ],
+              "query": [
+                {
+                  "key": "refreshToken",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/auth/sessions/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/sessions/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sessions",
+                ":id"
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/auth/sessions/revoke-others",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/sessions/revoke-others",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "sessions",
+                "revoke-others"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Capabilities",
+      "item": [
+        {
+          "name": "GET /api/v1/ee/status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ee/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ee",
+                "status"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "GET /api/v1/notification-devices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notification-devices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notification-devices"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PUT /api/v1/notification-devices/{deviceId}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notification-devices/:deviceId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notification-devices",
+                ":deviceId"
+              ],
+              "variable": [
+                {
+                  "key": "deviceId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"ios\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/notification-devices/{deviceId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notification-devices/:deviceId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notification-devices",
+                ":deviceId"
+              ],
+              "variable": [
+                {
+                  "key": "deviceId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Files",
+      "item": [
+        {
+          "name": "GET /api/v1/files/{fileId}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/files/:fileId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "files",
+                ":fileId"
+              ],
+              "variable": [
+                {
+                  "key": "fileId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/files/{fileId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/files/:fileId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "files",
+                ":fileId"
+              ],
+              "variable": [
+                {
+                  "key": "fileId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\",\n  \"folderId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/files/{fileId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/files/:fileId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "files",
+                ":fileId"
+              ],
+              "variable": [
+                {
+                  "key": "fileId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/files/{fileId}/complete",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/files/:fileId/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "files",
+                ":fileId",
+                "complete"
+              ],
+              "variable": [
+                {
+                  "key": "fileId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/folders/{folderId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/folders/:folderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "folders",
+                ":folderId"
+              ],
+              "variable": [
+                {
+                  "key": "folderId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\",\n  \"parentId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/folders/{folderId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/folders/:folderId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "folders",
+                ":folderId"
+              ],
+              "variable": [
+                {
+                  "key": "folderId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/storage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/storage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "storage"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "files"
+              ],
+              "query": [
+                {
+                  "key": "targetType",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "targetId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "folderId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/files",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "files"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetType\": \"project\",\n  \"targetId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n  \"name\": \"Pay the electricity bill\",\n  \"sizeBytes\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/files/usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/files/usage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "files",
+                "usage"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/folders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/folders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "folders"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/folders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/folders",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "folders"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Google Calendar",
+      "item": [
+        {
+          "name": "PATCH /api/v1/integrations/google/accounts/{accountId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/google/accounts/:accountId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "google",
+                "accounts",
+                ":accountId"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"defaultCalendarId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/integrations/google/accounts/{accountId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/google/accounts/:accountId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "google",
+                "accounts",
+                ":accountId"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/integrations/google/accounts/{accountId}/calendars",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/google/accounts/:accountId/calendars",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "google",
+                "accounts",
+                ":accountId",
+                "calendars"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/integrations/google/callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/google/callback",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "google",
+                "callback"
+              ],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "state",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "error",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "No credentials required.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/integrations/google/webhook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/google/webhook",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "google",
+                "webhook"
+              ]
+            },
+            "description": "No credentials required.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/integrations/google",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/integrations/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "integrations",
+                "google"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/integrations/google/connect",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/integrations/google/connect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "integrations",
+                "google",
+                "connect"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health/live",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/live",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "live"
+              ]
+            },
+            "description": "No credentials required.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "GET /health/ready",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health/ready",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "ready"
+              ]
+            },
+            "description": "No credentials required.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notes",
+      "item": [
+        {
+          "name": "GET /api/v1/notes/{noteId}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/notes/{noteId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\",\n  \"contentDelta\": [],\n  \"contentMarkdown\": \"# Heading\\n\\nbody\",\n  \"contentFormat\": \"delta\",\n  \"projectId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n  \"isPinned\": false,\n  \"isArchived\": false,\n  \"baseRevision\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/notes/{noteId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/notes/{noteId}/export",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "export"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "md",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/notes/{noteId}/links",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "links"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"entityType\": \"task\",\n  \"entityId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/notes/{noteId}/links/{linkId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/links/:linkId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "links",
+                ":linkId"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "linkId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PUT /api/v1/notes/{noteId}/tags",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/tags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "tags"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tagIds\": [\n    \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/notes/{noteId}/versions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/versions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "versions"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/notes/{noteId}/versions/{versionId}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/versions/:versionId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "versions",
+                ":versionId"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "versionId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/notes/{noteId}/versions/{versionId}/diff",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/versions/:versionId/diff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "versions",
+                ":versionId",
+                "diff"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "versionId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/notes/{noteId}/versions/{versionId}/restore",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notes/:noteId/versions/:versionId/restore",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notes",
+                ":noteId",
+                "versions",
+                ":versionId",
+                "restore"
+              ],
+              "variable": [
+                {
+                  "key": "noteId",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "versionId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"replace\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/projects/{projectId}/notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/:projectId/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                ":projectId",
+                "notes"
+              ],
+              "query": [
+                {
+                  "key": "includeArchived",
+                  "value": "false",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/export/notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/export/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "export",
+                "notes"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "100",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "includeArchived",
+                  "value": "true",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/import/notes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/import/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "import",
+                "notes"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": [\n    {\n      \"title\": \"Pay the electricity bill\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/notes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "notes"
+              ],
+              "query": [
+                {
+                  "key": "pinned",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "archived",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "includeArchived",
+                  "value": "false",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "readme",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/notes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "notes"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projects",
+      "item": [
+        {
+          "name": "GET /api/v1/projects/{projectId}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/:projectId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                ":projectId"
+              ],
+              "variable": [
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/projects/{projectId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/:projectId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                ":projectId"
+              ],
+              "variable": [
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\",\n  \"description\": \"What this is for\",\n  \"colorRgb\": \"#0A5CFF\",\n  \"icon\": \"string\",\n  \"status\": \"active\",\n  \"startAt\": \"2026-09-04T14:30:00.000Z\",\n  \"dueAt\": \"2026-09-04T14:30:00.000Z\",\n  \"sortOrder\": -1000000,\n  \"isFavorite\": false,\n  \"readmeNoteId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/projects/{projectId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/:projectId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                ":projectId"
+              ],
+              "variable": [
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/projects/{projectId}/archive",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/:projectId/archive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                ":projectId",
+                "archive"
+              ],
+              "variable": [
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"includeTasks\": false,\n  \"includeNotes\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/projects/{projectId}/unarchive",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/projects/:projectId/unarchive",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "projects",
+                ":projectId",
+                "unarchive"
+              ],
+              "variable": [
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"includeTasks\": false,\n  \"includeNotes\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "projects"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/projects",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "projects"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quick links",
+      "item": [
+        {
+          "name": "PATCH /api/v1/quick-links/{quickLinkId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quick-links/:quickLinkId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "quick-links",
+                ":quickLinkId"
+              ],
+              "variable": [
+                {
+                  "key": "quickLinkId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\",\n  \"emoji\": \"string\",\n  \"colorRgb\": \"#0A5CFF\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/quick-links/{quickLinkId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/quick-links/:quickLinkId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "quick-links",
+                ":quickLinkId"
+              ],
+              "variable": [
+                {
+                  "key": "quickLinkId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/quick-links",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/quick-links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "quick-links"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/quick-links",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/quick-links",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "quick-links"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kind\": \"project\",\n  \"title\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /api/v1/workspaces/{workspaceId}/quick-links/order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/quick-links/order",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "quick-links",
+                "order"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderedIds\": [\n    \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recurrence",
+      "item": [
+        {
+          "name": "GET /api/v1/task-series/{seriesId}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/task-series/:seriesId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "task-series",
+                ":seriesId"
+              ],
+              "variable": [
+                {
+                  "key": "seriesId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/task-series/{seriesId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/task-series/:seriesId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "task-series",
+                ":seriesId"
+              ],
+              "variable": [
+                {
+                  "key": "seriesId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rule\": {},\n  \"template\": {},\n  \"timezone\": \"Europe/Istanbul\",\n  \"anchorAt\": \"2026-09-04T14:30:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/task-series/{seriesId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/task-series/:seriesId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "task-series",
+                ":seriesId"
+              ],
+              "query": [
+                {
+                  "key": "fromDay",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ],
+              "variable": [
+                {
+                  "key": "seriesId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/task-series",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/task-series",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "task-series"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/task-series",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/task-series",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "task-series"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rule\": {},\n  \"template\": {},\n  \"anchorAt\": \"2026-09-04T14:30:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reminders",
+      "item": [
+        {
+          "name": "POST /api/v1/reminders/{reminderId}/acknowledge",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reminders/:reminderId/acknowledge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reminders",
+                ":reminderId",
+                "acknowledge"
+              ],
+              "variable": [
+                {
+                  "key": "reminderId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Service",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": []
+            },
+            "description": "No credentials required.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync",
+      "item": [
+        {
+          "name": "GET /api/v1/sync/pull",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sync/pull",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sync",
+                "pull"
+              ],
+              "query": [
+                {
+                  "key": "workspaceId",
+                  "value": "",
+                  "description": "(required)",
+                  "disabled": false
+                },
+                {
+                  "key": "sinceRevision",
+                  "value": "",
+                  "description": "(required)",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "200",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/sync/push",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sync/push",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sync",
+                "push"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n  \"workspaceId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n  \"baseRevision\": 0,\n  \"mutations\": [\n    {\n      \"clientMutationId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n      \"entityType\": \"string\",\n      \"entityId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n      \"operation\": \"create\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "item": [
+        {
+          "name": "GET /api/v1/tags/{tagId}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tags/:tagId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tags",
+                ":tagId"
+              ],
+              "variable": [
+                {
+                  "key": "tagId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/tags/{tagId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tags/:tagId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tags",
+                ":tagId"
+              ],
+              "variable": [
+                {
+                  "key": "tagId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\",\n  \"colorRgb\": \"#0A5CFF\",\n  \"icon\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/tags/{tagId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tags/:tagId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tags",
+                ":tagId"
+              ],
+              "variable": [
+                {
+                  "key": "tagId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/tags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/tags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "tags"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/tags",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/tags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "tags"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "GET /api/v1/tasks/{taskId}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/tasks/{taskId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\",\n  \"description\": \"What this is for\",\n  \"projectId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n  \"parentTaskId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\",\n  \"status\": \"inbox\",\n  \"priority\": \"none\",\n  \"colorRgb\": \"#0A5CFF\",\n  \"startAt\": \"2026-09-04T14:30:00.000Z\",\n  \"dueAt\": \"2026-09-04T14:30:00.000Z\",\n  \"scheduledStartAt\": \"2026-09-04T14:30:00.000Z\",\n  \"scheduledEndAt\": \"2026-09-04T14:30:00.000Z\",\n  \"remindAt\": \"2026-09-04T14:30:00.000Z\",\n  \"timezone\": \"Europe/Istanbul\",\n  \"isUrgent\": false,\n  \"requiresAcknowledgement\": false,\n  \"estimatedMinutes\": 0,\n  \"actualMinutes\": 0,\n  \"sortOrder\": -1000000,\n  \"calendarMirrorEnabled\": false,\n  \"alarmsMutedAt\": \"2026-09-04T14:30:00.000Z\",\n  \"seriesScope\": \"this\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/tasks/{taskId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/tasks/{taskId}/checklist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/checklist",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "checklist"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/v1/tasks/{taskId}/checklist/{itemId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/checklist/:itemId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "checklist",
+                ":itemId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "itemId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\",\n  \"isDone\": false,\n  \"sortOrder\": -1000000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/tasks/{taskId}/checklist/{itemId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/checklist/:itemId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "checklist",
+                ":itemId"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                },
+                {
+                  "key": "itemId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/tasks/{taskId}/complete",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "complete"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/tasks/{taskId}/notes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "notes"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\",\n  \"contentDelta\": [],\n  \"contentMarkdown\": \"# Heading\\n\\nbody\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/tasks/{taskId}/reopen",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/reopen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "reopen"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/tasks/{taskId}/snooze",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/snooze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "snooze"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "PUT /api/v1/tasks/{taskId}/tags",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tasks/:taskId/tags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tasks",
+                ":taskId",
+                "tags"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tagIds\": [\n    \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/import/tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/import/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "import",
+                "tasks"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tasks\": [\n    {\n      \"title\": \"Pay the electricity bill\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "tasks"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "projectId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "parentTaskId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "tagId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "dueFrom",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "dueTo",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "urgent",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "tasks"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pay the electricity bill\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

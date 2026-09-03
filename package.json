@@ -31,7 +31,12 @@
     "check:no-ee": "bash scripts/check-no-ee.sh",
     "check:i18n": "node scripts/i18n/check.mjs",
     "check:docs": "node scripts/docs/check.mjs",
-    "check:fab": "node scripts/design/check-extended-fab.mjs"
+    "check:fab": "node scripts/design/check-extended-fab.mjs",
+    "check:openapi": "node scripts/api/openapi.mjs --check",
+    "openapi": "node scripts/api/openapi.mjs",
+    "api:docs": "node scripts/api/openapi.mjs && node scripts/api/reference.mjs && node scripts/api/postman.mjs",
+    "check:apidocs": "node scripts/api/reference.mjs --check",
+    "check:postman": "node scripts/api/postman.mjs --check"
   },
   "repository": {
     "type": "git",
