@@ -9238,6 +9238,156 @@ açması gerektiği anda üslup meselesi olmaktan çıktı._
   route dosyasında **ölü bir import** buldu (`newRefreshToken`) ve kaldırıldı.
 - **Doğrulama:** birim süiti **796**, `format:check` + `eslint` yeşil.
 
+## Epic 27 — İstek turu 20: API'nin bir ürün yüzeyi olması (v1.10.0)
+
+_Sahibin tek raporu, issue #3 üzerinden: "API key oluşturdum, dokümantasyon yok;
+hangi endpoint'ler var, ne alıyor, ne veriyor?" — üstüne iki tasarım kusuru
+(Ayarlar'da yanlış yerde, FAB'ın ikonu yok). Kök nedenlerin üçü de kodda
+okunarak doğrulandı; hiçbiri tahmin değil._
+
+_**Turun tek cümlesi: özellik v1.7.0'da inmişti — eksik olan özellik değil,
+ONU BULUNABİLİR VE KULLANILABİLİR KILAN HER ŞEYDİ.** Bulunabilirlik (Ayarlar
+IA + landing), kullanılabilirlik (referans + Postman) ve doğruluk (elle yazılan
+dokümanın sessizce yanlışa dönmesi) aynı turda ele alındı._
+
+_Turun kuralı, Epic 26'nınkiyle aynı: her düzeltmenin yanına aynı kusur
+SINIFININ geri gelmesini engelleyen bir kapı koyuldu — `check:fab`,
+`check:openapi`, `check:apidocs`, `check:postman` ve /docs/api için EE-121
+kalıbında bir yetimlik kapısı._
+
+### OPH-292 — API erişimi Entegrasyonlar'dan çıkıp kendi grubuna taşındı
+
+_Rapor: "Ayarlarda Entegrasyonlar altında değil, direkt API Erişimi ve Yönetimi
+olarak çıkmalı." Ölçülen asıl sorun tercih değil: özellik iki sürümdür
+canlıdayken **canlıda yok sanıldı** — iki seviye aşağıdaydı ve onu tarif
+etmeyen bir kelimenin arkasındaydı._
+
+- [x] **Kök Ayarlar'a yedinci grup: Geliştirici** (`_GroupRow`, `settings-group-developer`).
+      Altında API erişimi ve yanında referans — ikilinin bitişikliği üçüncü
+      şikâyetin cevabı: anahtar referanssız işe yaramaz, referans anahtarsız soyut.
+- [x] **DESIGN §32 S2 yerinde tadil edildi** ("altı grup, sabit" → yedi), gerekçesiyle
+      ve ölçümüyle. §33 R4'ün kalıbı: kodun aştığı kural sessizce çelişkiye
+      bırakılmaz, görünür biçimde düzeltilir. S1'in örnek alt yazısı da düzeltildi.
+- [x] `/settings/api-keys` **taşınmadı** (§32 S3) — dün çalışan Ayarlar URL'i bugün de çalışır.
+- **Kabul:** IA testi "beş yer" diyordu ve census'ü API satırını **hiç
+      kapsamıyordu** — satır sayfalar arasında taşınabilir ve hiçbir test fark
+      etmezdi, ki census tam bunun için var. İkisi de düzeltildi: altı yer,
+      satır Geliştirici'de **var** ve Entegrasyonlar'da **yok** diye ayrı ayrı iddia edildi.
+- **Doğrulama:** app süiti **1542** (+4), `check:i18n` yeşil, `flutter analyze` temiz.
+
+### OPH-293 — Genişletilmiş FAB'ın ikonu butonun dışında kalıyordu
+
+_Rapor: "sağ alttaki ekleme butonunda ikon yok, sadece alt yazısı var."
+Eksik glyph gibi okunuyor — OPH-272'nin baktığı yer buydu ve yanlış yer._
+
+- [x] **Kök neden:** tema her FAB türevine `CircleBorder` veriyor (14 yuvarlak
+      FAB için doğru), bu Flutter'ın `FloatingActionButtonThemeData`'sında
+      extended için ayrı yuva yok. ~145×48 bir butonda daire 48px çapında ve
+      yatayda ortalanmış çiziliyor: x≈16-40'taki ikon boyalı alanın **dışında**
+      kalıyor ve `onPrimary` ile aurora zemine çiziliyor. Etiket daire kenarına
+      yayıldığı için hayatta kalıyor — semptomun ikonu suçlamasının sebebi bu.
+- [x] `theme.dart` bunu EE-042'den beri bir yorumla uyarıyordu. **Tema dosyasındaki
+      uyarıyı temayı düzenleyen okur, üç dizin ötede FAB ekleyen okumaz:** üç
+      extended FAB'dan biri hatırlamış, ikisi hatırlamamıştı. `admin_teams_screen`
+      aynı kusuru taşıyordu ve **kimse bildirmemişti**.
+- [x] Şekil `AwExtendedFab`'a taşındı, üç çağrı yeri de ona çevrildi.
+- [x] **Kapı:** `check:fab` — `AwExtendedFab` dışında çıplak
+      `FloatingActionButton.extended` build'i düşürür. Kapının kendisi de
+      doğrulandı (sahte ihlal → exit 1, kaldırınca → exit 0).
+- **Kabul:** ekranın testi yalnızca butonun VARLIĞINI iddia ediyordu; artık
+      çözümlenmiş şekli (`StadiumBorder`) ve ikonun varlığını pinliyor.
+
+### OPH-294 — OpenAPI 3.1 spec'i rotaların kendisinden üretilir (ADR-0035)
+
+_Rapor: "dokümantasyon yok — hangi endpoint'ler var, ne bekliyor, ne veriyor?"
+Doküman koda karşı okununca eksik olmaktan **daha kötüsü** çıktı: sessizce
+yanlışa dönmüştü._
+
+- [x] **Ölçülen sapmalar.** (a) `409 NOTE_CONTENT_CONFLICT` gövdesinde
+      `conflictVersionId` olduğu yazıyordu; rota bu alanı set ediyor ama
+      Fastify'ın hata serileştiricisi yalnız `{statusCode, code, error, message}`
+      yayıyor — **sunucu bu alanı hiç göndermedi**. Testi `code`'u kontrol edip
+      versiyonu veritabanından okuduğu için kimse fark etmedi. (b) API key'e
+      kapalı **üç** aile yazıyordu, **dört** var: kendi kimlik bilgisi rotaları
+      (parola, 2FA, oturumlar) OPH-283/284 ile kapanmıştı, hiçbir yere
+      yazılmamıştı — dokuz endpoint eksik anlatılmış. (c) Referans 78 rotanın
+      ~55'ini kapsıyordu; gövde, yanıt, tip, enum, parametre anlamı yok. (d) Hata
+      tablosu 9 satır, kaynakta ~90 kod var.
+- [x] **Üretim, kayıt değil.** `@fastify/swagger` devDependency; **servis edilen
+      app'e asla register edilmiyor**. `scripts/api/openapi.mjs` uygulamayı
+      sahte altyapıyla kurup (`buildApp`'in zaten belgelediği kalıp) `onRoute`
+      ile rotaları toplar. `buildApp` bunun için tek bir `instrument` dikişi
+      kazandı — bir `onRoute` hook'unun her rotayı görebildiği tek an. Üretimde
+      `undefined`, istek yolunda sıfır maliyet.
+- [x] **Auth rotanın kendi hook'larından OKUNUR**, burada tutulan bir listeden
+      değil — liste unutulacak bir şey daha ve "üç kapı"nın iki sürüm yaşamasının
+      sebebi tam olarak buydu. Tek istisna `/ai/*`: tüm scope'unu plugin
+      seviyesinde kapatıyor (kasıtlı; "yeni bir /ai rotasının unutamayacağı tek
+      yer") ve `onRoute` bunu göremiyor — o kural generator'da yazılı **ve kaynak
+      dosyasına karşı doğrulanıyor**, hook taşınırsa sessizce gerilemek yerine
+      üretim patlıyor.
+- [x] **Bağımsız denetimle birebir örtüştü:** 78 key ile erişilebilir operasyon,
+      25 key'e kapalı, 10 kimliksiz.
+- [x] `docs/API.md` §4 spec'ten üretilir (marker arası); anlatı bölümleri elde
+      kalır. Kaybolan iyi düzyazı (üç yönlü birleştirme, not geçmişi) geri
+      getirildi ve `conflictVersionId` iddiası **düzeltilerek** yazıldı.
+- [x] ADR-0032 §4 tadil edildi (üç kapı → dört), kaydıyla birlikte.
+- **Doğrulama:** API birim süiti **796** yeşil (yeni dikişle birlikte),
+      `eslint` + `format:check` temiz, `check:openapi` idempotent.
+
+### OPH-295 — Public referans: alliswell.space/docs/api
+
+- [x] Mevcut `static-pages.js` hattına **tek dizi girdisi** — yeni bağımlılık,
+      yeni framework yok (AGENTS §1.3). CI rota listesini modülden import
+      ettiği için sayfa otomatik olarak kapı altına girdi.
+- [x] `shell()`'in `alternates`'i **opsiyonel** yapıldı: referans yalnız
+      İngilizce ve tek dilli bir sayfaya dil değiştirici koymak da, olmayan bir
+      çeviriye hreflang vermek de okuyucuya ve tarayıcıya söylenmiş yalan olurdu.
+- [x] `api-docs-1.css`: `legal.css`'te **hiç `pre` kuralı yoktu** (yalnız satır-içi
+      `code`). Adındaki "-1" tasarım sürümü değil, önbellek tutamağı:
+      `.htaccess` her `.css`'e `immutable, max-age=31536000` yolluyor ve
+      `public/` dosyaları hash'lenmiyor — OPH-273'ün hâlâ yaşayan yarısı.
+- [x] **Kapı:** EE-121 kalıbında yetimlik kontrolü (bundle + README + Postman
+      dosyası), ve deploy sonrası duman testine iki satır.
+- **Doğrulama (tarayıcıda ölçüldü):** iki stylesheet de yükleniyor,
+      `--aw-doc-width: 64rem`; 375px'te **sayfa yatay kaymıyor** (375=375) ve
+      222 `pre`'nin 203'ü, 264 tablonun 63'ü kendi içinde kayıyor. İlk ölçümde
+      sayfa 616px'e taşıyordu: içindekiler listesindeki `code` sarılı uzun
+      yollar bölünemiyordu — `overflow-wrap: anywhere` ile düzeltildi. Açık ve
+      koyu tema ayrı ayrı doğrulandı.
+
+### OPH-296 — API'nin görünür olması: landing, uygulama içi, README
+
+- [x] **Landing'de hiç anılmıyordu** — v1.7.0'dan beri tek kelime. Ana sayfaya
+      `ApiSection` (curl'lü terminal + kopyala), nav'a "API", footer'a MCP
+      bağlayıcısının yanına "REST API reference".
+- [x] `FeatureSection` **bilinçli olarak kullanılmadı**: özellik listesi CI'da
+      ekran görüntüsüne bağlı ve bu özelliğin doğru kanıtı ekran görüntüsü değil,
+      isteğin kendisi. `SelfHostSection`'ın kalıbı, aynı gerekçeyle.
+- [x] Uygulama içi: anahtar listesinin altında ve **boş durumun kullanılmayan
+      `action` yuvasında** referansa giden kapı — hiç anahtarı olmayan kişi
+      referansa en çok ihtiyacı olan kişidir.
+- [x] README satırı canlı sayfaya, COMPARISON §1'e API satırı (hiç yoktu).
+- **Doğrulama:** `/docs/api` ve Postman indirmesi **200**; curl bloğunun satır
+      devamları (`\`) doğru render oluyor; nav'da API görünüyor.
+
+### OPH-297 — Postman collection
+
+- [x] Aynı spec'ten üretilir — referansla **fiziksel olarak çelişemez**. Elle
+      yazılmış bir collection rota tablosunun üçüncü kopyası olurdu; ilk ikisi
+      de sapmıştı.
+- [x] 113 istek, 18 klasör. Collection seviyesinde `apiKey`; yalnızca istisnalar
+      (`sessionJwt` gerekenler) tek tek işaretli — aksi hâlde sessizce 403 verip
+      bozuk bir collection gibi görünürlerdi.
+- [x] `apps/landing/public/downloads/` altında: Vite `public/`'i olduğu gibi
+      docroot'a kopyalıyor, yani sunucu ayarı gerekmeden indirilebilir.
+      `.json` **bilinçli olarak** immutable listesine eklenmedi.
+- [x] `idFor()` deterministik: `crypto.randomUUID()` her build'i diff yapar ve
+      sapma kapısını anlamsızlaştırırdı.
+
+_(⏳ Epic 27 kodu tamam; sürüm etiketi bu turda kesilmedi — CHANGELOG `[Unreleased]`
+altında, sekiz yerli sürüm ritüeline girilmedi.)_
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

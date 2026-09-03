@@ -1,5 +1,6 @@
 <script setup>
 import AiSection from './components/AiSection.vue';
+import ApiSection from './components/ApiSection.vue';
 import ComparisonTable from './components/ComparisonTable.vue';
 import DownloadSection from './components/DownloadSection.vue';
 import FaqSection from './components/FaqSection.vue';
@@ -35,6 +36,7 @@ const featureList = features.filter((f) => f.id !== 'recurrence');
 
     <MobileShowcase />
     <AiSection />
+    <ApiSection />
     <ComparisonTable />
     <SelfHostSection />
     <DownloadSection />

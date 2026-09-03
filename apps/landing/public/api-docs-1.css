@@ -1,0 +1,125 @@
+/*
+ * The /docs/api reference, layered over legal.css.
+ *
+ * The filename carries a "-1". That is not a version of the design, it is a
+ * cache-busting handle: .htaccess sends `immutable, max-age=31536000` for
+ * every .css, and files in public/ are NOT content-hashed by Vite — so
+ * legal.css and enterprise.css keep one name forever while their contents
+ * change, and a returning browser is told to reuse last year's copy. That is
+ * the same shape as the OPH-273 bug that served a year-old main.dart.js.
+ * When this file's content needs to change, ship api-docs-2.css and point the
+ * page at it, rather than editing a file the world has been told never
+ * changes.
+ *
+ * What it changes, and why only this: an API reference is not read like a
+ * privacy policy. Nobody reads it start to finish. They arrive at one
+ * endpoint, look at a table, copy a curl line, and leave. So: a wider
+ * measure for the parameter tables, code blocks that can actually hold a
+ * curl command, and a table of contents that is scannable rather than a wall
+ * of links. Colours, dark mode, focus rings and chrome stay inherited.
+ */
+
+:root {
+  /* Parameter tables have four columns and enum lists are long. 46rem wraps
+     `inbox · open · scheduled · in_progress · …` onto four lines. */
+  --aw-doc-width: 64rem;
+}
+
+/* ── Code blocks ──────────────────────────────────────────────────────────
+   legal.css styles inline `code` and nothing else, because a legal page has
+   no fenced blocks. This page is mostly fenced blocks, and without a rule a
+   long curl line pushes the whole document sideways on a phone. */
+.doc pre {
+  margin: 1rem 0 1.4rem;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid var(--aw-hairline);
+  border-radius: 12px;
+  background: var(--aw-surface-2);
+  /* The one property this file exists for. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.doc pre code {
+  /* Inside a block the inline chip styling is wrong — no second background,
+     no padding, no rounding. */
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  font-size: inherit;
+  white-space: pre;
+}
+
+/* Inline code on this page is mostly endpoint paths, and a path has no spaces
+   to break at. Left alone, `GET /api/v1/workspaces/{workspaceId}/api-keys` in
+   the contents list is a single 348px unbreakable word that widens the whole
+   document on a phone — measured at 375px: the page scrolled sideways to
+   616px even though every pre and table was already scrolling on its own. */
+.doc :not(pre) > code {
+  overflow-wrap: anywhere;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────
+   Same reason: a schema table with an eight-value enum is wider than a phone
+   and must scroll on its own rather than widening the page. */
+.doc table {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* ── Endpoint headings ────────────────────────────────────────────────────
+   `#### GET /api/v1/…` is the unit a reader navigates by, so it gets a rule
+   above it and monospace, and stops looking like body prose. */
+.doc h4 {
+  margin: 2.4rem 0 0.9rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--aw-hairline);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 1rem;
+  line-height: 1.4;
+  /* A path can be long and has no spaces to break at. */
+  overflow-wrap: anywhere;
+}
+
+.doc h4 code {
+  background: none;
+  padding: 0;
+  color: var(--aw-text);
+}
+
+/* The label lines the generator emits before each table. */
+.doc h4 + p strong:first-child,
+.doc p > strong:only-child {
+  display: inline-block;
+  margin-top: 0.4rem;
+  color: var(--aw-text-dim);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Contents ─────────────────────────────────────────────────────────────
+   113 links in one list is not a table of contents, it is a wall. Set them
+   smaller and let them flow so a whole tag's worth fits in a glance. */
+.doc h2 + p + ul,
+.doc ul.toc {
+  font-size: 0.9rem;
+  line-height: 1.9;
+}
+
+@media (max-width: 40rem) {
+  .doc pre {
+    /* Bleed to the edges on a phone: the padding is worth less than the
+       characters it would cost. */
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}

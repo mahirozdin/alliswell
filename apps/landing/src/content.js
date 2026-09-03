@@ -257,6 +257,37 @@ docker compose -f docker-compose.selfhost.yml up -d`,
   link: { label: 'Full self-hosting guide', href: `${DOCS_URL}/SELF-HOSTING.md` },
 };
 
+/**
+ * OPH-296 — the REST API.
+ *
+ * It shipped in v1.7.0 and this site never mentioned it once, which is most
+ * of why it was reported missing: a feature nobody can find is, from the
+ * outside, a feature that does not exist. The section leads with a curl
+ * command rather than a screenshot because that is what this audience wants
+ * to see, and because the feature list is screenshot-gated in CI.
+ */
+export const api = {
+  eyebrow: 'REST API',
+  title: 'Everything the app does, your scripts can do',
+  lede: 'Mint a personal API key in Settings and the whole surface opens up — tasks, notes, projects, files, reminders. Plain bearer auth, no OAuth dance, no SDK to install. A cron job is three lines.',
+  command: `export ALLISWELL_KEY="awk_…"     # Settings -> API access and management
+
+curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
+  -H "Authorization: Bearer $ALLISWELL_KEY" \\
+  -H 'Content-Type: application/json' \\
+  -d '{"title": "Pay the electricity bill", "isUrgent": true}'`,
+  points: [
+    'Every endpoint documented with its parameters, an example request and an example response — generated from the server’s own schemas, so it cannot drift',
+    'A key is bound to one workspace, and can never delete your account, touch your AI provider keys, mint more keys or change your password',
+    'Bulk import and export for notes and tasks, so moving in or out is a script rather than a support ticket',
+  ],
+  link: { label: 'Read the API documentation', href: '/docs/api' },
+  secondary: {
+    label: 'Postman collection',
+    href: '/downloads/alliswell.postman_collection.json',
+  },
+};
+
 export const download = {
   eyebrow: 'Get it',
   title: 'In your browser today — and now on Google Play',

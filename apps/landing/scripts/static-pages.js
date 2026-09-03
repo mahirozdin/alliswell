@@ -111,6 +111,21 @@ export const STATIC_PAGES = [
     ],
   },
   {
+    // OPH-295: the public REST reference. English only — the file is
+    // generated from the server's own route schemas (ADR-0035), and a second
+    // language would be a second generator plus a translation that goes stale
+    // the first time a schema changes.
+    route: 'docs/api',
+    file: 'docs/API.md',
+    title: 'AllisWell REST API — endpoints, examples and a Postman collection',
+    description:
+      'The full REST API behind AllisWell: personal API keys, every endpoint ' +
+      'with its parameters, request and response examples, error codes, rate ' +
+      'limits and a downloadable Postman collection.',
+    lang: 'en',
+    styles: [...BASE_STYLES, '/api-docs-1.css'],
+  },
+  {
     route: 'enterprise/tr',
     file: 'docs/ENTERPRISE.tr.md',
     title: 'AllisWell Enterprise — kendi sunucunuzda servis masası, birimler ve SLA',
@@ -161,7 +176,21 @@ function rewriteLink(href) {
   return `${REPO}/docs/${base}${hash ? `#${hash}` : ''}`;
 }
 
-function shell({ title, description, lang, alternates, route, body, styles = BASE_STYLES }) {
+function shell({
+  title,
+  description,
+  lang,
+  // OPH-295: optional. Every page here used to come in a pair, so a language
+  // pill and an hreflang set were unconditional. The API reference is
+  // generated from the server's route schemas and exists in English only —
+  // and a switcher offering one language, or an hreflang pointing at a
+  // translation that does not exist, would both be lies told to a reader and
+  // to a crawler.
+  alternates = [],
+  route,
+  body,
+  styles = BASE_STYLES,
+}) {
   const canonical = `https://alliswell.space/${route}`;
   const nav = alternates
     .map(
