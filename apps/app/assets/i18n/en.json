@@ -158,6 +158,8 @@
       "notificationsSub": "Centre and preferences",
       "integrations": "Integrations",
       "integrationsSub": "Google Calendar, Apple Calendar, AI",
+      "developer": "API access and management",
+      "developerSub": "Your API keys, and the reference for using them",
       "data": "Data",
       "dataSub": "Completed work, share log",
       "account": "Account",
@@ -1083,6 +1085,9 @@
   "apiKeys": {
     "title": "API access",
     "sub": "Keys for your own scripts and automations",
+    "docsTitle": "API documentation",
+    "docsSub": "Every endpoint, with examples you can copy",
+    "docsCta": "Read the API documentation",
     "intro": "A key lets a script reach this workspace over the API. It can do what you can do here — but it cannot delete your account, touch your AI provider keys, or create more keys.",
     "create": "Create key",
     "createTitle": "New API key",

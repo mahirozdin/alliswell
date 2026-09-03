@@ -157,6 +157,8 @@
       "notificationsSub": "Merkez ve tercihler",
       "integrations": "Entegrasyonlar",
       "integrationsSub": "Google Takvim, Apple Takvim, yapay zekâ",
+      "developer": "API erişimi ve yönetimi",
+      "developerSub": "API anahtarların ve onları kullanmanın dokümantasyonu",
       "data": "Veri",
       "dataSub": "Tamamlananlar, paylaşım günlüğü",
       "account": "Hesap",
@@ -1082,6 +1084,9 @@
   "apiKeys": {
     "title": "API erişimi",
     "sub": "Kendi script'lerin ve otomasyonların için anahtarlar",
+    "docsTitle": "API dokümantasyonu",
+    "docsSub": "Bütün uç noktalar, kopyalayabileceğin örneklerle",
+    "docsCta": "API dokümantasyonunu oku",
     "intro": "Bir anahtar, bir script'in bu çalışma alanına API üzerinden ulaşmasını sağlar. Burada senin yapabildiklerini yapabilir — ama hesabını silemez, yapay zekâ sağlayıcı anahtarlarına dokunamaz ve yeni anahtar üretemez.",
     "create": "Anahtar oluştur",
     "createTitle": "Yeni API anahtarı",

@@ -8,12 +8,16 @@ import '../../../core/api_exception.dart';
 import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
+import '../../../core/server_url.dart';
 import '../../../i18n/i18n.dart';
+import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../../theme/tokens.dart';
+import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/api_key_models.dart';
 import '../providers.dart';
+import 'api_docs_row.dart';
 
 /// API access (OPH-265, ADR-0032): the keys a person hands to their own
 /// scripts.
@@ -66,7 +70,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: AwExtendedFab(
         key: const Key('api-key-create'),
         onPressed: _busy ? null : _startCreate,
         icon: const Icon(Icons.add),
@@ -79,6 +83,15 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
     icon: Icons.vpn_key_outlined,
     title: 'apiKeys.emptyTitle'.tr(),
     message: 'apiKeys.emptyBody'.tr(),
+    // OPH-296: the slot was here and empty. Somebody with no keys is
+    // deciding whether the API can do what they need — which is a question
+    // the reference answers and this screen cannot.
+    action: OutlinedButton.icon(
+      key: const Key('api-key-docs-empty'),
+      onPressed: () => ref.read(urlLauncherProvider)(Uri.parse(kApiDocsUrl)),
+      icon: const Icon(Icons.open_in_new),
+      label: Text('apiKeys.docsCta'.tr()),
+    ),
   );
 
   Widget _list(List<ApiKey> list) {
@@ -103,6 +116,11 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
             busy: _busy,
             onRevoke: () => _revoke(key),
           ),
+        // OPH-296: the reference, one tap from the key you just minted.
+        // This is the moment the original complaint names — the secret is
+        // in your hand and nothing tells you what to do with it.
+        const SizedBox(height: AwSpace.x3),
+        const Card(child: ApiDocsRow()),
         // The FAB sits over the tail of the list.
         const SizedBox(height: AwSpace.x8),
       ],

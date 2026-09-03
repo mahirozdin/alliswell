@@ -5,7 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/retry.dart';
+import 'package:alliswell/src/core/server_url.dart';
 import 'package:alliswell/src/features/api_keys/ui/api_keys_screen.dart';
+import 'package:alliswell/src/features/integrations/providers.dart'
+    show UrlLauncher, urlLauncherProvider;
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
@@ -20,7 +23,11 @@ import '../../support/sync_overrides.dart';
 /// offering revocation, and an unreachable server SAYS so instead of showing
 /// an empty list that would read as "you have no keys".
 
-Future<Widget> screenWith(FakeApi api, {Brightness? brightness}) async {
+Future<Widget> screenWith(
+  FakeApi api, {
+  Brightness? brightness,
+  UrlLauncher? launcher,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
@@ -32,6 +39,9 @@ Future<Widget> screenWith(FakeApi api, {Brightness? brightness}) async {
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
       ),
+      // The docs hand-off goes through a provider so it is observable here
+      // without a platform channel.
+      if (launcher != null) urlLauncherProvider.overrideWithValue(launcher),
     ],
     child: MaterialApp(
       theme: buildAwTheme(brightness ?? Brightness.light),
@@ -47,6 +57,84 @@ void main() {
 
     expect(find.text('No keys yet'), findsOneWidget);
     expect(find.byKey(const Key('api-key-create')), findsOneWidget);
+  });
+
+  testWidgets('an empty workspace still offers the documentation', (
+    tester,
+  ) async {
+    // OPH-296: the person with no keys is deciding whether the API can do
+    // what they need, and this screen cannot answer that. The reference can.
+    final opened = <Uri>[];
+    await tester.pumpWidget(
+      await screenWith(
+        FakeApi(),
+        launcher: (url) async {
+          opened.add(url);
+          return true;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('api-key-docs-empty')));
+    await tester.pumpAndSettle();
+
+    expect(opened.single.toString(), kApiDocsUrl);
+  });
+
+  testWidgets('a key in hand comes with the reference beside it', (
+    tester,
+  ) async {
+    // The original complaint, in one assertion: the moment a secret exists
+    // there is a way to learn what to do with it, on this screen.
+    final opened = <Uri>[];
+    final api = FakeApi()..seedApiKey(name: 'cron');
+    await tester.pumpWidget(
+      await screenWith(
+        api,
+        launcher: (url) async {
+          opened.add(url);
+          return true;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('settings-api-docs')));
+    await tester.pumpAndSettle();
+
+    expect(opened.single.toString(), kApiDocsUrl);
+  });
+
+  testWidgets('the create button is a pill, so its icon is inside it', (
+    tester,
+  ) async {
+    // OPH-293: the theme sets CircleBorder for every FAB flavour, and this
+    // Flutter has no separate slot for the extended one. A circle on a wide
+    // button paints a 48px disc centred horizontally, leaving the icon
+    // outside the painted area — the reported symptom was a label with no
+    // icon, which reads as a missing glyph and sends you looking in the
+    // wrong place entirely. Pin the shape, not the appearance.
+    await tester.pumpWidget(await screenWith(FakeApi()));
+    await tester.pumpAndSettle();
+
+    final fab = tester.widget<FloatingActionButton>(
+      find.descendant(
+        of: find.byKey(const Key('api-key-create')),
+        matching: find.byType(FloatingActionButton),
+      ),
+    );
+    expect(fab.shape, isA<StadiumBorder>());
+
+    // And the icon really is painted: a glyph the button owns, not a
+    // tooltip standing in for one.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('api-key-create')),
+        matching: find.byIcon(Icons.add),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('creating a key shows the secret ONCE, and it is the server’s', (

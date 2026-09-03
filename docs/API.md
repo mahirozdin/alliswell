@@ -13,9 +13,9 @@ integration against **their own instance**.
 
 ## 1. Get a key
 
-In the app: **Settings → Integrations → API access → Create key**. Give it a
-name you will recognise and pick how long it should last (30 / 90 / 365 days,
-or no expiry).
+In the app: **Settings → API access and management → API access → Create key**.
+Give it a name you will recognise and pick how long it should last
+(30 / 90 / 365 days, or no expiry).
 
 **The key is shown once.** Copy it then; the server only keeps a digest, so
 nobody — including you — can read it back. Lost it? Revoke it and make another.

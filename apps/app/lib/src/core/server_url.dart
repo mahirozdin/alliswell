@@ -30,6 +30,15 @@ const kHostedApiBaseUrl = 'https://api.alliswell.space';
 /// Where a developer's API lives when they run one locally.
 const kLocalApiBaseUrl = 'http://localhost:3000';
 
+/// The public REST API reference (OPH-295).
+///
+/// Deliberately NOT derived from the server address above. A self-hoster's
+/// instance serves the API, not the documentation site — pointing this at
+/// their origin would send them to a 404 on their own box. The reference
+/// describes the software, so it lives with the project, wherever the
+/// install happens to run.
+const kApiDocsUrl = 'https://alliswell.space/docs/api';
+
 const _kServerUrlPrefKey = 'alliswell_server_url';
 
 /// The address to use when the user has not chosen one.
