@@ -7,6 +7,7 @@ import '../../../../core/api_exception.dart';
 import '../../../../core/error_messages.dart';
 import '../../../../i18n/i18n.dart';
 import '../../../../theme/tokens.dart';
+import '../../../../widgets/fabs.dart';
 import '../../../../widgets/status_views.dart';
 import '../admin_providers.dart';
 import '../data/admin_models.dart';
@@ -28,7 +29,7 @@ class AdminTeamsScreen extends ConsumerWidget {
       // have nothing to do with one.
       backgroundColor: Colors.transparent,
       floatingActionButton: (teams.value?.isNotEmpty ?? false)
-          ? FloatingActionButton.extended(
+          ? AwExtendedFab(
               key: const Key('admin-teams-create'),
               onPressed: () => _createTeam(context, ref),
               icon: const Icon(Icons.add),
