@@ -135,6 +135,12 @@ jobs:
           done
           echo "  EE_ keys present in apps/api/.env (names only):"
           grep -oE '^[[:space:]]*EE_[A-Z0-9_]+' "$APP_DIR/apps/api/.env" 2>/dev/null | tr -d ' ' | sort | sed 's/^/    /' || echo "    (none)"
+          # COUNT ONLY, and this one matters: that log line carries a one-shot
+          # credential — the operator's bootstrap invitation. This repository is
+          # public and so is this log, so the token is never printed here. Its
+          # presence is a fact; its value belongs only to whoever runs `pm2
+          # logs` on the box.
+          echo "  operator bootstrap invitation in the log: $(tail -n 8000 /home/www/.pm2/logs/alliswellapi-out.log 2>/dev/null | grep -ac 'instance admin invited' || echo 0) line(s)"
           echo "  what the API logged about the overlay (last 4000 lines):"
           tail -n 4000 /home/www/.pm2/logs/alliswellapi-out.log 2>/dev/null \
             | grep -aiE '\bee\b.*(overlay|loaded|entitle|licen)|overlay' | tail -6 | cut -c1-220 | sed 's/^/    /' || echo "    (nothing)"
