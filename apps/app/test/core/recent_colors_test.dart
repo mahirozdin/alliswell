@@ -38,11 +38,10 @@ void main() {
     await recents.remember('#EF4444');
     await recents.remember('#2563EB');
 
-    expect(
-      c.read(recentColorsProvider),
-      ['#2563EB', '#EF4444'],
-      reason: 'the same colour five times is not a memory',
-    );
+    expect(c.read(recentColorsProvider), [
+      '#2563EB',
+      '#EF4444',
+    ], reason: 'the same colour five times is not a memory');
   });
 
   test('the list is capped, and survives a restart', () async {

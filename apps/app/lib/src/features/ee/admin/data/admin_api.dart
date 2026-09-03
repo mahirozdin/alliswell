@@ -97,6 +97,37 @@ class AdminApi {
     }
   }
 
+  /// Creating a tenant — the one thing the console promised and could not do.
+  ///
+  /// `seats` and `packageId` are both optional and mean different things when
+  /// omitted: no package named puts the team on whichever one is marked
+  /// default, and no seat count leaves the package's own limit in force. A
+  /// seat count given HERE is an exception to the package, which is why it is
+  /// not defaulted to some number here.
+  Future<AdminTeam> createTeam(
+    String token, {
+    required String name,
+    required String slug,
+    int? seats,
+    String? packageId,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '/api/v1/ee/admin/teams',
+        options: _auth(token),
+        data: <String, dynamic>{
+          'name': name,
+          'slug': slug,
+          'seats': ?seats,
+          'packageId': ?packageId,
+        },
+      );
+      return AdminTeam.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
   Future<AdminTeam> teamAction(
     String token,
     String teamId,
