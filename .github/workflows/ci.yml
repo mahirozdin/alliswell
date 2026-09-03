@@ -400,6 +400,26 @@ jobs:
           done
           exit $fail
 
+      # OPH-295, same failure mode as EE-121 and a worse history: the REST API
+      # shipped in v1.7.0 and this site did not mention it ONCE for two
+      # releases, which is most of why it was reported missing. A page nobody
+      # links to is a page nobody finds.
+      #
+      # Asserted against the BUILT bundle, so a refactor that drops the nav or
+      # footer entry fails here even when the source array still looks right.
+      - name: The API reference is reachable, and its downloads exist
+        run: |
+          fail=0
+          grep -rq "/docs/api" apps/landing/dist/assets/*.js \
+            || { echo "::error::the marketing bundle no longer links to /docs/api"; fail=1; }
+          test -f apps/landing/dist/docs/api/index.html \
+            || { echo "::error::/docs/api was not generated into the bundle"; fail=1; }
+          grep -q "docs/API.md" README.md \
+            || { echo "::error::README no longer links to the API reference"; fail=1; }
+          test -f apps/landing/dist/downloads/alliswell.postman_collection.json \
+            || { echo "::error::the Postman collection is not in the bundle — the download 404s"; fail=1; }
+          exit $fail
+
       # Apple and Google both FETCH these URLs during review and reject a 404.
       # They are generated from docs/*.md, so a rename there silently removes a
       # store requirement — this is the check that notices. The subset comes

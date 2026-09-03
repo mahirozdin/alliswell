@@ -7,12 +7,59 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The REST API has documentation now — every endpoint of it (OPH-294,
+  OPH-295, OPH-297, ADR-0035).** API keys shipped in 1.7.0 and what you got
+  after minting one was a page that named about 55 of the 78 endpoints a key
+  can reach, with no request bodies, no response shapes, no field types and no
+  parameter meanings. There is now a full reference at
+  **[alliswell.space/docs/api](https://alliswell.space/docs/api)** — 113
+  operations, each with its parameters, what it takes, what it returns, a
+  `curl` you can paste and the statuses it answers with — plus an
+  **OpenAPI 3.1 spec** and a **Postman collection** you can import and use
+  after filling in two variables.
+  It is *generated from the server's own route schemas*, which matters more
+  than the page count: the old page had quietly become wrong, not just thin.
+  It described a `409` body carrying a field the server has never sent, and it
+  promised three families of endpoint were closed to API keys when there are
+  four — the ninth, tenth and eleventh routes that refuse a key (your password,
+  two-factor and session management) had been closed since 1.8.3 with nothing
+  saying so. Three CI gates now fail the build when the docs stop matching the
+  code, which is the only reason a generated reference is worth more than a
+  written one.
+
+- **The API is on the website.** It shipped two releases ago and the site never
+  mentioned it once — there is now a section on the homepage, an "API" entry in
+  the nav, and links from the footer and the README (OPH-296).
+
 - **A screen for connecting your own mail server (OPH-290).** Settings gains a row
   for it, behind its own permission. It opens with whether mail is currently
   going out rather than with a form, and when it is not, it says plainly that
   nothing is lost meanwhile — messages wait and go out once a working server is
   saved. The password goes in once and is never shown again; the screen displays
   its last four characters, and replacing it means typing a new one.
+
+### Fixed
+
+- **The "create key" button had a label and no icon (OPH-293).** Reported on
+  the API access screen, and it looked for all the world like a missing glyph.
+  It was not: the app's theme gives every floating button a circular shape,
+  which is right for the fourteen round ones and wrong for the three wide ones
+  — the circle is drawn 48 pixels across and centred, so the icon at the left
+  edge lands outside the button entirely and is painted in the button's own
+  colour on the background. The label straddles the edge and survives, which
+  is exactly why the icon gets the blame.
+  Two of the three wide buttons had this; only one had remembered to ask for a
+  pill. They now share one widget that cannot forget, and the build fails if a
+  fourth one is added without it.
+
+### Changed
+
+- **API access has its own place in Settings (OPH-292).** It was a row inside
+  Integrations, two levels down, behind a word that does not describe it — the
+  feature was reported missing from production when it had been live for two
+  releases. Settings now names a **"API access and management"** group of its
+  own, holding your keys and, beside them, the documentation for using them.
+  Nothing moved out of reach: the old settings URL still works.
 
 
 ## [1.9.0] — 2026-09-02

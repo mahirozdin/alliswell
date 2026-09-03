@@ -33,6 +33,10 @@ const columns = [
     links: [
       { label: 'How AI works', href: `${DOCS_URL}/AI.md` },
       { label: 'MCP connector', href: `${DOCS_URL}/MCP.md` },
+      // OPH-296: the REST API sat in this repo undocumented on the site for
+      // two releases. It belongs beside the MCP connector — they are the two
+      // ways something other than the app reaches your data.
+      { label: 'REST API reference', href: '/docs/api' },
       { label: 'Security policy', href: `${REPO_URL}/blob/main/SECURITY.md` },
       { label: 'Privacy policy', href: '/privacy' },
     ],

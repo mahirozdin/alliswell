@@ -702,6 +702,22 @@ jobs:
             *) echo "::error::$site/app/projects did not rewrite to the app — check .htaccess"; fail=1 ;;
           esac
 
+          # OPH-295: the API reference and the file it offers for download.
+          # The collection is a real file rather than a generated page, so it
+          # is the one asset here that a docroot swap could drop silently.
+          docs=$(curl -fsSL --max-time 20 "$site/docs/api/" || true)
+          case "$docs" in
+            *'The AllisWell REST API'*) echo "✓ the API reference is served at $site/docs/api" ;;
+            *) echo "::error::$site/docs/api did not serve the API reference"; fail=1 ;;
+          esac
+
+          code=$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 20 \
+            "$site/downloads/alliswell.postman_collection.json" || true)
+          case "$code" in
+            200) echo "✓ the Postman collection downloads" ;;
+            *) echo "::error::the Postman collection returned $code — the docs page offers a broken download"; fail=1 ;;
+          esac
+
           # The legal pages are a store REQUIREMENT, and they are the pages most
           # likely to be broken by something between us and the visitor rather
           # than by the build — Cloudflare's Email Address Obfuscation silently

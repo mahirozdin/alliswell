@@ -139,6 +139,7 @@ list every screenshot, the landing page and the store copy draw from.
 | English + Turkish, auto-detected; a new language is one JSON file                                 | Epic 11 |
 | Light + dark, contrast-verified by a script on every UI change (DESIGN §5)                        | Rule 11 |
 | **Self-hosted**: your MySQL/MariaDB, one `docker compose up`, free for personal use                | Epic 09 |
+| **A documented REST API** — personal API keys, 78 key-reachable endpoints, bulk import/export, a generated reference and a Postman collection | Epic 25 |
 
 ---
 

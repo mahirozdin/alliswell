@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-08-27b (**OPH-282 — NOTUN SONUNA DOKUNABİLMEK (Round; sıra dışı).
+**Last updated:** 2026-09-04 (**Epic 27 — API'NİN BİR ÜRÜN YÜZEYİ OLMASI (istek turu 20).
+OPH-292…297, issue #3.** Rapor üçlü: API erişimi Ayarlar'da yanlış yerde, FAB'ın ikonu yok,
+ve "key oluşturdum, dokümantasyon yok". **Turun cümlesi: özellik v1.7.0'da inmişti — eksik
+olan özellik değil, onu bulunabilir ve kullanılabilir kılan her şeydi.**
+(1) **OPH-293 FAB:** eksik glyph DEĞİL — tema her FAB türevine `CircleBorder` veriyor, extended
+için ayrı tema yuvası yok; 48px daire yatayda ortalanınca soldaki ikon boyalı alanın dışında
+kalıyor, etiket kenara yayıldığı için sağ kalıyor. `theme.dart` bunu EE-042'den beri
+uyarıyordu — üç extended FAB'dan ikisi hatırlamamıştı (`admin_teams` kimse bildirmeden bozuktu).
+`AwExtendedFab` + `check:fab`.
+(2) **OPH-292 IA:** DESIGN §32 S2 yerinde tadil edildi (altı grup → yedi); "Geliştirici"
+grubu anahtarları ve referansı yan yana tutuyor. IA testinin census'ü API satırını HİÇ
+kapsamıyordu — satır sayfa değiştirse kimse fark etmezdi; iki yönlü iddiayla kapatıldı.
+(3) **OPH-294…297 doküman:** elle yazılan `API.md` eksik değil, sessizce YANLIŞTI — sunucunun
+hiç göndermediği bir `conflictVersionId` alanını tarif ediyordu ve key'e kapalı dört aileden
+üçünü sayıyordu (OPH-283/284'ün kapattığı dokuz endpoint hiçbir yerde yazılı değildi). Artık
+`docs/openapi.json` → `API.md` §4 → Postman collection, üçü de rota şemalarından üretiliyor;
+`check:openapi`/`check:apidocs`/`check:postman` sapmada build'i düşürüyor (ADR-0035).
+Bağımsız denetimle birebir: **78 key-erişilebilir / 25 key'e kapalı / 10 kimliksiz.**
+Public sayfa: `alliswell.space/docs/api` (mevcut `static-pages.js` hattı — yeni framework yok).
+Süitler: app **1542** (+4), API birim **796**, landing lint+build yeşil, `check:i18n` yeşil.
+Sürüm etiketi KESİLMEDİ — CHANGELOG `[Unreleased]`. Dal: `feat/epic-27-api-as-a-product`.
+Sıradaki iş: PR'ın merge'ü, ardından sürüm kararı.)
+
+Önceki blok: 2026-08-27b (**OPH-282 — NOTUN SONUNA DOKUNABİLMEK (Round; sıra dışı).
 v1.8.3+31.** Rapor: uzun notun sonuna tıklanamıyor. Aynı yüzü taşıyan İKİ arıza: (1) shell
 `extendBody: true` ile çubuğu gövdenin üstüne yüzdürüyor ve `MarkdownView.padding` varsayılanı
 alt boşluk taşımıyordu — son paragraflar çubuğun altında, erişilemez (depoda `awListPadding`
@@ -16,8 +39,7 @@ bir `SingleChildScrollView` içine alındı, `minHeight` kısa notun eski davran
 Kuyruk imleci sona koyan bir dokunma hedefiyle sarılı (imleç koymayan boşluk ölü affordance,
 §22). Sayaç şeridi de çubuğun altındaydı; chrome payı sütun için bir kez temizleniyor.
 Süitler: app **1427** (+4), analyze temiz. Sıradaki iş (core): değişmedi — sahibin iki adımı.)
-
-Önceki blok: 2026-08-27 (**OPH-281 dokunuşu — sayfanın paleti uygulamanın paleti (Round).
+2026-08-27 (**OPH-281 dokunuşu — sayfanın paleti uygulamanın paleti (Round).
 v1.8.2+30.** Parite düzeltmesi kendi yaklaşıklığını getirmişti: onay kutusu için elle seçilmiş
 bir yeşil ve dört uydurma uyarı rengi — yani sayfa hâlâ ekranın rengi değildi, sadece bir beden
 küçük aynı hizasızlık. Artık açık temadan BİREBİR alınıyor (`AwTokens.light.success`/`.warning`,
