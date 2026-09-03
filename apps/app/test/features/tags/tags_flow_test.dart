@@ -123,9 +123,11 @@ void main() {
     await tester.enterText(find.byKey(const Key('tag-input')), 'rapor');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
-    expect(api.tasks.single['tagIds'], [
-      api.tags.single['id'],
-    ], reason: 'assigning replaces the set through store.setTags');
+    expect(
+      api.tasks.single['tagIds'],
+      [api.tags.single['id']],
+      reason: 'assigning replaces the set through store.setTags',
+    );
 
     // Manage: delete confirms with how many tasks lose the tag.
     await tester.tap(find.byKey(const Key('tag-manage')));

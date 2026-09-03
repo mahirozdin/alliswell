@@ -209,41 +209,47 @@ void main() {
     });
 
     testWidgets('a task’s history — ${brightness.name}', (tester) async {
-      await shoot(tester, brightness, 'ee-task-history', [
-        eeHistoryProvider.overrideWith(
-          (ref, target) async => EeHistoryPage(
-            items: [
-              _event(
-                'E4',
-                'released',
-                'Barış Saha',
-                DateTime(2026, 8, 22, 16, 20),
-              ),
-              _event(
-                'E3',
-                'status_changed',
-                'Barış Saha',
-                DateTime(2026, 8, 22, 15, 05),
-                diff: {
-                  'subtask': ['Kabloyu çek', 'done'],
-                },
-              ),
-              _event(
-                'E2',
-                'assigned',
-                'Ayla Yönetici',
-                DateTime(2026, 8, 22, 11, 40),
-              ),
-              _event(
-                'E1',
-                'created',
-                'Ayla Yönetici',
-                DateTime(2026, 8, 21, 9, 15),
-              ),
-            ],
+      await shoot(
+        tester,
+        brightness,
+        'ee-task-history',
+        [
+          eeHistoryProvider.overrideWith(
+            (ref, target) async => EeHistoryPage(
+              items: [
+                _event(
+                  'E4',
+                  'released',
+                  'Barış Saha',
+                  DateTime(2026, 8, 22, 16, 20),
+                ),
+                _event(
+                  'E3',
+                  'status_changed',
+                  'Barış Saha',
+                  DateTime(2026, 8, 22, 15, 05),
+                  diff: {
+                    'subtask': ['Kabloyu çek', 'done'],
+                  },
+                ),
+                _event(
+                  'E2',
+                  'assigned',
+                  'Ayla Yönetici',
+                  DateTime(2026, 8, 22, 11, 40),
+                ),
+                _event(
+                  'E1',
+                  'created',
+                  'Ayla Yönetici',
+                  DateTime(2026, 8, 21, 9, 15),
+                ),
+              ],
+            ),
           ),
-        ),
-      ], const EeTaskHistoryScreen(taskId: _kTask));
+        ],
+        const EeTaskHistoryScreen(taskId: _kTask),
+      );
     });
   }
 }

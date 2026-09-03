@@ -172,31 +172,55 @@ void main() {
 
   for (final brightness in Brightness.values) {
     testWidgets('the notification centre — ${brightness.name}', (tester) async {
-      await shoot(tester, brightness, 'ee-notification-center', [
-        notificationCenterProvider.overrideWith((ref) => Stream.value(_inbox)),
-        unreadNotificationCountProvider.overrideWith((ref) => Stream.value(2)),
-      ], const EeNotificationCenterScreen());
+      await shoot(
+        tester,
+        brightness,
+        'ee-notification-center',
+        [
+          notificationCenterProvider.overrideWith(
+            (ref) => Stream.value(_inbox),
+          ),
+          unreadNotificationCountProvider.overrideWith(
+            (ref) => Stream.value(2),
+          ),
+        ],
+        const EeNotificationCenterScreen(),
+      );
     });
 
     testWidgets('the centre with nothing in it — ${brightness.name}', (
       tester,
     ) async {
-      await shoot(tester, brightness, 'ee-notification-center-empty', [
-        notificationCenterProvider.overrideWith(
-          (ref) => Stream.value(const <NotificationItem>[]),
-        ),
-        unreadNotificationCountProvider.overrideWith((ref) => Stream.value(0)),
-      ], const EeNotificationCenterScreen());
+      await shoot(
+        tester,
+        brightness,
+        'ee-notification-center-empty',
+        [
+          notificationCenterProvider.overrideWith(
+            (ref) => Stream.value(const <NotificationItem>[]),
+          ),
+          unreadNotificationCountProvider.overrideWith(
+            (ref) => Stream.value(0),
+          ),
+        ],
+        const EeNotificationCenterScreen(),
+      );
     });
 
     testWidgets('notification preferences — ${brightness.name}', (
       tester,
     ) async {
-      await shoot(tester, brightness, 'ee-notification-prefs', [
-        eeNotificationPrefsProvider.overrideWith(
-          () => _StubPrefsController(_prefs),
-        ),
-      ], const EeNotificationPrefsScreen());
+      await shoot(
+        tester,
+        brightness,
+        'ee-notification-prefs',
+        [
+          eeNotificationPrefsProvider.overrideWith(
+            () => _StubPrefsController(_prefs),
+          ),
+        ],
+        const EeNotificationPrefsScreen(),
+      );
     });
   }
 }
