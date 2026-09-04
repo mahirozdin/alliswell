@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.9.1] — 2026-09-04
+
 ### Added
 
 - **The REST API has documentation now — every endpoint of it (OPH-294,

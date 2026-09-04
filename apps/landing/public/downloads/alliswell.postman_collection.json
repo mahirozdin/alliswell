@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "7096efc4-0000-4000-8000-7096efc40000",
-    "name": "AllisWell REST API v1.9.0",
+    "name": "AllisWell REST API v1.9.1",
     "description": "Generated from the AllisWell OpenAPI spec — see https://alliswell.space/docs/api\n\nSet `apiKey` to a personal key (Settings → API access and management) and `workspaceId` to the workspace it belongs to; `GET /api/v1/me` lists yours. The few endpoints a key may not open are marked and use `sessionJwt` instead.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },

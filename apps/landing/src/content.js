@@ -11,7 +11,7 @@ export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
-export const VERSION = '1.9.0';
+export const VERSION = '1.9.1';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,

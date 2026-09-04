@@ -1,6 +1,6 @@
 {
   "name": "@alliswell/landing",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "description": "AllisWell marketing site — served at the root of alliswell.space, with the Flutter web app under /app.",
   "license": "LicenseRef-PolyForm-Noncommercial-1.0.0",

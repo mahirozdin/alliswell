@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AllisWell REST API",
-    "version": "1.9.0",
+    "version": "1.9.1",
     "description": "Tasks, notes, projects, files and reminders — the same surface the AllisWell apps use, open to your own scripts through a personal API key.",
     "license": {
       "name": "See LICENSE",
