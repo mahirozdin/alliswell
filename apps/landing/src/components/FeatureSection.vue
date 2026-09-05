@@ -10,6 +10,16 @@ defineProps({
   feature: { type: Object, required: true },
   flip: { type: Boolean, default: false },
 });
+
+/**
+ * EE-143 — content.js stores a bare name (`web/home-light.jpg`) because this
+ * component has always prefixed it. The enterprise page stores the whole path
+ * instead, and it has to: ci.yml greps the BUILT bundle for `/shots/...`
+ * literals, and a path assembled at runtime is a path that gate cannot see.
+ * That hole is documented in the gate itself — it is why a second reader of
+ * content.js exists at all. Accept both rather than migrate the old file.
+ */
+const shotPath = (s) => (s.startsWith('/') ? s : `/shots/${s}`);
 </script>
 
 <template>
@@ -41,12 +51,12 @@ defineProps({
          and the widget block relies on it. -->
     <ScreenshotFrame
       class="feature__shot"
-      :src="`/shots/${feature.shot}`"
-      :src-dark="feature.shotDark ? `/shots/${feature.shotDark}` : ''"
+      :src="shotPath(feature.shot)"
+      :src-dark="feature.shotDark ? shotPath(feature.shotDark) : ''"
       :alt="feature.alt"
       :variant="feature.frame || 'browser'"
       :ratio="feature.ratio || ''"
-      :label="`alliswell.space/app — ${feature.eyebrow}`"
+      :label="feature.frameLabel || `alliswell.space/app — ${feature.eyebrow}`"
     />
   </article>
 </template>

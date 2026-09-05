@@ -1,13 +1,19 @@
 <script setup>
 import { faq } from '../content.js';
+
+/** EE-143 — same list, a second page, a different heading and a different set. */
+defineProps({
+  heading: { type: String, default: 'Questions people actually ask' },
+  items: { type: Array, default: () => faq },
+});
 </script>
 
 <template>
   <section v-reveal class="aw-section">
     <div class="aw-shell faq">
-      <h2>Questions people actually ask</h2>
+      <h2>{{ heading }}</h2>
       <div class="faq__list">
-        <details v-for="(item, i) in faq" :key="item.q" :open="i === 0" class="aw-card faq__item">
+        <details v-for="(item, i) in items" :key="item.q" :open="i === 0" class="aw-card faq__item">
           <summary>
             {{ item.q }}
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">

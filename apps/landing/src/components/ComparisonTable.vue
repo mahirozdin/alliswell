@@ -1,34 +1,60 @@
 <script setup>
 import { comparison, DOCS_URL } from '../content.js';
 
+/**
+ * EE-143 — the whole table, its headings and its three cell words become one
+ * prop. The enterprise page's package comparison is the same object with
+ * different rows, and `cell()` already passes anything it does not recognise
+ * through as free text, so '250 seats' and '90 days' render without a change.
+ */
+const props = defineProps({
+  table: {
+    type: Object,
+    default: () => ({
+      eyebrow: 'Honest comparison',
+      title: 'Where AllisWell is actually different',
+      lede:
+        'Not a scorecard designed to be won. The full analysis — including the six things ' +
+        'these apps do better than we do — is in the repository.',
+      caption: 'Feature comparison table',
+      featureHeading: 'Feature',
+      labels: { yes: 'Yes', no: 'No', partial: 'Partial' },
+      columns: comparison.columns,
+      rows: comparison.rows,
+      footnote: comparison.footnote,
+      link: { label: 'Read it →', href: `${DOCS_URL}/COMPARISON.md` },
+    }),
+  },
+  /** The homepage owns `#compare`; a second page must not claim the same id. */
+  anchor: { type: String, default: 'compare' },
+});
+
 /** 'yes' | 'no' | 'partial' | free text → a cell that reads without colour alone. */
 function cell(value) {
-  if (value === 'yes') return { mark: '●', label: 'Yes', tone: 'yes' };
-  if (value === 'no') return { mark: '○', label: 'No', tone: 'no' };
-  if (value === 'partial') return { mark: '◐', label: 'Partial', tone: 'partial' };
+  const l = props.table.labels;
+  if (value === 'yes') return { mark: '●', label: l.yes, tone: 'yes' };
+  if (value === 'no') return { mark: '○', label: l.no, tone: 'no' };
+  if (value === 'partial') return { mark: '◐', label: l.partial, tone: 'partial' };
   return { mark: null, label: value, tone: 'text' };
 }
 </script>
 
 <template>
-  <section id="compare" v-reveal class="aw-section">
+  <section :id="anchor" v-reveal class="aw-section">
     <div class="aw-shell">
       <header class="cmp__head">
-        <p class="aw-eyebrow">Honest comparison</p>
-        <h2>Where AllisWell is actually different</h2>
-        <p class="aw-lede">
-          Not a scorecard designed to be won. The full analysis — including the six things these
-          apps do better than we do — is in the repository.
-        </p>
+        <p class="aw-eyebrow">{{ table.eyebrow }}</p>
+        <h2>{{ table.title }}</h2>
+        <p class="aw-lede">{{ table.lede }}</p>
       </header>
 
-      <div class="cmp__scroll" tabindex="0" role="region" aria-label="Feature comparison table">
+      <div class="cmp__scroll" tabindex="0" role="region" :aria-label="table.caption">
         <table class="cmp">
           <thead>
             <tr>
-              <th scope="col" class="cmp__feature">Feature</th>
+              <th scope="col" class="cmp__feature">{{ table.featureHeading }}</th>
               <th
-                v-for="(c, i) in comparison.columns"
+                v-for="(c, i) in table.columns"
                 :key="c"
                 scope="col"
                 :class="{ 'cmp__ours': i === 0 }"
@@ -38,7 +64,7 @@ function cell(value) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="row in comparison.rows" :key="row[0]">
+            <tr v-for="row in table.rows" :key="row[0]">
               <th scope="row" class="cmp__feature">{{ row[0] }}</th>
               <td
                 v-for="(value, i) in row.slice(1)"
@@ -58,8 +84,8 @@ function cell(value) {
       </div>
 
       <p class="cmp__note">
-        {{ comparison.footnote }}
-        <a :href="`${DOCS_URL}/COMPARISON.md`" rel="noopener" target="_blank">Read it →</a>
+        {{ table.footnote }}
+        <a :href="table.link.href" rel="noopener" target="_blank">{{ table.link.label }}</a>
       </p>
     </div>
   </section>

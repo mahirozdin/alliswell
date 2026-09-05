@@ -276,6 +276,26 @@ pre {
   box-shadow: var(--aw-shadow-sm);
 }
 
+.aw-icon-btn {
+  /* EE-143: was `.hdr__icon`, scoped inside TheHeader. The theme toggle moved
+     into its own component so a second header could use it, and a scoped rule
+     cannot follow it there. It belongs in the utility layer beside `.aw-btn`
+     for the same reason that one does: it is a shape the whole site uses. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--aw-hairline);
+  background: transparent;
+  color: var(--aw-text);
+  cursor: pointer;
+}
+.aw-icon-btn:hover {
+  background: var(--aw-surface-2);
+}
+
 .aw-btn--sm {
   min-height: 40px;
   padding: 0.45rem 1rem;

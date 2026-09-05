@@ -6,6 +6,28 @@
     <meta name="theme-color" content="#0B1233" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
 
+    <!--
+      EE-143 — the theme is applied by useTheme() in onMounted, which is one
+      paint too late: a visitor who chose dark, or whose system is dark, sees a
+      white flash on every navigation. This runs before the stylesheet, sets the
+      same attribute useTheme() will set, and is wrapped because localStorage
+      throws outright in some privacy modes — where the media query is still the
+      right answer.
+    -->
+    <script>
+      try {
+        var t = localStorage.getItem('aw_theme');
+        document.documentElement.dataset.theme =
+          t === 'light' || t === 'dark'
+            ? t
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+      } catch (e) {
+        /* no stored preference is readable; useTheme() decides on mount */
+      }
+    </script>
+
     <title>AllisWell — source-available tasks, reminders &amp; notes you can host yourself</title>
     <meta
       name="description"
