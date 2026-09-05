@@ -5,6 +5,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.9.2] — 2026-09-06
+
+### Fixed
+
+- **Sign in with Apple and with Google could not work at all, and the app
+  blamed the wrong thing for it.** Both buttons ended the same way: Apple's
+  own sheet appeared, you approved it, the app came back, and the screen
+  said "Sign-in could not be completed. Please try again." Nothing was
+  reported anywhere, because nothing crashed — the failure was a caught
+  error, and Crashlytics only ever heard about crashes.
+
+  What the server was actually answering was 401 `OAUTH_TOKEN_INVALID`
+  with the reason `crypto is not defined`. That is a Node `ReferenceError`,
+  not a verdict on anybody's token: `jose` verifies signatures through the
+  **global** `crypto.subtle`, the way a browser does, and Node did not ship
+  that global unflagged until v19. The host runs v18.20.6 — under the
+  `>=22` this project declares, which the deploy sees and warns about
+  rather than refuses.
+
+  Three things kept it hidden, and all three were fixable habits rather
+  than bad luck. A malformed token never reaches the cryptography at all
+  — `jose` rejects it while parsing — so poking the endpoint by hand
+  answers "Invalid Compact JWS" and looks perfectly healthy; only a real
+  token gets far enough to fail, which means the first person to find it
+  is a user signing in. `verifyIdentityToken` then labelled everything it
+  caught `OAUTH_TOKEN_INVALID`, so a missing runtime feature was reported
+  as the user's credential being bad. And the test that covers this route
+  stubs the verification out — correctly, since account matching is what
+  it is testing — so the broken path was never executed, on a CI runtime
+  where the global exists anyway.
+
+  `globalThis.crypto` is now guaranteed from `node:crypto` when, and only
+  when, the runtime is missing it, and the guarantee is imported by the
+  module that needs it rather than by an entry file, so it holds for tests
+  that build the app directly and for any future importer. This is a
+  floor, not a licence: Node 18 reached end-of-life in April 2025, and
+  moving the host to the declared `>=22` is still the real repair.
+
 ## [1.9.1] — 2026-09-04
 
 ### Added
