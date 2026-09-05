@@ -1,3 +1,8 @@
+// First, and load-bearing: jose reaches for the *global* `crypto` when it
+// verifies a signature, and Node did not ship that global unflagged until v19.
+// Importing this here rather than in an entry file keeps the guarantee attached
+// to the module that actually needs it.
+import './webcrypto.js';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 /**
