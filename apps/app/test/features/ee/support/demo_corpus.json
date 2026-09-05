@@ -1,0 +1,249 @@
+{
+  "_readme": [
+    "ONE COMPANY, ACROSS EVERY ENTERPRISE SCREENSHOT (EE-146).",
+    "",
+    "Before this file the shot fixtures described three different companies.",
+    "units_ had Muhasebe/Saha Servis/Ar-Ge, sla_dashboard_ had Bakim(186)/",
+    "Muhendislik(92)/Elektrik(36), services_ had Bakim(9)/Bilgi Islem(5)/IK(3) —",
+    "two of them disagreed about how many people are in Bakim, and both of those",
+    "pictures are on the same marketing page. The two that DID agree only agreed",
+    "because a ticket subject was a copy-pasted string literal in two files.",
+    "",
+    "WHAT IS TRANSLATED AND WHAT IS NOT. Structure is invariant across locales:",
+    "ids, counts, dates, brand colour, subdomain, and every person's name. Names",
+    "stay Turkish in both because Assignee.initials and colorRgb are drawn onto",
+    "the queue rows — translating a name changes the avatar, and the two",
+    "language versions would stop being pictures of the same screen. Unit names,",
+    "service names, custom-field labels and ticket subjects DO translate: they",
+    "describe what the product is, and an English buyer reading Turkish unit",
+    "names concludes the product is not translated, when in fact all 634 ee.*",
+    "keys exist in both.",
+    "",
+    "NO COMPLIANCE NUMBER IS AUTHORED HERE. demo_corpus.dart derives it from",
+    "bySla, so the figure on the dashboard cannot drift from the buckets that",
+    "produce it. That is the exact defect this file replaces: compliance was",
+    "typed as 78.4 beside a two-row breach list, and 78.4% over 246 judged",
+    "requests means about 54 breaches, which the screen would have drawn in",
+    "full because _Breaches truncates nothing.",
+    "",
+    "demo_corpus_test.dart runs WITHOUT the screenshots dart-define, so these",
+    "invariants are checked by the ordinary CI suite."
+  ],
+
+  "company": {
+    "subdomain": "aydinmetal",
+    "brandRgb": "#B4472A",
+    "name": { "tr": "Aydın Metal Sanayi A.Ş.", "en": "Aydın Metal Industries" }
+  },
+
+  "units": [
+    { "id": "U1", "name": { "tr": "Bakım", "en": "Maintenance" } },
+    { "id": "U2", "manages": true, "name": { "tr": "Bilgi İşlem", "en": "IT" } },
+    { "id": "U3", "name": { "tr": "Kalite", "en": "Quality" } },
+    {
+      "id": "U4",
+      "archived": true,
+      "name": { "tr": "Eski Depo", "en": "Old Warehouse" }
+    }
+  ],
+
+  "people": [
+    { "id": "P01", "unitId": "U1", "role": "manager", "displayName": "Barış Servis", "initials": "BS", "colorRgb": "#0A5CFF" },
+    { "id": "P02", "unitId": "U1", "role": "member", "displayName": "Deniz Koordinatör", "initials": "DK", "colorRgb": "#7C3AED" },
+    { "id": "P03", "unitId": "U1", "role": "member", "displayName": "Cem Saha", "initials": "CS", "colorRgb": "#0C7D6C" },
+    { "id": "P04", "unitId": "U1", "role": "member", "displayName": "Pınar Üye", "initials": "PÜ", "colorRgb": "#B4472A" },
+    { "id": "P05", "unitId": "U1", "role": "member", "displayName": "Emre Vardiya", "initials": "EV", "colorRgb": "#1F6FEB" },
+    { "id": "P06", "unitId": "U1", "role": "member", "displayName": "Seda Bakım", "initials": "SB", "colorRgb": "#8A4FD8" },
+    { "id": "P07", "unitId": "U1", "role": "member", "email": "kerem@aydinmetal.example", "initials": "K", "colorRgb": "#0F766E" },
+
+    { "id": "P08", "unitId": "U2", "role": "manager", "displayName": "Merve Birim", "initials": "MB", "colorRgb": "#0A5CFF" },
+    { "id": "P09", "unitId": "U2", "role": "member", "displayName": "Onur Ağ", "initials": "OA", "colorRgb": "#7C3AED" },
+    { "id": "P10", "unitId": "U2", "role": "member", "displayName": "Zeynep Sistem", "initials": "ZS", "colorRgb": "#0C7D6C" },
+    { "id": "P11", "unitId": "U2", "role": "member", "displayName": "Tolga Destek", "initials": "TD", "colorRgb": "#B4472A" },
+    { "id": "P12", "unitId": "U2", "role": "member", "email": "ilker@aydinmetal.example", "initials": "İ", "colorRgb": "#1F6FEB" },
+
+    { "id": "P13", "unitId": "U3", "role": "manager", "displayName": "Ayşe Kalite", "initials": "AK", "colorRgb": "#0A5CFF" },
+    { "id": "P14", "unitId": "U3", "role": "member", "displayName": "Murat Ölçüm", "initials": "MÖ", "colorRgb": "#7C3AED" },
+    { "id": "P15", "unitId": "U3", "role": "member", "displayName": "Gizem Laboratuvar", "initials": "GL", "colorRgb": "#0C7D6C" },
+    { "id": "P16", "unitId": "U3", "role": "member", "displayName": "Hakan Denetim", "initials": "HD", "colorRgb": "#B4472A" },
+
+    { "id": "P17", "unitId": "U4", "role": "manager", "displayName": "Selim Depo", "initials": "SD", "colorRgb": "#0A5CFF" },
+    { "id": "P18", "unitId": "U4", "role": "member", "displayName": "Nazlı Sayım", "initials": "NS", "colorRgb": "#7C3AED" }
+  ],
+
+  "services": [
+    {
+      "id": "S1",
+      "unitIds": ["U1"],
+      "name": { "tr": "Elektrik arızası", "en": "Electrical fault" },
+      "fields": [
+        { "key": "line_no", "type": "text", "required": true, "label": { "tr": "Hat numarası", "en": "Line number" } },
+        { "key": "shift", "type": "select", "options": ["1", "2", "3"], "label": { "tr": "Vardiya", "en": "Shift" } }
+      ]
+    },
+    {
+      "id": "S2",
+      "unitIds": ["U1", "U3"],
+      "name": { "tr": "Kalibrasyon", "en": "Calibration" }
+    },
+    {
+      "id": "S3",
+      "unitIds": ["U2"],
+      "name": { "tr": "Kartlı geçiş", "en": "Access cards" }
+    },
+    {
+      "_why": "Routed to NOBODY on purpose. tickets/db.js refuses a request for an unrouted service (TICKET_SERVICE_UNROUTED) — 'a service nobody answers cannot receive anything' — so this one must name ZERO tickets on every axis. demo_corpus_test.dart asserts that, which is how the picture and the server's rule stay the same rule.",
+      "id": "S4",
+      "unitIds": [],
+      "name": { "tr": "Aydınlatma", "en": "Lighting" }
+    }
+  ],
+
+  "tickets": [
+    {
+      "id": "T1",
+      "unitId": "U1",
+      "serviceId": "S1",
+      "status": "new",
+      "priority": "urgent",
+      "slaStatus": "breached",
+      "onQueue": true,
+      "assignees": ["P01", "P02"],
+      "subject": {
+        "tr": "3. hat dolum bandı sensörü çift sayıyor, vardiya durdu",
+        "en": "Line 3 filler belt sensor is double-counting, the shift has stopped"
+      }
+    },
+    {
+      "id": "T2",
+      "unitId": "U1",
+      "serviceId": "S2",
+      "status": "in_progress",
+      "priority": "high",
+      "slaStatus": "warned",
+      "slaDueAt": "2026-08-20T11:00:00Z",
+      "onQueue": true,
+      "assignees": ["P01"],
+      "subject": {
+        "tr": "Kaynak robotu kalibrasyonu sapıyor",
+        "en": "The welding robot's calibration is drifting"
+      }
+    },
+    {
+      "_why": "Paused: a promise with no countdown, which is a state of its own.",
+      "id": "T3",
+      "unitId": "U1",
+      "serviceId": "S2",
+      "status": "waiting",
+      "priority": "normal",
+      "slaStatus": "ok",
+      "onQueue": true,
+      "subject": {
+        "tr": "Yedek parça talebi — rulman 6204",
+        "en": "Spare part request — 6204 bearing"
+      }
+    },
+    {
+      "id": "T4",
+      "unitId": "U2",
+      "serviceId": "S3",
+      "status": "closed",
+      "priority": "low",
+      "slaStatus": "met",
+      "terminalAt": "2026-08-19T16:00:00Z",
+      "onQueue": true,
+      "subject": {
+        "tr": "Ofis yazıcısı kağıt sıkıştırıyor",
+        "en": "The office printer is jamming"
+      }
+    },
+    {
+      "id": "T5",
+      "unitId": "U1",
+      "serviceId": "S1",
+      "status": "in_progress",
+      "priority": "urgent",
+      "slaStatus": "breached",
+      "subject": {
+        "tr": "Kompresör basınç düşüşü, boyahane durdu",
+        "en": "Compressor pressure has dropped, the paint shop has stopped"
+      }
+    },
+    {
+      "id": "T6",
+      "unitId": "U1",
+      "serviceId": "S1",
+      "status": "in_progress",
+      "priority": "high",
+      "slaStatus": "breached",
+      "subject": {
+        "tr": "CNC tezgâhı alarm veriyor, parça kabul etmiyor",
+        "en": "The CNC machine is alarming and will not accept parts"
+      }
+    },
+    {
+      "id": "T7",
+      "unitId": "U3",
+      "serviceId": "S2",
+      "status": "waiting",
+      "priority": "normal",
+      "slaStatus": "breached",
+      "subject": {
+        "tr": "Kalite laboratuvarı terazi kalibrasyonu gecikti",
+        "en": "The quality lab's scale calibration is overdue"
+      }
+    },
+    {
+      "id": "T8",
+      "unitId": "U2",
+      "serviceId": "S3",
+      "status": "waiting",
+      "priority": "high",
+      "slaStatus": "breached",
+      "subject": {
+        "tr": "Depo kartlı geçişi çalışmıyor, vardiya giremedi",
+        "en": "Warehouse access cards are not working, the shift could not get in"
+      }
+    }
+  ],
+
+  "periods": {
+    "_why": [
+      "A PERIOD, NOT A LIFETIME. 47 requests in a month for one service desk is",
+      "an ordinary number; the earlier fixture claimed 314 with a two-row breach",
+      "list, and _Breaches draws every row it is given, so the two could not both",
+      "be true. A small honest period is also the only shape in which the breach",
+      "list FITS the 900x1100 frame the shot is taken at.",
+      "",
+      "Counts are keyed by id and the labels are resolved per locale, so the two",
+      "language versions quote identical figures by construction. The empty key",
+      "is the retired-catalogue-entry bucket: a null LABEL whose count is still",
+      "true, which sla_dashboard_models.dart documents as a real case."
+    ],
+    "struggling": {
+      "byStatus": { "new": 9, "in_progress": 14, "waiting": 6, "closed": 18 },
+      "bySla": { "ok": 21, "warned": 5, "breached": 5, "met": 16 },
+      "byUnit": { "U1": 26, "U2": 12, "U3": 9 },
+      "byService": { "S1": 21, "S2": 14, "S3": 7, "": 5 },
+      "breachIds": ["T1", "T5", "T6", "T7", "T8"]
+    },
+    "healthy": {
+      "byStatus": { "new": 2, "in_progress": 1, "closed": 39 },
+      "bySla": { "ok": 11, "met": 31 },
+      "byUnit": { "U1": 24, "U2": 11, "U3": 7 },
+      "byService": { "S1": 18, "S2": 13, "S3": 7, "": 4 },
+      "breachIds": []
+    }
+  },
+
+  "portal": {
+    "linkQuota": { "used": 2, "max": 5 },
+    "ticketQuota": { "used": 143, "max": 500 },
+    "links": [
+      { "id": "L1", "serviceId": "S1", "unitId": "U1", "state": "active", "enabled": true, "expiresAt": "2026-09-01T12:00:00", "hasCustomFields": true },
+      { "id": "L2", "serviceId": "S2", "unitId": "U1", "state": "disabled", "enabled": false, "expiresAt": "2026-09-14T12:00:00" },
+      { "_why": "The two that are easy to draw wrong: expired must read as ordinary, revoked must carry no controls.", "id": "L3", "serviceId": "S3", "unitId": "U2", "state": "expired", "enabled": true, "expiresAt": "2026-08-20T12:00:00" },
+      { "id": "L4", "serviceId": "S1", "unitId": "U1", "state": "revoked", "enabled": true, "expiresAt": "2026-09-30T12:00:00", "revokedAt": "2026-08-25T09:00:00" }
+    ]
+  }
+}

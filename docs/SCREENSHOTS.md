@@ -197,11 +197,40 @@ So both runs above can be issued back to back, and each writes its own files:
 `screenshots/ee/` dropping the `ee-` prefix; the site's markup asks for `.jpg`
 and `sync-screenshots.mjs` produces that name either way.
 
-**The chrome translates; the sample content does not.** Ticket titles and unit
-names stay Turkish in both languages because they are test fixtures, and those
-fixtures are the tests' own — the ticket queue's are written to be "a
-photograph of a screen taken in a plant". Rewriting them to flatter a marketing
-page would edit an assertion to improve a picture.
+**One company, and the sample content translates with the chrome (EE-146).**
+This section used to say the opposite — that ticket titles and unit names stay
+Turkish in both languages, because rewriting a fixture to flatter a marketing
+page would be editing an assertion to improve a picture. That reasoning was
+right about assertions and wrong about these files, and the difference was
+measured rather than argued: CI runs a bare `flutter test`, every shot file
+returns from `main()` without the dart-define, and the only `expectLater` in
+them is a `matchesGoldenFile` that always passes under `--update-goldens`.
+**These files assert nothing.** The behaviour fixtures they were confused with
+live in the sibling `*_test.dart` files and are untouched.
+
+So the shot files draw from `test/features/ee/support/demo_corpus.json`, and
+the split is:
+
+- **Translated** — unit names, service names, custom-field labels, ticket
+  subjects. They describe what the product is, and an English buyer reading
+  Turkish unit names concludes the product is not translated, when in fact all
+  634 `ee.*` keys exist in both.
+- **Invariant** — every count, id, date, the brand colour, the subdomain, and
+  **every person's name.** Names stay Turkish in both because `Assignee`'s
+  initials and colour are drawn onto the queue rows: translating a name changes
+  the avatar, and the two language versions would stop being pictures of the
+  same screen.
+
+The corpus also fixed an arithmetic problem the fixtures had. Three of them
+described three different companies — two disagreed about how many people are
+in Bakım, and both of those pictures are on the same page — while the two that
+agreed agreed only because a ticket subject was a copy-pasted string literal in
+two files. Now the dashboard's compliance figure is derived from its own
+buckets, a unit's member count is the length of its roster, and a breach row is
+the corpus's own ticket. `demo_corpus_test.dart` runs in the ordinary CI suite
+and fails if an axis stops adding up, if the breach list disagrees with the
+`breached` bucket, if the unrouted catalogue entry acquires a count, or if the
+two languages start quoting different numbers.
 
 Only screens a customer sees belong here. The operator-side console (packages,
 instance limits) is deliberately **not** in this set: it shows how the product
