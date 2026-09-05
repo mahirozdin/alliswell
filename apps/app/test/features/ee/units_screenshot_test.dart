@@ -16,7 +16,6 @@
 // The third shot is the roster, where "who runs this unit" has to read at a
 // glance next to people who merely work in it.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,18 +26,11 @@ import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_units_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
-import 'package:alliswell/src/theme/theme.dart';
-import 'package:alliswell/src/widgets/glass.dart';
 
-import '../../design_screenshots_test.dart'
-    show loadRealFontsForStore, screenshotLocale;
+import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
-
-/// The theme's own fontFamily is null (platform font, DESIGN §3.3) and the
-/// test engine draws that as BOX GLYPHS — every shot file here learned it the
-/// same way.
-const String _screenshotFamily = 'ScreenshotSans';
 
 /// A team with every state the row has to make legible: a busy unit, a small
 /// one the viewer runs themselves, and a retired one.
@@ -100,60 +92,17 @@ void main() {
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
   });
 
-  Future<void> shoot(
-    WidgetTester tester,
-    Brightness brightness,
-    String name,
-    List<Override> overrides,
-    Widget screen,
-  ) async {
-    await loadRealFontsForStore();
-    tester.view.physicalSize = const Size(900, 900);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
-    debugDisableShadows = false;
-    try {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: overrides,
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: buildAwTheme(
-              brightness,
-              fontFamilyOverride: _screenshotFamily,
-            ),
-            // Every route is wrapped in the page background; a bare Scaffold
-            // renders the veil against nothing — a flat grey that exists
-            // nowhere in the product (the history shot learned this first).
-            home: AwPageBackground(child: screen),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('../../goldens/$name-${brightness.name}.png'),
-      );
-    } finally {
-      debugDisableShadows = true;
-    }
-  }
-
   for (final brightness in Brightness.values) {
     testWidgets('units, as the team admin sees them — ${brightness.name}', (
       tester,
     ) async {
-      await shoot(
+      await eeShoot(
         tester,
-        brightness,
-        'ee-units-admin',
-        _as(admin: true),
-        const EeTeamUnitsScreen(),
+        brightness: brightness,
+        name: 'ee-units-admin',
+        size: const Size(900, 900),
+        overrides: _as(admin: true),
+        screen: const EeTeamUnitsScreen(),
       );
     });
 
@@ -163,23 +112,25 @@ void main() {
     testWidgets(
       'units, as the delegated manager sees them — ${brightness.name}',
       (tester) async {
-        await shoot(
+        await eeShoot(
           tester,
-          brightness,
-          'ee-units-manager',
-          _as(admin: false),
-          const EeTeamUnitsScreen(),
+          brightness: brightness,
+          name: 'ee-units-manager',
+          size: const Size(900, 900),
+          overrides: _as(admin: false),
+          screen: const EeTeamUnitsScreen(),
         );
       },
     );
 
     testWidgets('one unit\'s roster — ${brightness.name}', (tester) async {
-      await shoot(
+      await eeShoot(
         tester,
-        brightness,
-        'ee-unit-members',
-        _as(admin: true),
-        const EeUnitMembersScreen(
+        brightness: brightness,
+        name: 'ee-unit-members',
+        size: const Size(900, 900),
+        overrides: _as(admin: true),
+        screen: const EeUnitMembersScreen(
           unit: EeUnit(id: 'U2', name: 'Saha Servis', memberCount: 4),
         ),
       );

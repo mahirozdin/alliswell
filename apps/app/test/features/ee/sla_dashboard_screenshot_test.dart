@@ -21,7 +21,6 @@
 //     failed to load, and that is the shot a customer is most likely to see
 //     on the day the product is working.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,18 +28,11 @@ import 'package:alliswell/src/features/ee/data/sla_dashboard_models.dart';
 import 'package:alliswell/src/features/ee/sla_dashboard_providers.dart';
 import 'package:alliswell/src/features/ee/ui/sla_dashboard_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
-import 'package:alliswell/src/theme/theme.dart';
-import 'package:alliswell/src/widgets/glass.dart';
 
-import '../../design_screenshots_test.dart'
-    show loadRealFontsForStore, screenshotLocale;
+import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
-
-/// The theme's own fontFamily is null (platform font, DESIGN §3.3) and the
-/// test engine draws that as BOX GLYPHS — every shot file here learned it the
-/// same way.
-const String _screenshotFamily = 'ScreenshotSans';
 
 class _Fixed extends EeSlaDashboardController {
   _Fixed(this._value);
@@ -99,56 +91,35 @@ void main() {
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
   });
 
-  Future<void> shoot(
-    WidgetTester tester,
-    Brightness brightness,
-    String name,
-    EeSlaDashboard data,
-  ) async {
-    await loadRealFontsForStore();
-    tester.view.physicalSize = const Size(900, 1100);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
-    debugDisableShadows = false;
-    try {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [eeSlaDashboardProvider.overrideWith(() => _Fixed(data))],
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: buildAwTheme(
-              brightness,
-              fontFamilyOverride: _screenshotFamily,
-            ),
-            home: const AwPageBackground(child: EeSlaDashboardScreen()),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('../../goldens/$name-${brightness.name}.png'),
-      );
-    } finally {
-      debugDisableShadows = true;
-    }
-  }
-
   for (final brightness in Brightness.values) {
     testWidgets('sla dashboard, a desk in trouble (${brightness.name})', (
       tester,
     ) async {
-      await shoot(tester, brightness, 'ee-sla-dashboard', _struggling);
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-sla-dashboard',
+        size: const Size(900, 1100),
+        overrides: [
+          eeSlaDashboardProvider.overrideWith(() => _Fixed(_struggling)),
+        ],
+        screen: const EeSlaDashboardScreen(),
+      );
     });
 
     testWidgets('sla dashboard, nothing missed (${brightness.name})', (
       tester,
     ) async {
-      await shoot(tester, brightness, 'ee-sla-dashboard-clear', _healthy);
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-sla-dashboard-clear',
+        size: const Size(900, 1100),
+        overrides: [
+          eeSlaDashboardProvider.overrideWith(() => _Fixed(_healthy)),
+        ],
+        screen: const EeSlaDashboardScreen(),
+      );
     });
   }
 }

@@ -181,9 +181,21 @@ flutter test --update-goldens --dart-define=screenshots=true --dart-define=shotL
 ```
 
 `shotLocale` defaults to whatever each file already pinned, so a run that does
-not pass it behaves exactly as before. Copy the four screens into
-`screenshots/ee/` as `<screen>-<light|dark>-<en|tr>.png`; the site's markup asks
-for `.jpg` and `sync-screenshots.mjs` produces that name either way.
+not pass it behaves exactly as before.
+
+**The golden filename carries the language (EE-145).** It did not until then,
+and the omission was load-bearing: `-en` and `-tr` runs wrote the same file, so
+the English pass silently overwrote the Turkish one and this section's recipe
+worked around it by copying the output out between runs. That survives four
+screens. It does not survive sixteen in two themes and two languages, and the
+failure is silent in both directions — a forgotten copy ships Turkish pixels
+under an English name, and nothing compares a golden in CI or reads the
+language of a marketing image.
+
+So both runs above can be issued back to back, and each writes its own files:
+`apps/app/test/goldens/ee-<screen>-<light|dark>-<en|tr>.png`. Copy them into
+`screenshots/ee/` dropping the `ee-` prefix; the site's markup asks for `.jpg`
+and `sync-screenshots.mjs` produces that name either way.
 
 **The chrome translates; the sample content does not.** Ticket titles and unit
 names stay Turkish in both languages because they are test fixtures, and those

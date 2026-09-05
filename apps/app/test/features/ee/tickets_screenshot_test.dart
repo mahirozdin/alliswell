@@ -9,8 +9,12 @@
 // generated output, not committed, so a plain CI run must not compare against
 // pictures that are not in the repository.
 //
-// WHY FIVE SHOTS. The acceptance names three queue states, and each fails in a
-// way the other two cannot show:
+// WHY THREE SHOTS. The acceptance names three queue states, and each fails in a
+// way the other two cannot show. (This header said FIVE and described a fourth,
+// DETAIL shot for the internal note — a shot that has never existed in this
+// file or anywhere else in the repo. EE-148 adds it; until then the comment was
+// describing a picture nobody could find, which is the same defect as a
+// marketing page describing a feature nobody shipped.)
 //
 //   • FULL is where priority has to read at a glance, finished work has to sit
 //     apart without disappearing, and an urgent row has to be findable in a
@@ -19,12 +23,7 @@
 //     "nothing came in" is good news, "your filters exclude everything" is a
 //     mistake somebody is one tap from fixing — and a screen that drew one
 //     message for both would be wrong exactly when it matters.
-//   • The DETAIL shot exists for the internal note. An agent who mistakes it
-//     for a reply to the customer has said the wrong thing to the wrong
-//     person, so the three signals (tint, lock, word) have to be legible
-//     together, in both themes.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -35,18 +34,11 @@ import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
-import 'package:alliswell/src/theme/theme.dart';
-import 'package:alliswell/src/widgets/glass.dart';
 
-import '../../design_screenshots_test.dart'
-    show loadRealFontsForStore, screenshotLocale;
+import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
-
-/// The theme's own fontFamily is null (platform font, DESIGN §3.3) and the
-/// test engine draws that as BOX GLYPHS — every shot file here learned it the
-/// same way.
-const String _screenshotFamily = 'ScreenshotSans';
 
 TicketRecord _ticket({
   required String id,
@@ -173,67 +165,26 @@ void main() {
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
   });
 
-  Future<void> shoot(
-    WidgetTester tester,
-    Brightness brightness,
-    String name,
-    List<Override> overrides,
-    Widget screen,
-  ) async {
-    await loadRealFontsForStore();
-    tester.view.physicalSize = const Size(900, 1000);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
-    debugDisableShadows = false;
-    try {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: overrides,
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: buildAwTheme(
-              brightness,
-              fontFamilyOverride: _screenshotFamily,
-            ),
-            home: AwPageBackground(child: screen),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('../../goldens/$name-${brightness.name}.png'),
-      );
-    } finally {
-      debugDisableShadows = true;
-    }
-  }
-
   for (final brightness in Brightness.values) {
     testWidgets('the unit queue, with work in it — ${brightness.name}', (
       tester,
     ) async {
-      await shoot(
+      await eeShoot(
         tester,
-        brightness,
-        'ee-ticket-queue',
-        _overrides(_queue),
-        const EeTicketQueueScreen(),
+        brightness: brightness,
+        name: 'ee-ticket-queue',
+        overrides: _overrides(_queue),
+        screen: const EeTicketQueueScreen(),
       );
     });
 
     testWidgets('nothing came in — ${brightness.name}', (tester) async {
-      await shoot(
+      await eeShoot(
         tester,
-        brightness,
-        'ee-ticket-queue-empty',
-        _overrides(const []),
-        const EeTicketQueueScreen(),
+        brightness: brightness,
+        name: 'ee-ticket-queue-empty',
+        overrides: _overrides(const []),
+        screen: const EeTicketQueueScreen(),
       );
     });
 
@@ -242,12 +193,15 @@ void main() {
     testWidgets('the filter excludes everything — ${brightness.name}', (
       tester,
     ) async {
-      await shoot(
+      await eeShoot(
         tester,
-        brightness,
-        'ee-ticket-queue-filtered',
-        _overrides(const [], filter: const TicketFilter(statuses: {'waiting'})),
-        const EeTicketQueueScreen(),
+        brightness: brightness,
+        name: 'ee-ticket-queue-filtered',
+        overrides: _overrides(
+          const [],
+          filter: const TicketFilter(statuses: {'waiting'}),
+        ),
+        screen: const EeTicketQueueScreen(),
       );
     });
   }

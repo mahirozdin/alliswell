@@ -15,7 +15,6 @@
 // reviewer should be able to check by looking rather than by reading a test.
 // If that sentence is ever quietly dropped, the picture is where it shows.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,18 +24,11 @@ import 'package:alliswell/src/features/ee/portal_links_providers.dart';
 import 'package:alliswell/src/features/ee/services_providers.dart';
 import 'package:alliswell/src/features/ee/ui/portal_links_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
-import 'package:alliswell/src/theme/theme.dart';
-import 'package:alliswell/src/widgets/glass.dart';
 
-import '../../design_screenshots_test.dart'
-    show loadRealFontsForStore, screenshotLocale;
+import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
-
-/// The theme's own fontFamily is null (platform font, DESIGN §3.3) and the
-/// test engine draws that as BOX GLYPHS — every shot file here learned it the
-/// same way.
-const String _screenshotFamily = 'ScreenshotSans';
 
 class _Fixed extends EePortalLinksController {
   _Fixed(this._value);
@@ -109,58 +101,35 @@ void main() {
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
   });
 
-  Future<void> shoot(
-    WidgetTester tester,
-    Brightness brightness,
-    String name, {
-    bool openDialog = false,
-  }) async {
-    await loadRealFontsForStore();
-    tester.view.physicalSize = const Size(900, 1100);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
-    debugDisableShadows = false;
-    try {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            eePortalLinksProvider.overrideWith(() => _Fixed(_data)),
-            eeServicesProvider.overrideWith(() => _FixedServices(_services)),
-          ],
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: buildAwTheme(
-              brightness,
-              fontFamilyOverride: _screenshotFamily,
-            ),
-            home: const AwPageBackground(child: EePortalLinksScreen()),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      if (openDialog) {
-        await tester.tap(find.byKey(const Key('portal-create')));
-        await tester.pumpAndSettle();
-      }
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('../../goldens/$name-${brightness.name}.png'),
-      );
-    } finally {
-      debugDisableShadows = true;
-    }
-  }
-
   for (final brightness in Brightness.values) {
     testWidgets('portal links list (${brightness.name})', (tester) async {
-      await shoot(tester, brightness, 'ee-portal-links');
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-portal-links',
+        size: const Size(900, 1100),
+        overrides: [
+          eePortalLinksProvider.overrideWith(() => _Fixed(_data)),
+          eeServicesProvider.overrideWith(() => _FixedServices(_services)),
+        ],
+        screen: const EePortalLinksScreen(),
+      );
     });
     testWidgets('portal link creation (${brightness.name})', (tester) async {
-      await shoot(tester, brightness, 'ee-portal-create', openDialog: true);
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-portal-create',
+        size: const Size(900, 1100),
+        overrides: [
+          eePortalLinksProvider.overrideWith(() => _Fixed(_data)),
+          eeServicesProvider.overrideWith(() => _FixedServices(_services)),
+        ],
+        screen: const EePortalLinksScreen(),
+        // The dialog is the point of this shot: photograph the create form,
+        // not the list behind it.
+        afterPump: (t) => t.tap(find.byKey(const Key('portal-create'))),
+      );
     });
   }
 }
