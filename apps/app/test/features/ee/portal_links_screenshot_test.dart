@@ -26,6 +26,7 @@ import 'package:alliswell/src/features/ee/ui/portal_links_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 
 import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/demo_corpus.dart';
 import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
@@ -44,61 +45,20 @@ class _FixedServices extends EeServicesController {
   Future<List<EeService>?> build() async => _value;
 }
 
-final _services = [
-  const EeService(id: 'S1', name: 'Elektrik arızası', unitIds: ['U1']),
-  const EeService(id: 'S2', name: 'Aydınlatma', unitIds: ['U1', 'U2']),
-  const EeService(id: 'S3', name: 'Kartlı geçiş', unitIds: ['U2']),
-];
-
-final _data = EePortalLinksData(
-  links: [
-    EePortalLink(
-      id: 'L1',
-      serviceId: 'S1',
-      unitId: 'U1',
-      state: EePortalLinkState.active,
-      enabled: true,
-      expiresAt: DateTime(2026, 9, 1, 12),
-      hasCustomFields: true,
-    ),
-    EePortalLink(
-      id: 'L2',
-      serviceId: 'S2',
-      unitId: 'U2',
-      state: EePortalLinkState.disabled,
-      enabled: false,
-      expiresAt: DateTime(2026, 9, 14, 12),
-    ),
-    // The two that are easy to draw wrong: expired must read as ordinary,
-    // revoked must carry no controls.
-    EePortalLink(
-      id: 'L3',
-      serviceId: 'S3',
-      unitId: 'U2',
-      state: EePortalLinkState.expired,
-      enabled: true,
-      expiresAt: DateTime(2026, 8, 20, 12),
-    ),
-    EePortalLink(
-      id: 'L4',
-      serviceId: 'S1',
-      unitId: 'U1',
-      state: EePortalLinkState.revoked,
-      enabled: true,
-      expiresAt: DateTime(2026, 9, 30, 12),
-      revokedAt: DateTime(2026, 8, 25, 9),
-    ),
-  ],
-  linkQuota: const EePortalQuota(used: 2, max: 5, remaining: 3),
-  ticketQuota: const EePortalQuota(used: 143, max: 500, remaining: 357),
-);
-
 void main() {
   if (!_enabled) return;
 
+  // The links point at the corpus's own catalogue, so a service named on this
+  // screen is the same service the SLA dashboard counts and the ticket queue
+  // routes to.
+  late DemoCorpus corpus;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // Order matters: the corpus reads the active language and asserts rather
+    // than falling back to one.
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
+    corpus = DemoCorpus.active();
   });
 
   for (final brightness in Brightness.values) {
@@ -109,8 +69,10 @@ void main() {
         name: 'ee-portal-links',
         size: const Size(900, 1100),
         overrides: [
-          eePortalLinksProvider.overrideWith(() => _Fixed(_data)),
-          eeServicesProvider.overrideWith(() => _FixedServices(_services)),
+          eePortalLinksProvider.overrideWith(() => _Fixed(corpus.portalLinks)),
+          eeServicesProvider.overrideWith(
+            () => _FixedServices(corpus.services),
+          ),
         ],
         screen: const EePortalLinksScreen(),
       );
@@ -122,8 +84,10 @@ void main() {
         name: 'ee-portal-create',
         size: const Size(900, 1100),
         overrides: [
-          eePortalLinksProvider.overrideWith(() => _Fixed(_data)),
-          eeServicesProvider.overrideWith(() => _FixedServices(_services)),
+          eePortalLinksProvider.overrideWith(() => _Fixed(corpus.portalLinks)),
+          eeServicesProvider.overrideWith(
+            () => _FixedServices(corpus.services),
+          ),
         ],
         screen: const EePortalLinksScreen(),
         // The dialog is the point of this shot: photograph the create form,

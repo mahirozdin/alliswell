@@ -165,6 +165,23 @@ void main() {
         }
       });
 
+      test('a running clock is in the future, a missed one is not', () {
+        // An absolute date in a fixture becomes false the day after the shot.
+        // The queue's warned row read "16 d over" on the day this was written,
+        // which is a state the server cannot produce: warned means the clock
+        // is past 80% and still RUNNING.
+        for (final t in c.queue) {
+          if (t.slaDueAt == null) continue;
+          if (t.slaStatus == 'warned' || t.slaStatus == 'ok') {
+            expect(
+              t.slaDueAt!.isAfter(DateTime.now()),
+              isTrue,
+              reason: '${t.id} is ${t.slaStatus} but its target has passed',
+            );
+          }
+        }
+      });
+
       test('every reference resolves', () {
         final unitIds = c.units.map((u) => u.id).toSet();
         final serviceIds = c.services.map((s) => s.id).toSet();

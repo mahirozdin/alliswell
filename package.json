@@ -20,6 +20,7 @@
     "seed:demo": "node scripts/seed-demo.mjs",
     "shots:web": "node scripts/screenshots/web.mjs",
     "shots:store": "node scripts/screenshots/store.mjs",
+    "shots:ee": "node scripts/screenshots/ee-collect.mjs",
     "lint": "npm run lint -w @alliswell/api",
     "format": "npm run format -w @alliswell/api",
     "format:check": "npm run format:check -w @alliswell/api",

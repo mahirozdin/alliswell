@@ -193,9 +193,20 @@ under an English name, and nothing compares a golden in CI or reads the
 language of a marketing image.
 
 So both runs above can be issued back to back, and each writes its own files:
-`apps/app/test/goldens/ee-<screen>-<light|dark>-<en|tr>.png`. Copy them into
-`screenshots/ee/` dropping the `ee-` prefix; the site's markup asks for `.jpg`
-and `sync-screenshots.mjs` produces that name either way.
+`apps/app/test/goldens/ee-<screen>-<light|dark>-<en|tr>.png`.
+
+Then publish them with **`npm run shots:ee`** (EE-147). It drops the `ee-`
+prefix into `screenshots/ee/`, runs `oxipng` when it is installed, and — the
+part that matters — **refuses, by name, when a capture on its list was never
+produced.** A missing capture is otherwise invisible until the landing build
+references it, and CI is then the first thing to say so. The list in
+`scripts/screenshots/ee-collect.mjs` is the set of pictures the page is allowed
+to use: adding a section means adding a name there and producing it, in that
+order. Anything in the directory that is on no list is reported rather than
+deleted — a stale capture is a decision, not a file a script should remove.
+
+The site's markup asks for `.jpg` and `sync-screenshots.mjs` produces that name
+either way.
 
 **One company, and the sample content translates with the chrome (EE-146).**
 This section used to say the opposite — that ticket titles and unit names stay

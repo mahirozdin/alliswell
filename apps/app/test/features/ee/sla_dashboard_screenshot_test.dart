@@ -30,6 +30,7 @@ import 'package:alliswell/src/features/ee/ui/sla_dashboard_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 
 import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/demo_corpus.dart';
 import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
@@ -41,54 +42,27 @@ class _Fixed extends EeSlaDashboardController {
   Future<EeSlaDashboard?> build() async => _value;
 }
 
-final _struggling = EeSlaDashboard(
-  compliance: 78.4,
-  byStatus: const [
-    EeSlaBucket(key: 'new', label: 'new', count: 41),
-    EeSlaBucket(key: 'in_progress', label: 'in_progress', count: 63),
-    EeSlaBucket(key: 'closed', label: 'closed', count: 210),
-  ],
-  byUnit: const [
-    EeSlaBucket(key: 'U1', label: 'Bakım', count: 186),
-    EeSlaBucket(key: 'U2', label: 'Mühendislik', count: 92),
-    EeSlaBucket(key: 'U3', label: 'Elektrik', count: 36),
-  ],
-  byService: const [
-    EeSlaBucket(key: 'S1', label: 'Hat duruşu', count: 148),
-    EeSlaBucket(key: 'S2', label: 'Kalibrasyon', count: 97),
-    // A retired catalogue entry keeps its count: dropping it would make the
-    // axes disagree, which is the quiet arithmetic error EE-090 refused.
-    EeSlaBucket(key: null, label: null, count: 69),
-  ],
-  breaches: const [
-    EeSlaBreach(
-      id: 'T1',
-      subject: '3. hat dolum bandı sensörü çift sayıyor, vardiya durdu',
-      priority: 'urgent',
-      status: 'in_progress',
-    ),
-    EeSlaBreach(
-      id: 'T2',
-      subject: 'Kaynak robotu kalibrasyonu sapıyor',
-      priority: 'high',
-      status: 'waiting',
-    ),
-  ],
-);
-
-final _healthy = EeSlaDashboard(
-  compliance: 99.2,
-  byStatus: const [EeSlaBucket(key: 'closed', label: 'closed', count: 254)],
-  byUnit: const [EeSlaBucket(key: 'U1', label: 'Bakım', count: 254)],
-  byService: const [EeSlaBucket(key: 'S1', label: 'Hat duruşu', count: 254)],
-);
-
 void main() {
   if (!_enabled) return;
 
+  // 1820 and not 1100: at the old height the "Missed targets" heading sat on
+  // the last visible line and the list itself was below the fold — in the
+  // capture that has been shipping on /enterprise since EE-098. The breach
+  // list is the thing this screen is photographed FOR, and _Breaches draws
+  // every row it is given, so the frame has to be tall enough to hold them.
+
+  // Both figures are FOLDS of the corpus now: compliance is
+  // met/(met+breached) and the breach list is the corpus's own tickets.
+  // The old fixture typed 78.4 beside a two-row list, which is about
+  // fifty-four breaches the screen would have drawn in full.
+  late DemoCorpus corpus;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // Order matters: the corpus reads the active language and asserts rather
+    // than falling back to one.
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
+    corpus = DemoCorpus.active();
   });
 
   for (final brightness in Brightness.values) {
@@ -99,9 +73,11 @@ void main() {
         tester,
         brightness: brightness,
         name: 'ee-sla-dashboard',
-        size: const Size(900, 1100),
+        size: const Size(900, 1820),
         overrides: [
-          eeSlaDashboardProvider.overrideWith(() => _Fixed(_struggling)),
+          eeSlaDashboardProvider.overrideWith(
+            () => _Fixed(corpus.dashboard(DemoPeriod.struggling)),
+          ),
         ],
         screen: const EeSlaDashboardScreen(),
       );
@@ -114,9 +90,11 @@ void main() {
         tester,
         brightness: brightness,
         name: 'ee-sla-dashboard-clear',
-        size: const Size(900, 1100),
+        size: const Size(900, 1820),
         overrides: [
-          eeSlaDashboardProvider.overrideWith(() => _Fixed(_healthy)),
+          eeSlaDashboardProvider.overrideWith(
+            () => _Fixed(corpus.dashboard(DemoPeriod.healthy)),
+          ),
         ],
         screen: const EeSlaDashboardScreen(),
       );

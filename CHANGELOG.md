@@ -5,6 +5,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **The SLA dashboard wrote its percentage the Turkish way in every language
+  (EE-147).** "Promises kept" read `%97.5` instead of `97.5%` for anyone using
+  the app in English, and had since the screen shipped. Every other string on
+  it was translated; the percent sign was built into the number as a prefix,
+  which is the Turkish convention. `check:i18n` could not see it — its blind
+  spot is a `Text` whose argument is an expression rather than a literal — and
+  the widget test that covered the line ran in English while asserting the
+  Turkish form, so the one thing that could have caught it was defending it
+  instead. The format is now a translated pattern and is asserted in both
+  languages.
+
 ## [1.9.1] — 2026-09-04
 
 ### Added

@@ -165,9 +165,12 @@ class DemoCorpus {
         ? null
         : DateTime.parse(t['terminalAt'] as String),
     slaStatus: t['slaStatus'] as String?,
-    slaDueAt: t['slaDueAt'] == null
+    // Relative, not absolute — see the ticket's own note in the JSON. An
+    // absolute due date drifts into the past and turns a warned row into a
+    // state the server cannot produce.
+    slaDueAt: t['slaDueInHours'] == null
         ? null
-        : DateTime.parse(t['slaDueAt'] as String),
+        : DateTime.now().add(Duration(hours: t['slaDueInHours'] as int)),
     createdAt: DateTime.utc(2026, 8, 20, 9),
     revision: 1,
     updatedAt: DateTime.utc(2026, 8, 20, 9),

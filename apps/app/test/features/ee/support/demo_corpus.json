@@ -121,7 +121,8 @@
       "status": "in_progress",
       "priority": "high",
       "slaStatus": "warned",
-      "slaDueAt": "2026-08-20T11:00:00Z",
+      "_why_relative": "An ABSOLUTE due date becomes false the day after the picture is taken. This one was 2026-08-20T11:00Z and by 2026-09-06 the row read '16 d over' — on a WARNED ticket, which the server only sets while the clock is still running. Hours from now, so the row always says what warned means.",
+      "slaDueInHours": 3,
       "onQueue": true,
       "assignees": ["P01"],
       "subject": {

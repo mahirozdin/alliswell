@@ -87,11 +87,24 @@ void main() {
     (tester) async {
       await _pump(tester, _dash(compliance: 97.5, total: 40));
       final context = tester.element(find.byType(EeSlaDashboardScreen));
-      expect(find.text('%97.5'), findsOneWidget);
+      // EE-147: this used to assert '%97.5' — the TURKISH form — under an
+      // English locale, which is how the screen shipped a hardcoded percent
+      // prefix and the enterprise page's English capture read "%78.4" for a
+      // release. A test that asserts the defect is a test that defends it.
+      expect(find.text('97.5%'), findsOneWidget);
       expect(find.text('across 40 requests'), findsOneWidget);
       expect(_complianceColour(tester), context.awTokens.success);
     },
   );
+
+  testWidgets('the percent sign sits where the language puts it', (
+    tester,
+  ) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    await _pump(tester, _dash(compliance: 97.5, total: 40));
+    expect(find.text('%97.5'), findsOneWidget);
+    expect(find.text('97.5%'), findsNothing);
+  });
 
   testWidgets(
     'below the line it reads in error — a colour that passes as TEXT',

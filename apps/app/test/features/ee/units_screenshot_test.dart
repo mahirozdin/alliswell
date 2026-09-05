@@ -28,33 +28,19 @@ import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 
 import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/demo_corpus.dart';
 import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
 
-/// A team with every state the row has to make legible: a busy unit, a small
-/// one the viewer runs themselves, and a retired one.
-final _units = [
-  const EeUnit(id: 'U1', name: 'Muhasebe', memberCount: 12),
-  const EeUnit(id: 'U2', name: 'Saha Servis', memberCount: 4, manages: true),
-  const EeUnit(id: 'U3', name: 'Ar-Ge', memberCount: 7),
-  const EeUnit(id: 'U4', name: 'Eski Depo', memberCount: 2, archived: true),
-];
-
-final _roster = [
-  const EeUnitMember(userId: 'M1', role: 'manager', displayName: 'Merve Birim'),
-  const EeUnitMember(userId: 'P1', role: 'member', displayName: 'Pınar Üye'),
-  const EeUnitMember(userId: 'C1', role: 'member', displayName: 'Cem Saha'),
-  const EeUnitMember(userId: 'K1', role: 'member', email: 'kerem@acme.example'),
-];
-
 class _ShotApi implements EeUnitsApi {
-  const _ShotApi(this._visible);
+  const _ShotApi(this._visible, this._roster);
 
   /// What the SERVER would hand this caller. An admin gets the team; a
   /// delegated manager gets only what they run — so the shot must not show
   /// them four units, or the picture pins a state the server cannot produce.
   final List<EeUnit> _visible;
+  final List<EeUnitMember> _roster;
 
   @override
   Future<List<EeUnit>?> list() async => _visible;
@@ -76,9 +62,9 @@ class _ShotApi implements EeUnitsApi {
   Future<void> setMemberRole(String unitId, String userId, String role) async {}
 }
 
-List<Override> _as({required bool admin}) => [
+List<Override> _as(DemoCorpus corpus, {required bool admin}) => [
   eeUnitsApiProvider.overrideWithValue(
-    _ShotApi(admin ? _units : _units.where((u) => u.manages).toList()),
+    _ShotApi(corpus.unitsAsSeenBy(admin: admin), corpus.roster('U2')),
   ),
   canProvider.overrideWith((ref, id) => id == 'units.manage' ? admin : true),
   eeFeatureProvider.overrideWith((ref, feature) => true),
@@ -87,9 +73,14 @@ List<Override> _as({required bool admin}) => [
 void main() {
   if (!_enabled) return;
 
+  late DemoCorpus corpus;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // Order matters: the corpus reads the active language and asserts rather
+    // than falling back to one.
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
+    corpus = DemoCorpus.active();
   });
 
   for (final brightness in Brightness.values) {
@@ -101,7 +92,7 @@ void main() {
         brightness: brightness,
         name: 'ee-units-admin',
         size: const Size(900, 900),
-        overrides: _as(admin: true),
+        overrides: _as(corpus, admin: true),
         screen: const EeTeamUnitsScreen(),
       );
     });
@@ -117,7 +108,7 @@ void main() {
           brightness: brightness,
           name: 'ee-units-manager',
           size: const Size(900, 900),
-          overrides: _as(admin: false),
+          overrides: _as(corpus, admin: false),
           screen: const EeTeamUnitsScreen(),
         );
       },
@@ -129,9 +120,12 @@ void main() {
         brightness: brightness,
         name: 'ee-unit-members',
         size: const Size(900, 900),
-        overrides: _as(admin: true),
-        screen: const EeUnitMembersScreen(
-          unit: EeUnit(id: 'U2', name: 'Saha Servis', memberCount: 4),
+        overrides: _as(corpus, admin: true),
+        // The unit the roster belongs to, taken from the corpus rather than
+        // named again here — a second copy is how the member count and the
+        // list under it drift apart.
+        screen: EeUnitMembersScreen(
+          unit: corpus.units.firstWhere((u) => u.id == 'U2'),
         ),
       );
     });

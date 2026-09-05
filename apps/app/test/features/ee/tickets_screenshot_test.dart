@@ -28,123 +28,24 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:alliswell/src/features/ee/assignments_providers.dart'
-    show Assignee;
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 
 import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/demo_corpus.dart';
 import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
 
-TicketRecord _ticket({
-  required String id,
-  required String subject,
-  required String status,
-  required String priority,
-  DateTime? terminalAt,
-  String? serviceId,
-  String? slaStatus,
-  DateTime? slaDueAt,
-}) => TicketRecord(
-  id: id,
-  workspaceId: 'W1',
-  serviceId: serviceId,
-  requesterId: 'U1',
-  subject: subject,
-  body: null,
-  status: status,
-  priority: priority,
-  source: 'internal',
-  terminalAt: terminalAt,
-  slaStatus: slaStatus,
-  slaDueAt: slaDueAt,
-  createdAt: DateTime.utc(2026, 8, 20, 9),
-  revision: 1,
-  updatedAt: DateTime.utc(2026, 8, 20, 9),
-);
-
-/// One of each state the row has to make legible, in the order the screen
-/// sorts them: live work first, finished work last.
-final _queue = [
-  _ticket(
-    id: 'T1',
-    subject: '3. hat dolum bandı sensörü çift sayıyor, vardiya durdu',
-    status: 'new',
-    priority: 'urgent',
-    serviceId: 'S1',
-    // EE-097: one shot, all four badge states — a breach has to be findable in
-    // a photograph of a screen taken across a plant floor, and the amber row
-    // below has to be legible in the same picture without taking the accent
-    // into its text.
-    slaStatus: 'breached',
-  ),
-  _ticket(
-    id: 'T2',
-    subject: 'Kaynak robotu kalibrasyonu sapıyor',
-    status: 'in_progress',
-    priority: 'high',
-    serviceId: 'S1',
-    slaStatus: 'warned',
-    slaDueAt: DateTime.utc(2026, 8, 20, 11),
-  ),
-  _ticket(
-    id: 'T3',
-    subject: 'Yedek parça talebi — rulman 6204',
-    status: 'waiting',
-    priority: 'normal',
-    serviceId: 'S2',
-    // Paused: a promise with no countdown, which is a state of its own.
-    slaStatus: 'ok',
-  ),
-  _ticket(
-    id: 'T4',
-    subject: 'Ofis yazıcısı kağıt sıkıştırıyor',
-    status: 'closed',
-    priority: 'low',
-    terminalAt: DateTime.utc(2026, 8, 19, 16),
-    serviceId: 'S2',
-    slaStatus: 'met',
-  ),
-];
-
-/// EE-086's avatars, on two of the four rows: an assigned ticket and an
-/// unassigned one have to be tellable apart at a glance, and "nobody is on it"
-/// is the commonest state of a live queue rather than an edge case.
-const _assignees = {
-  'T1': [
-    Assignee(
-      assignmentId: 'A1',
-      userId: 'U1',
-      displayName: 'Barış Servis',
-      initials: 'BS',
-      colorRgb: '#0A5CFF',
-    ),
-    Assignee(
-      assignmentId: 'A2',
-      userId: 'U2',
-      displayName: 'Deniz Koordinatör',
-      initials: 'DK',
-      colorRgb: '#7C3AED',
-    ),
-  ],
-  'T2': [
-    Assignee(
-      assignmentId: 'A3',
-      userId: 'U1',
-      displayName: 'Barış Servis',
-      initials: 'BS',
-      colorRgb: '#0A5CFF',
-    ),
-  ],
-};
-
-List<Override> _overrides(List<TicketRecord> rows, {TicketFilter? filter}) => [
+List<Override> _overrides(
+  DemoCorpus corpus,
+  List<TicketRecord> rows, {
+  TicketFilter? filter,
+}) => [
   ticketQueueProvider.overrideWith((ref) => Stream.value(rows)),
-  ticketAssigneesProvider.overrideWith((ref) => Stream.value(_assignees)),
+  ticketAssigneesProvider.overrideWith((ref) => Stream.value(corpus.assignees)),
   if (filter != null)
     ticketFilterProvider.overrideWith(() => _FixedFilter(filter)),
 ];
@@ -160,9 +61,19 @@ class _FixedFilter extends TicketFilterController {
 void main() {
   if (!_enabled) return;
 
+  // The rows come from the shared corpus (EE-146), so the queue, the SLA
+  // dashboard and the units screen are pictures of the SAME company. They were
+  // not: two subjects here existed as a second copy inside the dashboard's own
+  // fixture, which is how the two happened to agree while the units screen
+  // described a third company entirely.
+  late DemoCorpus corpus;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // Order matters: the corpus reads the active language, and asserts rather
+    // than falling back.
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
+    corpus = DemoCorpus.active();
   });
 
   for (final brightness in Brightness.values) {
@@ -173,7 +84,7 @@ void main() {
         tester,
         brightness: brightness,
         name: 'ee-ticket-queue',
-        overrides: _overrides(_queue),
+        overrides: _overrides(corpus, corpus.queue),
         screen: const EeTicketQueueScreen(),
       );
     });
@@ -183,7 +94,7 @@ void main() {
         tester,
         brightness: brightness,
         name: 'ee-ticket-queue-empty',
-        overrides: _overrides(const []),
+        overrides: _overrides(corpus, const []),
         screen: const EeTicketQueueScreen(),
       );
     });
@@ -198,6 +109,7 @@ void main() {
         brightness: brightness,
         name: 'ee-ticket-queue-filtered',
         overrides: _overrides(
+          corpus,
           const [],
           filter: const TicketFilter(statuses: {'waiting'}),
         ),

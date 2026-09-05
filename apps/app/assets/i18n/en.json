@@ -1706,6 +1706,7 @@
     "slaDash": {
       "title": "SLA dashboard",
       "compliance": "Promises kept",
+      "compliancePercent": "{value}%",
       "complianceOf": "across {total} requests",
       "complianceNone": "Nothing judged yet",
       "byUnit": "By desk",

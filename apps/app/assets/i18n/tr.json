@@ -1705,6 +1705,7 @@
     "slaDash": {
       "title": "SLA panosu",
       "compliance": "Tutulan sözler",
+      "compliancePercent": "%{value}",
       "complianceOf": "{total} talep üzerinden",
       "complianceNone": "Henüz değerlendirilen yok",
       "byUnit": "Birime göre",

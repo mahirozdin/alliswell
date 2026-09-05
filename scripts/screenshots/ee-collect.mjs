@@ -1,0 +1,135 @@
+#!/usr/bin/env node
+// Publishes the enterprise goldens into `screenshots/ee/` (EE-147).
+//
+// The goldens land in `apps/app/test/goldens/` as `ee-<screen>-<theme>-<lang>`
+// and the site wants `screenshots/ee/<screen>-<theme>-<lang>`. That is a rename
+// of the `ee-` prefix and nothing else — docs/SCREENSHOTS.md §4b used to ask
+// for it by hand, four screens at a time.
+//
+// WHY THIS IS A SCRIPT AND NOT A `cp`. Its real job is the refusal. A capture
+// that was never produced is invisible until the landing build references it,
+// and even then CI is the first thing to say so — this says so locally, by
+// name, before a reference exists. The list below is therefore the set of
+// pictures the page is ALLOWED to use: adding a section to the page means
+// adding a name here and producing it, in that order.
+//
+// Run after a two-locale golden pass:
+//
+//   cd apps/app
+//   flutter test --update-goldens --dart-define=screenshots=true \
+//       --dart-define=shotLocale=en test/features/ee/
+//   …and again with shotLocale=tr
+//   cd ../.. && npm run shots:ee
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(here, '../..');
+const GOLDENS = path.join(repoRoot, 'apps/app/test/goldens');
+const OUT = path.join(repoRoot, 'screenshots/ee');
+
+const THEMES = ['light', 'dark'];
+const LOCALES = ['en', 'tr'];
+
+/**
+ * Every screen the enterprise page may show, and the claim it stands next to.
+ *
+ * The reason column is not decoration: a screenshot with no claim beside it is
+ * a screenshot that will still be on the page when the claim is gone. When a
+ * section is cut, its row is cut with it.
+ */
+const PUBLISHED = [
+  ['units-admin', 'the organisation, as its shape'],
+  ['units-manager', 'the same team one rung down: what is missing rather than greyed'],
+  ['team-roles', 'permissions as a grant matrix, not a handful of fixed roles'],
+  ['ticket-queue', 'the queue a unit works from, with the promise on every row'],
+  ['services-admin', 'the catalogue: what a company can be asked for'],
+  ['service-routing', 'and who answers it — service to unit, refused when nobody does'],
+  ['sla-policies', 'targets per priority: first response and resolution'],
+  ['sla-calendars', 'a business calendar, so a night shift is one row and not two'],
+  ['sla-dashboard', 'what was promised against what happened'],
+  ['sla-monitors', 'a watched URL opens one incident, not one a minute'],
+  ['portal-links', 'each public form with its expiry, its cap and its revoke switch'],
+  ['meeting-named', 'a recording that becomes a decision that becomes work'],
+];
+
+/**
+ * `oxipng` when it is here, nothing when it is not — the defensive shape
+ * `sync-screenshots.mjs` uses for `sips`. These files are committed, so the
+ * saving is permanent; but a contributor without the tool must still be able
+ * to run this.
+ */
+function optimiser() {
+  try {
+    execFileSync('oxipng', ['--version'], { stdio: 'ignore' });
+    return (file) => execFileSync('oxipng', ['-o', '4', '--strip', 'all', '-q', file]);
+  } catch {
+    return null;
+  }
+}
+
+function main() {
+  if (!existsSync(GOLDENS)) {
+    console.error(
+      `✗ ${path.relative(repoRoot, GOLDENS)} does not exist — run the golden ` +
+        'pass first (docs/SCREENSHOTS.md §4b).',
+    );
+    process.exit(1);
+  }
+  mkdirSync(OUT, { recursive: true });
+
+  const wanted = [];
+  for (const [screen] of PUBLISHED) {
+    for (const theme of THEMES) {
+      for (const lang of LOCALES) {
+        wanted.push({
+          from: path.join(GOLDENS, `ee-${screen}-${theme}-${lang}.png`),
+          to: path.join(OUT, `${screen}-${theme}-${lang}.png`),
+        });
+      }
+    }
+  }
+
+  const missing = wanted.filter((w) => !existsSync(w.from));
+  if (missing.length) {
+    console.error(`✗ ${missing.length} capture(s) were never produced:\n`);
+    for (const m of missing) console.error(`    ${path.basename(m.from)}`);
+    console.error(
+      '\nBoth locales have to run. A golden filename carries its language ' +
+        '(EE-145), so a single-locale pass produces exactly half of these.',
+    );
+    process.exit(1);
+  }
+
+  const optimise = optimiser();
+  let bytes = 0;
+  for (const w of wanted) {
+    copyFileSync(w.from, w.to);
+    if (optimise) optimise(w.to);
+    bytes += statSync(w.to).size;
+  }
+
+  console.log(
+    `✓ ee screenshots: ${wanted.length} files ` +
+      `(${PUBLISHED.length} screens × ${THEMES.length} themes × ${LOCALES.length} languages), ` +
+      `${(bytes / 1024 / 1024).toFixed(1)} MB` +
+      (optimise ? ', oxipng applied' : ' — install oxipng to shrink them'),
+  );
+
+  // Anything in the directory that is not on the list is a picture nothing
+  // publishes. Say so rather than deleting it: a stale capture is a decision
+  // somebody has to make, not a file a script should quietly remove.
+  const expected = new Set(wanted.map((w) => path.basename(w.to)));
+  const strays = readdirSync(OUT).filter((f) => f.endsWith('.png') && !expected.has(f));
+  if (strays.length) {
+    console.log(
+      `\n· ${strays.length} file(s) here are on no list — publish them by ` +
+        'adding their screen to PUBLISHED, or delete them:',
+    );
+    for (const f of strays) console.log(`    ${f}`);
+  }
+}
+
+main();

@@ -28,7 +28,9 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/widgets/glass.dart';
 
-import '../../design_screenshots_test.dart' show loadRealFontsForStore;
+import '../../design_screenshots_test.dart'
+    show loadRealFontsForStore, screenshotLocale;
+import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
 
@@ -155,7 +157,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
-    AwI18n.instance.setActiveCached(const Locale('tr'));
+    AwI18n.instance.setActiveCached(screenshotLocale('tr'));
   });
 
   Future<void> shoot(
@@ -195,7 +197,7 @@ void main() {
 
       await expectLater(
         find.byType(MaterialApp),
-        matchesGoldenFile('../../goldens/$name-${brightness.name}.png'),
+        matchesGoldenFile(eeGolden(name, brightness)),
       );
     } finally {
       debugDisableShadows = true;
