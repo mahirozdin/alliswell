@@ -333,6 +333,19 @@ jobs:
           grep -q 'RewriteRule \^app' apps/landing/dist/.htaccess \
             || { echo "::error::.htaccess lost its /app rule"; exit 1; }
 
+      # EE-152. The enterprise page's copy is one file per language, because
+      # prose has to read as prose to be reviewed as prose. Nothing about the
+      # shape of one file then forces the other to match, and a missing key is
+      # invisible: Vue renders `undefined` as an empty string, so a section
+      # quietly loses its heading and the page still builds and still passes
+      # every other gate here.
+      #
+      # This does not need the build, so it runs before it — a missing
+      # translation should be reported as a missing translation, not as
+      # whatever the build does next.
+      - name: Both languages describe the same page
+        run: npm run check:copy
+
       # EE-150. The site has been serving raw PNG bytes under `.jpg` names since
       # it shipped: sync-screenshots re-encoded only with macOS `sips`, and the
       # deploy runs on ubuntu-latest. The fallback called itself "heavier but

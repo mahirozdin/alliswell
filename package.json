@@ -33,6 +33,7 @@
     "check:i18n": "node scripts/i18n/check.mjs",
     "check:docs": "node scripts/docs/check.mjs",
     "check:pages": "node apps/landing/scripts/check-pages.mjs",
+    "check:copy": "node apps/landing/scripts/check-copy.mjs",
     "check:fab": "node scripts/design/check-extended-fab.mjs",
     "check:openapi": "node scripts/api/openapi.mjs --check",
     "openapi": "node scripts/api/openapi.mjs",
