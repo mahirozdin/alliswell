@@ -281,6 +281,19 @@ jobs:
       - name: Lint
         run: npm run lint -w @alliswell/landing
 
+      # EE-150's encoder chain is `sips` → `magick` → `convert`, and this runner
+      # has none of the three: `sips` is macOS-only and ubuntu-latest stopped
+      # shipping ImageMagick. So sync-screenshots took its documented fallback,
+      # copied the PNGs under their `.jpg` names, and the size gate below caught
+      # its own build — which is the gate working, but only after the fact.
+      #
+      # Installing the encoder is what makes the chain true on Linux. It belongs
+      # here rather than in the script because the script is right: it re-encodes
+      # with whatever the machine has, and a machine that has nothing is a CI
+      # configuration fact, not a code path.
+      - name: Install an image encoder (the re-encoder needs one)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+
       - name: Build
         run: npm run landing:build
 

@@ -83,8 +83,13 @@ jobs:
 
       # The marketing site is the docroot. It is assembled AFTER the app so the
       # combined tree below is written once, in one order, with one owner.
+      # ImageMagick is the encoder sync-screenshots reaches for off macOS
+      # (EE-150). Without it the build falls back to copying PNGs under `.jpg`
+      # names — which is the exact bug EE-150 fixed, and here it would ship: the
+      # size gate lives in CI, and this workflow never runs it.
       - name: Build the landing site
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
           npm ci
           npm run landing:build
 
