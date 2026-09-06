@@ -16,7 +16,7 @@ Both are published on every release for `linux/amd64` and `linux/arm64`, tagged
 > its team needs a commercial licence, at any size ([Licence and commercial
 > use](../README.md#-licence--commercial-use)). And if what you actually need is teams,
 > permissions, units, a service desk with SLAs or a public request portal, those are the
-> **[Enterprise edition](ENTERPRISE.md)** ([Türkçe](ENTERPRISE.tr.md)), which is installed
+> **[Enterprise edition](https://alliswell.space/enterprise)** ([Türkçe](https://alliswell.space/enterprise/tr)), which is installed
 > the same way — your hardware, your database. Everything below applies to both.
 
 ---

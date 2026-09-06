@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B1233" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
+
+    <!-- EE-143's anti-flash script; see the English twin for the reasoning. -->
+    <script>
+      try {
+        var t = localStorage.getItem('aw_theme');
+        document.documentElement.dataset.theme =
+          t === 'light' || t === 'dark'
+            ? t
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+      } catch (e) {
+        /* no stored preference is readable; useTheme() decides on mount */
+      }
+    </script>
+
+    <title>AllisWell Enterprise — kendi sunucunuzda servis masası, birimler ve SLA</title>
+    <meta name="description" content="Team'ler, subdomain, izinler, birimler, SLA'lı ve sağlık izlemeli ITSM, public talep portalı ve toplantı notu AI'ı — kendi veritabanınızda, çevrimdışı çalışan bir kurulum." />
+    <link rel="canonical" href="https://alliswell.space/enterprise/tr" />
+
+    <!-- Identical to the English twin's trio, on purpose: each page names every
+         version including itself. -->
+    <link rel="alternate" hreflang="en" href="https://alliswell.space/enterprise" />
+    <link rel="alternate" hreflang="tr" href="https://alliswell.space/enterprise/tr" />
+    <link rel="alternate" hreflang="x-default" href="https://alliswell.space/enterprise" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AllisWell" />
+    <meta property="og:url" content="https://alliswell.space/enterprise/tr" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:title" content="AllisWell Enterprise — kendi sunucunuzda servis masası, birimler ve SLA" />
+    <meta property="og:description" content="Team'ler, birimler ve izinler, iş takvimine göre işleyen SLA'larla bir servis kataloğu ve public talep portalı — kendi sunucunuza kurulur." />
+    <meta property="og:image" content="https://alliswell.space/shots/og/enterprise-tr.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="preconnect" href="https://api.github.com" />
+
+    <!-- No `softwareVersion` and no `offers`; the English twin says why. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://alliswell.space/#org",
+            "name": "BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI",
+            "url": "https://alliswell.space",
+            "email": "info@bubiapps.com",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Talas",
+              "addressRegion": "Kayseri",
+              "addressCountry": "TR"
+            }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "AllisWell Enterprise",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web, iOS, Android, macOS, Windows, Linux",
+            "isAccessibleForFree": false,
+            "publisher": { "@id": "https://alliswell.space/#org" },
+            "description": "Kendi sunucunuzda çalışan bir servis masası: team'ler, birimler ve izinler, iş takvimine göre ölçülen SLA'larla bir servis kataloğu, servis sağlığı izleyicileri ve public talep portalı."
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://alliswell.space/enterprise/tr",
+            "inLanguage": "tr",
+            "name": "AllisWell Enterprise",
+            "breadcrumb": {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "AllisWell", "item": "https://alliswell.space/" },
+                { "@type": "ListItem", "position": 2, "name": "Enterprise", "item": "https://alliswell.space/enterprise/tr" }
+              ]
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <!-- A real JavaScript-off rendering; the English twin says why. -->
+    <div id="app">
+      <h1>Kendi sunucunuzda çalışan bir servis masası</h1>
+      <p>
+        Team'ler, birimler ve izinler. Verdiği sözü duvar saatine göre değil iş takvimine göre
+        ölçen bir servis kataloğu. Hesabı olmayan — ve olmasına gerek olmayan — insanlar için
+        public bir talep formu. Kendi donanımınıza, kendi veritabanınıza kurulur.
+      </p>
+      <p>
+        Bize yazın: <a href="mailto:info@bubiapps.com">info@bubiapps.com</a> ·
+        <a href="/enterprise" hreflang="en">English</a> ·
+        <a href="/">alliswell.space</a>
+      </p>
+    </div>
+    <script type="module" src="/src/enterprise/main.tr.js"></script>
+  </body>
+</html>

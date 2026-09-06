@@ -28,6 +28,8 @@ import { STATIC_PAGES } from './static-pages.js';
  */
 export const VUE_PAGES = Object.freeze([
   { route: '', entry: 'index.html', lang: 'en' },
+  { route: 'enterprise', entry: 'enterprise/index.html', lang: 'en' },
+  { route: 'enterprise/tr', entry: 'enterprise/tr/index.html', lang: 'tr' },
 ]);
 
 /** Every indexable HTML page in the docroot, however it was produced. */
@@ -51,6 +53,23 @@ for (const { route } of SITE_ROUTES) {
     );
   }
   seen.add(route);
+}
+
+/**
+ * The Vite entry a request URL should be served by, or null.
+ *
+ * Exported rather than closed over inside `vite.config.js` so it can be
+ * asserted without starting a server — the mistake this whole function exists
+ * to correct is one nobody notices by looking.
+ *
+ * Handles `/enterprise`, `/enterprise/`, and either with a query string. The
+ * homepage is excluded because Vite already serves `<root>/index.html` for `/`.
+ */
+export function entryForUrl(url) {
+  const [pathname] = (url ?? '/').split('?');
+  const clean = pathname.replace(/\/+$/, '');
+  const page = VUE_PAGES.find((p) => p.route !== '' && clean === `/${p.route}`);
+  return page ? page.entry : null;
 }
 
 /** Where a route's built page lands, relative to `dist/`. */

@@ -45,29 +45,3 @@ const featureList = features.filter((f) => f.id !== 'recurrence');
 
   <TheFooter />
 </template>
-
-<style scoped>
-/* Clipped, not parked at `left: -9999px`: an off-canvas element extends the
-   document's scrollable width, which is exactly the horizontal scrollbar this
-   page must never have. */
-.skip {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-.skip:focus {
-  width: auto;
-  height: auto;
-  clip-path: none;
-  left: 1rem;
-  top: 1rem;
-  z-index: 100;
-  padding: 0.75rem 1.25rem;
-  background: var(--aw-surface);
-  border-radius: 999px;
-  box-shadow: var(--aw-shadow);
-}
-</style>

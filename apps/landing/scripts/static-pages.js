@@ -13,21 +13,23 @@ import { marked } from 'marked';
  * privacy policy that says one thing in the repo and another on the website is
  * worse than having only one of them. One source, two renderings.
  *
- * `/enterprise` (EE-119) joined them because it wants exactly the same three
- * properties and none of the Vue app's: it must be indexable, it must read
- * with JavaScript off, and it must exist in Turkish. The Vue site has no i18n
- * layer at all — `src/content.js` is one English file that has always said the
- * copy could be "translated later", and later never came — so the only route
- * to a Turkish page on this site is the one the legal pages already take: a
- * second markdown source at a second route, with hreflang between them.
+ * `/enterprise` used to be generated here too (EE-119). It left in EE-151, and
+ * the argument that brought it is worth keeping because it was right about two
+ * things out of three. It wanted what the legal pages want: to be indexable, to
+ * read with JavaScript off, and to exist in Turkish. It still has the first and
+ * the third — as a Vite entry with a hand-written head, and a second entry for
+ * the second language.
  *
- * What it did NOT want was the legal chrome. A privacy policy and a sales page
- * are both documents, but they are not the same document: one is read under
- * duress at 46rem, the other is skimmed. So `shell()` now takes its
- * stylesheets from the page instead of hard-coding one, and `enterprise.css`
- * layers over the shared base rather than replacing it. Copying this file into
- * a near-identical sibling was the other option and it is the one this repo has
- * already paid for once (see sync-screenshots.mjs on why two copies drift).
+ * The middle one changed, and ADR-0036 argues it rather than waving it past:
+ * reading with JavaScript off is load-bearing in exactly two places — these
+ * pages, which store reviewers and automated validators fetch, and the request
+ * portal, whose CSP forbids script outright. Neither moves. The site's own
+ * homepage has required JavaScript since it was written.
+ *
+ * What markdown could not give a sales page was shape. A privacy policy and a
+ * hero with a package comparison are both documents in the way a receipt and a
+ * poster are both paper. `styles` stays on the entry shape because the API
+ * reference uses it; `enterprise.css` went with the page.
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -98,19 +100,6 @@ export const STATIC_PAGES = [
     ],
   },
   {
-    route: 'enterprise',
-    file: 'docs/ENTERPRISE.md',
-    title: 'AllisWell Enterprise — service desk, units and SLAs on your own servers',
-    description:
-      'Teams, subdomains, permissions, units, ITSM with SLAs and service health, a public request portal and meeting-note AI — self-hosted, offline-first, on your own database.',
-    lang: 'en',
-    styles: [...BASE_STYLES, '/enterprise.css'],
-    alternates: [
-      { label: 'English', href: '/enterprise' },
-      { label: 'Türkçe', href: '/enterprise/tr' },
-    ],
-  },
-  {
     // OPH-295: the public REST reference. English only — the file is
     // generated from the server's own route schemas (ADR-0035), and a second
     // language would be a second generator plus a translation that goes stale
@@ -124,19 +113,6 @@ export const STATIC_PAGES = [
       'limits and a downloadable Postman collection.',
     lang: 'en',
     styles: [...BASE_STYLES, '/api-docs-1.css'],
-  },
-  {
-    route: 'enterprise/tr',
-    file: 'docs/ENTERPRISE.tr.md',
-    title: 'AllisWell Enterprise — kendi sunucunuzda servis masası, birimler ve SLA',
-    description:
-      "Team'ler, subdomain, izinler, birimler, SLA'lı ve sağlık izlemeli ITSM, public talep portalı ve toplantı notu AI'ı — kendi veritabanınızda, çevrimdışı çalışan bir kurulum.",
-    lang: 'tr',
-    styles: [...BASE_STYLES, '/enterprise.css'],
-    alternates: [
-      { label: 'English', href: '/enterprise' },
-      { label: 'Türkçe', href: '/enterprise/tr' },
-    ],
   },
 ];
 
