@@ -46,7 +46,17 @@
       property="og:description"
       content="Alarm-grade reminders, a kanban board, rich notes, files and two-way calendar sync — offline-first on six platforms, in your own MySQL."
     />
-    <meta property="og:image" content="https://alliswell.space/og-cover.png" />
+    <!--
+      EE-150 — was /og-cover.png, which has never existed in the docroot.
+      It is produced only by `npm run shots:store`, which no workflow runs
+      and which needs a Chrome the deploy runner does not have, and
+      `.gitignore` kept it untracked. The URL answered 200 anyway, because
+      the catch-all rewrite serves index.html for anything missing — so no
+      HTTP check could ever have caught it, and every share of this page
+      rendered a blank card. The card now lives in the committed
+      screenshots/ tree and reaches the docroot through sync-screenshots.
+    -->
+    <meta property="og:image" content="https://alliswell.space/shots/og/home.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />

@@ -53,7 +53,6 @@ apps/app/android/key.properties
 # store listings all point at them, and a fresh clone should render correctly.
 # These three are derived from them on every build and must not be.
 apps/landing/public/shots/
-apps/landing/public/og-cover.png
 publish/
 
 # ── Firebase: code is public, credentials are not (ADR-0025) ────────────────

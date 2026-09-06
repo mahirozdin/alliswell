@@ -42,12 +42,13 @@ const LOCALES = ['en', 'tr'];
  *
  * A third element `'external'` means the capture is NOT a Flutter golden and is
  * written straight into `screenshots/ee/` by something else — today that is the
- * overlay's `npm run shots:portal`, which renders the request portal's own
- * server-side HTML (EE-149). Those are VERIFIED here rather than copied: this
+ * overlay's `npm run shots:portal` (the request portal's own server-side HTML,
+ * EE-149) and `npm run shots:store -- --only ee-hero` (the composite, EE-150). Those are VERIFIED here rather than copied: this
  * script stays the single list of what the page may use, and a portal capture
  * nobody produced is refused by the same message as a missing golden.
  */
 const PUBLISHED = [
+  ['hero', 'the queue and the promise, in one frame', 'external'],
   ['units-admin', 'the organisation, as its shape'],
   ['units-manager', 'the same team one rung down: what is missing rather than greyed'],
   ['team-roles', 'permissions as a grant matrix, not a handful of fixed roles'],
@@ -122,10 +123,20 @@ function main() {
       );
     }
     if (external.length) {
-      console.error(
-        '\nThe portal pages are rendered by the overlay, not by a widget test: ' +
-          '`cd ee && npm run shots:portal`.',
-      );
+      const portal = external.some((m) => path.basename(m.from).startsWith('portal-'));
+      const hero = external.some((m) => path.basename(m.from).startsWith('hero-'));
+      if (portal) {
+        console.error(
+          '\nThe portal pages are rendered by the overlay, not by a widget test: ' +
+            '`cd ee && npm run shots:portal`.',
+        );
+      }
+      if (hero) {
+        console.error(
+          '\nThe hero is composed from two captures that must exist first: ' +
+            '`npm run shots:store -- --only ee-hero`.',
+        );
+      }
     }
     process.exit(1);
   }

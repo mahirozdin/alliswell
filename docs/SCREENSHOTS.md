@@ -206,14 +206,31 @@ to use: adding a section means adding a name there and producing it, in that
 order. Anything in the directory that is on no list is reported rather than
 deleted — a stale capture is a decision, not a file a script should remove.
 
-**Two of the seventeen are not Flutter captures.** `portal-form` and
+**Three of the eighteen are not Flutter captures.** `portal-form` and
 `portal-follow` are the request portal's own server-rendered HTML — the one
 surface in the product a stranger sees without an account — and they are
 produced by the commercial overlay (`cd ee && npm run shots:portal`) because
 that is where the code that renders them lives. A public clone has no `ee/` and
 cannot regenerate those two; the committed PNGs are what the site uses.
-`npm run shots:ee` verifies them in place rather than copying them, and its
-refusal names the right command for each kind.
+The `hero` is the third: a composite of the queue and the SLA dashboard, built
+by `npm run shots:store -- --only ee-hero` from captures that must already
+exist. It is a composite and not a wider golden because there is no wide layout
+to photograph — every EE screen was grepped for `LayoutBuilder`,
+`MediaQuery…size.width` and a breakpoint constant, and there are none, so
+rendering one at desktop width produces desktop-width rows and an ocean of
+whitespace rather than a two-pane layout.
+
+`npm run shots:ee` verifies all three in place rather than copying them, and
+its refusal names the right command for each kind.
+
+Social cards (`screenshots/og/`) come from the same script,
+`npm run shots:store -- --only og`: one for the home page and one per language
+for the enterprise page. They are **committed**, unlike the `og-cover.png` they
+replace — that file was gitignored and produced by a script no workflow runs on
+a runner with no Chrome, so `https://alliswell.space/og-cover.png` answered 200
+with the HTML of the homepage and every share rendered a blank card. Nothing
+could have caught it over HTTP, which is why the CI gate inspects the file in
+the built docroot instead.
 
 The site's markup asks for `.jpg` and `sync-screenshots.mjs` produces that name
 either way.

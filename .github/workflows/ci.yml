@@ -333,6 +333,54 @@ jobs:
           grep -q 'RewriteRule \^app' apps/landing/dist/.htaccess \
             || { echo "::error::.htaccess lost its /app rule"; exit 1; }
 
+      # EE-150. The site has been serving raw PNG bytes under `.jpg` names since
+      # it shipped: sync-screenshots re-encoded only with macOS `sips`, and the
+      # deploy runs on ubuntu-latest. The fallback called itself "heavier but
+      # correct", which was a defensible trade at eight references and is not
+      # one at the thirty the enterprise page carries.
+      #
+      # The encoder is a chain now (sips → magick → convert). This is the gate
+      # that stops the silent path shipping twice: the largest legitimately
+      # encoded image in the docroot is around 260 kB, and an un-encoded PNG is
+      # several times that.
+      - name: The screenshots were actually re-encoded
+        run: |
+          heavy=$(find apps/landing/dist/shots -name '*.jpg' -size +400k)
+          if [ -n "$heavy" ]; then
+            echo "::error::a served .jpg is over 400 kB — the re-encoder did not run"
+            echo "$heavy" | while read -r f; do echo "  $(du -h "$f" | cut -f1)  $f"; done
+            echo "sync-screenshots.mjs falls back to copying PNGs under a .jpg name"
+            echo "when no encoder is present; install sips, magick or convert."
+            exit 1
+          fi
+
+      # EE-150. `og:image` pointed at /og-cover.png, a file produced only by
+      # `npm run shots:store` — which no workflow runs and which needs a Chrome
+      # the deploy runner does not have — and kept untracked by .gitignore. The
+      # URL still answered 200, because .htaccess rewrites anything missing to
+      # index.html, so every share of the homepage rendered a blank card and no
+      # HTTP check could ever have said so.
+      #
+      # Hence: the file in the BUILT docroot, not a status code.
+      - name: Every og:image is a real file in the docroot
+        run: |
+          fail=0
+          refs=$(grep -rhoE 'property="og:image" content="https://alliswell\.space[^"]+"' \
+                   apps/landing/dist --include='*.html' \
+                 | sed -E 's#.*alliswell\.space##; s#"$##' | sort -u)
+          test -n "$refs" || { echo "::error::no og:image anywhere — social shares have no card"; exit 1; }
+          for ref in $refs; do
+            f="apps/landing/dist${ref}"
+            if [ ! -f "$f" ]; then
+              echo "::error::og:image ${ref} is not in the docroot — every share of that page is a blank card"
+              fail=1
+            elif ! file -b --mime-type "$f" | grep -q '^image/'; then
+              echo "::error::og:image ${ref} is served but is not an image ($(file -b --mime-type "$f"))"
+              fail=1
+            fi
+          done
+          exit $fail
+
       # Every page in the docroot is present and a crawler can read it.
       #
       # EE-144 moved the assertions into apps/landing/scripts/check-pages.mjs
