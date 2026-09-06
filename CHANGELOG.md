@@ -5,6 +5,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.9.3] — 2026-09-07
+
+### Fixed
+
+- **Sharing an alliswell.space link produced a blank card (EE-150).** The
+  preview image every social network and chat app fetches pointed at a file
+  that has never been in the docroot: it is produced by a script no workflow
+  runs, on a runner with no Chrome, and version control was told to ignore it.
+  The URL answered `200` regardless — anything missing is rewritten to the home
+  page — so no status check could have caught it. The cards are committed now,
+  there is one per page and per language, and CI fails when an `og:image` is not
+  a real image file in the built site.
+- **Every screenshot on the site was served as a full-size PNG under a `.jpg`
+  name (EE-150).** The re-encoder only ran on macOS and the deploy runs on
+  Linux, where it silently copied the originals instead — several megabytes of
+  images per page. It now falls through to ImageMagick, and CI fails when a
+  served image is over 400 kB.
+
+- **The SLA dashboard wrote its percentage the Turkish way in every language
+  (EE-147).** "Promises kept" read `%97.5` instead of `97.5%` for anyone using
+  the app in English, and had since the screen shipped. Every other string on
+  it was translated; the percent sign was built into the number as a prefix,
+  which is the Turkish convention. `check:i18n` could not see it — its blind
+  spot is a `Text` whose argument is an expression rather than a literal — and
+  the widget test that covered the line ran in English while asserting the
+  Turkish form, so the one thing that could have caught it was defending it
+  instead. The format is now a translated pattern and is asserted in both
+  languages.
+
 ## [1.9.2] — 2026-09-06
 
 ### Fixed

@@ -171,25 +171,104 @@ are part of what they assert.
 cd apps/app
 flutter pub get                                   # and once per packages/*/
 
-# English (for /enterprise) and Turkish (for /enterprise/tr)
+# English (for /enterprise) and Turkish (for /enterprise/tr).
+# The whole directory rather than a list of files: the list went stale the
+# first time a screen was added, and a file left off it produces exactly half
+# its captures with nothing saying so. `npm run shots:ee` names what is
+# missing.
 flutter test --update-goldens --dart-define=screenshots=true --dart-define=shotLocale=en \
-    test/features/ee/tickets_screenshot_test.dart \
-    test/features/ee/sla_dashboard_screenshot_test.dart \
-    test/features/ee/units_screenshot_test.dart \
-    test/features/ee/portal_links_screenshot_test.dart
+    test/features/ee/
 # → apps/app/test/goldens/ee-*.png   (repeat with shotLocale=tr)
 ```
 
 `shotLocale` defaults to whatever each file already pinned, so a run that does
-not pass it behaves exactly as before. Copy the four screens into
-`screenshots/ee/` as `<screen>-<light|dark>-<en|tr>.png`; the site's markup asks
-for `.jpg` and `sync-screenshots.mjs` produces that name either way.
+not pass it behaves exactly as before.
 
-**The chrome translates; the sample content does not.** Ticket titles and unit
-names stay Turkish in both languages because they are test fixtures, and those
-fixtures are the tests' own — the ticket queue's are written to be "a
-photograph of a screen taken in a plant". Rewriting them to flatter a marketing
-page would edit an assertion to improve a picture.
+**The golden filename carries the language (EE-145).** It did not until then,
+and the omission was load-bearing: `-en` and `-tr` runs wrote the same file, so
+the English pass silently overwrote the Turkish one and this section's recipe
+worked around it by copying the output out between runs. That survives four
+screens. It does not survive sixteen in two themes and two languages, and the
+failure is silent in both directions — a forgotten copy ships Turkish pixels
+under an English name, and nothing compares a golden in CI or reads the
+language of a marketing image.
+
+So both runs above can be issued back to back, and each writes its own files:
+`apps/app/test/goldens/ee-<screen>-<light|dark>-<en|tr>.png`.
+
+Then publish them with **`npm run shots:ee`** (EE-147). It drops the `ee-`
+prefix into `screenshots/ee/`, runs `oxipng` when it is installed, and — the
+part that matters — **refuses, by name, when a capture on its list was never
+produced.** A missing capture is otherwise invisible until the landing build
+references it, and CI is then the first thing to say so. The list in
+`scripts/screenshots/ee-collect.mjs` is the set of pictures the page is allowed
+to use: adding a section means adding a name there and producing it, in that
+order. Anything in the directory that is on no list is reported rather than
+deleted — a stale capture is a decision, not a file a script should remove.
+
+**Three of the eighteen are not Flutter captures.** `portal-form` and
+`portal-follow` are the request portal's own server-rendered HTML — the one
+surface in the product a stranger sees without an account — and they are
+produced by the commercial overlay (`cd ee && npm run shots:portal`) because
+that is where the code that renders them lives. A public clone has no `ee/` and
+cannot regenerate those two; the committed PNGs are what the site uses.
+The `hero` is the third: a composite of the queue and the SLA dashboard, built
+by `npm run shots:store -- --only ee-hero` from captures that must already
+exist. It is a composite and not a wider golden because there is no wide layout
+to photograph — every EE screen was grepped for `LayoutBuilder`,
+`MediaQuery…size.width` and a breakpoint constant, and there are none, so
+rendering one at desktop width produces desktop-width rows and an ocean of
+whitespace rather than a two-pane layout.
+
+`npm run shots:ee` verifies all three in place rather than copying them, and
+its refusal names the right command for each kind.
+
+Social cards (`screenshots/og/`) come from the same script,
+`npm run shots:store -- --only og`: one for the home page and one per language
+for the enterprise page. They are **committed**, unlike the `og-cover.png` they
+replace — that file was gitignored and produced by a script no workflow runs on
+a runner with no Chrome, so `https://alliswell.space/og-cover.png` answered 200
+with the HTML of the homepage and every share rendered a blank card. Nothing
+could have caught it over HTTP, which is why the CI gate inspects the file in
+the built docroot instead.
+
+The site's markup asks for `.jpg` and `sync-screenshots.mjs` produces that name
+either way.
+
+**One company, and the sample content translates with the chrome (EE-146).**
+This section used to say the opposite — that ticket titles and unit names stay
+Turkish in both languages, because rewriting a fixture to flatter a marketing
+page would be editing an assertion to improve a picture. That reasoning was
+right about assertions and wrong about these files, and the difference was
+measured rather than argued: CI runs a bare `flutter test`, every shot file
+returns from `main()` without the dart-define, and the only `expectLater` in
+them is a `matchesGoldenFile` that always passes under `--update-goldens`.
+**These files assert nothing.** The behaviour fixtures they were confused with
+live in the sibling `*_test.dart` files and are untouched.
+
+So the shot files draw from `test/features/ee/support/demo_corpus.json`, and
+the split is:
+
+- **Translated** — unit names, service names, custom-field labels, ticket
+  subjects. They describe what the product is, and an English buyer reading
+  Turkish unit names concludes the product is not translated, when in fact all
+  634 `ee.*` keys exist in both.
+- **Invariant** — every count, id, date, the brand colour, the subdomain, and
+  **every person's name.** Names stay Turkish in both because `Assignee`'s
+  initials and colour are drawn onto the queue rows: translating a name changes
+  the avatar, and the two language versions would stop being pictures of the
+  same screen.
+
+The corpus also fixed an arithmetic problem the fixtures had. Three of them
+described three different companies — two disagreed about how many people are
+in Bakım, and both of those pictures are on the same page — while the two that
+agreed agreed only because a ticket subject was a copy-pasted string literal in
+two files. Now the dashboard's compliance figure is derived from its own
+buckets, a unit's member count is the length of its roster, and a breach row is
+the corpus's own ticket. `demo_corpus_test.dart` runs in the ordinary CI suite
+and fails if an axis stops adding up, if the breach list disagrees with the
+`breached` bucket, if the unrouted catalogue entry acquires a count, or if the
+two languages start quoting different numbers.
 
 Only screens a customer sees belong here. The operator-side console (packages,
 instance limits) is deliberately **not** in this set: it shows how the product

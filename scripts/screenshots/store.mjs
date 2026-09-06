@@ -436,7 +436,12 @@ function iconPage(size, mark, { rounded }) {
   </div></body></html>`;
 }
 
-function ogPage(mark, hero) {
+/**
+ * A social card. EE-150 parameterised it: there are three now — the home page
+ * and the enterprise page in two languages — and they differ only in words and
+ * in the capture behind them.
+ */
+function ogPage({ mark, title, sub, hero }) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{width:1200px;height:630px;overflow:hidden}
@@ -455,11 +460,53 @@ function ogPage(mark, hero) {
   </style></head><body>
     <div class="top">
       <div class="brand">${mark}<span>AllisWell</span></div>
-      <h1>Your whole day, in an app you actually own</h1>
-      <p>Open-source tasks, notes and alarm-grade reminders · alliswell.space</p>
+      <h1>${title}</h1>
+      <p>${sub}</p>
     </div>
     ${hero ? `<div class="shot"><img src="${hero}"></div>` : ''}
   </body></html>`;
+}
+
+/**
+ * The enterprise hero: two real captures, framed and overlapped (EE-150).
+ *
+ * NOT a wider Flutter golden. Every EE screen was grepped for `LayoutBuilder`,
+ * `MediaQuery…size.width` and a breakpoint constant — zero hits. They are
+ * single-column lists that stretch, so rendering one at 1400 logical px
+ * produces 1400-px rows and an ocean of whitespace, not a two-pane desktop
+ * layout. There is no wide layout to photograph, and a composite is the honest
+ * way to make the phone width read as intentional rather than as a limitation
+ * nobody noticed.
+ *
+ * The frames CROP rather than scale: the dashboard is 1820 tall and the queue
+ * is 1000, and squashing them to a common height would show two screens at two
+ * different zooms. A fixed frame with `overflow:hidden` shows the top of each,
+ * which is what looking at a screen over somebody's shoulder actually gives
+ * you.
+ */
+function eeHeroPage({ queue, dash, scheme }) {
+  const dark = scheme === 'dark';
+  const bg = dark
+    ? 'linear-gradient(165deg,#0B1233 0%,#131A3E 55%,#1A1440 100%)'
+    : BRAND.bgLight;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:1600px;height:1000px;overflow:hidden}
+    body{font-family:${BRAND.font};background:${bg};position:relative}
+    body::before{content:'';position:absolute;inset:0;background:${BRAND.blobs};
+                 opacity:${dark ? 0.5 : 1}}
+    .stage{position:absolute;inset:0;display:flex;align-items:center;
+           justify-content:center;gap:64px;padding:0 90px}
+    figure{width:600px;height:720px;border-radius:22px;overflow:hidden;
+           border:1px solid rgba(255,255,255,.16);
+           box-shadow:0 46px 90px -34px rgba(12,20,44,.62)}
+    figure img{display:block;width:100%}
+    .back{rotate:-3deg;translate:0 -26px}
+    .front{rotate:2.5deg;translate:0 30px}
+  </style></head><body><div class="stage">
+    <figure class="back"><img src="${queue}"></figure>
+    <figure class="front"><img src="${dash}"></figure>
+  </div></body></html>`;
 }
 
 const MARK = `<svg width="44" height="44" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -611,12 +658,64 @@ async function main() {
       });
     }
 
+    // EE-150: social cards land in the COMMITTED screenshots/ tree, not in
+    // apps/landing/public/. The old output was gitignored and produced by this
+    // script, which no workflow runs and which needs a Chrome the deploy
+    // runner does not have — so https://alliswell.space/og-cover.png has been
+    // answering 200 with the HTML of the homepage, because .htaccess rewrites
+    // anything missing to index.html. A social card nobody can see fails
+    // silently in the one place failures are most public.
     if (want('og')) {
-      await shoot(ogPage(MARK, await dataUri('web/home-light.png')), {
-        width: 1200,
-        height: 630,
-        file: path.join(repo, 'apps', 'landing', 'public', 'og-cover.png'),
-      });
+      const cards = [
+        {
+          file: 'home.png',
+          title: 'Your whole day, in an app you actually own',
+          sub: 'Open-source tasks, notes and alarm-grade reminders · alliswell.space',
+          hero: 'web/home-light.png',
+        },
+        {
+          file: 'enterprise-en.png',
+          title: 'A service desk your organisation runs',
+          sub: 'Units, permissions, SLAs and a public request portal · alliswell.space/enterprise',
+          hero: 'ee/sla-dashboard-light-en.png',
+        },
+        {
+          file: 'enterprise-tr.png',
+          title: 'Servis masası, kendi sunucunuzda',
+          sub: "Birimler, izinler, SLA'lar ve public talep portalı · alliswell.space/enterprise/tr",
+          hero: 'ee/sla-dashboard-light-tr.png',
+        },
+      ];
+      for (const card of cards) {
+        const hero = await dataUri(card.hero);
+        if (!hero) {
+          console.log(`· og: skipped ${card.file} — no ${card.hero}`);
+          continue;
+        }
+        await shoot(ogPage({ mark: MARK, title: card.title, sub: card.sub, hero }), {
+          width: 1200,
+          height: 630,
+          file: path.join(SHOTS, 'og', card.file),
+        });
+      }
+    }
+
+    if (want('ee-hero')) {
+      for (const lang of ['en', 'tr']) {
+        for (const scheme of ['light', 'dark']) {
+          const queue = await dataUri(`ee/ticket-queue-${scheme}-${lang}.png`);
+          const dash = await dataUri(`ee/sla-dashboard-${scheme}-${lang}.png`);
+          if (!queue || !dash) {
+            console.log(`· ee-hero: skipped ${scheme}/${lang} — run npm run shots:ee first`);
+            continue;
+          }
+          await shoot(eeHeroPage({ queue, dash, scheme }), {
+            width: 1600,
+            height: 1000,
+            file: path.join(SHOTS, 'ee', `hero-${scheme}-${lang}.png`),
+          });
+        }
+      }
     }
   } finally {
     try {

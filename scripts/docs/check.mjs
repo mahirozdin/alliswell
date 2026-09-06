@@ -59,12 +59,27 @@ const CLAIMS = [
   /"softwareVersion":\s*"(\d+\.\d+\.\d+)"/g,
 ];
 
+/** Every .html/.js under a directory, skipping build output and vendor trees. */
+function walkLanding(dir, out = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === 'shots') {
+      continue;
+    }
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) walkLanding(full, out);
+    else if (/\.(html|js)$/.test(entry.name)) out.push(full);
+  }
+  return out;
+}
+
 function claimFiles() {
-  const out = [
-    join(ROOT, 'README.md'),
-    join(ROOT, 'apps/landing/src/content.js'),
-    join(ROOT, 'apps/landing/index.html'),
-  ];
+  // EE-144 — this used to name three paths by hand: README, content.js and
+  // index.html. OPH-274 happened because a live claim sat one file away from a
+  // list exactly like it, and the enterprise work adds two more HTML shells and
+  // two content modules that would each have been outside the gate on the day
+  // they were written. Walking the tree brings them in on that day instead of
+  // on the day somebody notices the version on a page is a release behind.
+  const out = [join(ROOT, 'README.md'), ...walkLanding(join(ROOT, 'apps/landing'))];
   const docs = join(ROOT, 'docs');
   for (const entry of readdirSync(docs)) {
     if (entry.endsWith('.md') && !SKIP_FILES.has(entry)) out.push(join(docs, entry));

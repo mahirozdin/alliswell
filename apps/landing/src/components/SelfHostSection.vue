@@ -3,12 +3,26 @@ import { ref } from 'vue';
 
 import { selfHost } from '../content.js';
 
+/**
+ * EE-143 — the block becomes a prop so the enterprise page can show its own
+ * install command in its own language. The three chrome strings ("your server",
+ * "Copy", "Copied") move into it too: they were the only English left inside
+ * the component, and a Turkish page with an English button is worse than an
+ * untranslated one because it looks deliberate.
+ */
+const props = defineProps({
+  block: { type: Object, default: () => selfHost },
+  terminalTitle: { type: String, default: 'your server' },
+  copyLabel: { type: String, default: 'Copy' },
+  copiedLabel: { type: String, default: 'Copied' },
+});
+
 const copied = ref(false);
 let timer = null;
 
 async function copy() {
   try {
-    await navigator.clipboard.writeText(selfHost.command);
+    await navigator.clipboard.writeText(props.block.command);
     copied.value = true;
     clearTimeout(timer);
     timer = setTimeout(() => (copied.value = false), 2000);
@@ -23,14 +37,14 @@ async function copy() {
   <section id="self-host" v-reveal class="aw-section">
     <div class="aw-shell host">
       <div class="host__copy">
-        <p class="aw-eyebrow">{{ selfHost.eyebrow }}</p>
-        <h2>{{ selfHost.title }}</h2>
-        <p class="aw-lede">{{ selfHost.lede }}</p>
+        <p class="aw-eyebrow">{{ block.eyebrow }}</p>
+        <h2>{{ block.title }}</h2>
+        <p class="aw-lede">{{ block.lede }}</p>
         <ul>
-          <li v-for="p in selfHost.points" :key="p">{{ p }}</li>
+          <li v-for="p in block.points" :key="p">{{ p }}</li>
         </ul>
-        <a class="aw-btn aw-btn--ghost" :href="selfHost.link.href" rel="noopener" target="_blank">
-          {{ selfHost.link.label }}
+        <a class="aw-btn aw-btn--ghost" :href="block.link.href" rel="noopener" target="_blank">
+          {{ block.link.label }}
         </a>
       </div>
 
@@ -38,12 +52,12 @@ async function copy() {
         <div class="host__bar">
           <span aria-hidden="true">●</span><span aria-hidden="true">●</span
           ><span aria-hidden="true">●</span>
-          <span class="host__title">your server</span>
+          <span class="host__title">{{ terminalTitle }}</span>
           <button type="button" class="host__copy-btn" @click="copy">
-            {{ copied ? 'Copied' : 'Copy' }}
+            {{ copied ? copiedLabel : copyLabel }}
           </button>
         </div>
-        <pre><code>{{ selfHost.command }}</code></pre>
+        <pre><code>{{ block.command }}</code></pre>
       </div>
     </div>
   </section>

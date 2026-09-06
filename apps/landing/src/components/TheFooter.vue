@@ -1,58 +1,39 @@
 <script setup>
 import BrandMark from './BrandMark.vue';
-import { APP_URL, DOCS_URL, PLAY_URL, REPO_URL, VERSION } from '../content.js';
+import LangSwitch from './LangSwitch.vue';
+import { VERSION, siteColumns } from '../content.js';
 import { company } from '../company.js';
 import { useGithubStars } from '../composables/useGithubStars.js';
 
 const { stars, forks, loaded, format } = useGithubStars();
 
-const columns = [
-  {
-    title: 'Product',
-    links: [
-      { label: 'Open the app', href: APP_URL },
-      { label: 'Get it on Google Play', href: PLAY_URL },
-      { label: 'Features', href: '#features' },
-      { label: 'Comparison', href: '#compare' },
-      { label: 'Enterprise', href: '/enterprise' },
-      { label: 'Roadmap', href: `${REPO_URL}/blob/main/ROADMAP.md` },
-      { label: 'Changelog', href: `${REPO_URL}/blob/main/CHANGELOG.md` },
-    ],
+
+/**
+ * EE-143 — the footer's own words become props so a second page can speak its
+ * own language. `company.legalName` and the contact address deliberately stay
+ * shared: the legal identity is the one thing that must not fork per page.
+ */
+defineProps({
+  home: { type: String, default: '/' },
+  columns: { type: Array, default: () => siteColumns },
+  blurb: {
+    type: String,
+    default:
+      'Source-available, self-hosted tasks, notes and alarm-grade reminders. Free for ' +
+      'personal use. Built in the open, one task at a time.',
   },
-  {
-    title: 'Run it yourself',
-    links: [
-      { label: 'Self-hosting guide', href: `${DOCS_URL}/SELF-HOSTING.md` },
-      { label: 'Architecture', href: `${DOCS_URL}/ARCHITECTURE.md` },
-      { label: 'Attachments (R2/S3)', href: `${DOCS_URL}/ATTACHMENTS.md` },
-      { label: 'Notifications & alarms', href: `${DOCS_URL}/NOTIFICATIONS.md` },
-    ],
+  notes: {
+    type: String,
+    default:
+      'Not affiliated with Apple, Google, Anthropic or OpenAI. Product names are their owners’.',
   },
-  {
-    title: 'AI',
-    links: [
-      { label: 'How AI works', href: `${DOCS_URL}/AI.md` },
-      { label: 'MCP connector', href: `${DOCS_URL}/MCP.md` },
-      // OPH-296: the REST API sat in this repo undocumented on the site for
-      // two releases. It belongs beside the MCP connector — they are the two
-      // ways something other than the app reaches your data.
-      { label: 'REST API reference', href: '/docs/api' },
-      { label: 'Security policy', href: `${REPO_URL}/blob/main/SECURITY.md` },
-      { label: 'Privacy policy', href: '/privacy' },
-    ],
-  },
-  {
-    title: 'Project',
-    links: [
-      { label: 'GitHub', href: REPO_URL },
-      { label: 'Contributing', href: `${REPO_URL}/blob/main/CONTRIBUTING.md` },
-      { label: 'Issues', href: `${REPO_URL}/issues` },
-      { label: 'Support', href: '/support' },
-      { label: 'Licence (PolyForm NC)', href: `${REPO_URL}/blob/main/LICENSE` },
-      { label: 'Commercial licensing', href: 'mailto:info@bubiapps.com' },
-    ],
-  },
-];
+  privacyLabel: { type: String, default: 'Privacy' },
+  supportLabel: { type: String, default: 'Support' },
+  privacyHref: { type: String, default: '/privacy' },
+  supportHref: { type: String, default: '/support' },
+  alternates: { type: Array, default: () => [] },
+  current: { type: String, default: '' },
+});
 </script>
 
 <template>
@@ -60,14 +41,11 @@ const columns = [
     <div class="aw-shell">
       <div class="ftr__top">
         <div class="ftr__brand">
-          <a class="ftr__mark" href="#top">
+          <a class="ftr__mark" :href="home">
             <BrandMark :size="34" />
             <span>AllisWell</span>
           </a>
-          <p>
-            Source-available, self-hosted tasks, notes and alarm-grade reminders. Free for
-            personal use. Built in the open, one task at a time.
-          </p>
+          <p>{{ blurb }}</p>
           <p v-if="loaded && stars !== null" class="ftr__stats">
             ★ {{ format(stars) }} stars · {{ format(forks ?? 0) }} forks · v{{ VERSION }}
           </p>
@@ -93,12 +71,12 @@ const columns = [
       <div class="ftr__bottom">
         <p>
           © {{ new Date().getFullYear() }} {{ company.legalName }} ·
-          <a href="/privacy">Privacy</a> · <a href="/support">Support</a> ·
+          <a :href="privacyHref">{{ privacyLabel }}</a> ·
+          <a :href="supportHref">{{ supportLabel }}</a> ·
           <a :href="`mailto:${company.email}`">{{ company.email }}</a>
         </p>
-        <p>
-          Not affiliated with Apple, Google, Anthropic or OpenAI. Product names are their owners’.
-        </p>
+        <p>{{ notes }}</p>
+        <LangSwitch class="ftr__langs" :alternates="alternates" :current="current" />
       </div>
     </div>
   </footer>
@@ -179,6 +157,14 @@ const columns = [
 
 .ftr__bottom p {
   margin: 0;
+}
+
+.ftr__langs {
+  /* The switch is also in the header. It is repeated at the bottom because the
+     enterprise page is long, and a reader who reaches the end in the wrong
+     language should not have to scroll back up to say so. */
+  flex-basis: 100%;
+  margin-top: 0.35rem;
 }
 
 @media (max-width: 900px) {

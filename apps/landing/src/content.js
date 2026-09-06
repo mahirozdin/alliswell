@@ -343,3 +343,76 @@ export const faq = [
     a: 'Sharing and assignees (the workspace model exists, the UI does not), location-based reminders, and CalDAV. All three are written down in the roadmap rather than implied away.',
   },
 ];
+
+/**
+ * The site nav.
+ *
+ * EE-143 made every in-page anchor ROOT-ABSOLUTE. On the homepage `/#features`
+ * is a same-document fragment navigation — identical behaviour, no reload — and
+ * from any other page it goes home and scrolls. A bare `#features` on
+ * /enterprise scrolls nowhere, silently. One list that is correct everywhere
+ * beats a second list that is correct on one page.
+ */
+export const siteLinks = [
+  { label: 'Features', href: '/#features' },
+  { label: 'AI & MCP', href: '/#ai' },
+  { label: 'Compare', href: '/#compare' },
+  { label: 'Self-host', href: '/#self-host' },
+  // The only nav entry that leaves this page. /enterprise ships in the SAME
+  // bundle — as a Vite entry since EE-151, as a generated page before that —
+  // so the link and its destination cannot drift apart between deploys.
+  { label: 'Enterprise', href: '/enterprise' },
+  // OPH-296: same reasoning as /enterprise — generated into this bundle by
+  // scripts/static-pages.js, so the link cannot outlive its destination.
+  { label: 'API', href: '/docs/api' },
+  { label: 'Get it', href: '/#get' },
+];
+
+/** EE-143 — root-absolute anchors, for the reason TheHeader's nav gives. */
+export const siteColumns = [
+  {
+    title: 'Product',
+    links: [
+      { label: 'Open the app', href: APP_URL },
+      { label: 'Get it on Google Play', href: PLAY_URL },
+      { label: 'Features', href: '/#features' },
+      { label: 'Comparison', href: '/#compare' },
+      { label: 'Enterprise', href: '/enterprise' },
+      { label: 'Roadmap', href: `${REPO_URL}/blob/main/ROADMAP.md` },
+      { label: 'Changelog', href: `${REPO_URL}/blob/main/CHANGELOG.md` },
+    ],
+  },
+  {
+    title: 'Run it yourself',
+    links: [
+      { label: 'Self-hosting guide', href: `${DOCS_URL}/SELF-HOSTING.md` },
+      { label: 'Architecture', href: `${DOCS_URL}/ARCHITECTURE.md` },
+      { label: 'Attachments (R2/S3)', href: `${DOCS_URL}/ATTACHMENTS.md` },
+      { label: 'Notifications & alarms', href: `${DOCS_URL}/NOTIFICATIONS.md` },
+    ],
+  },
+  {
+    title: 'AI',
+    links: [
+      { label: 'How AI works', href: `${DOCS_URL}/AI.md` },
+      { label: 'MCP connector', href: `${DOCS_URL}/MCP.md` },
+      // OPH-296: the REST API sat in this repo undocumented on the site for
+      // two releases. It belongs beside the MCP connector — they are the two
+      // ways something other than the app reaches your data.
+      { label: 'REST API reference', href: '/docs/api' },
+      { label: 'Security policy', href: `${REPO_URL}/blob/main/SECURITY.md` },
+      { label: 'Privacy policy', href: '/privacy' },
+    ],
+  },
+  {
+    title: 'Project',
+    links: [
+      { label: 'GitHub', href: REPO_URL },
+      { label: 'Contributing', href: `${REPO_URL}/blob/main/CONTRIBUTING.md` },
+      { label: 'Issues', href: `${REPO_URL}/issues` },
+      { label: 'Support', href: '/support' },
+      { label: 'Licence (PolyForm NC)', href: `${REPO_URL}/blob/main/LICENSE` },
+      { label: 'Commercial licensing', href: 'mailto:info@bubiapps.com' },
+    ],
+  },
+];

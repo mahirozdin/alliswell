@@ -333,48 +333,77 @@ jobs:
           grep -q 'RewriteRule \^app' apps/landing/dist/.htaccess \
             || { echo "::error::.htaccess lost its /app rule"; exit 1; }
 
-      # Every route the page generator promises must be in the bundle, and must
-      # still be a page a crawler can read.
+      # EE-150. The site has been serving raw PNG bytes under `.jpg` names since
+      # it shipped: sync-screenshots re-encoded only with macOS `sips`, and the
+      # deploy runs on ubuntu-latest. The fallback called itself "heavier but
+      # correct", which was a defensible trade at eight references and is not
+      # one at the thirty the enterprise page carries.
       #
-      # The route list is IMPORTED from the generator rather than retyped here.
-      # The check below this one used to carry its own hand-typed copy of four
-      # routes, which meant a page added to the plugin was a page nothing
-      # verified — and a gate whose set excludes the new thing is
-      # indistinguishable, in the log, from a gate that passed.
+      # The encoder is a chain now (sips → magick → convert). This is the gate
+      # that stops the silent path shipping twice: the largest legitimately
+      # encoded image in the docroot is around 260 kB, and an un-encoded PNG is
+      # several times that.
+      - name: The screenshots were actually re-encoded
+        run: |
+          heavy=$(find apps/landing/dist/shots -name '*.jpg' -size +400k)
+          if [ -n "$heavy" ]; then
+            echo "::error::a served .jpg is over 400 kB — the re-encoder did not run"
+            echo "$heavy" | while read -r f; do echo "  $(du -h "$f" | cut -f1)  $f"; done
+            echo "sync-screenshots.mjs falls back to copying PNGs under a .jpg name"
+            echo "when no encoder is present; install sips, magick or convert."
+            exit 1
+          fi
+
+      # EE-150. `og:image` pointed at /og-cover.png, a file produced only by
+      # `npm run shots:store` — which no workflow runs and which needs a Chrome
+      # the deploy runner does not have — and kept untracked by .gitignore. The
+      # URL still answered 200, because .htaccess rewrites anything missing to
+      # index.html, so every share of the homepage rendered a blank card and no
+      # HTTP check could ever have said so.
       #
-      # The assertions are the SEO facts Lighthouse would check. We do not run
-      # Lighthouse (nothing in this repo does), and for a static document its
-      # SEO category is exactly this list: a title, a description, a canonical,
-      # a language, a viewport, a heading, and no noindex. A generated page that
-      # loses one of them is still a valid page, which is why nothing else here
-      # would notice.
-      - name: Every generated page is in the bundle and indexable
+      # Hence: the file in the BUILT docroot, not a status code.
+      - name: Every og:image is a real file in the docroot
         run: |
           fail=0
-          routes=$(node -e "import('./apps/landing/scripts/static-pages.js').then(m=>m.STATIC_PAGES.forEach(p=>console.log(p.route)))")
-          test -n "$routes" || { echo "::error::the page generator listed no routes"; exit 1; }
-          for route in $routes; do
-            f="apps/landing/dist/$route/index.html"
+          refs=$(grep -rhoE 'property="og:image" content="https://alliswell\.space[^"]+"' \
+                   apps/landing/dist --include='*.html' \
+                 | sed -E 's#.*alliswell\.space##; s#"$##' | sort -u)
+          test -n "$refs" || { echo "::error::no og:image anywhere — social shares have no card"; exit 1; }
+          for ref in $refs; do
+            f="apps/landing/dist${ref}"
             if [ ! -f "$f" ]; then
-              echo "::error::missing /$route — the page generator promises it"; fail=1; continue
-            fi
-            grep -q '<title>[^<]' "$f" \
-              || { echo "::error::/$route has no title"; fail=1; }
-            grep -q '<meta name="description" content="[^"]' "$f" \
-              || { echo "::error::/$route has no meta description"; fail=1; }
-            grep -q "<link rel=\"canonical\" href=\"https://alliswell.space/$route\">" "$f" \
-              || { echo "::error::/$route has a missing or wrong canonical"; fail=1; }
-            grep -qE '<html lang="[a-z]{2}">' "$f" \
-              || { echo "::error::/$route declares no language"; fail=1; }
-            grep -q '<meta name="viewport"' "$f" \
-              || { echo "::error::/$route has no viewport"; fail=1; }
-            grep -q '<h1' "$f" \
-              || { echo "::error::/$route has no h1"; fail=1; }
-            if grep -q 'noindex' "$f"; then
-              echo "::error::/$route is marked noindex"; fail=1
+              echo "::error::og:image ${ref} is not in the docroot — every share of that page is a blank card"
+              fail=1
+            elif ! file -b --mime-type "$f" | grep -q '^image/'; then
+              echo "::error::og:image ${ref} is served but is not an image ($(file -b --mime-type "$f"))"
+              fail=1
             fi
           done
           exit $fail
+
+      # Every page in the docroot is present and a crawler can read it.
+      #
+      # EE-144 moved the assertions into apps/landing/scripts/check-pages.mjs
+      # and the route list into scripts/routes.js. Two reasons, and the second
+      # is the one that mattered:
+      #
+      # 1. A gate that only runs in CI is a gate nobody can prove. `npm run
+      #    check:pages` runs the same checks on a built dist/ in a second.
+      # 2. The bash version matched raw LINES, so it silently only ever covered
+      #    the generated pages. apps/landing/index.html writes its meta
+      #    description across three lines and closes its canonical with ` />` —
+      #    so the site's most important page was outside the gate that asks
+      #    whether pages are indexable. The script flattens first and now
+      #    covers it. Proven by injection: deleting that multi-line tag turns
+      #    the gate red, which the grep could never have done.
+      #
+      # The route list is IMPORTED rather than retyped, and now covers BOTH
+      # producers. This gate used to carry its own hand-typed copy of four
+      # routes, which meant a page added to the plugin was a page nothing
+      # verified — and a gate whose set excludes the new thing is
+      # indistinguishable, in the log, from a gate that passed.
+      - name: Every page in the docroot is present and indexable
+        run: npm run check:pages
 
       # EE-121: the enterprise page is reached from three places, and all three
       # are prose or a config array that nothing else would notice going stale.

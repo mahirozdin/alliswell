@@ -6,6 +6,28 @@
     <meta name="theme-color" content="#0B1233" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
 
+    <!--
+      EE-143 — the theme is applied by useTheme() in onMounted, which is one
+      paint too late: a visitor who chose dark, or whose system is dark, sees a
+      white flash on every navigation. This runs before the stylesheet, sets the
+      same attribute useTheme() will set, and is wrapped because localStorage
+      throws outright in some privacy modes — where the media query is still the
+      right answer.
+    -->
+    <script>
+      try {
+        var t = localStorage.getItem('aw_theme');
+        document.documentElement.dataset.theme =
+          t === 'light' || t === 'dark'
+            ? t
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+      } catch (e) {
+        /* no stored preference is readable; useTheme() decides on mount */
+      }
+    </script>
+
     <title>AllisWell — source-available tasks, reminders &amp; notes you can host yourself</title>
     <meta
       name="description"
@@ -24,7 +46,17 @@
       property="og:description"
       content="Alarm-grade reminders, a kanban board, rich notes, files and two-way calendar sync — offline-first on six platforms, in your own MySQL."
     />
-    <meta property="og:image" content="https://alliswell.space/og-cover.png" />
+    <!--
+      EE-150 — was /og-cover.png, which has never existed in the docroot.
+      It is produced only by `npm run shots:store`, which no workflow runs
+      and which needs a Chrome the deploy runner does not have, and
+      `.gitignore` kept it untracked. The URL answered 200 anyway, because
+      the catch-all rewrite serves index.html for anything missing — so no
+      HTTP check could ever have caught it, and every share of this page
+      rendered a blank card. The card now lives in the committed
+      screenshots/ tree and reaches the docroot through sync-screenshots.
+    -->
+    <meta property="og:image" content="https://alliswell.space/shots/og/home.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />

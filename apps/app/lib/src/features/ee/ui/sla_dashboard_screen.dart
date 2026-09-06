@@ -114,7 +114,19 @@ class _Compliance extends StatelessWidget {
             const SizedBox(height: AwSpace.x2),
             Text(
               // "—" and not "0 %" and not "100 %": nothing has been judged.
-              value == null ? '—' : '%${value!.toStringAsFixed(1)}',
+              //
+              // EE-147: the percent sign used to be a hardcoded PREFIX, which
+              // is the Turkish convention — so the English capture on the
+              // enterprise page has been reading "%78.4" since EE-098. Every
+              // other string on this screen goes through .tr(); this one did
+              // not, and check:i18n could not see it because its blind spot is
+              // exactly this shape (a Text whose argument is an expression,
+              // not a literal).
+              value == null
+                  ? '—'
+                  : 'ee.slaDash.compliancePercent'.tr(
+                      args: {'value': value!.toStringAsFixed(1)},
+                    ),
               key: const Key('sla-compliance'),
               style: theme.textTheme.displaySmall?.copyWith(color: colour),
             ),

@@ -16,7 +16,6 @@
 // The third shot is the roster, where "who runs this unit" has to read at a
 // glance next to people who merely work in it.
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,42 +26,21 @@ import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_units_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
-import 'package:alliswell/src/theme/theme.dart';
-import 'package:alliswell/src/widgets/glass.dart';
 
-import '../../design_screenshots_test.dart'
-    show loadRealFontsForStore, screenshotLocale;
+import '../../design_screenshots_test.dart' show screenshotLocale;
+import 'support/demo_corpus.dart';
+import 'support/shot.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
 
-/// The theme's own fontFamily is null (platform font, DESIGN §3.3) and the
-/// test engine draws that as BOX GLYPHS — every shot file here learned it the
-/// same way.
-const String _screenshotFamily = 'ScreenshotSans';
-
-/// A team with every state the row has to make legible: a busy unit, a small
-/// one the viewer runs themselves, and a retired one.
-final _units = [
-  const EeUnit(id: 'U1', name: 'Muhasebe', memberCount: 12),
-  const EeUnit(id: 'U2', name: 'Saha Servis', memberCount: 4, manages: true),
-  const EeUnit(id: 'U3', name: 'Ar-Ge', memberCount: 7),
-  const EeUnit(id: 'U4', name: 'Eski Depo', memberCount: 2, archived: true),
-];
-
-final _roster = [
-  const EeUnitMember(userId: 'M1', role: 'manager', displayName: 'Merve Birim'),
-  const EeUnitMember(userId: 'P1', role: 'member', displayName: 'Pınar Üye'),
-  const EeUnitMember(userId: 'C1', role: 'member', displayName: 'Cem Saha'),
-  const EeUnitMember(userId: 'K1', role: 'member', email: 'kerem@acme.example'),
-];
-
 class _ShotApi implements EeUnitsApi {
-  const _ShotApi(this._visible);
+  const _ShotApi(this._visible, this._roster);
 
   /// What the SERVER would hand this caller. An admin gets the team; a
   /// delegated manager gets only what they run — so the shot must not show
   /// them four units, or the picture pins a state the server cannot produce.
   final List<EeUnit> _visible;
+  final List<EeUnitMember> _roster;
 
   @override
   Future<List<EeUnit>?> list() async => _visible;
@@ -84,9 +62,9 @@ class _ShotApi implements EeUnitsApi {
   Future<void> setMemberRole(String unitId, String userId, String role) async {}
 }
 
-List<Override> _as({required bool admin}) => [
+List<Override> _as(DemoCorpus corpus, {required bool admin}) => [
   eeUnitsApiProvider.overrideWithValue(
-    _ShotApi(admin ? _units : _units.where((u) => u.manages).toList()),
+    _ShotApi(corpus.unitsAsSeenBy(admin: admin), corpus.roster('U2')),
   ),
   canProvider.overrideWith((ref, id) => id == 'units.manage' ? admin : true),
   eeFeatureProvider.overrideWith((ref, feature) => true),
@@ -95,65 +73,27 @@ List<Override> _as({required bool admin}) => [
 void main() {
   if (!_enabled) return;
 
+  late DemoCorpus corpus;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // Order matters: the corpus reads the active language and asserts rather
+    // than falling back to one.
     AwI18n.instance.setActiveCached(screenshotLocale('tr'));
+    corpus = DemoCorpus.active();
   });
-
-  Future<void> shoot(
-    WidgetTester tester,
-    Brightness brightness,
-    String name,
-    List<Override> overrides,
-    Widget screen,
-  ) async {
-    await loadRealFontsForStore();
-    tester.view.physicalSize = const Size(900, 900);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-
-    debugDisableShadows = false;
-    try {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: overrides,
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: buildAwTheme(
-              brightness,
-              fontFamilyOverride: _screenshotFamily,
-            ),
-            // Every route is wrapped in the page background; a bare Scaffold
-            // renders the veil against nothing — a flat grey that exists
-            // nowhere in the product (the history shot learned this first).
-            home: AwPageBackground(child: screen),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await expectLater(
-        find.byType(MaterialApp),
-        matchesGoldenFile('../../goldens/$name-${brightness.name}.png'),
-      );
-    } finally {
-      debugDisableShadows = true;
-    }
-  }
 
   for (final brightness in Brightness.values) {
     testWidgets('units, as the team admin sees them — ${brightness.name}', (
       tester,
     ) async {
-      await shoot(
+      await eeShoot(
         tester,
-        brightness,
-        'ee-units-admin',
-        _as(admin: true),
-        const EeTeamUnitsScreen(),
+        brightness: brightness,
+        name: 'ee-units-admin',
+        size: const Size(900, 900),
+        overrides: _as(corpus, admin: true),
+        screen: const EeTeamUnitsScreen(),
       );
     });
 
@@ -163,24 +103,29 @@ void main() {
     testWidgets(
       'units, as the delegated manager sees them — ${brightness.name}',
       (tester) async {
-        await shoot(
+        await eeShoot(
           tester,
-          brightness,
-          'ee-units-manager',
-          _as(admin: false),
-          const EeTeamUnitsScreen(),
+          brightness: brightness,
+          name: 'ee-units-manager',
+          size: const Size(900, 900),
+          overrides: _as(corpus, admin: false),
+          screen: const EeTeamUnitsScreen(),
         );
       },
     );
 
     testWidgets('one unit\'s roster — ${brightness.name}', (tester) async {
-      await shoot(
+      await eeShoot(
         tester,
-        brightness,
-        'ee-unit-members',
-        _as(admin: true),
-        const EeUnitMembersScreen(
-          unit: EeUnit(id: 'U2', name: 'Saha Servis', memberCount: 4),
+        brightness: brightness,
+        name: 'ee-unit-members',
+        size: const Size(900, 900),
+        overrides: _as(corpus, admin: true),
+        // The unit the roster belongs to, taken from the corpus rather than
+        // named again here — a second copy is how the member count and the
+        // list under it drift apart.
+        screen: EeUnitMembersScreen(
+          unit: corpus.units.firstWhere((u) => u.id == 'U2'),
         ),
       );
     });
