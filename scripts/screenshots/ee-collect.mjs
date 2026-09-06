@@ -45,6 +45,8 @@ const PUBLISHED = [
   ['units-manager', 'the same team one rung down: what is missing rather than greyed'],
   ['team-roles', 'permissions as a grant matrix, not a handful of fixed roles'],
   ['ticket-queue', 'the queue a unit works from, with the promise on every row'],
+  ['ticket-detail', 'one request opened: the internal note, told three ways at once'],
+  ['ticket-history', 'and who changed it — including when the answer is not a person'],
   ['services-admin', 'the catalogue: what a company can be asked for'],
   ['service-routing', 'and who answers it — service to unit, refused when nobody does'],
   ['sla-policies', 'targets per priority: first response and resolution'],
@@ -52,6 +54,7 @@ const PUBLISHED = [
   ['sla-dashboard', 'what was promised against what happened'],
   ['sla-monitors', 'a watched URL opens one incident, not one a minute'],
   ['portal-links', 'each public form with its expiry, its cap and its revoke switch'],
+  ['team-identity', 'accounts from the directory you already run — LDAP, SAML, OIDC'],
   ['meeting-named', 'a recording that becomes a decision that becomes work'],
 ];
 

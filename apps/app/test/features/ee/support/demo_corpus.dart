@@ -22,6 +22,8 @@ import 'dart:io';
 
 import 'package:alliswell/src/features/ee/assignments_providers.dart'
     show Assignee;
+import 'package:alliswell/src/features/ee/data/history_models.dart';
+import 'package:alliswell/src/features/ee/data/identity_models.dart';
 import 'package:alliswell/src/features/ee/data/portal_links_models.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
 import 'package:alliswell/src/features/ee/data/sla_dashboard_models.dart';
@@ -176,6 +178,10 @@ class DemoCorpus {
     updatedAt: DateTime.utc(2026, 8, 20, 9),
   );
 
+  /// Any ticket by id — the queue shows only some of them.
+  TicketRecord ticket(String id) =>
+      _ticket(_tickets.firstWhere((t) => t['id'] == id));
+
   /// The rows the queue screenshot shows, in the order the screen sorts them.
   List<TicketRecord> get queue =>
       _tickets.where((t) => t['onQueue'] == true).map(_ticket).toList();
@@ -202,6 +208,111 @@ class DemoCorpus {
     }
     return out;
   }
+
+  /// Which requests carry a conversation. A thread on an untouched request
+  /// is a picture that argues with itself.
+  List<String> get threadedTicketIds =>
+      (_raw['comments'] as Map<String, dynamic>).keys
+          .where((k) => !k.startsWith('_'))
+          .toList();
+
+  /// One request's thread. The internal note is why this screen is
+  /// photographed at all, so the fixture always carries one.
+  List<TicketCommentRecord> commentsFor(String ticketId) {
+    final raw =
+        ((_raw['comments'] as Map<String, dynamic>)[ticketId] as List? ??
+                const [])
+            .cast<Map<String, dynamic>>();
+    return [
+      for (final c in raw)
+        TicketCommentRecord(
+          id: c['id'] as String,
+          workspaceId: 'U1',
+          ticketId: ticketId,
+          authorId: c['authorId'] as String?,
+          body: _s(c['body'] as Map<String, dynamic>),
+          internal: c['internal'] as bool,
+          // Hours from NOW. An absolute timestamp here goes stale the day
+          // after the shot is taken (EE-147).
+          createdAt: DateTime.now().add(Duration(hours: c['atHours'] as int)),
+          revision: 1,
+          updatedAt: DateTime.now().add(Duration(hours: c['atHours'] as int)),
+        ),
+    ];
+  }
+
+  /// "Who changed this" — the claim the landing page makes about the audit
+  /// trail. One entry is `system` on purpose: a repair sweep and a person are
+  /// not the same author.
+  EeHistoryPage historyFor(String ticketId) {
+    final people = {for (final p in _list('people')) p['id'] as String: p};
+    final raw =
+        ((_raw['history'] as Map<String, dynamic>)[ticketId] as List? ??
+                const [])
+            .cast<Map<String, dynamic>>();
+    return EeHistoryPage(
+      items: [
+        for (final h in raw)
+          () {
+            final who = people[h['actorId']];
+            return EeHistoryEvent(
+              id: h['id'] as String,
+              occurredAt: DateTime.now().subtract(
+                Duration(hours: h['hoursAgo'] as int),
+              ),
+              actor: h['actor'] as String,
+              verb: h['verb'] as String,
+              entityType: 'ticket',
+              entityId: ticketId,
+              actorId: h['actorId'] as String?,
+              actorName: who?['displayName'] as String?,
+              actorInitials: who?['initials'] as String?,
+              actorColorRgb: who?['colorRgb'] as String?,
+              diff: (h['diff'] as Map?)?.cast<String, dynamic>(),
+            );
+          }(),
+      ],
+    );
+  }
+
+  // ── Identity sources ─────────────────────────────────────────────────────
+
+  Map<String, dynamic> get _identity =>
+      _raw['identity'] as Map<String, dynamic>;
+
+  List<EeIdentityProvider> get identityProviders =>
+      (_identity['providers'] as List).cast<Map<String, dynamic>>().map((p) {
+        return EeIdentityProvider(
+          id: p['id'] as String,
+          type: p['type'] as String,
+          displayName: p['displayName'] as String,
+          enabled: p['enabled'] as bool,
+          priority: p['priority'] as int,
+          status: p['status'] as String,
+          config: (p['config'] as Map).cast<String, dynamic>(),
+          secretSet: p['secretSet'] as bool,
+          secretLast4: p['secretLast4'] as String?,
+          secretField: p['secretField'] as String?,
+          missingRequired: ((p['missingRequired'] as List?) ?? const [])
+              .cast<String>(),
+          lastVerifiedAt: p['verifiedHoursAgo'] == null
+              ? null
+              : DateTime.now().subtract(
+                  Duration(hours: p['verifiedHoursAgo'] as int),
+                ),
+        );
+      }).toList();
+
+  /// `totalMembers` is the roster, not a typed integer — the count under the
+  /// switches cannot drift from the people above them.
+  EeIdentityStatus get identityStatus => EeIdentityStatus(
+    providers: const [],
+    scimClients: const [],
+    events: const [],
+    totalMembers: _list('people').length,
+    inactiveMembers: 0,
+    linkedMembers: _identity['linkedMembers'] as int,
+  );
 
   // ── The dashboard, entirely folded ───────────────────────────────────────
 

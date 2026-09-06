@@ -182,6 +182,35 @@ void main() {
         }
       });
 
+      test('a request with a conversation on it has been picked up', () {
+        // The thread was first hung on the queue's top row, which is `new`.
+        // Three messages on an untouched request is a picture that argues with
+        // itself, and this page is read by people who look twice.
+        for (final id in c.threadedTicketIds) {
+          expect(
+            c.ticket(id).status,
+            isNot('new'),
+            reason: '$id carries a thread but nobody has picked it up',
+          );
+        }
+      });
+
+      test('every audit verb is one the product actually has', () {
+        // ee.verb.* mirrors the server's CLOSED dictionary
+        // (ee/server/modules/audit/verbs.js). The first draft of the history
+        // fixture used `sla_breached` and `commented`; neither exists — a
+        // comment is not an audited event — and the only thing that said so
+        // was an [i18n] missing key line scrolling past in a golden run.
+        for (final e in c.historyFor('T5').items) {
+          final key = 'ee.verb.${e.verb}';
+          expect(
+            key.tr(),
+            isNot(key),
+            reason: '${e.verb} is not in the audit verb dictionary',
+          );
+        }
+      });
+
       test('every reference resolves', () {
         final unitIds = c.units.map((u) => u.id).toSet();
         final serviceIds = c.services.map((s) => s.id).toSet();

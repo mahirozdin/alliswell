@@ -208,6 +208,89 @@
     }
   ],
 
+  "comments": {
+    "_why": [
+      "One thread on T5, and it exists for ONE frame: the internal note. An",
+      "",
+      "It is T5 and not the queue's top row because that row is `new`, and a",
+      "request with three messages on it has plainly been picked up. A picture",
+      "whose status contradicts its own conversation is the kind of thing the",
+      "reader this page is written for notices. T5 is in_progress, urgent and",
+      "breached, and it is the second row of the dashboard's missed-targets",
+      "list — so the screens still link, and nothing has to be untrue for them",
+      "to.",
+      "agent who mistakes it for a reply to the customer has said the wrong",
+      "thing to the wrong person, and the screen carries the distinction three",
+      "ways at once (tint, lock, word) because any one of them alone fails",
+      "somebody. The picture has to show all three together.",
+      "",
+      "`atHours` is negative hours from NOW, never a date. EE-147 learned that",
+      "an absolute timestamp in a fixture becomes false the day after the shot."
+    ],
+    "T5": [
+      {
+        "id": "C1", "authorId": "P01", "internal": false, "atHours": -20,
+        "body": {
+          "tr": "Ekibi boyahaneye yönlendirdik, kompresörü yerinde inceliyoruz.",
+          "en": "We have sent the team to the paint shop and are inspecting the compressor on site."
+        }
+      },
+      {
+        "id": "C2", "authorId": "P02", "internal": true, "atHours": -18,
+        "body": {
+          "tr": "Not: aynı kompresör geçen ay da düştü. Yedek conta stokta yok — satın almaya bugün haber verelim, yoksa çözüm süresini aşacağız.",
+          "en": "Note: the same compressor failed last month too. There is no spare gasket in stock — tell purchasing today or we will miss the resolution target."
+        }
+      },
+      {
+        "id": "C3", "authorId": "P01", "internal": false, "atHours": -3,
+        "body": {
+          "tr": "Yedek parça yarın sabah geliyor. Bu vardiyada boyahaneyi tek hatla çalıştırıyoruz.",
+          "en": "The spare arrives tomorrow morning. We are running the paint shop on a single line for this shift."
+        }
+      }
+    ]
+  },
+
+  "history": {
+    "_why": "The answer to \"who changed this\", which is the claim the landing page makes. A repair sweep and a person are not the same author, so one entry is `system` on purpose — the widget says so rather than blaming the last human.",
+    "T5": [
+      { "id": "H1", "hoursAgo": 22, "actor": "public", "verb": "created", "actorName": null },
+      { "id": "H2", "hoursAgo": 21, "actor": "user", "verb": "assigned", "actorId": "P01" },
+      { "id": "H3", "hoursAgo": 20, "actor": "user", "verb": "status_changed", "actorId": "P01", "diff": { "status": ["new", "in_progress"] } },
+      { "id": "H4", "hoursAgo": 6, "actor": "system", "verb": "breached", "actorName": null },
+      { "id": "H5", "hoursAgo": 2, "actor": "user", "verb": "updated", "actorId": "P01", "diff": { "priority": ["high", "urgent"] } }
+    ]
+  },
+
+  "identity": {
+    "_why": "Three providers because the screen has three states worth photographing: one live and verified, one live from a different protocol, and one that cannot be turned on yet and says WHICH setting it is still missing. `totalMembers` is DERIVED from the people list, so the count under the switches cannot drift from the roster above them.",
+    "providers": [
+      {
+        "id": "IP1", "type": "ldap", "displayName": "Aydın Metal AD",
+        "enabled": true, "priority": 10, "status": "active",
+        "secretSet": true, "secretLast4": "9f2c", "secretField": "bindPassword",
+        "verifiedHoursAgo": 3,
+        "config": { "url": "ldaps://dc01.aydinmetal.local", "baseDn": "OU=Kullanicilar,DC=aydinmetal,DC=local" }
+      },
+      {
+        "id": "IP2", "type": "oidc", "displayName": "Microsoft Entra ID",
+        "enabled": true, "priority": 20, "status": "active",
+        "secretSet": true, "secretLast4": "4b71", "secretField": "clientSecret",
+        "verifiedHoursAgo": 9,
+        "config": { "issuer": "https://login.microsoftonline.com/aydinmetal/v2.0", "clientId": "aw-enterprise" }
+      },
+      {
+        "id": "IP3", "type": "saml", "displayName": "Keycloak (test)",
+        "enabled": false, "priority": 30, "status": "active",
+        "secretSet": false,
+        "missingRequired": ["ssoUrl", "certificate"],
+        "config": { "entityId": "alliswell-ee" }
+      }
+    ],
+    "linkedMembers": 15
+  },
+
   "periods": {
     "_why": [
       "A PERIOD, NOT A LIFETIME. 47 requests in a month for one service desk is",

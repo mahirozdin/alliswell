@@ -171,12 +171,13 @@ are part of what they assert.
 cd apps/app
 flutter pub get                                   # and once per packages/*/
 
-# English (for /enterprise) and Turkish (for /enterprise/tr)
+# English (for /enterprise) and Turkish (for /enterprise/tr).
+# The whole directory rather than a list of files: the list went stale the
+# first time a screen was added, and a file left off it produces exactly half
+# its captures with nothing saying so. `npm run shots:ee` names what is
+# missing.
 flutter test --update-goldens --dart-define=screenshots=true --dart-define=shotLocale=en \
-    test/features/ee/tickets_screenshot_test.dart \
-    test/features/ee/sla_dashboard_screenshot_test.dart \
-    test/features/ee/units_screenshot_test.dart \
-    test/features/ee/portal_links_screenshot_test.dart
+    test/features/ee/
 # → apps/app/test/goldens/ee-*.png   (repeat with shotLocale=tr)
 ```
 
