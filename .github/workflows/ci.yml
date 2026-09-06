@@ -333,6 +333,19 @@ jobs:
           grep -q 'RewriteRule \^app' apps/landing/dist/.htaccess \
             || { echo "::error::.htaccess lost its /app rule"; exit 1; }
 
+      # EE-152. The enterprise page's copy is one file per language, because
+      # prose has to read as prose to be reviewed as prose. Nothing about the
+      # shape of one file then forces the other to match, and a missing key is
+      # invisible: Vue renders `undefined` as an empty string, so a section
+      # quietly loses its heading and the page still builds and still passes
+      # every other gate here.
+      #
+      # This does not need the build, so it runs before it — a missing
+      # translation should be reported as a missing translation, not as
+      # whatever the build does next.
+      - name: Both languages describe the same page
+        run: npm run check:copy
+
       # EE-150. The site has been serving raw PNG bytes under `.jpg` names since
       # it shipped: sync-screenshots re-encoded only with macOS `sips`, and the
       # deploy runs on ubuntu-latest. The fallback called itself "heavier but
@@ -415,17 +428,43 @@ jobs:
       # fails here even if the source array still looks right. The two document
       # links are asserted as file references that resolve, because README and
       # SELF-HOSTING are read on GitHub long before the site redeploys.
-      - name: The enterprise page is reachable from all three sources
+      - name: The enterprise pages shipped, and are reachable
         run: |
           fail=0
+
+          # EE-151 restated EE-121 for the new mechanism. The page is no longer
+          # generated from markdown, so "the .md file exists" says nothing about
+          # whether the page shipped. What still holds is the failure mode: it
+          # is reached from four places, none of which anything else would
+          # notice going stale, and an orphaned page is indistinguishable from a
+          # missing one.
+          for f in apps/landing/dist/enterprise/index.html \
+                   apps/landing/dist/enterprise/tr/index.html; do
+            test -f "$f" || { echo "::error::$f was not built"; fail=1; }
+          done
+
+          # The site's own link, asserted against the BUILT bundle so a refactor
+          # that drops it from the rendered output fails here even when the
+          # source array still looks right.
           grep -rq "/enterprise" apps/landing/dist/assets/*.js \
             || { echo "::error::the marketing bundle no longer links to /enterprise"; fail=1; }
-          grep -q "docs/ENTERPRISE.md" README.md \
-            || { echo "::error::README no longer links to the enterprise page"; fail=1; }
-          grep -q "(ENTERPRISE.md)" docs/SELF-HOSTING.md \
-            || { echo "::error::SELF-HOSTING no longer points at the enterprise page"; fail=1; }
-          for f in docs/ENTERPRISE.md docs/ENTERPRISE.tr.md; do
-            test -f "$f" || { echo "::error::$f is missing — the links above point at nothing"; fail=1; }
+
+          # The pair cannot half-ship. Each page must name the OTHER language,
+          # or one of them is an island a crawler will treat as a duplicate.
+          grep -q 'hreflang="tr" href="https://alliswell.space/enterprise/tr"' \
+            apps/landing/dist/enterprise/index.html \
+            || { echo "::error::/enterprise does not point at its Turkish twin"; fail=1; }
+          grep -q 'hreflang="en" href="https://alliswell.space/enterprise"' \
+            apps/landing/dist/enterprise/tr/index.html \
+            || { echo "::error::/enterprise/tr does not point at its English twin"; fail=1; }
+
+          # README and SELF-HOSTING are read on GitHub long before the site
+          # redeploys, and the two reduced documents are what somebody
+          # evaluating the licence lands on. All four must name the page.
+          for f in README.md docs/SELF-HOSTING.md docs/ENTERPRISE.md docs/ENTERPRISE.tr.md; do
+            test -f "$f" || { echo "::error::$f is missing"; fail=1; continue; }
+            grep -q "alliswell.space/enterprise" "$f" \
+              || { echo "::error::$f no longer links to the enterprise page"; fail=1; }
           done
           exit $fail
 

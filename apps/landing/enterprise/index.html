@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B1233" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
+
+    <!--
+      EE-143's anti-flash script. useTheme applies the attribute in onMounted,
+      one paint too late, so a dark visitor sees white on every navigation.
+      Wrapped because localStorage throws outright in some privacy modes, where
+      the media query is still the right answer.
+    -->
+    <script>
+      try {
+        var t = localStorage.getItem('aw_theme');
+        document.documentElement.dataset.theme =
+          t === 'light' || t === 'dark'
+            ? t
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+      } catch (e) {
+        /* no stored preference is readable; useTheme() decides on mount */
+      }
+    </script>
+
+    <title>AllisWell Enterprise — service desk, units and SLAs on your own servers</title>
+    <meta name="description" content="Teams, subdomains, permissions, units, ITSM with SLAs and service health, a public request portal and meeting-note AI — self-hosted, offline-first, on your own database." />
+    <link rel="canonical" href="https://alliswell.space/enterprise" />
+
+    <!--
+      Each page names EVERY version including itself — that is what Google
+      requires, and it is why the two files carry an identical trio rather than
+      pointing only at each other. `x-default` is the English page.
+    -->
+    <link rel="alternate" hreflang="en" href="https://alliswell.space/enterprise" />
+    <link rel="alternate" hreflang="tr" href="https://alliswell.space/enterprise/tr" />
+    <link rel="alternate" hreflang="x-default" href="https://alliswell.space/enterprise" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AllisWell" />
+    <meta property="og:url" content="https://alliswell.space/enterprise" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="tr_TR" />
+    <meta property="og:title" content="AllisWell Enterprise — service desk, units and SLAs on your own servers" />
+    <meta property="og:description" content="Teams, units and permissions, a service catalogue with SLAs on a business calendar, and a public request portal — installed on your own servers." />
+    <meta property="og:image" content="https://alliswell.space/shots/og/enterprise-en.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="preconnect" href="https://api.github.com" />
+
+    <!--
+      No `softwareVersion` here, deliberately, though the homepage carries one.
+      The enterprise edition versions separately from the app this page is
+      served beside, so printing the app's number would be asserting something
+      about a different product — and `check:docs` would then hold it to a
+      release it does not belong to.
+
+      No `offers` either: there is no price list, and inventing one to satisfy a
+      schema is the same lie in a machine-readable format.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://alliswell.space/#org",
+            "name": "BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI",
+            "url": "https://alliswell.space",
+            "email": "info@bubiapps.com",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Talas",
+              "addressRegion": "Kayseri",
+              "addressCountry": "TR"
+            }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "AllisWell Enterprise",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web, iOS, Android, macOS, Windows, Linux",
+            "isAccessibleForFree": false,
+            "publisher": { "@id": "https://alliswell.space/#org" },
+            "description": "A self-hosted service desk: teams, units and permissions, a service catalogue with SLAs measured on a business calendar, service-health monitors, and a public request portal."
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://alliswell.space/enterprise",
+            "inLanguage": "en",
+            "name": "AllisWell Enterprise",
+            "breadcrumb": {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "AllisWell", "item": "https://alliswell.space/" },
+                { "@type": "ListItem", "position": 2, "name": "Enterprise", "item": "https://alliswell.space/enterprise" }
+              ]
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <!--
+      A real JavaScript-off rendering, not a placeholder that flashes: Vue's
+      mount() clears this container before its first render, so a reader who
+      never runs the script still gets the heading, the one load-bearing claim
+      and a way to start a conversation. It is also what the CI <h1> assertion
+      reads.
+    -->
+    <div id="app">
+      <h1>A service desk your organisation runs, on your own servers</h1>
+      <p>
+        Teams, units and permissions. A service catalogue whose promises are measured on a
+        business calendar rather than a wall clock. A public request form for the people who
+        have no account and should not need one. Installed on your hardware, against your own
+        database.
+      </p>
+      <p>
+        Write to <a href="mailto:info@bubiapps.com">info@bubiapps.com</a> ·
+        <a href="/enterprise/tr" hreflang="tr">Türkçe</a> ·
+        <a href="/">alliswell.space</a>
+      </p>
+    </div>
+    <script type="module" src="/src/enterprise/main.en.js"></script>
+  </body>
+</html>

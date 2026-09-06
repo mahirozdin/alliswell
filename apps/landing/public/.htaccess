@@ -13,6 +13,21 @@
   RewriteEngine On
   RewriteBase /
 
+  # A generated directory page is served IN PLACE rather than redirected to its
+  # trailing slash (EE-151).
+  #
+  # Without this, /enterprise matches the -d condition below, rewriting stops,
+  # and mod_dir issues a 301 to /enterprise/ — so the canonical each of these
+  # pages declares is a URL that redirects, which is a canonical a crawler
+  # distrusts. Measured on 2026-09-06: /enterprise, /privacy, /support and
+  # /docs/api all answered 301.
+  #
+  # Real files still win: /logo.svg/index.html is not a file, so the condition
+  # is false and the rule skips them. The pattern needs at least one character,
+  # so "/" itself falls through to the -d rule as before.
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteRule ^(.+?)/?$ /$1/index.html [L]
+
   # Real files and directories always win (assets, .well-known, etc.).
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d

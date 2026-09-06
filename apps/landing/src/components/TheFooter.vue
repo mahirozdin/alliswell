@@ -33,6 +33,14 @@ defineProps({
   supportHref: { type: String, default: '/support' },
   alternates: { type: Array, default: () => [] },
   current: { type: String, default: '' },
+  /**
+   * EE-151 — the enterprise page turns this off. `VERSION` is the free
+   * edition's, and printing it under an enterprise blurb reads as the
+   * enterprise version. The two are not the same product and do not share a
+   * number: the overlay versions separately. Stars and forks stay, because
+   * they are about the open repository and the column beside them says so.
+   */
+  showVersion: { type: Boolean, default: true },
 });
 </script>
 
@@ -47,9 +55,13 @@ defineProps({
           </a>
           <p>{{ blurb }}</p>
           <p v-if="loaded && stars !== null" class="ftr__stats">
-            ★ {{ format(stars) }} stars · {{ format(forks ?? 0) }} forks · v{{ VERSION }}
+            ★ {{ format(stars) }} stars · {{ format(forks ?? 0) }} forks
+            <template v-if="showVersion"> · v{{ VERSION }}</template>
           </p>
-          <p v-else class="ftr__stats">v{{ VERSION }} · PolyForm Noncommercial</p>
+          <p v-else-if="showVersion" class="ftr__stats">
+            v{{ VERSION }} · PolyForm Noncommercial
+          </p>
+          <p v-else class="ftr__stats">PolyForm Noncommercial</p>
         </div>
 
         <nav v-for="col in columns" :key="col.title" class="ftr__col" :aria-label="col.title">

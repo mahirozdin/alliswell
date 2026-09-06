@@ -416,8 +416,8 @@ filed between departments rather than kept on one list:
 It is self-hosted exactly like the rest of AllisWell: your hardware, your database, no
 request leaving the building unless you decide it should.
 
-**→ [What the Enterprise edition includes](docs/ENTERPRISE.md)**
-&nbsp;·&nbsp; **[Türkçe](docs/ENTERPRISE.tr.md)**
+**→ [What the Enterprise edition includes](https://alliswell.space/enterprise)**
+&nbsp;·&nbsp; **[Türkçe](https://alliswell.space/enterprise/tr)**
 &nbsp;·&nbsp; [info@bubiapps.com](mailto:info@bubiapps.com)
 
 It does not change the free edition in either direction — this repository stays under
@@ -447,7 +447,8 @@ it as a service, or run it as part of a commercial operation.
 
 **Enterprise, or anything commercial → [info@bubiapps.com](mailto:info@bubiapps.com).**
 What the Enterprise edition actually adds is one section up, and in
-[docs/ENTERPRISE.md](docs/ENTERPRISE.md).
+[alliswell.space/enterprise](https://alliswell.space/enterprise); the licence terms are
+also in [docs/ENTERPRISE.md](docs/ENTERPRISE.md).
 Commercial licences exist, they are not expensive, and they come with the
 self-hosting support the free tier does not.
 

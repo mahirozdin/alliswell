@@ -276,6 +276,34 @@ pre {
   box-shadow: var(--aw-shadow-sm);
 }
 
+/* The skip link. EE-151 moved it out of App.vue's scoped block for the same
+   reason EE-143 moved the icon button: the enterprise page needs it too, and a
+   scoped rule cannot follow a class into a second page.
+
+   Clipped, not parked at `left: -9999px`: an off-canvas element extends the
+   document's scrollable width, which is exactly the horizontal scrollbar this
+   site must never have. */
+.skip {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.skip:focus {
+  width: auto;
+  height: auto;
+  clip-path: none;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  padding: 0.75rem 1.25rem;
+  background: var(--aw-surface);
+  border-radius: 999px;
+  box-shadow: var(--aw-shadow);
+}
+
 .aw-icon-btn {
   /* EE-143: was `.hdr__icon`, scoped inside TheHeader. The theme toggle moved
      into its own component so a second header could use it, and a scoped rule
