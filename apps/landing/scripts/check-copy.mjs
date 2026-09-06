@@ -84,22 +84,35 @@ for (const [file, map] of [
 
 // ── 3. Untranslated pastes ────────────────────────────────────────────────
 const trSource = readFileSync(path.join(root, 'src/enterprise/content.tr.js'), 'utf8');
-const exempt = new Set(
-  trSource
-    .split('\n')
-    .filter((line) => line.includes('i18n-same'))
-    .map((line) => line.trim()),
-);
+const trLines = trSource.split('\n');
+
+/**
+ * Is this key marked `i18n-same` in the Turkish file?
+ *
+ * The marker may sit on the line that DECLARES the key or on any line of its
+ * value. Matching only the value's first line was the first attempt and it
+ * fails on exactly the values that need the hatch most: a shell command or a
+ * long sentence is written as several concatenated fragments, and the natural
+ * place to put a comment is the last one.
+ */
+function exempt(key) {
+  const name = key.replace(/\[\d+\]/g, '').split('.').pop();
+  const decl = new RegExp(`(^|\\s)${name}\\s*:`);
+  let inside = false;
+  for (const line of trLines) {
+    if (decl.test(line)) inside = true;
+    else if (inside && /^\s*\w[\w$]*\s*:/.test(line)) inside = false;
+    if (inside && line.includes('i18n-same')) return true;
+  }
+  return false;
+}
 for (const [key, value] of enLeaves) {
   const other = trLeaves.get(key);
   if (typeof value !== 'string' || value !== other) continue;
   if (value.length <= SAME_LIMIT) continue;
   // `lang` and the shot paths are structure, not prose; they are checked below.
   if (key === 'lang' || /shot|ogImage|href/i.test(key)) continue;
-  const line = trSource
-    .split('\n')
-    .find((l) => l.includes(value.slice(0, 30)));
-  if (line && exempt.has(line.trim())) continue;
+  if (exempt(key)) continue;
   fail(
     `${key} is byte-identical in both languages (${value.length} chars) — ` +
       'translate it, or mark the line `i18n-same` if it is deliberate',

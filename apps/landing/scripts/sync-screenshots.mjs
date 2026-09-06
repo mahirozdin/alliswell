@@ -8,8 +8,8 @@
  * from the canonical set on every dev start and every build.
  */
 import { cp, mkdir, readdir, rm } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { closeSync, existsSync, openSync, readSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -71,8 +71,8 @@ const ENCODERS = [
   {
     bin: 'sips',
     probe: ['--help'],
-    argv: (i, o) => [
-      '-Z', String(MAX_EDGE),
+    argv: (i, o, resize) => [
+      ...(resize ? ['-Z', String(MAX_EDGE)] : []),
       '-s', 'format', 'jpeg',
       '-s', 'formatOptions', String(JPEG_QUALITY),
       i, '--out', o,
@@ -81,14 +81,46 @@ const ENCODERS = [
   {
     bin: 'magick',
     probe: ['-version'],
-    argv: (i, o) => [i, '-resize', `${MAX_EDGE}x${MAX_EDGE}>`, '-quality', String(JPEG_QUALITY), o],
+    argv: (i, o, resize) => [
+      i,
+      ...(resize ? ['-resize', `${MAX_EDGE}x${MAX_EDGE}>`] : []),
+      '-quality', String(JPEG_QUALITY),
+      o,
+    ],
   },
   {
     bin: 'convert',
     probe: ['-version'],
-    argv: (i, o) => [i, '-resize', `${MAX_EDGE}x${MAX_EDGE}>`, '-quality', String(JPEG_QUALITY), o],
+    argv: (i, o, resize) => [
+      i,
+      ...(resize ? ['-resize', `${MAX_EDGE}x${MAX_EDGE}>`] : []),
+      '-quality', String(JPEG_QUALITY),
+      o,
+    ],
   },
 ];
+
+/**
+ * A PNG's dimensions, from its header — width and height are bytes 16..24 of
+ * every PNG that exists, right after the IHDR length and tag.
+ *
+ * EE-153: `sips -Z` fits an image TO a box, which means it enlarges one that is
+ * already smaller. Measured on the enterprise set: 64 of the 72 captures were
+ * being scaled UP, most of them from 900 px wide to 1600 — more bytes, no more
+ * detail, and slightly softer. ImageMagick's `>` suffix only shrinks; sips has
+ * no such flag. So the decision is made here instead, once, for every encoder:
+ * an image that already fits is converted without a resize at all.
+ */
+function pngSize(file) {
+  const head = Buffer.alloc(24);
+  const fd = openSync(file, 'r');
+  try {
+    readSync(fd, head, 0, 24, 0);
+  } finally {
+    closeSync(fd);
+  }
+  return { width: head.readUInt32BE(16), height: head.readUInt32BE(20) };
+}
 
 /**
  * A probe must check the EXIT STATUS, not just whether the process spawned.
@@ -131,7 +163,11 @@ for (const candidate of ENCODERS) {
   if (!usable(candidate)) continue;
   for await (const file of pngsUnder(to)) {
     const jpg = file.replace(/\.png$/, '.jpg');
-    const out = spawnSync(candidate.bin, candidate.argv(file, jpg), { stdio: 'ignore' });
+    const { width, height } = pngSize(file);
+    const resize = Math.max(width, height) > MAX_EDGE;
+    const out = spawnSync(candidate.bin, candidate.argv(file, jpg, resize), {
+      stdio: 'ignore',
+    });
     if (!out.error && out.status === 0 && existsSync(jpg)) {
       await rm(file, { force: true });
       converted += 1;

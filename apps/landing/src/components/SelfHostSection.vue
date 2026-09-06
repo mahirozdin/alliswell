@@ -15,6 +15,8 @@ const props = defineProps({
   terminalTitle: { type: String, default: 'your server' },
   copyLabel: { type: String, default: 'Copy' },
   copiedLabel: { type: String, default: 'Copied' },
+  /** EE-153: the enterprise page files this under #ops, not #self-host. */
+  anchor: { type: String, default: 'self-host' },
 });
 
 const copied = ref(false);
@@ -34,7 +36,7 @@ async function copy() {
 </script>
 
 <template>
-  <section id="self-host" v-reveal class="aw-section">
+  <section :id="anchor" v-reveal class="aw-section">
     <div class="aw-shell host">
       <div class="host__copy">
         <p class="aw-eyebrow">{{ block.eyebrow }}</p>
