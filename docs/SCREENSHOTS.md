@@ -206,6 +206,15 @@ to use: adding a section means adding a name there and producing it, in that
 order. Anything in the directory that is on no list is reported rather than
 deleted — a stale capture is a decision, not a file a script should remove.
 
+**Two of the seventeen are not Flutter captures.** `portal-form` and
+`portal-follow` are the request portal's own server-rendered HTML — the one
+surface in the product a stranger sees without an account — and they are
+produced by the commercial overlay (`cd ee && npm run shots:portal`) because
+that is where the code that renders them lives. A public clone has no `ee/` and
+cannot regenerate those two; the committed PNGs are what the site uses.
+`npm run shots:ee` verifies them in place rather than copying them, and its
+refusal names the right command for each kind.
+
 The site's markup asks for `.jpg` and `sync-screenshots.mjs` produces that name
 either way.
 

@@ -39,6 +39,13 @@ const LOCALES = ['en', 'tr'];
  * The reason column is not decoration: a screenshot with no claim beside it is
  * a screenshot that will still be on the page when the claim is gone. When a
  * section is cut, its row is cut with it.
+ *
+ * A third element `'external'` means the capture is NOT a Flutter golden and is
+ * written straight into `screenshots/ee/` by something else — today that is the
+ * overlay's `npm run shots:portal`, which renders the request portal's own
+ * server-side HTML (EE-149). Those are VERIFIED here rather than copied: this
+ * script stays the single list of what the page may use, and a portal capture
+ * nobody produced is refused by the same message as a missing golden.
  */
 const PUBLISHED = [
   ['units-admin', 'the organisation, as its shape'],
@@ -54,6 +61,8 @@ const PUBLISHED = [
   ['sla-dashboard', 'what was promised against what happened'],
   ['sla-monitors', 'a watched URL opens one incident, not one a minute'],
   ['portal-links', 'each public form with its expiry, its cap and its revoke switch'],
+  ['portal-form', 'and what the stranger sees: no account, no JavaScript', 'external'],
+  ['portal-follow', 'then a link that follows it, in five buckets and not seven', 'external'],
   ['team-identity', 'accounts from the directory you already run — LDAP, SAML, OIDC'],
   ['meeting-named', 'a recording that becomes a decision that becomes work'],
 ];
@@ -84,12 +93,17 @@ function main() {
   mkdirSync(OUT, { recursive: true });
 
   const wanted = [];
-  for (const [screen] of PUBLISHED) {
+  for (const [screen, , source] of PUBLISHED) {
+    const external = source === 'external';
     for (const theme of THEMES) {
       for (const lang of LOCALES) {
+        const to = path.join(OUT, `${screen}-${theme}-${lang}.png`);
         wanted.push({
-          from: path.join(GOLDENS, `ee-${screen}-${theme}-${lang}.png`),
-          to: path.join(OUT, `${screen}-${theme}-${lang}.png`),
+          external,
+          // An external capture is already where it belongs; there is nothing
+          // to copy, only something to insist on.
+          from: external ? to : path.join(GOLDENS, `ee-${screen}-${theme}-${lang}.png`),
+          to,
         });
       }
     }
@@ -97,19 +111,29 @@ function main() {
 
   const missing = wanted.filter((w) => !existsSync(w.from));
   if (missing.length) {
+    const golden = missing.filter((m) => !m.external);
+    const external = missing.filter((m) => m.external);
     console.error(`✗ ${missing.length} capture(s) were never produced:\n`);
     for (const m of missing) console.error(`    ${path.basename(m.from)}`);
-    console.error(
-      '\nBoth locales have to run. A golden filename carries its language ' +
-        '(EE-145), so a single-locale pass produces exactly half of these.',
-    );
+    if (golden.length) {
+      console.error(
+        '\nBoth locales have to run. A golden filename carries its language ' +
+          '(EE-145), so a single-locale pass produces exactly half of these.',
+      );
+    }
+    if (external.length) {
+      console.error(
+        '\nThe portal pages are rendered by the overlay, not by a widget test: ' +
+          '`cd ee && npm run shots:portal`.',
+      );
+    }
     process.exit(1);
   }
 
   const optimise = optimiser();
   let bytes = 0;
   for (const w of wanted) {
-    copyFileSync(w.from, w.to);
+    if (!w.external) copyFileSync(w.from, w.to);
     if (optimise) optimise(w.to);
     bytes += statSync(w.to).size;
   }
