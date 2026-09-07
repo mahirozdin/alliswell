@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 import { entryForUrl, VUE_PAGES } from './scripts/routes.js';
+import { sitemapPlugin } from './scripts/sitemap.js';
 import { staticPagesPlugin } from './scripts/static-pages.js';
 
 /**
@@ -81,7 +82,13 @@ export default defineConfig({
   // route survives review. Production's catch-all is the DEPLOYMENT's decision
   // (a deep link into /app must reach the app), not the dev server's.
   appType: 'mpa',
-  plugins: [vue(), mpaRoutesPlugin(), staticPagesPlugin(), copyDotfilesFromPublic()],
+  plugins: [
+    vue(),
+    mpaRoutesPlugin(),
+    staticPagesPlugin(),
+    sitemapPlugin(),
+    copyDotfilesFromPublic(),
+  ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

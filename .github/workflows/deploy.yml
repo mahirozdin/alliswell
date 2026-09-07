@@ -707,6 +707,43 @@ jobs:
             *) echo "::error::$site/app/projects did not rewrite to the app — check .htaccess"; fail=1 ;;
           esac
 
+          # EE-154. The enterprise pages, checked WITHOUT a trailing slash and
+          # WITHOUT -L, because both of those would hide the two things worth
+          # knowing: that .htaccess serves a generated directory page in place
+          # rather than 301ing to its slash, and that the canonical each page
+          # declares is the URL that actually answers.
+          #
+          # The needle is the hreflang line and not the word "Enterprise" — the
+          # home page carries that word in its nav, so a rewrite that fell back
+          # to index.html would have passed a looser check.
+          for pair in "enterprise:tr" "enterprise/tr:en"; do
+            url="${pair%%:*}"; other="${pair##*:}"
+            page=$(curl -fsS --max-time 20 "$site/$url" || true)
+            case "$page" in
+              *"hreflang=\"$other\" href=\"https://alliswell.space/enterprise"*)
+                echo "✓ $site/$url is served in place and names its twin" ;;
+              *)
+                echo "::error::$site/$url did not serve the enterprise page without a redirect"
+                fail=1 ;;
+            esac
+          done
+
+          # The sitemap and robots.txt, new in EE-154. The sitemap is generated
+          # from the route list at build time, so an empty or missing one means
+          # the plugin did not run rather than that somebody forgot a file.
+          map=$(curl -fsS --max-time 15 "$site/sitemap.xml" || true)
+          case "$map" in
+            *'<loc>https://alliswell.space/enterprise</loc>'*)
+              echo "✓ sitemap.xml lists the enterprise page" ;;
+            *) echo "::error::$site/sitemap.xml is missing or does not list the site"; fail=1 ;;
+          esac
+          robots=$(curl -fsS --max-time 15 "$site/robots.txt" || true)
+          case "$robots" in
+            *'Sitemap: https://alliswell.space/sitemap.xml'*)
+              echo "✓ robots.txt points at the sitemap" ;;
+            *) echo "::error::$site/robots.txt is missing or does not name the sitemap"; fail=1 ;;
+          esac
+
           # OPH-295: the API reference and the file it offers for download.
           # The collection is a real file rather than a generated page, so it
           # is the one asset here that a docroot swap could drop silently.

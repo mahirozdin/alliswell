@@ -346,6 +346,21 @@ jobs:
           grep -q 'RewriteRule \^app' apps/landing/dist/.htaccess \
             || { echo "::error::.htaccess lost its /app rule"; exit 1; }
 
+          # EE-154. The sitemap is EMITTED from the route list rather than
+          # written by hand, so "it exists" is not the interesting assertion —
+          # "it lists every route" is. A plugin that silently stopped running
+          # would leave a stale file behind on a partial build.
+          test -f apps/landing/dist/sitemap.xml \
+            || { echo "::error::no sitemap.xml — the plugin did not run"; exit 1; }
+          test -f apps/landing/dist/robots.txt \
+            || { echo "::error::no robots.txt — public/ was not copied"; exit 1; }
+          locs=$(grep -c '<loc>' apps/landing/dist/sitemap.xml)
+          routes=$(node -e "import('./apps/landing/scripts/routes.js').then(m=>console.log(m.SITE_ROUTES.length))")
+          if [ "$locs" != "$routes" ]; then
+            echo "::error::sitemap lists $locs pages but the site has $routes"
+            exit 1
+          fi
+
       # EE-152. The enterprise page's copy is one file per language, because
       # prose has to read as prose to be reviewed as prose. Nothing about the
       # shape of one file then forces the other to match, and a missing key is

@@ -1,0 +1,16 @@
+# alliswell.space
+#
+# /app is the application behind a sign-in. Its deep links are application
+# state rather than documents, and .htaccess rewrites every one of them to the
+# same shell — so crawling it produces N copies of one page under N URLs, which
+# is the definition of a crawl budget spent on nothing.
+#
+# Everything else here is a document and is meant to be found. The sitemap is
+# generated from the site's own route list at build time (scripts/sitemap.js),
+# so it cannot fall behind the pages it lists.
+
+User-agent: *
+Allow: /
+Disallow: /app/
+
+Sitemap: https://alliswell.space/sitemap.xml

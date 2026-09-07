@@ -59,8 +59,8 @@ export const STATIC_PAGES = [
       'What AllisWell collects, why, how long it is kept, and how to get it deleted. GDPR and KVKK.',
     lang: 'en',
     alternates: [
-      { label: 'English', href: '/privacy' },
-      { label: 'Türkçe', href: '/privacy/tr' },
+      { hreflang: 'en', label: 'English', href: '/privacy' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/privacy/tr' },
     ],
   },
   {
@@ -71,8 +71,8 @@ export const STATIC_PAGES = [
       'AllisWell hangi verileri neden topluyor, ne kadar saklıyor ve nasıl sildiriyorsunuz. KVKK ve GDPR.',
     lang: 'tr',
     alternates: [
-      { label: 'English', href: '/privacy' },
-      { label: 'Türkçe', href: '/privacy/tr' },
+      { hreflang: 'en', label: 'English', href: '/privacy' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/privacy/tr' },
     ],
   },
   {
@@ -83,8 +83,8 @@ export const STATIC_PAGES = [
       'How to reach us, what to include in a bug report, and answers to the questions people actually ask.',
     lang: 'en',
     alternates: [
-      { label: 'English', href: '/support' },
-      { label: 'Türkçe', href: '/support/tr' },
+      { hreflang: 'en', label: 'English', href: '/support' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/support/tr' },
     ],
   },
   {
@@ -95,8 +95,8 @@ export const STATIC_PAGES = [
       'Bize nasıl ulaşırsınız, hata bildirirken neye ihtiyacımız var ve sık sorulan soruların yanıtları.',
     lang: 'tr',
     alternates: [
-      { label: 'English', href: '/support' },
-      { label: 'Türkçe', href: '/support/tr' },
+      { hreflang: 'en', label: 'English', href: '/support' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/support/tr' },
     ],
   },
   {
@@ -152,6 +152,19 @@ function rewriteLink(href) {
   return `${REPO}/docs/${base}${hash ? `#${hash}` : ''}`;
 }
 
+/**
+ * EE-154 — `hreflang` is DECLARED on each alternate rather than inferred.
+ *
+ * It used to be `a.href.endsWith('/tr') ? 'tr' : 'en'`: a page's language read
+ * off the last two characters of its URL. Correct today by coincidence, because
+ * every pair happens to be `/x` and `/x/tr` — and wrong the first time a route
+ * ends in `/tr` for some other reason, a third language arrives, or a locale
+ * needs a region (`tr-TR`). Guessing a fact that is already known is a bug
+ * waiting for a route name.
+ *
+ * `x-default` was missing everywhere and is emitted now: it is what tells a
+ * crawler which version to show somebody whose language matches neither.
+ */
 function shell({
   title,
   description,
@@ -184,7 +197,15 @@ function shell({
 <title>${title}</title>
 <meta name="description" content="${description}">
 <link rel="canonical" href="${canonical}">
-${alternates.map((a) => `<link rel="alternate" hreflang="${a.href.endsWith('/tr') ? 'tr' : 'en'}" href="https://alliswell.space${a.href}">`).join('\n')}
+${alternates
+  .map((a) => `<link rel="alternate" hreflang="${a.hreflang}" href="https://alliswell.space${a.href}">`)
+  .join('\n')}${
+  alternates.length
+    ? `\n<link rel="alternate" hreflang="x-default" href="https://alliswell.space${
+        (alternates.find((a) => a.hreflang === 'en') ?? alternates[0]).href
+      }">`
+    : ''
+}
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${description}">
 <meta property="og:url" content="${canonical}">
