@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-09-09
+
 ### Added
 
 - **alliswell.space/enterprise is a proper page now, in English and Turkish
