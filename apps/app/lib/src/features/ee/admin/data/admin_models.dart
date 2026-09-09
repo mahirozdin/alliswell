@@ -261,3 +261,118 @@ class MintedInvite {
   final String token;
   final String code;
 }
+
+/// One sales enquiry as the console reads it (EE-160, server EE-159).
+///
+/// `erased` is a FIELD rather than something the screen works out from the
+/// empty columns. A screen that inferred it would draw the same blank for a
+/// fulfilled erasure and for a row that arrived broken — and a discharged legal
+/// obligation would read as a bug.
+class AdminLead {
+  const AdminLead({
+    required this.id,
+    required this.status,
+    required this.locale,
+    required this.erased,
+    this.fullName,
+    this.companyName,
+    this.workEmail,
+    this.phone,
+    this.seatCount,
+    this.unitCount,
+    this.packageInterest,
+    this.message,
+    this.notes,
+    this.consentVersion,
+    this.consentAt,
+    this.sourceIp,
+    this.userAgent,
+    this.referrer,
+    this.statusChangedAt,
+    this.erasedAt,
+    this.createdAt,
+  });
+
+  final String id;
+  final String status;
+  final String locale;
+  final bool erased;
+
+  /// Every one of these is null on an erased row, and null on a row where the
+  /// sender simply did not answer. `erased` is what tells the two apart.
+  final String? fullName;
+  final String? companyName;
+  final String? workEmail;
+  final String? phone;
+  final int? seatCount;
+  final int? unitCount;
+  final String? packageInterest;
+  final String? message;
+  final String? notes;
+  final String? consentVersion;
+  final String? consentAt;
+  final String? sourceIp;
+  final String? userAgent;
+  final String? referrer;
+  final String? statusChangedAt;
+  final String? erasedAt;
+  final String? createdAt;
+
+  factory AdminLead.fromJson(Map<String, dynamic> json) => AdminLead(
+    id: json['id'] as String? ?? '',
+    status: json['status'] as String? ?? 'new',
+    locale: json['locale'] as String? ?? 'en',
+    erased: json['erased'] as bool? ?? false,
+    fullName: json['fullName'] as String?,
+    companyName: json['companyName'] as String?,
+    workEmail: json['workEmail'] as String?,
+    phone: json['phone'] as String?,
+    seatCount: (json['seatCount'] as num?)?.toInt(),
+    unitCount: (json['unitCount'] as num?)?.toInt(),
+    packageInterest: json['packageInterest'] as String?,
+    message: json['message'] as String?,
+    notes: json['notes'] as String?,
+    consentVersion: json['consentVersion'] as String?,
+    consentAt: json['consentAt'] as String?,
+    sourceIp: json['sourceIp'] as String?,
+    userAgent: json['userAgent'] as String?,
+    referrer: json['referrer'] as String?,
+    statusChangedAt: json['statusChangedAt'] as String?,
+    erasedAt: json['erasedAt'] as String?,
+    createdAt: json['createdAt'] as String?,
+  );
+}
+
+/// The five states, in the order an enquiry moves through them.
+///
+/// Duplicated from the server's enum on purpose — the alternative is another
+/// round trip to learn five words that change roughly never — and held to it by
+/// `admin_leads_test.dart`, which insists every one has a translation in both
+/// languages.
+const kAdminLeadStatuses = <String>[
+  'new',
+  'contacted',
+  'qualified',
+  'won',
+  'lost',
+];
+
+/// A page of leads plus the cursor that continues it.
+///
+/// `nextCursor` being null means the END, and that is an answer rather than
+/// something to infer: a client comparing lengths guesses wrong on a page that
+/// is exactly full.
+class AdminLeadPage {
+  const AdminLeadPage({required this.items, this.nextCursor});
+
+  final List<AdminLead> items;
+  final String? nextCursor;
+
+  factory AdminLeadPage.fromJson(Map<String, dynamic> json) => AdminLeadPage(
+    items: [
+      for (final row in (json['items'] as List<dynamic>? ?? const []))
+        AdminLead.fromJson(row as Map<String, dynamic>),
+    ],
+    nextCursor: json['nextCursor'] as String?,
+  );
+}

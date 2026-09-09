@@ -229,4 +229,81 @@ class AdminApi {
       throw asApiException(e);
     }
   }
+
+  Future<AdminLeadPage> leads(
+    String token, {
+    String? status,
+    String? cursor,
+    int limit = 50,
+  }) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/admin/sales/leads',
+        queryParameters: {
+          'limit': limit,
+          'status': ?status,
+          // Passed back VERBATIM. It is the previous page's last id, not an
+          // offset, so the page it returns is stable while rows arrive.
+          'cursor': ?cursor,
+        },
+        options: _auth(token),
+      );
+      return AdminLeadPage.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  Future<AdminLead> lead(String token, String id) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/admin/sales/leads/$id',
+        options: _auth(token),
+      );
+      return AdminLead.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  /// Sends only what changed. The server treats a no-op as a no-op and writes
+  /// nothing — including no history row — so an unchanged save is free.
+  Future<AdminLead> patchLead(
+    String token,
+    String id, {
+    String? status,
+    String? notes,
+    bool clearNotes = false,
+  }) async {
+    try {
+      final res = await _dio.patch<Map<String, dynamic>>(
+        '/api/v1/ee/admin/sales/leads/$id',
+        data: {
+          'status': ?status,
+          // `clearNotes` is not the same as "no note given": one asks the
+          // server to empty the column, the other says nothing about it. A
+          // null-aware element cannot express that difference, so this stays
+          // an explicit branch.
+          if (clearNotes) 'notes': null else 'notes': ?notes,
+        },
+        options: _auth(token),
+      );
+      return AdminLead.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  /// A data-subject erasure. Idempotent on the server, so a second press is
+  /// harmless rather than a second entry in anybody's history.
+  Future<void> eraseLead(String token, String id) async {
+    try {
+      await _dio.delete<void>(
+        '/api/v1/ee/admin/sales/leads/$id',
+        options: _auth(token),
+      );
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
 }

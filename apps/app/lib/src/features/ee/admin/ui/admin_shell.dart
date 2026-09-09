@@ -6,7 +6,7 @@ import '../../../../i18n/i18n.dart';
 import '../../../../theme/tokens.dart';
 import '../admin_providers.dart';
 
-/// The console's frame (EE-033): a title, the three destinations and a way
+/// The console's frame (EE-033): a title, the four destinations and a way
 /// out. Deliberately plain — this is an operator tool, not a product surface,
 /// and it should look like the thing it is rather than borrow the app's
 /// warmth for something that can suspend a customer.
@@ -26,6 +26,11 @@ class AdminShell extends ConsumerWidget {
       path: '/admin/teams',
       icon: Icons.groups_outlined,
       label: 'ee.admin.nav.teams',
+    ),
+    (
+      path: '/admin/leads',
+      icon: Icons.mark_email_unread_outlined,
+      label: 'ee.admin.nav.leads',
     ),
     (
       path: '/admin/packages',

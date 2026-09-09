@@ -158,3 +158,72 @@ final adminLimitKeysProvider = FutureProvider.autoDispose<List<LimitKeyInfo>>((
   if (token == null) throw StateError('no admin session');
   return ref.watch(adminApiProvider).limitKeys(token);
 });
+
+/// The sales inbox (EE-160), and the one list in this console that pages.
+///
+/// An `AsyncNotifier` rather than a `FutureProvider` because the list has a
+/// CURSOR: `loadMore` appends the next page to what is already on screen, and
+/// the cursor is the last id of the page before it. That is the server's
+/// contract (EE-159) and the reason it is not an offset — a lead arriving while
+/// somebody reads page one would push every later page along by one, so page
+/// two would repeat a row and skip another.
+final adminLeadsProvider =
+    AsyncNotifierProvider.autoDispose<AdminLeadsController, AdminLeadPage>(
+      AdminLeadsController.new,
+    );
+
+class AdminLeadsController extends AsyncNotifier<AdminLeadPage> {
+  String? _status;
+
+  /// The filter, so the screen can render the chip that is selected.
+  String? get status => _status;
+
+  @override
+  Future<AdminLeadPage> build() => _page(null);
+
+  Future<AdminLeadPage> _page(String? cursor) {
+    final token = _token(ref);
+    if (token == null) throw StateError('no admin session');
+    return ref
+        .read(adminApiProvider)
+        .leads(token, status: _status, cursor: cursor);
+  }
+
+  Future<void> filter(String? status) async {
+    _status = status;
+    state = const AsyncValue.loading();
+    // A filter change starts a NEW list rather than continuing the old one:
+    // the cursor is an anchor in one ordering, and carrying it across a filter
+    // would silently skip everything newer than it in the new one.
+    state = await AsyncValue.guard(() => _page(null));
+  }
+
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || current.nextCursor == null) return;
+    final next = await _page(current.nextCursor);
+    state = AsyncValue.data(
+      AdminLeadPage(
+        items: [...current.items, ...next.items],
+        nextCursor: next.nextCursor,
+      ),
+    );
+  }
+
+  Future<void> reload() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _page(null));
+  }
+}
+
+/// One lead, for the detail route. Separate from the list so opening a link
+/// directly works — a detail screen that could only read from a loaded list
+/// would be broken for exactly the person who was sent the URL.
+final adminLeadProvider = FutureProvider.autoDispose.family<AdminLead, String>((
+  ref,
+  id,
+) async {
+  final token = _token(ref);
+  if (token == null) throw StateError('no admin session');
+  return ref.watch(adminApiProvider).lead(token, id);
+});

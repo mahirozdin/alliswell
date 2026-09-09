@@ -1453,7 +1453,8 @@
       "nav": {
         "usage": "Kullanım",
         "teams": "Takımlar",
-        "packages": "Paketler"
+        "packages": "Paketler",
+        "leads": "Talepler"
       },
       "status": {
         "active": "Etkin",
@@ -1523,6 +1524,61 @@
       "teamsBar": {
         "count": "{max} takımın {used} tanesi",
         "unlimited": "{used} takım · sınırsız"
+      },
+      "leads": {
+        "empty": "Henüz talep yok.",
+        "loadMore": "Daha fazla",
+        "filterAll": "Tümü",
+        "back": "Listeye dön",
+        "notStated": "Belirtilmedi",
+        "seatsShort": "{count} koltuk",
+        "erasedRow": "Gönderenin talebiyle silindi",
+        "erasedNotice": "Bu talebin kişisel bilgileri, gönderenin talebiyle silindi. Talebin kendisi — geliş tarihi, koltuk ve çalışma alanı sayıları ve sonucu — duruyor, yani silme rakamları değiştirmedi.",
+        "erasedAt": "{date} tarihinde silindi",
+        "enquiry": "Talep",
+        "contact": "Kim sordu",
+        "origin": "Nereden geldi",
+        "consent": "Rıza",
+        "received": "Geliş",
+        "seats": "Koltuk",
+        "units": "Çalışma alanı",
+        "package": "İlgilendiği paket",
+        "language": "Dil",
+        "name": "Ad",
+        "email": "E-posta",
+        "phone": "Telefon",
+        "message": "Mesaj",
+        "sourceIp": "Adres",
+        "referrer": "Yönlendiren",
+        "userAgent": "Tarayıcı",
+        "consentVersion": "Aydınlatma sürümü",
+        "consentAt": "Onay",
+        "notes": "Notlar",
+        "notesHelp": "Denetim kaydına yalnız notun değiştiği yazılır, ne yazdığı değil.",
+        "save": "Kaydet",
+        "saving": "Kaydediliyor…",
+        "saved": "Kaydedildi.",
+        "locale": {
+          "en": "İngilizce",
+          "tr": "Türkçe"
+        },
+        "status": {
+          "label": "Durum",
+          "new": "Yeni",
+          "contacted": "Görüşüldü",
+          "qualified": "Nitelikli",
+          "won": "Kazanıldı",
+          "lost": "Kaybedildi"
+        },
+        "erase": {
+          "action": "Kişisel bilgileri sil",
+          "title": "Gönderenin bilgileri silinsin mi?",
+          "body": "Ad, e-posta, telefon, mesaj ve geliş bilgileri kalıcı olarak boşaltılır. Talebin kendisi tarihi, koltuk ve çalışma alanı sayıları ve durumuyla listede kalır — yani rakamlarınız değişmez. Bu işlem geri alınamaz.",
+          "confirm": "Sil",
+          "cancel": "Vazgeç",
+          "done": "Gönderenin bilgileri silindi."
+        },
+        "emptyHelp": "Kurumsal sayfadan gelen talepler burada görünür."
       }
     },
     "invite": {

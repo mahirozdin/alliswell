@@ -1454,7 +1454,8 @@
       "nav": {
         "usage": "Usage",
         "teams": "Teams",
-        "packages": "Packages"
+        "packages": "Packages",
+        "leads": "Leads"
       },
       "status": {
         "active": "Active",
@@ -1524,6 +1525,61 @@
       "teamsBar": {
         "count": "{used} of {max} teams",
         "unlimited": "{used} teams · no limit"
+      },
+      "leads": {
+        "empty": "No enquiries yet.",
+        "loadMore": "Load more",
+        "filterAll": "All",
+        "back": "Back to the list",
+        "notStated": "Not stated",
+        "seatsShort": "{count} seats",
+        "erasedRow": "Erased at the sender's request",
+        "erasedNotice": "This enquiry's personal details were erased at the sender's request. What it asked for — the date, the seat and workspace counts, and its outcome — is kept, so erasing it did not change the figures.",
+        "erasedAt": "Erased {date}",
+        "enquiry": "The enquiry",
+        "contact": "Who asked",
+        "origin": "Where it came from",
+        "consent": "Consent",
+        "received": "Received",
+        "seats": "Seats",
+        "units": "Workspaces",
+        "package": "Package of interest",
+        "language": "Language",
+        "name": "Name",
+        "email": "E-mail",
+        "phone": "Phone",
+        "message": "Message",
+        "sourceIp": "Address",
+        "referrer": "Referrer",
+        "userAgent": "Browser",
+        "consentVersion": "Notice version",
+        "consentAt": "Agreed",
+        "notes": "Notes",
+        "notesHelp": "Only the fact that a note changed is recorded in the audit log, never what it says.",
+        "save": "Save",
+        "saving": "Saving…",
+        "saved": "Saved.",
+        "locale": {
+          "en": "English",
+          "tr": "Turkish"
+        },
+        "status": {
+          "label": "Status",
+          "new": "New",
+          "contacted": "Contacted",
+          "qualified": "Qualified",
+          "won": "Won",
+          "lost": "Lost"
+        },
+        "erase": {
+          "action": "Erase personal details",
+          "title": "Erase this sender's details?",
+          "body": "The name, e-mail address, phone number, message and origin are emptied permanently. The enquiry itself stays in the list with its date, its seat and workspace counts and its status, so your figures do not change. This cannot be undone.",
+          "confirm": "Erase",
+          "cancel": "Cancel",
+          "done": "The sender's details were erased."
+        },
+        "emptyHelp": "Enquiries from the enterprise page appear here."
       }
     },
     "invite": {

@@ -9,6 +9,7 @@ import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
 import 'features/ee/admin/admin_providers.dart';
 import 'features/ee/admin/ui/admin_login_screen.dart';
+import 'features/ee/admin/ui/admin_leads_screen.dart';
 import 'features/ee/admin/ui/admin_packages_screen.dart';
 import 'features/ee/admin/ui/admin_shell.dart';
 import 'features/ee/admin/ui/admin_teams_screen.dart';
@@ -269,6 +270,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: ':teamId',
                 builder: (context, state) => AdminTeamDetailScreen(
                   teamId: state.pathParameters['teamId'] ?? '',
+                ),
+              ),
+            ],
+          ),
+          // EE-160: the sales inbox. `:leadId` is a child route so the shell
+          // keeps Leads selected on the detail screen, the same way team
+          // detail keeps Teams selected.
+          GoRoute(
+            path: '/admin/leads',
+            builder: (context, state) => const AdminLeadsScreen(),
+            routes: [
+              GoRoute(
+                path: ':leadId',
+                builder: (context, state) => AdminLeadDetailScreen(
+                  leadId: state.pathParameters['leadId'] ?? '',
                 ),
               ),
             ],
