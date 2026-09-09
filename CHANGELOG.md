@@ -7,6 +7,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **alliswell.space/enterprise is a proper page now, in English and Turkish
+  (EE-142…EE-154).** It used to be the privacy policy's template with a few
+  screenshots in it. It is now a page in its own right: the public request
+  portal explained step by step, the service desk and the SLA system with
+  screenshots taken from the real app in the language you are reading, a
+  package comparison, and a contact form. Every screenshot is generated from
+  the product rather than drawn, so a claim the page makes is a claim the code
+  keeps — and the round found several the old page was making that the code had
+  stopped keeping.
+  The page also got a sitemap, a robots.txt and hreflang that actually declares
+  the pair, so the two languages stop competing with each other in search.
 - **The enterprise page's contact form actually sends now (EE-161).** Fill it
   in and it reaches a person — you get an acknowledgement, and the people who
   answer enquiries get a notification. Nothing about the page changed;
