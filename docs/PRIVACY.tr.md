@@ -186,6 +186,45 @@ Google ve bulut yapay zekâ sağlayıcıları uluslararası olduğundan, bu veri
 ifası için gerekli olduğu ölçüde; Google Takvim ve yapay zekâ özellikleri
 bakımından ise açık rızanıza dayanılarak yapılır.
 
+## Kurumsal talep formu
+
+[Kurumsal sayfamızdaki](https://alliswell.space/enterprise/tr) iletişim formunu
+doldurursanız, yazdıklarınıza ne olduğunu bu bölüm anlatır — bu politikanın geri kalanı
+değil. Yukarıdaki her şeyden farklı bir durum: müşteri değilsiniz, aramızda bir sözleşme
+yok, ve bilgilerinizi bir soru sormak için veriyorsunuz.
+
+**Aydınlatma sürümü: 2026-09.** Rızanız bu sürüme karşı kaydedilir. Aşağıdaki metni
+değiştirirsek sürüm de değişir, ve eski metni gösteren bir sayfadan gelen gönderim kabul
+edilmez, **reddedilir** — böylece onayladığınız metin, size gösterilen metin olur.
+
+**Hukuki sebep: açık rızanız** (KVKK m. 5/1). Onay kutusu zorunludur, bu metin kutunun
+yanından linklenir, ve işaretlemezseniz hiçbir şey saklanmaz.
+
+**Neleri saklıyoruz:** adınız, kurumunuz, iş e-posta adresiniz ve — doldurduysanız —
+telefonunuz, sorduğunuz kişi ve birim sayıları, adını verdiğiniz paket ve serbest metin
+mesajınız. Ayrıca rıza verdiğiniz anı ve gördüğünüz aydınlatma metninin sürümünü de
+kaydediyoruz.
+
+**Talebin kendisi hakkında sakladıklarımız:** geldiği IP adresi, tarayıcınızın user-agent
+dizgesi ve sizi yönlendiren sayfa. Bunlar tek bir soruyu cevaplıyor — gönderim bir insan
+mıydı yoksa bir betik mi — ve geri kalandan **daha kısa** bir saatte tutuluyor.
+
+**Kimler görüyor:** talepleri cevaplayan kişiler. Satılmaz, başka kimseyle paylaşılmaz ve
+size pazarlama göndermek için kullanılmaz. Tek amacı size cevap vermek. İki ileti
+üretiliyor: size bir teşekkür, ve satış masamıza bir bildirim — bu ikincisi bilerek yalnız
+kurumunuzu ve sorduğunuz sayıları taşır; adınızı, adresinizi, telefonunuzu ve mesajınızı
+taşımaz.
+
+**Ne kadar süre saklıyoruz:** IP adresi, user-agent ve yönlendiren **30 gün** sonra
+siliniyor. Geri kalan her şey, talep bir müşteri ilişkisine dönüşmezse **iki yıl** sonra
+siliniyor. Dönüşürse ilişkinin kendi şartları devreye giriyor.
+
+**Daha erken sildirmek isterseniz:** **info@bubiapps.com** adresine yazıp söyleyin. Adınızı,
+e-postanızı, telefonunuzu, mesajınızı ve talep bilgilerini kalıcı olarak boşaltıyoruz.
+Geriye kalan şey, bir talebin hangi tarihte geldiği, kaç kişi ve birim sorduğu ve ne
+olduğu — içinde sizi tanımlayan hiçbir şey olmayan sayılar, ve bunlar sizin bilgilerinizin
+silinmesi kendi kayıtlarımızı sessizce değiştirmesin diye tutuluyor.
+
 ## Verileri ne kadar süre saklıyoruz
 
 - **İçeriğiniz** — siz silene veya hesabınızı kapatana kadar.

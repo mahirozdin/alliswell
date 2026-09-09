@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **The enterprise page's contact form actually sends now (EE-161).** Fill it
+  in and it reaches a person — you get an acknowledgement, and the people who
+  answer enquiries get a notification. Nothing about the page changed;
+  previously the button opened your mail client.
+  **If something goes wrong, your answers stay on screen** — a rate limit or a
+  network hiccup does not empty the six fields you just typed. And on an
+  installation that does not run a sales desk the form is replaced by the
+  address rather than pretending to send: that is not an error, it is the true
+  answer for a deployment that has nobody to answer it.
+  What happens to what you type is now written down in the privacy policy under
+  **Enterprise enquiries**, which is where the consent box links — the legal
+  basis, what is stored, for how long, and how to have it erased sooner.
+
 ## [1.9.3] — 2026-09-07
 
 ### Fixed

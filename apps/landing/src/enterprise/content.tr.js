@@ -584,11 +584,36 @@ export default {
         'Yukarıdaki bilgilerin bu talebi yanıtlamak için saklanmasını ve kullanılmasını kabul ' +
         'ediyorum; ayrıntısı şurada:',
       linkLabel: 'aydınlatma metni',
-      href: '/privacy/tr',
+      // Belgenin tamamı değil, BÖLÜMÜ: üç yüz satıra inen bir rıza linki,
+      // okuyucuya neyi onayladığını söylememiş olur.
+      href: '/privacy/tr#kurumsal-talep-formu',
     },
     submit: 'Gönder',
-    orWrite: 'Ya da bize yazın:',
-    sent: 'Teşekkürler — mesajınız yola çıktı. Bir kişi okuyup size dönecek.',
+    sending: 'Gönderiliyor…',
+    orWrite: 'Ya da doğrudan yazın:',
+    sent: 'Teşekkürler — talebiniz bize ulaştı. Bir kişi okuyup size dönecek.',
+    // Her sonuç için bir mesaj (EE-161). Sunucu makine-okunur bir kod dönüyor,
+    // sayfa onu okuyanın dilinde söylüyor — deponun mevcut hata-kodu deseni.
+    states: {
+      // Özür DEĞİL. Bu kurulumun satış masası yok; bu, bir başarısızlık değil
+      // kurulum hakkında doğru bir olgu, o yüzden formun yerini adres alıyor.
+      noDesk:
+        'Bu kurulumda satış masası çalışmıyor. Doğrudan bize yazın, bir kişi cevap verecek:',
+      // Söyleneni yapınca düzeliyor.
+      stale:
+        'Bu sayfa açıkken aydınlatma metnimiz değişti. Lütfen sayfayı yenileyip tekrar ' +
+        'gönderin — onayladığınız metin, size gösterilen metin olsun.',
+      busy:
+        'Şu anda çok fazla talep alıyoruz. Birkaç dakika sonra tekrar deneyin ya da doğrudan ' +
+        'bize yazın.',
+      invalid: 'Formdaki bir şey kabul edilmedi. Alanları kontrol edip tekrar deneyin.',
+      offline:
+        'Sunucularımıza ulaşamadık. Yazdıklarınız duruyor — birazdan tekrar deneyin ya da ' +
+        'doğrudan bize yazın.',
+      failed:
+        'Bizim tarafımızda bir şeyler ters gitti. Yazdıklarınız duruyor — tekrar deneyin ya ' +
+        'da doğrudan bize yazın.',
+    },
   },
 
   faq: {

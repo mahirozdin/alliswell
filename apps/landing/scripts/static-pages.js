@@ -271,9 +271,42 @@ export function renderStaticPage(page) {
   const baseLink = renderer.link.bind(renderer);
   renderer.link = (token) => baseLink({ ...token, href: rewriteLink(token.href) });
 
-  const body = keepEmailsReadable(
-    marked.parse(md, { renderer, gfm: true, mangle: false, headerIds: true }),
-  );
+  /**
+   * Heading anchors, because marked stopped making them and nobody noticed.
+   *
+   * This call used to pass `headerIds: true` and `mangle: false`. Both were
+   * removed from marked's core in v5 (they live in plugins now), and we are on
+   * 18 — so for several major versions the options have been read as unknown
+   * keys and ignored, while the line still said the pages had anchors. Measured
+   * rather than assumed: the built `dist/privacy/index.html` contained exactly
+   * one `id`, and it belonged to an SVG gradient.
+   *
+   * It matters for a legal page more than for any other kind. A privacy notice
+   * is cited by section — a consent checkbox should land the reader on the
+   * paragraph describing THAT processing, not at the top of three hundred
+   * lines — and EE-161's consent link is the first thing to need it.
+   */
+  const baseHeading = renderer.heading.bind(renderer);
+  renderer.heading = (token) => {
+    const html = baseHeading(token);
+    const slug = token.text
+      .toLowerCase()
+      .replace(/<[^>]*>/g, '')
+      // Turkish letters fold to their ASCII neighbours rather than vanishing:
+      // `Kurumsal talep formu` is fine either way, but a heading like
+      // `Güvenlik` would otherwise slug to `gvenlik`.
+      .replace(/[ıİ]/g, 'i')
+      .replace(/[ğĞ]/g, 'g')
+      .replace(/[üÜ]/g, 'u')
+      .replace(/[şŞ]/g, 's')
+      .replace(/[öÖ]/g, 'o')
+      .replace(/[çÇ]/g, 'c')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return slug ? html.replace(/^<h(\d)>/, `<h$1 id="${slug}">`) : html;
+  };
+
+  const body = keepEmailsReadable(marked.parse(md, { renderer, gfm: true }));
   return shell({ ...page, body });
 }
 

@@ -600,11 +600,40 @@ export default {
         'I agree that the details above may be stored and used to answer this enquiry, as ' +
         'described in the',
       linkLabel: 'privacy notice',
-      href: '/privacy',
+      // The SECTION, not the document: a consent link that lands on three
+      // hundred lines has told the reader nothing about what they are agreeing
+      // to. The anchor exists because EE-161 found that marked had stopped
+      // emitting heading ids years ago (static-pages.js says how).
+      href: '/privacy#enterprise-enquiries',
     },
     submit: 'Send',
+    sending: 'Sending…',
     orWrite: 'Or write to',
-    sent: 'Thank you — your message is on its way. A person will read it and write back.',
+    sent: 'Thank you — your enquiry reached us. A person will read it and write back.',
+    // One message per outcome (EE-161). The server answers with a machine
+    // -readable code and the page says it in the reader's language, which is
+    // this repo's existing error-code pattern.
+    states: {
+      // NOT an apology. This installation has no sales desk — a true fact about
+      // it rather than a failure — so the form is replaced by the address.
+      noDesk:
+        'This installation does not run a sales desk. Write to us directly and a person ' +
+        'will answer:',
+      // Recoverable by doing exactly what it says.
+      stale:
+        'Our privacy notice changed while this page was open. Please reload and send it ' +
+        'again, so what you agree to is what you were shown.',
+      busy:
+        'We are receiving a lot of enquiries right now. Please try again in a few minutes, ' +
+        'or write to us directly.',
+      invalid: 'Something in the form was not accepted. Please check the fields and try again.',
+      offline:
+        'We could not reach our servers. Your answers are still here — please try again in a ' +
+        'moment, or write to us directly.',
+      failed:
+        'Something went wrong on our side. Your answers are still here — please try again, ' +
+        'or write to us directly.',
+    },
   },
 
   faq: {

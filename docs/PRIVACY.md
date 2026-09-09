@@ -171,6 +171,45 @@ processed outside Türkiye and the EU. Where that happens, it is either necessar
 to perform our contract with you or, for Google Calendar and AI features, based
 on your explicit consent.
 
+## Enterprise enquiries
+
+If you fill in the contact form on our [enterprise page](https://alliswell.space/enterprise),
+this section — and not the rest of this policy — describes what happens to what you typed.
+It is a different situation from everything above: you are not a customer, there is no
+contract between us, and you are giving us your details to ask a question.
+
+**Notice version: 2026-09.** Your consent is recorded against this version. If we change
+the words below, the version changes with them, and a page still showing the old text is
+refused rather than accepted — so what you agreed to is always what you were shown.
+
+**Legal basis: your explicit consent** (KVKK Art. 5/1 — *açık rıza*). The tick box is
+required, this notice is linked beside it, and nothing is stored if you do not tick it.
+
+**What we store:** your name, organisation, work e-mail address, and — if you fill them
+in — your phone number, the number of people and departments you asked about, the package
+you named and your free-text message. We also record the moment you consented and the
+version of this notice you saw.
+
+**What we store about the request itself:** the IP address it came from, your browser's
+user-agent string and the page that referred you. These answer one question — whether a
+submission was a person or a script — and they are kept on a shorter clock than the rest.
+
+**Who sees it:** the people who answer enquiries. It is not sold, not shared with anyone
+else, and not used to send you marketing. Answering you is the only thing it is for. Two
+messages are generated: an acknowledgement to you, and a notification to our sales desk
+that deliberately carries only your organisation and the numbers you asked about — not
+your name, address, phone number or message.
+
+**How long we keep it:** the IP address, user-agent and referrer are deleted after **30
+days**. Everything else is deleted after **two years** if the enquiry does not become a
+customer relationship. If it does, the relationship's own terms take over.
+
+**How to have it erased sooner:** write to **info@bubiapps.com** and say so. We empty your
+name, e-mail address, phone number, message and the request details permanently. What
+remains is the fact that an enquiry arrived on a date, how many people and departments it
+asked about, and what came of it — figures with nothing in them that identifies you, kept
+so that erasing your details does not silently rewrite our own records.
+
 ## How long we keep things
 
 - **Your content** — until you delete it or delete your account.

@@ -106,7 +106,10 @@ function propsFor(section) {
       // and it must not fork per language. Importing it from content.en.js
       // also dragged the English copy into the shared chunk, so a Turkish
       // reader downloaded both languages.
-      return { contact: data, email: company.email };
+      // `content.lang` and not a new prop: the page already knows which
+      // language it is, and the acknowledgement the sender receives is decided
+      // by the page they were reading (EE-158).
+      return { contact: data, email: company.email, lang: props.content.lang };
     case 'FaqSection':
       return { heading: data.heading, items: data.items };
     default:
