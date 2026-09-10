@@ -1,8 +1,8 @@
 # AllisWell Enterprise
 
-Zaten bildiğiniz AllisWell'in üzerine eklenen bir servis masası, bir izin sistemi ve bir
-organizasyon şeması — kendi sunucunuzda, kendi veritabanınızda çalışan, ve sahadaki Wi-Fi
-çalışmadığında da çalışmaya devam eden.
+Zaten bildiğiniz AllisWell'in üzerine eklenen talep yönetimi (ITSM), yetki ve rol yönetimi
+ve birim (departman) yapısı — bulutta kurumunuza özel bir adreste ya da kendi sunucunuzda,
+kendi veritabanınızda çalışan, ve sahadaki Wi-Fi çalışmadığında da çalışmaya devam eden.
 
 AllisWell'in kendisi bireysel kullanım için ücretsizdir ve öyle kalacak. **Enterprise**,
 tek bir kişinin görevlerinden fazlasına ihtiyaç duyan kurumlar için ayrı, ticari lisanslı
@@ -63,11 +63,12 @@ Ticari lisans, ayrıca ücretsiz katmanda olmayan self-hosting desteğiyle gelir
 ### Paketler
 
 Üründe bir paket kavramı var ve taze bir kurulum üçü tanımlı olarak geliyor: **Starter**,
-**Business** ve **Enterprise**. Bunlar birer **şekil**, fiyat listesi değil — koltuk sayısı,
-workspace sayısı, bir team'in talep portalını ne kadar kullanabileceği, tarihçenin ne kadar
-saklanacağı. Instance'ı işleten operatör bunları düzenler, yeniden adlandırır ya da kendi
-paketini ekler; bir team bir pakete konur ve ürün o paketin taşıdığı limitleri raporlar ve
-uygular.
+**Business** ve **Enterprise**. Bunlar birer **şekil**, fiyat listesi değil — kullanıcı
+sayısı, birim sayısı, bir kurumun talep formunu ne kadar kullanabileceği, tarihçenin ne kadar
+saklanacağı. Paketler **bulut** hizmeti içindir: alliswell.space üzerinde kurulumu işleten
+operatör bunları düzenler, yeniden adlandırır ya da kendi paketini ekler; bir kurum bir pakete
+konur ve ürün o paketin taşıdığı limitleri raporlar ve uygular. Kendi sunucusuna kurulan bir
+kurum bu katmanı hiç görmez — sınırlar kurulumda, sözleşmeye göre tanımlanır.
 
 Yani bu sayfa "paket" derken o mekanizmayı kastediyor — altında fiyat yazan üç kutuyu
 değil. Kurumunuzun neye hak kazandığı sözleşmenizde yazar.
@@ -75,9 +76,10 @@ değil. Kurumunuzun neye hak kazandığı sözleşmenizde yazar.
 ### Ne kadar
 
 Bu sayfada fiyat listesi yok, ve bu bir şey gizlendiği için değil. Enterprise bir indirme
-ve ödeme adımı değil; sizinle birlikte, sizin donanımınızda kuruluyor ve sözleşmenin şekli
-kaç kişi ve kaç birim olduğuna bağlı. O konuşma kısa sürüyor — ve gerçek cevabı "kurumunuza
-göre değişir" olan bir soruya dürüst yanıt bu.
+ve ödeme adımı değil. Bulutta kurumunuza özel bir adreste üç hazır paketten biriyle
+başlarsınız; kendi sunucunuza kurulumu ise ekibimiz yapar ve sınırlar, modüller ve
+sözleşmenin şekli kaç kişi ve kaç birim olduğuna göre belirlenir. O konuşma kısa sürüyor —
+ve gerçek cevabı "kurumunuza göre değişir" olan bir soruya dürüst yanıt bu.
 
 > **İlgileniyor musunuz?** **[info@bubiapps.com](mailto:info@bubiapps.com)** adresine kaç
 > kişi ve kaç birim olduğunuzu yazın — başlamak için bu yeterli. İhtiyacınız Enterprise

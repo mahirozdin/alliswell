@@ -2,22 +2,21 @@
 import { computed } from 'vue';
 
 import ContactForm from './ContactForm.vue';
+import DeployOptions from './DeployOptions.vue';
 import EeHero from './EeHero.vue';
 import ShotTabs from './ShotTabs.vue';
-import StatStrip from './StatStrip.vue';
 import StepTimeline from './StepTimeline.vue';
-import { SECTIONS } from './page.js';
+import { SECTIONS, TWO_COLUMN_COMPONENTS } from './page.js';
 import { company } from '../company.js';
 import ComparisonTable from '../components/ComparisonTable.vue';
 import FaqSection from '../components/FaqSection.vue';
 import FeatureSection from '../components/FeatureSection.vue';
 import PillarGrid from '../components/PillarGrid.vue';
-import SelfHostSection from '../components/SelfHostSection.vue';
 import TheFooter from '../components/TheFooter.vue';
 import TheHeader from '../components/TheHeader.vue';
 
 /**
- * The enterprise page (EE-151, sections in EE-153).
+ * The enterprise page (EE-151, sections in EE-153, rebuilt in EE-164).
  *
  * The chrome is the homepage's, taking props rather than reading `content.js`
  * (EE-143) — so a reader who follows a link from `/` to `/enterprise` sees one
@@ -41,11 +40,10 @@ const props = defineProps({
 const COMPONENTS = {
   EeHero,
   PillarGrid,
-  StatStrip,
   StepTimeline,
   FeatureSection,
   ShotTabs,
-  SelfHostSection,
+  DeployOptions,
   ComparisonTable,
   ContactForm,
   FaqSection,
@@ -55,16 +53,16 @@ const COMPONENTS = {
 const sections = computed(() => SECTIONS.filter((s) => props.content[s.key]));
 
 /**
- * The zig-zag. `FeatureSection` takes `flip` from here rather than computing it
- * from its own index, so the rhythm survives a section being reordered — the
- * homepage learned that first. The feature rows are not adjacent (tabs sit
- * between them), so they alternate on their own running count.
+ * The zig-zag. Every two-column section takes `flip` from here rather than
+ * computing it from its own index, so the rhythm survives a section being
+ * reordered — the homepage learned that first. Feature rows and tab blocks
+ * share one running count (page.js says why).
  */
 const flipped = computed(() => {
   const map = new Map();
   let n = 0;
   for (const s of sections.value) {
-    if (s.component === 'FeatureSection') map.set(s.key, n++ % 2 === 1);
+    if (TWO_COLUMN_COMPONENTS.includes(s.component)) map.set(s.key, n++ % 2 === 1);
   }
   return map;
 });
@@ -72,12 +70,11 @@ const flipped = computed(() => {
 /** What each component wants, keyed by the component rather than the section. */
 function propsFor(section) {
   const data = props.content[section.key];
+  const flip = flipped.value.get(section.key) === true;
   switch (section.component) {
     case 'EeHero':
       return { hero: data };
     case 'PillarGrid':
-      return { items: data.items, eyebrow: data.eyebrow, title: data.title };
-    case 'StatStrip':
       return { items: data.items, eyebrow: data.eyebrow, title: data.title };
     case 'StepTimeline':
       return {
@@ -88,27 +85,31 @@ function propsFor(section) {
         aside: data.aside,
       };
     case 'FeatureSection':
-      return { feature: data, flip: flipped.value.get(section.key) === true };
+      // `shell`: the homepage wraps its feature run in one `.aw-shell`; this
+      // page renders each row straight into <main>, and without its own shell
+      // the copy sat on the viewport's left edge and the picture on its right
+      // (EE-164, the "text glued to the left" report).
+      return { feature: data, flip, shell: true };
     case 'ShotTabs':
-      return { eyebrow: data.eyebrow, title: data.title, lede: data.lede, tabs: data.tabs };
-    case 'SelfHostSection':
+      return { eyebrow: data.eyebrow, title: data.title, lede: data.lede, tabs: data.tabs, flip };
+    case 'DeployOptions':
       return {
-        block: data,
-        terminalTitle: data.terminalTitle,
-        copyLabel: data.copyLabel,
-        copiedLabel: data.copiedLabel,
+        eyebrow: data.eyebrow,
+        title: data.title,
+        lede: data.lede,
+        options: data.options,
+        footnote: data.footnote,
         anchor: section.anchor,
       };
     case 'ComparisonTable':
-      return { table: data, anchor: section.anchor };
+      // No highlighted column: on the homepage the first column is "us", here
+      // the first column is merely the smallest package.
+      return { table: data, anchor: section.anchor, highlight: -1 };
     case 'ContactForm':
       // company.js, not the content module: this is the legal contact route
-      // and it must not fork per language. Importing it from content.en.js
-      // also dragged the English copy into the shared chunk, so a Turkish
-      // reader downloaded both languages.
-      // `content.lang` and not a new prop: the page already knows which
-      // language it is, and the acknowledgement the sender receives is decided
-      // by the page they were reading (EE-158).
+      // and it must not fork per language. `content.lang` and not a new prop:
+      // the acknowledgement the sender receives is decided by the page they
+      // were reading (EE-158).
       return { contact: data, email: company.email, lang: props.content.lang };
     case 'FaqSection':
       return { heading: data.heading, items: data.items };
@@ -118,17 +119,17 @@ function propsFor(section) {
 }
 
 /**
- * Two components render their own `id` from an `anchor` prop, because the
- * homepage's `#self-host` and `#compare` belong to them. Everything else takes
+ * Three components render their own `id` from an `anchor` prop, because the
+ * homepage's `#compare` and `#self-host` belong to them. Everything else takes
  * the anchor as a plain attribute and lets it fall through to the root.
  *
  * The `id` is OMITTED rather than passed as undefined. `:id="undefined"` still
  * creates an entry in `$attrs`, and a fallthrough attribute overrides the
- * child's own binding — so the two components that set their own id lost it,
- * silently, and `#ops` and `#packages` were anchors that scrolled nowhere. An
- * absent property is not the same as a property whose value is absent.
+ * child's own binding — so the components that set their own id lost it,
+ * silently, and their anchors scrolled nowhere. An absent property is not the
+ * same as a property whose value is absent.
  */
-const OWN_ANCHOR = ['SelfHostSection', 'ComparisonTable'];
+const OWN_ANCHOR = ['ComparisonTable', 'DeployOptions'];
 
 function bindingsFor(section) {
   const bound = propsFor(section);
@@ -140,11 +141,15 @@ function bindingsFor(section) {
 <template>
   <a class="skip" :href="content.nav.cta.href">{{ content.nav.cta.label }}</a>
 
+  <!-- No GitHub star count on a sales page: the buyer this page is written
+       for is not choosing a repository, and the free edition's column in the
+       footer still says where the source is. -->
   <TheHeader
     :home="content.nav.home"
     :links="content.nav.links"
     :cta="content.nav.cta"
     :stars-label="content.nav.starsLabel"
+    :show-stars="false"
     :alternates="alternates"
     :current="current"
   />

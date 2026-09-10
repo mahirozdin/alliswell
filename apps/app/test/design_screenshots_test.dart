@@ -373,6 +373,7 @@ Future<void> _shoot(
   required Brightness brightness,
   required String name,
   Future<void> Function(WidgetTester tester)? navigate,
+  FakeApi Function() seed = _seededApi,
 }) async {
   tester.view.physicalSize = size * 2;
   tester.view.devicePixelRatio = 2.0;
@@ -391,7 +392,7 @@ Future<void> _shoot(
   await localKv.remove('alliswell_home_view');
   debugDisableShadows = false;
   try {
-    await tester.pumpWidget(await _signedInScreenshotApp(_seededApi()));
+    await tester.pumpWidget(await _signedInScreenshotApp(seed()));
     await tester.pumpAndSettle();
     if (navigate != null) {
       await navigate(tester);
@@ -451,18 +452,24 @@ Future<void> openFilesFolder(WidgetTester tester) async {
   await tester.tap(find.text('Documents'));
 }
 
+///
+/// [seed] lets a caller bring its own workspace (EE-164: the enterprise page
+/// photographs a business-flavoured one, in both languages) while keeping the
+/// real router, theme and fonts this harness pins. Default is the design seed.
 Future<void> shootForStore(
   WidgetTester tester, {
   required Size size,
   required String name,
   Brightness brightness = Brightness.light,
   Future<void> Function(WidgetTester tester)? navigate,
+  FakeApi Function() seed = _seededApi,
 }) => _shoot(
   tester,
   size: size,
   brightness: brightness,
   name: name,
   navigate: navigate,
+  seed: seed,
 );
 
 void main() {

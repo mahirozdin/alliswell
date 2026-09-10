@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B1233" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
+
+    <!--
+      No language redirect here, on purpose: only the English twin redirects
+      (EE-164). A Turkish page that bounced an English browser back would make
+      /tr a redirect for every crawler on earth.
+    -->
+
+    <!-- EE-143's anti-flash script; the English twin says why. -->
+    <script>
+      try {
+        var t = localStorage.getItem('aw_theme');
+        document.documentElement.dataset.theme =
+          t === 'light' || t === 'dark'
+            ? t
+            : matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+      } catch (e) {
+        /* no stored preference is readable; useTheme() decides on mount */
+      }
+    </script>
+
+    <title>AllisWell — kendi sunucunuzda barındırabileceğiniz görevler, hatırlatıcılar ve notlar</title>
+    <meta
+      name="description"
+      content="Görevler, projeler, notlar, dosyalar ve sessiz moddayken bile çalan alarm gücünde hatırlatıcılar; Google ve Apple Takvim ile gerçek iki yönlü eşitleme. iOS, Android, web, macOS, Windows ve Linux için tek uygulama. Kaynağı açık, kendi sunucunuza kurulabilir, bireysel kullanım için ücretsiz."
+    />
+    <link rel="canonical" href="https://alliswell.space/tr" />
+
+    <!-- Each page names every version including itself; `x-default` is English. -->
+    <link rel="alternate" hreflang="en" href="https://alliswell.space/" />
+    <link rel="alternate" hreflang="tr" href="https://alliswell.space/tr" />
+    <link rel="alternate" hreflang="x-default" href="https://alliswell.space/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AllisWell" />
+    <meta property="og:url" content="https://alliswell.space/tr" />
+    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta
+      property="og:title"
+      content="AllisWell — kendi sunucunuzda barındırabileceğiniz görevler, hatırlatıcılar ve notlar"
+    />
+    <meta
+      property="og:description"
+      content="Alarm gücünde hatırlatıcılar, kanban panosu, zengin notlar, dosyalar ve iki yönlü takvim eşitlemesi; altı platformda, çevrimdışı öncelikli, kendi MySQL veritabanınızda."
+    />
+    <meta property="og:image" content="https://alliswell.space/shots/og/home-tr.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="preconnect" href="https://api.github.com" />
+
+    <!-- The same application as the English twin's record; only the prose is
+         Turkish. `softwareVersion` is checked by check:docs there and here. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "AllisWell",
+        "alternateName": "AllisWell: Yapılacaklar, Hatırlatıcılar ve Notlar",
+        "applicationCategory": "ProductivityApplication",
+        "operatingSystem": "iOS, Android, Web, macOS, Windows, Linux",
+        "inLanguage": "tr",
+        "url": "https://alliswell.space/tr",
+        "downloadUrl": "https://alliswell.space/app",
+        "installUrl": "https://play.google.com/store/apps/details?id=com.alliswell.alliswell",
+        "license": "https://polyformproject.org/licenses/noncommercial/1.0.0",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "description": "Kaynağı açık, kendi sunucunuza kurulabilen üretkenlik merkezi: görevler, projeler, notlar, dosyalar, alarm gücünde hatırlatıcılar ve iki yönlü Google ve Apple Takvim eşitlemesi. Bireysel kullanım için ücretsiz.",
+        "softwareVersion": "1.10.0",
+        "codeRepository": "https://github.com/mahirozdin/alliswell",
+        "publisher": {
+          "@type": "Organization",
+          "name": "BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI",
+          "alternateName": "BubiApps",
+          "email": "info@bubiapps.com",
+          "url": "https://bubiapps.com",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Mevlana Mah. Karasu Cad. No: 14, İç Kapı No: 16",
+            "addressLocality": "Talas",
+            "addressRegion": "Kayseri",
+            "addressCountry": "TR"
+          }
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <!--
+      A real JavaScript-off rendering, not a placeholder: Vue's mount() clears
+      this container before its first render. It is also what the CI <h1>
+      assertion reads.
+    -->
+    <div id="app">
+      <h1>Bütün gününüz, gerçekten size ait bir uygulamada.</h1>
+      <p>
+        Kaynağı açık, kendi sunucunuza kurulabilen görevler, notlar ve alarm gücünde
+        hatırlatıcılar. Bu sayfa JavaScript ister; uygulamanın kendisi, gizlilik politikası ve
+        destek sayfası istemez.
+      </p>
+      <p>
+        <a href="/app">Uygulamayı aç</a> ·
+        <a href="https://github.com/mahirozdin/alliswell">GitHub'da kaynak</a> ·
+        <a href="/privacy/tr">Gizlilik politikası</a> ·
+        <a href="/support/tr">Destek</a> ·
+        <a href="/" hreflang="en">English</a>
+      </p>
+    </div>
+    <script type="module" src="/src/main.tr.js"></script>
+  </body>
+</html>

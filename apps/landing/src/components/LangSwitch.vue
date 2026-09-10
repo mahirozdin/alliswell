@@ -16,6 +16,15 @@
  * Rendering nothing for a single alternate is deliberate. A switcher offering
  * one language is a control that cannot be used, and it makes a page look
  * translated when it is not.
+ *
+ * ── THE CLICK IS REMEMBERED (EE-164) ──────────────────────────────────────
+ *
+ * The English entries carry an inline script that sends a browser whose
+ * language is Turkish to the Turkish twin. Without a memory, a Turkish reader
+ * who clicks EN would be sent straight back — so the switch records the choice
+ * under `aw_lang`, and that script honours it. The write is wrapped for the
+ * same reason the theme script is: storage throws outright in some privacy
+ * modes, and a switch that cannot remember must still switch.
  */
 defineProps({
   /** `[{ lang, label, href }]` — the page's own entry included, per hreflang. */
@@ -23,6 +32,17 @@ defineProps({
   /** The current page's path, so its own pill can be marked. */
   current: { type: String, default: '' },
 });
+
+/** The same key the entries' inline language script reads. */
+const LANG_KEY = 'aw_lang';
+
+function remember(lang) {
+  try {
+    localStorage.setItem(LANG_KEY, lang);
+  } catch {
+    /* no storage; the link still navigates */
+  }
+}
 </script>
 
 <template>
@@ -33,6 +53,7 @@ defineProps({
       :href="a.href"
       :hreflang="a.lang"
       :aria-current="a.href === current ? 'page' : null"
+      @click="remember(a.lang)"
       >{{ a.label }}</a
     >
   </nav>

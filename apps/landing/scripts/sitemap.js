@@ -29,15 +29,23 @@ import { SITE_ROUTES, canonicalUrl } from './routes.js';
  * with the head would be worse than one that said nothing.
  */
 
-/** `/x/tr` ↔ `/x` — the pairing the site actually uses. */
-function twinOf(route) {
+/**
+ * `/x/tr` ↔ `/x` — the pairing the site actually uses. The homepage is the
+ * one route with no segment to append to: `''` ↔ `'tr'` (EE-164).
+ */
+export function twinOf(route) {
+  if (route === '') return 'tr';
+  if (route === 'tr') return '';
   return route.endsWith('/tr') ? route.slice(0, -3) : `${route}/tr`;
 }
+
+/** Is this route the Turkish half of a pair? (`tr` itself, or `x/tr`.) */
+const isTurkish = (route) => route === 'tr' || route.endsWith('/tr');
 
 function alternatesFor(route, known) {
   const twin = twinOf(route);
   if (!known.has(twin)) return [];
-  const [en, tr] = route.endsWith('/tr') ? [twin, route] : [route, twin];
+  const [en, tr] = isTurkish(route) ? [twin, route] : [route, twin];
   return [
     { hreflang: 'en', href: canonicalUrl(en) },
     { hreflang: 'tr', href: canonicalUrl(tr) },

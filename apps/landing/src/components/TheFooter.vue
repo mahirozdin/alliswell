@@ -41,6 +41,9 @@ defineProps({
    * they are about the open repository and the column beside them says so.
    */
   showVersion: { type: Boolean, default: true },
+  /** EE-164 — the two words in the stats line, so a Turkish page can say them. */
+  starsWord: { type: String, default: 'stars' },
+  forksWord: { type: String, default: 'forks' },
 });
 </script>
 
@@ -55,7 +58,7 @@ defineProps({
           </a>
           <p>{{ blurb }}</p>
           <p v-if="loaded && stars !== null" class="ftr__stats">
-            ★ {{ format(stars) }} stars · {{ format(forks ?? 0) }} forks
+            ★ {{ format(stars) }} {{ starsWord }} · {{ format(forks ?? 0) }} {{ forksWord }}
             <template v-if="showVersion"> · v{{ VERSION }}</template>
           </p>
           <p v-else-if="showVersion" class="ftr__stats">

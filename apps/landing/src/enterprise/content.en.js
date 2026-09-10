@@ -1,32 +1,31 @@
 /**
- * Every word on the enterprise page, in English (EE-151).
+ * Every word on the enterprise page, in English (EE-151; rewritten in EE-164).
  *
  * One file per language rather than `{en, tr}` beside every key: copy has to be
- * readable as prose to be reviewable as prose, which is the same reason
- * `src/content.js` gives for existing at all. What keeps the two honest is a
+ * readable as prose to be reviewable as prose. What keeps the two honest is a
  * gate (`npm run check:copy`, EE-152) rather than a convention.
+ *
+ * ── WHO THIS IS WRITTEN FOR ───────────────────────────────────────────────
+ *
+ * A plant's general manager, its IT manager, its after-sales manager. The copy
+ * uses the words they use in a meeting — "work request", "department",
+ * "customer request form" — and leaves out what does not change their decision
+ * (codebase, bytes, key counts). The one technical fact that DOES change it is
+ * where the data lives and who can reach it, and that is written down.
  *
  * ── WHAT THIS PAGE MAY CLAIM ──────────────────────────────────────────────
  *
- * The page it replaces went stale: it told readers for four epics that
- * directory integration was not included, while LDAP, SAML, OIDC and SCIM had
- * shipped. So the copy here is derived from the code, and four rules bind it:
- *
- *   • Packages describe what a team is SOLD, not a hard boundary around each
- *     feature. Six of the ten entitlement keys are declared and read by
- *     nothing; selling them as modules would be selling a promise nobody keeps.
- *   • Routing is service → unit → workspace: static, deterministic, and it
- *     refuses rather than guesses. It is not a rules engine and must never be
- *     written as one.
- *   • A screen a customer cannot open is not a feature. The team-wide audit
- *     screen exists in the source and in no router.
- *   • Numbers are the ones that were measured. "Tested at a million requests"
- *     is true; a millisecond figure is not, because the same query moved 23×
- *     between machines.
+ *   • Packages exist for the CLOUD only. An organisation running it on its own
+ *     servers never sees the operator layer; we set its limits at installation.
+ *     "Manage packages after installing" cannot appear here.
+ *   • The customer does not install it; we do. No "how it is installed", no
+ *     docker command, no self-hosting guide on this page.
+ *   • Routing is service → unit: fixed and explicit, never a rules engine.
+ *   • Only screens that exist are shown; only measured numbers are written; no
+ *     prices.
  *
  * Screenshot paths are stored WHOLE (`/shots/ee/...`), never composed, because
- * the CI gate greps the built bundle for those literals — a path assembled at
- * runtime is a path it cannot see.
+ * the CI gate greps the built bundle for those literals.
  */
 
 export const APP_URL = '/app';
@@ -36,19 +35,20 @@ export default {
   lang: 'en',
 
   seo: {
-    title: 'AllisWell Enterprise — service desk, units and SLAs on your own servers',
+    title: 'AllisWell Enterprise — every work request in your organisation, managed in one place',
     description:
-      'Teams, subdomains, permissions, units, ITSM with SLAs and service health, a public ' +
-      'request portal and meeting-note AI — self-hosted, offline-first, on your own database.',
+      'Requests between departments, after-sales support requests, SLA tracking, permissions, ' +
+      'tasks and documents in one system. In the cloud or on your own servers, in English and ' +
+      'Turkish.',
     ogImage: '/shots/og/enterprise-en.jpg',
   },
 
   nav: {
     home: '/',
     links: [
-      { label: 'The service desk', href: '#itsm' },
+      { label: 'Request management', href: '#itsm' },
       { label: 'SLAs', href: '#sla' },
-      { label: 'Identity', href: '#identity' },
+      { label: 'Deployment options', href: '#deploy' },
       { label: 'Packages', href: '#packages' },
     ],
     cta: { label: 'Talk to us', href: '#contact' },
@@ -57,440 +57,472 @@ export default {
 
   hero: {
     eyebrow: 'AllisWell Enterprise',
-    title: 'A service desk your organisation runs, on your own servers',
+    title: 'Every work request in your organisation, managed in one place',
     lede:
-      'Teams, units and permissions. A service catalogue whose promises are measured on a ' +
-      'business calendar rather than a wall clock. A public request form for the people who ' +
-      'have no account and should not need one. Installed on your hardware, against your own ' +
-      'database — and still working when the Wi-Fi on the shop floor is not.',
+      'The requests your departments make of each other — maintenance, IT, HR, finance — the ' +
+      'support requests that come in from customers, dealers and suppliers, and your teams’ ' +
+      'day-to-day tasks, notes and files, all in one system. It runs in the cloud or on your ' +
+      'own servers, and your data stays yours.',
     primary: { label: 'Talk to us', href: '#contact' },
-    secondary: { label: 'How it is installed', href: '#ops' },
+    secondary: { label: 'Cloud or your own servers?', href: '#deploy' },
+    facts: [
+      'In the cloud or on your own servers',
+      'English and Turkish interface',
+      'Phone, tablet, web and desktop',
+      'Keeps working when the internet drops',
+    ],
     shot: '/shots/ee/hero-light-en.jpg',
     shotDark: '/shots/ee/hero-dark-en.jpg',
     alt:
-      'Two screens side by side: a unit’s request queue with priorities and SLA states, and ' +
-      'the SLA dashboard showing 76.2% of promises kept across 47 requests, broken down by ' +
-      'desk and by service',
+      'Two screens side by side: a department’s request list with priorities and SLA states, ' +
+      'and the SLA dashboard showing how many promises were kept, by department and by service',
   },
 
   personas: {
     eyebrow: 'Who it is for',
-    title: 'Three organisations, one shape',
+    title: 'Organisations with several departments that want every request handled in one place',
     items: [
       {
         key: 'internal',
         icon: '🏭',
-        title: 'Departments that serve each other',
+        title: 'Factories and production sites',
         body:
-          'Accounting, maintenance, IT, quality, logistics — every one of them a unit with ' +
-          'its own work and its own inbox, all filing requests on each other. Today that ' +
-          'traffic is a shared mailbox and somebody’s spreadsheet, and nobody can answer ' +
-          '“how many are open in maintenance right now” without asking maintenance.',
+          'Maintenance, IT, quality, logistics, HR, finance: every department is constantly ' +
+          'asking another for something. Today those requests live in phone calls, e-mails and ' +
+          'somebody’s spreadsheet. With AllisWell Enterprise each request lands in the right ' +
+          'department, and who is on it, what state it is in and when it will be done is always ' +
+          'visible.',
       },
       {
-        key: 'msp',
+        key: 'afterSales',
         icon: '🤝',
-        title: 'Firms that support other firms',
+        title: 'Companies that provide after-sales service',
         body:
-          'Your customers need to reach you without an account, your contracts name response ' +
-          'times, and missing one has a price. A published form per customer, routed to the ' +
-          'team that answers it, with the promise measured rather than remembered.',
+          'Your customers, dealers and suppliers send you requests without an account in your ' +
+          'system. Each request goes to the right team, the response time you promised is ' +
+          'tracked, and the requester follows progress through their own link. Nothing gets ' +
+          'lost in a shared mailbox.',
       },
       {
         key: 'regulated',
         icon: '🔐',
-        title: 'Organisations that must show their work',
+        title: 'Public bodies, healthcare, and anyone under KVKK or GDPR',
         body:
-          'Public bodies, hospitals, anyone under KVKK or GDPR: the data stays on hardware ' +
-          'you control, every change has a name against it, and accounts come from the ' +
-          'directory you already run — so somebody who leaves loses access the same day.',
+          'The data stays on your servers, every action is recorded, and user accounts come ' +
+          'from the Active Directory you already run. Somebody who leaves loses access the same ' +
+          'day, and the answer to “who changed what, and when” is ready before an audit asks.',
       },
     ],
-  },
-
-  proof: {
-    eyebrow: 'Measured, not claimed',
-    title: 'What we can show you rather than tell you',
-    items: [
-      {
-        value: '1,000,000',
-        label: 'requests in the benchmark suite',
-        note: 'The compliance dashboard is measured against a million-row desk in CI.',
-      },
-      {
-        value: '49',
-        label: 'named permissions, enforced at three doors',
-        note: 'REST, device sync and the AI connector read one ledger; CI fails on a gap.',
-      },
-      {
-        value: '2',
-        label: 'languages, all the way down',
-        note: 'Screens, e-mail and the public request form — 634 keys in each.',
-      },
-      {
-        value: '6',
-        label: 'platforms from one codebase',
-        note: 'iOS, Android, web, macOS, Windows, Linux.',
-      },
-      {
-        value: '0',
-        label: 'bytes that leave your network',
-        note: 'Unless you connect something yourself, and then only what you connect.',
-      },
-    ],
-  },
-
-  portal: {
-    eyebrow: 'The public request portal',
-    title: 'Someone outside your company needs something. They have no account.',
-    lede:
-      'Giving a supplier a login is usually the wrong answer, and a shared mailbox is not an ' +
-      'answer at all. A team publishes a request form at a public address that routes into ' +
-      'the unit which answers it — and everything after that is the same system your own ' +
-      'people work in.',
-    steps: [
-      {
-        n: 1,
-        title: 'An administrator publishes a form',
-        body:
-          'It is bound to one service and, when several units offer it, to one unit. It ' +
-          'carries an expiry, a switch that pauses it, a cap on how much it can be used, and ' +
-          'a revoke that is permanent. The address is shown once: the server keeps only a ' +
-          'hash of it, so a link that leaks can be killed but not recovered.',
-        shot: '/shots/ee/portal-links-light-en.jpg',
-        shotDark: '/shots/ee/portal-links-dark-en.jpg',
-        alt:
-          'The portal links screen: four published forms with their service, expiry, usage ' +
-          'against quota, and controls that disappear once a link is revoked',
-        frameLabel: 'yourteam.yourdomain — request forms',
-      },
-      {
-        n: 2,
-        title: 'A stranger fills it in',
-        body:
-          'No account, no app, and no JavaScript — the page is rendered by the server and its ' +
-          'content policy forbids scripts outright, because it is the one door in this ' +
-          'product that opens without a credential. It picks its language from the browser, ' +
-          'and it carries your name, your logo and your colour rather than ours.',
-        shot: '/shots/ee/portal-form-light-en.jpg',
-        shotDark: '/shots/ee/portal-form-dark-en.jpg',
-        alt:
-          'The public request form: the company name, the service, an e-mail field, a subject, ' +
-          'a description and the two custom fields this service asks for',
-        frameLabel: 'yourteam.yourdomain/p/…',
-      },
-      {
-        n: 3,
-        title: 'It lands where it is answered',
-        body:
-          'The service says which unit answers it, and the request goes to that unit’s queue. ' +
-          'This is deliberate rather than clever: there is no rule engine to configure and ' +
-          'nothing is guessed. A service nobody answers cannot receive anything, and a ' +
-          'service several units offer is refused rather than sent to the wrong desk.',
-      },
-      {
-        n: 4,
-        title: 'The clock starts, and the unit is told once',
-        body:
-          'The SLA policy attached to that service opens a first-response clock and a ' +
-          'resolution clock. The unit gets one notification for the batch rather than one per ' +
-          'request — a desk that receives forty in an afternoon gets a list, not forty ' +
-          'e-mails.',
-      },
-      {
-        n: 5,
-        title: 'The person who asked can follow it',
-        body:
-          'They get an acknowledgement and a link. The page behind it shows the subject, the ' +
-          'status and two dates — and the status is deliberately coarser than yours: your ' +
-          'seven states become five, because “we cancelled your request” is a conversation ' +
-          'for a person to have, not a word for a status page to break to them.',
-        shot: '/shots/ee/portal-follow-light-en.jpg',
-        shotDark: '/shots/ee/portal-follow-dark-en.jpg',
-        alt:
-          'The follow page: the request’s subject, a status of Received, and the dates it was ' +
-          'submitted and last updated',
-        frameLabel: 'yourteam.yourdomain/t/…',
-      },
-    ],
-    aside: {
-      title: 'It is the open door, so it is treated like one',
-      body:
-        'Four layers, none of which asks a legitimate visitor for anything:',
-      points: [
-        'A trap field hidden from the eye, the keyboard and the screen reader alike.',
-        'A ceiling per address and a second one per form, because a botnet has many addresses and one target.',
-        'A monthly quota checked before any work is done and spent only if the request is accepted, so refused spam costs the team nothing.',
-        'An optional challenge that fails closed, and a suspended team that accepts nobody new.',
-        'Every refusal — wrong host, unknown link, expired, revoked, paused — answers with the same page, so a scanner learns nothing from the difference.',
-      ],
-    },
   },
 
   itsm: {
     id: 'itsm',
-    eyebrow: 'The service desk',
-    title: 'A queue a unit actually works from',
+    eyebrow: 'Request management (ITSM)',
+    title: 'Each department has its own request list',
     body:
-      'A request is a promise to someone; a task is work on a list. Keeping them different ' +
-      'things is what lets a request become assigned work without losing the thread back to ' +
-      'the person who asked. Priority, status and the state of the promise are on every row, ' +
-      'legible in a photograph of a screen taken across a plant floor.',
+      'Everything a department is asked for is collected in one list: who asked, who is ' +
+      'handling it, how urgent it is and how the promised deadline is doing. A request is ' +
+      'handed out to people as tasks without losing the link to the person who asked — and ' +
+      'they hear about it when it is resolved.',
     points: [
-      'Seven states with a transition map the server enforces — and no reopen after close: a matter that comes back is a new request, linked to the old one',
-      'Works offline. The queue is on the device, readable and editable, before the network comes back',
-      'One request becomes many tasks; a task belongs to at most one request',
+      'Every request shows its state, its priority and who owns it at a glance',
+      'One request can be split into tasks for several people; each task has a clear owner',
+      'The list opens and can be edited with the internet down; changes sync when the connection is back',
     ],
     shot: '/shots/ee/ticket-queue-light-en.jpg',
     shotDark: '/shots/ee/ticket-queue-dark-en.jpg',
     alt:
-      'A unit’s request queue: four requests with priority dots, status, SLA state and ' +
-      'assignee avatars, one marked SLA missed and one closed with the promise kept',
-    frameLabel: 'yourteam.yourdomain — requests',
+      'A department’s request list: four requests with priority, state, SLA status and the ' +
+      'people handling them — one past its deadline, one closed on time',
+    frameLabel: 'yourcompany.alliswell.space — requests',
   },
 
   itsmTabs: {
-    eyebrow: 'And the rest of the desk',
-    title: 'What can be asked for, who answers it, and what happened',
+    eyebrow: 'The parts of request management',
+    title: 'The service catalogue, routing, and the request itself',
     lede:
-      'The catalogue is the part most service desks skip, and it is the part that makes the ' +
-      'rest work: a request that names a service can be routed without a human reading it.',
+      'You define once which services your organisation provides; after that every request ' +
+      'knows which department it belongs to.',
     tabs: [
       {
         id: 'catalogue',
-        label: 'The catalogue',
+        label: 'Service catalogue',
         shot: '/shots/ee/services-admin-light-en.jpg',
         shotDark: '/shots/ee/services-admin-dark-en.jpg',
-        alt: 'The service catalogue: services with the units that answer them, one archived',
+        alt: 'The service catalogue: each service with the departments that provide it, one archived',
         caption:
-          'Each service can ask its own questions — a small closed set of field types, so a ' +
-          'form stays a form and not a programming language.',
-        frameLabel: 'yourteam.yourdomain — services',
+          'Electrical faults, calibration, access cards, software installs… For each service ' +
+          'you also decide which extra questions the request form asks.',
+        frameLabel: 'yourcompany.alliswell.space — services',
       },
       {
         id: 'routing',
-        label: 'Who answers',
+        label: 'Which department handles it',
         shot: '/shots/ee/service-routing-light-en.jpg',
         shotDark: '/shots/ee/service-routing-dark-en.jpg',
-        alt: 'Routing a service to the units that answer it',
+        alt: 'Connecting a service to the departments that answer it',
         caption:
-          'A service routed to nobody is refused rather than queued somewhere hopeful. That ' +
-          'refusal is the feature.',
-        frameLabel: 'yourteam.yourdomain — routing',
+          'Each service is connected to one or more departments; an incoming request lands ' +
+          'directly in that department’s list. Nobody has to forward anything by hand.',
+        frameLabel: 'yourcompany.alliswell.space — routing',
       },
       {
         id: 'detail',
-        label: 'One request',
+        label: 'A request in detail',
         shot: '/shots/ee/ticket-detail-light-en.jpg',
         shotDark: '/shots/ee/ticket-detail-dark-en.jpg',
         alt:
-          'One request opened: the conversation, with an internal note marked by a tint, a ' +
-          'lock and the words “the requester cannot see this”',
+          'One request opened: the conversation with the requester, and a separately marked ' +
+          'internal note the requester never sees',
         caption:
-          'An internal note is marked three ways at once, because colour fails a colour-blind ' +
-          'reader, an icon fails at a glance on a dirty screen, and the word is the easiest to ' +
-          'skim past.',
-        frameLabel: 'yourteam.yourdomain — request',
+          'The conversation with the requester and the team’s own internal notes are on the ' +
+          'same screen, but marked apart: an internal note is never shown to the requester.',
+        frameLabel: 'yourcompany.alliswell.space — request',
       },
     ],
   },
 
   sla: {
     id: 'sla',
-    eyebrow: 'SLAs and service health',
-    title: 'A promise measured on your calendar, not a wall clock',
+    eyebrow: 'SLAs and service tracking',
+    title: 'Response and resolution times, measured on your working hours',
     body:
-      'A factory does not stop at 18:00, and a target measured against a three-shift day is a ' +
-      'different number from one measured against nine-to-five. Response and resolution ' +
-      'targets run on working hours, holidays and the team’s own time zone — and a night ' +
-      'shift is one row rather than two, because 22:00 to 06:00 is one interval and not two ' +
-      'halves split at midnight.',
+      'For each service you set a target for the first response and for resolution. The clock ' +
+      'follows your organisation’s working hours, shifts and public holidays, so a weekend or a ' +
+      'night does not count against you. The responsible department is warned as a target ' +
+      'approaches, and a miss is recorded.',
     points: [
-      'The clock accumulates rather than subtracts, so a request bounced to “waiting” and back does not reset the promise',
-      'A warning at 80 %, a breach that sticks even after the request is closed, and an escalation counted in working minutes rather than elapsed ones',
-      'Editing your hours moves what happens next, never what already happened: the target and the calendar are frozen onto the clock when it starts',
+      'Different targets per priority: an urgent breakdown and a routine request are not held to the same clock',
+      'A request put on hold stops its clock; it resumes where it left off',
+      'The management dashboard shows which departments and which services are keeping their promises, and which are not',
     ],
     shot: '/shots/ee/sla-dashboard-light-en.jpg',
     shotDark: '/shots/ee/sla-dashboard-dark-en.jpg',
     alt:
-      'The SLA dashboard: 76.2% of promises kept across 47 requests, broken down by desk and ' +
-      'by service, with the missed targets listed underneath',
-    frameLabel: 'yourteam.yourdomain — SLA',
+      'The SLA dashboard: the share of requests answered on time this period, broken down by ' +
+      'department and by service, with the missed targets listed underneath',
+    frameLabel: 'yourcompany.alliswell.space — SLA dashboard',
   },
 
   slaTabs: {
-    eyebrow: 'The parts of the promise',
-    title: 'Targets, hours, and the URL you are already watching',
-    lede:
-      'And one number that is deliberately allowed to be nothing: a desk where no promise has ' +
-      'come due yet shows a dash rather than a cheerful hundred per cent.',
+    eyebrow: 'SLA settings',
+    title: 'Targets, the working calendar, and system health',
+    lede: 'The definitions are made once; after that the system measures and you see the result.',
     tabs: [
       {
         id: 'targets',
-        label: 'Targets',
+        label: 'Time targets',
         shot: '/shots/ee/sla-policies-light-en.jpg',
         shotDark: '/shots/ee/sla-policies-dark-en.jpg',
         alt: 'SLA policies with first-response and resolution targets per priority',
         caption:
-          'First response and resolution, per priority. A policy with no calendar is 24/7 — a ' +
-          'real contract, not a missing setting.',
-        frameLabel: 'yourteam.yourdomain — SLA policies',
+          'A separate first-response and resolution time for each priority level — counted ' +
+          'around the clock, or only within working hours, as you choose.',
+        frameLabel: 'yourcompany.alliswell.space — SLA targets',
       },
       {
         id: 'calendar',
-        label: 'Working hours',
+        label: 'Working calendar',
         shot: '/shots/ee/sla-calendars-light-en.jpg',
         shotDark: '/shots/ee/sla-calendars-dark-en.jpg',
-        alt: 'A business calendar with working intervals and holidays',
+        alt: 'A working calendar with its hours and public holidays',
         caption:
-          'Hours, holidays and a time zone per calendar. Daylight saving is handled rather ' +
-          'than approximated, and a calendar with no hours in it is refused.',
-        frameLabel: 'yourteam.yourdomain — calendars',
+          'Working hours, shifts, public holidays and a time zone. A three-shift plant and a ' +
+          'nine-to-five office use different calendars.',
+        frameLabel: 'yourcompany.alliswell.space — calendars',
       },
       {
         id: 'health',
-        label: 'Service health',
+        label: 'System health',
         shot: '/shots/ee/sla-monitors-light-en.jpg',
         shotDark: '/shots/ee/sla-monitors-dark-en.jpg',
-        alt: 'Health checks watching service URLs, with their intervals and last results',
+        alt: 'Health checks watching the addresses of critical systems, with their intervals and last results',
         caption:
-          'A watched URL that goes down opens one incident, and does not open another a ' +
-          'minute later. When it recovers, the recovery is written onto the same one.',
-        frameLabel: 'yourteam.yourdomain — health',
+          'Have the addresses of your critical applications watched: when one stops answering, ' +
+          'a record is opened automatically, and the recovery is noted on the same record.',
+        frameLabel: 'yourcompany.alliswell.space — system health',
       },
     ],
+  },
+
+  portal: {
+    eyebrow: 'After-sales service and external requests',
+    title: 'Let your customers and dealers send requests without an account',
+    lede:
+      'Creating a user account for every customer is impractical, and a shared mailbox cannot ' +
+      'be tracked. With AllisWell Enterprise you publish a public request form for each ' +
+      'service: whoever fills it in sends a request without signing in, it lands with the right ' +
+      'team, and its progress can be followed from outside.',
+    steps: [
+      {
+        n: 1,
+        title: 'You publish a request form',
+        body:
+          'The form is tied to one service and to the department that provides it. You can give ' +
+          'the link an expiry date and a monthly quota, pause it at any time, or cancel it for ' +
+          'good.',
+        shot: '/shots/ee/portal-links-light-en.jpg',
+        shotDark: '/shots/ee/portal-links-dark-en.jpg',
+        alt:
+          'The request forms screen: four published forms with their service, expiry and quota ' +
+          'usage; the cancelled one has lost its controls',
+        frameLabel: 'yourcompany.alliswell.space — request forms',
+      },
+      {
+        n: 2,
+        title: 'Your customer fills it in',
+        body:
+          'No account, no app to install. The form carries your name, your logo and your ' +
+          'corporate colour, and opens in English or Turkish depending on the visitor’s browser.',
+        shot: '/shots/ee/portal-form-light-en.jpg',
+        shotDark: '/shots/ee/portal-form-dark-en.jpg',
+        alt:
+          'The public request form: the company name, the service, an e-mail field, a subject, ' +
+          'a description and the two extra questions this service asks',
+        frameLabel: 'yourcompany.alliswell.space/p/…',
+      },
+      {
+        n: 3,
+        title: 'The request lands directly with the right department',
+        body:
+          'Whichever department the service is connected to, the request appears in that ' +
+          'department’s list. Nobody has to forward an e-mail or pick up the phone in between.',
+      },
+      {
+        n: 4,
+        title: 'The clock starts, and the team is told',
+        body:
+          'The SLA target attached to the service kicks in. The team receives one combined ' +
+          'notification rather than one per request: on a busy day, one list instead of forty ' +
+          'e-mails.',
+      },
+      {
+        n: 5,
+        title: 'The requester follows progress',
+        body:
+          'Whoever filled in the form receives a tracking link. The page behind it shows the ' +
+          'subject, the current state and the date of the last update; no sign-in required.',
+        shot: '/shots/ee/portal-follow-light-en.jpg',
+        shotDark: '/shots/ee/portal-follow-dark-en.jpg',
+        alt: 'The tracking page: the request’s subject, a status of Received, and the dates it was sent and last updated',
+        frameLabel: 'yourcompany.alliswell.space/t/…',
+      },
+    ],
+    aside: {
+      title: 'A public form, protected against abuse',
+      body:
+        'Your real customers use the form without friction; against automated submissions ' +
+        'there are four layers of protection:',
+      points: [
+        'A hidden trap field that catches automated submissions and that people never see.',
+        'A rate limit on repeated submissions from the same address and to the same form.',
+        'A monthly request quota: rejected submissions do not count against it and cost you nothing.',
+        'An optional extra verification step; expired or cancelled links close without giving anything away.',
+      ],
+    },
   },
 
   org: {
     id: 'org',
-    eyebrow: 'The organisation',
-    title: 'Units are the shape of the company, not a folder',
+    eyebrow: 'Organisation structure',
+    title: 'Departments, exactly as they are on your org chart',
     body:
-      'A unit is a department, a workshop, a site — whatever shape yours actually has. Units ' +
-      'own their content and their inbox, and content follows the unit rather than the ' +
-      'person, so somebody moving desks does not take a year of requests with them. Each team ' +
-      'gets its own address, and a request for another team’s data comes back as a plain 404 ' +
-      'that does not even admit the team exists.',
+      'Every department, workshop or branch is a unit in the system. Tasks, requests, notes and ' +
+      'files belong to the unit rather than to a person, so nothing is lost when somebody ' +
+      'leaves or changes department. Sharing between units is granted explicitly, and ' +
+      'disappears when it is withdrawn.',
     points: [
-      'Sharing across units is explicit, granted for something specific, and disappears on the other side when it is withdrawn',
-      'A device syncs exactly the units its owner belongs to — the boundary is enforced by what arrives, not by what is hidden',
-      'Registration on a team’s address is invitation only, and the whole flow completes on an instance with no mail server at all',
+      'Each employee sees only the data of the units they belong to, and only that data reaches their device',
+      'Your organisation signs in at its own address (for example yourcompany.alliswell.space); there is no contact with any other organisation’s data',
+      'New users join by invitation only; an invitation link expires and can be cancelled',
     ],
     shot: '/shots/ee/units-admin-light-en.jpg',
     shotDark: '/shots/ee/units-admin-dark-en.jpg',
-    alt:
-      'The units screen: four units with member counts, one marked as the one you run and one ' +
-      'archived',
-    frameLabel: 'yourteam.yourdomain — units',
+    alt: 'The units screen: four departments with member counts, one that you run and one archived',
+    frameLabel: 'yourcompany.alliswell.space — units',
   },
 
   orgTabs: {
-    eyebrow: 'Permissions, and the record',
+    eyebrow: 'Permissions and roles',
     title: 'Who may do what, and who did what',
     lede:
-      'Access is described by named permissions rather than three fixed roles, so “a ' +
-      'maintenance supervisor may reassign within their unit but may not close a request” is ' +
-      'something an administrator writes rather than something they file a feature request ' +
-      'about.',
+      'Permissions are not limited to a few preset roles. A rule such as “a maintenance ' +
+      'supervisor may assign requests within their own department but may not close them” is ' +
+      'something your administrator defines themselves.',
     tabs: [
       {
         id: 'roles',
-        label: 'Roles',
+        label: 'Roles and permissions',
         shot: '/shots/ee/team-roles-light-en.jpg',
         shotDark: '/shots/ee/team-roles-dark-en.jpg',
-        alt: 'The role editor: a grant matrix of named permissions across roles',
+        alt: 'The role editor: a matrix of individually granted permissions across roles',
         caption:
-          'Custom roles are stored as differences from a base rather than as a full set, so a ' +
-          'role you narrowed still receives every permission added later.',
-        frameLabel: 'yourteam.yourdomain — roles',
+          'Dozens of permissions — creating tasks, closing requests, sharing files — are switched ' +
+          'on and off individually, and roles can be defined per department.',
+        frameLabel: 'yourcompany.alliswell.space — roles',
       },
       {
         id: 'delegated',
-        label: 'A delegated view',
+        label: 'A department manager’s view',
         shot: '/shots/ee/units-manager-light-en.jpg',
         shotDark: '/shots/ee/units-manager-dark-en.jpg',
-        alt: 'The same units screen as a delegated manager sees it: only the unit they run',
+        alt: 'The same units screen as a department manager sees it: only their own department',
         caption:
-          'What somebody may not do is missing rather than greyed out. A disabled control ' +
-          'still promises a capability.',
-        frameLabel: 'yourteam.yourdomain — units',
+          'A department manager manages only their own department; actions they are not ' +
+          'allowed to take are not greyed out — they are simply not there.',
+        frameLabel: 'yourcompany.alliswell.space — units',
       },
       {
         id: 'history',
-        label: 'History',
+        label: 'Activity history',
         shot: '/shots/ee/ticket-history-light-en.jpg',
         shotDark: '/shots/ee/ticket-history-dark-en.jpg',
         alt:
-          'The history of one request: created, assigned, status changed, an SLA target missed ' +
-          'by the system, and updated',
+          'The history of one request: created, assigned, state changed, an SLA target recorded ' +
+          'as missed by the system, updated',
         caption:
-          'Every entity carries its own history, and the answer to “who” can be the system — ' +
-          'an SLA sweep is not a person and the record does not pretend otherwise. The ' +
-          'team-wide trail is exportable as CSV through the API.',
-        frameLabel: 'yourteam.yourdomain — history',
+          'Every request and task records who did what and when. The organisation-wide ' +
+          'activity log can be exported for audits.',
+        frameLabel: 'yourcompany.alliswell.space — history',
+      },
+    ],
+  },
+
+  workspace: {
+    id: 'work',
+    eyebrow: 'Day-to-day work',
+    title: 'Tasks, projects, notes and files, in the same system',
+    body:
+      'Alongside request management, your teams run their daily work here too: personal and ' +
+      'shared task lists, project-based work tracking, meeting notes and company documents. A ' +
+      'request becomes a task in one click; files and notes attach to any task.',
+    points: [
+      'Overdue, today and this week in one list, with a month calendar beside it',
+      'Reminders ring even when the phone is on silent, so urgent work is not missed',
+      'Two-way sync with Google and Apple calendars: tasks in the calendar, the calendar next to the tasks',
+    ],
+    shot: '/shots/ee/work-home-light-en.jpg',
+    shotDark: '/shots/ee/work-home-dark-en.jpg',
+    alt:
+      'Home: overdue, today and this week’s tasks in one list with project and tag badges, and ' +
+      'a month calendar on the right',
+    frameLabel: 'yourcompany.alliswell.space — tasks',
+  },
+
+  workspaceTabs: {
+    eyebrow: 'Teamwork',
+    title: 'Board, projects, notes and files',
+    lede:
+      'Every team works the way it is used to: some want a list, some want a board. Both are ' +
+      'views of the same data.',
+    tabs: [
+      {
+        id: 'board',
+        label: 'Board',
+        shot: '/shots/ee/work-board-light-en.jpg',
+        shotDark: '/shots/ee/work-board-dark-en.jpg',
+        alt: 'The board view: task cards in open, in-progress, waiting and completed columns',
+        caption:
+          'Open, in progress, waiting and completed work as columns; cards are dragged between ' +
+          'them, and the columns are arranged to suit the team.',
+        frameLabel: 'yourcompany.alliswell.space — board',
+      },
+      {
+        id: 'projects',
+        label: 'Projects',
+        shot: '/shots/ee/work-projects-light-en.jpg',
+        shotDark: '/shots/ee/work-projects-dark-en.jpg',
+        alt: 'The projects screen: project cards with their colour and progress',
+        caption:
+          'Each project keeps its tasks, notes and files together; progress and owners are ' +
+          'visible on one page.',
+        frameLabel: 'yourcompany.alliswell.space — projects',
+      },
+      {
+        id: 'notes',
+        label: 'Notes',
+        shot: '/shots/ee/work-notes-light-en.jpg',
+        shotDark: '/shots/ee/work-notes-dark-en.jpg',
+        alt: 'The notes screen: pinned notes and notes attached to projects',
+        caption:
+          'Meeting notes, instructions, procedures: formatted text with headings, tables and ' +
+          'images, exportable as PDF.',
+        frameLabel: 'yourcompany.alliswell.space — notes',
+      },
+      {
+        id: 'files',
+        label: 'Files',
+        shot: '/shots/ee/work-files-light-en.jpg',
+        shotDark: '/shots/ee/work-files-dark-en.jpg',
+        alt: 'The files screen: folders and uploaded company documents',
+        caption:
+          'A company document archive organised in folders; every file shows which task or ' +
+          'project it is attached to.',
+        frameLabel: 'yourcompany.alliswell.space — files',
       },
     ],
   },
 
   identity: {
     id: 'identity',
-    eyebrow: 'Identity',
-    title: 'Accounts come from the directory you already run',
+    eyebrow: 'Corporate identity',
+    title: 'Users come from the Active Directory you already run',
     body:
-      'LDAP or Active Directory for the bind, SAML and OpenID Connect for single sign-on, and ' +
-      'SCIM 2.0 for provisioning. Groups map to units, so a person joining a department in ' +
-      'the directory joins the unit here. Somebody who leaves loses access the same day, and ' +
-      'their sessions are ended rather than left to expire.',
+      'There is no separate user list to maintain. An Active Directory or LDAP connection, ' +
+      'single sign-on with systems such as Microsoft Entra ID (SAML, OpenID Connect) and ' +
+      'automatic user provisioning (SCIM) are all supported. Directory groups map to ' +
+      'departments: an account opens when somebody joins, and closes the day they leave.',
     points: [
-      'An account can be created on first sign-in, or not — the provider that may not create one says so and refuses',
-      'A provider that is not fully configured cannot be switched on, and the screen names the settings it is still missing',
-      'Every credential is encrypted under its own key and shows four characters afterwards, never a field',
+      'Single sign-on: employees sign in with the corporate password they already use',
+      'Group membership decides the department; nothing is assigned by hand',
+      'If a connection setting is missing, the system names it; a half-configured provider cannot be switched on',
     ],
     shot: '/shots/ee/team-identity-light-en.jpg',
     shotDark: '/shots/ee/team-identity-dark-en.jpg',
     alt:
-      'The identity sources screen: an LDAP directory and an OIDC provider both live, one SAML ' +
-      'provider that cannot be enabled and names the settings it still needs',
-    frameLabel: 'yourteam.yourdomain — identity',
+      'The identity sources screen: an Active Directory connection and a Microsoft Entra ID ' +
+      'provider both live, and one SAML provider naming the settings it still needs',
+    frameLabel: 'yourcompany.alliswell.space — identity',
   },
 
   security: {
     eyebrow: 'Security and compliance',
-    title: 'The questions a security review asks',
+    title: 'The questions your IT manager will ask',
     items: [
       {
         key: 'residency',
         icon: '🗄️',
-        title: 'Where the data is',
+        title: 'Where is the data kept?',
         body:
-          'On your hardware, in your MySQL, behind your firewall. Attachments go to a bucket ' +
-          'you name. Nothing is sent anywhere unless you connect it yourself, and then only ' +
-          'what you connected.',
+          'If you chose your own servers: on your server, in your database, behind your ' +
+          'firewall. In the cloud: in a space that belongs only to you, completely separate ' +
+          'from other customers. Nothing leaves unless you connect it yourself.',
       },
       {
         key: 'accounts',
         icon: '🔑',
-        title: 'How accounts are held',
+        title: 'How are accounts protected?',
         body:
-          'A password policy and lockout you set, two-factor by authenticator app, and a list ' +
-          'of a person’s active sessions and devices that an administrator can end.',
+          'A password policy and lockout you define, two-step sign-in with an authenticator ' +
+          'app, and a list of every user’s active sessions and devices. An administrator can ' +
+          'end a session remotely when needed.',
       },
       {
         key: 'audit',
         icon: '📜',
-        title: 'What the record says',
+        title: 'How do we see who did what?',
         body:
-          'A filtered audit trail with a retention you choose, exportable as CSV through the ' +
-          'API. Nobody can edit it, including us: it is append-only and only the retention ' +
-          'sweep removes anything.',
+          'Every action is recorded with its date, time and person. Records cannot be altered ' +
+          'afterwards; you set the retention period, and the log exports for audits.',
       },
       {
         key: 'kvkk',
         icon: '⚖️',
-        title: 'When somebody asks to be forgotten',
+        title: 'KVKK and GDPR',
         body:
-          'The whole team exports as one document, and a person’s data can be removed. KVKK ' +
-          'and GDPR are the reason the export exists, not a label added afterwards.',
+          'Your organisation’s entire data exports as one document, and one person’s data can ' +
+          'be erased on request. Regulatory requirements are part of the system, not a label ' +
+          'added later.',
       },
     ],
   },
@@ -498,197 +530,217 @@ export default {
   meetings: {
     id: 'meetings',
     eyebrow: 'Meeting notes',
-    title: 'The half of “minutes” that normally never happens',
+    title: 'Upload the recording, get the decisions as work',
     body:
-      'Upload a recording and get a note that separates who said what and pulls out the ' +
-      'decisions. A decision becomes a request in one step. Transcription runs through a ' +
-      'provider you choose, on your team’s own key, entered by your own administrator — and ' +
-      'usage is metered, so a long recording cannot quietly become a large invoice.',
+      'Upload the audio recording of a meeting and get back a transcript that separates who ' +
+      'said what, a summary, and the list of decisions taken. Each decision becomes a request ' +
+      'or a task in one click. Transcription runs through the AI provider and the account you ' +
+      'choose, and usage is metered by the minute.',
     points: [
-      'What the vendor keeps is governed by your contract with them, not by ours',
-      'A team with no key of its own has no transcription, rather than borrowing somebody else’s',
-      'The note is markdown you can edit, not a transcript you have to accept',
+      'You decide which provider is used and where the data is processed',
+      'The transcript is an editable note; a misheard sentence is corrected by hand',
+      'Monthly transcription minutes are capped by the package, so there is no surprise invoice',
     ],
     shot: '/shots/ee/meeting-named-light-en.jpg',
     shotDark: '/shots/ee/meeting-named-dark-en.jpg',
     alt: 'A meeting note: speakers named, the summary, and the decisions pulled out of it',
-    frameLabel: 'yourteam.yourdomain — meeting',
+    frameLabel: 'yourcompany.alliswell.space — meeting',
   },
 
-  ops: {
-    eyebrow: 'Installing and running it',
-    title: 'Your server, your database, your backups',
+  deploy: {
+    eyebrow: 'Deployment options',
+    title: 'Cloud, or your own servers?',
     lede:
-      'The same containers the free edition uses, plus the commercial overlay. The API ' +
-      'migrates its own schema on start, so an upgrade is a pull and an up — and your data ' +
-      'never moves.',
-    command:
-      'docker compose -f docker-compose.ee.yml pull\n' +
-      'docker compose -f docker-compose.ee.yml up -d\n\n' +
-      '# the schema migrates itself on start; your volumes are untouched',
-    points: [
-      'MySQL 8.4 or MariaDB 10.11+, on a machine you control — attachments in your own S3-compatible bucket',
-      'Each team on its own subdomain, with a wildcard certificate you install',
-      'A backup and restore runbook, and an export that means you are never locked in',
+      'The same product and the same features either way. The difference is where the data ' +
+      'lives and who runs the installation.',
+    options: [
+      {
+        key: 'cloud',
+        icon: '☁️',
+        title: 'Cloud',
+        tagline: 'A fast start, with nothing to operate',
+        points: [
+          'Your own address: yourcompany.alliswell.space',
+          'Installation, backups, updates and monitoring are handled by us',
+          'You pick the Starter, Business or Enterprise package, and move up as you grow',
+          'Your data is kept in a space that belongs only to you, separate from other customers',
+        ],
+        cta: { label: 'See the cloud packages', href: '#packages' },
+      },
+      {
+        key: 'self',
+        icon: '🏢',
+        title: 'Your own servers (on-premise)',
+        tagline: 'The data never leaves the organisation',
+        points: [
+          'We install it on your server, against your database; commissioning is done together with our team',
+          'The number of users, the number of departments and the modules (request management, the public request form, the Active Directory connection…) are set to your needs',
+          'Pricing is quoted per organisation, by the number of users and departments',
+          'Updates and support are covered by the agreement; the data never moves',
+        ],
+        cta: { label: 'Ask for a quote', href: '#contact' },
+      },
     ],
-    terminalTitle: 'your server',
-    copyLabel: 'Copy',
-    copiedLabel: 'Copied',
-    link: { label: 'Self-hosting guide', href: `${REPO_URL}/blob/main/docs/SELF-HOSTING.md` },
+    footnote:
+      'Undecided? Choose “not decided yet” on the form; we will work it out together from the ' +
+      'size of your organisation and the regulations you are under.',
   },
 
   packages: {
     anchor: 'packages',
-    eyebrow: 'Packages',
-    title: 'What a team is sold',
+    eyebrow: 'Cloud packages',
+    title: 'Three ready-made packages in the cloud',
     lede:
-      'A package is a shape an operator edits, not a wall around a feature. Everything on ' +
-      'this page is in the product; what a package sets is how much of it a team may use, ' +
-      'and which of the two capabilities that are genuinely separate are switched on.',
-    caption: 'Package comparison',
-    featureHeading: 'Limit or capability',
+      'These packages are for organisations using AllisWell in the cloud, at alliswell.space. ' +
+      'An installation on your own servers has no fixed package: the limits and modules are ' +
+      'set to your needs.',
+    caption: 'Cloud package comparison',
+    featureHeading: 'What is included',
     labels: { yes: 'Included', no: 'Not included', partial: 'Partial' },
     columns: ['Starter', 'Business', 'Enterprise'],
     rows: [
-      ['Seats', '10', '250', 'Unlimited'],
-      ['Units (workspaces)', '5', '50', 'Unlimited'],
-      ['Published request forms', 'Counted', 'Counted', 'Counted'],
-      ['Requests through the portal, monthly', 'Counted', 'Counted', 'Counted'],
-      ['Transcription minutes, monthly', 'Counted', 'Counted', 'Counted'],
-      ['History retained', '90 days', '1 year', '7 years'],
-      ['Service desk, SLAs, health monitors', 'yes', 'yes', 'yes'],
-      ['Units, permissions, audit trail', 'yes', 'yes', 'yes'],
-      ['Public request portal', 'yes', 'yes', 'yes'],
-      ['Meeting notes and decisions', 'no', 'yes', 'yes'],
-      ['LDAP / SAML / OIDC / SCIM', 'no', 'no', 'yes'],
+      ['Users', '10', '250', 'Unlimited'],
+      ['Units (departments)', '5', '50', 'Unlimited'],
+      ['Public request form: active forms and requests per month', 'Set by the package', 'Set by the package', 'Set by the package'],
+      ['Activity history retained', '90 days', '1 year', '7 years'],
+      ['Request management, SLAs, system health monitoring', 'yes', 'yes', 'yes'],
+      ['Units, permissions, activity log', 'yes', 'yes', 'yes'],
+      ['Public request form', 'yes', 'yes', 'yes'],
+      ['Tasks, projects, notes, files', 'yes', 'yes', 'yes'],
+      ['Meeting notes (AI) and monthly transcription minutes', 'no', 'yes', 'yes'],
+      ['Active Directory / single sign-on / SCIM', 'no', 'no', 'yes'],
     ],
     footnote:
-      'These are the three a fresh installation ships with, and an operator renames them, ' +
-      'edits them or adds their own. "Counted" means the product enforces a number your ' +
-      'agreement sets — a ceiling with no counter behind it is a promise nobody keeps, so ' +
-      'this table lists only the ones that are counted. There is no price here and nothing ' +
-      'is being hidden by that: Enterprise is installed and configured with you, and the ' +
-      'shape of the agreement depends on how many people and how many departments are in it.',
-    link: { label: 'Ask what yours would look like →', href: '#contact' },
+      'What a package includes is written in your agreement, and a package is upgraded as your ' +
+      'needs change. Prices are quoted per organisation; there is no price list on this page.',
+    link: { label: 'Ask for a quote →', href: '#contact' },
   },
 
   contact: {
     eyebrow: 'Talk to us',
-    title: 'Tell us the shape of your organisation',
+    title: 'Tell us briefly about your organisation, and we will prepare a quote',
     lede:
-      'How many people and how many departments is enough to start. We will come back with ' +
-      'what it would cost and what installing it would involve — there is no automated next ' +
-      'step and nothing to sign up for.',
-    mailSubject: 'AllisWell Enterprise enquiry',
+      'How many users and how many departments is enough to start. We come back to you ' +
+      'shortly with a quote and an installation plan — for the cloud or for your own servers, ' +
+      'whichever fits.',
+    mailSubject: 'AllisWell Enterprise quote request',
     fields: {
       name: { label: 'Your name' },
       company: { label: 'Organisation' },
       workEmail: { label: 'Work e-mail' },
       phone: { label: 'Phone (optional)' },
-      seats: { label: 'People who would use it' },
-      units: { label: 'Departments or units' },
+      seats: { label: 'Number of users (estimate)' },
+      units: { label: 'Number of departments' },
       packageInterest: {
-        label: 'Package you are looking at',
-        placeholder: 'Not sure yet',
-        options: ['Starter', 'Business', 'Enterprise'],
+        label: 'The option you are considering',
+        placeholder: 'Not decided yet',
+        options: [
+          'Cloud — Starter',
+          'Cloud — Business',
+          'Cloud — Enterprise',
+          'Installation on our own servers',
+        ],
       },
-      message: { label: 'Anything else we should know' },
+      message: { label: 'Anything else (current systems, priorities)' },
       honeypot: 'Company website',
     },
     consent: {
       text:
-        'I agree that the details above may be stored and used to answer this enquiry, as ' +
-        'described in the',
+        'I agree that the details in this form may be stored and used to answer my enquiry, ' +
+        'as described in the',
       linkLabel: 'privacy notice',
       // The SECTION, not the document: a consent link that lands on three
       // hundred lines has told the reader nothing about what they are agreeing
-      // to. The anchor exists because EE-161 found that marked had stopped
-      // emitting heading ids years ago (static-pages.js says how).
+      // to.
       href: '/privacy#enterprise-enquiries',
     },
     submit: 'Send',
     sending: 'Sending…',
-    orWrite: 'Or write to',
-    sent: 'Thank you — your enquiry reached us. A person will read it and write back.',
+    orWrite: 'Or write to us directly:',
+    sent: 'Thank you — your enquiry reached us. Our team will be in touch shortly.',
     // One message per outcome (EE-161). The server answers with a machine
-    // -readable code and the page says it in the reader's language, which is
-    // this repo's existing error-code pattern.
+    // -readable code and the page says it in the reader's language.
     states: {
-      // NOT an apology. This installation has no sales desk — a true fact about
-      // it rather than a failure — so the form is replaced by the address.
-      noDesk:
-        'This installation does not run a sales desk. Write to us directly and a person ' +
-        'will answer:',
-      // Recoverable by doing exactly what it says.
+      // NOT an apology: this installation has no sales desk, so the form is
+      // replaced by the address.
+      noDesk: 'This installation does not run a sales form. Write to us directly and we will get back to you:',
       stale:
-        'Our privacy notice changed while this page was open. Please reload and send it ' +
-        'again, so what you agree to is what you were shown.',
+        'Our privacy notice changed while this page was open. Please reload and send again, ' +
+        'so what you agree to is what you were shown.',
       busy:
-        'We are receiving a lot of enquiries right now. Please try again in a few minutes, ' +
-        'or write to us directly.',
+        'We are receiving a lot of enquiries right now. Please try again in a few minutes, or ' +
+        'write to us directly.',
       invalid: 'Something in the form was not accepted. Please check the fields and try again.',
       offline:
         'We could not reach our servers. Your answers are still here — please try again in a ' +
         'moment, or write to us directly.',
       failed:
-        'Something went wrong on our side. Your answers are still here — please try again, ' +
-        'or write to us directly.',
+        'Something went wrong on our side. Your answers are still here — please try again, or ' +
+        'write to us directly.',
     },
   },
 
   faq: {
-    heading: 'Questions people actually ask',
+    heading: 'Frequently asked questions',
     items: [
       {
-        q: 'Is this a hosted service?',
+        q: 'Is there a difference in features between the cloud and our own servers?',
         a:
-          'No. It installs on hardware you control, against a database you control. We help ' +
-          'with the installation and the upgrades; the machine and the data stay yours.',
+          'No; it is the same product. In the cloud we take care of installation, backups and ' +
+          'updates. On your own servers the data never leaves your organisation, and the limits ' +
+          'and modules are set to your needs.',
       },
       {
-        q: 'What happens to the free edition?',
+        q: 'Who installs it, and how long does it take?',
         a:
-          'Nothing. It stays free for personal use, stays source-available, and Enterprise ' +
-          'does not change its terms in either direction. A copy you already hold stays yours ' +
-          'under the licence you received it under.',
+          'In the cloud your account is opened straight away. On your own servers our team does ' +
+          'the installation; with the server ready it is done in a day. What takes time is ' +
+          'defining your departments, your services and your time targets together — and that ' +
+          'is the part worth taking time over.',
       },
       {
-        q: 'Can we get our data out?',
+        q: 'Where is our data kept, and can we take it out?',
         a:
-          'The whole team exports as one document through the API, and the audit trail exports ' +
-          'as CSV. The database is your own MySQL, so the answer underneath all of that is ' +
-          'that the data was never anywhere else.',
+          'On your own servers the data is entirely on your server. In the cloud it is kept in ' +
+          'a space that belongs only to you. In both cases your organisation’s entire data ' +
+          'exports as one document and the activity log as a table; you are never locked in.',
       },
       {
-        q: 'Do our people need accounts before they can ask for something?',
+        q: 'Does it work with the Active Directory we already have?',
         a:
-          'Your own people do. Somebody outside the company does not: that is what the public ' +
-          'request form is for, and it is why they can follow the request afterwards without ' +
-          'signing in.',
+          'Yes. An Active Directory or LDAP connection, single sign-on with Microsoft Entra ID ' +
+          'and similar systems, and automatic user provisioning are included in the cloud ' +
+          'Enterprise package, and in whatever scope you need on your own servers.',
       },
       {
-        q: 'How long does it take to install?',
+        q: 'Do our customers need an account in the system?',
         a:
-          'The containers come up in minutes. What takes the time is the part worth taking ' +
-          'time over — deciding what your units are, what services they offer and what you ' +
-          'are promising about them.',
+          'No. Somebody outside the organisation uses the public request form, and follows ' +
+          'the request afterwards without signing in. Your own employees sign in with an account.',
       },
       {
-        q: 'What is not in it?',
+        q: 'How is this different from the free AllisWell?',
         a:
-          'There is no asset register, no change-approval workflow, no satisfaction survey and ' +
-          'no report builder beyond the dashboard and a weekly e-mail. E-mail cannot open a ' +
-          'request yet — the public form and the app can. We would rather say so here than ' +
-          'have you find out in week three.',
+          'The free edition is for one person’s tasks, notes and files. Enterprise adds ' +
+          'departments, permissions, request management, SLA tracking, the public request form ' +
+          'and the corporate identity connection, and is used under a commercial licence.',
+      },
+      {
+        q: 'What is not in it yet?',
+        a:
+          'There is no asset (inventory) register, no change-approval workflow, no customer ' +
+          'satisfaction survey, and no custom report designer beyond the dashboard. Requests ' +
+          'cannot be opened by e-mail yet; they come in through the form and the app. We would ' +
+          'rather say so up front.',
       },
     ],
   },
 
   footer: {
     blurb:
-      'AllisWell Enterprise adds teams, units, permissions, a service desk and SLAs to the ' +
-      'AllisWell you can already run for free. Commercially licensed, installed on your own ' +
-      'servers.',
+      'AllisWell Enterprise brings internal and external work requests, SLA tracking, ' +
+      'permissions and your teams’ daily work together in one system. In the cloud or on your ' +
+      'own servers.',
     notes:
       'Not affiliated with Microsoft, Apple, Google, Anthropic or OpenAI. Product names are ' +
       'their owners’.',
@@ -698,21 +750,22 @@ export default {
       {
         title: 'Enterprise',
         links: [
-          { label: 'The service desk', href: '#itsm' },
-          { label: 'SLAs and service health', href: '#sla' },
-          { label: 'The public request portal', href: '#portal' },
-          { label: 'Identity and security', href: '#identity' },
-          { label: 'Packages', href: '#packages' },
+          { label: 'Request management', href: '#itsm' },
+          { label: 'SLAs and service tracking', href: '#sla' },
+          { label: 'Public request form', href: '#portal' },
+          { label: 'Corporate identity and security', href: '#identity' },
+          { label: 'Deployment options', href: '#deploy' },
+          { label: 'Cloud packages', href: '#packages' },
           { label: 'Talk to us', href: '#contact' },
         ],
       },
       {
-        title: 'Run it yourself',
+        title: 'Technical documents',
         links: [
-          { label: 'Self-hosting guide', href: `${REPO_URL}/blob/main/docs/SELF-HOSTING.md` },
           { label: 'Architecture', href: `${REPO_URL}/blob/main/docs/ARCHITECTURE.md` },
           { label: 'REST API reference', href: '/docs/api' },
           { label: 'Security policy', href: `${REPO_URL}/blob/main/SECURITY.md` },
+          { label: 'Privacy policy', href: '/privacy' },
         ],
       },
       {

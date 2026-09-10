@@ -728,6 +728,19 @@ jobs:
             esac
           done
 
+          # EE-164. The Turkish homepage, by the same rule: served in place at
+          # /tr, and naming the English twin. The needle is its own hreflang
+          # line — the homepage's nav also says "Türkçe", so a fallback to
+          # index.html would pass a looser check.
+          trhome=$(curl -fsS --max-time 20 "$site/tr" || true)
+          case "$trhome" in
+            *'<html lang="tr"'*'hreflang="en" href="https://alliswell.space/"'*)
+              echo "✓ $site/tr is served in place and names its twin" ;;
+            *)
+              echo "::error::$site/tr did not serve the Turkish homepage without a redirect"
+              fail=1 ;;
+          esac
+
           # The sitemap and robots.txt, new in EE-154. The sitemap is generated
           # from the route list at build time, so an empty or missing one means
           # the plugin did not run rather than that somebody forgot a file.

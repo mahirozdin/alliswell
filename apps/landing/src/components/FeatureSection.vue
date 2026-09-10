@@ -9,6 +9,15 @@ import ScreenshotFrame from './ScreenshotFrame.vue';
 defineProps({
   feature: { type: Object, required: true },
   flip: { type: Boolean, default: false },
+  /**
+   * EE-164 — carry the page shell on the row itself. The homepage wraps its
+   * whole feature run in one `.aw-shell`, so its rows must NOT add another
+   * (the shell subtracts its own gutter, and a shell inside a shell is a row
+   * 2.5rem narrower than its neighbours). The enterprise page renders rows
+   * straight into <main>; without this the copy sat on the viewport's left
+   * edge and the screenshot on its right — the "text glued to the left" bug.
+   */
+  shell: { type: Boolean, default: false },
 });
 
 /**
@@ -23,7 +32,7 @@ const shotPath = (s) => (s.startsWith('/') ? s : `/shots/${s}`);
 </script>
 
 <template>
-  <article v-reveal class="feature" :class="{ 'feature--flip': flip }">
+  <article v-reveal class="feature" :class="{ 'feature--flip': flip, 'aw-shell': shell }">
     <div class="feature__copy">
       <p class="aw-eyebrow">{{ feature.eyebrow }}</p>
       <h2>{{ feature.title }}</h2>

@@ -31,9 +31,9 @@
   ],
 
   "company": {
-    "subdomain": "aydinmetal",
+    "subdomain": "demo",
     "brandRgb": "#B4472A",
-    "name": { "tr": "Aydın Metal Sanayi A.Ş.", "en": "Aydın Metal Industries" }
+    "name": { "tr": "Sizin Şirketiniz A.Ş.", "en": "Your Company Ltd." }
   },
 
   "units": [
@@ -54,13 +54,13 @@
     { "id": "P04", "unitId": "U1", "role": "member", "displayName": "Pınar Üye", "initials": "PÜ", "colorRgb": "#B4472A" },
     { "id": "P05", "unitId": "U1", "role": "member", "displayName": "Emre Vardiya", "initials": "EV", "colorRgb": "#1F6FEB" },
     { "id": "P06", "unitId": "U1", "role": "member", "displayName": "Seda Bakım", "initials": "SB", "colorRgb": "#8A4FD8" },
-    { "id": "P07", "unitId": "U1", "role": "member", "email": "kerem@aydinmetal.example", "initials": "K", "colorRgb": "#0F766E" },
+    { "id": "P07", "unitId": "U1", "role": "member", "email": "kerem@demo.example", "initials": "K", "colorRgb": "#0F766E" },
 
     { "id": "P08", "unitId": "U2", "role": "manager", "displayName": "Merve Birim", "initials": "MB", "colorRgb": "#0A5CFF" },
     { "id": "P09", "unitId": "U2", "role": "member", "displayName": "Onur Ağ", "initials": "OA", "colorRgb": "#7C3AED" },
     { "id": "P10", "unitId": "U2", "role": "member", "displayName": "Zeynep Sistem", "initials": "ZS", "colorRgb": "#0C7D6C" },
     { "id": "P11", "unitId": "U2", "role": "member", "displayName": "Tolga Destek", "initials": "TD", "colorRgb": "#B4472A" },
-    { "id": "P12", "unitId": "U2", "role": "member", "email": "ilker@aydinmetal.example", "initials": "İ", "colorRgb": "#1F6FEB" },
+    { "id": "P12", "unitId": "U2", "role": "member", "email": "ilker@demo.example", "initials": "İ", "colorRgb": "#1F6FEB" },
 
     { "id": "P13", "unitId": "U3", "role": "manager", "displayName": "Ayşe Kalite", "initials": "AK", "colorRgb": "#0A5CFF" },
     { "id": "P14", "unitId": "U3", "role": "member", "displayName": "Murat Ölçüm", "initials": "MÖ", "colorRgb": "#7C3AED" },
@@ -267,18 +267,18 @@
     "_why": "Three providers because the screen has three states worth photographing: one live and verified, one live from a different protocol, and one that cannot be turned on yet and says WHICH setting it is still missing. `totalMembers` is DERIVED from the people list, so the count under the switches cannot drift from the roster above them.",
     "providers": [
       {
-        "id": "IP1", "type": "ldap", "displayName": "Aydın Metal AD",
+        "id": "IP1", "type": "ldap", "displayName": "Active Directory",
         "enabled": true, "priority": 10, "status": "active",
         "secretSet": true, "secretLast4": "9f2c", "secretField": "bindPassword",
         "verifiedHoursAgo": 3,
-        "config": { "url": "ldaps://dc01.aydinmetal.local", "baseDn": "OU=Kullanicilar,DC=aydinmetal,DC=local" }
+        "config": { "url": "ldaps://dc01.demo.local", "baseDn": "OU=Kullanicilar,DC=demo,DC=local" }
       },
       {
         "id": "IP2", "type": "oidc", "displayName": "Microsoft Entra ID",
         "enabled": true, "priority": 20, "status": "active",
         "secretSet": true, "secretLast4": "4b71", "secretField": "clientSecret",
         "verifiedHoursAgo": 9,
-        "config": { "issuer": "https://login.microsoftonline.com/aydinmetal/v2.0", "clientId": "aw-enterprise" }
+        "config": { "issuer": "https://login.microsoftonline.com/demo/v2.0", "clientId": "aw-enterprise" }
       },
       {
         "id": "IP3", "type": "saml", "displayName": "Keycloak (test)",

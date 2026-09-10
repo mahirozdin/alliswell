@@ -7,6 +7,32 @@
     <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
 
     <!--
+      EE-164 — the language. A browser that prefers Turkish is sent to the
+      Turkish twin before anything paints, unless the reader has chosen a
+      language with the switch (`aw_lang`, written by LangSwitch.vue). Only the
+      ENGLISH pages carry this: the Turkish ones never redirect back, so a
+      crawler — which prefers en-US and remembers nothing — indexes both, and
+      a person who followed a Turkish link gets the Turkish page they asked for.
+      Search and hash travel along, because every anchor id is the same in both
+      languages.
+    -->
+    <script>
+      try {
+        var pref = localStorage.getItem('aw_lang');
+        var langs = navigator.languages || [navigator.language || ''];
+        var wantsTr = false;
+        for (var i = 0; i < langs.length; i++) {
+          if (/^tr\b/i.test(langs[i])) wantsTr = true;
+        }
+        if (pref !== 'en' && (pref === 'tr' || wantsTr)) {
+          location.replace('/enterprise/tr' + location.search + location.hash);
+        }
+      } catch (e) {
+        /* no storage and no language list: stay on the page that was asked for */
+      }
+    </script>
+
+    <!--
       EE-143's anti-flash script. useTheme applies the attribute in onMounted,
       one paint too late, so a dark visitor sees white on every navigation.
       Wrapped because localStorage throws outright in some privacy modes, where
@@ -26,8 +52,8 @@
       }
     </script>
 
-    <title>AllisWell Enterprise — service desk, units and SLAs on your own servers</title>
-    <meta name="description" content="Teams, subdomains, permissions, units, ITSM with SLAs and service health, a public request portal and meeting-note AI — self-hosted, offline-first, on your own database." />
+    <title>AllisWell Enterprise — every work request in your organisation, managed in one place</title>
+    <meta name="description" content="Requests between departments, after-sales support requests, SLA tracking, permissions, tasks and documents in one system. In the cloud or on your own servers, in English and Turkish." />
     <link rel="canonical" href="https://alliswell.space/enterprise" />
 
     <!--
@@ -44,8 +70,8 @@
     <meta property="og:url" content="https://alliswell.space/enterprise" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="tr_TR" />
-    <meta property="og:title" content="AllisWell Enterprise — service desk, units and SLAs on your own servers" />
-    <meta property="og:description" content="Teams, units and permissions, a service catalogue with SLAs on a business calendar, and a public request portal — installed on your own servers." />
+    <meta property="og:title" content="AllisWell Enterprise — every work request in your organisation, managed in one place" />
+    <meta property="og:description" content="Requests between departments, after-sales support requests, SLA tracking, permissions, tasks and documents in one system — in the cloud or on your own servers." />
     <meta property="og:image" content="https://alliswell.space/shots/og/enterprise-en.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -89,7 +115,7 @@
             "operatingSystem": "Web, iOS, Android, macOS, Windows, Linux",
             "isAccessibleForFree": false,
             "publisher": { "@id": "https://alliswell.space/#org" },
-            "description": "A self-hosted service desk: teams, units and permissions, a service catalogue with SLAs measured on a business calendar, service-health monitors, and a public request portal."
+            "description": "Work request management for organisations: requests between departments and from customers, SLA tracking on a working calendar, permissions per department, tasks, notes and files — in the cloud or on the customer's own servers."
           },
           {
             "@type": "WebPage",
@@ -117,12 +143,12 @@
       reads.
     -->
     <div id="app">
-      <h1>A service desk your organisation runs, on your own servers</h1>
+      <h1>Every work request in your organisation, managed in one place</h1>
       <p>
-        Teams, units and permissions. A service catalogue whose promises are measured on a
-        business calendar rather than a wall clock. A public request form for the people who
-        have no account and should not need one. Installed on your hardware, against your own
-        database.
+        The requests your departments make of each other, the support requests that come in
+        from customers, dealers and suppliers, and your teams’ day-to-day tasks, notes and
+        files, all in one system. It runs in the cloud or on your own servers, and your data
+        stays yours.
       </p>
       <p>
         Write to <a href="mailto:info@bubiapps.com">info@bubiapps.com</a> ·

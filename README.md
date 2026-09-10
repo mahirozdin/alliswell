@@ -413,8 +413,9 @@ filed between departments rather than kept on one list:
 - **Meeting recordings that become work** — a speaker-separated note with the decisions
   pulled out, and a decision that turns into a ticket.
 
-It is self-hosted exactly like the rest of AllisWell: your hardware, your database, no
-request leaving the building unless you decide it should.
+It runs in the cloud under your organisation's own address, or on your own servers exactly
+like the rest of AllisWell: your hardware, your database, no request leaving the building
+unless you decide it should.
 
 **→ [What the Enterprise edition includes](https://alliswell.space/enterprise)**
 &nbsp;·&nbsp; **[Türkçe](https://alliswell.space/enterprise/tr)**

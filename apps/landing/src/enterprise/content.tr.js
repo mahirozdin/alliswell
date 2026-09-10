@@ -1,17 +1,32 @@
 /**
- * Enterprise sayfasının bütün metni, Türkçe (EE-151).
+ * Enterprise sayfasının bütün metni, Türkçe (EE-151; EE-164'te baştan yazıldı).
  *
  * İngilizce ikizi `content.en.js`; ikisinin aynı anahtar ağacını taşıdığını bir
- * gelenek değil bir kapı garanti ediyor (`npm run check:copy`, EE-152). Neyin
- * iddia edilebileceğine dair dört kural İngilizce dosyanın başlığında yazılı ve
- * burada da geçerli — özellikle: paket bir takıma satılanı anlatır, her
- * özelliğin etrafındaki sert sınırı değil; yönlendirme bir kural motoru değil;
- * müşterinin açamadığı bir ekran özellik değildir; ve yalnız ölçülmüş rakam
- * yazılır.
+ * gelenek değil bir kapı garanti ediyor (`npm run check:copy`, EE-152).
+ *
+ * ── KİME YAZILDI ─────────────────────────────────────────────────────────
+ *
+ * Okuyucu bir fabrikanın genel müdürü, bilgi işlem müdürü ya da satış sonrası
+ * hizmetler müdürü. Bu metin onlarla yapılan bir toplantıda kurulan cümlelerle
+ * yazılır: "servis masası", "team", "public portal" gibi çeviri kokan terimler
+ * yok; "talep yönetimi", "birim", "kurum dışı talep formu" var. Teknik altyapı
+ * (kod tabanı, bayt, anahtar sayısı) alıcının kararını değiştirmez ve sayfada
+ * yer almaz. Alıcının kararını değiştiren tek teknik olgu şudur: veri nerede
+ * durur, kim erişir — o da yazılıdır.
+ *
+ * ── NEYİN İDDİA EDİLEBİLECEĞİ ────────────────────────────────────────────
+ *
+ *   • Paket yalnız BULUT için vardır. Kendi sunucusuna kurulan bir kurum üst
+ *     yönetim katmanını hiç görmez; sınırları biz kurulumda tanımlarız. Bu
+ *     yüzden "kurduktan sonra paketleri yönetin" cümlesi bu sayfada olamaz.
+ *   • Kurulumu müşteri yapmaz, biz yaparız. "Nasıl kurulur", docker komutu,
+ *     kurulum rehberi bu sayfaya ait değildir.
+ *   • Yönlendirme bir kural motoru değildir: hizmet → birim, sabit ve açık.
+ *   • Yalnız var olan ekran gösterilir; yalnız ölçülmüş rakam yazılır; fiyat
+ *     yazılmaz.
  *
  * Ekran görüntüsü yolları BÜTÜN olarak saklanır (`/shots/ee/...`), asla
- * birleştirilmez: CI kapısı derlenmiş paketi bu dizgiler için tarıyor ve
- * çalışma zamanında kurulan bir yolu göremez.
+ * birleştirilmez: CI kapısı derlenmiş paketi bu dizgiler için tarıyor.
  */
 
 export const APP_URL = '/app';
@@ -21,19 +36,20 @@ export default {
   lang: 'tr',
 
   seo: {
-    title: 'AllisWell Enterprise — kendi sunucunuzda servis masası, birimler ve SLA',
+    title: 'AllisWell Enterprise — kurum içi ve kurum dışı iş taleplerini tek yerden yönetin',
     description:
-      "Team'ler, subdomain, izinler, birimler, SLA'lı ve sağlık izlemeli ITSM, public talep " +
-      "portalı ve toplantı notu AI'ı — kendi veritabanınızda, çevrimdışı çalışan bir kurulum.",
+      'Departmanlar arası iş talepleri, satış sonrası destek talepleri, SLA takibi, yetki ' +
+      'yönetimi, görev ve doküman yönetimi tek sistemde. Bulutta ya da kendi sunucunuzda, ' +
+      'Türkçe ve İngilizce.',
     ogImage: '/shots/og/enterprise-tr.jpg',
   },
 
   nav: {
     home: '/',
     links: [
-      { label: 'Servis masası', href: '#itsm' },
+      { label: 'Talep yönetimi', href: '#itsm' },
       { label: 'SLA', href: '#sla' },
-      { label: 'Kimlik', href: '#identity' },
+      { label: 'Kurulum seçenekleri', href: '#deploy' },
       { label: 'Paketler', href: '#packages' },
     ],
     cta: { label: 'İletişime geçin', href: '#contact' },
@@ -42,439 +58,463 @@ export default {
 
   hero: {
     eyebrow: 'AllisWell Enterprise',
-    title: 'Kendi sunucunuzda çalışan bir servis masası',
+    title: 'Kurumunuzdaki bütün iş taleplerini tek yerden yönetin',
     lede:
-      "Team'ler, birimler ve izinler. Verdiği sözü duvar saatine göre değil iş takvimine göre " +
-      'ölçen bir servis kataloğu. Hesabı olmayan — ve olmasına gerek olmayan — insanlar için ' +
-      'public bir talep formu. Kendi donanımınıza, kendi veritabanınıza kurulur; ve sahadaki ' +
-      'Wi-Fi çalışmadığında da çalışmaya devam eder.',
+      'Bakım, bilgi işlem, insan kaynakları, muhasebe gibi birimleriniz arasındaki iş ' +
+      'talepleri; müşteri, bayi ve tedarikçilerinizden gelen destek talepleri; ekiplerinizin ' +
+      'günlük görevleri, notları ve dosyaları — hepsi tek bir sistemde. Bulutta ya da kendi ' +
+      'sunucunuzda çalışır; veriniz sizde kalır.',
     primary: { label: 'İletişime geçin', href: '#contact' },
-    secondary: { label: 'Nasıl kurulur', href: '#ops' },
+    secondary: { label: 'Bulut mu, kendi sunucunuz mu?', href: '#deploy' },
+    facts: [
+      'Bulutta ya da kendi sunucunuzda',
+      'Türkçe ve İngilizce arayüz',
+      'Telefon, tablet, web ve masaüstü',
+      'İnternet kesildiğinde de çalışır',
+    ],
     shot: '/shots/ee/hero-light-tr.jpg',
     shotDark: '/shots/ee/hero-dark-tr.jpg',
     alt:
-      'Yan yana iki ekran: öncelik ve SLA durumlarıyla bir birimin talep kuyruğu, ve 47 talebin ' +
-      "%76,2'sinde sözün tutulduğunu birim ve servis kırılımlarıyla gösteren SLA panosu",
+      'Yan yana iki ekran: bir birimin öncelik ve SLA durumlarıyla talep listesi, ve birim ' +
+      've hizmet kırılımıyla söz tutma oranını gösteren SLA panosu',
   },
 
   personas: {
     eyebrow: 'Kimin için',
-    title: 'Üç farklı kurum, tek bir şekil',
+    title: 'Birden fazla birimi olan ve talepleri tek yerden yönetmek isteyen kurumlar için',
     items: [
       {
         key: 'internal',
         icon: '🏭',
-        title: 'Birbirine iş açan departmanlar',
+        title: 'Fabrikalar ve üretim tesisleri',
         body:
-          'Muhasebe, bakım, bilgi işlem, kalite, lojistik — her biri kendi işi ve kendi gelen ' +
-          'kutusu olan bir birim, ve hepsi birbirine talep açıyor. Bugün bu trafik ortak bir ' +
-          'mailbox ile birinin excel dosyasında yaşıyor, ve "şu an bakımda kaç açık talep var" ' +
-          'sorusuna bakıma sormadan kimse cevap veremiyor.',
+          'Bakım, bilgi işlem, kalite, lojistik, insan kaynakları, muhasebe: her birim bir ' +
+          'diğerinden sürekli bir şey ister. Bugün bu talepler telefonla, e-postayla ya da bir ' +
+          'Excel dosyasında yaşıyor. AllisWell Enterprise ile her talep doğru birime düşer; kim ' +
+          'ilgileniyor, ne durumda, ne zaman bitecek her an bellidir.',
       },
       {
-        key: 'msp',
+        key: 'afterSales',
         icon: '🤝',
-        title: 'Başka firmalara destek veren firmalar',
+        title: 'Satış sonrası hizmet veren firmalar',
         body:
-          'Müşterilerinizin hesap açmadan size ulaşması gerekiyor, sözleşmeleriniz yanıt ' +
-          'süresi yazıyor, ve kaçırmanın bir bedeli var. Müşteri başına yayınlanmış bir form, ' +
-          'cevaplayan birime yönlenen bir talep, ve hatırlanan değil ölçülen bir söz.',
+          'Müşterileriniz, bayileriniz ve tedarikçileriniz size sistemde hesap açmadan talep ' +
+          'iletir. Her talep ilgili ekibe gider, söz verdiğiniz yanıt süresi takip edilir, talep ' +
+          'sahibi de durumu kendi bağlantısından izler. Ortak e-posta kutusunda kaybolan iş kalmaz.',
       },
       {
         key: 'regulated',
         icon: '🔐',
-        title: 'Yaptığını belgelemek zorunda olan kurumlar',
+        title: 'Kamu, sağlık ve KVKK kapsamındaki kurumlar',
         body:
-          'Kamu kurumları, hastaneler, KVKK ya da GDPR kapsamındaki herkes: veri sizin ' +
-          'kontrol ettiğiniz donanımda kalıyor, her değişikliğin karşısında bir isim var, ve ' +
-          'hesaplar zaten işlettiğiniz dizinden geliyor — yani işten ayrılan biri erişimini ' +
-          'aynı gün kaybediyor.',
+          'Veriler sizin sunucunuzda kalır, her işlemin kaydı tutulur, kullanıcı hesapları ' +
+          'mevcut Active Directory yapınızdan gelir. İşten ayrılan personelin erişimi aynı gün ' +
+          'kapanır; denetimde "kim, ne zaman, neyi değiştirdi" sorusunun cevabı hazırdır.',
       },
     ],
-  },
-
-  proof: {
-    eyebrow: 'İddia değil, ölçüm',
-    title: 'Anlatmak yerine gösterebildiklerimiz',
-    items: [
-      {
-        value: '1.000.000',
-        label: 'kayıtlık kıyaslama süiti',
-        note: 'Uyum panosu CI\'da bir milyon satırlık bir masaya karşı ölçülüyor.',
-      },
-      {
-        value: '49',
-        label: 'adlı izin, üç kapıda birden zorlanıyor',
-        note: 'REST, cihaz senkronu ve AI bağlayıcısı tek defteri okuyor; boşlukta CI kırmızı.',
-      },
-      {
-        value: '2',
-        label: 'dil, en alta kadar',
-        note: 'Ekranlar, e-postalar ve public talep formu — her birinde 634 anahtar.',
-      },
-      {
-        value: '6',
-        label: 'platform, tek kod tabanından',
-        // Six proper nouns; translating them would invent products.
-        note: 'iOS, Android, web, macOS, Windows, Linux.', // i18n-same
-      },
-      {
-        value: '0',
-        label: 'bayt ağınızın dışına çıkıyor',
-        note: 'Siz bir şey bağlamadıkça; bağlarsanız da yalnız bağladığınız kadar.',
-      },
-    ],
-  },
-
-  portal: {
-    eyebrow: 'Public talep portalı',
-    title: 'Şirketinizin dışından biri bir şey istiyor. Hesabı yok.',
-    lede:
-      'Bir tedarikçiye kullanıcı hesabı açmak genelde yanlış cevaptır, ortak bir mailbox ise ' +
-      'zaten cevap değildir. Bir takım, cevaplayan birime yönlenen public bir adreste talep ' +
-      'formu yayınlar — ve o noktadan sonrası, kendi personelinizin çalıştığı sistemin ta ' +
-      'kendisidir.',
-    steps: [
-      {
-        n: 1,
-        title: 'Bir yönetici form yayınlar',
-        body:
-          'Form tek bir servise, birden fazla birim o servisi veriyorsa tek bir birime ' +
-          'bağlanır. Süresi, duraklatan bir anahtarı, ne kadar kullanılabileceğine dair bir ' +
-          'kotası ve kalıcı bir iptali vardır. Adres yalnız bir kez gösterilir: sunucu ondan ' +
-          'yalnız bir özet saklar, yani sızan bir bağlantı öldürülebilir ama geri alınamaz.',
-        shot: '/shots/ee/portal-links-light-tr.jpg',
-        shotDark: '/shots/ee/portal-links-dark-tr.jpg',
-        alt:
-          'Portal bağlantıları ekranı: servisi, süresi ve kota kullanımıyla dört yayınlanmış ' +
-          'form; iptal edilen bağlantıda kontroller tamamen kayboluyor',
-        frameLabel: 'takiminiz.alanadiniz — talep formları',
-      },
-      {
-        n: 2,
-        title: 'Bir yabancı formu doldurur',
-        body:
-          'Hesap yok, uygulama yok, JavaScript de yok — sayfa sunucuda çiziliyor ve içerik ' +
-          'politikası betiği tamamen yasaklıyor, çünkü bu ürünün kimlik istemeden açılan tek ' +
-          'kapısı. Dilini tarayıcıdan seçiyor, ve bizim değil sizin adınızı, logonuzu ve ' +
-          'renginizi taşıyor.',
-        shot: '/shots/ee/portal-form-light-tr.jpg',
-        shotDark: '/shots/ee/portal-form-dark-tr.jpg',
-        alt:
-          'Public talep formu: firma adı, servis, e-posta alanı, konu, açıklama ve bu servisin ' +
-          'sorduğu iki özel alan',
-        frameLabel: 'takiminiz.alanadiniz/p/…',
-      },
-      {
-        n: 3,
-        title: 'Talep, cevaplandığı yere düşer',
-        body:
-          'Servis hangi birimin cevapladığını söyler, talep de o birimin kuyruğuna gider. Bu ' +
-          'zekice değil, bilinçli: yapılandırılacak bir kural motoru yok ve hiçbir şey tahmin ' +
-          'edilmiyor. Kimsenin cevaplamadığı bir servis hiçbir şey alamaz, birden fazla birimin ' +
-          'verdiği bir servis ise yanlış masaya gönderilmek yerine reddedilir.',
-      },
-      {
-        n: 4,
-        title: 'Saat başlar, ve birime bir kez haber verilir',
-        body:
-          'O servise bağlı SLA politikası bir ilk-yanıt saati ve bir çözüm saati açar. Birime ' +
-          'talep başına değil toplu tek bir bildirim gider — bir öğleden sonra kırk talep alan ' +
-          'bir masa, kırk e-posta değil bir liste alır.',
-      },
-      {
-        n: 5,
-        title: 'Soran kişi takip edebilir',
-        body:
-          'Bir onay ve bir bağlantı alır. Arkasındaki sayfa konuyu, durumu ve iki tarihi ' +
-          'gösterir — ve durum sizinkinden bilerek daha kabadır: yedi durumunuz beşe iner, ' +
-          'çünkü "talebinizi iptal ettik" bir insanın yapacağı konuşmadır, bir durum sayfasının ' +
-          'kıracağı bir haber değil.',
-        shot: '/shots/ee/portal-follow-light-tr.jpg',
-        shotDark: '/shots/ee/portal-follow-dark-tr.jpg',
-        alt:
-          'Takip sayfası: talebin konusu, "Alındı" durumu, ve gönderildiği ile son ' +
-          'güncellendiği tarihler',
-        frameLabel: 'takiminiz.alanadiniz/t/…',
-      },
-    ],
-    aside: {
-      title: 'Açık kapı olduğu için öyle muamele görüyor',
-      body: 'Dört katman, ve hiçbiri meşru bir ziyaretçiden bir şey istemiyor:',
-      points: [
-        'Gözden, klavyeden ve ekran okuyucudan aynı anda gizlenmiş bir tuzak alan.',
-        'Adres başına bir tavan ve form başına ikinci bir tavan — çünkü bir botnet\'in çok adresi, tek hedefi vardır.',
-        'Hiçbir iş yapılmadan önce kontrol edilen ve yalnız talep kabul edilirse harcanan aylık kota; yani reddedilen spam takıma hiçbir şeye mal olmuyor.',
-        'Kapalı başarısız olan isteğe bağlı bir doğrulama, ve askıdaki bir takımın yeni kimseyi kabul etmemesi.',
-        'Her ret — yanlış host, bilinmeyen bağlantı, süresi dolmuş, iptal edilmiş, duraklatılmış — aynı sayfayla cevaplanıyor, yani bir tarayıcı aradaki farktan hiçbir şey öğrenemiyor.',
-      ],
-    },
   },
 
   itsm: {
     id: 'itsm',
-    eyebrow: 'Servis masası',
-    title: 'Bir birimin gerçekten çalıştığı kuyruk',
+    eyebrow: 'Talep yönetimi (ITSM)',
+    title: 'Her birimin kendi talep listesi',
     body:
-      'Talep birine verilmiş bir sözdür; görev ise bir listedeki iştir. İkisini ayrı şeyler ' +
-      'tutmak, bir talebin atanmış işe dönüşürken soran kişiyle bağını koparmamasını sağlar. ' +
-      'Öncelik, durum ve sözün hâli her satırda — bir fabrika sahasında telefonla çekilmiş ' +
-      'bir ekran fotoğrafında bile okunacak şekilde.',
+      'Bir birime gelen bütün talepler tek listede toplanır: kim istemiş, kim ilgileniyor, ' +
+      'önceliği ne, söz verilen süre ne durumda. Talep ilgili kişilere görev olarak dağıtılır; ' +
+      'talebi açan kişiyle bağ kopmaz, sonuçlandığında haberi olur.',
     points: [
-      'Sunucunun zorladığı geçiş haritasıyla yedi durum — ve kapandıktan sonra yeniden açma yok: geri gelen bir konu, eskisine bağlı YENİ bir taleptir',
-      'Çevrimdışı çalışır. Kuyruk cihazdadır; ağ geri gelmeden okunur ve düzenlenir',
-      'Bir talepten çok görev çıkabilir; bir görev en fazla bir talebe aittir',
+      'Her talebin durumu, öncelik seviyesi ve sorumlusu listede bir bakışta görünür',
+      'Bir talep birden fazla kişiye görev olarak dağıtılabilir; her görevin sorumlusu bellidir',
+      'İnternet kesildiğinde de liste açılır ve düzenlenir; bağlantı gelince değişiklikler eşitlenir',
     ],
     shot: '/shots/ee/ticket-queue-light-tr.jpg',
     shotDark: '/shots/ee/ticket-queue-dark-tr.jpg',
     alt:
-      'Bir birimin talep kuyruğu: öncelik noktaları, durum, SLA hâli ve atanan kişilerle dört ' +
-      'talep; biri SLA aşıldı, biri sözü tutulmuş olarak kapanmış',
-    frameLabel: 'takiminiz.alanadiniz — talepler',
+      'Bir birimin talep listesi: öncelik, durum, SLA hâli ve sorumlu kişilerle dört talep; ' +
+      'biri süresi aşılmış, biri zamanında kapatılmış',
+    frameLabel: 'sirketiniz.alliswell.space — talepler',
   },
 
   itsmTabs: {
-    eyebrow: 'Ve masanın geri kalanı',
-    title: 'Ne istenebilir, kim cevaplar, ve ne olmuş',
+    eyebrow: 'Talep yönetiminin parçaları',
+    title: 'Hizmet kataloğu, yönlendirme ve talep detayı',
     lede:
-      'Katalog, çoğu servis masasının atladığı kısımdır — ve geri kalanı çalıştıran da odur: ' +
-      'bir servis adı taşıyan talep, insan okumadan yönlendirilebilir.',
+      'Kurumunuzun hangi hizmetleri verdiğini bir kez tanımlarsınız; sonrasında her talep ' +
+      'hangi birime gideceğini kendisi bilir.',
     tabs: [
       {
         id: 'catalogue',
-        label: 'Katalog',
+        label: 'Hizmet kataloğu',
         shot: '/shots/ee/services-admin-light-tr.jpg',
         shotDark: '/shots/ee/services-admin-dark-tr.jpg',
-        alt: 'Servis kataloğu: cevaplayan birimleriyle servisler, biri arşivlenmiş',
+        alt: 'Hizmet kataloğu: her hizmetin yanında onu veren birimler; biri arşivlenmiş',
         caption:
-          'Her servis kendi sorularını sorabilir — küçük ve kapalı bir alan tipi kümesiyle, ' +
-          'yani bir form form olarak kalıyor, bir programlama diline dönüşmüyor.',
-        frameLabel: 'takiminiz.alanadiniz — servisler',
+          'Elektrik arızası, kalibrasyon, kartlı geçiş, yazılım kurulumu… Her hizmet için talep ' +
+          'formunda sorulacak ek alanları da siz belirlersiniz.',
+        frameLabel: 'sirketiniz.alliswell.space — hizmetler',
       },
       {
         id: 'routing',
-        label: 'Kim cevaplıyor',
+        label: 'Hangi birim ilgilenir',
         shot: '/shots/ee/service-routing-light-tr.jpg',
         shotDark: '/shots/ee/service-routing-dark-tr.jpg',
-        alt: 'Bir servisin, onu cevaplayan birimlere yönlendirilmesi',
+        alt: 'Bir hizmetin, onu cevaplayan birimlere bağlanması',
         caption:
-          'Kimseye yönlendirilmemiş bir servis, umutla bir yerde kuyruğa alınmak yerine ' +
-          'reddediliyor. O ret bir özelliktir.',
-        frameLabel: 'takiminiz.alanadiniz — yönlendirme',
+          'Her hizmet bir ya da birden fazla birime bağlanır; gelen talep doğrudan o birimin ' +
+          'listesine düşer. Elle dağıtım yapan bir ara kademeye gerek kalmaz.',
+        frameLabel: 'sirketiniz.alliswell.space — yönlendirme',
       },
       {
         id: 'detail',
-        label: 'Bir talep',
+        label: 'Talep detayı',
         shot: '/shots/ee/ticket-detail-light-tr.jpg',
         shotDark: '/shots/ee/ticket-detail-dark-tr.jpg',
         alt:
-          'Açılmış bir talep: konuşma, ve bir renk tonu, bir kilit ve "talep sahibi bunu ' +
-          'göremez" sözleriyle işaretlenmiş iç not',
+          'Açılmış bir talep: talep sahibiyle yazışma ve ayrıca işaretlenmiş, talep sahibine ' +
+          'görünmeyen bir iç not',
         caption:
-          'İç not aynı anda üç şekilde işaretleniyor: renk, renk körü bir okuyucuda; ikon, ' +
-          'kirli bir ekrana şöyle bir bakışta; kelime ise en kolay atlanan.',
-        frameLabel: 'takiminiz.alanadiniz — talep',
+          'Talep sahibiyle yazışma ve ekibin kendi iç notları aynı ekranda, ama ayrı işaretli: ' +
+          'iç not talep sahibine hiçbir zaman görünmez.',
+        frameLabel: 'sirketiniz.alliswell.space — talep',
       },
     ],
   },
 
   sla: {
     id: 'sla',
-    eyebrow: 'SLA ve servis sağlığı',
-    title: 'Duvar saatine göre değil, sizin takviminize göre ölçülen bir söz',
+    eyebrow: 'SLA ve hizmet takibi',
+    title: 'Yanıt ve çözüm süreleri, sizin mesai saatlerinize göre',
     body:
-      'Bir fabrika 18:00\'de durmaz, ve üç vardiyalı bir güne göre ölçülen hedef, dokuz-beşe ' +
-      'göre ölçülenden başka bir sayıdır. Yanıt ve çözüm hedefleri çalışma saatlerine, resmî ' +
-      'tatillere ve takımın kendi saat dilimine göre işler — ve bir gece vardiyası iki değil ' +
-      'tek satırdır, çünkü 22:00–06:00 gece yarısından ikiye bölünmüş iki parça değil, tek ' +
-      'bir aralıktır.',
+      'Her hizmet için ilk yanıt ve çözüm süresi hedefi belirlersiniz. Süreler kurumunuzun ' +
+      'çalışma saatlerine, vardiyalarına ve resmî tatillere göre işler; hafta sonu ya da gece ' +
+      'boşuna sayılmaz. Hedef yaklaşınca sorumlu birim uyarılır, aşıldığında kayda geçer.',
     points: [
-      'Saat çıkarma değil biriktirme yapıyor, yani bir talebi "beklemede"ye atıp geri almak sözü sıfırlamıyor',
-      '%80\'de uyarı, talep kapandıktan sonra bile yapışkan kalan ihlal, ve geçen süreyle değil ÇALIŞMA dakikalarıyla sayılan eskalasyon',
-      'Çalışma saatlerinizi düzenlemek bundan sonrasını değiştirir, olmuş olanı asla: hedef ve takvim, saat başlarken saatin üzerine donduruluyor',
+      'Öncelik seviyesine göre farklı hedefler: acil bir arıza ile sıradan bir talep aynı süreye tabi olmaz',
+      'Beklemeye alınan talebin süresi durur; devam ettiğinde kaldığı yerden sayar',
+      'Yönetim panosunda hangi birim ve hangi hizmet sözünü tutuyor, hangisi tutmuyor tek bakışta görünür',
     ],
     shot: '/shots/ee/sla-dashboard-light-tr.jpg',
     shotDark: '/shots/ee/sla-dashboard-dark-tr.jpg',
     alt:
-      "SLA panosu: 47 talebin %76,2'sinde söz tutulmuş; birim ve servis kırılımları, ve altta " +
-      'aşılan hedeflerin listesi',
-    frameLabel: 'takiminiz.alanadiniz — SLA',
+      'SLA panosu: dönem içindeki taleplerin yüzde kaçında sözün tutulduğu; birim ve hizmet ' +
+      'kırılımı; altta süresi aşılan taleplerin listesi',
+    frameLabel: 'sirketiniz.alliswell.space — SLA panosu',
   },
 
   slaTabs: {
-    eyebrow: 'Sözün parçaları',
-    title: 'Hedefler, çalışma saatleri, ve zaten izlediğiniz o adres',
-    lede:
-      'Ve bilerek "hiçbir şey" olmasına izin verilen bir sayı: henüz hiçbir sözün vadesi ' +
-      'gelmemiş bir masa, neşeli bir yüzde yüz yerine bir tire gösterir.',
+    eyebrow: 'SLA ayarları',
+    title: 'Süre hedefleri, çalışma takvimi ve sistem sağlığı',
+    lede: 'Tanımlar bir kez yapılır; sonrasında sistem ölçer, siz sonucu görürsünüz.',
     tabs: [
       {
         id: 'targets',
-        label: 'Hedefler',
+        label: 'Süre hedefleri',
         shot: '/shots/ee/sla-policies-light-tr.jpg',
         shotDark: '/shots/ee/sla-policies-dark-tr.jpg',
-        alt: 'Önceliğe göre ilk yanıt ve çözüm hedefleriyle SLA politikaları',
+        alt: 'Öncelik seviyesine göre ilk yanıt ve çözüm hedefleriyle SLA politikaları',
         caption:
-          'Öncelik başına ilk yanıt ve çözüm. Takvimi olmayan bir politika 7/24 demektir — ' +
-          'eksik bir ayar değil, gerçek bir taahhüt.',
-        frameLabel: 'takiminiz.alanadiniz — SLA politikaları',
+          'Her öncelik seviyesi için ayrı ilk yanıt ve çözüm süresi. İsterseniz 7/24, ' +
+          'isterseniz yalnız mesai saatleri içinde sayılır.',
+        frameLabel: 'sirketiniz.alliswell.space — SLA hedefleri',
       },
       {
         id: 'calendar',
-        label: 'Çalışma saatleri',
+        label: 'Çalışma takvimi',
         shot: '/shots/ee/sla-calendars-light-tr.jpg',
         shotDark: '/shots/ee/sla-calendars-dark-tr.jpg',
-        alt: 'Çalışma aralıkları ve resmî tatilleriyle bir iş takvimi',
+        alt: 'Çalışma saatleri ve resmî tatilleriyle bir çalışma takvimi',
         caption:
-          'Takvim başına saatler, tatiller ve bir saat dilimi. Yaz saati yaklaşık olarak değil ' +
-          'gerçekten ele alınıyor, ve içinde hiç saat olmayan bir takvim reddediliyor.',
-        frameLabel: 'takiminiz.alanadiniz — takvimler',
+          'Mesai saatleri, vardiyalar, resmî tatiller ve saat dilimi. Üç vardiyalı bir fabrika ' +
+          'ile 09:00–18:00 çalışan bir ofis farklı takvim kullanır.',
+        frameLabel: 'sirketiniz.alliswell.space — takvimler',
       },
       {
         id: 'health',
-        label: 'Servis sağlığı',
+        label: 'Sistem sağlığı',
         shot: '/shots/ee/sla-monitors-light-tr.jpg',
         shotDark: '/shots/ee/sla-monitors-dark-tr.jpg',
-        alt: 'Servis adreslerini izleyen sağlık kontrolleri, aralıkları ve son sonuçlarıyla',
+        alt: 'Kritik sistemlerin adreslerini izleyen sağlık kontrolleri, aralıkları ve son sonuçlarıyla',
         caption:
-          'İzlenen bir adres düştüğünde tek bir olay kaydı açılıyor, bir dakika sonra ikincisi ' +
-          'açılmıyor. Geri geldiğinde de düzelme aynı kaydın üzerine yazılıyor.',
-        frameLabel: 'takiminiz.alanadiniz — sağlık',
+          'Kritik uygulamalarınızın adreslerini izletin: bir sistem yanıt vermediğinde ' +
+          'otomatik olarak kayıt açılır, düzeldiğinde aynı kayda not düşülür.',
+        frameLabel: 'sirketiniz.alliswell.space — sistem sağlığı',
       },
     ],
+  },
+
+  portal: {
+    eyebrow: 'Satış sonrası hizmet ve kurum dışı talepler',
+    title: 'Müşterileriniz ve bayileriniz size hesap açmadan talep iletsin',
+    lede:
+      'Her müşteriye kullanıcı hesabı açmak pratik değildir; ortak bir e-posta kutusu ise ' +
+      'takip edilemez. AllisWell Enterprise ile her hizmet için herkese açık bir talep formu ' +
+      'yayınlarsınız: formu dolduran kişi sisteme girmeden talebini iletir, talep doğru ekibe ' +
+      'düşer ve durumu dışarıdan takip edilir.',
+    steps: [
+      {
+        n: 1,
+        title: 'Talep formunu yayınlarsınız',
+        body:
+          'Form belirli bir hizmete ve o hizmeti veren birime bağlıdır. Bağlantıya süre sınırı ' +
+          've aylık talep kotası koyabilir, dilediğiniz an durdurabilir ya da iptal edebilirsiniz.',
+        shot: '/shots/ee/portal-links-light-tr.jpg',
+        shotDark: '/shots/ee/portal-links-dark-tr.jpg',
+        alt:
+          'Talep formları ekranı: hizmeti, süresi ve kota kullanımıyla dört yayınlanmış form; ' +
+          'iptal edilen formda kontroller kaybolmuş',
+        frameLabel: 'sirketiniz.alliswell.space — talep formları',
+      },
+      {
+        n: 2,
+        title: 'Müşteriniz formu doldurur',
+        body:
+          'Hesap açmaz, uygulama indirmez. Form sizin adınız, logonuz ve kurumsal renginizle ' +
+          'görünür; dili ziyaretçinin tarayıcısına göre Türkçe ya da İngilizce açılır.',
+        shot: '/shots/ee/portal-form-light-tr.jpg',
+        shotDark: '/shots/ee/portal-form-dark-tr.jpg',
+        alt:
+          'Herkese açık talep formu: kurum adı, hizmet, e-posta, konu, açıklama ve bu hizmete ' +
+          'özel iki ek alan',
+        frameLabel: 'sirketiniz.alliswell.space/p/…',
+      },
+      {
+        n: 3,
+        title: 'Talep doğrudan ilgili birime düşer',
+        body:
+          'Hizmet hangi birime bağlıysa talep o birimin listesinde belirir. Arada e-postayı ' +
+          'yönlendiren ya da telefonla haber veren kimseye ihtiyaç kalmaz.',
+      },
+      {
+        n: 4,
+        title: 'Süre işlemeye başlar, ekip haberdar olur',
+        body:
+          'Hizmete bağlı SLA hedefi devreye girer. Ekip her talep için ayrı ayrı değil, toplu ' +
+          'tek bir bildirim alır: yoğun bir günde kırk e-posta yerine tek liste.',
+      },
+      {
+        n: 5,
+        title: 'Talep sahibi durumu takip eder',
+        body:
+          'Formu dolduran kişi bir takip bağlantısı alır. Bu sayfada talebin konusu, durumu ve ' +
+          'son güncelleme tarihi görünür; sisteme giriş gerekmez.',
+        shot: '/shots/ee/portal-follow-light-tr.jpg',
+        shotDark: '/shots/ee/portal-follow-dark-tr.jpg',
+        alt: 'Takip sayfası: talebin konusu, "Alındı" durumu, gönderilme ve son güncelleme tarihleri',
+        frameLabel: 'sirketiniz.alliswell.space/t/…',
+      },
+    ],
+    aside: {
+      title: 'Herkese açık form, kötüye kullanıma karşı korumalıdır',
+      body:
+        'Formu gerçek müşterileriniz rahatça kullanır; otomatik gönderim yapan yazılımlara ' +
+        'karşı ise dört katmanlı koruma vardır:',
+      points: [
+        'Robot gönderimlerini yakalayan, insanların hiç görmediği tuzak alanı.',
+        'Aynı adresten ve aynı forma art arda gönderime karşı hız sınırı.',
+        'Aylık talep kotası: reddedilen gönderimler kotadan düşmez, size hiçbir maliyet getirmez.',
+        'İstenirse ek doğrulama adımı; süresi dolmuş ya da iptal edilmiş bağlantılar hiçbir bilgi vermeden kapanır.',
+      ],
+    },
   },
 
   org: {
     id: 'org',
-    eyebrow: 'Organizasyon',
-    title: 'Birimler bir klasör değil, şirketin şeklidir',
+    eyebrow: 'Organizasyon yapısı',
+    title: 'Birimler, tıpkı organizasyon şemanızdaki gibi',
     body:
-      'Birim bir departman, bir atölye, bir saha — sizinkinin gerçekte hangi şekli varsa o. ' +
-      'Birimler kendi içeriklerinin ve kendi gelen kutularının sahibidir, ve içerik kişiyi ' +
-      'değil birimi izler; yani masası değişen biri bir yıllık talebi yanında götürmez. Her ' +
-      'takımın kendi adresi vardır, ve başka bir takımın verisine yapılan istek, o takımın ' +
-      'var olduğunu bile kabul etmeyen düz bir 404 ile döner.',
+      'Her departman, atölye ya da şube sistemde bir birimdir. Görevler, talepler, notlar ve ' +
+      'dosyalar kişiye değil birime aittir; biri işten ayrıldığında ya da bölüm değiştirdiğinde ' +
+      'iş kaybolmaz. Birimler arası paylaşım açıkça verilir, geri alındığında kalkar.',
     points: [
-      'Birimler arası paylaşım açıktır, belirli bir şey için verilir, ve geri alındığında karşı tarafta kaybolur',
-      'Bir cihaz tam olarak sahibinin ait olduğu birimleri senkronlar — sınır, gizlenenle değil GELENLE korunur',
-      'Bir takımın adresine kayıt yalnız davetlidir, ve akışın tamamı hiç mail sunucusu olmayan bir kurulumda tamamlanır',
+      'Her çalışan yalnız üyesi olduğu birimlerin verisini görür; cihazına da yalnız o veri iner',
+      'Kurumunuz sisteme kendi adresinden girer (örneğin sirketiniz.alliswell.space); başka kurumların verisiyle hiçbir temas yoktur',
+      'Yeni kullanıcı yalnız davetle katılır; davet bağlantısı süreli ve iptal edilebilir',
     ],
     shot: '/shots/ee/units-admin-light-tr.jpg',
     shotDark: '/shots/ee/units-admin-dark-tr.jpg',
-    alt:
-      'Birimler ekranı: üye sayılarıyla dört birim; biri sizin yönettiğiniz olarak işaretli, ' +
-      'biri arşivlenmiş',
-    frameLabel: 'takiminiz.alanadiniz — birimler',
+    alt: 'Birimler ekranı: üye sayılarıyla dört birim; biri sizin yönettiğiniz, biri arşivlenmiş',
+    frameLabel: 'sirketiniz.alliswell.space — birimler',
   },
 
   orgTabs: {
-    eyebrow: 'İzinler, ve kayıt',
-    title: 'Kim ne yapabilir, ve kim ne yapmış',
+    eyebrow: 'Yetki ve rol yönetimi',
+    title: 'Kim neyi yapabilir, kim ne yapmış',
     lede:
-      'Erişim, üç sabit rolle değil adlı izinlerle tanımlanıyor; yani "bakım şefi kendi ' +
-      'biriminde yeniden atama yapabilir ama talebi kapatamaz" cümlesi bir yöneticinin ' +
-      'yazdığı bir şey oluyor, bizden özellik istediği bir şey değil.',
+      'Yetkiler hazır kalıplarla sınırlı değildir. "Bakım şefi kendi biriminde talep atayabilir ' +
+      'ama kapatamaz" gibi bir kuralı yöneticiniz kendisi tanımlar.',
     tabs: [
       {
         id: 'roles',
-        label: 'Roller',
+        label: 'Roller ve yetkiler',
         shot: '/shots/ee/team-roles-light-tr.jpg',
         shotDark: '/shots/ee/team-roles-dark-tr.jpg',
-        alt: 'Rol düzenleyici: roller boyunca adlı izinlerden oluşan bir yetki matrisi',
+        alt: 'Rol düzenleyici: rollere göre tek tek verilen yetkilerden oluşan bir matris',
         caption:
-          'Özel roller tam bir küme olarak değil, bir tabandan FARK olarak saklanıyor; yani ' +
-          'daralttığınız bir rol, sonradan eklenen her izni yine de alıyor.',
-        frameLabel: 'takiminiz.alanadiniz — roller',
+          'Görev oluşturma, talep kapatma, dosya paylaşma gibi onlarca yetki tek tek açılıp ' +
+          'kapatılır; birimlere özel roller tanımlanır.',
+        frameLabel: 'sirketiniz.alliswell.space — roller',
       },
       {
         id: 'delegated',
-        label: 'Devredilmiş görünüm',
+        label: 'Birim yöneticisi görünümü',
         shot: '/shots/ee/units-manager-light-tr.jpg',
         shotDark: '/shots/ee/units-manager-dark-tr.jpg',
-        alt: 'Aynı birimler ekranı, devredilmiş bir yöneticinin gördüğü hâliyle',
+        alt: 'Aynı birimler ekranı, bir birim yöneticisinin gördüğü hâliyle: yalnız kendi birimi',
         caption:
-          'Birinin yapamayacağı şey, soluklaştırılmış değil YOK. Devre dışı bir kontrol bile ' +
-          'bir yeteneğin sözünü verir.',
-        frameLabel: 'takiminiz.alanadiniz — birimler',
+          'Birim yöneticisi yalnız kendi birimini yönetir; yetkisi olmayan işlemler ekranda ' +
+          'soluk değil, hiç görünmez.',
+        frameLabel: 'sirketiniz.alliswell.space — birimler',
       },
       {
         id: 'history',
-        label: 'Geçmiş',
+        label: 'İşlem geçmişi',
         shot: '/shots/ee/ticket-history-light-tr.jpg',
         shotDark: '/shots/ee/ticket-history-dark-tr.jpg',
         alt:
-          'Bir talebin geçmişi: oluşturuldu, atandı, durumu değişti, sistem bir SLA hedefini ' +
-          'kaçırdı, ve güncellendi',
+          'Bir talebin geçmişi: oluşturuldu, atandı, durumu değişti, sistem bir SLA hedefinin ' +
+          'aşıldığını kaydetti, güncellendi',
         caption:
-          'Her kaydın kendi geçmişi var, ve "kim" sorusunun cevabı sistem de olabilir — bir ' +
-          'SLA süpürgesi insan değildir ve kayıt bunu gizlemiyor. Takım geneli iz, API ' +
-          'üzerinden CSV olarak dışa aktarılıyor.',
-        frameLabel: 'takiminiz.alanadiniz — geçmiş',
+          'Her talep ve görevde kimin ne zaman ne yaptığı kayıtlıdır. Kurum genelindeki işlem ' +
+          'kaydı denetim için dışa aktarılabilir.',
+        frameLabel: 'sirketiniz.alliswell.space — geçmiş',
+      },
+    ],
+  },
+
+  workspace: {
+    id: 'work',
+    eyebrow: 'Günlük işler',
+    title: 'Görevler, projeler, notlar ve dosyalar da aynı sistemde',
+    body:
+      'Talep yönetiminin yanında ekipleriniz günlük işlerini de burada yürütür: kişisel ve ' +
+      'ortak görev listeleri, proje bazlı iş takibi, toplantı notları ve kurumsal dokümanlar. ' +
+      'Bir talep tek tıkla göreve dönüşür; görevlere dosya ve not eklenir.',
+    points: [
+      'Geciken, bugünkü ve bu haftaki işler tek listede; ay takvimi hemen yanında',
+      'Hatırlatıcılar telefon sessizdeyken bile çalar; acil işler gözden kaçmaz',
+      'Google ve Apple takvimleriyle iki yönlü eşitleme: görevler takvimde, takvim görevlerin yanında',
+    ],
+    shot: '/shots/ee/work-home-light-tr.jpg',
+    shotDark: '/shots/ee/work-home-dark-tr.jpg',
+    alt:
+      'Ana sayfa: geciken, bugünkü ve bu haftaki görevler proje ve etiket rozetleriyle tek ' +
+      'listede; sağda ay takvimi',
+    frameLabel: 'sirketiniz.alliswell.space — görevler',
+  },
+
+  workspaceTabs: {
+    eyebrow: 'Ekip çalışması',
+    title: 'Pano, projeler, notlar ve dosyalar',
+    lede:
+      'Her ekibin alışık olduğu çalışma biçimi: kimi liste ister, kimi pano. İkisi de aynı ' +
+      'verinin farklı görünümüdür.',
+    tabs: [
+      {
+        id: 'board',
+        label: 'Pano',
+        shot: '/shots/ee/work-board-light-tr.jpg',
+        shotDark: '/shots/ee/work-board-dark-tr.jpg',
+        alt: 'Pano görünümü: açık, devam eden, bekleyen ve tamamlanan sütunlarında görev kartları',
+        caption:
+          'Açık, devam eden, bekleyen ve tamamlanan işler sütunlar hâlinde; kartlar ' +
+          'sürüklenerek taşınır, sütunlar ekibe göre düzenlenir.',
+        frameLabel: 'sirketiniz.alliswell.space — pano',
+      },
+      {
+        id: 'projects',
+        label: 'Projeler',
+        shot: '/shots/ee/work-projects-light-tr.jpg',
+        shotDark: '/shots/ee/work-projects-dark-tr.jpg',
+        alt: 'Projeler ekranı: renk ve ilerleme bilgisiyle proje kartları',
+        caption:
+          'Her proje kendi görevleri, notları ve dosyalarıyla bir arada; ilerleme ve sorumlular ' +
+          'tek sayfada görünür.',
+        frameLabel: 'sirketiniz.alliswell.space — projeler',
+      },
+      {
+        id: 'notes',
+        label: 'Notlar',
+        shot: '/shots/ee/work-notes-light-tr.jpg',
+        shotDark: '/shots/ee/work-notes-dark-tr.jpg',
+        alt: 'Notlar ekranı: sabitlenmiş notlar ve projelere bağlı notlar',
+        caption:
+          'Toplantı notları, talimatlar, prosedürler: başlıklar, tablolar ve resimlerle ' +
+          'biçimlendirilmiş metin; PDF olarak dışa aktarılır.',
+        frameLabel: 'sirketiniz.alliswell.space — notlar',
+      },
+      {
+        id: 'files',
+        label: 'Dosyalar',
+        shot: '/shots/ee/work-files-light-tr.jpg',
+        shotDark: '/shots/ee/work-files-dark-tr.jpg',
+        alt: 'Dosyalar ekranı: klasörler ve yüklenmiş kurumsal dokümanlar',
+        caption:
+          'Klasörlerle düzenlenen kurumsal doküman arşivi; her dosya hangi göreve ya da ' +
+          'projeye bağlı olduğunu gösterir.',
+        frameLabel: 'sirketiniz.alliswell.space — dosyalar',
       },
     ],
   },
 
   identity: {
     id: 'identity',
-    eyebrow: 'Kimlik',
-    title: 'Hesaplar, zaten işlettiğiniz dizinden geliyor',
+    eyebrow: 'Kurumsal kimlik yönetimi',
+    title: 'Kullanıcılar mevcut Active Directory yapınızdan gelir',
     body:
-      'Bağlanma için LDAP ya da Active Directory, çoklu oturum açma için SAML ve OpenID ' +
-      'Connect, kullanıcı sağlama için SCIM 2.0. Gruplar birimlere eşleniyor; yani dizinde ' +
-      'bir departmana katılan kişi burada da o birime katılıyor. İşten ayrılan biri erişimini ' +
-      'aynı gün kaybediyor, ve oturumları sona ermeye bırakılmıyor, kapatılıyor.',
+      'Ayrı bir kullanıcı listesi tutmanız gerekmez. Active Directory ya da LDAP bağlantısı, ' +
+      'Microsoft Entra ID gibi sistemlerle tek oturum açma (SAML, OpenID Connect) ve otomatik ' +
+      'kullanıcı aktarımı (SCIM) desteklenir. Dizindeki gruplar birimlere eşlenir: personel işe ' +
+      'girdiğinde hesabı açılır, ayrıldığında aynı gün kapanır.',
     points: [
-      'Hesap ilk girişte yaratılabilir ya da yaratılmaz — yaratmasına izin verilmeyen sağlayıcı bunu söyler ve reddeder',
-      'Tam yapılandırılmamış bir sağlayıcı açılamaz, ve ekran hangi ayarların eksik olduğunu adıyla söyler',
-      'Her kimlik bilgisi kendi anahtarı altında şifreleniyor ve sonrasında dört karakter gösteriyor, asla bir alan değil',
+      'Tek oturum açma: çalışanlar zaten kullandıkları kurumsal şifreyle girer',
+      'Grup üyelikleri birimleri belirler; elle atama gerekmez',
+      'Eksik bir bağlantı ayarı varsa sistem hangisinin eksik olduğunu adıyla söyler; yarım yapılandırma devreye alınamaz',
     ],
     shot: '/shots/ee/team-identity-light-tr.jpg',
     shotDark: '/shots/ee/team-identity-dark-tr.jpg',
     alt:
-      'Kimlik kaynakları ekranı: bir LDAP dizini ve bir OIDC sağlayıcısı açık, bir SAML ' +
-      'sağlayıcısı ise açılamıyor ve hâlâ eksik olan ayarları adıyla söylüyor',
-    frameLabel: 'takiminiz.alanadiniz — kimlik',
+      'Kimlik kaynakları ekranı: bir Active Directory bağlantısı ve bir Microsoft Entra ID ' +
+      'sağlayıcısı aktif; bir SAML sağlayıcısı eksik ayarlarını adıyla söylüyor',
+    frameLabel: 'sirketiniz.alliswell.space — kimlik',
   },
 
   security: {
     eyebrow: 'Güvenlik ve uyum',
-    title: 'Bir güvenlik incelemesinin sorduğu sorular',
+    title: 'Bilgi işlem müdürünüzün soracağı sorular',
     items: [
       {
         key: 'residency',
         icon: '🗄️',
-        title: 'Veri nerede',
+        title: 'Veri nerede tutulur?',
         body:
-          'Sizin donanımınızda, sizin MySQL\'inizde, sizin güvenlik duvarınızın arkasında. ' +
-          'Ekler, adını sizin verdiğiniz bir depoya gidiyor. Siz bağlamadıkça hiçbir yere ' +
-          'hiçbir şey gitmiyor; bağlarsanız da yalnız bağladığınız kadarı.',
+          'Kendi sunucunuzu seçtiyseniz sizin sunucunuzda, sizin veritabanınızda, sizin ' +
+          'güvenlik duvarınızın arkasında. Bulutta ise yalnız size ait, diğer müşterilerden ' +
+          'tamamen ayrı bir alanda. Siz bağlamadıkça hiçbir veri dışarıya gitmez.',
       },
       {
         key: 'accounts',
         icon: '🔑',
-        title: 'Hesaplar nasıl tutuluyor',
+        title: 'Hesaplar nasıl korunur?',
         body:
-          'Sizin belirlediğiniz parola politikası ve kilitleme, doğrulayıcı uygulamayla iki ' +
-          'adımlı giriş, ve bir kişinin açık oturum ve cihaz listesi — yönetici bunları ' +
-          'sonlandırabiliyor.',
+          'Belirlediğiniz şifre politikası ve hatalı giriş kilidi, doğrulayıcı uygulamayla iki ' +
+          'adımlı giriş, her kullanıcının açık oturum ve cihaz listesi. Yönetici gerektiğinde ' +
+          'bir oturumu uzaktan kapatabilir.',
       },
       {
         key: 'audit',
         icon: '📜',
-        title: 'Kayıt ne diyor',
+        title: 'Kim ne yaptı, nasıl görülür?',
         body:
-          'Saklama süresini sizin seçtiğiniz, filtrelenebilir bir denetim izi; API üzerinden ' +
-          'CSV olarak dışa aktarılıyor. Kimse düzenleyemiyor, biz dahil: yalnız ekleme ' +
-          'yapılıyor ve yalnız saklama süpürgesi bir şey siliyor.',
+          'Her işlem tarih, saat ve kişiyle kayıt altındadır. Kayıtlar sonradan değiştirilemez; ' +
+          'saklama süresini siz belirlersiniz ve denetim için dışa aktarılır.',
       },
       {
         key: 'kvkk',
         icon: '⚖️',
-        title: 'Biri unutulmak istediğinde',
+        title: 'KVKK ve GDPR',
         body:
-          'Takımın tamamı tek bir belge olarak dışa aktarılıyor, ve bir kişinin verisi ' +
-          'silinebiliyor. KVKK ve GDPR bu ihracatın var olma sebebi; sonradan yapıştırılmış ' +
-          'bir etiket değil.',
+          'Kurumunuzun bütün verisi tek belge olarak dışa aktarılır; bir kişinin verisi talep ' +
+          'üzerine silinebilir. Mevzuat gerekleri sonradan eklenmiş değil, sistemin parçasıdır.',
       },
     ],
   },
@@ -482,107 +522,122 @@ export default {
   meetings: {
     id: 'meetings',
     eyebrow: 'Toplantı notları',
-    title: '"Toplantı tutanağı"nın normalde hiç yapılmayan yarısı',
+    title: 'Toplantı kaydını yükleyin, kararları iş olarak alın',
     body:
-      'Bir kayıt yükleyin; kimin ne dediğini ayıran ve kararları çıkaran bir not geri gelsin. ' +
-      'Bir karar tek adımda talebe dönüşüyor. Deşifre, sizin seçtiğiniz bir sağlayıcıda, ' +
-      'kendi yöneticinizin girdiği kendi takım anahtarınızla koşuyor — ve kullanım ' +
-      'ölçülüyor, yani uzun bir kayıt sessizce büyük bir faturaya dönüşemiyor.',
+      'Toplantının ses kaydını yükleyin; kimin ne söylediği ayrılmış bir tutanak, özet ve ' +
+      'alınan kararların listesi hazır gelsin. Her karar tek tıkla bir talebe ya da göreve ' +
+      'dönüşür. Deşifre için kendi seçtiğiniz yapay zekâ sağlayıcısını ve kendi hesabınızı ' +
+      'kullanırsınız; kullanım dakika bazında ölçülür.',
     points: [
-      'Sağlayıcının ne sakladığını bizim değil, sizin onunla yaptığınız sözleşme belirliyor',
-      'Kendi anahtarı olmayan bir takımın deşifresi yok — başkasınınkini ödünç almıyor',
-      'Not, kabul etmek zorunda olduğunuz bir deşifre değil, düzenleyebildiğiniz bir markdown',
+      'Hangi sağlayıcının kullanılacağına ve verinin nerede işleneceğine siz karar verirsiniz',
+      'Tutanak düzenlenebilir bir nottur; yanlış duyulan bir cümle elle düzeltilir',
+      'Aylık deşifre dakikası paketle sınırlıdır; beklenmedik bir fatura çıkmaz',
     ],
     shot: '/shots/ee/meeting-named-light-tr.jpg',
     shotDark: '/shots/ee/meeting-named-dark-tr.jpg',
     alt: 'Bir toplantı notu: konuşmacılar adlandırılmış, özet, ve içinden çıkarılmış kararlar',
-    frameLabel: 'takiminiz.alanadiniz — toplantı',
+    frameLabel: 'sirketiniz.alliswell.space — toplantı',
   },
 
-  ops: {
-    eyebrow: 'Kurulum ve işletme',
-    title: 'Sizin sunucunuz, sizin veritabanınız, sizin yedekleriniz',
+  deploy: {
+    eyebrow: 'Kurulum seçenekleri',
+    title: 'Bulut mu, kendi sunucunuz mu?',
     lede:
-      'Ücretsiz sürümün kullandığı konteynerlerin aynısı, üstüne ticari katman. API şemasını ' +
-      'açılışta kendisi taşıyor; yani yükseltme bir pull ve bir up — ve veriniz hiç yer ' +
-      'değiştirmiyor.',
-    command: // i18n-same — it is a shell command, not prose
-      'docker compose -f docker-compose.ee.yml pull\n' +
-      'docker compose -f docker-compose.ee.yml up -d\n\n' +
-      '# the schema migrates itself on start; your volumes are untouched',
-    points: [
-      'Sizin kontrol ettiğiniz bir makinede MySQL 8.4 ya da MariaDB 10.11+ — ekler kendi S3 uyumlu deponuzda',
-      'Her takım kendi subdomain\'inde, sizin kurduğunuz bir wildcard sertifikayla',
-      'Yedekleme ve geri dönüş runbook\'u, ve hiçbir zaman kilitlenmediğiniz anlamına gelen bir ihracat',
+      'İkisinde de aynı ürün, aynı özellikler. Fark, verinin nerede durduğu ve kurulumu kimin ' +
+      'işlettiğidir.',
+    options: [
+      {
+        key: 'cloud',
+        icon: '☁️',
+        title: 'Bulut',
+        tagline: 'Hızlı başlangıç, işletme yükü yok',
+        points: [
+          'Kurumunuza özel adres: sirketiniz.alliswell.space',
+          'Kurulum, yedekleme, güncelleme ve izleme bizden',
+          'Starter, Business ya da Enterprise paketini seçersiniz; büyüdükçe geçiş yapılır',
+          'Verileriniz yalnız size ait, diğer müşterilerden ayrı bir alanda tutulur',
+        ],
+        cta: { label: 'Bulut paketlerini görün', href: '#packages' },
+      },
+      {
+        key: 'self',
+        icon: '🏢',
+        title: 'Kendi sunucunuzda (on-premise)',
+        tagline: 'Veri kurumun dışına çıkmaz',
+        points: [
+          'Sizin sunucunuza, sizin veritabanınıza biz kurarız; devreye alma ekibimizle birlikte yapılır',
+          'Kullanıcı sayısı, birim sayısı ve modüller (talep yönetimi, kurum dışı talep formu, Active Directory bağlantısı…) ihtiyacınıza göre belirlenir',
+          'Fiyat, kullanıcı ve birim sayısına göre teklif olarak sunulur',
+          'Güncellemeler ve destek sözleşmeyle; verinin yeri hiçbir zaman değişmez',
+        ],
+        cta: { label: 'Teklif için iletişime geçin', href: '#contact' },
+      },
     ],
-    terminalTitle: 'sunucunuz',
-    copyLabel: 'Kopyala',
-    copiedLabel: 'Kopyalandı',
-    link: { label: 'Kurulum rehberi', href: `${REPO_URL}/blob/main/docs/SELF-HOSTING.md` },
+    footnote:
+      'Kararsız mısınız? Formda "henüz karar vermedim" deyin; kurumunuzun büyüklüğüne ve mevzuat ' +
+      'gereklerine göre birlikte karar veririz.',
   },
 
   packages: {
     anchor: 'packages',
-    eyebrow: 'Paketler',
-    title: 'Bir takıma satılan şey',
+    eyebrow: 'Bulut paketleri',
+    title: 'Bulutta üç hazır paket',
     lede:
-      'Paket, bir operatörün düzenlediği bir şekildir; bir özelliğin etrafındaki duvar değil. ' +
-      'Bu sayfadaki her şey üründe var; paketin belirlediği, bir takımın ne kadarını ' +
-      'kullanabileceği ve gerçekten ayrı olan iki yeteneğin açık olup olmadığı.',
-    caption: 'Paket karşılaştırması',
-    featureHeading: 'Limit ya da yetenek',
+      'Bu paketler alliswell.space üzerinden bulut olarak kullanan kurumlar içindir. Kendi ' +
+      'sunucunuza kurulumda hazır paket yoktur; sınırlar ve modüller ihtiyacınıza göre belirlenir.',
+    caption: 'Bulut paketleri karşılaştırması',
+    featureHeading: 'Kapsam',
     labels: { yes: 'Var', no: 'Yok', partial: 'Kısmi' },
     columns: ['Starter', 'Business', 'Enterprise'],
     rows: [
-      ['Koltuk', '10', '250', 'Sınırsız'],
-      ['Birim (çalışma alanı)', '5', '50', 'Sınırsız'],
-      ['Yayınlanmış talep formu', 'Sayılıyor', 'Sayılıyor', 'Sayılıyor'],
-      ['Portaldan gelen aylık talep', 'Sayılıyor', 'Sayılıyor', 'Sayılıyor'],
-      ['Aylık deşifre dakikası', 'Sayılıyor', 'Sayılıyor', 'Sayılıyor'],
-      ['Geçmiş saklama', '90 gün', '1 yıl', '7 yıl'],
-      ['Servis masası, SLA, sağlık izleme', 'yes', 'yes', 'yes'],
-      ['Birimler, izinler, denetim izi', 'yes', 'yes', 'yes'],
-      ['Public talep portalı', 'yes', 'yes', 'yes'],
-      ['Toplantı notları ve kararlar', 'no', 'yes', 'yes'],
-      ['LDAP / SAML / OIDC / SCIM', 'no', 'no', 'yes'],
+      ['Kullanıcı sayısı', '10', '250', 'Sınırsız'],
+      ['Birim (departman) sayısı', '5', '50', 'Sınırsız'],
+      ['Kurum dışı talep formu: aktif form ve aylık talep sayısı', 'Paketle belirlenir', 'Paketle belirlenir', 'Paketle belirlenir'],
+      ['İşlem geçmişi saklama süresi', '90 gün', '1 yıl', '7 yıl'],
+      ['Talep yönetimi, SLA, sistem sağlığı izleme', 'yes', 'yes', 'yes'],
+      ['Birimler, yetki yönetimi, işlem kaydı', 'yes', 'yes', 'yes'],
+      ['Kurum dışı talep formu', 'yes', 'yes', 'yes'],
+      ['Görevler, projeler, notlar, dosyalar', 'yes', 'yes', 'yes'],
+      ['Toplantı notları (yapay zekâ) ve aylık deşifre dakikası', 'no', 'yes', 'yes'],
+      ['Active Directory / tek oturum açma / SCIM', 'no', 'no', 'yes'],
     ],
     footnote:
-      'Bunlar, taze bir kurulumun içinden çıkan üç pakettir; operatör onları yeniden ' +
-      'adlandırır, düzenler ya da kendi paketini ekler. "Sayılıyor", ürünün sözleşmenizin ' +
-      'belirlediği bir sayıyı zorladığı anlamına gelir — arkasında sayaç olmayan bir tavan, ' +
-      'kimsenin tutmadığı bir sözdür, o yüzden bu tabloda yalnız sayılanlar var. Burada fiyat ' +
-      'yok ve bununla saklanan bir şey de yok: Enterprise sizinle birlikte kuruluyor ve ' +
-      'yapılandırılıyor, ve anlaşmanın şekli kaç kişi ve kaç departman olduğuna bağlı.',
-    link: { label: 'Sizinki nasıl görünürdü, soralım →', href: '#contact' },
+      'Paket içeriği sözleşmenizde yazar; ihtiyaç değiştikçe paket yükseltilir. Fiyatlar ' +
+      'kurumun büyüklüğüne göre teklif olarak sunulur; bu sayfada fiyat yoktur.',
+    link: { label: 'Teklif isteyin →', href: '#contact' },
   },
 
   contact: {
     eyebrow: 'İletişime geçin',
-    title: 'Kurumunuzun şeklini anlatın',
+    title: 'Kurumunuzu kısaca anlatın, size teklif hazırlayalım',
     lede:
-      'Kaç kişi ve kaç departman olduğunu söylemeniz başlamak için yeterli. Size neye mal ' +
-      'olacağını ve kurulumun ne gerektirdiğini yazarız — otomatik bir sonraki adım yok, ' +
-      'kaydolunacak bir şey de yok.',
-    mailSubject: 'AllisWell Enterprise talebi',
+      'Kaç kullanıcı ve kaç birim olduğunu yazmanız başlamak için yeterli. Kısa sürede dönüş ' +
+      'yapar; ihtiyacınıza göre bulut ya da kendi sunucunuz için teklif ve kurulum planı sunarız.',
+    mailSubject: 'AllisWell Enterprise teklif talebi',
     fields: {
-      name: { label: 'Adınız' },
-      company: { label: 'Kurum' },
-      workEmail: { label: 'İş e-postası' },
+      name: { label: 'Adınız soyadınız' },
+      company: { label: 'Kurum adı' },
+      workEmail: { label: 'Kurumsal e-posta' },
       phone: { label: 'Telefon (isteğe bağlı)' },
-      seats: { label: 'Kullanacak kişi sayısı' },
-      units: { label: 'Departman ya da birim sayısı' },
+      seats: { label: 'Kullanıcı sayısı (tahminî)' },
+      units: { label: 'Birim / departman sayısı' },
       packageInterest: {
-        label: 'İlgilendiğiniz paket',
-        placeholder: 'Henüz emin değilim',
-        options: ['Starter', 'Business', 'Enterprise'],
+        label: 'İlgilendiğiniz seçenek',
+        placeholder: 'Henüz karar vermedim',
+        options: [
+          'Bulut — Starter',
+          'Bulut — Business',
+          'Bulut — Enterprise',
+          'Kendi sunucumuza kurulum',
+        ],
       },
-      message: { label: 'Bilmemiz gereken başka bir şey' },
+      message: { label: 'Eklemek istedikleriniz (mevcut sistemleriniz, öncelikli ihtiyaçlarınız)' },
       honeypot: 'Firma web sitesi',
     },
     consent: {
       text:
-        'Yukarıdaki bilgilerin bu talebi yanıtlamak için saklanmasını ve kullanılmasını kabul ' +
-        'ediyorum; ayrıntısı şurada:',
+        'Bu formdaki bilgilerin talebimi yanıtlamak amacıyla saklanmasını ve kullanılmasını ' +
+        'kabul ediyorum. Ayrıntılar:',
       linkLabel: 'aydınlatma metni',
       // Belgenin tamamı değil, BÖLÜMÜ: üç yüz satıra inen bir rıza linki,
       // okuyucuya neyi onayladığını söylememiş olur.
@@ -591,83 +646,87 @@ export default {
     submit: 'Gönder',
     sending: 'Gönderiliyor…',
     orWrite: 'Ya da doğrudan yazın:',
-    sent: 'Teşekkürler — talebiniz bize ulaştı. Bir kişi okuyup size dönecek.',
+    sent: 'Teşekkürler, talebiniz bize ulaştı. Ekibimiz en kısa sürede sizinle iletişime geçecek.',
     // Her sonuç için bir mesaj (EE-161). Sunucu makine-okunur bir kod dönüyor,
-    // sayfa onu okuyanın dilinde söylüyor — deponun mevcut hata-kodu deseni.
+    // sayfa onu okuyanın dilinde söylüyor.
     states: {
-      // Özür DEĞİL. Bu kurulumun satış masası yok; bu, bir başarısızlık değil
-      // kurulum hakkında doğru bir olgu, o yüzden formun yerini adres alıyor.
-      noDesk:
-        'Bu kurulumda satış masası çalışmıyor. Doğrudan bize yazın, bir kişi cevap verecek:',
-      // Söyleneni yapınca düzeliyor.
+      // Özür DEĞİL: bu kurulumun satış masası yok; form yerini adrese bırakır.
+      noDesk: 'Bu kurulumda satış formu aktif değil. Bize doğrudan yazın, size dönüş yapalım:',
       stale:
-        'Bu sayfa açıkken aydınlatma metnimiz değişti. Lütfen sayfayı yenileyip tekrar ' +
-        'gönderin — onayladığınız metin, size gösterilen metin olsun.',
+        'Aydınlatma metnimiz bu sayfa açıkken güncellendi. Lütfen sayfayı yenileyip tekrar ' +
+        'gönderin; onayladığınız metin, size gösterilen metin olsun.',
       busy:
-        'Şu anda çok fazla talep alıyoruz. Birkaç dakika sonra tekrar deneyin ya da doğrudan ' +
+        'Şu anda çok sayıda talep alıyoruz. Birkaç dakika sonra tekrar deneyin ya da doğrudan ' +
         'bize yazın.',
-      invalid: 'Formdaki bir şey kabul edilmedi. Alanları kontrol edip tekrar deneyin.',
+      invalid: 'Formdaki bir alan kabul edilmedi. Lütfen alanları kontrol edip tekrar deneyin.',
       offline:
-        'Sunucularımıza ulaşamadık. Yazdıklarınız duruyor — birazdan tekrar deneyin ya da ' +
+        'Sunucumuza ulaşılamadı. Yazdıklarınız duruyor; biraz sonra tekrar deneyin ya da ' +
         'doğrudan bize yazın.',
       failed:
-        'Bizim tarafımızda bir şeyler ters gitti. Yazdıklarınız duruyor — tekrar deneyin ya ' +
-        'da doğrudan bize yazın.',
+        'Bizim tarafımızda bir sorun oluştu. Yazdıklarınız duruyor; tekrar deneyin ya da ' +
+        'doğrudan bize yazın.',
     },
   },
 
   faq: {
-    heading: 'İnsanların gerçekten sorduğu sorular',
+    heading: 'Sık sorulan sorular',
     items: [
       {
-        q: 'Bu bir bulut hizmeti mi?',
+        q: 'Bulut ile kendi sunucumuza kurulum arasında özellik farkı var mı?',
         a:
-          'Hayır. Sizin kontrol ettiğiniz donanıma, sizin kontrol ettiğiniz bir veritabanına ' +
-          'kuruluyor. Kurulumda ve yükseltmelerde yardım ediyoruz; makine ve veri sizde kalıyor.',
+          'Yok; ikisi de aynı üründür. Bulutta kurulum, yedekleme ve güncellemeyi biz ' +
+          'üstleniriz. Kendi sunucunuzda ise veri kurumunuzun dışına çıkmaz, sınırlar ve ' +
+          'modüller ihtiyacınıza göre belirlenir.',
       },
       {
-        q: 'Ücretsiz sürüme ne oluyor?',
+        q: 'Kurulumu kim yapar, ne kadar sürer?',
         a:
-          'Hiçbir şey. Bireysel kullanım için ücretsiz kalıyor, kaynağı açık kalıyor, ve ' +
-          'Enterprise onun şartlarını hiçbir yönde değiştirmiyor. Elinizdeki bir kopya, aldığınız ' +
-          'lisansla sizin kalıyor.',
+          'Bulutta hesabınız hemen açılır. Kendi sunucunuza kurulumu ekibimiz yapar; sunucu ' +
+          'hazırsa kurulum bir günde tamamlanır. Asıl zaman, birimlerinizi, hizmetlerinizi ve ' +
+          'süre hedeflerinizi birlikte tanımlamaya gider; o da zaman ayırmaya değen kısımdır.',
       },
       {
-        q: 'Verimizi dışarı alabilir miyiz?',
+        q: 'Verimiz nerede tutulur, dışarı alabilir miyiz?',
         a:
-          'Takımın tamamı API üzerinden tek bir belge olarak, denetim izi de CSV olarak dışa ' +
-          'aktarılıyor. Veritabanı zaten sizin MySQL\'iniz, yani bütün bunların altındaki asıl ' +
-          'cevap şu: veri hiçbir zaman başka bir yerde değildi.',
+          'Kendi sunucunuza kurulumda veri tamamen sizin sunucunuzdadır. Bulutta yalnız size ait ' +
+          'bir alanda tutulur. Her iki durumda da kurumunuzun bütün verisi tek belge olarak, işlem ' +
+          'kayıtları da tablo olarak dışa aktarılır; sisteme bağlı kalmak zorunda değilsiniz.',
       },
       {
-        q: 'Bir şey isteyebilmek için personelimizin hesabı olmalı mı?',
+        q: 'Mevcut Active Directory yapımızla çalışır mı?',
         a:
-          'Kendi personelinizin evet. Şirket dışından biri için hayır: public talep formu tam ' +
-          'olarak bunun için var, ve talebini sonradan giriş yapmadan takip edebilmesinin sebebi ' +
-          'de bu.',
+          'Evet. Active Directory ve LDAP bağlantısı, Microsoft Entra ID ve benzeri sistemlerle ' +
+          'tek oturum açma ve otomatik kullanıcı aktarımı bulutta Enterprise paketinde, kendi ' +
+          'sunucunuza kurulumda ise istediğiniz kapsamda mevcuttur.',
       },
       {
-        q: 'Kurulum ne kadar sürüyor?',
+        q: 'Müşterilerimizin sistemde hesabı olması gerekir mi?',
         a:
-          'Konteynerler dakikalar içinde ayağa kalkıyor. Zaman alan kısım, zaman ayırmaya değer ' +
-          'olan kısım: birimlerinizin ne olduğuna, hangi servisleri verdiğine ve onlar hakkında ' +
-          'ne söz verdiğinize karar vermek.',
+          'Hayır. Kurum dışından talep iletenler herkese açık talep formunu kullanır; talebin ' +
+          'durumunu da giriş yapmadan takip eder. Kendi çalışanlarınız hesapla girer.',
       },
       {
-        q: 'Bunda ne YOK?',
+        q: 'Ücretsiz AllisWell ile farkı ne?',
         a:
-          'Varlık envanteri yok, değişiklik onay akışı yok, memnuniyet anketi yok, ve pano ile ' +
-          'haftalık e-posta dışında bir rapor tasarlayıcı yok. E-posta henüz talep açamıyor — ' +
-          'public form ve uygulama açabiliyor. Bunu üçüncü haftada öğrenmenizdense burada ' +
-          'söylemeyi tercih ederiz.',
+          'Ücretsiz sürüm tek kişinin görevleri, notları ve dosyaları içindir. Enterprise buna ' +
+          'birimleri, yetki yönetimini, talep yönetimini, SLA takibini, kurum dışı talep formunu ' +
+          've kurumsal kimlik bağlantısını ekler; ticari lisansla kullanılır.',
+      },
+      {
+        q: 'Neler henüz yok?',
+        a:
+          'Varlık (envanter) yönetimi, değişiklik onay akışı, müşteri memnuniyet anketi ve pano ' +
+          'dışında özel rapor tasarımı bulunmuyor. E-posta ile talep açma henüz yok; talepler ' +
+          'form ve uygulama üzerinden açılır. Bunları baştan söylemeyi tercih ederiz.',
       },
     ],
   },
 
   footer: {
     blurb:
-      "AllisWell Enterprise, zaten ücretsiz çalıştırabildiğiniz AllisWell'in üzerine team'ler, " +
-      'birimler, izinler, servis masası ve SLA ekler. Ticari lisanslı, kendi sunucunuza kurulur.',
+      'AllisWell Enterprise; kurum içi ve kurum dışı iş taleplerini, SLA takibini, yetki ' +
+      'yönetimini ve ekiplerin günlük işlerini tek sistemde toplar. Bulutta ya da kendi ' +
+      'sunucunuzda.',
     notes:
       'Microsoft, Apple, Google, Anthropic ya da OpenAI ile bağlantılı değildir. Ürün adları ' +
       'sahiplerine aittir.',
@@ -677,27 +736,28 @@ export default {
       {
         title: 'Enterprise',
         links: [
-          { label: 'Servis masası', href: '#itsm' },
-          { label: 'SLA ve servis sağlığı', href: '#sla' },
-          { label: 'Public talep portalı', href: '#portal' },
-          { label: 'Kimlik ve güvenlik', href: '#identity' },
-          { label: 'Paketler', href: '#packages' },
+          { label: 'Talep yönetimi', href: '#itsm' },
+          { label: 'SLA ve hizmet takibi', href: '#sla' },
+          { label: 'Kurum dışı talep formu', href: '#portal' },
+          { label: 'Kurumsal kimlik ve güvenlik', href: '#identity' },
+          { label: 'Kurulum seçenekleri', href: '#deploy' },
+          { label: 'Bulut paketleri', href: '#packages' },
           { label: 'İletişime geçin', href: '#contact' },
         ],
       },
       {
-        title: 'Kendiniz kurun',
+        title: 'Teknik belgeler',
         links: [
-          { label: 'Kurulum rehberi', href: `${REPO_URL}/blob/main/docs/SELF-HOSTING.md` },
           { label: 'Mimari', href: `${REPO_URL}/blob/main/docs/ARCHITECTURE.md` },
           { label: 'REST API referansı', href: '/docs/api' },
           { label: 'Güvenlik politikası', href: `${REPO_URL}/blob/main/SECURITY.md` },
+          { label: 'Gizlilik politikası', href: '/privacy/tr' },
         ],
       },
       {
         title: 'Ücretsiz sürüm',
         links: [
-          { label: 'alliswell.space', href: '/' },
+          { label: 'alliswell.space', href: '/tr' },
           { label: 'Uygulamayı aç', href: APP_URL },
           { label: "GitHub'da kaynak", href: REPO_URL },
           { label: 'Lisans (PolyForm NC)', href: `${REPO_URL}/blob/main/LICENSE` },

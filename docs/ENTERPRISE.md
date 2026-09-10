@@ -1,8 +1,9 @@
 # AllisWell Enterprise
 
-A service desk, a permission system and an org chart, added to the AllisWell you already
-know — running on your own servers, against your own database, and still working when the
-Wi-Fi on the shop floor does not.
+Request management (ITSM), permissions and roles, and a department structure, added to
+the AllisWell you already know — running in the cloud under your organisation's own address
+or on your own servers against your own database, and still working when the Wi-Fi on the
+shop floor does not.
 
 AllisWell itself is free for personal use and always will be. **Enterprise** is a separate,
 commercially licensed edition for organisations that need more than one person's tasks.
@@ -64,9 +65,11 @@ A commercial licence also comes with the self-hosting support the free tier does
 
 The product has a package concept, and a fresh installation ships with three of them
 already defined: **Starter**, **Business** and **Enterprise**. They are shapes, not a price
-list — seats, workspaces, how much of the request portal a team may use, how long history
-is kept. An operator running the instance edits them, renames them, or adds their own; a
-team is put on one, and the product reports and enforces the limits that package carries.
+list — users, departments, how much of the public request form an organisation may use, how
+long history is kept. Packages belong to the **cloud** service: the operator running
+alliswell.space edits them, renames them, or adds their own; an organisation is put on one,
+and the product reports and enforces the limits that package carries. An organisation on its
+own servers never sees that layer — its limits are set at installation, per agreement.
 
 So when this page says "packages", it means that mechanism — not three boxes with prices
 under them. What your organisation is entitled to is written in your agreement.
@@ -74,10 +77,11 @@ under them. What your organisation is entitled to is written in your agreement.
 ### What it costs
 
 There is no price list on this page, and nothing is being hidden by that. Enterprise is not
-a download with a checkout; it is installed and configured with you, on your hardware, and
-the shape of the agreement depends on how many people and how many departments are in it.
-That conversation is short, and it is the honest way to answer a question whose real answer
-is "it depends on your organisation".
+a download with a checkout. In the cloud you start on one of three ready-made packages under
+your organisation's own address; on your own servers our team does the installation, and the
+limits, the modules and the shape of the agreement depend on how many people and how many
+departments are in it. That conversation is short, and it is the honest way to answer a
+question whose real answer is "it depends on your organisation".
 
 > **Interested?** Write to **[info@bubiapps.com](mailto:info@bubiapps.com)** and tell us how
 > many people and how many departments — that is enough to start. If what you need is a

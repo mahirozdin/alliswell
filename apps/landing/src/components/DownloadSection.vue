@@ -1,6 +1,21 @@
 <script setup>
 import PlatformIcon from './PlatformIcon.vue';
-import { download, selfHost } from '../content.js';
+import { download as downloadDefault, selfHost } from '../content.js';
+
+/**
+ * EE-164 — the section takes its copy as a prop so the Turkish homepage can
+ * pass its own. `download.comingSoon` is the one string that was a template
+ * literal; `selfHostLink` is the guide link under the cards, which the
+ * homepage takes from its self-host block so the two never name different
+ * documents.
+ */
+defineProps({
+  download: {
+    type: Object,
+    default: () => ({ ...downloadDefault, comingSoon: 'Coming soon' }),
+  },
+  selfHostLink: { type: Object, default: () => selfHost.link },
+});
 </script>
 
 <template>
@@ -45,13 +60,13 @@ import { download, selfHost } from '../content.js';
             target="_blank"
             >{{ store.cta.label }}</a
           >
-          <span v-else class="get__soon">Coming soon</span>
+          <span v-else class="get__soon">{{ download.comingSoon }}</span>
         </article>
       </div>
 
       <p class="get__note">
         {{ download.selfHostNote }}
-        <a :href="selfHost.link.href" rel="noopener" target="_blank">{{ selfHost.link.label }} →</a>
+        <a :href="selfHostLink.href" rel="noopener" target="_blank">{{ selfHostLink.label }} →</a>
       </p>
     </div>
   </section>

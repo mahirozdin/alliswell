@@ -2,10 +2,27 @@
 import BrandMark from './BrandMark.vue';
 import PlatformIcon from './PlatformIcon.vue';
 import ScreenshotFrame from './ScreenshotFrame.vue';
-import { hero, platforms, REPO_URL } from '../content.js';
+import {
+  hero as heroDefault,
+  platforms as platformsDefault,
+  REPO_URL,
+} from '../content.js';
 import { useGithubStars } from '../composables/useGithubStars.js';
 
 const { stars, loaded, format } = useGithubStars();
+
+/**
+ * EE-164 — the hero takes its words as props so the Turkish homepage can pass
+ * its own. The defaults are today's English values, so nothing changes for a
+ * caller that passes nothing. `hero.words` carries the three strings that used
+ * to be template literals (the star suffix, the GitHub fallback label and the
+ * platform list's accessible name); `hero.desktopAlt` / `hero.phoneAlt` are
+ * the two capture descriptions.
+ */
+defineProps({
+  hero: { type: Object, default: () => heroDefault },
+  platforms: { type: Array, default: () => platformsDefault },
+});
 </script>
 
 <template>
@@ -37,14 +54,16 @@ const { stars, loaded, format } = useGithubStars();
               d="M8 0a8 8 0 0 0-2.5 15.6c.4.1.5-.2.5-.4v-1.4c-2.2.5-2.7-1-2.7-1-.4-1-.9-1.2-.9-1.2-.7-.5.1-.5.1-.5.8.1 1.2.8 1.2.8.7 1.2 1.9.9 2.4.7 0-.5.3-.9.5-1.1-1.8-.2-3.6-.9-3.6-3.9 0-.9.3-1.6.8-2.1 0-.2-.3-1 .1-2.1 0 0 .7-.2 2.2.8a7.6 7.6 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.4 1.1.2 1.9.1 2.1.5.5.8 1.2.8 2.1 0 3-1.8 3.7-3.6 3.9.3.3.5.8.5 1.6v2.2c0 .2.1.5.6.4A8 8 0 0 0 8 0z"
             />
           </svg>
-          <span v-if="loaded && stars !== null">{{ format(stars) }} stars</span>
-          <span v-else>Source on GitHub</span>
+          <span v-if="loaded && stars !== null">
+            {{ format(stars) }} {{ hero.words?.stars ?? 'stars' }}
+          </span>
+          <span v-else>{{ hero.words?.github ?? 'Source on GitHub' }}</span>
         </a>
       </div>
 
       <p class="hero__note">{{ hero.note }}</p>
 
-      <ul class="hero__platforms" aria-label="Available on">
+      <ul class="hero__platforms" :aria-label="hero.words?.availableOn ?? 'Available on'">
         <li v-for="p in platforms" :key="p.name">
           <PlatformIcon :name="p.icon" :size="17" />
           {{ p.name }}
@@ -56,14 +75,20 @@ const { stars, loaded, format } = useGithubStars();
       <ScreenshotFrame
         class="hero__desktop"
         src="/shots/web/home-light.jpg"
-        alt="AllisWell on the web: Home with overdue and today groups, project badges, tag chips, a quick-access rail and a month calendar"
+        :alt="
+          hero.desktopAlt ??
+          'AllisWell on the web: Home with overdue and today groups, project badges, tag chips, a quick-access rail and a month calendar'
+        "
         eager
       />
       <ScreenshotFrame
         class="hero__phone"
         variant="phone"
         src="/shots/ios/01-home.jpg"
-        alt="AllisWell on iPhone: the same day, with the month calendar and the overdue group"
+        :alt="
+          hero.phoneAlt ??
+          'AllisWell on iPhone: the same day, with the month calendar and the overdue group'
+        "
         eager
       />
     </div>

@@ -27,6 +27,13 @@ const props = defineProps({
   },
   /** The homepage owns `#compare`; a second page must not claim the same id. */
   anchor: { type: String, default: 'compare' },
+  /**
+   * Which data column is tinted as "ours". The homepage's first column is
+   * AllisWell against four competitors; the enterprise package table has no
+   * such column — its first one is merely the smallest package, and tinting it
+   * read as a recommendation nobody made. `-1` tints nothing (EE-164).
+   */
+  highlight: { type: Number, default: 0 },
 });
 
 /** 'yes' | 'no' | 'partial' | free text → a cell that reads without colour alone. */
@@ -57,7 +64,7 @@ function cell(value) {
                 v-for="(c, i) in table.columns"
                 :key="c"
                 scope="col"
-                :class="{ 'cmp__ours': i === 0 }"
+                :class="{ 'cmp__ours': i === highlight }"
               >
                 {{ c }}
               </th>
@@ -69,7 +76,7 @@ function cell(value) {
               <td
                 v-for="(value, i) in row.slice(1)"
                 :key="i"
-                :class="[`is-${cell(value).tone}`, { 'cmp__ours': i === 0 }]"
+                :class="[`is-${cell(value).tone}`, { 'cmp__ours': i === highlight }]"
               >
                 <span v-if="cell(value).mark" class="cmp__mark" aria-hidden="true">{{
                   cell(value).mark

@@ -66,6 +66,18 @@ const PUBLISHED = [
   ['portal-follow', 'then a link that follows it, in five buckets and not seven', 'external'],
   ['team-identity', 'accounts from the directory you already run — LDAP, SAML, OIDC'],
   ['meeting-named', 'a recording that becomes a decision that becomes work'],
+
+  // EE-164 — the core product, as an enterprise team uses it. The page said
+  // nothing about tasks, projects, notes and files, and every one of them is
+  // part of what a company buys. Rendered by the signed-in app harness at
+  // desktop width with a business-flavoured workspace in BOTH languages
+  // (apps/app/test/enterprise_workspace_screenshot_test.dart), so the Turkish
+  // page shows a Turkish interface rather than the English web captures.
+  ['work-home', 'today, this week and the overdue, with the month beside them'],
+  ['work-board', 'the same work as a board'],
+  ['work-projects', 'projects, each with its tasks, notes and files'],
+  ['work-notes', 'notes: minutes, instructions, procedures'],
+  ['work-files', 'a document archive in folders'],
 ];
 
 /**

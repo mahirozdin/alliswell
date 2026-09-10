@@ -1,18 +1,33 @@
 <script setup>
 import { aiSection } from '../content.js';
+
+/**
+ * EE-164 — the section takes its copy as a prop so the Turkish homepage can
+ * pass its own. `ai.foot` is the closing line that used to be a template
+ * literal. The default is the English section plus that line.
+ */
+defineProps({
+  ai: {
+    type: Object,
+    default: () => ({
+      ...aiSection,
+      foot: 'Not interested? Leave it off. AllisWell has no AI account, sends nothing anywhere by default, and every capture surface works without a model.',
+    }),
+  },
+});
 </script>
 
 <template>
   <section id="ai" v-reveal class="aw-section ai">
     <div class="aw-shell">
       <header class="ai__head">
-        <p class="aw-eyebrow">{{ aiSection.eyebrow }}</p>
-        <h2>{{ aiSection.title }}</h2>
-        <p class="aw-lede ai__lede">{{ aiSection.lede }}</p>
+        <p class="aw-eyebrow">{{ ai.eyebrow }}</p>
+        <h2>{{ ai.title }}</h2>
+        <p class="aw-lede ai__lede">{{ ai.lede }}</p>
       </header>
 
       <div class="ai__tracks">
-        <article v-for="track in aiSection.tracks" :key="track.title" class="aw-card ai__card">
+        <article v-for="track in ai.tracks" :key="track.title" class="aw-card ai__card">
           <h3>{{ track.title }}</h3>
           <p class="ai__body">{{ track.body }}</p>
           <ul>
@@ -22,10 +37,7 @@ import { aiSection } from '../content.js';
         </article>
       </div>
 
-      <p class="ai__foot">
-        Not interested? Leave it off. AllisWell has no AI account, sends nothing anywhere by
-        default, and every capture surface works without a model.
-      </p>
+      <p class="ai__foot">{{ ai.foot }}</p>
     </div>
   </section>
 </template>

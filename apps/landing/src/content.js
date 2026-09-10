@@ -416,3 +416,128 @@ export const siteColumns = [
     ],
   },
 ];
+
+// ── EE-164: the homepage as ONE object, so a second language can be the ────
+// ── same shape ─────────────────────────────────────────────────────────────
+//
+// Everything above stays a named export because nine components and two gates
+// import it that way. What the Turkish homepage needed was a single object with
+// the same keys as `content.tr.js`, plus the handful of chrome words that lived
+// as literals inside templates ("Copy", "Coming soon", "Source on GitHub"),
+// which is exactly the shape `check:copy` can compare key for key.
+
+/** The phone strip: every image a real capture off a booted device. */
+export const mobile = {
+  eyebrow: 'One codebase',
+  title: 'The same app, everywhere you are',
+  lede: 'iPhone, Android, the browser, and native builds for macOS, Windows and Linux — from one Flutter codebase, with a local database on each of them.',
+  shots: [
+    { src: '/shots/ios/01-home.jpg', caption: 'Home — iPhone', alt: 'AllisWell Home on iPhone with the month calendar and overdue tasks' },
+    { src: '/shots/ios/07-task-detail-repeat.jpg', caption: 'A repeating task', alt: 'Task detail on iPhone: urgent alarm, repeat rule “every month on day 31”, due 30 September' },
+    { src: '/shots/ios/08-repeat-dialog.jpg', caption: 'The next five days', alt: 'The Repeat dialog on iPhone showing a live preview of the next five occurrences' },
+    { src: '/shots/android/01-home.jpg', caption: 'Home — Android', alt: 'AllisWell Home on an Android phone' },
+    { src: '/shots/android/09-alarm-ring.jpg', caption: 'An alarm, on Android', alt: 'AllisWell’s full-screen urgent reminder on Android, with an Acknowledge button and snooze presets' },
+    { src: '/shots/android/04-projects.jpg', caption: 'Projects — Android', alt: 'AllisWell Projects on an Android phone' },
+  ],
+};
+
+/** The clamping claim, shown as a table rather than asserted. */
+export const recurrence = {
+  eyebrow: 'Recurrence',
+  title: '“The 31st” should mean month end',
+  lede: 'Set a monthly task on the 31st and a calendar that follows RFC 5545 to the letter simply skips every month that has no 31st. Your rent does not skip February.',
+  note: 'AllisWell clamps backwards to the last real day — per value, and the result is a set, so a window like 23–29 in a 28-day February collapses instead of emitting the 28th twice.',
+  rule: 'Rule: every month on day 31',
+  columns: { month: 'Month', them: 'RFC 5545 / Google', us: 'AllisWell' },
+  skipped: '— skipped —',
+  months: [
+    { label: 'December', them: '31 Dec', us: '31 Dec' },
+    { label: 'January', them: '31 Jan', us: '31 Jan' },
+    { label: 'February', them: null, us: '28 Feb' },
+    { label: 'March', them: '31 Mar', us: '31 Mar' },
+    { label: 'April', them: null, us: '30 Apr' },
+  ],
+};
+
+/** The comparison table with its headings — what ComparisonTable renders. */
+export const comparisonTable = {
+  eyebrow: 'Honest comparison',
+  title: 'Where AllisWell is actually different',
+  lede: 'Not a scorecard designed to be won. The full analysis — including the six things these apps do better than we do — is in the repository.',
+  caption: 'Feature comparison table',
+  featureHeading: 'Feature',
+  labels: { yes: 'Yes', no: 'No', partial: 'Partial' },
+  columns: comparison.columns,
+  rows: comparison.rows,
+  footnote: comparison.footnote,
+  link: { label: 'Read it →', href: `${DOCS_URL}/COMPARISON.md` },
+};
+
+export default {
+  lang: 'en',
+
+  seo: {
+    title: 'AllisWell — source-available tasks, reminders & notes you can host yourself',
+    description:
+      'Tasks, projects, notes, files and alarm-grade reminders that ring through Silent mode — with true two-way Google & Apple Calendar sync. One app for iOS, Android, Web, macOS, Windows and Linux. Source-available, self-hosted, free for personal use.',
+    ogImage: '/shots/og/home.jpg',
+  },
+
+  skip: 'Skip to features',
+
+  nav: {
+    home: '/',
+    links: siteLinks,
+    cta: { label: 'Open the app', href: APP_URL },
+    starsLabel: 'Star',
+  },
+
+  hero: {
+    ...hero,
+    desktopAlt:
+      'AllisWell on the web: Home with overdue and today groups, project badges, tag chips, a quick-access rail and a month calendar',
+    phoneAlt: 'AllisWell on iPhone: the same day, with the month calendar and the overdue group',
+    words: { stars: 'stars', github: 'Source on GitHub', availableOn: 'Available on' },
+  },
+  platforms,
+  pillars,
+  features,
+  recurrence,
+  mobile,
+
+  ai: {
+    ...aiSection,
+    foot: 'Not interested? Leave it off. AllisWell has no AI account, sends nothing anywhere by default, and every capture surface works without a model.',
+  },
+
+  api: { ...api, terminalTitle: 'your cron job', copyLabel: 'Copy', copiedLabel: 'Copied' },
+
+  comparison: comparisonTable,
+
+  selfHost: { ...selfHost, terminalTitle: 'your server', copyLabel: 'Copy', copiedLabel: 'Copied' },
+
+  download: { ...download, comingSoon: 'Coming soon' },
+
+  faq: { heading: 'Questions people actually ask', items: faq },
+
+  footer: {
+    columns: siteColumns,
+    blurb:
+      'Source-available, self-hosted tasks, notes and alarm-grade reminders. Free for personal use. Built in the open, one task at a time.',
+    notes: 'Not affiliated with Apple, Google, Anthropic or OpenAI. Product names are their owners’.',
+    privacyLabel: 'Privacy',
+    supportLabel: 'Support',
+    starsWord: 'stars',
+    forksWord: 'forks',
+  },
+
+  /** The JavaScript-off block inside `#app`, kept in step with the entry HTML. */
+  fallback: {
+    lede: 'Source-available, self-hosted tasks, notes and alarm-grade reminders. This page needs JavaScript; the app itself, the privacy policy and the support page do not.',
+    app: 'Open the app',
+    source: 'Source on GitHub',
+    privacy: 'Privacy policy',
+    support: 'Support',
+    other: 'Türkçe',
+  },
+};

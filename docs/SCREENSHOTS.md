@@ -196,6 +196,21 @@ language of a marketing image.
 So both runs above can be issued back to back, and each writes its own files:
 `apps/app/test/goldens/ee-<screen>-<light|dark>-<en|tr>.png`.
 
+**The core screens for the enterprise page (EE-164)** — Home, the board, projects,
+notes and files at desktop width, with a manufacturing company's workspace rather
+than the personal one the web captures show — come from a second shot file that
+reuses this harness's fonts, router and theme, and the same two-language run:
+
+```bash
+flutter test --update-goldens --dart-define=screenshots=true --dart-define=shotLocale=tr \
+    test/enterprise_workspace_screenshot_test.dart      # and again with shotLocale=en
+# → apps/app/test/goldens/ee-work-<screen>-<light|dark>-<en|tr>.png
+```
+
+The seed is bilingual by construction (every string is a `_L(tr, en)` pair), so the
+two runs are pictures of the same workspace with only the words changed. They publish
+through the same `npm run shots:ee` as the rest, under `work-<screen>-…`.
+
 Then publish them with **`npm run shots:ee`** (EE-147). It drops the `ee-`
 prefix into `screenshots/ee/`, runs `oxipng` when it is installed, and — the
 part that matters — **refuses, by name, when a capture on its list was never

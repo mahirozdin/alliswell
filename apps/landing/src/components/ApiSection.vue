@@ -1,14 +1,31 @@
 <script setup>
 import { ref } from 'vue';
 
-import { api } from '../content.js';
+import { api as apiDefault } from '../content.js';
+
+/**
+ * EE-164 — the section takes its copy as a prop so the Turkish homepage can
+ * pass its own; `api.terminalTitle`, `api.copyLabel` and `api.copiedLabel`
+ * are the three chrome strings that used to be template literals.
+ */
+const props = defineProps({
+  api: {
+    type: Object,
+    default: () => ({
+      ...apiDefault,
+      terminalTitle: 'your cron job',
+      copyLabel: 'Copy',
+      copiedLabel: 'Copied',
+    }),
+  },
+});
 
 const copied = ref(false);
 let timer = null;
 
 async function copy() {
   try {
-    await navigator.clipboard.writeText(api.command);
+    await navigator.clipboard.writeText(props.api.command);
     copied.value = true;
     clearTimeout(timer);
     timer = setTimeout(() => (copied.value = false), 2000);
@@ -48,9 +65,9 @@ async function copy() {
         <div class="apisec__bar">
           <span aria-hidden="true">●</span><span aria-hidden="true">●</span
           ><span aria-hidden="true">●</span>
-          <span class="apisec__title">your cron job</span>
+          <span class="apisec__title">{{ api.terminalTitle }}</span>
           <button type="button" class="apisec__copy-btn" @click="copy">
-            {{ copied ? 'Copied' : 'Copy' }}
+            {{ copied ? api.copiedLabel : api.copyLabel }}
           </button>
         </div>
         <pre><code>{{ api.command }}</code></pre>

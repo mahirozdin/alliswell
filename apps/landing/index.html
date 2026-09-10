@@ -7,6 +7,32 @@
     <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
 
     <!--
+      EE-164 — the language. A browser that prefers Turkish is sent to the
+      Turkish twin before anything paints, unless the reader has chosen a
+      language with the switch (`aw_lang`, written by LangSwitch.vue). Only the
+      ENGLISH pages carry this: the Turkish ones never redirect back, so a
+      crawler — which prefers en-US and remembers nothing — indexes both, and
+      a person who followed a Turkish link gets the Turkish page they asked for.
+      Search and hash travel along, because every anchor id is the same in both
+      languages.
+    -->
+    <script>
+      try {
+        var pref = localStorage.getItem('aw_lang');
+        var langs = navigator.languages || [navigator.language || ''];
+        var wantsTr = false;
+        for (var i = 0; i < langs.length; i++) {
+          if (/^tr\b/i.test(langs[i])) wantsTr = true;
+        }
+        if (pref !== 'en' && (pref === 'tr' || wantsTr)) {
+          location.replace('/tr' + location.search + location.hash);
+        }
+      } catch (e) {
+        /* no storage and no language list: stay on the page that was asked for */
+      }
+    </script>
+
+    <!--
       EE-143 — the theme is applied by useTheme() in onMounted, which is one
       paint too late: a visitor who chose dark, or whose system is dark, sees a
       white flash on every navigation. This runs before the stylesheet, sets the
@@ -35,9 +61,19 @@
     />
     <link rel="canonical" href="https://alliswell.space/" />
 
+    <!--
+      EE-164 — each page names every version including itself; `x-default` is
+      English. The Turkish twin lives at /tr and is the same page in Turkish.
+    -->
+    <link rel="alternate" hreflang="en" href="https://alliswell.space/" />
+    <link rel="alternate" hreflang="tr" href="https://alliswell.space/tr" />
+    <link rel="alternate" hreflang="x-default" href="https://alliswell.space/" />
+
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="AllisWell" />
     <meta property="og:url" content="https://alliswell.space/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="tr_TR" />
     <meta
       property="og:title"
       content="AllisWell — source-available tasks, reminders &amp; notes you can host yourself"
@@ -100,19 +136,27 @@
     </script>
   </head>
   <body>
-    <div id="app"></div>
+    <!--
+      A real JavaScript-off rendering, not a placeholder: Vue's mount() clears
+      this container before its first render, so a reader who never runs the
+      script still gets the heading, the claim and the pages that need no
+      script at all. It is also what the CI <h1> assertion reads (EE-164; it
+      used to be a <noscript> block, which a crawler does not count as content).
+    -->
+    <div id="app">
+      <h1>Your whole day, in an app you actually own.</h1>
+      <p>
+        Source-available, self-hosted tasks, notes and alarm-grade reminders. This page needs
+        JavaScript; the app itself, the privacy policy and the support page do not.
+      </p>
+      <p>
+        <a href="/app">Open the app</a> ·
+        <a href="https://github.com/mahirozdin/alliswell">Source on GitHub</a> ·
+        <a href="/privacy">Privacy policy</a> ·
+        <a href="/support">Support</a> ·
+        <a href="/tr" hreflang="tr">Türkçe</a>
+      </p>
+    </div>
     <script type="module" src="/src/main.js"></script>
-    <noscript>
-      <div style="padding: 2rem; font-family: system-ui, sans-serif">
-        <h1>AllisWell</h1>
-        <p>
-          Source-available, self-hosted tasks, notes and alarm-grade reminders. This page needs
-          JavaScript — the app itself is at <a href="/app">/app</a>, the source is on
-          <a href="https://github.com/mahirozdin/alliswell">GitHub</a>, and the
-          <a href="/privacy">privacy policy</a> and <a href="/support">support page</a> need no
-          JavaScript at all.
-        </p>
-      </div>
-    </noscript>
   </body>
 </html>

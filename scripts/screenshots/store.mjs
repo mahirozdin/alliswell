@@ -674,15 +674,24 @@ async function main() {
           hero: 'web/home-light.png',
         },
         {
+          // EE-164: the Turkish homepage's card. The same capture as the
+          // English one — the app's web captures are English — under a
+          // Turkish headline, which is what the page behind the link says.
+          file: 'home-tr.png',
+          title: 'Bütün gününüz, gerçekten size ait bir uygulamada',
+          sub: 'Görevler, notlar ve alarm gücünde hatırlatıcılar · alliswell.space/tr',
+          hero: 'web/home-light.png',
+        },
+        {
           file: 'enterprise-en.png',
-          title: 'A service desk your organisation runs',
-          sub: 'Units, permissions, SLAs and a public request portal · alliswell.space/enterprise',
+          title: 'Every work request in your organisation, in one place',
+          sub: 'Departments, SLAs, customer requests, tasks and documents · alliswell.space/enterprise',
           hero: 'ee/sla-dashboard-light-en.png',
         },
         {
           file: 'enterprise-tr.png',
-          title: 'Servis masası, kendi sunucunuzda',
-          sub: "Birimler, izinler, SLA'lar ve public talep portalı · alliswell.space/enterprise/tr",
+          title: 'Kurumunuzdaki bütün iş talepleri, tek yerden',
+          sub: 'Birimler, SLA, müşteri talepleri, görevler ve dokümanlar · alliswell.space/enterprise/tr',
           hero: 'ee/sla-dashboard-light-tr.png',
         },
       ];

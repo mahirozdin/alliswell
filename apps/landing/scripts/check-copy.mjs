@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// The two enterprise content modules describe the same page (EE-152).
+// The two content modules of every bilingual page describe the same page
+// (EE-152; two pairs since EE-164).
 //
 // ── WHY A GATE AND NOT A CONVENTION ───────────────────────────────────────
 //
@@ -27,6 +28,15 @@
 // legitimately match, so the check only fires above a length where an accident
 // is implausible, and `i18n-same` on the line is the escape hatch — the same
 // shape as `docs-check-ignore` and `i18n-ignore`.
+//
+// ── TWO PAIRS, ONE DIFFERENCE ─────────────────────────────────────────────
+//
+// The enterprise page's screenshots are produced per language (Flutter goldens
+// with the locale in the filename, EE-145), so its paths must end in the
+// language they show. The homepage's are captures off real devices and a real
+// browser, in English, shared by both languages — the pipeline that makes them
+// is not run per language (content.tr.js says why). So the path-per-language
+// rule is a property of the PAIR, declared below, not of the gate.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +46,23 @@ const root = path.resolve(here, '..');
 
 /** Above this many characters, two identical strings are a paste, not a noun. */
 const SAME_LIMIT = 40;
+
+const PAIRS = [
+  {
+    name: 'enterprise',
+    en: 'src/enterprise/content.en.js',
+    tr: 'src/enterprise/content.tr.js',
+    entries: { en: 'enterprise/index.html', tr: 'enterprise/tr/index.html' },
+    shotsPerLanguage: true,
+  },
+  {
+    name: 'home',
+    en: 'src/content.js',
+    tr: 'src/content.tr.js',
+    entries: { en: 'index.html', tr: 'tr/index.html' },
+    shotsPerLanguage: false,
+  },
+];
 
 const problems = [];
 const fail = (m) => problems.push(m);
@@ -54,38 +81,6 @@ function leaves(node, prefix = '', out = new Map()) {
   return out;
 }
 
-const [en, tr] = await Promise.all([
-  import('../src/enterprise/content.en.js').then((m) => m.default),
-  import('../src/enterprise/content.tr.js').then((m) => m.default),
-]);
-
-const enLeaves = leaves(en);
-const trLeaves = leaves(tr);
-
-// ── 1. The same shape, in both directions ─────────────────────────────────
-for (const key of enLeaves.keys()) {
-  if (!trLeaves.has(key)) fail(`content.tr.js is missing ${key}`);
-}
-for (const key of trLeaves.keys()) {
-  if (!enLeaves.has(key)) fail(`content.en.js is missing ${key}`);
-}
-
-// ── 2. Nothing empty ──────────────────────────────────────────────────────
-for (const [file, map] of [
-  ['content.en.js', enLeaves],
-  ['content.tr.js', trLeaves],
-]) {
-  for (const [key, value] of map) {
-    if (typeof value === 'string' && value.trim() === '') {
-      fail(`${file}: ${key} is empty`);
-    }
-  }
-}
-
-// ── 3. Untranslated pastes ────────────────────────────────────────────────
-const trSource = readFileSync(path.join(root, 'src/enterprise/content.tr.js'), 'utf8');
-const trLines = trSource.split('\n');
-
 /**
  * Is this key marked `i18n-same` in the Turkish file?
  *
@@ -95,73 +90,117 @@ const trLines = trSource.split('\n');
  * long sentence is written as several concatenated fragments, and the natural
  * place to put a comment is the last one.
  */
-function exempt(key) {
-  const name = key.replace(/\[\d+\]/g, '').split('.').pop();
-  const decl = new RegExp(`(^|\\s)${name}\\s*:`);
-  let inside = false;
-  for (const line of trLines) {
-    if (decl.test(line)) inside = true;
-    else if (inside && /^\s*\w[\w$]*\s*:/.test(line)) inside = false;
-    if (inside && line.includes('i18n-same')) return true;
-  }
-  return false;
-}
-for (const [key, value] of enLeaves) {
-  const other = trLeaves.get(key);
-  if (typeof value !== 'string' || value !== other) continue;
-  if (value.length <= SAME_LIMIT) continue;
-  // `lang` and the shot paths are structure, not prose; they are checked below.
-  if (key === 'lang' || /shot|ogImage|href/i.test(key)) continue;
-  if (exempt(key)) continue;
-  fail(
-    `${key} is byte-identical in both languages (${value.length} chars) — ` +
-      'translate it, or mark the line `i18n-same` if it is deliberate',
-  );
+function exemptIn(trLines) {
+  return (key) => {
+    const name = key.replace(/\[\d+\]/g, '').split('.').pop();
+    const decl = new RegExp(`(^|\\s)${name}\\s*:`);
+    let inside = false;
+    for (const line of trLines) {
+      if (decl.test(line)) inside = true;
+      else if (inside && /^\s*\w[\w$]*\s*:/.test(line)) inside = false;
+      if (inside && line.includes('i18n-same')) return true;
+    }
+    return false;
+  };
 }
 
-// ── 4. Screenshot paths are whole, and per language ───────────────────────
-//
-// ci.yml greps the BUILT bundle for `/shots/...` literals. A path assembled at
-// runtime is a path that gate cannot see, which is how a reference to a
-// screenshot nobody produced reaches production.
-for (const [file, map, lang] of [
-  ['content.en.js', enLeaves, 'en'],
-  ['content.tr.js', trLeaves, 'tr'],
-]) {
-  for (const [key, value] of map) {
-    if (!/shot|ogImage/i.test(key) || typeof value !== 'string' || value === '') continue;
-    if (!value.startsWith('/shots/')) {
-      fail(`${file}: ${key} must be a whole path starting /shots/ (got "${value}")`);
-    }
-    if (!value.endsWith(`-${lang}.jpg`) && !value.includes('/og/')) {
-      fail(`${file}: ${key} is not the ${lang} capture ("${value}")`);
-    }
-  }
-}
+let total = 0;
 
-// ── 5. The head and the module agree ──────────────────────────────────────
-//
-// The title, the description and the h1 exist in the hand-written HTML entry
-// AND in the content module. Two places is one more than one, and the entry is
-// what a crawler reads while the module is what a reader reads — so they drift
-// in the direction nobody notices.
-for (const [content, entry] of [
-  [en, 'enterprise/index.html'],
-  [tr, 'enterprise/tr/index.html'],
-]) {
-  const html = readFileSync(path.join(root, entry), 'utf8');
-  for (const [what, want] of [
-    ['<title>', content.seo.title],
-    ['meta description', content.seo.description],
-    ['<h1>', content.hero.title],
+for (const pair of PAIRS) {
+  const [en, tr] = await Promise.all([
+    import(path.join(root, pair.en)).then((m) => m.default),
+    import(path.join(root, pair.tr)).then((m) => m.default),
+  ]);
+  const tag = `[${pair.name}]`;
+
+  const enLeaves = leaves(en);
+  const trLeaves = leaves(tr);
+  total += enLeaves.size;
+
+  // ── 1. The same shape, in both directions ───────────────────────────────
+  for (const key of enLeaves.keys()) {
+    if (!trLeaves.has(key)) fail(`${tag} ${pair.tr} is missing ${key}`);
+  }
+  for (const key of trLeaves.keys()) {
+    if (!enLeaves.has(key)) fail(`${tag} ${pair.en} is missing ${key}`);
+  }
+
+  // ── 2. Nothing empty ────────────────────────────────────────────────────
+  for (const [file, map] of [
+    [pair.en, enLeaves],
+    [pair.tr, trLeaves],
   ]) {
-    if (!html.includes(want)) {
-      fail(`${entry} no longer carries the ${what} from content.${content.lang}.js`);
+    for (const [key, value] of map) {
+      if (typeof value === 'string' && value.trim() === '') {
+        fail(`${tag} ${file}: ${key} is empty`);
+      }
     }
   }
-  const ogImage = content.seo.ogImage.replace(/\.jpg$/, '');
-  if (!html.includes(ogImage)) {
-    fail(`${entry} does not point at ${content.seo.ogImage}`);
+
+  // ── 3. Untranslated pastes ──────────────────────────────────────────────
+  const exempt = exemptIn(readFileSync(path.join(root, pair.tr), 'utf8').split('\n'));
+  for (const [key, value] of enLeaves) {
+    const other = trLeaves.get(key);
+    if (typeof value !== 'string' || value !== other) continue;
+    if (value.length <= SAME_LIMIT) continue;
+    // `lang`, the shot paths and the addresses are structure, not prose.
+    if (key === 'lang' || /shot|ogImage|href|src/i.test(key)) continue;
+    if (exempt(key)) continue;
+    fail(
+      `${tag} ${key} is byte-identical in both languages (${value.length} chars) — ` +
+        'translate it, or mark the line `i18n-same` if it is deliberate',
+    );
+  }
+
+  // ── 4. Screenshot paths are whole, and per language ─────────────────────
+  //
+  // ci.yml greps the BUILT bundle for `/shots/...` literals. A path assembled
+  // at runtime is a path that gate cannot see, which is how a reference to a
+  // screenshot nobody produced reaches production. The homepage's captures are
+  // gated by ci.yml's own read of content.js and are not per language.
+  if (pair.shotsPerLanguage) {
+    for (const [file, map, lang] of [
+      [pair.en, enLeaves, 'en'],
+      [pair.tr, trLeaves, 'tr'],
+    ]) {
+      for (const [key, value] of map) {
+        if (!/shot|ogImage/i.test(key) || typeof value !== 'string' || value === '') continue;
+        if (!value.startsWith('/shots/')) {
+          fail(`${tag} ${file}: ${key} must be a whole path starting /shots/ (got "${value}")`);
+        }
+        if (!value.endsWith(`-${lang}.jpg`) && !value.includes('/og/')) {
+          fail(`${tag} ${file}: ${key} is not the ${lang} capture ("${value}")`);
+        }
+      }
+    }
+  }
+
+  // ── 5. The head and the module agree ────────────────────────────────────
+  //
+  // The title, the description and the h1 exist in the hand-written HTML entry
+  // AND in the content module. Two places is one more than one, and the entry
+  // is what a crawler reads while the module is what a reader reads — so they
+  // drift in the direction nobody notices.
+  for (const [content, entry] of [
+    [en, pair.entries.en],
+    [tr, pair.entries.tr],
+  ]) {
+    // `&` is written `&amp;` in the head and `&` in the module; compare the
+    // text a reader sees, not the bytes a parser does.
+    const html = readFileSync(path.join(root, entry), 'utf8').replace(/&amp;/g, '&');
+    for (const [what, want] of [
+      ['<title>', content.seo.title],
+      ['meta description', content.seo.description],
+      ['<h1>', content.hero.title],
+    ]) {
+      if (!html.includes(want)) {
+        fail(`${tag} ${entry} no longer carries the ${what} from ${content.lang}`);
+      }
+    }
+    const ogImage = content.seo.ogImage.replace(/\.jpg$/, '');
+    if (!html.includes(ogImage)) {
+      fail(`${tag} ${entry} does not point at ${content.seo.ogImage}`);
+    }
   }
 }
 
@@ -172,5 +211,5 @@ if (problems.length) {
 }
 
 console.log(
-  `✓ copy: ${enLeaves.size} strings, both languages, and the heads agree with them`,
+  `✓ copy: ${total} strings across ${PAIRS.length} pages, both languages, and the heads agree with them`,
 );

@@ -28,6 +28,7 @@ import { STATIC_PAGES } from './static-pages.js';
  */
 export const VUE_PAGES = Object.freeze([
   { route: '', entry: 'index.html', lang: 'en' },
+  { route: 'tr', entry: 'tr/index.html', lang: 'tr' },
   { route: 'enterprise', entry: 'enterprise/index.html', lang: 'en' },
   { route: 'enterprise/tr', entry: 'enterprise/tr/index.html', lang: 'tr' },
 ]);

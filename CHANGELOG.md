@@ -5,6 +5,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **The enterprise page speaks like a person, in Turkish and English.** The
+  previous copy read like a translation: "a service desk on your own servers",
+  "three organisations, one shape", a strip of engineering numbers ("0 bytes
+  leave your network", "634 keys per language"). It has been rewritten for the
+  people who actually read it — a plant's general manager, its IT manager, its
+  after-sales manager — in the words they use: request management between
+  departments, after-sales support requests from customers and dealers, SLA
+  targets on your working hours, permissions per department. The page now also
+  covers what it never mentioned before: the tasks, board, projects, notes and
+  files every team in the company works with, with screenshots of a
+  manufacturing workspace taken in both languages.
+- **Cloud or your own servers, and what a package is.** The page used to hand
+  the reader a docker command and a self-hosting guide, and presented the
+  package table as if it applied everywhere. Neither was true for an enterprise
+  customer: the hosted service runs under the customer's own address
+  (`yourcompany.alliswell.space`) with three ready-made packages, and an
+  on-premise installation is done by us, with limits and modules set per
+  agreement. The "how it is installed" button, the terminal block and the
+  "is this a hosted service? No" answer are gone; a "Cloud or your own
+  servers?" section, a package table that says it is for the cloud, and a
+  contact form that asks which of the two you are considering take their place.
+- **The enterprise page's layout, fixed.** Feature rows were rendered without
+  the page shell, so their text sat on the left edge of the window and the
+  screenshot on the right edge; the tabbed sections stacked a heading, a row
+  of pills and a picture down the left third and left the rest empty. Rows now
+  carry the shell, and the tabbed sections are two columns — the tab list with
+  a one-line description per tab beside the picture — alternating sides with
+  the feature rows.
+- **The demo company in every enterprise screenshot is now a placeholder**
+  ("Sizin Şirketiniz A.Ş." / "Your Company Ltd."), not a name a real company
+  might carry.
+- **The homepage exists in Turkish** at `/tr`, and a browser that prefers
+  Turkish is sent to the Turkish homepage and the Turkish enterprise page
+  automatically. Choosing a language with the switch is remembered, and the
+  Turkish pages never redirect back, so search engines index both.
+
 ## [1.10.0] — 2026-09-09
 
 ### Added
