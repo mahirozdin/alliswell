@@ -11,6 +11,7 @@ export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
+export const APP_STORE_URL = 'https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494';
 export const VERSION = '1.10.1';
 
 export const hero = {
@@ -19,8 +20,9 @@ export const hero = {
   lede: 'Tasks, projects, notes, files and reminders loud enough to move you — with true two-way Google & Apple Calendar sync. One app on six platforms, offline-first, storing every byte in your own database.',
   primary: { label: 'Open the web app', href: APP_URL },
   store: { label: 'Get it on Google Play', href: PLAY_URL },
+  storeIos: { label: 'Download on the App Store', href: APP_STORE_URL },
   secondary: { label: 'Self-host in one command', href: '#self-host' },
-  note: 'Free forever. No tier, no ads, no tracking. In your browser at alliswell.space/app — and now on Google Play.',
+  note: 'Free forever. No tier, no ads, no tracking. In your browser at alliswell.space/app, on Google Play and on the App Store.',
 };
 
 export const platforms = [
@@ -290,8 +292,8 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
 
 export const download = {
   eyebrow: 'Get it',
-  title: 'In your browser today — and now on Google Play',
-  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is out on Google Play; the iOS build is in TestFlight and goes to the App Store next.',
+  title: 'In your browser, on Google Play and on the App Store',
+  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is on Google Play and the iPhone app is on the App Store, both free.',
   web: {
     title: 'Web app',
     status: 'Live now',
@@ -308,9 +310,10 @@ export const download = {
     },
     {
       name: 'App Store',
-      status: 'Internal testing',
-      body: 'TestFlight internal build is running. Public release next.',
+      status: 'Live now',
+      body: 'The iPhone app, on the store — the same alarm-grade reminders, offline-first sync and Home Screen widget.',
       icon: 'apple',
+      cta: { label: 'Download on the App Store', href: APP_STORE_URL },
     },
   ],
   selfHostNote:
@@ -375,6 +378,7 @@ export const siteColumns = [
     links: [
       { label: 'Open the app', href: APP_URL },
       { label: 'Get it on Google Play', href: PLAY_URL },
+      { label: 'Download on the App Store', href: APP_STORE_URL },
       { label: 'Features', href: '/#features' },
       { label: 'Comparison', href: '/#compare' },
       { label: 'Enterprise', href: '/enterprise' },

@@ -11,12 +11,14 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 
 [**🌐 Try it now — alliswell.space**](https://alliswell.space/app) &nbsp;·&nbsp;
 [**🤖 Get it on Google Play**](https://play.google.com/store/apps/details?id=com.alliswell.alliswell) &nbsp;·&nbsp;
+[**🍎 Download on the App Store**](https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494) &nbsp;·&nbsp;
 [Self-host in one command](#-self-hosting-your-server-your-data) &nbsp;·&nbsp;
 [Why it's different](#-why-alliswell-and-where-it-isnt-better)
 
 [![CI](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml/badge.svg)](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml)
 [![Stars](https://img.shields.io/github/stars/mahirozdin/alliswell?style=flat&logo=github&color=2563EB)](https://github.com/mahirozdin/alliswell/stargazers)
 [![Google Play](https://img.shields.io/badge/Google_Play-live-3DDC84?logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.alliswell.alliswell)
+[![App Store](https://img.shields.io/badge/App_Store-live-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494)
 [![Licence: PolyForm Noncommercial](https://img.shields.io/badge/Licence-PolyForm_Noncommercial-brightgreen)](LICENSE)
 [![Free for personal use](https://img.shields.io/badge/Free-for_personal_use_%26_self--hosting-0D7A33)](#-licence--commercial-use)
 [![Self-hosted](https://img.shields.io/badge/Self--hosted-your_MySQL-2563EB)](docker-compose.selfhost.yml)
@@ -43,7 +45,7 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | ------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | **🌐 Web app**     | **Live now**      | **[alliswell.space/app](https://alliswell.space/app)** — sign up and use it on every device. Nothing to install.                    |
 | **🤖 Google Play** | **Live now**      | **[Get it on Google Play](https://play.google.com/store/apps/details?id=com.alliswell.alliswell)** — the Android app, on the store. |
-| 🍎 **App Store**   | Internal testing  | TestFlight internal build is running; public release next.                                                                          |
+| **🍎 App Store**   | **Live now**      | **[Download on the App Store](https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494)** — the iPhone app, on the store.  |
 | 🐳 **Self-host**   | Live now          | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data).                                                      |
 | 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
 
@@ -493,7 +495,8 @@ accepted under the same terms.
 **[⭐ Star this repo](https://github.com/mahirozdin/alliswell)** &nbsp;·&nbsp;
 **[🌐 alliswell.space](https://alliswell.space)** &nbsp;·&nbsp;
 **[Open the app](https://alliswell.space/app)** &nbsp;·&nbsp;
-**[🤖 Google Play](https://play.google.com/store/apps/details?id=com.alliswell.alliswell)**
+**[🤖 Google Play](https://play.google.com/store/apps/details?id=com.alliswell.alliswell)** &nbsp;·&nbsp;
+**[🍎 App Store](https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494)**
 
 <sub>
 

@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **The iPhone app is on the App Store.** The homepage (both languages) and the
+  README said the iOS build was in TestFlight with a public release "next";
+  it has been public since 9 September. The download section, the hero and
+  the footer now link to it, alongside Google Play.
+
 ## [1.10.1] — 2026-09-11
 
 ### Fixed

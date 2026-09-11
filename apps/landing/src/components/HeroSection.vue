@@ -47,6 +47,19 @@ defineProps({
           <PlatformIcon name="android" :size="17" />
           {{ hero.store.label }}
         </a>
+        <!-- The iPhone app went public on 2026-09-09; the button appears once
+             the content names it, so a page without an App Store link draws
+             no dead button. -->
+        <a
+          v-if="hero.storeIos"
+          class="aw-btn aw-btn--ghost"
+          :href="hero.storeIos.href"
+          rel="noopener"
+          target="_blank"
+        >
+          <PlatformIcon name="apple" :size="17" />
+          {{ hero.storeIos.label }}
+        </a>
         <a class="aw-btn aw-btn--ghost" :href="hero.secondary.href">{{ hero.secondary.label }}</a>
         <a class="aw-btn aw-btn--ghost" :href="REPO_URL" rel="noopener" target="_blank">
           <svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor" aria-hidden="true">

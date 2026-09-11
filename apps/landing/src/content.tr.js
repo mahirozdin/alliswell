@@ -17,6 +17,7 @@
  */
 
 import {
+  APP_STORE_URL,
   APP_URL,
   DOCS_URL,
   PLAY_URL,
@@ -65,10 +66,11 @@ export default {
       'tek uygulama, internet olmadan da çalışır, her veriyi kendi veritabanınızda tutar.',
     primary: { label: 'Web uygulamasını aç', href: APP_URL },
     store: { label: "Google Play'den indir", href: PLAY_URL },
+    storeIos: { label: "App Store'dan indir", href: APP_STORE_URL },
     secondary: { label: 'Tek komutla kendi sunucunuza kurun', href: '/tr#self-host' },
     note:
       'Sonsuza kadar ücretsiz. Paket yok, reklam yok, takip yok. Tarayıcınızda ' +
-      "alliswell.space/app adresinde, ve artık Google Play'de.",
+      "alliswell.space/app adresinde, Google Play'de ve App Store'da.",
     desktopAlt:
       'Web üzerinde AllisWell: geciken ve bugünkü gruplar, proje rozetleri, etiketler, hızlı ' +
       'erişim çubuğu ve ay takvimiyle ana sayfa',
@@ -463,10 +465,10 @@ docker compose -f docker-compose.selfhost.yml up -d`,
 
   download: {
     eyebrow: 'Edinin',
-    title: 'Bugün tarayıcınızda; ve artık Google Play’de',
+    title: 'Tarayıcınızda, Google Play’de ve App Store’da',
     lede:
       'Web uygulaması yayında ve eksiksiz: kaydolun, sahip olduğunuz her cihazda çalışsın. ' +
-      'Android uygulaması Google Play’de; iOS derlemesi TestFlight’ta, sırada App Store var.',
+      'Android uygulaması Google Play’de, iPhone uygulaması App Store’da; ikisi de ücretsiz.',
     web: {
       title: 'Web uygulaması',
       status: 'Yayında',
@@ -487,9 +489,12 @@ docker compose -f docker-compose.selfhost.yml up -d`,
       },
       {
         name: 'App Store',
-        status: 'İç test',
-        body: 'TestFlight iç derlemesi çalışıyor. Sırada herkese açık sürüm var.',
+        status: 'Yayında',
+        body:
+          'iPhone uygulaması mağazada: aynı alarm gücünde hatırlatıcılar, çevrimdışı öncelikli ' +
+          'eşitleme ve ana ekran widget’ı.',
         icon: 'apple',
+        cta: { label: "App Store'dan indir", href: APP_STORE_URL },
       },
     ],
     selfHostNote:
@@ -557,6 +562,7 @@ docker compose -f docker-compose.selfhost.yml up -d`,
         links: [
           { label: 'Uygulamayı aç', href: APP_URL },
           { label: "Google Play'den indir", href: PLAY_URL },
+          { label: "App Store'dan indir", href: APP_STORE_URL },
           { label: 'Özellikler', href: '/tr#features' },
           { label: 'Karşılaştırma', href: '/tr#compare' },
           { label: 'Kurumsal', href: '/enterprise/tr' },

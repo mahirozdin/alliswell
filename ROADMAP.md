@@ -103,7 +103,7 @@ Shipped: the "AllisWell Glass" design system (light/dark, WCAG-verified,
 CONTRIBUTING / SECURITY / issue + PR templates, **this roadmap**, and
 **release automation** (a tagged GitHub Actions release pipeline). ⏳ Remaining:
 import/export from other apps, a performance pass, and packaged distribution
-(Docker image publish, TestFlight/F-Droid).
+(F-Droid; the Docker images and the App Store listing have since shipped).
 
 ### Phase 7 — Localization & widgets ⏳ (planned, feedback round 5)
 
