@@ -9,18 +9,39 @@
 #
 # Deployed by .github/workflows/deploy.yml — edit it here, not on the server.
 
+<IfModule mod_dir.c>
+  # mod_dir's trailing-slash redirect fires for a directory request BEFORE the
+  # in-place rule below ever runs — the RewriteRule alone never took effect.
+  # EE-151 added the rule on 2026-09-06 and /enterprise kept answering 301 on
+  # the live box; reproduced on 2026-09-11 in a stock httpd:2.4 with this very
+  # file (mod_rewrite on, AllowOverride All): /enterprise, /tr, /privacy all
+  # 301, and with DirectorySlash Off all three serve their page in place.
+  #
+  # Safe to turn off here: every directory a visitor can name carries an
+  # index.html and is rewritten to it below, and -Indexes makes sure a
+  # directory that does not (assets/, shots/) answers 403 rather than a
+  # listing. Override: Indexes and Options, both under the AllowOverride All
+  # the <If> block further down already proves this docroot has.
+  DirectorySlash Off
+</IfModule>
+Options -Indexes
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
+  # The Flutter app keeps its slash. It is built with --base-href /app/ and has
+  # always been reached at /app/; serving its index in place at /app would hand
+  # the router a path the base href does not cover. This is the one directory
+  # that is redirected on purpose, and it must come before the in-place rule.
+  RewriteRule ^app$ /app/ [R=301,L]
+
   # A generated directory page is served IN PLACE rather than redirected to its
-  # trailing slash (EE-151).
+  # trailing slash (EE-151, made effective in EE-164 by DirectorySlash Off).
   #
-  # Without this, /enterprise matches the -d condition below, rewriting stops,
-  # and mod_dir issues a 301 to /enterprise/ — so the canonical each of these
-  # pages declares is a URL that redirects, which is a canonical a crawler
-  # distrusts. Measured on 2026-09-06: /enterprise, /privacy, /support and
-  # /docs/api all answered 301.
+  # Without this the canonical each of these pages declares is a URL that
+  # redirects, which is a canonical a crawler distrusts. Measured on
+  # 2026-09-06: /enterprise, /privacy, /support and /docs/api all answered 301.
   #
   # Real files still win: /logo.svg/index.html is not a file, so the condition
   # is false and the rule skips them. The pattern needs at least one character,

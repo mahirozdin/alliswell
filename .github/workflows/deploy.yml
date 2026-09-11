@@ -682,10 +682,13 @@ jobs:
       # The API being up says nothing about the two SPAs sharing one docroot.
       # A deploy that serves the landing page at / and a 404 at /app is exactly
       # the failure this split introduces, so it gets its own check.
+      # EE-164: no longer optional. This step self-skipped for two months
+      # because `DEPLOY_SITE_URL` was never set, and in that time /enterprise
+      # answered 301 for three releases while the step that would have said so
+      # printed nothing. The default is the one site this workflow deploys.
       - name: Verify both sites answer
-        if: vars.DEPLOY_SITE_URL != ''
         run: |
-          site="${{ vars.DEPLOY_SITE_URL }}"
+          site="${{ vars.DEPLOY_SITE_URL || 'https://alliswell.space' }}"
           fail=0
 
           root=$(curl -fsS --max-time 15 "$site/" || true)
