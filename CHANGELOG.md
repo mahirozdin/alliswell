@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.10.1] — 2026-09-11
+
+### Fixed
+
+- **`alliswell.space/enterprise`, `/tr`, `/privacy`, `/support` and `/docs/api`
+  answer in place instead of redirecting to their trailing-slash twin.** The
+  rewrite rule meant to do this shipped in 1.9.3 and never took effect: Apache
+  issues its trailing-slash redirect for a directory request before the rule
+  runs (reproduced in a stock Apache with the same file). The docroot now turns
+  that redirect off and serves each page's index directly, so the canonical URL
+  every page declares is the URL that actually answers. The Flutter app keeps
+  its `/app/` slash on purpose. The deploy's site check, which would have
+  caught this, no longer depends on a variable nobody had set.
+
 ### Changed
 
 - **The enterprise page speaks like a person, in Turkish and English.** The
