@@ -479,42 +479,48 @@ export default {
   },
 
   security: {
-    eyebrow: 'Güvenlik ve uyum',
-    title: 'Bilgi işlem müdürünüzün soracağı sorular',
+    eyebrow: 'Veri güvenliği',
+    title: 'Veri gizliliği ve veri bütünlüğü',
     items: [
       {
         key: 'residency',
         icon: '🗄️',
-        title: 'Veri nerede tutulur?',
+        title: 'Veriniz nerede tutulur?',
         body:
           'Kendi sunucunuzu seçtiyseniz sizin sunucunuzda, sizin veritabanınızda, sizin ' +
           'güvenlik duvarınızın arkasında. Bulutta ise yalnız size ait, diğer müşterilerden ' +
-          'tamamen ayrı bir alanda. Siz bağlamadıkça hiçbir veri dışarıya gitmez.',
+          'tamamen ayrı bir alanda. Siz bağlamadıkça hiçbir veri kurumunuzun dışına çıkmaz.',
       },
       {
-        key: 'accounts',
-        icon: '🔑',
-        title: 'Hesaplar nasıl korunur?',
+        key: 'access',
+        icon: '🔐',
+        title: 'Verinize kim erişebilir?',
         body:
-          'Belirlediğiniz şifre politikası ve hatalı giriş kilidi, doğrulayıcı uygulamayla iki ' +
-          'adımlı giriş, her kullanıcının açık oturum ve cihaz listesi. Yönetici gerektiğinde ' +
-          'bir oturumu uzaktan kapatabilir.',
+          'Her çalışan yalnız üyesi olduğu birimlerin verisini görür; ne yapabileceği rolüyle ' +
+          'belirlenir. Şifre politikası ve hatalı giriş kilidi sizin elinizde, iki adımlı giriş ' +
+          'doğrulayıcı uygulamayla. Açık oturumlar ve cihazlar listelenir; yönetici gerektiğinde ' +
+          'bir oturumu uzaktan kapatır.',
       },
       {
         key: 'audit',
         icon: '📜',
-        title: 'Kim ne yaptı, nasıl görülür?',
+        title: 'Her işlem kayıt altında',
         body:
-          'Her işlem tarih, saat ve kişiyle kayıt altındadır. Kayıtlar sonradan değiştirilemez; ' +
-          'saklama süresini siz belirlersiniz ve denetim için dışa aktarılır.',
+          'Talep, görev, not ve dosya üzerindeki her işlem tarih, saat ve kişiyle kaydedilir. ' +
+          'Kayıtlar sonradan değiştirilemez ve silinemez; saklama süresini siz belirlersiniz, ' +
+          'denetim için dışa aktarırsınız. "Kim, ne zaman, neyi değiştirdi" sorusunun cevabı ' +
+          'her zaman hazırdır.',
       },
       {
-        key: 'kvkk',
-        icon: '⚖️',
-        title: 'KVKK ve GDPR',
+        key: 'integrity',
+        icon: '🛡️',
+        title: 'Yedekleme, taşınabilirlik ve KVKK',
         body:
-          'Kurumunuzun bütün verisi tek belge olarak dışa aktarılır; bir kişinin verisi talep ' +
-          'üzerine silinebilir. Mevzuat gerekleri sonradan eklenmiş değil, sistemin parçasıdır.',
+          'İnternet kesildiğinde yapılan değişiklikler cihazda saklanır, bağlantı gelince ' +
+          'eşitlenir; hiçbir kayıt yarım kalmaz. Bulutta düzenli yedekleme bizim ' +
+          'sorumluluğumuzda; kendi sunucunuzda yedekleme ve geri yükleme rehberiyle. Kurumunuzun ' +
+          'bütün verisi tek belge olarak dışa aktarılır, bir kişinin verisi talep üzerine ' +
+          'silinir. KVKK ve GDPR gerekleri sistemin parçasıdır.',
       },
     ],
   },

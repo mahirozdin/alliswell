@@ -486,43 +486,49 @@ export default {
   },
 
   security: {
-    eyebrow: 'Security and compliance',
-    title: 'The questions your IT manager will ask',
+    eyebrow: 'Data security',
+    title: 'Data privacy and data integrity',
     items: [
       {
         key: 'residency',
         icon: '🗄️',
-        title: 'Where is the data kept?',
+        title: 'Where is your data kept?',
         body:
           'If you chose your own servers: on your server, in your database, behind your ' +
           'firewall. In the cloud: in a space that belongs only to you, completely separate ' +
-          'from other customers. Nothing leaves unless you connect it yourself.',
+          'from other customers. Nothing leaves your organisation unless you connect it yourself.',
       },
       {
-        key: 'accounts',
-        icon: '🔑',
-        title: 'How are accounts protected?',
+        key: 'access',
+        icon: '🔐',
+        title: 'Who can reach your data?',
         body:
-          'A password policy and lockout you define, two-step sign-in with an authenticator ' +
-          'app, and a list of every user’s active sessions and devices. An administrator can ' +
-          'end a session remotely when needed.',
+          'Each employee sees only the data of the departments they belong to, and what they ' +
+          'may do is set by their role. The password policy and lockout are yours to define, ' +
+          'two-step sign-in uses an authenticator app, and every user’s open sessions and ' +
+          'devices are listed — an administrator can end one remotely when needed.',
       },
       {
         key: 'audit',
         icon: '📜',
-        title: 'How do we see who did what?',
+        title: 'Every action on the record',
         body:
-          'Every action is recorded with its date, time and person. Records cannot be altered ' +
-          'afterwards; you set the retention period, and the log exports for audits.',
+          'Every action on a request, task, note or file is recorded with its date, time and ' +
+          'person. Records cannot be altered or deleted afterwards; you set the retention ' +
+          'period and export the log for audits. The answer to “who changed what, and when” ' +
+          'is always ready.',
       },
       {
-        key: 'kvkk',
-        icon: '⚖️',
-        title: 'KVKK and GDPR',
+        key: 'integrity',
+        icon: '🛡️',
+        title: 'Backups, portability and KVKK/GDPR',
         body:
-          'Your organisation’s entire data exports as one document, and one person’s data can ' +
-          'be erased on request. Regulatory requirements are part of the system, not a label ' +
-          'added later.',
+          'Changes made while the internet is down are kept on the device and synchronised ' +
+          'when the connection returns; no record is left half-written. In the cloud, regular ' +
+          'backups are our responsibility; on your own servers they follow our backup and ' +
+          'restore guide. Your organisation’s entire data exports as one document, and one ' +
+          'person’s data can be erased on request. KVKK and GDPR requirements are part of the ' +
+          'system.',
       },
     ],
   },
