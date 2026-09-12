@@ -41,7 +41,7 @@ class SceneDelegate: FlutterSceneDelegate {
   /// options above, which are read-only — so Dart guards it as well
   /// (`awIsShareCallback`, `core/deep_link.dart`).
   override func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-    let forwarded = URLContexts.filter { !Self.isShareCallback($0.url) }
+    let forwarded = URLContexts.filter { !self.isShareCallback($0.url) }
     if !forwarded.isEmpty {
       super.scene(scene, openURLContexts: forwarded)
     }
@@ -52,7 +52,7 @@ class SceneDelegate: FlutterSceneDelegate {
   /// `\(kSchemePrefix)-\(hostAppBundleIdentifier):share`. Compared lowercased
   /// because iOS normalizes the scheme it hands over, and derived from the
   /// bundle id so a flavor with its own identifier needs no edit here.
-  private static func isShareCallback(_ url: URL) -> Bool {
+  private func isShareCallback(_ url: URL) -> Bool {
     guard let scheme = url.scheme?.lowercased(),
       let bundleId = Bundle.main.bundleIdentifier?.lowercased()
     else { return false }
