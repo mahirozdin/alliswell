@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **CI and `docker-compose` pull MinIO from quay.io.** Docker Hub's
+  `minio/minio` is gone — `docker pull` answers *"pull access denied …
+  repository does not exist"*, and its registry returns 401 for the manifest
+  quay.io serves with 200. Both API jobs died on the container start, before a
+  single integration test ran, and a fresh `docker compose up` hit the same
+  wall. quay.io is MinIO's own registry; nothing else about the service
+  changes.
 - **Sharing a text into AllisWell on iOS ends in the app, not on an error
   screen.** "Paylaş → AllisWell" saved the text and then showed *"Bir şeyler
   ters gitti — bu bağlantı AllisWell'in bu sürümünde bir yere gitmiyor"* with

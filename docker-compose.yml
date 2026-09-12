@@ -38,7 +38,9 @@ services:
   # automatically the first time the integration tests run (or make it yourself
   # in the console at http://localhost:9001).
   minio:
-    image: minio/minio:latest
+    # quay.io is MinIO's own registry; the Docker Hub mirror is gone (it now
+    # answers "repository does not exist" — 2026-09-12).
+    image: quay.io/minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
