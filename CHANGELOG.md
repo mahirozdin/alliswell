@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.10.2] — 2026-09-12
+
 ### Fixed
 
 - **CI and `docker-compose` pull MinIO from quay.io.** Docker Hub's
