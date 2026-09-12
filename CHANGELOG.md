@@ -5,6 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Sharing a text into AllisWell on iOS ends in the app, not on an error
+  screen.** "Paylaş → AllisWell" saved the text and then showed *"Bir şeyler
+  ters gitti — bu bağlantı AllisWell'in bu sürümünde bir yere gitmiyor"* with
+  `sharemedia-com.alliswell.alliswell:/share` underneath, and no task was
+  created. The share extension announces itself by opening that URL after it
+  has written the payload to the App Group; iOS 26 delivers the open (iOS 18
+  did not, which is what ADR-0029 had measured), no plugin claims it under the
+  UIScene lifecycle, and Flutter therefore handed it to the router as a plain
+  location that matched no route. The app now treats it as what it is — a
+  nudge, not a destination: the scene delegate drops it, the router answers it
+  with Home, and the shell still drains the App Group, so the shared text
+  reaches the AI exactly as it does on Android. A payload that arrives while
+  the shell is off screen is no longer stranded either.
+
 ### Changed
 
 - **The iPhone app is on the App Store.** The homepage (both languages) and the

@@ -3,7 +3,31 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-04 (**Epic 27 — API'NİN BİR ÜRÜN YÜZEYİ OLMASI (istek turu 20).
+**Last updated:** 2026-09-12 (**Epic 28 — PAYLAŞILAN YAZI UYGULAMADA BİTSİN
+(istek turu 21). OPH-298.** Rapor + ekran görüntüsü: "Paylaş → AllisWell" dedi,
+uygulama açıldı ve *"Bir şeyler ters gitti — bu bağlantı AllisWell'in bu
+sürümünde bir yere gitmiyor"* dedi; altında `sharemedia-com.alliswell.alliswell:/share`.
+Beklenen: yapay zekânın yazıyı görev yapması. **Turun cümlesi: paylaşım
+BAŞARILIYDI — hata ekranı, başarılı paylaşımın "geldim" demek için açtığı URL'i
+bir ADRES sandığımız için çıktı.** Ekrandaki dizenin kendisi kanıt: `:/share`
+biçimi go_router `normalizeUri`'sinin `ShareMedia-<bundle id>:share` üzerindeki
+izi, yani URL `RSIShareViewController.redirectToHostApp()`'ten gelmiş ve
+ulaşmış. ADR-0029 bunun iOS 18'de imkânsız olduğunu ÖLÇMÜŞTÜ; iOS 26'da
+geliyor — ölçüm eskidi, karar değil (ADR yerinde tadil edildi). Üç katman:
+appex artık öne getirebiliyor · plugin yalnızca UIScene öncesi kancaları kuruyor
+(bizde `FlutterSceneDelegate`) · sahipsiz URL Flutter'da ROTA oluyor →
+`/not-found`. Asıl zarar hata ekranı değil: `/not-found` shell'in DIŞINDA, yani
+App Group drain'i hiç çalışmadı — metin kutuda kaldı. Düzeltme üç yerde:
+`SceneDelegate` URL'i `super`'e vermeden düşürüyor (tek taşıyıcı korunuyor),
+router `awIsShareCallback`'i Ana sayfa ile cevaplıyor, `HomeShell` ilk karesinden
+sonra bekleyen yükü süpürüyor (`ref.listen` yalnızca değişimde ateşler). Süitler:
+app **1598** (+8), analyze temiz, format temiz. Negatif kontrol yapıldı: her iki
+yarı ayrı ayrı geri alındığında testler kırmızı. Sürüm etiketi KESİLMEDİ —
+CHANGELOG `[Unreleased]`. Dal: `claude/vel-app-share-error-ax7b1x`.
+Sıradaki iş: PR'ın merge'ü ve cihaz turu — sheet/banner/drain yalnız cihazda
+görülebilir.)
+
+Önceki blok: 2026-09-04 (**Epic 27 — API'NİN BİR ÜRÜN YÜZEYİ OLMASI (istek turu 20).
 OPH-292…297, issue #3.** Rapor üçlü: API erişimi Ayarlar'da yanlış yerde, FAB'ın ikonu yok,
 ve "key oluşturdum, dokümantasyon yok". **Turun cümlesi: özellik v1.7.0'da inmişti — eksik
 olan özellik değil, onu bulunabilir ve kullanılabilir kılan her şeydi.**

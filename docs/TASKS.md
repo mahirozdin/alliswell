@@ -9388,6 +9388,61 @@ yanlışa dönmüştü._
 _(⏳ Epic 27 kodu tamam; sürüm etiketi bu turda kesilmedi — CHANGELOG `[Unreleased]`
 altında, sekiz yerli sürüm ritüeline girilmedi.)_
 
+## Epic 28 — İstek turu 21: paylaşılan yazı uygulamada bitsin (v1.10.x)
+
+_Sahibin tek raporu, ekran görüntüsüyle: bir yazıyı seçip "Paylaş → AllisWell"
+dedi, uygulama açıldı ve **"Bir şeyler ters gitti — bu bağlantı AllisWell'in bu
+sürümünde bir yere gitmiyor"** dedi; altında `sharemedia-com.alliswell.alliswell:/share`.
+Beklenen: yapay zekânın o yazıyı görev olarak eklemesi._
+
+_**Turun tek cümlesi: paylaşım BAŞARILI olmuştu — hata ekranı, başarılı bir
+paylaşımın uygulamaya "geldim" demek için açtığı URL'i bir ADRES sandığı için
+çıktı.** ADR-0029 o URL'in hiç gelemeyeceğini ölçmüştü (iOS 18); iOS 26'da
+geliyor. Ölçüm eskidi, karar değil._
+
+### OPH-298 — Paylaşım uzantısının geri dönüş URL'i bir adres değil, bir dürtme
+
+- [x] **Kök neden, ekrandaki dizeden okundu (tahmin yok):** `:/share` biçimi
+      go_router'ın `normalizeUri`'sinin `ShareMedia-<bundle id>:share` üzerinde
+      bıraktığı izdir — yani URL `RSIShareViewController.redirectToHostApp()`
+      (`RSIShareViewController.swift:196`) tarafından açılmış ve **uygulamaya
+      ulaşmıştır**. Üç katman üst üste: (1) appex artık ana uygulamayı öne
+      getirebiliyor (iOS 26), (2) `receive_sharing_intent` yalnızca UIScene
+      öncesi `application:openURL:options:` kancalarını kuruyor — bizde
+      `FlutterSceneDelegate` var, yani URL hiçbir plugin'e uğramıyor, (3)
+      sahipsiz URL'i Flutter çerçeveye **rota** olarak veriyor, hiçbir rotaya
+      uymuyor, `onException` `/not-found`'a gönderiyor.
+- [x] **Asıl zarar hata ekranı değildi:** `/not-found` shell'in DIŞINDA, yani
+      `shareBinderProvider` hiç mount olmuyor ve App Group'u boşaltan drain
+      çalışmıyordu. Metin kutuda duruyordu; kullanıcı hem hata görüyor hem
+      görev alamıyordu. Bir geliş, iki çıkmaz sokak.
+- [x] `SceneDelegate` geri dönüş URL'ini `super`'e **vermeden** düşürüyor —
+      böylece rota olmuyor ve plugin de posta kutusunu paralel okuyamıyor
+      (`handleUrl` kutuyu temizlemez; iki okuyucu = bir paylaşım, iki görev).
+      Soğuk yol `connectionOptions` ile geliyor ve orada süzülemez; bu yüzden
+      Dart tarafı da bekçi.
+- [x] `awIsShareCallback` (`core/deep_link.dart`) + router: URL **Ana sayfa**
+      ile cevaplanıyor (hata ekranıyla değil) — ki paylaşımı tüketen shell
+      zaten orada. Oturum kapalıyken "bekleyen derin bağlantı" olarak da
+      hatırlanmıyor: adres olmayan bir şey tekrar oynatılamaz.
+- [x] `HomeShell` ilk karesinden sonra bekleyen paylaşımı **süpürüyor**.
+      `ref.listen` yalnızca DEĞİŞİMDE ateşler ve binder shell'den uzun yaşar:
+      shell ekranda değilken hatırlanan bir yükün tüketicisi yoktu. Raporun
+      "hiçbir şey olmadı" kısmının ikinci yarısı buydu.
+- [x] **ADR-0029 yerinde tadil edildi** ("The premise that expired"): karar
+      duruyor — uzantı hâlâ uygulamayı açmaya çalışmıyor, taşıyıcı hâlâ App
+      Group. Eskiyen yalnızca bir ÖLÇÜM. Kararın ayakta kalma sebebi de kayda
+      geçti: reddedilmeye değil, reddedilme olmadan da çalışmaya kurulmuştu.
+- **Kabul:** üç katman, ADR-0029'un kendi kalıbında — `native_config_test`
+      `super`'e SÜZÜLMÜŞ kümenin verildiğini pinliyor; `deep_link_test`
+      `awIsShareCallback`'i saf olarak; `share_routing_test` üç widget testi:
+      soğuk başlangıç, **sıcak** geri dönüş (düzeltme olmadan `/not-found`'a
+      düşer — raporu birebir üreten test budur) ve shell ekranda değilken gelen
+      yük. Negatif kontrol yapıldı: her iki yarı da ayrı ayrı geri alınıp
+      testlerin kırmızıya döndüğü görüldü.
+- **Doğrulama:** app süiti **1598** (+8), `flutter analyze` temiz,
+      `dart format` değişiklik yok.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

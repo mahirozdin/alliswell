@@ -75,6 +75,48 @@ void main() {
     });
   });
 
+  /// OPH-298 — the share extension's callback (amends ADR-0029).
+  ///
+  /// ADR-0029 decided the appex could never open the host app, so nothing knew
+  /// this URL. On iOS 26 it arrives, unclaimed by any plugin, and go_router
+  /// received it as a LOCATION: a share that had been saved ended on the error
+  /// screen instead of in the Inbox.
+  group('awIsShareCallback', () {
+    test('recognizes the URL the extension actually opens', () {
+      // `RSIShareViewController` builds `ShareMedia-<bundle id>:share`; the
+      // second form is what go_router's normalizer makes of it, and it is the
+      // string that was printed under the error screen's message.
+      for (final raw in [
+        'ShareMedia-com.alliswell.alliswell:share',
+        'sharemedia-com.alliswell.alliswell:/share',
+        // A flavor with its own bundle id must not need an edit here.
+        'sharemedia-space.alliswell.dev:share',
+      ]) {
+        expect(awIsShareCallback(Uri.parse(raw)), isTrue, reason: raw);
+      }
+    });
+
+    test('is not a destination — it announces, it does not carry', () {
+      // The payload travels in the App Group; the URL says only "come
+      // forward". Resolving it to a route would be inventing a meaning.
+      final callback = Uri.parse('sharemedia-com.alliswell.alliswell:share');
+      expect(awRouteForUri(callback), isNull);
+      expect(awIsBackgroundAction(callback), isFalse);
+    });
+
+    test('and nothing else is mistaken for it', () {
+      for (final other in [
+        'alliswell://open',
+        'https://alliswell.space/tasks',
+        'sharemedia:share',
+        'sharemedia.com.alliswell:share',
+        'file:///tmp/not.md',
+      ]) {
+        expect(awIsShareCallback(Uri.parse(other)), isFalse, reason: other);
+      }
+    });
+  });
+
   group('handleWidgetAction (OPH-188)', () {
     late AwDatabase db;
 

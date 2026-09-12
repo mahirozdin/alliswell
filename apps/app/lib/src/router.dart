@@ -178,7 +178,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         final pending = ref.read(pendingDeepLinkProvider.notifier).take();
         if (pending != null && pending != state.matchedLocation) return pending;
       }
-      if (auth.value == null && !auth.isLoading) {
+      // OPH-298: the share extension's callback is NOT a destination, so it is
+      // never remembered. Replaying it after sign-in would replay an
+      // unroutable location; the payload it announces waits in the App Group
+      // and the shell drains it the moment it mounts.
+      if (auth.value == null &&
+          !auth.isLoading &&
+          !awIsShareCallback(state.uri)) {
         final wanted = awRouteForUri(state.uri) ?? state.matchedLocation;
         if (!_authLocations.contains(wanted) && wanted != '/splash') {
           ref.read(pendingDeepLinkProvider.notifier).remember(wanted);
@@ -197,6 +203,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     // the "error page" is a real route with a working way out.
     onException: (context, state, router) {
       final uri = state.uri;
+      // OPH-298: the iOS share extension's `ShareMedia-<bundle id>:share`
+      // callback. ADR-0029 expected it never to arrive; on iOS 26 it does, and
+      // it used to land on `/not-found` — an error screen for a share that had
+      // in fact been saved, and (because that screen lives outside the shell)
+      // the reason the App Group was never drained. Home is the answer to both
+      // halves: no error, and the surface that consumes the payload is mounted.
+      if (awIsShareCallback(uri)) {
+        router.go(AppSection.home.path);
+        return;
+      }
       final resolved = awRouteForUri(uri);
       if (resolved != null) {
         router.go(resolved);
