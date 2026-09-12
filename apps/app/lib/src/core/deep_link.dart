@@ -65,3 +65,31 @@ String? awRouteForUri(Uri uri) {
 /// omission is a decision, not an oversight (ADR-0016).
 bool awIsBackgroundAction(Uri uri) =>
     uri.scheme == kAwScheme && (uri.host == 'complete' || uri.host == 'add');
+
+/// The iOS share extension's callback scheme: `ShareMedia-<host bundle id>`
+/// (OPH-298, amends ADR-0029).
+///
+/// `RSIShareViewController.redirectToHostApp()` opens
+/// `ShareMedia-<bundle id>:share` AFTER it has written the App Group.
+/// ADR-0029 measured that open as a no-op on iOS 18 and built the App Group
+/// drain because of it — but on iOS 26 it ARRIVES, and under the UIScene
+/// lifecycle no plugin claims it, so Flutter hands the URL to the router as a
+/// plain LOCATION. It matched no route, so the share ended on the error screen
+/// ("Bu bağlantı … bir yere gitmiyor") — worse than the silence it replaced,
+/// because that screen lives OUTSIDE the shell and the shell is what drains
+/// the payload.
+///
+/// So this is not a destination, it is a NUDGE: the shared text never travels
+/// in the URL (it is in the App Group), and the only thing the app owes this
+/// URL is to come forward without an error.
+///
+/// Matched on the prefix alone, deliberately. The suffix is the host bundle id,
+/// which differs per flavor, and the worst a forged `sharemedia-…:` link can
+/// achieve is Home — this table only ever navigates.
+const String kAwShareCallbackPrefix = 'sharemedia-';
+
+/// True for the share extension's callback URL. `Uri` lowercases the scheme
+/// and so does iOS on delivery; the extra `toLowerCase()` costs nothing and
+/// makes the match independent of both.
+bool awIsShareCallback(Uri uri) =>
+    uri.scheme.toLowerCase().startsWith(kAwShareCallbackPrefix);

@@ -2,7 +2,10 @@
 
 - **Status:** Accepted (2026-08-10, OPH-242) — **amends
   [ADR-0023](0023-stt-and-share-intent-dependencies.md) §3** (the redirect
-  clause only; §1, §2 and the no-network/no-AI guarantee stand)
+  clause only; §1, §2 and the no-network/no-AI guarantee stand).
+  **Amended in place 2026-09-12 (OPH-298): the redirect ARRIVES on iOS 26 —
+  see "The premise that expired" below. The decision stands; one of its
+  measurements does not.**
 - **Context:** feedback round 17 #1 · [AI.md §6](../AI.md) ·
   [TASKS Epic 24](../TASKS.md)
 - **Related:** [ADR-0016](0016-deep-links.md) (URL-scheme handling),
@@ -134,6 +137,57 @@ whole ADR would throw away the sentence this decision leans on.
   showing its dialog, because a dialog can be swallowed and text cannot be
   un-lost.
 
+## The premise that expired (2026-09-12, OPH-298)
+
+Round 21's report, with a screenshot: "Paylaş → AllisWell" showed **"Bir şeyler
+ters gitti — bu bağlantı AllisWell'in bu sürümünde bir yere gitmiyor"**, and
+under it the offending location: `sharemedia-com.alliswell.alliswell:/share`.
+
+That string is the proof, and it says three things at once:
+
+1. **The open arrives.** It is
+   `RSIShareViewController.redirectToHostApp()`'s own URL —
+   `ShareMedia-<bundle id>:share`, `RSIShareViewController.swift:196` — and
+   go_router's `normalizeUri` is what turned `:share` into `:/share`. The L3
+   measurement above was true on iOS 18 and is **false on iOS 26**: the
+   extension can bring the app forward again.
+2. **Nothing native claims it.** `SwiftReceiveSharingIntentPlugin` registers
+   `application:didFinishLaunching:`, `application:openURL:options:` and
+   `application:continue:` — all pre-UIScene. This app runs a
+   `FlutterSceneDelegate` (the plugin's own scene contract starts at 1.9.0,
+   which we do not take), so the URL reaches no plugin.
+3. **Flutter routes what nobody claims.** An unclaimed URL becomes route
+   information, go_router matched none, and `onException` sent it to the
+   `/not-found` screen.
+
+The result was worse than the silence this ADR replaced. The payload **had**
+been saved, the banner **had** been posted, and the user was shown an error for
+a share that succeeded — and because `/not-found` lives OUTSIDE the shell,
+`shareBinderProvider` never mounted, so the drain that would have delivered the
+text never ran. One arrival, two dead ends.
+
+**What changed, and what did not.** The decision is untouched: the extension
+still does not try to open the app, the App Group is still the transport, the
+banner is still a nudge. What changed is that the app now has an answer for the
+callback when it does arrive:
+
+- `SceneDelegate` **drops** it before `super`, so it never becomes route
+  information (and so the plugin can never read the mailbox in parallel with
+  `ShareInboxBridge` — `handleUrl` does not clear it, and two readers is one
+  share becoming two tasks). The COLD path arrives in the scene's connection
+  options, which are read-only, so it cannot be filtered there;
+- `awIsShareCallback` (`core/deep_link.dart`) recognizes the scheme and the
+  router answers it with **Home** instead of the error screen — which is also
+  where the shell that drains the mailbox lives;
+- `HomeShell` sweeps the pending-share holder after its first frame. `ref.listen`
+  fires on CHANGE only, and the binder outlives the shell, so a payload
+  remembered while the shell was off screen had no consumer at all.
+
+**The lesson, recorded because it is the reusable part:** a measurement of what
+the OS refuses is true on the OS version it was taken on. This ADR's decision
+survived precisely because it never depended on the refusal holding — it was
+built to work without the redirect, not to forbid it.
+
 ## Zorlama (how this is enforced)
 
 Three layers, and the first one is only a string guard — say so plainly.
@@ -160,6 +214,14 @@ Three layers, and the first one is only a string guard — say so plainly.
    any other, and a drained payload is **not replayed** across a
    background/foreground cycle. `FakeShareInbox` counts `take()` calls, since
    the failure mode is a count — one share becoming four tasks.
+
+4. **OPH-298's own guards**, in the same three layers: a string guard that
+   `SceneDelegate` hands `super` the FILTERED contexts (`native_config_test`),
+   a pure test of `awIsShareCallback` (`deep_link_test`), and three widget
+   tests in `share_routing_test` — a cold start on the callback URL, a warm one
+   (which lands on `/not-found` without the fix, and is therefore the test that
+   actually reproduces the report), and a payload remembered while the shell is
+   off screen.
 
 **No Dart test can verify the appex's runtime behaviour.** Whether the sheet
 appears, whether the banner lands, and whether a denied user still gets the

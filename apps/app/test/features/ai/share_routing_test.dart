@@ -3,10 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/core/retry.dart';
+import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/router.dart';
 import 'package:alliswell/src/features/ai/data/ai_context_builder.dart';
 import 'package:alliswell/src/features/ai/ui/ai_bubble.dart';
 import 'package:alliswell/src/features/ai/ui/ai_settings_screen.dart';
@@ -314,6 +317,152 @@ void main() {
       api.tasks.where((t) => t['status'] == 'inbox'),
       hasLength(1),
       reason: 'one-directional means cheap, not lossy',
+    );
+  });
+
+  // ── Round 21 (OPH-298): the callback ADR-0029 said could never arrive ─────
+  //
+  // `RSIShareViewController` opens `ShareMedia-<bundle id>:share` after it has
+  // written the App Group. ADR-0029 measured that open as impossible on iOS 18
+  // and built the drain because of it — but on iOS 26 it ARRIVES, no plugin
+  // claims it under the UIScene lifecycle, and go_router received it as a
+  // LOCATION. It matched no route, so a share that had in fact been saved
+  // ended on the error screen; worse, that screen lives OUTSIDE the shell, so
+  // the drain that would have read the payload never ran. The report was "I
+  // shared a text and got an error", and the text was sitting in the mailbox.
+  //
+  // The two payload tests run with AI configured: that is the reported setup
+  // (the expectation was a task, structured by the model) and it is the
+  // destination tests 5–6 above already pin as stable. The third asserts the
+  // location alone, which needs no payload at all.
+  String errorScreenMessage() => 'error.routeNotFound'.tr();
+
+  GoRouter routerOf() => GoRouter.of(awRootNavigatorKey.currentContext!);
+
+  /// Pumps until [finder] matches, then settles.
+  ///
+  /// `pumpAndSettle` stops as soon as no FRAME is scheduled, which is not the
+  /// same as "the chain finished": routing a share runs mailbox → workspace →
+  /// AI status (both budgeted) → the surface, and a Future waiting on the fake
+  /// transport schedules no frame at all. The callback URL puts a navigation in
+  /// front of that chain, which is why the plugin path settles in one pump and
+  /// this one does not.
+  Future<void> pumpUntilShown(WidgetTester tester, Finder finder) async {
+    for (var i = 0; i < 60 && finder.evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('a COLD start on the callback URL opens the share, not the '
+      'error screen', (tester) async {
+    wide(tester);
+    // The real cold-start shape: iOS hands the URL to the scene's connection
+    // options, and Flutter turns that into the initial route.
+    tester.binding.platformDispatcher.defaultRouteNameTestValue =
+        'ShareMedia-com.alliswell.alliswell:share';
+    addTearDown(
+      tester.binding.platformDispatcher.clearDefaultRouteNameTestValue,
+    );
+    final api = FakeApi()..aiEnabled = true;
+    api.seedAiConnection(provider: 'anthropic');
+    final share = FakeShareIntentSource();
+    addTearDown(share.dispose);
+    // What the extension left behind before it opened the URL.
+    final inbox = FakeShareInbox(
+      pending: const SharedPayload(text: 'Gmail’den paylaşıldı'),
+    );
+
+    await tester.pumpWidget(
+      await _app(
+        api,
+        share: share,
+        inbox: inbox,
+        prefs: _cachedAiStatus(configured: true),
+      ),
+    );
+    await pumpUntilShown(tester, find.byType(AiBubble));
+
+    expect(find.text(errorScreenMessage()), findsNothing);
+    expect(routerOf().state.uri.toString(), '/home');
+    expect(
+      find.byType(AiBubble),
+      findsOneWidget,
+      reason: 'the callback is a nudge; the payload still routes normally',
+    );
+    expect(inbox.takes, greaterThan(0));
+  });
+
+  testWidgets('a WARM callback is not an unroutable location', (tester) async {
+    // The narrow, deterministic half of the fix. The cold start above is
+    // rescued by the auth redirect as well (a restoring session parks every
+    // location on /splash), so it cannot see this on its own — and the report
+    // came from a warm app, where nothing else stands between the callback URL
+    // and `onException`.
+    wide(tester);
+    final api = FakeApi();
+    final share = FakeShareIntentSource();
+    addTearDown(share.dispose);
+
+    await tester.pumpWidget(await _app(api, share: share));
+    await tester.pumpAndSettle();
+
+    routerOf().go('ShareMedia-com.alliswell.alliswell:share');
+    await tester.pumpAndSettle();
+
+    expect(routerOf().state.uri.toString(), '/home');
+    expect(find.text(errorScreenMessage()), findsNothing);
+  });
+
+  testWidgets('a share that arrives while the shell is off screen is still '
+      'delivered', (tester) async {
+    wide(tester);
+    final api = FakeApi()..aiEnabled = true;
+    api.seedAiConnection(provider: 'anthropic');
+    final share = FakeShareIntentSource();
+    addTearDown(share.dispose);
+    final inbox = FakeShareInbox();
+
+    await tester.pumpWidget(
+      await _app(
+        api,
+        share: share,
+        inbox: inbox,
+        prefs: _cachedAiStatus(configured: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The user is on a pushed screen — outside the shell, which is also where
+    // the error screen lived. `ref.listen` fires on CHANGE only, so a payload
+    // remembered while this screen is up has no consumer at all.
+    routerOf().go('/settings/ai');
+    await tester.pumpAndSettle();
+    expect(find.byType(AiSettingsScreen), findsOneWidget);
+
+    // Share → Post: the extension fills the mailbox, the app comes forward, and
+    // iOS opens the callback URL.
+    inbox.deliver(const SharedPayload(text: 'uzantı yazdı, app önde değildi'));
+    for (final state in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pumpAndSettle();
+    routerOf().go('ShareMedia-com.alliswell.alliswell:share');
+    await pumpUntilShown(tester, find.byType(AiBubble));
+
+    expect(find.text(errorScreenMessage()), findsNothing);
+    expect(inbox.takes, greaterThan(0));
+    expect(
+      find.byType(AiBubble),
+      findsOneWidget,
+      reason: 'a payload remembered with no listener must not be stranded',
     );
   });
 }

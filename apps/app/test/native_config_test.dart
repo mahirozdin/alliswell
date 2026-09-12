@@ -115,6 +115,45 @@ void main() {
     });
   });
 
+  // OPH-298 (amends ADR-0029): the callback ADR-0029 was sure could not
+  // happen. On iOS 26 the appex's open ARRIVES, no plugin claims it under the
+  // UIScene lifecycle, and Flutter turns an unclaimed URL into a ROUTE — which
+  // put a share that had already been saved on the error screen. The scene
+  // delegate drops it; this is the line that keeps it dropped.
+  group('iOS scene delegate', () {
+    late final String scene = File(
+      'ios/Runner/SceneDelegate.swift',
+    ).readAsStringSync();
+
+    test('forwards the FILTERED contexts, never the raw set', () {
+      expect(
+        _code(scene),
+        contains('super.scene(scene, openURLContexts: forwarded)'),
+        reason:
+            'Handing the raw set to super forwards the share callback to '
+            'Flutter, which routes it, which is OPH-298 all over again.',
+      );
+      expect(
+        _code(scene),
+        isNot(contains('super.scene(scene, openURLContexts: URLContexts)')),
+      );
+    });
+
+    test('recognizes the callback by scheme, and only that', () {
+      // Derived from the bundle id so a flavor needs no edit, and lowercased
+      // because iOS normalizes the scheme it delivers.
+      expect(_code(scene), contains('sharemedia-'));
+      expect(_code(scene), contains('Bundle.main.bundleIdentifier'));
+      expect(
+        _code(scene),
+        contains('isFileURL'),
+        reason:
+            'the document handle still takes file URLs only (ADR-0030) — a '
+            'filter that swallowed those would break "Open in AllisWell".',
+      );
+    });
+  });
+
   group('iOS Info.plist', () {
     late final String plist = File('ios/Runner/Info.plist').readAsStringSync();
 

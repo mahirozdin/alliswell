@@ -225,6 +225,18 @@ class HomeShell extends ConsumerWidget {
       final payload = ref.read(pendingSharePayloadProvider.notifier).take();
       if (payload != null) unawaited(_routeShare(context, ref, payload));
     });
+    // OPH-298: …and one that arrived while this shell was NOT on screen.
+    // `ref.listen` only ever fires on CHANGE, and the binder outlives the
+    // shell (it is not auto-disposed), so a payload remembered while the user
+    // sat on a pushed screen — or on the error screen the share callback used
+    // to produce — was held in memory and shown to nobody. Sweeping the holder
+    // after the frame closes that: `take()` is read-and-clear, so it can never
+    // double-deliver with the listener above.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      final waiting = ref.read(pendingSharePayloadProvider.notifier).take();
+      if (waiting != null) unawaited(_routeShare(context, ref, waiting));
+    });
 
     // Round 16 follow-up: the OS opened a .md file with us. The viewer TAKES
     // the pending document itself, so this only has to get the user there —
