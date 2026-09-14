@@ -3,7 +3,35 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14b (**OPH-299 BİTTİ — TEKRARLAYAN GÖREVLER ARTIK
+**Last updated:** 2026-09-14c (**OPH-300 BİTTİ — SÖZLEŞME ARTIK DİLLER ARASINDA
+TAŞINIYOR VE BİR KAPI ONU ORADA TUTUYOR.** Sunucunun alan tabloları tek bir
+export edilmiş harita oldu (`SYNC_ENTITY_FIELDS`; `ENTITIES` artık onu okuyor),
+`scripts/sync/fields.mjs` onu Dart'a çeviriyor
+(`apps/app/lib/src/sync/sync_fields.g.dart`), ve **kontrol istemcide bir testte
+değil `enqueueMutation`'ın İÇİNDE bir `assert`** — çünkü buradaki arıza sınıfı
+kapsamdır: çağrı-yeri başına test, yalnız birinin yazmayı hatırladığı yerleri
+korur. Böylece süitteki her yazma ve hata ayıklama derlemesindeki her yazma
+sözleşmeden geçiyor; sürüm derlemesinde assert derlenmiyor (orada otorite zaten
+reddeden sunucu). **Kabul ölçülerek kapandı: OPH-299'un sunucu düzeltmesi geçici
+olarak geri alındığında kapı hatayı BAĞIMSIZ olarak yakaladı** — `"task_series"
+has no field "fromTaskId" … Accepted: anchorAt, rule, template, timezone`, yığın
+izi `series_store.dart:98`. Kapı üç yönden doğrulandı (sunucu alan kazanır /
+kaybeder / istemcide bayrak düşer) ve üçünde de varlığı, bölümü, alanı adıyla
+söylüyor. **Üç bilinçli sapma:** fixture JSON değil üretilmiş Dart (lib kodu test
+fixture'ı okuyamaz); ayrı bir API testi yok (sunucu sözleşmeyi export ediyor,
+araya kopya koymak üçüncü doğruluk kaynağı olurdu); kapı bayt değil ANLAM
+karşılaştırıyor — `dart format` tall-style sığan koleksiyonu topluyor ve CI onu
+ayrıca tutuyor, *boşlukta patlayan bir kapı insanların yok saymayı öğrendiği bir
+kapıdır*. Statik Dart tarayıcı alınmadı: 32 çağrı yerinin 15'i literal, kalanı
+değişken; üçte ikiyi kapatan kırılgan ayrıştırıcı kötü takas. **Kalan boşluk
+dürüstçe yazıldı:** assert yalnız KOŞULAN yolları görür; 1606 testin tamamı
+sözleşmeden geçti ve **sıfır ihlal** çıktı (yani OPH-299 dışında kayma yok).
+`AGENTS.md` §3 DoD'ye madde eklendi. Süitler: `check:sync-fields` yeşil (9 varlık,
+62 alan), lint+format temiz, API **802/799** (aynı 3 ai-chat-transport ortam zaman
+aşımı), analyze temiz, app **1606** (+6).
+Sıradaki iş: **OPH-301** — solmuş satır kontrastı (`Opacity` → token).)
+
+Önceki blok: 2026-09-14b (**OPH-299 BİTTİ — TEKRARLAYAN GÖREVLER ARTIK
 SUNUCUYA VARIYOR.** Epic 29'un ilk işi. `fromTaskId` artık `TASK_SERIES_FIELDS`'te
 **sanal + createOnly** bir alan (`col: 'series_id'`, LWW niyeti görevin kendi
 `series_id` yazımlarıyla aynı adı taşısın diye), ve sync'in `afterCreate`'i

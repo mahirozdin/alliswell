@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../core/ulid.dart';
 import 'db/database.dart';
+import 'sync_contract.dart';
 
 /// Records one local write in the outbox (OPH-055). Call inside the same
 /// drift transaction as the optimistic local row change so the replica and
@@ -21,6 +22,25 @@ Future<String> enqueueMutation(
   Map<String, dynamic>? patch,
   int? baseRevision,
 }) async {
+  // OPH-300 — the push contract, checked where EVERY write passes.
+  //
+  // The server refuses a whole mutation on the first key it does not know, and
+  // answers `SYNC_UNKNOWN_FIELD` — a code that names neither the key nor the
+  // entity. OPH-299 was six weeks of that: the app put `fromTaskId` in a
+  // four-key patch and recurrence simply never worked, while the only thing
+  // that could have caught it lived in a closure on the other side of the wire.
+  //
+  // An `assert` rather than a throw, and here rather than in a test of its own,
+  // because the failure mode is coverage: a per-call-site test only guards the
+  // sites somebody remembered to write one for. This runs for every write in
+  // every test and every debug build, names the offending key, and is compiled
+  // out of release — where a server that refuses is the right authority anyway.
+  assert(() {
+    final problem = awSyncPatchProblem(entityType, operation, patch);
+    if (problem != null) throw AssertionError(problem);
+    return true;
+  }());
+
   // OPH-268 — coalesce a note's unpushed updates.
   //
   // The editor autosaves the WHOLE body on a 1.5 s idle debounce, so a typing

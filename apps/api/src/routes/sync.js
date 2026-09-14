@@ -247,6 +247,37 @@ const CHECKLIST_FIELDS = {
   sortOrder: { col: 'sort_order', ok: intIn(-1000000, 1000000) },
 };
 
+/**
+ * The push contract, as ONE named thing (OPH-300).
+ *
+ * These tables were always the authority on which keys a mutation may carry —
+ * `computeAndApply` refuses a whole mutation on the first key it cannot find in
+ * one of them. What they were not was *legible from outside this file*, and
+ * that is what let OPH-299 happen: the app added a fifth key to a four-key
+ * table, and the only thing that could have noticed lived in a closure nobody
+ * could import.
+ *
+ * `ENTITIES` below reads its `fields` from here, and `scripts/sync/fields.mjs`
+ * turns this map into the Dart the client asserts against. One source, two
+ * languages, and a gate between them (`npm run check:sync-fields`).
+ *
+ * The EE overlay registers its own entities at runtime
+ * (`app.ee.registerSyncEntity`, merged in further down), so its types are
+ * deliberately absent — the `ee_` prefix is what the client uses to tell "not
+ * mine to check" from "nobody accepts this".
+ */
+export const SYNC_ENTITY_FIELDS = {
+  project: PROJECT_FIELDS,
+  tag: TAG_FIELDS,
+  folder: FOLDER_FIELDS,
+  task: TASK_FIELDS,
+  reminder: REMINDER_FIELDS,
+  note: NOTE_FIELDS,
+  quick_link: QUICK_LINK_FIELDS,
+  task_series: TASK_SERIES_FIELDS,
+  checklist_item: CHECKLIST_FIELDS,
+};
+
 // Note CONTENT is doc-level locked (§6.5) — this intent never LWW-merges.
 // One name, because ADR-0033 left one canonical column and `prepare()` gives
 // all three incoming content keys that same intent name.
@@ -781,7 +812,7 @@ export default async function syncRoutes(app) {
   const ENTITIES = {
     project: {
       table: 'projects',
-      fields: PROJECT_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.project,
       requiredOnCreate: ['name'],
       deleteRoles: ['owner', 'admin'], // REST parity: destructive, member cannot
       workspaceOf: (row) => row.workspace_id,
@@ -822,7 +853,7 @@ export default async function syncRoutes(app) {
 
     tag: {
       table: 'tags',
-      fields: TAG_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.tag,
       requiredOnCreate: ['name'],
       duplicateCode: 'TAG_SLUG_TAKEN',
       workspaceOf: (row) => row.workspace_id,
@@ -855,7 +886,7 @@ export default async function syncRoutes(app) {
     // so a too-dense pattern comes back as a rejected mutation, not a 500.
     task_series: {
       table: 'task_series',
-      fields: TASK_SERIES_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.task_series,
       requiredOnCreate: ['rule', 'template', 'anchorAt'],
       workspaceOf: (row) => row.workspace_id,
       async guard(ctx, patch, row) {
@@ -923,7 +954,7 @@ export default async function syncRoutes(app) {
 
     folder: {
       table: 'folders',
-      fields: FOLDER_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.folder,
       requiredOnCreate: ['name'],
       workspaceOf: (row) => row.workspace_id,
       async guard(ctx, patch, row) {
@@ -981,7 +1012,7 @@ export default async function syncRoutes(app) {
     // and not in `guard` (guard never runs on delete).
     quick_link: {
       table: 'quick_links',
-      fields: QUICK_LINK_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.quick_link,
       requiredOnCreate: ['kind', 'title'],
       duplicateCode: 'QUICK_LINK_DUPLICATE',
       workspaceOf: (row) => row.workspace_id,
@@ -1043,7 +1074,7 @@ export default async function syncRoutes(app) {
 
     task: {
       table: 'tasks',
-      fields: TASK_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.task,
       requiredOnCreate: ['title'],
       workspaceOf: (row) => row.workspace_id,
       guard: taskGuards,
@@ -1142,7 +1173,7 @@ export default async function syncRoutes(app) {
 
     note: {
       table: 'notes',
-      fields: NOTE_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.note,
       requiredOnCreate: ['title'],
       contentIntents: NOTE_CONTENT_INTENTS,
       workspaceOf: (row) => row.workspace_id,
@@ -1197,7 +1228,7 @@ export default async function syncRoutes(app) {
     // offline — reminder rows are otherwise server-managed via task writes.
     reminder: {
       table: 'reminders',
-      fields: REMINDER_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.reminder,
       operations: ['update'],
       requiredOnCreate: [],
       async ownershipOk(ctx, row) {
@@ -1219,7 +1250,7 @@ export default async function syncRoutes(app) {
 
     checklist_item: {
       table: 'checklist_items',
-      fields: CHECKLIST_FIELDS,
+      fields: SYNC_ENTITY_FIELDS.checklist_item,
       requiredOnCreate: ['taskId', 'title'],
       // Workspace ownership flows through the parent task.
       async resolveParent(ctx, taskId) {

@@ -74,6 +74,12 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
 - [ ] `npm test` passes; integration tests pass if infra available (they always run in CI).
 - [ ] For app changes: `flutter analyze` and `flutter test` pass.
 - [ ] New/changed endpoints have Ajv JSON schemas (request + response).
+- [ ] **Sync push fields touched** (`SYNC_ENTITY_FIELDS` in `apps/api/src/routes/sync.js`) →
+      `npm run gen:sync-fields` re-run and `apps/app/lib/src/sync/sync_fields.g.dart` committed;
+      `npm run check:sync-fields` passes. The client asserts every `enqueueMutation` against
+      that file, so a field the server gains or loses must cross the language boundary in the
+      same change — OPH-299 is what happens when it does not (recurrence silently dead from
+      v0.8.0 to v1.10.2, every suite green).
 - [ ] DB changes shipped as a new knex migration (with `down`).
 - [ ] Docs updated: TASKS checkbox, STATE, CHANGELOG (+ ADR/ARCHITECTURE when relevant).
 - [ ] User-facing capability added/changed → MCP tools + docs/MCP.md and docs/API.md extended,

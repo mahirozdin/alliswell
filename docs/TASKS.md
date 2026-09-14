@@ -9581,23 +9581,66 @@ birebir doğrulanıyor, iki taraf "her Pazartesi"nin ne demek olduğunda kusursu
 anlaşıyor. **Doğrulanmayan tek şey mutation'ın TAŞINMASIYDI.** Parite testi motoru
 ölçüyordu, kabloyu değil._
 
-- [ ] **Fixture üretimi:** `ENTITIES[type].fields` anahtarlarından (her biri için
+- [x] **Fixture üretimi:** `ENTITIES[type].fields` anahtarlarından (her biri için
       `createOnly`/`updateOnly`/`virtual` bayraklarıyla) `sync_fields_parity.json`
       üretilir. Elle yazılmaz — üretilir, yoksa `API.md`'nin başına gelen olur
       (OPH-294: elle yazılan doküman sessizce yanlışa döndü).
-- [ ] **API süiti tarafı:** üretilen fixture ile canlı `ENTITIES` karşılaştırılır;
+- [x] **API süiti tarafı:** üretilen fixture ile canlı `ENTITIES` karşılaştırılır;
       sapma varsa kırmızı (fixture bayatlayamaz).
-- [ ] **App süiti tarafı:** her `enqueueMutation` çağrısının gönderdiği anahtar
+- [x] **App süiti tarafı:** her `enqueueMutation` çağrısının gönderdiği anahtar
       kümesi fixture'a karşı doğrulanır. Kapsam `fold_parity` kalıbı: tek kaynak,
       iki süitte iddia.
-- [ ] **Kapının kendisi doğrulanır:** sahte bir ihlal (istemciye tanınmayan bir alan
+- [x] **Kapının kendisi doğrulanır:** sahte bir ihlal (istemciye tanınmayan bir alan
       eklenir) kırmızı vermeli, kaldırınca yeşil. Epic 27'nin `check:fab` dersi —
       *ölçmediği şeyi yeşille aynı okuyan bir kapı, kapı değildir.*
-- **Kabul:** OPH-299'un düzeltmesi geri alındığında bu kapı da kırmızı dönmeli;
-      yani kapı, bulduğumuz hatayı bağımsız olarak yakalıyor olmalı.
+- **Kabul — ÖLÇÜLDÜ:** OPH-299'un sunucu düzeltmesi geçici olarak geri alındı,
+      sözleşme yeniden üretildi ve app testi koşuldu. Kapı hatayı **bağımsız
+      olarak** yakaladı, üstelik altı hafta boyunca eksik olan cümleyle:
+      `sync contract: "task_series" has no field "fromTaskId" — the server would
+      answer SYNC_UNKNOWN_FIELD and drop the WHOLE mutation. Accepted: anchorAt,
+      rule, template, timezone.` — yığın izi `series_store.dart:98`'i gösteriyor.
+      Üretimdeki `(SYNC_UNKNOWN_FIELD)` banner'ının yerine geçen şey bu.
+- **Kapı doğrulaması — üç yönden:** (a) sunucuya alan eklenip yeniden
+      üretilmezse `tag.all: missing bogusField`; (b) sunucudan alan silinirse
+      `note.all: unknown to the server: isPinned`; (c) istemcide `createOnly`
+      bayrağı düşerse `task_series.createOnly: missing fromTaskId`. Üçü de
+      varlığı, bölümü ve alanı adıyla söylüyor.
+- **Gerçekleşen tasarım — plandan üç sapma, üçü de gerekçeli:**
+      (1) Fixture `sync_fields_parity.json` değil, **üretilmiş Dart**
+      (`apps/app/lib/src/sync/sync_fields.g.dart`): istemci tarafındaki kontrol
+      bir testte değil, `enqueueMutation`'ın **içinde** bir `assert` olarak
+      yaşıyor ve lib kodu test fixture'ı okuyamaz.
+      (2) "API süiti tarafı" ayrı bir teste gerek bırakmadı — sunucu sözleşmeyi
+      `SYNC_ENTITY_FIELDS` olarak **export ediyor**, `ENTITIES` onu okuyor, kapı
+      da doğrudan onu okuyor; araya bir kopya koymak üçüncü bir doğruluk kaynağı
+      üretirdi.
+      (3) Kapı **bayt değil anlam** karşılaştırıyor: `dart format` (Dart 3.9+
+      tall style) sondaki virgüle bakmadan sığan koleksiyonu tek satıra topluyor
+      ve CI zaten `dart format --set-exit-if-changed` tutuyor — bayt kontrolü,
+      boşluk anlaşmazlığını "sözleşme bozuldu" diye raporlardı. *Boşlukta patlayan
+      bir kapı, insanların yok saymayı öğrendiği bir kapıdır.*
+- **Statik Dart tarayıcı bilinçli olarak ALINMADI.** 32 çağrı yerinin yalnız
+      15'i literal map (`patch: patch`, `patch: effective`, `patch: body` gerisi),
+      ve literal olanlar `?key` null-aware girdileri ve iç içe değerler taşıyor.
+      Üçte ikiyi kapatan kırılgan bir ayrıştırıcı, koştuğu yolda **kesin** olan bir
+      runtime kontrolünden kötü bir takas.
+- **Kalan boşluk, dürüstçe:** assert yalnız **koşulan** yolları görür. 1606
+      testin tamamı sözleşmeden geçti ve **sıfır ihlal** çıktı — yani OPH-299
+      dışında kayma yok — ama süitin hiç uğramadığı bir `enqueueMutation`, o yol
+      bir hata ayıklama derlemesinde çalışana kadar kontrolsüz kalır. Sürüm
+      derlemesinde assert derlenmez; orada otorite zaten reddeden sunucudur.
+- **Doğrulama (2026-09-14):** `check:sync-fields` yeşil (9 varlık, 62 alan) ·
+      `npm run lint` + `format:check` temiz · API birim süiti **802/799**
+      (aynı 3 ai-chat-transport zaman aşımı, OPH-299'da ortam kaynaklı olduğu
+      kanıtlandı) · `flutter analyze` temiz · `dart format` üretilen dosyada
+      kararlı · app süiti **1606 geçti** (+6).
 - **Not:** kapsam yalnız sync push alan kümesidir. Değer doğrulaması (`ok`) ve
       sunucu-sahipli alanlar (örn. `series_id`, `occurrence_date`) kapsam DIŞI —
       bunlar zaten istemciden hiç gelmiyor ve `sync.js:216-219` bunu yazıyor.
+      EE varlıkları da kapsam dışı ve bu bir boşluk değil bir sınır: EE kendi
+      varlıklarını çalışma zamanında kaydediyor (`app.ee.registerSyncEntity`),
+      bu yüzden istemci `ee_` önekini "benim denetleyeceğim şey değil" diye
+      okuyor — "kimse kabul etmiyor" ile aynı sessizliğe düşmesin diye.
 
 ### OPH-301 — Solmuş satır okunabilir olsun (`Opacity` → token)
 

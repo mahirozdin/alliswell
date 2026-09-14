@@ -39,7 +39,9 @@
     "openapi": "node scripts/api/openapi.mjs",
     "api:docs": "node scripts/api/openapi.mjs && node scripts/api/reference.mjs && node scripts/api/postman.mjs",
     "check:apidocs": "node scripts/api/reference.mjs --check",
-    "check:postman": "node scripts/api/postman.mjs --check"
+    "check:postman": "node scripts/api/postman.mjs --check",
+    "gen:sync-fields": "node scripts/sync/fields.mjs",
+    "check:sync-fields": "node scripts/sync/fields.mjs --check"
   },
   "repository": {
     "type": "git",

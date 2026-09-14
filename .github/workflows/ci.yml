@@ -77,6 +77,15 @@ jobs:
       - name: Policy — no bare extended FABs (the theme's circle eats the icon)
         run: npm run check:fab
 
+      # OPH-300: the client and the server each held half of the push contract
+      # and nothing compared the halves — which is how recurrence stayed broken
+      # from v0.8.0 to v1.10.2 with every suite green (OPH-299). The Dart the
+      # app asserts against is generated from the server's own field tables;
+      # this gate is what makes a drift between them fail here instead of in
+      # somebody's hands.
+      - name: Policy — the client's sync contract matches the server's
+        run: npm run check:sync-fields
+
       # OPH-294: the reference, the spec and the Postman collection are all
       # generated from the route schemas. These three gates are what make that
       # true tomorrow as well — a route whose schema changes without the docs

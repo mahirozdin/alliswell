@@ -5,6 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **The sync push contract now crosses the language boundary, and a gate keeps
+  it there.** The server's field tables decide which keys a mutation may carry
+  and refuse the whole mutation on the first one they do not know — a rule the
+  client had no way to read, which is how recurrence stayed dead from v0.8.0 to
+  v1.10.2 with every suite green. Those tables are now one exported map
+  (`SYNC_ENTITY_FIELDS`), `npm run gen:sync-fields` turns it into Dart, and
+  `enqueueMutation` asserts every patch against it: in tests and debug builds a
+  key the server would refuse fails immediately, naming the key, the entity and
+  the call site instead of arriving in production as `SYNC_UNKNOWN_FIELD`.
+  `npm run check:sync-fields` fails CI when the two halves drift. Value rules
+  stay on the server, where they can refuse a hostile client too. OPH-300,
+  [#7](https://github.com/mahirozdin/alliswell/issues/7).
+
 ### Fixed
 
 - **Repeating tasks reach the server again — they never had.** Turning on Repeat
