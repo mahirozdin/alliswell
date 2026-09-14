@@ -3,7 +3,46 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14g (**OPH-306 BİTTİ — ETİKET ÇİPİ ARTIK BİR DÜĞME, VE
+**Last updated:** 2026-09-14h (**OPH-307 BİTTİ — EPIC 29'UN ATOMİK İŞLERİ TAMAM
+(OPH-299…307, 9/9).** "Bu hafta" artık gün başına bir başlık: *"for each day,
+the tasks are listed one by one, coz this would be easier to follow, for the
+eyes"*. Home günü zaten biliyordu — `futureBucketForDay` hesaplayıp tek yığına
+atıyordu. `HomeGroup` bir `day` alanı kazandı; bölünme **kovanın içinde** kaldı,
+yani kova sırası, ufuk ve OPH-301'in solma kuralı değişmedi. **30 günlük ufuk
+bölünmedi ve gerekçesi sayıyla yazıldı:** "Bu hafta" en çok 5 başlık, "Sonraki 30
+gün" ise 24 — o bir ajanda ekranı, başlık değişikliği değil, ve "23'ünde ne var"
+sorusunu ay ızgarası zaten cevaplıyor. İki incelik: boş gün **başlıksız** kalıyor
+(bir başlık "orada iş var" demektir — takvim noktasının sözü, OPH-185), ve başlık
+kovayı atayan günü kullanıyor, `dayOf(item.at)`'ı değil — çok günlü bir
+etkinliğin `startsAt`'i kovalandığı günden önce olabilir ve **kendi kovasıyla
+çelişen bir başlık, başlıksızdan kötüdür**. Beşinci test bilinçli: ekrandaki
+başlığın gerçekten gün adını bastığını iddia ediyor, çünkü model testleri yalnız
+`day` alanını kanıtlar ve *kimsenin render etmediği bir alan, özellik değil
+alandır* (§22) — bu turda iki kablolama hatası yaptığım için o testi yazdım.
+Süitler: app **1621** (+5), `check:i18n` yeşil, analyze temiz.
+
+**EPIC 29 DURUMU:** dokuz atomik işin dokuzu da kapandı, issue'ları da
+([#6](https://github.com/mahirozdin/alliswell/issues/6),
+[#7](https://github.com/mahirozdin/alliswell/issues/7),
+[#8](https://github.com/mahirozdin/alliswell/issues/8),
+[#9](https://github.com/mahirozdin/alliswell/issues/9),
+[#10](https://github.com/mahirozdin/alliswell/issues/10),
+[#12](https://github.com/mahirozdin/alliswell/issues/12),
+[#13](https://github.com/mahirozdin/alliswell/issues/13),
+[#14](https://github.com/mahirozdin/alliswell/issues/14)).
+**Sahibe kalan dört şey, hiçbiri kod değil:** (1) Chong KM'e kapanış maili —
+beş maddenin dördü sevk edildi, beşincisi (Galaxy A12) hâlâ onun verisini
+bekliyor; (2) `USE_EXACT_ALARM` Play beyan formu + videosu
+([#11](https://github.com/mahirozdin/alliswell/issues/11) açık, malzeme
+`docs/store/exact-alarm-declaration.md`'de) — video ATILABİLİR bir demo hesabıyla
+çekilmeli; (3) sürüm kesme kararı (CHANGELOG `[Unreleased]`, hedef v1.11.0);
+(4) canlı elle doğrulama turu — tekrar kurma, solmuş satırın cam zeminde gerçekten
+geri çekilmiş görünmesi, etiket filtresi.
+**Kapanmayan tek teknik borç:** proje Görevler sekmesi sıralamasız (305'te
+ertelendi, 306'nın gerekçesi gerçekleşmedi) — kendi turunu hak ediyor, backlog'da.
+Sıradaki iş: sahibin kararı — mail, sürüm ya da yeni bir tur.)
+
+Önceki blok: 2026-09-14g (**OPH-306 BİTTİ — ETİKET ÇİPİ ARTIK BİR DÜĞME, VE
 RAPORUN TAM CÜMLESİ TEK JESTTE ÇALIŞIYOR.** Etiketler v0.4.0'dan beri var,
 çipler her satırda duruyor ve dokununca hiçbir şey olmuyordu. Artık Ana ekranın
 liste görünümünde çipe dokunmak o etiketi süzüyor; filtre **kümeyi daraltıyor**,

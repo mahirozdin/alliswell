@@ -171,3 +171,29 @@ String awRelativePast(DateTime at, DateTime now) {
   }
   return 'time.ago.days'.tr(args: {'n': '${elapsed.inDays}'});
 }
+
+/// A day heading: "Perşembe · 16 Tem" (OPH-307).
+///
+/// The weekday comes first because that is what the reader is scanning for —
+/// the request was "for each day", and people think in Thursday, not in the
+/// 16th. The date follows so a heading is never ambiguous about WHICH
+/// Thursday, which matters the moment a week rolls over.
+///
+/// The weekday name is `intl`'s, in the user's own locale; the date half goes
+/// through [awFormatShort] so it obeys the same format preference every other
+/// row does (D4).
+String awFormatDayHeading(
+  DateTime value, {
+  required String format,
+  String? locale,
+}) {
+  final tag = _locale(locale);
+  final weekday = DateFormat.EEEE(tag).format(value.toLocal());
+  final date = awFormatShort(
+    value,
+    format: format,
+    locale: locale,
+    withTime: false,
+  );
+  return '$weekday · $date';
+}

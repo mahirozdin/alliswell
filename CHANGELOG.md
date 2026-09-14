@@ -7,6 +7,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **"This week" is one heading per day.** It was a single pile, and a user said
+  what they wanted instead: *"for each day, the tasks are listed one by one
+  (vertically), coz this would be easier to follow, for the eyes"*. Home already
+  knew which day every row belonged to; now it says so — "Thursday · 16 Jul"
+  rather than a fourth week heading. Days with nothing on them get no heading,
+  because a heading means there is work that day and a blank one would read as
+  a promise the list cannot make. The next-30-days group stays a single heading
+  on purpose: splitting it would hang up to 24 headings over a list read at a
+  glance, and the month grid already answers "what is on the 23rd". OPH-307,
+  [#14](https://github.com/mahirozdin/alliswell/issues/14).
+
 - **Tapping a tag shows that tag's work.** The chips have been on every task row
   since v0.4.0 and did nothing when touched; a user reported exactly that, and
   said what they wanted instead — *"when i click the label tag, automatically

@@ -64,6 +64,7 @@ class HomeGroup {
     required this.bucket,
     required this.items,
     required this.dimmed,
+    this.day,
   });
 
   final HomeBucket bucket;
@@ -71,6 +72,10 @@ class HomeGroup {
 
   /// True when a day is selected and this group is not that day's group.
   final bool dimmed;
+
+  /// The calendar day this group covers, for buckets that are split per day
+  /// (OPH-307). Null for the buckets that are one heap by design.
+  final DateTime? day;
 }
 
 DateTime dayOf(DateTime value) {
@@ -242,23 +247,71 @@ List<HomeGroup> groupTasksForHome(
     HomeBucket.next30Days,
   ];
 
-  return [
-    for (final bucket in order)
-      if (byBucket[bucket]!.isNotEmpty)
+  // Work you must face NOW never fades (feedback round 6): dateless belongs to
+  // every day, and Overdue/Today are current debts — a selected day only dims
+  // the genuinely future groups.
+  bool dimmedFor(HomeBucket bucket) =>
+      selectedDay != null &&
+      bucket != HomeBucket.selectedDay &&
+      bucket != HomeBucket.noDate &&
+      bucket != HomeBucket.overdue &&
+      bucket != HomeBucket.today;
+
+  /// The day a row is filed under, computed the SAME way the bucket above was.
+  ///
+  /// Not `dayOf(item.at)`: a multi-day event's `startsAt` can sit before the
+  /// day it was bucketed by, and a heading that disagrees with the bucket that
+  /// produced it is worse than no heading.
+  DateTime dayForSplit(HomeItem item) => switch (item) {
+    TaskItem(:final task) => dayOf(task.dueAt!),
+    EventItem(:final event) => daysOfEvent(
+      event,
+    ).firstWhere((d) => !d.isBefore(today)),
+  };
+
+  final groups = <HomeGroup>[];
+  for (final bucket in order) {
+    final items = byBucket[bucket]!;
+    if (items.isEmpty) continue;
+    items.sort(ordered);
+
+    // OPH-307 — "This week" is one heading per day, because the report was
+    // about the eyes: *"for each day, the tasks are listed one by one
+    // (vertically), coz this would be easier to follow"*. Home already knew the
+    // day — `futureBucketForDay` computes it and then drops it into one pile.
+    //
+    // Only this bucket. "Next 30 days" spans +7..+30, so splitting it would
+    // hang up to 24 headings over a list somebody reads at a glance; that is an
+    // agenda screen, not a heading change, and the month grid already answers
+    // "what is on the 23rd". The split stays INSIDE the bucket for the same
+    // reason: the order, the horizon and the recession rule are untouched.
+    if (bucket != HomeBucket.thisWeek) {
+      groups.add(
+        HomeGroup(bucket: bucket, items: items, dimmed: dimmedFor(bucket)),
+      );
+      continue;
+    }
+
+    final byDay = <DateTime, List<HomeItem>>{};
+    for (final item in items) {
+      byDay.putIfAbsent(dayForSplit(item), () => []).add(item);
+    }
+    // Empty days are absent rather than empty: a heading means there IS work
+    // that day, the same promise the calendar's dots make (OPH-185). A blank
+    // "Friday" would read as "you are free on Friday", which this list cannot
+    // know — it only knows what is scheduled.
+    for (final day in byDay.keys.toList()..sort()) {
+      groups.add(
         HomeGroup(
           bucket: bucket,
-          items: byBucket[bucket]!..sort(ordered),
-          // Work you must face NOW never fades (feedback round 6): dateless
-          // belongs to every day, and Overdue/Today are current debts — a
-          // selected day only dims the genuinely future groups.
-          dimmed:
-              selectedDay != null &&
-              bucket != HomeBucket.selectedDay &&
-              bucket != HomeBucket.noDate &&
-              bucket != HomeBucket.overdue &&
-              bucket != HomeBucket.today,
+          items: byDay[day]!,
+          dimmed: dimmedFor(bucket),
+          day: day,
         ),
-  ];
+      );
+    }
+  }
+  return groups;
 }
 
 /// Which local days have at least one OPEN task due — feeds the calendar dots.

@@ -9965,14 +9965,32 @@ for the eyes."_
 _Bugün Ana ekran yedi KOVAYA ayırıyor (Gecikmiş → Tarihsiz → Bugün → Yarın → Bu hafta
 → Sonraki 30 gün); "Bu hafta" ve "Sonraki 30 gün" tek yığın._
 
-- [ ] `futureBucketForDay` zaten günü hesaplıyor (`task_grouping.dart:122`) — "Bu hafta"
+- [x] `futureBucketForDay` zaten günü hesaplıyor (`task_grouping.dart:122`) — "Bu hafta"
       kovası gün başlıklarına bölünür (Pzt, Sal, Çar…). 30 günlük ufkun da gün başlıklı
       olup olmayacağı ölçülerek karar verilir: 30 ayrı başlık, listeyi okunaksız yapabilir.
-- [ ] Boş günler **gösterilmez** — bir gün başlığı "orada iş var" demektir (OPH-185'in
+- [x] Boş günler **gösterilmez** — bir gün başlığı "orada iş var" demektir (OPH-185'in
       takvim noktası kuralının aynısı, `task_grouping.dart:213`).
-- [ ] Grup sırası ve "hangi grup solar" kuralı (OPH-301) korunur.
+- [x] Grup sırası ve "hangi grup solar" kuralı (OPH-301) korunur.
 - **Kabul:** `task_grouping` testine gün bölünmesi eklenir; mevcut kova sırası
       iddiaları kırılmamalı.
+- **30 günlük ufuk BÖLÜNMEDİ, ve gerekçesi sayıyla:** "Bu hafta" +2..+6, yani en
+      çok **5 başlık**. "Sonraki 30 gün" +7..+30, yani **24 başlık** — bir bakışta
+      okunan listenin üstüne asılamaz. O bir *ajanda ekranı*, başlık değişikliği
+      değil; ve "23'ünde ne var" sorusunu ay ızgarası zaten cevaplıyor.
+- **Bölünme kovanın İÇİNDE kaldı.** `HomeGroup` bir `day` alanı kazandı; kova
+      sırası, ufuk ve OPH-301'in solma kuralı değişmedi. Testi var: bölünmeden
+      sonra kova dizisi hâlâ Bugün → Yarın → Bu hafta ×2 → Sonraki 30 gün, ve
+      haftanın günleri birlikte geri çekiliyor.
+- **Başlık, kovayı atayan günü kullanıyor — `dayOf(item.at)`'ı değil.** Çok günlü
+      bir etkinliğin `startsAt`'i, kovalandığı günden önce olabilir; **başlığı
+      kendisini üreten kovayla çelişen bir grup, başlıksız gruptan kötüdür.**
+      `dayForSplit` bu yüzden kovalama mantığını birebir tekrarlıyor.
+- **Kabul — ölçüldü, beşi de:** gün başına başlık + gün sırası; boş gün başlıksız;
+      kova sırası korunuyor; hafta günleri birlikte soluyor; ve **ekrandaki
+      başlığın gerçekten gün adını bastığı** (model testleri yalnız `day` alanını
+      kanıtlar — *kimsenin render etmediği bir alan, özellik değil alandır*, §22).
+- **Doğrulama (2026-09-14):** `check:i18n` yeşil, `flutter analyze` temiz,
+      `dart format` temiz, app süiti **1621 geçti** (+5).
 - **Not:** kullanıcının "next week, next next week" isteği 30 günlük ufkun İÇİNDE
       zaten var; ufku büyütmek bu işin kapsamı değil (ADR gerektirir — `kHomeHorizonDays`
       bilinçli bir söz: *"there is no open-ended Later"*, `task_grouping.dart:87-89`).

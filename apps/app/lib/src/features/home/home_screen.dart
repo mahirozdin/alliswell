@@ -61,9 +61,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  /// Quick add's text lives HERE, not in the bar (OPH-172/H4): the bar is a
-  /// sliver now, and a sliver scrolled past the cache extent is disposed —
-  /// which would silently eat what the user had typed.
   /// Whether Home's app-bar search field is expanded (OPH-305).
   ///
   /// The open field takes `screen - 220` of the bar, and that 220 is a reserve
@@ -74,6 +71,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// is a control that does nothing.
   bool _searchOpen = false;
 
+  /// Quick add's text lives HERE, not in the bar (OPH-172/H4): the bar is a
+  /// sliver now, and a sliver scrolled past the cache extent is disposed —
+  /// which would silently eat what the user had typed.
   final _quickAddController = TextEditingController();
   final _quickAddFocus = FocusNode();
   final _quickAddKey = GlobalKey();
@@ -369,6 +369,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           : _GroupedTaskList(
                                               groups: groups,
                                               onTagTap: onTagTap,
+                                              dateFormat: dateFormat,
                                             ),
                                     ),
                                   ),
@@ -481,10 +482,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 /// (The narrow layout renders the same rows inside a CustomScrollView so the
 /// calendar scrolls with them — OPH-103.)
 class _GroupedTaskList extends StatelessWidget {
-  const _GroupedTaskList({required this.groups, this.onTagTap});
+  const _GroupedTaskList({
+    required this.groups,
+    this.onTagTap,
+    required this.dateFormat,
+  });
 
   final List<HomeGroup> groups;
   final ValueChanged<Tag>? onTagTap;
+  final String dateFormat;
 
   @override
   Widget build(BuildContext context) {
@@ -495,7 +501,12 @@ class _GroupedTaskList extends StatelessWidget {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: awListPadding(context, extraBottom: 72),
-      children: buildHomeGroupRows(context, groups, onTagTap: onTagTap),
+      children: buildHomeGroupRows(
+        context,
+        groups,
+        onTagTap: onTagTap,
+        dateFormat: dateFormat,
+      ),
     );
   }
 }
@@ -594,6 +605,7 @@ List<Widget> buildHomeGroupRows(
   BuildContext context,
   List<HomeGroup> groups, {
   ValueChanged<Tag>? onTagTap,
+  String dateFormat = kAwSystemDateFormat,
 }) {
   final theme = Theme.of(context);
   return [
@@ -610,7 +622,10 @@ List<Widget> buildHomeGroupRows(
           AwSpace.x2,
         ),
         child: Text(
-          '${group.bucket.label} · ${group.items.length}',
+          // OPH-307: a split group is named by its day, not by the bucket it
+          // came from — "Perşembe · 16 Tem" rather than a fourth "Bu hafta".
+          '${group.day == null ? group.bucket.label : awFormatDayHeading(group.day!, format: dateFormat)}'
+          ' · ${group.items.length}',
           // OPH-301: the dimmed header used to take `onSurfaceVariant` at
           // α=0.70 — 3.63:1, under the 4.5:1 floor. There is no header dim any
           // more, and nothing is lost: the SELECTED day's header is the one
