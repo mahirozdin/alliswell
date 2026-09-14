@@ -358,7 +358,15 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       key: const Key('mute-alarms-switch'),
                       contentPadding: EdgeInsets.zero,
                       secondary: const Icon(Icons.notifications_off_outlined),
-                      title: Text('task.alarmsMuted'.tr()),
+                      // OPH-303: a SWITCH is named for what flipping it DOES,
+                      // and this one was named for the state it leaves behind.
+                      // `task.alarmsMuted` ("Alarm silenced") is correct where
+                      // it reports a fact — the row's badge and the ring
+                      // screen's confirmation — and wrong here, where it reads
+                      // to a non-native speaker as "silent alarm": exactly the
+                      // feature a user was hunting for when they turned this on
+                      // and reported that nothing happened.
+                      title: Text('task.muteAlarms'.tr()),
                       subtitle: Text('task.alarmsMutedSub'.tr()),
                       value: task.alarmsMutedAt != null,
                       onChanged: (mute) async {

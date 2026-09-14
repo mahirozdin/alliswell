@@ -292,6 +292,7 @@
     "attachments": "Attachments",
     "snoozedUntil": "Snoozed — {time}",
     "alarmsMuted": "Alarm silenced",
+    "muteAlarms": "Mute this task's alarms",
     "alarmsMutedSub": "No alerts for this task until you turn them back on",
     "unmuteAlarms": "Turn alarms back on",
     "alarmsBackOn": "Alarms are back on",

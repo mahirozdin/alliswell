@@ -52,12 +52,19 @@ flutter_local_notifications this maps to
 - **Android 14+: denied by default** — the app must send the user to the
   "Alarms & reminders" special-access screen (`ACTION_REQUEST_SCHEDULE_EXACT_ALARM`)
   and check `canScheduleExactAlarms()` before every schedule. [2]
-- Alternative: **`USE_EXACT_ALARM`** is granted at install *without* a prompt,
-  but Google Play policy restricts it to apps whose **core function is an
-  alarm/calendar** — AllisWell (a reminders/tasks product with urgent alarms)
-  has a defensible claim; decide at Play submission. Ship v1 with
-  `SCHEDULE_EXACT_ALARM` + an in-app permission flow, keep `USE_EXACT_ALARM`
-  as a build-config option. [2][3]
+- **`USE_EXACT_ALARM` — decided round 22 (OPH-304, [ADR-0037](adr/0037-android-exact-alarms-are-declared-not-begged-for.md)).**
+  This entry used to say "decide at Play submission… keep it as a build-config
+  option". It is decided: **both are declared.** Measured on an API 36
+  emulator, the line above is not a policy note but our shipped reality —
+  `dumpsys` showed the permission's holder list EMPTY for us at `targetSdk=36`,
+  so every Android 14+ install had inexact alarms until the user went looking.
+  With `USE_EXACT_ALARM` a fresh install reports `granted=true` and asks the
+  user nothing. The two are not alternatives: `USE_EXACT_ALARM` exists from API
+  33 and `minSdk` is 24, so the older half of the base still arrives through
+  `SCHEDULE_EXACT_ALARM`. The cost is a Play **restricted-permission review** —
+  declaration form, a video of the core feature, manual approval, and a refusal
+  blocks publishing updates rather than just this feature. Submission material:
+  [docs/store/exact-alarm-declaration.md](store/exact-alarm-declaration.md). [2][3]
 - **Degradation:** if exact access is denied, fall back to
   `AndroidScheduleMode.inexactAllowWhileIdle` AND show a persistent in-app
   banner on urgent tasks ("alarms may be late — grant Alarms & reminders").

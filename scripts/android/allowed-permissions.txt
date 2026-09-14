@@ -8,6 +8,7 @@ android.permission.RECEIVE_BOOT_COMPLETED
 android.permission.RECORD_AUDIO
 android.permission.SCHEDULE_EXACT_ALARM
 android.permission.USE_BIOMETRIC
+android.permission.USE_EXACT_ALARM
 android.permission.USE_FINGERPRINT
 android.permission.USE_FULL_SCREEN_INTENT
 android.permission.VIBRATE

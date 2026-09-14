@@ -3,7 +3,35 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14d (**OPH-301 + OPH-302 BİTTİ — SOLMA ARTIK ÖLÇÜLEBİLİR
+**Last updated:** 2026-09-14e (**OPH-303 + OPH-304 BİTTİ — BİR ANAHTAR ADINI,
+BİR İZİN DE GEREKÇESİNİ BULDU.**
+**OPH-303:** gerçek teşhis tahmin edilenden iyi çıktı — tek dize ÜÇ iş yapıyor ve
+ikisinde DOĞRUYDU. `task.alarmsMuted` ("Alarm silenced") satır rozetinde ve zil
+ekranının onayında bir OLGU bildiriyor; yanlış olan tek yer anahtarın başlığıydı,
+çünkü bir anahtar çevrildiğinde ne olacağıyla adlandırılır. Dize değiştirilmedi,
+**ayrıldı**: yeni `task.muteAlarms` yalnız başlık. Etki zaten pinliydi
+(`reminder_store_test`), yeni test kopya olurdu. **OPH-304:** sahibin kararıyla
+**`USE_EXACT_ALARM` eklendi** — ve karar ölçümle verildi, gerçek API 36
+emülatöründe (`ads_test36`): öncesinde `SCHEDULE_EXACT_ALARM`
+`signature|privileged|appop` ve sahipleri listesi BOŞ, `targetSdk=36` → Android
+14+ taşıyan HER kurulum kesin alarmsız başlıyor; sonrasında taze kurulumda
+**`USE_EXACT_ALARM: granted=true`**, kullanıcı hiçbir şey yapmadan. Cihazdaki tek
+diğer sahibi Google'ın Saat uygulaması. `SCHEDULE_EXACT_ALARM` yanında KALDI
+(minSdk 24). Gerekçe + risk + geri dönüş yolu **ADR-0037**; Play beyanı, form
+metni ve video senaryosu `docs/store/exact-alarm-declaration.md`; izin
+`allowed-permissions.txt`'e eklendi. **Turun dersi: iki işin de kökü "yanlış kod"
+değil, YANLIŞ ADLANDIRMAYDI** — biri bir anahtarın adı, diğeri bir iznin
+Play'e verdiği gerekçe.
+**AÇIK, ve üçü de sahibe ait:** (1) Play beyan formu + video gönderimi — Play
+Console erişimi gerekiyor, video ATILABİLİR bir demo hesabıyla çekilmeli, gerçek
+hesapla değil; (2) bildirilen Galaxy A12 bu işle KAPANMADI (Android 11–12, orada
+izin zaten vardı) — Alarm log ekran görüntüsü + hatırlatıcının nerede kurulduğu
+bekleniyor; (3) `AlarmProblem.exactAlarmsOff` banner'ı artık Android 14+'ta
+sessiz olmalı, yanlış yere çıkarsa kendi başına hata.
+Süitler: app **1606**, `check:i18n` yeşil. Emülatör kapatıldı.
+Sıradaki iş: **OPH-305** — görev listelerinde sıralama.)
+
+Önceki blok: 2026-09-14d (**OPH-301 + OPH-302 BİTTİ — SOLMA ARTIK ÖLÇÜLEBİLİR
 BİR RENK, VE BİR KAPI ONU ÖYLE TUTUYOR.** İkisi tek öbek yapıldı çünkü planın
 kendi notu öyle diyordu: kapı ÖNCE yazılırsa mevcut ihlalleri gösterir, sonra
 yazılırsa boşluğa bakar. **Kapı yazıldı ve BEŞ sarmalayıcı buldu** — üç bilinen

@@ -291,6 +291,7 @@
     "attachments": "Ekler",
     "snoozedUntil": "Ertelendi — {time}",
     "alarmsMuted": "Alarm susturuldu",
+    "muteAlarms": "Bu görevin alarmlarını sustur",
     "alarmsMutedSub": "Sen geri açana dek bu görev için uyarı gelmez",
     "unmuteAlarms": "Alarmı geri aç",
     "alarmsBackOn": "Alarmlar geri açıldı",

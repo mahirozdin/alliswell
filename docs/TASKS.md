@@ -9761,19 +9761,38 @@ alt yazısı "No alerts for this task until you turn them back on"
 (`task_detail_screen.dart:357-370`, OPH-178). Kullanıcı o görevin bütün alarmlarını
 süresiz kapatan anahtarı açmış._
 
-- [ ] **Bunu "kullanıcı hatası" diye kapatmak haksızlık olur.** *"Alarm silenced"*,
+- [x] **Bunu "kullanıcı hatası" diye kapatmak haksızlık olur.** *"Alarm silenced"*,
       anadili İngilizce olmayan biri için **"sessiz alarm"** diye okunuyor — ve adam
       tam olarak sessiz bir alarm arıyordu. Anahtarın BAŞLIĞI bir durum bildirimi
       gibi yazılmış, oysa yaptığı iş bir EYLEM: "bu görevi sustur".
-- [ ] **Düzeltme:** başlık eylem olarak yeniden yazılır (ör. `Mute this task's
+- [x] **Düzeltme:** başlık eylem olarak yeniden yazılır (ör. `Mute this task's
       alarms`), alt yazı sonucu söylemeye devam eder. `en.json` **ve** `tr.json`
       birlikte; `check:i18n` yeşil kalmalı.
-- [ ] **Komşusuna da bakılır:** aynı ekranda `task.urgentAlarm` ("Urgent alarm") ile
+- [x] **Komşusuna da bakılır:** aynı ekranda `task.urgentAlarm` ("Urgent alarm") ile
       bu anahtar yan yana duruyor ve ikisi zıt yönde çalışıyor. İkisinin bir arada
       nasıl okunduğu gözden geçirilir — kullanıcı üçünü (öncelik, urgent alarm,
       alarms muted) aynı anda ayarlayıp zıt bir sonuç almış.
-- **Kabul:** `task_detail` testinde anahtarın etiketi değil **etkisi** pinlenir
-      (açıkken alarm planlanmaz), böylece etiket bir daha değişse de iddia yaşar.
+- **Gerçek teşhis, tahmin edilenden daha iyi: tek dize ÜÇ iş yapıyordu ve
+      ikisinde doğruydu.** `task.alarmsMuted` ("Alarm silenced") satırdaki
+      rozette (`task_tile.dart:199`, `notifications_off` ikonunun yanında) ve
+      zil ekranının onay mesajında (`alarm_ring_screen.dart:191`) bir OLGU
+      bildiriyor — orada geçmiş zaman doğru. Yanlış olan tek yer anahtarın
+      başlığıydı: bir anahtar, **çevrildiğinde ne olacağıyla** adlandırılır.
+      Yani dize değiştirilmedi, **ayrıldı**: yeni `task.muteAlarms` yalnız
+      anahtarın başlığı (`Mute this task's alarms` / `Bu görevin alarmlarını
+      sustur`), diğer iki yer olduğu gibi kaldı. Alt yazı sonucu söylemeye
+      devam ediyor.
+- **Kabul — mevcut kapsamla karşılandı:** etki zaten pinli —
+      `reminder_store_test.dart` "a muted task synthesizes no alarms at all"
+      diyor ve susturma kalkınca alarmların geri geldiğini de iddia ediyor.
+      Yeni bir test yazmak kapsamı değil kopyayı büyütürdü.
+- **Komşusu gözden geçirildi (kabul gereği), değişiklik gerekmedi:** ekran
+      artık sırayla "Urgent alarm" (kurar) ve "Mute this task's alarms"
+      (susturur) okunuyor, ve susturulmuş bir görev listede "Alarm silenced"
+      rozetiyle duruyor. Kullanıcının aynı anda üçünü ayarlayıp zıt sonuç
+      alması artık kelimelerle görünür.
+- **Doğrulama (2026-09-14):** `check:i18n` yeşil (en/tr eşleşiyor), app süiti
+      **1606 geçti**.
 
 ### OPH-304 — Android 14+'ta kesin alarm varsayılan olarak REDDEDİLİYOR
 
@@ -9790,28 +9809,52 @@ araştırma bildirilen cihazdan büyük bir şey çıkardı:** `targetSdk = 36`
 alarm izni varsayılan olarak reddediliyor ve kullanıcı "Alarms & reminders" özel
 erişimini elle açmadıkça alarmlar kesin zamanlanmıyor._
 
-- [ ] **Ölç, sonra karar ver.** Android 14+ bir cihaz/emülatörde: taze kurulum →
+- [x] **Ölç, sonra karar ver.** Android 14+ bir cihaz/emülatörde: taze kurulum →
       `canScheduleExactAlarms()` ne diyor? `AlarmProblem.exactAlarmsOff` gerçekten
       üretiliyor mu, ve banner kullanıcının GÖRECEĞİ yerde mi çıkıyor? (OPH-277 bu
       teşhisi yazdı; bu iş onun Android 14+ altında gerçekten koştuğunu doğrular.)
-- [ ] **`USE_EXACT_ALARM` bir çözüm ama BEDAVA DEĞİL.** Play tarafında kısıtlı izin,
+- [x] **`USE_EXACT_ALARM` bir çözüm ama BEDAVA DEĞİL.** Play tarafında kısıtlı izin,
       inceleme gerektirir; kabul ölçütü "alarm/zamanlayıcı uygulaması" veya "etkinlik
       bildirimi gösteren takvim uygulaması". AllisWell'in mağaza adı *"AllisWell: Todo
       and Reminders"* ve onaylanması gereken ısrarcı alarmları var — savunulabilir,
       **ama garanti değil ve reddi yayını engeller**. Karar, ölçümden sonra ve
       gerekçesi yazılarak verilir.
-- [ ] **Alternatif (izinsiz yol):** `SCHEDULE_EXACT_ALARM` + `AlarmProblem.exactAlarmsOff`
+- [x] **Alternatif (izinsiz yol):** `SCHEDULE_EXACT_ALARM` + `AlarmProblem.exactAlarmsOff`
       banner'ının ilk alarm kurulduğunda ısrarla gösterilmesi. Kullanıcıyı bir kez
       doğru ekrana götürmek, mağaza incelemesine girmeden sorunu kapatır.
-- [ ] Seçilen yol ne olursa olsun **ADR yazılır** — bu bir platform-politika kararı,
+- [x] Seçilen yol ne olursa olsun **ADR yazılır** — bu bir platform-politika kararı,
       koda gömülü kalmamalı.
 - **Kaynaklar:** [Play — kısıtlı izinler](https://support.google.com/googleplay/android-developer/answer/9888170) ·
       [Android 14 — exact alarms denied by default](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms)
-- **AÇIK — kullanıcıdan veri bekliyor:** Galaxy A12'nin Android sürümü, **Ayarlar →
-      Alarm log** ekran görüntüsü (`/settings/alarm-log`), ve arızalı hatırlatıcının
-      **telefonda mı masaüstünde mi** kurulduğu. Sonuncusu kritik: masaüstünde
-      kurulduysa sebep bu iş değil, aşağıdaki mimari boşluktur (issue'ya bağlandı) —
-      telefon uygulamayı açmadıkça o alarmı hiç planlamamıştır.
+- **ÖLÇÜLDÜ — gerçek API 36 emülatöründe, iddia edilmedi.** `ads_test36`
+      (Pixel 6, Android 36, Play Store imajı) üzerinde, düzeltmeden ÖNCE:
+      `SCHEDULE_EXACT_ALARM` → `prot=signature|privileged|appop` ve iznin
+      sahipleri listesi **BOŞ**; `targetSdk=36`. Yani Android 14+ taşıyan her
+      kurulum, kullanıcı "Alarms & reminders"ı elle bulana kadar kesin alarmsız
+      başlıyor — kaçırmadığı bir alarm için kimsenin yapmadığı bir şey.
+      Düzeltmeden SONRA, taze kurulumda: **`USE_EXACT_ALARM: granted=true`**,
+      kullanıcı hiçbir şey yapmadan. Cihazdaki tek diğer sahibi Google'ın kendi
+      Saat uygulaması (`com.google.android.deskclock`) — bu iznin tuttuğu çevre
+      tam olarak bu.
+- **KARAR (sahibin): `USE_EXACT_ALARM` eklendi**, `SCHEDULE_EXACT_ALARM` yanında
+      KALDI — ikisi alternatif değil: `USE_EXACT_ALARM` API 33'ten var, `minSdk`
+      ise 24. Gerekçe, riski ve reddedilirse geri dönüş yolu **ADR-0037**'de.
+      İzin `scripts/android/allowed-permissions.txt`'e eklendi (tam küme denetimi
+      APK'nın ikili manifestini okur — OPH-244).
+- **Play beyanı hazır ve yazılı: `docs/store/exact-alarm-declaration.md`** —
+      formun yeri, hangi kabul ölçütünü iddia ettiğimiz, forma yazılacak metin,
+      videonun göstermesi gerekenler (saat kadrajda, kesme yok, gerçek hesap
+      YOK) ve reddedilirse ne yapılacağı. Gönderim sahibe ait: Play Console
+      erişimi gerekiyor.
+- **AÇIK — bildirilen Galaxy A12 bu işle KAPANMADI.** O cihaz Android 11–12,
+      orada `SCHEDULE_EXACT_ALARM` zaten veriliyordu; sebep başka. Hâlâ gereken:
+      Android sürümü, **Ayarlar → Alarm log** ekran görüntüsü
+      (`/settings/alarm-log`), ve arızalı hatırlatıcının **telefonda mı
+      masaüstünde mi** kurulduğu — masaüstünde kurulduysa sebep push boşluğudur
+      ([#15](https://github.com/mahirozdin/alliswell/issues/15)), bu iş değil.
+- **AÇIK — banner'ın kendisi:** `AlarmProblem.exactAlarmsOff` artık Android 14+'ta
+      SESSİZ olmalı (izin kurulumda veriliyor). Yanlış yere çıkan bir uyarı kendi
+      başına hatadır; cihaz turunda bakılacak.
 
 ### OPH-305 — Görev listelerinde sıralama
 

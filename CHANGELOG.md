@@ -5,7 +5,32 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Changed
+
+- **Android alarms are exact on Android 14+ without asking the user to go
+  hunting.** Measured on an API 36 device: `SCHEDULE_EXACT_ALARM` is granted
+  through a settings page called "Alarms & reminders", and because AllisWell
+  targets SDK 36, every install on Android 14 or newer started **without** it —
+  so an urgent reminder could arrive late, or not at all, until the user found
+  that page by hand. Nobody does that for an alarm they have not yet missed.
+  AllisWell now declares `USE_EXACT_ALARM`, which is granted at install, and
+  keeps `SCHEDULE_EXACT_ALARM` for the older half of the install base. The
+  trade is a Google Play restricted-permission review, taken deliberately —
+  see [ADR-0037](docs/adr/0037-android-exact-alarms-are-declared-not-begged-for.md).
+  OPH-304, [#11](https://github.com/mahirozdin/alliswell/issues/11).
+
 ### Fixed
+
+- **The switch that silences a task now says what flipping it does.** It read
+  "Alarm silenced", which to a non-native speaker reads as *silent alarm* — and
+  a user turned it on while looking for exactly that, then reported that
+  nothing happened. Nothing happening was correct: the switch disables every
+  alert for that task. It is now "Mute this task's alarms". The old wording was
+  not simply wrong — it is still there on the row badge and on the
+  confirmation after silencing an alarm, where reporting a state is what those
+  places do. One string was doing three jobs and was right in two of them.
+  Reported by a user; OPH-303,
+  [#10](https://github.com/mahirozdin/alliswell/issues/10).
 
 - **Faded rows on Home are readable again.** Picking a day in the month
   calendar made every later group translucent, and a user wrote in to say it

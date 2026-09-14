@@ -5,6 +5,20 @@
          special-access flow, reboot rescheduling, and the full-screen alarm
          UX (gated + Play-declared; the OS degrades gracefully). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- OPH-304, ADR-0037. Measured on an API 36 emulator before this line was
+         written: SCHEDULE_EXACT_ALARM is `signature|privileged|appop`, and the
+         list of packages holding it was EMPTY for us. We target SDK 36, so on
+         Android 14+ every install starts WITHOUT exact alarms until the user
+         finds "Alarms & reminders" in system settings by hand — which is not a
+         thing a person does for an alarm they have not yet missed.
+
+         USE_EXACT_ALARM is `normal`: granted at install, not revocable without
+         uninstalling. It is also a Play RESTRICTED permission — declaration
+         form plus a video of the core feature, and a manual review that can
+         refuse. SCHEDULE_EXACT_ALARM stays beside it on purpose: it is what
+         Android 12 (minSdk 24 reaches back much further) uses, and the two are
+         complementary rather than alternatives. -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
