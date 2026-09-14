@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.11.0] — 2026-09-15
+
 ### Added
 
 - **"This week" is one heading per day.** It was a single pile, and a user said
