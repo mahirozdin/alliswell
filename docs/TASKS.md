@@ -9443,6 +9443,292 @@ geliyor. Ölçüm eskidi, karar değil._
 - **Doğrulama:** app süiti **1598** (+8), `flutter analyze` temiz,
       `dart format` değişiklik yok.
 
+## Epic 29 — İstek turu 22: ilk dış kullanıcının beş maddesi (v1.11.0)
+
+_Rapor: **Chong KM** (`kmmchongld@gmail.com`), 2026-09-14, iki mail. AllisWell'i
+kendi bulup kullanmaya başlayan **ilk dış kullanıcı** — sahibin değil. Beş madde,
+hiçbiri log ya da yığın izi içermiyor; hepsi düz cümlelerle tarif edilmiş.
+Beşinin de kökü koddan okunarak arandı: dördü bulundu ve `dosya:satır` ile
+gösterildi, biri (Android'de alarm çalmaması) kodda kusur bulunamadan kapandı ve
+cihaz verisi bekliyor. Hiçbiri tahmin değil._
+
+_**Turun tek cümlesi: dört arızanın dördü de İKİ TARAFI AYRI AYRI DOĞRU olan bir
+sözleşmeden çıktı.** İstemcinin gönderdiği alan ile sunucunun kabul ettiği alan
+(OPH-299); deponun kendi yazdığı tasarım kuralı ile kapının gerçekte ölçtüğü şey
+(OPH-301); bir anahtarın adı ile yaptığı iş (OPH-303); dokümanın tarif ettiği
+platform gerçeği ile derlenen kod (OPH-304). **Hiçbirinde "eksik kod" yoktu —
+ölçülmeyen bir sınır vardı.** Epic 17'nin "ulaşılamayan kod" dersinin kardeşi:
+orada kod vardı ve insan dokunamıyordu, burada iki taraf var ve aralarındaki
+sözleşmeyi kimse ölçmüyor._
+
+_Turun kuralı, Epic 26 ve 27'ninkiyle aynı: her düzeltmenin yanına aynı kusur
+**SINIFININ** geri gelmesini engelleyen bir kapı koyulur — OPH-300
+(`sync_fields_parity`) ve OPH-302 (`check:opacity`). Bu turda kapılar,
+düzeltmelerden daha değerli: OPH-299 altı buçuk hafta boyunca 796 API + 1598 app
+testinin altından geçti, çünkü hiçbir test istemcinin GERÇEKTE gönderdiği gövdeyi
+göndermiyordu._
+
+**Turun araştırması (yapıldı, kaynaklarıyla):**
+
+| Soru | Bulgu | Kaynak |
+| --- | --- | --- |
+| `USE_EXACT_ALARM` eklemek serbest mi? | **Hayır** — Play tarafında **kısıtlı izin**, inceleme gerektirir; yalnız "alarm/zamanlayıcı uygulaması" veya "etkinlik bildirimi gösteren takvim uygulaması" kabul edilir. Ölçüt karşılanmazsa yayın engellenir. | [Play Console — Permissions and APIs that Access Sensitive Information](https://support.google.com/googleplay/android-developer/answer/9888170) |
+| Android 14+ `SCHEDULE_EXACT_ALARM` davranışı | API 33+ hedefleyen uygulamalarda **varsayılan olarak REDDEDİLİR**; kullanıcı "Alarms & reminders" özel erişimini elle açmalıdır. | [Android Developers — Schedule exact alarms are denied by default](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms) |
+| Bizim hedefimiz kaç? | **`targetSdk = 36`** (Flutter 3.47.2 varsayılanı, `FlutterExtension.kt:34`). Yani yukarıdaki davranış **bizi kapsıyor**. | ölçüldü |
+| Kontrast eşiği | Normal gövde metni **4.5:1**, büyük metin ve arayüz bileşenleri **3:1**. | [WCAG 2.2 — SC 1.4.3 Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html) |
+
+### OPH-299 — Tekrar, sunucuya bir kez bile varmamıştı (`fromTaskId`)
+
+_Rapor: "when i created a task, and try to 'repeat' it (say every day, every
+Monday, Tuesday, Wed), it says **'a change was rejected by server. Sync entity
+not found'** or **'sync unknown field'**." — İki farklı hata kodu, tek kök._
+
+_Gördüğü metin bizim dizemiz: `sync.rejected` = "A change was rejected by the
+server{code}." (`en.json`), parantezli kod `home_shell.dart:185`'te ekleniyor._
+
+- [ ] **Kök neden — bir alan fazlası.** Sunucunun `task_series` için kabul ettiği
+      alanlar tam dört tane (`sync.js:220-230`): `rule`, `template`, `timezone`,
+      `anchorAt`. Uygulama **beşincisini** gönderiyor: `series_store.dart:112`
+      `'fromTaskId': ?fromTaskId`. Doğrulayıcı patch'teki HER anahtarı geziyor ve
+      tabloda olmayan ilkinde mutation'ın tamamını reddediyor
+      (`sync.js:1536-1541` → `SYNC_UNKNOWN_FIELD`). Patch yolda hiç filtrelenmiyor:
+      `outbox.dart:85` `jsonEncode` ile saklıyor, `sync_engine.dart:279` aynen
+      çözüp gönderiyor.
+- [ ] **Özellik %100 ölü, çünkü iki UI girişi de bu alanı dolduruyor:**
+      yeni görevde tekrar (`task_create_sheet.dart:246`) ve var olan görevde
+      tekrar (`repeat_row.dart:101`). Uygulamadan tekrar kurmanın ÜÇÜNCÜ bir yolu
+      yok — yani tekrarlayan görevler v0.8.0'dan beri hiç çalışmadı.
+- [ ] **İkinci hata kodu aynı kökün devamı.** Create reddedilince yerel seri satırı
+      iyimser olarak duruyor (`series_store.dart:115-119` görevin `seriesId`'sini de
+      yazıyor). Kullanıcı kuralı değiştirince `update` kuyruğa giriyor, sunucuda
+      satır yok → `sync.js:1329` `SYNC_ENTITY_NOT_FOUND`. Tekrarı kapatmak `delete`
+      → `sync.js:1469`, aynı kod. Raporda ikisinin de olması tesadüf değil:
+      "every day, every Monday, Tuesday, Wed" derken kuralı arka arkaya değiştirmiş.
+- [ ] **Düzeltme — dikiş zaten kurulu.** `spec.virtual` mekanizması `prepare()`
+      içinde var (`sync.js:581` `if (!spec.virtual)`) ve `tagIds`, `seriesScope`,
+      `orderedIds`, not gövdesi alanları onu kullanıyor. `task_series` için:
+      `fromTaskId: { col: 'series_id', ok: ulid, virtual: true, createOnly: true }`
+      — `virtual` olmayan bir kolona yazmayı önler (`task_series`'te böyle bir kolon
+      YOK), `col` LWW niyetini benimsemenin gerçekten kıpırdattığı kolonla adlandırır,
+      `createOnly` çünkü bir seri sonradan başka bir görevi benimseyemez.
+- [ ] **Benimseme (adoption) isteğe bağlı DEĞİL.** REST yolu `fromTaskId` geldiğinde
+      `adoptTaskIntoSeries` çağırıyor (`task-series.js:202`); sync'in `afterCreate`'i
+      yalnızca `materializeSeries` çağırıyor (`sync.js:883-886`). Alanı kabul edip
+      benimsemeyi eklemezsek çapa gününde **ikiz görev** doğar ve OPH-205'in
+      "the server ADOPTS rather than duplicating" sözü bozulur. Benimseme tek bir
+      dikişe alınır; REST ile sync aynı cevabı verir.
+- **Kabul:** (1) `sync-task-series.test.js`'e istemcinin GERÇEK gövdesiyle bir case
+      — `fromTaskId` dolu → `applied`; (2) çapa gününde görev sayısı **1** (ikiz yok)
+      ve o görevin `series_id`'si yeni seri; (3) `fromTaskId` ile gelen bir `update`
+      → `SYNC_UNKNOWN_FIELD` (createOnly gerçekten create'e kapalı); (4) app tarafında
+      `repeat_test.dart`'a outbox'a düşen patch'in anahtar kümesini pinleyen bir iddia.
+      **Negatif kontrol şart:** düzeltme geri alındığında (1) kırmızı dönmeli.
+- **Doğrulama:** `npm run lint`, API birim süiti, `flutter analyze`, app süiti.
+      Ayrıca canlıda elle: web'den bir göreve tekrar kur → banner ÇIKMAMALI, ertesi
+      günlerin satırları pull ile gelmeli.
+- **İz:** sunucu `3a50343` (OPH-205) ve uygulama `37bac61` (OPH-207), ikisi de
+      **2026-07-29**, **v0.8.0**. Aradaki her sürümde bozuk, v1.10.2 dahil.
+      Süitlerin görmeme sebebi `sync-task-series.test.js:47`: `seriesPatch()` kendi
+      gövdesini kuruyor ve `fromTaskId` o satırda yok.
+
+### OPH-300 — Sözleşme paritesi: istemcinin gönderdiği alan, sunucunun kabul ettiği alandır
+
+_OPH-299'un tek alanını eklemek O hatayı kapatır, SINIFINI kapatmaz. Depoda
+`recurrence_parity.json` var — tekrar kuralının matematiği Dart ile JS arasında
+birebir doğrulanıyor, iki taraf "her Pazartesi"nin ne demek olduğunda kusursuz
+anlaşıyor. **Doğrulanmayan tek şey mutation'ın TAŞINMASIYDI.** Parite testi motoru
+ölçüyordu, kabloyu değil._
+
+- [ ] **Fixture üretimi:** `ENTITIES[type].fields` anahtarlarından (her biri için
+      `createOnly`/`updateOnly`/`virtual` bayraklarıyla) `sync_fields_parity.json`
+      üretilir. Elle yazılmaz — üretilir, yoksa `API.md`'nin başına gelen olur
+      (OPH-294: elle yazılan doküman sessizce yanlışa döndü).
+- [ ] **API süiti tarafı:** üretilen fixture ile canlı `ENTITIES` karşılaştırılır;
+      sapma varsa kırmızı (fixture bayatlayamaz).
+- [ ] **App süiti tarafı:** her `enqueueMutation` çağrısının gönderdiği anahtar
+      kümesi fixture'a karşı doğrulanır. Kapsam `fold_parity` kalıbı: tek kaynak,
+      iki süitte iddia.
+- [ ] **Kapının kendisi doğrulanır:** sahte bir ihlal (istemciye tanınmayan bir alan
+      eklenir) kırmızı vermeli, kaldırınca yeşil. Epic 27'nin `check:fab` dersi —
+      *ölçmediği şeyi yeşille aynı okuyan bir kapı, kapı değildir.*
+- **Kabul:** OPH-299'un düzeltmesi geri alındığında bu kapı da kırmızı dönmeli;
+      yani kapı, bulduğumuz hatayı bağımsız olarak yakalıyor olmalı.
+- **Not:** kapsam yalnız sync push alan kümesidir. Değer doğrulaması (`ok`) ve
+      sunucu-sahipli alanlar (örn. `series_id`, `occurrence_date`) kapsam DIŞI —
+      bunlar zaten istemciden hiç gelmiyor ve `sync.js:216-219` bunu yazıyor.
+
+### OPH-301 — Solmuş satır okunabilir olsun (`Opacity` → token)
+
+_Rapor: "other days (eg. tomorrow, this week) are deliberately 'translucent' (the
+text), which is hard to read... i am not sure if it is a design feature but somehow
+it is not easy to read."_
+
+_Kullanıcının "sadece bugünü gösteriyor" kısmı **yanlış** — Ana ekranda 30 günlük
+ufuk ve yedi grup var (`task_grouping.dart:84-95`, `kHomeHorizonDays = 30`).
+Ama solma şikâyeti **doğru ve ölçülebilir**. Solma yalnız ay takviminde bir gün
+SEÇİLİYKEN devreye giriyor (`task_grouping.dart:202-207`); kullanıcı büyük
+ihtimalle bugünü seçili bırakmış, o zaman yarın/bu hafta/30 gün hepsi solar —
+tarifi birebir bu._
+
+- [ ] **Ölçüm (yapıldı, `scripts/design/contrast.py` formülüyle):**
+
+      | Yüzey | normal | α=0.45 | Eşik |
+      | --- | --- | --- | --- |
+      | Açık tema, görev başlığı | 7.34:1 | **2.11:1** | 4.5 ✗ |
+      | Açık tema, gövde | 16.37:1 | **2.86:1** | 4.5 ✗ |
+      | Koyu tema, görev başlığı | 8.39:1 | **2.76:1** | 4.5 ✗ |
+      | Koyu tema, gövde | 14.87:1 | **4.02:1** | 4.5 ✗ |
+
+      Grup başlığı (α=0.70) açık temada **3.53:1** — o da sınıfta kalıyor.
+- [ ] **Depo bunu KENDİ yasaklamış.** `task_tile.dart:123`: *"the calm treatment is
+      a TOKEN, never an `Opacity` wrapper — opacity makes contrast unmeasurable and
+      silently voids §5's floors."* `contrast.py:96` aynı şeyi yazıyor. Kural yazılı,
+      gerekçesi yazılı, ve **üç yerde çiğnenmiş**: `task_tile.dart:374`,
+      `home_screen.dart:494` (etkinlik satırı), `home_screen.dart:476` (grup başlığı,
+      α=0.70).
+- [ ] **Düzeltme:** üçü de tokenlara çevrilir — tamamlanmış satırın (OPH-185, C2/C3)
+      zaten kanıtlanmış kalıbı. Solma GÖRSEL OLARAK korunur (seçili gün hâlâ öne
+      çıkmalı), ama zeminle harmanlanmış bir RENK olarak, `Opacity` sarmalayıcısı
+      olarak değil.
+- [ ] **DESIGN §5/§7.1 yerinde tadil edilir:** solmuş durumun eşiği ve neden token
+      olduğu yazılır. §33 R4 kalıbı — kodun aştığı kural sessizce çelişkide bırakılmaz.
+- **Kabul:** `contrast.py`'ye **8 yeni çift** (açık/koyu × başlık/gövde × satır/grup
+      başlığı) eklenir ve `FAILURES: 0` gerçekten bir şey iddia eder hale gelir.
+- **Kullanıcıya söylenecek anlık çözüm (mailde var):** takvim ikonuna dokunmak
+      seçimi temizliyor (`home_screen.dart:193-198`) — solma gidiyor.
+
+### OPH-302 — `check:opacity`: kapının göremediği katman
+
+_OPH-301'in kusuru `FAILURES: 0` satırının altında yaşadı. `contrast.py` 137 çift
+ölçüyor ve hepsi geçiyor — çünkü `Opacity` bir RENK değil, bir katman: ölçülemez.
+Epic 26'nın çakışma-banner'ı dersinin birebir tekrarı._
+
+- [ ] **Kapı:** `lib/src` altında metin taşıyan bir alt ağacı saran `Opacity(`
+      build'i düşürür. `check:fab` kalıbı: yasak değil, **beyaz listeli** — sürükleme
+      hayaleti (`home_board.dart:406,412`) gibi meşru, metin-dışı kullanımlar
+      gerekçesiyle listelenir.
+- [ ] **Kapının kendisi doğrulanır:** sahte ihlal → `exit 1`, kaldırınca → `exit 0`.
+- [ ] CI'a bağlanır (`check:fab`, `check:i18n`, `check:docs` ile aynı sırada) ve
+      `AGENTS.md` §3 Definition of Done'a eklenir.
+- **Not:** kapı OPH-301'den SONRA yazılırsa mevcut üç ihlal zaten gitmiş olur; kapı
+      ÖNCE yazılırsa üçünü de gösterir. **Önce yazılsın** — kapının gerçekten
+      gördüğünü kanıtlamanın en ucuz yolu bu.
+
+### OPH-303 — "Alarm silenced" ne yaptığını söylesin
+
+_Rapor (düzeltme mailiyle birlikte): "i enable 'urgent alarm', set priority 'urgent',
+and **enable (not disable) 'alarm silenced'**. I anticipated at least a big window
+pop-up reminder, but nothing happens?"_
+
+_**Hiçbir şey olmaması doğru davranıştı.** `task.alarmsMuted` = "Alarm silenced",
+alt yazısı "No alerts for this task until you turn them back on"
+(`task_detail_screen.dart:357-370`, OPH-178). Kullanıcı o görevin bütün alarmlarını
+süresiz kapatan anahtarı açmış._
+
+- [ ] **Bunu "kullanıcı hatası" diye kapatmak haksızlık olur.** *"Alarm silenced"*,
+      anadili İngilizce olmayan biri için **"sessiz alarm"** diye okunuyor — ve adam
+      tam olarak sessiz bir alarm arıyordu. Anahtarın BAŞLIĞI bir durum bildirimi
+      gibi yazılmış, oysa yaptığı iş bir EYLEM: "bu görevi sustur".
+- [ ] **Düzeltme:** başlık eylem olarak yeniden yazılır (ör. `Mute this task's
+      alarms`), alt yazı sonucu söylemeye devam eder. `en.json` **ve** `tr.json`
+      birlikte; `check:i18n` yeşil kalmalı.
+- [ ] **Komşusuna da bakılır:** aynı ekranda `task.urgentAlarm` ("Urgent alarm") ile
+      bu anahtar yan yana duruyor ve ikisi zıt yönde çalışıyor. İkisinin bir arada
+      nasıl okunduğu gözden geçirilir — kullanıcı üçünü (öncelik, urgent alarm,
+      alarms muted) aynı anda ayarlayıp zıt bir sonuç almış.
+- **Kabul:** `task_detail` testinde anahtarın etiketi değil **etkisi** pinlenir
+      (açıkken alarm planlanmaz), böylece etiket bir daha değişse de iddia yaşar.
+
+### OPH-304 — Android 14+'ta kesin alarm varsayılan olarak REDDEDİLİYOR
+
+_Rapor: "reminder alarm sound — right now it is successful in my iphone (even in
+airplane mode), but when using an android phone, it does not trigger. Samsung
+Galaxy A12."_
+
+_**Bildirilen cihaz için kodda kusur bulunamadı** — manifest eksiksiz
+(`POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM`, `RECEIVE_BOOT_COMPLETED`,
+`WAKE_LOCK`, `USE_FULL_SCREEN_INTENT`, boot receiver'lar). Galaxy A12 Android 11–12
+ile geliyor; orada `SCHEDULE_EXACT_ALARM` kurulumda otomatik veriliyor. **Ama
+araştırma bildirilen cihazdan büyük bir şey çıkardı:** `targetSdk = 36`
+(`FlutterExtension.kt:34`), yani **Android 14+ taşıyan HER kullanıcıda** kesin
+alarm izni varsayılan olarak reddediliyor ve kullanıcı "Alarms & reminders" özel
+erişimini elle açmadıkça alarmlar kesin zamanlanmıyor._
+
+- [ ] **Ölç, sonra karar ver.** Android 14+ bir cihaz/emülatörde: taze kurulum →
+      `canScheduleExactAlarms()` ne diyor? `AlarmProblem.exactAlarmsOff` gerçekten
+      üretiliyor mu, ve banner kullanıcının GÖRECEĞİ yerde mi çıkıyor? (OPH-277 bu
+      teşhisi yazdı; bu iş onun Android 14+ altında gerçekten koştuğunu doğrular.)
+- [ ] **`USE_EXACT_ALARM` bir çözüm ama BEDAVA DEĞİL.** Play tarafında kısıtlı izin,
+      inceleme gerektirir; kabul ölçütü "alarm/zamanlayıcı uygulaması" veya "etkinlik
+      bildirimi gösteren takvim uygulaması". AllisWell'in mağaza adı *"AllisWell: Todo
+      and Reminders"* ve onaylanması gereken ısrarcı alarmları var — savunulabilir,
+      **ama garanti değil ve reddi yayını engeller**. Karar, ölçümden sonra ve
+      gerekçesi yazılarak verilir.
+- [ ] **Alternatif (izinsiz yol):** `SCHEDULE_EXACT_ALARM` + `AlarmProblem.exactAlarmsOff`
+      banner'ının ilk alarm kurulduğunda ısrarla gösterilmesi. Kullanıcıyı bir kez
+      doğru ekrana götürmek, mağaza incelemesine girmeden sorunu kapatır.
+- [ ] Seçilen yol ne olursa olsun **ADR yazılır** — bu bir platform-politika kararı,
+      koda gömülü kalmamalı.
+- **Kaynaklar:** [Play — kısıtlı izinler](https://support.google.com/googleplay/android-developer/answer/9888170) ·
+      [Android 14 — exact alarms denied by default](https://developer.android.com/about/versions/14/changes/schedule-exact-alarms)
+- **AÇIK — kullanıcıdan veri bekliyor:** Galaxy A12'nin Android sürümü, **Ayarlar →
+      Alarm log** ekran görüntüsü (`/settings/alarm-log`), ve arızalı hatırlatıcının
+      **telefonda mı masaüstünde mi** kurulduğu. Sonuncusu kritik: masaüstünde
+      kurulduysa sebep bu iş değil, aşağıdaki mimari boşluktur (issue'ya bağlandı) —
+      telefon uygulamayı açmadıkça o alarmı hiç planlamamıştır.
+
+### OPH-305 — Görev listelerinde sıralama
+
+_Rapor: "any methods to sort and categorise upcoming tasks ... listed by the order
+of 'priority'". Bugün sıralama menüsü YALNIZ Notlar ve Dosyalar'da var
+(`note_store.dart:47-49`, `file_attachment.dart:19-25`); görev listelerinde hiç yok._
+
+- [ ] `AwSortChoice` altyapısı hazır (`core/list_sort.dart`) — görevler için seçenek
+      kümesi tanımlanır: **öncelik**, tarih, başlık. Tercih cihaz-yerel ve senkronsuz
+      (DESIGN §34: sıralama bir GÖRÜNTÜLEME tercihidir, veri değil).
+- [ ] Denetim mevcut sıralama menüsü bileşeniyle app bar'a konur — notlarla aynı
+      yüzey, yeni bir kalıp icat edilmez.
+- [ ] Önceliğe göre sıralamanın "doğal yönü" `descendingByDefault: true` (acil önce).
+- **Kabul:** tercih yeniden başlatmayı aşar; bilinmeyen bir tercih ilk seçeneğe düşer
+      (`list_sort.dart:38`'in zaten test ettiği davranış).
+
+### OPH-306 — Etikete dokun, o etiketin işleri öncelik sırasıyla gelsin
+
+_Rapor: "by the 'label tag' (so when i click the label tag, automatically sorts, and
+listed by the order of 'priority')". Etiket sistemi v0.4.0'dan beri var (OPH-165),
+satırlarda çipler görünüyor — ama **çipe dokunmak hiçbir şey yapmıyor**; etiket
+filtresi diye bir yüzey yok._
+
+- [ ] Etiket çipi dokunulabilir olur → o etiketin görevleri, OPH-305'in sıralamasıyla.
+- [ ] Filtrenin AÇIK olduğu ve nasıl kapatılacağı ekranda görünür (Epic 17 dersi:
+      *"artık göremediğin bir filtre listeyi süzmeye devam etmemeli"* — Ana ekranın
+      seçili-gün kuralının aynısı, `home_screen.dart:193-198`).
+- [ ] **Yüzeyini adıyla yaz** (DESIGN §22 reachability): hangi ekranlarda etiket çipi
+      dokunulabilir olacak — liste, detay, Pano kartı.
+- **Kabul:** filtre + sıralama birlikte çalışır; filtre açıkken boş sonuç "sonuç yok"
+      der, boş ekran değil.
+
+### OPH-307 — "Bu hafta" güne bölünsün
+
+_Rapor: "by EACH DAY of this week, next week, next next week — i mean for each day,
+the tasks are listed one by one (vertically), coz this would be easier to follow,
+for the eyes."_
+
+_Bugün Ana ekran yedi KOVAYA ayırıyor (Gecikmiş → Tarihsiz → Bugün → Yarın → Bu hafta
+→ Sonraki 30 gün); "Bu hafta" ve "Sonraki 30 gün" tek yığın._
+
+- [ ] `futureBucketForDay` zaten günü hesaplıyor (`task_grouping.dart:122`) — "Bu hafta"
+      kovası gün başlıklarına bölünür (Pzt, Sal, Çar…). 30 günlük ufkun da gün başlıklı
+      olup olmayacağı ölçülerek karar verilir: 30 ayrı başlık, listeyi okunaksız yapabilir.
+- [ ] Boş günler **gösterilmez** — bir gün başlığı "orada iş var" demektir (OPH-185'in
+      takvim noktası kuralının aynısı, `task_grouping.dart:213`).
+- [ ] Grup sırası ve "hangi grup solar" kuralı (OPH-301) korunur.
+- **Kabul:** `task_grouping` testine gün bölünmesi eklenir; mevcut kova sırası
+      iddiaları kırılmamalı.
+- **Not:** kullanıcının "next week, next next week" isteği 30 günlük ufkun İÇİNDE
+      zaten var; ufku büyütmek bu işin kapsamı değil (ADR gerektirir — `kHomeHorizonDays`
+      bilinçli bir söz: *"there is no open-ended Later"*, `task_grouping.dart:87-89`).
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
@@ -9527,6 +9813,32 @@ geliyor. Ölçüm eskidi, karar değil._
   hak ediyor); salt-okunur Quill önizlemelerinin (`project_detail_screen.dart:374`,
   `markdown_import_screen.dart:266`) her derlemede `ScrollController` üretmesi (aynı
   paket deseni, imleç yok — kullanıcıya görünen etkisi ölçülmedi).
+- **Round 22 park kuyruğu (istek turu 22, Epic 29'un kapsam DIŞI iki maddesi — ikisi de
+  ÖLÇÜLDÜ, ikisi de mimari ve kendi turunu hak ediyor):**
+  **(1) Sunucu→cihaz push "uyandırma"** — rapor: "masaüstünde kurduğum hatırlatıcı
+  telefonumda çalmıyor; telefonda kurarsam ikisi de çalıyor." Kusur değil, yazılı
+  tasarımın sonucu: `NOTIFICATIONS.md` §0 *"each device schedules its own OS-level
+  notifications from local data"* diyor ve push'u erteliyor (*"Push arrives later —
+  Epic 07 tail / v2"*). Hatırlatıcı satırı telefona İNİYOR (`sync.js:388` pull
+  serializer), ama zamanlayıcı yerel replika akışına abone (`notifications/providers.dart:175`)
+  ve **arka plan senkronu yok** (`workmanager`/`BGTaskScheduler` paketi yok), sunucuda
+  FCM/APNs gönderen kod yok (`notification-devices.js:8` "FCM/APNs land later";
+  `push_token` kolonu boş duruyor). Sonuç: web'de kurulan bir hatırlatıcı, telefon
+  uygulamayı açana kadar OS'a hiç yazılmıyor. v2 kapsamı: uyandırma ipucu (yalnız ID,
+  asla içerik — §8.3) + bayat yerel programı olan cihazlar için yedek.
+  **(2) Web'de OS bildirimi** — rapor: "sesle çalmayan ama başka tarayıcıdayken bile
+  ekranda pencere açan bir hatırlatıcı". Bugün **hiç yok**: depoda
+  `Notification.requestPermission` çağrısı yok, bildirim için service worker yok
+  (`web/drift_worker.js` SQLite içindir), ağ geçidi her platformda
+  `LocalNotificationsGateway()` (`notifications/providers.dart:28`) ve
+  `flutter_local_notifications`'ın web desteği yok. `NOTIFICATIONS.md` §3 web'i
+  "best-effort, Notification izni gerekir" diye TARİF EDİYOR ama o izni isteyen tek
+  satır yok — *"spec var ≠ davranış var"*ın yeni örneği. Masaüstü/web'de tek alarm
+  yüzeyi uygulama içi `AlarmRingScreen` ve onu ön plandaki bir zamanlayıcı çarkı
+  sürüyor: sekme açık VE önde olmalı (arka plan sekmelerinde tarayıcı zamanlayıcıyı
+  kısar), üstelik döngüsel ses çalıyor — istenenin tam tersi. Gerçek çözüm Web
+  Notifications API + izin akışı; zamanlanmış yerel web bildirimi (Notification
+  Triggers) tarayıcılarda yok, yani bu madde (1) ile birlikte düşünülmeli.
 - Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).

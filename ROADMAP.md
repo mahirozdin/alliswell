@@ -421,6 +421,64 @@ ADR-0026's verifier, client half expensive across six platforms; queued behind
 this round), markdown color syntax, Home/Projects sorting, API-key scopes,
 named/pinned versions.
 
+## v1.6 → v1.10 — request rounds 19–21 ✅ (shipped)
+
+Markdown-canonical notes and the merge engine that rides on them (Epic 24,
+ADR-0033); PDF fidelity, the iOS alarm lanes and the markdown editor's own
+actions (Epic 26, v1.8.x); two-factor auth, session management and the identity
+seam (OPH-283…288); **the API as a product surface** (Epic 27, v1.10.0) —
+OpenAPI 3.1 generated from the routes themselves, a public reference at
+`alliswell.space/docs/api`, a Postman collection and four CI gates that fail the
+build on drift (ADR-0035); and the iOS share extension landing in the app
+instead of on an error screen (Epic 28, OPH-298).
+
+## Toward v1.11.0
+
+### Phase 16 — Request round 22: the first outside user's five items (Epic 29) ⏳ (planned 2026-09-14)
+
+Nine tasks (OPH-299…OPH-307). The first report from a user who **found AllisWell
+on their own** rather than being handed it — five plainly-described problems, no
+logs, no stack traces. All five were traced in the code: four root causes were
+found and pinned to `file:line`, the fifth (Android alarms not firing on a
+Galaxy A12) found no defect in the code and is waiting on device data. The
+measured-facts and sources tables live in the epic header in
+[docs/TASKS.md](docs/TASKS.md).
+
+**The sentence of the round: all four faults came from a contract where each
+side was independently correct.** No missing code anywhere — an unmeasured
+boundary in each case.
+
+- **Repeating tasks never reached the server at all (OPH-299).** The app puts a
+  `fromTaskId` key in the `task_series` create patch; the server's field table
+  accepts exactly four keys and rejects the whole mutation on the first unknown
+  one. Both UI entry points send it, so recurrence has been dead **since v0.8.0
+  (2026-07-29)** — through every release since. The second error the user saw is
+  the same fault's tail: the optimistic local series row survives, so the next
+  rule change finds no row on the server. It survived 796 API and 1598 app tests
+  because no test ever sent the body the client actually sends — hence
+  **OPH-300**, a generated client/server field-parity fixture asserted in both
+  suites, in the shape `fold_parity.json` established.
+- **Faded rows were unreadable, and the gate could not see it (OPH-301/302).**
+  The selected-day dimming is done with an `Opacity(0.45)` wrapper measuring
+  **2.11:1** in light theme against a 4.5:1 floor — while the file itself says
+  *"never an `Opacity` wrapper"* and the contrast script says the same. Fixed
+  with tokens, and `check:opacity` is added so the class cannot return.
+- **A switch whose name hid its job (OPH-303).** "Alarm silenced" reads as
+  *silent alarm* to a non-native speaker — which is precisely what this user
+  wanted — while it actually disables every alert for that task.
+- **Exact alarms are denied by default on Android 14+ (OPH-304).** Research this
+  round measured `targetSdk = 36`, which puts **every** Android 14+ user behind
+  a permission they must grant by hand. `USE_EXACT_ALARM` would lift it but is a
+  Play-reviewed restricted permission, so the choice gets measured and written
+  into an ADR rather than assumed.
+- **Three missing surfaces the user asked for (OPH-305…307).** Sorting for task
+  lists (it exists only for notes and files today), a tappable tag filter, and
+  the "This week" group broken out day by day.
+
+Parked with written reasons and tracked as issues: server→device push wake-ups
+and web OS notifications — both measured, both architectural, both in the
+backlog.
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:

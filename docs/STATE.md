@@ -3,7 +3,35 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-12 (**Epic 28 — PAYLAŞILAN YAZI UYGULAMADA BİTSİN
+**Last updated:** 2026-09-14 (**Epic 29 PLANLANDI — İLK DIŞ KULLANICININ BEŞ
+MADDESİ (istek turu 22). OPH-299…307, hedef v1.11.0.** Rapor: Chong KM
+(`kmmchongld@gmail.com`), iki mail, 2026-09-14 — AllisWell'i kendi bulup
+kullanmaya başlayan ilk dış kullanıcı. Beş maddenin beşi de koddan arandı;
+**dördünün kökü `dosya:satır` ile bulundu**, biri (Android'de alarm) kodda kusur
+bulunamadan kapandı ve cihaz verisi bekliyor. **Turun tek cümlesi: dört arızanın
+dördü de İKİ TARAFI AYRI AYRI DOĞRU olan bir sözleşmeden çıktı** — istemcinin
+gönderdiği alan ile sunucunun kabul ettiği alan, deponun yazdığı tasarım kuralı
+ile kapının ölçtüğü şey, bir anahtarın adı ile yaptığı iş, dokümanın tarif ettiği
+platform gerçeği ile derlenen kod. Hiçbirinde "eksik kod" yoktu, ölçülmeyen bir
+sınır vardı. **En ağırı OPH-299: tekrarlayan görevler v0.8.0'dan (2026-07-29)
+beri hiç çalışmamış** — uygulama `task_series` create patch'ine `fromTaskId`
+koyuyor (`series_store.dart:112`), sunucu o alanı tanımıyor (`sync.js:220-230`)
+ve mutation'ın tamamını reddediyor (`SYNC_UNKNOWN_FIELD`); kullanıcının gördüğü
+ikinci kod (`SYNC_ENTITY_NOT_FOUND`) aynı kökün devamı — yerel iyimser seri
+satırı duruyor, sonraki `update`/`delete` sunucuda satır bulamıyor. Altı buçuk
+hafta 796 API + 1598 app testinin altından geçti çünkü **hiçbir test istemcinin
+gerçekte gönderdiği gövdeyi göndermiyordu** (`sync-task-series.test.js:47`).
+İkincisi ölçüldü: seçili-gün solması `Opacity(0.45)` ile yapılıyor ve
+açık temada **2.11:1** (WCAG 4.5:1) — üstelik `task_tile.dart:123` *"never an
+`Opacity` wrapper"* diye yazıyor ve `contrast.py` onu göremiyor. Araştırma turu
+bir şey daha çıkardı: `targetSdk = 36`, yani **Android 14+ taşıyan her kullanıcıda
+`SCHEDULE_EXACT_ALARM` varsayılan olarak reddediliyor** (OPH-304 ölçüp karar
+verecek; `USE_EXACT_ALARM` Play incelemesine tabi kısıtlı izin). Kapsam DIŞI ve
+issue'lara bağlandı: sunucu→cihaz push (Q3) ve web bildirimleri (Q5b) — ikisi de
+backlog'da. Kod yazılmadı, bu bir PLANLAMA turu.
+Sıradaki iş: **OPH-299**.)
+
+Önceki blok: 2026-09-12 (**Epic 28 — PAYLAŞILAN YAZI UYGULAMADA BİTSİN
 (istek turu 21). OPH-298.** Rapor + ekran görüntüsü: "Paylaş → AllisWell" dedi,
 uygulama açıldı ve *"Bir şeyler ters gitti — bu bağlantı AllisWell'in bu
 sürümünde bir yere gitmiyor"* dedi; altında `sharemedia-com.alliswell.alliswell:/share`.
