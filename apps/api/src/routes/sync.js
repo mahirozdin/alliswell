@@ -34,6 +34,7 @@ import { serializeQuickLink } from './quick-links.js';
 import { serializeTaskSeries } from './task-series.js';
 import {
   SERIES_SCOPES,
+  adoptTaskIntoSeries,
   materializeSeries,
   normalizeTemplate,
   parseJsonColumn,
@@ -226,6 +227,17 @@ const TASK_SERIES_FIELDS = {
     ok: (v) => typeof v === 'string' && !Number.isNaN(Date.parse(v)),
     date: true,
   },
+  // OPH-299: not a column — an instruction. The app names the task the user was
+  // looking at when they turned Repeat on, and the series ADOPTS that row rather
+  // than materializing a twin on its day (OPH-205). `POST /task-series` has taken
+  // it since v0.8.0; the push channel never did, so every repeat the app started
+  // came back `SYNC_UNKNOWN_FIELD` and the feature has been dead since.
+  //
+  // `virtual` keeps `prepare()` from writing a `task_series.from_task_id` that
+  // does not exist; `col` names the column adoption really moves, so the intent
+  // is the same one the task's own `series_id` writes carry; `createOnly` because
+  // a series adopts at birth and cannot re-adopt afterwards.
+  fromTaskId: { col: 'series_id', ok: ulid, virtual: true, createOnly: true },
 };
 
 const CHECKLIST_FIELDS = {
@@ -881,6 +893,17 @@ export default async function syncRoutes(app) {
       }),
       async afterCreate(trx, ctx, mutation) {
         const series = await trx('task_series').where({ id: mutation.entityId }).first();
+        // OPH-299: adoption runs BEFORE materialization, exactly as the REST
+        // route orders it. `materializeSeries` skips a day that already holds
+        // one of this series' tasks, so adopting afterwards would leave the
+        // origin row sitting beside the twin it was supposed to become.
+        if (mutation.patch.fromTaskId) {
+          await adoptTaskIntoSeries(trx, {
+            workspaceId: ctx.workspaceId,
+            series,
+            taskId: mutation.patch.fromTaskId,
+          });
+        }
         await materializeSeries(trx, { workspaceId: ctx.workspaceId, series });
       },
       async afterUpdate(trx, ctx, mutation) {

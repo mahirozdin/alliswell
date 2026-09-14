@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14 (**Epic 29 PLANLANDI — İLK DIŞ KULLANICININ BEŞ
+**Last updated:** 2026-09-14b (**OPH-299 BİTTİ — TEKRARLAYAN GÖREVLER ARTIK
+SUNUCUYA VARIYOR.** Epic 29'un ilk işi. `fromTaskId` artık `TASK_SERIES_FIELDS`'te
+**sanal + createOnly** bir alan (`col: 'series_id'`, LWW niyeti görevin kendi
+`series_id` yazımlarıyla aynı adı taşısın diye), ve sync'in `afterCreate`'i
+`materializeSeries`'ten ÖNCE `adoptTaskIntoSeries` çağırıyor — REST'in v0.8.0'dan
+beri yaptığı sıra. Sıra tesadüf değil: `materializeSeries` o serinin görevini
+taşıyan günü atlıyor, yani sonradan benimsemek orijinali dönüşmesi gereken ikizin
+yanına bırakırdı. **Turun dersi ölçümden çıktı: `spec.virtual` dikişi kodda
+zaten vardı** (`tagIds`, `seriesScope`, `orderedIds` kullanıyor) — icat edilen
+bir şey yok, yalnız `task_series` onu hiç kullanmamıştı. Üç negatif kontrol de
+yapıldı: düzeltmeden önce test `['applied','rejected']` dedi (rapor bir testte
+üretildi), `createOnly` düşürülünce update sessizce `applied` döndü,
+istemci patch'ine altıncı anahtar konunca app testi kırmızıya gitti. Süitler:
+`lint` temiz, API **802/799** (kırmızı 3'ü ai-chat-transport'un SSE/soket zaman
+aşımları — değişiklik sandbox'tan tamamen kaldırılıp ölçüldü, **aynı üçü yine
+kırmızı**; CI `2dbe134`'te yeşil, otorite CI), seri+push dosyaları **53/53**,
+app **1600** (+2), `flutter analyze` temiz. **Kapsam dışı bulgu:** bu makinedeki
+Flutter 3.47.2 her çağrıda `analysis_options.yaml`'a `analyzer.exclude` ekliyor
+(analyze'ın gördüğü alanı daraltır) ve `pubspec.lock`'u yeniden çözüyor; ikisi de
+commit'e alınmadı, kararı sahibe ait. Canlı elle doğrulama AÇIK.
+Sıradaki iş: **OPH-300** — sözleşme paritesi kapısı; OPH-299 tek alanı kapattı,
+SINIFINI kapatan o.)
+
+Önceki blok: 2026-09-14 (**Epic 29 PLANLANDI — İLK DIŞ KULLANICININ BEŞ
 MADDESİ (istek turu 22). OPH-299…307, hedef v1.11.0.** Rapor: Chong KM
 (`kmmchongld@gmail.com`), iki mail, 2026-09-14 — AllisWell'i kendi bulup
 kullanmaya başlayan ilk dış kullanıcı. Beş maddenin beşi de koddan arandı;

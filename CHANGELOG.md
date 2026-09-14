@@ -5,6 +5,26 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Repeating tasks reach the server again — they never had.** Turning on Repeat
+  failed with *"A change was rejected by the server (SYNC_UNKNOWN_FIELD)"*, and
+  changing the rule afterwards with *"(SYNC_ENTITY_NOT_FOUND)"*. Both came from
+  one cause: the app names the task the user was looking at in a `fromTaskId`
+  key, and the push channel's field table for `task_series` had four keys and no
+  fifth. The validator refuses a whole mutation on the first key it does not
+  know, and both UI entry points send that key, so no repeat the app started had
+  ever been created. The second error was the same fault's tail — the optimistic
+  local series row survives a rejected create, so the next rule change looks for
+  a row the server never made. The field is now accepted as a virtual,
+  create-only instruction, and the push channel adopts the origin task the way
+  `POST /task-series` always has, before materializing the rest — adopting after
+  would have left the origin beside the twin it was supposed to become. Broken
+  since v0.8.0 (2026-07-29) in every release, and green through 796 API and 1598
+  app tests the whole time, because no test had ever sent the body the client
+  actually sends. Reported by a user; OPH-299,
+  [#6](https://github.com/mahirozdin/alliswell/issues/6).
+
 ## [1.10.2] — 2026-09-12
 
 ### Fixed

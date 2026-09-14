@@ -9504,7 +9504,7 @@ not found'** or **'sync unknown field'**." — İki farklı hata kodu, tek kök.
 _Gördüğü metin bizim dizemiz: `sync.rejected` = "A change was rejected by the
 server{code}." (`en.json`), parantezli kod `home_shell.dart:185`'te ekleniyor._
 
-- [ ] **Kök neden — bir alan fazlası.** Sunucunun `task_series` için kabul ettiği
+- [x] **Kök neden — bir alan fazlası.** Sunucunun `task_series` için kabul ettiği
       alanlar tam dört tane (`sync.js:220-230`): `rule`, `template`, `timezone`,
       `anchorAt`. Uygulama **beşincisini** gönderiyor: `series_store.dart:112`
       `'fromTaskId': ?fromTaskId`. Doğrulayıcı patch'teki HER anahtarı geziyor ve
@@ -9512,24 +9512,24 @@ server{code}." (`en.json`), parantezli kod `home_shell.dart:185`'te ekleniyor._
       (`sync.js:1536-1541` → `SYNC_UNKNOWN_FIELD`). Patch yolda hiç filtrelenmiyor:
       `outbox.dart:85` `jsonEncode` ile saklıyor, `sync_engine.dart:279` aynen
       çözüp gönderiyor.
-- [ ] **Özellik %100 ölü, çünkü iki UI girişi de bu alanı dolduruyor:**
+- [x] **Özellik %100 ölü, çünkü iki UI girişi de bu alanı dolduruyor:**
       yeni görevde tekrar (`task_create_sheet.dart:246`) ve var olan görevde
       tekrar (`repeat_row.dart:101`). Uygulamadan tekrar kurmanın ÜÇÜNCÜ bir yolu
       yok — yani tekrarlayan görevler v0.8.0'dan beri hiç çalışmadı.
-- [ ] **İkinci hata kodu aynı kökün devamı.** Create reddedilince yerel seri satırı
+- [x] **İkinci hata kodu aynı kökün devamı.** Create reddedilince yerel seri satırı
       iyimser olarak duruyor (`series_store.dart:115-119` görevin `seriesId`'sini de
       yazıyor). Kullanıcı kuralı değiştirince `update` kuyruğa giriyor, sunucuda
       satır yok → `sync.js:1329` `SYNC_ENTITY_NOT_FOUND`. Tekrarı kapatmak `delete`
       → `sync.js:1469`, aynı kod. Raporda ikisinin de olması tesadüf değil:
       "every day, every Monday, Tuesday, Wed" derken kuralı arka arkaya değiştirmiş.
-- [ ] **Düzeltme — dikiş zaten kurulu.** `spec.virtual` mekanizması `prepare()`
+- [x] **Düzeltme — dikiş zaten kurulu.** `spec.virtual` mekanizması `prepare()`
       içinde var (`sync.js:581` `if (!spec.virtual)`) ve `tagIds`, `seriesScope`,
       `orderedIds`, not gövdesi alanları onu kullanıyor. `task_series` için:
       `fromTaskId: { col: 'series_id', ok: ulid, virtual: true, createOnly: true }`
       — `virtual` olmayan bir kolona yazmayı önler (`task_series`'te böyle bir kolon
       YOK), `col` LWW niyetini benimsemenin gerçekten kıpırdattığı kolonla adlandırır,
       `createOnly` çünkü bir seri sonradan başka bir görevi benimseyemez.
-- [ ] **Benimseme (adoption) isteğe bağlı DEĞİL.** REST yolu `fromTaskId` geldiğinde
+- [x] **Benimseme (adoption) isteğe bağlı DEĞİL.** REST yolu `fromTaskId` geldiğinde
       `adoptTaskIntoSeries` çağırıyor (`task-series.js:202`); sync'in `afterCreate`'i
       yalnızca `materializeSeries` çağırıyor (`sync.js:883-886`). Alanı kabul edip
       benimsemeyi eklemezsek çapa gününde **ikiz görev** doğar ve OPH-205'in
@@ -9539,11 +9539,35 @@ server{code}." (`en.json`), parantezli kod `home_shell.dart:185`'te ekleniyor._
       — `fromTaskId` dolu → `applied`; (2) çapa gününde görev sayısı **1** (ikiz yok)
       ve o görevin `series_id`'si yeni seri; (3) `fromTaskId` ile gelen bir `update`
       → `SYNC_UNKNOWN_FIELD` (createOnly gerçekten create'e kapalı); (4) app tarafında
-      `repeat_test.dart`'a outbox'a düşen patch'in anahtar kümesini pinleyen bir iddia.
-      **Negatif kontrol şart:** düzeltme geri alındığında (1) kırmızı dönmeli.
-- **Doğrulama:** `npm run lint`, API birim süiti, `flutter analyze`, app süiti.
-      Ayrıca canlıda elle: web'den bir göreve tekrar kur → banner ÇIKMAMALI, ertesi
-      günlerin satırları pull ile gelmeli.
+      `series_outbox_test.dart` (YENİ dosya — `repeat_test.dart` cümle/diyalog
+      testi, drift harness'ı yok; sapma bilinçli) outbox'a düşen patch'in anahtar
+      kümesini pinliyor, ayrıca `timezone`'un yokluğunun null'dan farkını.
+- **Negatif kontrol — üçü de ölçüldü, iddia değil:** (a) düzeltmeden ÖNCE kabul (1)
+      `['applied','rejected']` verdi — raporlanan hata bir testte üretildi;
+      (b) `createOnly` düşürülünce (3) `applied` gördü, yani sunucu düşürdüğü bir
+      talimatı kabul etmiş gibi yapıyor ve test bunu yakalıyor; (c) istemci
+      patch'ine altıncı bir anahtar enjekte edilince (4) kırmızı döndü.
+- **Doğrulama (2026-09-14):** `npm run lint` temiz · API birim süiti sandbox'ta
+      **802 test / 799 geçti** · seri + sync-push dosyaları birlikte **53/53** ·
+      `flutter analyze` (aşağıdaki bulgu dışında) temiz · app süiti **1600 geçti**
+      (+2), 28 atlandı.
+      **Kırmızı kalan 3 test BENİM DEĞİL ve ölçülerek dışlandı:**
+      `ai-chat-transport.test.js`'in üç SSE/soket akış testi sandbox'ta her biri
+      ~31 sn'de zaman aşımına düşüyor. Değişikliğim sandbox'tan TAMAMEN kaldırılıp
+      (`git show HEAD:…sync.js` yüklenerek) aynı dosya koşuldu: **aynı üçü yine
+      kırmızı.** CI ise aynı commit'te (`2dbe134`) yeşil — yani kod değil, bu
+      sandbox'ın ortamı. Bu üçünün otoritesi CI'dır.
+- **Bulgu (kapsam DIŞI, sahibin kararı):** bu makinedeki Flutter 3.47.2 her
+      `flutter test`/`analyze` çağrısında `apps/app/analysis_options.yaml`'a
+      kendiliğinden bir `analyzer.exclude` bloğu (`build/`, `android/`, `ios/`,
+      `web/`, `windows/`, `macos/`, `linux/`) ekliyor ve `pubspec.lock`'u yeniden
+      çözüyor (7 paket). İkisi de bu işin parçası değil, commit'e ALINMADI — ama
+      `exclude` analyze'ın gördüğü alanı daraltıyor, yani sessizce kabul edilecek
+      bir şey değil. Aynı SDK ayrıca `sound_store_io.dart:67`'de yeni bir
+      `unawaited_return_in_try_block` uyarısı üretiyor (dokunmadığım dosya; lock
+      geri alındığında da duruyor, yani bağımlılıktan değil SDK'dan).
+      Ayrıca canlıda elle doğrulama açık: web'den bir göreve tekrar kur → banner
+      ÇIKMAMALI, ertesi günlerin satırları pull ile gelmeli.
 - **İz:** sunucu `3a50343` (OPH-205) ve uygulama `37bac61` (OPH-207), ikisi de
       **2026-07-29**, **v0.8.0**. Aradaki her sürümde bozuk, v1.10.2 dahil.
       Süitlerin görmeme sebebi `sync-task-series.test.js:47`: `seriesPatch()` kendi

@@ -98,6 +98,72 @@ describe('sync push — task_series (OPH-205, ADR-0020)', () => {
     expect(tasks[0].data.occurrenceDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  // OPH-299 — the body the app ACTUALLY sends. `SeriesStore.create` always puts
+  // `fromTaskId` in the patch (`series_store.dart:112`) and both UI entry points
+  // fill it (`task_create_sheet.dart:246`, `repeat_row.dart:101`), so a payload
+  // built without it proves nothing about the product. `seriesPatch()` above was
+  // exactly such a payload, which is how recurrence stayed broken from v0.8.0.
+  it('adopts the task named in `fromTaskId` rather than twinning its day', async () => {
+    const taskId = newId();
+    const seriesId = newId();
+
+    // What the create sheet does: save the task, then start the series on it.
+    const res = await push([
+      {
+        clientMutationId: newId(),
+        operation: 'create',
+        entityType: 'task',
+        entityId: taskId,
+        patch: { title: 'Günlük rapor', dueAt: `${today()}T09:00:00.000Z` },
+      },
+      {
+        clientMutationId: newId(),
+        operation: 'create',
+        entityType: 'task_series',
+        entityId: seriesId,
+        patch: seriesPatch({
+          rule: { freq: 'daily', interval: 1 },
+          template: { title: 'Günlük rapor', priority: 'medium' },
+          fromTaskId: taskId,
+        }),
+      },
+    ]);
+
+    expect(res.json().results.map((r) => r.status)).toEqual(['applied', 'applied']);
+
+    // The row the user was looking at joins the series...
+    expect(tables.tasks.find((t) => t.id === taskId).series_id).toBe(seriesId);
+
+    // ...and no day carries two tasks. Accepting the field without adopting the
+    // task would leave the origin beside a freshly materialized twin.
+    const days = tables.tasks
+      .filter((t) => t.series_id === seriesId)
+      .map((t) => String(t.occurrence_date).slice(0, 10));
+    expect(days).toContain(today());
+    expect(new Set(days).size).toBe(days.length);
+  });
+
+  // OPH-299 — the other half of `createOnly`. A series adopts at birth; nothing
+  // acts on a later `fromTaskId` (`afterUpdate` rebuilds the future, it does not
+  // adopt), so accepting one would report `applied` for an instruction the server
+  // silently dropped. A refusal the client can see beats a lie it cannot.
+  it('refuses `fromTaskId` on an update — a series adopts at birth, never again', async () => {
+    const { id } = await createSeries(newId(), { rule: { freq: 'daily', interval: 1 } });
+
+    const res = await push([
+      {
+        clientMutationId: newId(),
+        operation: 'update',
+        entityType: 'task_series',
+        entityId: id,
+        patch: { fromTaskId: newId() },
+      },
+    ]);
+
+    expect(res.json().results[0].status).toBe('rejected');
+    expect(res.json().results[0].errorCode).toBe('SYNC_UNKNOWN_FIELD');
+  });
+
   it('rejects an impossible rule as a rejected mutation, not a 500', async () => {
     const res = await push([
       {
