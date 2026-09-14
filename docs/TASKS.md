@@ -9477,6 +9477,24 @@ göndermiyordu._
 | Bizim hedefimiz kaç? | **`targetSdk = 36`** (Flutter 3.47.2 varsayılanı, `FlutterExtension.kt:34`). Yani yukarıdaki davranış **bizi kapsıyor**. | ölçüldü |
 | Kontrast eşiği | Normal gövde metni **4.5:1**, büyük metin ve arayüz bileşenleri **3:1**. | [WCAG 2.2 — SC 1.4.3 Contrast (Minimum)](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html) |
 
+**Issue haritası** (her iş kapandığında kendi issue'sunu da kapatır):
+
+| İş | Issue | Tür |
+| --- | --- | --- |
+| OPH-299 | [#6](https://github.com/mahirozdin/alliswell/issues/6) — tekrar sunucuya hiç varmıyor | bug |
+| OPH-300 | [#7](https://github.com/mahirozdin/alliswell/issues/7) — sync alan paritesi kapısı | kapı |
+| OPH-301 | [#8](https://github.com/mahirozdin/alliswell/issues/8) — solmuş satır 2.11:1 | bug |
+| OPH-302 | [#9](https://github.com/mahirozdin/alliswell/issues/9) — `check:opacity` | kapı |
+| OPH-303 | [#10](https://github.com/mahirozdin/alliswell/issues/10) — "Alarm silenced" adı | bug |
+| OPH-304 | [#11](https://github.com/mahirozdin/alliswell/issues/11) — Android 14+ kesin alarm | bug |
+| OPH-305 | [#12](https://github.com/mahirozdin/alliswell/issues/12) — görev sıralaması | istek |
+| OPH-306 | [#13](https://github.com/mahirozdin/alliswell/issues/13) — etiket filtresi | istek |
+| OPH-307 | [#14](https://github.com/mahirozdin/alliswell/issues/14) — "Bu hafta" güne bölünsün | istek |
+
+Kapsam DIŞI, backlog'da ve issue'ları açık:
+[#15](https://github.com/mahirozdin/alliswell/issues/15) sunucu→cihaz push ·
+[#16](https://github.com/mahirozdin/alliswell/issues/16) web'de OS bildirimi.
+
 ### OPH-299 — Tekrar, sunucuya bir kez bile varmamıştı (`fromTaskId`)
 
 _Rapor: "when i created a task, and try to 'repeat' it (say every day, every
