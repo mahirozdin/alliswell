@@ -13,9 +13,19 @@ import '../data/external_event.dart';
 /// target that implies editing, a leading time rail instead of a status icon.
 /// You cannot complete a meeting, and the row should not suggest you can.
 class ExternalEventTile extends ConsumerWidget {
-  const ExternalEventTile({required this.event, super.key});
+  const ExternalEventTile({
+    required this.event,
+    this.dimmed = false,
+    super.key,
+  });
 
   final ExternalEvent event;
+
+  /// Recedes while another day is selected on Home — as the card's COLOUR, not
+  /// as an opacity layer over the text (DESIGN §20 C3, OPH-301). Home used to
+  /// wrap this tile in `Opacity(0.45)`, which read at 2.13:1 and which
+  /// `contrast.py` could not see.
+  final bool dimmed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,6 +48,7 @@ class ExternalEventTile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Card(
         margin: EdgeInsets.zero,
+        color: dimmed ? awRecededSurface(scheme) : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AwSpace.x3,

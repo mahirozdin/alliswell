@@ -403,12 +403,22 @@ class _BoardCard extends StatelessWidget {
         color: Colors.transparent,
         child: SizedBox(
           width: 300,
+          // opacity-ok: the card under the finger, and the one place §20 C3's
+          // ban does not bite — 0.85 measures 5.22:1 at its worst pair (light
+          // variant text), so it clears the 4.5:1 floor with the wrapper on.
+          // It also has to be a layer rather than a colour: it floats over
+          // whatever it is dragged across, so there is no second colour to
+          // blend against.
           child: Opacity(
             opacity: 0.85,
             child: Transform.scale(scale: 1.04, child: TaskTile(task: task)),
           ),
         ),
       ),
+      // opacity-ok: the HOLE the card left, not something to read. The card
+      // itself is under the finger at full strength; this is the placeholder
+      // saying "it came from here", and DESIGN §5's floors are about text a
+      // user is asked to read.
       childWhenDragging: Opacity(opacity: 0.35, child: card),
       child: card,
     );

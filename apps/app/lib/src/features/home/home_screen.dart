@@ -471,14 +471,17 @@ List<Widget> buildHomeGroupRows(BuildContext context, List<HomeGroup> groups) {
         ),
         child: Text(
           '${group.bucket.label} · ${group.items.length}',
+          // OPH-301: the dimmed header used to take `onSurfaceVariant` at
+          // α=0.70 — 3.63:1, under the 4.5:1 floor. There is no header dim any
+          // more, and nothing is lost: the SELECTED day's header is the one
+          // that differs (it takes the accent), so fading the other six was a
+          // second encoding of a fact already stated once.
           style: theme.textTheme.labelLarge?.copyWith(
-            color: group.dimmed
-                ? theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7)
-                : switch (group.bucket) {
-                    HomeBucket.overdue => theme.colorScheme.error,
-                    HomeBucket.selectedDay => context.awTokens.link,
-                    _ => theme.colorScheme.onSurfaceVariant,
-                  },
+            color: switch (group.bucket) {
+              HomeBucket.overdue => theme.colorScheme.error,
+              HomeBucket.selectedDay => context.awTokens.link,
+              _ => theme.colorScheme.onSurfaceVariant,
+            },
             fontWeight: FontWeight.w700,
             letterSpacing: 0.4,
           ),
@@ -491,9 +494,9 @@ List<Widget> buildHomeGroupRows(BuildContext context, List<HomeGroup> groups) {
             dimmed: group.dimmed,
             highlighted: group.bucket == HomeBucket.selectedDay,
           ),
-          EventItem(:final event) => Opacity(
-            opacity: group.dimmed ? 0.45 : 1,
-            child: ExternalEventTile(event: event),
+          EventItem(:final event) => ExternalEventTile(
+            event: event,
+            dimmed: group.dimmed,
           ),
         },
     ],

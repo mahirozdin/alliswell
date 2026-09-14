@@ -314,3 +314,24 @@ class AwTokens extends ThemeExtension<AwTokens> {
 extension AwTokensContext on BuildContext {
   AwTokens get awTokens => Theme.of(this).extension<AwTokens>()!;
 }
+
+/// The surface a row recedes to while another day is selected (DESIGN §20 C3).
+///
+/// Recession used to be an `Opacity(0.45)` wrapper, which put the text at
+/// **2.13:1** against a 4.5:1 floor and was invisible to `contrast.py` — an
+/// opacity layer is not a colour pair, so the gate kept printing `FAILURES: 0`
+/// over text a user eventually wrote in to say they could not read.
+///
+/// Raising the alpha was not an option: holding 4.5:1 for `onSurfaceVariant` on
+/// white needs **α ≥ 0.79**, which no longer reads as dimmed at all. So the
+/// de-emphasis moved off the text and onto the container, the way the completed
+/// row's calm treatment already worked (C2/C3) — and to a DIFFERENT step of the
+/// container scale, because two meanings must never share one look.
+///
+/// "Receded" is not the same direction in both themes: on light a row recedes
+/// by getting darker than the surface, on dark by getting darker still. Worst
+/// measured pair is 6.83:1 (light variant text), with body text at 15.22:1.
+Color awRecededSurface(ColorScheme scheme) =>
+    scheme.brightness == Brightness.dark
+    ? scheme.surfaceContainerLowest
+    : scheme.surfaceContainer;

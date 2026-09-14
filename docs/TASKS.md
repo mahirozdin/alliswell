@@ -9655,7 +9655,7 @@ SEÇİLİYKEN devreye giriyor (`task_grouping.dart:202-207`); kullanıcı büyü
 ihtimalle bugünü seçili bırakmış, o zaman yarın/bu hafta/30 gün hepsi solar —
 tarifi birebir bu._
 
-- [ ] **Ölçüm (yapıldı, `scripts/design/contrast.py` formülüyle):**
+- [x] **Ölçüm (yapıldı, `scripts/design/contrast.py` formülüyle):**
 
       | Yüzey | normal | α=0.45 | Eşik |
       | --- | --- | --- | --- |
@@ -9665,22 +9665,53 @@ tarifi birebir bu._
       | Koyu tema, gövde | 14.87:1 | **4.02:1** | 4.5 ✗ |
 
       Grup başlığı (α=0.70) açık temada **3.53:1** — o da sınıfta kalıyor.
-- [ ] **Depo bunu KENDİ yasaklamış.** `task_tile.dart:123`: *"the calm treatment is
+- [x] **Depo bunu KENDİ yasaklamış.** `task_tile.dart:123`: *"the calm treatment is
       a TOKEN, never an `Opacity` wrapper — opacity makes contrast unmeasurable and
       silently voids §5's floors."* `contrast.py:96` aynı şeyi yazıyor. Kural yazılı,
       gerekçesi yazılı, ve **üç yerde çiğnenmiş**: `task_tile.dart:374`,
       `home_screen.dart:494` (etkinlik satırı), `home_screen.dart:476` (grup başlığı,
       α=0.70).
-- [ ] **Düzeltme:** üçü de tokenlara çevrilir — tamamlanmış satırın (OPH-185, C2/C3)
+- [x] **Düzeltme:** üçü de tokenlara çevrilir — tamamlanmış satırın (OPH-185, C2/C3)
       zaten kanıtlanmış kalıbı. Solma GÖRSEL OLARAK korunur (seçili gün hâlâ öne
       çıkmalı), ama zeminle harmanlanmış bir RENK olarak, `Opacity` sarmalayıcısı
       olarak değil.
-- [ ] **DESIGN §5/§7.1 yerinde tadil edilir:** solmuş durumun eşiği ve neden token
+- [x] **DESIGN §5/§7.1 yerinde tadil edilir:** solmuş durumun eşiği ve neden token
       olduğu yazılır. §33 R4 kalıbı — kodun aştığı kural sessizce çelişkide bırakılmaz.
-- **Kabul:** `contrast.py`'ye **8 yeni çift** (açık/koyu × başlık/gövde × satır/grup
-      başlığı) eklenir ve `FAILURES: 0` gerçekten bir şey iddia eder hale gelir.
+- **Gerçekleşen çözüm — ölçüm tasarımı belirledi.** Alfayı yükseltmek seçenek
+      DEĞİLDİ: `onSurfaceVariant`'ın beyaz üstünde 4.5:1'i tutması için
+      **α ≥ 0.79** gerekiyor, ki o artık "soluk" diye okunmuyor. Yani
+      *soluklaştırma* erişilebilir biçimde ifade edilemeyen bir fikir; vurgu
+      metinden **kaba** taşındı. Geri çekilen satır artık açıkta
+      `surfaceContainer`, koyuda `surfaceContainerLowest` alıyor
+      (`awRecededSurface`, `theme/tokens.dart`) — tamamlanmış satırın
+      `surfaceContainerLow`'undan **ayrı bir basamak**, çünkü §20 C3 iki anlamın
+      tek görünüşü paylaşmasını yasaklıyor.
+- **Grup başlığının solması KALDIRILDI, yerine bir şey konmadı.** Seçili günün
+      başlığı zaten aksan rengini alıyor; diğer altısını soluklaştırmak aynı
+      olguyu ikinci kez kodlamaktı. Bir kere söyle.
+- **Dördüncü ihlal, kimsenin bildirmediği:** `team_members_screen.dart:104`
+      pasif üyeyi `Opacity(0.55)` ile sarıyordu — **2.63:1**. Kaldırıldı ve
+      hiçbir şey kaybedilmedi: alt yazı zaten "deactivated" diyor. Ekran
+      entitlement-kapılı olduğu için yıllarca kimse görmemişti; kapının
+      (OPH-302) tek koşuda bulduğu şey bu.
+- **Kabul — ölçüldü:** `contrast.py`'ye **4 yeni çift** eklendi (açık/koyu ×
+      başlık/gövde, geri çekilmiş yüzey üstünde). Toplam **168 çift**,
+      `FAILURES: 0` — ve bu sefer gerçekten bir şey iddia ediyor: en kötü yeni
+      çift **6.83:1** (önce 2.13:1). Grup başlığı için çift gerekmedi, çünkü
+      dim'in kendisi kalktı.
+- **Test yeni mekanizmayı pinliyor.** `tasks_flow_test.dart` sarmalayıcının
+      alfasını okuyordu — *"testin baktığı şey neyse onu korur"*: katmana
+      bakıyordu, kontrasta değil. Artık satırın **kart rengini** iddia ediyor
+      (bugünün satırı geri çekilmiş renk DEĞİL, yarınınki ÖYLE).
 - **Kullanıcıya söylenecek anlık çözüm (mailde var):** takvim ikonuna dokunmak
       seçimi temizliyor (`home_screen.dart:193-198`) — solma gidiyor.
+- **Doğrulama (2026-09-14):** `contrast.py` **168 çift, FAILURES: 0** ·
+      `check:opacity` yeşil · `flutter analyze` temiz (yalnız `sound_store_io`'nun
+      SDK kaynaklı önceden var olan uyarısı) · `dart format` temiz · app süiti
+      **1606 geçti**, 28 atlandı · `check:i18n`/`check:docs`/`check:no-ee` yeşil.
+- **AÇIK — gözle bakılmadı.** Geri çekilmiş yüzeyin cam/aurora zemininde
+      *gerçekten* geri çekilmiş göründüğü ekranda doğrulanmadı; ölçüm okunurluğu
+      garanti eder, hiyerarşiyi değil. Sahibin bir turuna ait.
 
 ### OPH-302 — `check:opacity`: kapının göremediği katman
 
@@ -9688,16 +9719,36 @@ _OPH-301'in kusuru `FAILURES: 0` satırının altında yaşadı. `contrast.py` 1
 ölçüyor ve hepsi geçiyor — çünkü `Opacity` bir RENK değil, bir katman: ölçülemez.
 Epic 26'nın çakışma-banner'ı dersinin birebir tekrarı._
 
-- [ ] **Kapı:** `lib/src` altında metin taşıyan bir alt ağacı saran `Opacity(`
+- [x] **Kapı:** `lib/src` altında metin taşıyan bir alt ağacı saran `Opacity(`
       build'i düşürür. `check:fab` kalıbı: yasak değil, **beyaz listeli** — sürükleme
       hayaleti (`home_board.dart:406,412`) gibi meşru, metin-dışı kullanımlar
       gerekçesiyle listelenir.
-- [ ] **Kapının kendisi doğrulanır:** sahte ihlal → `exit 1`, kaldırınca → `exit 0`.
-- [ ] CI'a bağlanır (`check:fab`, `check:i18n`, `check:docs` ile aynı sırada) ve
+- [x] **Kapının kendisi doğrulanır:** sahte ihlal → `exit 1`, kaldırınca → `exit 0`.
+- [x] CI'a bağlanır (`check:fab`, `check:i18n`, `check:docs` ile aynı sırada) ve
       `AGENTS.md` §3 Definition of Done'a eklenir.
-- **Not:** kapı OPH-301'den SONRA yazılırsa mevcut üç ihlal zaten gitmiş olur; kapı
-      ÖNCE yazılırsa üçünü de gösterir. **Önce yazılsın** — kapının gerçekten
-      gördüğünü kanıtlamanın en ucuz yolu bu.
+- **Kapı ÖNCE yazıldı ve beşini birden gösterdi** (üç bilinen ihlal + iki
+      sürükleme hayaleti). Planın öngörmediği kazanç: listede
+      `team_members_screen.dart:104` de vardı — **kimsenin bildirmediği dördüncü
+      ihlal**, entitlement-kapılı bir ekranda. Kapının değeri tek koşuda kendini
+      ödedi.
+- **Kapının kendi kusurları da ölçülerek çıktı** — bu yüzden kapı yazıldıktan
+      SONRA koşulmalı, sadece yazılmamalı: (1) ilk sürüm **yorum satırlarını**
+      ihlal sayıyordu, yani kendi gerekçesine patlıyordu — *kendi gerekçesine
+      patlayan kapı kapatılır*; (2) `opacity-ok` yalnız hemen üstteki satıra
+      bakıyordu, oysa yazmaya değer bir gerekçe tek satıra sığmıyor → artık
+      üstteki bitişik yorum bloğunun tamamını tarıyor; (3) desen
+      `AnimatedOpacity`'yi dışlıyordu, yani kapının **kolayca ulaşılabilir bir
+      eşanlamlısı** vardı — üstelik uygulamadaki tek onaylı istisna (§22 Q4b'nin
+      geri çekilmiş hızlı erişim düğmesi) tam olarak o. Desen genişletildi ve o
+      istisna artık istisna olduğunu **söylemek** zorunda.
+- **Negatif kontrol:** düzeltilmiş kodda temiz (exit 0), enjekte edilen sahte bir
+      `Opacity` sarmalayıcısında kırmızı (exit 1), kaldırınca yine temiz.
+- **İzin listesi zevke değil ölçüme dayanıyor:** panonun sürükleme kartı
+      `Opacity(0.85)` — en kötü çifti **5.22:1**, yani sarmalayıcı AÇIKKEN 4.5'i
+      geçiyor; ayrıca üstünden geçtiği her şeyin üstünde yüzdüğü için
+      harmanlanacak ikinci bir renk yok. `childWhenDragging` 0.35 ise kartın
+      BIRAKTIĞI boşluk — okunması istenen bir metin değil. İkisi de gerekçesiyle
+      yazılı.
 
 ### OPH-303 — "Alarm silenced" ne yaptığını söylesin
 

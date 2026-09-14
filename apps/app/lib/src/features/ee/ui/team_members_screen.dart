@@ -15,9 +15,11 @@ import '../team_admin_providers.dart';
 ///   • THE SEAT BANNER IS ALWAYS VISIBLE, because every decision here is made
 ///     against it — and "already over" is shown differently from "cannot add
 ///     one more", since they are different problems with different fixes.
-///   • A DEACTIVATED MEMBER STAYS ON THE LIST, dimmed and labelled. Hiding
-///     them would make "where did Cem go?" unanswerable in the one place
-///     built to answer it.
+///   • A DEACTIVATED MEMBER STAYS ON THE LIST, labelled in the subtitle.
+///     Hiding them would make "where did Cem go?" unanswerable in the one place
+///     built to answer it. It used to be labelled AND dimmed; OPH-301 measured
+///     the dim at 2.63:1 and dropped it, because a state worth showing is worth
+///     showing legibly and the label already said it.
 ///   • EVERY DESTRUCTIVE ACTION SAYS WHAT IT WILL DO FIRST. Removal is not
 ///     undoable — coming back needs a new invitation — and deactivation is,
 ///     so the two are never one tap apart without a sentence in between.
@@ -101,62 +103,64 @@ class _MemberTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(eeTeamRosterProvider.notifier);
     final dimmed = !member.active;
-    return Opacity(
-      opacity: dimmed ? 0.55 : 1,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _color(),
-          child: Text(
-            member.initials ?? '?',
-            style: const TextStyle(color: Colors.white, fontSize: 13),
+    // OPH-301: this used to be wrapped in `Opacity(0.55)` — 2.63:1 for the
+    // subtitle, under the 4.5:1 floor, and nobody had reported it because the
+    // screen is entitlement-gated. Nothing is lost by removing it: the subtitle
+    // already SAYS the member is deactivated, so the fade was the same fact
+    // told a second time, illegibly.
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: _color(),
+        child: Text(
+          member.initials ?? '?',
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+        ),
+      ),
+      title: Text(member.label),
+      subtitle: Text(
+        [
+          // A custom role's name is a VALUE somebody typed; a base role's
+          // is a KEY. Translating the first would be translating data.
+          member.customRoleName ?? 'ee.team.role.${member.role}'.tr(),
+          if (dimmed) 'ee.team.members.deactivated'.tr(),
+          if (member.email != null) member.email!,
+        ].join(' · '),
+      ),
+      trailing: PopupMenuButton<String>(
+        key: Key('member-menu-${member.userId}'),
+        onSelected: (action) => _run(context, ref, controller, action),
+        itemBuilder: (context) => [
+          if (member.active)
+            PopupMenuItem(
+              value: 'deactivate',
+              child: Text('ee.team.members.deactivate'.tr()),
+            )
+          else
+            PopupMenuItem(
+              value: 'reactivate',
+              child: Text('ee.team.members.reactivate'.tr()),
+            ),
+          if (member.role != 'admin' && member.role != 'owner')
+            PopupMenuItem(
+              value: 'promote',
+              child: Text('ee.team.members.promote'.tr()),
+            ),
+          if (member.role == 'admin')
+            PopupMenuItem(
+              value: 'demote',
+              child: Text('ee.team.members.demote'.tr()),
+            ),
+          // EE-053: promote/demote move somebody between BASE roles;
+          // this is the door to the team's own named roles.
+          PopupMenuItem(
+            value: 'assign',
+            child: Text('ee.team.members.assignRole'.tr()),
           ),
-        ),
-        title: Text(member.label),
-        subtitle: Text(
-          [
-            // A custom role's name is a VALUE somebody typed; a base role's
-            // is a KEY. Translating the first would be translating data.
-            member.customRoleName ?? 'ee.team.role.${member.role}'.tr(),
-            if (dimmed) 'ee.team.members.deactivated'.tr(),
-            if (member.email != null) member.email!,
-          ].join(' · '),
-        ),
-        trailing: PopupMenuButton<String>(
-          key: Key('member-menu-${member.userId}'),
-          onSelected: (action) => _run(context, ref, controller, action),
-          itemBuilder: (context) => [
-            if (member.active)
-              PopupMenuItem(
-                value: 'deactivate',
-                child: Text('ee.team.members.deactivate'.tr()),
-              )
-            else
-              PopupMenuItem(
-                value: 'reactivate',
-                child: Text('ee.team.members.reactivate'.tr()),
-              ),
-            if (member.role != 'admin' && member.role != 'owner')
-              PopupMenuItem(
-                value: 'promote',
-                child: Text('ee.team.members.promote'.tr()),
-              ),
-            if (member.role == 'admin')
-              PopupMenuItem(
-                value: 'demote',
-                child: Text('ee.team.members.demote'.tr()),
-              ),
-            // EE-053: promote/demote move somebody between BASE roles;
-            // this is the door to the team's own named roles.
-            PopupMenuItem(
-              value: 'assign',
-              child: Text('ee.team.members.assignRole'.tr()),
-            ),
-            PopupMenuItem(
-              value: 'remove',
-              child: Text('ee.team.members.remove'.tr()),
-            ),
-          ],
-        ),
+          PopupMenuItem(
+            value: 'remove',
+            child: Text('ee.team.members.remove'.tr()),
+          ),
+        ],
       ),
     );
   }

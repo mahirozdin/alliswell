@@ -785,6 +785,39 @@ bir yerden görmek gibi bişey olabilmeli".)_
   success fill + its glyph, in both themes). The completed treatment must also
   stay visually distinct from the selected-day `dimmed` treatment — two
   different meanings may not share one look.
+
+  **Amended round 22 (OPH-301), because the rule was written and broken anyway.**
+  The selected-day recession was an `Opacity(0.45)` wrapper on task rows and
+  event rows, and an inactive team member was an `Opacity(0.55)`. Measured:
+  **2.13:1** and **2.63:1** for variant text, against a 4.5:1 floor — and none
+  of it visible to `contrast.py`, which compares colour pairs and cannot see
+  through a layer. `FAILURES: 0` had never once looked at them. The report came
+  from a user: *"other days are deliberately translucent, which is hard to
+  read."*
+
+  Three things follow, and the second is the one worth remembering:
+
+  1. **Recession is a container step, not an alpha.** A receded row takes
+     `surfaceContainer` on light and `surfaceContainerLowest` on dark — darker
+     than its surface in both, and a different step from the completed row's
+     `surfaceContainerLow`, per the rule above. Four new pairs; worst is 6.83:1.
+  2. **There is no alpha that both reads as dimmed and stays legible.** Holding
+     4.5:1 for `onSurfaceVariant` on white needs **α ≥ 0.79**. So "fade it a
+     bit" is not a design option for text — de-emphasis has to move onto the
+     container, or onto saying the thing in words.
+  3. **Say it once.** The group header's own 0.70 dim (3.63:1) is gone with
+     nothing put in its place: the SELECTED day's header already takes the
+     accent, so fading the other six encoded the same fact twice. The inactive
+     team member lost its fade for the same reason — the subtitle already says
+     "deactivated".
+
+  A rule nobody can verify mechanically will be broken again, so C3 now has a
+  gate: **`npm run check:opacity`** fails the build on an `Opacity` wrapper in
+  `apps/app/lib`. A genuine exception is marked `// opacity-ok: <reason>` in the
+  comment block above the line and must carry its own contrast argument — §22
+  Q4b is the worked example, and the board's drag ghosts are the other two
+  (the floating card measures 5.22:1 *with* the wrapper; the hole it leaves
+  behind is a placeholder, not text anyone is asked to read).
 - **C4 — Yesterday's work has an address.** Everything completed lives in
   **Settings → Tamamlananlar**: a reverse-chronological timeline, day-headed,
   paged as the user scrolls, sorted by **the task's own date when it has one and

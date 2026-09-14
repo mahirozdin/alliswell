@@ -35,6 +35,7 @@
     "check:pages": "node apps/landing/scripts/check-pages.mjs",
     "check:copy": "node apps/landing/scripts/check-copy.mjs",
     "check:fab": "node scripts/design/check-extended-fab.mjs",
+    "check:opacity": "node scripts/design/check-opacity.mjs",
     "check:openapi": "node scripts/api/openapi.mjs --check",
     "openapi": "node scripts/api/openapi.mjs",
     "api:docs": "node scripts/api/openapi.mjs && node scripts/api/reference.mjs && node scripts/api/postman.mjs",

@@ -126,6 +126,11 @@ class TaskTile extends ConsumerWidget {
           // two different meanings never share one look.
           : completed
           ? scheme.surfaceContainerLow
+          // C3, amended (OPH-301): the selected-day recession obeys the same rule. It
+          // did not until a user reported the faded rows as unreadable — they
+          // measured 2.13:1.
+          : dimmed
+          ? awRecededSurface(scheme)
           : null,
       shape: highlighted
           ? RoundedRectangleBorder(
@@ -367,11 +372,13 @@ class TaskTile extends ConsumerWidget {
           )
         : tile;
 
-    final row = Padding(
+    // No `Opacity` here any more (DESIGN §20 C3): recession is the card's
+    // colour, decided above, so the text keeps its full-strength token and
+    // `contrast.py` can see the pair.
+    return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: swipeable,
     );
-    return dimmed ? Opacity(opacity: 0.45, child: row) : row;
   }
 }
 
@@ -385,7 +392,7 @@ Future<void> deleteTaskWithUndo(
 ) async {
   // OPH-208: deleting ONE occurrence of a series is ambiguous, so it asks —
   // with two answers, not three. "Tümü" is deliberately absent: past and
-  // completed occurrences are history (DESIGN §20 C4/§25 R7), and a delete
+  // completed occurrences are history (DESIGN §20 C3/§25 R7), and a delete
   // that quietly rewrote what the user already did would be the one thing
   // this feature must never do.
   if (task.isRecurring) {

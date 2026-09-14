@@ -3,7 +3,39 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14c (**OPH-300 BİTTİ — SÖZLEŞME ARTIK DİLLER ARASINDA
+**Last updated:** 2026-09-14d (**OPH-301 + OPH-302 BİTTİ — SOLMA ARTIK ÖLÇÜLEBİLİR
+BİR RENK, VE BİR KAPI ONU ÖYLE TUTUYOR.** İkisi tek öbek yapıldı çünkü planın
+kendi notu öyle diyordu: kapı ÖNCE yazılırsa mevcut ihlalleri gösterir, sonra
+yazılırsa boşluğa bakar. **Kapı yazıldı ve BEŞ sarmalayıcı buldu** — üç bilinen
+ihlal, iki sürükleme hayaleti, ve planın bilmediği bir dördüncü ihlal:
+`team_members_screen.dart:104`, pasif üyeyi `Opacity(0.55)` ile saran ve
+**2.63:1** ölçen bir satır, entitlement-kapılı olduğu için yıllardır kimsenin
+bildirmediği. **Turun cümlesi: soluklaştırma, erişilebilir biçimde ifade
+edilemeyen bir fikir** — `onSurfaceVariant`'ın beyaz üstünde 4.5:1'i tutması
+**α ≥ 0.79** istiyor, ki o artık soluk değil. Yani alfayı yükseltmek çözüm değil;
+vurgu metinden KABA taşındı: geri çekilen satır açıkta `surfaceContainer`,
+koyuda `surfaceContainerLowest` alıyor (`awRecededSurface`) — tamamlanmış
+satırın basamağından ayrı, çünkü §20 C3 iki anlamın tek görünüşü paylaşmasını
+yasaklıyor. Grup başlığının 0.70 dim'i (3.63:1) kaldırıldı ve **yerine bir şey
+konmadı**: seçili günün başlığı zaten aksan alıyor, diğer altısını soldurmak
+aynı olguyu ikinci kez kodlamaktı. EE satırındaki solma da gitti — alt yazı
+zaten "deactivated" diyor. **Kapının kendi kusurları da koşularak çıktı** (yazmak
+yetmiyor, koşmak gerekiyor): yorum satırlarını ihlal sayıyordu — *kendi
+gerekçesine patlayan kapı kapatılır*; `opacity-ok` yalnız bir satır yukarı
+bakıyordu; ve `AnimatedOpacity`'yi dışladığı için **kolayca ulaşılabilir bir
+eşanlamlısı** vardı — üstelik uygulamadaki tek onaylı istisna (§22 Q4b) tam
+olarak o. Üçü de düzeltildi; istisna artık istisna olduğunu söylemek zorunda.
+Testin kendisi de değişti: `tasks_flow_test` sarmalayıcının ALFASINI okuyordu —
+katmana bakıp kontrastı görmemek bu arızanın tam sebebiydi — artık satırın kart
+rengini iddia ediyor. DESIGN §20 C3 yerinde tadil edildi (ölçümler + üç sonuç +
+kapı). Süitler: `contrast.py` **168 çift / FAILURES: 0** (en kötü yeni çift
+6.83:1, önce 2.13:1), `check:opacity` yeşil, analyze+format temiz, app **1606**.
+**AÇIK:** geri çekilmiş yüzeyin cam/aurora zemininde gerçekten geri çekilmiş
+GÖRÜNDÜĞÜ ekranda doğrulanmadı — ölçüm okunurluğu garanti eder, hiyerarşiyi
+değil; sahibin bir turuna ait.
+Sıradaki iş: **OPH-303** — "Alarm silenced" etiketi.)
+
+Önceki blok: 2026-09-14c (**OPH-300 BİTTİ — SÖZLEŞME ARTIK DİLLER ARASINDA
 TAŞINIYOR VE BİR KAPI ONU ORADA TUTUYOR.** Sunucunun alan tabloları tek bir
 export edilmiş harita oldu (`SYNC_ENTITY_FIELDS`; `ENTITIES` artık onu okuyor),
 `scripts/sync/fields.mjs` onu Dart'a çeviriyor

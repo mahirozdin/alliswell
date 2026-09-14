@@ -5,8 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Fixed
+
+- **Faded rows on Home are readable again.** Picking a day in the month
+  calendar made every later group translucent, and a user wrote in to say it
+  was hard to read. They were right, and measurably so: the fade was an
+  `Opacity(0.45)` wrapper putting task titles at **2.13:1** against a 4.5:1
+  floor. Raising the opacity was not available — holding 4.5:1 for that ink on
+  white needs 79 % opacity, which no longer reads as faded at all — so the
+  de-emphasis moved off the text and onto the card, which now takes its own
+  surface token while the text keeps full strength. The group header's fade is
+  simply gone: the selected day's header already stands out, so fading the
+  other six said the same thing twice. Worst new measurement is 6.83:1.
+  An inactive team member was faded the same way at 2.63:1 and no longer is —
+  the row already says "deactivated" in words. Reported by a user; OPH-301,
+  [#8](https://github.com/mahirozdin/alliswell/issues/8).
+
 ### Added
 
+- **A gate for the rule that opacity is not a colour.** `contrast.py` compares
+  colour pairs, so anything under an `Opacity` layer is invisible to it and
+  `FAILURES: 0` keeps printing over text that has fallen through the floor.
+  DESIGN §20 C3 had banned opacity for exactly that reason and three call sites
+  did it anyway — one of them on a screen nobody had reported because it is
+  entitlement-gated. `npm run check:opacity` now fails the build on an opacity
+  wrapper in the app's widgets, `AnimatedOpacity` included, since a rule with a
+  synonym its author can reach for instead is not a rule. Genuine exceptions
+  carry `// opacity-ok:` and their own contrast argument. OPH-302,
+  [#9](https://github.com/mahirozdin/alliswell/issues/9).
 - **The sync push contract now crosses the language boundary, and a gate keeps
   it there.** The server's field tables decide which keys a mutation may carry
   and refuse the whole mutation on the first one they do not know — a rule the

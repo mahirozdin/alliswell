@@ -77,6 +77,13 @@ jobs:
       - name: Policy — no bare extended FABs (the theme's circle eats the icon)
         run: npm run check:fab
 
+      # OPH-302: DESIGN §20 C3 bans `Opacity` for calm because contrast.py
+      # compares colour PAIRS and cannot see through a layer — so a faded row
+      # reads as `FAILURES: 0` while its text sits at 2.13:1. Three wrappers
+      # shipped that way and a user had to report one of them.
+      - name: Policy — no unmeasurable opacity layers over text
+        run: npm run check:opacity
+
       # OPH-300: the client and the server each held half of the push contract
       # and nothing compared the halves — which is how recurrence stayed broken
       # from v0.8.0 to v1.10.2 with every suite green (OPH-299). The Dart the

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/theme/tokens.dart';
 import 'package:alliswell/src/core/persisted_prefs.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
@@ -128,7 +129,7 @@ void main() {
     expect(api.requests.any((r) => r.contains('/sync/push')), isTrue);
   });
 
-  testWidgets('selecting a calendar day dims future groups but never Today', (
+  testWidgets('selecting a calendar day recedes future groups but never Today', (
     tester,
   ) async {
     await wideSurface(tester);
@@ -162,19 +163,29 @@ void main() {
       const Offset(0, -120),
     );
     expect(find.textContaining('Today ·'), findsOneWidget);
+    // OPH-301: recession is the CARD'S COLOUR now, not an `Opacity` layer over
+    // the row. These assertions used to read the wrapper's alpha, which is
+    // exactly why nothing noticed that the alpha put the text at 2.13:1 —
+    // a test can only pin what it looks at, and it was looking at the layer
+    // instead of the contrast (DESIGN §20 C3, amended).
+    Color? cardColourOf(String title) {
+      final cards = tester.widgetList<Card>(
+        find.ancestor(of: find.text(title), matching: find.byType(Card)),
+      );
+      return cards.isEmpty ? null : cards.first.color;
+    }
+
+    final scheme = Theme.of(
+      tester.element(find.text('Bugünkü iş')),
+    ).colorScheme;
+    final receded = awRecededSurface(scheme);
+
     expect(
-      tester
-          .widgetList<Opacity>(
-            find.ancestor(
-              of: find.text('Bugünkü iş'),
-              matching: find.byType(Opacity),
-            ),
-          )
-          .every((o) => o.opacity >= 0.99),
-      isTrue,
-      reason: "today's work never dims",
+      cardColourOf('Bugünkü iş'),
+      isNot(receded),
+      reason: "today's work never recedes",
     );
-    // Future groups are still there, just dimmed — scroll a row into view
+    // Future groups are still there, just receded — scroll a row into view
     // (the lazy list only materializes visible rows).
     await tester.dragUntilVisible(
       find.text('Yarınki iş'),
@@ -182,16 +193,9 @@ void main() {
       const Offset(0, -120),
     );
     expect(
-      tester
-          .widgetList<Opacity>(
-            find.ancestor(
-              of: find.text('Yarınki iş'),
-              matching: find.byType(Opacity),
-            ),
-          )
-          .any((o) => o.opacity < 0.5),
-      isTrue,
-      reason: 'future-day tasks render dimmed while a day is selected',
+      cardColourOf('Yarınki iş'),
+      receded,
+      reason: 'future-day rows recede to a token while a day is selected',
     );
 
     // Tapping the same day again clears the selection.

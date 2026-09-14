@@ -100,6 +100,22 @@ PAIRS = [
     ('L done body on done row', '#0F1B2E', '#F6F9FF', 4.5),
     ('D done title on done row', '#AAB6D6', '#121B36', 4.5),
     ('D done body on done row', '#EAF0FD', '#121B36', 4.5),
+    # ── Receded rows (OPH-301, DESIGN §20 C4). The selected-day dim, which for
+    # months was an `Opacity(0.45)` wrapper over the whole row: 2.13:1 for
+    # variant text on white, and INVISIBLE here, because an opacity layer is
+    # not a colour pair. A user wrote in that the faded days were hard to read
+    # and they were right — `FAILURES: 0` had never once looked at them.
+    #
+    # Raising the alpha was not available: `onSurfaceVariant` on white needs
+    # α ≥ 0.79 to hold 4.5:1, which no longer reads as dimmed. So recession
+    # became a container step, like the done row above and deliberately NOT the
+    # same step (§20 C3: two meanings, two looks). It recedes in opposite
+    # directions per theme — darker than the surface on light, darker still on
+    # dark — which is why these are four pairs and not two.
+    ('L receded title on receded row', '#44536F', '#EBF1FC', 4.5),
+    ('L receded body on receded row', '#0F1B2E', '#EBF1FC', 4.5),
+    ('D receded title on receded row', '#AAB6D6', '#0E1630', 4.5),
+    ('D receded body on receded row', '#EAF0FD', '#0E1630', 4.5),
     # The filled check circle keeps its full-strength success fill: muting it
     # toward the surface would drop the check glyph below 3:1 (measured), and a
     # done row that cannot be read as done is not calm, it is broken.

@@ -145,12 +145,14 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
                     : 0,
                 0,
               ),
+              // opacity-ok: the one sanctioned exception to §20 C3's ban on
+              // `Opacity` for calm, named in DESIGN §22 Q4b — a resting control
+              // carries no text anyone is asked to read, the first touch
+              // restores it in full, and its colour pair is contrast-checked at
+              // FULL opacity. The 40 % is the platform's own default for a
+              // receded control, not a taste call (OPH-196).
               child: AnimatedOpacity(
                 duration: AwMotion.base,
-                // The one sanctioned exception to §20 C3's ban on `Opacity`
-                // for calm: a resting control carries no text anyone is asked
-                // to read, and the first touch restores it in full. Its colour
-                // pair is contrast-checked at FULL opacity.
                 opacity: receded ? kBubbleIdleOpacity : 1,
                 child: Material(
                   elevation: dragging ? 8 : 4,
