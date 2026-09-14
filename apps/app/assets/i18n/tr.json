@@ -40,6 +40,8 @@
     "viewList": "Liste",
     "viewGrid": "Kartlar",
     "fileDate": "Eklenme",
+    "taskDate": "Tarih",
+    "taskPriority": "Öncelik",
     "fileName": "Ad",
     "fileSize": "Boyut"
   },

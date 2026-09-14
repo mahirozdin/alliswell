@@ -41,6 +41,8 @@
     "viewList": "List",
     "viewGrid": "Cards",
     "fileDate": "Date added",
+    "taskDate": "Date",
+    "taskPriority": "Priority",
     "fileName": "Name",
     "fileSize": "Size"
   },

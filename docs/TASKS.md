@@ -9862,14 +9862,55 @@ _Rapor: "any methods to sort and categorise upcoming tasks ... listed by the ord
 of 'priority'". Bugün sıralama menüsü YALNIZ Notlar ve Dosyalar'da var
 (`note_store.dart:47-49`, `file_attachment.dart:19-25`); görev listelerinde hiç yok._
 
-- [ ] `AwSortChoice` altyapısı hazır (`core/list_sort.dart`) — görevler için seçenek
+- [x] `AwSortChoice` altyapısı hazır (`core/list_sort.dart`) — görevler için seçenek
       kümesi tanımlanır: **öncelik**, tarih, başlık. Tercih cihaz-yerel ve senkronsuz
       (DESIGN §34: sıralama bir GÖRÜNTÜLEME tercihidir, veri değil).
-- [ ] Denetim mevcut sıralama menüsü bileşeniyle app bar'a konur — notlarla aynı
+- [x] Denetim mevcut sıralama menüsü bileşeniyle app bar'a konur — notlarla aynı
       yüzey, yeni bir kalıp icat edilmez.
-- [ ] Önceliğe göre sıralamanın "doğal yönü" `descendingByDefault: true` (acil önce).
-- **Kabul:** tercih yeniden başlatmayı aşar; bilinmeyen bir tercih ilk seçeneğe düşer
-      (`list_sort.dart:38`'in zaten test ettiği davranış).
+- [x] Önceliğe göre sıralamanın "doğal yönü" `descendingByDefault: true` (acil önce).
+- **Kapsam kararı: sıralama GRUPLAMANIN yerine geçmez, İÇİNDE çalışır.** Ana
+      ekranın gün başlıkları bir tercih değil, Ana ekranın ne olduğu (§20).
+      Kullanıcının istediği de bu: *"listed by the order of priority"* — günü
+      dağıtmak değil, günün içini sıralamak. `groupTasksForHome` opsiyonel bir
+      `sort` alıyor; verilmezse davranış **birebir** eskisi.
+- **§20 C1 bir tercihin içinden çıkarıldı.** "Biten iş grubun dibine batar"
+      kuralı kronolojik karşılaştırıcının İÇİNDE yaşıyordu — tek sıralama varken
+      sorun değil; **bir tercihin içine gömülü kural, bir sonraki tercihin
+      unuttuğu kuraldır.** Artık her sıralamayı saran `ordered` taşıyor.
+- **Etkinliklerin önceliği yok, o yüzden en düşük sıralanıyor.** Bir toplantı
+      "ne zaman yapacağını seçtiğin" bir şey değil; sıralanacak bir şeyi yok.
+      Öngörülebilir cevap bu, zekice olan değil.
+- **Kabul — ölçüldü:** tercih `PersistedChoice` ile yeniden başlatmayı aşıyor;
+      bilinmeyen tercih ilk seçeneğe düşüyor VE artık yönünü de bırakıyor
+      (aşağıdaki bulgu). `task_sort_test.dart` altı iddia: öncelik sırası,
+      biten işin batması, Türkçe fold (`ı→i`), etkinliğin yeri, ters çevirme,
+      ve "tercih yokken hiçbir şey değişmez".
+- **BULGU — `list_sort.dart`'ta paylaşılan bir hata, bu iş yüzeye çıkardı.**
+      `parse` bilinmeyen alanı ilk seçeneğe düşürürken **saklanan YÖNÜ
+      taşıyordu**: `whatever:desc` → `date:desc`. Bu, `select`'in kendi
+      yorumunun uyardığı hatanın aynısı (*"bir tarihten gelen descending'i
+      başlığa taşımak listeyi Z'den açar"*). Notlar ve Dosyalar'da görünmezdi
+      çünkü ikisinin de ilk seçeneği zaten azalan; **görevler, ilk seçeneği
+      ARTAN olan ilk yüzey** — bayat bir tercih birinin gününü ters açıyordu.
+      Düzeltildi ve `list_sort_test`'e iddiası yazıldı.
+- **BULGU — app bar zaten sınırındaydı, ve bunu kod söylüyordu.** Menü eklenince
+      telefonda çubuk **24px taştı**. Sebep ölçüldü: `AwSearchAction` açıkken
+      alanı `ekran − 220` kadar; o **220, "diğer eylemler" için yazılmış sabit
+      bir pay** ve beşinci eylemi kaldırmıyor. `sort_menu.dart`'ın kendi
+      dokümanı da bunu söylüyor: *"a menu rather than a second icon: the phone
+      app bars in this app are measured to be at their limit"*. Çözüm katmanı
+      büyütmek değil: **arama açıkken menü gizleniyor** — hem yer açıyor hem de
+      doğrusu bu, çünkü arama açıkken Ana ekran SIRALANMIŞ sonuç listesi
+      gösteriyor ve bakmadığın bir listenin sırasını değiştiren denetim, hiçbir
+      şey yapmayan denetimdir (§12 S5).
+- **Doğrulama (2026-09-14):** `check:i18n` yeşil (en/tr eşleşiyor),
+      `flutter analyze` temiz, `dart format` temiz, app süiti **1612 geçti** (+6).
+- **AÇIK — bilinçli olarak dar tutuldu:** proje detayının Görevler sekmesi ve
+      EE'nin "bana atananlar" ekranı sıralama almadı. İkisi de DÜZ liste, yani
+      `kTaskSortChoices` doğrudan uyar; ama ikisinin de kendi araç çubuğu yok
+      (Dosyalar sekmesinin kalıbı gerekir) ve OPH-306 zaten düz bir görev
+      sıralayıcısı isteyecek. Aynı şeyi iki kez yazmamak için o sekme 306'ya
+      bırakıldı.
 
 ### OPH-306 — Etikete dokun, o etiketin işleri öncelik sırasıyla gelsin
 

@@ -1,6 +1,8 @@
+import '../../core/list_sort.dart';
 import '../../i18n/i18n.dart';
 import '../calendar/data/external_event.dart';
 import '../tasks/data/task.dart';
+import '../tasks/data/task_sort.dart';
 
 /// Chronological buckets of the home list (feedback round 1). When a calendar
 /// day is selected its group sorts first and the rest render dimmed.
@@ -107,6 +109,7 @@ List<HomeGroup> groupTasksForHome(
   required DateTime now,
   DateTime? selectedDay,
   List<ExternalEvent> events = const [],
+  AwSortState? sort,
 }) {
   final today = DateTime(now.year, now.month, now.day);
   final tomorrow = today.add(const Duration(days: 1));
@@ -163,11 +166,6 @@ List<HomeGroup> groupTasksForHome(
   bool isDone(HomeItem item) => item is TaskItem && item.task.isCompleted;
 
   int chronologically(HomeItem a, HomeItem b) {
-    // OPH-185 (DESIGN §20 C1): today's finished work stays in its group but
-    // sinks to the BOTTOM of it — done work must never sit above work that is
-    // still waiting, whatever the clock says.
-    final [da, db] = [isDone(a), isDone(b)];
-    if (da != db) return da ? 1 : -1;
     final [ta, tb] = [a.at, b.at];
     if (ta == null && tb == null) {
       // Dateless tasks only — keep their manual order.
@@ -178,6 +176,60 @@ List<HomeGroup> groupTasksForHome(
     if (ta == null) return 1; // undated sinks
     if (tb == null) return -1;
     return ta.compareTo(tb);
+  }
+
+  // OPH-305 — the two orders the user can ask for instead. Both are written
+  // ASCENDING; `AwSortState.comparator` is the one place direction is applied,
+  // which is why "priority" defaults to descending (urgent first) and "title"
+  // does not (names go A→Z).
+  //
+  // Both fall back to the clock for ties, so the order never depends on which
+  // row the sync happened to write first.
+  int byPriority(HomeItem a, HomeItem b) {
+    int rank(HomeItem item) => switch (item) {
+      // A meeting is not something you choose when to do, so it has nothing to
+      // rank. It sorts as the lowest priority — with the unranked work, which
+      // is the predictable answer rather than a clever one.
+      TaskItem(:final task) => taskPriorityRank(task.priority),
+      EventItem() => 0,
+    };
+    final byRank = rank(a).compareTo(rank(b));
+    return byRank != 0 ? byRank : chronologically(a, b);
+  }
+
+  int byTitle(HomeItem a, HomeItem b) {
+    String key(HomeItem item) => switch (item) {
+      TaskItem(:final task) => taskTitleKey(task.title),
+      EventItem(:final event) => taskTitleKey(event.summary ?? ''),
+    };
+    final byKey = key(a).compareTo(key(b));
+    return byKey != 0 ? byKey : chronologically(a, b);
+  }
+
+  final chosen = switch (sort?.id) {
+    'priority' => sort!.comparator<HomeItem>(byPriority),
+    'title' => sort!.comparator<HomeItem>(byTitle),
+    // `date` goes through the same seam as the others rather than short-
+    // circuiting to `chronologically`: the menu offers "Reverse order" for
+    // every choice, and a control that silently does nothing for one of them
+    // is worse than not offering it.
+    'date' => sort!.comparator<HomeItem>(chronologically),
+    // No preference, or one that outlived its option: the order Home has
+    // always had. A stale preference must not reshuffle somebody's day.
+    _ => chronologically,
+  };
+
+  /// The chosen order, under the rule that outranks it.
+  ///
+  /// OPH-185 (DESIGN §20 C1): today's finished work stays in its group but
+  /// sinks to the BOTTOM of it — done work must never sit above work that is
+  /// still waiting, whatever the clock says. This used to live INSIDE the
+  /// chronological comparator, which was fine while there was only one; a rule
+  /// buried in one preference is a rule the next preference forgets.
+  int ordered(HomeItem a, HomeItem b) {
+    final [da, db] = [isDone(a), isDone(b)];
+    if (da != db) return da ? 1 : -1;
+    return chosen(a, b);
   }
 
   final order = [
@@ -195,7 +247,7 @@ List<HomeGroup> groupTasksForHome(
       if (byBucket[bucket]!.isNotEmpty)
         HomeGroup(
           bucket: bucket,
-          items: byBucket[bucket]!..sort(chronologically),
+          items: byBucket[bucket]!..sort(ordered),
           // Work you must face NOW never fades (feedback round 6): dateless
           // belongs to every day, and Overdue/Today are current debts — a
           // selected day only dims the genuinely future groups.

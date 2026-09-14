@@ -3,7 +3,34 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14e (**OPH-303 + OPH-304 BİTTİ — BİR ANAHTAR ADINI,
+**Last updated:** 2026-09-14f (**OPH-305 BİTTİ — SIRALAMA, GÜNÜ DAĞITMADAN GÜNÜN
+İÇİNE GİRDİ.** Ana ekranın gün başlıkları bir tercih değil, Ana ekranın ne olduğu
+(§20) — kullanıcının istediği de zaten günü dağıtmak değil, **içini** sıralamaktı.
+`groupTasksForHome` opsiyonel bir `sort` alıyor; verilmezse davranış birebir
+eskisi. Seçenekler: tarih (varsayılan, ARTAN — bir görevin tarihi son teslim
+tarihidir, en yakını üstte olmalı; uygulamadaki tek artan-varsayılan sıralama),
+öncelik (acil önce), başlık (fold'lu). **§20 C1 bir tercihin içinden çıkarıldı:**
+"biten iş dibe batar" kuralı kronolojik karşılaştırıcının İÇİNDE yaşıyordu —
+*bir tercihin içine gömülü kural, bir sonraki tercihin unuttuğu kuraldır*; artık
+her sıralamayı saran `ordered` taşıyor. **İki bulgu, ikisi de ölçümle çıktı.**
+(1) `list_sort.dart`'ta PAYLAŞILAN bir hata: `parse` bilinmeyen alanı ilk seçeneğe
+düşürürken saklanan YÖNÜ taşıyordu (`whatever:desc` → `date:desc`) — `select`'in
+kendi yorumunun uyardığı hatanın aynısı. Notlar/Dosyalar'da görünmezdi çünkü
+ikisinin de ilk seçeneği azalan; **görevler ilk seçeneği ARTAN olan ilk yüzey**,
+yani bayat bir tercih birinin gününü ters açıyordu. Düzeltildi + `list_sort_test`e
+iddia yazıldı. (2) App bar telefonda **24px taştı**; sebep ölçüldü — `AwSearchAction`
+açıkken alanı `ekran − 220` alıyor ve o 220, "diğer eylemler" için yazılmış sabit
+bir pay; `sort_menu.dart`ın kendi dokümanı da *"the phone app bars in this app are
+measured to be at their limit"* diyor. Çözüm payı büyütmek değil: **arama açıkken
+menü gizleniyor**, çünkü o sırada Ana ekran SIRALANMIŞ sonuç gösteriyor ve
+bakmadığın listenin sırasını değiştiren denetim hiçbir şey yapmıyor (§12 S5).
+Süitler: app **1612** (+6), analyze temiz, `check:i18n` yeşil.
+**AÇIK, bilinçli:** proje Görevler sekmesi ve EE "bana atananlar" sıralama almadı —
+ikisi de düz liste, ama kendi araç çubukları yok ve OPH-306 zaten düz bir görev
+sıralayıcısı isteyecek; aynı şeyi iki kez yazmamak için 306'ya bırakıldı.
+Sıradaki iş: **OPH-306** — etikete dokun, o etiketin işleri gelsin.)
+
+Önceki blok: 2026-09-14e (**OPH-303 + OPH-304 BİTTİ — BİR ANAHTAR ADINI,
 BİR İZİN DE GEREKÇESİNİ BULDU.**
 **OPH-303:** gerçek teşhis tahmin edilenden iyi çıktı — tek dize ÜÇ iş yapıyor ve
 ikisinde DOĞRUYDU. `task.alarmsMuted` ("Alarm silenced") satır rozetinde ve zil

@@ -40,11 +40,18 @@ class AwSortState {
   /// a missing direction takes the field's natural one.
   static AwSortState parse(String raw, List<AwSortChoice> choices) {
     final parts = raw.split(':');
-    final choice = choices.firstWhere(
-      (c) => c.id == parts.first,
-      orElse: () => choices.first,
-    );
-    if (parts.length < 2 || (parts[1] != 'asc' && parts[1] != 'desc')) {
+    final known = choices.where((c) => c.id == parts.first).firstOrNull;
+    final choice = known ?? choices.first;
+    // OPH-305: a direction belongs to the FIELD that was stored with it. When
+    // that field is gone the direction is gone with it, exactly as `select`
+    // refuses to carry one across fields ("descending" from a date would open
+    // a title list at Z). This only became visible when tasks arrived as the
+    // first surface whose default choice sorts ASCENDING: a stale
+    // `whatever:desc` used to land on `date:desc` and open somebody's day
+    // backwards.
+    if (known == null ||
+        parts.length < 2 ||
+        (parts[1] != 'asc' && parts[1] != 'desc')) {
       return AwSortState(choice.id, descending: choice.descendingByDefault);
     }
     return AwSortState(choice.id, descending: parts[1] == 'desc');

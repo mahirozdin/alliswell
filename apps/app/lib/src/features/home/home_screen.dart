@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/date_format.dart';
 import '../../core/error_messages.dart';
 import '../../core/fold.dart';
+import '../../core/list_sort.dart';
 import '../../core/pending_deletes.dart';
 import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
@@ -18,6 +19,7 @@ import '../../widgets/status_views.dart';
 import '../../search/providers.dart';
 import '../../search/search.dart';
 import '../../widgets/search_field.dart';
+import '../../widgets/sort_menu.dart';
 import '../../core/date_input.dart';
 import '../ai/data/ai_quick_add.dart';
 import '../ai/providers.dart';
@@ -27,6 +29,7 @@ import '../calendar/ui/external_event_tile.dart';
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
 import '../tasks/data/task_defaults.dart';
+import '../tasks/data/task_sort.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
 import '../tasks/ui/task_tile.dart';
@@ -61,6 +64,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Quick add's text lives HERE, not in the bar (OPH-172/H4): the bar is a
   /// sliver now, and a sliver scrolled past the cache extent is disposed —
   /// which would silently eat what the user had typed.
+  /// Whether Home's app-bar search field is expanded (OPH-305).
+  ///
+  /// The open field takes `screen - 220` of the bar, and that 220 is a reserve
+  /// measured against the actions that existed when it was written. Adding the
+  /// sort menu overflowed it on a phone by 24px. Hiding the menu while the
+  /// field is open is not only what fits — it is what is true: search shows a
+  /// RANKED result list, and an order control over a list nobody is looking at
+  /// is a control that does nothing.
+  bool _searchOpen = false;
+
   final _quickAddController = TextEditingController();
   final _quickAddFocus = FocusNode();
   final _quickAddKey = GlobalKey();
@@ -162,6 +175,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         fieldKey: const Key('home-search'),
         hintText: 'home.searchHint'.tr(),
         onQuery: (q) => ref.read(homeSearchQueryProvider.notifier).set(q),
+        onOpenChanged: (open) => setState(() => _searchOpen = open),
       ),
       IconButton(
         key: const Key('home-view-toggle'),
@@ -178,6 +192,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           tooltip: 'board.editColumns'.tr(),
           icon: const Icon(Icons.tune),
           onPressed: () => showBoardColumnsSheet(context, ref),
+        ),
+      // OPH-305: the order INSIDE each day group. Not on the board — its
+      // columns carry their own order, and a menu that silently applied to
+      // something else would be worse than no menu. Not while the search field
+      // is open either, for the same reason and because that is the one state
+      // the bar has no room for (see `_searchOpen`).
+      if (!isBoard && !_searchOpen)
+        AwSortMenuButton(
+          key: const Key('home-sort'),
+          choices: kTaskSortChoices,
+          sort: AwSortState.parse(
+            ref.watch(tasksSortProvider),
+            kTaskSortChoices,
+          ),
+          onChanged: (next) =>
+              ref.read(tasksSortProvider.notifier).set(next.encode()),
         ),
       if (!isBoard)
         IconButton(
@@ -235,6 +265,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             now: DateTime.now(),
             selectedDay: selectedDay,
             events: events,
+            // OPH-305: the grouping is Home's spine and never a preference;
+            // this only decides the order WITHIN each group.
+            sort: AwSortState.parse(
+              ref.watch(tasksSortProvider),
+              kTaskSortChoices,
+            ),
           );
           final calendar = MonthCalendar(
             // A day with a meeting is not an empty day.

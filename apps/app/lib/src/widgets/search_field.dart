@@ -38,6 +38,7 @@ class AwSearchAction extends StatefulWidget {
     required this.onQuery,
     this.hintText,
     this.fieldKey,
+    this.onOpenChanged,
     this.debounce = const Duration(milliseconds: 250),
   });
 
@@ -46,6 +47,17 @@ class AwSearchAction extends StatefulWidget {
 
   /// Key for the expanded input, so tests can type into it.
   final Key? fieldKey;
+
+  /// Fires when the field opens or closes (OPH-305).
+  ///
+  /// The open field claims most of the bar — its width is `screen - 220`, and
+  /// that 220 is a measured reserve for the OTHER actions. A bar that grows a
+  /// fifth action overflows it. So a screen that has more actions than the
+  /// reserve covers can drop the ones that mean nothing while searching, which
+  /// is also the honest thing to do: Home shows RANKED results while the field
+  /// is open, and a sort control over a list you are not looking at is a
+  /// control that does nothing.
+  final ValueChanged<bool>? onOpenChanged;
   final Duration debounce;
 
   @override
@@ -76,6 +88,7 @@ class _AwSearchActionState extends State<AwSearchAction> {
     _controller.clear();
     widget.onQuery('');
     setState(() => _open = false);
+    widget.onOpenChanged?.call(false);
   }
 
   @override
@@ -87,6 +100,7 @@ class _AwSearchActionState extends State<AwSearchAction> {
         icon: const Icon(Icons.search),
         onPressed: () {
           setState(() => _open = true);
+          widget.onOpenChanged?.call(true);
           // The field is built this frame; focus it on the next one.
           WidgetsBinding.instance.addPostFrameCallback(
             (_) => _focus.requestFocus(),

@@ -5,6 +5,30 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **Home can be ordered by priority, date or title.** Sorting reached notes and
+  files a while ago and had never reached the list people actually live in; a
+  user asked for it by name — *"listed by the order of priority"*. The menu sits
+  in Home's app bar and changes the order **inside** each day, because the day
+  headings are what Home is, not a preference. Date is the default and sorts
+  nearest-deadline-first; leaving the menu alone changes nothing at all. A
+  finished task still sinks to the bottom of its day whatever the order says —
+  that is a rule, not a preference, and it now sits outside the ordering rather
+  than inside one of them. OPH-305,
+  [#12](https://github.com/mahirozdin/alliswell/issues/12).
+
+### Fixed
+
+- **A forgotten sort option no longer opens a list backwards.** When a stored
+  preference named an option that no longer exists, the app fell back to the
+  first option but kept the stored direction — so `whatever:desc` became
+  "date, newest first". Notes and files never showed it (their first option is
+  descending anyway); tasks are the first list whose first option ascends, and
+  there it opened somebody's day in reverse. The direction now belongs to the
+  field it was stored with, which is what choosing a new option in the menu has
+  always done. OPH-305.
+
 ### Changed
 
 - **Android alarms are exact on Android 14+ without asking the user to go

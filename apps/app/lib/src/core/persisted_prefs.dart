@@ -100,6 +100,19 @@ final filesSortProvider = NotifierProvider<PersistedChoice, String>(
   () => PersistedChoice('alliswell_files_sort', fallback: 'date:desc'),
 );
 
+/// The order INSIDE each of Home's groups (OPH-305, §34).
+///
+/// Sorting reached notes and files in round 18 and never reached the list
+/// people actually live in; the user who asked for it named the order they
+/// wanted — "listed by the order of 'priority'".
+///
+/// The fallback is the order Home has always had, so an install that has never
+/// touched this menu behaves exactly as before. Home's GROUPING is not a
+/// preference and never becomes one: the day headings are what Home is (§20).
+final tasksSortProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_tasks_sort', fallback: 'date:asc'),
+);
+
 /// Home's view: 'list' (the chronological flow, default) or 'board' (the
 /// status-column kanban — round 8, OPH-168 / DESIGN §14 K1).
 final homeViewProvider = NotifierProvider<PersistedChoice, String>(

@@ -25,6 +25,22 @@ void main() {
       // Someone downgrades, or a preference outlives the option that wrote it.
       final parsed = AwSortState.parse('whatever:desc', choices);
       expect(parsed.id, 'updated');
+      // OPH-305: and it drops the stored DIRECTION too. A direction belongs to
+      // the field it was stored with, which is why `select` refuses to carry
+      // one across fields; parse had been carrying one onto the fallback.
+      // Invisible here (updated is descending anyway) and not invisible on a
+      // list whose first choice ascends — a stale preference used to open
+      // somebody's day backwards.
+      expect(parsed.descending, isTrue); // updated's own natural direction
+      final ascFirst = [
+        const AwSortChoice(
+          id: 'date',
+          labelKey: 'x',
+          descendingByDefault: false,
+        ),
+        const AwSortChoice(id: 'title', labelKey: 'y'),
+      ];
+      expect(AwSortState.parse('gone:desc', ascFirst).descending, isFalse);
     });
 
     test('a bare field takes that field\'s natural direction', () {
