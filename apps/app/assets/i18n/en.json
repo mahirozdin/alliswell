@@ -308,6 +308,10 @@
   },
   "tag": {
     "inputHint": "Add tag…",
+    "filterBySemantic": "Show only #{tag}",
+    "filteredBy": "Showing #{tag}",
+    "clearFilter": "Show everything again",
+    "filterEmpty": "Nothing tagged #{tag} is waiting right now.",
     "createSuggestion": "Create: #{name}",
     "manage": "Manage tags",
     "manageTitle": "Tags",

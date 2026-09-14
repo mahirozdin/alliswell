@@ -307,6 +307,10 @@
   },
   "tag": {
     "inputHint": "Etiket ekle…",
+    "filterBySemantic": "Yalnız #{tag} göster",
+    "filteredBy": "#{tag} gösteriliyor",
+    "clearFilter": "Hepsini yeniden göster",
+    "filterEmpty": "Şu an #{tag} etiketli bekleyen bir iş yok.",
     "createSuggestion": "Oluştur: #{name}",
     "manage": "Etiketleri yönet",
     "manageTitle": "Etiketler",

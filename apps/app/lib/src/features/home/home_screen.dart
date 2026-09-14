@@ -183,8 +183,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         icon: Icon(
           isBoard ? Icons.view_agenda_outlined : Icons.view_kanban_outlined,
         ),
-        onPressed: () =>
-            ref.read(homeViewProvider.notifier).set(isBoard ? 'list' : 'board'),
+        onPressed: () {
+          // OPH-306: leaving for the board drops the tag filter. The board is
+          // the one Home view with nowhere to put the filter's bar, and an
+          // active filter whose bar nobody can see is exactly what Epic 17's
+          // rule forbids — the same reason hiding the calendar clears the
+          // selected day.
+          ref.read(tagFilterProvider.notifier).clear();
+          ref.read(homeViewProvider.notifier).set(isBoard ? 'list' : 'board');
+        },
       ),
       if (isBoard)
         IconButton(
@@ -260,8 +267,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ref.watch(pendingDeletesProvider),
             (t) => t.id,
           );
+          // OPH-306: the filter narrows the SET; the grouping and the order
+          // (OPH-305) then run on it unchanged, which is what makes "tap a tag,
+          // see it by priority" one gesture instead of a second mode.
+          final tagFilter = ref.watch(tagFilterProvider);
+          // Tapping the tag you are already on clears it — the selected
+          // calendar day's gesture, so one habit covers both.
+          void onTagTap(Tag tag) =>
+              ref.read(tagFilterProvider.notifier).toggle(tag.id);
+          final visible = tagFilter == null
+              ? items
+              : [
+                  for (final t in items)
+                    if (t.tagIds.contains(tagFilter)) t,
+                ];
           final groups = groupTasksForHome(
-            items,
+            visible,
             now: DateTime.now(),
             selectedDay: selectedDay,
             events: events,
@@ -345,7 +366,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   AlwaysScrollableScrollPhysics(),
                                               slivers: [_HomeSearchResults()],
                                             )
-                                          : _GroupedTaskList(groups: groups),
+                                          : _GroupedTaskList(
+                                              groups: groups,
+                                              onTagTap: onTagTap,
+                                            ),
                                     ),
                                   ),
                                 ],
@@ -434,7 +458,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         padding: awListPadding(context, extraBottom: 72),
                         sliver: SliverList(
                           delegate: SliverChildListDelegate(
-                            buildHomeGroupRows(context, groups),
+                            buildHomeGroupRows(
+                              context,
+                              groups,
+                              onTagTap: onTagTap,
+                            ),
                           ),
                         ),
                       ),
@@ -453,9 +481,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 /// (The narrow layout renders the same rows inside a CustomScrollView so the
 /// calendar scrolls with them — OPH-103.)
 class _GroupedTaskList extends StatelessWidget {
-  const _GroupedTaskList({required this.groups});
+  const _GroupedTaskList({required this.groups, this.onTagTap});
 
   final List<HomeGroup> groups;
+  final ValueChanged<Tag>? onTagTap;
 
   @override
   Widget build(BuildContext context) {
@@ -466,14 +495,14 @@ class _GroupedTaskList extends StatelessWidget {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: awListPadding(context, extraBottom: 72),
-      children: buildHomeGroupRows(context, groups),
+      children: buildHomeGroupRows(context, groups, onTagTap: onTagTap),
     );
   }
 }
 
 /// Home's "nothing to do" state — shared by both layouts so it reads the same
 /// in the wide ListView and the narrow SliverFillRemaining.
-class _HomeEmpty extends StatelessWidget {
+class _HomeEmpty extends ConsumerWidget {
   const _HomeEmpty({this.physics});
 
   /// See [AwEmptyState.physics]: always-scrollable in the wide layout (it IS
@@ -482,21 +511,96 @@ class _HomeEmpty extends StatelessWidget {
   final ScrollPhysics? physics;
 
   @override
-  Widget build(BuildContext context) => AwEmptyState(
-    icon: Icons.beach_access_outlined,
-    title: 'home.allCaughtUp'.tr(),
-    message: 'home.allCaughtUpBody'.tr(),
-    physics: physics,
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    // OPH-306: "you are all caught up" is a lie while a filter is hiding the
+    // rest of the day. An empty FILTERED list has to say which filter emptied
+    // it and offer the way out, or the user is looking at a beach umbrella
+    // wondering where their work went.
+    final tagId = ref.watch(tagFilterProvider);
+    final tag = tagId == null ? null : ref.watch(tagsByIdProvider)[tagId];
+    if (tag != null) {
+      return Column(
+        key: const Key('tag-filter-empty'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const _TagFilterBar(),
+          Expanded(
+            child: AwEmptyState(
+              icon: Icons.filter_alt_off_outlined,
+              title: 'tag.filteredBy'.tr(args: {'tag': tag.name}),
+              message: 'tag.filterEmpty'.tr(args: {'tag': tag.name}),
+              physics: physics,
+            ),
+          ),
+        ],
+      );
+    }
+    return AwEmptyState(
+      icon: Icons.beach_access_outlined,
+      title: 'home.allCaughtUp'.tr(),
+      message: 'home.allCaughtUpBody'.tr(),
+      physics: physics,
+    );
+  }
+}
+
+/// The visible half of the tag filter (OPH-306).
+///
+/// Epic 17's rule, and §16's: a filter you can no longer see must not keep
+/// filtering. So it is never silent — it names the tag and carries its own way
+/// out, exactly as the selected calendar day does.
+class _TagFilterBar extends ConsumerWidget {
+  const _TagFilterBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tagId = ref.watch(tagFilterProvider);
+    if (tagId == null) return const SizedBox.shrink();
+    final tag = ref.watch(tagsByIdProvider)[tagId];
+    // A filter whose tag has been deleted would be invisible AND active — the
+    // exact state the rule forbids. Drop it rather than render nothing.
+    if (tag == null) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      key: const Key('tag-filter-bar'),
+      padding: const EdgeInsets.only(bottom: AwSpace.x2),
+      child: Row(
+        children: [
+          Icon(Icons.filter_alt_outlined, size: 18, color: scheme.primary),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(
+            child: Text(
+              'tag.filteredBy'.tr(args: {'tag': tag.name}),
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ),
+          TextButton.icon(
+            key: const Key('tag-filter-clear'),
+            onPressed: () => ref.read(tagFilterProvider.notifier).clear(),
+            icon: const Icon(Icons.close, size: 18),
+            label: Text('tag.clearFilter'.tr()),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// The header + row widgets for Home's groups, shared by the wide ListView and
 /// the narrow CustomScrollView (OPH-103) so the group/row logic lives in ONE
 /// place. Each group is a labelled header followed by its chronological rows
 /// (§12): a 10:00 meeting sits above a 16:00 task, each rendered as what it is.
-List<Widget> buildHomeGroupRows(BuildContext context, List<HomeGroup> groups) {
+List<Widget> buildHomeGroupRows(
+  BuildContext context,
+  List<HomeGroup> groups, {
+  ValueChanged<Tag>? onTagTap,
+}) {
   final theme = Theme.of(context);
   return [
+    // OPH-306: the filter names itself directly above the list it is filtering.
+    // Both layouts render these rows, so one insertion covers the wide ListView
+    // and the narrow CustomScrollView.
+    const _TagFilterBar(),
     for (final group in groups) ...[
       Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -529,6 +633,7 @@ List<Widget> buildHomeGroupRows(BuildContext context, List<HomeGroup> groups) {
             task: task,
             dimmed: group.dimmed,
             highlighted: group.bucket == HomeBucket.selectedDay,
+            onTagTap: onTagTap,
           ),
           EventItem(:final event) => ExternalEventTile(
             event: event,

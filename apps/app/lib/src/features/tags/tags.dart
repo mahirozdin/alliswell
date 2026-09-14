@@ -70,3 +70,32 @@ final tagsProvider = StreamProvider<List<Tag>>((ref) async* {
         ],
       );
 });
+
+/// Which tag Home is filtered by, or null (OPH-306).
+///
+/// **In memory on purpose, and that is the whole design.** Every other list
+/// preference in the app persists — sort orders, view modes, calendar
+/// visibility — because they describe how you like to look at things. A filter
+/// does not: it hides work. Epic 17 wrote the rule after Home's selected
+/// calendar day did exactly this, and §16 repeats it for the same reason — *a
+/// filter you can no longer see must not keep filtering*. A tag filter restored
+/// on a cold start would hide half somebody's day behind a control they never
+/// touched in this session and have no reason to look for.
+///
+/// The surfaces that can SET it are named deliberately (DESIGN §22): the tag
+/// chips on Home's task rows, in both the list and the board — the two places
+/// the filter's own bar is visible in the same frame. Chips elsewhere (a
+/// project's Tasks tab, Completed, the EE assignment screen) stay inert rather
+/// than quietly filtering a list on a screen you are not on.
+class TagFilter extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  /// Tapping the tag you are already filtered by clears it — the calendar day's
+  /// gesture, so one habit covers both.
+  void toggle(String tagId) => state = state == tagId ? null : tagId;
+
+  void clear() => state = null;
+}
+
+final tagFilterProvider = NotifierProvider<TagFilter, String?>(TagFilter.new);

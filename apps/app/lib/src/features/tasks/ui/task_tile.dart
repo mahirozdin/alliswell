@@ -36,6 +36,7 @@ class TaskTile extends ConsumerWidget {
     this.showProjectBadge = true,
     this.swipeToDelete = true,
     this.trailingAction,
+    this.onTagTap,
   });
 
   final Task task;
@@ -53,6 +54,16 @@ class TaskTile extends ConsumerWidget {
   /// An extra control before the status icon — the Completed screen's
   /// "Reopen", for instance. Rows without one are unchanged.
   final Widget? trailingAction;
+
+  /// What a tap on an inline tag chip does (OPH-306), or null for a row whose
+  /// chips are decoration.
+  ///
+  /// Nullable on purpose. The chips have been on every row since v0.4.0 and a
+  /// user reported the obvious thing — that tapping one does nothing. The fix
+  /// is not "make them all tappable": a chip that filters a list on a screen
+  /// you are not looking at is worse than an inert one. Only the surfaces that
+  /// can SHOW the resulting filter pass this (DESIGN §22).
+  final ValueChanged<Tag>? onTagTap;
 
   Future<void> _toggle(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -263,7 +274,8 @@ class TaskTile extends ConsumerWidget {
                             )
                           : null,
                     ),
-                  for (final tag in rowTags.take(2)) _InlineTag(tag: tag),
+                  for (final tag in rowTags.take(2))
+                    _InlineTag(tag: tag, onTap: onTagTap),
                   if (rowTags.length > 2)
                     Tooltip(
                       message: [
@@ -429,14 +441,15 @@ Future<void> deleteTaskWithUndo(
 /// Typography only — no pill container, so contrast and row height are the
 /// subtitle's own.
 class _InlineTag extends StatelessWidget {
-  const _InlineTag({required this.tag});
+  const _InlineTag({required this.tag, this.onTap});
 
   final Tag tag;
+  final ValueChanged<Tag>? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Row(
+    final chip = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(backgroundColor: tag.color, radius: 4),
@@ -455,6 +468,23 @@ class _InlineTag extends StatelessWidget {
           ),
         ),
       ],
+    );
+    final onTap = this.onTap;
+    if (onTap == null) return chip;
+    return Semantics(
+      button: true,
+      label: 'tag.filterBySemantic'.tr(args: {'tag': tag.name}),
+      child: InkWell(
+        key: Key('tag-chip-${tag.id}'),
+        onTap: () => onTap(tag),
+        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.s)),
+        // A chip is a small target; the padding is what makes it a real one
+        // without changing how the row reads.
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: chip,
+        ),
+      ),
     );
   }
 }

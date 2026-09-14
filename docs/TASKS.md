@@ -9919,14 +9919,42 @@ listed by the order of 'priority')". Etiket sistemi v0.4.0'dan beri var (OPH-165
 satırlarda çipler görünüyor — ama **çipe dokunmak hiçbir şey yapmıyor**; etiket
 filtresi diye bir yüzey yok._
 
-- [ ] Etiket çipi dokunulabilir olur → o etiketin görevleri, OPH-305'in sıralamasıyla.
-- [ ] Filtrenin AÇIK olduğu ve nasıl kapatılacağı ekranda görünür (Epic 17 dersi:
+- [x] Etiket çipi dokunulabilir olur → o etiketin görevleri, OPH-305'in sıralamasıyla.
+- [x] Filtrenin AÇIK olduğu ve nasıl kapatılacağı ekranda görünür (Epic 17 dersi:
       *"artık göremediğin bir filtre listeyi süzmeye devam etmemeli"* — Ana ekranın
       seçili-gün kuralının aynısı, `home_screen.dart:193-198`).
-- [ ] **Yüzeyini adıyla yaz** (DESIGN §22 reachability): hangi ekranlarda etiket çipi
+- [x] **Yüzeyini adıyla yaz** (DESIGN §22 reachability): hangi ekranlarda etiket çipi
       dokunulabilir olacak — liste, detay, Pano kartı.
-- **Kabul:** filtre + sıralama birlikte çalışır; filtre açıkken boş sonuç "sonuç yok"
-      der, boş ekran değil.
+- **Yüzeyler adıyla yazıldı (§22), ve liste DIŞINDAKİLER bilinçli olarak İNERT:**
+      çip yalnız **Ana ekranın liste görünümünde** dokunulabilir. Sebep kuralın
+      kendisi: filtreyi kuran yüzey, filtrenin çubuğunu **aynı karede**
+      gösterebilmeli. Proje Görevler sekmesi, Tamamlananlar ve EE "bana
+      atananlar" ekranlarındaki çipler dokunulamaz kalıyor — **bakmadığın bir
+      ekrandaki listeyi sessizce süzen bir çip, hiçbir şey yapmayandan kötüdür.**
+      `TaskTile.onTagTap` bu yüzden nullable: dokunulabilirlik bir yetenek değil,
+      bir sorumluluk.
+- **Pano'ya geçmek filtreyi DÜŞÜRÜYOR.** Pano, çubuğu koyacak yeri olmayan tek
+      Home görünümü; filtre orada açık kalsaydı "göremediğin filtre" durumuna
+      düşerdi. Takvimi gizlemenin seçili günü temizlemesiyle aynı hareket.
+- **Filtre KALICI DEĞİL, ve bu tasarımın kendisi.** Uygulamadaki diğer tüm liste
+      tercihleri (sıralama, görünüm, takvim görünürlüğü) kalıcı — çünkü onlar
+      "nasıl bakmak istediğini" anlatır. **Filtre onu anlatmaz: iş SAKLAR.**
+      Soğuk başlangıçta geri gelen bir etiket filtresi, kullanıcının bu oturumda
+      hiç dokunmadığı bir denetimin arkasına gününün yarısını gizlerdi.
+- **Kabul — ölçüldü, dördü de:** (1) çipe dokununca o etiketin işleri kalıyor,
+      diğerleri düşüyor; (2) çubuk etiketin adını söylüyor ve çıkışını taşıyor,
+      temizleyince liste geri geliyor; (3) **filtre + sıralama birlikte** —
+      raporun tam cümlesi tek jestte: `#rapor`'a dokun, önceliğe göre sırala,
+      acil olan üste geliyor (kronolojik sırada gelmezdi); (4) filtre açıkken
+      sonuç boşalırsa ekran "tatildesin" demiyor, **hangi filtrenin boşalttığını**
+      söylüyor ve çıkışı gösteriyor.
+- **Doğrulama (2026-09-14):** `check:i18n` yeşil, `flutter analyze` temiz,
+      `dart format` temiz, app süiti **1616 geçti** (+4).
+- **AÇIK — OPH-305'ten devralınan borç kapanmadı:** proje Görevler sekmesi hâlâ
+      sıralamasız. Bu iş düz bir görev sıralayıcısına ihtiyaç duymadı (filtre
+      Home'un mevcut hattından geçiyor), yani 305'in "306 zaten isteyecek"
+      gerekçesi **gerçekleşmedi**. O sekme kendi turunu hak ediyor; burada
+      sessizce yapılmış gibi bırakılmıyor.
 
 ### OPH-307 — "Bu hafta" güne bölünsün
 

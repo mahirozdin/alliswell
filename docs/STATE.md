@@ -3,7 +3,32 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14f (**OPH-305 BİTTİ — SIRALAMA, GÜNÜ DAĞITMADAN GÜNÜN
+**Last updated:** 2026-09-14g (**OPH-306 BİTTİ — ETİKET ÇİPİ ARTIK BİR DÜĞME, VE
+RAPORUN TAM CÜMLESİ TEK JESTTE ÇALIŞIYOR.** Etiketler v0.4.0'dan beri var,
+çipler her satırda duruyor ve dokununca hiçbir şey olmuyordu. Artık Ana ekranın
+liste görünümünde çipe dokunmak o etiketi süzüyor; filtre **kümeyi daraltıyor**,
+gruplama ve OPH-305'in sıralaması daraltılmış küme üzerinde değişmeden koşuyor —
+yani *"etikete dokun, önceliğe göre sıralanmış gelsin"* ikinci bir mod
+gerektirmeden çıkıyor (testi var: acil olan üste geliyor, kronolojik sırada
+gelmezdi). **Turun tek cümlesi: dokunulabilirlik bir yetenek değil, bir
+SORUMLULUK** — filtreyi kuran yüzey, filtrenin çubuğunu aynı karede
+gösterebilmeli. `TaskTile.onTagTap` bu yüzden nullable ve yalnız Ana ekran
+listesi geçiyor: proje Görevler sekmesi, Tamamlananlar ve EE "bana atananlar"
+çipleri **bilinçli olarak inert**, çünkü bakmadığın bir ekrandaki listeyi
+sessizce süzen çip, hiçbir şey yapmayandan kötüdür. Aynı kural iki şey daha
+söyledi: Pano'ya geçmek filtreyi düşürüyor (Pano, çubuğu koyacak yeri olmayan
+tek görünüm — takvimi gizlemenin seçili günü temizlemesiyle aynı hareket), ve
+filtre **kalıcı DEĞİL** — diğer tüm liste tercihleri kalıcı çünkü "nasıl bakmak
+istediğini" anlatıyorlar; filtre onu anlatmaz, **iş saklar**. Filtre açıkken
+liste boşalırsa ekran "tatildesin" demiyor, hangi filtrenin boşalttığını söyleyip
+çıkışı gösteriyor. Süitler: app **1616** (+4), `check:i18n` yeşil, analyze temiz.
+**AÇIK — 305'ten devralınan borç kapanmadı:** proje Görevler sekmesi hâlâ
+sıralamasız. 305'te "306 zaten düz bir sıralayıcı isteyecek" diye ertelenmişti;
+bu iş öyle bir şeye ihtiyaç duymadı (filtre Home'un mevcut hattından geçti), yani
+gerekçe gerçekleşmedi ve o sekme kendi turunu hak ediyor.
+Sıradaki iş: **OPH-307** — "Bu hafta" güne bölünsün.)
+
+Önceki blok: 2026-09-14f (**OPH-305 BİTTİ — SIRALAMA, GÜNÜ DAĞITMADAN GÜNÜN
 İÇİNE GİRDİ.** Ana ekranın gün başlıkları bir tercih değil, Ana ekranın ne olduğu
 (§20) — kullanıcının istediği de zaten günü dağıtmak değil, **içini** sıralamaktı.
 `groupTasksForHome` opsiyonel bir `sort` alıyor; verilmezse davranış birebir

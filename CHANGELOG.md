@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Tapping a tag shows that tag's work.** The chips have been on every task row
+  since v0.4.0 and did nothing when touched; a user reported exactly that, and
+  said what they wanted instead — *"when i click the label tag, automatically
+  sorts, and listed by the order of priority"*. Both halves now work as one
+  gesture: the tag narrows the list, and whatever order you have chosen runs on
+  what is left. The filter names itself above the list and carries its own way
+  out, it clears when you switch to the board, and it does not survive a
+  restart — a sort is how you like to look at things, but a filter hides work,
+  and one you cannot see should not still be hiding any. An empty filtered list
+  says which tag emptied it rather than claiming you are all caught up.
+  Chips stay inert on screens that have nowhere to show the filter — a project's
+  Tasks tab, Completed, assignments — because a chip that quietly filters a list
+  you are not looking at is worse than one that does nothing. OPH-306,
+  [#13](https://github.com/mahirozdin/alliswell/issues/13).
+
 - **Home can be ordered by priority, date or title.** Sorting reached notes and
   files a while ago and had never reached the list people actually live in; a
   user asked for it by name — *"listed by the order of priority"*. The menu sits
