@@ -10269,20 +10269,62 @@ on every real instance." Push'un tamamı bu boş tablonun üstünde duruyor._
 
 ### OPH-311 — Şema: taşıyıcı kolonları ve teslim günlüğü
 
-- [ ] **`notification_devices`**: `push_provider enum('fcm','webpush')` (nullable),
-      `push_endpoint text`, `push_p256dh varchar`, `push_auth varchar` — `push_token`(512)
-      bir Web Push aboneliğini taşıyamaz, endpoint tek başına daha uzun olabiliyor;
-      ayrıca `invalid_at datetime(3)` ve `last_push_at datetime(3)`.
-- [ ] **`reminder_push_log`** (yeni): `PRIMARY KEY (reminder_id, device_id, fire_at)` —
-      idempotenlik tabloya gömülür, koda değil. `sent_at`, `provider`, `result`. Eskiyen
-      satırlar süpürgeyle silinir (mevcut `*-gc` plugin kalıbı).
-- [ ] **`reminders.status` KIPIRDATILMAZ.** Vade anında `delivered` yazmak cazip ama her
-      hatırlatıcı için bir revizyon üretir ve her cihaza iner — vade saatlerinde revizyon
-      fırtınası. Teslim kaydı **senkronlanmayan** bir tabloda durur.
-- [ ] Append-only migration, **çalışan `down()`** (CI hem MySQL 8.4 hem MariaDB'de
-      rollback+replay ediyor), collation `db/collation.js` kalıbıyla.
-- **Kabul:** `db:migrate` → `db:rollback --all` → `db:migrate` iki motorda da temiz;
-      `fakedb.js`'in `notification_devices` kolon varsayılanları güncellenir (`:202-203`).
+- [x] **`notification_devices`**: `push_provider enum('fcm','webpush')`, `push_endpoint text`,
+      `push_p256dh varchar(128)`, `push_auth varchar(64)`, `invalid_at`, `last_push_at` —
+      hepsi nullable. Gerekçe kolonun kendisinde yazılı: `push_token` **tek** dize, çünkü bir
+      FCM kayıt jetonu tek dize; bir Web Push aboneliği ise **üç** şey (endpoint + iki anahtar,
+      RFC 8291) ve endpoint tek başına o 512 karakteri aşabiliyor.
+- [x] **`reminder_push_log`** (yeni): `id` ULID birincil anahtar, `unique (reminder_id,
+      device_id, fire_at)` = `uq_reminder_push`, `provider`, `result enum('pending','sent',
+      'failed')`, `created_at`, `sent_at`, iki CASCADE yabancı anahtar, ve reaper'ın tarayacağı
+      `idx_reminder_push_log_created`.
+- [x] **Plandan sapma, gerekçesiyle: birincil anahtar üçlü DEĞİL.** Plan `PRIMARY KEY
+      (reminder_id, device_id, fire_at)` diyordu; idempotensiyi **yine o üçlü** zorluyor, ama
+      UNIQUE indeks olarak. İki `char(26)` + bir `datetime(3)`, utf8mb4'te geniş bir kümelenmiş
+      indeks demek ve her ikincil indeks onun kopyasını taşır; ayrıca ADR-0004 bir AllisWell
+      satırının ULID `id`'si olduğunu söylüyor. Depoda iki emsal var ve bu tablo `task_tags`'e
+      değil `client_mutations`'a benziyor: kendi kimliği ve kendi ömrü olan bir günlük satırı.
+- [x] **`result` üç değerli, çünkü INSERT'in kendisi TALEP (claim).** Süpürge zamanlayıcıyla
+      koşuyor ve tik kaçırmış bir süpürge geriye bakar — aynı hatırlatıcıyla birden çok kez
+      karşılaşır. Satırı eklemek onu sahiplenmektir; unique indeks bunu atomik yapar, yani aynı
+      anda süpüren iki örnek ikisi birden gönderemez. Sonuç sonradan üstüne yazılır.
+- [x] **`reminders.status` KIPIRDATILMADI.** Vade anında `delivered` yazmak hatırlatıcı başına,
+      cihaz başına bir revizyon üretir ve tam da en yoğun dakikada her istemciye iner.
+- [x] **Kapsam bilerek genişletildi: rota da aboneliği kabul ediyor ve döndürüyor.** Planda bu
+      işin tanımı yalnız şemaydı, ama kolonları yazabilecek hiçbir kodun sahibi yoktu:
+      OPH-312 onları **okuyor**, OPH-313 ise istemci tarafı. *Hiçbir kodun yazamadığı bir kolon,
+      bu epic'in düzeltmek için var olduğu arızanın ta kendisi* — doğru ama çağrılmayan bir
+      rota (OPH-309). Bu yüzden gövde şeması, doğrulama ve serileştirici burada geldi;
+      OPH-313'e yalnız istemci işi kaldı.
+- [x] **Yarım abonelik reddediliyor** (`PUSH_SUBSCRIPTION_INCOMPLETE`). OPH-310'un yapılandırma
+      kuralının aynısı: yarım dolu bir satır kayıtlı görünür, her gönderici onu atlar, ve
+      sessizliği "zaten bir şey yoktu"dan ayırt edilemez.
+- [x] **İki anahtar geri DÖNMÜYOR.** `push_p256dh` ve `push_auth` bu tarayıcıya giden yükü
+      şifreleyen şey; onları kaydeden istemcide zaten var, geri yankılamak sızmış bir cevabın
+      değerini büyütmekten başka bir şey yapmıyor. `pushEndpoint`, `invalidAt` ve `lastPushAt`
+      dönüyor — OPH-313'ün dürüstlük banner'ı "aboneliğin öldü" diyebilsin diye.
+- [x] **Ölü işaretini yalnız YENİ kimlik bilgisi temizliyor.** Düz bir heartbeat temizlemiyor:
+      tarayıcının iptal ettiği bir abonelik, sekme kaç kez açılırsa açılsın iptal kalır.
+      **Negatif kontrol:** temizleme koşulsuz yapılınca test kırmızı
+      (`expected null to be '2026-09-01T…'`), koşul geri konunca yeşil.
+- [x] **Jeton varsa sağlayıcı `fcm`.** Bu sistemde başka türü yok — iPhone'lara FCM'in APNs
+      relay'iyle gidiliyor (ADR-0038). Yalnız jeton gönderen eski bir istemci böylece
+      göndericiye belirsiz kalmıyor.
+- [x] `fakedb.js`: yeni kolon varsayılanları, `reminder_push_log` tablosu ve **unique indeksi**
+      (süpürge testleri talebi gerçekten ölçebilsin diye).
+- **Bulgu (ölçüldü, kayda değer):** rotanın `additionalProperties: false`'ı **reddetmiyor,
+      TEMİZLİYOR** — Fastify onu Ajv'nin `removeAdditional`'ıyla derliyor. Koruma gerçek
+      (işleyici anahtarı hiç görmüyor) ama mekanizma 400 değil. Test bunu durum koduna değil
+      **özelliğe** bağlıyor: gönderilen `invalidAt` yazılmıyor.
+- **Doğrulama (2026-09-15):** API birim süiti **834**, **831 geçti** (+5); `eslint`/`prettier`
+      temiz; on bir kapının on biri yeşil; `openapi.json`/`API.md` yeniden üretildi (82 yol,
+      cihaz şeması yeni alanlarla). Kalan 3 kırmızı yine `ai-chat-transport` zamanlama testleri.
+- **Yerelde KOŞMADIĞIM tek şey, açıkça:** `db:migrate` → `db:rollback --all` → `db:migrate`.
+      MySQL/MariaDB gerektiriyor; sandbox'ta imaj yok ve disk %83, başka projelerin çalışan
+      yığınlarıyla paylaşılıyor. CI bunu **iki motorda** koşuyor ve asıl kanıt o — izlendi.
+      Ölçülen risk yabancı anahtar collation eşleşmesiydi: `reminders`, `notification_devices`
+      ve yeni tablo aynı `resolveCollation` yardımcısını kullanıyor ve çözüm knex örneği başına
+      önbelleklendiği için üçü de aynı collation'la kuruluyor.
 
 ### OPH-312 — Taşıyıcı: FCM v1 ve Web Push
 

@@ -3,7 +3,34 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15d (**OPH-310 BİTTİ — push yapılandırması: kimlik yoksa
+**Last updated:** 2026-09-15e (**OPH-311 BİTTİ — taşıyıcı kolonları ve teslim
+günlüğü.** `notification_devices` bir Web Push aboneliğini taşıyabiliyor artık
+(endpoint + iki anahtar ayrı kolonlarda, çünkü `push_token` tek dize ve bir FCM
+jetonu tek dize; endpoint tek başına o 512 karakteri aşabiliyor), üstüne
+göndericinin sahip olduğu `invalid_at` ve `last_push_at`. Yeni `reminder_push_log`
+tablosu **gönderimi idempotent yapan şey**: süpürge zamanlayıcıyla koşuyor ve tik
+kaçırmışsa geriye bakıyor, yani aynı hatırlatıcıyla birden çok kez karşılaşacak —
+satırı EKLEMEK onu sahiplenmek, unique indeks bunu atomik yapıyor, sonuç
+sonradan üstüne yazılıyor. **Plandan bir sapma:** birincil anahtar üçlü değil,
+ULID `id` + üçlü üstünde UNIQUE — idempotensiyi yine o üçlü zorluyor ama iki
+`char(26)` ve bir `datetime(3)` geniş bir kümelenmiş indeks demek ve ADR-0004 bir
+satırın ULID id'si olduğunu söylüyor; depodaki emsal `task_tags` değil
+`client_mutations`. **Kapsamı bilerek genişlettim:** planda bu iş yalnız şemaydı,
+ama kolonları yazabilecek kodun sahibi yoktu (OPH-312 okuyor, OPH-313 istemci) —
+*hiçbir kodun yazamadığı bir kolon, bu epic'in düzeltmek için var olduğu arızanın
+ta kendisi*. Rota artık aboneliği kabul ediyor, yarım aboneliği reddediyor, ve iki
+anahtarı geri döndürmüyor. Ölü işaretini yalnız yeni kimlik bilgisi temizliyor;
+düz heartbeat temizlemiyor — **negatif kontrolü yapıldı**. **Ölçülen bulgu:**
+rotanın `additionalProperties: false`'ı reddetmiyor, TEMİZLİYOR (Fastify onu
+Ajv'nin `removeAdditional`'ıyla derliyor) — koruma gerçek ama mekanizma 400
+değil, test bu yüzden durum koduna değil özelliğe bağlandı. **Doğrulama:** API
+birim süiti **834 / 831 geçti** (+5), `eslint`/`prettier` temiz, on bir kapının
+on biri yeşil. **Yerelde koşmadığım tek şey açıkça:** migration up/down —
+MySQL/MariaDB gerekiyor, sandbox'ta imaj yok ve disk %83; CI iki motorda koşuyor
+ve asıl kanıt o. Sıradaki iş: **OPH-312** (`lib/push/` taşıyıcısı: FCM v1 +
+Web Push, token hijyeni).)
+
+Önceki blok: 2026-09-15d (**OPH-310 BİTTİ — push yapılandırması: kimlik yoksa
 özellik yok.** Hâlâ gönderen kod yok; olan şey yapılandırma ve onu boot'ta ölçen
 kontroller. **Ana anahtar koymadım** — `storage` idiomu: kimlik bilgilerinin
 kendisi anahtar. Hiçbiri yoksa kayıt yok, gönderim yok, davranış bugünküyle

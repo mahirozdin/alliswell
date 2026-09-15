@@ -5432,6 +5432,27 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "pushProvider": {
+                            "type": "string",
+                            "nullable": true,
+                            "enum": [
+                              "fcm",
+                              "webpush",
+                              null
+                            ]
+                          },
+                          "pushEndpoint": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "invalidAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "lastPushAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
                           "lastSeenAt": {
                             "type": "string"
                           },
@@ -5507,6 +5528,30 @@
                     "type": "string",
                     "nullable": true,
                     "maxLength": 16
+                  },
+                  "pushProvider": {
+                    "type": "string",
+                    "nullable": true,
+                    "enum": [
+                      "fcm",
+                      "webpush",
+                      null
+                    ]
+                  },
+                  "pushEndpoint": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 2048
+                  },
+                  "pushP256dh": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 128
+                  },
+                  "pushAuth": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 64
                   }
                 }
               }
@@ -5568,6 +5613,27 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "pushProvider": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "fcm",
+                        "webpush",
+                        null
+                      ]
+                    },
+                    "pushEndpoint": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "invalidAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lastPushAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
                     "lastSeenAt": {
                       "type": "string"
                     },
@@ -5621,6 +5687,27 @@
                       "nullable": true
                     },
                     "locale": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "pushProvider": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "fcm",
+                        "webpush",
+                        null
+                      ]
+                    },
+                    "pushEndpoint": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "invalidAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lastPushAt": {
                       "type": "string",
                       "nullable": true
                     },

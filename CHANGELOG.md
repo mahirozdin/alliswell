@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A device can say how to reach it, and the server can remember what it
+  already sent.** A browser subscription is an address plus two keys, which does
+  not fit in the single field an Android token needs, so it gets its own — and
+  the device registry now takes one and gives back everything except those keys,
+  which the browser already has and nothing is served by echoing. Half a
+  subscription is refused rather than stored: a half-filled row looks registered
+  and is skipped by everything that reads it, and silence is indistinguishable
+  from "nothing was due". A subscription the browser revoked stays revoked
+  however often you open the tab — only registering a new one brings the device
+  back. Alongside it, a small delivery log whose whole job is to make sending
+  something twice impossible: claiming a row is what reserves a delivery, so two
+  servers sweeping at the same moment cannot both send the same reminder.
+  Nothing sends anything yet. OPH-311,
+  [ADR-0038](docs/adr/0038-server-to-device-delivery.md).
+
 - **An instance can be told how to send a push, or not be told at all.** There is
   still nothing sending one — this is the configuration and the boot-time checks
   that will govern it. The credentials are the switch: set none of them and

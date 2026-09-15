@@ -1,4 +1,5 @@
 import { toIso } from '../lib/serialize.js';
+import { coded } from '../lib/errors.js';
 import { deviceLabel } from '../db/sessions.js';
 
 /**
@@ -22,6 +23,7 @@ import { deviceLabel } from '../db/sessions.js';
  */
 
 const PLATFORMS = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
+const PUSH_PROVIDERS = ['fcm', 'webpush'];
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
 const errorResponseSchema = {
@@ -44,6 +46,10 @@ const deviceSchema = {
     deviceName: { type: ['string', 'null'] },
     appVersion: { type: ['string', 'null'] },
     locale: { type: ['string', 'null'] },
+    pushProvider: { type: ['string', 'null'], enum: [...PUSH_PROVIDERS, null] },
+    pushEndpoint: { type: ['string', 'null'] },
+    invalidAt: { type: ['string', 'null'] },
+    lastPushAt: { type: ['string', 'null'] },
     lastSeenAt: { type: 'string' },
     createdAt: { type: 'string' },
     updatedAt: { type: 'string' },
@@ -58,10 +64,50 @@ function serializeDevice(row) {
     deviceName: row.device_name ?? null,
     appVersion: row.app_version ?? null,
     locale: row.locale ?? null,
+    pushProvider: row.push_provider ?? null,
+    pushEndpoint: row.push_endpoint ?? null,
+    // `push_p256dh` and `push_auth` are deliberately absent. They are what
+    // encrypts a payload TO this browser; the client that registered them
+    // already has them, so echoing them only widens what a leaked response is
+    // worth.
+    invalidAt: toIso(row.invalid_at) ?? null,
+    lastPushAt: toIso(row.last_push_at) ?? null,
     lastSeenAt: toIso(row.last_seen_at),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };
+}
+
+/** Is this body registering something a sender could actually send to? */
+function carriesCredentials(body) {
+  return Boolean(body.pushToken || body.pushEndpoint);
+}
+
+/**
+ * A subscription is an endpoint AND two keys, or it is not a subscription.
+ *
+ * The config block refuses half a VAPID pair for the same reason (OPH-310): a
+ * half-filled row looks registered, is skipped by every sender that reads it,
+ * and its silence is indistinguishable from "nothing was due".
+ */
+function assertDeliverable(app, body) {
+  if (body.pushProvider !== 'webpush') return;
+  const required = {
+    pushEndpoint: body.pushEndpoint,
+    pushP256dh: body.pushP256dh,
+    pushAuth: body.pushAuth,
+  };
+  const missing = Object.entries(required)
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  if (missing.length > 0) {
+    throw coded(
+      app.httpErrors.badRequest(
+        `A web push subscription needs ${missing.join(', ')} as well as the endpoint`,
+      ),
+      'PUSH_SUBSCRIPTION_INCOMPLETE',
+    );
+  }
 }
 
 export default async function notificationDeviceRoutes(app) {
@@ -86,6 +132,10 @@ export default async function notificationDeviceRoutes(app) {
             deviceName: { type: ['string', 'null'], maxLength: 255 },
             appVersion: { type: ['string', 'null'], maxLength: 64 },
             locale: { type: ['string', 'null'], maxLength: 16 },
+            pushProvider: { type: ['string', 'null'], enum: [...PUSH_PROVIDERS, null] },
+            pushEndpoint: { type: ['string', 'null'], maxLength: 2048 },
+            pushP256dh: { type: ['string', 'null'], maxLength: 128 },
+            pushAuth: { type: ['string', 'null'], maxLength: 64 },
           },
         },
         response: {
@@ -98,6 +148,7 @@ export default async function notificationDeviceRoutes(app) {
     async (request, reply) => {
       const { deviceId } = request.params;
       const body = request.body;
+      assertDeliverable(app, body);
       const values = {
         user_id: request.user.id,
         platform: body.platform,
@@ -105,6 +156,22 @@ export default async function notificationDeviceRoutes(app) {
         ...('deviceName' in body ? { device_name: body.deviceName } : {}),
         ...('appVersion' in body ? { app_version: body.appVersion } : {}),
         ...('locale' in body ? { locale: body.locale } : {}),
+        ...('pushEndpoint' in body ? { push_endpoint: body.pushEndpoint } : {}),
+        ...('pushP256dh' in body ? { push_p256dh: body.pushP256dh } : {}),
+        ...('pushAuth' in body ? { push_auth: body.pushAuth } : {}),
+        // A token is an FCM token — this system has no other kind, because
+        // iPhones are reached through FCM's APNs relay (ADR-0038). Saying so
+        // here keeps an older client that sends only a token unambiguous to the
+        // sender instead of leaving it to guess.
+        ...('pushProvider' in body
+          ? { push_provider: body.pushProvider }
+          : body.pushToken
+            ? { push_provider: 'fcm' }
+            : {}),
+        // Registering credentials is a device saying it is reachable again, so
+        // it clears the dead mark. A plain heartbeat does NOT: a subscription
+        // the browser revoked stays revoked however often the tab is opened.
+        ...(carriesCredentials(body) ? { invalid_at: null } : {}),
         last_seen_at: new Date(),
         updated_at: new Date(),
       };

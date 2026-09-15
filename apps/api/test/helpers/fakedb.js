@@ -46,6 +46,13 @@ const UNIQUE_INDEXES = {
     },
   ],
   files: [{ name: 'files.uq_files_storage_key', cols: ['storage_key'] }],
+  // OPH-311: the claim. Two sweeps meeting the same reminder — one insert wins.
+  reminder_push_log: [
+    {
+      name: 'reminder_push_log.uq_reminder_push',
+      cols: ['reminder_id', 'device_id', 'fire_at'],
+    },
+  ],
   // NULL columns are skipped below, exactly like MySQL — which is what leaves
   // `kind = 'url'` rows (target_id NULL) deliberately un-deduped (OPH-197).
   quick_links: [
@@ -113,6 +120,7 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
     sync_revisions: [],
     client_mutations: [],
     notification_devices: [],
+    reminder_push_log: [],
     calendar_accounts: [],
     calendar_event_links: [],
     calendar_external_events: [],
@@ -204,7 +212,14 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
       device_name: null,
       app_version: null,
       locale: null,
+      push_provider: null,
+      push_endpoint: null,
+      push_p256dh: null,
+      push_auth: null,
+      invalid_at: null,
+      last_push_at: null,
     }),
+    reminder_push_log: () => ({ result: 'pending', sent_at: null }),
     calendar_external_events: () => ({
       summary: null,
       location: null,

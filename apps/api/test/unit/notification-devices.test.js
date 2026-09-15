@@ -152,6 +152,89 @@ describe('notification device registry (OPH-060)', () => {
     expect(created.json()).toMatchObject({ deviceName: 'Mahir Pixel' });
   });
 
+  it('a browser subscription round-trips, and its keys do not (OPH-311)', async () => {
+    // A Web Push subscription is an endpoint plus two keys. `push_token` is 512
+    // characters and an FCM registration token; an endpoint alone can be
+    // longer, so the subscription gets its own columns.
+    const created = await register(DEVICE, {
+      platform: 'web',
+      pushProvider: 'webpush',
+      pushEndpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
+      pushP256dh: 'B'.repeat(87),
+      pushAuth: 'C'.repeat(22),
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({
+      pushProvider: 'webpush',
+      pushEndpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
+      invalidAt: null,
+      lastPushAt: null,
+    });
+    // The two keys are what encrypts a payload TO this browser. The client
+    // already has them; echoing them buys nothing and widens what a leaked
+    // response is worth.
+    expect(created.body).not.toContain('C'.repeat(22));
+    expect(created.json()).not.toHaveProperty('pushAuth');
+  });
+
+  it('refuses half a subscription (OPH-311)', async () => {
+    // Same rule as the config block: a half-filled subscription looks
+    // registered and cannot be sent to.
+    const res = await register(DEVICE, {
+      platform: 'web',
+      pushProvider: 'webpush',
+      pushEndpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('re-subscribing brings a device back from the dead (OPH-311)', async () => {
+    await register(DEVICE, { platform: 'web' });
+    // The sender marks a device whose endpoint answered 410 Gone.
+    tables.notification_devices[0].invalid_at = new Date('2026-09-01T00:00:00Z');
+
+    const again = await register(DEVICE, {
+      platform: 'web',
+      pushProvider: 'webpush',
+      pushEndpoint: 'https://fcm.googleapis.com/fcm/send/fresh',
+      pushP256dh: 'B'.repeat(87),
+      pushAuth: 'C'.repeat(22),
+    });
+    expect(again.json()).toMatchObject({ invalidAt: null });
+  });
+
+  it('a plain heartbeat leaves a dead subscription dead (OPH-311)', async () => {
+    // The other half of the rule above, and the one that matters: a browser
+    // that revoked its subscription stays revoked however often the tab is
+    // opened. Only NEW credentials say the device is reachable again.
+    await register(DEVICE, {
+      platform: 'web',
+      pushProvider: 'webpush',
+      pushEndpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
+      pushP256dh: 'B'.repeat(87),
+      pushAuth: 'C'.repeat(22),
+    });
+    const dead = new Date('2026-09-01T00:00:00Z');
+    tables.notification_devices[0].invalid_at = dead;
+
+    const heartbeat = await register(DEVICE, { platform: 'web' });
+    expect(heartbeat.json().invalidAt).toBe(dead.toISOString());
+  });
+
+  it('never lets a client write what the sender owns (OPH-311)', async () => {
+    // MEASURED: `additionalProperties: false` here STRIPS rather than refuses —
+    // Fastify compiles it with Ajv's removeAdditional. The protection is real
+    // either way (the handler never sees the key), and this pins the property
+    // rather than the status code, because the status code is not the point.
+    const res = await register(DEVICE, {
+      platform: 'web',
+      invalidAt: '2026-09-01T00:00:00.000Z',
+      lastPushAt: '2026-09-01T00:00:00.000Z',
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ invalidAt: null, lastPushAt: null });
+  });
+
   it('validates platform and requires auth', async () => {
     const badPlatform = await register(DEVICE, { platform: 'blackberry' });
     expect(badPlatform.statusCode).toBe(400);
