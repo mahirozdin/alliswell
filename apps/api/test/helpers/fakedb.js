@@ -318,8 +318,15 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
       if (index.cols.some((col) => candidate[col] === null || candidate[col] === undefined)) {
         continue;
       }
+      // Compared by VALUE, not by identity. `reminder_push_log.uq_reminder_push`
+      // (OPH-311) spans a datetime, and two Date objects for the same instant
+      // are never `===` — so a strict comparison quietly let through exactly
+      // the duplicate the index exists to stop, which is what the due sweep
+      // (OPH-315) relies on for idempotency.
       const clash = rows.some((row) =>
-        index.cols.every((col) => row[col] !== undefined && row[col] === candidate[col]),
+        index.cols.every(
+          (col) => row[col] !== undefined && sortValue(row[col]) === sortValue(candidate[col]),
+        ),
       );
       if (clash) {
         const err = new Error(

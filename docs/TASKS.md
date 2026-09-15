@@ -10517,25 +10517,49 @@ import kalıbının **altı** örneği var; aynı alt sistemin kendi örneği `s
 
 _**Burası §0'ın tadil edildiği yer.** Diğer her platformda sunucu bir ipucu; web'de **saat**._
 
-- [ ] **Süpürge** mevcut plugin+timer idiomuyla (`plugins/calendar-sync.js:39-49`:
-      `env !== 'test'` guard'ı, `timer.unref()`, `onClose` ile `clearInterval`).
-      `idx_reminders_due` üzerinden `status IN ('scheduled','snoozed')` ve `remind_at` pencerede.
-- [ ] **Web cihazlarına her zaman**, mobil cihazlara **yalnız bayatsa**
-      (`last_seen_at < reminders.updated_at`). Idempotenlik `reminder_push_log` PK'siyle.
-- [ ] **Tekrar-alert zinciri sunucuya TAŞINMAZ.** `ReminderProfile.offsets` cihaz-yerel bir
-      tercih (`providers.dart:39-41`'in gerekçesi) ve sunucuya taşımak ADR-0015'in reddettiği
-      alternatifti (`:178`). Sunucu tek atış yapar; zincir cihazın işi.
-- [ ] **`docs/PRIVACY.md` (EN **ve** TR) burada değişir.** *"today nothing is pushed from our
-      servers to them"* artık doğru değil. Yeni metin: hangi koşulda push gönderiliyor, içinde
-      ne var (**kimlikler ve sabit bir dize**), ne yok (**görev başlığı ve içeriği**).
+- [x] **Süpürge** mevcut plugin+timer idiomuyla indi: `plugins/push-due.js` +
+      `db/reminder-push.js`. `env !== 'test'` guard'ı, `timer.unref()`, `onClose` ile
+      `clearInterval` — `series-gc.js`'in kalıbı. Kimlik bilgisi yoksa **timer hiç
+      kurulmuyor**: gönderemeyecek bir kurulum her dakika bunu yeniden öğrenmez.
+- [x] **Vade anı `remind_at` DEĞİL — plandaki tek hata buydu.** Ertelenmiş bir hatırlatıcı
+      özgün `remind_at`'ini koruyup yeni anı `snoozed_until`'e yazıyor (`sync.js:776-784`).
+      `remind_at` süpürmek her ertelemeyi **kaçırırdı** (anı pencerenin gerisinde kalır) ve
+      günlüğe yanlış anı damgalardı — oysa `reminder_push_log.fire_at` tam olarak bir çalışı
+      diğerinden ayırmak için var. İki durum **iki ayrı sorgu**; bu aynı zamanda indeksi
+      kullanabilen tek şekil, çünkü `idx_reminders_due` `(status, remind_at)` ve iki farklı
+      kolon üzerindeki bir OR onu kullanamaz. **Enjeksiyon:** vade anı `remind_at`'e
+      sabitlenince test kırmızı.
+- [x] **Pencere GERİYE bakıyor, ileriye değil.** Web'de push alarmın kendisidir — service
+      worker onu geldiği anda gösterir, planlayacak bir şeyi yoktur — yani beş dakika erken
+      gönderim beş dakika erken çalmaktır. `[now - dueWindowSec, now]`: son tik'ten beri
+      vadesi gelenler, ki bu aynı zamanda kaçan bir tik'i kurtaran şey.
+- [x] **Web cihazlarına her zaman**, mobil cihazlara **yalnız bayatsa**
+      (`last_seen_at < reminders.updated_at`). Idempotenlik `reminder_push_log`'un
+      `uq_reminder_push` benzersiz indeksiyle: **satırı yazan turu sahipleniyor**, ikincisi
+      ER_DUP_ENTRY ile başkasının aldığını öğreniyor. **Enjeksiyon:** bayatlık kontrolü
+      kaldırılınca ve talep yok sayılınca ikisi de kırmızı.
+- [x] **Ulaşılamayacak bir cihaz TALEP EDİLMİYOR.** `pushTransport.providers` (bu turda
+      eklenen tek satır) tarayıcı-only bir kurulumun bir telefonu talep etmesini engelliyor:
+      talep etmek, bir daha denenmeyecek bir an için idempotenlik anahtarını yakmak olurdu.
+- [x] **Tekrar-alert zinciri sunucuya TAŞINMADI.** Sunucu tek atış yapıyor; `ReminderProfile`
+      cihaz-yerel kaldı (ADR-0015:178'in reddettiği alternatif).
+- [x] **`docs/PRIVACY.md` (EN **ve** TR) değişti.** *"today nothing is pushed from our servers
+      to them"* gitti; yerine **hangi iki durumda** push gönderildiği, içinde ne olduğu
+      (kimlikler + sabit bir iletinin **adı**, ör. `reminder_due`) ve ne olmadığı yazıldı.
       *"Your task titles and contents are not sent to Apple's, Google's, or anyone else's push
-      service"* cümlesi **aynen kalır** — tasarım onu doğru tutuyor.
-- [ ] **`docs/NOTIFICATIONS.md` §0 ve §3 tadil edilir** — §3 bugün web'i "best-effort, needs
-      Notification permission" diye tarif ediyor ve o izni isteyen kod yoktu; artık var ve
-      tablo kodla eşleşir (OPH-317 bunu ölçecek).
-- **Kabul:** aynı hatırlatıcı için süpürge iki kez koşar → **bir** push; değişiklikten sonra
-      senkron olmuş mobil cihaza push **gitmez**; web cihazına gider; `reminders.status`
-      değişmez ve revizyon üretmez.
+      service"* cümlesi **aynen duruyor** — tasarım onu doğru tutuyor.
+- [x] **`docs/NOTIFICATIONS.md` §0 ve §3 tadil edildi.** §0'a ADR-0038 §3'ün tadili yazıldı;
+      §3'te *"Windows/Linux/web"* maddesi **ikiye ayrıldı** — web artık kendi maddesi, çünkü
+      artık diğer ikisiyle aynı şeyi yapmıyor. *"treat as best-effort"* cümlesi gitti.
+- [x] **Test yardımcısında ölçülen bir kusur düzeltildi:** `fakedb.js`'in benzersizlik
+      denetimi `===` kullanıyordu, yani **datetime içeren bir indeks hiç çalışmıyordu** —
+      aynı anı taşıyan iki `Date` asla `===` değil. OPH-311 `uq_reminder_push`'u oraya
+      eklemişti ama sahte veritabanı onu uygulayamıyordu; artık `sortValue` ile **değere
+      göre** karşılaştırıyor. Kusur bu turda idempotenlik testi sayesinde ortaya çıktı.
+- **Kabul:** ✅ süpürge iki kez koşuyor → **bir** push (13 testin biri tam olarak bunu
+      ölçüyor); ✅ değişiklikten sonra senkron olmuş mobil cihaza push gitmiyor, bayat olana
+      gidiyor; ✅ web cihazına her hâlde gidiyor; ✅ `reminders.status` ve `revision`
+      değişmiyor, `sync_revisions` boş kalıyor. API süiti **863 geçti** (77 dosya).
 
 ### OPH-316 — Ayar: "Bu tarayıcıda bildirim"
 

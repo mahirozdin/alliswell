@@ -35,6 +35,17 @@ tail / v2) only as a *wake-up hint* — IDs only, never content (§8.3) — and 
 a backup for devices whose local schedule went stale. The OPH-060 device
 registry is the inventory of installs that may need those wake-ups.
 
+**Amended for one platform (Epic 30, [ADR-0038](adr/0038-server-to-device-delivery.md)
+§3): on the web the server IS the clock.** Every other platform has a way to ask
+the OS to wake it at an instant; no browser has one, and a closed tab schedules
+nothing. So a due web reminder is delivered by a push from the server at fire
+time (OPH-315), and the service worker shows it (OPH-314) — which is a
+delivery, not a schedule. The rule above is unchanged everywhere else: the
+device stays the clock, and a push is a hint or a stale-device backup.
+Staleness is one comparison — `notification_devices.last_seen_at` against
+`reminders.updated_at` — so a device that synced after the change is never
+pushed to, and never warns twice.
+
 ## 1. Android
 
 **Exact scheduling.** Normal reminders use `AlarmManager.setExactAndAllowWhileIdle`
@@ -471,10 +482,9 @@ different question the task list already answers.
   available); flutter_local_notifications supports it. The urgent caf is not
   bundled in the macOS Runner yet — macOS stays on the default sound (a
   named-but-missing sound file would mean NO sound).
-- **Windows/Linux/web**: no exact-wake guarantees to a closed app. The
+- **Windows/Linux**: no exact-wake guarantees to a closed app. The
   running app is its own alarm: the sync engine already ticks — an in-app
   alarm overlay + OS toast (best effort) fire from a foreground timer wheel.
-  Web additionally needs Notification permission; treat as best-effort.
   **Shipped 2026-07-19 (OPH-143):** the in-app overlay is `AlarmRingScreen`,
   driven by `AlarmOverlayController` (watches the replica's alarm feed + a
   foreground timer wheel armed to the next urgent fire). It is the ONLY alarm
@@ -489,6 +499,15 @@ different question the task list already answers.
   so and offers a manual "start the sound": a silent alarm that looks like it is
   ringing is the one outcome this section forbids. An `AlarmDegradationBanner` on Home surfaces the "never fail silently"
   rule when notifications are off or Android exact alarms are denied.
+- **Web**: the running tab is its own alarm exactly as above, and for a tab
+  that is NOT running the server sends the notification at fire time
+  (§0's amendment, ADR-0038 §3). Notification permission is asked for
+  explicitly (OPH-313) and the gateway says so when it is missing, when the
+  server has no VAPID key, or when the subscription was revoked — three
+  states in which nothing would arrive, and none of which may fail silently.
+  A push carries identifiers only; the service worker reads the words from the
+  cache the app wrote (OPH-314), so a browser is the one platform where the
+  server is the clock and STILL never sees the text it rings about.
 
 ## 4. Implementation plan (OPH-061…064) — SHIPPED 2026-07-15
 

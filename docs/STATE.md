@@ -3,7 +3,39 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15h (**OPH-314 BİTTİ — service worker'ın içi.**
+**Last updated:** 2026-09-15i (**OPH-315 BİTTİ — epic ilk kez GERÇEKTEN gönderiyor.**
+`db/reminder-push.js` + `plugins/push-due.js`: vadesi gelen hatırlatıcıları bulan,
+kimin haberi olmadığına karar veren ve bir kez gönderen süpürge. **Turun cümlesi:
+vade anı `remind_at` değildir.** Ertelenmiş bir hatırlatıcı özgün `remind_at`'ini
+koruyup yeni anı `snoozed_until`'e yazıyor (`sync.js:776-784`), yani planın yazdığı
+gibi `remind_at` süpürmek **her ertelemeyi kaçırırdı** ve günlüğe yanlış anı
+damgalardı — oysa `reminder_push_log.fire_at` tam olarak bir çalışı diğerinden
+ayırmak için var. İki durum iki ayrı sorgu; bu ayrıca indeksi kullanabilen tek
+şekil, çünkü `idx_reminders_due` `(status, remind_at)` ve iki kolon üzerindeki bir
+OR onu kullanamaz. **İkinci ölçüm: pencere geriye bakıyor.** Web'de push alarmın
+kendisi (SW onu geldiği anda gösterir, planlayacak bir şeyi yok), yani ileriye
+bakan bir pencere erken çalmak demekti; `[now - dueWindowSec, now]` hem doğru an
+hem kaçan tik'in kurtarılması. **Idempotenlik hatırlamakla değil talep etmekle:**
+`uq_reminder_push`'a yazan tur işi sahipleniyor, ikincisi ER_DUP_ENTRY duyuyor —
+iki replika aynı dakikayı süpürebilir. Ulaşılamayan cihaz **talep bile edilmiyor**
+(`pushTransport.providers`): talep etmek, bir daha denenmeyecek bir an için
+anahtarı yakmak olurdu. `reminders.status` ve `revision` el değmemiş — teslim bir
+revizyon değil. **Yan bulgu, ve turun en pahalı olabilecek anı:** `fakedb.js`'in
+benzersizlik denetimi `===` kullanıyordu, yani **datetime taşıyan bir indeks hiç
+çalışmıyordu**; OPH-311 `uq_reminder_push`'u oraya eklemişti ama sahte veritabanı
+onu uygulayamıyordu ve idempotenlik testi ilk koşuşta bu yüzden kırmızı geldi.
+Artık değere göre karşılaştırıyor. **Belgeler:** `PRIVACY.md` EN+TR'de *"today
+nothing is pushed"* gitti, yerine iki durum ve yükün içeriği yazıldı; *"task titles
+… are not sent to Apple's, Google's, or anyone else's push service"* **aynen
+duruyor**. `NOTIFICATIONS.md` §0'a ADR-0038 §3'ün tadili, §3'te *"Windows/Linux/web"*
+maddesi ikiye ayrıldı — web artık diğer ikisiyle aynı şeyi yapmıyor.
+**Doğrulama:** API süiti **863 geçti** (77 dosya, 12'si bu turun yeni testleri),
+on bir kapı yeşil, üç enjeksiyonun üçü de kırmızıya düştü ve geri alındı.
+**Test edilemeyen, açıkça:** gerçek bir push servisine gerçek bir teslim — VAPID
+çifti ve FCM servis hesabı sahipte (ADR-0038 §7: kimlik yoksa özellik yok).
+Sıradaki iş: **OPH-316** (bu tarayıcıda bildirim: Kapalı / Sessiz / Sesli).)
+
+Önceki blok: 2026-09-15h (**OPH-314 BİTTİ — service worker'ın içi.**
 `push` ve `notificationclick` geldi; **worker hiçbir karar vermiyor** — çeviri
 yapmıyor, seçim yapmıyor, veritabanını okumuyor. Sözcükler cihazın kendi
 deposundan geliyor, uygulama onları çevrilmiş ve gizlilik modu uygulanmış hâlde

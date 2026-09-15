@@ -90,9 +90,23 @@ depo arasında aktarılır. Barındırdığımız hizmette dosya başına sını
 
 Hatırlatıcılar ve alarmlar **cihazınızda, yerel olarak** planlanır ve çalar. Görev
 başlıklarınız ve içerikleriniz Apple'ın, Google'ın veya başka birinin bildirim
-servisine gönderilmez. Yukarıda anlatılan cihaz kaydı yalnızca hangi cihazların
-var olduğunu bilmemizi sağlar; bugün sunucularımızdan cihazlara herhangi bir
-push bildirimi gönderilmemektedir.
+servisine gönderilmez.
+
+Sunucularımız iki durumda push gönderir ve ikisi de yalnızca kimlik taşır:
+
+- **Bir hatırlatıcının vakti geldiğinde ve cihazınız onu kendisi planlamış
+  olamıyorsa.** Tarayıcıda bu her seferdir: hiçbir tarayıcı, kapalı bir sekme
+  için bildirim planlayamaz — orada saat bizim sunucumuzdur. Telefonda veya
+  bilgisayarda ise yalnızca o cihaz hatırlatıcı değiştikten sonra hiç senkron
+  olmadıysa, yani doğru alarmı taşıyor olamıyorsa.
+- **Bir hatırlatıcı değiştiğinde**, cihaza "senkron ol" diyen sessiz bir ipucu
+  olarak. Neyin değiştiğini söylemez.
+
+Bildirim servisinden geçen şey: hatırlatıcının ve görevin kimlikleri, alarmın ait
+olduğu an ve — görmeniz istenen bir bildirim için — `reminder_due` gibi **sabit
+bir iletinin adı**; iletinin kendisi değil, metniniz hiç değil. O bildirimde
+okuduğunuz sözcükleri, kendi cihazınızdaki uygulama, zaten elinde olan
+kopyadan yazar.
 
 ## Google Takvim (isteğe bağlı)
 

@@ -23,6 +23,14 @@ import { assertPushPayload } from './payload.js';
 export function createPushTransport({ db, senders, log }) {
   return {
     /**
+     * Which providers this instance can actually reach. A caller that picks
+     * its own recipients (the due sweep) has to know before it claims one:
+     * claiming a device nobody can send to would burn the idempotency key for
+     * an instant that never gets another attempt.
+     */
+    providers: Object.freeze(Object.keys(senders)),
+
+    /**
      * @param {Array<object>} devices rows from `notification_devices`
      * @param {object} payload ids only — see payload.js
      * @returns {Promise<Array<{deviceId: string, outcome: string}>>}

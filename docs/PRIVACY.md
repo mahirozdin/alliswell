@@ -79,8 +79,23 @@ configure both of these differently.)
 
 Reminders and alarms are scheduled and fired **locally on your device**. Your
 task titles and contents are not sent to Apple's, Google's, or anyone else's
-push service. The device registry described above only tells us which devices
-exist; today nothing is pushed from our servers to them.
+push service.
+
+Our servers do send a push in two situations, and both carry identifiers only:
+
+- **When a reminder falls due and your device cannot have scheduled it itself.**
+  In a browser this is every time, because no browser can schedule a
+  notification for a tab that is closed — there, our server is the clock. On a
+  phone or a computer it happens only when that device has not synced since the
+  reminder changed, and so cannot be holding the right alarm.
+- **When a reminder changes**, as a silent hint telling the device to sync. It
+  says nothing about what changed.
+
+What crosses the push service is the reminder's and task's identifiers, the
+instant the alarm is for, and — for a notification you are meant to see — the
+**name** of a fixed message such as `reminder_due`, never the message and never
+your text. The words you read in that notification are put there by the app on
+your own device, from the copy it already holds.
 
 ## Google Calendar (optional)
 
