@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -18,6 +19,21 @@ import 'src/notifications/headless.dart';
 /// `vm:entry-point` is MANDATORY: this is invoked from a background isolate the
 /// app never started, so tree-shaking would otherwise remove it and the widget's
 /// buttons would silently do nothing in release builds only.
+/// The data message's entry point (OPH-322).
+///
+/// `vm:entry-point` for the same reason [widgetCallback] needs it: FCM invokes
+/// this on a background isolate the app never started, and tree-shaking would
+/// otherwise remove it in release builds only.
+///
+/// It reads NOTHING out of the message, and that is the design: the payload is
+/// `{v: 1, type: 'wake'}` and says nothing about what changed, because the
+/// device is about to sync and find out for itself (ADR-0038 §4). The turn
+/// itself is the same one the periodic worker runs — one implementation of
+/// "catch up and re-arm", three triggers.
+@pragma('vm:entry-point')
+Future<void> awPushBackgroundHandler(RemoteMessage message) =>
+    runHeadlessRefresh();
+
 @pragma('vm:entry-point')
 Future<void> widgetCallback(Uri? uri) async {
   // OPH-321 — the same dispatcher, a third caller. The periodic refresh is not
@@ -56,6 +72,13 @@ Future<void> main() async {
   // returns false — quickly — on any build without a Firebase config file, so
   // this costs a fork nothing (ADR-0025).
   await AwFirebase.bootstrap();
+  // OPH-322 — the wake-up hint's receiving end. Registered only when Firebase
+  // actually came up: the plugin reaches for a native message channel, and a
+  // build with no config file has none. Never on web, which is reached with
+  // VAPID and whose service worker is already registered (OPH-314).
+  if (!kIsWeb && AwFirebase.isConfigured) {
+    FirebaseMessaging.onBackgroundMessage(awPushBackgroundHandler);
+  }
   // `retry`: without it Riverpod 3 retries every failed provider ten times
   // behind a spinner — including errors no retry can fix (core/retry.dart).
   runApp(const ProviderScope(retry: awRetry, child: AllisWellApp()));

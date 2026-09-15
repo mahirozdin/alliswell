@@ -1,5 +1,5 @@
 import { newId } from '../lib/ids.js';
-import { buildReminderPayload } from '../lib/push/payload.js';
+import { buildReminderPayload, buildWakePayload } from '../lib/push/payload.js';
 
 /**
  * The due sweep (OPH-315, ADR-0038 §1/§2/§3) — the first thing in AllisWell
@@ -261,4 +261,54 @@ export async function sweepDuePushes(app, { now = new Date() } = {}) {
     app.log?.info?.({ due: reminders.length, claimed, sent, failed }, 'reminder push sweep');
   }
   return { due: reminders.length, claimed, sent, failed };
+}
+
+/**
+ * Tell a workspace's Android devices that something changed (OPH-322,
+ * ADR-0038 §1) — the first and most graceful of the three triggers.
+ *
+ * ── WHAT IT DOES NOT SAY ──────────────────────────────────────────────────
+ *
+ * `{v: 1, type: 'wake'}`, and that is the whole message. Not which reminder,
+ * not even that it WAS a reminder: the device is about to sync and find out
+ * for itself, so anything else would be a second copy of the truth travelling
+ * over somebody else's servers for no reason.
+ *
+ * ── AND WHO IT GOES TO ────────────────────────────────────────────────────
+ *
+ * Android only, and only devices holding an FCM token. iOS gets no data
+ * message at all (ADR-0038 §8: no background mode, a budgeted delivery, and a
+ * session under `kSecAttrAccessibleWhenUnlocked` that a locked wake cannot
+ * read) — iPhones are served by the visible fallback instead. A browser gets
+ * none either: a Web Push subscription is `userVisibleOnly`, so a "silent"
+ * push to a tab is a contradiction the browser resolves by showing its own
+ * generic card.
+ *
+ * Staleness is deliberately NOT consulted here. The sweep asks "who has not
+ * heard about this yet" because it fires at an instant that may be hours after
+ * the change; a wake fires BECAUSE of the change, so every device is behind by
+ * construction and the query would only cost a join to learn that.
+ */
+export async function sendWakeHint(app, { workspaceId }) {
+  if (!app.pushTransport || !app.pushTransport.providers.includes('fcm')) return 0;
+
+  const members = await app
+    .db('workspace_members')
+    .where({ workspace_id: workspaceId })
+    .select('user_id');
+  if (members.length === 0) return 0;
+
+  const devices = await app
+    .db('notification_devices')
+    .whereIn(
+      'user_id',
+      members.map((m) => m.user_id),
+    )
+    .where({ platform: 'android', push_provider: 'fcm' })
+    .whereNull('invalid_at')
+    .select();
+  if (devices.length === 0) return 0;
+
+  const results = await app.pushTransport.send(devices, buildWakePayload());
+  return results.filter((r) => r.outcome === 'sent').length;
 }

@@ -3,7 +3,34 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16e (**OPH-321 BİTTİ — epic'in en ağır işi.**
+**Last updated:** 2026-09-16f (**OPH-322 BİTTİ — ve planın bir iddiasını
+ölçerek çürüttü.** Uyandırma ipucu indi: `entity:changed` → `entityType ===
+'reminder'` → workspace üyelerinin **Android** cihazlarına `{v:1, type:'wake'}`.
+**Turun bulgusu fırtına kontrolünde:** plan `jobKey`'in tek başına yeteceğini
+varsayıyordu; ölçtüm, yetmiyor. Her iki runner da işi kuyruktan çıkarken
+anahtarı unutuyor — inline olan handler **başlarken** siliyor, BullMQ'nun
+`removeOnComplete`'i `jobId`'yi iş biter bitmez serbest bırakıyor — ve birkaç
+saniyeye yayılmış on yazma **dört** hint üretti. Bunun için ayrı bir test var
+(*"the job key alone is not enough"*), yani iddia yorumda değil ölçümde.
+Çözüm `createWakeGate`: workspace × dakika, bu instance'ın belleğinde; `jobKey`
+aynı tick'teki iki olay için ikinci savunma hattı olarak kalıyor. **Sınırı
+gizlemiyorum:** iki replika aynı dakika için birer hint gönderebilir — telefon
+on kez değil iki kez uyanır. Talep edilen bir satır (migration + her hatırlatıcı
+değişikliğinde bir yazma) tüm içeriği "senkron ol" olan bir mesaj için fazla.
+**Kimlere gitmiyor, ve nedenleri ayrı:** iOS'a veri mesajı yok (ADR-0038 §8,
+görünür yedekle çözülüyor); tarayıcıya da yok, çünkü Web Push aboneliği
+`userVisibleOnly` ve "sessiz" bir push tarayıcının kendi jenerik kartını
+göstermesi demek. **Bayatlık sorgusu bilerek yok:** hint değişiklik yüzünden
+atılıyor, her cihaz tanımı gereği geride. **İstemci ucu tek satır:**
+`onBackgroundMessage` → OPH-321'in `runHeadlessRefresh()`'i; işleyici mesajın
+içinden hiçbir şey okumuyor, çünkü okunacak bir şey yok. **Doğrulama:** API
+süiti **881 geçti** (+10), app süiti 1686, dokuz kapı + lint + format yeşil, iki
+enjeksiyon kırmızıya düşüp geri alındı. **Sahipte:** cihaz provası. Sıradaki iş:
+**OPH-323** — epic'in son işi: API belgeleri, ROADMAP, CHANGELOG ve sürüm
+hazırlığı (1.11.0 → 1.12.0, `pubspec` build +39 → +40, landing kapıları da
+tetiklenecek).)
+
+Önceki blok: 2026-09-16e (**OPH-321 BİTTİ — epic'in en ağır işi.**
 Arka plan turu: `readAlarms` + `applyOnce` + `headless.dart` + `AlarmRefreshWorker.kt`.
 **Turun merkezi disiplini paritede:** bildirim id'si çevrilmiş metnin hash'i, yani
 başsız izolat UI'dan farklı bir küme üretirse aynı alarm iki kez kurulur ve

@@ -10789,21 +10789,40 @@ emsal ise `main.dart:19-29`'daki `@pragma('vm:entry-point') widgetCallback`._
 
 ### OPH-322 — Uyandırma ipucu: değişiklik anında, sessizce
 
-- [ ] **Sunucu:** `entity:changed` (`db/sync.js:40-45`, commit **sonrası**) dinlenir;
-      şablon `plugins/mirror.js:23-27`. `entityType === 'reminder'` filtrelenir, workspace →
-      `workspace_members` → kullanıcılar.
-- [ ] **Fırtına kontrolü:** BullMQ `jobKey = wake:${userId}:${dakikaKovası}` ile coalesce
-      (`queue/runner.js:24-95`; Redis yokken inline drain, testler deterministik kalır).
-      Kuralı arka arkaya değiştiren bir kullanıcı **tek** uyandırma üretir.
-- [ ] **Yük yalnız `{v:1, type:'wake'}`** — hangi hatırlatıcı olduğu bile gereksiz; cihaz
-      sadece "senkron ol" duyar. `check:push-payload` bunu ölçer.
-- [ ] **İstemci:** Android'de `onBackgroundMessage` → OPH-321'in `headless.dart` girişi.
-      Aynı fonksiyon, üçüncü tetikleyici.
-- [ ] **iOS'a veri mesajı gönderilmez** — `UIBackgroundModes` yok ve teslim bütçeli;
-      iOS görünür yedekle (OPH-320) çözülüyor. ADR-0038 bunu yazıyor.
-- **Kabul:** web'den kurulan bir hatırlatıcı, Android'de uygulama **kapalıyken** OS alarmına
-      dönüşür ve kullanıcı arada **hiçbir bildirim görmez**; on kez üst üste düzenleme
-      tek uyandırma üretir.
+- [x] **Sunucu:** `plugins/push-wake.js` `entity:changed`'i dinliyor (`db/sync.js:40-45`,
+      commit **sonrası**), `entityType === 'reminder'` filtresi, şablon `mirror.js:23-27`.
+      Alıcılar workspace üyeleri (ADR-0038 §5); çözümleme **işleyicide**, dinleyicide değil.
+- [x] **Planın "tek uyandırma" iddiası ölçüldü ve yanlış çıktı.** `jobKey` tek başına
+      bursta yetmiyor: iki runner da işi kuyruktan çıkarken anahtarı unutuyor — inline olan
+      handler **başlarken** `pending`'den siliyor, BullMQ'nun `removeOnComplete`'i `jobId`'yi
+      iş biter bitmez serbest bırakıyor. Birkaç saniyeye yayılmış on yazma **dört** hint
+      üretti. Test bu gerçeği ayrıca ölçüyor (*"the job key alone is not enough"*), yani
+      yorum bir inanç değil.
+- [x] **Fırtına kontrolü `createWakeGate`'e taşındı:** workspace × dakika, bu instance'ın
+      belleğinde; `jobKey` ikinci savunma hattı olarak kalıyor (aynı tick'teki iki olay için).
+      **Sınırı adıyla yazılı:** iki replika aynı dakika için birer hint gönderebilir — en kötü
+      hâlde telefon on kez değil iki kez uyanır. Alternatif (`reminder_push_log` gibi talep
+      edilen bir satır) bir migration ve **her hatırlatıcı değişikliğinde** bir yazma demekti,
+      üstelik tüm içeriği "senkron ol" olan bir mesaj için. Kapı kendini de süpürüyor
+      (10 000 giriş üstü, 60 dakikadan eski).
+- [x] **Yük yalnız `{v:1, type:'wake'}`** — hangi hatırlatıcı olduğu bile yok; cihaz zaten
+      senkron olup öğrenecek. `check:push-payload` bunu ölçüyor ve `alert` taşımadığı için
+      FCM zarfına **`notification` bloğu girmiyor**: hint görünmez kalıyor (OPH-320'nin testi).
+- [x] **Yalnız Android.** iOS'a veri mesajı **gönderilmiyor** (ADR-0038 §8) — iPhone görünür
+      yedekle çözülüyor; tarayıcıya da gönderilmiyor, çünkü Web Push aboneliği
+      `userVisibleOnly` ve "sessiz" bir push tarayıcının kendi jenerik kartını göstermesiyle
+      sonuçlanırdı. **Bayatlık sorgusu bilerek yok:** hint değişiklik **yüzünden** atılıyor,
+      yani her cihaz tanımı gereği geride — sorgu yalnız bunu öğrenmek için bir join olurdu.
+- [x] **İstemci:** `FirebaseMessaging.onBackgroundMessage(awPushBackgroundHandler)`,
+      `@pragma('vm:entry-point')` ile ve **yalnız Firebase gerçekten açıldıysa** kaydediliyor.
+      İşleyici mesajın **içinden hiçbir şey okumuyor** ve doğrudan OPH-321'in
+      `runHeadlessRefresh()`'ini çağırıyor: "yetiş ve yeniden kur" işinin tek uygulaması,
+      üç tetikleyicisi.
+- **Kabul:** ✅ yük ve görünmezlik testli; ✅ on ardışık düzenleme **tek** uyandırma üretiyor
+      (kapı olmadan üretmiyor — enjeksiyonla gösterildi); ✅ iOS ve web hiç uyandırılmıyor.
+      ⏸️ "web'den kurulan bir hatırlatıcı Android'de uygulama kapalıyken OS alarmına dönüşüyor
+      ve kullanıcı arada hiçbir bildirim görmüyor" — **cihaz provası sahipte** (§0.0).
+      API süiti **881 geçti** (+10).
 
 ### OPH-323 — Belgeler, ROADMAP ve sürüm
 

@@ -14,6 +14,7 @@ import socketPlugin from './plugins/socket.js';
 import mirrorPlugin from './plugins/mirror.js';
 import pushPlugin from './plugins/push.js';
 import pushDuePlugin from './plugins/push-due.js';
+import pushWakePlugin from './plugins/push-wake.js';
 import calendarSyncPlugin from './plugins/calendar-sync.js';
 import storagePlugin from './plugins/storage.js';
 import storageGcPlugin from './plugins/storage-gc.js';
@@ -149,6 +150,9 @@ export async function buildApp({
   // OPH-315: the due sweep. After the transport, because it only runs when
   // there is something to send with.
   await app.register(pushDuePlugin);
+  // OPH-322: the wake-up hint. After the transport for the same reason, and
+  // after redis because the queue prefers it when it is there.
+  await app.register(pushWakePlugin);
   await app.register(calendarSyncPlugin);
   // Entitlements resolve BEFORE the overlay loads (EE-003): overlay modules
   // gate their own registration on `app.entitlements.has(...)` — the 404
