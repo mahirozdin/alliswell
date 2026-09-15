@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/sync/db/connection_native.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 
 /// OPH-081 — the replica's FIRST schema migration (v1 → v2: the calendar
@@ -308,6 +309,53 @@ void main() {
           )
           .get();
       expect(indexes, hasLength(1));
+
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 26);
+      await db.close();
+    },
+  );
+
+  // OPH-318 — the upgrade every existing install actually performs: a replica
+  // written with the old rollback journal, opened for the first time by a
+  // build that asks for WAL. The file shape changes (`-wal`/`-shm` siblings
+  // appear) at the same moment the schema migration runs, and the replica is
+  // where the OUTBOX lives — a write that never reached the server is the one
+  // kind of data this app can lose for good.
+  test(
+    'an old install switches to WAL without losing what it was holding',
+    () async {
+      driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+      await seedV1Database();
+      expect(File('${file.path}-wal').existsSync(), isFalse);
+
+      final db = AwDatabase(
+        DatabaseConnection(
+          NativeDatabase(
+            file,
+            setup: (raw) {
+              for (final pragma in awSqlitePragmas) {
+                raw.execute(pragma);
+              }
+            },
+          ),
+        ),
+      );
+
+      // The queued write from before the upgrade — the thing that must not be
+      // lost — and the row it belongs to.
+      final pending = await db.select(db.pendingMutations).get();
+      expect(pending, hasLength(1));
+      expect(pending.single.entityId, 'T1');
+
+      final task = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals('T1'))).getSingle();
+      expect(task.title, 'v1 tarihinden kalma iş');
+
+      final mode = await db.customSelect('pragma journal_mode').getSingle();
+      expect(mode.data.values.first.toString().toLowerCase(), 'wal');
+      expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
       expect(version.data['user_version'], 26);

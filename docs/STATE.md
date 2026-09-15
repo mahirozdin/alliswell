@@ -3,7 +3,33 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16a (**OPH-316 BİTTİ — ofisin istediği şey: pencere, ses değil.**
+**Last updated:** 2026-09-16b (**OPH-318 BİTTİ — replikanın iki yazarı vardı ve
+hep vardı.** `journal_mode = WAL` + `busy_timeout = 5000`, `awSqlitePragmas`
+sabitinde (satır içi değil: test dosyayı uygulamanın açtığı gibi açıp pragmaların
+gerçekten tuttuğunu ölçebilsin). Widget'ın arka plan izolatı bugün, uygulama
+açıkken, aynı dosyaya ikinci bir bağlantı açıyor — yazması tek ifade olduğu için
+kurtarıyordu; senkron pull'un tek uzun transaction'ı o şansı ortadan kaldırıyor.
+**Ölçülen kabul:** bir bağlantı açık yazma transaction'ı tutarken ikinci bağlantı
+okuyabiliyor, commit'ten sonra iki satırı da görüyor; WAL'ı çıkarınca üç test
+kırmızı. WAL'ın **dosyanın** özelliği olduğu ayrıca ölçüldü — ikinci açan miras
+alıyor. **Migration testi artık yükseltme yolunu da ölçüyor:** v1 replikası eski
+journal ile kuruluyor, uygulamanın pragmalarıyla açılıyor, `-wal` beliriyor ve
+**outbox'taki bekleyen mutation yerinde duruyor** — replika sadece önbellek değil,
+sunucuya ulaşmamış yazma orada. **İkinci parça, `core/app_liveness.dart`:** resume'da
+yazılan, pause/detach'te silinen bir "foreground since" damgası, kökte tek
+provider'la izleniyor (oturum kapısının altında değil — "uygulama çalışıyor mu" bir
+oturum sorusu değil). **Damga expire oluyor** ve gerekçesi ölçülmüş bir korku: OS ön
+plandaki uygulamayı öldürürse `markBackground` hiç koşmaz ve süresiz damga o cihazda
+arka plan tazelemesini sonsuza kadar sessizce kapatırdı. **Açıkça söylenen:**
+damganın tüketicisi henüz yok; arka plan turu OPH-321'de doğuyor, sözleşmenin sırası
+`318 → 321`. **Doğrulama:** app süiti **1675 geçti** (+11), sekiz kapı yeşil, iki
+enjeksiyon kırmızıya düşüp geri alındı. **Önceki bloğun düzeltmesi:** orada
+"sıradaki iş OPH-317" yazıyordu; sözleşmenin bağlayıcı sırası 317'yi anlattığı
+platformların **sonrasına** koyuyor (matris inmemiş bir platformu tarif edemez).
+Sıradaki iş: **OPH-319** (`firebase_messaging` ve token kaydı; ADR-0025 kalıbı —
+config yoksa no-op, web'e Firebase girmez).)
+
+Önceki blok: 2026-09-16a (**OPH-316 BİTTİ — ofisin istediği şey: pencere, ses değil.**
 Kapalı / **Sessiz (varsayılan)** / Sesli, cihaz-yerel (`web_alert_mode.dart` +
 `PersistedChoice`), kart yalnız web'de. **Turun kararı: "Kapalı" aboneliği
 bırakıyor.** Sessiz bir service worker seçeneği yok — push aboneliği

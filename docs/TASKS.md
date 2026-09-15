@@ -10621,16 +10621,37 @@ sınıfı kapatır._
 
 _Bu iş #15'in ön koşulu ama kökü daha eski: `widget_callback.dart:39` bugün, uygulama açıkken,
 aynı dosyaya ikinci bir `AwDatabase` açıyor. Yazma kısa olduğu için kurtarıyor. Senkron pull'un
-tek uzun transaction'ı (`sync_applier.dart:27`) bu şansı ortadan kaldırır._
+tek uzun transaction'ı (`sync_applier.dart:25`) bu şansı ortadan kaldırır._
 
-- [ ] **`connection_native.dart:16`'ya `setup:`** — `pragma journal_mode = WAL` ve
-      `pragma busy_timeout = 5000`. drift WAL'ı **açıkça istenmeden** açmıyor.
-- [ ] **Dosya şekli değişiyor** (`-wal`/`-shm` kardeş dosyaları) → `test/sync/migration_test.dart`
-      yeniden koşar; yükseltme yolunda veri kaybı olmadığı gösterilir.
-- [ ] **Arka plan turu, uygulama canlıyken no-op olur:** uygulama ön plana geldiğinde bir
-      "foreground since" damgası yazar; worker onu görürse hiç çalışmaz. WAL'ın üstüne ikinci
-      bir emniyet; ~10 satır.
-- **Kabul:** aynı anda bir uzun yazma ve bir okuma → `SQLITE_BUSY` yok; migration testi yeşil.
+- [x] **`connection_native.dart`'a `setup:`** — `pragma journal_mode = WAL` ve
+      `pragma busy_timeout = 5000`. drift WAL'ı açıkça istenmeden açmıyor. Pragmalar
+      **satır içi değil, `awSqlitePragmas` sabitinde**: test dosyayı uygulamanın açtığı gibi
+      açıp pragmaların gerçekten tuttuğunu ölçebilsin diye (kopya bir liste, ölçmediğin bir
+      liste olurdu).
+- [x] **Dosya şekli değişiyor ve yükseltme yolu gösterildi.** `migration_test.dart`'a yeni
+      vaka: v1 replikası **eski journal ile** kuruluyor (`-wal` kardeşi yok), sonra
+      uygulamanın pragmalarıyla açılıyor — migration koşuyor, `user_version` 26 oluyor,
+      `-wal` beliriyor **ve outbox'taki bekleyen mutation ile v1 görevi yerinde duruyor.**
+      Replika sadece önbellek değil, **outbox** orada: sunucuya hiç ulaşmamış bir yazma, bu
+      uygulamanın kalıcı olarak kaybedebileceği tek veri.
+- [x] **Kabul ölçüldü:** `replica_concurrency_test.dart` — bir bağlantı açık yazma
+      transaction'ı tutarken ikinci bağlantı **okuyabiliyor**; commit'ten sonra iki satırı da
+      görüyor. WAL pragmasını çıkarınca üç test kırmızıya düşüyor (enjeksiyon yapıldı, geri
+      alındı). WAL'ın **dosyanın** özelliği olduğu da ayrıca ölçüldü: ikinci açan miras alıyor.
+- [x] **"foreground since" damgası** (`core/app_liveness.dart`, ~60 satır belge dahil):
+      resume'da yazılıyor, pause/detach'te siliniyor, kökte tek bir provider'la izleniyor
+      (`app.dart` — oturum kapısının **altında değil**: "uygulama çalışıyor mu" bir oturum
+      sorusu değil). SharedPreferences'ta, çünkü arka plan izolatı orayı okuyabiliyor.
+- [x] **Damga EXPIRE oluyor, ve gerekçesi ölçülmüş bir korku:** OS ön plandaki bir uygulamayı
+      öldürürse `markBackground` hiç koşmuyor ve süresiz bir damga o cihazda arka plan
+      tazelemesini **sonsuza kadar, sessizce** kapatırdı — önlediği hatadan beteri. Bir saatlik
+      sınır: bedeli, kesintisiz uzun bir ön plan oturumunda olsa olsa bir gereksiz senkron,
+      ki o senkron idempotent.
+- [~] **Damganın tüketicisi henüz yok** — `isForeground()` bugün hiçbir yerden çağrılmıyor.
+      Bilinçli: arka plan turu **OPH-321'de** doğuyor ve sözleşmenin sırası `318 → 321`.
+      Primitif testli olarak indi, çağıran orada yazılacak.
+- **Kabul:** ✅ aynı anda uzun yazma + okuma → `SQLITE_BUSY` yok; ✅ migration testi yeşil ve
+      artık yükseltme yolunu **WAL ile** de ölçüyor. App süiti **1675 geçti** (+11).
 - **Bulgu (kapsam DIŞI):** Android bildirim kanalı `.tr()` ile adlandırılıyor ve kanal
       değiştirilemiyor — kullanıcı **uygulama dilini değiştirirse** sistem ayarlarındaki kanal
       adı eski dilde kalıyor (`gateway_local.dart:483-487`, `:22-26`). Ölçüldü; kendi turunu

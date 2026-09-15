@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
+import 'core/app_liveness.dart';
 import 'features/quick_access/ui/quick_access_bubble_host.dart';
 import 'i18n/i18n.dart';
 import 'router.dart';
@@ -25,6 +26,10 @@ class AllisWellApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    // OPH-318: a background refresh must not sync the same replica the running
+    // app is already syncing. Watched here, not under a sign-in gate: whether
+    // the app is running is not a question about a session.
+    ref.watch(appLivenessTrackerProvider);
     return ListenableBuilder(
       listenable: AwI18n.instance,
       builder: (context, _) => MaterialApp.router(
