@@ -1,4 +1,4 @@
-import { assertPushPayload } from './payload.js';
+import { alertTextFor, assertPushPayload } from './payload.js';
 
 /**
  * The one place a push is actually sent, and the only place a device is
@@ -57,7 +57,16 @@ export function createPushTransport({ db, senders, log }) {
                   },
                   payload,
                 )
-              : await sender.send(device.push_token, payload);
+              : // OPH-320: only the mobile lane is handed words. A browser
+                // renders them itself from the cache the app wrote, which is
+                // why the web still gets nothing but identifiers — and the
+                // language is the DEVICE's, because a phone and a laptop on
+                // one account can be set to different ones.
+                await sender.send(
+                  device.push_token,
+                  payload,
+                  alertTextFor(payload.alert, device.locale),
+                );
         } catch (error) {
           // A sender is not supposed to throw; if one does, the sweep still
           // has other devices to reach.

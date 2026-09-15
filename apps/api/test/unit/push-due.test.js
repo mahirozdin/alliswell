@@ -182,6 +182,34 @@ describe('OPH-315 — the due sweep', () => {
     expect(tables.reminder_push_log).toHaveLength(0);
   });
 
+  it('renders the sentence in the device language, falling back to the account', async () => {
+    // OPH-320: a phone set to Turkish and a laptop set to English belong to
+    // the same person, which is the whole reason the device carries a locale.
+    tables.users.push({ id: USER, locale: 'tr-TR' });
+    tables.reminders.push(reminder());
+    tables.notification_devices.push(
+      device('01HZDEVPHONEAAAAAAAAAAAAAA', 'android', { locale: 'en-GB' }),
+      device('01HZDEVTABLETAAAAAAAAAAAAA', 'android', { locale: null }),
+    );
+
+    const sent = [];
+    app.pushTransport = {
+      providers: ['fcm'],
+      async send(devices) {
+        for (const d of devices) sent.push([d.id, d.locale]);
+        return devices.map((d) => ({ deviceId: d.id, outcome: 'sent' }));
+      },
+    };
+
+    await sweepDuePushes(app, { now: NOW });
+
+    expect(sent).toEqual([
+      ['01HZDEVPHONEAAAAAAAAAAAAAA', 'en-GB'],
+      // Said nothing, so the account answers.
+      ['01HZDEVTABLETAAAAAAAAAAAAA', 'tr-TR'],
+    ]);
+  });
+
   it('skips a device that was written off until it registers again', async () => {
     tables.reminders.push(reminder());
     tables.notification_devices.push(

@@ -127,11 +127,29 @@ async function devicesByReminder(db, reminders, { providers }) {
     userIds.length === 0
       ? []
       : await db('notification_devices').whereIn('user_id', userIds).select();
-  const reachable = devices.filter(
-    // A device with no credentials is not a device we can reach, and one that
-    // was written off stays written off until it registers again (OPH-312).
-    (d) => d.invalid_at == null && providers.includes(d.push_provider),
-  );
+
+  // OPH-320 — which language the fixed sentence is rendered in. The device's
+  // own answer wins and the account is the fallback: a phone set to Turkish
+  // and a laptop set to English belong to the same person, which is why
+  // `notification_devices.locale` exists at all (OPH-309). Read only when some
+  // device did not say, so the ordinary case costs no query.
+  const silentDevices = devices.filter((d) => d.locale == null);
+  const accountLocale = new Map();
+  if (silentDevices.length > 0) {
+    const users = await db('users')
+      .whereIn('id', [...new Set(silentDevices.map((d) => d.user_id))])
+      .select('id', 'locale');
+    for (const user of users) accountLocale.set(user.id, user.locale);
+  }
+
+  const reachable = devices
+    .filter(
+      // A device with no credentials is not a device we can reach, and one
+      // that was written off stays written off until it registers again
+      // (OPH-312).
+      (d) => d.invalid_at == null && providers.includes(d.push_provider),
+    )
+    .map((d) => ({ ...d, locale: d.locale ?? accountLocale.get(d.user_id) ?? null }));
   const devicesOf = new Map();
   for (const d of reachable) {
     if (!devicesOf.has(d.user_id)) devicesOf.set(d.user_id, []);

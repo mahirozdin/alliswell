@@ -91,11 +91,19 @@ Our servers do send a push in two situations, and both carry identifiers only:
 - **When a reminder changes**, as a silent hint telling the device to sync. It
   says nothing about what changed.
 
-What crosses the push service is the reminder's and task's identifiers, the
-instant the alarm is for, and — for a notification you are meant to see — the
-**name** of a fixed message such as `reminder_due`, never the message and never
-your text. The words you read in that notification are put there by the app on
-your own device, from the copy it already holds.
+What crosses the push service is the reminder's and task's identifiers and the
+instant the alarm is for — never your text.
+
+The sentence you actually read depends on the device:
+
+- **In a browser**, the push carries only the **name** of a fixed message, and
+  the words are put there by the app on your own device, from the copy it
+  already holds. Nothing readable crosses.
+- **On a phone**, a notification that has to appear while the app is closed is
+  rendered by Apple or Google from what the push carries, so one fixed,
+  generic sentence — "You have 1 reminder" — travels with it. It is the same
+  sentence for every AllisWell user, it says only what the arrival of the push
+  already says, and it never contains anything from your task.
 
 ## Google Calendar (optional)
 

@@ -35,6 +35,7 @@ import { dirname, resolve } from 'node:path';
 
 import {
   PUSH_ALERT_IDS,
+  PUSH_ALERT_TEXT,
   PUSH_PAYLOAD_KEYS,
   buildReminderPayload,
   buildWakePayload,
@@ -77,13 +78,30 @@ function samples() {
   ];
 }
 
-/** What the code would send, as sorted `type.key` and `alert:id` lines. */
+/**
+ * What the code would send, as sorted lines: `type.key` for the payload's
+ * shape, `alert:id` for the names it may carry, and — since OPH-320 — the
+ * WORDS themselves.
+ *
+ * The text lines hold the whole string, not a count or a hash, and that is the
+ * point: a visible mobile push hands APNs and FCM a sentence, so the sentence
+ * is exactly what a person has to agree to. A reviewer reading this file sees
+ * every word this server can put in front of a push provider, and changing one
+ * letter shows up as a diff.
+ */
 function actual() {
   const lines = new Set();
   for (const [type, keys] of Object.entries(PUSH_PAYLOAD_KEYS)) {
     for (const key of keys) lines.add(`${type}.${key}`);
   }
   for (const id of PUSH_ALERT_IDS) lines.add(`alert:${id}`);
+  for (const [id, byLanguage] of Object.entries(PUSH_ALERT_TEXT)) {
+    for (const [language, text] of Object.entries(byLanguage)) {
+      for (const [field, value] of Object.entries(text)) {
+        lines.add(`text:${id}.${language}.${field}=${value}`);
+      }
+    }
+  }
   // Declared and emitted are checked together on purpose: a key the builders
   // emit but nobody declared is as much a change as the other way round.
   for (const payload of samples()) {
@@ -95,8 +113,19 @@ function actual() {
 /** @returns {string[]} the fragments that reached the wire, if any. */
 function leaks() {
   const found = new Set();
+  // Every payload, built the careless way...
   for (const payload of samples()) {
     const wire = JSON.stringify(payload);
+    for (const fragment of LOUD_FRAGMENTS) {
+      if (wire.includes(fragment)) found.add(fragment);
+    }
+  }
+  // ...and every word the catalogue can render. Static strings cannot contain
+  // a task today, which is exactly why this check is worth keeping: the day
+  // somebody interpolates one, it stops being static and this stops being
+  // green (OPH-320).
+  for (const byLanguage of Object.values(PUSH_ALERT_TEXT)) {
+    const wire = JSON.stringify(byLanguage);
     for (const fragment of LOUD_FRAGMENTS) {
       if (wire.includes(fragment)) found.add(fragment);
     }

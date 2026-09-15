@@ -165,6 +165,38 @@ describe('FCM signs its own JWT (OPH-312)', () => {
     expect(body.message.data.reminderId).toBe(REMINDER);
   });
 
+  it('carries the fixed sentence only when it was given one (OPH-320)', async () => {
+    const fetchImpl = fakeFetch([tokenResponse, { status: 200, body: '{}' }]);
+    const sender = createFcmSender({ ...serviceAccount(), fetchImpl });
+
+    await sender.send('device-token-1', PAYLOAD, {
+      title: 'AllisWell',
+      body: 'You have 1 reminder',
+    });
+
+    const body = JSON.parse(fetchImpl.calls[1].init.body);
+    // A force-quit phone has no running code to look a name up with: APNs
+    // renders what the push carries, or nothing appears at all.
+    expect(body.message.notification).toEqual({
+      title: 'AllisWell',
+      body: 'You have 1 reminder',
+    });
+    expect(body.message.apns.payload.aps.sound).toBe('default');
+    // And still nothing about WHICH reminder beyond its id.
+    expect(String(fetchImpl.calls[1].init.body)).not.toContain('Pay the invoice');
+  });
+
+  it('a wake-up hint stays invisible, which is the whole point of it', async () => {
+    const fetchImpl = fakeFetch([tokenResponse, { status: 200, body: '{}' }]);
+    const sender = createFcmSender({ ...serviceAccount(), fetchImpl });
+
+    await sender.send('device-token-1', PAYLOAD);
+
+    const body = JSON.parse(fetchImpl.calls[1].init.body);
+    expect(body.message.notification).toBeUndefined();
+    expect(body.message.apns).toBeUndefined();
+  });
+
   it('does not buy a new access token for every message', async () => {
     const fetchImpl = fakeFetch([tokenResponse, { status: 200, body: '{}' }]);
     const sender = createFcmSender({ ...serviceAccount(), fetchImpl });

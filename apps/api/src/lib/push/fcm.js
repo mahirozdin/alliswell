@@ -100,8 +100,10 @@ export function createFcmSender({
     /**
      * @param {string} deviceToken the FCM registration token
      * @param {object} payload ids only — see payload.js
+     * @param {{title: string, body: string}} [alert] the fixed sentence to
+     *   show, from `PUSH_ALERT_TEXT`. Omitted for a silent wake-up.
      */
-    async send(deviceToken, payload) {
+    async send(deviceToken, payload, alert) {
       assertPushPayload(payload);
 
       let token;
@@ -123,6 +125,23 @@ export function createFcmSender({
               data: asDataMap(payload),
               // A wake-up is worth waking the radio for; it is the whole point.
               android: { priority: 'high' },
+              // OPH-320 — the visible half. Present only when the caller has a
+              // sentence from the closed catalogue; a wake-up hint has none and
+              // must stay invisible, which on iOS also means it is not
+              // delivered at all without a background mode we deliberately do
+              // not ask for (ADR-0038 §8).
+              ...(alert
+                ? {
+                    notification: { title: alert.title, body: alert.body },
+                    // `alert` interruption-level and a sound: this is the
+                    // fallback for a device whose own alarm did not fire, so it
+                    // has to be noticeable. Not `time-sensitive`/`critical` —
+                    // those are the local alarm's territory (NOTIFICATIONS §2b)
+                    // and asking for them from a server push would be claiming
+                    // an urgency the server cannot know.
+                    apns: { payload: { aps: { sound: 'default' } } },
+                  }
+                : {}),
             },
           }),
         });

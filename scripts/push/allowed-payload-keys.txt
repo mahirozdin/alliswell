@@ -5,5 +5,9 @@ reminder.reminderId
 reminder.taskId
 reminder.type
 reminder.v
+text:reminder_due.en.body=You have 1 reminder
+text:reminder_due.en.title=AllisWell
+text:reminder_due.tr.body=1 hatırlatıcın var
+text:reminder_due.tr.title=AllisWell
 wake.type
 wake.v

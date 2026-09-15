@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   PUSH_PAYLOAD_KEYS,
   PUSH_ALERT_IDS,
+  PUSH_ALERT_TEXT,
+  alertTextFor,
   buildWakePayload,
   buildReminderPayload,
   assertPushPayload,
@@ -142,6 +144,52 @@ describe('no part of a task can reach a push provider', () => {
     );
     for (const fragment of fragments) {
       expect(wire).not.toContain(fragment);
+    }
+  });
+});
+
+describe('OPH-320 — the only words a push may carry', () => {
+  it('answers in the language the device asked for, region and all', () => {
+    expect(alertTextFor('reminder_due', 'tr').body).toBe('1 hatırlatıcın var');
+    // A catalogue keyed by language: `tr-TR`, `tr_TR` and `TR` are one entry,
+    // because a fixed sentence has no regional variants.
+    expect(alertTextFor('reminder_due', 'tr-TR').body).toBe('1 hatırlatıcın var');
+    expect(alertTextFor('reminder_due', 'tr_TR').body).toBe('1 hatırlatıcın var');
+    expect(alertTextFor('reminder_due', 'TR').body).toBe('1 hatırlatıcın var');
+  });
+
+  it('falls back rather than sending nothing', () => {
+    // A language we do not ship, and a device that never said. Both get a
+    // sentence: an empty notification is worse than an English one.
+    expect(alertTextFor('reminder_due', 'fr').body).toBe('You have 1 reminder');
+    expect(alertTextFor('reminder_due', null).body).toBe('You have 1 reminder');
+    expect(alertTextFor('reminder_due', undefined).body).toBe('You have 1 reminder');
+    expect(alertTextFor('reminder_due', '').body).toBe('You have 1 reminder');
+  });
+
+  it('has nothing to say about an alert that is not meant to be seen', () => {
+    // A wake-up hint names no alert, and an unknown one must not invent words.
+    expect(alertTextFor(undefined, 'tr')).toBeNull();
+    expect(alertTextFor('made_up', 'tr')).toBeNull();
+  });
+
+  it('says the same thing to everyone, which is what makes it safe', () => {
+    // The catalogue is static data, not a template. If this ever stops being
+    // true the gate notices too (scripts/push/payload.mjs), but the rule is
+    // worth stating where the strings live.
+    for (const byLanguage of Object.values(PUSH_ALERT_TEXT)) {
+      for (const text of Object.values(byLanguage)) {
+        expect(text.body).not.toMatch(/\$\{|%s|\{\{/);
+        expect(Object.isFrozen(text)).toBe(true);
+      }
+    }
+  });
+
+  it('names every alert id the contract declares', () => {
+    // A visible alert with no words would render as an empty notification on
+    // a phone; the catalogue and the id list have to move together.
+    for (const id of PUSH_ALERT_IDS) {
+      expect(alertTextFor(id, 'en')).not.toBeNull();
     }
   });
 });

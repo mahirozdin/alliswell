@@ -3,7 +3,32 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16c (**OPH-319 BİTTİ — telefonun adresi.**
+**Last updated:** 2026-09-16d (**OPH-320 BİTTİ — ve planın sessiz bir yanlışını
+düzeltti.** Backlog "süpürge mobili de kapsar" diyordu; kapsıyordu zaten (OPH-315).
+Eksik olan **görünürlüktü** ve nedeni ölçüldü: FCM zarfı yalnız `data` taşıyordu,
+`notification` bloğu olmayan bir mesaj iOS'ta arka plan modu olmadan **hiç teslim
+edilmiyor** — yani "force-quit iPhone'da görünür bildirim" kabulü ancak APNs'in
+çizeceği bir cümle göndererek karşılanabiliyor. **Bu, ADR-0038 §4'ün *"iletinin
+adı, iletinin kendisi değil"* cümlesini mobil hat için bozuyor, o yüzden cümleyi
+gizlemek yerine ADR'yi ve `PRIVACY.md`'yi (EN+TR) tadil ettim.** Yeni metin
+tarayıcı ile telefonu ayırıyor: tarayıcıda hiçbir okunabilir şey geçmiyor
+(sözcükleri SW kendi önbelleğinden okuyor), telefonda **her kullanıcı için aynı
+olan tek bir genel cümle** geçiyor — push'un gelmiş olmasının zaten söylediğinden
+fazlasını söylemeyen bir cümle. **Reddedilen zarif alternatif yazıya geçti:**
+`loc-key` cümleyi hiç göndermezdi ama **cihazın OS dilinde** çözülürdü; AllisWell'in
+dili uygulama içi bir ayar, ve `notification_devices.locale` tam olarak bu fark
+gerçek olduğu için var. İngilizce telefonda Türkçe kullanan birine İngilizce
+bildirim gitmesi, herkese aynı olan açık bir cümleden daha kötü. **Kapının kör
+noktası kapatıldı:** `check:push-payload` artık katalogdaki **her dizeyi**
+allowlist'e yazıyor, yani insanın onayladığı politika dosyasında sunucunun bir push
+sağlayıcısına gösterebileceği tüm sözcükler duruyor; kataloğa görev başlığı enjekte
+edilince kapı kırmızı. Dil zinciri: cihaz → hesap → `en`, ve `users` sorgusu yalnız
+bir cihaz dilini söylememişse yapılıyor. **Doğrulama:** API süiti **871 geçti** (+8),
+dokuz kapı + lint + format yeşil, dört enjeksiyonun dördü de kırmızıya düşüp geri
+alındı. Sıradaki iş: **OPH-321** (Android başsız tazeleme — epic'in en ağır işi;
+`readAlarms` eklemeli çıkarma, `headless.dart`'ın sırası, ve kimlik-parite testi).)
+
+Önceki blok: 2026-09-16c (**OPH-319 BİTTİ — telefonun adresi.**
 `firebase_messaging` bağımlılık oldu ama `AwPushMessaging` ADR-0025'in sözleşmesini
 aynen taşıyor: `AwFirebase.isConfigured` olmadan eklentiye **hiçbir şey sormuyor**.
 **Bu turun en iyi kanıtı bir testin yokluğu gibi görünüyor:** konfigsiz durumda

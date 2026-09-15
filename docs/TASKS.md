@@ -10696,13 +10696,45 @@ tek uzun transaction'ı (`sync_applier.dart:25`) bu şansı ortadan kaldırır._
 _Bu, force-quit edilmiş bir uygulamada, kilitli bir telefonda, izolatsız ve Keychain'e
 dokunmadan çalışan tek yol. Uyandırma ipucu (OPH-322) daha zarif; bu daha **kesin**._
 
-- [ ] OPH-315'in süpürgesi mobil cihazları da kapsar — **yalnız bayatsa**.
-- [ ] Metin `notification_devices.locale` (yoksa `users.locale`) ile seçilen **sabit** bir
-      dize: "1 hatırlatıcın var" / "You have 1 reminder". Görev adı **yok**.
-- [ ] Tıklama uygulamayı açar → normal senkron → yerel program tazelenir → bundan sonraki
-      alarmlar tam davranışıyla çalar.
-- **Kabul:** masaüstünde kurulan hatırlatıcı, force-quit edilmiş iPhone'da vade anında görünür
-      bildirim olarak çıkar; aynı cihaz o sırada senkronsa **çıkmaz**.
+- [x] **Ayrı gönderici yazılmadı** — OPH-315'in süpürgesi mobili zaten kapsıyordu; bu tur
+      eksik olan yarıyı, yani **görünürlüğü** ekledi. Bayatlık kuralı değişmedi.
+- [x] **Planın atladığı şey: veri-mesajı görünmez.** FCM zarfı bugüne kadar yalnız `data`
+      taşıyordu; iOS'ta `notification` bloğu olmayan bir mesaj, arka plan modu olmadan
+      **hiç teslim edilmiyor** — yani "force-quit iPhone'da görünür bildirim" kabulü ancak
+      APNs'in çizeceği bir cümle gönderilerek karşılanabiliyor. Zarfa `notification` +
+      `apns.payload.aps.sound` eklendi; `time-sensitive`/`critical` **bilinçli olarak
+      istenmedi** (onlar yerel alarmın alanı — NOTIFICATIONS §2b).
+- [x] **Cümle kapalı bir katalogda:** `PUSH_ALERT_TEXT` (`lib/push/payload.js`),
+      `reminder_due` × {en, tr}. Görev adı yok, şablon yok, dondurulmuş sabitler.
+      `alertTextFor` **dile göre** çözüyor (`tr-TR`, `tr_TR`, `TR` tek girdi — sabit bir
+      cümlenin bölgesel varyantı olmaz), bilinmeyen dil ve dilsiz cihaz `en`'e düşüyor.
+- [x] **Dili SUNUCU seçiyor, ve alternatifi reddedildi:** APNs/FCM bir **yerelleştirme
+      anahtarı** (`loc-key`) çizebilirdi ve cümle hiç karşıya geçmezdi — ama o anahtar
+      **cihazın İŞLETİM SİSTEMİ dilinde** çözülüyor, oysa AllisWell'in dili uygulama içi
+      bir ayar. İngilizce bir telefonda Türkçe kullanan birine İngilizce bildirim giderdi;
+      `notification_devices.locale` tam olarak bu fark gerçek olduğu için var (OPH-309).
+      Gerekçe ADR-0038'in "Alternatives" bölümüne yazıldı.
+- [x] **Dil zinciri:** `notification_devices.locale` → yoksa `users.locale` → yoksa `en`.
+      Süpürge `users`'a **yalnız bir cihaz dilini söylememişse** gidiyor; olağan durumda
+      fazladan sorgu yok.
+- [x] **Web'e kelime gönderilmiyor.** Taşıyıcı metni yalnız FCM koluna veriyor; tarayıcı
+      sözcükleri kendi önbelleğinden okuyor (OPH-314), yani web'in gizlilik hikâyesi
+      **aynen** kalıyor.
+- [x] **Kapı genişletildi ve kör noktası kapatıldı:** `check:push-payload` artık katalogdaki
+      **her dizeyi** allowlist'e yazıyor (`text:reminder_due.tr.body=…`) — bir insanın
+      onayladığı politika dosyasında artık sunucunun bir push sağlayıcısına gösterebileceği
+      **tüm sözcükler** var, bir harf değişse diff çıkıyor. Sızıntı kontrolü de katalogu
+      tarıyor: kataloğa görev başlığı enjekte edildiğinde kapı **kırmızı** (denendi).
+- [x] **ADR-0038 §4 ve `PRIVACY.md` (EN+TR) tadil edildi** — çünkü OPH-315'te yazdığım
+      *"iletinin kendisi değil"* cümlesi mobil hat için artık doğru değildi. Yeni metin
+      tarayıcı ile telefonu **ayırıyor** ve telefonda geçen tek şeyin her kullanıcı için
+      aynı olan genel cümle olduğunu söylüyor.
+- **Kabul:** ✅ süpürge bayat mobil cihaza görünür bildirim gönderiyor, senkron olana
+      göndermiyor (OPH-315'ten beri testli); ✅ uyandırma ipucu **görünmez** kalıyor
+      (`notification` bloğu yok — testli); ✅ tıklama yolu değişmedi, mevcut
+      `handleNotificationEvent` sözleşmesi geçerli. ⏸️ "force-quit iPhone'da gerçekten
+      çıkıyor" — **sahipte**: APNs anahtarı + FCM servis hesabı gerekiyor (§0.0).
+      API süiti **871 geçti** (+8), dört enjeksiyonun dördü de kırmızı.
 
 ### OPH-321 — Android başsız tazeleme ve kimlik paritesi
 

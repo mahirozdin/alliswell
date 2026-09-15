@@ -73,6 +73,19 @@ the **name** of a fixed message from a closed set, never the message.
 beside a task whose every field is a sentence, failing if any of it reaches the
 wire.
 
+**Amended by OPH-320 for the mobile lane.** A browser resolves the name itself:
+the service worker reads the words from a cache the app wrote. A force-quit
+phone has no running code to resolve anything with — APNs renders the alert
+from what the push carries, or nothing appears, and "nothing appears" is the
+one outcome the guaranteed half of this design exists to prevent. So an FCM
+message whose payload names a *visible* alert also carries a `notification`
+block holding a **fixed sentence from a closed catalogue** (`PUSH_ALERT_TEXT`),
+identical for every user of every instance. The payload contract is unchanged;
+the words travel beside it, and the allowlist now holds every one of them, so a
+reviewer sees the exact strings this server can put in front of a push provider
+and changing a letter is a diff. A task's title and contents still never make
+the trip, which is the sentence `docs/PRIVACY.md` actually prints.
+
 **5. Recipients are the task's workspace members.** Not a widening: those are
 exactly the devices that already schedule the alarm locally today.
 
@@ -118,6 +131,16 @@ re-key migration and gets its own ADR.
   that reads what it does not measure is not a gate. The allowlist is policy a
   person agreed to, in the shape `scripts/android/allowed-permissions.txt`
   established.
+- **Send a localisation KEY instead of the sentence** (`loc-key`,
+  `body_loc_key` — both APNs and FCM resolve them against the app bundle's own
+  strings). It would keep even the generic sentence off the wire, and it was
+  rejected for a measured reason: those keys resolve in the DEVICE'S OS
+  language, while AllisWell's language is an in-app setting. A phone running in
+  English with the app set to Turkish would be told in English.
+  `notification_devices.locale` exists because that difference is real
+  (OPH-309), and a reminder arriving in a language the user did not choose is a
+  worse failure than a public sentence that says only what the push's existence
+  already says.
 - **Talk to APNs directly.** Rejected: FCM already relays, and a second provider
   is a second set of credentials for the same result.
 - **Take the `workmanager` package for the Android refresh.** Rejected:

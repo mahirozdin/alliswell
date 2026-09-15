@@ -102,11 +102,19 @@ Sunucularımız iki durumda push gönderir ve ikisi de yalnızca kimlik taşır:
 - **Bir hatırlatıcı değiştiğinde**, cihaza "senkron ol" diyen sessiz bir ipucu
   olarak. Neyin değiştiğini söylemez.
 
-Bildirim servisinden geçen şey: hatırlatıcının ve görevin kimlikleri, alarmın ait
-olduğu an ve — görmeniz istenen bir bildirim için — `reminder_due` gibi **sabit
-bir iletinin adı**; iletinin kendisi değil, metniniz hiç değil. O bildirimde
-okuduğunuz sözcükleri, kendi cihazınızdaki uygulama, zaten elinde olan
-kopyadan yazar.
+Bildirim servisinden geçen şey: hatırlatıcının ve görevin kimlikleri ve alarmın
+ait olduğu an — metniniz hiçbir zaman.
+
+Okuduğunuz cümle cihaza göre değişir:
+
+- **Tarayıcıda** push yalnızca **sabit bir iletinin adını** taşır; sözcükleri
+  kendi cihazınızdaki uygulama, zaten elinde olan kopyadan yazar. Okunabilir
+  hiçbir şey karşıya geçmez.
+- **Telefonda** uygulama kapalıyken görünmesi gereken bir bildirimi Apple veya
+  Google, push'un taşıdığı şeyden çizer; bu yüzden **tek bir sabit, genel
+  cümle** — "1 hatırlatıcın var" — onunla birlikte yolculuk eder. Bu cümle her
+  AllisWell kullanıcısı için aynıdır, push'un gelmiş olmasının zaten söylediği
+  şeyden fazlasını söylemez ve görevinizden hiçbir şey içermez.
 
 ## Google Takvim (isteğe bağlı)
 
