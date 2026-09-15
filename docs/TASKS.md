@@ -10156,27 +10156,62 @@ _`notification_devices` rotası 2026-07-15'ten beri çalışıyor ve istemci onu
 çağırmadı. EE bunu 2026-08-24'te ölçüp yazmış (`push.js:30-43`): "notification_devices is empty
 on every real instance." Push'un tamamı bu boş tablonun üstünde duruyor._
 
-- [ ] **İstemci `PUT /api/v1/notification-devices/:deviceId` çağırır.** `deviceId` =
+- [x] **İstemci `PUT /api/v1/notification-devices/:deviceId` çağırıyor.** `deviceId` =
       **sync client id** — rotanın başlığının (`notification-devices.js:3-10`) zaten varsaydığı
-      şey; `sync_states.client_id` (`sync_engine.dart:209-222`) tek kaynak olur.
-- [ ] **Gövde:** `platform` (kIsWeb/`defaultTargetPlatform` ile), `deviceName`, `appVersion`
-      (`kAppVersion`), ve **`locale`** — görünür yedeğin jenerik metnini seçmek için gerekiyor;
-      `users.locale` hesap geneli, cihaz farklı dilde olabilir. Push token'ı **bu işte yok**.
-- [ ] **Heartbeat:** oturum açıkken ve uygulama ön plana geldiğinde PUT tekrarlanır
-      (rota idempotent, `:59-106`). Bu, `last_seen_at`'i **anlamlı** kılar — bayatlık ölçüsünün
-      dayandığı sütun bu.
-- [ ] **Çıkışta `DELETE`.** Rota her zaman 204 döndürüyor (`:131-132`, "must never fail a
-      sign-out flow"), yani hata yolu çıkışı bloklamaz.
-- [ ] **Şema kolonu gerekiyorsa** (`locale`) append-only migration ile gelir; `push_token`'a
-      dokunulmaz.
-- **Kabul:** yeni kurulumda ilk senkrondan sonra `GET /notification-devices` **bir satır**
-      döndürür; ikinci açılış **yeni satır yaratmaz** (idempotent); çıkış satırı siler;
-      başka hesapla giriş satırı **devralır** (rotanın `:56-58`'deki devralma sözü).
-- **Doğrulama:** app süiti (fake API ile kayıt/heartbeat/çıkış), API birim süiti
-      (`test/unit/notification-devices.test.js` zaten var, `locale` case'i eklenir).
+      şey. `DeviceRegistry` (`features/devices/device_registry.dart`) kimliği kendisi
+      **üretmiyor**: `sync_states` satırı yoksa bekliyor, çünkü uydurulan bir id aynı kurulum
+      için tabloda bir daha hiç gitmeyecek ikinci bir satır demek.
+- [x] **`syncClientIdProvider` akışa çevrildi** (`sync/providers.dart`). Tek atımlı okuma temiz
+      kurulumda `null` cevaplayıp `null` kalıyordu — kayıt hiç olmazdı. Artık drift akışı, satır
+      motorun ilk turunda belirdiği anda kaydı tetikliyor.
+- [x] **Gövde:** `platform`, `appVersion` (`kAppVersion`), `locale`. Yeni kolon
+      `notification_devices.locale` append-only migration ile geldi
+      (`20260915090000_add_notification_device_locale.js`, çalışan `down()`), enum **değil**:
+      dilleri `assets/i18n/` seçiyor, yeni bir dil şema göçü gerektirmemeli. Cihazın dili
+      hesabınkiyle aynı olmak zorunda değil — telefon Türkçe, dizüstü İngilizce olabilir.
+- [x] **Plandan sapma — `deviceName` istemciden GİTMİYOR, gerekçesiyle.** Yeni bir eklenti
+      almadan dürüst bir cihaz adı kaynağı yok, kolon zaten nullable, ve OPH-284 bu soruyu bir
+      kez cevaplamış: *"a guess in this list is worse than a long one"*. O yüzden ad sunucuda,
+      **yalnız INSERT'te**, `deviceLabel(request)` ile User-Agent'tan RAW yazılıyor — aynı
+      fonksiyon, ikinci tablo. Heartbeat onu **ezmiyor**; istemci bilerek bir ad gönderirse o
+      kazanıyor. Üç test bunu pinliyor.
+- [x] **Heartbeat:** oturum + client id belirdiğinde ve her ön plana dönüşte
+      (`AppLifecycleListener`, `notifications/providers.dart:189-192` kalıbı).
+      `last_seen_at` Epic 30'un bayatlık ölçüsünün tamamı — tazelenmezse ölçü değil, süs.
+- [x] **Çıkışta `DELETE`, ve token ÖLMEDEN önce.** Kanca `AuthController.logout`'ta,
+      `repository.logout()`'tan önce: oturum kapandıktan sonra çağrı kimliksiz olurdu.
+      Başarısızlık yutuluyor — rota tekrarlanan ya da yabancı silmeye 204 diyor tam da bunun
+      için (`:131-132`), yani çıkış hiçbir koşulda bloklanmıyor.
+- [x] **Sunucunun adı olmayan platforma kayıt YOK.** `awDevicePlatform` Fuchsia için `null`
+      döndürüyor; onu "linux" diye adlandırmak, birinin sonra olgu diye okuyacağı bir tahmini
+      tabloya yazmak olurdu. Test her `TargetPlatform` için üretilen değerin ya rotanın kabul
+      ettiği altı taneden biri ya da `null` olduğunu iddia ediyor — yedinci bir değer,
+      o platformda biri kurana kadar kimsenin görmediği bir 400 demek.
+- **Kabul:** rotanın yarısı API süitinde (idempotent upsert, devralma, tekrarlanan silme, ve
+      bu turda eklenen `locale` + User-Agent adlandırma); istemcinin yarısı `DeviceRegistry`
+      testlerinde (imzalıyken kaydeder, imzasızken susar, client id yokken bekler, ikinci tur
+      heartbeat'tir, başarısız kayıt "yapıldı" sayılmaz, çıkış sildiği id'yi siler ve hata
+      çıkışı bloklamaz).
+- **Negatif kontrol (yapıldı):** OPH-300'ün sınıfı bu sınırda da geçerli — iki taraf ayrı ayrı
+      doğru olup hiç buluşmayabilir. İstemcinin gönderdiği **yolu** pinleyen iki test yazıldı;
+      `device_api.dart`'taki yol `notification-device` (tekil) yapılınca **ikisi de kırmızı**,
+      geri alınınca yeşil. Yol artık bilerek değiştirilecek bir şey.
+- **Doğrulama (2026-09-15):** app süiti **1636 geçti** (+15, 28 skip), `flutter analyze` yalnız
+      önceden var olan `sound_store_io.dart:67` uyarısını veriyor, format sabit nokta;
+      API birim süiti **817**, **814 geçti** — kalan 3 kırmızı yine `ai-chat-transport`'un
+      SSE/socket zamanlama testleri (yüklü sandbox; değişikliklerim stash'liyken de aynı).
+      `eslint`/`prettier` temiz; on bir kapının on biri yeşil (`check:push-payload`,
+      `check:openapi`, `check:apidocs`, `check:postman` dahil — API.md ve openapi.json
+      yeniden üretildi).
+- **Bulgu (kapsam DIŞI, bir sonraki ajan için ölçüldü):** yerel Flutter **3.47.2**, CI
+      **3.44.0**, ve ikisinin `dart format`'ı bazı yapılarda anlaşmıyor — depodaki üç test
+      dosyasını 3.47 yeniden biçimlendirmek istiyor, CI ise yeşil. **Yerelde `dart format`
+      yazma modunda koşturmak depoyu bozar.** Ayrıca `flutter analyze` (3.47)
+      `analysis_options.yaml`'ı kendisi yeniden yazıyor ("Upgrading analysis_options.yaml…")
+      — o değişiklik commit'e girmemeli.
 - **MCP gerekçesi (AGENTS kuralı 12):** cihaz kaydı ve cihaz-yerel teslimat tercihi bir ajanın
       adresleyebileceği çalışma alanı verisi değil — o cihazda olmayan bir ajan onu ne okuyabilir
-      ne değiştirebilir. MCP yüzeyi genişlemez.
+      ne değiştirebilir. MCP yüzeyi genişlemedi.
 
 ### OPH-310 — `push` yapılandırması: kimlik yoksa özellik yok
 

@@ -203,6 +203,7 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
       push_token: null,
       device_name: null,
       app_version: null,
+      locale: null,
     }),
     calendar_external_events: () => ({
       summary: null,

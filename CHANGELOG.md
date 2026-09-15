@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The app puts itself on the notification device list.** The registry endpoint
+  has been correct and unused since July: nothing in the app had ever called it,
+  so on every real instance the table was empty. That table is what the rest of
+  this work stands on — the server decides who needs a push by asking when a
+  device was last heard from — so the app now registers on sign-in, says hello
+  again whenever it comes back to the foreground, and takes itself off the list
+  when you sign out. It registers under the id the sync engine already uses for
+  this install rather than inventing one, and it waits for that id on a fresh
+  install instead of creating a second row that would never go away. A device
+  also says which language it is in, because your phone and your laptop need not
+  agree and the alert has to be written in one of them. The device's *name* is
+  filled in by the server from the request itself rather than guessed at by the
+  app — a wrong name in that list is worse than a blank one. OPH-309,
+  [#15](https://github.com/mahirozdin/alliswell/issues/15).
+
 - **A push payload names rows, and a gate keeps it that way.** Nothing is sent
   yet — this is the contract that will govern it when something is. A push
   crosses Google's, Apple's or Mozilla's servers on its way to a phone, and the

@@ -39,10 +39,16 @@ final syncDebounceProvider = Provider<Duration>(
 /// This device's sync client id (OPH-269): the engine stamps it on every push,
 /// so a version row carrying it was written HERE. That is what lets the history
 /// say "This device" instead of showing a ULID nobody can read.
-final syncClientIdProvider = FutureProvider<String?>((ref) async {
+///
+/// A STREAM since OPH-309, because a fresh install has no `sync_states` row
+/// until the engine's first round — and the device registry is waiting for
+/// exactly that id. A one-shot read answered `null` and stayed `null`.
+final syncClientIdProvider = StreamProvider<String?>((ref) {
   final db = ref.watch(databaseProvider);
-  final rows = await db.select(db.syncStates).get();
-  return rows.isEmpty ? null : rows.first.clientId;
+  return db
+      .select(db.syncStates)
+      .watch()
+      .map((rows) => rows.isEmpty ? null : rows.first.clientId);
 });
 
 final syncEngineProvider = Provider<SyncEngine?>((ref) {

@@ -10,6 +10,7 @@ import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
 import '../features/calendar/apple/providers.dart';
+import '../features/devices/providers.dart';
 import '../features/ai/data/ai_context_builder.dart';
 import '../features/ai/data/ai_models.dart';
 import '../features/ai/data/share_intent.dart';
@@ -197,6 +198,9 @@ class HomeShell extends ConsumerWidget {
     // scheduler (OPH-061) alive while the shell shows.
     ref.watch(syncSocketProvider);
     ref.watch(notificationSchedulerProvider);
+    // OPH-309: keep this install's notification-registry row fresh — Epic 30's
+    // staleness test reads `last_seen_at` and nothing else.
+    ref.watch(deviceRegistrationProvider);
     // OPH-078: keep the Apple calendar mirror reconciling while signed in
     // (self-disables off Apple platforms and until access + a calendar exist).
     ref.watch(appleMirrorProvider);

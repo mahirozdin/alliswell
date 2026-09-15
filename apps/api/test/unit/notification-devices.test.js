@@ -104,6 +104,54 @@ describe('notification device registry (OPH-060)', () => {
     expect(tables.notification_devices).toHaveLength(0);
   });
 
+  it('remembers the device locale, and leaves it alone on a heartbeat (OPH-309)', async () => {
+    // The visible fallback push picks a fixed string, and the account's locale
+    // is not the device's: a phone can be in Turkish while the account is not.
+    const created = await register(DEVICE, { platform: 'ios', locale: 'tr' });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ locale: 'tr' });
+
+    const heartbeat = await register(DEVICE, { platform: 'ios' });
+    expect(heartbeat.json()).toMatchObject({ locale: 'tr' });
+
+    const changed = await register(DEVICE, { platform: 'ios', locale: 'en' });
+    expect(changed.json()).toMatchObject({ locale: 'en' });
+  });
+
+  it('names a new device after the request that registered it, once (OPH-309)', async () => {
+    // OPH-284's rule, applied to the other device table: store the User-Agent
+    // RAW rather than guessing "Chrome on macOS". On INSERT only — a heartbeat
+    // must not overwrite a name a client set deliberately.
+    const ua = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15';
+    const created = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${DEVICE}`,
+      headers: { ...owner.headers, 'user-agent': ua },
+      payload: { platform: 'web' },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ deviceName: ua });
+
+    const heartbeat = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${DEVICE}`,
+      headers: { ...owner.headers, 'user-agent': 'something-else/1.0' },
+      payload: { platform: 'web' },
+    });
+    expect(heartbeat.statusCode).toBe(200);
+    expect(heartbeat.json()).toMatchObject({ deviceName: ua });
+  });
+
+  it('an explicit device name beats the User-Agent (OPH-309)', async () => {
+    const created = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${DEVICE}`,
+      headers: { ...owner.headers, 'user-agent': 'Dart/3.9 (dart:io)' },
+      payload: { platform: 'android', deviceName: 'Mahir Pixel' },
+    });
+    expect(created.json()).toMatchObject({ deviceName: 'Mahir Pixel' });
+  });
+
   it('validates platform and requires auth', async () => {
     const badPlatform = await register(DEVICE, { platform: 'blackberry' });
     expect(badPlatform.statusCode).toBe(400);

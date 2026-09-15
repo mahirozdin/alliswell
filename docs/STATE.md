@@ -3,7 +3,38 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15b (**OPH-308 BİTTİ — yalnız-ID sözleşmesi ve onu ölçen
+**Last updated:** 2026-09-15c (**OPH-309 BİTTİ — cihaz kaydı artık gerçekten
+kuruluyor.** Rota 2026-07-15'ten beri kusursuz ve **çağrısız**dı; EE 2026-08-24'te
+ölçüp yazmış: *"notification_devices is empty on every real instance."* Epic 30'un
+tamamı bu boş tablonun üstünde duruyordu. Artık uygulama oturum açıldığında ve her
+ön plana dönüşte `PUT /notification-devices/:id` çağırıyor, çıkışta — **token
+ölmeden önce**, kanca `AuthController.logout`'ta — `DELETE` ediyor. **Kimliği
+uydurmuyor:** id sync client id'si, ve `sync_states` satırı yoksa **bekliyor**;
+uydurulan bir id aynı kurulum için bir daha hiç gitmeyecek ikinci bir satır demek.
+Bu yüzden `syncClientIdProvider` akışa çevrildi — tek atımlı okuma temiz kurulumda
+`null` deyip `null` kalıyordu, yani kayıt hiç olmazdı. Yeni kolon
+`notification_devices.locale` (append-only, çalışan `down()`, enum DEĞİL: dilleri
+`assets/i18n/` seçiyor) — cihazın dili hesabınkiyle aynı olmak zorunda değil.
+**Plandan iki sapma, ikisi de gerekçeli:** (1) `deviceName` istemciden gitmiyor —
+yeni bir eklenti almadan dürüst kaynağı yok, ve OPH-284 bu soruyu zaten
+cevaplamış (*"a guess in this list is worse than a long one"*); ad sunucuda, YALNIZ
+INSERT'te, aynı `deviceLabel()` ile User-Agent'tan RAW yazılıyor ve heartbeat onu
+ezmiyor. (2) `awDevicePlatform` Fuchsia için `null` döndürüyor — sunucunun adı
+olmayan bir platforma kayıt yapmak yerine kayıt yapmamak; testi her
+`TargetPlatform` için üretilen değerin ya rotanın altısından biri ya da `null`
+olduğunu iddia ediyor. **Negatif kontrol yapıldı:** OPH-300'ün sınıfı bu sınırda da
+geçerli olduğu için istemcinin gönderdiği YOLU pinleyen iki test yazıldı; yol
+tekil (`notification-device`) yapılınca ikisi de kırmızı, geri alınınca yeşil.
+**Doğrulama:** app süiti **1636 geçti** (+15), `flutter analyze` yalnız önceden var
+olan uyarıyı veriyor; API birim süiti **817 / 814 geçti** (kalan 3 yine
+`ai-chat-transport` zamanlama testleri, stash'liyken de aynı); on bir kapının on
+biri yeşil, `API.md` + `openapi.json` yeniden üretildi. **Bir sonraki ajan için
+ölçüldü:** yerel Flutter 3.47.2 ile CI'ın 3.44.0'ı `dart format`'ta anlaşmıyor —
+yerelde yazma modunda format koşturmak depoyu bozar; ayrıca `flutter analyze`
+(3.47) `analysis_options.yaml`'ı kendisi yeniden yazıyor, o commit'e girmemeli.
+Sıradaki iş: **OPH-310** (`push` yapılandırması: kimlik bilgisi yoksa özellik yok).)
+
+Önceki blok: 2026-09-15b (**OPH-308 BİTTİ — yalnız-ID sözleşmesi ve onu ölçen
 kapı.** Epic 30'un ilk işi ve bilerek en soğuğu: gönderici yok, yapılandırma yok,
 taşıyıcı yok. Olan tek şey bir sözleşme ve onu ölçen bir kapı. **ADR-0038** yazıldı
 ve indekse aynı commit'te eklendi; `apps/api/src/lib/push/payload.js` bir push

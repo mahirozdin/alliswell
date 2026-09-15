@@ -1674,6 +1674,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notification-devices' \
       "pushToken": "string",
       "deviceName": "string",
       "appVersion": "string",
+      "locale": "tr",
       "lastSeenAt": "2026-09-04T14:30:00.000Z",
       "createdAt": "2026-09-04T14:30:00.000Z",
       "updatedAt": "2026-09-04T14:30:00.000Z"
@@ -1701,6 +1702,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notification-devices' \
 | `pushToken` | string or null | no | length 0–512 |
 | `deviceName` | string or null | no | length 0–255 |
 | `appVersion` | string or null | no | length 0–64 |
+| `locale` | string or null | no | length 0–16 |
 
 **Request**
 
@@ -1728,6 +1730,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' 
   "pushToken": "string",
   "deviceName": "string",
   "appVersion": "string",
+  "locale": "tr",
   "lastSeenAt": "2026-09-04T14:30:00.000Z",
   "createdAt": "2026-09-04T14:30:00.000Z",
   "updatedAt": "2026-09-04T14:30:00.000Z"

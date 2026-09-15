@@ -1,4 +1,5 @@
 import { toIso } from '../lib/serialize.js';
+import { deviceLabel } from '../db/sessions.js';
 
 /**
  * Notification device registry (OPH-060, BLUEPRINT §8): which installs may
@@ -7,6 +8,17 @@ import { toIso } from '../lib/serialize.js';
  * heartbeat — push tokens are optional because v1 notifications are local
  * (flutter_local_notifications, OPH-061); FCM/APNs land later and only ever
  * carry IDs, never task content (§8.3).
+ *
+ * **Somebody calls it now (OPH-309).** For six weeks this route was correct and
+ * unused: EE measured it on 2026-08-24 and wrote down that `notification_devices`
+ * is empty on every real instance, because nothing in the Flutter app had ever
+ * called it. Epic 30 rests on this table — `last_seen_at` is the whole of the
+ * staleness test that decides who gets pushed to — so the app now registers on
+ * sign-in, re-PUTs when it comes back to the foreground, and DELETEs on the way
+ * out.
+ *
+ * `locale` is the device's, not the account's: the fallback push renders a fixed
+ * string and a phone can be in a different language from the laptop (ADR-0038).
  */
 
 const PLATFORMS = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
@@ -31,6 +43,7 @@ const deviceSchema = {
     pushToken: { type: ['string', 'null'] },
     deviceName: { type: ['string', 'null'] },
     appVersion: { type: ['string', 'null'] },
+    locale: { type: ['string', 'null'] },
     lastSeenAt: { type: 'string' },
     createdAt: { type: 'string' },
     updatedAt: { type: 'string' },
@@ -44,6 +57,7 @@ function serializeDevice(row) {
     pushToken: row.push_token ?? null,
     deviceName: row.device_name ?? null,
     appVersion: row.app_version ?? null,
+    locale: row.locale ?? null,
     lastSeenAt: toIso(row.last_seen_at),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
@@ -71,6 +85,7 @@ export default async function notificationDeviceRoutes(app) {
             pushToken: { type: ['string', 'null'], maxLength: 512 },
             deviceName: { type: ['string', 'null'], maxLength: 255 },
             appVersion: { type: ['string', 'null'], maxLength: 64 },
+            locale: { type: ['string', 'null'], maxLength: 16 },
           },
         },
         response: {
@@ -89,6 +104,7 @@ export default async function notificationDeviceRoutes(app) {
         ...('pushToken' in body ? { push_token: body.pushToken } : {}),
         ...('deviceName' in body ? { device_name: body.deviceName } : {}),
         ...('appVersion' in body ? { app_version: body.appVersion } : {}),
+        ...('locale' in body ? { locale: body.locale } : {}),
         last_seen_at: new Date(),
         updated_at: new Date(),
       };
@@ -97,7 +113,17 @@ export default async function notificationDeviceRoutes(app) {
       if (existing) {
         await app.db('notification_devices').where({ id: deviceId }).update(values);
       } else {
-        await app.db('notification_devices').insert({ id: deviceId, ...values });
+        // A device with no name answers no question, and OPH-284 already
+        // settled what to write instead: the User-Agent, RAW, because parsing
+        // one is guessing and a client can shorten a string it can see. On
+        // INSERT only — a heartbeat must never overwrite a name a client set
+        // on purpose, which is also why `deviceName` keeps its key-presence
+        // semantics above.
+        await app.db('notification_devices').insert({
+          id: deviceId,
+          device_name: deviceLabel(request),
+          ...values,
+        });
       }
 
       const row = await app.db('notification_devices').where({ id: deviceId }).first();

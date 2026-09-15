@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/server_url.dart';
+import '../devices/providers.dart';
 import 'data/auth_api.dart';
 import 'data/auth_interceptor.dart';
 import 'data/auth_repository.dart';
@@ -90,8 +91,14 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       .read(authRepositoryProvider)
       .register(email: email, password: password, displayName: displayName);
 
-  Future<void> logout({bool allDevices = false}) =>
-      ref.read(authRepositoryProvider).logout(allDevices: allDevices);
+  Future<void> logout({bool allDevices = false}) async {
+    // Take this install off the notification registry FIRST, while the token
+    // that can still do it exists (OPH-309). The registry swallows its own
+    // failures — the route answers 204 to a repeated or foreign delete for
+    // exactly this reason — so a sign-out is never blocked by it.
+    await ref.read(deviceRegistryProvider).signOut();
+    await ref.read(authRepositoryProvider).logout(allDevices: allDevices);
+  }
 }
 
 /// Google / Apple sign-in (ADR-0026). Overridden in widget tests with a fake so
