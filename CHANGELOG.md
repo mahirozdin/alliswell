@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The part that actually sends.** AllisWell can now talk to Google's and the
+  browsers' push services — when an instance has been given credentials, and
+  only then. The encryption a browser requires is left to the library that
+  specialises in it, because getting it subtly wrong fails silently; everything
+  around it — which failures are worth retrying, which are not, how long to wait
+  — is ours, and matches how the rest of the server makes outbound calls. Google
+  needs a signed assertion rather than a password, which is a dozen lines here
+  instead of a large dependency, and the hour-long token it hands back is bought
+  once rather than for every message. The distinction the whole thing turns on
+  is not success versus failure but **gone** versus **try again**: a
+  subscription somebody revoked answers the same way forever, so it is written
+  off once and skipped from then on, while a push service having a bad minute
+  says nothing at all about the device. Nothing calls this yet. OPH-312,
+  [ADR-0038](docs/adr/0038-server-to-device-delivery.md).
+
 - **A device can say how to reach it, and the server can remember what it
   already sent.** A browser subscription is an address plus two keys, which does
   not fit in the single field an Android token needs, so it gets its own — and

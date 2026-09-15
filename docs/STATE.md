@@ -3,7 +3,34 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15e (**OPH-311 BİTTİ — taşıyıcı kolonları ve teslim
+**Last updated:** 2026-09-15f (**OPH-312 BİTTİ — taşıyıcı: FCM v1 ve Web Push.**
+Epic'te ilk kez gerçekten giden istek var, ama hâlâ onu çağıran yok.
+**Turun cümlesi: ayrım başarı/başarısızlık değil, "gitti" ile "sonra dene"
+arasında.** Kullanıcının iptal ettiği bir abonelik 404/410'u sonsuza kadar verir —
+her süpürgede yeniden denemek, teslim günlüğünü okunmaya değer arızaları gömen
+gürültüyle doldurmanın yolu; 429/5xx ise push servisinin anlık hâli ve cihaz
+hakkında hiçbir şey söylemiyor. **İki tasarım kararı:** (1) `web-push` paketi
+YALNIZ şifreleme için — `generateRequestDetails()` ağa dokunmadan şifreli gövdeyi
+ve VAPID başlıklarını veriyor, isteği `fetch` gönderiyor; RFC 8291 zinciri yanlış
+yazıldığında sessizce çalışır, o kütüphanenin işi, ama durum eşlemesi ve yeniden
+deneme kararı bizim ve kendi fikirleri olan ikinci bir HTTP yığını istemiyoruz.
+(2) `firebase-admin` yok — o paketin burada yapacağı şey bir JWT imzalayıp POST
+atmak; imzalama `node:crypto` ile on iki satır. Erişim jetonu önbellekli, süresi
+dolmadan 60 sn önce yenileniyor. Taşıyıcı **fırlatmıyor** (çağıran bir zamanlayıcı
+süpürgesi; fırlatan gönderici bile sonuç olarak dönüyor) — tek istisna geçersiz
+yük, çünkü o teslim hatası değil programlama hatası. `app.pushTransport` kimlik
+yoksa **null**; hiçbir şey yapmayan boş bir taşıyıcı değil, çünkü "bu kurulum push
+atabilir mi" sorusunun dürüst cevabı kontrol edilebilir bir değer. Ulaşılabilirliği
+de ayrıca test edildi — bu epic'in dersi tam olarak bu. **Negatif kontrol:** ölü
+cihazı atlama kaldırılınca test kırmızı. **Doğrulama:** API birim süiti
+**850 / 847 geçti** (+16), `eslint`/`prettier` temiz, dokuz kapı yeşil. Testler
+sahte `fetch` ile ama **gerçek anahtarlarla** koşuyor: Web Push gerçek bir P-256
+aboneliğini şifreliyor, FCM gerçek bir RSA anahtarıyla JWT imzalıyor.
+**Yapamadığım açıkça:** gerçek kimlik bilgisiyle canlı gönderim — bende FCM servis
+hesabı ya da VAPID çifti yok, istemedim; o adım sahibinin kendi anahtarlarıyla.
+Sıradaki iş: **OPH-313** (`gateway_web.dart` + izin akışı).)
+
+Önceki blok: 2026-09-15e (**OPH-311 BİTTİ — taşıyıcı kolonları ve teslim
 günlüğü.** `notification_devices` bir Web Push aboneliğini taşıyabiliyor artık
 (endpoint + iki anahtar ayrı kolonlarda, çünkü `push_token` tek dize ve bir FCM
 jetonu tek dize; endpoint tek başına o 512 karakteri aşabiliyor), üstüne

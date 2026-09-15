@@ -12,6 +12,7 @@ import redisPlugin from './plugins/redis.js';
 import authPlugin from './plugins/auth.js';
 import socketPlugin from './plugins/socket.js';
 import mirrorPlugin from './plugins/mirror.js';
+import pushPlugin from './plugins/push.js';
 import calendarSyncPlugin from './plugins/calendar-sync.js';
 import storagePlugin from './plugins/storage.js';
 import storageGcPlugin from './plugins/storage-gc.js';
@@ -141,6 +142,9 @@ export async function buildApp({
   await app.register(aiPlugin);
   await app.register(socketPlugin);
   await app.register(mirrorPlugin);
+  // OPH-312: `app.pushTransport`, or null when this instance has no credentials
+  // to send with. Registered unconditionally — the plugin is what decides.
+  await app.register(pushPlugin);
   await app.register(calendarSyncPlugin);
   // Entitlements resolve BEFORE the overlay loads (EE-003): overlay modules
   // gate their own registration on `app.entitlements.has(...)` — the 404

@@ -10326,23 +10326,58 @@ on every real instance." Push'un tamamı bu boş tablonun üstünde duruyor._
       ve yeni tablo aynı `resolveCollation` yardımcısını kullanıyor ve çözüm knex örneği başına
       önbelleklendiği için üçü de aynı collation'la kuruluyor.
 
-### OPH-312 — Taşıyıcı: FCM v1 ve Web Push
+### OPH-312 — `lib/push/` taşıyıcısı: FCM v1 ve Web Push
 
-- [ ] **`fcm.js`** — FCM HTTP v1. Service-account JWT'si `node:crypto` ile RS256 imzalanır →
-      OAuth2 erişim jetonu (önbelleklenir) → `fetch` ile gönderim. **`firebase-admin` YOK**
-      (devasa bağımlılık, sunucuda Firebase kurulumu gerektirir). iOS'a APNs üzerinden relay
-      eder — **ayrı APNs entegrasyonu yazılmaz**.
-- [ ] **`webpush.js`** — VAPID + RFC 8291 (aes128gcm) için `web-push` paketi. Gerekçe
-      ADR-0038'de: ECDH P-256 + HKDF + AES-128-GCM zincirini elle yazmak, yanlış yazıldığında
-      **sessizce** çalışan bir şifreleme üretir.
-- [ ] **`transport.js`** — sağlayıcı seçimi, toplu gönderim, ve **token hijyeni**: 404/410
-      (Web Push) ve `UNREGISTERED`/`INVALID_ARGUMENT` (FCM) → `invalid_at` işaretlenir, bir
-      daha denenmez. Çağırana **asla fırlatmaz** (EE'nin `createPushSender` sözleşmesiyle aynı).
-- [ ] `app.pushTransport` olarak decorate edilir. **`ee/` altına dokunulmaz** (`check:no-ee`);
-      EE'nin `eePush.transport` boşluğunu kendi deposunda bağlaması ayrı iş.
-- **Kabul:** sahte HTTP ile gönderim testleri (başarı, 410, `UNREGISTERED`, 5xx+yeniden deneme);
-      geçersiz token bir kez işaretlenir ve ikinci turda **hiç denenmez**.
-- **Doğrulama:** API birim süiti; gerçek kimlik bilgisiyle elle bir gönderim (kayda geçirilir).
+- [x] **`webpush.js`** — VAPID + RFC 8291. **`web-push` paketi YALNIZCA şifreleme için
+      kullanılıyor:** `generateRequestDetails()` şifrelenmiş gövdeyi ve VAPID başlıklarını ağa
+      dokunmadan üretiyor, isteği `fetch` gönderiyor. Gerekçe: ECDH + HKDF + AES-128-GCM
+      zinciri yanlış yazıldığında **sessizce** çalışır, o yüzden kütüphanenin işi; ama durum
+      eşlemesi, yeniden deneme kararı ve zaman aşımı bu API'nin işi ve kendi fikirleri olan
+      ikinci bir HTTP yığını istemiyoruz (depoda giden istemci olarak yalnız iki `fetch` çağrı
+      yeri var).
+- [x] **`fcm.js`** — HTTP v1. Servis hesabının JWT'si `node:crypto` ile RS256 imzalanıyor →
+      OAuth2 erişim jetonu → `fetch`. **`firebase-admin` YOK:** o paketin burada yapacağı şey
+      bir JWT imzalamak ve POST atmak; imzalama on iki satır, alternatifi kendi HTTP yığınını
+      ve kendi yeniden-deneme fikirlerini getiren büyük bir bağımlılık. Erişim jetonu
+      **önbellekli** ve süresi dolmadan 60 sn önce yenileniyor — uçuş sırasında ölen bir jeton,
+      kimsenin üzerine hareket edemeyeceği bir 401 demek.
+- [x] **`outcome.js`** — turun asıl fikri burada: ayrım başarı/başarısızlık değil, **"gitti" ile
+      "sonra dene"** arasında. Kullanıcının iptal ettiği bir abonelik 404/410'u sonsuza kadar
+      verir; onu her süpürgede yeniden denemek, teslim günlüğünü okunmaya değer arızaları
+      gömen gürültüyle doldurmanın yolu. 429 ve 5xx ise push servisinin anlık hâli ve cihaz
+      hakkında hiçbir şey söylemiyor.
+- [x] **`transport.js`** — sağlayıcıya göre dağıtım, ve bir cihazı **yazan tek yer**.
+      `gone` → `invalid_at`; `sent` → `last_push_at`. Zaten işaretli cihaz atlanıyor
+      (**negatif kontrol:** atlama kaldırılınca test kırmızı, `expected 1 to be +0`).
+      İşareti yalnız cihaz kaydı temizliyor (OPH-311) — göndericinin onu dürüstçe geri alması
+      mümkün değil.
+- [x] **Fırlatmıyor, ve tek istisnası bilerek.** Çağıran bir zamanlayıcı süpürgesi; başarısız
+      bir push onu yanına alıp düşürmemeli, o yüzden fırlatan bir gönderici bile **sonuç**
+      olarak dönüyor. Fırlatan tek şey geçersiz yük: o bir teslim hatası değil **programlama
+      hatası**, ve hiç kurulmaması gereken bir gövde sayılmamalı, yüksek sesle duyulmalı
+      (BLUEPRINT §8.3).
+- [x] **FCM `data` haritası string→string**, istisnasız — testi bunu iddia ediyor.
+- [x] **`plugins/push.js` → `app.pushTransport`**, kimlik yoksa **`null`**. Hiçbir şey
+      yapmayan boş bir taşıyıcı değil: "bu kurulum push atabilir mi" sorusunun dürüst cevabı
+      kontrol edilebilir bir değer, boş dizi döndüren bir çağrı değil. EE'nin
+      `createPushSender`'ının zaten kullandığı biçim.
+- [x] **Ulaşılabilirliğin de testi var.** Bu epic'in dersi, hiçbir şeyin ulaşmadığı doğru kodun
+      özellik olmaması (OPH-309'un ölü kaydı) — o yüzden `app.pushTransport`'un kimlik yokken
+      `null`, bir sağlayıcı yapılandırılınca çağrılabilir olduğu ayrıca test ediliyor.
+- **Doğrulama (2026-09-15):** API birim süiti **850**, **847 geçti** (+16: 4 Web Push, 4 FCM,
+      6 taşıyıcı, 2 eklenti); `eslint`/`prettier` temiz; dokuz kapının dokuzu yeşil. Kalan 3
+      kırmızı yine `ai-chat-transport` zamanlama testleri. Testler sahte bir `fetch` ile
+      koşuyor ama **gerçek anahtarlarla**: Web Push testleri gerçek bir P-256 aboneliği
+      şifreliyor (kütüphane sahte anahtarı kabul etmez) ve FCM testi gerçek bir RSA anahtarıyla
+      JWT imzalıyor.
+- **Yapamadığım, açıkça:** gerçek kimlik bilgisiyle canlı bir gönderim. Bende FCM servis hesabı
+      ya da VAPID çifti yok ve istemedim; kabul maddesindeki "elle bir gönderim" sahibinin
+      kendi anahtarlarıyla yapacağı bir adım olarak duruyor. Süitin kanıtladığı şey sözleşme ve
+      hata eşlemesi, ağın öteki ucu değil.
+- **Kapsam DIŞI, bilerek:** taşıyıcı **veri** yükü gönderiyor. FCM'de **görünür** bir uyarı
+      ayrıca `notification` bloğu ve sabit yerelleştirilmiş dizeler ister — o, görünür yedeğin
+      sahibi olan **OPH-320**'nin işi. Web Push'ta service worker render ettiği için veri yükü
+      zaten yeterli.
 
 ### OPH-313 — Web'de bildirim ağ geçidi ve izin akışı
 

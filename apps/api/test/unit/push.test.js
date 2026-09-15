@@ -80,3 +80,26 @@ describe('the VAPID public key endpoint', () => {
     });
   });
 });
+
+/**
+ * The wiring, because this epic's whole lesson is that correct code nothing
+ * reaches is not a feature (OPH-309's dead registry).
+ */
+describe('the transport is reachable, or honestly absent', () => {
+  it('is null on an instance with no credentials', async () => {
+    ({ app } = await buildTestApp({ config: configWith({}) }));
+    expect(app.pushTransport).toBeNull();
+  });
+
+  it('is there as soon as one provider is configured', async () => {
+    ({ app } = await buildTestApp({
+      config: configWith({
+        PUSH_VAPID_PUBLIC_KEY: keys.public,
+        PUSH_VAPID_PRIVATE_KEY: keys.private,
+        PUSH_VAPID_SUBJECT: 'mailto:ops@alliswell.space',
+      }),
+    }));
+    expect(app.pushTransport).not.toBeNull();
+    expect(typeof app.pushTransport.send).toBe('function');
+  });
+});
