@@ -2,6 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- OPH-319: what lets APNs hand a push to this build at all. `development`
+	     is the value a debug build needs; the App Store export replaces it with
+	     `production` from the distribution profile, which is why it is not
+	     hardcoded to the latter here.
+
+	     NOTE what is deliberately NOT here: UIBackgroundModes/remote-notification
+	     in Info.plist. iOS is served by the VISIBLE fallback push (OPH-320),
+	     which needs no background mode; the silent headless wake is out of
+	     scope for this epic and ADR-0038 §8 records why (the session is stored
+	     under kSecAttrAccessibleWhenUnlocked, so a 3 a.m. wake on a locked
+	     phone would read null and sync nothing). -->
+	<key>aps-environment</key>
+	<string>development</string>
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>

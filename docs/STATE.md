@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16b (**OPH-318 BİTTİ — replikanın iki yazarı vardı ve
+**Last updated:** 2026-09-16c (**OPH-319 BİTTİ — telefonun adresi.**
+`firebase_messaging` bağımlılık oldu ama `AwPushMessaging` ADR-0025'in sözleşmesini
+aynen taşıyor: `AwFirebase.isConfigured` olmadan eklentiye **hiçbir şey sormuyor**.
+**Bu turun en iyi kanıtı bir testin yokluğu gibi görünüyor:** konfigsiz durumda
+sarmalayıcı eklentiye dokunmuyor, ki dokunsaydı VM testi `FirebaseMessaging.instance`
+üzerinde patlardı — testlerin koşuyor olması o korumanın kendisi. Üstüne gerçek
+ölçüm: `google-services.json` geçici olarak kaldırılıp **release APK derlendi**
+(96.1 MB, geçti), dosya geri kondu. **Token bir abonelik, bir çağrı değil:** SDK
+cihaz geri yüklemesinde veya uygulama verisi silinince token'ı döndürüyor ve
+kimsenin yazmadığı bir rotasyon, sunucunun göndermeye devam ettiği ama asla
+ulaşamadığı bir cihaz demek. Çıkışta sıra önemli: önce kayıt silinir, **sonra
+token** — satır sunucuda kalsa bile silinmiş bir token'a gönderilemiyor.
+**Android izin farkı tek satır:** `com.google.android.c2dm.permission.RECEIVE`;
+tehlikeli/medya izni yok, toplam 20, allowlist yazıldı ve kapı enjeksiyonla
+kanıtlandı. **iOS:** `aps-environment` entitlement yazıldı, **`UIBackgroundModes`
+eklenmedi** ve nedeni dosyanın içine yazıldı (ADR-0038 §8). **Hiçbir testin
+yakalayamayacağı sessizlik, `FIREBASE.md`'ye yazıldı:** iOS'ta Firebase projesine
+APNs anahtarı yüklenmezse token üretilir ve hiçbir şey teslim edilmez — bu sahibin
+maddesi. **Doğrulama:** app süiti **1681 geçti** (+6), `flutter analyze` yalnız
+taban uyarısı, sekiz kapı + izin kapısı yeşil, üç enjeksiyon kırmızıya düşüp geri
+alındı. Sıradaki iş: **OPH-320** (görünür yedek teslim — OPH-315'in süpürgesi mobili
+de kapsıyor; metin `notification_devices.locale`'den seçilen sabit dize).)
+
+Önceki blok: 2026-09-16b (**OPH-318 BİTTİ — replikanın iki yazarı vardı ve
 hep vardı.** `journal_mode = WAL` + `busy_timeout = 5000`, `awSqlitePragmas`
 sabitinde (satır içi değil: test dosyayı uygulamanın açtığı gibi açıp pragmaların
 gerçekten tuttuğunu ölçebilsin). Widget'ın arka plan izolatı bugün, uygulama

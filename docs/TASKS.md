@@ -10659,20 +10659,37 @@ tek uzun transaction'ı (`sync_applier.dart:25`) bu şansı ortadan kaldırır._
 
 ### OPH-319 — `firebase_messaging` ve token kaydı
 
-- [ ] **ADR-0025 kalıbına uyar**: `firebase_options.dart` **yok**, config dosyası yoksa
-      `AwFirebase.isConfigured` false ve mesajlaşma **no-op**; derleme kırılmaz. **Web'e
-      Firebase girmez** — web VAPID kullanıyor, ADR-0025 §5 (*"web has no implicit config"*)
-      korunur.
-- [ ] Token alınır, `onTokenRefresh` dinlenir, OPH-309'un PUT'una `push_provider='fcm'` ile
-      yazılır. Çıkışta temizlenir.
-- [ ] **iOS**: `aps-environment` entitlement (App ID + provisioning profili değişikliği).
-      **`UIBackgroundModes` EKLENMEZ** — iOS'ta sessiz uyandırma bu epic'in kapsamı dışı,
-      görünür yedek arka plan modu gerektirmiyor.
-- [ ] **Android izin allowlist'i** `scripts/android/assert-permissions.sh --write` ile
-      güncellenir; fark commit mesajında gerekçelenir. `firebase_messaging` izinleri
-      **derleme anında** ekliyor, CI kurulu APK'nın ikili manifest'ini diff'liyor.
-- **Kabul:** config dosyası **olmayan** temiz klonda `flutter build` geçer, uygulama açılır ve
-      bugünkü davranış aynen sürer; config varken token kaydı sunucuda görünür.
+- [x] **ADR-0025 kalıbına uyuldu.** `firebase_messaging: ^16.0.3` bağımlılık; ama
+      `AwPushMessaging` (`core/firebase/push_messaging.dart`) `AwFirebase.isConfigured`
+      olmadan eklentiye **hiçbir şey sormuyor**. `firebase_options.dart` yok. Gradle zaten
+      `google-services.json` varlığına göre koşullu (`build.gradle.kts:18`), yani temiz klon
+      zemini bu turdan önce de vardı — **ölçüldü:** config dosyası geçici olarak
+      kaldırılıp `flutter build apk --release` koşturuldu ve **geçti** (96.1 MB), dosya geri
+      kondu. **Web'e Firebase girmiyor**: tarayıcı VAPID ile ulaşılıyor, ADR-0025 §5 duruyor.
+- [x] **Token alınıyor, `onTokenRefresh` dinleniyor**, OPH-309'un PUT'una
+      `DevicePushCredentials.fcm` ile yazılıyor (`pushTokenProvider`). Yenilenme bir abonelik
+      olmasının sebebi ölçülmüş bir hata sınıfı: SDK cihaz geri yüklemesinde veya uygulama
+      verisi silinince token'ı döndürüyor ve **kimsenin yazmadığı bir rotasyon**, sunucunun
+      göndermeye devam ettiği ama asla ulaşamadığı bir cihaz demek.
+- [x] **Çıkışta temizleniyor** — `logout()` sırayla: kaydı sil, **sonra token'ı sil**. Satır
+      sunucuda kalsa bile silinmiş bir token'a gönderilemiyor.
+- [x] **iOS:** `aps-environment` = `development` `Runner.entitlements`'a yazıldı (App Store
+      dışa aktarımı dağıtım profilinden `production` ile değiştiriyor — o yüzden sabitlenmedi).
+      **`UIBackgroundModes` EKLENMEDİ** ve entitlement dosyasına bunun neden böyle olduğu
+      yazıldı (ADR-0038 §8). `plutil -lint` temiz.
+- [x] **Android izin allowlist'i güncellendi** ve fark **tek satır**:
+      `com.google.android.c2dm.permission.RECEIVE` — FCM yayınını almayı sağlayan izin.
+      Tehlikeli/medya izni yok, `POST_NOTIFICATIONS` ve `WAKE_LOCK` zaten vardı. Toplam 20.
+      Kapı enjeksiyonla kanıtlandı: satır silinince `FAIL`, geri konunca `OK`.
+- [x] **`docs/FIREBASE.md`** tablosuna satır eklendi; içinde **hiçbir testin yakalayamayacağı
+      sessizlik** de yazılı: iOS'ta Firebase projesine **APNs anahtarı yüklenmezse** token
+      üretilir ve hiçbir şey teslim edilmez.
+- **Kabul:** ✅ config dosyası olmayan derleme geçiyor (gerçekten koşturuldu) ve davranış
+      aynen sürüyor — bu ikincisi testle de ölçülü: konfigsiz `AwPushMessaging` eklentiye
+      dokunmuyor, ki dokunsaydı VM testi `FirebaseMessaging.instance` üzerinde patlardı.
+      ⏸️ "config varken token kaydı sunucuda görünür" — **sahipte**: `google-services.json`
+      bu makinede var ama gerçek bir cihaza gerçek teslim APNs anahtarı ve FCM servis hesabı
+      istiyor (§0.0). App süiti **1681 geçti** (+6), üç enjeksiyonun üçü de kırmızı.
 
 ### OPH-320 — Görünür yedek teslim: #15'in garantili yarısı
 

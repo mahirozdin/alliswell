@@ -14,6 +14,7 @@ android.permission.USE_FULL_SCREEN_INTENT
 android.permission.VIBRATE
 android.permission.WAKE_LOCK
 com.alliswell.alliswell.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+com.google.android.c2dm.permission.RECEIVE
 com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE
 com.google.android.gms.permission.AD_ID
 com.google.android.providers.gsf.permission.READ_GSERVICES

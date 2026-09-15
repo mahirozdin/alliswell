@@ -89,6 +89,11 @@ dependencies:
   firebase_crashlytics: ^5.0.4
   firebase_performance: ^0.11.0+4
   firebase_auth: ^6.2.0
+  # OPH-319 — the mobile half of Epic 30's delivery. Same optional contract as
+  # its siblings: with no config file the plugin never gets a token, so nothing
+  # registers and nothing is sent. Never used on web, which has VAPID instead
+  # (ADR-0025 §5: the browser gets no implicit config).
+  firebase_messaging: ^16.0.3
   # The provider dance itself. These give us the ID TOKEN that our own API
   # verifies (ADR-0026) — Firebase Auth is an identity provider here, never the
   # user store: that stays MySQL, so a self-hoster keeps email+password working

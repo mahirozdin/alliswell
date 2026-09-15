@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/app_version.dart';
+import '../../core/firebase/push_messaging.dart';
 import '../../i18n/i18n.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
@@ -37,6 +38,41 @@ final devicePushCredentialsProvider =
     NotifierProvider<DevicePushCredentialsHolder, DevicePushCredentials?>(
       DevicePushCredentialsHolder.new,
     );
+
+/// The FCM plugin behind an object tests can replace.
+final pushMessagingProvider = Provider<AwPushMessaging>(
+  (ref) => AwPushMessaging(),
+);
+
+/// Puts this install's FCM token where the registry will find it (OPH-319).
+///
+/// Watched, not awaited, and silent when there is nothing to fetch: a build
+/// with no Firebase config, or a browser (which is reached with VAPID
+/// instead), simply never writes any credentials and the heartbeat carries
+/// none — the route reads key PRESENCE, so an absent token leaves whatever is
+/// stored alone rather than clearing it.
+///
+/// The REFRESH is the reason this is a subscription rather than one call: the
+/// SDK rotates a token on a device restore or an app-data clear, and a
+/// rotation nobody wrote down is a device the server keeps sending to and
+/// never reaches again.
+final pushTokenProvider = Provider<void>((ref) {
+  final messaging = ref.watch(pushMessagingProvider);
+  if (!messaging.isAvailable) return;
+
+  void publish(String token) => ref
+      .read(devicePushCredentialsProvider.notifier)
+      .set(DevicePushCredentials.fcm(token));
+
+  unawaited(
+    messaging.token().then((token) {
+      if (token != null) publish(token);
+    }),
+  );
+
+  final refreshes = messaging.tokenRefreshes.listen(publish);
+  ref.onDispose(refreshes.cancel);
+});
 
 /// What this install is, or `null` on a platform the route has no word for.
 final deviceDescriptorProvider = Provider<DeviceDescriptor?>((ref) {
@@ -79,6 +115,10 @@ final deviceRegistrationProvider = Provider<void>((ref) {
   // first round, and this is what makes the registration happen when it lands.
   final clientId = ref.watch(syncClientIdProvider).value;
   if (!signedIn || clientId == null) return;
+
+  // The token has to exist before the heartbeat that carries it, and both
+  // want the same trigger: a session.
+  ref.watch(pushTokenProvider);
 
   final registry = ref.watch(deviceRegistryProvider);
   unawaited(registry.sync(signedIn: true));

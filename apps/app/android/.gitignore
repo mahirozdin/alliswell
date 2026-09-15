@@ -1,5 +1,7 @@
 gradle-wrapper.jar
 /.gradle
+# Kotlin 2.x keeps build-session state here; a gradle run creates it.
+/.kotlin
 /captures/
 /gradlew
 /gradlew.bat

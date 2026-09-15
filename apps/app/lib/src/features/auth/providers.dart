@@ -97,6 +97,9 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // failures — the route answers 204 to a repeated or foreign delete for
     // exactly this reason — so a sign-out is never blocked by it.
     await ref.read(deviceRegistryProvider).signOut();
+    // And stop being reachable even if the row outlives the request: a deleted
+    // token cannot be sent to, whatever the server still believes (OPH-319).
+    await ref.read(pushMessagingProvider).forgetToken();
     await ref.read(authRepositoryProvider).logout(allDevices: allDevices);
   }
 }
