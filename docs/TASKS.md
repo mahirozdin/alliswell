@@ -10847,15 +10847,35 @@ emsal ise `main.dart:19-29`'daki `@pragma('vm:entry-point') widgetCallback`._
 
 ### OPH-323 — Belgeler, ROADMAP ve sürüm
 
-- [ ] `docs/API.md` + `docs/openapi.json` + postman koleksiyonu (`check:openapi`,
-      `check:apidocs`, `check:postman`) — yeni uç ve cihaz alanları.
-- [ ] `ROADMAP.md`: `### Phase 17 — … (Epic 30) ✅`, ve `:478-480`'deki park cümlesinin
-      üstü çizilir.
-- [ ] `CHANGELOG.md` `[Unreleased]` girdileri + `docs/STATE.md` bloğu.
-- [ ] Sürüm hazırlığı: **12 yer** + CHANGELOG bölümü (`scripts/docs/check.mjs` ölçüyor;
-      `release.yml:56-81` etiketin CHANGELOG başlığını bulamazsa yayını düşürür).
-- **Kabul:** `npm run check:docs` yeşil; etiketten önce üç sürüm alanı (api package.json,
-      pubspec, `kAppVersion`) etiketle aynı.
+- [x] **`docs/API.md` + `docs/openapi.json` + postman koleksiyonu** `npm run api:docs` ile
+      yeniden üretildi (82 yol, 114 istek / 18 klasör); `check:openapi`, `check:apidocs`,
+      `check:postman` yeşil. Epic 30'un uçları (`PUT /notification-devices/:id`,
+      `GET /push/public-key`) zaten kendi turlarında spec'e girmişti — bu turda değişen tek
+      şey gömülü sürüm.
+- [x] **`ROADMAP.md`:** `### Phase 17 — … (Epic 30) ✅ (v1.12.0, 2026-09-16)`. `:480`'deki
+      park cümlesi **tekrar çizilmedi** — zaten üstü çizili ve *"Unparked 2026-09-15"* notu
+      taşıyordu (sözleşme §3'ün uyarısı).
+- [x] **`CHANGELOG.md`:** `[Unreleased]` boş bırakılıp altına `## [1.12.0] — 2026-09-16`
+      kondu — deponun kendi kalıbı (`979e195d`, 1.11.0 hazırlığı). Bu turda eklenen girdiler:
+      sunucu→cihaz teslimatın kullanıcıya görünen hâli (315/320/321/322), tarayıcı ayarı
+      (316), gizlilik metninin ikiye ayrılması (320), üretilen platform tablosu (317) ve
+      WAL (318, *Fixed*). 308…314'ün girdileri kendi turlarında yazılmıştı; bu turda tek
+      `### Added` altında birleştirildi.
+- [x] **Sürüm 1.11.0 → 1.12.0, `pubspec` build 39 → 40.** Elle sayılmadı: beş zorunlu alan
+      (kök `package.json`, `apps/api`, `apps/landing`, `pubspec.yaml`, `kAppVersion`) bump
+      edildi, `check:docs` **kalan beşini kendisi saydı** — `README.md:52`,
+      `apps/landing/index.html:122`, `apps/landing/src/content.js:15`,
+      `apps/landing/tr/index.html:85`, `docs/COMPARISON.md:301`. Toplam **on yer** + üretilen
+      dosyalardaki gömülü sürüm. (Backlog "12 yer" diyordu; kapının saydığı sayı bu.)
+- [x] **Landing kapıları da koşturuldu** (sözleşme §0.1 madde 5'in uyarısı): `check:copy`
+      yeşil, `lint -w @alliswell/landing` yeşil, ve `landing:build` + `check:pages`
+      **sandbox'ta** (yerelde `dist/` yok, hook de derlemeyi engelliyor) → *"9 routes built,
+      titled, canonical and indexable"*.
+- **Kabul:** ✅ `npm run check:docs` yeşil; ✅ etiketten önce üç sürüm alanı
+      (`apps/api/package.json`, `pubspec.yaml`, `kAppVersion`) birbiriyle ve kök sürümle
+      aynı — `release.yml:50-53`'ün istediği tam olarak bu; ✅ `CHANGELOG.md`'de
+      `## [1.12.0]` başlığı var (`release.yml:58-81` onu bulamazsa yayını düşürür).
+      ⏸️ **Etiketi kesmek sahibin işi** (§0.0): `git tag v1.12.0 && git push origin v1.12.0`.
 
 **Epic 30 DoD:** #15 ve #16 kapanır; iki yeni kapı (`check:push-payload`,
 `check:notify-matrix`) ve bir parite testi CI'da; ADR-0038 ve ADR-0039 yazılı **ve indekste**;

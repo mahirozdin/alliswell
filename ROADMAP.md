@@ -481,7 +481,7 @@ backlog.~~ **Unparked 2026-09-15 as Phase 17 / Epic 30 (OPH-308…323).**
 
 ## Toward v1.12.0
 
-### Phase 17 — Request round 22, the two parked items: server→device delivery (Epic 30) ⏳ (planned 2026-09-15)
+### Phase 17 — Request round 22, the two parked items: server→device delivery (Epic 30) ✅ (v1.12.0, 2026-09-16)
 
 The same reporter, the two items Phase 16 measured and deliberately left out
 ([#15](https://github.com/mahirozdin/alliswell/issues/15),

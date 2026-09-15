@@ -3,7 +3,28 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16g (**OPH-317 BİTTİ — #16'nın sınıfı kapandı.**
+**Last updated:** 2026-09-16h (**OPH-323 BİTTİ — Epic 30'un KODU TAMAM; açık iş
+kalmadı.** 9/9 iş (OPH-315…323) kapalı, 16/16 epic boyunca. Bu tur belgeler ve
+sürüm: `api:docs` yeniden üretildi (82 yol, 114 istek), `ROADMAP.md` Phase 17
+**✅ (v1.12.0)**, `CHANGELOG.md`'de `[Unreleased]` boş bırakılıp altına
+`## [1.12.0] — 2026-09-16` kondu — deponun kendi kalıbı — ve epic'in kullanıcıya
+görünen beş girdisi yazıldı. **Sürüm elle sayılmadı:** beş zorunlu alan bump
+edildi, `check:docs` kalan **beşini kendisi saydı** (README, landing index.html,
+content.js, tr/index.html, COMPARISON.md); backlog "12 yer" diyordu, kapının
+saydığı **on**. `pubspec` build 39 → 40. **Landing kapıları da koşturuldu:**
+`check:copy` ve lint yerelde, `landing:build` + `check:pages` sandbox'ta
+(yerelde `dist/` yok ve hook derlemeyi engelliyor) — dokuz rota temiz.
+**Doğrulama:** API süiti **881**, app süiti **1693**, on üç kapı + lint + format
+yeşil, `flutter analyze` yalnız taban uyarısı, depo temiz, `ee/` değişmemiş.
+**Sahipte kalan üç şey, hiçbiri kodla çözülemez:** (1) etiket —
+`git tag v1.12.0 && git push origin v1.12.0`, `release.yml`'in tek tetikleyicisi;
+(2) push kimlik bilgileri — `PUSH_VAPID_*` üçlüsü, `PUSH_FCM_SERVICE_ACCOUNT_FILE`
+ve iOS için Firebase projesine **APNs anahtarı** (yoksa token üretilir ve hiçbir
+şey teslim edilmez — hiçbir testin yakalayamayacağı sessizlik); (3) gerçek cihaz
+provası. `#15` ve `#16` kapatılmadı: dışa dönük bir işlem, sahibin komutu.
+Sıradaki iş: **Epic 30'da yok.**)
+
+Önceki blok: 2026-09-16g (**OPH-317 BİTTİ — #16'nın sınıfı kapandı.**
 Önceki bloktaki "sıradaki iş OPH-323" yanlıştı: sözleşmenin bağlayıcı sırası 317'yi
 anlattığı platformların sonrasına koyuyor ve 323'ü **en sona**; 322 bitince sıra
 317'nindi. (Aynı hatayı ikinci kez yaptım — işaretçiyi yazarken sırayı değil

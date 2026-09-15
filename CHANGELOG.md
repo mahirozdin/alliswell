@@ -5,7 +5,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+## [1.12.0] — 2026-09-16
+
 ### Added
+
+- **A reminder can now reach you when the app is not running.** Until this
+  release every alarm was armed by the device itself, which meant the device had
+  to have been awake since you set it — a reminder created on your laptop simply
+  did not exist on a phone you had not opened, and a browser tab closed at 13:55
+  could not ring at 14:00. The server now takes the three roles the device
+  cannot: it sends a silent nudge the moment a reminder changes, so your phone
+  syncs and arms the real alarm with its full behaviour; it sends the
+  notification itself at fire time for a device whose schedule is out of date —
+  which on the web is every time, because no browser can schedule anything for a
+  closed tab; and on Android a periodic turn catches up underneath both. A
+  device that already synced after the change is left alone, so nothing tells you
+  twice. OPH-315, OPH-320, OPH-321, OPH-322,
+  [ADR-0038](docs/adr/0038-server-to-device-delivery.md),
+  [#15](https://github.com/mahirozdin/alliswell/issues/15).
+
+- **"Notifications in this browser": off, silent, or with sound.** The request
+  behind this was a working day in an open-plan office — a reminder that opens a
+  window on the screen without a noise everybody else has to hear. Silent is the
+  default, and it silences everything: the notification arrives without a sound
+  and the alarm screen stays quiet, but it *says* it is deliberately silent and
+  offers to start the sound, because an alarm that looks like it is ringing and
+  is not is the one thing this app refuses to do. Off drops this browser's
+  subscription rather than quietly swallowing what arrives. And because Firefox
+  plays its own notification sound whatever we ask for, the setting says so —
+  where you can do something about it, not at 3 a.m. OPH-316.
 
 - **A push can become a window on your screen, and it can do it quietly.** The
   service worker that receives one now knows what to show: the app writes each
@@ -114,6 +142,37 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   question the allowlist cannot answer for it. OPH-308, [ADR-0038](docs/adr/0038-server-to-device-delivery.md),
   [#15](https://github.com/mahirozdin/alliswell/issues/15),
   [#16](https://github.com/mahirozdin/alliswell/issues/16).
+
+
+### Changed
+
+- **What a push carries, stated exactly.** [PRIVACY.md](docs/PRIVACY.md) now
+  separates the two cases instead of one sentence covering both: in a browser
+  nothing readable crosses a push service — the service worker reads the words
+  from this device's own cache — while a phone notification that must appear with
+  the app closed is drawn by Apple or Google from what the push carries, so one
+  fixed generic sentence ("You have 1 reminder") travels with it. It is the same
+  sentence for every AllisWell user and it never contains anything from your
+  task. The exact strings live in a file a person has to agree to, and CI fails
+  if a new word appears. OPH-320.
+
+- **The platform table in [NOTIFICATIONS.md](docs/NOTIFICATIONS.md) is generated
+  from the app.** It used to be prose, and it described a web permission flow no
+  line of code performed — for months. It is rendered now from the same
+  declaration the app obeys before it asks for a push token, and a CI gate fails
+  when the document and the build disagree. OPH-317,
+  [#16](https://github.com/mahirozdin/alliswell/issues/16).
+
+### Fixed
+
+- **The local database no longer blocks its own readers.** The replica is opened
+  with write-ahead logging and a wait instead of an immediate failure, which
+  matters because two parts of the app open it at once: the home-screen widget's
+  background code writes to the same file the app is reading. It survived until
+  now because that write is a single statement; a sync pull holds the file for as
+  long as the network takes. The replica holds writes that have not reached the
+  server yet, so this is the one place the app could lose something for good.
+  OPH-318.
 
 ## [1.11.0] — 2026-09-15
 
