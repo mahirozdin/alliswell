@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../features/devices/device_registry.dart';
+import '../../notifications/platform_matrix.dart';
+
 import 'firebase_bootstrap.dart';
 
 /// The FCM registration token, and nothing else (OPH-319, ADR-0038 §6).
@@ -39,19 +42,30 @@ class AwPushMessaging {
     FirebaseMessaging? plugin,
     bool? isWeb,
     bool Function()? isConfigured,
+    String? platformId,
   }) : _messaging = plugin,
        _isWeb = isWeb ?? kIsWeb,
-       _isConfigured = isConfigured ?? _firebaseConfigured;
+       _isConfigured = isConfigured ?? _firebaseConfigured,
+       _platformId =
+           platformId ??
+           awDevicePlatform(isWeb: kIsWeb, target: defaultTargetPlatform);
 
   static bool _firebaseConfigured() => AwFirebase.isConfigured;
 
   final FirebaseMessaging? _messaging;
   final bool _isWeb;
   final bool Function() _isConfigured;
+  final String? _platformId;
 
-  /// Whether this build can produce a token at all. False on web and on any
-  /// build without Firebase credentials — both supported states.
-  bool get isAvailable => !_isWeb && _isConfigured();
+  /// Whether this build can produce a token at all. False on web, on any build
+  /// without Firebase credentials, and on a platform the plugin does not
+  /// implement — all three supported states.
+  ///
+  /// The platform half is read from [kNotificationMatrix] (OPH-317) rather
+  /// than listed here, so the table in `docs/NOTIFICATIONS.md` §3 is not a
+  /// description of this line: it is the same declaration this line obeys.
+  bool get isAvailable =>
+      !_isWeb && _isConfigured() && platformCarriesFcmToken(_platformId);
 
   FirebaseMessaging get _plugin => _messaging ?? FirebaseMessaging.instance;
 

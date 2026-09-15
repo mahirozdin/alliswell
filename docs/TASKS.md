@@ -10607,15 +10607,36 @@ olduğunu **tarif ediyordu** ve o izni isteyen tek satır yoktu. OPH-304'ün kar
 anlattığı platform gerçeği ile derlenen kodun ayrışması. Düzeltmek o örneği kapatır; kapı
 sınıfı kapatır._
 
-- [ ] **Yetenek matrisi koddan üretilir:** her platform için hangi ağ geçidinin seçildiği,
-      hangi kanalların (yerel bildirim / AlarmKit / web push / uygulama içi ekran) var olduğu.
-      Kaynak kod; çıktı `NOTIFICATIONS.md` §3'teki tablo.
-- [ ] **Kapı doküman ile üretilen matrisi karşılaştırır**; ayrışma → kırmızı.
-- [ ] **Kapının kendisi doğrulanır:** tabloda bir satır elle bozulur → `exit 1`; geri alınır →
-      `exit 0`.
-- [ ] CI'a bağlanır ve `AGENTS.md` §3'e eklenir.
-- **Kabul:** kapı **bu epic'ten önceki** §3 metnine karşı koşturulduğunda kırmızı verir —
-      yani #16'yı bağımsız olarak yakalayabildiği gösterilir.
+- [x] **Tablo önce yaratıldı** (sözleşme §0.1 madde 1: §3'te tablo **yoktu**, düz paragraftı).
+      Altı platform × altı sütun: ağ geçidi, yerelde planlama, AlarmKit, sunucu push'u,
+      uygulama içi ekran.
+- [x] **Matris bir fixture değil, kodun kendi cevabı.** `platform_matrix.dart` yalnız gate
+      için yazılmadı: `AwPushMessaging.isAvailable` **eklentiye token sormadan önce**
+      `platformCarriesFcmToken` üzerinden bu tabloyu okuyor. Bir satırı değiştirmek
+      uygulamanın davranışını değiştiriyor — tablo ile yorum arasındaki fark tam olarak bu.
+      Ayrıca `notificationsGatewayProvider`'ın `kIsWeb` kararı `gatewayKindFor`'a adlandı.
+- [x] **İki bağımsız tanık, hiçbiri tek başına değil:** Dart testi beyanı **davranışa** karşı
+      ölçüyor (7 test: her registry platformunun satırı var mı, ağ geçidi sütunu provider'ın
+      seçtiği şey mi, token yolu tabloya uyuyor mu, konfigsiz derleme kimseye sormuyor mu,
+      yerelde planlayamayan **tek** platform tarayıcı mı); Node kapısı **dokümanı** beyana
+      karşı ölçüyor. Döngüsel fixture yok.
+- [x] **Kapı enjeksiyonla kanıtlandı, dört kez:** tabloda bir satır bozuldu → kırmızı;
+      tablo tamamen silindi → kırmızı (sessizlik hatanın kendisi olurdu, o yüzden en gürültülü
+      hata bu); Dart satırı değişip doküman eskiyince → kırmızı.
+- [x] **KABUL KARŞILANDI:** kapı **epic öncesi** §3 metnine karşı koşturuldu
+      (`git show 83872d61~1:docs/NOTIFICATIONS.md`) ve **kırmızı** verdi — yani #16'yı
+      bağımsız olarak yakalayabilirdi.
+- [x] **CI'a bağlandı** (`ci.yml`, `check:push-payload`'ın yanına) ve `AGENTS.md` §3'e bir DoD
+      maddesi eklendi: bildirim platform davranışına dokunan her değişiklik matrisi güncelleyip
+      `--write` koşturur.
+- **Sınırı açıkça:** matris bir **beyan**. Dart testi kodun ona uymayı bıraktığını yakalar,
+      kapı dokümanın ondan ayrıldığını yakalar — ama satırın dünya hakkında yanlış olmasını
+      (ör. Linux'a olmayan bir FCM desteği atfetmek) hiçbiri yakalamaz. Bu, aylarca fark
+      edilmeyen serbest metinden kesin olarak iyi; "kod bunu kanıtlıyor" demek olmadığı da
+      burada yazılı.
+- **Kabul:** ✅ matris koddan üretiliyor; ✅ kapı ayrışmada kırmızı; ✅ kapının kendisi
+      enjeksiyonla doğrulandı; ✅ epic öncesi metne karşı kırmızı. App süiti **1693 geçti**
+      (+7), on iki kapı yeşil.
 
 ### OPH-318 — drift'e WAL ve `busy_timeout` (bu epic'ten eski borç)
 

@@ -85,6 +85,12 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
       passes; a deliberate change is accepted with `node scripts/push/payload.mjs --write` and
       explained in the commit. Nothing a task says may cross a push provider (BLUEPRINT §8.3,
       ADR-0038) — and the leak that gets through a key-set check is a declared key holding prose.
+- [ ] **Notification platform behaviour touched** (a gateway, a token path, a channel) →
+      `apps/app/lib/src/notifications/platform_matrix.dart` updated and
+      `npm run check:notify-matrix -- --write` re-run, so `docs/NOTIFICATIONS.md` §3 says what
+      the build does. The declaration is not documentation about the code — `AwPushMessaging`
+      reads it before asking for a token. §3 described a web permission flow nothing performed
+      for months (issue #16, OPH-317); the gate is what stops the next one.
 - [ ] Docs updated: TASKS checkbox, STATE, CHANGELOG (+ ADR/ARCHITECTURE when relevant).
 - [ ] User-facing capability added/changed → MCP tools + docs/MCP.md and docs/API.md extended,
       or a written reason recorded (rule 12).

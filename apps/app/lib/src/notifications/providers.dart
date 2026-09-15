@@ -26,6 +26,7 @@ import 'gateway_local.dart';
 import 'reminder_profile.dart';
 import 'reminder_store.dart';
 import 'sound_store.dart';
+import 'platform_matrix.dart';
 import 'web_alert_mode.dart';
 import 'scheduler.dart';
 
@@ -39,7 +40,11 @@ import 'scheduler.dart';
 /// row. The browser gets a real gateway now; what it cannot do (schedule
 /// locally) it says rather than swallows.
 final notificationsGatewayProvider = Provider<NotificationsGateway>((ref) {
-  if (!kIsWeb) return LocalNotificationsGateway();
+  // OPH-317: the choice has a name, so the documentation gate and a test can
+  // ask the same question this line answers.
+  if (gatewayKindFor(isWeb: kIsWeb) == NotificationGatewayKind.local) {
+    return LocalNotificationsGateway();
+  }
 
   late final WebNotificationsGateway gateway;
   gateway = WebNotificationsGateway(

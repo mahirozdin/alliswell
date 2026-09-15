@@ -93,6 +93,12 @@ jobs:
       - name: Policy — a push payload names rows, never what they say
         run: npm run check:push-payload
 
+      # OPH-317: §3 once described a web permission flow no line of code
+      # performed, for months — issue #16. The table is rendered from the
+      # declaration `AwPushMessaging` obeys, so prose and binary cannot drift.
+      - name: Docs — the platform table matches what the app does
+        run: npm run check:notify-matrix
+
       # OPH-300: the client and the server each held half of the push contract
       # and nothing compared the halves — which is how recurrence stayed broken
       # from v0.8.0 to v1.10.2 with every suite green (OPH-299). The Dart the

@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16f (**OPH-322 BİTTİ — ve planın bir iddiasını
+**Last updated:** 2026-09-16g (**OPH-317 BİTTİ — #16'nın sınıfı kapandı.**
+Önceki bloktaki "sıradaki iş OPH-323" yanlıştı: sözleşmenin bağlayıcı sırası 317'yi
+anlattığı platformların sonrasına koyuyor ve 323'ü **en sona**; 322 bitince sıra
+317'nindi. (Aynı hatayı ikinci kez yaptım — işaretçiyi yazarken sırayı değil
+numarayı takip etmişim.) **Tablo önce yaratıldı**, çünkü §3'te tablo yoktu: altı
+platform × altı sütun. **Ama asıl mesele tablonun nereden geldiği:**
+`platform_matrix.dart` yalnız kapı için yazılmadı — `AwPushMessaging`,
+eklentiye token sormadan önce `platformCarriesFcmToken` ile bu tabloyu okuyor,
+yani bir satırı değiştirmek uygulamanın davranışını değiştiriyor. Tablo ile yorum
+arasındaki fark tam olarak bu, ve deponun "kendini okuyan fixture kapı değildir"
+kuralının gereği. **İki bağımsız tanık:** Dart testi beyanı davranışa karşı
+ölçüyor, Node kapısı dokümanı beyana karşı. **Kapı dört enjeksiyonla kanıtlandı**
+— satır bozuldu, tablo tamamen silindi (sessizlik hatanın kendisi olurdu, o yüzden
+en gürültülü hata bu), Dart değişip doküman eskidi. **Ve kabul karşılandı:** kapı
+epic öncesi §3 metnine (`83872d61~1`) karşı koşturuldu, **kırmızı** verdi — #16'yı
+bağımsız olarak yakalayabilirdi. `ci.yml` on ikinci kapıyı aldı, `AGENTS.md` §3 bir
+DoD maddesi. **Sınırı gizlemiyorum:** matris bir beyan; satırın dünya hakkında
+yanlış olmasını (Linux'a olmayan bir FCM desteği atfetmek gibi) ne test ne kapı
+yakalar — aylarca fark edilmeyen serbest metinden kesin olarak iyi, ama "kod bunu
+kanıtlıyor" değil. **Doğrulama:** app süiti **1693 geçti** (+7), on iki kapı yeşil.
+Sıradaki iş: **OPH-323** — epic'in son işi (API belgeleri, ROADMAP, CHANGELOG,
+1.11.0 → 1.12.0; landing kapıları da tetiklenecek).)
+
+Önceki blok: 2026-09-16f (**OPH-322 BİTTİ — ve planın bir iddiasını
 ölçerek çürüttü.** Uyandırma ipucu indi: `entity:changed` → `entityType ===
 'reminder'` → workspace üyelerinin **Android** cihazlarına `{v:1, type:'wake'}`.
 **Turun bulgusu fırtına kontrolünde:** plan `jobKey`'in tek başına yeteceğini
