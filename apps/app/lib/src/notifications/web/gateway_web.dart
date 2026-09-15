@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../gateway.dart';
+import 'alert_cache.dart';
 import 'push_host.dart';
 
 /// The browser's notification gateway (OPH-313, ADR-0038).
@@ -47,11 +48,37 @@ class WebNotificationsGateway implements NotificationsGateway {
     /// Called after a successful subscribe, so the device registry can send it
     /// on without this gateway needing to know the API exists.
     this.onSubscriptionChanged,
-  });
+
+    /// Where the service worker will look for what a notification should say.
+    required this.cache,
+
+    /// What it shows when that lookup misses — the same pair privacy mode
+    /// produces, so the two read identically.
+    required this.fallback,
+
+    /// Whether this browser's notifications arrive without a sound. Default
+    /// silent; OPH-316 turns it into a setting. Stored WITH the words rather
+    /// than read by the worker, because a preference must not live there.
+    this.silentAlerts = true,
+  }) {
+    _clicks = host.notificationClicks.listen(
+      (payload) => emit(NotificationEvent(payload: payload)),
+    );
+  }
 
   final WebPushHost host;
   final Future<String?> Function() readVapidKey;
   final void Function()? onSubscriptionChanged;
+  final AlertCache cache;
+  final AlertText fallback;
+  final bool silentAlerts;
+
+  StreamSubscription<String>? _clicks;
+
+  /// The earliest fire time written for each reminder, so the order the
+  /// scheduler happens to call `schedule` in cannot decide which slot's words
+  /// the worker finds.
+  final Map<String, DateTime> _earliest = <String, DateTime>{};
 
   final Set<int> _planned = <int>{};
   final StreamController<NotificationEvent> _events =
@@ -68,8 +95,11 @@ class WebNotificationsGateway implements NotificationsGateway {
 
   @override
   Future<void> initialize() async {
-    // Nothing to set up: every probe below asks the browser directly, because
-    // a permission the user changed in another tab must not be remembered.
+    // The only thing worth doing up front: put the fallback in place before a
+    // push can arrive and find nothing. Every permission probe below asks the
+    // browser directly, because one the user changed in another tab must not
+    // be remembered.
+    await cache.putFallback(fallback);
   }
 
   @override
@@ -139,9 +169,34 @@ class WebNotificationsGateway implements NotificationsGateway {
   @override
   Future<ScheduledDelivery> schedule(PlannedNotification notification) async {
     _planned.add(notification.id);
+    await _remember(notification);
     return ScheduledDelivery(
       sound: notification.soundName ?? kOsDefaultSoundName,
       level: 'webPush',
+    );
+  }
+
+  /// Writes what this alert should say, if it belongs to a reminder a push
+  /// could name.
+  ///
+  /// Nothing is removed on cancel, on purpose: a reminder's chain has several
+  /// slots and cancelling one says nothing about the reminder. A stale entry
+  /// costs nothing — a push only arrives for something the server believes is
+  /// due — and the web cache prunes by age on every write.
+  Future<void> _remember(PlannedNotification notification) async {
+    final reminderId = notification.reminderId;
+    if (reminderId == null) return;
+    final known = _earliest[reminderId];
+    if (known != null && !notification.fireAt.isBefore(known)) return;
+    _earliest[reminderId] = notification.fireAt;
+    await cache.put(
+      reminderId,
+      AlertText(
+        title: notification.title,
+        body: notification.body,
+        fireAt: notification.fireAt,
+        silent: silentAlerts,
+      ),
     );
   }
 
@@ -160,6 +215,7 @@ class WebNotificationsGateway implements NotificationsGateway {
   }
 
   Future<void> dispose() async {
+    await _clicks?.cancel();
     await _events.close();
   }
 }

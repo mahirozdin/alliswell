@@ -25,6 +25,9 @@ class _NoWebPushHost implements WebPushHost {
   Future<WebPushSubscription?> subscribe(String key) async => null;
 
   @override
+  Stream<String> get notificationClicks => const Stream.empty();
+
+  @override
   Future<void> unsubscribe() async {}
 
   @override

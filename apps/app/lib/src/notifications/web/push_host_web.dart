@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
@@ -19,6 +20,25 @@ import 'push_host.dart';
 const String kAwPushServiceWorkerUrl = 'aw_push_sw.js';
 
 class _BrowserPushHost implements WebPushHost {
+  _BrowserPushHost() {
+    try {
+      web.window.navigator.serviceWorker.onmessage = (web.MessageEvent event) {
+        final message = event.data.dartify();
+        if (message is! Map) return;
+        if (message['type'] != 'aw-notification-click') return;
+        final payload = message['payload'];
+        if (payload is String) _clicks.add(payload);
+      }.toJS;
+    } on Object {
+      // No service worker here; the stream simply never emits.
+    }
+  }
+
+  final StreamController<String> _clicks = StreamController<String>.broadcast();
+
+  @override
+  Stream<String> get notificationClicks => _clicks.stream;
+
   web.ServiceWorkerRegistration? _registration;
 
   @override

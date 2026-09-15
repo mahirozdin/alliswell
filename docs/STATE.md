@@ -3,7 +3,32 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15g (**OPH-313 BİTTİ — web'in kendi bildirim ağ geçidi.**
+**Last updated:** 2026-09-15h (**OPH-314 BİTTİ — service worker'ın içi.**
+`push` ve `notificationclick` geldi; **worker hiçbir karar vermiyor** — çeviri
+yapmıyor, seçim yapmıyor, veritabanını okumuyor. Sözcükler cihazın kendi
+deposundan geliyor, uygulama onları çevrilmiş ve gizlilik modu uygulanmış hâlde
+yazıyor. Depo IndexedDB, çünkü `localStorage` senkron ve bir worker'ın ona erişimi
+yok — `local_kv_web.dart` bu yüzden yeniden kullanılamadı. **Turun küçük ama
+hoşuma giden kararı:** önbellek ıskasının metni yeni bir dize değil, gizlilik
+modunun kendi çifti (`AllisWell` + `notif.privateBody`) — böylece bir ıska ile
+gizli moddaki bir cihaz birebir aynı okunuyor ve yeni çeviri anahtarı açılmadı.
+**Bir zincirin en erken slotu kazanıyor** (push slotu değil hatırlatıcıyı
+adlandırıyor); negatif kontrolü yapıldı. İptalde hiçbir şey silinmiyor — bir
+zincirin birden çok slotu var — ama önbellek yaşa göre buduyor. **Her yol bir
+bildirimle bitiyor:** `userVisibleOnly` aboneliğin verdiği söz, ve hiçbir şey
+göstermeyen bir işleyici Chrome'un iska metninden daha az şey söyleyen jenerik
+kartını alıyor. **Plandan sapma:** "görünür-sekme bastırma" bastıracak bir şey
+bulamadı — bugün uygulama içi tek yüzey `AlarmRingScreen` ve o yalnız acil
+alarmlar için, ayrı bir şey söylüyor; SW her zaman gösteriyor ve açık sekmeye
+`aw-push` mesajı bırakıyor. Tıklama mevcut `handleNotificationEvent`
+sözleşmesini yeniden kullanıyor; sekme yoksa `./#/tasks/<id>`. **Doğrulama:**
+app süiti **1652 geçti** (+5), sekiz kapı yeşil. **Test edilemeyen, açıkça:**
+`aw_push_sw.js`'in kendisi — hiçbir Dart testi service worker çalıştıramaz;
+ADR-0039 karşılığında dosyayı küçük tutmayı ve karar verecek her şeyi Dart'ta
+bırakmayı söz veriyor, ölçülen kısım da tam olarak o. Sıradaki iş: **OPH-315**
+(vade süpürgesi — epic'in ilk gerçek gönderimi, ve `PRIVACY.md`'nin değiştiği yer).)
+
+Önceki blok: 2026-09-15g (**OPH-313 BİTTİ — web'in kendi bildirim ağ geçidi.**
 Epic ilk kez Flutter tarafına ve kullanıcının asıl istediği şeye geçti.
 `providers.dart:28`'in platform körlüğü bitti: web'de artık `MissingPluginException`
 yutulup `degraded` satırı yazılmıyor, çünkü fırlatan bir çağrı kalmadı.

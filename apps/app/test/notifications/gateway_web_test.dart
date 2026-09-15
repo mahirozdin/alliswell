@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/notifications/gateway.dart';
+import 'package:alliswell/src/notifications/web/alert_cache.dart';
 import 'package:alliswell/src/notifications/web/gateway_web.dart';
 import 'package:alliswell/src/notifications/web/push_host.dart';
 
@@ -51,6 +54,11 @@ class _FakeHost implements WebPushHost {
     return _subscription;
   }
 
+  final StreamController<String> clicks = StreamController<String>.broadcast();
+
+  @override
+  Stream<String> get notificationClicks => clicks.stream;
+
   @override
   Future<void> unsubscribe() async {
     unsubscribes += 1;
@@ -67,14 +75,32 @@ class _FakeHost implements WebPushHost {
   }
 }
 
+class _FakeCache implements AlertCache {
+  final Map<String, AlertText> entries = {};
+  AlertText? fallback;
+
+  @override
+  Future<void> put(String reminderId, AlertText text) async {
+    entries[reminderId] = text;
+  }
+
+  @override
+  Future<void> putFallback(AlertText text) async {
+    fallback = text;
+  }
+}
+
 WebNotificationsGateway _gatewayFor(
   _FakeHost host, {
   String? vapidKey = 'server-vapid-key',
   void Function()? onChanged,
+  AlertCache? cache,
 }) => WebNotificationsGateway(
   host: host,
   readVapidKey: () async => vapidKey,
   onSubscriptionChanged: onChanged,
+  cache: cache ?? _FakeCache(),
+  fallback: const AlertText(title: 'AllisWell', body: 'You have a reminder'),
 );
 
 final _planned = PlannedNotification(
@@ -209,5 +235,73 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(host.shown, ['Rehearsal']);
+  });
+
+  group('the text the service worker will read (OPH-314)', () {
+    PlannedNotification slot(int id, String reminderId, DateTime at) =>
+        PlannedNotification(
+          id: id,
+          title: 'Pay the invoice',
+          body: 'in 10 minutes',
+          fireAt: at,
+          urgent: false,
+          payload: '{}',
+          reminderId: reminderId,
+        );
+
+    test('scheduling writes the sentence, keyed by reminder', () async {
+      // The payload carries ids and never a title (ADR-0038), so the worker
+      // has to find the words somewhere. The app puts them here, already
+      // translated and already privacy-resolved.
+      final cache = _FakeCache();
+      await _gatewayFor(
+        _FakeHost(),
+        cache: cache,
+      ).schedule(slot(1, 'r1', DateTime.utc(2026, 9, 20, 7, 30)));
+
+      expect(cache.entries['r1']?.title, 'Pay the invoice');
+      expect(cache.entries['r1']?.body, 'in 10 minutes');
+    });
+
+    test('the earliest slot of a chain is the one that wins', () async {
+      // A push names the reminder, not the slot. An urgent alarm plans five of
+      // them; the text that belongs to the reminder is its first alert, and
+      // the order the scheduler happens to call in must not decide it.
+      final cache = _FakeCache();
+      final gateway = _gatewayFor(_FakeHost(), cache: cache);
+
+      await gateway.schedule(slot(2, 'r1', DateTime.utc(2026, 9, 20, 7, 35)));
+      await gateway.schedule(slot(1, 'r1', DateTime.utc(2026, 9, 20, 7, 30)));
+      await gateway.schedule(slot(3, 'r1', DateTime.utc(2026, 9, 20, 7, 40)));
+
+      expect(cache.entries['r1']?.fireAt, DateTime.utc(2026, 9, 20, 7, 30));
+    });
+
+    test('a plan with no reminder behind it writes nothing', () async {
+      final cache = _FakeCache();
+      await _gatewayFor(_FakeHost(), cache: cache).schedule(_planned);
+      expect(cache.entries, isEmpty);
+    });
+
+    test('the fallback is there before anything needs it', () async {
+      final cache = _FakeCache();
+      await _gatewayFor(_FakeHost(), cache: cache).initialize();
+      expect(cache.fallback?.body, 'You have a reminder');
+    });
+  });
+
+  test('a click the WORKER forwarded reaches routing (OPH-314)', () async {
+    // The path that actually happens: the service worker postMessages the tab,
+    // the host turns it into a payload, and the gateway's event stream is what
+    // `handleNotificationEvent` is already listening to.
+    final host = _FakeHost();
+    final gateway = _gatewayFor(host);
+    final seen = <String?>[];
+    gateway.events.listen((event) => seen.add(event.payload));
+
+    host.clicks.add('{"taskId":"t9","reminderId":"r9"}');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(seen, ['{"taskId":"t9","reminderId":"r9"}']);
   });
 }

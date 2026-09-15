@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A push can become a window on your screen, and it can do it quietly.** The
+  service worker that receives one now knows what to show: the app writes each
+  reminder's finished sentence into this browser's own storage, already
+  translated and already respecting your privacy setting, and the worker only
+  looks it up — what travels over Google's or Mozilla's servers is still just an
+  identifier. When the lookup finds nothing it falls back to exactly the wording
+  a device in privacy mode already uses, rather than inventing a third voice for
+  the same moment. Notifications arrive silent by default, which is the whole
+  point of the request behind this: being reached without disturbing the people
+  around you. Clicking one opens the task — focusing the tab you already have,
+  or opening a new one on the right screen if there is none. OPH-314,
+  [ADR-0039](docs/adr/0039-a-service-worker-is-the-one-thing-dart-cannot-be.md),
+  [#16](https://github.com/mahirozdin/alliswell/issues/16).
+
 - **The browser stops pretending it scheduled something.** On the web AllisWell
   was handed the same notification plumbing as a phone, and that plumbing does
   not exist in a browser — so every alarm it "scheduled" threw an error the app

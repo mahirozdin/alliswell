@@ -27,6 +27,10 @@ abstract class WebPushHost {
 
   Future<void> unsubscribe();
 
+  /// Notification clicks the service worker forwarded, as the payload JSON
+  /// `handleNotificationEvent` already parses. Empty off the web.
+  Stream<String> get notificationClicks;
+
   /// Shows one now. The rehearsal alarm uses it; the real ones come from the
   /// server, through the service worker.
   Future<void> showNotification(

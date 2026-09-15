@@ -10451,26 +10451,67 @@ import kalıbının **altı** örneği var; aynı alt sistemin kendi örneği `s
 
 ### OPH-314 — Service worker ve yerel içerik önbelleği (ADR-0039)
 
-- [ ] **`apps/app/web/aw_push_sw.js`** — `push` ve `notificationclick` işleyicileri.
-      Depoda bugün **hiç** service worker kaydı yok (`web/index.html` Flutter'ınkini bile
-      kaydetmiyor), yani kapsam çakışması riski yok.
-- [ ] **ADR-0039** — AGENTS kuralı 3 (*"All client platforms are one Flutter codebase … no
-      secondary web framework unless a task explicitly justifies it with an ADR"*) bunu yazılı
-      ister. Gerekçe: bir push işleyicisi **Dart'tan çalıştırılamaz**; SW kendi kaynağında ve
-      uygulama kapalıyken çalışır. Emsal: `web/alliswell-config.js` elle yazılmış JS.
-      Sınır da yazılır: SW'de **iş mantığı yok** — önbellekten oku, göster, tıklamayı ilet.
-- [ ] **İçerik önbelleği:** uygulama her `_apply()` turunda IndexedDB `aw_alert_cache`'e
-      `reminderId → {başlık, gövde}` yazar; metin **gizlilik modu uygulanmış** hâlde yazılır
-      (`notificationPrivacyProvider`, `providers.dart:95`). SW politika kararı vermez.
-- [ ] **SW her zaman bildirim gösterir.** `userVisibleOnly: true` bir taahhüt: göstermezsek
-      Chrome kendi jenerik kartını basıyor. Önbellek boşsa metin "1 hatırlatıcı" olur.
-      **Çifte uyarı uygulama tarafında bastırılır:** SW görünür istemciye `postMessage` eder,
-      uygulama kendi toast'ını göstermez. Acil alarmda `AlarmRingScreen` yine açılır — o ayrı
-      bir yüzey (onay/erteleme taşır).
-- [ ] **`notificationclick`** → açık sekmeyi odakla, yoksa `clients.openWindow` ile göreve
-      derin bağlantı (ADR-0016 rota sözleşmesi).
-- **Kabul:** sekme kapalıyken gelen push bildirimi gösterir; önbellek boşken jenerik metin
-      çıkar; Chrome'un jenerik kartı **hiçbir yolda** görünmez; tıklama doğru göreve gider.
+- [x] **`apps/app/web/aw_push_sw.js`** — `push` ve `notificationclick` işleyicileri geldi.
+      Worker **hiçbir karar vermiyor**: çeviri yapmıyor, seçim yapmıyor, veritabanını okumuyor.
+      Sözcükler cihazın kendi deposundan geliyor; uygulama onları **çevrilmiş, gizlilik modu
+      uygulanmış ve sesli/sessiz olduğu yazılmış** hâlde oraya koyuyor.
+- [x] **İçerik önbelleği IndexedDB'de, `localStorage`'da değil** — seçim değil zorunluluk:
+      `localStorage` senkron ve bir service worker'ın ona erişimi yok. IndexedDB, hem sayfanın
+      hem worker'ının açabildiği tek depo; `core/kv/local_kv_web.dart` bu yüzden yeniden
+      kullanılamadı.
+- [x] **Yazan yer ağ geçidinin `schedule`'ı.** Planlayıcı başlığı ve gövdeyi zaten gizlilik
+      moduna göre üretiyor (`planner.dart:116-124`), yani ağ geçidine tam olarak doğru dizeler
+      geliyor — zamanlayıcıya yeni bir kanca açmaya gerek kalmadı.
+- [x] **Bir zincirin EN ERKEN slotu kazanıyor.** Push hatırlatıcıyı adlandırıyor, slotu değil;
+      acil bir alarm beş slot planlıyor ve hatırlatıcıya ait metin onun ilk uyarısı. Kural
+      `schedule`'ın hangi sırayla çağrıldığından bağımsız. **Negatif kontrol:** kural
+      kaldırılınca test kırmızı (`Expected 07:30, Actual 07:40`).
+- [x] **İptalde hiçbir şey silinmiyor, bilerek.** Bir zincirin birden çok slotu var ve birini
+      iptal etmek hatırlatıcı hakkında bir şey söylemiyor. Bayat girdi bedava: push yalnız
+      sunucunun vadesi geldiğine inandığı bir şey için geliyor. Web önbelleği her yazmada
+      **yaşa göre buduyor** (7 gün) — birinin tarayıcısında sınırsız büyüyen bir depo kabalık.
+- [x] **Iska metni yeni bir dize DEĞİL: gizlilik modunun kendi çifti.** `AllisWell` +
+      `notif.privateBody` ("You have a reminder" / "Bir hatırlatıcın var"), yani bir önbellek
+      ıskası ile gizli moddaki bir cihaz **birebir aynı** okunuyor — aynı an için üçüncü bir
+      ses uydurulmadı ve yeni bir çeviri anahtarı açılmadı.
+- [x] **Worker'da üç kademe:** hatırlatıcının girdisi → iska kaydı → gömülü son çare. Üçü de
+      dürüst bir sebeple eksik olabilir: bu tarayıcı son senkrondan önce planlanmış bir
+      hatırlatıcı, uygulamanın hiç yazmadığı bir depo, depolamayı tümden reddeden bir tarayıcı.
+- [x] **Her yol bir bildirimle bitiyor.** `userVisibleOnly: true` aboneliğin verdiği bir söz;
+      hiçbir şey göstermeden biten bir işleyici Chrome'un kendi *"this site has been updated in
+      the background"* kartını alıyor — ki o, iska metninden **daha az** şey söylüyor.
+- [x] **`silent` uygulamanın yazdığı bir alan**, worker'ın okuduğu. Varsayılan sessiz — raporun
+      kendisi "yanındaki meslektaşları rahatsız etmeden ulaşılmak" isteyen biri. OPH-316 bunu
+      ayara çeviriyor; worker hiçbir zaman tercihin yaşadığı yer olmuyor.
+- [x] **Tıklama mevcut yönlendirmeyi yeniden kullanıyor.** Worker `{taskId, reminderId}`
+      JSON'unu — `handleNotificationEvent`'in zaten ayrıştırdığı şekli — açık sekmeye
+      `postMessage` ediyor; host onu akışa, ağ geçidi `NotificationEvent`'e çeviriyor. Sekme
+      yoksa `./#/tasks/<id>` açılıyor (Flutter web'in varsayılan hash stratejisi, ADR-0016'nın
+      rotası, göreli yol sayesinde alt dizinden sunulan kurulum da doğru yere iniyor).
+- [x] **Gerçek yol test edildi:** sahte host'un akışına bir tıklama bırakılıyor ve ağ geçidinin
+      olay akışında çıkıyor — `emit`'i doğrudan çağıran ikinci test, bir setter'dan başka bir
+      şey ölçmediği için **silindi**.
+- **Plandan sapma, gerekçesiyle: "görünür-sekme bastırma" bastıracak bir şey bulamadı.**
+      Plan, SW'nin görünür sekmeye `postMessage` edip uygulamanın kendi yüzeyini bastırmasını
+      söylüyordu. Bugün bastırılacak bir yüzey yok: uygulama içi `AlarmRingScreen` yalnız
+      **acil** alarmlar için açılıyor ve o ayrı bir yüzey (onay/erteleme taşıyor), OS
+      bildirimiyle aynı şeyi söylemiyor. O yüzden SW **her zaman gösteriyor** (yukarıdaki
+      `userVisibleOnly` sözü) ve açık sekmeye bir `aw-push` mesajı bırakıyor — uygulamanın
+      senkron edebilmesi ve bir şeyin geldiğini tahmin etmek zorunda kalmaması için.
+      Gerçek bir çifte-görünme çıkarsa bastırma yeri burası olur.
+- **Kabul:** sekme kapalıyken gelen push bildirimi gösteriyor (worker'ın üç kademesi);
+      önbellek boşken gizlilik çifti çıkıyor; Chrome'un jenerik kartı **hiçbir yolda**
+      görünmüyor, çünkü her yol `showNotification` ile bitiyor; tıklama açık sekmeyi odaklıyor
+      ya da göreve derin bağlanıyor.
+- **Doğrulama (2026-09-15):** app süiti **1652 geçti** (+5), `flutter analyze` yalnız önceden
+      var olan `sound_store_io.dart:67` uyarısı, sekiz kapı yeşil.
+- **Test edilemeyen, açıkça:** `aw_push_sw.js`'in kendisi. Hiçbir Dart testi bir service
+      worker çalıştıramaz; ADR-0039 bunu zaten kabul edip karşılığında dosyayı bir oturuşta
+      okunacak kadar küçük tutmayı ve **karar verecek her şeyi Dart'ta** bırakmayı söz veriyor.
+      Bu turda ölçülen kısım budur: hangi metnin yazıldığı, hangi slotun kazandığı, tıklamanın
+      nereye gittiği.
+- **Kapsam DIŞI:** `silent`'ı ayara çeviren ekran OPH-316; ilk gerçek gönderim ve
+      `NOTIFICATIONS.md` §3'ün tadili OPH-315.
 
 ### OPH-315 — Sunucu: vade süpürgesi ve web teslimi
 

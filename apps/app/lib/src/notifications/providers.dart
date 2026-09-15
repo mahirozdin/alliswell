@@ -9,11 +9,13 @@ import '../core/persisted_prefs.dart';
 import '../features/devices/data/device_api.dart';
 import '../features/devices/providers.dart';
 import '../features/tasks/providers.dart';
+import '../i18n/i18n.dart';
 import '../features/workspaces/workspaces.dart';
 import '../router.dart';
 import '../sync/db/database.dart';
 import '../sync/providers.dart';
 import 'actions.dart';
+import 'web/alert_cache.dart';
 import 'web/gateway_web.dart';
 import 'web/push_host.dart';
 import 'alarm_log.dart';
@@ -43,6 +45,11 @@ final notificationsGatewayProvider = Provider<NotificationsGateway>((ref) {
     host: createWebPushHost(),
     readVapidKey: () => ref.read(pushPublicKeyProvider.future),
     onSubscriptionChanged: () => unawaited(_publishSubscription(ref, gateway)),
+    cache: createAlertCache(),
+    // The pair privacy mode already produces (`planner.dart:116-121`), so a
+    // cache miss and a private device read identically rather than inventing a
+    // third voice for the same moment.
+    fallback: AlertText(title: 'AllisWell', body: 'notif.privateBody'.tr()),
   );
   // A tab that was already subscribed in an earlier session has one now, and
   // the registry needs to carry it on the first heartbeat rather than the one
