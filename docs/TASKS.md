@@ -9995,6 +9995,431 @@ _Bugün Ana ekran yedi KOVAYA ayırıyor (Gecikmiş → Tarihsiz → Bugün → 
       zaten var; ufku büyütmek bu işin kapsamı değil (ADR gerektirir — `kHomeHorizonDays`
       bilinçli bir söz: *"there is no open-ended Later"*, `task_grouping.dart:87-89`).
 
+## Epic 30 — İstek turu 22'nin kalan iki maddesi: sunucu→cihaz teslimat (v1.12.0)
+
+_Rapor: **Chong KM** (`kmmchongld@gmail.com`), 2026-09-14 — Epic 29'un beş maddesinden
+**kapsam DIŞI bırakılan ikisi**. İkisi de o turda ölçüldü, gerekçesiyle backlog'a park edildi
+ve issue'ları açık kaldı ([#15](https://github.com/mahirozdin/alliswell/issues/15),
+[#16](https://github.com/mahirozdin/alliswell/issues/16)). Park **bitiyor**: ikisi de mimari,
+ikisi de aynı altyapıyı istiyor ve backlog kaydının kendisi *"bu madde (1) ile birlikte
+düşünülmeli"* diyor._
+
+_**Turun tek cümlesi: ÇALAN cihaz ile BİLEN cihaz aynı cihaz değil.** Masaüstünde kurulan
+hatırlatıcıyı telefon bilmiyor (#15); tarayıcının çalması gereken anda tarayıcı çalışmıyor
+(#16). `NOTIFICATIONS.md` §0'ın modeli — "her cihaz kendi alarmını yerel veriden kurar" —
+çevrimdışı çalıştığı ve zamanlamayı push gecikmesine emanet etmediği için **doğruydu ve
+doğru kalıyor**. Ama tek bir varsayımı var: **cihazın çalışıyor olması.** Epic 29'un dersi
+"iki tarafı ayrı ayrı doğru olan ölçülmemiş bir sözleşme" idi; buradaki sözleşme cihaz ile
+zaman arasında ve tarafları yine ayrı ayrı doğru._
+
+_**Turun ikinci cümlesi, kapılar hakkında: bu turda en tehlikeli satır düzeltmenin kendisinde
+değil, düzeltmenin AÇTIĞI kapıda.** Bildirim kimliği çevrilmiş metni hash'liyor
+(`planner.dart:133-135`) ve Android bildirim kanalı `.tr()` ile adlandırılıyor
+(`gateway_local.dart:483-487`) — kanallar ise oluştuktan sonra **değiştirilemiyor**
+(`gateway_local.dart:22-26`). i18n yüklenmemiş **tek bir** arka plan turu, kullanıcının sistem
+ayarlarındaki kanalı kalıcı olarak `notif.channel.remindersName` diye adlandırır. Geri dönüşü
+yok. Bu yüzden OPH-321 kodu değil, **kimlik paritesini** ölçen bir testle geliyor: süreçler
+arası sabit olması gereken bir değer, sabit olmayan bir değerden türetilemez._
+
+**Turun araştırması (yapıldı, kaynaklarıyla):**
+
+| Soru | Bulgu | Kaynak |
+| --- | --- | --- |
+| Web'de zamanlanmış **yerel** bildirim mümkün mü? | **Hayır.** Notification Triggers (`showTrigger` + `TimestampTrigger`) yalnız Chrome 80–83 ve 86–88 arasında origin trial olarak yaşadı; geliştirilmesi **bırakıldı**. Yani web'de "vade anında kendi kendine çal" diye bir API yok. | [Chrome for Developers — Notification Triggers API](https://developer.chrome.com/docs/web-platform/notification-triggers) |
+| `silent: true` her yerde tutuluyor mu? | **Hayır.** Chrome ve türevleri bayrağı uyguluyor, **Firefox yok sayıp ses çalıyor**; `silent` Baseline değil. Sessizlik bir SÖZ olduğuna göre tutulamadığı yerde söylenmek zorunda. | [MDN — `Notification.silent`](https://developer.mozilla.org/en-US/docs/Web/API/Notification/silent) |
+| Push gelince bildirim göstermezsek ne olur? | `userVisibleOnly: true` bir taahhüt: işleyici bildirim göstermeden biterse Chrome **kendi jenerik kartını** basıyor ("This site has been updated in the background"). Yani "sekme öndeyse gösterme" tasarımı geri teper. | [Google Codelabs — Add push notifications to a web app](https://codelabs.developers.google.com/codelabs/push-notifications) |
+| iOS'ta web push çalışır mı? | **Yalnız Ana Ekran'a eklenmiş web uygulamasında**, iOS/iPadOS 16.4+. Safari sekmesinde çalışmaz; manifest `display` `standalone` ya da `fullscreen` olmalı (bizde `standalone`) ve izin istemi **kullanıcı hareketinden** doğmalı. | [WebKit — Web Push for Web Apps on iOS and iPadOS](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/) |
+| iOS sessiz push ne kadar güvenilir? | Garanti yok: Apple saatte iki-üçten fazlasını denememeyi söylüyor; teslim cihazın enerji bütçesine, Düşük Güç Moduna ve Background App Refresh ayarına bağlı, ve sistem bildirimi gecikmeli iletme ya da hiç iletmeme hakkını saklı tutuyor. **Bir ipucudur, bir takvim değildir.** | [Apple — Pushing background updates to your app](https://developer.apple.com/documentation/usernotifications/pushing-background-updates-to-your-app) |
+
+**Depoda ölçülenler (hiçbiri tahmin değil):**
+
+| Ne | Nerede | Sonucu |
+| --- | --- | --- |
+| EE bitmiş bir push kanalı yazmış, **taşıyıcısı null** | `ee/server/modules/notifications/push.js`, `ee/server/modules/teams/index.js:324` | Çekirdek taşıyıcıyı verir; EE kendi deposunda bağlar |
+| `EE_PUSH_ENABLED` bayrağı **çekirdekte**, varsayılan kapalı | `apps/api/src/config.js:391-402` | Yapılandırma kalıbı hazır |
+| Cihaz kaydı rotası çalışıyor, **istemci hiç çağırmıyor** | `apps/api/src/routes/notification-devices.js` ↔ `apps/app/` içinde sıfır çağrı | Her şeyin ön koşulu; tablo her gerçek kurulumda boş |
+| Vade indeksi **var ve hiç kullanılmıyor** | `migrations/20260714000500_create_calendar_and_reminders.js:105` (`idx_reminders_due`) | Sunucu takvimi zaten biliyor; tekrar matematiği JS'e taşınmaz |
+| İstemci hatırlatıcıya yalnız `status` yazabiliyor | `apps/app/lib/src/sync/sync_fields.g.dart:65-69` | Hatırlatıcı satırı sunucu-sahipli |
+| Alarm filtresi yalnız `workspaceId` | `apps/app/lib/src/notifications/reminder_store.dart:83-99` | Alıcı kümesi = `workspace_members`; **genişletme değil, bugünkü davranış** |
+| Bildirim kimliği çevrilmiş metni hash'liyor | `planner.dart:133-135` + `i18n.dart:155-163` | OPH-321'in kapısı |
+| Android kanalı `.tr()` ile adlandırılıyor, kanal **değişmez** | `gateway_local.dart:483-487`, `:22-26` | Geri dönüşsüz hasar riski |
+| drift **WAL'sız ve `busy_timeout`'suz** açılıyor | `apps/app/lib/src/sync/db/connection_native.dart:16` | OPH-318; borç bu epic'ten **eski** |
+| Bugün zaten ikinci bir yazıcı var | `apps/app/lib/src/features/widgets/widget_callback.dart:39` | Yarış bugün de var, sadece kısa |
+| Oturum `kSecAttrAccessibleWhenUnlocked` ile saklanıyor | `apps/app/lib/src/features/auth/data/secure_secret_store.dart:10-25` | **iOS'ta başsız uyandırma kilitli telefonda kimlik doğrulayamaz** |
+| `androidx.work` **zaten APK'da**, arka plan dispatcher'ı da var | home_widget 0.9.3; `widget_callback.dart:26-33`, `deep_link.dart:66-67` | `workmanager` paketi gereksiz, izin farkı yok |
+
+**Turun tasarımı — üç tetikleyici, azalan zarafetle:**
+
+1. **Uyandırma ipucu** (değişiklik anında, veri mesajı, **yalnız Android**): cihaz senkron olur,
+   yerel program tazelenir, alarm **her zamanki gibi yerelden** çalar — acil tam ekran, ses
+   seçimi, onay zinciri, hepsi. En iyi hâl: kullanıcı push'u hiç görmez.
+2. **Görünür yedek** (vade anında, cihaz **bayatsa**): yalnız ID + `users.locale`'den seçilen
+   sabit jenerik metin. **Web'de tek yol** (her zaman), mobilde yedek. Force-quit edilmiş
+   uygulamada bile çalışır; izolat yok, drift yok, Keychain yok.
+3. **Periyodik tazeleme** (Android, `androidx.work`): 1'in düşmesine karşı taban.
+
+**Bayatlık ölçüsü tek karşılaştırma:** `notification_devices.last_seen_at < reminders.updated_at`.
+Cihaz değişiklikten SONRA senkron olduysa alarm zaten yerelde kuruludur → **push gönderilmez**.
+Aynı satır hem "kime göndereyim" hem "göndermeyeyim" sorusunu cevaplıyor; çifte uyarı böyle
+önleniyor.
+
+**Gizlilik zinciri — bu turun sözü:** sunucu yalnız ID gönderir; başlığı service worker,
+uygulamanın IndexedDB'ye yazdığı önbellekten okur; gizlilik modunu (`providers.dart:95`)
+**uygulama** önbelleğe yazarken uygular, SW hiçbir politika kararı vermez. Böylece
+`docs/PRIVACY.md:80-82`'nin *"task titles … are not sent to Apple's, Google's, or anyone else's
+push service"* cümlesi **harfi harfine doğru kalır**. Değişmek zorunda olan tek cümle
+*"today nothing is pushed from our servers to them"* — ve OPH-315'te değişir.
+
+**Issue haritası** (her iş kapandığında kendi issue'sunu da kapatır):
+
+| İş | Issue | Tür |
+| --- | --- | --- |
+| OPH-308 | [#16](https://github.com/mahirozdin/alliswell/issues/16) — yalnız-ID sözleşmesi + `check:push-payload` | kapı |
+| OPH-309 | [#15](https://github.com/mahirozdin/alliswell/issues/15) — cihaz kaydı canlanır | istek |
+| OPH-310…312 | [#15](https://github.com/mahirozdin/alliswell/issues/15) — taşıyıcı (yapılandırma, şema, FCM/Web Push) | istek |
+| OPH-313…316 | [#16](https://github.com/mahirozdin/alliswell/issues/16) — web'de sessiz bildirim | istek |
+| OPH-317 | [#16](https://github.com/mahirozdin/alliswell/issues/16) — `check:notify-matrix` | kapı |
+| OPH-318 | — WAL + `busy_timeout` (bu turda ölçülen eski borç) | bug |
+| OPH-319…322 | [#15](https://github.com/mahirozdin/alliswell/issues/15) — mobil uyandırma ve yedek | istek |
+| OPH-323 | ikisi — belgeler, ROADMAP, sürüm | — |
+
+---
+
+### OPH-308 — Yalnız-ID sözleşmesi ve onu ölçen kapı (ADR-0038)
+
+_Kapı **önce** yazılır. Epic 29'un dersi: OPH-299 altı buçuk hafta boyunca 796 API + 1598 app
+testinin altından geçti, çünkü hiçbir test istemcinin GERÇEKTE gönderdiği gövdeyi göndermiyordu.
+Burada da gönderici daha yokken, sözleşmeyi ölçen kapı var olabilir — EE'nin mevcut yük
+kurucusu üzerinde._
+
+- [ ] **ADR-0038 yazılır.** Kararlar: uyandırma ipucu ile görünür yedeğin ayrımı; **web'de
+      sunucunun saat olması** (§0'ın tadili ve gerekçesi — Notification Triggers yok); alıcı
+      kümesinin `workspace_members` olması ve bunun bugünkü davranışla aynı olduğu;
+      yalnız-ID yükü (BLUEPRINT §8.3); `web-push` paketinin yeni bağımlılık kategorisi olarak
+      gerekçesi (RFC 8291 şifrelemesini elle yazmak riskli); ve **iOS başsız yolunun ölçülmüş
+      gerekçeyle ertelenmesi** (Keychain `whenUnlocked`, `UIBackgroundModes` yokluğu, bütçeli
+      teslim, arka plan motorunda kurulmayan AlarmKit köprüsü).
+- [ ] **`apps/api/src/lib/push/payload.js`** — bir push gövdesinin kurulduğu **tek yer**.
+      İzinli anahtar kümesi: `v`, `type`, `reminderId`, `taskId`, `fireAt` (+ görünür yedekte
+      `locale`'den seçilen sabit dize anahtarı). Görev alanı **hiç girmez**.
+- [ ] **`check:push-payload` kapısı.** `payload.js`'in izinli anahtar kümesinden
+      `push_payload_parity.json` **üretilir** (elle yazılmaz — OPH-294'ün dersi) ve API
+      süitinde canlı kurucuya karşı doğrulanır. Ayrıca **içerik sızıntısı testi**: başlığı
+      `"SECRET"` olan bir görevden yük kurulur, serileştirilmiş JSON'da `"SECRET"` geçmediği
+      iddia edilir.
+- [ ] **Kapının kendisi doğrulanır:** `payload.js`'e görev başlığı eklenir → kırmızı;
+      kaldırılır → yeşil. *Ölçmediği şeyi yeşille aynı okuyan bir kapı, kapı değildir.*
+- [ ] CI'a bağlanır (`check:opacity`, `check:sync-fields` ile aynı sırada) ve `AGENTS.md` §3
+      Definition of Done'a eklenir.
+- [ ] **`docs/adr/README.md` indeks satırı AYNI commit'te.** İndeks iki kez sessizce bayatladı
+      (README:49-57) ve mekanik kapısı **yok** — elle eklemek bu işin parçası.
+- **Kabul:** kapı, henüz gönderici yokken EE'nin yük kurucusu üzerinde çalışır; sahte ihlal
+      kırmızı verir; `push_payload_parity.json` üretilmiştir, elle yazılmamıştır.
+- **Doğrulama:** `npm run check:push-payload`, `npm run lint`, API birim süiti.
+
+### OPH-309 — Cihaz kaydı gerçekten kurulur
+
+_`notification_devices` rotası 2026-07-15'ten beri çalışıyor ve istemci onu **bir kez bile**
+çağırmadı. EE bunu 2026-08-24'te ölçüp yazmış (`push.js:30-43`): "notification_devices is empty
+on every real instance." Push'un tamamı bu boş tablonun üstünde duruyor._
+
+- [ ] **İstemci `PUT /api/v1/notification-devices/:deviceId` çağırır.** `deviceId` =
+      **sync client id** — rotanın başlığının (`notification-devices.js:3-10`) zaten varsaydığı
+      şey; `sync_states.client_id` (`sync_engine.dart:209-222`) tek kaynak olur.
+- [ ] **Gövde:** `platform` (kIsWeb/`defaultTargetPlatform` ile), `deviceName`, `appVersion`
+      (`kAppVersion`), ve **`locale`** — görünür yedeğin jenerik metnini seçmek için gerekiyor;
+      `users.locale` hesap geneli, cihaz farklı dilde olabilir. Push token'ı **bu işte yok**.
+- [ ] **Heartbeat:** oturum açıkken ve uygulama ön plana geldiğinde PUT tekrarlanır
+      (rota idempotent, `:59-106`). Bu, `last_seen_at`'i **anlamlı** kılar — bayatlık ölçüsünün
+      dayandığı sütun bu.
+- [ ] **Çıkışta `DELETE`.** Rota her zaman 204 döndürüyor (`:131-132`, "must never fail a
+      sign-out flow"), yani hata yolu çıkışı bloklamaz.
+- [ ] **Şema kolonu gerekiyorsa** (`locale`) append-only migration ile gelir; `push_token`'a
+      dokunulmaz.
+- **Kabul:** yeni kurulumda ilk senkrondan sonra `GET /notification-devices` **bir satır**
+      döndürür; ikinci açılış **yeni satır yaratmaz** (idempotent); çıkış satırı siler;
+      başka hesapla giriş satırı **devralır** (rotanın `:56-58`'deki devralma sözü).
+- **Doğrulama:** app süiti (fake API ile kayıt/heartbeat/çıkış), API birim süiti
+      (`test/unit/notification-devices.test.js` zaten var, `locale` case'i eklenir).
+- **MCP gerekçesi (AGENTS kuralı 12):** cihaz kaydı ve cihaz-yerel teslimat tercihi bir ajanın
+      adresleyebileceği çalışma alanı verisi değil — o cihazda olmayan bir ajan onu ne okuyabilir
+      ne değiştirebilir. MCP yüzeyi genişlemez.
+
+### OPH-310 — `push` yapılandırması: kimlik yoksa özellik yok
+
+- [ ] **`config.push` bloğu** (`config.js`): `fcm` (service account JSON yolu ya da gövdesi),
+      `webpush` (VAPID açık/gizli anahtar + `subject`), pencere ve süpürge aralıkları.
+- [ ] **Boot doğrulaması hepsi-ya-hiç**, `assertSmtpComplete` / depolama kalıbıyla
+      (`config.js:479-490`): yarım yapılandırma **boot'u düşürür**, sessizce yarı çalışmaz.
+- [ ] **`GET /api/v1/push/public-key`** — VAPID açık anahtarını verir, **koşullu kaydedilir**
+      (`app.js:206-217` idiomu). Push kapalıysa uç **hiç yoktur** ve 404 döner; istemci aynı
+      404'ten "bu sunucuda bu özellik yok" sonucunu çıkarır ve ayarı göstermez.
+- [ ] `.env.example` girdileri + `docs/SELF-HOSTING.md` bölümü (kendi anahtarını nasıl üretirsin).
+- **Kabul:** kimlik bilgisi olmayan sunucuda **sıfır** giden istek ve **sıfır** kayıt —
+      bir testin iddia edebileceği bir sayı; `/push/public-key` 404; yarım yapılandırma boot'u
+      düşürür.
+- **Not:** `EE_PUSH_ENABLED` (`config.js:391-402`) **yerinde kalır** ve anlamı değişmez —
+      o, bir uzantının push kuyruğa alıp alamayacağını söyler; `config.push` ise çekirdeğin
+      gönderip gönderemeyeceğini. İkisi ayrı sorudur.
+
+### OPH-311 — Şema: taşıyıcı kolonları ve teslim günlüğü
+
+- [ ] **`notification_devices`**: `push_provider enum('fcm','webpush')` (nullable),
+      `push_endpoint text`, `push_p256dh varchar`, `push_auth varchar` — `push_token`(512)
+      bir Web Push aboneliğini taşıyamaz, endpoint tek başına daha uzun olabiliyor;
+      ayrıca `invalid_at datetime(3)` ve `last_push_at datetime(3)`.
+- [ ] **`reminder_push_log`** (yeni): `PRIMARY KEY (reminder_id, device_id, fire_at)` —
+      idempotenlik tabloya gömülür, koda değil. `sent_at`, `provider`, `result`. Eskiyen
+      satırlar süpürgeyle silinir (mevcut `*-gc` plugin kalıbı).
+- [ ] **`reminders.status` KIPIRDATILMAZ.** Vade anında `delivered` yazmak cazip ama her
+      hatırlatıcı için bir revizyon üretir ve her cihaza iner — vade saatlerinde revizyon
+      fırtınası. Teslim kaydı **senkronlanmayan** bir tabloda durur.
+- [ ] Append-only migration, **çalışan `down()`** (CI hem MySQL 8.4 hem MariaDB'de
+      rollback+replay ediyor), collation `db/collation.js` kalıbıyla.
+- **Kabul:** `db:migrate` → `db:rollback --all` → `db:migrate` iki motorda da temiz;
+      `fakedb.js`'in `notification_devices` kolon varsayılanları güncellenir (`:202-203`).
+
+### OPH-312 — Taşıyıcı: FCM v1 ve Web Push
+
+- [ ] **`fcm.js`** — FCM HTTP v1. Service-account JWT'si `node:crypto` ile RS256 imzalanır →
+      OAuth2 erişim jetonu (önbelleklenir) → `fetch` ile gönderim. **`firebase-admin` YOK**
+      (devasa bağımlılık, sunucuda Firebase kurulumu gerektirir). iOS'a APNs üzerinden relay
+      eder — **ayrı APNs entegrasyonu yazılmaz**.
+- [ ] **`webpush.js`** — VAPID + RFC 8291 (aes128gcm) için `web-push` paketi. Gerekçe
+      ADR-0038'de: ECDH P-256 + HKDF + AES-128-GCM zincirini elle yazmak, yanlış yazıldığında
+      **sessizce** çalışan bir şifreleme üretir.
+- [ ] **`transport.js`** — sağlayıcı seçimi, toplu gönderim, ve **token hijyeni**: 404/410
+      (Web Push) ve `UNREGISTERED`/`INVALID_ARGUMENT` (FCM) → `invalid_at` işaretlenir, bir
+      daha denenmez. Çağırana **asla fırlatmaz** (EE'nin `createPushSender` sözleşmesiyle aynı).
+- [ ] `app.pushTransport` olarak decorate edilir. **`ee/` altına dokunulmaz** (`check:no-ee`);
+      EE'nin `eePush.transport` boşluğunu kendi deposunda bağlaması ayrı iş.
+- **Kabul:** sahte HTTP ile gönderim testleri (başarı, 410, `UNREGISTERED`, 5xx+yeniden deneme);
+      geçersiz token bir kez işaretlenir ve ikinci turda **hiç denenmez**.
+- **Doğrulama:** API birim süiti; gerçek kimlik bilgisiyle elle bir gönderim (kayda geçirilir).
+
+### OPH-313 — Web'de bildirim ağ geçidi ve izin akışı
+
+_Bugün `providers.dart:27-29` platform-kör: web'de bile `LocalNotificationsGateway` kuruluyor
+ve her çağrısı `MissingPluginException` ile yutulup `degraded` satırı yazıyor. Depoda koşullu
+import kalıbının **altı** örneği var; aynı alt sistemin kendi örneği `sound_store.dart:1-3`._
+
+- [ ] **`gateway_web.dart`** koşullu import'la gelir; `notificationsGatewayProvider` platforma
+      göre seçer. Web ağ geçidi: `Notification.requestPermission` → service worker kaydı →
+      `PushManager.subscribe({userVisibleOnly:true, applicationServerKey})` → cihaz PUT'u.
+- [ ] **İzin istemi kullanıcı hareketinden doğar** — Safari bunu şart koşuyor ve sayfa
+      açılışında izin istemek her yerde kötü bir kalıp. Ayar ekranında açık bir düğme.
+- [ ] **`package:web` ile interop** — depoda zaten kullanılıyor (`local_kv_web.dart:1`,
+      `html_lang_web.dart:1`); `dart:html` **yok**, `package:js` **yok**.
+- [ ] **Dürüstlük:** izin reddedildiyse, abonelik öldüyse ya da `/push/public-key` 404 verdiyse
+      `AlarmDegradationBanner` bunu **söyler** (`NOTIFICATIONS.md:487-491` —
+      *"a silent alarm that looks like it is ringing is the one outcome this section forbids"*).
+- [ ] **iOS Safari gerçeği yazılır:** web push yalnız **Ana Ekran'a eklenmiş** web uygulamasında
+      çalışıyor; `web/manifest.json` zaten `display: standalone`. Safari sekmesinde ayar
+      "bu tarayıcıda kullanılamıyor" der — sessizce kapalı durmaz.
+- **Kabul:** izin verilmiş/reddedilmiş/desteklenmiyor üç yolu da testli; web'de artık
+      `degraded` alarm günlüğü satırı **üretilmiyor** (ağ geçidi gerçek).
+
+### OPH-314 — Service worker ve yerel içerik önbelleği (ADR-0039)
+
+- [ ] **`apps/app/web/aw_push_sw.js`** — `push` ve `notificationclick` işleyicileri.
+      Depoda bugün **hiç** service worker kaydı yok (`web/index.html` Flutter'ınkini bile
+      kaydetmiyor), yani kapsam çakışması riski yok.
+- [ ] **ADR-0039** — AGENTS kuralı 3 (*"All client platforms are one Flutter codebase … no
+      secondary web framework unless a task explicitly justifies it with an ADR"*) bunu yazılı
+      ister. Gerekçe: bir push işleyicisi **Dart'tan çalıştırılamaz**; SW kendi kaynağında ve
+      uygulama kapalıyken çalışır. Emsal: `web/alliswell-config.js` elle yazılmış JS.
+      Sınır da yazılır: SW'de **iş mantığı yok** — önbellekten oku, göster, tıklamayı ilet.
+- [ ] **İçerik önbelleği:** uygulama her `_apply()` turunda IndexedDB `aw_alert_cache`'e
+      `reminderId → {başlık, gövde}` yazar; metin **gizlilik modu uygulanmış** hâlde yazılır
+      (`notificationPrivacyProvider`, `providers.dart:95`). SW politika kararı vermez.
+- [ ] **SW her zaman bildirim gösterir.** `userVisibleOnly: true` bir taahhüt: göstermezsek
+      Chrome kendi jenerik kartını basıyor. Önbellek boşsa metin "1 hatırlatıcı" olur.
+      **Çifte uyarı uygulama tarafında bastırılır:** SW görünür istemciye `postMessage` eder,
+      uygulama kendi toast'ını göstermez. Acil alarmda `AlarmRingScreen` yine açılır — o ayrı
+      bir yüzey (onay/erteleme taşır).
+- [ ] **`notificationclick`** → açık sekmeyi odakla, yoksa `clients.openWindow` ile göreve
+      derin bağlantı (ADR-0016 rota sözleşmesi).
+- **Kabul:** sekme kapalıyken gelen push bildirimi gösterir; önbellek boşken jenerik metin
+      çıkar; Chrome'un jenerik kartı **hiçbir yolda** görünmez; tıklama doğru göreve gider.
+
+### OPH-315 — Sunucu: vade süpürgesi ve web teslimi
+
+_**Burası §0'ın tadil edildiği yer.** Diğer her platformda sunucu bir ipucu; web'de **saat**._
+
+- [ ] **Süpürge** mevcut plugin+timer idiomuyla (`plugins/calendar-sync.js:39-49`:
+      `env !== 'test'` guard'ı, `timer.unref()`, `onClose` ile `clearInterval`).
+      `idx_reminders_due` üzerinden `status IN ('scheduled','snoozed')` ve `remind_at` pencerede.
+- [ ] **Web cihazlarına her zaman**, mobil cihazlara **yalnız bayatsa**
+      (`last_seen_at < reminders.updated_at`). Idempotenlik `reminder_push_log` PK'siyle.
+- [ ] **Tekrar-alert zinciri sunucuya TAŞINMAZ.** `ReminderProfile.offsets` cihaz-yerel bir
+      tercih (`providers.dart:39-41`'in gerekçesi) ve sunucuya taşımak ADR-0015'in reddettiği
+      alternatifti (`:178`). Sunucu tek atış yapar; zincir cihazın işi.
+- [ ] **`docs/PRIVACY.md` (EN **ve** TR) burada değişir.** *"today nothing is pushed from our
+      servers to them"* artık doğru değil. Yeni metin: hangi koşulda push gönderiliyor, içinde
+      ne var (**kimlikler ve sabit bir dize**), ne yok (**görev başlığı ve içeriği**).
+      *"Your task titles and contents are not sent to Apple's, Google's, or anyone else's push
+      service"* cümlesi **aynen kalır** — tasarım onu doğru tutuyor.
+- [ ] **`docs/NOTIFICATIONS.md` §0 ve §3 tadil edilir** — §3 bugün web'i "best-effort, needs
+      Notification permission" diye tarif ediyor ve o izni isteyen kod yoktu; artık var ve
+      tablo kodla eşleşir (OPH-317 bunu ölçecek).
+- **Kabul:** aynı hatırlatıcı için süpürge iki kez koşar → **bir** push; değişiklikten sonra
+      senkron olmuş mobil cihaza push **gitmez**; web cihazına gider; `reminders.status`
+      değişmez ve revizyon üretmez.
+
+### OPH-316 — Ayar: "Bu tarayıcıda bildirim"
+
+_Rapor: "a reminder which does not 'ring' with sound, but just pops up with a window on the
+computer screen … so it is less disturbing to colleagues during office hours."_
+
+- [ ] **Üç değerli ayar:** Kapalı / **Sessiz** (varsayılan) / Sesli. Cihaz-yerel, `LocalKv`
+      üzerinde — her teslim tercihi gibi (`providers.dart:39-41`: *"each device owns how
+      insistent they are"*). İzin zaten açık bir opt-in olduğu için Sessiz varsayılan olabilir.
+- [ ] **"Sessiz" bu tarayıcıda HER ŞEYİ susturur** — OS bildirimi `silent: true` ile gelir **ve**
+      `AlarmRingScreen` ses çalmaz. Ekran yine açılır, bunun **bilerek** sessiz olduğunu yazar
+      ve elle "sesi başlat" sunar — mevcut kalıp zaten orada (`alarm_ring_screen.dart:314-327`,
+      otomatik oynatma reddedildiğinde). Böylece *"çalıyormuş gibi görünen sessiz alarm"*
+      yasağı çiğnenmez: sessizlik **beyan edilmiş** olur.
+- [ ] **Firefox gerçeği söylenir.** Firefox `silent` bayrağını yok sayıp ses çalıyor. Ayar bunu
+      yazar; sessizlik sağlanamıyorsa kullanıcı bunu **ayardan** öğrenir, alarm anında değil.
+- [ ] i18n (`check:i18n`), token'lı renkler (ham hex yok), ≥44px hedefler, iki temada da
+      kontrast; `contrast.py` palet değişirse koşar.
+- **Kabul:** üç değerin üçü de testli; "Sessiz" seçiliyken alarm ekranı `SilentAlarmFeedback`
+      kullanıyor ve beyanı gösteriyor; Firefox uyarısı yalnız Firefox'ta çıkıyor.
+
+### OPH-317 — `check:notify-matrix`: dokümanın platform iddiası koddan üretilir
+
+_#16'nın kökü bir kusur değildi: `NOTIFICATIONS.md` §3 web'in Notification iznine ihtiyacı
+olduğunu **tarif ediyordu** ve o izni isteyen tek satır yoktu. OPH-304'ün kardeşi — dokümanın
+anlattığı platform gerçeği ile derlenen kodun ayrışması. Düzeltmek o örneği kapatır; kapı
+sınıfı kapatır._
+
+- [ ] **Yetenek matrisi koddan üretilir:** her platform için hangi ağ geçidinin seçildiği,
+      hangi kanalların (yerel bildirim / AlarmKit / web push / uygulama içi ekran) var olduğu.
+      Kaynak kod; çıktı `NOTIFICATIONS.md` §3'teki tablo.
+- [ ] **Kapı doküman ile üretilen matrisi karşılaştırır**; ayrışma → kırmızı.
+- [ ] **Kapının kendisi doğrulanır:** tabloda bir satır elle bozulur → `exit 1`; geri alınır →
+      `exit 0`.
+- [ ] CI'a bağlanır ve `AGENTS.md` §3'e eklenir.
+- **Kabul:** kapı **bu epic'ten önceki** §3 metnine karşı koşturulduğunda kırmızı verir —
+      yani #16'yı bağımsız olarak yakalayabildiği gösterilir.
+
+### OPH-318 — drift'e WAL ve `busy_timeout` (bu epic'ten eski borç)
+
+_Bu iş #15'in ön koşulu ama kökü daha eski: `widget_callback.dart:39` bugün, uygulama açıkken,
+aynı dosyaya ikinci bir `AwDatabase` açıyor. Yazma kısa olduğu için kurtarıyor. Senkron pull'un
+tek uzun transaction'ı (`sync_applier.dart:27`) bu şansı ortadan kaldırır._
+
+- [ ] **`connection_native.dart:16`'ya `setup:`** — `pragma journal_mode = WAL` ve
+      `pragma busy_timeout = 5000`. drift WAL'ı **açıkça istenmeden** açmıyor.
+- [ ] **Dosya şekli değişiyor** (`-wal`/`-shm` kardeş dosyaları) → `test/sync/migration_test.dart`
+      yeniden koşar; yükseltme yolunda veri kaybı olmadığı gösterilir.
+- [ ] **Arka plan turu, uygulama canlıyken no-op olur:** uygulama ön plana geldiğinde bir
+      "foreground since" damgası yazar; worker onu görürse hiç çalışmaz. WAL'ın üstüne ikinci
+      bir emniyet; ~10 satır.
+- **Kabul:** aynı anda bir uzun yazma ve bir okuma → `SQLITE_BUSY` yok; migration testi yeşil.
+- **Bulgu (kapsam DIŞI):** Android bildirim kanalı `.tr()` ile adlandırılıyor ve kanal
+      değiştirilemiyor — kullanıcı **uygulama dilini değiştirirse** sistem ayarlarındaki kanal
+      adı eski dilde kalıyor (`gateway_local.dart:483-487`, `:22-26`). Ölçüldü; kendi turunu
+      hak ediyor.
+
+### OPH-319 — `firebase_messaging` ve token kaydı
+
+- [ ] **ADR-0025 kalıbına uyar**: `firebase_options.dart` **yok**, config dosyası yoksa
+      `AwFirebase.isConfigured` false ve mesajlaşma **no-op**; derleme kırılmaz. **Web'e
+      Firebase girmez** — web VAPID kullanıyor, ADR-0025 §5 (*"web has no implicit config"*)
+      korunur.
+- [ ] Token alınır, `onTokenRefresh` dinlenir, OPH-309'un PUT'una `push_provider='fcm'` ile
+      yazılır. Çıkışta temizlenir.
+- [ ] **iOS**: `aps-environment` entitlement (App ID + provisioning profili değişikliği).
+      **`UIBackgroundModes` EKLENMEZ** — iOS'ta sessiz uyandırma bu epic'in kapsamı dışı,
+      görünür yedek arka plan modu gerektirmiyor.
+- [ ] **Android izin allowlist'i** `scripts/android/assert-permissions.sh --write` ile
+      güncellenir; fark commit mesajında gerekçelenir. `firebase_messaging` izinleri
+      **derleme anında** ekliyor, CI kurulu APK'nın ikili manifest'ini diff'liyor.
+- **Kabul:** config dosyası **olmayan** temiz klonda `flutter build` geçer, uygulama açılır ve
+      bugünkü davranış aynen sürer; config varken token kaydı sunucuda görünür.
+
+### OPH-320 — Görünür yedek teslim: #15'in garantili yarısı
+
+_Bu, force-quit edilmiş bir uygulamada, kilitli bir telefonda, izolatsız ve Keychain'e
+dokunmadan çalışan tek yol. Uyandırma ipucu (OPH-322) daha zarif; bu daha **kesin**._
+
+- [ ] OPH-315'in süpürgesi mobil cihazları da kapsar — **yalnız bayatsa**.
+- [ ] Metin `notification_devices.locale` (yoksa `users.locale`) ile seçilen **sabit** bir
+      dize: "1 hatırlatıcın var" / "You have 1 reminder". Görev adı **yok**.
+- [ ] Tıklama uygulamayı açar → normal senkron → yerel program tazelenir → bundan sonraki
+      alarmlar tam davranışıyla çalar.
+- **Kabul:** masaüstünde kurulan hatırlatıcı, force-quit edilmiş iPhone'da vade anında görünür
+      bildirim olarak çıkar; aynı cihaz o sırada senkronsa **çıkmaz**.
+
+### OPH-321 — Android başsız tazeleme ve kimlik paritesi
+
+_Bu epic'in en ağır işi ve tek geri dönüşsüz riski. `gateway_local.dart:118-124` arka plan
+izolatını bir kez **bilerek** reddetmiş (*"a background isolate has no drift/auth stack here"*);
+emsal ise `main.dart:19-29`'daki `@pragma('vm:entry-point') widgetCallback`._
+
+- [ ] **`ReminderStore.readAlarms(workspaceId)`** — `watchAlarms:81-136`'daki projeksiyon saf
+      bir `mergeAlarms()` fonksiyonuna çıkarılır; `watchAlarms` onu `combineLatest3` ile,
+      `readAlarms` üç `.get()` ile çağırır. **Eklemeli** değişiklik.
+- [ ] **`NotificationScheduler.applyOnce(alarms)`** — `_latest = alarms; await _apply();`.
+      **`start()`'a dokunulmaz**: `:107` `requestPermissions()` çağırıyor, o da Android'de
+      `mainActivity` istiyor ve arka plan motorunda `null`.
+- [ ] **`notifications/headless.dart`** — sırası önemli: `AwI18n.boot()` **zorunlu**;
+      workspace id `sync_states`'ten (asla `/me`'den — ağ çağrısı, çevrimdışı düşer);
+      base URL **doğrudan** `localKv`'den (senkron `PersistedChoice` fallback'i self-host eden
+      birini hosted URL'e düşürür, `persisted_prefs.dart:42-51`); oturum `TokenStorage`'dan,
+      yoksa sessizce çık; `engine.syncNow()` — `start()` değil; sonunda `db.close()`.
+- [ ] **Kimlik-parite testi (bu işin kapısı):** aynı alarm ve tercih girdisiyle **başsız** ve
+      **UI** bileşimlerinin ürettiği bildirim id kümesi **birebir aynı** olmalı. Saf birim testi,
+      eklenti gerektirmez. **Negatif kontrol:** `headless.dart`'tan `AwI18n.boot()` çıkarılır →
+      kırmızı.
+- [ ] **Tetikleyici yeni bağımlılık istemiyor:** mevcut arka plan dispatcher'ına yeni bir
+      `uri.host` eklenir (`widget_callback.dart:26-33`; `deep_link.dart:66-67` onu router'dan
+      ayırıyor) ve elle yazılmış bir `PeriodicWorkRequest` onu kuyruğa alır — `androidx.work`
+      home_widget üzerinden **zaten APK'da**. `workmanager` paketi **alınmaz**: AGP 9 /
+      Kotlin 2.3 üstünde Gradle eklentisi riski, `file_picker` notunda kayıtlı aynı sınıf.
+- [ ] `ProviderContainer`'ı başsız kurmak **reddedilir** ve gerekçesi işe yazılır: graf
+      UI-şekilli (uzun ömürlü akışlar, zamanlayıcılar, `AppLifecycleListener`, router) ve
+      `currentWorkspaceProvider` ağ çağırıyor. Üç nesne elle kurulur.
+- **Kabul:** kimlik paritesi testi yeşil ve negatif kontrolü kırmızı; uygulama **hiç
+      açılmadan** kurulan bir hatırlatıcı Android'de OS alarmına dönüşüyor; uygulama canlıyken
+      worker no-op.
+
+### OPH-322 — Uyandırma ipucu: değişiklik anında, sessizce
+
+- [ ] **Sunucu:** `entity:changed` (`db/sync.js:40-45`, commit **sonrası**) dinlenir;
+      şablon `plugins/mirror.js:23-27`. `entityType === 'reminder'` filtrelenir, workspace →
+      `workspace_members` → kullanıcılar.
+- [ ] **Fırtına kontrolü:** BullMQ `jobKey = wake:${userId}:${dakikaKovası}` ile coalesce
+      (`queue/runner.js:24-95`; Redis yokken inline drain, testler deterministik kalır).
+      Kuralı arka arkaya değiştiren bir kullanıcı **tek** uyandırma üretir.
+- [ ] **Yük yalnız `{v:1, type:'wake'}`** — hangi hatırlatıcı olduğu bile gereksiz; cihaz
+      sadece "senkron ol" duyar. `check:push-payload` bunu ölçer.
+- [ ] **İstemci:** Android'de `onBackgroundMessage` → OPH-321'in `headless.dart` girişi.
+      Aynı fonksiyon, üçüncü tetikleyici.
+- [ ] **iOS'a veri mesajı gönderilmez** — `UIBackgroundModes` yok ve teslim bütçeli;
+      iOS görünür yedekle (OPH-320) çözülüyor. ADR-0038 bunu yazıyor.
+- **Kabul:** web'den kurulan bir hatırlatıcı, Android'de uygulama **kapalıyken** OS alarmına
+      dönüşür ve kullanıcı arada **hiçbir bildirim görmez**; on kez üst üste düzenleme
+      tek uyandırma üretir.
+
+### OPH-323 — Belgeler, ROADMAP ve sürüm
+
+- [ ] `docs/API.md` + `docs/openapi.json` + postman koleksiyonu (`check:openapi`,
+      `check:apidocs`, `check:postman`) — yeni uç ve cihaz alanları.
+- [ ] `ROADMAP.md`: `### Phase 17 — … (Epic 30) ✅`, ve `:478-480`'deki park cümlesinin
+      üstü çizilir.
+- [ ] `CHANGELOG.md` `[Unreleased]` girdileri + `docs/STATE.md` bloğu.
+- [ ] Sürüm hazırlığı: **12 yer** + CHANGELOG bölümü (`scripts/docs/check.mjs` ölçüyor;
+      `release.yml:56-81` etiketin CHANGELOG başlığını bulamazsa yayını düşürür).
+- **Kabul:** `npm run check:docs` yeşil; etiketten önce üç sürüm alanı (api package.json,
+      pubspec, `kAppVersion`) etiketle aynı.
+
+**Epic 30 DoD:** #15 ve #16 kapanır; iki yeni kapı (`check:push-payload`,
+`check:notify-matrix`) ve bir parite testi CI'da; ADR-0038 ve ADR-0039 yazılı **ve indekste**;
+`docs/PRIVACY.md` EN+TR gerçeği söylüyor; kimlik bilgisi olmayan sunucuda ve Firebase config'i
+olmayan derlemede davranış **birebir bugünküyle aynı**; `ee/` değişmemiş.
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
@@ -10079,8 +10504,9 @@ _Bugün Ana ekran yedi KOVAYA ayırıyor (Gecikmiş → Tarihsiz → Bugün → 
   hak ediyor); salt-okunur Quill önizlemelerinin (`project_detail_screen.dart:374`,
   `markdown_import_screen.dart:266`) her derlemede `ScrollController` üretmesi (aynı
   paket deseni, imleç yok — kullanıcıya görünen etkisi ölçülmedi).
-- **Round 22 park kuyruğu (istek turu 22, Epic 29'un kapsam DIŞI iki maddesi — ikisi de
-  ÖLÇÜLDÜ, ikisi de mimari ve kendi turunu hak ediyor):**
+- ~~**Round 22 park kuyruğu (istek turu 22, Epic 29'un kapsam DIŞI iki maddesi — ikisi de
+  ÖLÇÜLDÜ, ikisi de mimari ve kendi turunu hak ediyor):**~~ (**park bitti — 2026-09-15'te
+  Epic 30 oldu**, OPH-308…323. Aşağıdaki ölçümler yerinde bırakıldı: epic'in gerekçesi onlar.)
   **(1) Sunucu→cihaz push "uyandırma"** — rapor: "masaüstünde kurduğum hatırlatıcı
   telefonumda çalmıyor; telefonda kurarsam ikisi de çalıyor." Kusur değil, yazılı
   tasarımın sonucu: `NOTIFICATIONS.md` §0 *"each device schedules its own OS-level

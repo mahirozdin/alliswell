@@ -3,7 +3,38 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-14h (**OPH-307 BİTTİ — EPIC 29'UN ATOMİK İŞLERİ TAMAM
+**Last updated:** 2026-09-15 (**EPIC 30 PLANLANDI — park biten iki madde:
+sunucu→cihaz teslimat (OPH-308…323, #15 + #16).** Kod yazılmadı; bu blok bir plan
+bloğu. Epic 29'un kapsam dışı bıraktığı iki madde geri alındı, çünkü backlog
+kaydının kendisi *"bu madde (1) ile birlikte düşünülmeli"* diyordu: web'de
+zamanlanmış yerel bildirim diye bir API yok, yani tarayıcıyı uyarmanın tek yolu
+sunucu. **Turun tek cümlesi: ÇALAN cihaz ile BİLEN cihaz aynı cihaz değil.**
+§0'ın modeli doğru ve doğru kalıyor; tek varsayımı cihazın çalışıyor olması, ve
+iki rapor da o varsayımın düşmesi. **Tasarım üç tetikleyici:** değişiklik anında
+uyandırma ipucu (Android; alarm yine yerelden, tam davranışıyla çalar), vade
+anında **görünür** ve içeriksiz yedek (bayat cihazlar için; web'de tek yol,
+force-quit'te de çalışır), ve altta periyodik tazeleme. Bayatlık tek
+karşılaştırma: `last_seen_at < reminders.updated_at` — değişiklikten sonra
+senkron olmuş cihaza push **gitmez**. **Araştırma bu turda üç kez tasarımı
+değiştirdi:** (1) Notification Triggers API bırakıldı, yani web'de yerel zamanlama
+yok; (2) Chrome, push işleyicisi bildirim göstermeden biterse kendi jenerik
+kartını basıyor — "sekme öndeyse gösterme" geri teper, kural **her zaman göster**
+oldu; (3) Firefox `silent` bayrağını yok sayıp ses çalıyor — sessizlik bir söz
+olduğuna göre tutulamadığı yerde ayarda **yazılacak**. **Depodan çıkan üç ölçüm
+daha:** bildirim kimliği çevrilmiş metni hash'liyor ve Android kanalı `.tr()` ile
+adlandırılıp bir daha değiştirilemiyor — i18n'siz tek bir arka plan turu
+kullanıcının sistem ayarlarını kalıcı bozar (OPH-321 bu yüzden bir parite testiyle
+geliyor); drift WAL'sız ve `busy_timeout`'suz açılıyor ve `widget_callback.dart:39`
+bugün zaten ikinci bir yazıcı (OPH-318, bu epic'ten eski borç); oturum
+`kSecAttrAccessibleWhenUnlocked` ile saklandığı için **iOS'ta başsız uyandırma
+kilitli telefonda kimlik doğrulayamaz** — iOS bu turda görünür yedekle çözülüyor,
+başsız yol kendi güvenlik ADR'sini hak ediyor. EE'nin push kanalı zaten yazılmış
+ama taşıyıcısı null; çekirdek taşıyıcıyı verecek, `ee/` **değişmeyecek**.
+İki yeni kapı planlandı: `check:push-payload` (içerik sızıntısı) ve
+`check:notify-matrix` (dokümanın platform iddiası koddan üretilir — #16'nın kökü
+tam buydu). Sıradaki iş: **OPH-308**.)
+
+Önceki blok: 2026-09-14h (**OPH-307 BİTTİ — EPIC 29'UN ATOMİK İŞLERİ TAMAM
 (OPH-299…307, 9/9).** "Bu hafta" artık gün başına bir başlık: *"for each day,
 the tasks are listed one by one, coz this would be easier to follow, for the
 eyes"*. Home günü zaten biliyordu — `futureBucketForDay` hesaplayıp tek yığına

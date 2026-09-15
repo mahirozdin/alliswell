@@ -475,9 +475,56 @@ boundary in each case.
   lists (it exists only for notes and files today), a tappable tag filter, and
   the "This week" group broken out day by day.
 
-Parked with written reasons and tracked as issues: server→device push wake-ups
+~~Parked with written reasons and tracked as issues: server→device push wake-ups
 and web OS notifications — both measured, both architectural, both in the
-backlog.
+backlog.~~ **Unparked 2026-09-15 as Phase 17 / Epic 30 (OPH-308…323).**
+
+## Toward v1.12.0
+
+### Phase 17 — Request round 22, the two parked items: server→device delivery (Epic 30) ⏳ (planned 2026-09-15)
+
+The same reporter, the two items Phase 16 measured and deliberately left out
+([#15](https://github.com/mahirozdin/alliswell/issues/15),
+[#16](https://github.com/mahirozdin/alliswell/issues/16)). They come back together
+because the backlog entry itself says they must: web has no scheduled local
+notification API, so the only way to alert a browser is from the server.
+
+**The sentence of the round: the device that must ring is not the device that
+knows.** A reminder created on the desktop never reaches the phone's OS scheduler
+until the phone opens the app; a browser that must alert at 14:03 is not running
+at 14:03. `NOTIFICATIONS.md` §0 — *"each device schedules its own OS-level
+notifications from local data"* — was right and stays right: it works offline and
+it does not hand timing to a push service. It has exactly one assumption, and
+both reports are that assumption failing: **the device is running.**
+
+- **Delivery gets three triggers, in descending order of grace (OPH-308…312, 320…322).**
+  A wake-up hint at change time so the device syncs and the *real* local alarm
+  fires with its full behaviour; a content-free **visible** push at fire time for
+  devices whose local schedule is stale — the only path on web, and the one that
+  works with the app force-quit; and a periodic refresh underneath both. Staleness
+  is one comparison: a device that synced *after* the change already has the alarm,
+  and is not pushed to.
+- **The payload carries IDs and nothing else, and a gate says so (OPH-308).**
+  The service worker reads the title from a cache the app wrote locally, so
+  `PRIVACY.md`'s promise — task titles never reach Apple's, Google's or anyone
+  else's push service — stays literally true. `check:push-payload` builds a payload
+  from a task titled `SECRET` and asserts the string appears nowhere in it.
+- **Web finally gets the OS notification its own docs described (OPH-313…317).**
+  §3 has claimed web "needs Notification permission" while no line ever requested
+  it — the same class as Phase 16's OPH-304, a document's platform claim against
+  the compiled code. `check:notify-matrix` generates that table from the code, so
+  the claim cannot drift again. The silent option is a per-browser setting,
+  default silent, and it says out loud where the browser will not honour it
+  (Firefox ignores the flag).
+- **iOS keeps the visible fallback and not the headless wake, for a measured
+  reason (ADR-0038).** The session is stored under
+  `kSecAttrAccessibleWhenUnlocked`, so a 3 a.m. wake on a locked phone cannot
+  authenticate — the most valuable wake is the one that structurally cannot run.
+  Changing that is a security decision with its own ADR and a re-key migration.
+- **One debt older than this round gets paid (OPH-318).** The drift database opens
+  with neither WAL nor `busy_timeout`, and the home-widget callback already opens
+  a second writer against it. Short writes have been hiding it; a sync pull's
+  single long transaction would not.
 
 ## v2 parking lot 💤
 
