@@ -25,3 +25,18 @@ const nextId = monotonicFactory();
 export function newId() {
   return nextId();
 }
+
+/**
+ * ULID shape, as ADR-0004 defines it: 26 characters of Crockford base32.
+ *
+ * Lives here rather than beside its first caller because two places now ask
+ * the same question — `/sync`'s field validators and the push payload contract
+ * (OPH-308), which refuses an id field holding prose. Two independently correct
+ * copies of one fact is the shape of every fault Epic 29 traced.
+ */
+export const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+
+/** @param {unknown} value @returns {boolean} */
+export function isUlid(value) {
+  return typeof value === 'string' && ULID_RE.test(value);
+}

@@ -84,6 +84,15 @@ jobs:
       - name: Policy — no unmeasurable opacity layers over text
         run: npm run check:opacity
 
+      # OPH-308: a push crosses Google's, Apple's or Mozilla's servers, and
+      # docs/PRIVACY.md tells users a task's title never makes that trip. The
+      # promise is kept by one narrow place — apps/api/src/lib/push/payload.js —
+      # so this diffs what that code would send against the keys a person agreed
+      # to, and separately rebuilds every payload beside a task whose every field
+      # is a sentence to see whether any of it reaches the wire.
+      - name: Policy — a push payload names rows, never what they say
+        run: npm run check:push-payload
+
       # OPH-300: the client and the server each held half of the push contract
       # and nothing compared the halves — which is how recurrence stayed broken
       # from v0.8.0 to v1.10.2 with every suite green (OPH-299). The Dart the

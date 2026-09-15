@@ -81,6 +81,10 @@ Never skip ahead (dependencies are encoded in epic order). If a task is blocked,
       same change — OPH-299 is what happens when it does not (recurrence silently dead from
       v0.8.0 to v1.10.2, every suite green).
 - [ ] DB changes shipped as a new knex migration (with `down`).
+- [ ] **Push payload touched** (`apps/api/src/lib/push/payload.js`) → `npm run check:push-payload`
+      passes; a deliberate change is accepted with `node scripts/push/payload.mjs --write` and
+      explained in the commit. Nothing a task says may cross a push provider (BLUEPRINT §8.3,
+      ADR-0038) — and the leak that gets through a key-set check is a declared key holding prose.
 - [ ] Docs updated: TASKS checkbox, STATE, CHANGELOG (+ ADR/ARCHITECTURE when relevant).
 - [ ] User-facing capability added/changed → MCP tools + docs/MCP.md and docs/API.md extended,
       or a written reason recorded (rule 12).

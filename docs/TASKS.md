@@ -10089,33 +10089,66 @@ push service"* cümlesi **harfi harfine doğru kalır**. Değişmek zorunda olan
 
 _Kapı **önce** yazılır. Epic 29'un dersi: OPH-299 altı buçuk hafta boyunca 796 API + 1598 app
 testinin altından geçti, çünkü hiçbir test istemcinin GERÇEKTE gönderdiği gövdeyi göndermiyordu.
-Burada da gönderici daha yokken, sözleşmeyi ölçen kapı var olabilir — EE'nin mevcut yük
-kurucusu üzerinde._
+Burada gönderici henüz yok; olan tek şey sözleşme ve onu ölçen kapı._
 
-- [ ] **ADR-0038 yazılır.** Kararlar: uyandırma ipucu ile görünür yedeğin ayrımı; **web'de
-      sunucunun saat olması** (§0'ın tadili ve gerekçesi — Notification Triggers yok); alıcı
-      kümesinin `workspace_members` olması ve bunun bugünkü davranışla aynı olduğu;
-      yalnız-ID yükü (BLUEPRINT §8.3); `web-push` paketinin yeni bağımlılık kategorisi olarak
-      gerekçesi (RFC 8291 şifrelemesini elle yazmak riskli); ve **iOS başsız yolunun ölçülmüş
-      gerekçeyle ertelenmesi** (Keychain `whenUnlocked`, `UIBackgroundModes` yokluğu, bütçeli
-      teslim, arka plan motorunda kurulmayan AlarmKit köprüsü).
-- [ ] **`apps/api/src/lib/push/payload.js`** — bir push gövdesinin kurulduğu **tek yer**.
-      İzinli anahtar kümesi: `v`, `type`, `reminderId`, `taskId`, `fireAt` (+ görünür yedekte
-      `locale`'den seçilen sabit dize anahtarı). Görev alanı **hiç girmez**.
-- [ ] **`check:push-payload` kapısı.** `payload.js`'in izinli anahtar kümesinden
-      `push_payload_parity.json` **üretilir** (elle yazılmaz — OPH-294'ün dersi) ve API
-      süitinde canlı kurucuya karşı doğrulanır. Ayrıca **içerik sızıntısı testi**: başlığı
-      `"SECRET"` olan bir görevden yük kurulur, serileştirilmiş JSON'da `"SECRET"` geçmediği
-      iddia edilir.
-- [ ] **Kapının kendisi doğrulanır:** `payload.js`'e görev başlığı eklenir → kırmızı;
-      kaldırılır → yeşil. *Ölçmediği şeyi yeşille aynı okuyan bir kapı, kapı değildir.*
-- [ ] CI'a bağlanır (`check:opacity`, `check:sync-fields` ile aynı sırada) ve `AGENTS.md` §3
-      Definition of Done'a eklenir.
-- [ ] **`docs/adr/README.md` indeks satırı AYNI commit'te.** İndeks iki kez sessizce bayatladı
+- [x] **ADR-0038 yazıldı** (`docs/adr/0038-server-to-device-delivery.md`). Kararlar: uyandırma
+      ipucu ile görünür yedeğin ayrımı; **web'de sunucunun saat olması** (§0'ın tadili, gerekçesi
+      ölçülmüş — Notification Triggers hiç yayınlanmadı); bayatlık ölçüsünün tek karşılaştırma
+      olması; alıcı kümesinin `workspace_members` olması ve bunun bugünkü davranışla **aynı**
+      olduğu; yalnız-ID yükü (BLUEPRINT §8.3); FCM'in APNs'e relay etmesi ve `web-push`
+      paketinin yeni bağımlılık kategorisi olarak gerekçesi (RFC 8291 şifrelemesi yanlış
+      yazıldığında **sessizce** çalışır); ve **iOS başsız yolunun ölçülmüş gerekçeyle
+      ertelenmesi** (Keychain `whenUnlocked`, `UIBackgroundModes` yokluğu, bütçeli teslim,
+      arka plan motorunda kurulmayan AlarmKit köprüsü).
+- [x] **`apps/api/src/lib/push/payload.js`** — bir push gövdesinin kurulduğu **tek yer**.
+      `buildWakePayload()`, `buildReminderPayload()` ve her taşıyıcının göndermeden önce
+      çağıracağı `assertPushPayload()`. Builder'lar tanımadıkları anahtarı **seçmeyerek**
+      düşürür (reddetmeyerek): gerçek çağrı yerleri bir satırı yayarak çağırır ve her fazla
+      anahtarda fırlatan bir builder, birinin gövdeyi elle kurmasına yol açar — bu dosya tam
+      da onu engellemek için var.
+- [x] **Anahtar kümesi YETMEZ, değerler de doğrulanır.** Bariz sızıntı `title` adında yeni bir
+      anahtar; sessiz olanı `taskId`'nin bir cümle tutması — ki bu her anahtar-kümesi
+      kontrolünden geçer. Bu yüzden id'ler ULID biçiminde, an ISO instant, ve görünür push
+      **kapalı bir kümeden bir mesaj ADI** taşır, mesajın kendisini değil
+      (`PUSH_ALERT_IDS = ['reminder_due']`). *Cümle tutamayan bir alan, cümle sızdıramaz.*
+- [x] **ULID biçimi tek yere alındı.** `isUlid`/`ULID_RE` artık `apps/api/src/lib/ids.js`'de;
+      `sync.js` onu import ediyor. **Bu iş sırasında bunun kendisi bir hata yakaladı:**
+      `sync.js`'teki yerel tanım silinince `sync.js:1342`'deki İKİNCİ kullanıcı ortaya çıktı ve
+      süit 24 kırmızı verdi — ölçülmemiş ikinci taraf, aynı turun konusu olan sınıfın ta kendisi.
+      Baseline alınarak (değişikliksiz kod ile aynı dosya 9/9 yeşil) benim kırdığım kanıtlandı,
+      sonra import tamamlandı.
+- [x] **`check:push-payload` kapısı** (`scripts/push/payload.mjs` +
+      `scripts/push/allowed-payload-keys.txt`). **Plandan sapma, gerekçesiyle:** üretilen bir
+      fixture'ı onu üreten kodla karşılaştırmak DÖNGÜSELDİR — deponun kendi cümlesiyle,
+      *"ölçmediği şeyi yeşille aynı okuyan bir kapı, kapı değildir"*. Bu yüzden iki taraf
+      **POLİTİKA ve KOD**: metin dosyası bir insanın gönderilmesine razı olduğu şey, betik
+      kodun gerçekte ne göndereceği. Kalıp `scripts/android/allowed-permissions.txt`'in kalıbı;
+      `--write` ile bilerek güncellenir ve fark commit'te gerekçelenir.
+- [x] **Kapı ikinci ve BAĞIMSIZ bir soru daha soruyor:** her yükü, her alanı bir cümle olan bir
+      görevin yanında kurup tel biçimini geri okuyor. Sızıntı varsa **başka bir gerekçeyle**
+      kırmızı verir ve hangisi olduğunu söyler — bu kontrol allowlist'in doğru olmasına bağlı
+      değil.
+- [x] CI'a bağlandı (`check:opacity` ile `check:sync-fields` arasında, `ci.yml:88-95`) ve
+      `AGENTS.md` §3 Definition of Done'a eklendi.
+- [x] **`docs/adr/README.md` indeks satırı AYNI commit'te.** İndeks iki kez sessizce bayatladı
       (README:49-57) ve mekanik kapısı **yok** — elle eklemek bu işin parçası.
-- **Kabul:** kapı, henüz gönderici yokken EE'nin yük kurucusu üzerinde çalışır; sahte ihlal
-      kırmızı verir; `push_payload_parity.json` üretilmiştir, elle yazılmamıştır.
-- **Doğrulama:** `npm run check:push-payload`, `npm run lint`, API birim süiti.
+- **Kabul — negatif kontrol, kapının İKİ yolu da ayrı ayrı kanıtlandı:**
+      (1) sözleşmeye `title` eklenip builder onu geçirtince kapı **sızıntı** gerekçesiyle
+      kırmızı (`"Ameliyat sonucu — Dr. Yılmaz"` ve `"Yılmaz"` tel üzerinde yakalandı) ve birim
+      süiti 2 kırmızı; (2) zararsız bir değişiklikle (yeni bir alert id) kapı **sözleşme farkı**
+      gerekçesiyle kırmızı (`+ alert:test_probe`); ikisi de geri alınınca yeşil.
+      *Ayrıca testin kendisi bir şey yakaladı:* ilk sabitim `01REMINDER…` geçerli bir ULID
+      değildi (`I` Crockford base32'de yok) ve değer doğrulaması onu reddetti.
+- **Doğrulama (2026-09-15, sandbox):** `check:push-payload` yeşil (9 girdi); API birim süiti
+      **814** test, **811 geçti**; `eslint` temiz; `prettier --check` temiz. Kalan **3 kırmızı**
+      `test/unit/ai-chat-transport.test.js`'in SSE/socket zamanlama testleri — **benim
+      değişikliğim değil**: aynı dosya, değişikliklerim stash'lenmiş hâlde de aynı 3 hatayı
+      verdi (yüklü sandbox, 30 s hook timeout). Yeni testler: `test/unit/push-payload.test.js`,
+      12 case.
+- **Kapsam DIŞI (bilerek):** taşıyıcı yok, gönderim yok, yapılandırma yok — bu iş yalnız
+      sözleşmeyi ve kapıyı koyuyor. `ee/` değişmedi (`check:no-ee`). MCP yüzeyi genişlemedi:
+      bir push yükü sözleşmesi bir ajanın adresleyebileceği çalışma alanı verisi değil
+      (AGENTS kuralı 12 gerekçesi).
 
 ### OPH-309 — Cihaz kaydı gerçekten kurulur
 

@@ -18,7 +18,7 @@
  * are discarded individually (`discardedFields`); a mutation that loses every
  * field comes back as `conflict`/`SYNC_STALE_MUTATION`.
  */
-import { newId } from '../lib/ids.js';
+import { isUlid, newId, ULID_RE } from '../lib/ids.js';
 import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
 import { isValidDelta, markdownToPlainText } from '../lib/delta.js';
@@ -60,7 +60,6 @@ import { TASK_STATUSES, TASK_PRIORITIES, serializeTask, serializeChecklistItem }
 import { serializeNoteSnapshot } from './notes.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
-const ULID_RE = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 const COLOR_RE = new RegExp(COLOR_PATTERN);
 const MAX_PULL_LIMIT = 500;
 const MAX_PUSH_MUTATIONS = 100;
@@ -88,7 +87,7 @@ const intIn = (min, max) => (v) => Number.isInteger(v) && v >= min && v <= max;
 const intOrNull = (min, max) => (v) => v === null || intIn(min, max)(v);
 const oneOf = (values) => (v) => values.includes(v);
 const isoOrNull = (v) => v === null || (typeof v === 'string' && !Number.isNaN(Date.parse(v)));
-const ulid = (v) => typeof v === 'string' && ULID_RE.test(v);
+const ulid = isUlid;
 const ulidOrNull = (v) => v === null || ulid(v);
 const color = (v) => typeof v === 'string' && COLOR_RE.test(v);
 const colorOrNull = (v) => v === null || color(v);

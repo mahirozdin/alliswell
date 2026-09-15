@@ -3,7 +3,36 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15 (**EPIC 30 PLANLANDI — park biten iki madde:
+**Last updated:** 2026-09-15b (**OPH-308 BİTTİ — yalnız-ID sözleşmesi ve onu ölçen
+kapı.** Epic 30'un ilk işi ve bilerek en soğuğu: gönderici yok, yapılandırma yok,
+taşıyıcı yok. Olan tek şey bir sözleşme ve onu ölçen bir kapı. **ADR-0038** yazıldı
+ve indekse aynı commit'te eklendi; `apps/api/src/lib/push/payload.js` bir push
+gövdesinin kurulabildiği tek yer oldu; `check:push-payload` CI'a girdi.
+**Turun cümlesi: anahtar kümesi yetmez.** Bariz sızıntı `title` adında yeni bir
+anahtar; sessiz olanı `taskId`'nin bir cümle tutması — ve bu her anahtar-kümesi
+kontrolünden geçer. Bu yüzden değerler de doğrulanıyor: id'ler ULID biçiminde, an
+ISO instant, görünür push kapalı bir kümeden bir mesaj ADI taşıyor. **Kapı iki ayrı
+soru soruyor** ve ikisi de negatif kontrolle kanıtlandı: sözleşmeye `title` ekleyip
+builder'a geçirtince kapı SIZINTI gerekçesiyle kırmızı (`"Ameliyat sonucu — Dr.
+Yılmaz"` tel üzerinde yakalandı) ve birim süiti 2 kırmızı; zararsız bir alert id
+ekleyince kapı SÖZLEŞME FARKI gerekçesiyle kırmızı (`+ alert:test_probe`).
+**Plandan tek sapma, gerekçesiyle:** plan `push_payload_parity.json`'ı koddan
+ÜRETMEYİ söylüyordu; üretilen bir fixture'ı onu üreten kodla karşılaştırmak
+döngüseldir, deponun kendi cümlesiyle *"ölçmediği şeyi yeşille aynı okuyan bir kapı,
+kapı değildir"*. İki taraf artık POLİTİKA ve KOD: `scripts/push/allowed-payload-keys.txt`
+elle onaylanır, `--write` ile bilerek güncellenir — `allowed-permissions.txt` kalıbı.
+**Yan bulgu, aynı sınıftan:** ULID biçimi `lib/ids.js`'e alınırken `sync.js`'teki
+yerel tanım silindi ve `sync.js:1342`'deki İKİNCİ kullanıcı ortaya çıktı, süit 24
+kırmızı verdi. Baseline ile benim kırdığım kanıtlandı (değişikliksiz kod aynı dosyada
+9/9 yeşil), import tamamlandı. *Ölçülmemiş ikinci taraf — bu turun konusunun ta
+kendisi, bu kez kendi elimizde.* **Doğrulama:** API birim süiti **814**, **811
+geçti**; kalan 3 kırmızı `ai-chat-transport`'un SSE/socket zamanlama testleri ve
+değişikliklerim stash'liyken de aynı — yüklü sandbox, benim işim değil. `eslint`
+temiz, `prettier --check` temiz, `check:push-payload` yeşil (9 girdi), `check:docs`
+yeşil. Sıradaki iş: **OPH-309** (cihaz kaydı gerçekten kurulur — rota 2026-07-15'ten
+beri çalışıyor ve istemci onu bir kez bile çağırmadı).)
+
+Önceki blok: 2026-09-15 (**EPIC 30 PLANLANDI — park biten iki madde:
 sunucu→cihaz teslimat (OPH-308…323, #15 + #16).** Kod yazılmadı; bu blok bir plan
 bloğu. Epic 29'un kapsam dışı bıraktığı iki madde geri alındı, çünkü backlog
 kaydının kendisi *"bu madde (1) ile birlikte düşünülmeli"* diyordu: web'de

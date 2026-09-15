@@ -5,6 +5,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **A push payload names rows, and a gate keeps it that way.** Nothing is sent
+  yet — this is the contract that will govern it when something is. A push
+  crosses Google's, Apple's or Mozilla's servers on its way to a phone, and the
+  privacy policy tells people that a task's title never makes that trip. So
+  there is now exactly one place a push body can be built, every transport must
+  pass through its check, and `npm run check:push-payload` fails the build when
+  what the code would send stops matching what a person agreed it may send.
+  Declaring the allowed keys is not enough on its own: the obvious leak is a new
+  field called `title`, but the quiet one is an existing field holding a
+  sentence — so identifiers must be shaped like identifiers, times like times,
+  and a push the user actually sees carries the *name* of a fixed message rather
+  than the message. The gate also rebuilds every payload beside a task whose
+  every field is a sentence and reads the wire format back, which is a second
+  question the allowlist cannot answer for it. OPH-308, [ADR-0038](docs/adr/0038-server-to-device-delivery.md),
+  [#15](https://github.com/mahirozdin/alliswell/issues/15),
+  [#16](https://github.com/mahirozdin/alliswell/issues/16).
+
 ## [1.11.0] — 2026-09-15
 
 ### Added
