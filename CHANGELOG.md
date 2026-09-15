@@ -7,6 +7,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **An instance can be told how to send a push, or not be told at all.** There is
+  still nothing sending one — this is the configuration and the boot-time checks
+  that will govern it. The credentials are the switch: set none of them and
+  nothing registers, nothing is sent, and the server behaves exactly as it did
+  before. Set half of them and it refuses to start, naming the line you left
+  out, because a half-filled block looks configured to whoever filled it in and
+  its failure arrives days later as "the reminder never popped up" to somebody
+  who cannot read the logs. The keys are measured rather than merely counted —
+  they are 65 bytes and 32, so swapping them is caught at startup instead of
+  months later as an encryption failure nobody can interpret — and the Google
+  service account is given as a *file*, never as an environment variable, since
+  a private key in the environment ends up in `ps` and in every crash dump. An
+  instance that has no keys does not have the discovery endpoint at all, so one
+  404 tells the app both "no key here" and "this server does not do push", and
+  it never offers a setting that could not work. OPH-310,
+  [ADR-0038](docs/adr/0038-server-to-device-delivery.md).
+
 - **The app puts itself on the notification device list.** The registry endpoint
   has been correct and unused since July: nothing in the app had ever called it,
   so on every real instance the table was empty. That table is what the rest of

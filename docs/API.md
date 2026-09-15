@@ -263,7 +263,7 @@ client: use the ordinary REST endpoints, which is what the recipes above do.
 
 <!-- BEGIN GENERATED REFERENCE -->
 
-_113 operations across 81 paths, generated from
+_114 operations across 82 paths, generated from
 [`openapi.json`](openapi.json) — which is itself generated from the server's own
 route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
@@ -283,7 +283,7 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 - **Quick links** — [`PATCH /api/v1/quick-links/{quickLinkId}`](#patch-api-v1-quick-links-quicklinkid) · [`DELETE /api/v1/quick-links/{quickLinkId}`](#delete-api-v1-quick-links-quicklinkid) · [`GET /api/v1/workspaces/{workspaceId}/quick-links`](#get-api-v1-workspaces-workspaceid-quick-links) · [`POST /api/v1/workspaces/{workspaceId}/quick-links`](#post-api-v1-workspaces-workspaceid-quick-links) · [`PUT /api/v1/workspaces/{workspaceId}/quick-links/order`](#put-api-v1-workspaces-workspaceid-quick-links-order)
 - **Recurrence** — [`GET /api/v1/task-series/{seriesId}`](#get-api-v1-task-series-seriesid) · [`PATCH /api/v1/task-series/{seriesId}`](#patch-api-v1-task-series-seriesid) · [`DELETE /api/v1/task-series/{seriesId}`](#delete-api-v1-task-series-seriesid) · [`GET /api/v1/workspaces/{workspaceId}/task-series`](#get-api-v1-workspaces-workspaceid-task-series) · [`POST /api/v1/workspaces/{workspaceId}/task-series`](#post-api-v1-workspaces-workspaceid-task-series)
 - **Reminders** — [`POST /api/v1/reminders/{reminderId}/acknowledge`](#post-api-v1-reminders-reminderid-acknowledge)
-- **Service** — [`GET /`](#get)
+- **Service** — [`GET /`](#get) · [`GET /api/v1/push/public-key`](#get-api-v1-push-public-key)
 - **Sync** — [`GET /api/v1/sync/pull`](#get-api-v1-sync-pull) · [`POST /api/v1/sync/push`](#post-api-v1-sync-push)
 - **Tags** — [`GET /api/v1/tags/{tagId}`](#get-api-v1-tags-tagid) · [`PATCH /api/v1/tags/{tagId}`](#patch-api-v1-tags-tagid) · [`DELETE /api/v1/tags/{tagId}`](#delete-api-v1-tags-tagid) · [`GET /api/v1/workspaces/{workspaceId}/tags`](#get-api-v1-workspaces-workspaceid-tags) · [`POST /api/v1/workspaces/{workspaceId}/tags`](#post-api-v1-workspaces-workspaceid-tags)
 - **Tasks** — [`GET /api/v1/tasks/{taskId}`](#get-api-v1-tasks-taskid) · [`PATCH /api/v1/tasks/{taskId}`](#patch-api-v1-tasks-taskid) · [`DELETE /api/v1/tasks/{taskId}`](#delete-api-v1-tasks-taskid) · [`POST /api/v1/tasks/{taskId}/checklist`](#post-api-v1-tasks-taskid-checklist) · [`PATCH /api/v1/tasks/{taskId}/checklist/{itemId}`](#patch-api-v1-tasks-taskid-checklist-itemid) · [`DELETE /api/v1/tasks/{taskId}/checklist/{itemId}`](#delete-api-v1-tasks-taskid-checklist-itemid) · [`POST /api/v1/tasks/{taskId}/complete`](#post-api-v1-tasks-taskid-complete) · [`POST /api/v1/tasks/{taskId}/notes`](#post-api-v1-tasks-taskid-notes) · [`POST /api/v1/tasks/{taskId}/reopen`](#post-api-v1-tasks-taskid-reopen) · [`POST /api/v1/tasks/{taskId}/snooze`](#post-api-v1-tasks-taskid-snooze) · [`PUT /api/v1/tasks/{taskId}/tags`](#put-api-v1-tasks-taskid-tags) · [`POST /api/v1/workspaces/{workspaceId}/import/tasks`](#post-api-v1-workspaces-workspaceid-import-tasks) · [`GET /api/v1/workspaces/{workspaceId}/tasks`](#get-api-v1-workspaces-workspaceid-tasks) · [`POST /api/v1/workspaces/{workspaceId}/tasks`](#post-api-v1-workspaces-workspaceid-tasks)
@@ -4411,6 +4411,32 @@ curl -X GET 'https://api.alliswell.space/'
   "version": "string",
   "docs": "string",
   "health": "string"
+}
+```
+
+
+#### `GET /api/v1/push/public-key`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Request**
+
+```bash
+curl -X GET 'https://api.alliswell.space/api/v1/push/public-key' \
+  -H "Authorization: Bearer $ALLISWELL_KEY"
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+
+**Example response** (`200`)
+
+```json
+{
+  "publicKey": "string"
 }
 ```
 

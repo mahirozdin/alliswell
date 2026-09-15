@@ -10215,20 +10215,57 @@ on every real instance." Push'un tamamı bu boş tablonun üstünde duruyor._
 
 ### OPH-310 — `push` yapılandırması: kimlik yoksa özellik yok
 
-- [ ] **`config.push` bloğu** (`config.js`): `fcm` (service account JSON yolu ya da gövdesi),
-      `webpush` (VAPID açık/gizli anahtar + `subject`), pencere ve süpürge aralıkları.
-- [ ] **Boot doğrulaması hepsi-ya-hiç**, `assertSmtpComplete` / depolama kalıbıyla
-      (`config.js:479-490`): yarım yapılandırma **boot'u düşürür**, sessizce yarı çalışmaz.
-- [ ] **`GET /api/v1/push/public-key`** — VAPID açık anahtarını verir, **koşullu kaydedilir**
-      (`app.js:206-217` idiomu). Push kapalıysa uç **hiç yoktur** ve 404 döner; istemci aynı
-      404'ten "bu sunucuda bu özellik yok" sonucunu çıkarır ve ayarı göstermez.
-- [ ] `.env.example` girdileri + `docs/SELF-HOSTING.md` bölümü (kendi anahtarını nasıl üretirsin).
-- **Kabul:** kimlik bilgisi olmayan sunucuda **sıfır** giden istek ve **sıfır** kayıt —
-      bir testin iddia edebileceği bir sayı; `/push/public-key` 404; yarım yapılandırma boot'u
-      düşürür.
-- **Not:** `EE_PUSH_ENABLED` (`config.js:391-402`) **yerinde kalır** ve anlamı değişmez —
-      o, bir uzantının push kuyruğa alıp alamayacağını söyler; `config.push` ise çekirdeğin
-      gönderip gönderemeyeceğini. İkisi ayrı sorudur.
+- [x] **`config.push` bloğu** (`config.js`): `fcm` (service-account dosya yolu + boot'ta oradan
+      okunan `projectId`), `webPush` (VAPID açık/gizli anahtar + `subject`), `sweepSec` ve
+      `dueWindowSec`. **Ana anahtar (`PUSH_ENABLED`) YOK** — `storage` idiomu: kimlik
+      bilgilerinin kendisi anahtardır. Hiçbiri yoksa kayıt yok, gönderim yok, davranış
+      bugünküyle **birebir aynı**; bu, bir testin iddia edebileceği bir sayı.
+- [x] **Plandan sapma, gerekçesiyle: servis hesabı YALNIZCA dosya yolu, gövde değil.** Plan
+      "JSON yolu ya da gövdesi" diyordu; ortam değişkenindeki bir özel anahtar `ps`'e, çökme
+      dökümüne ve süreç ortamını toplayan her şeye düşer. Yol veriliyor, dosya **boot'ta
+      okunuyor** — ve okumak aynı zamanda onun gerçekten bir servis hesabı olduğunun kanıtı.
+- [x] **Boot doğrulaması hepsi-ya-hiç, `assertSmtpComplete` gerekçesiyle.** Yarım bir VAPID
+      bloğu onu dolduran operatöre yapılandırılmış görünür ve arızası "bildirim hiç çıkmadı"
+      diye, logları göremeyen birine ulaşır. O yüzden boot hatası ve eksik alanı **adıyla**
+      söylüyor.
+- [x] **Varlık yetmez, uzunluk da ölçülüyor.** VAPID anahtarları ham nokta: 65 ve 32 bayt.
+      Klasik hata ikisini yer değiştirmek, ve bu her "dolu mu" kontrolünden geçer — bayt
+      uzunluğu sayesinde boot'ta görünüyor, aylar sonra okunamayan bir şifreleme hatası olarak
+      değil. `subject` `mailto:` ya da `https://` olmak zorunda (RFC 8292). Servis hesabı da
+      aynı mantıkla: **var olmak kullanılabilir olmak değil**, `client_email` olmayan bir dosya
+      JWT imzalayamaz; eksik alanların **hepsi birden** adlandırılıyor.
+- [x] **`GET /api/v1/push/public-key`** (`routes/push.js`), `app.js:208-213`'te **koşullu
+      kaydedilmiş**. AI_ENABLED kapısının aynısı (OPH-215): anahtarsız bir kurulumda rota
+      **yoktur**, yani tek bir 404 hem "anahtar yok" hem "bu sunucu push yapmıyor" cevabını
+      veriyor ve istemci çalışamayacak bir ayarı hiç göstermiyor. Gizli anahtar okunduğu yerde
+      kalıyor; testi cevabın içinde geçmediğini de iddia ediyor.
+- [x] **Koşullu kayıt bir sonuç doğurdu ve üreteç ona göre ayarlandı.** `scripts/api/openapi.mjs`
+      uygulamayı varsayılan yapılandırmayla kuruyor, yani yeni uç spec'e hiç girmeyecekti.
+      Üretecin kendi yazılı kuralı bunu çözüyor: *"a reference that changed shape with one
+      deployment's feature flags would describe that deployment, not the software"* — o yüzden
+      üreteç kendine tek kullanımlık bir VAPID çifti üretiyor. Çifte spec'e girmiyor (spec
+      rotanın şeklini taşıyor, kimsenin anahtarını değil), depoda gerçek görünümlü bir anahtar
+      durmuyor. 81 → **82 yol**, 113 → **114 Postman isteği**.
+- [x] `.env.example` bölümü + `docs/SELF-HOSTING.md` §6d. İkisi de aynı iki şeyi söylüyor:
+      hatırlatıcılar push olmadan da çalışır (cihazda kurulur), ve push'un ulaştığı iki yer —
+      bir süredir çalışmamış cihaz ve **tarayıcı**, ki hiçbir tarayıcı yerel bildirim
+      zamanlayamaz.
+- **Kabul (ölçüldü):** kimlik bilgisi olmayan sunucuda `/push/public-key` **404**; yarım VAPID
+      bloğu boot'u düşürüyor ve eksik değişkeni adıyla söylüyor; yer değiştirilmiş çift
+      reddediliyor; servis hesabı olmayan dosya reddediliyor.
+- **Negatif kontrol (yapıldı):** "yapılandırılmamışken 404" testi rota **yokken de** geçiyordu —
+      yani tek başına hiçbir şey kanıtlamıyordu. Kayıt koşulsuz (`if (true)`) yapıldı → test
+      kırmızı (`expected 200 to be 404`), koşul geri konunca yeşil.
+- **Doğrulama (2026-09-15):** API birim süiti **829**, **826 geçti** (+12: 9 yapılandırma,
+      3 rota); `eslint`/`prettier` temiz; on bir kapının on biri yeşil. Kalan 3 kırmızı yine
+      `ai-chat-transport`'un SSE/socket zamanlama testleri (yüklü sandbox; değişikliklerim
+      stash'liyken de aynı). `check:pages` yerelde `dist/` derlenmediği için `/tr` diyor —
+      landing derlemesi CI'ın işi, bu turla ilgisi yok.
+- **Not:** `EE_PUSH_ENABLED` (`config.js:391-402`) **yerinde kaldı** ve anlamı değişmedi: o
+      bayrak bir UZANTININ push kuyruğa alıp alamayacağını söylüyor, `config.push` ise
+      çekirdeğin gönderebilmek için neye ihtiyacı olduğunu. İki ayrı soru, iki ayrı anahtar.
+- **Kapsam DIŞI:** taşıyıcı hâlâ yok — bu iş yalnızca yapılandırmayı, doğrulamayı ve keşif
+      ucunu koyuyor. Gönderen kod OPH-312.
 
 ### OPH-311 — Şema: taşıyıcı kolonları ve teslim günlüğü
 

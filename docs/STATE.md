@@ -3,7 +3,36 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15c (**OPH-309 BİTTİ — cihaz kaydı artık gerçekten
+**Last updated:** 2026-09-15d (**OPH-310 BİTTİ — push yapılandırması: kimlik yoksa
+özellik yok.** Hâlâ gönderen kod yok; olan şey yapılandırma ve onu boot'ta ölçen
+kontroller. **Ana anahtar koymadım** — `storage` idiomu: kimlik bilgilerinin
+kendisi anahtar. Hiçbiri yoksa kayıt yok, gönderim yok, davranış bugünküyle
+birebir aynı. **Turun cümlesi: dolu olmak doğru olmak değil.** VAPID anahtarları
+ham nokta — 65 ve 32 bayt — ve klasik hata ikisini yer değiştirmek, ki bu her
+"dolu mu" kontrolünden geçer; uzunluk ölçüldüğü için boot'ta görünüyor, aylar
+sonra okunamayan bir şifreleme hatası olarak değil. Aynı mantık servis hesabında:
+var olmak kullanılabilir olmak değil, `client_email` olmayan bir dosya JWT
+imzalayamaz. **Plandan bir sapma:** servis hesabı yalnızca DOSYA YOLU olarak
+alınıyor, gövde olarak değil — ortam değişkenindeki bir özel anahtar `ps`'e,
+çökme dökümüne ve süreç ortamını toplayan her şeye düşer. `GET
+/api/v1/push/public-key` AI_ENABLED kapısının aynısıyla **koşullu kaydedildi**:
+anahtarsız kurulumda rota yok, yani tek 404 hem "anahtar yok" hem "bu sunucu push
+yapmıyor" diyor ve istemci çalışamayacak bir ayarı hiç göstermiyor. **Koşullu
+kayıt bir sonuç doğurdu:** openapi üreteci uygulamayı varsayılan yapılandırmayla
+kuruyor, yani uç spec'e hiç girmeyecekti — üretecin kendi kuralı ("yazılımı
+belgele, bir kurulumu değil") gereği üreteç kendine tek kullanımlık bir VAPID
+çifti üretiyor; çift spec'e girmiyor, depoda gerçek görünümlü anahtar durmuyor.
+81→82 yol, 113→114 Postman isteği. **Negatif kontrol:** "yapılandırılmamışken 404"
+testi rota yokken de geçiyordu, yani tek başına hiçbir şey kanıtlamıyordu; kayıt
+koşulsuz yapılınca kırmızı (`expected 200 to be 404`), koşul geri konunca yeşil.
+`EE_PUSH_ENABLED` yerinde kaldı ve anlamı değişmedi — o bir UZANTININ push kuyruğa
+alıp alamayacağını söylüyor, `config.push` çekirdeğin gönderebilmek için neye
+ihtiyacı olduğunu. **Doğrulama:** API birim süiti **829 / 826 geçti** (+12);
+`eslint`/`prettier` temiz; on bir kapının on biri yeşil; kalan 3 kırmızı yine
+`ai-chat-transport` zamanlama testleri. Sıradaki iş: **OPH-311** (şema: taşıyıcı
+kolonları ve teslim günlüğü).)
+
+Önceki blok: 2026-09-15c (**OPH-309 BİTTİ — cihaz kaydı artık gerçekten
 kuruluyor.** Rota 2026-07-15'ten beri kusursuz ve **çağrısız**dı; EE 2026-08-24'te
 ölçüp yazmış: *"notification_devices is empty on every real instance."* Epic 30'un
 tamamı bu boş tablonun üstünde duruyordu. Artık uygulama oturum açıldığında ve her

@@ -29,6 +29,7 @@ import taskRoutes from './routes/tasks.js';
 import noteRoutes from './routes/notes.js';
 import syncRoutes from './routes/sync.js';
 import notificationDeviceRoutes from './routes/notification-devices.js';
+import pushRoutes from './routes/push.js';
 import reminderRoutes from './routes/reminders.js';
 import googleIntegrationRoutes from './routes/integrations-google.js';
 import storageRoutes from './routes/storage.js';
@@ -203,6 +204,12 @@ export async function buildApp({
   // ALWAYS registered (EE-003): /ee/status is capability discovery, and a CE
   // instance answering 404 here would be indistinguishable from an old server.
   await app.register(eeRoutes, { prefix: '/api/v1' });
+  // Same gate, same reason (OPH-310): with no VAPID keys this route does not
+  // exist, so one 404 answers both "no key" and "this server does not do push"
+  // and the app never offers a setting that could not work.
+  if (config.push.webPush.publicKey) {
+    await app.register(pushRoutes, { prefix: '/api/v1' });
+  }
   // Conditional registration IS the AI_ENABLED gate: with the feature off,
   // every /ai/* route 404s exactly like a server that never had it (OPH-215).
   if (config.ai.enabled) {

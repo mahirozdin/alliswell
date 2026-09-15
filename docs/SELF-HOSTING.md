@@ -299,6 +299,54 @@ withdraws the connector (every `/mcp` and `/oauth/*` route answers 404). This
 switch is **independent of `AI_ENABLED`**. Full setup and the tool list:
 [MCP.md](MCP.md).
 
+## 6d. Optional: push (and why reminders work without it)
+
+Reminders are scheduled **on the device**, from its own copy of your data
+([NOTIFICATIONS.md](NOTIFICATIONS.md) §0). That is why an alarm fires in
+aeroplane mode, and it does not change. Push is for the two cases local
+scheduling cannot reach:
+
+- a device that has not been running since you changed something, and
+- a **browser**, which cannot schedule a local notification at all — no browser
+  can, so a tab that is not open at 07:30 can only be alerted from here.
+
+Leave all of it unset and nothing registers, nothing is sent, and your instance
+behaves exactly as it did before this existed. The credentials are the switch.
+
+**Browsers (Web Push).** Generate a key pair and set all three, or none — half a
+block is a boot error rather than a browser quietly refusing to subscribe:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+```
+PUSH_VAPID_PUBLIC_KEY=…
+PUSH_VAPID_PRIVATE_KEY=…
+PUSH_VAPID_SUBJECT=mailto:you@example.com
+```
+
+The subject must be a `mailto:` address or an `https://` URL — a push service
+uses it to reach you when something is wrong with what you are sending.
+
+**Android and iPhone (FCM).** Firebase console → project settings → service
+accounts → generate a private key, then point at the **file**:
+
+```
+PUSH_FCM_SERVICE_ACCOUNT_FILE=/etc/alliswell/fcm-service-account.json
+```
+
+Never the JSON itself: a private key in an environment variable ends up in `ps`,
+in a crash dump, and in whatever collects the process environment. iPhones are
+reached through FCM's APNs relay, so there is no second integration to set up —
+you upload your APNs key to Firebase, not to AllisWell.
+
+**What crosses Google's, Apple's or Mozilla's servers.** Identifiers, and the
+*name* of a fixed message — never a task's title or contents
+([ADR-0038](adr/0038-server-to-device-delivery.md)). The device already has the
+text; the push only says which row to look at. `npm run check:push-payload` is
+the gate that keeps that true.
+
 ## 7. Using your own database or Redis
 
 Point the API at them and drop the bundled services: set `DATABASE_HOST`,

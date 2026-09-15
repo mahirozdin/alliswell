@@ -6720,6 +6720,42 @@
         "description": "Accepts either a session JWT or a personal API key."
       }
     },
+    "/api/v1/push/public-key": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "publicKey"
+                  ],
+                  "properties": {
+                    "publicKey": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Service"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "description": "Accepts either a session JWT or a personal API key."
+      }
+    },
     "/api/v1/quick-links/{quickLinkId}": {
       "patch": {
         "requestBody": {

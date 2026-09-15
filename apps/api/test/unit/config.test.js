@@ -1,5 +1,27 @@
 import { describe, it, expect } from 'vitest';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { loadConfig } from '../../src/config.js';
+
+/** A real P-256 pair, minted for the test — VAPID keys are raw points. */
+function vapidKeys() {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
+    namedCurve: 'prime256v1',
+  });
+  const jwk = privateKey.export({ format: 'jwk' });
+  const raw = Buffer.concat([
+    Buffer.from([0x04]),
+    Buffer.from(jwk.x, 'base64url'),
+    Buffer.from(jwk.y, 'base64url'),
+  ]);
+  return {
+    public: raw.toString('base64url'),
+    private: Buffer.from(jwk.d, 'base64url').toString('base64url'),
+    _unused: publicKey,
+  };
+}
 
 const strongSecrets = {
   JWT_ACCESS_SECRET: 'a'.repeat(32) + '-access-strong-random-secret',
@@ -195,5 +217,101 @@ describe('loadConfig AI (OPH-215)', () => {
     expect(loadConfig({ AI_OLLAMA_BASE_URL: 'http://127.0.0.1:11434' }).ai.baseUrls.ollama).toBe(
       'http://127.0.0.1:11434',
     );
+  });
+});
+
+describe('push credentials decide whether push exists at all (OPH-310)', () => {
+  it('is simply off when nothing is configured', () => {
+    const { push } = loadConfig({});
+    expect(push.webPush.publicKey).toBeNull();
+    expect(push.fcm.serviceAccountFile).toBeNull();
+  });
+
+  it('accepts a complete VAPID block', () => {
+    const keys = vapidKeys();
+    const { push } = loadConfig({
+      PUSH_VAPID_PUBLIC_KEY: keys.public,
+      PUSH_VAPID_PRIVATE_KEY: keys.private,
+      PUSH_VAPID_SUBJECT: 'mailto:ops@alliswell.space',
+    });
+    expect(push.webPush.publicKey).toBe(keys.public);
+    expect(push.webPush.subject).toBe('mailto:ops@alliswell.space');
+  });
+
+  it('refuses half a VAPID block, and names what is missing', () => {
+    const keys = vapidKeys();
+    expect(() =>
+      loadConfig({
+        PUSH_VAPID_PUBLIC_KEY: keys.public,
+        PUSH_VAPID_SUBJECT: 'mailto:ops@alliswell.space',
+      }),
+    ).toThrow(/PUSH_VAPID_PRIVATE_KEY/);
+  });
+
+  it('refuses a subject a push service will not accept', () => {
+    const keys = vapidKeys();
+    expect(() =>
+      loadConfig({
+        PUSH_VAPID_PUBLIC_KEY: keys.public,
+        PUSH_VAPID_PRIVATE_KEY: keys.private,
+        PUSH_VAPID_SUBJECT: 'ops@alliswell.space',
+      }),
+    ).toThrow(/PUSH_VAPID_SUBJECT/);
+  });
+
+  it('refuses a pair somebody swapped', () => {
+    // The classic typo, and the one a length check is for: the two keys are
+    // 65 and 32 bytes, so swapping them is visible at boot rather than as a
+    // decryption failure nobody can read months later.
+    const keys = vapidKeys();
+    expect(() =>
+      loadConfig({
+        PUSH_VAPID_PUBLIC_KEY: keys.private,
+        PUSH_VAPID_PRIVATE_KEY: keys.public,
+        PUSH_VAPID_SUBJECT: 'mailto:ops@alliswell.space',
+      }),
+    ).toThrow(/PUSH_VAPID_PUBLIC_KEY/);
+  });
+
+  it('refuses an FCM service account that is not there', () => {
+    expect(() =>
+      loadConfig({ PUSH_FCM_SERVICE_ACCOUNT_FILE: '/nope/service-account.json' }),
+    ).toThrow(/PUSH_FCM_SERVICE_ACCOUNT_FILE/);
+  });
+
+  it('refuses an FCM file that is not a service account', () => {
+    // Existing is not the same as usable. A boot error names the file; a first
+    // failed send at 07:30 names nothing anybody can act on.
+    const file = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'aw-push-')),
+      'service-account.json',
+    );
+    fs.writeFileSync(file, JSON.stringify({ type: 'service_account' }));
+    expect(() => loadConfig({ PUSH_FCM_SERVICE_ACCOUNT_FILE: file })).toThrow(/client_email/);
+  });
+
+  it('accepts a service account that has what a JWT needs', () => {
+    const file = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), 'aw-push-')),
+      'service-account.json',
+    );
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        type: 'service_account',
+        project_id: 'alliswell-test',
+        client_email: 'push@alliswell-test.iam.gserviceaccount.com',
+        private_key: '-----BEGIN PRIVATE KEY-----\nx\n-----END PRIVATE KEY-----\n',
+      }),
+    );
+    const { push } = loadConfig({ PUSH_FCM_SERVICE_ACCOUNT_FILE: file });
+    expect(push.fcm.serviceAccountFile).toBe(file);
+    expect(push.fcm.projectId).toBe('alliswell-test');
+  });
+
+  it('keeps the sweep honest', () => {
+    expect(() => loadConfig({ PUSH_SWEEP_SEC: '3' })).toThrow(/PUSH_SWEEP_SEC/);
+    expect(() => loadConfig({ PUSH_DUE_WINDOW_SEC: '5' })).toThrow(/PUSH_DUE_WINDOW_SEC/);
+    expect(loadConfig({}).push.sweepSec).toBe(60);
   });
 });

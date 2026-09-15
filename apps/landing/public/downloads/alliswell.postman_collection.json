@@ -3347,6 +3347,26 @@
               "type": "noauth"
             }
           }
+        },
+        {
+          "name": "GET /api/v1/push/public-key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/push/public-key",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "push",
+                "public-key"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
         }
       ]
     },

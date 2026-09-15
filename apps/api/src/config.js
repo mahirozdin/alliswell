@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { EE_FEATURES } from './lib/entitlements.js';
 import { fileURLToPath } from 'node:url';
@@ -144,6 +145,84 @@ function parseDevEntitlements(env) {
  * to somebody who cannot see the logs. So it is a boot error, and it names
  * the fields that are missing.
  */
+/**
+ * Turns `PUSH_FCM_SERVICE_ACCOUNT_FILE` into the small block the sender needs,
+ * and refuses anything that is not a service account (OPH-310).
+ *
+ * Existing is not the same as usable: a file with no `client_email` cannot sign
+ * the JWT that FCM's HTTP v1 API asks for, and the place to find that out is
+ * boot — not 07:30, on somebody's phone, as a reminder that never arrived.
+ */
+function readServiceAccount(file) {
+  if (!file) return { serviceAccountFile: null, projectId: null };
+  let account;
+  try {
+    account = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new Error(
+      `PUSH_FCM_SERVICE_ACCOUNT_FILE could not be read as JSON (${file}): ${error.message}`,
+    );
+  }
+  // All of them, not the first one found: an operator fixing a file wants the
+  // whole list, the way a half-filled SMTP block is reported.
+  const missing = ['project_id', 'client_email', 'private_key'].filter(
+    (key) => typeof account[key] !== 'string' || account[key] === '',
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `PUSH_FCM_SERVICE_ACCOUNT_FILE is missing ${missing.join(', ')} — ` +
+        'that is not a service account key',
+    );
+  }
+  return { serviceAccountFile: file, projectId: account.project_id };
+}
+
+/**
+ * Push is all-or-nothing per provider, and the reasons are the SMTP ones
+ * (OPH-310, ADR-0038).
+ *
+ * Half a VAPID block looks configured to whoever filled it in, and its failure
+ * is a browser silently refusing a subscription — surfaced to a person who
+ * cannot see the logs, as "the reminder never popped up". So it is a boot
+ * error, and it names the field.
+ *
+ * The lengths are checked, not just the presence. VAPID keys are raw points —
+ * 65 bytes and 32 — so the classic swap is visible here rather than as an
+ * encryption failure nobody can read. (The FCM half is checked by
+ * `readServiceAccount`, which has to open the file anyway.)
+ */
+function assertPushComplete(config) {
+  const { webPush } = config.push;
+
+  const required = {
+    PUSH_VAPID_PUBLIC_KEY: webPush.publicKey,
+    PUSH_VAPID_PRIVATE_KEY: webPush.privateKey,
+    PUSH_VAPID_SUBJECT: webPush.subject,
+  };
+  if (Object.values(required).some(Boolean)) {
+    const missing = Object.entries(required)
+      .filter(([, value]) => !value)
+      .map(([name]) => name);
+    if (missing.length > 0) {
+      throw new Error(
+        `Web push is half-configured: ${missing.join(', ')} missing. ` +
+          'Set all three (generate a pair with `npx web-push generate-vapid-keys`), ' +
+          'or none to leave web push off.',
+      );
+    }
+    if (!/^(mailto:|https:\/\/)/.test(webPush.subject)) {
+      throw new Error('PUSH_VAPID_SUBJECT must be a mailto: address or an https:// URL (RFC 8292)');
+    }
+    const point = (value, bytes, name) => {
+      if (!/^[A-Za-z0-9_-]+$/.test(value) || Buffer.from(value, 'base64url').length !== bytes) {
+        throw new Error(`${name} must be ${bytes} base64url-encoded bytes — are the two swapped?`);
+      }
+    };
+    point(webPush.publicKey, 65, 'PUSH_VAPID_PUBLIC_KEY');
+    point(webPush.privateKey, 32, 'PUSH_VAPID_PRIVATE_KEY');
+  }
+}
+
 function assertSmtpComplete(config) {
   const { smtp } = config.ee;
   const required = { EE_SMTP_HOST: smtp.host, EE_SMTP_FROM: smtp.from };
@@ -283,6 +362,39 @@ export function loadConfig(env = process.env) {
       maxUploadBytes: toInt(env.STORAGE_MAX_UPLOAD_MB, 512, 'STORAGE_MAX_UPLOAD_MB') * 1024 * 1024,
       presignTtlSec: toInt(env.STORAGE_PRESIGN_TTL_SEC, 3600, 'STORAGE_PRESIGN_TTL_SEC'),
       sweepSec: toInt(env.STORAGE_SWEEP_SEC, 3600, 'STORAGE_SWEEP_SEC'),
+    }),
+    // Server→device push (Epic 30, ADR-0038). Read like `storage`: the
+    // CREDENTIALS are the switch. With none of them set nothing registers,
+    // nothing is sent, and the instance behaves exactly as it did before this
+    // existed — which is a number a test can assert rather than a promise.
+    //
+    // Two providers, because they answer different platforms: FCM carries
+    // Android and relays to APNs for iOS, and Web Push (VAPID) carries
+    // browsers. Either alone is a working configuration.
+    //
+    // Distinct from `ee.push`, which stays what it was: that boolean decides
+    // whether an EXTENSION may queue a push at all. This block is what core
+    // needs in order to send one.
+    push: Object.freeze({
+      // The Google service-account JSON, as a path. Never inline: a private
+      // key in an environment variable ends up in `ps`, in a crash dump and in
+      // whatever collects the process environment. The project id is read out
+      // of it HERE, at boot, so nothing downstream has to guess — and reading
+      // it is also what proves the file is a service account at all.
+      fcm: Object.freeze(readServiceAccount(env.PUSH_FCM_SERVICE_ACCOUNT_FILE || null)),
+      webPush: Object.freeze({
+        // Raw P-256 points, base64url: 65 bytes public, 32 private (RFC 8292).
+        publicKey: env.PUSH_VAPID_PUBLIC_KEY || null,
+        privateKey: env.PUSH_VAPID_PRIVATE_KEY || null,
+        // `mailto:` or `https:` — a push service uses it to reach whoever is
+        // sending when something goes wrong.
+        subject: env.PUSH_VAPID_SUBJECT || null,
+      }),
+      // How often the due sweep looks, and how far ahead it looks. The window
+      // is deliberately wider than the interval: a sweep that missed a tick
+      // must still find what fell due while it was not looking.
+      sweepSec: toInt(env.PUSH_SWEEP_SEC, 60, 'PUSH_SWEEP_SEC'),
+      dueWindowSec: toInt(env.PUSH_DUE_WINDOW_SEC, 300, 'PUSH_DUE_WINDOW_SEC'),
     }),
     // AI (Epic 20, ADR-0019, AI.md). Enabled by default: the embedded track is
     // BYOK — it needs no instance credentials to be useful — and `false` is the
@@ -446,6 +558,7 @@ export function loadConfig(env = process.env) {
     throw new Error('EE_MAIL_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   assertSmtpComplete(config);
+  assertPushComplete(config);
   if (config.ai.heartbeatMs < 1000 || config.ai.heartbeatMs > 60000) {
     throw new Error('AI_HEARTBEAT_MS must be between 1000 and 60000 (proxies time out above that)');
   }
@@ -487,6 +600,12 @@ export function loadConfig(env = process.env) {
           .join(', ')} (set all of endpoint/bucket/keys, or none to disable attachments)`,
       );
     }
+  }
+  if (config.push.sweepSec < 10) {
+    throw new Error('PUSH_SWEEP_SEC must be at least 10');
+  }
+  if (config.push.dueWindowSec < 60 || config.push.dueWindowSec < config.push.sweepSec) {
+    throw new Error('PUSH_DUE_WINDOW_SEC must be at least 60 and never below PUSH_SWEEP_SEC');
   }
   if (config.storage.maxUploadBytes < 1024 * 1024) {
     throw new Error('STORAGE_MAX_UPLOAD_MB must be at least 1');

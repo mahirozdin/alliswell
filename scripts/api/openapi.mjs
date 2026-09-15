@@ -26,6 +26,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import swagger from '@fastify/swagger';
 
+import crypto from 'node:crypto';
+
 import { buildApp } from '../../apps/api/src/app.js';
 import { loadConfig } from '../../apps/api/src/config.js';
 
@@ -166,6 +168,29 @@ const stub = {
   redis: { ping: async () => 'PONG' },
 };
 
+/**
+ * A throwaway VAPID pair, so the push route registers and gets documented.
+ *
+ * The rule below applies to it: a reference that changed shape with one
+ * deployment's keys would describe that deployment. The pair never reaches the
+ * output — the spec carries the route's shape, not anybody's key — so minting
+ * a fresh one each run costs nothing and keeps a real-looking key out of the
+ * repository.
+ */
+function vapidForDocs() {
+  const { privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const jwk = privateKey.export({ format: 'jwk' });
+  return {
+    PUSH_VAPID_PUBLIC_KEY: Buffer.concat([
+      Buffer.from([0x04]),
+      Buffer.from(jwk.x, 'base64url'),
+      Buffer.from(jwk.y, 'base64url'),
+    ]).toString('base64url'),
+    PUSH_VAPID_PRIVATE_KEY: Buffer.from(jwk.d, 'base64url').toString('base64url'),
+    PUSH_VAPID_SUBJECT: 'mailto:docs@example.invalid',
+  };
+}
+
 async function generate() {
   assertPluginLevelRulesStillHold();
 
@@ -180,6 +205,8 @@ async function generate() {
     // MCP stays off: its routes are excluded above anyway, and leaving the
     // switch off keeps the OAuth server out of the route table entirely.
     MCP_ENABLED: 'false',
+    // Web push, for the same reason as AI_ENABLED (OPH-310).
+    ...vapidForDocs(),
   });
 
   const collected = [];
