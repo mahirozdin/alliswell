@@ -673,7 +673,8 @@
       "ago": "{time} · {ago}",
       "cardTitle": "Missed alarm",
       "cardMore": "+{n} more"
-    }
+    },
+    "silentByChoice": "Silent on purpose — you set this browser to Silent."
   },
   "alarmLog": {
     "title": "Alarm log",
@@ -737,7 +738,18 @@
     "snoozeOrderFirst": "The alarm on your iPhone's Lock Screen has room for one snooze button: \"{preset}\".",
     "watchTitle": "Apple Watch",
     "watchSub": "While your phone is locked, alerts mirror to a paired watch — no separate app needed. Its sound and haptics are a watch setting: Watch → Sounds & Haptics.",
-    "reset": "Back to Standard"
+    "reset": "Back to Standard",
+    "webAlerts": "Notifications in this browser",
+    "webAlertsSub": "This browser only. Each device decides how loudly it tells you.",
+    "webAlert": {
+      "off": "Off",
+      "silent": "Silent",
+      "loud": "With sound"
+    },
+    "webAlertOffSub": "Nothing arrives in this browser. Your other devices are unaffected.",
+    "webAlertSilentSub": "The window opens without a sound — the alarm screen stays quiet too, and offers to start the sound if you want it.",
+    "webAlertLoudSub": "The window opens and this device makes noise, like a phone would.",
+    "webAlertFirefox": "Firefox plays its own notification sound even when we ask for silence. To be certain of quiet here, turn notifications off in this browser or mute the site in Firefox."
   },
   "sound": {
     "alarmTitle": "Alarm sound",

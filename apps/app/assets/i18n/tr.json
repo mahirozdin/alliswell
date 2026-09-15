@@ -672,7 +672,8 @@
       "ago": "{time} · {ago}",
       "cardTitle": "Kaçırılan alarm",
       "cardMore": "+{n} tane daha"
-    }
+    },
+    "silentByChoice": "Bilerek sessiz — bu tarayıcıyı Sessiz olarak ayarladınız."
   },
   "alarmLog": {
     "title": "Alarm günlüğü",
@@ -736,7 +737,18 @@
     "snoozeOrderFirst": "iPhone’un kilit ekranındaki alarmda tek erteleme düğmesi var: “{preset}”.",
     "watchTitle": "Apple Watch",
     "watchSub": "Telefon kilitliyken uyarılar eşleşmiş saate aynalanır — ayrı bir uygulama gerekmez. Ses ve dokunuşları saatten ayarla: Watch → Sesler ve Dokunuşlar.",
-    "reset": "Standart’a dön"
+    "reset": "Standart’a dön",
+    "webAlerts": "Bu tarayıcıda bildirim",
+    "webAlertsSub": "Yalnız bu tarayıcı. Her cihaz size ne kadar yüksek sesle seslendiğine kendi karar verir.",
+    "webAlert": {
+      "off": "Kapalı",
+      "silent": "Sessiz",
+      "loud": "Sesli"
+    },
+    "webAlertOffSub": "Bu tarayıcıya hiçbir şey gelmez. Diğer cihazlarınız etkilenmez.",
+    "webAlertSilentSub": "Pencere sessizce açılır — alarm ekranı da susar ve isterseniz sesi başlatmayı önerir.",
+    "webAlertLoudSub": "Pencere açılır ve bu cihaz, bir telefon gibi ses çıkarır.",
+    "webAlertFirefox": "Firefox, sessizlik istediğimizde bile kendi bildirim sesini çalıyor. Burada sessizlikten emin olmak için bu tarayıcıda bildirimleri kapatın ya da Firefox’ta siteyi susturun."
   },
   "sound": {
     "alarmTitle": "Alarm sesi",

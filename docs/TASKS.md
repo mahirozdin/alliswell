@@ -10566,20 +10566,39 @@ _**Burası §0'ın tadil edildiği yer.** Diğer her platformda sunucu bir ipucu
 _Rapor: "a reminder which does not 'ring' with sound, but just pops up with a window on the
 computer screen … so it is less disturbing to colleagues during office hours."_
 
-- [ ] **Üç değerli ayar:** Kapalı / **Sessiz** (varsayılan) / Sesli. Cihaz-yerel, `LocalKv`
-      üzerinde — her teslim tercihi gibi (`providers.dart:39-41`: *"each device owns how
-      insistent they are"*). İzin zaten açık bir opt-in olduğu için Sessiz varsayılan olabilir.
-- [ ] **"Sessiz" bu tarayıcıda HER ŞEYİ susturur** — OS bildirimi `silent: true` ile gelir **ve**
-      `AlarmRingScreen` ses çalmaz. Ekran yine açılır, bunun **bilerek** sessiz olduğunu yazar
-      ve elle "sesi başlat" sunar — mevcut kalıp zaten orada (`alarm_ring_screen.dart:314-327`,
-      otomatik oynatma reddedildiğinde). Böylece *"çalıyormuş gibi görünen sessiz alarm"*
-      yasağı çiğnenmez: sessizlik **beyan edilmiş** olur.
-- [ ] **Firefox gerçeği söylenir.** Firefox `silent` bayrağını yok sayıp ses çalıyor. Ayar bunu
-      yazar; sessizlik sağlanamıyorsa kullanıcı bunu **ayardan** öğrenir, alarm anında değil.
-- [ ] i18n (`check:i18n`), token'lı renkler (ham hex yok), ≥44px hedefler, iki temada da
-      kontrast; `contrast.py` palet değişirse koşar.
-- **Kabul:** üç değerin üçü de testli; "Sessiz" seçiliyken alarm ekranı `SilentAlarmFeedback`
-      kullanıyor ve beyanı gösteriyor; Firefox uyarısı yalnız Firefox'ta çıkıyor.
+- [x] **Üç değerli ayar** indi: Kapalı / **Sessiz (varsayılan)** / Sesli —
+      `notifications/web_alert_mode.dart` + `PersistedChoice('alliswell_web_alert_mode')`,
+      cihaz-yerel, kardeşlerinin tam yanında. Okunamayan her değer **Sessiz**'e düşüyor
+      (yükseltmede saklı değer boş dize), ve kart yalnız `kIsWeb` altında çiziliyor.
+- [x] **"Kapalı" aboneliği BIRAKIYOR, sessiz bir işleyici değil.** Ölçülen zorunluluk:
+      push aboneliği `userVisibleOnly`, yani hiçbir şey göstermeyen bir service worker
+      Chrome'un kendi jenerik kartını alıyor — kullanıcı "kapattım" sanırken **daha az**
+      bilgilendirilmiş olurdu. `applyAlertMode` kapalıda `unsubscribe()` çağırıyor, geri
+      açıldığında yeniden abone oluyor; aynı değeri ikinci kez seçmek tarayıcıdan **yeni
+      endpoint istemiyor** (kayıt her tıklamada başka adres taşımasın diye).
+- [x] **"Sessiz" bu tarayıcıda her şeyi susturuyor:** worker'a yazılan metin
+      `silent: true` ile gidiyor (`AlertText.silent` — OPH-314'ün açtığı dikiş) **ve**
+      `AlarmRingScreen` ses çalmıyor. Kapalıyken önbelleğe **hiç yazılmıyor**: bakılacak
+      bir şey yok, çünkü gelecek bir şey yok.
+- [x] **Sessizlik BEYAN ediliyor** (`alarm-silent-declared`) ve elle "sesi başlat" duruyor.
+      **Plandan sapma, gerekçesiyle:** ekran `SilentAlarmFeedback`'e geçmiyor — onun
+      `start()`'ı no-op, yani vaat edilen elle başlatma **ölü bir düğme** olurdu; bu da
+      "çalıyormuş gibi görünen sessiz alarm" yasağının aynısı. Bunun yerine gerçek geri
+      bildirim kuruluyor ama **başlatılmıyor**. Test hem beyanı hem düğmenin gerçekten
+      çaldığını ölçüyor.
+- [x] **Karar `kIsWeb` yerine bir provider'da** (`alarmSilentByChoiceProvider`): `kIsWeb`
+      VM testinde sabit `false`, yani ekranın içinde okunsaydı davranış **tarayıcı dışında
+      test edilemezdi**. Ölçülüp taşındı.
+- [x] **Firefox gerçeği söyleniyor.** `WebPushHost.ignoresSilence` (yalnız `push_host_web`
+      kullanıcı ajanına bakıyor — `silent` özellik tespitiyle anlaşılamıyor: Firefox'ta
+      `notification.silent === true` döner ve ses yine de çalar). Uyarı **yalnız Sessiz
+      seçiliyken** çıkıyor: kapalıda gelen bir şey yok, seslide zaten istenen o.
+- [x] i18n iki JSON'da (`check:i18n` yeşil), renkler şema token'ından, hedefler
+      `SegmentedButton`/`OutlinedButton` varsayılanlarında (≥44px), ham hex yok.
+- **Kabul:** ✅ üç değerin üçü de testli (parse + yuvarlak yolculuk + davranış);
+      ✅ "Sessiz"te alarm ekranı beyanı gösteriyor ve **hiç çalmıyor**; ✅ Firefox uyarısı
+      yalnız o tarayıcıda ve yalnız Sessiz'de. App süiti **1664 geçti** (+12), iki
+      enjeksiyonun ikisi de kırmızıya düştü.
 
 ### OPH-317 — `check:notify-matrix`: dokümanın platform iddiası koddan üretilir
 

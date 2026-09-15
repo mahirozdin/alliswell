@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
 import 'package:alliswell/src/notifications/planner.dart';
+import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
@@ -272,6 +274,58 @@ void main() {
     expect(find.byKey(const Key('alarm-start-sound')), findsNothing);
     feedback.stop();
   });
+
+  // ── OPH-316: silence the user chose, said out loud ──────────────────────
+  //
+  // `SilentAlarmFeedback` is deliberately NOT what the screen switches to: its
+  // `start()` is a no-op, so the manual "start the sound" it offers would be a
+  // dead button — the same lie as an alarm that looks like it is ringing.
+
+  Future<void> pumpSilentByChoice(
+    WidgetTester tester,
+    _SpyFeedback spy, {
+    required bool silent,
+  }) async {
+    container.dispose();
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(alarmFeedback: spy),
+        alarmSilentByChoiceProvider.overrideWithValue(silent),
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    await seed();
+    await pumpRing(tester);
+  }
+
+  testWidgets('declares a silence the user asked for, and still offers sound', (
+    tester,
+  ) async {
+    final spy = _SpyFeedback();
+    await pumpSilentByChoice(tester, spy, silent: true);
+
+    expect(find.byKey(const Key('alarm-silent-declared')), findsOneWidget);
+    expect(find.byKey(const Key('alarm-start-sound')), findsOneWidget);
+    // Nothing was played: the whole point of the setting.
+    expect(spy.starts, 0);
+
+    await tester.tap(find.byKey(const Key('alarm-start-sound')));
+    await tester.pump();
+    // ...and the offer is real. An affordance that does nothing would be the
+    // same failure the declaration exists to prevent.
+    expect(spy.starts, 1);
+  });
+
+  testWidgets('says nothing about silence when the alarm is meant to ring', (
+    tester,
+  ) async {
+    final spy = _SpyFeedback();
+    await pumpSilentByChoice(tester, spy, silent: false);
+
+    expect(find.byKey(const Key('alarm-silent-declared')), findsNothing);
+    expect(spy.starts, 1);
+  });
 }
 
 /// Refuses to play, the way a browser's autoplay policy does.
@@ -288,4 +342,19 @@ class _RefusingSound implements AlarmSoundPlayer {
 
   @override
   Future<void> dispose() async {}
+}
+
+/// Records whether the alarm was actually played.
+class _SpyFeedback implements AlarmFeedback {
+  int starts = 0;
+  final ValueNotifier<bool> _blocked = ValueNotifier(false);
+
+  @override
+  ValueListenable<bool> get soundBlocked => _blocked;
+
+  @override
+  void start() => starts += 1;
+
+  @override
+  void stop() {}
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import '../gateway.dart';
 import 'alert_cache.dart';
 import 'push_host.dart';
+import '../web_alert_mode.dart';
 
 /// The browser's notification gateway (OPH-313, ADR-0038).
 ///
@@ -56,10 +57,11 @@ class WebNotificationsGateway implements NotificationsGateway {
     /// produces, so the two read identically.
     required this.fallback,
 
-    /// Whether this browser's notifications arrive without a sound. Default
-    /// silent; OPH-316 turns it into a setting. Stored WITH the words rather
-    /// than read by the worker, because a preference must not live there.
-    this.silentAlerts = true,
+    /// How loud this browser is (OPH-316). A function, not a value: the
+    /// gateway is built once per session and the setting changes under it.
+    /// Read at write time and stored WITH the words, because the service
+    /// worker must not be the place a preference lives.
+    this.alertMode = _defaultAlertMode,
   }) {
     _clicks = host.notificationClicks.listen(
       (payload) => emit(NotificationEvent(payload: payload)),
@@ -71,7 +73,7 @@ class WebNotificationsGateway implements NotificationsGateway {
   final void Function()? onSubscriptionChanged;
   final AlertCache cache;
   final AlertText fallback;
-  final bool silentAlerts;
+  final WebAlertMode Function() alertMode;
 
   StreamSubscription<String>? _clicks;
 
@@ -120,6 +122,33 @@ class WebNotificationsGateway implements NotificationsGateway {
 
     onSubscriptionChanged?.call();
     return true;
+  }
+
+  /// Whether this browser plays a sound even for a notification that asked
+  /// not to (OPH-316). The setting says so; nothing here can fix it.
+  bool get ignoresSilence => host.ignoresSilence;
+
+  /// Makes the browser agree with the setting (OPH-316).
+  ///
+  /// `off` drops the subscription, which is the only honest way to deliver
+  /// nothing: a push subscription is `userVisibleOnly`, so a worker that
+  /// receives and shows nothing gets the browser's generic card instead — the
+  /// user would be told LESS while believing they had turned it off. Coming
+  /// back on re-subscribes, and the toggle itself is the user gesture Safari
+  /// requires for the permission prompt.
+  Future<void> applyAlertMode(WebAlertMode mode) async {
+    if (!host.isSupported) return;
+    if (mode == WebAlertMode.off) {
+      if (_subscription == null && await host.currentSubscription() == null) {
+        return;
+      }
+      await host.unsubscribe();
+      _subscription = null;
+      onSubscriptionChanged?.call();
+      return;
+    }
+    if (await subscription() != null) return; // already reachable
+    await requestPermissions();
   }
 
   @override
@@ -186,6 +215,10 @@ class WebNotificationsGateway implements NotificationsGateway {
   Future<void> _remember(PlannedNotification notification) async {
     final reminderId = notification.reminderId;
     if (reminderId == null) return;
+    // Delivery is off: there is no subscription for the server to reach, so
+    // there is nothing for the worker to look up either. Turning it back on
+    // re-schedules (the mode is a watched input), which re-writes these.
+    if (alertMode() == WebAlertMode.off) return;
     final known = _earliest[reminderId];
     if (known != null && !notification.fireAt.isBefore(known)) return;
     _earliest[reminderId] = notification.fireAt;
@@ -195,7 +228,7 @@ class WebNotificationsGateway implements NotificationsGateway {
         title: notification.title,
         body: notification.body,
         fireAt: notification.fireAt,
-        silent: silentAlerts,
+        silent: alertMode().silences,
       ),
     );
   }
@@ -219,3 +252,7 @@ class WebNotificationsGateway implements NotificationsGateway {
     await _events.close();
   }
 }
+
+/// Silent unless the app says otherwise — the value a gateway built without
+/// a setting behind it (tests, the rehearsal path) should have.
+WebAlertMode _defaultAlertMode() => WebAlertMode.silent;

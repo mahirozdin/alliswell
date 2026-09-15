@@ -57,6 +57,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   AlarmFeedback? _feedback;
   bool _busy = false;
 
+  /// Silent because the user said so, not because the platform refused. The
+  /// screen has to tell those apart: one is a setting, the other is a failure.
+  bool _silentByChoice = false;
+
   @override
   void initState() {
     super.initState();
@@ -68,7 +72,13 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
         ? const SilentAlarmFeedback()
         : ref.read(alarmFeedbackProvider);
     _feedback = feedback;
-    feedback.start();
+    // OPH-316: the user asked this browser to be quiet, so the screen opens
+    // and says nothing out loud. Deliberately NOT `SilentAlarmFeedback` — its
+    // `start()` is a no-op, which would make the manual "start the sound" a
+    // dead button, and an offer that does nothing is the same lie as an alarm
+    // that looks like it is ringing.
+    _silentByChoice = !widget.missed && ref.read(alarmSilentByChoiceProvider);
+    if (!_silentByChoice) feedback.start();
     // The one alarm surface we can prove rang (OPH-176): this screen.
     ref
         .read(alarmLogProvider)
@@ -308,23 +318,51 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                         ),
                       ],
                     ),
-                    // OPH-180: when the platform refused to make noise (a
-                    // browser's autoplay policy, no audio device), say so and
-                    // offer to start it — never pretend the room is loud.
-                    ValueListenableBuilder<bool>(
-                      valueListenable: _feedback!.soundBlocked,
-                      builder: (context, blocked, _) => blocked
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: AwSpace.x4),
-                              child: OutlinedButton.icon(
-                                key: const Key('alarm-start-sound'),
-                                onPressed: () => _feedback?.start(),
-                                icon: const Icon(Icons.volume_up, size: 18),
-                                label: Text('alarm.startSound'.tr()),
+                    // OPH-316: silence the user chose, declared. Without this
+                    // line the screen is indistinguishable from an alarm that
+                    // failed to ring — which is the one outcome
+                    // NOTIFICATIONS §3 forbids.
+                    if (_silentByChoice)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AwSpace.x4),
+                        child: Column(
+                          children: [
+                            Text(
+                              'alarm.silentByChoice'.tr(),
+                              key: const Key('alarm-silent-declared'),
+                              textAlign: TextAlign.center,
+                              style: text.bodyMedium?.copyWith(
+                                color: scheme.onSurfaceVariant,
                               ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
+                            ),
+                            const SizedBox(height: AwSpace.x2),
+                            OutlinedButton.icon(
+                              key: const Key('alarm-start-sound'),
+                              onPressed: () => _feedback?.start(),
+                              icon: const Icon(Icons.volume_up, size: 18),
+                              label: Text('alarm.startSound'.tr()),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      // OPH-180: when the platform refused to make noise (a
+                      // browser's autoplay policy, no audio device), say so and
+                      // offer to start it — never pretend the room is loud.
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _feedback!.soundBlocked,
+                        builder: (context, blocked, _) => blocked
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: AwSpace.x4),
+                                child: OutlinedButton.icon(
+                                  key: const Key('alarm-start-sound'),
+                                  onPressed: () => _feedback?.start(),
+                                  icon: const Icon(Icons.volume_up, size: 18),
+                                  label: Text('alarm.startSound'.tr()),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
                     const SizedBox(height: AwSpace.x6),
                     SizedBox(
                       width: double.infinity,

@@ -6,6 +6,7 @@ import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/web/alert_cache.dart';
 import 'package:alliswell/src/notifications/web/gateway_web.dart';
 import 'package:alliswell/src/notifications/web/push_host.dart';
+import 'package:alliswell/src/notifications/web_alert_mode.dart';
 
 /// OPH-313 — until now `notificationsGatewayProvider` handed web the same
 /// `LocalNotificationsGateway` as a phone, and every call died in a
@@ -16,10 +17,15 @@ class _FakeHost implements WebPushHost {
     this.isSupported = true,
     this.granted = WebPushPermission.prompt,
     this.subscribeFails = false,
+    this.ignoresSilence = false,
   });
 
   @override
   bool isSupported;
+
+  /// OPH-316 — Firefox plays its sound whatever a notification asks for.
+  @override
+  bool ignoresSilence;
   WebPushPermission granted;
   bool subscribeFails;
 
@@ -95,12 +101,14 @@ WebNotificationsGateway _gatewayFor(
   String? vapidKey = 'server-vapid-key',
   void Function()? onChanged,
   AlertCache? cache,
+  WebAlertMode mode = WebAlertMode.silent,
 }) => WebNotificationsGateway(
   host: host,
   readVapidKey: () async => vapidKey,
   onSubscriptionChanged: onChanged,
   cache: cache ?? _FakeCache(),
   fallback: const AlertText(title: 'AllisWell', body: 'You have a reminder'),
+  alertMode: () => mode,
 );
 
 final _planned = PlannedNotification(
@@ -110,6 +118,17 @@ final _planned = PlannedNotification(
   fireAt: DateTime.utc(2026, 9, 20, 7, 30),
   urgent: false,
   payload: '{}',
+);
+
+/// A plan that belongs to a reminder — the only kind the worker's cache keeps.
+final _plannedForReminder = PlannedNotification(
+  id: 12,
+  title: 'Pay the invoice',
+  body: 'in 10 minutes',
+  fireAt: DateTime.utc(2026, 9, 20, 7, 30),
+  urgent: false,
+  payload: '{}',
+  reminderId: 'r1',
 );
 
 void main() {
@@ -303,5 +322,93 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(seen, ['{"taskId":"t9","reminderId":"r9"}']);
+  });
+
+  group('OPH-316 — how loud this browser is', () {
+    test(
+      'writes the words silent by default, and loud only when asked',
+      () async {
+        final cache = _FakeCache();
+        await _gatewayFor(
+          _FakeHost(),
+          cache: cache,
+        ).schedule(_plannedForReminder);
+        expect(cache.entries.values.single.silent, isTrue);
+
+        final loudCache = _FakeCache();
+        await _gatewayFor(
+          _FakeHost(),
+          cache: loudCache,
+          mode: WebAlertMode.loud,
+        ).schedule(_plannedForReminder);
+        expect(loudCache.entries.values.single.silent, isFalse);
+      },
+    );
+
+    test(
+      'writes nothing for the worker to find when delivery is off',
+      () async {
+        final cache = _FakeCache();
+        await _gatewayFor(
+          _FakeHost(),
+          cache: cache,
+          mode: WebAlertMode.off,
+        ).schedule(_plannedForReminder);
+        expect(cache.entries, isEmpty);
+      },
+    );
+
+    test(
+      'off drops the subscription — the only honest way to deliver nothing',
+      () async {
+        final host = _FakeHost(granted: WebPushPermission.granted);
+        final gateway = _gatewayFor(host);
+        await gateway.requestPermissions();
+        expect(await host.currentSubscription(), isNotNull);
+
+        await gateway.applyAlertMode(WebAlertMode.off);
+
+        expect(host.unsubscribes, 1);
+        expect(await host.currentSubscription(), isNull);
+      },
+    );
+
+    test(
+      'coming back on re-subscribes, and staying on does not churn',
+      () async {
+        final host = _FakeHost(granted: WebPushPermission.granted);
+        final gateway = _gatewayFor(host);
+        await gateway.requestPermissions();
+        await gateway.applyAlertMode(WebAlertMode.off);
+
+        await gateway.applyAlertMode(WebAlertMode.silent);
+        expect(await host.currentSubscription(), isNotNull);
+
+        // A second helping of the same value must not ask the browser for a new
+        // endpoint — the registry would then carry a different address for the
+        // same tab on every toggle.
+        final endpoint = (await host.currentSubscription())!.endpoint;
+        await gateway.applyAlertMode(WebAlertMode.loud);
+        expect((await host.currentSubscription())!.endpoint, endpoint);
+        expect(host.unsubscribes, 1);
+      },
+    );
+
+    test(
+      'turning off a browser that never subscribed asks it nothing',
+      () async {
+        final host = _FakeHost();
+        await _gatewayFor(host).applyAlertMode(WebAlertMode.off);
+        expect(host.unsubscribes, 0);
+      },
+    );
+
+    test('reports the browser that ignores the flag, without guessing', () {
+      expect(_gatewayFor(_FakeHost()).ignoresSilence, isFalse);
+      expect(
+        _gatewayFor(_FakeHost(ignoresSilence: true)).ignoresSilence,
+        isTrue,
+      );
+    });
   });
 }

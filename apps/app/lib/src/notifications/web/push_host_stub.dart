@@ -12,6 +12,9 @@ class _NoWebPushHost implements WebPushHost {
   bool get isSupported => false;
 
   @override
+  bool get ignoresSilence => false;
+
+  @override
   Future<WebPushPermission> permission() async => WebPushPermission.denied;
 
   @override

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +7,7 @@ import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
 import '../../notifications/providers.dart';
 import '../../notifications/reminder_profile.dart';
+import '../../notifications/web_alert_mode.dart';
 import 'sound_picker_sheet.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
@@ -237,6 +239,14 @@ class ReminderSettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AwSpace.x3),
 
+              // OPH-316 — the office's question: a window, not a noise. Only
+              // on the web, where it is the one thing this device can decide
+              // about a notification the SERVER will show (ADR-0038 §3).
+              if (kIsWeb) ...[
+                const _WebAlertModeCard(),
+                const SizedBox(height: AwSpace.x3),
+              ],
+
               // N6 — sounds are chosen by HEARING them.
               Card(
                 child: Column(
@@ -433,6 +443,98 @@ class _SnoozeOrderCard extends ConsumerWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Notifications in this browser" (OPH-316) — three values, because off and
+/// silent are different promises, and the browser's own lie about the third.
+class _WebAlertModeCard extends ConsumerWidget {
+  const _WebAlertModeCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final mode = ref.watch(webAlertModeProvider);
+    // Only worth saying while a silence is actually being promised: on "off"
+    // nothing arrives, and on "with sound" the noise is the point.
+    final firefoxLies =
+        mode == WebAlertMode.silent && ref.watch(webIgnoresSilenceProvider);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AwSpace.x4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'reminderSettings.webAlerts'.tr(),
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: AwSpace.x1),
+            Text(
+              'reminderSettings.webAlertsSub'.tr(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AwSpace.x3),
+            SegmentedButton<WebAlertMode>(
+              key: const Key('web-alert-mode'),
+              showSelectedIcon: false,
+              segments: [
+                for (final value in WebAlertMode.values)
+                  ButtonSegment(
+                    value: value,
+                    label: Text('reminderSettings.webAlert.${value.id}'.tr()),
+                  ),
+              ],
+              selected: {mode},
+              onSelectionChanged: (selection) => ref
+                  .read(webAlertModeRawProvider.notifier)
+                  .set(selection.first.id),
+            ),
+            const SizedBox(height: AwSpace.x2),
+            // What the chosen value actually does, in its own words: a
+            // three-way control whose difference is invisible is a guess.
+            Text(
+              switch (mode) {
+                WebAlertMode.off => 'reminderSettings.webAlertOffSub'.tr(),
+                WebAlertMode.silent =>
+                  'reminderSettings.webAlertSilentSub'.tr(),
+                WebAlertMode.loud => 'reminderSettings.webAlertLoudSub'.tr(),
+              },
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            if (firefoxLies) ...[
+              const SizedBox(height: AwSpace.x3),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.volume_up_outlined,
+                    size: 18,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: AwSpace.x2),
+                  Expanded(
+                    child: Text(
+                      'reminderSettings.webAlertFirefox'.tr(),
+                      key: const Key('web-alert-firefox'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

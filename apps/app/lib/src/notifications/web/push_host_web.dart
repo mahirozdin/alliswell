@@ -55,6 +55,21 @@ class _BrowserPushHost implements WebPushHost {
     }
   }
 
+  @override
+  bool get ignoresSilence {
+    try {
+      // The one place in this file that asks WHICH browser rather than what it
+      // can do, and deliberately: `silent` is not feature-detectable. A
+      // Notification constructed with `silent: true` reports `silent === true`
+      // in Firefox too — it simply plays the sound anyway (bugzilla 1671255).
+      // Sniffing a user agent is the lesser evil against a setting that
+      // promises a silence the browser will not keep.
+      return web.window.navigator.userAgent.contains('Firefox');
+    } on Object {
+      return false;
+    }
+  }
+
   WebPushPermission _read(String value) => switch (value) {
     'granted' => WebPushPermission.granted,
     'denied' => WebPushPermission.denied,

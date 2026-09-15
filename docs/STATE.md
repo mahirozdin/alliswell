@@ -3,7 +3,29 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15i (**OPH-315 BİTTİ — epic ilk kez GERÇEKTEN gönderiyor.**
+**Last updated:** 2026-09-16a (**OPH-316 BİTTİ — ofisin istediği şey: pencere, ses değil.**
+Kapalı / **Sessiz (varsayılan)** / Sesli, cihaz-yerel (`web_alert_mode.dart` +
+`PersistedChoice`), kart yalnız web'de. **Turun kararı: "Kapalı" aboneliği
+bırakıyor.** Sessiz bir service worker seçeneği yok — push aboneliği
+`userVisibleOnly` ve hiçbir şey göstermeyen bir işleyici tarayıcının kendi jenerik
+kartını alıyor, yani kullanıcı kapattığını sanırken **daha az** şey öğrenirdi. Geri
+açınca yeniden abone oluyor; aynı değeri ikinci kez seçmek yeni endpoint istemiyor.
+**Sessizlik beyan ediliyor:** alarm ekranı açılıyor, bilerek sessiz olduğunu yazıyor
+ve elle "sesi başlat" sunuyor. **Plandan sapma, ölçülmüş gerekçeyle:** ekran
+`SilentAlarmFeedback`'e geçmiyor — `start()`'ı no-op olduğu için o düğme **ölü**
+olurdu, ki bu da yasağın kendisi. Gerçek geri bildirim kuruluyor ama başlatılmıyor.
+**İkinci ölçüm:** karar `kIsWeb` ile ekranın içinde verilemezdi — VM testinde `kIsWeb`
+sabit `false`, davranış tarayıcı dışında **test edilemez** olurdu; `alarmSilentByChoiceProvider`
+o yüzden var. **Firefox:** `silent` özellik tespitiyle anlaşılmıyor (`notification.silent`
+`true` döner, ses yine çalar), o yüzden tek bir yerde kullanıcı ajanına bakılıyor ve
+uyarı **yalnız Sessiz seçiliyken** gösteriliyor. OPH-314'ün açtığı `AlertText.silent`
+dikişi bu turda gerçekten bir ayara bağlandı. **Doğrulama:** app süiti **1664 geçti**
+(+12), `flutter analyze` yalnız taban uyarısını veriyor, sekiz kapı yeşil, iki
+enjeksiyon kırmızıya düşüp geri alındı. Sıradaki iş: **OPH-317**
+(`check:notify-matrix` — ve §3'te karşılaştırılacak tablo **henüz yok**, önce o
+yazılacak).)
+
+Önceki blok: 2026-09-15i (**OPH-315 BİTTİ — epic ilk kez GERÇEKTEN gönderiyor.**
 `db/reminder-push.js` + `plugins/push-due.js`: vadesi gelen hatırlatıcıları bulan,
 kimin haberi olmadığına karar veren ve bir kez gönderen süpürge. **Turun cümlesi:
 vade anı `remind_at` değildir.** Ertelenmiş bir hatırlatıcı özgün `remind_at`'ini

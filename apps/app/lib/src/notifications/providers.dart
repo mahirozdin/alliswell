@@ -26,6 +26,7 @@ import 'gateway_local.dart';
 import 'reminder_profile.dart';
 import 'reminder_store.dart';
 import 'sound_store.dart';
+import 'web_alert_mode.dart';
 import 'scheduler.dart';
 
 /// The OS adapter. Widget tests override this with a fake — the default
@@ -46,6 +47,10 @@ final notificationsGatewayProvider = Provider<NotificationsGateway>((ref) {
     readVapidKey: () => ref.read(pushPublicKeyProvider.future),
     onSubscriptionChanged: () => unawaited(_publishSubscription(ref, gateway)),
     cache: createAlertCache(),
+    // Read per notification rather than captured: the gateway outlives the
+    // setting, and a tab that re-subscribed on every change would ask the
+    // browser for a new endpoint each time somebody toggled a radio button.
+    alertMode: () => ref.read(webAlertModeProvider),
     // The pair privacy mode already produces (`planner.dart:116-121`), so a
     // cache miss and a private device read identically rather than inventing a
     // third voice for the same moment.
@@ -55,6 +60,13 @@ final notificationsGatewayProvider = Provider<NotificationsGateway>((ref) {
   // the registry needs to carry it on the first heartbeat rather than the one
   // after somebody happens to press the button again.
   unawaited(_publishSubscription(ref, gateway));
+  // Turning delivery off has to reach the browser, not just the preference:
+  // the subscription IS the thing the server sends to. One listener, so the
+  // settings screen stays a screen.
+  ref.listen<WebAlertMode>(
+    webAlertModeProvider,
+    (previous, next) => unawaited(gateway.applyAlertMode(next)),
+  );
   ref.onDispose(gateway.dispose);
   return gateway;
 });
@@ -125,6 +137,35 @@ final alarmSoundRawProvider = NotifierProvider<PersistedChoice, String>(
 final reminderSoundRawProvider = NotifierProvider<PersistedChoice, String>(
   () => PersistedChoice('alliswell_reminder_sound', fallback: 'os'),
 );
+
+/// How loud this BROWSER is (OPH-316). Device-local like every other delivery
+/// preference, and the one the office asked for: the window without the sound.
+/// Meaningless off the web — nothing reads it there.
+final webAlertModeRawProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_web_alert_mode', fallback: 'silent'),
+);
+
+final webAlertModeProvider = Provider<WebAlertMode>(
+  (ref) => WebAlertMode.parse(ref.watch(webAlertModeRawProvider)),
+);
+
+/// Whether the ring screen should open DECLARED silent (OPH-316): the user
+/// asked this browser to be quiet, and the screen has to say so rather than
+/// look like an alarm that failed. A provider rather than a `kIsWeb` read
+/// inside the screen, because `kIsWeb` is a const `false` in a VM test and the
+/// behaviour would then be untestable off the browser.
+final alarmSilentByChoiceProvider = Provider<bool>(
+  (ref) => kIsWeb && ref.watch(webAlertModeProvider) == WebAlertMode.silent,
+);
+
+/// Whether the browser will make a sound whatever the setting says (Firefox).
+/// Asked through the gateway rather than by building a second host: the web
+/// host installs a `serviceWorker.onmessage` handler, and two of those would
+/// deliver every notification click twice.
+final webIgnoresSilenceProvider = Provider<bool>((ref) {
+  final gateway = ref.watch(notificationsGatewayProvider);
+  return gateway is WebNotificationsGateway && gateway.ignoresSilence;
+});
 
 final alarmSoundChoiceProvider = Provider<AwSoundChoice>(
   (ref) => AwSoundChoice.parse(ref.watch(alarmSoundRawProvider)),
