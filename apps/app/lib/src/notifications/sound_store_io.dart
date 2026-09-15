@@ -64,7 +64,10 @@ class _FileSoundStore implements SoundStore {
     final dir = await _dir();
     if (dir == null) return false;
     try {
-      return File(p.join(dir.path, name)).exists();
+      // Awaited, not just returned: an unawaited future leaves the try before
+      // it can fail, so the catch below never ran and a filesystem error
+      // reached the caller as an exception instead of the "no" this promises.
+      return await File(p.join(dir.path, name)).exists();
     } on Object {
       return false;
     }
