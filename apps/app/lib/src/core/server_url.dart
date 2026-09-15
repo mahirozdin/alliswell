@@ -39,7 +39,13 @@ const kLocalApiBaseUrl = 'http://localhost:3000';
 /// install happens to run.
 const kApiDocsUrl = 'https://alliswell.space/docs/api';
 
-const _kServerUrlPrefKey = 'alliswell_server_url';
+/// Where the chosen server address is persisted.
+///
+/// Public since OPH-321: the headless refresh reads it DIRECTLY rather than
+/// through `PersistedChoice`, which answers its fallback synchronously and
+/// hydrates afterwards — in a process that lives for a second, that fallback
+/// would be the answer, and a self-hoster would be sent to the hosted API.
+const kServerUrlPrefKey = 'alliswell_server_url';
 
 /// The address to use when the user has not chosen one.
 String get compiledApiBaseUrl {
@@ -81,7 +87,7 @@ String prettyServerUrl(String url) {
 /// The user's override, or an empty string when they are on the default.
 /// Persisted, so it survives restarts — a self-hoster sets it once.
 final serverUrlOverrideProvider = NotifierProvider<PersistedChoice, String>(
-  () => PersistedChoice(_kServerUrlPrefKey, fallback: ''),
+  () => PersistedChoice(kServerUrlPrefKey, fallback: ''),
 );
 
 /// The address every API client uses.

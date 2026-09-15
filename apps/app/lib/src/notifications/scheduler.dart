@@ -101,6 +101,20 @@ class NotificationScheduler {
   /// with no way to recover short of restarting the app. One transient plugin
   /// hiccup at launch was a whole day of missed alarms. It now records the
   /// failure and subscribes anyway: `_apply` retries `initialize` every pass.
+  /// Schedule one set and stop (OPH-321) — the whole of what a background
+  /// turn does.
+  ///
+  /// Deliberately NOT [start]: that one calls `requestPermissions()`, which on
+  /// Android reaches for the `mainActivity` and gets `null` in a background
+  /// engine, and installs a subscription, a heartbeat timer and a lifecycle
+  /// listener that a process about to exit has no use for. Everything AFTER
+  /// those — the plan, the diff, the OS calls — is `_apply`, and that is what
+  /// this exposes.
+  Future<void> applyOnce(List<AlarmInput> alarms) async {
+    _latest = alarms;
+    await _apply();
+  }
+
   Future<void> start() async {
     try {
       await gateway.initialize();

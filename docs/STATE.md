@@ -3,7 +3,38 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16d (**OPH-320 BİTTİ — ve planın sessiz bir yanlışını
+**Last updated:** 2026-09-16e (**OPH-321 BİTTİ — epic'in en ağır işi.**
+Arka plan turu: `readAlarms` + `applyOnce` + `headless.dart` + `AlarmRefreshWorker.kt`.
+**Turun merkezi disiplini paritede:** bildirim id'si çevrilmiş metnin hash'i, yani
+başsız izolat UI'dan farklı bir küme üretirse aynı alarm iki kez kurulur ve
+hiçbiri diğerini iptal edemez. O yüzden projeksiyon **tek bir saf fonksiyona**
+(`mergeAlarms`) çıkarıldı ve iki okuyucu da onu çağırıyor; test karışık bir
+replika üzerinde iki kümenin **birebir aynı** olduğunu ölçüyor. **Üç negatif
+kontrol de kırmızıya düştü:** `AwI18n.boot()` çıkarılınca, ön plan kontrolü
+kaldırılınca, `readAlarms` sentetikleri atlayınca. **`headless.dart`'ın sırası
+tartışmaya açık değil, her adımı bir hatayı önlüyor:** i18n ilk (yoksa metin
+anahtar olur, hash değişir, kullanıcı her alarmı iki kez alır); workspace
+`sync_states`'ten (asla `/me` — ağ çağrısı, çevrimdışı sessizce "iş yok"a düşer);
+base URL **doğrudan `localKv`'den** (`PersistedChoice` fallback'ini senkron
+veriyor, bir saniyelik süreçte fallback cevabın kendisi olur ve self-host eden
+biri kendi token'ıyla hosted API'ye giderdi); Keychain okunamıyorsa **çıkış**,
+hata değil (kilitli iPhone — ADR-0038 §8). **OPH-318'in damgası ilk tüketicisini
+buldu:** uygulama ön plandaysa tur i18n'i bile boot etmiyor. **Test yazarken
+çıkan ince bir şey:** sahte damgayı "şimdi" yapınca tur onu **gelecek tarihli**
+sayıp reddetti — çünkü saat, depo okunmadan ÖNCE alınıyor; `AppLiveness`'in
+negatif-yaş koruması doğru çalışıyordu, sahte yanlıştı. **Ölçülmüş doğrulama:**
+release APK yeniden derlendi ve **izin kümesi değişmedi (20)** — `androidx.work`
+gerçekten zaten APK'daydı, yani `workmanager` paketini reddeden gerekçe
+doğrulandı. **Reddedilen:** `ProviderContainer`'ı başsız kurmak — graf UI-şekilli
+ve `currentWorkspaceProvider` ağ çağırıyor; 03:00'te çevrimdışı bir konteyner
+"workspace yok"a çözülür ve tur hiçbir şey planlamadan başarılı görünürdü.
+**Doğrulama:** app süiti **1686 geçti** (+5), sekiz kapı yeşil, `flutter analyze`
+yalnız taban uyarısı. **Sahipte:** cihaz provası — ne VM testi ne CI bir
+WorkManager turu koşturabilir. Sıradaki iş: **OPH-322** (uyandırma ipucu —
+sunucuda `entity:changed` dinleyicisi, BullMQ coalesce, ve istemci ucu bu turun
+`headless.dart` girişi).)
+
+Önceki blok: 2026-09-16d (**OPH-320 BİTTİ — ve planın sessiz bir yanlışını
 düzeltti.** Backlog "süpürge mobili de kapsar" diyordu; kapsıyordu zaten (OPH-315).
 Eksik olan **görünürlüktü** ve nedeni ölçüldü: FCM zarfı yalnız `data` taşıyordu,
 `notification` bloğu olmayan bir mesaj iOS'ta arka plan modu olmadan **hiç teslim

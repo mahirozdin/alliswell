@@ -95,4 +95,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // OPH-321 — already in the APK via home_widget; declared so this module can
+    // compile against it. Not a new artifact and not the `workmanager` Flutter
+    // plugin, which ADR-0038 rejects for a reason that still holds.
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

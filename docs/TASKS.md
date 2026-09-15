@@ -10742,32 +10742,50 @@ _Bu epic'in en ağır işi ve tek geri dönüşsüz riski. `gateway_local.dart:1
 izolatını bir kez **bilerek** reddetmiş (*"a background isolate has no drift/auth stack here"*);
 emsal ise `main.dart:19-29`'daki `@pragma('vm:entry-point') widgetCallback`._
 
-- [ ] **`ReminderStore.readAlarms(workspaceId)`** — `watchAlarms:81-136`'daki projeksiyon saf
-      bir `mergeAlarms()` fonksiyonuna çıkarılır; `watchAlarms` onu `combineLatest3` ile,
-      `readAlarms` üç `.get()` ile çağırır. **Eklemeli** değişiklik.
-- [ ] **`NotificationScheduler.applyOnce(alarms)`** — `_latest = alarms; await _apply();`.
-      **`start()`'a dokunulmaz**: `:107` `requestPermissions()` çağırıyor, o da Android'de
-      `mainActivity` istiyor ve arka plan motorunda `null`.
-- [ ] **`notifications/headless.dart`** — sırası önemli: `AwI18n.boot()` **zorunlu**;
-      workspace id `sync_states`'ten (asla `/me`'den — ağ çağrısı, çevrimdışı düşer);
-      base URL **doğrudan** `localKv`'den (senkron `PersistedChoice` fallback'i self-host eden
-      birini hosted URL'e düşürür, `persisted_prefs.dart:42-51`); oturum `TokenStorage`'dan,
-      yoksa sessizce çık; `engine.syncNow()` — `start()` değil; sonunda `db.close()`.
-- [ ] **Kimlik-parite testi (bu işin kapısı):** aynı alarm ve tercih girdisiyle **başsız** ve
-      **UI** bileşimlerinin ürettiği bildirim id kümesi **birebir aynı** olmalı. Saf birim testi,
-      eklenti gerektirmez. **Negatif kontrol:** `headless.dart`'tan `AwI18n.boot()` çıkarılır →
-      kırmızı.
-- [ ] **Tetikleyici yeni bağımlılık istemiyor:** mevcut arka plan dispatcher'ına yeni bir
-      `uri.host` eklenir (`widget_callback.dart:26-33`; `deep_link.dart:66-67` onu router'dan
-      ayırıyor) ve elle yazılmış bir `PeriodicWorkRequest` onu kuyruğa alır — `androidx.work`
-      home_widget üzerinden **zaten APK'da**. `workmanager` paketi **alınmaz**: AGP 9 /
-      Kotlin 2.3 üstünde Gradle eklentisi riski, `file_picker` notunda kayıtlı aynı sınıf.
-- [ ] `ProviderContainer`'ı başsız kurmak **reddedilir** ve gerekçesi işe yazılır: graf
-      UI-şekilli (uzun ömürlü akışlar, zamanlayıcılar, `AppLifecycleListener`, router) ve
-      `currentWorkspaceProvider` ağ çağırıyor. Üç nesne elle kurulur.
-- **Kabul:** kimlik paritesi testi yeşil ve negatif kontrolü kırmızı; uygulama **hiç
-      açılmadan** kurulan bir hatırlatıcı Android'de OS alarmına dönüşüyor; uygulama canlıyken
-      worker no-op.
+- [x] **`ReminderStore.readAlarms(workspaceId)`** — `watchAlarms`'ın projeksiyonu saf,
+      **üst düzey** `mergeAlarms()`'a çıkarıldı; `watchAlarms` onu `combineLatest3` ile,
+      `readAlarms` üç `.get()` ile çağırıyor. İki sorgu da artık tek yerde
+      (`_alarmRowsQuery`, `_wantingTasksQuery`) — **eklemeli** değişiklik, davranış aynı.
+- [x] **`NotificationScheduler.applyOnce(alarms)`** — `_latest = alarms; await _apply();`.
+      **`start()`'a dokunulmadı**: `requestPermissions()` Android'de `mainActivity` istiyor ve
+      arka plan motorunda `null`; ayrıca `start` bir abonelik, bir heartbeat timer'ı ve bir
+      yaşam döngüsü dinleyicisi kuruyor — birazdan ölecek bir sürecin hiçbirine ihtiyacı yok.
+- [x] **`notifications/headless.dart`** ve sırası, her adımı gerekçeli:
+      `AwI18n.boot()` **ilk ve zorunlu** → workspace id `sync_states`'ten (asla `/me`'den:
+      ağ çağrısı, çevrimdışı "hiçbir şey yok"a düşer) → base URL **doğrudan `localKv`'den**
+      (`PersistedChoice` fallback'ini senkron veriyor; bir saniyelik süreçte **fallback
+      cevabın kendisi** olur ve self-host eden biri kendi token'ıyla hosted API'ye giderdi)
+      → oturum `TokenStorage`'dan, **okunamıyorsa çıkış** (kilitli iPhone'da Keychain sessiz —
+      ADR-0038 §8; bunu hata saymak kilitlenme döngüsü olurdu) → `engine.syncNow()`
+      (`start()` değil: kuracağı pull timer'ı hiç ateşlenmeyecek) → `applyOnce` → `db.close()`.
+- [x] **Senkron hatası turu bitirmiyor:** çevrimdışıysa replikadaki satırlarla planlanıyor.
+      Bu tur zaten uygulama çalışmadığı için var; bayat satırlarla planlamak, hiç planlamamaktan
+      iyi.
+- [x] **OPH-318'in damgası ilk tüketicisini buldu:** uygulama ön plandaysa tur **hiç
+      başlamıyor** — i18n bile boot edilmiyor, ki testteki en ucuz kanıt bu.
+- [x] **Kimlik-parite testi bu işin kapısı** (`headless_parity_test.dart`, saf, eklentisiz):
+      karışık bir replika (senkron satır + bekleyen sentetik + iki kindli acil görev + susturulmuş
+      + tamamlanmış) üzerinde **UI ve başsız okuyucular aynı alarm kümesini** veriyor ve
+      **planlanan bildirim id kümeleri birebir aynı**. Id, çevrilmiş metnin hash'i olduğu için
+      bu iki şeyi birden ölçüyor. **Negatif kontroller (üçü de denendi, üçü de kırmızı):**
+      `AwI18n.boot()` çıkarıldı → kırmızı; ön plan kontrolü kaldırıldı → kırmızı;
+      `readAlarms` sentetikleri atladı → kırmızı.
+- [x] **Tetikleyici yeni Flutter paketi istemedi:** `AlarmRefreshWorker.kt` (androidx.work)
+      mevcut arka plan dispatcher'ını yeni bir `uri.host` ile çağırıyor
+      (`alliswell://refresh-alarms`; `awIsBackgroundAction` **ve** host kontrolü birlikte
+      güncellendi). `enqueueUniquePeriodicWork(KEEP, 6 saat)` `MainActivity.onCreate`'ten.
+      **Ölçüldü:** release APK yeniden derlendi ve **izin kümesi değişmedi (20)** — yani
+      `androidx.work` gerçekten zaten APK'daydı, backlog'un iddiası doğrulandı.
+      `workmanager` paketi **alınmadı**.
+- [x] **`ProviderContainer` başsız kurmak REDDEDİLDİ**, gerekçesi `headless.dart`'ın başında:
+      graf UI-şekilli (uzun ömürlü akışlar, pull timer, `WidgetsBinding`'e bağlanan
+      `AppLifecycleListener`, router) ve **`currentWorkspaceProvider` ağ çağırıyor** — 03:00'te
+      çevrimdışı bir konteyner "workspace yok"a çözülür ve tur işini yaptığını sanarak hiçbir
+      şey planlamazdı.
+- **Kabul:** ✅ kimlik paritesi yeşil, üç negatif kontrolü kırmızı; ✅ uygulama canlıyken
+      worker no-op. ⏸️ "uygulama **hiç açılmadan** kurulan bir hatırlatıcı Android'de OS
+      alarmına dönüşüyor" — **cihaz provası sahipte** (§0.0): ne VM testi ne de CI bir
+      WorkManager turunu koşturabilir. App süiti **1686 geçti** (+5).
 
 ### OPH-322 — Uyandırma ipucu: değişiklik anında, sessizce
 

@@ -185,6 +185,20 @@ class AwI18n extends ChangeNotifier {
     _override = null;
   }
 
+  /// Forgets every loaded catalogue, so `.tr()` answers with KEYS — the state
+  /// a process that never called [boot] is in (OPH-321).
+  ///
+  /// It exists for one test: a notification's id is a hash of its rendered
+  /// text, so an unbooted background isolate would schedule the same alarm
+  /// under a different id than the app does, and the user would get it twice.
+  /// Without a way to reach this state, `AwI18n.boot()` in `headless.dart`
+  /// could be deleted and every test would stay green.
+  @visibleForTesting
+  void forgetForTest() {
+    _active = const {};
+    _fallback = const {};
+  }
+
   /// Synchronously switches to an ALREADY-CACHED locale (test-only — the app
   /// uses the async [setLocale]). Lets a widget test flip language mid-test
   /// without `runAsync`.

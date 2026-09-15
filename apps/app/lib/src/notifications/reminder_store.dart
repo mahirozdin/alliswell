@@ -54,6 +54,39 @@ List<({String kind, DateTime at})> taskAlarmInstants(TaskRecord task) {
   return instants;
 }
 
+/// The projection both readers share (OPH-321): reminder rows first, then a
+/// task-derived stand-in for every alarm kind that has no row yet.
+///
+/// Pure, and top-level, because the headless refresh and the live app MUST
+/// produce the same set — two implementations of "which alarms exist" is how a
+/// background turn ends up scheduling something the app would not have, and the
+/// identity-parity test can only be honest if there is one function to test.
+List<AlarmInput> mergeAlarms(
+  List<AlarmInput> fromRows,
+  List<TaskRecord> wanting,
+  Set<String> ownedKinds,
+) => [
+  ...fromRows,
+  for (final task in wanting)
+    for (final instant in taskAlarmInstants(task))
+      if (!ownedKinds.contains('${task.id}|${instant.kind}'))
+        syntheticAlarmFor(task, instant.kind, instant.at),
+];
+
+/// The task-derived stand-in for a reminder row that has not synced yet.
+AlarmInput syntheticAlarmFor(TaskRecord task, String kind, DateTime at) =>
+    AlarmInput(
+      reminderId: syntheticReminderId(kind, task.id),
+      taskId: task.id,
+      taskTitle: task.title,
+      kind: kind,
+      remindAt: at.toUtc(),
+      status: task.snoozedUntil == null ? 'scheduled' : 'snoozed',
+      urgent: task.isUrgent,
+      requiresAcknowledgement: task.requiresAcknowledgement,
+      snoozedUntil: task.snoozedUntil?.toUtc(),
+    );
+
 /// Local-first reminder access (OPH-061/063): live alarms come from the
 /// replica (reminders ⋈ tasks — reminder rows carry no workspace id), and an
 /// acknowledge is an optimistic local write + outbox mutation, exactly like
@@ -79,17 +112,7 @@ class ReminderStore {
   /// THAT kind — an acknowledged alarm must stay acknowledged. Per kind, since
   /// acknowledging the 22:42 nudge says nothing about the 22:45 deadline.
   Stream<List<AlarmInput>> watchAlarms(String workspaceId) {
-    final query =
-        (_db.select(_db.reminders)..where(
-              (r) => r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
-            ))
-            .join([
-              innerJoin(
-                _db.tasks,
-                _db.tasks.id.equalsExp(_db.reminders.taskId),
-              ),
-            ])
-          ..where(_db.tasks.workspaceId.equals(workspaceId));
+    final query = _alarmRowsQuery(workspaceId);
 
     final fromRows = query.watch().map(
       (rows) => [
@@ -100,20 +123,7 @@ class ReminderStore {
 
     // Tasks that want at least one alarm, in a state where one may fire. The
     // per-kind decision is [taskAlarmInstants]'; this only narrows the query.
-    final wanting =
-        (_db.select(_db.tasks)..where(
-              (t) =>
-                  t.workspaceId.equals(workspaceId) &
-                  t.status.isNotIn(const [
-                    'completed',
-                    'cancelled',
-                    'archived',
-                  ]) &
-                  t.alarmsMutedAt.isNull() &
-                  (t.remindAt.isNotNull() |
-                      (t.isUrgent.equals(true) & t.dueAt.isNotNull())),
-            ))
-            .watch();
+    final wanting = _wantingTasksQuery(workspaceId).watch();
 
     // '<taskId>|<kind>' pairs that already own a reminder row in ANY status.
     final covered = _db
@@ -121,33 +131,55 @@ class ReminderStore {
         .watch()
         .map((rows) => {for (final r in rows) '${r.taskId}|${r.kind}'});
 
-    return combineLatest3(
-      fromRows,
-      wanting,
-      covered,
-      (alarms, tasks, ownedKinds) => [
-        ...alarms,
-        for (final task in tasks)
-          for (final instant in taskAlarmInstants(task))
-            if (!ownedKinds.contains('${task.id}|${instant.kind}'))
-              _syntheticAlarm(task, instant.kind, instant.at),
+    return combineLatest3(fromRows, wanting, covered, mergeAlarms);
+  }
+
+  /// The same alarm set as [watchAlarms], read ONCE (OPH-321).
+  ///
+  /// A background turn has no UI, no provider graph and no reason to keep a
+  /// stream open: it wakes, asks what should be scheduled, schedules it and
+  /// dies. Three `.get()`s where the watcher has three streams, and the same
+  /// [mergeAlarms] behind both — because two implementations of "which alarms
+  /// exist" is exactly how a headless refresh ends up scheduling something the
+  /// app would not have (OPH-299's lesson, one layer down).
+  Future<List<AlarmInput>> readAlarms(String workspaceId) async {
+    final rows = await _alarmRowsQuery(workspaceId).get();
+    final tasks = await _wantingTasksQuery(workspaceId).get();
+    final covered = await _db.select(_db.reminders).get();
+    return mergeAlarms(
+      [
+        for (final row in rows)
+          _toAlarm(row.readTable(_db.reminders), row.readTable(_db.tasks)),
       ],
+      tasks,
+      {for (final r in covered) '${r.taskId}|${r.kind}'},
     );
   }
 
-  /// The task-derived stand-in for a reminder row that has not synced yet.
-  AlarmInput _syntheticAlarm(TaskRecord task, String kind, DateTime at) =>
-      AlarmInput(
-        reminderId: syntheticReminderId(kind, task.id),
-        taskId: task.id,
-        taskTitle: task.title,
-        kind: kind,
-        remindAt: at.toUtc(),
-        status: task.snoozedUntil == null ? 'scheduled' : 'snoozed',
-        urgent: task.isUrgent,
-        requiresAcknowledgement: task.requiresAcknowledgement,
-        snoozedUntil: task.snoozedUntil?.toUtc(),
-      );
+  /// Reminder rows that may still fire, joined to their task — reminder rows
+  /// carry no workspace id, so the join is what scopes them.
+  JoinedSelectStatement<HasResultSet, dynamic> _alarmRowsQuery(
+    String workspaceId,
+  ) =>
+      (_db.select(_db.reminders)..where(
+            (r) => r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
+          ))
+          .join([
+            innerJoin(_db.tasks, _db.tasks.id.equalsExp(_db.reminders.taskId)),
+          ])
+        ..where(_db.tasks.workspaceId.equals(workspaceId));
+
+  SimpleSelectStatement<$TasksTable, TaskRecord> _wantingTasksQuery(
+    String workspaceId,
+  ) => _db.select(_db.tasks)
+    ..where(
+      (t) =>
+          t.workspaceId.equals(workspaceId) &
+          t.status.isNotIn(const ['completed', 'cancelled', 'archived']) &
+          t.alarmsMutedAt.isNull() &
+          (t.remindAt.isNotNull() |
+              (t.isUrgent.equals(true) & t.dueAt.isNotNull())),
+    );
 
   AlarmInput _toAlarm(Reminder reminder, TaskRecord task) => AlarmInput(
     reminderId: reminder.id,

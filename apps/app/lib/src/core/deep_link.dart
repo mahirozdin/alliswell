@@ -59,12 +59,30 @@ String? awRouteForUri(Uri uri) {
   }
 }
 
-/// True for URLs this app owns but does not route — today only the widget's
-/// background actions, which are handled by the App Intent queue long before
-/// anything reaches the router. Kept explicit so a future reader sees that the
-/// omission is a decision, not an oversight (ADR-0016).
+/// The periodic alarm refresh (OPH-321): the background dispatcher's third
+/// caller, after the widget's two buttons.
+///
+/// A host on the SAME scheme rather than a second entry point, because the
+/// app already has a background dispatcher registered and a second one would
+/// mean a second plugin, a second Kotlin worker and a second thing to forget
+/// to tree-shake-proof.
+const kAwAlarmRefreshHost = 'refresh-alarms';
+
+/// The URL that asks for one background refresh turn.
+Uri awAlarmRefreshUri() => Uri(scheme: kAwScheme, host: kAwAlarmRefreshHost);
+
+bool awIsAlarmRefresh(Uri uri) =>
+    uri.scheme == kAwScheme && uri.host == kAwAlarmRefreshHost;
+
+/// True for URLs this app owns but does not route — the widget's background
+/// actions, which are handled by the App Intent queue long before anything
+/// reaches the router, and the alarm refresh. Kept explicit so a future reader
+/// sees that the omission is a decision, not an oversight (ADR-0016).
 bool awIsBackgroundAction(Uri uri) =>
-    uri.scheme == kAwScheme && (uri.host == 'complete' || uri.host == 'add');
+    uri.scheme == kAwScheme &&
+    (uri.host == 'complete' ||
+        uri.host == 'add' ||
+        uri.host == kAwAlarmRefreshHost);
 
 /// The iOS share extension's callback scheme: `ShareMedia-<host bundle id>`
 /// (OPH-298, amends ADR-0029).

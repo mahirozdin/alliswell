@@ -6,10 +6,12 @@ import 'package:intl/date_symbol_data_local.dart';
 
 import 'src/app.dart';
 import 'src/core/firebase/firebase_bootstrap.dart';
+import 'src/core/deep_link.dart';
 import 'src/core/retry.dart';
 import 'src/features/widgets/widget_callback.dart';
 import 'src/features/widgets/widget_host.dart';
 import 'src/i18n/i18n.dart';
+import 'src/notifications/headless.dart';
 
 /// The home-screen widget's background entry point (OPH-188).
 ///
@@ -18,6 +20,13 @@ import 'src/i18n/i18n.dart';
 /// buttons would silently do nothing in release builds only.
 @pragma('vm:entry-point')
 Future<void> widgetCallback(Uri? uri) async {
+  // OPH-321 — the same dispatcher, a third caller. The periodic refresh is not
+  // a widget action: it syncs and re-arms the OS alarms, and it redraws
+  // nothing, so it returns before the widget update below.
+  if (uri != null && awIsAlarmRefresh(uri)) {
+    await runHeadlessRefresh();
+    return;
+  }
   final changed = await handleWidgetAction(uri);
   if (!changed) return;
   // Redraw with the new state. The app is not running, so nothing else will.
