@@ -70,6 +70,7 @@ class AlarmSupport {
     this.timeSensitiveEnabled,
     this.alarmKitAuthorized,
     this.pendingCount,
+    this.webPushReady,
   });
 
   final bool notificationsEnabled;
@@ -117,6 +118,16 @@ class AlarmSupport {
   /// soonest; a number near that ceiling is a warning in its own right.
   final int? pendingCount;
 
+  /// Web only (OPH-313): is this browser actually reachable — permission AND a
+  /// live subscription AND an instance with keys to send with.
+  ///
+  /// Separate from [notificationsEnabled] because on the web the two come
+  /// apart: permission can be granted while the server has no VAPID keys, or
+  /// while the subscription has been revoked, and in both cases nothing arrives
+  /// once the tab is closed. Null off the web, where the OS is the clock and
+  /// the question does not arise.
+  final bool? webPushReady;
+
   /// The worst thing wrong with delivery right now, or null when nothing is.
   ///
   /// One ordered cascade, in ONE place: the Home banner and the Settings row
@@ -125,6 +136,10 @@ class AlarmSupport {
   /// Ordered by how completely each one silences an alarm.
   AlarmProblem? get worstProblem {
     if (!notificationsEnabled) return AlarmProblem.notificationsOff;
+    // Second, because on the web it silences an alarm as completely as a
+    // refused permission does — and unlike a refused permission it leaves the
+    // browser looking healthy.
+    if (webPushReady == false) return AlarmProblem.webPushOff;
     if (provisionalOnly) return AlarmProblem.provisional;
     if (soundEnabled == false) return AlarmProblem.soundOff;
     if (alertEnabled == false) return AlarmProblem.alertOff;
@@ -143,6 +158,10 @@ class AlarmSupport {
 enum AlarmProblem {
   /// Nothing gets through at all.
   notificationsOff,
+
+  /// Web: permission is granted and nothing can still reach this browser —
+  /// no subscription, or an instance with no keys to send with (OPH-313).
+  webPushOff,
 
   /// iOS granted us the quiet kind of permission: no banner, no sound.
   provisional,

@@ -27,6 +27,9 @@ class _RecordingApi implements DeviceApi {
   }
 
   @override
+  Future<String?> pushPublicKey() async => 'server-vapid-key';
+
+  @override
   Future<void> unregister(String deviceId) async {
     if (failUnregister) throw StateError('offline');
     unregistered.add(deviceId);

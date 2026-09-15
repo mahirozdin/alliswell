@@ -46,13 +46,18 @@ class _AlarmFixSheet extends ConsumerWidget {
 
   final AlarmProblem problem;
 
-  /// Android's special-access screens are reached through the plugin's own
-  /// request; everything else is an iOS/macOS switch on the app's page.
-  bool get _isAndroidSpecialAccess => problem == AlarmProblem.exactAlarmsOff;
+  /// Two problems are fixed by ASKING again rather than by opening a page:
+  /// Android's special-access screens, which the plugin's own request
+  /// deep-links, and the web, where the fix is the browser's permission prompt
+  /// and the subscription that follows it (OPH-313). Everything else is an
+  /// iOS/macOS switch on the app's own Settings page.
+  bool get _fixedByAsking =>
+      problem == AlarmProblem.exactAlarmsOff ||
+      problem == AlarmProblem.webPushOff;
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     final navigator = Navigator.of(context);
-    if (_isAndroidSpecialAccess) {
+    if (_fixedByAsking) {
       await ref.read(notificationsGatewayProvider).requestPermissions();
     } else {
       // Best effort by design: a platform with no such URL simply leaves the

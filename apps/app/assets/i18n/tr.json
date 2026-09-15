@@ -648,6 +648,7 @@
     "snoozePast": "O saat geçmiş — ileri bir saat seçin.",
     "problem": {
       "notificationsOff": "Bildirimler kapalı — hiçbir şey size ulaşamaz. Düzeltmek için dokunun.",
+      "webPushOff": "Bildirimlere izin verildi ama bu tarayıcıya hiçbir şey ulaşamıyor — kurulumu tamamlamak için dokun.",
       "provisional": "Bildirimler sessiz geliyor — ne banner ne ses. Düzeltmek için dokunun.",
       "soundOff": "AllisWell için ses kapalı — alarmlar sessiz geliyor. Düzeltmek için dokunun.",
       "alertOff": "Banner'lar kapalı — alarmlar yalnızca Bildirim Merkezi'nde görünüyor. Düzeltmek için dokunun.",
@@ -658,6 +659,7 @@
     "fix": {
       "open": "Ayarları aç",
       "notificationsOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Bildirimlere İzin Ver”i açın.",
+      "webPushOff": "Bir tarayıcı hatırlatıcıyı kendi başına zamanlayamaz, o yüzden onu sunucunun göndermesi gerekir. Buradan bildirimlere izin ver ve bağlı olduğun sunucuda push’un yapılandırıldığından emin ol. iPhone’da bu yalnızca Ana Ekran’a eklenmiş AllisWell için çalışır.",
       "provisional": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın, “Öne Çıkararak Teslim Et”i seçin ve Sesler'i açın.",
       "soundOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Sesler”i açın. Kapalıyken alarm yine gelir — sessizce.",
       "alertOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın; “Kilit Ekranı” ve “Banner'lar”ı açın.",

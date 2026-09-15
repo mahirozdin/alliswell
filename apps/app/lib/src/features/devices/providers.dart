@@ -15,6 +15,29 @@ final deviceApiProvider = Provider<DeviceApi>(
   (ref) => HttpDeviceApi(ref.watch(apiClientProvider)),
 );
 
+/// The instance's VAPID public key, or null when this server does not do push.
+/// Read once per session: a server does not grow keys while a tab is open.
+final pushPublicKeyProvider = FutureProvider<String?>(
+  (ref) => ref.watch(deviceApiProvider).pushPublicKey(),
+);
+
+/// How a sender can reach this install, once something has subscribed.
+///
+/// Written by the notification gateway (OPH-313) rather than read from it:
+/// the descriptor is what the registry sends, and having it reach INTO the
+/// notification layer would point the dependency the wrong way round.
+class DevicePushCredentialsHolder extends Notifier<DevicePushCredentials?> {
+  @override
+  DevicePushCredentials? build() => null;
+
+  void set(DevicePushCredentials? credentials) => state = credentials;
+}
+
+final devicePushCredentialsProvider =
+    NotifierProvider<DevicePushCredentialsHolder, DevicePushCredentials?>(
+      DevicePushCredentialsHolder.new,
+    );
+
 /// What this install is, or `null` on a platform the route has no word for.
 final deviceDescriptorProvider = Provider<DeviceDescriptor?>((ref) {
   final platform = awDevicePlatform(
@@ -28,6 +51,7 @@ final deviceDescriptorProvider = Provider<DeviceDescriptor?>((ref) {
     // The device's language, not the account's — read live so a language change
     // reaches the row on the next heartbeat.
     locale: AwI18n.instance.locale.toLanguageTag(),
+    push: ref.watch(devicePushCredentialsProvider),
   );
 });
 

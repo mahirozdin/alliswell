@@ -649,6 +649,7 @@
     "snoozePast": "That time has already passed — pick a later one.",
     "problem": {
       "notificationsOff": "Notifications are off — nothing can reach you. Tap to fix.",
+      "webPushOff": "Notifications are allowed but nothing can reach this browser — tap to finish setting it up.",
       "provisional": "Notifications arrive silently — no banner, no sound. Tap to fix.",
       "soundOff": "Sound is off for AllisWell — alarms arrive without a sound. Tap to fix.",
       "alertOff": "Banners are off — alarms only appear in Notification Centre. Tap to fix.",
@@ -659,6 +660,7 @@
     "fix": {
       "open": "Open settings",
       "notificationsOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Allow Notifications”.",
+      "webPushOff": "A browser cannot schedule a reminder on its own, so the server has to send it. Allow notifications here, and make sure the server you are signed in to has push configured. On an iPhone, this works only for AllisWell added to the Home Screen.",
       "provisional": "Open Settings ▸ Notifications ▸ AllisWell and choose “Deliver Prominently”, then turn on Sounds.",
       "soundOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Sounds”. Without it an alarm still arrives — in silence.",
       "alertOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Lock Screen” and “Banners”.",

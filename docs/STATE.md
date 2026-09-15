@@ -3,7 +3,30 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-15f (**OPH-312 BİTTİ — taşıyıcı: FCM v1 ve Web Push.**
+**Last updated:** 2026-09-15g (**OPH-313 BİTTİ — web'in kendi bildirim ağ geçidi.**
+Epic ilk kez Flutter tarafına ve kullanıcının asıl istediği şeye geçti.
+`providers.dart:28`'in platform körlüğü bitti: web'de artık `MissingPluginException`
+yutulup `degraded` satırı yazılmıyor, çünkü fırlatan bir çağrı kalmadı.
+**Turun cümlesi: izin verilmiş olmak ulaşılabilir olmak değil.** Tarayıcı izni
+tutarken sunucuda VAPID anahtarı olmayabilir ya da abonelik iptal edilmiş olabilir
+— ikisinde de sekme kapandığı anda hiçbir şey ulaşmıyor, ve *izin verildiği için
+susan bir banner* NOTIFICATIONS §3'ün yasakladığı sessiz arıza olurdu. O yüzden
+yeni `AlarmSupport.webPushReady` ve yeni `AlarmProblem.webPushOff`, kaskadda hemen
+`notificationsOff`'un ardında. **Ağ geçidi zamanlamıyor ve bunu söylüyor:** hiçbir
+tarayıcı yerel bildirim zamanlayamaz (Notification Triggers bırakıldı), web'de saat
+sunucu; `pendingIds` yalnız zamanlayıcının küme aritmetiği yakınsasın diye bellekte
+tutuluyor ve bilerek kalıcı değil. Tarayıcı dikişi ayrıldı, böylece mantık VM'de
+sahte host'la test ediliyor — `sound_store.dart`'ın kendi kalıbı. **Plandan sapma:**
+ADR-0039 bu işte yazıldı, OPH-314'te değil — elle yazılmış JS burada depoya giriyor,
+çünkü tarayıcı kayıtlı bir service worker olmadan abonelik vermiyor. Ve
+`web/aw_push_sw.js` bilerek **`push` işleyicisiz** geldi: gösterilecek metin cihazın
+kendi verisinden gelmek zorunda (yük kimlik taşıyor, başlık değil) ve o önbellek
+OPH-314'ün yarısı; hiçbir şey OPH-315'e kadar göndermiyor, yani sıra güvenli.
+**Doğrulama:** app süiti **1647 geçti** (+11), `flutter analyze` yalnız önceden var
+olan uyarı, sekiz kapı yeşil, i18n en+tr. Sıradaki iş: **OPH-314** (service worker'ın
+içi: içerik önbelleği, `silent` bayrağı, görünür-sekme bastırma).)
+
+Önceki blok: 2026-09-15f (**OPH-312 BİTTİ — taşıyıcı: FCM v1 ve Web Push.**
 Epic'te ilk kez gerçekten giden istek var, ama hâlâ onu çağıran yok.
 **Turun cümlesi: ayrım başarı/başarısızlık değil, "gitti" ile "sonra dene"
 arasında.** Kullanıcının iptal ettiği bir abonelik 404/410'u sonsuza kadar verir —

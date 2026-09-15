@@ -10385,21 +10385,69 @@ _Bugün `providers.dart:27-29` platform-kör: web'de bile `LocalNotificationsGat
 ve her çağrısı `MissingPluginException` ile yutulup `degraded` satırı yazıyor. Depoda koşullu
 import kalıbının **altı** örneği var; aynı alt sistemin kendi örneği `sound_store.dart:1-3`._
 
-- [ ] **`gateway_web.dart`** koşullu import'la gelir; `notificationsGatewayProvider` platforma
-      göre seçer. Web ağ geçidi: `Notification.requestPermission` → service worker kaydı →
-      `PushManager.subscribe({userVisibleOnly:true, applicationServerKey})` → cihaz PUT'u.
-- [ ] **İzin istemi kullanıcı hareketinden doğar** — Safari bunu şart koşuyor ve sayfa
-      açılışında izin istemek her yerde kötü bir kalıp. Ayar ekranında açık bir düğme.
-- [ ] **`package:web` ile interop** — depoda zaten kullanılıyor (`local_kv_web.dart:1`,
-      `html_lang_web.dart:1`); `dart:html` **yok**, `package:js` **yok**.
-- [ ] **Dürüstlük:** izin reddedildiyse, abonelik öldüyse ya da `/push/public-key` 404 verdiyse
-      `AlarmDegradationBanner` bunu **söyler** (`NOTIFICATIONS.md:487-491` —
-      *"a silent alarm that looks like it is ringing is the one outcome this section forbids"*).
-- [ ] **iOS Safari gerçeği yazılır:** web push yalnız **Ana Ekran'a eklenmiş** web uygulamasında
-      çalışıyor; `web/manifest.json` zaten `display: standalone`. Safari sekmesinde ayar
-      "bu tarayıcıda kullanılamıyor" der — sessizce kapalı durmaz.
-- **Kabul:** izin verilmiş/reddedilmiş/desteklenmiyor üç yolu da testli; web'de artık
-      `degraded` alarm günlüğü satırı **üretilmiyor** (ağ geçidi gerçek).
+- [x] **`notifications/web/gateway_web.dart`** — web'in gerçek ağ geçidi.
+      `notificationsGatewayProvider` artık `kIsWeb`'e bakıyor; tarayıcıda artık hiçbir çağrı
+      fırlatmıyor, dolayısıyla **`degraded` satırı üretilmiyor** (kabul maddesi).
+- [x] **Zamanlamıyor, ve dürüst olan kısım bu.** Hiçbir tarayıcı yerel bildirim zamanlayamaz;
+      Notification Triggers iki Chrome origin trial'ından sonra bırakıldı. Web'de **saat
+      sunucu** (ADR-0038). `schedule`/`cancel`/`pendingIds` bellekte bir küme tutuyor ve OS'a
+      hiç dokunmuyor — bu numara değil: zamanlayıcının tüm algoritması id'ler üzerinde küme
+      aritmetiği ve `pendingIds` yakınsamazsa sonsuza kadar yeniden planlıyor. Küme bilerek
+      **kalıcı değil**: bu sekmenin oturumunu anlatıyor, açılışta okunan bayat bir küme
+      sahibi olmayan teslimleri üstlenirdi.
+- [x] **Tarayıcı dikişi ayrı** (`web/push_host.dart` + `_stub` + `_web`). Test edilmeye değer
+      olan şey mantık: izin reddedilince, sunucuda anahtar yokken, tarayıcı bunu hiç
+      yapamazken ne olacağı. Böylece hepsi VM'de sahte bir host'la koşuyor; `package:web` yalnız
+      ince uçta. `dart:html` yok, `package:js` yok — `local_kv_web.dart`/`html_lang_web.dart`
+      ile aynı interop.
+- [x] **İzin istemi kullanıcı hareketinden doğuyor** — ayar ekranındaki düğme; Safari bunu şart
+      koşuyor ve sayfa açılışında izin istemek her yerde kötü kalıp.
+- [x] **Dürüstlük: izin verilmiş olmak ulaşılabilir olmak değil.** Yeni
+      `AlarmSupport.webPushReady` ve yeni `AlarmProblem.webPushOff`. Tarayıcı izni tutarken
+      sunucuda VAPID anahtarı olmayabilir ya da abonelik iptal edilmiş olabilir — ikisinde de
+      sekme kapandığı anda hiçbir şey ulaşmıyor. *İzin verildiği için susan bir banner*,
+      NOTIFICATIONS §3'ün yasakladığı sessiz arızanın ta kendisi olurdu. Kaskadda hemen
+      `notificationsOff`'un ardında, çünkü web'de onun kadar tam susturuyor ve ondan farklı
+      olarak tarayıcı sağlıklı görünüyor. Düzeltme sayfası bu sorunu "ayar sayfası aç" değil
+      **"tekrar sor"** olarak ele alıyor (Android'in özel erişimiyle aynı kefede).
+- [x] **iOS Safari gerçeği koda girdi:** yetenek algılama `Notification` + `PushManager` +
+      `serviceWorker` üçlüsünü arıyor; iOS'ta bunlar yalnız **Ana Ekran'a eklenmiş** web
+      uygulamasında var, düz Safari sekmesinde yok. Yani ayar sessizce kapalı durmuyor,
+      "bu tarayıcıda kullanılamıyor" diyor — ve `web/manifest.json` zaten `display: standalone`.
+- [x] **Abonelik cihaz kaydına ulaşıyor, ama bağımlılık yönü korunarak.** Ağ geçidi
+      `devicePushCredentialsProvider`'a **yazıyor**; cihaz tanımlayıcısı onu okuyor.
+      Tanımlayıcının bildirim katmanına **uzanması** yönü ters çevirirdi. Abone olunca kayıt
+      hemen tetikleniyor, ve önceki oturumdan aboneliği olan bir sekme onu ilk heartbeat'te
+      taşıyor.
+- [x] **`GET /api/v1/push/public-key` istemciden okunuyor** (`DeviceApi.pushPublicKey`), 404
+      → `null` → abone olunmuyor. OPH-310'un "tek 404 iki soruya birden cevap" tasarımının
+      istemci ucu.
+- [x] **Plandan sapma: ADR-0039 bu işte yazıldı, OPH-314'te değil.** Gerekçe basit: elle
+      yazılmış JS **burada** depoya giriyor, çünkü bir tarayıcı kayıtlı bir service worker
+      olmadan abonelik vermiyor (`PushManager` yalnız `ServiceWorkerRegistration` üstünde
+      yaşıyor). AGENTS kuralı 3'ün istediği yazılı gerekçe, dosyanın geldiği turda durmalı.
+      `docs/adr/README.md` satırı aynı commit'te.
+- [x] **`web/aw_push_sw.js` bilerek `push` işleyicisiz geldi.** Bildirimin göstereceği metin bu
+      cihazın kendi verisinden gelmek zorunda — yük kimlik taşıyor, asla görev başlığı
+      (ADR-0038) — ve o önbellek OPH-314'ün yarısı. Hiçbir şey OPH-315'e kadar push
+      göndermiyor, yani sıra güvenli: bir şey geldiğinde onu dürüstçe render eden işleyici
+      yerinde olacak. Şimdi bir yer tutucu koymak, Türkçe kullanan birine İngilizce bir dize
+      göstermek ile içi boş bir bildirim arasında seçim yapmak demekti.
+- **Kabul:** izin verilmiş / reddedilmiş / desteklenmiyor / sunucuda anahtar yok / abonelik
+      reddedildi — beşi de testli; ve ağ geçidinin **hiçbir metodu fırlatmıyor** (desteksiz
+      tarayıcıda bile), ki `degraded` satırı tam olarak fırlatmadan doğuyordu
+      (`scheduler.dart:248-274`).
+- **Doğrulama (2026-09-15):** app süiti **1647 geçti** (+11, 28 skip), `flutter analyze` yalnız
+      önceden var olan `sound_store_io.dart:67` uyarısını veriyor, `check:i18n` dahil sekiz kapı
+      yeşil. i18n: `alarm.problem.webPushOff` ve `alarm.fix.webPushOff`, en + tr.
+- **Not (Riverpod 3):** `StateProvider` bu sürümde yok; deponun kalıbı `Notifier` +
+      `NotifierProvider` (`core/pending_deletes.dart`, `router.dart`).
+- **Not (formatter):** OPH-309'da ölçülen 3.47 ↔ 3.44 ayrımı yine görüldü — yalnız **kendi**
+      uzun satırlarım elle kısaltıldı; `alarm_fix_sheet.dart`'ın import bloğunda 3.47'nin
+      istediği boş satır **uygulanmadı**, çünkü o dosya zaten öyleydi ve CI yeşil.
+- **Kapsam DIŞI:** `NOTIFICATIONS.md` §3'ün tadili OPH-315'te (ilk gerçek gönderimle birlikte);
+      service worker'ın `push`/`notificationclick` işleyicileri, içerik önbelleği ve `silent`
+      bayrağı OPH-314'te.
 
 ### OPH-314 — Service worker ve yerel içerik önbelleği (ADR-0039)
 

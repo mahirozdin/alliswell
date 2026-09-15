@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The browser stops pretending it scheduled something.** On the web AllisWell
+  was handed the same notification plumbing as a phone, and that plumbing does
+  not exist in a browser — so every alarm it "scheduled" threw an error the app
+  quietly wrote to a diagnostic log and carried on. The web has its own gateway
+  now. It can ask for permission, from a button rather than on page load, and
+  subscribe this browser so the server can reach it; what it cannot do — schedule
+  anything by itself, because no browser can — it says instead of swallowing.
+  And permission being granted is no longer read as "you are covered": if the
+  server has no keys to send with, or the subscription has been revoked, Home
+  says so and offers the thing that fixes it. On an iPhone this works only for
+  AllisWell added to the Home Screen, which is Apple's rule, and the app tells
+  you that rather than looking broken. OPH-313,
+  [ADR-0039](docs/adr/0039-a-service-worker-is-the-one-thing-dart-cannot-be.md),
+  [#16](https://github.com/mahirozdin/alliswell/issues/16).
+
 - **The part that actually sends.** AllisWell can now talk to Google's and the
   browsers' push services — when an instance has been given credentials, and
   only then. The encryption a browser requires is left to the library that

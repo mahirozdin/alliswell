@@ -6,12 +6,16 @@ import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/persisted_prefs.dart';
+import '../features/devices/data/device_api.dart';
+import '../features/devices/providers.dart';
 import '../features/tasks/providers.dart';
 import '../features/workspaces/workspaces.dart';
 import '../router.dart';
 import '../sync/db/database.dart';
 import '../sync/providers.dart';
 import 'actions.dart';
+import 'web/gateway_web.dart';
+import 'web/push_host.dart';
 import 'alarm_log.dart';
 import 'alarm_sound.dart';
 import 'alarmkit.dart';
@@ -24,9 +28,51 @@ import 'scheduler.dart';
 
 /// The OS adapter. Widget tests override this with a fake — the default
 /// touches platform channels.
-final notificationsGatewayProvider = Provider<NotificationsGateway>(
-  (_) => LocalNotificationsGateway(),
-);
+/// The gateway this platform can actually use.
+///
+/// Until OPH-313 this was `LocalNotificationsGateway()` with no platform guard
+/// at all, including on the web — where `flutter_local_notifications` has no
+/// implementation, so every call threw and the scheduler wrote a `degraded`
+/// row. The browser gets a real gateway now; what it cannot do (schedule
+/// locally) it says rather than swallows.
+final notificationsGatewayProvider = Provider<NotificationsGateway>((ref) {
+  if (!kIsWeb) return LocalNotificationsGateway();
+
+  late final WebNotificationsGateway gateway;
+  gateway = WebNotificationsGateway(
+    host: createWebPushHost(),
+    readVapidKey: () => ref.read(pushPublicKeyProvider.future),
+    onSubscriptionChanged: () => unawaited(_publishSubscription(ref, gateway)),
+  );
+  // A tab that was already subscribed in an earlier session has one now, and
+  // the registry needs to carry it on the first heartbeat rather than the one
+  // after somebody happens to press the button again.
+  unawaited(_publishSubscription(ref, gateway));
+  ref.onDispose(gateway.dispose);
+  return gateway;
+});
+
+/// Hands the browser's subscription to the device registry, then asks it to
+/// send. One direction only: notifications knows about devices, not the
+/// reverse.
+Future<void> _publishSubscription(
+  Ref ref,
+  WebNotificationsGateway gateway,
+) async {
+  final subscription = await gateway.subscription();
+  ref
+      .read(devicePushCredentialsProvider.notifier)
+      .set(
+        subscription == null
+            ? null
+            : DevicePushCredentials.webPush(
+                endpoint: subscription.endpoint,
+                p256dh: subscription.p256dh,
+                auth: subscription.auth,
+              ),
+      );
+  await ref.read(deviceRegistryProvider).sync(signedIn: true);
+}
 
 /// iOS 26+ AlarmKit bridge (OPH-141, the URGENT lane that rings through the
 /// mute switch). Tests override with a fake; the default talks to
