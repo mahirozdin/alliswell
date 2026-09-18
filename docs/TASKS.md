@@ -10893,6 +10893,123 @@ emsal ise `main.dart:19-29`'daki `@pragma('vm:entry-point') widgetCallback`._
 `docs/PRIVACY.md` EN+TR gerçeği söylüyor; kimlik bilgisi olmayan sunucuda ve Firebase config'i
 olmayan derlemede davranış **birebir bugünküyle aynı**; `ee/` değişmemiş.
 
+## Epic 31 — Uzantı yüzeyinin üç eksiği: ek dosya hedefi, arama, replika tabloları (v1.14.0)
+
+_ADR-0002 uzantı sözleşmesini 2026-08-18'de dondurdu ve o günden beri altı kanca eklendi
+(rota, sync entity, MCP tool, izin registry'si, config birleşmesi, preHandler yuvası).
+Sözleşme tuttu — **ama üç yerde uzantı hâlâ çekirdeğin sabit bir listesine çarpıyor**, ve
+üçü de aynı şeklin farklı yüzleri: çekirdek bir kümeyi ENUM ya da sabit tablo olarak
+yazmış, uzantının o kümeye satır ekleyebileceği bir kapı bırakmamış._
+
+_**Turun tek cümlesi: bir uzantı noktası, uzatılabilen kümeyi de kapsamıyorsa yarım bir
+kapıdır.** `app.ee.syncEntities` bir uzantının kendi entity'sini kaydetmesine izin veriyor;
+ama o entity'nin dosyası olamıyor (hedef tipi ENUM), aranamıyor (arama alanları sabit) ve
+cihazda tablosu olamıyor (replika şeması sabit). Üçü de tek tek küçük, birlikte "uzantı
+birinci sınıf mı?" sorusunun cevabı._
+
+_**CE davranışı hiçbir maddede değişmez** ve bu, epic'in kabul koşulu: uzantısız bir
+kurulumda hedef kümesi aynı kalır, arama aynı alanları görür, replika aynı tabloları taşır.
+Üç iş de **boş bir defter** ekliyor; defteri dolduran şey çekirdekte değil._
+
+_**Ayrıntı nerede duruyor:** bu epic'in üç işi biçimi getiriyor, içeriği değil — hangi
+hedef tipi, hangi alan, hangi tablo sorusunun cevabı uzantının kendi kaydındadır ve buraya
+yazılmaz (AGENTS'ın gizlilik hijyeni). Her işin sonunda o kaydın **kimliği** var; kimlik
+public, tasarım değil._
+
+**Turun araştırması (yapıldı, kaynaklarıyla):**
+
+| Soru | Bulgu | Kaynak |
+| --- | --- | --- |
+| Polimorfik hedefi ENUM yerine nasıl tutmalı? | Tablo zaten polimorfik: `target_id`'de **bilerek FK yok** ve doğrulama yükleme başlangıcında yapılıyor (`20260718120000_create_files.js:10-11`). Yani tip kümesini gevşetmek mevcut tasarımın doğal devamı; FK kaldırma gibi bir taviz gerektirmiyor. | Depo ölçümü |
+| Arama uzantıya nasıl açılır? | ADR-0013'ün modeli alan-bazlı: kademe 0/1/2, her biri bir `*_fold` gölge kolonu, ve **tek bir `foldSearchText`**. Uzantıya açmanın yolu ikinci bir katlama fonksiyonu değil, aynı fonksiyonu kullanan bir alan kayıt defteri — iki katlama, iki farklı "eşleşme" tanımı demek. | `apps/app/lib/src/search/search.dart` · ADR-0013 |
+| Replika şeması nasıl büyür? | `schemaVersion` bugün **26** ve yükseltme adımları `database.dart`'ta sıralı. Uzantı tabloları da aynı sırada iner; ayrı bir veritabanı **açılmaz** — ikinci bir drift dosyası, ikinci bir WAL ve ikinci bir `busy_timeout` sorunu demektir (OPH-318'in dersi). | `apps/app/lib/src/sync/db/database.dart:867` · OPH-318 |
+
+**Depoda ölçülenler:**
+
+| Ne | Nerede | Sonucu |
+| --- | --- | --- |
+| Hedef tipi sabit ENUM | `apps/api/migrations/20260718120000_create_files.js:30` (+ `20260720100000` `workspace`'i ekledi) | Uzantı bu ENUM'a satır ekleyemez; overlay çekirdek şemasını ALTER etmez |
+| Arama alanları kodda sabit | `apps/app/lib/src/search/search.dart` — her domain için elle yazılmış SQL | Uzantı entity'si aramada görünmez |
+| Replika şeması **26** | `database.dart:867` | Yeni uzantı tabloları iki atlama ister (v27 gölge kolonlar, v28 tablolar) |
+| `target_id`'de FK yok — **bilerek** | `20260718120000_create_files.js:10-11` | Gevşetme mevcut tasarımla uyumlu, yeni bir taviz değil |
+| Uzantı çekirdekten doğrudan import ediyor | `ee` ağacındaki modüller `apps/api/src/lib/...` yollarını kullanıyor | Her yardımcı için seam gerekmiyor; **yalnız şema ve sabit listeler** seam ister |
+
+**Sıra bağlayıcı:** 325 → 326 → 327 → 328.
+
+### OPH-325 — Ek dosya hedefleri genişletilebilir olur (ADR-0040)
+
+- [ ] **ADR-0040:** hedef kümesi sabit bir ENUM olmaktan çıkar, uzantının kayıt
+      yaptırabildiği bir deftere dönüşür (`app.ee.attachmentTargets`, ADR-0002 §3'ün
+      kalıbı). Karar belgesi, çünkü **şema ve doğrulama sınırı** değişiyor.
+- [ ] Sunucu: yükleme başlangıcı hedef tipini defterden doğrular; defterde olmayan tip
+      **reddedilir** (bugünkü ENUM'un yaptığı işi defter yapar — gevşetme değil, taşıma).
+      Kayıtlı tipin sahipliğini doğrulayan kanca uzantıdan gelir; çekirdek "bu id bu
+      kullanıcının mı" sorusunu uzantı adına cevaplayamaz.
+- [ ] İstemci: yükleme yolu hedef tipini parametre olarak alır; bugün sabit yazılmış
+      üç-dört yer defterden okur.
+- [ ] Silme zinciri ve çöp toplama **değişmez** — uzantı hedefi de aynı süpürgeye tabi.
+      Yeni bir yaşam döngüsü yazmak, ikinci bir sızıntı sınıfı demektir.
+- **Kabul:** uzantısız (CE) kurulumda hedef kümesi birebir aynı, davranış birebir aynı;
+      sahte bir overlay bir hedef tipi kaydedip dosya ekleyebiliyor; kayıtsız tipe yükleme
+      reddediliyor; çöp toplama kayıtlı tipi de süpürüyor.
+- **Doğrulama:** `test/unit/ee-seam.test.js`'e iki test (CE'de defter boş; sahte overlay'de
+      dolu) + mevcut dosya süitleri yeşil + `check:no-ee` yeşil.
+- ⚠️ **Çift kapanış:** bu iş bir overlay kaydının yarısıdır (`EE-168`). Kutuları işaretlerken
+  overlay tarafındaki kayıt da kapatılır; **biri işaretli diğeri değilse iş yarımdır** ve
+  overlay'deki `check:twin-tasks` kapısı bunu kırmızı yakar.
+
+### OPH-326 — Arama uzantı entity'lerini de görür (replika v27)
+
+- [ ] `SearchService` bir **alan kayıt defteri** alır: (tablo, kademe, kolon) üçlüleri.
+      Bugünkü domainler defterin ilk satırları olur — yani çekirdeğin kendi araması da
+      aynı yoldan geçer, ikinci bir kod yolu doğmaz.
+- [ ] Replika **v27**: uzantı tablolarına `*_fold` gölge kolonları. Tek `foldSearchText`
+      korunur; **ikinci bir katlama fonksiyonu yazılmaz** (ADR-0013'ün tekliği).
+- [ ] Yazıcı sözleşmesi belgelenir ve test edilir: bir alanı yazan her yol gölgesini de
+      yazar. Unutulan bir yazıcı, aramada **sessiz bir delik** açar — ve sessiz delik,
+      arama sonucu boş dönerken "yok" gibi okunur.
+- **Kabul:** kayıtlı bir uzantı alanı aramada çıkıyor; kayıtsız çıkmıyor; CE'de sonuçlar
+      birebir aynı; yazıcı sözleşmesi testle korunuyor.
+- **Doğrulama:** mevcut arama süiti + defter testi + v27 göç testi (v26'dan yükselen bir
+      veritabanı veri kaybetmiyor).
+- ⚠️ **Çift kapanış:** overlay kaydı `EE-169`.
+
+### OPH-327 — Replika v28: dört yeni uzantı entity tablosu
+
+- [ ] Drift tabloları, applier bağları ve **tek bir göç adımı** (v27 → v28). Tablolar
+      `database.dart`'ta yaşar; **ayrı bir drift veritabanı açılmaz** — ikinci bir dosya,
+      ikinci bir WAL ve ikinci bir `busy_timeout` ayarı demektir (OPH-318).
+- [ ] Dördünün şekli **uzantının kaydında** tanımlı ve buraya yazılmaz; bu iş biçimi ve
+      göçü getirir. İlgili kayıtlar: `EE-186`, `EE-188`, `EE-191`, `EE-195`.
+- [ ] Her tablo OPH-326'nın gölge kolonlarını da alır (arama dışı kalan bir entity,
+      kullanıcı için var olmayan bir entity'dir).
+- [ ] Göç **geri alınabilir**: `down()` yolu test edilir. Dört tablo birden ekleyen bir
+      adımın geri alınamaması, sürüm düşürmeyi imkânsız yapar.
+- **Kabul:** v27'den yükselen bir replika veri kaybetmiyor; dört tablo yazılıp okunuyor;
+      `down()` çalışıyor; CE'de tablolar **boş ve zararsız** duruyor.
+- **Doğrulama:** göç testi (v26 → v28 zinciri) + applier testleri + boyut ölçümü (her
+      tablonun satır başına maliyeti, uzantı tarafının bütçe kaydına girer).
+- ⚠️ **Çift kapanış:** overlay kayıtları `EE-186`, `EE-188`, `EE-191`, `EE-195` — **dördü
+  birden** kapanmadan bu iş bitmiş sayılmaz.
+
+### OPH-328 — Belgeler: seam yüzeyi güncellenir
+
+- [ ] `ARCHITECTURE.md` ve `API.md`: iki yeni kanca (hedef defteri, arama alan defteri)
+      ve replika şema sürümü. ADR-0002'ye revizyon satırı — **seam değişikliği = ADR
+      revizyonu**, sözleşmenin kendi kuralı.
+- [ ] `ATTACHMENTS.md`'ye hedef defteri bölümü: bugün belge "üç hedef" diyor ve bu artık
+      doğru değil. *Bir belgenin bayatladığını söyleyen hiçbir kapı yoksa, bayatlar.*
+- **Kabul:** üç belge de yeni yüzeyi anlatıyor; ADR-0002 revizyon satırını taşıyor.
+- **Doğrulama:** `npm run check:docs` + belgelerdeki kanca listesinin kodla karşılaştırılması.
+- ⚠️ **Çift kapanış:** overlay kaydı `EE-165`.
+
+**Epic 31 acceptance:** uzantı yüzeyi üç yerde birden birinci sınıf olur — kaydettiği
+entity'nin dosyası olabilir, aranabilir ve cihazda yaşayabilir. **CE davranışı hiçbir
+maddede değişmez** ve bu, epic'in tek sert kabul koşuludur: üç iş de boş bir defter
+ekliyor, defteri dolduran şey çekirdekte değil.
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

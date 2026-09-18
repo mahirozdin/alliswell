@@ -526,6 +526,38 @@ both reports are that assumption failing: **the device is running.**
   a second writer against it. Short writes have been hiding it; a sync pull's
   single long transaction would not.
 
+## Toward v1.14.0
+
+### Phase 18 — The extension surface becomes first-class (Epic 31) ⏳ (planned 2026-09-19)
+
+ADR-0002 froze the extension contract in August and it has held: six hooks, and an
+overlay that registers routes, sync entities, MCP tools and permissions without the
+core knowing what any of them are for. **But an extension's own entity still cannot
+have a file, cannot be searched, and cannot live on the device** — three places where
+the core writes a fixed list and leaves no door into it.
+
+**The sentence of the round: an extension point that does not cover the set it
+extends is half a door.** `app.ee.syncEntities` lets an extension register an entity;
+`files.target_type` is an ENUM that entity can never join, `SearchService` hard-codes
+its fields per domain, and the replica schema is a fixed list of tables. Each is small
+on its own; together they answer whether an extension is a first-class citizen.
+
+- **Attachment targets become a registry (OPH-325, ADR-0040).** The table was already
+  polymorphic on purpose — `target_id` carries no FK and validation happens at
+  upload-init — so loosening the type set is the design's own next step, not a
+  concession. The ownership check comes from the extension: the core cannot answer
+  "is this id this user's" on someone else's behalf.
+- **Search grows a field registry, and the core's own domains become its first rows
+  (OPH-326).** One `foldSearchText` stays one — a second folding function would mean
+  two different definitions of "match". The writer contract gets a test, because a
+  forgotten shadow write is a silent hole, and a silent hole reads as "no results".
+- **The replica takes four more tables in one reversible step (OPH-327).** In
+  `database.dart`, not a second drift file: a second file means a second WAL and a
+  second `busy_timeout` — OPH-318's lesson, one round old.
+
+**CE behaviour does not change in any item**, and that is the epic's only hard
+acceptance: all three land an *empty* registry. What fills it is not in the core.
+
 ## v2 parking lot 💤
 
 Deliberately out of scope for v1 — schema-ready or designed, not built:
