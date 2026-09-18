@@ -30,7 +30,14 @@ hiçbir kapı yoksa, bayatlar — ve bayatlığı yeşil bir satırla aynı okun
 **bu depodaki `docs/adr/0002-*` AGPL lisans ADR'sidir** ve ADR-0024 onu zaten geçersiz
 kılmış. Kastedilen sözleşme belgesi uzantı deposunun ADR-0002'si (modül sözleşmesi +
 seam, altı kancalık revizyon geçmişiyle); revizyon oraya yazıldı, buraya nötr anlatım.
-Doğrulama: `npm run check:docs` yeşil. Kod dokunulmadı.)
+Doğrulama: `npm run check:docs` yeşil. Kod dokunulmadı.
+
+**Aynı gün, ikinci dokunuş — `TASKS.md`'de dört satır işaret düzeltmesi.** Epic 31'in dört
+işi ikiz kaydını düz prozla yazıyordu (*"overlay kaydı `EE-169`"*); overlay tarafındaki yeni
+kapı ikizleri **iki yönde** ölçüyor ve tek bir yazım üzerinden konuşmak zorunda, bu yüzden
+dördü de kanonik `↔ \`EE-NNN\`` biçimine taşındı. İçerik aynı, sözcükler aynı — değişen tek
+şey, bir makinenin de okuyabilmesi. Buradaki kural değişmedi: `repo:core` ikizi olan bir iş
+iki depoda birden kapanır, yoksa **yarımdır**.)
 
 Önceki blok: 2026-09-19a (**OPH-324 — acil alarmlar Android'de işletim
 sistemine HİÇ ulaşmıyormuş; gerçek cihazda bulundu ve düzeltildi.**

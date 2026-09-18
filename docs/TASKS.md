@@ -10954,7 +10954,7 @@ public, tasarım değil._
       reddediliyor; çöp toplama kayıtlı tipi de süpürüyor.
 - **Doğrulama:** `test/unit/ee-seam.test.js`'e iki test (CE'de defter boş; sahte overlay'de
       dolu) + mevcut dosya süitleri yeşil + `check:no-ee` yeşil.
-- ⚠️ **Çift kapanış:** bu iş bir overlay kaydının yarısıdır (`EE-168`). Kutuları işaretlerken
+- ⚠️ **Çift kapanış:** ↔ `EE-168` — bu iş bir overlay kaydının yarısıdır. Kutuları işaretlerken
   overlay tarafındaki kayıt da kapatılır; **biri işaretli diğeri değilse iş yarımdır** ve
   overlay'deki `check:twin-tasks` kapısı bunu kırmızı yakar.
 
@@ -10972,7 +10972,7 @@ public, tasarım değil._
       birebir aynı; yazıcı sözleşmesi testle korunuyor.
 - **Doğrulama:** mevcut arama süiti + defter testi + v27 göç testi (v26'dan yükselen bir
       veritabanı veri kaybetmiyor).
-- ⚠️ **Çift kapanış:** overlay kaydı `EE-169`.
+- ⚠️ **Çift kapanış:** ↔ `EE-169` (overlay kaydı).
 
 ### OPH-327 — Replika v28: dört yeni uzantı entity tablosu
 
@@ -10989,7 +10989,7 @@ public, tasarım değil._
       `down()` çalışıyor; CE'de tablolar **boş ve zararsız** duruyor.
 - **Doğrulama:** göç testi (v26 → v28 zinciri) + applier testleri + boyut ölçümü (her
       tablonun satır başına maliyeti, uzantı tarafının bütçe kaydına girer).
-- ⚠️ **Çift kapanış:** overlay kayıtları `EE-186`, `EE-188`, `EE-191`, `EE-195` — **dördü
+- ⚠️ **Çift kapanış:** ↔ `EE-186`, `EE-188`, `EE-191`, `EE-195` — **dördü
   birden** kapanmadan bu iş bitmiş sayılmaz.
 
 ### OPH-328 — Belgeler: seam yüzeyi güncellenir ✅ 2026-09-19
@@ -11008,7 +11008,7 @@ public, tasarım değil._
       de ✅ 2026-07-20) ve §3 şeması `workspace` hedefini hiç saymıyordu. Üçü de düzeltildi.
 - **Kabul:** üç belge de yeni yüzeyi anlatıyor; ADR-0002 revizyon satırını taşıyor.
 - **Doğrulama:** `npm run check:docs` + belgelerdeki kanca listesinin kodla karşılaştırılması.
-- ⚠️ **Çift kapanış:** overlay kaydı `EE-165`.
+- ⚠️ **Çift kapanış:** ↔ `EE-165` (overlay kaydı).
 
 **Epic 31 acceptance:** uzantı yüzeyi üç yerde birden birinci sınıf olur — kaydettiği
 entity'nin dosyası olabilir, aranabilir ve cihazda yaşayabilir. **CE davranışı hiçbir
