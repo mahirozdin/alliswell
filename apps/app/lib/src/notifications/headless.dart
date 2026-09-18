@@ -10,7 +10,7 @@ import '../features/auth/data/token_storage.dart';
 import '../features/auth/data/secure_secret_store.dart';
 import '../features/auth/data/auth_interceptor.dart';
 import '../i18n/i18n.dart';
-import '../sync/db/connection_native.dart';
+import '../sync/db/connection.dart';
 import '../sync/db/database.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_engine.dart';

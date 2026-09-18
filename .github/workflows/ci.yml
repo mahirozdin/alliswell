@@ -266,6 +266,17 @@ jobs:
       - name: Tests
         run: flutter test
 
+      # A web build, because `flutter analyze` cannot see this one. An import of
+      # a native-only library is perfectly valid Dart — it only becomes an error
+      # when dart2js reaches `dart:ffi` and finds nothing there. v1.13.0 failed
+      # its release exactly this way: a background entry point imported
+      # `connection_native.dart` instead of the conditional barrel beside it,
+      # analyze was green, every test passed, and the first thing that noticed
+      # was the publish job, after the tag had been cut. The compile is the only
+      # witness, so the compile runs here.
+      - name: Web build (the only thing that resolves conditional imports)
+        run: flutter build web --release
+
   # OPH-244 / ADR-0027: the release APK must declare exactly the permissions we
   # intend. Plugins contribute <uses-permission> at BUILD time and
   # tools:node="remove" is silent when it matches nothing, so no Dart test can
