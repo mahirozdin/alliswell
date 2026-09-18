@@ -10992,13 +10992,20 @@ public, tasarım değil._
 - ⚠️ **Çift kapanış:** overlay kayıtları `EE-186`, `EE-188`, `EE-191`, `EE-195` — **dördü
   birden** kapanmadan bu iş bitmiş sayılmaz.
 
-### OPH-328 — Belgeler: seam yüzeyi güncellenir
+### OPH-328 — Belgeler: seam yüzeyi güncellenir ✅ 2026-09-19
 
-- [ ] `ARCHITECTURE.md` ve `API.md`: iki yeni kanca (hedef defteri, arama alan defteri)
+- [x] `ARCHITECTURE.md` ve `API.md`: iki yeni kanca (hedef defteri, arama alan defteri)
       ve replika şema sürümü. ADR-0002'ye revizyon satırı — **seam değişikliği = ADR
       revizyonu**, sözleşmenin kendi kuralı.
-- [ ] `ATTACHMENTS.md`'ye hedef defteri bölümü: bugün belge "üç hedef" diyor ve bu artık
-      doğru değil. *Bir belgenin bayatladığını söyleyen hiçbir kapı yoksa, bayatlar.*
+      **Ölçüm düzeltmesi:** bu depodaki `docs/adr/0002-*` **AGPL lisans ADR'sidir** ve
+      ADR-0024 onu zaten geçersiz kılmış. Görevin kastettiği sözleşme belgesi uzantı
+      deposunun ADR-0002'sidir (modül sözleşmesi + seam); revizyon satırı oraya yazıldı,
+      bu depodaki nötr anlatım `ARCHITECTURE.md` §3b'ye.
+- [x] `ATTACHMENTS.md`'ye hedef defteri bölümü (§3.1): bugün belge "üç hedef" diyor ve bu
+      artık doğru değil. *Bir belgenin bayatladığını söyleyen hiçbir kapı yoksa, bayatlar.*
+      **Ve gerçekten bayatlamış:** belge yalnız gelecekteki defteri değil, **iki ay önce
+      inen** işi de kaçırmış — §0a satırı OPH-169/170 için hâlâ "🔜 planned" diyordu (ikisi
+      de ✅ 2026-07-20) ve §3 şeması `workspace` hedefini hiç saymıyordu. Üçü de düzeltildi.
 - **Kabul:** üç belge de yeni yüzeyi anlatıyor; ADR-0002 revizyon satırını taşıyor.
 - **Doğrulama:** `npm run check:docs` + belgelerdeki kanca listesinin kodla karşılaştırılması.
 - ⚠️ **Çift kapanış:** overlay kaydı `EE-165`.

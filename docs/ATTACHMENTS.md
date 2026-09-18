@@ -22,8 +22,9 @@
 | App: project Files tab (manager + usage footer) | ✅ done + tested (OPH-155/157) |
 | App: inline note images/videos + markdown parity | ✅ done + tested (OPH-156) |
 | Manual QA matrix — devices, web CORS reality, 100 MB files | ⏳ rides the Epic 12/13 device tour (OPH-157) |
-| **Round 8:** folders + `workspace` target (API) | 🔜 planned (OPH-169, §14, ADR-0014) |
-| **Round 8:** global "Dosyalar" section (app) | 🔜 planned (OPH-170, §14) |
+| **Round 8:** folders + `workspace` target (API) | ✅ done + tested (OPH-169, §14, ADR-0014) |
+| **Round 8:** global "Dosyalar" section (app) | ✅ done + tested (OPH-170, §14) |
+| **Epic 31:** `target_type` becomes a registry an extension can extend | 🔜 planned (OPH-325, §3.1) |
 
 Everything below was written before implementation and then trued against it;
 deviations are called out inline and in TASKS.md acceptance notes.
@@ -131,13 +132,15 @@ Presigned URLs are never stored, logged, or synced — they are minted on demand
 
 One table, **`files`** (migration `create_files`). Attachment = a file row whose
 `target_*` names its owner. Polymorphic on purpose: one shape serves tasks,
-notes and projects, and the project "Files" tab is a query, not a join table.
+notes, projects and the workspace itself, and the project "Files" tab is a query,
+not a join table. The target set has grown once already (`workspace`, OPH-169)
+and §3.1 is how it grows from here.
 
 | column        | type                                  | notes                                   |
 | ------------- | ------------------------------------- | --------------------------------------- |
 | `id`          | char(26) PK                           | ULID (`src/lib/ids.js`)                 |
 | `workspace_id`| char(26) FK→workspaces CASCADE        |                                         |
-| `target_type` | enum('project','task','note')         |                                         |
+| `target_type` | enum('project','task','note','workspace') | widened by OPH-169; §3.1 replaces the ENUM |
 | `target_id`   | char(26), indexed                     | no FK (polymorphic); validated at init  |
 | `uploaded_by` | char(26) nullable                     | user id (no FK, like `created_by`)      |
 | `name`        | varchar(255)                          | display filename; renameable            |
@@ -158,6 +161,29 @@ object never moves. The filename reaches downloads via
 **"Any file type" is literal** (user requirement): no MIME allowlist. `mime`
 drives UI (image → thumbnail, video → player tile, else generic tile) and the
 download's content type — it is never executed or rendered as HTML (§9).
+
+### 3.1 The target registry (OPH-325 — planned)
+
+A fixed ENUM means every new kind of attachable thing is a core schema change, and
+an extension cannot make one (it may not ALTER a core table). So the closed set
+becomes an open **registry**: the column keeps its shape, but the accepted values
+are whatever the build registers — `app.ee.attachmentTargets`, the ARCHITECTURE §3b
+pattern every other extension hook already uses.
+
+Three properties are the whole point, and each is a test:
+
+- **The plain build does not change.** With nothing registered the accepted set is
+  exactly today's four values and every existing route answers byte for byte.
+- **An unregistered target is refused**, by the registry rather than by MySQL. The
+  ENUM's job moves; it is not relaxed. (A rejection at the database is a 500 with a
+  driver message; a rejection at the registry is the 400 the API already documents.)
+- **One garbage-collection chain, not two.** An extension that wants attachments
+  registers a target and reuses `files` — the upload lifecycle, the sweep and the
+  delete cascade of §5 stay the only ones. A second file table would be a second
+  place to leak bytes, and the sweep would not know it exists.
+
+Until OPH-325 lands, the ENUM above is the surface and this section describes a
+decision, not code.
 
 ## 4. Sync — `file` is a pull-only entity (ADR-0008 precedent)
 

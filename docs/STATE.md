@@ -3,7 +3,36 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-19a (**OPH-324 — acil alarmlar Android'de işletim
+**Last updated:** 2026-09-19b (**OPH-328 — uzantı yüzeyinin belgeleri güncellendi, ve
+belgelerden biri gelecekten değil GEÇMİŞTEN yanlıştı.** Epic 31'in üç işinden biri
+belge işi: `ARCHITECTURE.md` §3b artık iki sözleşmeli kancayı anlatıyor — **ek dosya
+hedef defteri** (OPH-325: `files.target_type` sabit ENUM olmaktan çıkıp kaydedilebilir
+bir kümeye dönüşür; kayıtsız hedef **400** ile reddedilir, sürücünün 500'üyle değil) ve
+**arama alan defteri** (OPH-326: `SearchService` `(tablo, kademe, kolon)` üçlüleri alır,
+çekirdeğin üç domaini defterin ilk satırları olur, replika **v27**'de uzantı tablolarına
+`*_fold` gölge kolonları iner, ve `foldSearchText` **tek** kalır — ikinci bir katlama
+fonksiyonu "eşleşme"nin ikinci bir tanımıdır). `API.md`'nin iki `targetType` tablosu
+kümeyi defterin belirlediğini söylüyor. İkisinin de değişmez sözü aynı: **kayıt yoksa
+derleme bugünküyle bayt bayt aynıdır**, ve bunu ölçen şey `test/unit/ee-seam.test.js`.
+
+**Asıl bulgu `ATTACHMENTS.md`'deydi ve görev metninin sandığından eskiydi.** Görev
+*"belge 'üç hedef' diyor, artık doğru değil"* diyordu — gelecekteki defter yüzünden.
+Ölçüm başka bir şey buldu: belge **iki ay önce inen** işi kaçırmıştı. §0a satırı
+OPH-169/170 için hâlâ `🔜 planned` diyordu (ikisi de ✅ 2026-07-20 kapanmış), §3'ün
+şema tablosu `target_type`'ı `enum('project','task','note')` diye gösteriyordu oysa
+`20260720100000_create_folders_and_workspace_files.js:55` onu ALTER ile dörde çıkarmış.
+Yani belge bir **geleceği** değil bir **bugünü** yanlış anlatıyordu, ve bunu kimse
+fark etmemişti çünkü ölçen bir kapı yok. Üçü de düzeltildi; üstüne §3.1 (hedef defteri
++ "tek çöp toplama zinciri" gerekçesi) yazıldı. *Bir belgenin bayatladığını söyleyen
+hiçbir kapı yoksa, bayatlar — ve bayatlığı yeşil bir satırla aynı okunur.*
+
+**Görev metninin bir düzeltmesi:** OPH-328 *"ADR-0002'ye revizyon satırı"* diyor, ama
+**bu depodaki `docs/adr/0002-*` AGPL lisans ADR'sidir** ve ADR-0024 onu zaten geçersiz
+kılmış. Kastedilen sözleşme belgesi uzantı deposunun ADR-0002'si (modül sözleşmesi +
+seam, altı kancalık revizyon geçmişiyle); revizyon oraya yazıldı, buraya nötr anlatım.
+Doğrulama: `npm run check:docs` yeşil. Kod dokunulmadı.)
+
+Önceki blok: 2026-09-19a (**OPH-324 — acil alarmlar Android'de işletim
 sistemine HİÇ ulaşmıyormuş; gerçek cihazda bulundu ve düzeltildi.**
 Sahibin Xiaomi'sinde (Android 12, release APK) 00:24'e kurulan alarm çalmadı;
 uygulama açılınca çaldı. **Ölçüm zinciri:** `dumpsys alarm`'da 43 kayıtlı alarm

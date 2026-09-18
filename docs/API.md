@@ -2087,7 +2087,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/storage' \
 
 | Name | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `targetType` | `project` · `task` · `note` · `workspace` | no | — |
+| `targetType` | `project` · `task` · `note` · `workspace` | no | the four the plain build accepts; an extension may register more (OPH-325, ARCHITECTURE §3b) |
 | `targetId` | ULID | no | 26-character identifier |
 | `projectId` | ULID | no | 26-character identifier |
 | `folderId` | ULID | no | 26-character identifier |
@@ -2152,7 +2152,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files' \
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `targetType` | `project` · `task` · `note` · `workspace` | **yes** | — |
+| `targetType` | `project` · `task` · `note` · `workspace` | **yes** | the four the plain build accepts; an extension may register more (OPH-325, ARCHITECTURE §3b). An unregistered value is refused here, with `400`, not by the database |
 | `targetId` | ULID | **yes** | 26-character identifier |
 | `name` | string | **yes** | length 1–1024 |
 | `sizeBytes` | integer | **yes** | 1–∞ |

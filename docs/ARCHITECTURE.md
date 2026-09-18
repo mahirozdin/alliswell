@@ -112,6 +112,18 @@ hint (`{entityType, entityId, present, data?}`) built from the same snapshot loa
 uses: a client writes optimistically, so a refusal leaves its replica holding a write nobody
 accepted, and incremental pull can never correct it.
 
+Two more registries are contracted and land with **OPH-325** and **OPH-326** (Epic 31).
+The first opens `files.target_type`: today a fixed ENUM, tomorrow an **attachment target
+registry** (`app.ee.attachmentTargets`) the overlay feeds, so an extension's own entities
+can own files without a second table and a second garbage-collection chain
+(ATTACHMENTS.md §3.1). The second opens search: `SearchService` takes a **field registry**
+of `(table, tier, column)` triples, the core domains become its first rows, and the replica
+grows `*_fold` shadow columns for extension tables at schema **v27** — one `foldSearchText`
+stays the only folding function, because a second one would be a second definition of
+"matches" (ADR-0013). Both follow the rule the seam has had since EE-002: with nothing
+registered, the build is byte-for-byte the CE build, and that sentence is what
+`test/unit/ee-seam.test.js` exists to prove.
+
 The overlay's own repository is private; only this neutral seam lives here.
 
 The app mirrors the discovery end (EE-008): `features/ee/` holds `eeStatusProvider`
