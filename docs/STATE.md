@@ -3,7 +3,37 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-16h (**OPH-323 BİTTİ — Epic 30'un KODU TAMAM; açık iş
+**Last updated:** 2026-09-19a (**OPH-324 — acil alarmlar Android'de işletim
+sistemine HİÇ ulaşmıyormuş; gerçek cihazda bulundu ve düzeltildi.**
+Sahibin Xiaomi'sinde (Android 12, release APK) 00:24'e kurulan alarm çalmadı;
+uygulama açılınca çaldı. **Ölçüm zinciri:** `dumpsys alarm`'da 43 kayıtlı alarm
+var, AllisWell'in **tek kaydı yok**; uygulamanın hiç bildirim kanalı yok;
+uygulamanın kendi alarm günlüğü sebebi harfi harfine yazıyor —
+`PlatformException(invalid_sound, The resource aw_alarm could not be found)`.
+Depoda `res/raw/aw_alarm.m4a` **var**, `merged_res`'te derlenmiş hâli
+(`raw_aw_alarm.m4a.flat`) **var**, ama linklenmiş pakette **yok**: release
+derlemesi `minifyReleaseWithR8` + kaynak küçültme koşuyor ve sese hiçbir yerde
+`@raw/…` referansı olmadığı için üç sesi de atıyor — onları isteyen tek şey
+`flutter_local_notifications`, çalışma anında ve **isimle**. **Sinsiliğin
+anatomisi:** her zamanlama patlıyor, uygulama `degraded` yazıp devam ediyor,
+Ayarlar hâlâ *"Urgent alarms — Ready"* diyor, banner çıkmıyor, ve uygulamayı
+açınca alarm **yine de çalıyor** — çünkü o an çalan şey ön plandaki timer, OS
+alarmı değil. **Hiçbir test göremezdi:** debug derlemesi kaynak küçültmüyor, ve
+hiçbir Dart testi derlenmiş APK'yı göremiyor — `check:android-permissions`'ın
+var olma sebebinin aynısı. **Düzeltme:** `res/raw/aw_sounds_keep.xml`
+(`tools:keep="@raw/aw_alarm,@raw/aw_chime,@raw/aw_ping"`); `keep.xml` adı
+BİLEREK kullanılmadı — bağımlılıkların merge ettiği keep kuralını ezerdi.
+**Uçtan uca doğrulandı:** yeniden derlenen APK'da `type raw entryCount=3`;
+telefona kuruldu; uygulamanın kendi "Test alarm"ı `dumpsys alarm`'da **iki
+RTC_WAKEUP kaydı** üretti (öncesi sıfır) ve gerçek cihazda
+`channel=urgent_alarms_v2_aw_alarm importance=5 category=alarm` ile **çaldı**.
+**Bu, Chong KM'nin beşinci maddesi:** Epic 29'da "Android'de alarm çalmaması"
+kodda kusur bulunamadan kapanmış ve cihaz verisi bekliyordu. Veri geldi, kusur
+gerçekti. **Eksik kalan:** bu sınıfı yakalayacak kapı henüz yok — APK'nın ses
+kaynaklarını taşıdığını ölçen bir artefakt kontrolü yazılmalı
+(`assert-permissions.sh` kalıbı). Sıradaki iş: **o kapı**.)
+
+Önceki blok: 2026-09-16h (**OPH-323 BİTTİ — Epic 30'un KODU TAMAM; açık iş
 kalmadı.** 9/9 iş (OPH-315…323) kapalı, 16/16 epic boyunca. Bu tur belgeler ve
 sürüm: `api:docs` yeniden üretildi (82 yol, 114 istek), `ROADMAP.md` Phase 17
 **✅ (v1.12.0)**, `CHANGELOG.md`'de `[Unreleased]` boş bırakılıp altına

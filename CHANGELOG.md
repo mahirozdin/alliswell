@@ -165,6 +165,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **Urgent alarms reach the phone again — they had stopped reaching the operating
+  system at all.** On a release build the alarm sound was being stripped out of
+  the app by the Android build's resource shrinker, because nothing references it
+  by id: the only thing that asks for it does so by name, while the app is
+  running. Every urgent reminder then failed to schedule, the app wrote the
+  failure into its alarm log and carried on, and the result was the worst kind of
+  quiet: Settings still said "Urgent alarms — Ready", no warning appeared, and
+  opening the app still rang the alarm screen — because that runs off a timer
+  inside the app and never needed the system. What did not happen was the only
+  thing that mattered: a phone with AllisWell closed stayed silent. Debug builds
+  do not shrink resources, which is why this was invisible in development and
+  could only be reproduced on a real device, on a release build, by waiting.
+  OPH-324.
+
 - **The local database no longer blocks its own readers.** The replica is opened
   with write-ahead logging and a wait instead of an immediate failure, which
   matters because two parts of the app open it at once: the home-screen widget's

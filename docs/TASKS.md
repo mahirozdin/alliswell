@@ -9452,6 +9452,17 @@ Beşinin de kökü koddan okunarak arandı: dördü bulundu ve `dosya:satır` il
 gösterildi, biri (Android'de alarm çalmaması) kodda kusur bulunamadan kapandı ve
 cihaz verisi bekliyor. Hiçbiri tahmin değil._
 
+_**Beşinci madde 2026-09-19'da cevaplandı ve kusur GERÇEKTİ** (`aw_sounds_keep.xml`).
+Release derlemesinin kaynak küçültmesi `res/raw/aw_alarm.m4a`'yı atıyordu — sese
+hiçbir yerde `@raw/…` diye referans yok, onu isteyen tek şey
+`flutter_local_notifications`, çalışma anında ve **isimle**. Sonuç: her acil alarm
+zamanlaması `PlatformException(invalid_sound)` ile düşüyor, uygulama bunu `degraded`
+yazıp devam ediyor, ve **OS'e hiç alarm kurulmuyor**. Neden hiçbir test görmedi:
+kusur yalnız **release** derlemesinde var (debug kaynak küçültmüyor), yalnız
+**gerçek cihazda** görünür ve uygulama açıkken **yine de çalıyor** — çünkü o an
+çalan şey ön plandaki timer. Ölçüm: `dumpsys alarm`'da uygulamanın sıfır kaydı
+vardı; düzeltmeden sonra iki kayıt ve gerçek cihazda çalan alarm._
+
 _**Turun tek cümlesi: dört arızanın dördü de İKİ TARAFI AYRI AYRI DOĞRU olan bir
 sözleşmeden çıktı.** İstemcinin gönderdiği alan ile sunucunun kabul ettiği alan
 (OPH-299); deponun kendi yazdığı tasarım kuralı ile kapının gerçekte ölçtüğü şey

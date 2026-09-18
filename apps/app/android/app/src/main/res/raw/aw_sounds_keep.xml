@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Keeps the bundled alarm sounds alive through release resource shrinking.
+
+  These three files are never referenced by a resource id anywhere: the only
+  thing that asks for them is `flutter_local_notifications`, at runtime, BY
+  NAME (`getIdentifier("aw_alarm", "raw", ...)`). The shrinker cannot see that,
+  so it removed all three from every release build — and then every urgent
+  alarm failed to schedule with
+  `PlatformException(invalid_sound, The resource aw_alarm could not be found)`.
+
+  The app caught that, logged a `degraded` row and carried on, so nothing
+  looked broken: the settings screen still said "Urgent alarms — Ready", no
+  banner appeared, and the in-app ring screen still worked because it runs off
+  a foreground timer and needs no OS alarm. What did NOT happen was the only
+  thing that matters — the alarm was never registered with AlarmManager, so a
+  phone with the app closed stayed silent.
+
+  Debug builds do not shrink resources, which is why this never showed up in
+  development: it could only ever be reproduced on a release build, on a real
+  device, by waiting.
+
+  Named `aw_sounds_keep.xml` rather than `keep.xml` on purpose: a file called
+  `keep.xml` here would override the one a dependency already merges in
+  (`tools:keep="@string/default_web_client_id"`, from the sign-in libraries)
+  and take that rule with it. Libraries use the `<name>_keep.xml` convention
+  for exactly this reason.
+-->
+<resources
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/aw_alarm,@raw/aw_chime,@raw/aw_ping" />
