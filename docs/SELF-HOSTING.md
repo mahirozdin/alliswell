@@ -330,16 +330,32 @@ The subject must be a `mailto:` address or an `https://` URL — a push service
 uses it to reach you when something is wrong with what you are sending.
 
 **Android and iPhone (FCM).** Firebase console → project settings → service
-accounts → generate a private key, then point at the **file**:
+accounts → generate a private key, and save it **beside your `.env`** as
+`fcm-service-account.json` — the two secrets then live, and get backed up,
+together.
+
+The API runs in a container that mounts nothing from your host, so the file has
+to be handed to it explicitly. Add both lines:
+
+```yaml
+# docker-compose.selfhost.yml, under the `api` service
+volumes:
+  - ./fcm-service-account.json:/app/fcm-service-account.json:ro
+```
 
 ```
-PUSH_FCM_SERVICE_ACCOUNT_FILE=/etc/alliswell/fcm-service-account.json
+PUSH_FCM_SERVICE_ACCOUNT_FILE=/app/fcm-service-account.json
 ```
 
-Never the JSON itself: a private key in an environment variable ends up in `ps`,
-in a crash dump, and in whatever collects the process environment. iPhones are
-reached through FCM's APNs relay, so there is no second integration to set up —
-you upload your APNs key to Firebase, not to AllisWell.
+Add the mount only once the file exists: Docker answers a bind mount whose
+source is missing by creating a *directory* there, and the API then fails to
+boot complaining that its service account is not JSON. The container runs as
+uid 1000, so the file must be readable by it (`chmod 644`).
+
+Never put the JSON itself in a variable: a private key in the environment ends
+up in `ps`, in a crash dump, and in whatever collects the process environment.
+iPhones are reached through FCM's APNs relay, so there is no second integration
+to set up — you upload your APNs key to Firebase, not to AllisWell.
 
 **What crosses Google's, Apple's or Mozilla's servers.** Identifiers, and the
 *name* of a fixed message — never a task's title or contents
