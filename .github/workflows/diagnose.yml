@@ -73,6 +73,29 @@ jobs:
           echo "── AI env var NAMES present in apps/api/.env (values never printed) ──"
           grep -oE '^AI_[A-Z_]*=' apps/api/.env 2>/dev/null | sed 's/=$//' | sort | tr '\n' ' '; echo
 
+          # Push has one witness and it is not an HTTP route. Web push shows
+          # itself from outside (`/api/v1/push/public-key` exists only when the
+          # VAPID keys loaded — OPH-310), but FCM registers nothing: with no
+          # service account the API boots perfectly and simply never sends to a
+          # phone. So the only place that says which providers are live is the
+          # boot line, and that is what this reads. Names, never values: the
+          # providers array is `["webpush","fcm"]`, and the env block prints key
+          # NAMES the same way the AI block above does.
+          echo "── push: env var NAMES present in apps/api/.env (values never printed) ──"
+          grep -oE '^PUSH_[A-Z_0-9]*=' apps/api/.env 2>/dev/null | sed 's/=$//' | sort | tr '\n' ' '; echo
+          SA_FILE=$(grep -E '^PUSH_FCM_SERVICE_ACCOUNT_FILE=' apps/api/.env 2>/dev/null | head -1 | cut -d= -f2- || true)
+          if [ -n "$SA_FILE" ]; then
+            # Readable BY THE ACCOUNT THAT RUNS THE API, which is the failure
+            # the licence file taught us (v1.9.0): a 600 file owned by the
+            # deploy user is unreadable to pm2's user, and the app says so in a
+            # log nobody reads. Size and mode only — never the contents.
+            echo "  service account file: $(stat -c '%s bytes, mode %a, owner %U' "$SA_FILE" 2>/dev/null || echo 'NOT PRESENT')"
+            sudo -n -u www test -r "$SA_FILE" 2>/dev/null \
+              && echo "  readable by www: yes" || echo "  readable by www: NO — the API cannot have loaded it"
+          else
+            echo "  service account file: (PUSH_FCM_SERVICE_ACCOUNT_FILE not set)"
+          fi
+
           echo "── PM2 process ──"
           PM2_USER=""
           for u in $(id -un) www; do
@@ -87,6 +110,12 @@ jobs:
           OUT_LOG=$(printf '%s' "$json" | grep -o '"pm_out_log_path":"[^"]*"' | head -1 | cut -d'"' -f4)
           echo "logs: $ERR_LOG · $OUT_LOG"
           echo
+
+          echo "── push transport at boot (provider names only) ──"
+          tail -n 8000 "$OUT_LOG" 2>/dev/null \
+            | grep -a 'push transport ready' | tail -3 \
+            | grep -oE '"providers":\[[^]]*\]' | sed 's/^/  /' \
+            || echo "  (no 'push transport ready' line — no provider is configured)"
 
           echo "── AI failure signatures (last 8000 log lines; codes only, no payloads) ──"
           # pino writes ALL levels to stdout, so the interesting lines live in
