@@ -73,6 +73,63 @@ class EeTeamMailApi {
       throw asApiException(e);
     }
   }
+
+  /// The mailboxes this desk reads (EE-180). Same base, same permission.
+  Future<List<EeMailInbox>> inboxes() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('$_base/inboxes');
+      return ((res.data?['inboxes'] as List<dynamic>?) ?? const [])
+          .map((e) => EeMailInbox.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false);
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 403 || code == 404) return const [];
+      throw asApiException(e);
+    }
+  }
+
+  /// `password` travels in this direction only, and never comes back.
+  Future<void> saveInbox({
+    String? id,
+    String? name,
+    String? host,
+    int? port,
+    bool? secure,
+    String? username,
+    String? password,
+    String? folder,
+    String? serviceId,
+    bool? enabled,
+  }) async {
+    final body = {
+      'name': ?name,
+      'host': ?host,
+      'port': ?port,
+      'secure': ?secure,
+      'username': ?username,
+      'password': ?password,
+      'folder': ?folder,
+      'serviceId': ?serviceId,
+      'enabled': ?enabled,
+    };
+    try {
+      if (id == null) {
+        await _dio.post<void>('$_base/inboxes', data: body);
+      } else {
+        await _dio.patch<void>('$_base/inboxes/$id', data: body);
+      }
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  Future<void> removeInbox(String id) async {
+    try {
+      await _dio.delete<void>('$_base/inboxes/$id');
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
 }
 
 /// Distinguishes "not mentioned" from "explicitly null" in [EeTeamMailApi.save].

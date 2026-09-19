@@ -74,3 +74,62 @@ class EeTeamMailController extends AsyncNotifier<EeTeamMail?> {
 }
 
 const Object _absent = Object();
+
+/// The mailboxes this desk reads (EE-180).
+///
+/// Its own provider rather than a field on the relay's row: they share a
+/// screen and a permission, and nothing else. A single object would make
+/// every inbox edit re-read the relay's settings and every relay edit
+/// re-read the inboxes.
+final eeMailInboxesProvider =
+    AsyncNotifierProvider<EeMailInboxesController, List<EeMailInbox>>(
+      EeMailInboxesController.new,
+    );
+
+class EeMailInboxesController extends AsyncNotifier<List<EeMailInbox>> {
+  @override
+  Future<List<EeMailInbox>> build() async {
+    if (!ref.watch(eeFeatureProvider('teams'))) return const [];
+    return ref.watch(eeTeamMailApiProvider).inboxes();
+  }
+
+  Future<void> save({
+    String? id,
+    String? name,
+    String? host,
+    int? port,
+    bool? secure,
+    String? username,
+    String? password,
+    String? folder,
+    String? serviceId,
+    bool? enabled,
+  }) async {
+    await ref
+        .read(eeTeamMailApiProvider)
+        .saveInbox(
+          id: id,
+          name: name,
+          host: host,
+          port: port,
+          secure: secure,
+          username: username,
+          password: password,
+          folder: folder,
+          serviceId: serviceId,
+          enabled: enabled,
+        );
+    await _reload();
+  }
+
+  Future<void> remove(String id) async {
+    await ref.read(eeTeamMailApiProvider).removeInbox(id);
+    await _reload();
+  }
+
+  Future<void> _reload() async {
+    state = await AsyncValue.guard(
+      () => ref.read(eeTeamMailApiProvider).inboxes(),
+    );
+  }
+}

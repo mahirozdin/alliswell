@@ -57,10 +57,42 @@ EeTeamMail _mail({
   missingRequired: missingRequired,
 );
 
-Future<void> _pump(WidgetTester tester, EeTeamMail? value) async {
+class _FixedInboxes extends EeMailInboxesController {
+  _FixedInboxes(this._value);
+  final List<EeMailInbox> _value;
+  @override
+  Future<List<EeMailInbox>> build() async => _value;
+}
+
+EeMailInbox _inbox({
+  String id = 'I1',
+  String name = 'Arıza kutusu',
+  String? lastError,
+}) => EeMailInbox(
+  id: id,
+  name: name,
+  host: 'mail.corp.example',
+  port: 993,
+  secure: true,
+  username: 'destek@corp.example',
+  folder: 'INBOX',
+  enabled: true,
+  passwordSet: true,
+  passwordLast4: 'ter2',
+  lastError: lastError,
+);
+
+Future<void> _pump(
+  WidgetTester tester,
+  EeTeamMail? value, {
+  List<EeMailInbox> inboxes = const [],
+}) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [eeTeamMailProvider.overrideWith(() => _Fixed(value))],
+      overrides: [
+        eeTeamMailProvider.overrideWith(() => _Fixed(value)),
+        eeMailInboxesProvider.overrideWith(() => _FixedInboxes(inboxes)),
+      ],
       child: MaterialApp(
         theme: buildAwTheme(Brightness.light),
         home: const EeTeamMailScreen(),
@@ -194,5 +226,60 @@ void main() {
     // Testing an unsaved host would prove something about a relay this team is
     // not using.
     expect(button.onPressed, isNull);
+  });
+
+  group('the mailboxes this desk reads', () {
+    testWidgets(
+      'an empty list says what a mailbox is FOR, and what it does not open',
+      (tester) async {
+        await _pump(tester, _mail());
+        final hint = await _reveal(tester, const Key('ee-mail-enabled'));
+        expect(hint, findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.textContaining('No mailbox connected yet'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(find.textContaining('No mailbox connected yet'), findsOneWidget);
+        // The closed-network promise is on the screen rather than in a manual:
+        // it is the reason this way exists and the reason EE-181's alternative
+        // has to warn.
+        expect(
+          find.textContaining('Nothing is opened to the internet'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('A BOX THAT STOPPED WORKING SAYS SO, WITH ITS REASON', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _mail(),
+        inboxes: [_inbox(lastError: 'Invalid credentials')],
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('mail-inbox-I1')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      // The failure this section exists to prevent is the silent one: a
+      // mailbox that stopped being read looks exactly like a quiet week.
+      expect(find.textContaining('Invalid credentials'), findsOneWidget);
+    });
+
+    testWidgets('a working box shows where it points and never the password', (
+      tester,
+    ) async {
+      await _pump(tester, _mail(), inboxes: [_inbox()]);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('mail-inbox-I1')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.textContaining('mail.corp.example'), findsOneWidget);
+      expect(find.textContaining('ter2'), findsNothing);
+    });
   });
 }

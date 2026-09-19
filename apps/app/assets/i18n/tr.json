@@ -2061,6 +2061,10 @@
       "unavailableBody": "Giden webhook'lar bir takıma aittir. Yönettiğiniz bir takımdan açın."
     },
     "mail": {
+      "inboxTitle": "Bu masanın okuduğu posta kutuları",
+      "inboxHint": "Sunucu kendi posta sunucunuza dışarı arar ve gelenleri talebe çevirir. İnternete hiçbir şey açılmaz, ve postalar kutuda kendi insanlarınız için okunmamış kalır.",
+      "inboxEmpty": "Henüz bağlı posta kutusu yok.",
+      "inboxOk": "{host} · {user}",
       "enabled": "Mailleri bu sunucudan gönder",
       "enabledBlocked": "Önce şunları doldurun: {fields}",
       "enabledHint": "Bildirimler, davetler ve talep güncellemeleri sizin sunucunuzdan çıkar.",

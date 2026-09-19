@@ -2062,6 +2062,10 @@
       "unavailableBody": "Outgoing webhooks belong to a team. Open this from a team you administer."
     },
     "mail": {
+      "inboxTitle": "Mailboxes this desk reads",
+      "inboxHint": "This server dials out to your own mail server and turns what arrives into requests. Nothing is opened to the internet, and messages are left unread in the box for your own people.",
+      "inboxEmpty": "No mailbox connected yet.",
+      "inboxOk": "{host} · {user}",
       "enabled": "Send mail through this relay",
       "enabledBlocked": "Fill these in first: {fields}",
       "enabledHint": "Notifications, invitations and ticket updates leave through your server.",

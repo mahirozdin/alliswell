@@ -105,3 +105,70 @@ class EeTeamMailTestResult {
   final bool ok;
   final String? error;
 }
+
+/// One mailbox this desk READS (EE-180).
+///
+/// The symmetry of the relay above it: the same authority, the same screen,
+/// the opposite direction. Like the relay, it has no field for the password —
+/// there is no response that carries one, and [passwordLast4] is the whole of
+/// what a screen may know.
+class EeMailInbox {
+  const EeMailInbox({
+    required this.id,
+    required this.name,
+    required this.host,
+    required this.port,
+    required this.secure,
+    required this.username,
+    required this.folder,
+    required this.enabled,
+    required this.passwordSet,
+    this.serviceId,
+    this.passwordLast4,
+    this.lastPolledAt,
+    this.lastMessageAt,
+    this.lastError,
+  });
+
+  factory EeMailInbox.fromJson(Map<String, dynamic> json) => EeMailInbox(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    host: json['host'] as String,
+    port: (json['port'] as num?)?.toInt() ?? 993,
+    secure: (json['secure'] as bool?) ?? true,
+    username: json['username'] as String? ?? '',
+    folder: json['folder'] as String? ?? 'INBOX',
+    enabled: (json['enabled'] as bool?) ?? true,
+    passwordSet: (json['passwordSet'] as bool?) ?? false,
+    serviceId: json['serviceId'] as String?,
+    passwordLast4: json['passwordLast4'] as String?,
+    lastPolledAt: json['lastPolledAt'] == null
+        ? null
+        : DateTime.parse(json['lastPolledAt'] as String).toLocal(),
+    lastMessageAt: json['lastMessageAt'] == null
+        ? null
+        : DateTime.parse(json['lastMessageAt'] as String).toLocal(),
+    lastError: json['lastError'] as String?,
+  );
+
+  final String id;
+  final String name;
+  final String host;
+  final int port;
+  final bool secure;
+  final String username;
+  final String folder;
+  final bool enabled;
+  final bool passwordSet;
+  final String? serviceId;
+  final String? passwordLast4;
+  final DateTime? lastPolledAt;
+  final DateTime? lastMessageAt;
+
+  /// Why this box is not working, when it is not. The reason this screen
+  /// exists at all: a mailbox that silently stopped is worse than one nobody
+  /// set up, so the failure is on the row rather than in a log.
+  final String? lastError;
+
+  bool get healthy => lastError == null;
+}
