@@ -2061,6 +2061,17 @@
       "unavailableBody": "Giden webhook'lar bir takıma aittir. Yönettiğiniz bir takımdan açın."
     },
     "mail": {
+      "inboxAdd": "Posta kutusu ekle",
+      "inboxName": "Adı",
+      "inboxService": "Hangi servise düşer",
+      "inboxKindImap": "Bu sunucu okur",
+      "inboxKindWebhook": "Sağlayıcı iletir",
+      "inboxKindImapHint": "Bu sunucu posta kutunuza giriş yapıp geleni okur. İnternete hiçbir şey açılmaz ve hiçbir posta okundu işaretlenmez.",
+      "inboxKindWebhookHint": "Bir posta sağlayıcısı geleni buradaki yayınlanmış bir adrese gönderir. Postanız size ulaşmadan önce o sağlayıcıdan geçer ve bu sunucunun dinlemesi gerekir — diğer yolun tam olarak kaçındığı şey budur.",
+      "inboxWebhookWhere": "Sağlayıcı iletiyor",
+      "inboxWebhookWarning": "Bu kutunun postası üçüncü bir taraftan geçer.",
+      "inboxSecretTitle": "Bu sırrı şimdi kopyalayın",
+      "inboxSecretBody": "Sağlayıcınıza yapıştırın ki buraya gönderdiğini imzalayabilsin. Yalnız bir kez gösterilir; kaybederseniz yenisini üretin.",
       "inboxTitle": "Bu masanın okuduğu posta kutuları",
       "inboxHint": "Sunucu kendi posta sunucunuza dışarı arar ve gelenleri talebe çevirir. İnternete hiçbir şey açılmaz, ve postalar kutuda kendi insanlarınız için okunmamış kalır.",
       "inboxEmpty": "Henüz bağlı posta kutusu yok.",

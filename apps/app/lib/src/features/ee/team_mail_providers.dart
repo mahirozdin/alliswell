@@ -93,9 +93,12 @@ class EeMailInboxesController extends AsyncNotifier<List<EeMailInbox>> {
     return ref.watch(eeTeamMailApiProvider).inboxes();
   }
 
-  Future<void> save({
+  /// Returns the signing secret when the server minted one — the only moment
+  /// it exists outside the ciphertext.
+  Future<String?> save({
     String? id,
     String? name,
+    String? kind,
     String? host,
     int? port,
     bool? secure,
@@ -104,12 +107,14 @@ class EeMailInboxesController extends AsyncNotifier<List<EeMailInbox>> {
     String? folder,
     String? serviceId,
     bool? enabled,
+    bool? rotateWebhookSecret,
   }) async {
-    await ref
+    final secret = await ref
         .read(eeTeamMailApiProvider)
         .saveInbox(
           id: id,
           name: name,
+          kind: kind,
           host: host,
           port: port,
           secure: secure,
@@ -118,8 +123,10 @@ class EeMailInboxesController extends AsyncNotifier<List<EeMailInbox>> {
           folder: folder,
           serviceId: serviceId,
           enabled: enabled,
+          rotateWebhookSecret: rotateWebhookSecret,
         );
     await _reload();
+    return secret;
   }
 
   Future<void> remove(String id) async {

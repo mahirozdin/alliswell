@@ -116,13 +116,14 @@ class EeMailInbox {
   const EeMailInbox({
     required this.id,
     required this.name,
-    required this.host,
+    required this.kind,
     required this.port,
     required this.secure,
-    required this.username,
     required this.folder,
     required this.enabled,
     required this.passwordSet,
+    this.host,
+    this.username,
     this.serviceId,
     this.passwordLast4,
     this.lastPolledAt,
@@ -133,10 +134,11 @@ class EeMailInbox {
   factory EeMailInbox.fromJson(Map<String, dynamic> json) => EeMailInbox(
     id: json['id'] as String,
     name: json['name'] as String,
-    host: json['host'] as String,
+    kind: json['kind'] as String? ?? 'imap',
+    host: json['host'] as String?,
     port: (json['port'] as num?)?.toInt() ?? 993,
     secure: (json['secure'] as bool?) ?? true,
-    username: json['username'] as String? ?? '',
+    username: json['username'] as String?,
     folder: json['folder'] as String? ?? 'INBOX',
     enabled: (json['enabled'] as bool?) ?? true,
     passwordSet: (json['passwordSet'] as bool?) ?? false,
@@ -153,10 +155,17 @@ class EeMailInbox {
 
   final String id;
   final String name;
-  final String host;
+
+  /// `imap` dials out and publishes nothing; `webhook` listens, and a third
+  /// party reads the message first. The screen says which, and what it costs.
+  final String kind;
+
+  /// Null for a webhook mailbox: there is no server to dial.
+  final String? host;
+
   final int port;
   final bool secure;
-  final String username;
+  final String? username;
   final String folder;
   final bool enabled;
   final bool passwordSet;
@@ -171,4 +180,5 @@ class EeMailInbox {
   final String? lastError;
 
   bool get healthy => lastError == null;
+  bool get isWebhook => kind == 'webhook';
 }

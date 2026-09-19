@@ -2062,6 +2062,17 @@
       "unavailableBody": "Outgoing webhooks belong to a team. Open this from a team you administer."
     },
     "mail": {
+      "inboxAdd": "Add a mailbox",
+      "inboxName": "What to call it",
+      "inboxService": "Files requests under",
+      "inboxKindImap": "This server reads it",
+      "inboxKindWebhook": "A provider delivers it",
+      "inboxKindImapHint": "This server signs in to your mailbox and reads what arrived. Nothing is opened to the internet and nothing is marked as read.",
+      "inboxKindWebhookHint": "A mail provider posts what arrived to a published address here. Your mail passes through that provider before it reaches you, and this server has to listen — which is exactly what the other way avoids.",
+      "inboxWebhookWhere": "Delivered by a provider",
+      "inboxWebhookWarning": "Mail for this box passes through a third party.",
+      "inboxSecretTitle": "Copy this secret now",
+      "inboxSecretBody": "Paste it into your provider so it can sign what it delivers here. This is the only time it is shown; if you lose it, make a new one.",
       "inboxTitle": "Mailboxes this desk reads",
       "inboxHint": "This server dials out to your own mail server and turns what arrives into requests. Nothing is opened to the internet, and messages are left unread in the box for your own people.",
       "inboxEmpty": "No mailbox connected yet.",

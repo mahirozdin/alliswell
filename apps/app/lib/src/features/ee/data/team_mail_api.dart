@@ -89,9 +89,13 @@ class EeTeamMailApi {
   }
 
   /// `password` travels in this direction only, and never comes back.
-  Future<void> saveInbox({
+  /// Returns the signing secret when this call minted one — which happens
+  /// exactly twice in a mailbox's life: when it becomes a webhook mailbox,
+  /// and when somebody rotates it.
+  Future<String?> saveInbox({
     String? id,
     String? name,
+    String? kind,
     String? host,
     int? port,
     bool? secure,
@@ -100,9 +104,11 @@ class EeTeamMailApi {
     String? folder,
     String? serviceId,
     bool? enabled,
+    bool? rotateWebhookSecret,
   }) async {
     final body = {
       'name': ?name,
+      'kind': ?kind,
       'host': ?host,
       'port': ?port,
       'secure': ?secure,
@@ -111,13 +117,16 @@ class EeTeamMailApi {
       'folder': ?folder,
       'serviceId': ?serviceId,
       'enabled': ?enabled,
+      'rotateWebhookSecret': ?rotateWebhookSecret,
     };
     try {
-      if (id == null) {
-        await _dio.post<void>('$_base/inboxes', data: body);
-      } else {
-        await _dio.patch<void>('$_base/inboxes/$id', data: body);
-      }
+      final res = id == null
+          ? await _dio.post<Map<String, dynamic>>('$_base/inboxes', data: body)
+          : await _dio.patch<Map<String, dynamic>>(
+              '$_base/inboxes/$id',
+              data: body,
+            );
+      return res.data?['webhookSecret'] as String?;
     } on DioException catch (e) {
       throw asApiException(e);
     }

@@ -67,10 +67,12 @@ class _FixedInboxes extends EeMailInboxesController {
 EeMailInbox _inbox({
   String id = 'I1',
   String name = 'Arıza kutusu',
+  String kind = 'imap',
   String? lastError,
 }) => EeMailInbox(
   id: id,
   name: name,
+  kind: kind,
   host: 'mail.corp.example',
   port: 993,
   secure: true,
@@ -267,6 +269,25 @@ void main() {
       // The failure this section exists to prevent is the silent one: a
       // mailbox that stopped being read looks exactly like a quiet week.
       expect(find.textContaining('Invalid credentials'), findsOneWidget);
+    });
+
+    testWidgets('A PROVIDER-DELIVERED BOX SAYS WHAT IT COSTS', (tester) async {
+      await _pump(
+        tester,
+        _mail(),
+        inboxes: [_inbox(kind: 'webhook', name: 'Sağlayıcı kutusu')],
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('mail-inbox-I1')),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      // Hiding what an option gives up is the worst way to get somebody to
+      // choose it — the whole reason this line is on the row.
+      expect(
+        find.textContaining('passes through a third party'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a working box shows where it points and never the password', (
