@@ -163,3 +163,29 @@ re-key migration and gets its own ADR.
   a local alarm, and said out loud rather than implied.
 - Core will expose the transport EE's push channel has been waiting for. Wiring
   it is one line, in the EE repository, and not part of this epic.
+
+
+## Revizyon — 2026-09-19 (OPH-329): üçüncü bir payload tipi, `notify`
+
+Bu belgenin son maddesi şunu söylüyordu: *"Core will expose the transport EE's
+push channel has been waiting for. Wiring it is **one line**, in the EE
+repository."* Ölçüldüğünde yarısı doğruydu — taşıyıcı (`app.pushTransport`)
+gerçekten hazırdı ve seam gerekmedi. Eksik olan şey **sözleşmeydi**:
+`PUSH_PAYLOAD_KEYS` yalnız `wake` ve `reminder` tanıyor, uzantının bildirimi ise
+ikisi de değil. `assertPushPayload` onu — doğru biçimde — bir programlama hatası
+sayıp fırlatırdı.
+
+**`notify`**: `{v, type, notificationId, alert?}`. Taşıdığı şey bir kimlik ve
+katalogdan gelen genel bir cümle (`notification_waiting`); **olay sınıfı
+taşınmıyor**. Sınıf adı içerik değildir ama yine de müşteri hakkında bir
+olgudur ("bu şirketin 14:02'de bir SLA ihlali oldu") ve cihazın ona ihtiyacı
+yok: satırı zaten çekiyor ve kendi metnini kendisi çiziyor.
+
+**Neden sessiz bir `wake` yetmedi:** platform matrisi iOS için *"Visible only:
+no data message"* diyor (§8'in kendi gerekçesi — arka plan modu yok, kilitli
+bir uyanış oturumu okuyamaz). Bildirimi `wake` olarak göndermek onu Android'e
+ulaştırıp iOS'ta hiçbir şey yapmazdı; bu bir kanal değil, yarım bir kanaldır.
+
+Kural değişmedi: sağlayıcının sunucularından geçen şey hâlâ kimlik ve sabit
+cümledir, ve `check:push-payload` kapısı yeni girdileri satır satır gösterip
+onay istedi.

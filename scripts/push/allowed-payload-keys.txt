@@ -1,10 +1,19 @@
+alert:notification_waiting
 alert:reminder_due
+notify.alert
+notify.notificationId
+notify.type
+notify.v
 reminder.alert
 reminder.fireAt
 reminder.reminderId
 reminder.taskId
 reminder.type
 reminder.v
+text:notification_waiting.en.body=You have a new notification
+text:notification_waiting.en.title=AllisWell
+text:notification_waiting.tr.body=Yeni bir bildirimin var
+text:notification_waiting.tr.title=AllisWell
 text:reminder_due.en.body=You have 1 reminder
 text:reminder_due.en.title=AllisWell
 text:reminder_due.tr.body=1 hatırlatıcın var

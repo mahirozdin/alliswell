@@ -11045,10 +11045,37 @@ public, tasarım değil._
 - **Doğrulama:** `npm run check:docs` + belgelerdeki kanca listesinin kodla karşılaştırılması.
 - ⚠️ **Çift kapanış:** ↔ `EE-165` (overlay kaydı).
 
+### OPH-329 — Push sözleşmesi uzantının bildirimini de tanır (ADR-0038 revizyonu) ✅ 2026-09-19
+
+_Planlanmamıştı; overlay push kanalını bağlarken ÖLÇÜLDÜ ve o yüzden burada. ADR-0038'in
+son maddesi **"wiring it is one line, in the EE repository"** diyordu — taşıyıcı gerçekten
+hazırdı, ama **sözleşme** uzantının payload'ını tanımıyordu._
+
+- [x] `PUSH_PAYLOAD_KEYS`'e üçüncü tip: **`notify`** = `{v, type, notificationId, alert?}`.
+      `assertPushPayload` bugüne kadar yalnız `wake` ve `reminder` tanıyordu ve uzantının
+      bildirimini — doğru biçimde — bir programlama hatası sayıp fırlatırdı.
+- [x] **Olay sınıfı taşınmıyor, ve bu bir karar:** sınıf adı içerik değil ama yine de
+      müşteri hakkında bir olgudur ("bu şirketin 14:02'de bir SLA ihlali oldu"). Cihazın
+      ona ihtiyacı yok — satırı zaten çekiyor ve kendi metnini kendisi çiziyor. Test
+      `eventClass` gönderen bir payload'ın reddedildiğini ölçüyor.
+- [x] Katalogda tek yeni cümle: `notification_waiting` (en/tr), hiçbir şeyi adlandırmayan
+      genel bir satır — sağlayıcının sunucularından geçen tek metin.
+- [x] **Neden sessiz bir `wake` yetmedi:** platform matrisi iOS için *"Visible only: no
+      data message"* diyor (arka plan modu yok, kilitli uyanış oturumu okuyamaz). Bildirimi
+      `wake` olarak göndermek onu Android'e ulaştırıp iOS'ta hiçbir şey yapmazdı — bu bir
+      kanal değil, yarım bir kanaldır.
+- **Kabul:** yeni tip kabul ediliyor; cümle içeren ya da sınıf adı taşıyan payload
+      reddediliyor; `check:push-payload` kapısı yeni girdileri satır satır gösterip onay
+      istedi ve allowlist bilerek yeniden üretildi.
+- **Doğrulama:** `test/unit/push-payload.test.js` (+4 vaka, toplam 21) ve
+  `push-transport.test.js` yeşil; `npm run check:push-payload` yeşil.
+- ⚠️ **Çift kapanış:** ↔ `EE-172` (overlay kaydı: taşıyıcının bağlanması).
+
 **Epic 31 acceptance:** uzantı yüzeyi üç yerde birden birinci sınıf olur — kaydettiği
 entity'nin dosyası olabilir, aranabilir ve cihazda yaşayabilir. **CE davranışı hiçbir
 maddede değişmez** ve bu, epic'in tek sert kabul koşuludur: üç iş de boş bir defter
-ekliyor, defteri dolduran şey çekirdekte değil.
+ekliyor, defteri dolduran şey çekirdekte değil. (OPH-329 sonradan katıldı ve aynı koşulu
+taşıyor: kimlik bilgisi olmayan bir kurulumda hiçbir şey değişmiyor.)
 
 ---
 

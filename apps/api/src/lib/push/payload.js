@@ -50,7 +50,7 @@ export const PUSH_PROTOCOL_VERSION = 1;
  * constant. Adding one is a deliberate act: `npm run check:push-payload`
  * fails until the allowlist is regenerated, and the diff says what was added.
  */
-export const PUSH_ALERT_IDS = Object.freeze(['reminder_due']);
+export const PUSH_ALERT_IDS = Object.freeze(['reminder_due', 'notification_waiting']);
 
 /**
  * The words a VISIBLE push may carry, and the only words that exist (OPH-320).
@@ -91,6 +91,16 @@ export const PUSH_ALERT_TEXT = Object.freeze({
     en: Object.freeze({ title: 'AllisWell', body: 'You have 1 reminder' }),
     tr: Object.freeze({ title: 'AllisWell', body: '1 hatırlatıcın var' }),
   }),
+  // OPH-329 (EE-172): the generic line an extension's notification arrives
+  // under. Generic ON PURPOSE and not a shortcoming — the sentence crosses a
+  // provider's servers, and "an SLA target was missed on request #1042" would
+  // put a customer's operations in Google's logs. The device pulls the real
+  // wording from the row it already syncs; this is what the lock screen says
+  // until it does.
+  notification_waiting: Object.freeze({
+    en: Object.freeze({ title: 'AllisWell', body: 'You have a new notification' }),
+    tr: Object.freeze({ title: 'AllisWell', body: 'Yeni bir bildirimin var' }),
+  }),
 });
 
 /** The language this catalogue answers in when it has nothing better. */
@@ -125,11 +135,26 @@ export function alertTextFor(alertId, locale) {
 export const PUSH_PAYLOAD_KEYS = Object.freeze({
   wake: Object.freeze(['v', 'type']),
   reminder: Object.freeze(['v', 'type', 'reminderId', 'taskId', 'fireAt', 'alert']),
+  // OPH-329 (EE-172): one row of an extension's notification inbox has arrived.
+  //
+  // It carries an ID and, optionally, the generic alert above — nothing else,
+  // and deliberately NOT the event class. A class name is not content but it is
+  // still a fact about the customer ("this company had an SLA breach at 14:02"),
+  // and the device does not need it: it fetches the row and renders its own
+  // wording. A payload type exists precisely so this decision is made once and
+  // enforced for every sender rather than trusted per call site.
+  //
+  // A silent wake would not do for this one. The matrix (app-side) says iOS
+  // gets no data message — no background mode, and a locked wake cannot read
+  // the session — so a notification delivered as a wake would reach Android
+  // and nothing else, which is not a channel.
+  notify: Object.freeze(['v', 'type', 'notificationId', 'alert']),
 });
 
 const REQUIRED_KEYS = Object.freeze({
   wake: Object.freeze(['v', 'type']),
   reminder: Object.freeze(['v', 'type', 'reminderId', 'taskId', 'fireAt']),
+  notify: Object.freeze(['v', 'type', 'notificationId']),
 });
 
 /** `2026-09-20T07:30:00.000Z` — an instant, not a date a human typed. */
@@ -148,6 +173,7 @@ const VALUE_CHECKS = {
   type: (value) => Object.hasOwn(PUSH_PAYLOAD_KEYS, value),
   reminderId: isUlid,
   taskId: isUlid,
+  notificationId: isUlid,
   fireAt: (value) => typeof value === 'string' && ISO_INSTANT_RE.test(value),
   alert: (value) => PUSH_ALERT_IDS.includes(value),
 };

@@ -3,7 +3,26 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-19d (**OPH-326 — arama bir kayıt defterine dönüştü, replika
+**Last updated:** 2026-09-19e (**OPH-329 — push sözleşmesi üçüncü bir tip öğrendi, ve bu
+iş ADR-0038'in kendi cümlesini düzeltti.** Belge *"wiring it is one line, in the EE
+repository"* diyordu. Taşıyıcı gerçekten hazırdı ve seam gerekmedi — ama **sözleşme**
+uzantının payload'ını tanımıyordu: `PUSH_PAYLOAD_KEYS` yalnız `wake` ve `reminder`
+biliyordu ve `assertPushPayload` uzantının bildirimini, doğru biçimde, bir programlama
+hatası sayıp fırlatırdı.
+
+**`notify`** = `{v, type, notificationId, alert?}`. Taşıdığı şey bir kimlik ve katalogdan
+gelen genel bir cümle; **olay sınıfı taşınmıyor** — sınıf adı içerik değil ama yine de
+müşteri hakkında bir olgu ("bu şirketin 14:02'de bir SLA ihlali oldu"), ve cihaz satırı
+zaten çekiyor. Sessiz bir `wake` çözüm değildi: platform matrisi iOS için *"Visible only:
+no data message"* diyor, yani bildirim Android'e ulaşır iOS'ta hiçbir şey yapmazdı — bu
+bir kanal değil, yarım bir kanal.
+
+`check:push-payload` kapısı beklendiği gibi davrandı: sağlayıcının sunucularından yeni
+geçecek her satırı (+ işaretiyle) gösterdi, onay istedi, ve allowlist bilerek yeniden
+üretildi. Doğrulama: `push-payload` 21 test (+4), `push-transport` 16, ikisi de yeşil.
+Kimlik bilgisi olmayan bir kurulumda hiçbir şey değişmiyor.)
+
+Önceki blok: 2026-09-19d (**OPH-326 — arama bir kayıt defterine dönüştü, replika
 **v27**'ye çıktı, ve talebin insan numarası cihaza indi.** Üç elle yazılmış SELECT
 (`searchTasks`, `searchEvents`, `searchProjects`) tek bir yürütücüye indi; ne aradıkları
 artık **veri**: `SearchEntity` = (tablo, takma ad, kademe→katlanmış ifade) + entity başına

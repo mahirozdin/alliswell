@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, test, expect } from 'vitest';
 import {
   PUSH_PAYLOAD_KEYS,
   PUSH_ALERT_IDS,
@@ -8,6 +8,7 @@ import {
   buildReminderPayload,
   assertPushPayload,
   PushPayloadError,
+  PUSH_PROTOCOL_VERSION,
 } from '../../src/lib/push/payload.js';
 
 const REMINDER = '01HZRMNDRAAAAAAAAAAAAAAAAA';
@@ -191,5 +192,57 @@ describe('OPH-320 — the only words a push may carry', () => {
     for (const id of PUSH_ALERT_IDS) {
       expect(alertTextFor(id, 'en')).not.toBeNull();
     }
+  });
+});
+
+describe('OPH-329 — the third type, for an extension\'s notification', () => {
+  test('a notify payload is accepted with an id, and an alert is optional', () => {
+    expect(() =>
+      assertPushPayload({
+        v: PUSH_PROTOCOL_VERSION,
+        type: 'notify',
+        notificationId: '01J9Z4K8QK7B2N0M3XG5T6WQ7A',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      assertPushPayload({
+        v: PUSH_PROTOCOL_VERSION,
+        type: 'notify',
+        notificationId: '01J9Z4K8QK7B2N0M3XG5T6WQ7A',
+        alert: 'notification_waiting',
+      }),
+    ).not.toThrow();
+  });
+
+  test('it refuses the event class, which is a fact about the customer', () => {
+    // Not content — but "this company had an SLA breach at 14:02" is still
+    // theirs, and the device does not need it to render the row it pulls.
+    expect(() =>
+      assertPushPayload({
+        v: PUSH_PROTOCOL_VERSION,
+        type: 'notify',
+        notificationId: '01J9Z4K8QK7B2N0M3XG5T6WQ7A',
+        eventClass: 'sla.breached',
+      }),
+    ).toThrow(/eventClass/);
+  });
+
+  test('and it refuses a sentence, like every other type', () => {
+    expect(() =>
+      assertPushPayload({
+        v: PUSH_PROTOCOL_VERSION,
+        type: 'notify',
+        notificationId: '01J9Z4K8QK7B2N0M3XG5T6WQ7A',
+        body: 'SLA missed on request #1042',
+      }),
+    ).toThrow();
+  });
+
+  test('its alert resolves to a line that names nothing', () => {
+    const text = alertTextFor('notification_waiting', 'tr');
+    expect(text.body).toBe('Yeni bir bildirimin var');
+    expect(alertTextFor('notification_waiting', 'de').body).toBe(
+      'You have a new notification',
+    );
   });
 });
