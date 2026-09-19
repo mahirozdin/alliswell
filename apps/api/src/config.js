@@ -69,6 +69,11 @@ const DEV_EE_AI_TOKEN_KEY = 'beefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbeefbee
 // accounts. Same rule as the line above, applied once more.
 const DEV_EE_IDENTITY_KEY = 'a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11ce5a11c';
 const DEV_EE_MAIL_KEY = 'facefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeed';
+// A fourth owner: the secret a receiving system gave an extension so that it
+// can prove a call came from here. It is not a credential we present to anybody
+// — it is one we SIGN with — and the system that issued it is neither the
+// team's provider nor this company's directory. Same rule once more.
+const DEV_EE_WEBHOOK_KEY = 'd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeed';
 const INSECURE_SECRETS = new Set([
   DEV_ACCESS_SECRET,
   DEV_REFRESH_SECRET,
@@ -78,6 +83,7 @@ const INSECURE_SECRETS = new Set([
   DEV_EE_AI_TOKEN_KEY,
   DEV_EE_IDENTITY_KEY,
   DEV_EE_MAIL_KEY,
+  DEV_EE_WEBHOOK_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
 ]);
@@ -487,6 +493,12 @@ export function loadConfig(env = process.env) {
       // EE-141: a team's own SMTP password. Its own key, like the two above —
       // rotating one must not force re-encrypting the others.
       mailKey: env.EE_MAIL_KEY || DEV_EE_MAIL_KEY,
+      // The secret an extension signs an OUTGOING call with, so the system
+      // receiving it can tell the call apart from any other POST. Its own key
+      // for the reason the three above give, plus one of its own: this one is
+      // held by somebody OUTSIDE the instance, so a rotation here is a
+      // conversation with a third party rather than an internal change.
+      webhookKey: env.EE_WEBHOOK_KEY || DEV_EE_WEBHOOK_KEY,
       // Outgoing mail for extensions that send any (core sends none). Read
       // like `storage`: absent means the capability is simply off. Unlike
       // storage it is ALL-OR-NOTHING — see assertSmtpComplete below for why a
@@ -556,6 +568,9 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.mailKey)) {
     throw new Error('EE_MAIL_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.ee.webhookKey)) {
+    throw new Error('EE_WEBHOOK_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   assertSmtpComplete(config);
   assertPushComplete(config);
