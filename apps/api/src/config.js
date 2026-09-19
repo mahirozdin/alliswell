@@ -74,6 +74,11 @@ const DEV_EE_MAIL_KEY = 'facefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefee
 // — it is one we SIGN with — and the system that issued it is neither the
 // team's provider nor this company's directory. Same rule once more.
 const DEV_EE_WEBHOOK_KEY = 'd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeed';
+// A fifth owner, and the narrowest of them: the credential an extension has
+// to PRESENT in order to be allowed to ask an internal system whether it is
+// alive. It belongs to whoever runs that system — not to the team's spending,
+// not to the company's directory, not to a receiving system's integrator.
+const DEV_EE_MONITOR_KEY = 'b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7b0a7';
 const INSECURE_SECRETS = new Set([
   DEV_ACCESS_SECRET,
   DEV_REFRESH_SECRET,
@@ -84,6 +89,7 @@ const INSECURE_SECRETS = new Set([
   DEV_EE_IDENTITY_KEY,
   DEV_EE_MAIL_KEY,
   DEV_EE_WEBHOOK_KEY,
+  DEV_EE_MONITOR_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
 ]);
@@ -499,6 +505,12 @@ export function loadConfig(env = process.env) {
       // held by somebody OUTSIDE the instance, so a rotation here is a
       // conversation with a third party rather than an internal change.
       webhookKey: env.EE_WEBHOOK_KEY || DEV_EE_WEBHOOK_KEY,
+      // AES-256-GCM key for the credential an extension presents to a system
+      // it is only checking on. Its own key for the reason the four above
+      // give, plus a narrow one: this secret is read on a timer, by a sweep,
+      // against a host inside somebody's network — the blast radius of losing
+      // it is a different shape from the others.
+      monitorKey: env.EE_MONITOR_KEY || DEV_EE_MONITOR_KEY,
       // Outgoing mail for extensions that send any (core sends none). Read
       // like `storage`: absent means the capability is simply off. Unlike
       // storage it is ALL-OR-NOTHING — see assertSmtpComplete below for why a
@@ -571,6 +583,9 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.webhookKey)) {
     throw new Error('EE_WEBHOOK_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.ee.monitorKey)) {
+    throw new Error('EE_MONITOR_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   assertSmtpComplete(config);
   assertPushComplete(config);
