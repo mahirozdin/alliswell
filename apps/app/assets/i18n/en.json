@@ -1447,6 +1447,9 @@
       "units": {
         "manage": "Manage units",
         "manage_members": "Manage the people in a unit"
+      },
+      "webhooks": {
+        "manage": "Add and remove outgoing webhooks"
       }
     },
     "permDomain": {

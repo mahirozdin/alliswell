@@ -1446,6 +1446,9 @@
       "units": {
         "manage": "Birimleri yönet",
         "manage_members": "Bir birimdeki kişileri yönet"
+      },
+      "webhooks": {
+        "manage": "Giden webhookları ekle ve kaldır"
       }
     },
     "permDomain": {
