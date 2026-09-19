@@ -25,11 +25,25 @@ import 'assignments_providers.dart' show Assignee;
 /// is silently INCOMPLETE, and incomplete is the better failure.
 
 /// What the queue is filtered by. Immutable so a rebuild cannot half-apply one.
+/// EE-171 — who is on it, as a filter.
+///
+/// `mine` and `unassigned` are not "a person filter with a special id": they
+/// are the two questions a desk actually asks, and the second one is the
+/// expensive one — a queue's costliest state is work nobody has picked up, and
+/// it is invisible until something asks for it.
+enum TicketAssigneeScope { any, mine, unassigned, person }
+
 class TicketFilter {
   const TicketFilter({
     this.statuses = const {},
     this.priorities = const {},
     this.serviceId,
+    this.assigneeScope = TicketAssigneeScope.any,
+    this.assigneeId,
+    this.slaStatuses = const {},
+    this.sources = const {},
+    this.from,
+    this.to,
   });
 
   /// Empty means "no filter", NOT "nothing" — the distinction the screen's
@@ -39,19 +53,61 @@ class TicketFilter {
   final Set<String> priorities;
   final String? serviceId;
 
+  /// EE-171: who is on it. `person` carries [assigneeId]; the other three do not.
+  final TicketAssigneeScope assigneeScope;
+  final String? assigneeId;
+
+  /// `met` · `ok` · `warned` · `breached` — the badge EE-097 puts on the row.
+  final Set<String> slaStatuses;
+
+  /// `internal` · `public` · `health` · `sla` — where the request came from.
+  final Set<String> sources;
+
+  /// Filed within this window. Inclusive at both ends, day-resolution: the
+  /// person picking "last week" means the whole of both days.
+  final DateTime? from;
+  final DateTime? to;
+
   bool get isEmpty =>
-      statuses.isEmpty && priorities.isEmpty && serviceId == null;
+      statuses.isEmpty &&
+      priorities.isEmpty &&
+      serviceId == null &&
+      assigneeScope == TicketAssigneeScope.any &&
+      slaStatuses.isEmpty &&
+      sources.isEmpty &&
+      from == null &&
+      to == null;
 
   TicketFilter copyWith({
     Set<String>? statuses,
     Set<String>? priorities,
     String? serviceId,
     bool clearService = false,
-  }) => TicketFilter(
-    statuses: statuses ?? this.statuses,
-    priorities: priorities ?? this.priorities,
-    serviceId: clearService ? null : (serviceId ?? this.serviceId),
-  );
+    TicketAssigneeScope? assigneeScope,
+    String? assigneeId,
+    Set<String>? slaStatuses,
+    Set<String>? sources,
+    DateTime? from,
+    DateTime? to,
+    bool clearDates = false,
+  }) {
+    final scope = assigneeScope ?? this.assigneeScope;
+    return TicketFilter(
+      statuses: statuses ?? this.statuses,
+      priorities: priorities ?? this.priorities,
+      serviceId: clearService ? null : (serviceId ?? this.serviceId),
+      assigneeScope: scope,
+      // The id belongs to `person` and to no other scope. Keeping a stale one
+      // behind "anybody" is exactly the invisible filter DESIGN §16 refuses.
+      assigneeId: scope == TicketAssigneeScope.person
+          ? (assigneeId ?? this.assigneeId)
+          : null,
+      slaStatuses: slaStatuses ?? this.slaStatuses,
+      sources: sources ?? this.sources,
+      from: clearDates ? null : (from ?? this.from),
+      to: clearDates ? null : (to ?? this.to),
+    );
+  }
 }
 
 final ticketFilterProvider =
@@ -72,6 +128,28 @@ class TicketFilterController extends Notifier<TicketFilter> {
   void setService(String? serviceId) => state = state.copyWith(
     serviceId: serviceId,
     clearService: serviceId == null,
+  );
+
+  /// EE-171. One call for all four scopes so the screen cannot build an
+  /// impossible one (a `person` with no id, or an id with scope `any`).
+  void setAssignee(TicketAssigneeScope scope, {String? userId}) =>
+      state = state.copyWith(
+        assigneeScope: scope,
+        assigneeId: scope == TicketAssigneeScope.person ? userId : null,
+      );
+
+  void toggleSlaStatus(String status) =>
+      state = state.copyWith(slaStatuses: _toggled(state.slaStatuses, status));
+
+  void toggleSource(String source) =>
+      state = state.copyWith(sources: _toggled(state.sources, source));
+
+  /// Both ends at once: a range with one end is a range the person is still
+  /// typing, and applying it halfway would empty the list under their hands.
+  void setRange(DateTime? from, DateTime? to) => state = state.copyWith(
+    from: from,
+    to: to,
+    clearDates: from == null && to == null,
   );
 
   void clear() => state = const TicketFilter();
@@ -115,6 +193,12 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
   final search = ref.watch(ticketSearchResultsProvider);
   final hits = search.value;
   final searching = ref.watch(ticketSearchQueryProvider).trim().isNotEmpty;
+  // EE-171: who is on each request, and who I am. Both are watched rather than
+  // read so a newly-assigned row leaves a "kimseye atanmamış" list the moment
+  // somebody picks it up.
+  final assignees =
+      ref.watch(ticketAssigneesProvider).value ?? const <String, List<Assignee>>{};
+  final me = ref.watch(currentUserIdProvider);
   final rank = hits == null
       ? null
       : {for (final (i, hit) in hits.indexed) hit.id: i};
@@ -129,6 +213,42 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
       }
       if (filter.serviceId != null && t.serviceId != filter.serviceId) {
         return false;
+      }
+      if (filter.slaStatuses.isNotEmpty &&
+          !filter.slaStatuses.contains(t.slaStatus ?? 'none')) {
+        return false;
+      }
+      if (filter.sources.isNotEmpty && !filter.sources.contains(t.source)) {
+        return false;
+      }
+      // Filed within the window. `createdAt` is nullable on the replica (a row
+      // pulled before the column existed), and a null is EXCLUDED rather than
+      // kept: a date filter that quietly keeps undated rows answers a
+      // different question than the one asked.
+      if (filter.from != null &&
+          (t.createdAt == null || t.createdAt!.isBefore(filter.from!))) {
+        return false;
+      }
+      if (filter.to != null &&
+          (t.createdAt == null || t.createdAt!.isAfter(filter.to!))) {
+        return false;
+      }
+      switch (filter.assigneeScope) {
+        case TicketAssigneeScope.any:
+          break;
+        case TicketAssigneeScope.unassigned:
+          if ((assignees[t.id] ?? const []).isNotEmpty) return false;
+        case TicketAssigneeScope.mine:
+          if (me == null) return false;
+          if (!(assignees[t.id] ?? const []).any((a) => a.userId == me)) {
+            return false;
+          }
+        case TicketAssigneeScope.person:
+          if (!(assignees[t.id] ?? const []).any(
+            (a) => a.userId == filter.assigneeId,
+          )) {
+            return false;
+          }
       }
       if (searching && (rank == null || !rank.containsKey(t.id))) return false;
       return true;

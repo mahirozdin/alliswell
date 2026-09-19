@@ -1754,7 +1754,23 @@
         "new": "Yeni",
         "in_progress": "Devam eden",
         "waiting": "Beklemede",
-        "done": "Bitmiş"
+        "done": "Bitmiş",
+        "mine": "Bende",
+        "unassigned": "Kimsede değil",
+        "slaBreached": "SLA kaçtı",
+        "slaWarned": "SLA yaklaşıyor",
+        "dates": "Tarih farketmez",
+        "datesSet": "Tarih aralığı",
+        "sourcePublic": "Portaldan",
+        "sourceHealth": "İzleyici açtı"
+      },
+      "bulk": {
+        "selected": "{n} seçili",
+        "status": "Durumu değiştir",
+        "assignToMe": "Bana ata",
+        "priority": "Önceliği değiştir",
+        "result": "{changed} değişti, {skipped} tanesine dokunulmadı",
+        "allChanged": "{changed} değişti"
       },
       "status": {
         "new": "Yeni",

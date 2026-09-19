@@ -183,6 +183,100 @@ class _FilterBar extends ConsumerWidget {
             ),
             const SizedBox(width: AwSpace.x2),
           ],
+          const SizedBox(width: AwSpace.x2),
+          // EE-171. The two questions a desk actually asks, as chips rather
+          // than a menu: "what is on me" and — the expensive one — "what is on
+          // nobody". A queue's costliest state is work nobody has picked up,
+          // and it is invisible until something asks for it.
+          for (final scope in [
+            TicketAssigneeScope.mine,
+            TicketAssigneeScope.unassigned,
+          ]) ...[
+            FilterChip(
+              key: Key('ticket-filter-${scope.name}'),
+              label: Text('ee.tickets.filter.${scope.name}'.tr()),
+              selected: filter.assigneeScope == scope,
+              // Selecting the one already on turns it OFF: these two are
+              // mutually exclusive and a chip that cannot be unpicked is a
+              // filter the person has to leave the screen to clear.
+              onSelected: (_) => notifier.setAssignee(
+                filter.assigneeScope == scope
+                    ? TicketAssigneeScope.any
+                    : scope,
+              ),
+            ),
+            const SizedBox(width: AwSpace.x2),
+          ],
+          const SizedBox(width: AwSpace.x2),
+          // The SLA badge, as the compliance question a manager asks: which
+          // promises are already broken, and which are about to be.
+          for (final sla in ['breached', 'warned']) ...[
+            FilterChip(
+              key: Key('ticket-filter-sla-$sla'),
+              label: Text(
+                'ee.tickets.filter.sla${sla[0].toUpperCase()}${sla.substring(1)}'.tr(),
+              ),
+              selected: filter.slaStatuses.contains(sla),
+              onSelected: (_) => notifier.toggleSlaStatus(sla),
+            ),
+            const SizedBox(width: AwSpace.x2),
+          ],
+          const SizedBox(width: AwSpace.x2),
+          // EE-171: filed between two days. A chip rather than two fields,
+          // because the question is always a RANGE — "this week", "since the
+          // shutdown" — and a half-applied one would empty the list under the
+          // person's hands while they were still answering it.
+          FilterChip(
+            key: const Key('ticket-filter-dates'),
+            label: Text(
+              filter.from == null && filter.to == null
+                  ? 'ee.tickets.filter.dates'.tr()
+                  : 'ee.tickets.filter.datesSet'.tr(),
+            ),
+            selected: filter.from != null || filter.to != null,
+            onSelected: (_) async {
+              if (filter.from != null || filter.to != null) {
+                notifier.setRange(null, null);
+                return;
+              }
+              final now = DateTime.now();
+              final picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(now.year - 5),
+                lastDate: DateTime(now.year + 1),
+              );
+              if (picked == null) return;
+              // The END of the chosen day, not its midnight: somebody who
+              // picks "today" means everything filed today, and a bare date
+              // would exclude every request after 00:00.
+              notifier.setRange(
+                picked.start,
+                DateTime(
+                  picked.end.year,
+                  picked.end.month,
+                  picked.end.day,
+                  23,
+                  59,
+                  59,
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: AwSpace.x2),
+          // Where it came from. `public` is the one worth a chip of its own:
+          // a stranger waiting on an answer is a different kind of queue.
+          for (final source in ['public', 'health']) ...[
+            FilterChip(
+              key: Key('ticket-filter-source-$source'),
+              label: Text(
+                'ee.tickets.filter.source${source[0].toUpperCase()}${source.substring(1)}'
+                    .tr(),
+              ),
+              selected: filter.sources.contains(source),
+              onSelected: (_) => notifier.toggleSource(source),
+            ),
+            const SizedBox(width: AwSpace.x2),
+          ],
         ],
       ),
     );

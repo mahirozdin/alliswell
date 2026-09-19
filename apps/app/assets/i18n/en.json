@@ -1755,7 +1755,23 @@
         "new": "New",
         "in_progress": "In progress",
         "waiting": "Waiting",
-        "done": "Finished"
+        "done": "Finished",
+        "mine": "On me",
+        "unassigned": "On nobody",
+        "slaBreached": "SLA missed",
+        "slaWarned": "SLA due soon",
+        "dates": "Any date",
+        "datesSet": "Date range",
+        "sourcePublic": "From the portal",
+        "sourceHealth": "Raised by a monitor"
+      },
+      "bulk": {
+        "selected": "{n} selected",
+        "status": "Change status",
+        "assignToMe": "Put on me",
+        "priority": "Change priority",
+        "result": "{changed} changed, {skipped} left alone",
+        "allChanged": "{changed} changed"
       },
       "status": {
         "new": "New",
