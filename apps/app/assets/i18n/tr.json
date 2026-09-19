@@ -1437,6 +1437,7 @@
       },
       "tickets": {
         "create": "Talep aç",
+        "create_on_behalf": "Başkası adına talep aç",
         "comment": "Talebe yaz",
         "close": "Talebi kapat veya iptal et",
         "convert": "Talebi işe dönüştür",

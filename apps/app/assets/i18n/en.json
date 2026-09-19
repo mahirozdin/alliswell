@@ -1438,6 +1438,7 @@
       },
       "tickets": {
         "create": "Open a request",
+        "create_on_behalf": "Open a request for somebody else",
         "comment": "Write on a request",
         "close": "Close or cancel a request",
         "convert": "Turn a request into a task in the unit",
