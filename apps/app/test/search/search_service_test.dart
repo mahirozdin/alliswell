@@ -58,6 +58,39 @@ void main() {
         }),
       );
 
+  Future<void> applyTicket(
+    String id,
+    String subject, {
+    String? body,
+    int? number,
+    String? createdAt,
+  }) => db
+      .into(db.tickets)
+      .insertOnConflictUpdate(
+        ticketCompanion({
+          'id': id,
+          'workspaceId': ws,
+          'subject': subject,
+          'body': body,
+          'number': number,
+          'createdAt': createdAt,
+          'status': 'new',
+          'priority': 'normal',
+          'source': 'internal',
+        }),
+      );
+
+  Future<void> applyTicketComment(String id, String ticketId, String body) => db
+      .into(db.ticketComments)
+      .insertOnConflictUpdate(
+        ticketCommentCompanion({
+          'id': id,
+          'workspaceId': ws,
+          'ticketId': ticketId,
+          'body': body,
+        }),
+      );
+
   test('ranks title > tag > description and folds Turkish both ways', () async {
     await applyTag('G1', 'Çay');
     await applyTask('T-title', 'Çay siparişi');
@@ -147,6 +180,114 @@ void main() {
     await applyTask('TX', 'indirimsiz');
     final hits = await service.searchTasks(ws, '%20', statuses: ['open']);
     expect(hits.map((h) => h.id).toList(), ['T%']);
+  });
+
+  /// EE-169 — the service desk joins the registry. Tier 0 is the subject, tier
+  /// 2 is the body AND the replies, and the NUMBER is its own exact path.
+  test('tickets rank subject (0) over body and replies (2)', () async {
+    // Distinct creation times: inside a tier the newest is first, and rows
+    // that all tie would be ordered by id — which would make this test assert
+    // an accident instead of the rule.
+    await applyTicket('K1', 'Dolum bandı durdu', number: 41, createdAt: '2026-09-01T08:00:00.000Z');
+    await applyTicket(
+      'K2',
+      'Yazıcı arızası',
+      body: 'Dolum hattında da oldu',
+      number: 42,
+      createdAt: '2026-09-03T08:00:00.000Z',
+    );
+    await applyTicket('K3', 'Kompresör', number: 43, createdAt: '2026-09-02T08:00:00.000Z');
+    await applyTicketComment('C1', 'K3', 'Dolum bölümünden bildirildi');
+
+    final hits = await service.searchTickets(ws, 'dolum');
+    expect(hits.map((h) => h.id), ['K1', 'K2', 'K3']);
+    expect(hits.map((h) => h.tier), [0, 2, 2]);
+  });
+
+  test('a Turkish query folds both ways, like every other domain', () async {
+    await applyTicket('K1', 'ISITICI arızası', number: 1);
+    final hits = await service.searchTickets(ws, 'ısıtıcı');
+    expect(hits.single.id, 'K1');
+    expect(hits.single.tier, 0);
+  });
+
+  test('#1042 is an exact lookup, not a word in the body', () async {
+    await applyTicket('K1', 'Rulman değişimi', number: 1042);
+    await applyTicket('K2', 'Bakım', body: 'Sipariş no 1042 ile geldi', number: 7);
+
+    // The lookup answers with the request that HAS the number, and ONLY it:
+    // the other one merely mentions 1042 in its body, and somebody reading a
+    // number off a mail subject is not browsing.
+    final byNumber = await service.searchTickets(ws, '#1042');
+    expect(byNumber.map((h) => h.id), ['K1']);
+    expect(byNumber.single.tier, 1);
+
+    // … and the bare digits do the same, because a person types both.
+    expect((await service.searchTickets(ws, '1042')).map((h) => h.id), ['K1']);
+  });
+
+  test('a number that no request holds finds the text instead', () async {
+    await applyTicket('K2', 'Bakım', body: 'Sipariş no 1042 ile geldi', number: 7);
+    final hits = await service.searchTickets(ws, '1042');
+    expect(hits.map((h) => h.id), ['K2']);
+    expect(hits.single.tier, 2);
+  });
+
+  test('a query with a number AND a word stays a text search', () async {
+    await applyTicket('K1', 'Rulman değişimi', number: 1042);
+    await applyTicket('K2', 'Rulman sipariş', body: '1042 numaralı parça', number: 8);
+    // "1042 rulman" is somebody remembering roughly; answering with request
+    // 1042 alone would drop half of what they typed.
+    expect(ticketNumberQuery('1042 rulman'), null);
+    final hits = await service.searchTickets(ws, '1042 rulman');
+    expect(hits.map((h) => h.id), ['K2']);
+  });
+
+  test('the number query parser refuses everything that is not one', () {
+    expect(ticketNumberQuery('#1042'), 1042);
+    expect(ticketNumberQuery(' 1042 '), 1042);
+    expect(ticketNumberQuery('#0'), null);
+    expect(ticketNumberQuery('#'), null);
+    expect(ticketNumberQuery('10x42'), null);
+    expect(ticketNumberQuery('1234567890123'), null);
+  });
+
+  test('the applier folds a ticket and its replies — both write points', () async {
+    await applyTicket('K1', 'Fırın sıcaklığı', body: 'Gövde metni');
+    await applyTicketComment('C1', 'K1', 'Yorum metni');
+    final ticket = await (db.select(db.tickets)..where((t) => t.id.equals('K1'))).getSingle();
+    final comment = await (db.select(
+      db.ticketComments,
+    )..where((c) => c.id.equals('C1'))).getSingle();
+    expect(ticket.subjectFold, 'firin sicakligi');
+    expect(ticket.bodyFold, 'govde metni');
+    expect(comment.bodyFold, 'yorum metni');
+  });
+
+  /// The v27 upgrade's half that nobody would notice was missing: pull is
+  /// incremental, so a request already on the device is never sent again and
+  /// its shadows would stay null forever. "No results" would then mean "this
+  /// device joined before search existed", which is indistinguishable on
+  /// screen from "no such request".
+  test('the v27 backfill folds requests that were already on the device', () async {
+    await db.customStatement(
+      "INSERT INTO tickets (id, workspace_id, subject, body, status, priority, source, revision) "
+      "VALUES ('K9', ?, 'ISITICI arızası', 'Gövde metni', 'new', 'normal', 'internal', 0)",
+      [ws],
+    );
+    await db.customStatement(
+      "INSERT INTO ticket_comments (id, workspace_id, ticket_id, body, internal, revision) "
+      "VALUES ('C9', ?, 'K9', 'Yorum metni', 0, 0)",
+      [ws],
+    );
+    // Unfolded rows are invisible to search — that is the hole.
+    expect(await service.searchTickets(ws, 'ısıtıcı'), isEmpty);
+
+    await backfillTicketFolds(db);
+
+    final hits = await service.searchTickets(ws, 'ısıtıcı');
+    expect(hits.single.id, 'K9');
+    expect((await service.searchTickets(ws, 'yorum')).single.id, 'K9');
   });
 
   test('searchSnippet windows around the folded match', () {

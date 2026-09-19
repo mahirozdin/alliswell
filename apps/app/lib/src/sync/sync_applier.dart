@@ -591,6 +591,15 @@ TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   requesterId: Value(data['requesterId'] as String?),
   subject: Value(data['subject'] as String),
   body: Value(data['body'] as String?),
+  // EE-167: server-owned, like the SLA pair below. A device that wrote its own
+  // number would be inventing an identifier the team's sequence already gave
+  // to somebody else.
+  number: Value((data['number'] as num?)?.toInt()),
+  // EE-169 (ADR-0013): this applier is the ONLY writer of these two — the app
+  // has no local ticket store, so unlike tasks and notes there is no second
+  // choke point to keep in step.
+  subjectFold: _foldValue(data['subject']),
+  bodyFold: _foldValue(data['body']),
   status: Value(data['status'] as String),
   priority: Value(data['priority'] as String),
   source: Value(data['source'] as String),
@@ -612,6 +621,7 @@ TicketCommentsCompanion ticketCommentCompanion(Map<String, dynamic> data) =>
       ticketId: Value(data['ticketId'] as String),
       authorId: Value(data['authorId'] as String?),
       body: Value(data['body'] as String),
+      bodyFold: _foldValue(data['body']),
       internal: Value((data['internal'] as bool?) ?? false),
       createdAt: _dateValue(data['createdAt']),
       revision: Value((data['revision'] as num?)?.toInt() ?? 0),

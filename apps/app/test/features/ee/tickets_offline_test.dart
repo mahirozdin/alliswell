@@ -158,12 +158,118 @@ void main() {
     return container.read(ticketQueueProvider.future);
   }
 
+  /// The queue as the screen gets it WITH a query typed — the real search
+  /// provider, the real filter, no re-typed copy of either.
+  Future<List<TicketRecord>> searched(String query) async {
+    final container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(db),
+        currentWorkspaceProvider.overrideWithValue(
+          const AsyncValue.data(
+            WorkspaceSummary(
+              id: ws,
+              name: 'Bakım',
+              slug: 'bakim',
+              colorRgb: '#2563EB',
+              role: 'member',
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final sub = container.listen(filteredTicketsProvider, (_, _) {});
+    addTearDown(sub.close);
+    container.read(ticketSearchQueryProvider.notifier).set(query);
+    await container.read(ticketQueueProvider.future);
+    await container.read(ticketSearchResultsProvider.future);
+    return container.read(filteredTicketsProvider).value ?? const [];
+  }
+
   Future<int> pendingCount() async {
     final row = await db
         .customSelect('SELECT COUNT(*) AS n FROM pending_mutations')
         .getSingle();
     return row.data['n'] as int;
   }
+
+
+  /// EE-169 — the acceptance's own sentence: search works OFFLINE, because it
+  /// reads the replica's fold shadows and never asks the server anything.
+  test('search answers with the server unreachable — subject, body, reply, number', () async {
+    await pulled([
+      SyncChange(
+        revision: 1,
+        entityType: 'ee_ticket',
+        entityId: id('T1'),
+        operation: 'upsert',
+        data: {...ticket(id('T1'), subject: 'ISITICI arızası'), 'number': 41},
+      ),
+      SyncChange(
+        revision: 2,
+        entityType: 'ee_ticket',
+        entityId: id('T2'),
+        operation: 'upsert',
+        data: {
+          ...ticket(id('T2'), subject: 'Kompresör sesi'),
+          'body': 'Isıtıcı hattında da duyuldu',
+          'number': 42,
+          // Distinct clocks on purpose: inside a tier the newest is first, and
+          // rows that tie fall back to the id — which would make the
+          // assertion below about an accident instead of the rule.
+          'createdAt': '2026-08-01T10:00:00.000Z',
+        },
+      ),
+      SyncChange(
+        revision: 3,
+        entityType: 'ee_ticket',
+        entityId: id('T3'),
+        operation: 'upsert',
+        data: {
+          ...ticket(id('T3'), subject: 'Pano'),
+          'body': null,
+          'number': 43,
+          'createdAt': '2026-08-01T09:00:00.000Z',
+        },
+      ),
+      SyncChange(
+        revision: 4,
+        entityType: 'ee_ticket_comment',
+        entityId: id('C1'),
+        operation: 'upsert',
+        data: {
+          'id': id('C1'),
+          'workspaceId': ws,
+          'ticketId': id('T3'),
+          'authorId': null,
+          'body': 'ısıtıcı bölümünden bildirildi',
+          'internal': false,
+          'revision': 4,
+          'createdAt': '2026-08-01T09:00:00.000Z',
+          'updatedAt': '2026-08-01T09:00:00.000Z',
+        },
+      ),
+    ]);
+
+    // The shift starts, and there is no signal for the rest of it.
+    api.pullThrows = Exception('offline');
+    api.pushThrows = Exception('offline');
+    await engine.syncNow();
+
+    // Folded both ways (ADR-0013): a lowercase dotted query finds the SHOUTED
+    // dotless subject, which neither SQLite nor MySQL would do on its own.
+    final byText = await searched('ısıtıcı');
+    expect(byText.map((t) => t.id), [id('T1'), id('T2'), id('T3')]);
+
+    // The number is an identifier, so it answers with exactly one request —
+    // not with every request whose text happens to contain the digits.
+    expect((await searched('#42')).map((t) => t.id), [id('T2')]);
+    expect((await searched('42')).map((t) => t.id), [id('T2')]);
+
+    // And a query that matches nothing narrows to nothing rather than
+    // quietly showing the unfiltered queue — the screen's third emptiness.
+    expect(await searched('bulunmayan'), isEmpty);
+  });
 
   test(
     'the queue opens with the server unreachable, and it is not empty',

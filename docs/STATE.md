@@ -3,7 +3,34 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-19c (**OPH-325 — `files.target_type` kapalı bir liste olmaktan
+**Last updated:** 2026-09-19d (**OPH-326 — arama bir kayıt defterine dönüştü, replika
+**v27**'ye çıktı, ve talebin insan numarası cihaza indi.** Üç elle yazılmış SELECT
+(`searchTasks`, `searchEvents`, `searchProjects`) tek bir yürütücüye indi; ne aradıkları
+artık **veri**: `SearchEntity` = (tablo, takma ad, kademe→katlanmış ifade) + entity başına
+gerçekten değişen ikisi, metni başka tablodan getiren JOIN ve kademe İÇİNDEKİ sıralama.
+Dördüncü kayıt servis masasının kuyruğu; çekirdeğin kendi üçü de aynı yoldan geçiyor, yani
+"ikinci bir eşleşme tanımı" doğmadı (ADR-0013'ün tekliği).
+
+**Replika v27:** `tickets.subject_fold`, `tickets.body_fold`, `ticket_comments.body_fold`
+ve `tickets.number`. **Geri dolgu opsiyonel değildi ve v6 emsali:** pull artımlı, yani
+cihazda zaten duran bir talep bir daha gönderilmez ve gölgeleri sonsuza kadar boş kalırdı —
+boş bir arama sonucu ekranda "böyle bir talep yok" diye okunur. Test önce deliğin var
+olduğunu, sonra kapandığını gösteriyor. **Numara geri doldurulamaz**: sunucu-sahipli, bu
+cihaz onu hiç duymadı; bir sonraki pull'da geliyor ve o zamana kadar satır numarasız
+çiziliyor — uydurulmuş değil, eksik.
+
+**İki ölçüm görev metnini düzeltti.** (1) *"Fold yazıcıları iki uçta birden"* — talepte
+yazıcı **bir tane**: `TicketsCompanion` `sync_applier.dart` dışında hiçbir yerde
+yazılmıyor, çünkü uygulamanın yerel bir talep deposu yok (atamaların var). (2) Kademe
+içindeki sıra iki testin ilk hâlini kırdı: eşit `created_at` taşıyan satırlar id'ye göre
+diziliyor, yani beklenti "eklediğim sıra" değil **kuralın kendisi** olmalıydı — testler
+artık ayrık saatlerle kuralı ölçüyor.
+
+Doğrulama: Flutter **analyze temiz, 1701 test yeşil** (arama süiti 15, çevrimdışı süit 4);
+v27 göç testi üç yürüyüşte de yeni kolonları SQL'le adlandırarak kanıtlıyor; `check:i18n`,
+`check:docs`, `check:no-ee` yeşil.)
+
+Önceki blok: 2026-09-19c (**OPH-325 — `files.target_type` kapalı bir liste olmaktan
 çıktı (ADR-0040).** Kolon `varchar(32)`, kabul edilen küme bir **kayıt defteri**:
 `seam.registerAttachmentTarget(type, check)`. `check` uzantının kendi sorusunu cevaplıyor —
 bu satır bu workspace'te gerçekten var mı, ve bu kişi ona katkı yapabilir mi — ve `false`

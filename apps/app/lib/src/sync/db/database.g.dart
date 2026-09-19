@@ -15767,6 +15767,37 @@ class $TicketsTable extends Tickets
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _numberMeta = const VerificationMeta('number');
+  @override
+  late final GeneratedColumn<int> number = GeneratedColumn<int>(
+    'number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _subjectFoldMeta = const VerificationMeta(
+    'subjectFold',
+  );
+  @override
+  late final GeneratedColumn<String> subjectFold = GeneratedColumn<String>(
+    'subject_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bodyFoldMeta = const VerificationMeta(
+    'bodyFold',
+  );
+  @override
+  late final GeneratedColumn<String> bodyFold = GeneratedColumn<String>(
+    'body_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -15815,6 +15846,9 @@ class $TicketsTable extends Tickets
     terminalAt,
     slaDueAt,
     slaStatus,
+    number,
+    subjectFold,
+    bodyFold,
     createdAt,
     revision,
     updatedAt,
@@ -15918,6 +15952,27 @@ class $TicketsTable extends Tickets
         slaStatus.isAcceptableOrUnknown(data['sla_status']!, _slaStatusMeta),
       );
     }
+    if (data.containsKey('number')) {
+      context.handle(
+        _numberMeta,
+        number.isAcceptableOrUnknown(data['number']!, _numberMeta),
+      );
+    }
+    if (data.containsKey('subject_fold')) {
+      context.handle(
+        _subjectFoldMeta,
+        subjectFold.isAcceptableOrUnknown(
+          data['subject_fold']!,
+          _subjectFoldMeta,
+        ),
+      );
+    }
+    if (data.containsKey('body_fold')) {
+      context.handle(
+        _bodyFoldMeta,
+        bodyFold.isAcceptableOrUnknown(data['body_fold']!, _bodyFoldMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -15993,6 +16048,18 @@ class $TicketsTable extends Tickets
         DriftSqlType.string,
         data['${effectivePrefix}sla_status'],
       ),
+      number: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}number'],
+      ),
+      subjectFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subject_fold'],
+      ),
+      bodyFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body_fold'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -16053,6 +16120,18 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
   /// `breached` is sticky once earned.
   final DateTime? slaDueAt;
   final String? slaStatus;
+
+  /// The human number (EE-167). Server-owned like the SLA pair above: it is
+  /// issued by the team's sequence inside the create's transaction, and a
+  /// device that wrote its own would be inventing an identifier somebody else
+  /// already holds. Nullable for rows pulled before the numbering landed.
+  final int? number;
+
+  /// v27 (EE-169, ADR-0013): the searchable shadows. Writers — the applier is
+  /// the only one for this entity — MUST keep them in step via foldSearchText;
+  /// the fold cannot run in SQL, which is the whole reason the columns exist.
+  final String? subjectFold;
+  final String? bodyFold;
   final DateTime? createdAt;
   final int revision;
   final DateTime? updatedAt;
@@ -16069,6 +16148,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     this.terminalAt,
     this.slaDueAt,
     this.slaStatus,
+    this.number,
+    this.subjectFold,
+    this.bodyFold,
     this.createdAt,
     required this.revision,
     this.updatedAt,
@@ -16099,6 +16181,15 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     }
     if (!nullToAbsent || slaStatus != null) {
       map['sla_status'] = Variable<String>(slaStatus);
+    }
+    if (!nullToAbsent || number != null) {
+      map['number'] = Variable<int>(number);
+    }
+    if (!nullToAbsent || subjectFold != null) {
+      map['subject_fold'] = Variable<String>(subjectFold);
+    }
+    if (!nullToAbsent || bodyFold != null) {
+      map['body_fold'] = Variable<String>(bodyFold);
     }
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
@@ -16134,6 +16225,15 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       slaStatus: slaStatus == null && nullToAbsent
           ? const Value.absent()
           : Value(slaStatus),
+      number: number == null && nullToAbsent
+          ? const Value.absent()
+          : Value(number),
+      subjectFold: subjectFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subjectFold),
+      bodyFold: bodyFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bodyFold),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
           : Value(createdAt),
@@ -16162,6 +16262,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       terminalAt: serializer.fromJson<DateTime?>(json['terminalAt']),
       slaDueAt: serializer.fromJson<DateTime?>(json['slaDueAt']),
       slaStatus: serializer.fromJson<String?>(json['slaStatus']),
+      number: serializer.fromJson<int?>(json['number']),
+      subjectFold: serializer.fromJson<String?>(json['subjectFold']),
+      bodyFold: serializer.fromJson<String?>(json['bodyFold']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       revision: serializer.fromJson<int>(json['revision']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -16183,6 +16286,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       'terminalAt': serializer.toJson<DateTime?>(terminalAt),
       'slaDueAt': serializer.toJson<DateTime?>(slaDueAt),
       'slaStatus': serializer.toJson<String?>(slaStatus),
+      'number': serializer.toJson<int?>(number),
+      'subjectFold': serializer.toJson<String?>(subjectFold),
+      'bodyFold': serializer.toJson<String?>(bodyFold),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'revision': serializer.toJson<int>(revision),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -16202,6 +16308,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     Value<DateTime?> terminalAt = const Value.absent(),
     Value<DateTime?> slaDueAt = const Value.absent(),
     Value<String?> slaStatus = const Value.absent(),
+    Value<int?> number = const Value.absent(),
+    Value<String?> subjectFold = const Value.absent(),
+    Value<String?> bodyFold = const Value.absent(),
     Value<DateTime?> createdAt = const Value.absent(),
     int? revision,
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -16218,6 +16327,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     terminalAt: terminalAt.present ? terminalAt.value : this.terminalAt,
     slaDueAt: slaDueAt.present ? slaDueAt.value : this.slaDueAt,
     slaStatus: slaStatus.present ? slaStatus.value : this.slaStatus,
+    number: number.present ? number.value : this.number,
+    subjectFold: subjectFold.present ? subjectFold.value : this.subjectFold,
+    bodyFold: bodyFold.present ? bodyFold.value : this.bodyFold,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     revision: revision ?? this.revision,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -16242,6 +16354,11 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           : this.terminalAt,
       slaDueAt: data.slaDueAt.present ? data.slaDueAt.value : this.slaDueAt,
       slaStatus: data.slaStatus.present ? data.slaStatus.value : this.slaStatus,
+      number: data.number.present ? data.number.value : this.number,
+      subjectFold: data.subjectFold.present
+          ? data.subjectFold.value
+          : this.subjectFold,
+      bodyFold: data.bodyFold.present ? data.bodyFold.value : this.bodyFold,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       revision: data.revision.present ? data.revision.value : this.revision,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -16263,6 +16380,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
+          ..write('number: $number, ')
+          ..write('subjectFold: $subjectFold, ')
+          ..write('bodyFold: $bodyFold, ')
           ..write('createdAt: $createdAt, ')
           ..write('revision: $revision, ')
           ..write('updatedAt: $updatedAt')
@@ -16284,6 +16404,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     terminalAt,
     slaDueAt,
     slaStatus,
+    number,
+    subjectFold,
+    bodyFold,
     createdAt,
     revision,
     updatedAt,
@@ -16304,6 +16427,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           other.terminalAt == this.terminalAt &&
           other.slaDueAt == this.slaDueAt &&
           other.slaStatus == this.slaStatus &&
+          other.number == this.number &&
+          other.subjectFold == this.subjectFold &&
+          other.bodyFold == this.bodyFold &&
           other.createdAt == this.createdAt &&
           other.revision == this.revision &&
           other.updatedAt == this.updatedAt);
@@ -16322,6 +16448,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
   final Value<DateTime?> terminalAt;
   final Value<DateTime?> slaDueAt;
   final Value<String?> slaStatus;
+  final Value<int?> number;
+  final Value<String?> subjectFold;
+  final Value<String?> bodyFold;
   final Value<DateTime?> createdAt;
   final Value<int> revision;
   final Value<DateTime?> updatedAt;
@@ -16339,6 +16468,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
+    this.number = const Value.absent(),
+    this.subjectFold = const Value.absent(),
+    this.bodyFold = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -16357,6 +16489,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
+    this.number = const Value.absent(),
+    this.subjectFold = const Value.absent(),
+    this.bodyFold = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -16380,6 +16515,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Expression<DateTime>? terminalAt,
     Expression<DateTime>? slaDueAt,
     Expression<String>? slaStatus,
+    Expression<int>? number,
+    Expression<String>? subjectFold,
+    Expression<String>? bodyFold,
     Expression<DateTime>? createdAt,
     Expression<int>? revision,
     Expression<DateTime>? updatedAt,
@@ -16398,6 +16536,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       if (terminalAt != null) 'terminal_at': terminalAt,
       if (slaDueAt != null) 'sla_due_at': slaDueAt,
       if (slaStatus != null) 'sla_status': slaStatus,
+      if (number != null) 'number': number,
+      if (subjectFold != null) 'subject_fold': subjectFold,
+      if (bodyFold != null) 'body_fold': bodyFold,
       if (createdAt != null) 'created_at': createdAt,
       if (revision != null) 'revision': revision,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -16418,6 +16559,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Value<DateTime?>? terminalAt,
     Value<DateTime?>? slaDueAt,
     Value<String?>? slaStatus,
+    Value<int?>? number,
+    Value<String?>? subjectFold,
+    Value<String?>? bodyFold,
     Value<DateTime?>? createdAt,
     Value<int>? revision,
     Value<DateTime?>? updatedAt,
@@ -16436,6 +16580,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       terminalAt: terminalAt ?? this.terminalAt,
       slaDueAt: slaDueAt ?? this.slaDueAt,
       slaStatus: slaStatus ?? this.slaStatus,
+      number: number ?? this.number,
+      subjectFold: subjectFold ?? this.subjectFold,
+      bodyFold: bodyFold ?? this.bodyFold,
       createdAt: createdAt ?? this.createdAt,
       revision: revision ?? this.revision,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -16482,6 +16629,15 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     if (slaStatus.present) {
       map['sla_status'] = Variable<String>(slaStatus.value);
     }
+    if (number.present) {
+      map['number'] = Variable<int>(number.value);
+    }
+    if (subjectFold.present) {
+      map['subject_fold'] = Variable<String>(subjectFold.value);
+    }
+    if (bodyFold.present) {
+      map['body_fold'] = Variable<String>(bodyFold.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -16512,6 +16668,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
+          ..write('number: $number, ')
+          ..write('subjectFold: $subjectFold, ')
+          ..write('bodyFold: $bodyFold, ')
           ..write('createdAt: $createdAt, ')
           ..write('revision: $revision, ')
           ..write('updatedAt: $updatedAt, ')
@@ -16593,6 +16752,17 @@ class $TicketCommentsTable extends TicketComments
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _bodyFoldMeta = const VerificationMeta(
+    'bodyFold',
+  );
+  @override
+  late final GeneratedColumn<String> bodyFold = GeneratedColumn<String>(
+    'body_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -16635,6 +16805,7 @@ class $TicketCommentsTable extends TicketComments
     authorId,
     body,
     internal,
+    bodyFold,
     createdAt,
     revision,
     updatedAt,
@@ -16695,6 +16866,12 @@ class $TicketCommentsTable extends TicketComments
         internal.isAcceptableOrUnknown(data['internal']!, _internalMeta),
       );
     }
+    if (data.containsKey('body_fold')) {
+      context.handle(
+        _bodyFoldMeta,
+        bodyFold.isAcceptableOrUnknown(data['body_fold']!, _bodyFoldMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -16746,6 +16923,10 @@ class $TicketCommentsTable extends TicketComments
         DriftSqlType.bool,
         data['${effectivePrefix}internal'],
       )!,
+      bodyFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body_fold'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -16775,6 +16956,11 @@ class TicketCommentRecord extends DataClass
   final String? authorId;
   final String body;
   final bool internal;
+
+  /// v27 (EE-169): a reply is tier 2 of a request's search, so its text needs
+  /// the same shadow the request's body has. Internal notes fold too — the
+  /// people searching this replica are the agents the note was written for.
+  final String? bodyFold;
   final DateTime? createdAt;
   final int revision;
   final DateTime? updatedAt;
@@ -16785,6 +16971,7 @@ class TicketCommentRecord extends DataClass
     this.authorId,
     required this.body,
     required this.internal,
+    this.bodyFold,
     this.createdAt,
     required this.revision,
     this.updatedAt,
@@ -16800,6 +16987,9 @@ class TicketCommentRecord extends DataClass
     }
     map['body'] = Variable<String>(body);
     map['internal'] = Variable<bool>(internal);
+    if (!nullToAbsent || bodyFold != null) {
+      map['body_fold'] = Variable<String>(bodyFold);
+    }
     if (!nullToAbsent || createdAt != null) {
       map['created_at'] = Variable<DateTime>(createdAt);
     }
@@ -16820,6 +17010,9 @@ class TicketCommentRecord extends DataClass
           : Value(authorId),
       body: Value(body),
       internal: Value(internal),
+      bodyFold: bodyFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bodyFold),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
           : Value(createdAt),
@@ -16842,6 +17035,7 @@ class TicketCommentRecord extends DataClass
       authorId: serializer.fromJson<String?>(json['authorId']),
       body: serializer.fromJson<String>(json['body']),
       internal: serializer.fromJson<bool>(json['internal']),
+      bodyFold: serializer.fromJson<String?>(json['bodyFold']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       revision: serializer.fromJson<int>(json['revision']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -16857,6 +17051,7 @@ class TicketCommentRecord extends DataClass
       'authorId': serializer.toJson<String?>(authorId),
       'body': serializer.toJson<String>(body),
       'internal': serializer.toJson<bool>(internal),
+      'bodyFold': serializer.toJson<String?>(bodyFold),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'revision': serializer.toJson<int>(revision),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -16870,6 +17065,7 @@ class TicketCommentRecord extends DataClass
     Value<String?> authorId = const Value.absent(),
     String? body,
     bool? internal,
+    Value<String?> bodyFold = const Value.absent(),
     Value<DateTime?> createdAt = const Value.absent(),
     int? revision,
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -16880,6 +17076,7 @@ class TicketCommentRecord extends DataClass
     authorId: authorId.present ? authorId.value : this.authorId,
     body: body ?? this.body,
     internal: internal ?? this.internal,
+    bodyFold: bodyFold.present ? bodyFold.value : this.bodyFold,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     revision: revision ?? this.revision,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -16894,6 +17091,7 @@ class TicketCommentRecord extends DataClass
       authorId: data.authorId.present ? data.authorId.value : this.authorId,
       body: data.body.present ? data.body.value : this.body,
       internal: data.internal.present ? data.internal.value : this.internal,
+      bodyFold: data.bodyFold.present ? data.bodyFold.value : this.bodyFold,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       revision: data.revision.present ? data.revision.value : this.revision,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -16909,6 +17107,7 @@ class TicketCommentRecord extends DataClass
           ..write('authorId: $authorId, ')
           ..write('body: $body, ')
           ..write('internal: $internal, ')
+          ..write('bodyFold: $bodyFold, ')
           ..write('createdAt: $createdAt, ')
           ..write('revision: $revision, ')
           ..write('updatedAt: $updatedAt')
@@ -16924,6 +17123,7 @@ class TicketCommentRecord extends DataClass
     authorId,
     body,
     internal,
+    bodyFold,
     createdAt,
     revision,
     updatedAt,
@@ -16938,6 +17138,7 @@ class TicketCommentRecord extends DataClass
           other.authorId == this.authorId &&
           other.body == this.body &&
           other.internal == this.internal &&
+          other.bodyFold == this.bodyFold &&
           other.createdAt == this.createdAt &&
           other.revision == this.revision &&
           other.updatedAt == this.updatedAt);
@@ -16950,6 +17151,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
   final Value<String?> authorId;
   final Value<String> body;
   final Value<bool> internal;
+  final Value<String?> bodyFold;
   final Value<DateTime?> createdAt;
   final Value<int> revision;
   final Value<DateTime?> updatedAt;
@@ -16961,6 +17163,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
     this.authorId = const Value.absent(),
     this.body = const Value.absent(),
     this.internal = const Value.absent(),
+    this.bodyFold = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -16973,6 +17176,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
     this.authorId = const Value.absent(),
     required String body,
     this.internal = const Value.absent(),
+    this.bodyFold = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.revision = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -16988,6 +17192,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
     Expression<String>? authorId,
     Expression<String>? body,
     Expression<bool>? internal,
+    Expression<String>? bodyFold,
     Expression<DateTime>? createdAt,
     Expression<int>? revision,
     Expression<DateTime>? updatedAt,
@@ -17000,6 +17205,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
       if (authorId != null) 'author_id': authorId,
       if (body != null) 'body': body,
       if (internal != null) 'internal': internal,
+      if (bodyFold != null) 'body_fold': bodyFold,
       if (createdAt != null) 'created_at': createdAt,
       if (revision != null) 'revision': revision,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -17014,6 +17220,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
     Value<String?>? authorId,
     Value<String>? body,
     Value<bool>? internal,
+    Value<String?>? bodyFold,
     Value<DateTime?>? createdAt,
     Value<int>? revision,
     Value<DateTime?>? updatedAt,
@@ -17026,6 +17233,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
       authorId: authorId ?? this.authorId,
       body: body ?? this.body,
       internal: internal ?? this.internal,
+      bodyFold: bodyFold ?? this.bodyFold,
       createdAt: createdAt ?? this.createdAt,
       revision: revision ?? this.revision,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -17054,6 +17262,9 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
     if (internal.present) {
       map['internal'] = Variable<bool>(internal.value);
     }
+    if (bodyFold.present) {
+      map['body_fold'] = Variable<String>(bodyFold.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -17078,6 +17289,7 @@ class TicketCommentsCompanion extends UpdateCompanion<TicketCommentRecord> {
           ..write('authorId: $authorId, ')
           ..write('body: $body, ')
           ..write('internal: $internal, ')
+          ..write('bodyFold: $bodyFold, ')
           ..write('createdAt: $createdAt, ')
           ..write('revision: $revision, ')
           ..write('updatedAt: $updatedAt, ')
@@ -25151,6 +25363,9 @@ typedef $$TicketsTableCreateCompanionBuilder =
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
+      Value<int?> number,
+      Value<String?> subjectFold,
+      Value<String?> bodyFold,
       Value<DateTime?> createdAt,
       Value<int> revision,
       Value<DateTime?> updatedAt,
@@ -25170,6 +25385,9 @@ typedef $$TicketsTableUpdateCompanionBuilder =
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
+      Value<int?> number,
+      Value<String?> subjectFold,
+      Value<String?> bodyFold,
       Value<DateTime?> createdAt,
       Value<int> revision,
       Value<DateTime?> updatedAt,
@@ -25242,6 +25460,21 @@ class $$TicketsTableFilterComposer
 
   ColumnFilters<String> get slaStatus => $composableBuilder(
     column: $table.slaStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get number => $composableBuilder(
+    column: $table.number,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subjectFold => $composableBuilder(
+    column: $table.subjectFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bodyFold => $composableBuilder(
+    column: $table.bodyFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -25330,6 +25563,21 @@ class $$TicketsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get number => $composableBuilder(
+    column: $table.number,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subjectFold => $composableBuilder(
+    column: $table.subjectFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bodyFold => $composableBuilder(
+    column: $table.bodyFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -25397,6 +25645,17 @@ class $$TicketsTableAnnotationComposer
   GeneratedColumn<String> get slaStatus =>
       $composableBuilder(column: $table.slaStatus, builder: (column) => column);
 
+  GeneratedColumn<int> get number =>
+      $composableBuilder(column: $table.number, builder: (column) => column);
+
+  GeneratedColumn<String> get subjectFold => $composableBuilder(
+    column: $table.subjectFold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bodyFold =>
+      $composableBuilder(column: $table.bodyFold, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -25450,6 +25709,9 @@ class $$TicketsTableTableManager
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
+                Value<int?> number = const Value.absent(),
+                Value<String?> subjectFold = const Value.absent(),
+                Value<String?> bodyFold = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -25467,6 +25729,9 @@ class $$TicketsTableTableManager
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,
+                number: number,
+                subjectFold: subjectFold,
+                bodyFold: bodyFold,
                 createdAt: createdAt,
                 revision: revision,
                 updatedAt: updatedAt,
@@ -25486,6 +25751,9 @@ class $$TicketsTableTableManager
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
+                Value<int?> number = const Value.absent(),
+                Value<String?> subjectFold = const Value.absent(),
+                Value<String?> bodyFold = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -25503,6 +25771,9 @@ class $$TicketsTableTableManager
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,
+                number: number,
+                subjectFold: subjectFold,
+                bodyFold: bodyFold,
                 createdAt: createdAt,
                 revision: revision,
                 updatedAt: updatedAt,
@@ -25538,6 +25809,7 @@ typedef $$TicketCommentsTableCreateCompanionBuilder =
       Value<String?> authorId,
       required String body,
       Value<bool> internal,
+      Value<String?> bodyFold,
       Value<DateTime?> createdAt,
       Value<int> revision,
       Value<DateTime?> updatedAt,
@@ -25551,6 +25823,7 @@ typedef $$TicketCommentsTableUpdateCompanionBuilder =
       Value<String?> authorId,
       Value<String> body,
       Value<bool> internal,
+      Value<String?> bodyFold,
       Value<DateTime?> createdAt,
       Value<int> revision,
       Value<DateTime?> updatedAt,
@@ -25593,6 +25866,11 @@ class $$TicketCommentsTableFilterComposer
 
   ColumnFilters<bool> get internal => $composableBuilder(
     column: $table.internal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bodyFold => $composableBuilder(
+    column: $table.bodyFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -25651,6 +25929,11 @@ class $$TicketCommentsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get bodyFold => $composableBuilder(
+    column: $table.bodyFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -25695,6 +25978,9 @@ class $$TicketCommentsTableAnnotationComposer
 
   GeneratedColumn<bool> get internal =>
       $composableBuilder(column: $table.internal, builder: (column) => column);
+
+  GeneratedColumn<String> get bodyFold =>
+      $composableBuilder(column: $table.bodyFold, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -25747,6 +26033,7 @@ class $$TicketCommentsTableTableManager
                 Value<String?> authorId = const Value.absent(),
                 Value<String> body = const Value.absent(),
                 Value<bool> internal = const Value.absent(),
+                Value<String?> bodyFold = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -25758,6 +26045,7 @@ class $$TicketCommentsTableTableManager
                 authorId: authorId,
                 body: body,
                 internal: internal,
+                bodyFold: bodyFold,
                 createdAt: createdAt,
                 revision: revision,
                 updatedAt: updatedAt,
@@ -25771,6 +26059,7 @@ class $$TicketCommentsTableTableManager
                 Value<String?> authorId = const Value.absent(),
                 required String body,
                 Value<bool> internal = const Value.absent(),
+                Value<String?> bodyFold = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -25782,6 +26071,7 @@ class $$TicketCommentsTableTableManager
                 authorId: authorId,
                 body: body,
                 internal: internal,
+                bodyFold: bodyFold,
                 createdAt: createdAt,
                 revision: revision,
                 updatedAt: updatedAt,

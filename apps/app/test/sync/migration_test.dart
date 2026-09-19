@@ -264,8 +264,16 @@ void main() {
       // migration that adds no table.
       await db.customSelect('SELECT sla_due_at, sla_status FROM tickets').get();
 
+      // v27 (EE-167 + EE-169): three more columns on `tickets` and one on
+      // `ticket_comments`, proved the same way and for the same reason — an
+      // empty select would pass whether or not the ALTER ran.
+      await db
+          .customSelect('SELECT number, subject_fold, body_fold FROM tickets')
+          .get();
+      await db.customSelect('SELECT body_fold FROM ticket_comments').get();
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 26);
+      expect(version.data['user_version'], 27);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -311,7 +319,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 26);
+      expect(version.data['user_version'], 27);
       await db.close();
     },
   );
@@ -358,7 +366,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 26);
+      expect(version.data['user_version'], 27);
       await db.close();
     },
   );

@@ -5,6 +5,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
 import '../tickets_providers.dart';
@@ -36,11 +37,22 @@ class EeTicketQueueScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tickets = ref.watch(filteredTicketsProvider);
     final filter = ref.watch(ticketFilterProvider);
+    final searching = ref.watch(ticketSearchQueryProvider).trim().isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('ee.tickets.queueTitle'.tr()),
         actions: [
+          // EE-169. The house search shape (DESIGN §12 S1, round 13 #5): an
+          // icon until somebody wants it. It reads the REPLICA, so it answers
+          // with no signal — which is the whole reason the queue is a replica
+          // query and not a request.
+          AwSearchAction(
+            fieldKey: const Key('ticket-search'),
+            hintText: 'ee.tickets.searchHint'.tr(),
+            onQuery: (q) =>
+                ref.read(ticketSearchQueryProvider.notifier).set(q),
+          ),
           // EE-098. Reachability (DESIGN §22): a dashboard nothing opens is
           // not a feature, and the queue is where the person who wants it is
           // already standing. No permission gate — counting is membership
@@ -80,6 +92,21 @@ class EeTicketQueueScreen extends ConsumerWidget {
                   // whole value of the state: "nothing came in" is good news,
                   // "your filters exclude everything" is a mistake somebody is
                   // one tap from fixing.
+                  // EE-169 adds a THIRD emptiness, and it is the one that
+                  // would otherwise lie: a search finds nothing here when the
+                  // request is on the server but no longer on the device
+                  // (EE-091 sweeps finished work off it). "No results" would
+                  // read as "no such request", so the state says where the
+                  // rest of them are (ADR-0016 D16.3 wrote this bill down;
+                  // this is where it is paid).
+                  if (searching) {
+                    return AwEmptyState(
+                      key: const Key('ticket-search-empty'),
+                      icon: Icons.search_off_outlined,
+                      title: 'ee.tickets.searchEmptyTitle'.tr(),
+                      message: 'ee.tickets.searchEmptyBody'.tr(),
+                    );
+                  }
                   return filter.isEmpty
                       ? AwEmptyState(
                           icon: Icons.inbox_outlined,
@@ -183,7 +210,13 @@ class _TicketCard extends ConsumerWidget {
       child: ListTile(
         leading: _PriorityMark(priority: ticket.priority, muted: finished),
         title: Text(
-          ticket.subject,
+          // EE-167: the number leads, because it is what the person on the
+          // phone says. Nullable while a request pulled before the numbering
+          // has not been touched again — a bare subject is the honest shape
+          // then, not a `#null`.
+          ticket.number == null
+              ? ticket.subject
+              : '#${ticket.number} · ${ticket.subject}',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: finished

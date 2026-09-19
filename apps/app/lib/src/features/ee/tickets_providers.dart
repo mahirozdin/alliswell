@@ -4,6 +4,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../search/providers.dart';
+import '../../search/search.dart';
 import '../../sync/db/database.dart';
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
@@ -107,6 +109,15 @@ final ticketQueueProvider = StreamProvider<List<TicketRecord>>((ref) {
 /// The queue as the screen draws it: filtered, and with the terminal ones last.
 final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
   final filter = ref.watch(ticketFilterProvider);
+  // EE-169: null = search off. A query that is still running narrows to
+  // nothing rather than showing the unfiltered queue for a frame — a list that
+  // flashes the wrong rows is worse than one that arrives a moment later.
+  final search = ref.watch(ticketSearchResultsProvider);
+  final hits = search.value;
+  final searching = ref.watch(ticketSearchQueryProvider).trim().isNotEmpty;
+  final rank = hits == null
+      ? null
+      : {for (final (i, hit) in hits.indexed) hit.id: i};
   return ref.watch(ticketQueueProvider).whenData((rows) {
     final kept = rows.where((t) {
       if (filter.statuses.isNotEmpty && !filter.statuses.contains(t.status)) {
@@ -119,8 +130,16 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
       if (filter.serviceId != null && t.serviceId != filter.serviceId) {
         return false;
       }
+      if (searching && (rank == null || !rank.containsKey(t.id))) return false;
       return true;
     }).toList();
+    if (rank != null) {
+      // Search order IS the answer's order: tier first, then whatever the
+      // query ranked. Re-sorting by date afterwards would throw away the only
+      // thing that made a result relevant.
+      kept.sort((a, b) => rank[a.id]!.compareTo(rank[b.id]!));
+      return kept;
+    }
     // Finished work sinks. Within each half the newest is first, which the
     // query already decided — a stable sort keeps that.
     kept.sort((a, b) {
@@ -131,6 +150,34 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
     return kept;
   });
 });
+
+/// EE-169. What the queue is being searched for; empty = search off.
+///
+/// The same one-notifier-per-screen shape the other search surfaces use, so
+/// leaving the queue leaves nothing filtered behind it.
+final ticketSearchQueryProvider = NotifierProvider<SearchQuery, String>(
+  SearchQuery.new,
+);
+
+/// Ranked ids for the current query, or null when search is off.
+///
+/// Offline by construction: it reads the replica's fold shadows, so the desk
+/// searches on a factory floor with no signal. That is also what makes the
+/// ARCHIVE invisible here — finished requests are swept off the device
+/// (EE-091), so the empty state has to say so rather than let "no results"
+/// mean "no such request" (ADR-0016 D16.3).
+final ticketSearchResultsProvider =
+    FutureProvider.autoDispose<List<SearchHit>?>((ref) async {
+      final query = ref.watch(ticketSearchQueryProvider).trim();
+      if (query.isEmpty) return null;
+      final workspace = ref.watch(currentWorkspaceProvider).value;
+      if (workspace == null) return null;
+      // Rebuild when the queue does: a request pulled in while the field is
+      // open should appear, and a search that froze at its first run would be
+      // a list that disagrees with the one behind it.
+      ref.watch(ticketQueueProvider);
+      return ref.watch(searchServiceProvider).searchTickets(workspace.id, query);
+    });
 
 /// One ticket, watched: a status change pushed from another device redraws the
 /// open detail rather than leaving a stale header on screen.

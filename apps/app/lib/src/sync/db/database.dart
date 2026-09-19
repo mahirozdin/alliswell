@@ -751,6 +751,18 @@ class Tickets extends Table {
   /// `breached` is sticky once earned.
   DateTimeColumn get slaDueAt => dateTime().nullable()();
   TextColumn get slaStatus => text().nullable()();
+
+  /// The human number (EE-167). Server-owned like the SLA pair above: it is
+  /// issued by the team's sequence inside the create's transaction, and a
+  /// device that wrote its own would be inventing an identifier somebody else
+  /// already holds. Nullable for rows pulled before the numbering landed.
+  IntColumn get number => integer().nullable()();
+
+  /// v27 (EE-169, ADR-0013): the searchable shadows. Writers — the applier is
+  /// the only one for this entity — MUST keep them in step via foldSearchText;
+  /// the fold cannot run in SQL, which is the whole reason the columns exist.
+  TextColumn get subjectFold => text().nullable()();
+  TextColumn get bodyFold => text().nullable()();
   DateTimeColumn get createdAt => dateTime().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -797,6 +809,11 @@ class TicketComments extends Table {
   TextColumn get authorId => text().nullable()();
   TextColumn get body => text()();
   BoolColumn get internal => boolean().withDefault(const Constant(false))();
+
+  /// v27 (EE-169): a reply is tier 2 of a request's search, so its text needs
+  /// the same shadow the request's body has. Internal notes fold too — the
+  /// people searching this replica are the agents the note was written for.
+  TextColumn get bodyFold => text().nullable()();
   DateTimeColumn get createdAt => dateTime().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -864,7 +881,7 @@ class AwDatabase extends _$AwDatabase {
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 26;
+  int get schemaVersion => 27;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1038,6 +1055,30 @@ class AwDatabase extends _$AwDatabase {
         await m.addColumn(tickets, tickets.slaDueAt);
         await m.addColumn(tickets, tickets.slaStatus);
       }
+      // v27 (EE-167 + EE-169): the human number, and the search shadows that
+      // let a queue be searched with no signal. Same `from >= 24` guard as the
+      // step above and for the same measured reason — a device arriving from
+      // v1 gets `tickets`/`ticket_comments` built with today's definition at
+      // step 24, so only a device that already had them needs the ALTER.
+      //
+      // The backfill is NOT optional, and v6 is the precedent: pull is
+      // incremental, so a request already sitting on this device is never sent
+      // again and its shadows would stay null forever. An empty search result
+      // reads exactly like "nothing matched", which is the silent hole
+      // ADR-0013 exists to prevent. The loop is bounded by the archive window
+      // (EE-091 takes finished requests off the device).
+      //
+      // The NUMBER cannot be backfilled — it is server-owned and this device
+      // has never been told it. It arrives on the next pull that touches the
+      // row; until then the queue shows a request with no number, which is the
+      // honest state rather than a guessed one.
+      if (from >= 24 && from < 27) {
+        await m.addColumn(tickets, tickets.number);
+        await m.addColumn(tickets, tickets.subjectFold);
+        await m.addColumn(tickets, tickets.bodyFold);
+        await m.addColumn(ticketComments, ticketComments.bodyFold);
+        await backfillTicketFolds(this);
+      }
     },
   );
 
@@ -1086,6 +1127,35 @@ Future<void> backfillSearchFolds(AwDatabase db) async {
     'summary': 'summary_fold',
     'location': 'location_fold',
   });
+}
+
+/// v27 (EE-169): the same one-time fold for the service desk's two tables.
+///
+/// Separate from [backfillSearchFolds] rather than folded into it because it
+/// runs at a different step, and a device that upgrades from v5 walks BOTH —
+/// v6's over the four core domains, this one over the two the desk added.
+Future<void> backfillTicketFolds(AwDatabase db) async {
+  Future<void> run(String table, Map<String, String> srcToFold) async {
+    final cols = srcToFold.keys.join(', ');
+    final rows = await db.customSelect('SELECT id, $cols FROM $table').get();
+    for (final row in rows) {
+      final sets = <String>[];
+      final args = <Object?>[];
+      srcToFold.forEach((src, fold) {
+        final value = row.read<String?>(src);
+        sets.add('$fold = ?');
+        args.add(value == null ? null : foldSearchText(value));
+      });
+      args.add(row.read<String>('id'));
+      await db.customStatement(
+        'UPDATE $table SET ${sets.join(', ')} WHERE id = ?',
+        args,
+      );
+    }
+  }
+
+  await run('tickets', {'subject': 'subject_fold', 'body': 'body_fold'});
+  await run('ticket_comments', {'body': 'body_fold'});
 }
 
 /// One-time v19 conversion (OPH-274, ADR-0033): the replica's Delta-canonical

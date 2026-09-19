@@ -10976,16 +10976,33 @@ public, tasarım değil._
   overlay tarafındaki kayıt da kapatılır; **biri işaretli diğeri değilse iş yarımdır** ve
   overlay'deki `check:twin-tasks` kapısı bunu kırmızı yakar.
 
-### OPH-326 — Arama uzantı entity'lerini de görür (replika v27)
+### OPH-326 — Arama uzantı entity'lerini de görür (replika v27) ✅ 2026-09-19
 
-- [ ] `SearchService` bir **alan kayıt defteri** alır: (tablo, kademe, kolon) üçlüleri.
+- [x] `SearchService` bir **alan kayıt defteri** alır: (tablo, kademe, kolon) üçlüleri.
       Bugünkü domainler defterin ilk satırları olur — yani çekirdeğin kendi araması da
       aynı yoldan geçer, ikinci bir kod yolu doğmaz.
-- [ ] Replika **v27**: uzantı tablolarına `*_fold` gölge kolonları. Tek `foldSearchText`
-      korunur; **ikinci bir katlama fonksiyonu yazılmaz** (ADR-0013'ün tekliği).
-- [ ] Yazıcı sözleşmesi belgelenir ve test edilir: bir alanı yazan her yol gölgesini de
+      `SearchEntity` = (tablo, takma ad, kademe→katlanmış ifade) + entity başına gerçekten
+      değişen iki şey: metni başka tablodan getiren **JOIN** ve kademe İÇİNDEKİ sıralama.
+      Dört kayıt: `tasks` (etiket join'i), `external_events`, `projects`, `tickets`.
+      Üç elle yazılmış SELECT tek bir `_run` oldu; üç domainin davranışı mevcut süitle
+      birebir korundu.
+- [x] Replika **v27**: `tickets.subject_fold`, `tickets.body_fold`,
+      `ticket_comments.body_fold` — artı **`tickets.number`** (EE-167'nin replika yarısı,
+      bu işe bağlanmıştı). Tek `foldSearchText` korundu.
+      **Geri dolgu opsiyonel değil ve v6 emsali:** pull artımlı, yani cihazda ZATEN duran
+      bir talep bir daha gönderilmez ve gölgeleri sonsuza kadar boş kalırdı — boş bir
+      arama sonucu ise "yok" diye okunur. `backfillTicketFolds` v27 adımında koşuyor ve
+      testi önce deliğin var olduğunu (`isEmpty`), sonra kapandığını gösteriyor.
+      **Numara geri doldurulamaz** — sunucu-sahipli, bu cihaz onu hiç duymadı; bir sonraki
+      pull'da geliyor, o zamana kadar satır numarasız çiziliyor (uydurma değil, eksik).
+- [x] Yazıcı sözleşmesi belgelenir ve test edilir: bir alanı yazan her yol gölgesini de
       yazar. Unutulan bir yazıcı, aramada **sessiz bir delik** açar — ve sessiz delik,
       arama sonucu boş dönerken "yok" gibi okunur.
+      **Ölçüm, görev metnini düzeltiyor: talepte yazıcı İKİ DEĞİL BİR.** Görev (ve EE-169)
+      "sunucu snapshot'ı + istemci applier'ı" diyordu; `TicketsCompanion` ise
+      `sync_applier.dart` dışında hiçbir yerde yazılmıyor — uygulamanın yerel bir talep
+      deposu yok (atamaların var, taleplerin yok), talepler REST'le açılıp pull'la geliyor.
+      Yani tek boğaz noktası applier, ve test onu adıyla doğruluyor.
 - **Kabul:** kayıtlı bir uzantı alanı aramada çıkıyor; kayıtsız çıkmıyor; CE'de sonuçlar
       birebir aynı; yazıcı sözleşmesi testle korunuyor.
 - **Doğrulama:** mevcut arama süiti + defter testi + v27 göç testi (v26'dan yükselen bir

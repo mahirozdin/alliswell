@@ -120,12 +120,15 @@ is built from the registry at registration time — so a plain build accepts exa
 kinds this repo owns. An extension's own entities can therefore own files without a second
 table and a second garbage-collection chain (ATTACHMENTS.md §3.1). File completion and
 deletion also notify `registerEntityWriteObserver`, inside the write transaction, because an
-extension that owns a target kind has no other way to account for its own attachments. The second opens search: `SearchService` takes a **field registry**
-of `(table, tier, column)` triples, the core domains become its first rows, and the replica
-grows `*_fold` shadow columns for extension tables at schema **v27** — one `foldSearchText`
-stays the only folding function, because a second one would be a second definition of
-"matches" (ADR-0013). Both follow the rule the seam has had since EE-002: with nothing
-registered, the build is byte-for-byte the CE build, and that sentence is what
+extension that owns a target kind has no other way to account for its own attachments. The second is the app's, and it landed with OPH-326: `SearchService`
+runs off a **field registry** of `(table, alias, tier → folded column)` entries — the three
+core domains are its first rows, so there is no second code path — plus the two things that
+genuinely differ per entity, an extra JOIN for text kept in another table and the tie-break
+inside a tier. The replica grew `*_fold` shadow columns for the extension's tables at schema
+**v27**, with a one-time backfill because pull is incremental and a row already on the device
+is never sent again. One `foldSearchText` stays the only folding function: a second would be
+a second definition of "matches" (ADR-0013). The seam's rule holds for both — with nothing
+registered the build is byte-for-byte the CE build, which is what
 `test/unit/ee-seam.test.js` exists to prove.
 
 The overlay's own repository is private; only this neutral seam lives here.

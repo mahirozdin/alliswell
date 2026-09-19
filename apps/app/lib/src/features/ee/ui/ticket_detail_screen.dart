@@ -93,6 +93,17 @@ class _Thread extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(AwSpace.x4),
       children: [
+        // EE-167: the number above the subject rather than inside it. On the
+        // detail screen there is room for a line, and the thing somebody reads
+        // out on the phone should not be competing with a sentence for it.
+        if (ticket.number != null)
+          Text(
+            '#${ticket.number}',
+            key: const Key('ticket-number'),
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         Text(ticket.subject, style: theme.textTheme.titleLarge),
         const SizedBox(height: AwSpace.x2),
         Wrap(
