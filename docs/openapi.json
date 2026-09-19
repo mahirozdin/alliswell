@@ -1930,13 +1930,7 @@
                           "type": "string"
                         },
                         "targetType": {
-                          "type": "string",
-                          "enum": [
-                            "project",
-                            "task",
-                            "note",
-                            "workspace"
-                          ]
+                          "type": "string"
                         },
                         "targetId": {
                           "type": "string"
@@ -2113,13 +2107,7 @@
                           "type": "string"
                         },
                         "targetType": {
-                          "type": "string",
-                          "enum": [
-                            "project",
-                            "task",
-                            "note",
-                            "workspace"
-                          ]
+                          "type": "string"
                         },
                         "targetId": {
                           "type": "string"
@@ -2386,13 +2374,7 @@
                           "type": "string"
                         },
                         "targetType": {
-                          "type": "string",
-                          "enum": [
-                            "project",
-                            "task",
-                            "note",
-                            "workspace"
-                          ]
+                          "type": "string"
                         },
                         "targetId": {
                           "type": "string"
@@ -12640,13 +12622,7 @@
                           "type": "string"
                         },
                         "targetType": {
-                          "type": "string",
-                          "enum": [
-                            "project",
-                            "task",
-                            "note",
-                            "workspace"
-                          ]
+                          "type": "string"
                         },
                         "targetId": {
                           "type": "string"
@@ -12898,13 +12874,7 @@
                             "type": "string"
                           },
                           "targetType": {
-                            "type": "string",
-                            "enum": [
-                              "project",
-                              "task",
-                              "note",
-                              "workspace"
-                            ]
+                            "type": "string"
                           },
                           "targetId": {
                             "type": "string"
@@ -12946,13 +12916,7 @@
                             "type": "object",
                             "properties": {
                               "type": {
-                                "type": "string",
-                                "enum": [
-                                  "project",
-                                  "task",
-                                  "note",
-                                  "workspace"
-                                ]
+                                "type": "string"
                               },
                               "id": {
                                 "type": "string"

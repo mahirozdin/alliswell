@@ -1808,7 +1808,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/files/:fileId' \
   "file": {
     "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "workspaceId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
-    "targetType": "project",
+    "targetType": "string",
     "targetId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "name": "Pay the electricity bill",
     "mime": "string",
@@ -1869,7 +1869,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/files/:fileId' \
   "file": {
     "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "workspaceId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
-    "targetType": "project",
+    "targetType": "string",
     "targetId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "name": "Pay the electricity bill",
     "mime": "string",
@@ -1945,7 +1945,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/files/:fileId/complete' \
   "file": {
     "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "workspaceId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
-    "targetType": "project",
+    "targetType": "string",
     "targetId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "name": "Pay the electricity bill",
     "mime": "string",
@@ -2087,7 +2087,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/storage' \
 
 | Name | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `targetType` | `project` · `task` · `note` · `workspace` | no | the four the plain build accepts; an extension may register more (OPH-325, ARCHITECTURE §3b) |
+| `targetType` | `project` · `task` · `note` · `workspace` | no | — |
 | `targetId` | ULID | no | 26-character identifier |
 | `projectId` | ULID | no | 26-character identifier |
 | `folderId` | ULID | no | 26-character identifier |
@@ -2116,7 +2116,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files' \
     {
       "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
       "workspaceId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
-      "targetType": "project",
+      "targetType": "string",
       "targetId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
       "name": "Pay the electricity bill",
       "mime": "string",
@@ -2128,7 +2128,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files' \
       "createdAt": "2026-09-04T14:30:00.000Z",
       "updatedAt": "2026-09-04T14:30:00.000Z",
       "source": {
-        "type": "project",
+        "type": "string",
         "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
         "title": "Pay the electricity bill"
       }
@@ -2152,7 +2152,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files' \
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `targetType` | `project` · `task` · `note` · `workspace` | **yes** | the four the plain build accepts; an extension may register more (OPH-325, ARCHITECTURE §3b). An unregistered value is refused here, with `400`, not by the database |
+| `targetType` | `project` · `task` · `note` · `workspace` | **yes** | — |
 | `targetId` | ULID | **yes** | 26-character identifier |
 | `name` | string | **yes** | length 1–1024 |
 | `sizeBytes` | integer | **yes** | 1–∞ |
@@ -2185,7 +2185,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files' 
   "file": {
     "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "workspaceId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
-    "targetType": "project",
+    "targetType": "string",
     "targetId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
     "name": "Pay the electricity bill",
     "mime": "string",

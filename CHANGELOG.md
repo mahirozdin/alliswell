@@ -5,6 +5,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ## [Unreleased]
 
+### Added
+
+- **A file can be attached to things the extension adds, not just the four core
+  ones (OPH-325).** What a file may hang on is now a registry rather than a
+  fixed list, so an extension can register its own kind and the upload, the
+  read surface and the cascade all work without core naming it. The column
+  stopped being an ENUM to allow it; the values core itself accepts are
+  unchanged, and a kind nobody registered is still refused.
+- **Search reaches what the extension stores (OPH-326).** The device's search
+  runs off a registry of searchable entities instead of a hand-written list per
+  table, so a kind the extension adds is findable with everything else, by the
+  same folded-text rules. Local-first is unchanged: the query never leaves the
+  device.
+- **A push can say that a notification is waiting (OPH-329).** The wire
+  contract has a third type, carrying an identifier and — when it should be
+  seen — one fixed sentence chosen from the catalogue. Nothing about what
+  happened travels with it: the device fetches the row itself. ADR-0038 said
+  the payload had two types and it now says three.
+
+### Changed
+
+- **The documented extension surface matches what the code offers (OPH-328).**
+  The seam reference lists the two registries above, and the attachments page
+  stopped describing a shape that had been out of date since July.
+- **The generated API reference follows the registry change (OPH-325).**
+  `docs/openapi.json` and `docs/API.md` no longer enumerate the four attachment
+  targets, because the route no longer promises exactly those four.
+
 ## [1.13.0] — 2026-09-19
 
 ### Added
