@@ -236,6 +236,18 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'ee.mail.settingsRowHint',
                   path: '/settings/team/mail',
                 ),
+              // EE-176: the team's outgoing endpoints, gated by its own verb.
+              // Beside the mail relay on purpose — both answer "where does
+              // what happens here end up", one for people and one for the
+              // systems a company already runs.
+              if (ref.watch(canProvider('webhooks.manage')))
+                _GroupRow(
+                  keyName: 'settings-group-team-webhooks',
+                  icon: Icons.webhook_outlined,
+                  titleKey: 'ee.webhooks.settingsRow',
+                  subtitleKey: 'ee.webhooks.settingsRowHint',
+                  path: '/settings/team/webhooks',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain

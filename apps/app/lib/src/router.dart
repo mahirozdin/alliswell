@@ -41,6 +41,7 @@ import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
 import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
+import 'features/ee/ui/team_webhooks_screen.dart';
 import 'features/ee/ui/team_identity_screen.dart';
 import 'features/ee/ui/team_mail_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
@@ -516,6 +517,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/mail',
         builder: (context, state) => _page(const EeTeamMailScreen()),
+      ),
+      // EE-176: the team's outgoing endpoints, behind `webhooks.manage`. Its
+      // own row for the reason the mail relay has one: this decides which
+      // outside systems learn what happens in here, and the secret it mints is
+      // shown exactly once.
+      GoRoute(
+        path: '/settings/team/webhooks',
+        builder: (context, state) => _page(const EeTeamWebhooksScreen()),
       ),
       // EE-115: one meeting — what it decided, and who said what. A route
       // rather than a tab, for the reason EE-069's task history is one: this
