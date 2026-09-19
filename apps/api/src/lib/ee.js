@@ -50,6 +50,11 @@ export async function loadEeOverlay(app) {
     passwordRequirements: [],
     signInFailureObservers: [],
     credentialVerifiers: [],
+    // OPH-325 (ADR-0040): attachable target kinds an extension registers, keyed
+    // by the `files.target_type` value. Empty here IS the plain build: the
+    // four built-in kinds live in `routes/files.js` and nothing else is
+    // accepted.
+    attachmentTargets: Object.create(null),
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -92,6 +97,9 @@ export function corsOriginAllowed(app, origin) {
   return app.ee.corsOriginChecks.some((check) => check(origin) === true);
 }
 
+/** The kinds `routes/files.js` owns; an extension may not shadow one. */
+const CORE_ATTACHMENT_TARGETS = new Set(['project', 'task', 'note', 'workspace']);
+
 function buildSeam(state) {
   const builtinTools = new Set(MCP_TOOLS.map((tool) => tool.name));
   return Object.freeze({
@@ -116,6 +124,33 @@ function buildSeam(state) {
         throw new Error(`registerSyncEntity(${type}): duplicate registration`);
       }
       state.syncEntities[type] = { loader, entity };
+    },
+
+    /**
+     * OPH-325 — a new kind of thing files can hang on (ADR-0040).
+     *
+     * `type` is the stored `files.target_type`; `check` answers the one
+     * question core asks about every upload — "is this a real target of THIS
+     * workspace, for THIS caller?" — and answers it with the extension's own
+     * rules, because core cannot know them. Returning false produces the same
+     * `FILE_INVALID_TARGET` a bad core target produces: a caller probing ids
+     * must not be able to tell "no such thing" from "not yours".
+     *
+     * The check runs AFTER `requireWorkspaceMember`, so membership is already
+     * settled; what it adds is existence and whatever verb the extension
+     * considers the right to contribute one.
+     */
+    registerAttachmentTarget(type, check) {
+      if (typeof type !== 'string' || !/^[a-z][a-z0-9_]{0,31}$/.test(type)) {
+        throw new Error('registerAttachmentTarget: type must be a short snake_case name');
+      }
+      if (typeof check !== 'function') {
+        throw new Error(`registerAttachmentTarget(${type}): a check function is required`);
+      }
+      if (CORE_ATTACHMENT_TARGETS.has(type) || state.attachmentTargets[type]) {
+        throw new Error(`registerAttachmentTarget(${type}): name already taken`);
+      }
+      state.attachmentTargets[type] = { check };
     },
 
     /** MCP tool: the exact MCP_TOOLS entry shape; names are one namespace. */

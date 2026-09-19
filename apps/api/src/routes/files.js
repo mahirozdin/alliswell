@@ -20,6 +20,7 @@ import { newId } from '../lib/ids.js';
 import { toIso } from '../lib/serialize.js';
 import { coded } from '../lib/errors.js';
 import { recordSyncWrite } from '../db/sync.js';
+import { notifyEntityWrite } from '../lib/ee.js';
 import { storageKeyFor, softDeleteReadyFile } from '../db/files.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
@@ -44,7 +45,12 @@ export const fileSchema = {
   properties: {
     id: { type: 'string' },
     workspaceId: { type: 'string' },
-    targetType: { type: 'string', enum: FILE_TARGET_TYPES },
+    // No `enum` here since OPH-325: the accepted set is a registry the build
+    // fills at boot, and a response schema still listing four values would be a
+    // serializer deciding which attachments may be described. The REQUEST
+    // schemas carry the closed list, computed from that same registry —
+    // validation belongs on the way in.
+    targetType: { type: 'string' },
     targetId: { type: 'string' },
     name: { type: 'string' },
     mime: { type: 'string' },
@@ -95,6 +101,16 @@ export function sanitizeFileName(raw) {
 export default async function fileRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
+  // OPH-325 (ADR-0040). The accepted target kinds: the four this file owns plus
+  // whatever an extension registered. Computed HERE rather than at module load,
+  // because the seam's contract is that the overlay registers before any route
+  // does (ARCHITECTURE 3b) — so by now the registry is final, and in the plain
+  // build it is empty and this list is exactly today's four.
+  const targetTypeSchema = {
+    type: 'string',
+    enum: [...FILE_TARGET_TYPES, ...Object.keys(app.ee?.attachmentTargets ?? {})],
+  };
+
   function requireStorage() {
     if (!app.storage.enabled) {
       throw coded(
@@ -127,7 +143,7 @@ export default async function fileRoutes(app) {
           additionalProperties: false,
           required: ['targetType', 'targetId', 'name', 'sizeBytes'],
           properties: {
-            targetType: { type: 'string', enum: FILE_TARGET_TYPES },
+            targetType: targetTypeSchema,
             targetId: ULID_PARAM,
             // Longer than 255 on purpose: pickers may hand over full paths;
             // we sanitize to the basename and enforce 255 on THAT.
@@ -211,7 +227,20 @@ export default async function fileRoutes(app) {
       // dangle. (No FK on target_id: it is polymorphic — this check is the FK.)
       // A `workspace` target IS the workspace: membership was already
       // enforced, the id just has to match.
-      if (targetType === 'workspace') {
+      const registered = app.ee?.attachmentTargets?.[targetType];
+      if (registered) {
+        // OPH-325: the extension answers about its own kind — existence AND
+        // whatever right it considers "may contribute one". A false produces the
+        // same refusal a bad core target gets, on purpose: a caller probing ids
+        // must not learn the difference between "no such thing" and "not yours".
+        const ok = await registered.check({ app, db: app.db, request, workspaceId, targetId });
+        if (!ok) {
+          throw coded(
+            app.httpErrors.badRequest('Attachment target not found'),
+            'FILE_INVALID_TARGET',
+          );
+        }
+      } else if (targetType === 'workspace') {
         if (targetId !== workspaceId) {
           throw coded(
             app.httpErrors.badRequest('Attachment target not found'),
@@ -319,6 +348,18 @@ export default async function fileRoutes(app) {
           .where({ id: row.id })
           .update({ status: 'ready', revision, updated_at: new Date() });
         fresh = await trx('files').where({ id: row.id }).first();
+        // OPH-325: the moment an attachment becomes real. An extension that
+        // owns the target kind cannot see this any other way — the whole upload
+        // walks core routes — and observing it AFTER the commit would let its
+        // record and this row disagree whenever the process died in between.
+        await notifyEntityWrite(app, trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'file',
+          entityId: row.id,
+          operation: 'create',
+          actorId: request.user.id,
+          after: fresh,
+        });
       });
       return { file: serializeFile(fresh) };
     },
@@ -373,7 +414,7 @@ export default async function fileRoutes(app) {
       source: {
         type: 'object',
         properties: {
-          type: { type: 'string', enum: FILE_TARGET_TYPES },
+          type: { type: 'string' }, // see fileSchema — OPH-325
           id: { type: 'string' },
           title: { type: 'string' },
         },
@@ -391,7 +432,7 @@ export default async function fileRoutes(app) {
           type: 'object',
           additionalProperties: false,
           properties: {
-            targetType: { type: 'string', enum: FILE_TARGET_TYPES },
+            targetType: targetTypeSchema,
             targetId: ULID_PARAM,
             projectId: ULID_PARAM,
             // With targetType=workspace only: filter one folder level; omit
@@ -658,6 +699,18 @@ export default async function fileRoutes(app) {
 
       await app.db.transaction(async (trx) => {
         await softDeleteReadyFile(trx, { workspaceId: row.workspace_id, fileId: row.id });
+        // The mirror of the completion above (OPH-325). Deliberately only the
+        // REST delete: when a TARGET dies its files die through the cascade,
+        // and that is the target's own event to record, not a second one saying
+        // its attachments went with it.
+        await notifyEntityWrite(app, trx, {
+          workspaceId: row.workspace_id,
+          entityType: 'file',
+          entityId: row.id,
+          operation: 'delete',
+          actorId: request.user.id,
+          before: row,
+        });
       });
       // After commit only — the queued job must never race a rollback.
       app.storageGc.enqueueRemove(row.storage_key);

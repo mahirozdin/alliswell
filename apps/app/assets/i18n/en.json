@@ -1354,6 +1354,8 @@
       "transferred": "transferred this",
       "accepted": "accepted an invitation",
       "status_changed": "changed the status",
+      "attached": "attached a file",
+      "detached": "removed a file",
       "breached": "missed an SLA target",
       "suspended": "suspended this",
       "reactivated": "reactivated this",

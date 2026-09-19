@@ -145,6 +145,16 @@ export async function register(app, seam) {
     };
   });
 
+  // OPH-325: a kind of thing files may hang on that core knows nothing about.
+  // The check is what a real extension's would be in miniature — the row has to
+  // exist, and it has to be in the workspace the upload named. Nothing here is
+  // header-gated: registering a target kind is inert until somebody uploads to
+  // it, unlike the resolvers above which would otherwise answer every test.
+  seam.registerAttachmentTarget('probe_target', async ({ workspaceId, targetId }) => {
+    const row = probeRows.get(targetId);
+    return Boolean(row) && row.workspace_id === workspaceId;
+  });
+
   // The ordering guarantee made visible: this hook is added before ANY core
   // route registers, so every response carries the marker.
   app.addHook('onSend', async (request, reply, payload) => {

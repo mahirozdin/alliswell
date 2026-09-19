@@ -112,11 +112,15 @@ hint (`{entityType, entityId, present, data?}`) built from the same snapshot loa
 uses: a client writes optimistically, so a refusal leaves its replica holding a write nobody
 accepted, and incremental pull can never correct it.
 
-Two more registries are contracted and land with **OPH-325** and **OPH-326** (Epic 31).
-The first opens `files.target_type`: today a fixed ENUM, tomorrow an **attachment target
-registry** (`app.ee.attachmentTargets`) the overlay feeds, so an extension's own entities
-can own files without a second table and a second garbage-collection chain
-(ATTACHMENTS.md §3.1). The second opens search: `SearchService` takes a **field registry**
+One of the two registries Epic 31 contracted has landed. **`files.target_type` is a
+registry** (OPH-325, ADR-0040): an extension registers a kind with
+`seam.registerAttachmentTarget(type, check)`, the upload route asks that check whether the
+target is real and the caller may contribute to it, and the request schema's accepted list
+is built from the registry at registration time — so a plain build accepts exactly the four
+kinds this repo owns. An extension's own entities can therefore own files without a second
+table and a second garbage-collection chain (ATTACHMENTS.md §3.1). File completion and
+deletion also notify `registerEntityWriteObserver`, inside the write transaction, because an
+extension that owns a target kind has no other way to account for its own attachments. The second opens search: `SearchService` takes a **field registry**
 of `(table, tier, column)` triples, the core domains become its first rows, and the replica
 grows `*_fold` shadow columns for extension tables at schema **v27** — one `foldSearchText`
 stays the only folding function, because a second one would be a second definition of

@@ -24,7 +24,7 @@
 | Manual QA matrix — devices, web CORS reality, 100 MB files | ⏳ rides the Epic 12/13 device tour (OPH-157) |
 | **Round 8:** folders + `workspace` target (API) | ✅ done + tested (OPH-169, §14, ADR-0014) |
 | **Round 8:** global "Dosyalar" section (app) | ✅ done + tested (OPH-170, §14) |
-| **Epic 31:** `target_type` becomes a registry an extension can extend | 🔜 planned (OPH-325, §3.1) |
+| **Epic 31:** `target_type` becomes a registry an extension can extend | ✅ done + tested (OPH-325, §3.1, ADR-0040) |
 
 Everything below was written before implementation and then trued against it;
 deviations are called out inline and in TASKS.md acceptance notes.
@@ -162,7 +162,7 @@ object never moves. The filename reaches downloads via
 drives UI (image → thumbnail, video → player tile, else generic tile) and the
 download's content type — it is never executed or rendered as HTML (§9).
 
-### 3.1 The target registry (OPH-325 — planned)
+### 3.1 The target registry (OPH-325, ADR-0040)
 
 A fixed ENUM means every new kind of attachable thing is a core schema change, and
 an extension cannot make one (it may not ALTER a core table). So the closed set
@@ -182,8 +182,16 @@ Three properties are the whole point, and each is a test:
   delete cascade of §5 stay the only ones. A second file table would be a second
   place to leak bytes, and the sweep would not know it exists.
 
-Until OPH-325 lands, the ENUM above is the surface and this section describes a
-decision, not code.
+The column is a `varchar(32)` since OPH-325 and the accepted set lives in code:
+`seam.registerAttachmentTarget(type, check)` fills it, and the upload route builds
+its request schema from it at registration time. `check` answers both questions
+an extension owns — does the row exist here, and may this caller contribute to
+it — and a `false` is the same `FILE_INVALID_TARGET` a bad core target gets.
+
+Completion and deletion also notify the entity-write observers (ADR-0002's
+`registerEntityWriteObserver`) from inside the write transaction, so an
+extension can record an attachment arriving on its own entity without a file
+that was never committed leaving a line behind.
 
 ## 4. Sync — `file` is a pull-only entity (ADR-0008 precedent)
 

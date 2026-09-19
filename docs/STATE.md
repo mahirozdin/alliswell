@@ -3,7 +3,37 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-19b (**OPH-328 — uzantı yüzeyinin belgeleri güncellendi, ve
+**Last updated:** 2026-09-19c (**OPH-325 — `files.target_type` kapalı bir liste olmaktan
+çıktı (ADR-0040).** Kolon `varchar(32)`, kabul edilen küme bir **kayıt defteri**:
+`seam.registerAttachmentTarget(type, check)`. `check` uzantının kendi sorusunu cevaplıyor —
+bu satır bu workspace'te gerçekten var mı, ve bu kişi ona katkı yapabilir mi — ve `false`
+dediğinde çekirdeğin kendi kötü hedefine verdiği cevabın **aynısı** dönüyor: id yoklayan
+biri "böyle bir şey yok" ile "seninki değil" arasındaki farkı öğrenememeli.
+
+**İki incelik ve ikisi de ölçülerek yazıldı.** (1) **İstek şeması defterden kuruluyor**, rota
+kaydı anında: seam'in sözleşmesi overlay'in her rotadan önce kaydolması olduğu için liste o an
+kesin, ve uzantısız derlemede tam olarak bugünkü dördü. (2) **Yanıt şemasından `enum` kalktı** —
+dört değeri saymaya devam eden bir serileştirici, hangi ekin anlatılabileceğine karar veren bir
+yerdir. `down()` eski ENUM'a sığmayan satır bulursa **hata veriyor**: daraltma onları boş
+dizeye çevirirdi, yani hiçbir şeye bakan bir dosyaya — hatadan kötü.
+
+**Bir de yapısal olarak zorunlu ikinci dokunuş:** dosya **tamamlanması ve silinmesi** artık
+`notifyEntityWrite` çağırıyor, yazma transaction'ının içinde. Yüklemenin tamamı core
+rotalarından geçtiği için, hedef tipini kaydeden bir uzantı kendi ekinin geldiğini başka türlü
+hiç göremez; commit sonrası bir kanca ise kaydı ile satırı ayrı düşürebilirdi.
+
+**Görev metninin bir düzeltmesi, ölçümle:** *"istemci: bugün sabit yazılmış üç-dört yer
+defterden okur"* — **istemcide sabit yazılmış yer yok.** `files_api.dart:69` `required String
+targetType` alıyor, sağlayıcılar ve widget'lar onu düz string olarak taşıyor;
+`folder_store.dart`'ın `equals('workspace')` karşılaştırmaları klasör katmanının tanımı
+(ADR-0014), hedef listesi değil. Değişen tek şey sunucunun yeni bir değeri kabul edebilmesi.
+
+Doğrulama: `test/unit/ee-seam.test.js` iki yeni test (CE'de defter boş ve tanımadığı tipi
+reddediyor; sahte overlay kaydettiği tipe dosya ekleyebiliyor, rastgele id `FILE_INVALID_TARGET`
+alıyor, dört yerleşik tip aynen çalışıyor) + `files-read` süiti yeşil: 30/30.
+`check:docs` ve `check:no-ee` yeşil.)
+
+Önceki blok: 2026-09-19b (**OPH-328 — uzantı yüzeyinin belgeleri güncellendi, ve
 belgelerden biri gelecekten değil GEÇMİŞTEN yanlıştı.** Epic 31'in üç işinden biri
 belge işi: `ARCHITECTURE.md` §3b artık iki sözleşmeli kancayı anlatıyor — **ek dosya
 hedef defteri** (OPH-325: `files.target_type` sabit ENUM olmaktan çıkıp kaydedilebilir

@@ -10936,19 +10936,37 @@ public, tasarım değil._
 
 **Sıra bağlayıcı:** 325 → 326 → 327 → 328.
 
-### OPH-325 — Ek dosya hedefleri genişletilebilir olur (ADR-0040)
+### OPH-325 — Ek dosya hedefleri genişletilebilir olur (ADR-0040) ✅ 2026-09-19
 
-- [ ] **ADR-0040:** hedef kümesi sabit bir ENUM olmaktan çıkar, uzantının kayıt
+- [x] **ADR-0040:** hedef kümesi sabit bir ENUM olmaktan çıkar, uzantının kayıt
       yaptırabildiği bir deftere dönüşür (`app.ee.attachmentTargets`, ADR-0002 §3'ün
       kalıbı). Karar belgesi, çünkü **şema ve doğrulama sınırı** değişiyor.
-- [ ] Sunucu: yükleme başlangıcı hedef tipini defterden doğrular; defterde olmayan tip
+      Kolon `varchar(32)`; `down()` eski ENUM'a sığmayan satır varsa **reddediyor**
+      (daraltma onları boş dizeye çevirirdi: hiçbir şeye bakan bir dosya, hatadan kötü).
+- [x] Sunucu: yükleme başlangıcı hedef tipini defterden doğrular; defterde olmayan tip
       **reddedilir** (bugünkü ENUM'un yaptığı işi defter yapar — gevşetme değil, taşıma).
       Kayıtlı tipin sahipliğini doğrulayan kanca uzantıdan gelir; çekirdek "bu id bu
       kullanıcının mı" sorusunu uzantı adına cevaplayamaz.
-- [ ] İstemci: yükleme yolu hedef tipini parametre olarak alır; bugün sabit yazılmış
-      üç-dört yer defterden okur.
-- [ ] Silme zinciri ve çöp toplama **değişmez** — uzantı hedefi de aynı süpürgeye tabi.
+      **İstek şeması da defterden kuruluyor** (rota kaydı anında, overlay yüklendikten
+      sonra): CE'de kabul listesi tam olarak bugünkü dördü. Yanıt şemasından `enum`
+      **kalktı** — dört değeri saymaya devam eden bir serileştirici, hangi ekin
+      anlatılabileceğine karar veren bir yerdir.
+      **Ayrıca `notifyEntityWrite`:** dosya tamamlanması ve silinmesi artık gözlemcilere
+      haber veriyor (yazma transaction'ının İÇİNDE). Gerekçe yapısal — yüklemenin tamamı
+      core rotalarından geçiyor, yani hedef tipinin sahibi uzantı kendi ekini başka türlü
+      hiç göremez; commit sonrası bir kanca ise kaydı ile satırı ayrı düşürebilirdi.
+- [x] İstemci: yükleme yolu hedef tipini parametre olarak alır.
+      **Ölçüm, ve görev metnini düzeltiyor: istemcide sabit yazılmış yer YOK.**
+      `files_api.dart:69` `required String targetType` alıyor, `providers.dart:115`
+      kayıt anahtarı olarak taşıyor, `file_widgets.dart:478` widget parametresi yapıyor —
+      hiçbiri kapalı bir liste tanımıyor. `folder_store.dart`'ın `equals('workspace')`
+      karşılaştırmaları klasör katmanının tanımı (ADR-0014), hedef listesi değil.
+      Yani bu kutu yazıldığı gün de doğruydu; değişen tek şey sunucunun artık yeni bir
+      değeri kabul edebilmesi.
+- [x] Silme zinciri ve çöp toplama **değişmez** — uzantı hedefi de aynı süpürgeye tabi.
       Yeni bir yaşam döngüsü yazmak, ikinci bir sızıntı sınıfı demektir.
+      (Tek satır kod değişmedi: `cascadeDeleteFiles`, `softDeleteReadyFile` ve 24 saatlik
+      süpürge hedef tipine bakmıyor, `workspace_id` ve `status`'e bakıyor.)
 - **Kabul:** uzantısız (CE) kurulumda hedef kümesi birebir aynı, davranış birebir aynı;
       sahte bir overlay bir hedef tipi kaydedip dosya ekleyebiliyor; kayıtsız tipe yükleme
       reddediliyor; çöp toplama kayıtlı tipi de süpürüyor.

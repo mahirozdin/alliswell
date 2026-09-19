@@ -47,6 +47,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0037](0037-android-exact-alarms-are-declared-not-begged-for.md) | Android exact alarms are declared, not begged for | Accepted |
 | [0038](0038-server-to-device-delivery.md) | Server→device delivery: a hint everywhere, the clock only on the web | Accepted — amends [NOTIFICATIONS.md](../NOTIFICATIONS.md) §0 for the web |
 | [0039](0039-a-service-worker-is-the-one-thing-dart-cannot-be.md) | A service worker is the one thing Dart cannot be | Accepted — narrows [AGENTS.md](../../AGENTS.md) rule 3 |
+| [0040](0040-attachment-target-registry.md) | `files.target_type` is a registry, not a list | Accepted — revises [0011](0011-attachments-r2-s3-storage.md) §3 |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was

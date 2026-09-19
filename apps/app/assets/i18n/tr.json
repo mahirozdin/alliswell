@@ -1353,6 +1353,8 @@
       "transferred": "bunu devretti",
       "accepted": "bir daveti kabul etti",
       "status_changed": "durumu değiştirdi",
+      "attached": "bir dosya ekledi",
+      "detached": "bir dosyayı kaldırdı",
       "breached": "SLA hedefini kaçırdı",
       "suspended": "bunu askıya aldı",
       "reactivated": "bunu yeniden etkinleştirdi",

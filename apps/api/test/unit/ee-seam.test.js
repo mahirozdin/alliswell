@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { fullDance, callTool } from '../helpers/mcpdance.js';
+import { fakeStorage } from '../helpers/fakestorage.js';
 import { loadConfig } from '../../src/config.js';
 import { newId } from '../../src/lib/ids.js';
 
@@ -298,6 +299,74 @@ describe('EE overlay seam (EE-002)', () => {
     const result = await callTool(app, tokens.access_token, 'seam_probe_tool', {});
     expect(result.isError).toBeFalsy();
     expect(result.structuredContent).toEqual({ ok: true });
+  });
+
+
+  it('lets an overlay add a kind of thing files hang on — and CE keeps the four (OPH-325)', async () => {
+    const store = fakeStorage();
+    ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR), storage: store }));
+    const session = await registerUser(app, { email: 'seam-attach@example.com' });
+    const workspaceId = session.workspace.id;
+
+    // The overlay's own row, made through the overlay's own route.
+    const probe = await app.inject({
+      method: 'POST',
+      url: `/api/v1/__seam-probe/${workspaceId}`,
+      headers: session.headers,
+    });
+    expect(probe.statusCode).toBe(200);
+    const { id: probeId } = probe.json();
+
+    const upload = (targetId) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/v1/workspaces/${workspaceId}/files`,
+        headers: session.headers,
+        payload: { targetType: 'probe_target', targetId, name: 'ek.bin', sizeBytes: 10 },
+      });
+
+    const ok = await upload(probeId);
+    expect(ok.statusCode, ok.body).toBe(201);
+    expect(ok.json().file.targetType).toBe('probe_target');
+
+    // The extension said no, and the refusal is the one a bad core target gets:
+    // a caller probing ids cannot tell "no such thing" from "not yours".
+    const refused = await upload(newId());
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json().code).toBe('FILE_INVALID_TARGET');
+
+    // …and the four built-in kinds still behave exactly as they did.
+    const task = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${workspaceId}/tasks`,
+      headers: session.headers,
+      payload: { title: 'Ek sahibi' },
+    });
+    expect(task.statusCode).toBe(201);
+    const onTask = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${workspaceId}/files`,
+      headers: session.headers,
+      payload: { targetType: 'task', targetId: task.json().id, name: 'a.bin', sizeBytes: 1 },
+    });
+    expect(onTask.statusCode, onTask.body).toBe(201);
+    void store;
+  });
+
+  it('CE refuses a kind no build registered — the registry is the whole list (OPH-325)', async () => {
+    ({ app } = await buildTestApp({ storage: fakeStorage() }));
+    const session = await registerUser(app, { email: 'seam-attach-ce@example.com' });
+    expect(app.ee.attachmentTargets).toEqual({});
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${session.workspace.id}/files`,
+      headers: session.headers,
+      payload: { targetType: 'probe_target', targetId: newId(), name: 'ek.bin', sizeBytes: 10 },
+    });
+    // Refused by the request schema, which is built from the registry at boot:
+    // in a plain build the accepted list is exactly the four this repo owns.
+    expect(res.statusCode).toBe(400);
   });
 
   it('fails open to CE when the overlay is broken — loudly, not fatally', async () => {
