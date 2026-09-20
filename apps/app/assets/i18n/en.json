@@ -1368,7 +1368,8 @@
       "authenticated": "signed in",
       "sign_in_failed": "could not sign in",
       "locked": "was locked out",
-      "revoked": "ended a session"
+      "revoked": "ended a session",
+      "priority_overridden": "set a priority outside the matrix"
     },
     "perm": {
       "alarms": {
@@ -1442,7 +1443,8 @@
         "comment": "Write on a request",
         "close": "Close or cancel a request",
         "convert": "Turn a request into a task in the unit",
-        "assign": "Put a request on someone else, or take one off them"
+        "assign": "Put a request on someone else, or take one off them",
+        "override_priority": "Set a priority the impact × urgency matrix would not produce"
       },
       "units": {
         "manage": "Manage units",

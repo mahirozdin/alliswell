@@ -1367,7 +1367,8 @@
       "authenticated": "oturum açtı",
       "sign_in_failed": "oturum açamadı",
       "locked": "kilitlendi",
-      "revoked": "bir oturumu sonlandırdı"
+      "revoked": "bir oturumu sonlandırdı",
+      "priority_overridden": "matris dışında bir öncelik verdi"
     },
     "perm": {
       "alarms": {
@@ -1441,7 +1442,8 @@
         "comment": "Talebe yaz",
         "close": "Talebi kapat veya iptal et",
         "convert": "Talebi işe dönüştür",
-        "assign": "Talebi başkasına ver ya da üstünden al"
+        "assign": "Talebi başkasına ver ya da üstünden al",
+        "override_priority": "Matrisin üretmeyeceği bir öncelik ver"
       },
       "units": {
         "manage": "Birimleri yönet",
