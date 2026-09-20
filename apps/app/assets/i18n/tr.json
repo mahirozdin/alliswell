@@ -1379,7 +1379,9 @@
       "freeze_created": "değişiklik dondurması ilan etti",
       "freeze_removed": "değişiklik dondurmasını kaldırdı",
       "root_cause_identified": "kök nedeni belirledi",
-      "resolved": "çözdü"
+      "resolved": "çözdü",
+      "linked": "bağladı",
+      "unlinked": "bağı kopardı"
     },
     "perm": {
       "alarms": {
@@ -1454,7 +1456,8 @@
         "close": "Talebi kapat veya iptal et",
         "convert": "Talebi işe dönüştür",
         "assign": "Talebi başkasına ver ya da üstünden al",
-        "override_priority": "Matrisin üretmeyeceği bir öncelik ver"
+        "override_priority": "Matrisin üretmeyeceği bir öncelik ver",
+        "link": "Talepleri birbirine ve problemlere bağla"
       },
       "units": {
         "manage": "Birimleri yönet",
