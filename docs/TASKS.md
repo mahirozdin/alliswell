@@ -11011,15 +11011,25 @@ public, tasarım değil._
 
 ### OPH-327 — Replika v28: dört yeni uzantı entity tablosu
 
-- [ ] Drift tabloları, applier bağları ve **tek bir göç adımı** (v27 → v28). Tablolar
+- [ ] Drift tabloları, applier bağları ve göç adımları. Tablolar
       `database.dart`'ta yaşar; **ayrı bir drift veritabanı açılmaz** — ikinci bir dosya,
       ikinci bir WAL ve ikinci bir `busy_timeout` ayarı demektir (OPH-318).
+      **Ölçüm düzeltmesi (EE-186 turunda, 2026-09-20):** bu kutu *"tek bir göç adımı
+      (v27 → v28)"* diyordu ve dört tabloyu birden tarif ediyordu. Uygulanamaz: dördünün
+      şekli **dört ayrı uzantı işinin kaydında** (EE-186/188/191/195) ve o işler farklı
+      fazlarda. Tek adım, ilk işin kendinden iki faz sonrasının şemasını tasarlamasını
+      isterdi. Göç bu yüzden **iş başına**: v28 = `changes` (EE-186), sonrakiler kendi
+      adımlarıyla. Kutunun *"ayrı drift veritabanı açılmaz"* yarısı dokunulmadı — o gerekçe
+      **dosya sayısı** hakkındadır, adım sayısı hakkında değil. Geri alınabilirlik hangi
+      adım inerse onun için test edilir.
 - [ ] Dördünün şekli **uzantının kaydında** tanımlı ve buraya yazılmaz; bu iş biçimi ve
       göçü getirir. İlgili kayıtlar: `EE-186`, `EE-188`, `EE-191`, `EE-195`.
 - [ ] Her tablo OPH-326'nın gölge kolonlarını da alır (arama dışı kalan bir entity,
       kullanıcı için var olmayan bir entity'dir).
-- [ ] Göç **geri alınabilir**: `down()` yolu test edilir. Dört tablo birden ekleyen bir
-      adımın geri alınamaması, sürüm düşürmeyi imkânsız yapar.
+- [ ] Göç **geri alınabilir**: `down()` yolu test edilir. Geri alınamayan bir adım, sürüm
+      düşürmeyi imkânsız yapar.
+      **v28 (EE-186) indi ve zinciriyle birlikte geri alınıp yeniden koşuldu** (105
+      migration, `rollback --all` sonrası yine 105). Kalan üç tablo kendi işlerinde.
 - **Kabul:** v27'den yükselen bir replika veri kaybetmiyor; dört tablo yazılıp okunuyor;
       `down()` çalışıyor; CE'de tablolar **boş ve zararsız** duruyor.
 - **Doğrulama:** göç testi (v26 → v28 zinciri) + applier testleri + boyut ölçümü (her

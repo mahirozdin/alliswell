@@ -17821,6 +17821,931 @@ class TicketAssignmentsCompanion
   }
 }
 
+class $ChangesTable extends Changes
+    with TableInfo<$ChangesTable, ChangeRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChangesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _riskMeta = const VerificationMeta('risk');
+  @override
+  late final GeneratedColumn<String> risk = GeneratedColumn<String>(
+    'risk',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _impactMeta = const VerificationMeta('impact');
+  @override
+  late final GeneratedColumn<String> impact = GeneratedColumn<String>(
+    'impact',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rollbackPlanMeta = const VerificationMeta(
+    'rollbackPlan',
+  );
+  @override
+  late final GeneratedColumn<String> rollbackPlan = GeneratedColumn<String>(
+    'rollback_plan',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _windowStartMeta = const VerificationMeta(
+    'windowStart',
+  );
+  @override
+  late final GeneratedColumn<DateTime> windowStart = GeneratedColumn<DateTime>(
+    'window_start',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _windowEndMeta = const VerificationMeta(
+    'windowEnd',
+  );
+  @override
+  late final GeneratedColumn<DateTime> windowEnd = GeneratedColumn<DateTime>(
+    'window_end',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _titleFoldMeta = const VerificationMeta(
+    'titleFold',
+  );
+  @override
+  late final GeneratedColumn<String> titleFold = GeneratedColumn<String>(
+    'title_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _impactFoldMeta = const VerificationMeta(
+    'impactFold',
+  );
+  @override
+  late final GeneratedColumn<String> impactFold = GeneratedColumn<String>(
+    'impact_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    title,
+    description,
+    type,
+    status,
+    risk,
+    impact,
+    rollbackPlan,
+    windowStart,
+    windowEnd,
+    titleFold,
+    impactFold,
+    createdAt,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'changes';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChangeRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('risk')) {
+      context.handle(
+        _riskMeta,
+        risk.isAcceptableOrUnknown(data['risk']!, _riskMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_riskMeta);
+    }
+    if (data.containsKey('impact')) {
+      context.handle(
+        _impactMeta,
+        impact.isAcceptableOrUnknown(data['impact']!, _impactMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_impactMeta);
+    }
+    if (data.containsKey('rollback_plan')) {
+      context.handle(
+        _rollbackPlanMeta,
+        rollbackPlan.isAcceptableOrUnknown(
+          data['rollback_plan']!,
+          _rollbackPlanMeta,
+        ),
+      );
+    }
+    if (data.containsKey('window_start')) {
+      context.handle(
+        _windowStartMeta,
+        windowStart.isAcceptableOrUnknown(
+          data['window_start']!,
+          _windowStartMeta,
+        ),
+      );
+    }
+    if (data.containsKey('window_end')) {
+      context.handle(
+        _windowEndMeta,
+        windowEnd.isAcceptableOrUnknown(data['window_end']!, _windowEndMeta),
+      );
+    }
+    if (data.containsKey('title_fold')) {
+      context.handle(
+        _titleFoldMeta,
+        titleFold.isAcceptableOrUnknown(data['title_fold']!, _titleFoldMeta),
+      );
+    }
+    if (data.containsKey('impact_fold')) {
+      context.handle(
+        _impactFoldMeta,
+        impactFold.isAcceptableOrUnknown(data['impact_fold']!, _impactFoldMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChangeRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChangeRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      risk: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}risk'],
+      )!,
+      impact: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}impact'],
+      )!,
+      rollbackPlan: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}rollback_plan'],
+      ),
+      windowStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}window_start'],
+      ),
+      windowEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}window_end'],
+      ),
+      titleFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_fold'],
+      ),
+      impactFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}impact_fold'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $ChangesTable createAlias(String alias) {
+    return $ChangesTable(attachedDatabase, alias);
+  }
+}
+
+class ChangeRecord extends DataClass implements Insertable<ChangeRecord> {
+  final String id;
+  final String workspaceId;
+  final String title;
+  final String? description;
+
+  /// `standard | normal | emergency` — stored as the server's own word so the
+  /// two sides cannot drift into two vocabularies (the [Tickets] rule).
+  final String type;
+  final String status;
+  final String risk;
+  final String impact;
+
+  /// The one field this record stands on. Never null on the server; nullable
+  /// here only because a row pulled by a future version that drops it would
+  /// otherwise fail to parse.
+  final String? rollbackPlan;
+  final DateTime? windowStart;
+  final DateTime? windowEnd;
+
+  /// v28 (OPH-326's rule): an entity outside search is an entity that does not
+  /// exist for the person looking for it. The applier keeps these in step via
+  /// foldSearchText — the fold cannot run in SQL, which is why they are here.
+  final String? titleFold;
+  final String? impactFold;
+  final DateTime? createdAt;
+  final int revision;
+  final DateTime? updatedAt;
+  const ChangeRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.title,
+    this.description,
+    required this.type,
+    required this.status,
+    required this.risk,
+    required this.impact,
+    this.rollbackPlan,
+    this.windowStart,
+    this.windowEnd,
+    this.titleFold,
+    this.impactFold,
+    this.createdAt,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['type'] = Variable<String>(type);
+    map['status'] = Variable<String>(status);
+    map['risk'] = Variable<String>(risk);
+    map['impact'] = Variable<String>(impact);
+    if (!nullToAbsent || rollbackPlan != null) {
+      map['rollback_plan'] = Variable<String>(rollbackPlan);
+    }
+    if (!nullToAbsent || windowStart != null) {
+      map['window_start'] = Variable<DateTime>(windowStart);
+    }
+    if (!nullToAbsent || windowEnd != null) {
+      map['window_end'] = Variable<DateTime>(windowEnd);
+    }
+    if (!nullToAbsent || titleFold != null) {
+      map['title_fold'] = Variable<String>(titleFold);
+    }
+    if (!nullToAbsent || impactFold != null) {
+      map['impact_fold'] = Variable<String>(impactFold);
+    }
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  ChangesCompanion toCompanion(bool nullToAbsent) {
+    return ChangesCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      title: Value(title),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      type: Value(type),
+      status: Value(status),
+      risk: Value(risk),
+      impact: Value(impact),
+      rollbackPlan: rollbackPlan == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rollbackPlan),
+      windowStart: windowStart == null && nullToAbsent
+          ? const Value.absent()
+          : Value(windowStart),
+      windowEnd: windowEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(windowEnd),
+      titleFold: titleFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titleFold),
+      impactFold: impactFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(impactFold),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory ChangeRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChangeRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String?>(json['description']),
+      type: serializer.fromJson<String>(json['type']),
+      status: serializer.fromJson<String>(json['status']),
+      risk: serializer.fromJson<String>(json['risk']),
+      impact: serializer.fromJson<String>(json['impact']),
+      rollbackPlan: serializer.fromJson<String?>(json['rollbackPlan']),
+      windowStart: serializer.fromJson<DateTime?>(json['windowStart']),
+      windowEnd: serializer.fromJson<DateTime?>(json['windowEnd']),
+      titleFold: serializer.fromJson<String?>(json['titleFold']),
+      impactFold: serializer.fromJson<String?>(json['impactFold']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String?>(description),
+      'type': serializer.toJson<String>(type),
+      'status': serializer.toJson<String>(status),
+      'risk': serializer.toJson<String>(risk),
+      'impact': serializer.toJson<String>(impact),
+      'rollbackPlan': serializer.toJson<String?>(rollbackPlan),
+      'windowStart': serializer.toJson<DateTime?>(windowStart),
+      'windowEnd': serializer.toJson<DateTime?>(windowEnd),
+      'titleFold': serializer.toJson<String?>(titleFold),
+      'impactFold': serializer.toJson<String?>(impactFold),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  ChangeRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? title,
+    Value<String?> description = const Value.absent(),
+    String? type,
+    String? status,
+    String? risk,
+    String? impact,
+    Value<String?> rollbackPlan = const Value.absent(),
+    Value<DateTime?> windowStart = const Value.absent(),
+    Value<DateTime?> windowEnd = const Value.absent(),
+    Value<String?> titleFold = const Value.absent(),
+    Value<String?> impactFold = const Value.absent(),
+    Value<DateTime?> createdAt = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => ChangeRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    title: title ?? this.title,
+    description: description.present ? description.value : this.description,
+    type: type ?? this.type,
+    status: status ?? this.status,
+    risk: risk ?? this.risk,
+    impact: impact ?? this.impact,
+    rollbackPlan: rollbackPlan.present ? rollbackPlan.value : this.rollbackPlan,
+    windowStart: windowStart.present ? windowStart.value : this.windowStart,
+    windowEnd: windowEnd.present ? windowEnd.value : this.windowEnd,
+    titleFold: titleFold.present ? titleFold.value : this.titleFold,
+    impactFold: impactFold.present ? impactFold.value : this.impactFold,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  ChangeRecord copyWithCompanion(ChangesCompanion data) {
+    return ChangeRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      type: data.type.present ? data.type.value : this.type,
+      status: data.status.present ? data.status.value : this.status,
+      risk: data.risk.present ? data.risk.value : this.risk,
+      impact: data.impact.present ? data.impact.value : this.impact,
+      rollbackPlan: data.rollbackPlan.present
+          ? data.rollbackPlan.value
+          : this.rollbackPlan,
+      windowStart: data.windowStart.present
+          ? data.windowStart.value
+          : this.windowStart,
+      windowEnd: data.windowEnd.present ? data.windowEnd.value : this.windowEnd,
+      titleFold: data.titleFold.present ? data.titleFold.value : this.titleFold,
+      impactFold: data.impactFold.present
+          ? data.impactFold.value
+          : this.impactFold,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChangeRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('type: $type, ')
+          ..write('status: $status, ')
+          ..write('risk: $risk, ')
+          ..write('impact: $impact, ')
+          ..write('rollbackPlan: $rollbackPlan, ')
+          ..write('windowStart: $windowStart, ')
+          ..write('windowEnd: $windowEnd, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('impactFold: $impactFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    title,
+    description,
+    type,
+    status,
+    risk,
+    impact,
+    rollbackPlan,
+    windowStart,
+    windowEnd,
+    titleFold,
+    impactFold,
+    createdAt,
+    revision,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChangeRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.type == this.type &&
+          other.status == this.status &&
+          other.risk == this.risk &&
+          other.impact == this.impact &&
+          other.rollbackPlan == this.rollbackPlan &&
+          other.windowStart == this.windowStart &&
+          other.windowEnd == this.windowEnd &&
+          other.titleFold == this.titleFold &&
+          other.impactFold == this.impactFold &&
+          other.createdAt == this.createdAt &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ChangesCompanion extends UpdateCompanion<ChangeRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> title;
+  final Value<String?> description;
+  final Value<String> type;
+  final Value<String> status;
+  final Value<String> risk;
+  final Value<String> impact;
+  final Value<String?> rollbackPlan;
+  final Value<DateTime?> windowStart;
+  final Value<DateTime?> windowEnd;
+  final Value<String?> titleFold;
+  final Value<String?> impactFold;
+  final Value<DateTime?> createdAt;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const ChangesCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.type = const Value.absent(),
+    this.status = const Value.absent(),
+    this.risk = const Value.absent(),
+    this.impact = const Value.absent(),
+    this.rollbackPlan = const Value.absent(),
+    this.windowStart = const Value.absent(),
+    this.windowEnd = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.impactFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChangesCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String title,
+    this.description = const Value.absent(),
+    required String type,
+    required String status,
+    required String risk,
+    required String impact,
+    this.rollbackPlan = const Value.absent(),
+    this.windowStart = const Value.absent(),
+    this.windowEnd = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.impactFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       title = Value(title),
+       type = Value(type),
+       status = Value(status),
+       risk = Value(risk),
+       impact = Value(impact);
+  static Insertable<ChangeRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<String>? type,
+    Expression<String>? status,
+    Expression<String>? risk,
+    Expression<String>? impact,
+    Expression<String>? rollbackPlan,
+    Expression<DateTime>? windowStart,
+    Expression<DateTime>? windowEnd,
+    Expression<String>? titleFold,
+    Expression<String>? impactFold,
+    Expression<DateTime>? createdAt,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (type != null) 'type': type,
+      if (status != null) 'status': status,
+      if (risk != null) 'risk': risk,
+      if (impact != null) 'impact': impact,
+      if (rollbackPlan != null) 'rollback_plan': rollbackPlan,
+      if (windowStart != null) 'window_start': windowStart,
+      if (windowEnd != null) 'window_end': windowEnd,
+      if (titleFold != null) 'title_fold': titleFold,
+      if (impactFold != null) 'impact_fold': impactFold,
+      if (createdAt != null) 'created_at': createdAt,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChangesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? title,
+    Value<String?>? description,
+    Value<String>? type,
+    Value<String>? status,
+    Value<String>? risk,
+    Value<String>? impact,
+    Value<String?>? rollbackPlan,
+    Value<DateTime?>? windowStart,
+    Value<DateTime?>? windowEnd,
+    Value<String?>? titleFold,
+    Value<String?>? impactFold,
+    Value<DateTime?>? createdAt,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ChangesCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      type: type ?? this.type,
+      status: status ?? this.status,
+      risk: risk ?? this.risk,
+      impact: impact ?? this.impact,
+      rollbackPlan: rollbackPlan ?? this.rollbackPlan,
+      windowStart: windowStart ?? this.windowStart,
+      windowEnd: windowEnd ?? this.windowEnd,
+      titleFold: titleFold ?? this.titleFold,
+      impactFold: impactFold ?? this.impactFold,
+      createdAt: createdAt ?? this.createdAt,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (risk.present) {
+      map['risk'] = Variable<String>(risk.value);
+    }
+    if (impact.present) {
+      map['impact'] = Variable<String>(impact.value);
+    }
+    if (rollbackPlan.present) {
+      map['rollback_plan'] = Variable<String>(rollbackPlan.value);
+    }
+    if (windowStart.present) {
+      map['window_start'] = Variable<DateTime>(windowStart.value);
+    }
+    if (windowEnd.present) {
+      map['window_end'] = Variable<DateTime>(windowEnd.value);
+    }
+    if (titleFold.present) {
+      map['title_fold'] = Variable<String>(titleFold.value);
+    }
+    if (impactFold.present) {
+      map['impact_fold'] = Variable<String>(impactFold.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChangesCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('type: $type, ')
+          ..write('status: $status, ')
+          ..write('risk: $risk, ')
+          ..write('impact: $impact, ')
+          ..write('rollbackPlan: $rollbackPlan, ')
+          ..write('windowStart: $windowStart, ')
+          ..write('windowEnd: $windowEnd, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('impactFold: $impactFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -17859,6 +18784,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $TicketCommentsTable ticketComments = $TicketCommentsTable(this);
   late final $TicketAssignmentsTable ticketAssignments =
       $TicketAssignmentsTable(this);
+  late final $ChangesTable changes = $ChangesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -17891,6 +18817,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     tickets,
     ticketComments,
     ticketAssignments,
+    changes,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -26378,6 +27305,422 @@ typedef $$TicketAssignmentsTableProcessedTableManager =
       TicketAssignmentRecord,
       PrefetchHooks Function()
     >;
+typedef $$ChangesTableCreateCompanionBuilder =
+    ChangesCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String title,
+      Value<String?> description,
+      required String type,
+      required String status,
+      required String risk,
+      required String impact,
+      Value<String?> rollbackPlan,
+      Value<DateTime?> windowStart,
+      Value<DateTime?> windowEnd,
+      Value<String?> titleFold,
+      Value<String?> impactFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ChangesTableUpdateCompanionBuilder =
+    ChangesCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> title,
+      Value<String?> description,
+      Value<String> type,
+      Value<String> status,
+      Value<String> risk,
+      Value<String> impact,
+      Value<String?> rollbackPlan,
+      Value<DateTime?> windowStart,
+      Value<DateTime?> windowEnd,
+      Value<String?> titleFold,
+      Value<String?> impactFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ChangesTableFilterComposer
+    extends Composer<_$AwDatabase, $ChangesTable> {
+  $$ChangesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get risk => $composableBuilder(
+    column: $table.risk,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get impact => $composableBuilder(
+    column: $table.impact,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rollbackPlan => $composableBuilder(
+    column: $table.rollbackPlan,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get windowStart => $composableBuilder(
+    column: $table.windowStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get windowEnd => $composableBuilder(
+    column: $table.windowEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get impactFold => $composableBuilder(
+    column: $table.impactFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ChangesTableOrderingComposer
+    extends Composer<_$AwDatabase, $ChangesTable> {
+  $$ChangesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get risk => $composableBuilder(
+    column: $table.risk,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get impact => $composableBuilder(
+    column: $table.impact,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rollbackPlan => $composableBuilder(
+    column: $table.rollbackPlan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get windowStart => $composableBuilder(
+    column: $table.windowStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get windowEnd => $composableBuilder(
+    column: $table.windowEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get impactFold => $composableBuilder(
+    column: $table.impactFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ChangesTableAnnotationComposer
+    extends Composer<_$AwDatabase, $ChangesTable> {
+  $$ChangesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get risk =>
+      $composableBuilder(column: $table.risk, builder: (column) => column);
+
+  GeneratedColumn<String> get impact =>
+      $composableBuilder(column: $table.impact, builder: (column) => column);
+
+  GeneratedColumn<String> get rollbackPlan => $composableBuilder(
+    column: $table.rollbackPlan,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get windowStart => $composableBuilder(
+    column: $table.windowStart,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get windowEnd =>
+      $composableBuilder(column: $table.windowEnd, builder: (column) => column);
+
+  GeneratedColumn<String> get titleFold =>
+      $composableBuilder(column: $table.titleFold, builder: (column) => column);
+
+  GeneratedColumn<String> get impactFold => $composableBuilder(
+    column: $table.impactFold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ChangesTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $ChangesTable,
+          ChangeRecord,
+          $$ChangesTableFilterComposer,
+          $$ChangesTableOrderingComposer,
+          $$ChangesTableAnnotationComposer,
+          $$ChangesTableCreateCompanionBuilder,
+          $$ChangesTableUpdateCompanionBuilder,
+          (
+            ChangeRecord,
+            BaseReferences<_$AwDatabase, $ChangesTable, ChangeRecord>,
+          ),
+          ChangeRecord,
+          PrefetchHooks Function()
+        > {
+  $$ChangesTableTableManager(_$AwDatabase db, $ChangesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChangesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChangesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChangesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> risk = const Value.absent(),
+                Value<String> impact = const Value.absent(),
+                Value<String?> rollbackPlan = const Value.absent(),
+                Value<DateTime?> windowStart = const Value.absent(),
+                Value<DateTime?> windowEnd = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> impactFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChangesCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                title: title,
+                description: description,
+                type: type,
+                status: status,
+                risk: risk,
+                impact: impact,
+                rollbackPlan: rollbackPlan,
+                windowStart: windowStart,
+                windowEnd: windowEnd,
+                titleFold: titleFold,
+                impactFold: impactFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String title,
+                Value<String?> description = const Value.absent(),
+                required String type,
+                required String status,
+                required String risk,
+                required String impact,
+                Value<String?> rollbackPlan = const Value.absent(),
+                Value<DateTime?> windowStart = const Value.absent(),
+                Value<DateTime?> windowEnd = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> impactFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChangesCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                title: title,
+                description: description,
+                type: type,
+                status: status,
+                risk: risk,
+                impact: impact,
+                rollbackPlan: rollbackPlan,
+                windowStart: windowStart,
+                windowEnd: windowEnd,
+                titleFold: titleFold,
+                impactFold: impactFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ChangesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $ChangesTable,
+      ChangeRecord,
+      $$ChangesTableFilterComposer,
+      $$ChangesTableOrderingComposer,
+      $$ChangesTableAnnotationComposer,
+      $$ChangesTableCreateCompanionBuilder,
+      $$ChangesTableUpdateCompanionBuilder,
+      (ChangeRecord, BaseReferences<_$AwDatabase, $ChangesTable, ChangeRecord>),
+      ChangeRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AwDatabaseManager {
   final _$AwDatabase _db;
@@ -26435,4 +27778,6 @@ class $AwDatabaseManager {
       $$TicketCommentsTableTableManager(_db, _db.ticketComments);
   $$TicketAssignmentsTableTableManager get ticketAssignments =>
       $$TicketAssignmentsTableTableManager(_db, _db.ticketAssignments);
+  $$ChangesTableTableManager get changes =>
+      $$ChangesTableTableManager(_db, _db.changes);
 }

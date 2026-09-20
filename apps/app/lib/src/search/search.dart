@@ -73,7 +73,8 @@ class SearchService {
       _tasks,
       workspaceId,
       query,
-      extraWhere: 't.status IN (${List.filled(statuses.length, '?').join(', ')})',
+      extraWhere:
+          't.status IN (${List.filled(statuses.length, '?').join(', ')})',
       extraVars: [for (final s in statuses) Variable.withString(s)],
     );
   }
@@ -99,7 +100,10 @@ class SearchService {
   /// search is what happens when the lookup misses. Returning both would put
   /// the request somebody asked for at the top of a list of coincidences, and
   /// a person reading a number off a mail subject is not browsing.
-  Future<List<SearchHit>> searchTickets(String workspaceId, String query) async {
+  Future<List<SearchHit>> searchTickets(
+    String workspaceId,
+    String query,
+  ) async {
     final number = ticketNumberQuery(query);
     if (number != null) {
       final exact = await _db
@@ -113,7 +117,8 @@ class SearchService {
           .get();
       if (exact.isNotEmpty) {
         return [
-          for (final row in exact) SearchHit(id: row.read<String>('id'), tier: 1),
+          for (final row in exact)
+            SearchHit(id: row.read<String>('id'), tier: 1),
         ];
       }
       // A miss falls through: the digits may well be in somebody's body text,
@@ -122,6 +127,15 @@ class SearchService {
     }
     return _run(_tickets, workspaceId, query);
   }
+
+  /// EE-186 / OPH-327 — planned changes.
+  ///
+  /// Registered rather than special-cased, which is the whole point of the
+  /// registry OPH-326 introduced: an extension's entity reads the same SQL
+  /// shape and the same fold as the core domains. An entity outside search is
+  /// an entity that does not exist for the person looking for it.
+  Future<List<SearchHit>> searchChanges(String workspaceId, String query) =>
+      _run(_changes, workspaceId, query);
 
   /// One query for every entry in the registry, so the core domains and an
   /// extension's read the same SQL shape and the same fold.
@@ -142,7 +156,10 @@ class SearchService {
       for (final tier in tiers.take(tiers.length - 1))
         'WHEN ${_allWords(entity.tiers[tier]!, words, caseVars)} THEN $tier',
     ];
-    final whereVars = <Variable>[Variable.withString(workspaceId), ...extraVars];
+    final whereVars = <Variable>[
+      Variable.withString(workspaceId),
+      ...extraVars,
+    ];
     final match = _eachWordSomewhere(entity.fields, words, whereVars);
 
     final rows = await _db
@@ -268,6 +285,17 @@ LEFT JOIN (
   GROUP BY c.ticket_id
 ) cmt ON cmt.ticket_id = k.id''',
   order: 'k.created_at DESC, k.id DESC',
+);
+
+/// EE-186. The title is what somebody searches for; the impact text is what
+/// they search for when they cannot remember the title. The rollback plan is
+/// deliberately NOT searchable: it is the field somebody reads in full before
+/// acting, and surfacing it as a fragment would invite acting on the fragment.
+const _changes = SearchEntity(
+  table: 'changes',
+  alias: 'g',
+  tiers: {0: "IFNULL(g.title_fold, '')", 2: "IFNULL(g.impact_fold, '')"},
+  order: 'g.window_start IS NULL, g.window_start ASC, g.created_at DESC',
 );
 
 /// A short window of [original] around the first folded match of [word] —

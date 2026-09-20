@@ -272,8 +272,16 @@ void main() {
           .get();
       await db.customSelect('SELECT body_fold FROM ticket_comments').get();
 
+      // v28 (EE-186 / OPH-327): a new table, so the empty-select idiom proves
+      // it directly — and the fold columns are named in SQL for the v26 reason,
+      // since a `select *` would pass whether or not OPH-326's shadows landed.
+      expect(await db.select(db.changes).get(), isEmpty);
+      await db
+          .customSelect('SELECT title_fold, impact_fold FROM changes')
+          .get();
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 27);
+      expect(version.data['user_version'], 28);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -319,7 +327,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 27);
+      expect(version.data['user_version'], 28);
       await db.close();
     },
   );
@@ -366,7 +374,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 27);
+      expect(version.data['user_version'], 28);
       await db.close();
     },
   );

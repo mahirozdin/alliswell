@@ -1373,7 +1373,10 @@
       "approval_requested": "asked for an approval",
       "approved": "approved this",
       "rejected": "rejected this",
-      "approval_expired": "let an approval lapse"
+      "approval_expired": "let an approval lapse",
+      "scheduled": "scheduled this",
+      "implemented": "implemented this",
+      "rolled_back": "rolled this back"
     },
     "perm": {
       "alarms": {
@@ -1459,12 +1462,18 @@
       },
       "approvals": {
         "decide": "Approve or reject what is waiting on a decision"
+      },
+      "changes": {
+        "create": "Raise a change",
+        "edit": "Edit a change, and move it along",
+        "implement": "Mark a change done, failed or rolled back"
       }
     },
     "permDomain": {
       "alarms": "Alarms",
       "approvals": "Approvals",
       "calendar": "Calendar",
+      "changes": "Changes",
       "files": "Files",
       "notes": "Notes",
       "portal": "Public portal",

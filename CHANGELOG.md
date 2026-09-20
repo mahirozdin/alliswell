@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The device's local copy learned one more kind of record (OPH-327).** An
+  extension can register an entity that lives on the phone beside tasks and
+  notes — pulled, searched by the same folded-text rules, and readable with no
+  signal. The schema step is per entity rather than one step for several,
+  because their shapes are decided by the features that add them and those
+  land at different times. Nothing changes for an install without the
+  extension: the table is there and stays empty.
+
 - **A file can be attached to things the extension adds, not just the four core
   ones (OPH-325).** What a file may hang on is now a registry rather than a
   fixed list, so an extension can register its own kind and the upload, the

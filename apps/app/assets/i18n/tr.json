@@ -1372,7 +1372,10 @@
       "approval_requested": "onay istedi",
       "approved": "onayladı",
       "rejected": "reddetti",
-      "approval_expired": "onayın süresi doldu"
+      "approval_expired": "onayın süresi doldu",
+      "scheduled": "planladı",
+      "implemented": "uyguladı",
+      "rolled_back": "geri aldı"
     },
     "perm": {
       "alarms": {
@@ -1458,12 +1461,18 @@
       },
       "approvals": {
         "decide": "Karar bekleyeni onayla ya da reddet"
+      },
+      "changes": {
+        "create": "Değişiklik aç",
+        "edit": "Değişikliği düzenle ve ilerlet",
+        "implement": "Değişikliği yapıldı, başarısız ya da geri alındı işaretle"
       }
     },
     "permDomain": {
       "alarms": "Alarmlar",
       "approvals": "Onaylar",
       "calendar": "Takvim",
+      "changes": "Değişiklikler",
       "files": "Dosyalar",
       "notes": "Notlar",
       "portal": "Genel portal",

@@ -786,6 +786,50 @@ class Tickets extends Table {
 /// duplication is four columns; the behaviour that matters (the join to
 /// [MemberProfiles] for a name and a colour, the tombstone-avatar miss) is one
 /// widget, not two.
+/// A planned change (EE-186 / OPH-327).
+///
+/// READ-ONLY on this device, and that is a decision rather than a gap: there
+/// is no push entity for it, so nothing here can author or edit one. A change
+/// is a plan a company signs for, and an offline replica queueing
+/// "implemented" for a window that has since been frozen would be writing a
+/// fact about production it could not have checked.
+///
+/// What it IS for is the factory floor with no signal: what is going out
+/// tonight, when its window is, and whether anybody signed for it.
+@DataClassName('ChangeRecord')
+class Changes extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+
+  /// `standard | normal | emergency` — stored as the server's own word so the
+  /// two sides cannot drift into two vocabularies (the [Tickets] rule).
+  TextColumn get type => text()();
+  TextColumn get status => text()();
+  TextColumn get risk => text()();
+  TextColumn get impact => text()();
+
+  /// The one field this record stands on. Never null on the server; nullable
+  /// here only because a row pulled by a future version that drops it would
+  /// otherwise fail to parse.
+  TextColumn get rollbackPlan => text().nullable()();
+  DateTimeColumn get windowStart => dateTime().nullable()();
+  DateTimeColumn get windowEnd => dateTime().nullable()();
+
+  /// v28 (OPH-326's rule): an entity outside search is an entity that does not
+  /// exist for the person looking for it. The applier keeps these in step via
+  /// foldSearchText — the fold cannot run in SQL, which is why they are here.
+  TextColumn get titleFold => text().nullable()();
+  TextColumn get impactFold => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('TicketAssignmentRecord')
 class TicketAssignments extends Table {
   TextColumn get id => text()();
@@ -851,6 +895,7 @@ class TicketComments extends Table {
     Tickets,
     TicketComments,
     TicketAssignments,
+    Changes,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -881,7 +926,7 @@ class AwDatabase extends _$AwDatabase {
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 27;
+  int get schemaVersion => 28;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1079,6 +1124,11 @@ class AwDatabase extends _$AwDatabase {
         await m.addColumn(ticketComments, ticketComments.bodyFold);
         await backfillTicketFolds(this);
       }
+      // v28 (EE-186 / OPH-327): changes. A brand new pull-only table, so
+      // nothing existing is touched and there is nothing to backfill — the
+      // next pull fills it. The fold columns are created WITH it, which is
+      // why this step has no `addColumn` half the way v27 did.
+      if (from < 28) await m.createTable(changes);
     },
   );
 

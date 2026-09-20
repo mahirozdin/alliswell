@@ -141,6 +141,10 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(
         db.ticketAssignments,
       )..where((a) => a.id.equals(id))).go();
+    case 'ee_change':
+      // EE-186: a change leaves the device when the server stops sending it —
+      // there is no local authoring, so a tombstone is the whole story.
+      await (db.delete(db.changes)..where((c) => c.id.equals(id))).go();
   }
 }
 
@@ -218,6 +222,8 @@ Future<void> _applySnapshot(
       await db
           .into(db.ticketAssignments)
           .insertOnConflictUpdate(ticketAssignmentCompanion(data));
+    case 'ee_change':
+      await db.into(db.changes).insertOnConflictUpdate(changeCompanion(data));
   }
 }
 
@@ -609,6 +615,31 @@ TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   // be a second vocabulary.
   slaDueAt: _dateValue(data['slaDueAt']),
   slaStatus: Value(data['slaStatus'] as String?),
+  createdAt: _dateValue(data['createdAt']),
+  revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+  updatedAt: _dateValue(data['updatedAt']),
+);
+
+/// EE-186 / OPH-327 — a planned change, as the replica stores it.
+///
+/// Pull-only: this applier is the only writer, which is what lets the folded
+/// shadows below be kept in step in one place (the [ticketCompanion] rule).
+ChangesCompanion changeCompanion(Map<String, dynamic> data) => ChangesCompanion(
+  id: Value(data['id'] as String),
+  workspaceId: Value(data['workspaceId'] as String),
+  title: Value(data['title'] as String),
+  description: Value(data['description'] as String?),
+  type: Value(data['type'] as String),
+  status: Value(data['status'] as String),
+  risk: Value(data['risk'] as String),
+  impact: Value(data['impact'] as String),
+  rollbackPlan: Value(data['rollbackPlan'] as String?),
+  windowStart: _dateValue(data['windowStart']),
+  windowEnd: _dateValue(data['windowEnd']),
+  // OPH-326's rule: the title is what somebody searches for, the impact is
+  // what they search for when they cannot remember the title.
+  titleFold: _foldValue(data['title']),
+  impactFold: _foldValue(data['impact']),
   createdAt: _dateValue(data['createdAt']),
   revision: Value((data['revision'] as num?)?.toInt() ?? 0),
   updatedAt: _dateValue(data['updatedAt']),
