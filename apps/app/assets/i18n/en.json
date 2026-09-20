@@ -1382,7 +1382,9 @@
       "root_cause_identified": "identified the root cause",
       "resolved": "resolved this",
       "linked": "linked this to another record",
-      "unlinked": "cut a link"
+      "unlinked": "cut a link",
+      "sla_paused": "stopped the SLA clock",
+      "sla_resumed": "restarted the SLA clock"
     },
     "perm": {
       "alarms": {
@@ -1458,7 +1460,8 @@
         "convert": "Turn a request into a task in the unit",
         "assign": "Put a request on someone else, or take one off them",
         "override_priority": "Set a priority the impact × urgency matrix would not produce",
-        "link": "Link requests to each other and to problems"
+        "link": "Link requests to each other and to problems",
+        "pause_sla": "Stop and restart a request’s SLA clock without moving it"
       },
       "units": {
         "manage": "Manage units",
@@ -1826,7 +1829,15 @@
       },
       "mineTitle": "My requests",
       "mineEmptyTitle": "You have not opened any requests",
-      "mineEmptyBody": "Requests you open, and where they have got to, appear here."
+      "mineEmptyBody": "Requests you open, and where they have got to, appear here.",
+      "waitingReason": "Waiting on",
+      "waitingReasonRequired": "Parking a request needs a reason",
+      "linkedTasks": "Work this request caused",
+      "linkedTasksEmpty": "No work has been opened from this request yet",
+      "openAnotherTask": "Open another task",
+      "relatedAction": "This has come up again",
+      "relatedHint": "A closed request is not reopened — a NEW request is opened carrying its summary, and the two are linked.",
+      "relatedOpened": "A new request was opened and linked to the old one"
     },
     "sla": {
       "breached": "SLA missed",
@@ -1836,7 +1847,18 @@
       "hoursMinutes": "{h} h {m} m",
       "minutes": "{m} m",
       "days": "{d} d",
-      "dueLabel": "Response due"
+      "dueLabel": "Response due",
+      "pausedTitle": "SLA clock stopped",
+      "pauseReason": "Why was it stopped?",
+      "resume": "Restart the clock",
+      "pause": "Stop the clock",
+      "reason": {
+        "requester_info": "Waiting on the person who asked",
+        "supplier": "Waiting on a supplier",
+        "spare_part": "Waiting on a spare part",
+        "approval": "Waiting on an approval",
+        "planned_window": "Waiting on a planned window"
+      }
     },
     "slaDash": {
       "title": "SLA dashboard",

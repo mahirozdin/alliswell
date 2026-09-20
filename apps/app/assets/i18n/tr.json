@@ -1381,7 +1381,9 @@
       "root_cause_identified": "kök nedeni belirledi",
       "resolved": "çözdü",
       "linked": "bağladı",
-      "unlinked": "bağı kopardı"
+      "unlinked": "bağı kopardı",
+      "sla_paused": "SLA saatini durdurdu",
+      "sla_resumed": "SLA saatini sürdürdü"
     },
     "perm": {
       "alarms": {
@@ -1457,7 +1459,8 @@
         "convert": "Talebi işe dönüştür",
         "assign": "Talebi başkasına ver ya da üstünden al",
         "override_priority": "Matrisin üretmeyeceği bir öncelik ver",
-        "link": "Talepleri birbirine ve problemlere bağla"
+        "link": "Talepleri birbirine ve problemlere bağla",
+        "pause_sla": "Talebi hareket ettirmeden SLA saatini durdur ve sürdür"
       },
       "units": {
         "manage": "Birimleri yönet",
@@ -1825,7 +1828,15 @@
       },
       "mineTitle": "Taleplerim",
       "mineEmptyTitle": "Henüz talep açmadınız",
-      "mineEmptyBody": "Açtığınız talepler ve hangi aşamada oldukları burada görünür."
+      "mineEmptyBody": "Açtığınız talepler ve hangi aşamada oldukları burada görünür.",
+      "waitingReason": "Bekleme nedeni",
+      "waitingReasonRequired": "Bir talebi beklemeye almak için neden gerekir",
+      "linkedTasks": "Bu talepten doğan işler",
+      "linkedTasksEmpty": "Bu talepten henüz iş açılmadı",
+      "openAnotherTask": "Bir iş daha aç",
+      "relatedAction": "Bu konu tekrar açıldı",
+      "relatedHint": "Kapalı talep yeniden açılmaz; özeti taşınan YENİ bir talep açılır ve ikisi bağlanır.",
+      "relatedOpened": "Yeni talep açıldı ve eskisine bağlandı"
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -1835,7 +1846,18 @@
       "hoursMinutes": "{h} sa {m} dk",
       "minutes": "{m} dk",
       "days": "{d} gün",
-      "dueLabel": "Yanıt süresi"
+      "dueLabel": "Yanıt süresi",
+      "pausedTitle": "SLA saati durduruldu",
+      "pauseReason": "Neden durduruldu?",
+      "resume": "Saati sürdür",
+      "pause": "Saati durdur",
+      "reason": {
+        "requester_info": "Talep sahibinden bilgi bekleniyor",
+        "supplier": "Tedarikçiden bekleniyor",
+        "spare_part": "Yedek parça bekleniyor",
+        "approval": "Onay bekleniyor",
+        "planned_window": "Planlı pencere bekleniyor"
+      }
     },
     "slaDash": {
       "title": "SLA panosu",

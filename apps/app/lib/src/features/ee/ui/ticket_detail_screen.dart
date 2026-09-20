@@ -7,6 +7,8 @@ import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart';
+import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
 import 'sla_chip.dart';
@@ -132,6 +134,11 @@ class _Thread extends ConsumerWidget {
           const SizedBox(height: AwSpace.x4),
           Text(ticket.body!, style: theme.textTheme.bodyMedium),
         ],
+        // EE-189/EE-190: what this request has to do with anything else, and
+        // what came out of it. Below the request and ABOVE the conversation,
+        // because an agent picking this up asks "is this the known one, and
+        // has somebody already started" before reading forty replies.
+        _Relations(ticketId: ticket.id),
         const SizedBox(height: AwSpace.x6),
         Text('ee.tickets.thread'.tr(), style: theme.textTheme.titleSmall),
         const SizedBox(height: AwSpace.x2),
@@ -155,6 +162,157 @@ class _Thread extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+/// EE-189 + EE-190 — the problem, the work, and the way back.
+///
+/// Three things a request carries that its own row cannot: the problem that
+/// explains it (with the WORKAROUND, the one sentence an agent can act on
+/// while the fix is built), the work it caused, and — when it has come up
+/// again — the way to open a new one instead of reopening this.
+class _Relations extends ConsumerWidget {
+  const _Relations({required this.ticketId});
+
+  final String ticketId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final relations = ref.watch(eeTicketRelationsProvider(ticketId));
+
+    return relations.when(
+      // Quiet on both: this section is an ADDITION to a screen that already
+      // works. A spinner or a red box here would make a slow network look
+      // like a broken request.
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (data) {
+        final canConvert = ref.watch(canProvider('tickets.convert'));
+        final canCreate = ref.watch(canProvider('tickets.create'));
+        final titles =
+            ref.watch(eeLinkedTaskTitlesProvider(data.taskIds)).value ??
+            const {};
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (data.waitingReason != null) ...[
+              const SizedBox(height: AwSpace.x4),
+              _Chip(
+                label:
+                    '${'ee.tickets.waitingReason'.tr()}: '
+                    '${'ee.sla.reason.${data.waitingReason}'.tr()}',
+              ),
+            ],
+            for (final problem in data.problems) ...[
+              const SizedBox(height: AwSpace.x4),
+              Card(
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(AwSpace.x3),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(problem.title, style: theme.textTheme.titleSmall),
+                      if (problem.hasUsableWorkaround) ...[
+                        const SizedBox(height: AwSpace.x2),
+                        // The reason this card exists. Full text, never
+                        // truncated: a workaround cut in half is a wrong one.
+                        Text(
+                          problem.workaround!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: AwSpace.x6),
+            Text(
+              'ee.tickets.linkedTasks'.tr(),
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: AwSpace.x2),
+            if (data.taskIds.isEmpty)
+              Text(
+                'ee.tickets.linkedTasksEmpty'.tr(),
+                style: theme.textTheme.bodySmall,
+              )
+            else
+              // A LIST, which is the whole of GAP §3.11: the data model always
+              // allowed several (`ee_ticket_task_links` is unique on the task,
+              // not on the ticket) and the screen showed one.
+              for (final id in data.taskIds)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  leading: const Icon(Icons.check_circle_outline),
+                  // A task the device has not pulled yet is still a task: the
+                  // id is shown rather than the row hidden, because a missing
+                  // line reads as "no work was done".
+                  title: Text(titles[id] ?? id),
+                ),
+            Wrap(
+              spacing: AwSpace.x2,
+              children: [
+                if (canConvert)
+                  TextButton.icon(
+                    onPressed: () async {
+                      await ref
+                          .read(eeTicketLinksApiProvider)
+                          .convertToTask(ticketId);
+                      ref.invalidate(eeTicketRelationsProvider(ticketId));
+                    },
+                    icon: const Icon(Icons.add),
+                    label: Text('ee.tickets.openAnotherTask'.tr()),
+                  ),
+                if (canCreate)
+                  TextButton.icon(
+                    onPressed: () => _askAgain(context, ref),
+                    icon: const Icon(Icons.replay),
+                    label: Text('ee.tickets.relatedAction'.tr()),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// EE-190 — and the dialog says what it is about to do.
+  ///
+  /// "This has come up again" is a button an agent presses expecting a reopen,
+  /// because that is what every other tool does. So the sentence explaining
+  /// that a NEW request is opened is in the dialog rather than in a doc
+  /// nobody reads — the surprise is cheaper here than afterwards.
+  Future<void> _askAgain(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('ee.tickets.relatedAction'.tr()),
+        content: Text('ee.tickets.relatedHint'.tr()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('common.cancel'.tr()),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('common.ok'.tr()),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await ref.read(eeTicketLinksApiProvider).openRelated(ticketId);
+    ref.invalidate(eeTicketRelationsProvider(ticketId));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('ee.tickets.relatedOpened'.tr())));
   }
 }
 

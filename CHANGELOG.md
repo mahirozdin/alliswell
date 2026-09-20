@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A request now shows everything it caused, and a way to say it has come
+  back.** The request screen lists all the work opened from it rather than one
+  piece, and can open another without leaving the page. Where a request is
+  waiting on something, it says what. And when the same matter turns up again,
+  one action opens a new request carrying the old one's summary and ties the
+  two together — the old one is left exactly as it was, because a request that
+  was finished stays finished.
+
 - **The device's local copy learned one more kind of record (OPH-327).** An
   extension can register an entity that lives on the phone beside tasks and
   notes — pulled, searched by the same folded-text rules, and readable with no
