@@ -11024,14 +11024,16 @@ public, tasarım değil._
       adım inerse onun için test edilir.
 - [ ] Dördünün şekli **uzantının kaydında** tanımlı ve buraya yazılmaz; bu iş biçimi ve
       göçü getirir. İlgili kayıtlar: `EE-186` ✔ (v28, `changes`), `EE-188` ✔ (v29,
-      `problems`), `EE-191`, `EE-195`.
+      `problems`), `EE-191` ✔ (v30, `assets`), `EE-195`.
 - [ ] Her tablo OPH-326'nın gölge kolonlarını da alır (arama dışı kalan bir entity,
       kullanıcı için var olmayan bir entity'dir).
 - [ ] Göç **geri alınabilir**: `down()` yolu test edilir. Geri alınamayan bir adım, sürüm
       düşürmeyi imkânsız yapar.
       **v28 (EE-186) indi ve zinciriyle birlikte geri alınıp yeniden koşuldu** (105
       migration, `rollback --all` sonrası yine 105). **v29 (EE-188, `problems`) indi**
-      (107 migration, zincir yine geri alınıp koşuldu). Kalan iki tablo kendi işlerinde.
+      (107 migration, zincir yine geri alınıp koşuldu). **v30 (EE-191, `assets`) indi**
+      (110 migration, zincir yine geri alınıp koşuldu). Kalan bir tablo (`kb_articles`,
+      EE-195) kendi işinde.
 
       **Göç testinin kendisi onarıldı (EE-188 turunda, 2026-09-20).** v29 adımını silip
       `migration_test.dart`'ı koştuğumda test **yeşil kaldı** — yani adımı ölçmüyordu.
@@ -11042,6 +11044,14 @@ public, tasarım değil._
       `DROP TABLE` eklendi (v20–v29, çocuktan ebeveyne). Şimdi v25, v28 ve v29 adımlarının
       **her biri** silindiğinde test kırmızıya dönüyor — yani onarım yalnız bu turun iki
       adımını değil, v20'den beri ölçülmeyen adımları da kapsıyor.
+
+      **v30 de aynı şekilde kanıtlandı (EE-191 turu):** fixture'a `DROP TABLE assets`
+      eklendi, sonra `if (from < 30)` satırı silinip test koşuldu → **kırmızı**, geri
+      alındığında yeşil. Bu adımın kendi iddiası da var: varlığın tarih kolonları
+      (`warranty_until`, `calibration_due`, `purchased_at`) **TEXT**'tir, zaman damgası
+      değil — bir garanti bir **günde** biter, ve onu bir ana çevirmek UTC'nin doğusundaki
+      her teknisyen için tarihi bir gün kaydırırdı. Test bir gün yazıp değişmeden geri
+      okuyarak bunu sabitliyor.
 - **Kabul:** v27'den yükselen bir replika veri kaybetmiyor; dört tablo yazılıp okunuyor;
       `down()` çalışıyor; CE'de tablolar **boş ve zararsız** duruyor.
 - **Doğrulama:** göç testi (v26 → v28 zinciri) + applier testleri + boyut ölçümü (her

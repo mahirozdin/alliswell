@@ -147,6 +147,8 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.changes)..where((c) => c.id.equals(id))).go();
     case 'ee_problem':
       await (db.delete(db.problems)..where((p) => p.id.equals(id))).go();
+    case 'ee_asset':
+      await (db.delete(db.assets)..where((a) => a.id.equals(id))).go();
   }
 }
 
@@ -228,6 +230,8 @@ Future<void> _applySnapshot(
       await db.into(db.changes).insertOnConflictUpdate(changeCompanion(data));
     case 'ee_problem':
       await db.into(db.problems).insertOnConflictUpdate(problemCompanion(data));
+    case 'ee_asset':
+      await db.into(db.assets).insertOnConflictUpdate(assetCompanion(data));
   }
 }
 
@@ -669,6 +673,36 @@ ProblemsCompanion problemCompanion(Map<String, dynamic> data) =>
       revision: Value((data['revision'] as num?)?.toInt() ?? 0),
       updatedAt: _dateValue(data['updatedAt']),
     );
+
+AssetsCompanion assetCompanion(Map<String, dynamic> data) => AssetsCompanion(
+  id: Value(data['id'] as String),
+  workspaceId: Value(data['workspaceId'] as String),
+  type: Value(data['type'] as String),
+  name: Value(data['name'] as String),
+  tag: Value(data['tag'] as String),
+  serialNo: Value(data['serialNo'] as String?),
+  manufacturer: Value(data['manufacturer'] as String?),
+  model: Value(data['model'] as String?),
+  ownerUserId: Value(data['ownerUserId'] as String?),
+  location: Value(data['location'] as String?),
+  status: Value(data['status'] as String),
+  // Straight through as the server sent them: `YYYY-MM-DD`, never parsed into
+  // an instant. See the column's own note in database.dart.
+  warrantyUntil: Value(data['warrantyUntil'] as String?),
+  calibrationDue: Value(data['calibrationDue'] as String?),
+  supplier: Value(data['supplier'] as String?),
+  purchasedAt: Value(data['purchasedAt'] as String?),
+  purchaseCostMinor: Value((data['purchaseCostMinor'] as num?)?.toInt()),
+  currency: Value(data['currency'] as String?),
+  notes: Value(data['notes'] as String?),
+  // The tag is folded beside the name: at the machine, people search for the
+  // number on the sticker.
+  nameFold: _foldValue(data['name']),
+  tagFold: _foldValue(data['tag']),
+  createdAt: _dateValue(data['createdAt']),
+  revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+  updatedAt: _dateValue(data['updatedAt']),
+);
 
 TicketCommentsCompanion ticketCommentCompanion(Map<String, dynamic> data) =>
     TicketCommentsCompanion(

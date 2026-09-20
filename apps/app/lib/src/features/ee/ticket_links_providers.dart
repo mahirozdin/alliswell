@@ -23,8 +23,9 @@ final eeTicketLinksApiProvider = Provider<EeTicketLinksApi>(
 /// a world that moved on. `ref.invalidate` is how a caller asks for that.
 final eeTicketRelationsProvider =
     FutureProvider.family<EeTicketRelations, String>((ref, ticketId) async {
-      if (!ref.watch(eeFeatureProvider('teams')))
+      if (!ref.watch(eeFeatureProvider('teams'))) {
         return const EeTicketRelations();
+      }
       return ref.watch(eeTicketLinksApiProvider).read(ticketId);
     });
 

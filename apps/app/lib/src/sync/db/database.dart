@@ -842,6 +842,53 @@ class Changes extends Table {
 /// workaround people use every week, which is a healthy state rather than a
 /// stalled one — and the cost of that is measured into ADR-0011's budget.
 @DataClassName('ProblemRecord')
+@DataClassName('AssetRecord')
+class Assets extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+
+  /// A built-in key or one the team wrote down. Carried as the server's own
+  /// word rather than an enum: the set is extensible per team, so a replica
+  /// that only knew the built-ins would render a CNC lathe as nothing.
+  TextColumn get type => text()();
+  TextColumn get name => text()();
+
+  /// The number painted on the machine. What the QR code carries and what the
+  /// technician reads out loud.
+  TextColumn get tag => text()();
+  TextColumn get serialNo => text().nullable()();
+  TextColumn get manufacturer => text().nullable()();
+  TextColumn get model => text().nullable()();
+  TextColumn get ownerUserId => text().nullable()();
+  TextColumn get location => text().nullable()();
+
+  /// `in_stock | in_use | maintenance | faulty | retired`, the server's word.
+  TextColumn get status => text()();
+
+  /// Dates, kept as `YYYY-MM-DD` TEXT rather than as timestamps. A warranty
+  /// ends on a day; storing it as an instant would move it by one for every
+  /// technician east of UTC, which is where the factories are.
+  TextColumn get warrantyUntil => text().nullable()();
+  TextColumn get calibrationDue => text().nullable()();
+  TextColumn get supplier => text().nullable()();
+  TextColumn get purchasedAt => text().nullable()();
+  IntColumn get purchaseCostMinor => integer().nullable()();
+  TextColumn get currency => text().nullable()();
+  TextColumn get notes => text().nullable()();
+
+  /// OPH-326's rule: the searchable shadows. The TAG is folded beside the
+  /// name because a technician standing at a machine searches for the number
+  /// on the sticker, not for what somebody called it in the register.
+  TextColumn get nameFold => text().nullable()();
+  TextColumn get tagFold => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 class Problems extends Table {
   TextColumn get id => text()();
   TextColumn get workspaceId => text()();
@@ -941,6 +988,7 @@ class TicketComments extends Table {
     TicketAssignments,
     Changes,
     Problems,
+    Assets,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -971,7 +1019,7 @@ class AwDatabase extends _$AwDatabase {
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 29;
+  int get schemaVersion => 30;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1180,6 +1228,12 @@ class AwDatabase extends _$AwDatabase {
       // would have meant the first of them designing a schema two phases
       // ahead of itself. New pull-only table; the next pull fills it.
       if (from < 29) await m.createTable(problems);
+      // v30 (EE-191 / OPH-327): assets. The third of OPH-327's four tables and
+      // its own step for the same reason v29 was — the four are shaped by
+      // extension records that land in different phases, and one step would
+      // have meant the first of them designing a schema three phases ahead of
+      // itself. New pull-only table; the next pull fills it.
+      if (from < 30) await m.createTable(assets);
     },
   );
 

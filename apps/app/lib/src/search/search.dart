@@ -143,6 +143,13 @@ class SearchService {
   Future<List<SearchHit>> searchProblems(String workspaceId, String query) =>
       _run(_problems, workspaceId, query);
 
+  /// EE-191 / OPH-327 — the equipment register. The TAG is the first tier and
+  /// the name is the second, which is the opposite of every other entity here:
+  /// somebody standing at a machine reads the number off the sticker, and the
+  /// name in the register is whatever the person who typed it called it.
+  Future<List<SearchHit>> searchAssets(String workspaceId, String query) =>
+      _run(_assets, workspaceId, query);
+
   /// One query for every entry in the registry, so the core domains and an
   /// extension's read the same SQL shape and the same fold.
   Future<List<SearchHit>> _run(
@@ -313,6 +320,17 @@ const _problems = SearchEntity(
   alias: 'b',
   tiers: {0: "IFNULL(b.title_fold, '')", 2: "IFNULL(b.symptom_fold, '')"},
   order: "b.status = 'closed', b.created_at DESC",
+);
+
+/// EE-191. Tag first, name second. A retired machine sorts last rather than
+/// disappearing: the reason somebody searches for a scrapped asset is to read
+/// what happened to it, and a register that hides its own history answers the
+/// question "did we already replace this" with silence.
+const _assets = SearchEntity(
+  table: 'assets',
+  alias: 'v',
+  tiers: {0: "IFNULL(v.tag_fold, '')", 1: "IFNULL(v.name_fold, '')"},
+  order: "v.status = 'retired', v.name ASC",
 );
 
 /// A short window of [original] around the first folded match of [word] —

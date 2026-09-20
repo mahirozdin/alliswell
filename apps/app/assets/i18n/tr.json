@@ -1479,11 +1479,16 @@
       },
       "problems": {
         "manage": "Problem kaydı aç ve yürüt"
+      },
+      "assets": {
+        "view": "Varlık defterini gör",
+        "manage": "Varlık kaydı aç, düzenle ve durumunu değiştir"
       }
     },
     "permDomain": {
       "alarms": "Alarmlar",
       "approvals": "Onaylar",
+      "assets": "Varlıklar",
       "calendar": "Takvim",
       "changes": "Değişiklikler",
       "files": "Dosyalar",

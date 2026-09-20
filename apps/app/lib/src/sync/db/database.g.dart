@@ -18746,8 +18746,7 @@ class ChangesCompanion extends UpdateCompanion<ChangeRecord> {
   }
 }
 
-class $ProblemsTable extends Problems
-    with TableInfo<$ProblemsTable, ProblemRecord> {
+class $ProblemsTable extends Problems with TableInfo<$ProblemsTable, Problem> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -18925,7 +18924,7 @@ class $ProblemsTable extends Problems
   static const String $name = 'problems';
   @override
   VerificationContext validateIntegrity(
-    Insertable<ProblemRecord> instance, {
+    Insertable<Problem> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -19036,9 +19035,9 @@ class $ProblemsTable extends Problems
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  ProblemRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+  Problem map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return ProblemRecord(
+    return Problem(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -19104,7 +19103,7 @@ class $ProblemsTable extends Problems
   }
 }
 
-class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
+class Problem extends DataClass implements Insertable<Problem> {
   final String id;
   final String workspaceId;
   final String title;
@@ -19131,7 +19130,7 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
   final DateTime? createdAt;
   final int revision;
   final DateTime? updatedAt;
-  const ProblemRecord({
+  const Problem({
     required this.id,
     required this.workspaceId,
     required this.title,
@@ -19218,12 +19217,12 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
     );
   }
 
-  factory ProblemRecord.fromJson(
+  factory Problem.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return ProblemRecord(
+    return Problem(
       id: serializer.fromJson<String>(json['id']),
       workspaceId: serializer.fromJson<String>(json['workspaceId']),
       title: serializer.fromJson<String>(json['title']),
@@ -19261,7 +19260,7 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
     };
   }
 
-  ProblemRecord copyWith({
+  Problem copyWith({
     String? id,
     String? workspaceId,
     String? title,
@@ -19276,7 +19275,7 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
     Value<DateTime?> createdAt = const Value.absent(),
     int? revision,
     Value<DateTime?> updatedAt = const Value.absent(),
-  }) => ProblemRecord(
+  }) => Problem(
     id: id ?? this.id,
     workspaceId: workspaceId ?? this.workspaceId,
     title: title ?? this.title,
@@ -19294,8 +19293,8 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
     revision: revision ?? this.revision,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
   );
-  ProblemRecord copyWithCompanion(ProblemsCompanion data) {
-    return ProblemRecord(
+  Problem copyWithCompanion(ProblemsCompanion data) {
+    return Problem(
       id: data.id.present ? data.id.value : this.id,
       workspaceId: data.workspaceId.present
           ? data.workspaceId.value
@@ -19325,7 +19324,7 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
 
   @override
   String toString() {
-    return (StringBuffer('ProblemRecord(')
+    return (StringBuffer('Problem(')
           ..write('id: $id, ')
           ..write('workspaceId: $workspaceId, ')
           ..write('title: $title, ')
@@ -19364,7 +19363,7 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProblemRecord &&
+      (other is Problem &&
           other.id == this.id &&
           other.workspaceId == this.workspaceId &&
           other.title == this.title &&
@@ -19381,7 +19380,7 @@ class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
           other.updatedAt == this.updatedAt);
 }
 
-class ProblemsCompanion extends UpdateCompanion<ProblemRecord> {
+class ProblemsCompanion extends UpdateCompanion<Problem> {
   final Value<String> id;
   final Value<String> workspaceId;
   final Value<String> title;
@@ -19435,7 +19434,7 @@ class ProblemsCompanion extends UpdateCompanion<ProblemRecord> {
        title = Value(title),
        symptom = Value(symptom),
        status = Value(status);
-  static Insertable<ProblemRecord> custom({
+  static Insertable<Problem> custom({
     Expression<String>? id,
     Expression<String>? workspaceId,
     Expression<String>? title,
@@ -19581,6 +19580,1297 @@ class ProblemsCompanion extends UpdateCompanion<ProblemRecord> {
   }
 }
 
+class $AssetsTable extends Assets with TableInfo<$AssetsTable, AssetRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AssetsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tagMeta = const VerificationMeta('tag');
+  @override
+  late final GeneratedColumn<String> tag = GeneratedColumn<String>(
+    'tag',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serialNoMeta = const VerificationMeta(
+    'serialNo',
+  );
+  @override
+  late final GeneratedColumn<String> serialNo = GeneratedColumn<String>(
+    'serial_no',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _manufacturerMeta = const VerificationMeta(
+    'manufacturer',
+  );
+  @override
+  late final GeneratedColumn<String> manufacturer = GeneratedColumn<String>(
+    'manufacturer',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modelMeta = const VerificationMeta('model');
+  @override
+  late final GeneratedColumn<String> model = GeneratedColumn<String>(
+    'model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ownerUserIdMeta = const VerificationMeta(
+    'ownerUserId',
+  );
+  @override
+  late final GeneratedColumn<String> ownerUserId = GeneratedColumn<String>(
+    'owner_user_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _locationMeta = const VerificationMeta(
+    'location',
+  );
+  @override
+  late final GeneratedColumn<String> location = GeneratedColumn<String>(
+    'location',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _warrantyUntilMeta = const VerificationMeta(
+    'warrantyUntil',
+  );
+  @override
+  late final GeneratedColumn<String> warrantyUntil = GeneratedColumn<String>(
+    'warranty_until',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _calibrationDueMeta = const VerificationMeta(
+    'calibrationDue',
+  );
+  @override
+  late final GeneratedColumn<String> calibrationDue = GeneratedColumn<String>(
+    'calibration_due',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _supplierMeta = const VerificationMeta(
+    'supplier',
+  );
+  @override
+  late final GeneratedColumn<String> supplier = GeneratedColumn<String>(
+    'supplier',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _purchasedAtMeta = const VerificationMeta(
+    'purchasedAt',
+  );
+  @override
+  late final GeneratedColumn<String> purchasedAt = GeneratedColumn<String>(
+    'purchased_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _purchaseCostMinorMeta = const VerificationMeta(
+    'purchaseCostMinor',
+  );
+  @override
+  late final GeneratedColumn<int> purchaseCostMinor = GeneratedColumn<int>(
+    'purchase_cost_minor',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _nameFoldMeta = const VerificationMeta(
+    'nameFold',
+  );
+  @override
+  late final GeneratedColumn<String> nameFold = GeneratedColumn<String>(
+    'name_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tagFoldMeta = const VerificationMeta(
+    'tagFold',
+  );
+  @override
+  late final GeneratedColumn<String> tagFold = GeneratedColumn<String>(
+    'tag_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    type,
+    name,
+    tag,
+    serialNo,
+    manufacturer,
+    model,
+    ownerUserId,
+    location,
+    status,
+    warrantyUntil,
+    calibrationDue,
+    supplier,
+    purchasedAt,
+    purchaseCostMinor,
+    currency,
+    notes,
+    nameFold,
+    tagFold,
+    createdAt,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'assets';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AssetRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('tag')) {
+      context.handle(
+        _tagMeta,
+        tag.isAcceptableOrUnknown(data['tag']!, _tagMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tagMeta);
+    }
+    if (data.containsKey('serial_no')) {
+      context.handle(
+        _serialNoMeta,
+        serialNo.isAcceptableOrUnknown(data['serial_no']!, _serialNoMeta),
+      );
+    }
+    if (data.containsKey('manufacturer')) {
+      context.handle(
+        _manufacturerMeta,
+        manufacturer.isAcceptableOrUnknown(
+          data['manufacturer']!,
+          _manufacturerMeta,
+        ),
+      );
+    }
+    if (data.containsKey('model')) {
+      context.handle(
+        _modelMeta,
+        model.isAcceptableOrUnknown(data['model']!, _modelMeta),
+      );
+    }
+    if (data.containsKey('owner_user_id')) {
+      context.handle(
+        _ownerUserIdMeta,
+        ownerUserId.isAcceptableOrUnknown(
+          data['owner_user_id']!,
+          _ownerUserIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('location')) {
+      context.handle(
+        _locationMeta,
+        location.isAcceptableOrUnknown(data['location']!, _locationMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('warranty_until')) {
+      context.handle(
+        _warrantyUntilMeta,
+        warrantyUntil.isAcceptableOrUnknown(
+          data['warranty_until']!,
+          _warrantyUntilMeta,
+        ),
+      );
+    }
+    if (data.containsKey('calibration_due')) {
+      context.handle(
+        _calibrationDueMeta,
+        calibrationDue.isAcceptableOrUnknown(
+          data['calibration_due']!,
+          _calibrationDueMeta,
+        ),
+      );
+    }
+    if (data.containsKey('supplier')) {
+      context.handle(
+        _supplierMeta,
+        supplier.isAcceptableOrUnknown(data['supplier']!, _supplierMeta),
+      );
+    }
+    if (data.containsKey('purchased_at')) {
+      context.handle(
+        _purchasedAtMeta,
+        purchasedAt.isAcceptableOrUnknown(
+          data['purchased_at']!,
+          _purchasedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('purchase_cost_minor')) {
+      context.handle(
+        _purchaseCostMinorMeta,
+        purchaseCostMinor.isAcceptableOrUnknown(
+          data['purchase_cost_minor']!,
+          _purchaseCostMinorMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('name_fold')) {
+      context.handle(
+        _nameFoldMeta,
+        nameFold.isAcceptableOrUnknown(data['name_fold']!, _nameFoldMeta),
+      );
+    }
+    if (data.containsKey('tag_fold')) {
+      context.handle(
+        _tagFoldMeta,
+        tagFold.isAcceptableOrUnknown(data['tag_fold']!, _tagFoldMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AssetRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AssetRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      tag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag'],
+      )!,
+      serialNo: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}serial_no'],
+      ),
+      manufacturer: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}manufacturer'],
+      ),
+      model: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model'],
+      ),
+      ownerUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner_user_id'],
+      ),
+      location: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}location'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      warrantyUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}warranty_until'],
+      ),
+      calibrationDue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}calibration_due'],
+      ),
+      supplier: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}supplier'],
+      ),
+      purchasedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}purchased_at'],
+      ),
+      purchaseCostMinor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}purchase_cost_minor'],
+      ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      ),
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      nameFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_fold'],
+      ),
+      tagFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_fold'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $AssetsTable createAlias(String alias) {
+    return $AssetsTable(attachedDatabase, alias);
+  }
+}
+
+class AssetRecord extends DataClass implements Insertable<AssetRecord> {
+  final String id;
+  final String workspaceId;
+
+  /// A built-in key or one the team wrote down. Carried as the server's own
+  /// word rather than an enum: the set is extensible per team, so a replica
+  /// that only knew the built-ins would render a CNC lathe as nothing.
+  final String type;
+  final String name;
+
+  /// The number painted on the machine. What the QR code carries and what the
+  /// technician reads out loud.
+  final String tag;
+  final String? serialNo;
+  final String? manufacturer;
+  final String? model;
+  final String? ownerUserId;
+  final String? location;
+
+  /// `in_stock | in_use | maintenance | faulty | retired`, the server's word.
+  final String status;
+
+  /// Dates, kept as `YYYY-MM-DD` TEXT rather than as timestamps. A warranty
+  /// ends on a day; storing it as an instant would move it by one for every
+  /// technician east of UTC, which is where the factories are.
+  final String? warrantyUntil;
+  final String? calibrationDue;
+  final String? supplier;
+  final String? purchasedAt;
+  final int? purchaseCostMinor;
+  final String? currency;
+  final String? notes;
+
+  /// OPH-326's rule: the searchable shadows. The TAG is folded beside the
+  /// name because a technician standing at a machine searches for the number
+  /// on the sticker, not for what somebody called it in the register.
+  final String? nameFold;
+  final String? tagFold;
+  final DateTime? createdAt;
+  final int revision;
+  final DateTime? updatedAt;
+  const AssetRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.type,
+    required this.name,
+    required this.tag,
+    this.serialNo,
+    this.manufacturer,
+    this.model,
+    this.ownerUserId,
+    this.location,
+    required this.status,
+    this.warrantyUntil,
+    this.calibrationDue,
+    this.supplier,
+    this.purchasedAt,
+    this.purchaseCostMinor,
+    this.currency,
+    this.notes,
+    this.nameFold,
+    this.tagFold,
+    this.createdAt,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['type'] = Variable<String>(type);
+    map['name'] = Variable<String>(name);
+    map['tag'] = Variable<String>(tag);
+    if (!nullToAbsent || serialNo != null) {
+      map['serial_no'] = Variable<String>(serialNo);
+    }
+    if (!nullToAbsent || manufacturer != null) {
+      map['manufacturer'] = Variable<String>(manufacturer);
+    }
+    if (!nullToAbsent || model != null) {
+      map['model'] = Variable<String>(model);
+    }
+    if (!nullToAbsent || ownerUserId != null) {
+      map['owner_user_id'] = Variable<String>(ownerUserId);
+    }
+    if (!nullToAbsent || location != null) {
+      map['location'] = Variable<String>(location);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || warrantyUntil != null) {
+      map['warranty_until'] = Variable<String>(warrantyUntil);
+    }
+    if (!nullToAbsent || calibrationDue != null) {
+      map['calibration_due'] = Variable<String>(calibrationDue);
+    }
+    if (!nullToAbsent || supplier != null) {
+      map['supplier'] = Variable<String>(supplier);
+    }
+    if (!nullToAbsent || purchasedAt != null) {
+      map['purchased_at'] = Variable<String>(purchasedAt);
+    }
+    if (!nullToAbsent || purchaseCostMinor != null) {
+      map['purchase_cost_minor'] = Variable<int>(purchaseCostMinor);
+    }
+    if (!nullToAbsent || currency != null) {
+      map['currency'] = Variable<String>(currency);
+    }
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || nameFold != null) {
+      map['name_fold'] = Variable<String>(nameFold);
+    }
+    if (!nullToAbsent || tagFold != null) {
+      map['tag_fold'] = Variable<String>(tagFold);
+    }
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  AssetsCompanion toCompanion(bool nullToAbsent) {
+    return AssetsCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      type: Value(type),
+      name: Value(name),
+      tag: Value(tag),
+      serialNo: serialNo == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serialNo),
+      manufacturer: manufacturer == null && nullToAbsent
+          ? const Value.absent()
+          : Value(manufacturer),
+      model: model == null && nullToAbsent
+          ? const Value.absent()
+          : Value(model),
+      ownerUserId: ownerUserId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerUserId),
+      location: location == null && nullToAbsent
+          ? const Value.absent()
+          : Value(location),
+      status: Value(status),
+      warrantyUntil: warrantyUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(warrantyUntil),
+      calibrationDue: calibrationDue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(calibrationDue),
+      supplier: supplier == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supplier),
+      purchasedAt: purchasedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(purchasedAt),
+      purchaseCostMinor: purchaseCostMinor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(purchaseCostMinor),
+      currency: currency == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currency),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      nameFold: nameFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameFold),
+      tagFold: tagFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tagFold),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory AssetRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AssetRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      type: serializer.fromJson<String>(json['type']),
+      name: serializer.fromJson<String>(json['name']),
+      tag: serializer.fromJson<String>(json['tag']),
+      serialNo: serializer.fromJson<String?>(json['serialNo']),
+      manufacturer: serializer.fromJson<String?>(json['manufacturer']),
+      model: serializer.fromJson<String?>(json['model']),
+      ownerUserId: serializer.fromJson<String?>(json['ownerUserId']),
+      location: serializer.fromJson<String?>(json['location']),
+      status: serializer.fromJson<String>(json['status']),
+      warrantyUntil: serializer.fromJson<String?>(json['warrantyUntil']),
+      calibrationDue: serializer.fromJson<String?>(json['calibrationDue']),
+      supplier: serializer.fromJson<String?>(json['supplier']),
+      purchasedAt: serializer.fromJson<String?>(json['purchasedAt']),
+      purchaseCostMinor: serializer.fromJson<int?>(json['purchaseCostMinor']),
+      currency: serializer.fromJson<String?>(json['currency']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      nameFold: serializer.fromJson<String?>(json['nameFold']),
+      tagFold: serializer.fromJson<String?>(json['tagFold']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'type': serializer.toJson<String>(type),
+      'name': serializer.toJson<String>(name),
+      'tag': serializer.toJson<String>(tag),
+      'serialNo': serializer.toJson<String?>(serialNo),
+      'manufacturer': serializer.toJson<String?>(manufacturer),
+      'model': serializer.toJson<String?>(model),
+      'ownerUserId': serializer.toJson<String?>(ownerUserId),
+      'location': serializer.toJson<String?>(location),
+      'status': serializer.toJson<String>(status),
+      'warrantyUntil': serializer.toJson<String?>(warrantyUntil),
+      'calibrationDue': serializer.toJson<String?>(calibrationDue),
+      'supplier': serializer.toJson<String?>(supplier),
+      'purchasedAt': serializer.toJson<String?>(purchasedAt),
+      'purchaseCostMinor': serializer.toJson<int?>(purchaseCostMinor),
+      'currency': serializer.toJson<String?>(currency),
+      'notes': serializer.toJson<String?>(notes),
+      'nameFold': serializer.toJson<String?>(nameFold),
+      'tagFold': serializer.toJson<String?>(tagFold),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  AssetRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? type,
+    String? name,
+    String? tag,
+    Value<String?> serialNo = const Value.absent(),
+    Value<String?> manufacturer = const Value.absent(),
+    Value<String?> model = const Value.absent(),
+    Value<String?> ownerUserId = const Value.absent(),
+    Value<String?> location = const Value.absent(),
+    String? status,
+    Value<String?> warrantyUntil = const Value.absent(),
+    Value<String?> calibrationDue = const Value.absent(),
+    Value<String?> supplier = const Value.absent(),
+    Value<String?> purchasedAt = const Value.absent(),
+    Value<int?> purchaseCostMinor = const Value.absent(),
+    Value<String?> currency = const Value.absent(),
+    Value<String?> notes = const Value.absent(),
+    Value<String?> nameFold = const Value.absent(),
+    Value<String?> tagFold = const Value.absent(),
+    Value<DateTime?> createdAt = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => AssetRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    type: type ?? this.type,
+    name: name ?? this.name,
+    tag: tag ?? this.tag,
+    serialNo: serialNo.present ? serialNo.value : this.serialNo,
+    manufacturer: manufacturer.present ? manufacturer.value : this.manufacturer,
+    model: model.present ? model.value : this.model,
+    ownerUserId: ownerUserId.present ? ownerUserId.value : this.ownerUserId,
+    location: location.present ? location.value : this.location,
+    status: status ?? this.status,
+    warrantyUntil: warrantyUntil.present
+        ? warrantyUntil.value
+        : this.warrantyUntil,
+    calibrationDue: calibrationDue.present
+        ? calibrationDue.value
+        : this.calibrationDue,
+    supplier: supplier.present ? supplier.value : this.supplier,
+    purchasedAt: purchasedAt.present ? purchasedAt.value : this.purchasedAt,
+    purchaseCostMinor: purchaseCostMinor.present
+        ? purchaseCostMinor.value
+        : this.purchaseCostMinor,
+    currency: currency.present ? currency.value : this.currency,
+    notes: notes.present ? notes.value : this.notes,
+    nameFold: nameFold.present ? nameFold.value : this.nameFold,
+    tagFold: tagFold.present ? tagFold.value : this.tagFold,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  AssetRecord copyWithCompanion(AssetsCompanion data) {
+    return AssetRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      type: data.type.present ? data.type.value : this.type,
+      name: data.name.present ? data.name.value : this.name,
+      tag: data.tag.present ? data.tag.value : this.tag,
+      serialNo: data.serialNo.present ? data.serialNo.value : this.serialNo,
+      manufacturer: data.manufacturer.present
+          ? data.manufacturer.value
+          : this.manufacturer,
+      model: data.model.present ? data.model.value : this.model,
+      ownerUserId: data.ownerUserId.present
+          ? data.ownerUserId.value
+          : this.ownerUserId,
+      location: data.location.present ? data.location.value : this.location,
+      status: data.status.present ? data.status.value : this.status,
+      warrantyUntil: data.warrantyUntil.present
+          ? data.warrantyUntil.value
+          : this.warrantyUntil,
+      calibrationDue: data.calibrationDue.present
+          ? data.calibrationDue.value
+          : this.calibrationDue,
+      supplier: data.supplier.present ? data.supplier.value : this.supplier,
+      purchasedAt: data.purchasedAt.present
+          ? data.purchasedAt.value
+          : this.purchasedAt,
+      purchaseCostMinor: data.purchaseCostMinor.present
+          ? data.purchaseCostMinor.value
+          : this.purchaseCostMinor,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      nameFold: data.nameFold.present ? data.nameFold.value : this.nameFold,
+      tagFold: data.tagFold.present ? data.tagFold.value : this.tagFold,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssetRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('type: $type, ')
+          ..write('name: $name, ')
+          ..write('tag: $tag, ')
+          ..write('serialNo: $serialNo, ')
+          ..write('manufacturer: $manufacturer, ')
+          ..write('model: $model, ')
+          ..write('ownerUserId: $ownerUserId, ')
+          ..write('location: $location, ')
+          ..write('status: $status, ')
+          ..write('warrantyUntil: $warrantyUntil, ')
+          ..write('calibrationDue: $calibrationDue, ')
+          ..write('supplier: $supplier, ')
+          ..write('purchasedAt: $purchasedAt, ')
+          ..write('purchaseCostMinor: $purchaseCostMinor, ')
+          ..write('currency: $currency, ')
+          ..write('notes: $notes, ')
+          ..write('nameFold: $nameFold, ')
+          ..write('tagFold: $tagFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+    id,
+    workspaceId,
+    type,
+    name,
+    tag,
+    serialNo,
+    manufacturer,
+    model,
+    ownerUserId,
+    location,
+    status,
+    warrantyUntil,
+    calibrationDue,
+    supplier,
+    purchasedAt,
+    purchaseCostMinor,
+    currency,
+    notes,
+    nameFold,
+    tagFold,
+    createdAt,
+    revision,
+    updatedAt,
+  ]);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AssetRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.type == this.type &&
+          other.name == this.name &&
+          other.tag == this.tag &&
+          other.serialNo == this.serialNo &&
+          other.manufacturer == this.manufacturer &&
+          other.model == this.model &&
+          other.ownerUserId == this.ownerUserId &&
+          other.location == this.location &&
+          other.status == this.status &&
+          other.warrantyUntil == this.warrantyUntil &&
+          other.calibrationDue == this.calibrationDue &&
+          other.supplier == this.supplier &&
+          other.purchasedAt == this.purchasedAt &&
+          other.purchaseCostMinor == this.purchaseCostMinor &&
+          other.currency == this.currency &&
+          other.notes == this.notes &&
+          other.nameFold == this.nameFold &&
+          other.tagFold == this.tagFold &&
+          other.createdAt == this.createdAt &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AssetsCompanion extends UpdateCompanion<AssetRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> type;
+  final Value<String> name;
+  final Value<String> tag;
+  final Value<String?> serialNo;
+  final Value<String?> manufacturer;
+  final Value<String?> model;
+  final Value<String?> ownerUserId;
+  final Value<String?> location;
+  final Value<String> status;
+  final Value<String?> warrantyUntil;
+  final Value<String?> calibrationDue;
+  final Value<String?> supplier;
+  final Value<String?> purchasedAt;
+  final Value<int?> purchaseCostMinor;
+  final Value<String?> currency;
+  final Value<String?> notes;
+  final Value<String?> nameFold;
+  final Value<String?> tagFold;
+  final Value<DateTime?> createdAt;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const AssetsCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.name = const Value.absent(),
+    this.tag = const Value.absent(),
+    this.serialNo = const Value.absent(),
+    this.manufacturer = const Value.absent(),
+    this.model = const Value.absent(),
+    this.ownerUserId = const Value.absent(),
+    this.location = const Value.absent(),
+    this.status = const Value.absent(),
+    this.warrantyUntil = const Value.absent(),
+    this.calibrationDue = const Value.absent(),
+    this.supplier = const Value.absent(),
+    this.purchasedAt = const Value.absent(),
+    this.purchaseCostMinor = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.nameFold = const Value.absent(),
+    this.tagFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AssetsCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String type,
+    required String name,
+    required String tag,
+    this.serialNo = const Value.absent(),
+    this.manufacturer = const Value.absent(),
+    this.model = const Value.absent(),
+    this.ownerUserId = const Value.absent(),
+    this.location = const Value.absent(),
+    required String status,
+    this.warrantyUntil = const Value.absent(),
+    this.calibrationDue = const Value.absent(),
+    this.supplier = const Value.absent(),
+    this.purchasedAt = const Value.absent(),
+    this.purchaseCostMinor = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.nameFold = const Value.absent(),
+    this.tagFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       type = Value(type),
+       name = Value(name),
+       tag = Value(tag),
+       status = Value(status);
+  static Insertable<AssetRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? type,
+    Expression<String>? name,
+    Expression<String>? tag,
+    Expression<String>? serialNo,
+    Expression<String>? manufacturer,
+    Expression<String>? model,
+    Expression<String>? ownerUserId,
+    Expression<String>? location,
+    Expression<String>? status,
+    Expression<String>? warrantyUntil,
+    Expression<String>? calibrationDue,
+    Expression<String>? supplier,
+    Expression<String>? purchasedAt,
+    Expression<int>? purchaseCostMinor,
+    Expression<String>? currency,
+    Expression<String>? notes,
+    Expression<String>? nameFold,
+    Expression<String>? tagFold,
+    Expression<DateTime>? createdAt,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (type != null) 'type': type,
+      if (name != null) 'name': name,
+      if (tag != null) 'tag': tag,
+      if (serialNo != null) 'serial_no': serialNo,
+      if (manufacturer != null) 'manufacturer': manufacturer,
+      if (model != null) 'model': model,
+      if (ownerUserId != null) 'owner_user_id': ownerUserId,
+      if (location != null) 'location': location,
+      if (status != null) 'status': status,
+      if (warrantyUntil != null) 'warranty_until': warrantyUntil,
+      if (calibrationDue != null) 'calibration_due': calibrationDue,
+      if (supplier != null) 'supplier': supplier,
+      if (purchasedAt != null) 'purchased_at': purchasedAt,
+      if (purchaseCostMinor != null) 'purchase_cost_minor': purchaseCostMinor,
+      if (currency != null) 'currency': currency,
+      if (notes != null) 'notes': notes,
+      if (nameFold != null) 'name_fold': nameFold,
+      if (tagFold != null) 'tag_fold': tagFold,
+      if (createdAt != null) 'created_at': createdAt,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AssetsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? type,
+    Value<String>? name,
+    Value<String>? tag,
+    Value<String?>? serialNo,
+    Value<String?>? manufacturer,
+    Value<String?>? model,
+    Value<String?>? ownerUserId,
+    Value<String?>? location,
+    Value<String>? status,
+    Value<String?>? warrantyUntil,
+    Value<String?>? calibrationDue,
+    Value<String?>? supplier,
+    Value<String?>? purchasedAt,
+    Value<int?>? purchaseCostMinor,
+    Value<String?>? currency,
+    Value<String?>? notes,
+    Value<String?>? nameFold,
+    Value<String?>? tagFold,
+    Value<DateTime?>? createdAt,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AssetsCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      type: type ?? this.type,
+      name: name ?? this.name,
+      tag: tag ?? this.tag,
+      serialNo: serialNo ?? this.serialNo,
+      manufacturer: manufacturer ?? this.manufacturer,
+      model: model ?? this.model,
+      ownerUserId: ownerUserId ?? this.ownerUserId,
+      location: location ?? this.location,
+      status: status ?? this.status,
+      warrantyUntil: warrantyUntil ?? this.warrantyUntil,
+      calibrationDue: calibrationDue ?? this.calibrationDue,
+      supplier: supplier ?? this.supplier,
+      purchasedAt: purchasedAt ?? this.purchasedAt,
+      purchaseCostMinor: purchaseCostMinor ?? this.purchaseCostMinor,
+      currency: currency ?? this.currency,
+      notes: notes ?? this.notes,
+      nameFold: nameFold ?? this.nameFold,
+      tagFold: tagFold ?? this.tagFold,
+      createdAt: createdAt ?? this.createdAt,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (tag.present) {
+      map['tag'] = Variable<String>(tag.value);
+    }
+    if (serialNo.present) {
+      map['serial_no'] = Variable<String>(serialNo.value);
+    }
+    if (manufacturer.present) {
+      map['manufacturer'] = Variable<String>(manufacturer.value);
+    }
+    if (model.present) {
+      map['model'] = Variable<String>(model.value);
+    }
+    if (ownerUserId.present) {
+      map['owner_user_id'] = Variable<String>(ownerUserId.value);
+    }
+    if (location.present) {
+      map['location'] = Variable<String>(location.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (warrantyUntil.present) {
+      map['warranty_until'] = Variable<String>(warrantyUntil.value);
+    }
+    if (calibrationDue.present) {
+      map['calibration_due'] = Variable<String>(calibrationDue.value);
+    }
+    if (supplier.present) {
+      map['supplier'] = Variable<String>(supplier.value);
+    }
+    if (purchasedAt.present) {
+      map['purchased_at'] = Variable<String>(purchasedAt.value);
+    }
+    if (purchaseCostMinor.present) {
+      map['purchase_cost_minor'] = Variable<int>(purchaseCostMinor.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (nameFold.present) {
+      map['name_fold'] = Variable<String>(nameFold.value);
+    }
+    if (tagFold.present) {
+      map['tag_fold'] = Variable<String>(tagFold.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AssetsCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('type: $type, ')
+          ..write('name: $name, ')
+          ..write('tag: $tag, ')
+          ..write('serialNo: $serialNo, ')
+          ..write('manufacturer: $manufacturer, ')
+          ..write('model: $model, ')
+          ..write('ownerUserId: $ownerUserId, ')
+          ..write('location: $location, ')
+          ..write('status: $status, ')
+          ..write('warrantyUntil: $warrantyUntil, ')
+          ..write('calibrationDue: $calibrationDue, ')
+          ..write('supplier: $supplier, ')
+          ..write('purchasedAt: $purchasedAt, ')
+          ..write('purchaseCostMinor: $purchaseCostMinor, ')
+          ..write('currency: $currency, ')
+          ..write('notes: $notes, ')
+          ..write('nameFold: $nameFold, ')
+          ..write('tagFold: $tagFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -19621,6 +20911,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
       $TicketAssignmentsTable(this);
   late final $ChangesTable changes = $ChangesTable(this);
   late final $ProblemsTable problems = $ProblemsTable(this);
+  late final $AssetsTable assets = $AssetsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -19655,6 +20946,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     ticketAssignments,
     changes,
     problems,
+    assets,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -28822,17 +30114,14 @@ class $$ProblemsTableTableManager
         RootTableManager<
           _$AwDatabase,
           $ProblemsTable,
-          ProblemRecord,
+          Problem,
           $$ProblemsTableFilterComposer,
           $$ProblemsTableOrderingComposer,
           $$ProblemsTableAnnotationComposer,
           $$ProblemsTableCreateCompanionBuilder,
           $$ProblemsTableUpdateCompanionBuilder,
-          (
-            ProblemRecord,
-            BaseReferences<_$AwDatabase, $ProblemsTable, ProblemRecord>,
-          ),
-          ProblemRecord,
+          (Problem, BaseReferences<_$AwDatabase, $ProblemsTable, Problem>),
+          Problem,
           PrefetchHooks Function()
         > {
   $$ProblemsTableTableManager(_$AwDatabase db, $ProblemsTable table)
@@ -28926,17 +30215,566 @@ typedef $$ProblemsTableProcessedTableManager =
     ProcessedTableManager<
       _$AwDatabase,
       $ProblemsTable,
-      ProblemRecord,
+      Problem,
       $$ProblemsTableFilterComposer,
       $$ProblemsTableOrderingComposer,
       $$ProblemsTableAnnotationComposer,
       $$ProblemsTableCreateCompanionBuilder,
       $$ProblemsTableUpdateCompanionBuilder,
-      (
-        ProblemRecord,
-        BaseReferences<_$AwDatabase, $ProblemsTable, ProblemRecord>,
-      ),
-      ProblemRecord,
+      (Problem, BaseReferences<_$AwDatabase, $ProblemsTable, Problem>),
+      Problem,
+      PrefetchHooks Function()
+    >;
+typedef $$AssetsTableCreateCompanionBuilder =
+    AssetsCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String type,
+      required String name,
+      required String tag,
+      Value<String?> serialNo,
+      Value<String?> manufacturer,
+      Value<String?> model,
+      Value<String?> ownerUserId,
+      Value<String?> location,
+      required String status,
+      Value<String?> warrantyUntil,
+      Value<String?> calibrationDue,
+      Value<String?> supplier,
+      Value<String?> purchasedAt,
+      Value<int?> purchaseCostMinor,
+      Value<String?> currency,
+      Value<String?> notes,
+      Value<String?> nameFold,
+      Value<String?> tagFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AssetsTableUpdateCompanionBuilder =
+    AssetsCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> type,
+      Value<String> name,
+      Value<String> tag,
+      Value<String?> serialNo,
+      Value<String?> manufacturer,
+      Value<String?> model,
+      Value<String?> ownerUserId,
+      Value<String?> location,
+      Value<String> status,
+      Value<String?> warrantyUntil,
+      Value<String?> calibrationDue,
+      Value<String?> supplier,
+      Value<String?> purchasedAt,
+      Value<int?> purchaseCostMinor,
+      Value<String?> currency,
+      Value<String?> notes,
+      Value<String?> nameFold,
+      Value<String?> tagFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AssetsTableFilterComposer extends Composer<_$AwDatabase, $AssetsTable> {
+  $$AssetsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tag => $composableBuilder(
+    column: $table.tag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serialNo => $composableBuilder(
+    column: $table.serialNo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get manufacturer => $composableBuilder(
+    column: $table.manufacturer,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownerUserId => $composableBuilder(
+    column: $table.ownerUserId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get warrantyUntil => $composableBuilder(
+    column: $table.warrantyUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get calibrationDue => $composableBuilder(
+    column: $table.calibrationDue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get supplier => $composableBuilder(
+    column: $table.supplier,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get purchasedAt => $composableBuilder(
+    column: $table.purchasedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get purchaseCostMinor => $composableBuilder(
+    column: $table.purchaseCostMinor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagFold => $composableBuilder(
+    column: $table.tagFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AssetsTableOrderingComposer
+    extends Composer<_$AwDatabase, $AssetsTable> {
+  $$AssetsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tag => $composableBuilder(
+    column: $table.tag,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serialNo => $composableBuilder(
+    column: $table.serialNo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get manufacturer => $composableBuilder(
+    column: $table.manufacturer,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ownerUserId => $composableBuilder(
+    column: $table.ownerUserId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get location => $composableBuilder(
+    column: $table.location,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get warrantyUntil => $composableBuilder(
+    column: $table.warrantyUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get calibrationDue => $composableBuilder(
+    column: $table.calibrationDue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get supplier => $composableBuilder(
+    column: $table.supplier,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get purchasedAt => $composableBuilder(
+    column: $table.purchasedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get purchaseCostMinor => $composableBuilder(
+    column: $table.purchaseCostMinor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tagFold => $composableBuilder(
+    column: $table.tagFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AssetsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $AssetsTable> {
+  $$AssetsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get tag =>
+      $composableBuilder(column: $table.tag, builder: (column) => column);
+
+  GeneratedColumn<String> get serialNo =>
+      $composableBuilder(column: $table.serialNo, builder: (column) => column);
+
+  GeneratedColumn<String> get manufacturer => $composableBuilder(
+    column: $table.manufacturer,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get model =>
+      $composableBuilder(column: $table.model, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerUserId => $composableBuilder(
+    column: $table.ownerUserId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get location =>
+      $composableBuilder(column: $table.location, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get warrantyUntil => $composableBuilder(
+    column: $table.warrantyUntil,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get calibrationDue => $composableBuilder(
+    column: $table.calibrationDue,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get supplier =>
+      $composableBuilder(column: $table.supplier, builder: (column) => column);
+
+  GeneratedColumn<String> get purchasedAt => $composableBuilder(
+    column: $table.purchasedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get purchaseCostMinor => $composableBuilder(
+    column: $table.purchaseCostMinor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get nameFold =>
+      $composableBuilder(column: $table.nameFold, builder: (column) => column);
+
+  GeneratedColumn<String> get tagFold =>
+      $composableBuilder(column: $table.tagFold, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AssetsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $AssetsTable,
+          AssetRecord,
+          $$AssetsTableFilterComposer,
+          $$AssetsTableOrderingComposer,
+          $$AssetsTableAnnotationComposer,
+          $$AssetsTableCreateCompanionBuilder,
+          $$AssetsTableUpdateCompanionBuilder,
+          (
+            AssetRecord,
+            BaseReferences<_$AwDatabase, $AssetsTable, AssetRecord>,
+          ),
+          AssetRecord,
+          PrefetchHooks Function()
+        > {
+  $$AssetsTableTableManager(_$AwDatabase db, $AssetsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AssetsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AssetsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AssetsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> tag = const Value.absent(),
+                Value<String?> serialNo = const Value.absent(),
+                Value<String?> manufacturer = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<String?> ownerUserId = const Value.absent(),
+                Value<String?> location = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> warrantyUntil = const Value.absent(),
+                Value<String?> calibrationDue = const Value.absent(),
+                Value<String?> supplier = const Value.absent(),
+                Value<String?> purchasedAt = const Value.absent(),
+                Value<int?> purchaseCostMinor = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
+                Value<String?> tagFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AssetsCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                type: type,
+                name: name,
+                tag: tag,
+                serialNo: serialNo,
+                manufacturer: manufacturer,
+                model: model,
+                ownerUserId: ownerUserId,
+                location: location,
+                status: status,
+                warrantyUntil: warrantyUntil,
+                calibrationDue: calibrationDue,
+                supplier: supplier,
+                purchasedAt: purchasedAt,
+                purchaseCostMinor: purchaseCostMinor,
+                currency: currency,
+                notes: notes,
+                nameFold: nameFold,
+                tagFold: tagFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String type,
+                required String name,
+                required String tag,
+                Value<String?> serialNo = const Value.absent(),
+                Value<String?> manufacturer = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<String?> ownerUserId = const Value.absent(),
+                Value<String?> location = const Value.absent(),
+                required String status,
+                Value<String?> warrantyUntil = const Value.absent(),
+                Value<String?> calibrationDue = const Value.absent(),
+                Value<String?> supplier = const Value.absent(),
+                Value<String?> purchasedAt = const Value.absent(),
+                Value<int?> purchaseCostMinor = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
+                Value<String?> tagFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AssetsCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                type: type,
+                name: name,
+                tag: tag,
+                serialNo: serialNo,
+                manufacturer: manufacturer,
+                model: model,
+                ownerUserId: ownerUserId,
+                location: location,
+                status: status,
+                warrantyUntil: warrantyUntil,
+                calibrationDue: calibrationDue,
+                supplier: supplier,
+                purchasedAt: purchasedAt,
+                purchaseCostMinor: purchaseCostMinor,
+                currency: currency,
+                notes: notes,
+                nameFold: nameFold,
+                tagFold: tagFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AssetsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $AssetsTable,
+      AssetRecord,
+      $$AssetsTableFilterComposer,
+      $$AssetsTableOrderingComposer,
+      $$AssetsTableAnnotationComposer,
+      $$AssetsTableCreateCompanionBuilder,
+      $$AssetsTableUpdateCompanionBuilder,
+      (AssetRecord, BaseReferences<_$AwDatabase, $AssetsTable, AssetRecord>),
+      AssetRecord,
       PrefetchHooks Function()
     >;
 
@@ -29000,4 +30838,6 @@ class $AwDatabaseManager {
       $$ChangesTableTableManager(_db, _db.changes);
   $$ProblemsTableTableManager get problems =>
       $$ProblemsTableTableManager(_db, _db.problems);
+  $$AssetsTableTableManager get assets =>
+      $$AssetsTableTableManager(_db, _db.assets);
 }

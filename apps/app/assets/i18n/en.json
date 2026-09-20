@@ -1480,11 +1480,16 @@
       },
       "problems": {
         "manage": "Open and work a problem record"
+      },
+      "assets": {
+        "view": "See the asset register",
+        "manage": "Open, edit and move an asset record"
       }
     },
     "permDomain": {
       "alarms": "Alarms",
       "approvals": "Approvals",
+      "assets": "Assets",
       "calendar": "Calendar",
       "changes": "Changes",
       "files": "Files",

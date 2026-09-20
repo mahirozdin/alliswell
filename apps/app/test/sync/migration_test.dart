@@ -50,6 +50,7 @@ void main() {
     //
     // Children before parents: drift opens with foreign keys on.
     for (final drop in [
+      'DROP TABLE assets', // v30
       'DROP TABLE problems', // v29
       'DROP TABLE changes', // v28
       'DROP TABLE ticket_assignments', // v25
@@ -312,8 +313,25 @@ void main() {
           .customSelect('SELECT title_fold, symptom_fold FROM problems')
           .get();
 
+      // v30 (EE-191 / OPH-327): the third. The tag is folded beside the name
+      // because a technician at the machine searches for the number on the
+      // sticker — and the DATE columns are TEXT, which this asserts by
+      // writing a day into one and reading it back unchanged.
+      expect(await db.select(db.assets).get(), isEmpty);
+      await db.customSelect('SELECT name_fold, tag_fold FROM assets').get();
+      await db.customStatement(
+        "INSERT INTO assets (id, workspace_id, type, name, tag, status, "
+        "warranty_until, revision) VALUES ('a1', 'w1', 'machine', 'Lathe', "
+        "'TAG-1', 'in_stock', '2027-03-01', 0)",
+      );
+      final day = await db
+          .customSelect('SELECT warranty_until FROM assets')
+          .getSingle();
+      expect(day.data['warranty_until'], '2027-03-01');
+      await db.customStatement('DELETE FROM assets');
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 29);
+      expect(version.data['user_version'], 30);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -359,7 +377,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 29);
+      expect(version.data['user_version'], 30);
       await db.close();
     },
   );
@@ -406,7 +424,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 29);
+      expect(version.data['user_version'], 30);
       await db.close();
     },
   );
