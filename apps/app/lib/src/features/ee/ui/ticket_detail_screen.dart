@@ -229,6 +229,33 @@ class _Relations extends ConsumerWidget {
                 ),
               ),
             ],
+            if (data.assets.isNotEmpty) ...[
+              const SizedBox(height: AwSpace.x6),
+              Text(
+                'ee.tickets.affectedAssets'.tr(),
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: AwSpace.x2),
+              // Shown only when there is one. An empty "affected equipment"
+              // heading on every request would teach agents to scroll past
+              // this section, and the section is the whole point on the day a
+              // machine is involved.
+              for (final asset in data.assets)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  leading: const Icon(Icons.precision_manufacturing_outlined),
+                  // Tag first: it is painted on the machine, and it is what a
+                  // technician reads out on the phone.
+                  title: Text('${asset.tag} · ${asset.name}'),
+                  subtitle: Text(
+                    [
+                      'ee.assets.status.${asset.status}'.tr(),
+                      if (asset.location != null) asset.location!,
+                    ].join(' · '),
+                  ),
+                ),
+            ],
             const SizedBox(height: AwSpace.x6),
             Text(
               'ee.tickets.linkedTasks'.tr(),

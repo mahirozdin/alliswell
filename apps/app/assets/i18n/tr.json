@@ -1454,7 +1454,7 @@
       "tickets": {
         "create": "Talep aç",
         "create_on_behalf": "Başkası adına talep aç",
-        "comment": "Talebe yaz",
+        "comment": "Talebe yaz, ve hangi makineyle ilgili olduğunu söyle",
         "close": "Talebi kapat veya iptal et",
         "convert": "Talebi işe dönüştür",
         "assign": "Talebi başkasına ver ya da üstünden al",
@@ -1841,7 +1841,8 @@
       "openAnotherTask": "Bir iş daha aç",
       "relatedAction": "Bu konu tekrar açıldı",
       "relatedHint": "Kapalı talep yeniden açılmaz; özeti taşınan YENİ bir talep açılır ve ikisi bağlanır.",
-      "relatedOpened": "Yeni talep açıldı ve eskisine bağlandı"
+      "relatedOpened": "Yeni talep açıldı ve eskisine bağlandı",
+      "affectedAssets": "Etkilenen ekipman"
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -2186,6 +2187,15 @@
         "approved": "Onaylandı",
         "rejected": "Reddedildi",
         "expired": "Düştü — kimse zamanında cevaplamadı"
+      }
+    },
+    "assets": {
+      "status": {
+        "in_stock": "Stokta",
+        "in_use": "Kullanımda",
+        "maintenance": "Bakımda",
+        "faulty": "Arızalı",
+        "retired": "Hurda"
       }
     }
   },

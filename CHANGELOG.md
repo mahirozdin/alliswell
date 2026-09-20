@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A request can say which machine it is about, and the machine remembers.**
+  Requests now carry the equipment they concern, and every piece of equipment
+  keeps the list of requests it has caused — including the ones already
+  archived, which is the whole point: most of a machine's history is in the
+  past. Alongside it are the twelve-month counts that answer the question
+  nobody could ask before, namely whether a machine should be replaced rather
+  than repaired again. Change windows can say which machines they touch, too.
+
 - **A request now shows everything it caused, and a way to say it has come
   back.** The request screen lists all the work opened from it rather than one
   piece, and can open another without leaving the page. Where a request is

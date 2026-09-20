@@ -57,6 +57,37 @@ class EeLinkedProblem {
       );
 }
 
+/// A machine this request is about (EE-192).
+///
+/// The TAG is what a person reads out loud — it is painted on the thing — so
+/// it leads, and the name follows. That is the opposite of most lists here
+/// and it is the right way round at a machine.
+class EeTicketAsset {
+  const EeTicketAsset({
+    required this.assetId,
+    required this.tag,
+    required this.name,
+    required this.status,
+    this.location,
+  });
+
+  final String assetId;
+  final String tag;
+  final String name;
+
+  /// `in_stock | in_use | maintenance | faulty | retired`, the server's word.
+  final String status;
+  final String? location;
+
+  factory EeTicketAsset.fromJson(Map<String, dynamic> json) => EeTicketAsset(
+    assetId: json['assetId'] as String,
+    tag: json['tag'] as String,
+    name: json['name'] as String,
+    status: json['status'] as String,
+    location: json['location'] as String?,
+  );
+}
+
 /// Everything the detail screen shows below the conversation.
 ///
 /// One object rather than three providers, because the three arrive from two
@@ -67,6 +98,7 @@ class EeTicketRelations {
     this.links = const [],
     this.problems = const [],
     this.taskIds = const [],
+    this.assets = const [],
     this.waitingReason,
   });
 
@@ -76,6 +108,13 @@ class EeTicketRelations {
   /// The work this request caused (ADR-0011 §5). Ids only — the titles come
   /// from the device's own copy, which already has every task in the unit.
   final List<String> taskIds;
+
+  /// The machines this request is about (EE-192). Comes from the server
+  /// rather than from the device's own copy even though assets DO replicate:
+  /// the link is a claim about two records, and its asset may live in a
+  /// workspace this device never pulled — a stock machine seen by a unit that
+  /// does not hold the shelf.
+  final List<EeTicketAsset> assets;
 
   /// Null unless the request is parked (EE-190).
   final String? waitingReason;

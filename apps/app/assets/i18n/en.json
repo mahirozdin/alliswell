@@ -1455,7 +1455,7 @@
       "tickets": {
         "create": "Open a request",
         "create_on_behalf": "Open a request for somebody else",
-        "comment": "Write on a request",
+        "comment": "Write on a request, and say which machine it is about",
         "close": "Close or cancel a request",
         "convert": "Turn a request into a task in the unit",
         "assign": "Put a request on someone else, or take one off them",
@@ -1842,7 +1842,8 @@
       "openAnotherTask": "Open another task",
       "relatedAction": "This has come up again",
       "relatedHint": "A closed request is not reopened — a NEW request is opened carrying its summary, and the two are linked.",
-      "relatedOpened": "A new request was opened and linked to the old one"
+      "relatedOpened": "A new request was opened and linked to the old one",
+      "affectedAssets": "Affected equipment"
     },
     "sla": {
       "breached": "SLA missed",
@@ -2187,6 +2188,15 @@
         "approved": "Approved",
         "rejected": "Rejected",
         "expired": "Lapsed — nobody answered in time"
+      }
+    },
+    "assets": {
+      "status": {
+        "in_stock": "In stock",
+        "in_use": "In use",
+        "maintenance": "In maintenance",
+        "faulty": "Faulty",
+        "retired": "Retired"
       }
     }
   },

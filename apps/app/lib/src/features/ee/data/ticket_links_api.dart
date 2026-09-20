@@ -23,9 +23,11 @@ class EeTicketLinksApi {
       final results = await Future.wait([
         _dio.get<Map<String, dynamic>>('$_base/$ticketId/links'),
         _dio.get<Map<String, dynamic>>('$_base/$ticketId'),
+        _dio.get<Map<String, dynamic>>('$_base/$ticketId/assets'),
       ]);
       final links = results[0].data ?? const <String, dynamic>{};
       final ticket = results[1].data ?? const <String, dynamic>{};
+      final assets = results[2].data ?? const <String, dynamic>{};
       return EeTicketRelations(
         links: ((links['links'] as List<dynamic>?) ?? const [])
             .map((e) => EeTicketLink.fromJson(e as Map<String, dynamic>))
@@ -36,11 +38,38 @@ class EeTicketLinksApi {
         taskIds: ((ticket['linkedTaskIds'] as List<dynamic>?) ?? const [])
             .cast<String>()
             .toList(growable: false),
+        assets: ((assets['assets'] as List<dynamic>?) ?? const [])
+            .map((e) => EeTicketAsset.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false),
         waitingReason: ticket['waitingReason'] as String?,
       );
     } on DioException catch (error) {
       final code = error.response?.statusCode;
       if (code == 403 || code == 404) return const EeTicketRelations();
+      throw asApiException(error);
+    }
+  }
+
+  /// EE-192 — says this request is about this machine, or takes it back.
+  ///
+  /// Behind `tickets.comment` on the server rather than `tickets.link`: this
+  /// propagates nothing and notifies nobody, and the person doing it is a
+  /// technician standing at the machine.
+  Future<void> linkAsset(String ticketId, String assetId) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '$_base/$ticketId/assets',
+        data: {'assetId': assetId},
+      );
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  Future<void> unlinkAsset(String ticketId, String assetId) async {
+    try {
+      await _dio.delete<void>('$_base/$ticketId/assets/$assetId');
+    } on DioException catch (error) {
       throw asApiException(error);
     }
   }
