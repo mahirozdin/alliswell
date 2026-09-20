@@ -50,8 +50,7 @@ class EeTicketQueueScreen extends ConsumerWidget {
           AwSearchAction(
             fieldKey: const Key('ticket-search'),
             hintText: 'ee.tickets.searchHint'.tr(),
-            onQuery: (q) =>
-                ref.read(ticketSearchQueryProvider.notifier).set(q),
+            onQuery: (q) => ref.read(ticketSearchQueryProvider.notifier).set(q),
           ),
           // EE-098. Reachability (DESIGN §22): a dashboard nothing opens is
           // not a feature, and the queue is where the person who wants it is
@@ -200,9 +199,7 @@ class _FilterBar extends ConsumerWidget {
               // mutually exclusive and a chip that cannot be unpicked is a
               // filter the person has to leave the screen to clear.
               onSelected: (_) => notifier.setAssignee(
-                filter.assigneeScope == scope
-                    ? TicketAssigneeScope.any
-                    : scope,
+                filter.assigneeScope == scope ? TicketAssigneeScope.any : scope,
               ),
             ),
             const SizedBox(width: AwSpace.x2),
@@ -214,7 +211,8 @@ class _FilterBar extends ConsumerWidget {
             FilterChip(
               key: Key('ticket-filter-sla-$sla'),
               label: Text(
-                'ee.tickets.filter.sla${sla[0].toUpperCase()}${sla.substring(1)}'.tr(),
+                'ee.tickets.filter.sla${sla[0].toUpperCase()}${sla.substring(1)}'
+                    .tr(),
               ),
               selected: filter.slaStatuses.contains(sla),
               onSelected: (_) => notifier.toggleSlaStatus(sla),

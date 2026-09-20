@@ -35,6 +35,8 @@ import 'features/ee/ui/notification_center_screen.dart';
 import 'features/ee/ui/notification_prefs_screen.dart';
 import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
+import 'features/ee/ui/asset_detail_screen.dart';
+import 'features/ee/ui/assets_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
@@ -458,6 +460,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       // instance is entitled AND the caller is a team admin — but the routes
       // themselves exist, because a 404 on a link an admin was sent is worse
       // than a screen that says "not yours".
+      // EE-194: the equipment register and one machine's card. Real routes
+      // rather than a pushed screen, because the second one is what a printed
+      // QR label resolves to (`alliswell://asset/{id}` → `/assets/{id}`), and
+      // a deep link needs somewhere to land.
+      GoRoute(
+        path: '/assets',
+        builder: (context, state) => _page(const EeAssetsScreen()),
+      ),
+      GoRoute(
+        path: '/assets/:assetId',
+        builder: (context, state) => _page(
+          EeAssetDetailScreen(assetId: state.pathParameters['assetId'] ?? ''),
+        ),
+      ),
       GoRoute(
         path: '/settings/team',
         builder: (context, state) => _page(const EeTeamSettingsScreen()),

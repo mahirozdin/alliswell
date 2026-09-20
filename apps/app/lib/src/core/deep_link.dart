@@ -48,6 +48,13 @@ String? awRouteForUri(Uri uri) {
     case 'task':
       if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
       return '/tasks/${segments[1]}';
+    case 'asset':
+      // EE-194. What a printed QR label carries. The app's own scheme rather
+      // than https: a phone with the app opens the card directly, and one
+      // without it does nothing at all rather than landing on a page that
+      // asks somebody in a machine hall to log in.
+      if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
+      return '/assets/${segments[1]}';
     case 'file':
       if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
       // Files has no per-file route BY DECISION (OPH-199/203): a file's

@@ -197,7 +197,8 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
   // read so a newly-assigned row leaves a "kimseye atanmamış" list the moment
   // somebody picks it up.
   final assignees =
-      ref.watch(ticketAssigneesProvider).value ?? const <String, List<Assignee>>{};
+      ref.watch(ticketAssigneesProvider).value ??
+      const <String, List<Assignee>>{};
   final me = ref.watch(currentUserIdProvider);
   final rank = hits == null
       ? null
@@ -296,7 +297,9 @@ final ticketSearchResultsProvider =
       // open should appear, and a search that froze at its first run would be
       // a list that disagrees with the one behind it.
       ref.watch(ticketQueueProvider);
-      return ref.watch(searchServiceProvider).searchTickets(workspace.id, query);
+      return ref
+          .watch(searchServiceProvider)
+          .searchTickets(workspace.id, query);
     });
 
 /// One ticket, watched: a status change pushed from another device redraws the

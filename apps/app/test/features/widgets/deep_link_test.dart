@@ -42,6 +42,9 @@ void main() {
       expect(awRouteForUri(Uri.parse('alliswell://open')), '/home');
       expect(awRouteForUri(Uri.parse('alliswell://task/$id')), '/tasks/$id');
       expect(awRouteForUri(Uri.parse('alliswell://file/$id')), '/files');
+      // EE-194: what a printed QR label resolves to. The whole acceptance of
+      // the label sheet is that scanning it lands on the right card.
+      expect(awRouteForUri(Uri.parse('alliswell://asset/$id')), '/assets/$id');
     });
 
     test('refuses ids that are not ULIDs', () {
@@ -52,6 +55,14 @@ void main() {
           awRouteForUri(Uri.parse('alliswell://task/$bad')),
           isNull,
           reason: '"$bad" must not become a route',
+        );
+        // The same guard on the asset route. A QR code is a URL somebody
+        // printed, and a sticker is the easiest thing in this system for a
+        // stranger to put on a machine.
+        expect(
+          awRouteForUri(Uri.parse('alliswell://asset/$bad')),
+          isNull,
+          reason: '"$bad" must not become an asset route',
         );
       }
     });

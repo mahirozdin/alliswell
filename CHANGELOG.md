@@ -7,6 +7,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The equipment register, and a QR label that opens it.** Machines, vehicles,
+  computers and tools now have a place to live, with the filter a maintenance
+  desk cannot get from a spreadsheet: what is about to run out. Each asset
+  prints a QR label that a phone's own camera opens straight to its card — no
+  extra app, and the tag is printed in text beside the code because a label on
+  a lathe gets wet and scratched. When a warranty or a calibration is coming
+  up, whoever holds the machine hears about it once; renewing the date arms
+  the reminder again.
+
+- **The list you already have in Excel can be loaded in.** Upload a CSV, read
+  a line-by-line report of what will be created, updated or refused, and only
+  then approve it — nothing is written before that. Turkish column headings
+  and `31.12.2027` dates are understood as they are typed, because converting
+  a thousand rows by hand defeats the point.
+
 - **A request can say which machine it is about, and the machine remembers.**
   Requests now carry the equipment they concern, and every piece of equipment
   keeps the list of requests it has caused — including the ones already

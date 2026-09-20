@@ -1773,6 +1773,12 @@
         "minutes": "{n} dk",
         "hours": "{n} sa",
         "days": "{n} g"
+      },
+      "asset": {
+        "expiring": {
+          "title": "Ekipman tarihi doluyor",
+          "body": "{assetTag} — {kind} {dueOn} tarihinde doluyor"
+        }
       }
     },
     "tickets": {
@@ -2196,7 +2202,49 @@
         "maintenance": "Bakımda",
         "faulty": "Arızalı",
         "retired": "Hurda"
-      }
+      },
+      "title": "Ekipman",
+      "one": "Varlık",
+      "empty": "Henüz ekipman yok",
+      "emptyBody": "Makineler, araçlar, bilgisayarlar ve aletler burada durur. Elindeki listeyi içe aktar ya da bir tane ekle.",
+      "openRequest": "Bu varlık için talep aç",
+      "filter": {
+        "expiring": "Yakında doluyor",
+        "location": "Lokasyon"
+      },
+      "type": {
+        "machine": "Makine",
+        "vehicle": "Araç",
+        "computer": "Bilgisayar",
+        "network": "Ağ",
+        "tool": "Alet",
+        "furniture": "Mobilya",
+        "other": "Diğer"
+      },
+      "labels": {
+        "action": "QR etiketi yazdır",
+        "sheetTitle": "Ekipman etiketleri",
+        "failed": "Etiket sayfası hazırlanamadı"
+      },
+      "field": {
+        "name": "Ad",
+        "type": "Tip",
+        "status": "Durum",
+        "location": "Lokasyon",
+        "serial": "Seri no",
+        "manufacturer": "Üretici",
+        "model": "Model",
+        "warranty": "Garanti bitişi",
+        "calibration": "Kalibrasyon tarihi",
+        "supplier": "Tedarikçi"
+      },
+      "history": {
+        "title": "Bu varlıkla ilgili talepler",
+        "counts": "Son {months} ay: {count} talep, {open} hâlâ açık, {hours} saat açık kalma",
+        "empty": "Bu varlığı adlandıran talep yok",
+        "archived": "Arşivlenmiş"
+      },
+      "edit": "Düzenle"
     }
   },
   "perm": {

@@ -1774,6 +1774,12 @@
         "minutes": "{n}m",
         "hours": "{n}h",
         "days": "{n}d"
+      },
+      "asset": {
+        "expiring": {
+          "title": "Equipment date running out",
+          "body": "{assetTag} — its {kind} runs out on {dueOn}"
+        }
       }
     },
     "tickets": {
@@ -2197,7 +2203,49 @@
         "maintenance": "In maintenance",
         "faulty": "Faulty",
         "retired": "Retired"
-      }
+      },
+      "title": "Equipment",
+      "one": "Asset",
+      "empty": "No equipment yet",
+      "emptyBody": "Machines, vehicles, computers and tools live here. Import the list you already have, or add one.",
+      "openRequest": "Open a request for this asset",
+      "filter": {
+        "expiring": "Running out soon",
+        "location": "Location"
+      },
+      "type": {
+        "machine": "Machine",
+        "vehicle": "Vehicle",
+        "computer": "Computer",
+        "network": "Network",
+        "tool": "Tool",
+        "furniture": "Furniture",
+        "other": "Other"
+      },
+      "labels": {
+        "action": "Print QR labels",
+        "sheetTitle": "Equipment labels",
+        "failed": "The label sheet could not be prepared"
+      },
+      "field": {
+        "name": "Name",
+        "type": "Type",
+        "status": "State",
+        "location": "Location",
+        "serial": "Serial number",
+        "manufacturer": "Manufacturer",
+        "model": "Model",
+        "warranty": "Warranty until",
+        "calibration": "Calibration due",
+        "supplier": "Supplier"
+      },
+      "history": {
+        "title": "Requests about this asset",
+        "counts": "Last {months} months: {count} requests, {open} still open, {hours}h of open time",
+        "empty": "No requests have named this asset yet",
+        "archived": "Archived"
+      },
+      "edit": "Edit"
     }
   },
   "perm": {
