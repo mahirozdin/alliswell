@@ -30,6 +30,16 @@ export function fakeStorage({
         expiresAt: expiresAt(),
       };
     },
+    /**
+     * The relay (EE-198). Unlike `presignPut`, this one really does receive
+     * the bytes, so the fake records the size it was HANDED rather than a
+     * size the test seeded — which is what lets a test prove the cap was
+     * enforced while reading rather than after.
+     */
+    async putObject(key, { body }) {
+      objects.set(key, body.length);
+      return { size: body.length };
+    },
     async presignGet(key, { filename, contentType }) {
       const q = new URLSearchParams({ filename, contentType });
       return { url: `https://fake-store/get/${key}?${q}`, expiresAt: expiresAt() };

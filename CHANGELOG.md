@@ -7,6 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **Someone outside can send a photo with their request.** A public request
+  page can now take one image or PDF, up to 5 MB. What it is gets decided by
+  the file's first bytes rather than by its name, so a `.pdf` that is really a
+  photo is stored and opened as a photo. A file we cannot accept never costs
+  you the request: the words still arrive, and the page says which part did
+  not.
+
+  These files are marked as coming from outside and are never served back
+  anonymously.
+
 - **One link, several things to ask about — and the answer before the
   question.** A public link can now open onto a chosen set of topics instead
   of one: the visitor picks, then fills in the form. The older single-topic

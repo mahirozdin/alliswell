@@ -205,9 +205,12 @@ object store (R2 primary, MinIO in dev/CI); MySQL keeps only metadata (`files`, 
 `target_type`/`target_id` over project|task|note, opaque keys `ws/{wsId}/{fileId}`).
 `src/plugins/storage.js` wraps `@aws-sdk/client-s3` behind an injectable seam
 (`buildApp({ storage })` for unit tests) and decorates presign/head/delete helpers. Bytes
-never pass through Fastify: upload is init (row `status='uploading'`, unsynced) → client PUT
+go direct: upload is init (row `status='uploading'`, unsynced) → client PUT
 to a presigned URL → complete (HeadObject verifies size → `ready` + `recordSyncWrite`);
-downloads are presigned GETs minted per request. `file` is a **pull-only** sync entity
+downloads are presigned GETs minted per request. **One relay exists** and is
+bounded in ADR-0011's amendment: a page that cannot run script cannot sign a
+PUT, so the enterprise overlay's public request page posts a capped file to
+the API, which writes it to the bucket. Every authenticated client is direct. `file` is a **pull-only** sync entity
 (ADR-0008 model — pushes answer `SYNC_UNSUPPORTED_ENTITY`); entity deletion cascades to files
 in-transaction and object deletion rides the queue runner (`jobKey = storage_key`); a sweep
 reaps stale uploads. Feature is optional config (`STORAGE_S3_*`): unset ⇒

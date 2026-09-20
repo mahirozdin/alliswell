@@ -12,15 +12,42 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  * Object storage for attachments (Epic 14, ATTACHMENTS.md / ADR-0011).
  *
  * Speaks the S3 protocol: Cloudflare R2 is the documented primary target,
- * MinIO stands in for dev/CI, and any S3-compatible store works. Bytes never
- * pass through the API — this plugin only MINTS presigned URLs (single
- * object, single verb, expiring) and does metadata-side HEAD/DELETE calls.
+ * MinIO stands in for dev/CI, and any S3-compatible store works. Bytes go
+ * DIRECT: this plugin mints presigned URLs (single object, single verb,
+ * expiring) and does metadata-side HEAD/DELETE calls.
+ *
+ * ── ONE EXCEPTION, AND IT WAS FORCED BY A MEASUREMENT ──────────────────
+ *
+ * `putObject` below is the single path where bytes cross this process, and it
+ * exists for exactly one caller: an upload from a page that CANNOT sign its
+ * own request. The overlay's public request page is served with
+ * `default-src 'none'` and no `script-src` at all, so a visitor's browser has
+ * no way to run `fetch` — and an HTML form can only issue GET or POST, never
+ * the PUT a presigned upload needs.
+ *
+ * The standard answer to that is a presigned POST policy, which lets a plain
+ * form submit straight to the bucket. It was measured and it does not exist
+ * on the documented primary target. Cloudflare's own presigned-URL page says,
+ * in these words:
+ *
+ *     "POST (multipart form uploads via HTML forms) is not currently
+ *      supported."
+ *
+ * So the choice was between a relay and no anonymous attachment at all. The
+ * relay is narrow on purpose: one caller, a hard byte cap enforced while
+ * reading, and nothing buffered beyond it. Every authenticated client — the
+ * app, the API, the MCP surface — still uploads direct and always will.
+ *
+ * The full argument, including why the alternative (widening the page's
+ * `form-action` to name the bucket) was refused, is in ADR-0011's amendment
+ * and in the overlay's ADR-0013.
  *
  * Decorates `app.storage`:
  *   enabled            — false without full STORAGE_S3_* config (feature off)
  *   maxUploadBytes     — per-file cap, enforced at upload completion
  *   presignTtlSec      — lifetime of minted URLs
  *   presignPut(key, {contentType})        → { url, headers, expiresAt }
+ *   putObject(key, {body, contentType})   → { size } (THE relay; see above)
  *   presignGet(key, {filename, contentType}) → { url, expiresAt }
  *   head(key)          → { size } | null (missing object)
  *   remove(key)        → resolves even when the object is already gone
@@ -64,6 +91,7 @@ export function createStorage(config) {
       maxUploadBytes: storage.maxUploadBytes,
       presignTtlSec: storage.presignTtlSec,
       presignPut: off,
+      putObject: off,
       presignGet: off,
       head: off,
       remove: off,
@@ -98,6 +126,31 @@ export function createStorage(config) {
       const url = await getSignedUrl(client, command, { expiresIn });
       // The client MUST send this header — it is part of the signature.
       return { url, headers: { 'content-type': contentType }, expiresAt: expiresAt() };
+    },
+
+    /**
+     * THE RELAY. Writes bytes this process is already holding.
+     *
+     * Only one caller may use it (the overlay's anonymous portal upload), and
+     * the header of this file says why it has to exist at all. The `body` is
+     * a Buffer rather than a stream on purpose: the caller has already
+     * enforced a hard cap while reading, and handing a stream here would move
+     * that enforcement somewhere nobody can see it.
+     *
+     * It returns the size it actually wrote so the caller can compare it with
+     * what it thought it read, rather than trusting its own accounting.
+     */
+    async putObject(key, { body, contentType }) {
+      await client.send(
+        new PutObjectCommand({
+          Bucket: storage.bucket,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          ContentLength: body.length,
+        }),
+      );
+      return { size: body.length };
     },
 
     /**

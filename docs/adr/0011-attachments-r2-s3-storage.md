@@ -70,6 +70,50 @@ MySQL, offline-first replicas, honest UI) true next to a second store.
   and exports never contain URLs, only ids, so nothing in a backup or another
   device goes stale.
 
+## Amendment (2026-09-20) — one relay, and the measurement that forced it
+
+This ADR's second decision reads: *"Bytes go direct, metadata goes through the
+API."* It now has exactly one exception, and the exception is bounded in
+writing because an unbounded one would make the sentence above decorative.
+
+**The exception.** A page that cannot run JavaScript and cannot sign a request
+may POST a file to the API, which relays it to the bucket. Today that is one
+caller: the enterprise overlay's public request page. The cap is 5 MB, one
+file, and the ceiling is enforced while reading rather than after.
+
+**Why it could not be done the way this ADR prescribes.** A presigned PUT
+needs a client that can issue PUT with a signed URL. A browser can do that
+only from script, and that page ships `default-src 'none'` with no
+`script-src` at all — deliberately, as its own declaration of what an
+anonymous surface may do. An HTML form can only issue GET or POST.
+
+The standard answer to exactly this is a **presigned POST policy**, which lets
+a plain form submit straight to the bucket with no script at all. It would
+have kept this ADR intact. It was measured against the documented primary
+target and it does not exist there — Cloudflare's own presigned-URL page says:
+
+> "POST (multipart form uploads via HTML forms) is not currently supported."
+
+So the choice was between a relay and no attachment from outside at all.
+
+**Why the other way out was refused.** The page's CSP could have been widened
+to let its form post to the bucket's origin (`form-action`). That trades a
+hard, auditable property of the anonymous surface — it submits to us and
+nowhere else — for an architectural preference. It would also have failed for
+the same reason: with no POST policy there is nothing at the bucket to submit
+*to*.
+
+**What this does NOT change.** Every authenticated client still uploads and
+downloads direct: the app, the API, the MCP surface, and every path in Epic
+14. The rejection of proxying below still stands as the general rule, and its
+three reasons (bandwidth on self-hosted boxes, the event loop, video) are
+precisely why the exception is capped at five megabytes and named a relay
+rather than a driver.
+
+**Where the rest of the argument lives.** The overlay's own ADR-0013 carries
+the anonymous surface's half — quarantine, the content-sniffed type
+whitelist, and the ceilings.
+
 ## Alternatives considered
 
 - **Proxy uploads/downloads through Fastify** — simplest client, no CORS, but

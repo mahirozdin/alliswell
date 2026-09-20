@@ -93,7 +93,7 @@ list every screenshot, the landing page and the store copy draw from.
 | Inline images and video inside notes (`alliswell://file/{id}` embeds)                | OPH-156 |
 | Attachments on tasks, notes and projects                                             | Epic 14 |
 | A workspace-wide **Files** section with nestable folders (≤ 10 deep)                 | OPH-169/170 |
-| Storage is **Cloudflare R2 / any S3 via presigned URLs** — bytes never touch the API | Epic 14 |
+| Storage is **Cloudflare R2 / any S3 via presigned URLs** — bytes go direct, with one capped relay for pages that cannot run scripts (ADR-0011 amendment) | Epic 14 |
 | **Markdown workspace** — GFM rendering (tables, callouts, footnotes, maths, Mermaid), three modes, outline/folding/find, command palette | OPH-246…250 |
 | **Open a `.md` from your computer, edit it and save it BACK to that file** — marked, never autosaved, conflict-aware | OPH-251 (ADR-0030) |
 

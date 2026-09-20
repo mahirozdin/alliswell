@@ -231,9 +231,16 @@ the only figure in this section you cannot guess.
 ## 5. Optional: file attachments (Cloudflare R2 / any S3)
 
 Attachments are off until you configure a bucket; the app says so honestly
-rather than failing. Bytes never pass through the API — it hands out
-short-lived presigned URLs and the browser talks to the bucket directly, so
-your server pays no bandwidth.
+rather than failing. Bytes go direct — the API hands out short-lived
+presigned URLs and the browser talks to the bucket, so your server pays no
+bandwidth for them.
+
+There is one exception and it is small enough to plan for: a page that cannot
+run JavaScript cannot sign its own upload, so if you run the enterprise
+overlay's public request page, a file attached there is posted to your API and
+relayed to the bucket. It is capped at 5 MB and one file per submission, with
+its own rate ceiling. Budget for that bandwidth only if you publish such a
+link; nothing else in the product relays bytes (ADR-0011's amendment).
 
 1. Create a bucket (R2, MinIO, B2, S3 — anything S3-compatible) and an API
    token scoped to it.
