@@ -13,7 +13,8 @@
 class EePortalLink {
   const EePortalLink({
     required this.id,
-    required this.serviceId,
+    this.serviceId,
+    this.serviceCount = 0,
     required this.state,
     required this.enabled,
     required this.expiresAt,
@@ -26,7 +27,8 @@ class EePortalLink {
 
   factory EePortalLink.fromJson(Map<String, dynamic> json) => EePortalLink(
     id: json['id'] as String,
-    serviceId: json['serviceId'] as String,
+    serviceId: json['serviceId'] as String?,
+    serviceCount: (json['serviceCount'] as num?)?.toInt() ?? 0,
     unitId: json['unitId'] as String?,
     state: EePortalLinkState.parse(json['state'] as String?),
     enabled: (json['enabled'] as bool?) ?? true,
@@ -42,7 +44,12 @@ class EePortalLink {
   );
 
   final String id;
-  final String serviceId;
+
+  /// EE-197 — null on a CATALOGUE link, whose services live in
+  /// [serviceCount] instead. The type is read off this field rather than
+  /// from a flag, exactly as the server reads it off the column.
+  final String? serviceId;
+  final int serviceCount;
 
   /// Which desk it reaches. Set even when the service routes to one unit —
   /// the server resolves it at creation so a screen never shows an empty

@@ -30,8 +30,13 @@ class EePortalLinksApi {
   }
 
   /// Mints a link. The returned URL is the only copy that will ever exist.
+  /// EE-197 — exactly one of [serviceId] and [serviceIds] is sent. A link with
+  /// a service is the single-service link this product has always had; one
+  /// with a SET is a catalogue link, and the server reads the type off which
+  /// key arrived rather than from a flag that could disagree with both.
   Future<EePortalLinkCreated> create({
-    required String serviceId,
+    String? serviceId,
+    List<String>? serviceIds,
     String? unitId,
     int? ttlHours,
     Map<String, dynamic>? formSchema,
@@ -39,7 +44,8 @@ class EePortalLinksApi {
     final res = await _dio.post<Map<String, dynamic>>(
       _links,
       data: {
-        'serviceId': serviceId,
+        'serviceId': ?serviceId,
+        'serviceIds': ?serviceIds,
         // Null-aware entries: an absent key means "leave it to the server's
         // default", which is a different request from sending null.
         'unitId': ?unitId,

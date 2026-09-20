@@ -7,6 +7,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **One link, several things to ask about — and the answer before the
+  question.** A public link can now open onto a chosen set of topics instead
+  of one: the visitor picks, then fills in the form. The older single-topic
+  link is unchanged and is still what you get by default. The page also
+  searches the answers that have been published for those topics, so somebody
+  about to write in can read the fix instead — and the desk can see how often
+  that happened.
+
+  It all still works with JavaScript switched off, because the page is not
+  allowed to run any: the search is an ordinary form, the results are links,
+  and nothing about the visitor is stored anywhere — no cookie, no tracking.
+
 - **The answer somebody worked out once, written down.** A desk can now keep
   its own answers: what people see, where it happens, and the fix. An article
   starts as a captured QUESTION — the method this follows says knowledge gets

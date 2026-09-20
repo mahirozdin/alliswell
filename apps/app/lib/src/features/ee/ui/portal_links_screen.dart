@@ -200,7 +200,16 @@ class _LinkTile extends ConsumerWidget {
       // Keyed: the tile also carries a menu icon, so "the state mark" has
       // to be findable as itself rather than as "the first Icon in here".
       leading: Icon(icon, key: Key('portal-mark-${link.id}'), color: colour),
-      title: Text(serviceName ?? 'ee.portal.unknownService'.tr()),
+      // EE-197 — a catalogue link has no ONE service to name, so it says how
+      // many it opens onto. Falling through to "unknown service" would have
+      // read as a broken row for a link that is working exactly as minted.
+      title: Text(
+        link.serviceId == null
+            ? 'ee.portal.catalogueCount'.tr(
+                args: {'count': '${link.serviceCount}'},
+              )
+            : serviceName ?? 'ee.portal.unknownService'.tr(),
+      ),
       subtitle: Text(
         [
           // And the WORD, in body colour.
@@ -313,6 +322,11 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
   String? serviceId = services.isEmpty ? null : services.first.id;
   String? unitId;
   int ttlHours = 48;
+  // EE-197 — a catalogue link shows a chosen SET instead of one service. The
+  // single-service link stays the default, because the narrowest surface
+  // should be the one you get without deciding anything.
+  var catalogue = false;
+  final chosen = <String>{};
 
   final created = await showDialog<EePortalLinkCreated>(
     context: context,
@@ -320,7 +334,7 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
       builder: (context, setState) {
         final service = services.where((s) => s.id == serviceId).firstOrNull;
         // The picker appears exactly when the server would refuse without it.
-        final needsUnit = (service?.unitIds.length ?? 0) > 1;
+        final needsUnit = !catalogue && (service?.unitIds.length ?? 0) > 1;
         if (!needsUnit) unitId = null;
 
         return AlertDialog(
@@ -330,18 +344,55 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownButtonFormField<String>(
-                  key: const Key('portal-service'),
-                  initialValue: serviceId,
-                  decoration: InputDecoration(
-                    labelText: 'ee.portal.service'.tr(),
-                  ),
-                  items: [
-                    for (final s in services)
-                      DropdownMenuItem(value: s.id, child: Text(s.name)),
-                  ],
-                  onChanged: (value) => setState(() => serviceId = value),
+                SwitchListTile(
+                  key: const Key('portal-catalogue'),
+                  contentPadding: EdgeInsets.zero,
+                  value: catalogue,
+                  title: Text('ee.portal.catalogue'.tr()),
+                  subtitle: Text('ee.portal.catalogueHelp'.tr()),
+                  onChanged: (value) => setState(() => catalogue = value),
                 ),
+                if (!catalogue)
+                  DropdownButtonFormField<String>(
+                    key: const Key('portal-service'),
+                    initialValue: serviceId,
+                    decoration: InputDecoration(
+                      labelText: 'ee.portal.service'.tr(),
+                    ),
+                    items: [
+                      for (final s in services)
+                        DropdownMenuItem(value: s.id, child: Text(s.name)),
+                    ],
+                    onChanged: (value) => setState(() => serviceId = value),
+                  )
+                else
+                  // A service answered by TWO desks cannot go in a catalogue,
+                  // and the row says so rather than being hidden. The single
+                  // link asks which desk at mint time; a catalogue has one
+                  // page and many services, so the pick would have to be per
+                  // service — which is a screen this round did not build. The
+                  // server refuses it either way (TICKET_UNIT_REQUIRED), so
+                  // offering it here would be a checkbox that answers 400.
+                  for (final s in services)
+                    CheckboxListTile(
+                      key: Key('portal-catalogue-${s.id}'),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      value: chosen.contains(s.id),
+                      title: Text(s.name),
+                      subtitle: s.unitIds.length > 1
+                          ? Text('ee.portal.catalogueAmbiguous'.tr())
+                          : null,
+                      onChanged: s.unitIds.length > 1
+                          ? null
+                          : (on) => setState(() {
+                              if (on ?? false) {
+                                chosen.add(s.id);
+                              } else {
+                                chosen.remove(s.id);
+                              }
+                            }),
+                    ),
                 if (needsUnit) ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -388,7 +439,9 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
             ),
             FilledButton(
               key: const Key('portal-create-confirm'),
-              onPressed: serviceId == null || (needsUnit && unitId == null)
+              onPressed:
+                  (catalogue ? chosen.isEmpty : serviceId == null) ||
+                      (needsUnit && unitId == null)
                   ? null
                   : () async {
                       final messenger = ScaffoldMessenger.maybeOf(context);
@@ -397,7 +450,10 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
                         final result = await ref
                             .read(eePortalLinksProvider.notifier)
                             .create(
-                              serviceId: serviceId!,
+                              serviceId: catalogue ? null : serviceId,
+                              serviceIds: catalogue
+                                  ? chosen.toList(growable: false)
+                                  : null,
                               unitId: unitId,
                               ttlHours: ttlHours,
                             );

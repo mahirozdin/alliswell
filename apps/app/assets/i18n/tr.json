@@ -1991,7 +1991,11 @@
         "disabled": "Duraklatıldı",
         "expired": "Süresi doldu",
         "revoked": "İptal edildi"
-      }
+      },
+      "catalogue": "Katalog linki",
+      "catalogueHelp": "Tek servis yerine seçtiğiniz servisleri gösterir; ziyaretçi seçer.",
+      "catalogueAmbiguous": "İki birim cevapladığı için kataloğa konamaz — tek servislik link açın.",
+      "catalogueCount": "{count} servis"
     },
     "meeting": {
       "title": "Toplantı",

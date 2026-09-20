@@ -34,14 +34,18 @@ class EePortalLinksController extends AsyncNotifier<EePortalLinksData?> {
   /// purpose: state is rebuilt, watched and inspected by anything that asks,
   /// and a secret living there would outlive the dialog that showed it. The
   /// caller gets it, shows it, and drops it.
+  /// EE-197 — one service, or a catalogue's set. The API says why exactly one
+  /// of them travels.
   Future<EePortalLinkCreated> create({
-    required String serviceId,
+    String? serviceId,
+    List<String>? serviceIds,
     String? unitId,
     int? ttlHours,
   }) async {
     final api = ref.read(eePortalLinksApiProvider);
     final created = await api.create(
       serviceId: serviceId,
+      serviceIds: serviceIds,
       unitId: unitId,
       ttlHours: ttlHours,
     );

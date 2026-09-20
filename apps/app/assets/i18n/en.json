@@ -1992,7 +1992,11 @@
         "disabled": "Paused",
         "expired": "Expired",
         "revoked": "Revoked"
-      }
+      },
+      "catalogue": "Catalogue link",
+      "catalogueHelp": "Shows the services you pick instead of one; the visitor chooses.",
+      "catalogueAmbiguous": "Two desks answer this, so it cannot go in a catalogue — use a single-service link.",
+      "catalogueCount": "{count} services"
     },
     "meeting": {
       "title": "Meeting",
