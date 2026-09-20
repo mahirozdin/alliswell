@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
@@ -57,15 +58,64 @@ class EeTicketQueueScreen extends ConsumerWidget {
           // already standing. No permission gate — counting is membership
           // (ADR-0007 §1), and the endpoint scopes itself to the caller's own
           // desks, so everyone sees a true screen rather than a forbidden one.
-          IconButton(
-            key: const Key('ticket-sla-dashboard'),
-            tooltip: 'ee.slaDash.title'.tr(),
-            icon: const Icon(Icons.query_stats_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const EeSlaDashboardScreen(),
+          // EE-196 — AND A MEASURED CORRECTION TO THIS BAR.
+          //
+          // The knowledge base belongs on the queue for EE-098's reason,
+          // repeated: the person who wants a written answer is the one
+          // already looking at requests, and a screen nothing opens is not a
+          // feature. But adding a fourth action OVERFLOWED the toolbar by
+          // 3.6 pixels at 390 logical width — measured, by the filter test,
+          // not predicted. The title takes the rest of the row, which is the
+          // part an action count alone does not tell you.
+          //
+          // So the two destinations share one overflow button. That makes the
+          // bar SMALLER than it was, leaves headroom for the next one, and
+          // trades two icons nobody can name for two menu entries that say
+          // what they are.
+          PopupMenuButton<String>(
+            key: const Key('ticket-more'),
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'ee.tickets.more'.tr(),
+            // The two destinations are reached differently, and that is not
+            // untidiness: the knowledge base has real ROUTES because an
+            // article is a thing you link to, while the SLA dashboard is a
+            // pushed screen with no address of its own (EE-098 never gave it
+            // one, and inventing one here would be a second way to reach it).
+            onSelected: (value) => value == '/kb'
+                ? context.push(value)
+                : Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const EeSlaDashboardScreen(),
+                    ),
+                  ),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                key: const Key('ticket-kb'),
+                value: '/kb',
+                child: Row(
+                  children: [
+                    const Icon(Icons.menu_book_outlined),
+                    const SizedBox(width: AwSpace.x2),
+                    Text('ee.kb.title'.tr()),
+                  ],
+                ),
               ),
-            ),
+              // EE-098: no permission gate — counting is membership
+              // (ADR-0007 §1), and the endpoint scopes itself to the caller's
+              // own desks, so everyone sees a true screen rather than a
+              // forbidden one.
+              PopupMenuItem(
+                key: const Key('ticket-sla-dashboard'),
+                value: 'sla',
+                child: Row(
+                  children: [
+                    const Icon(Icons.query_stats_outlined),
+                    const SizedBox(width: AwSpace.x2),
+                    Text('ee.slaDash.title'.tr()),
+                  ],
+                ),
+              ),
+            ],
           ),
           if (!filter.isEmpty)
             TextButton(

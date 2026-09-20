@@ -1853,7 +1853,8 @@
       "relatedAction": "Bu konu tekrar açıldı",
       "relatedHint": "Kapalı talep yeniden açılmaz; özeti taşınan YENİ bir talep açılır ve ikisi bağlanır.",
       "relatedOpened": "Yeni talep açıldı ve eskisine bağlandı",
-      "affectedAssets": "Etkilenen ekipman"
+      "affectedAssets": "Etkilenen ekipman",
+      "more": "Daha fazla"
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -2250,6 +2251,48 @@
         "archived": "Arşivlenmiş"
       },
       "edit": "Düzenle"
+    },
+    "kb": {
+      "title": "Bilgi bankası",
+      "articleTitle": "Makale",
+      "searchHint": "Belirtiye göre ara",
+      "new": "Yeni makale",
+      "edit": "Düzenle",
+      "save": "Kaydet",
+      "empty": "Henüz makale yok",
+      "emptyBody": "Bir arızayı çözdüğünüzde talebin altındaki “Bunu makale yap” ile başlayın; cevabı bir daha aramak zorunda kalmazsınız.",
+      "noMatches": "Eşleşen makale yok",
+      "noMatchesBody": "Kişinin GÖRDÜĞÜ şeyin kelimelerini deneyin — çözümün değil.",
+      "filterAll": "Hepsi",
+      "gone": "Makale burada değil",
+      "goneBody": "Silinmiş olabilir, ya da bu cihaz onu henüz çekmedi.",
+      "symptom": "Belirti",
+      "environment": "Ortam",
+      "solution": "Çözüm",
+      "noSolutionYet": "Henüz çözüm yazılmadı — bu makale bir soru olarak yakalandı.",
+      "terminal": "Bu makale emekliye ayrıldı; geri alınamaz. Cevap hâlâ geçerliyse yeni bir makale açın.",
+      "needsPublish": "Yayına almak ve yayından çekmek için kb.publish izni gerekiyor.",
+      "onTicket": "Bilgi bankası",
+      "harvest": "Bunu makale yap",
+      "fieldTitle": "Başlık",
+      "fieldSymptom": "Belirti",
+      "fieldSymptomHelp": "Kişinin gördüğü şey — arayan da bunu yazacak.",
+      "fieldEnvironment": "Ortam",
+      "fieldSolution": "Çözüm",
+      "fieldSolutionHelp": "Boş bırakabilirsiniz; taslağa geçerken zorunlu olur.",
+      "status": {
+        "wip": "Açık soru",
+        "draft": "Taslak",
+        "approved": "Onaylı",
+        "published": "Yayında",
+        "retired": "Emekli"
+      },
+      "moveTo": {
+        "draft": "Taslağa al",
+        "approved": "Onayla",
+        "published": "Yayına al",
+        "retired": "Emekliye ayır"
+      }
     }
   },
   "perm": {

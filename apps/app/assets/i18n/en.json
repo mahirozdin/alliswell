@@ -1854,7 +1854,8 @@
       "relatedAction": "This has come up again",
       "relatedHint": "A closed request is not reopened — a NEW request is opened carrying its summary, and the two are linked.",
       "relatedOpened": "A new request was opened and linked to the old one",
-      "affectedAssets": "Affected equipment"
+      "affectedAssets": "Affected equipment",
+      "more": "More"
     },
     "sla": {
       "breached": "SLA missed",
@@ -2251,6 +2252,48 @@
         "archived": "Archived"
       },
       "edit": "Edit"
+    },
+    "kb": {
+      "title": "Knowledge base",
+      "articleTitle": "Article",
+      "searchHint": "Search by symptom",
+      "new": "New article",
+      "edit": "Edit",
+      "save": "Save",
+      "empty": "No articles yet",
+      "emptyBody": "Start from a solved request with “Make this an article” — then nobody has to work the answer out twice.",
+      "noMatches": "No matching article",
+      "noMatchesBody": "Try the words for what the person SEES, not for the fix.",
+      "filterAll": "All",
+      "gone": "That article is not here",
+      "goneBody": "It may have been deleted, or this device has not pulled it yet.",
+      "symptom": "Symptom",
+      "environment": "Environment",
+      "solution": "Solution",
+      "noSolutionYet": "No solution written yet — this article was captured as a question.",
+      "terminal": "This article is retired and cannot come back. If the answer still applies, write a new one.",
+      "needsPublish": "Publishing and unpublishing need the kb.publish permission.",
+      "onTicket": "Knowledge base",
+      "harvest": "Make this an article",
+      "fieldTitle": "Title",
+      "fieldSymptom": "Symptom",
+      "fieldSymptomHelp": "What the person sees — it is what a searcher will type too.",
+      "fieldEnvironment": "Environment",
+      "fieldSolution": "Solution",
+      "fieldSolutionHelp": "You can leave this empty; it becomes required on the way to draft.",
+      "status": {
+        "wip": "Open question",
+        "draft": "Draft",
+        "approved": "Approved",
+        "published": "Published",
+        "retired": "Retired"
+      },
+      "moveTo": {
+        "draft": "Send to draft",
+        "approved": "Approve",
+        "published": "Publish",
+        "retired": "Retire"
+      }
     }
   },
   "perm": {

@@ -37,6 +37,8 @@ import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/asset_detail_screen.dart';
 import 'features/ee/ui/assets_screen.dart';
+import 'features/ee/ui/kb_screen.dart';
+import 'features/ee/ui/kb_article_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
@@ -472,6 +474,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/assets/:assetId',
         builder: (context, state) => _page(
           EeAssetDetailScreen(assetId: state.pathParameters['assetId'] ?? ''),
+        ),
+      ),
+      // EE-196: the knowledge base. Reached from the request queue's bar —
+      // where the person who wants it is already standing (EE-098's rule for
+      // the SLA dashboard, and the same sentence applies: a screen nothing
+      // opens is not a feature). Routes rather than pushed widgets so an
+      // article can be linked to.
+      GoRoute(
+        path: '/kb',
+        builder: (context, state) => _page(const EeKbScreen()),
+      ),
+      GoRoute(
+        path: '/kb/:articleId',
+        builder: (context, state) => _page(
+          EeKbArticleScreen(articleId: state.pathParameters['articleId'] ?? ''),
         ),
       ),
       GoRoute(

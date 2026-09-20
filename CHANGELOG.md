@@ -7,6 +7,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The answer somebody worked out once, written down.** A desk can now keep
+  its own answers: what people see, where it happens, and the fix. An article
+  starts as a captured QUESTION — the method this follows says knowledge gets
+  written while the work is still open, not in a documentation session nobody
+  schedules — so a solved request turns into one with a single button, taking
+  the comment you point at as the solution. Publishing is a separate
+  permission from writing, because "is this fix right" and "is this ready for
+  someone outside to read" are different judgements, made by different people.
+
+  Reading and searching work with no signal, which is the point: the person
+  who needs the answer is usually standing next to the machine. Search matches
+  the way somebody types — `yazici` finds `Yazıcı` — and while you work a
+  request, the articles that match it appear beside it.
+
 - **The equipment register, and a QR label that opens it.** Machines, vehicles,
   computers and tools now have a place to live, with the filter a maintenance
   desk cannot get from a spreadsheet: what is about to run out. Each asset

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/date_format.dart';
 import '../../../core/persisted_prefs.dart';
@@ -8,6 +9,9 @@ import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart';
+import '../../../core/error_messages.dart';
+import '../data/kb_models.dart';
+import '../kb_providers.dart';
 import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
@@ -139,6 +143,7 @@ class _Thread extends ConsumerWidget {
         // because an agent picking this up asks "is this the known one, and
         // has somebody already started" before reading forty replies.
         _Relations(ticketId: ticket.id),
+        _Knowledge(ticket: ticket),
         const SizedBox(height: AwSpace.x6),
         Text('ee.tickets.thread'.tr(), style: theme.textTheme.titleSmall),
         const SizedBox(height: AwSpace.x2),
@@ -340,6 +345,106 @@ class _Relations extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('ee.tickets.relatedOpened'.tr())));
+  }
+}
+
+/// EE-196 — what the desk already knows about this, and a way to write down
+/// what it just learned.
+///
+/// ── THE MATCHES ARE ASSISTANCE, NOT DEFLECTION ─────────────────────────
+///
+/// An article shown BEFORE somebody opens a request prevents one; an article
+/// shown AFTER helps answer it. The task says so in a sentence and the
+/// difference is the whole measurement, so this surface increments NOTHING —
+/// a deflection counter fed from here would report saves that never happened
+/// and make the desk look better the more requests it received. The counting
+/// half belongs to the portal (EE-197), where somebody really is about to ask.
+///
+/// ── AND ONLY PUBLISHED ONES ARE OFFERED ────────────────────────────────
+///
+/// A suggestion list is exactly where an unreviewed draft would get pasted
+/// into a reply without anybody reading the status chip, which is the thing
+/// `kb.publish` exists to prevent. The provider filters; the chip is a second
+/// line of defence rather than the first.
+class _Knowledge extends ConsumerWidget {
+  const _Knowledge({required this.ticket});
+
+  final TicketRecord ticket;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final canWrite = ref.watch(canProvider('kb.write'));
+    // Matched on the SUBJECT rather than on the whole thread: the subject is
+    // what somebody wrote while describing the problem, and a body full of
+    // "thanks, that worked" would drag the match towards whatever article
+    // happens to share a word with a pleasantry.
+    final matches =
+        ref.watch(eeKbSuggestionsProvider(ticket.subject)).value ??
+        const <KbArticleRecord>[];
+    final produced =
+        ref.watch(eeKbOfTicketProvider(ticket.id)).value ??
+        const <EeKbArticle>[];
+
+    if (matches.isEmpty && produced.isEmpty && !canWrite) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AwSpace.x3),
+        Text('ee.kb.onTicket'.tr(), style: theme.textTheme.titleSmall),
+        for (final article in matches)
+          ListTile(
+            key: Key('kb-match-${article.id}'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            leading: const Icon(Icons.lightbulb_outline),
+            title: Text(article.title),
+            subtitle: Text(
+              article.symptom,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () => context.push('/kb/${article.id}'),
+          ),
+        for (final article in produced)
+          ListTile(
+            key: Key('kb-produced-${article.id}'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            leading: const Icon(Icons.menu_book_outlined),
+            title: Text(article.title),
+            subtitle: Text('ee.kb.status.${article.status}'.tr()),
+            onTap: () => context.push('/kb/${article.id}'),
+          ),
+        if (canWrite && produced.isEmpty)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: const Key('kb-harvest'),
+              onPressed: () async {
+                try {
+                  final article = await ref
+                      .read(eeKbApiProvider)
+                      .fromTicket(ticket.id);
+                  ref.invalidate(eeKbOfTicketProvider(ticket.id));
+                  if (!context.mounted) return;
+                  context.push('/kb/${article.id}');
+                } catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(localizedError(error))),
+                  );
+                }
+              },
+              icon: const Icon(Icons.post_add_outlined),
+              label: Text('ee.kb.harvest'.tr()),
+            ),
+          ),
+      ],
+    );
   }
 }
 
