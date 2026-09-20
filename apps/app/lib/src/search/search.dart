@@ -150,6 +150,13 @@ class SearchService {
   Future<List<SearchHit>> searchAssets(String workspaceId, String query) =>
       _run(_assets, workspaceId, query);
 
+  /// EE-195 / OPH-327 — the desk's written answers. Both tiers are authored
+  /// FOR the searcher, which is why they sit adjacent rather than two apart:
+  /// a problem's title is the desk's own name for a fault, but an article's
+  /// title and its symptom section are both written to be found.
+  Future<List<SearchHit>> searchKbArticles(String workspaceId, String query) =>
+      _run(_kbArticles, workspaceId, query);
+
   /// One query for every entry in the registry, so the core domains and an
   /// extension's read the same SQL shape and the same fold.
   Future<List<SearchHit>> _run(
@@ -331,6 +338,21 @@ const _assets = SearchEntity(
   alias: 'v',
   tiers: {0: "IFNULL(v.tag_fold, '')", 1: "IFNULL(v.name_fold, '')"},
   order: "v.status = 'retired', v.name ASC",
+);
+
+/// EE-195. Title first, symptom second, solution nowhere — the procedure is
+/// what somebody READS once they have found the article, and surfacing it as a
+/// fragment would invite acting on the fragment ([_changes]' rollback-plan
+/// rule, same shape).
+///
+/// Published first, and `wip` last rather than hidden: an article with no
+/// answer in it is still the fastest way to find out that somebody else is
+/// already on this, which is the whole point of KCS capturing the question.
+const _kbArticles = SearchEntity(
+  table: 'kb_articles',
+  alias: 'w',
+  tiers: {0: "IFNULL(w.title_fold, '')", 1: "IFNULL(w.symptom_fold, '')"},
+  order: "w.status <> 'published', w.status = 'wip', w.updated_at DESC",
 );
 
 /// A short window of [original] around the first folded match of [word] —

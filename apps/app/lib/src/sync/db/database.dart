@@ -830,18 +830,24 @@ class Changes extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-/// A problem record (EE-188 / OPH-327).
+/// The equipment register (EE-191 / OPH-327).
 ///
-/// Read-only here like [Changes], and for a sharper version of the same
-/// reason: this row is the desk's SHARED understanding of a fault — its cause,
-/// its workaround — and two phones editing that offline would produce two
-/// understandings and a last-writer-wins merge of the sentence people act on.
+/// Read-only here like [Changes] and [Problems], plus a reason of its own: an
+/// asset row is a claim about physical property — who has it, what it cost,
+/// where it is — and two phones editing that offline would produce a register
+/// nobody can audit.
 ///
-/// It is also the one replicated row with no sweep behind it. A request ages
-/// out (EE-091); a problem can sit in `known_error` for years with a
-/// workaround people use every week, which is a healthy state rather than a
-/// stalled one — and the cost of that is measured into ADR-0011's budget.
-@DataClassName('ProblemRecord')
+/// ── THE ANNOTATION BELOW WENT MISSING ONCE, AND NOTHING NOTICED ────────
+///
+/// This class was originally inserted BETWEEN [Problems]' doc comment and
+/// [Problems] itself, so it carried two `@DataClassName` annotations and
+/// [Problems] carried none. Drift then generated `Problem` for that table
+/// instead of `ProblemRecord`, which is precisely the collision the house
+/// suffix exists to prevent (see [Notifications] for the rule). It compiled,
+/// `flutter analyze` was silent and 1729 tests passed — because the generated
+/// name is not referenced by hand anywhere yet. The first file to import both
+/// this replica and a domain `Problem` would have paid for it, with an error
+/// pointing nowhere near the cause. Repaired in EE-195's round.
 @DataClassName('AssetRecord')
 class Assets extends Table {
   TextColumn get id => text()();
@@ -889,6 +895,18 @@ class Assets extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// A problem record (EE-188 / OPH-327).
+///
+/// Read-only here like [Changes], and for a sharper version of the same
+/// reason: this row is the desk's SHARED understanding of a fault — its cause,
+/// its workaround — and two phones editing that offline would produce two
+/// understandings and a last-writer-wins merge of the sentence people act on.
+///
+/// It is also the one replicated row with no sweep behind it. A request ages
+/// out (EE-091); a problem can sit in `known_error` for years with a
+/// workaround people use every week, which is a healthy state rather than a
+/// stalled one — and the cost of that is measured into ADR-0011's budget.
+@DataClassName('ProblemRecord')
 class Problems extends Table {
   TextColumn get id => text()();
   TextColumn get workspaceId => text()();
@@ -911,6 +929,60 @@ class Problems extends Table {
   /// v29 (OPH-326's rule): the searchable shadows. The symptom is folded
   /// rather than the root cause on purpose — somebody searching is describing
   /// what they SEE, not what they have worked out.
+  TextColumn get titleFold => text().nullable()();
+  TextColumn get symptomFold => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// A knowledge-base article (EE-195 / OPH-327) — the FOURTH and last of the
+/// hub's tables.
+///
+/// Read-only here, and this is the sharpest case of the four. An article is
+/// the desk's PUBLISHED answer: a phone authoring one offline would be
+/// queueing a sentence for customers that nobody reviewed, walking straight
+/// around the `kb.publish` gate that exists to stop exactly that. Reading one
+/// with no signal is the half the task asks for in a sentence — the agent has
+/// to be able to look the solution up in the field.
+@DataClassName('KbArticleRecord')
+class KbArticles extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get title => text()();
+
+  /// What people SEE. The sentence somebody types when they are looking for
+  /// this, which is why it is folded below and the solution is not.
+  TextColumn get symptom => text()();
+
+  /// WHERE it applies — the model, the version, the line. Two machines with
+  /// the same symptom and different environments are two articles.
+  TextColumn get environment => text().nullable()();
+
+  /// Nullable, and that is KCS's definition rather than a convenience: a
+  /// `wip` article has captured the question and does not have the answer
+  /// yet. It reaches the device all the same — an agent standing at a machine
+  /// reading an unreviewed draft is better off than one reading nothing, as
+  /// long as [status] travels with it.
+  TextColumn get solution => text().nullable()();
+
+  /// `wip | draft | approved | published | retired`, the server's own word.
+  /// Carried rather than derived because only `published` has been through
+  /// both reviews, and a screen that could not tell the difference would show
+  /// one person's guess with the authority of the company's answer.
+  TextColumn get status => text()();
+  TextColumn get serviceId => text().nullable()();
+
+  /// OPH-326's rule: the searchable shadows, kept in step by the applier via
+  /// foldSearchText (the fold cannot run in SQL — ADR-0013).
+  ///
+  /// The SOLUTION is deliberately not folded, for [Problems]' reason about a
+  /// root cause: somebody searching a knowledge base is describing what they
+  /// SEE, and matching on the procedure would rank the article whose steps
+  /// happen to share a word with the thing in front of them.
   TextColumn get titleFold => text().nullable()();
   TextColumn get symptomFold => text().nullable()();
   DateTimeColumn get createdAt => dateTime().nullable()();
@@ -989,6 +1061,7 @@ class TicketComments extends Table {
     Changes,
     Problems,
     Assets,
+    KbArticles,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -1018,8 +1091,10 @@ class AwDatabase extends _$AwDatabase {
   /// v22 → v23 (EE-077): notifications — the inbox, so the centre and its
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
+  /// v30 → v31 (EE-195 / OPH-327): kb_articles — the desk's written answers,
+  /// readable at the machine with no signal. Pull-only; the next pull fills it.
   @override
-  int get schemaVersion => 30;
+  int get schemaVersion => 31;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1234,6 +1309,13 @@ class AwDatabase extends _$AwDatabase {
       // have meant the first of them designing a schema three phases ahead of
       // itself. New pull-only table; the next pull fills it.
       if (from < 30) await m.createTable(assets);
+      // v31 (EE-195 / OPH-327): knowledge-base articles. The FOURTH and last
+      // of OPH-327's tables, which is what lets that hub finally close. Its
+      // own step for the reason v29 and v30 were: the four are shaped by four
+      // extension records landing in four different phases, and one step would
+      // have meant EE-186 designing this schema three phases ahead of itself.
+      // New pull-only table; the next pull fills it.
+      if (from < 31) await m.createTable(kbArticles);
     },
   );
 

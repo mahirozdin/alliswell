@@ -11009,9 +11009,9 @@ public, tasarım değil._
       veritabanı veri kaybetmiyor).
 - ⚠️ **Çift kapanış:** ↔ `EE-169` (overlay kaydı).
 
-### OPH-327 — Replika v28: dört yeni uzantı entity tablosu
+### OPH-327 — Replika v28: dört yeni uzantı entity tablosu ✅ 2026-09-20
 
-- [ ] Drift tabloları, applier bağları ve göç adımları. Tablolar
+- [x] Drift tabloları, applier bağları ve göç adımları. Tablolar
       `database.dart`'ta yaşar; **ayrı bir drift veritabanı açılmaz** — ikinci bir dosya,
       ikinci bir WAL ve ikinci bir `busy_timeout` ayarı demektir (OPH-318).
       **Ölçüm düzeltmesi (EE-186 turunda, 2026-09-20):** bu kutu *"tek bir göç adımı
@@ -11022,18 +11022,20 @@ public, tasarım değil._
       adımlarıyla. Kutunun *"ayrı drift veritabanı açılmaz"* yarısı dokunulmadı — o gerekçe
       **dosya sayısı** hakkındadır, adım sayısı hakkında değil. Geri alınabilirlik hangi
       adım inerse onun için test edilir.
-- [ ] Dördünün şekli **uzantının kaydında** tanımlı ve buraya yazılmaz; bu iş biçimi ve
+- [x] Dördünün şekli **uzantının kaydında** tanımlı ve buraya yazılmaz; bu iş biçimi ve
       göçü getirir. İlgili kayıtlar: `EE-186` ✔ (v28, `changes`), `EE-188` ✔ (v29,
-      `problems`), `EE-191` ✔ (v30, `assets`), `EE-195`.
-- [ ] Her tablo OPH-326'nın gölge kolonlarını da alır (arama dışı kalan bir entity,
+      `problems`), `EE-191` ✔ (v30, `assets`), `EE-195` ✔ (**v31**, `kb_articles`).
+      **DÖRDÜ DE İNDİ — bu hub artık kapalı.** `check:twin-tasks`: 5 grup, 5 kapalı,
+      0 açık.
+- [x] Her tablo OPH-326'nın gölge kolonlarını da alır (arama dışı kalan bir entity,
       kullanıcı için var olmayan bir entity'dir).
-- [ ] Göç **geri alınabilir**: `down()` yolu test edilir. Geri alınamayan bir adım, sürüm
+- [x] Göç **geri alınabilir**: `down()` yolu test edilir. Geri alınamayan bir adım, sürüm
       düşürmeyi imkânsız yapar.
       **v28 (EE-186) indi ve zinciriyle birlikte geri alınıp yeniden koşuldu** (105
       migration, `rollback --all` sonrası yine 105). **v29 (EE-188, `problems`) indi**
       (107 migration, zincir yine geri alınıp koşuldu). **v30 (EE-191, `assets`) indi**
-      (110 migration, zincir yine geri alınıp koşuldu). Kalan bir tablo (`kb_articles`,
-      EE-195) kendi işinde.
+      (110 migration, zincir yine geri alınıp koşuldu). **v31 (EE-195, `kb_articles`) indi**
+      (114 migration, `rollback --all` sonrası yine 114) — dördüncü ve sonuncu.
 
       **Göç testinin kendisi onarıldı (EE-188 turunda, 2026-09-20).** v29 adımını silip
       `migration_test.dart`'ı koştuğumda test **yeşil kaldı** — yani adımı ölçmüyordu.

@@ -50,6 +50,7 @@ void main() {
     //
     // Children before parents: drift opens with foreign keys on.
     for (final drop in [
+      'DROP TABLE kb_articles', // v31
       'DROP TABLE assets', // v30
       'DROP TABLE problems', // v29
       'DROP TABLE changes', // v28
@@ -330,8 +331,19 @@ void main() {
       expect(day.data['warranty_until'], '2027-03-01');
       await db.customStatement('DELETE FROM assets');
 
+      // v31 (EE-195 / OPH-327): the FOURTH and last, which is what lets that
+      // hub close. The SOLUTION is deliberately not folded — somebody
+      // searching describes what they SEE, and matching on the procedure would
+      // rank the article whose steps share a word with the machine in front of
+      // them. Asserting the two shadows that DO exist is therefore also an
+      // assertion about the one that does not.
+      expect(await db.select(db.kbArticles).get(), isEmpty);
+      await db
+          .customSelect('SELECT title_fold, symptom_fold FROM kb_articles')
+          .get();
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 30);
+      expect(version.data['user_version'], 31);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -377,7 +389,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 30);
+      expect(version.data['user_version'], 31);
       await db.close();
     },
   );
@@ -424,7 +436,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 30);
+      expect(version.data['user_version'], 31);
       await db.close();
     },
   );

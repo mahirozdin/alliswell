@@ -1483,6 +1483,10 @@
       "assets": {
         "view": "Varlık defterini gör",
         "manage": "Varlık kaydı aç, düzenle ve durumunu değiştir"
+      },
+      "kb": {
+        "write": "Bilgi bankası makalesi yaz ve düzenle",
+        "publish": "Makaleyi yayına al, ya da yayından geri çek"
       }
     },
     "permDomain": {
@@ -1503,7 +1507,8 @@
       "team": "Takım",
       "tickets": "Talepler",
       "units": "Birimler",
-      "webhooks": "Webhooklar"
+      "webhooks": "Webhooklar",
+      "kb": "Bilgi bankası"
     },
     "admin": {
       "title": "Instance konsolu",

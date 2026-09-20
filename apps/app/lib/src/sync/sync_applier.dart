@@ -149,6 +149,12 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       await (db.delete(db.problems)..where((p) => p.id.equals(id))).go();
     case 'ee_asset':
       await (db.delete(db.assets)..where((a) => a.id.equals(id))).go();
+    case 'ee_kb_article':
+      // EE-195: an article leaves when the server stops sending it. There is
+      // no local authoring, so a tombstone is the whole story — and one
+      // arrives for a retracted WIP article, which is the case that matters:
+      // a captured question nobody answered should not sit on a phone.
+      await (db.delete(db.kbArticles)..where((k) => k.id.equals(id))).go();
   }
 }
 
@@ -232,6 +238,10 @@ Future<void> _applySnapshot(
       await db.into(db.problems).insertOnConflictUpdate(problemCompanion(data));
     case 'ee_asset':
       await db.into(db.assets).insertOnConflictUpdate(assetCompanion(data));
+    case 'ee_kb_article':
+      await db
+          .into(db.kbArticles)
+          .insertOnConflictUpdate(kbArticleCompanion(data));
   }
 }
 
@@ -703,6 +713,29 @@ AssetsCompanion assetCompanion(Map<String, dynamic> data) => AssetsCompanion(
   revision: Value((data['revision'] as num?)?.toInt() ?? 0),
   updatedAt: _dateValue(data['updatedAt']),
 );
+
+/// EE-195's article, as it arrives. Pull-only: nothing here is ever authored
+/// on the device, which is why there is no matching push shape.
+KbArticlesCompanion kbArticleCompanion(Map<String, dynamic> data) =>
+    KbArticlesCompanion(
+      id: Value(data['id'] as String),
+      workspaceId: Value(data['workspaceId'] as String),
+      title: Value(data['title'] as String),
+      symptom: Value(data['symptom'] as String),
+      environment: Value(data['environment'] as String?),
+      solution: Value(data['solution'] as String?),
+      status: Value(data['status'] as String),
+      serviceId: Value(data['serviceId'] as String?),
+      // The symptom is folded beside the title; the SOLUTION is not. Somebody
+      // searching is describing what they see, and matching on the procedure
+      // would rank the article whose steps share a word with the machine in
+      // front of them (the [Problems] root-cause rule).
+      titleFold: _foldValue(data['title']),
+      symptomFold: _foldValue(data['symptom']),
+      createdAt: _dateValue(data['createdAt']),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: _dateValue(data['updatedAt']),
+    );
 
 TicketCommentsCompanion ticketCommentCompanion(Map<String, dynamic> data) =>
     TicketCommentsCompanion(

@@ -18746,7 +18746,8 @@ class ChangesCompanion extends UpdateCompanion<ChangeRecord> {
   }
 }
 
-class $ProblemsTable extends Problems with TableInfo<$ProblemsTable, Problem> {
+class $ProblemsTable extends Problems
+    with TableInfo<$ProblemsTable, ProblemRecord> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -18924,7 +18925,7 @@ class $ProblemsTable extends Problems with TableInfo<$ProblemsTable, Problem> {
   static const String $name = 'problems';
   @override
   VerificationContext validateIntegrity(
-    Insertable<Problem> instance, {
+    Insertable<ProblemRecord> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -19035,9 +19036,9 @@ class $ProblemsTable extends Problems with TableInfo<$ProblemsTable, Problem> {
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  Problem map(Map<String, dynamic> data, {String? tablePrefix}) {
+  ProblemRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Problem(
+    return ProblemRecord(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -19103,7 +19104,7 @@ class $ProblemsTable extends Problems with TableInfo<$ProblemsTable, Problem> {
   }
 }
 
-class Problem extends DataClass implements Insertable<Problem> {
+class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
   final String id;
   final String workspaceId;
   final String title;
@@ -19130,7 +19131,7 @@ class Problem extends DataClass implements Insertable<Problem> {
   final DateTime? createdAt;
   final int revision;
   final DateTime? updatedAt;
-  const Problem({
+  const ProblemRecord({
     required this.id,
     required this.workspaceId,
     required this.title,
@@ -19217,12 +19218,12 @@ class Problem extends DataClass implements Insertable<Problem> {
     );
   }
 
-  factory Problem.fromJson(
+  factory ProblemRecord.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return Problem(
+    return ProblemRecord(
       id: serializer.fromJson<String>(json['id']),
       workspaceId: serializer.fromJson<String>(json['workspaceId']),
       title: serializer.fromJson<String>(json['title']),
@@ -19260,7 +19261,7 @@ class Problem extends DataClass implements Insertable<Problem> {
     };
   }
 
-  Problem copyWith({
+  ProblemRecord copyWith({
     String? id,
     String? workspaceId,
     String? title,
@@ -19275,7 +19276,7 @@ class Problem extends DataClass implements Insertable<Problem> {
     Value<DateTime?> createdAt = const Value.absent(),
     int? revision,
     Value<DateTime?> updatedAt = const Value.absent(),
-  }) => Problem(
+  }) => ProblemRecord(
     id: id ?? this.id,
     workspaceId: workspaceId ?? this.workspaceId,
     title: title ?? this.title,
@@ -19293,8 +19294,8 @@ class Problem extends DataClass implements Insertable<Problem> {
     revision: revision ?? this.revision,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
   );
-  Problem copyWithCompanion(ProblemsCompanion data) {
-    return Problem(
+  ProblemRecord copyWithCompanion(ProblemsCompanion data) {
+    return ProblemRecord(
       id: data.id.present ? data.id.value : this.id,
       workspaceId: data.workspaceId.present
           ? data.workspaceId.value
@@ -19324,7 +19325,7 @@ class Problem extends DataClass implements Insertable<Problem> {
 
   @override
   String toString() {
-    return (StringBuffer('Problem(')
+    return (StringBuffer('ProblemRecord(')
           ..write('id: $id, ')
           ..write('workspaceId: $workspaceId, ')
           ..write('title: $title, ')
@@ -19363,7 +19364,7 @@ class Problem extends DataClass implements Insertable<Problem> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Problem &&
+      (other is ProblemRecord &&
           other.id == this.id &&
           other.workspaceId == this.workspaceId &&
           other.title == this.title &&
@@ -19380,7 +19381,7 @@ class Problem extends DataClass implements Insertable<Problem> {
           other.updatedAt == this.updatedAt);
 }
 
-class ProblemsCompanion extends UpdateCompanion<Problem> {
+class ProblemsCompanion extends UpdateCompanion<ProblemRecord> {
   final Value<String> id;
   final Value<String> workspaceId;
   final Value<String> title;
@@ -19434,7 +19435,7 @@ class ProblemsCompanion extends UpdateCompanion<Problem> {
        title = Value(title),
        symptom = Value(symptom),
        status = Value(status);
-  static Insertable<Problem> custom({
+  static Insertable<ProblemRecord> custom({
     Expression<String>? id,
     Expression<String>? workspaceId,
     Expression<String>? title,
@@ -20871,6 +20872,799 @@ class AssetsCompanion extends UpdateCompanion<AssetRecord> {
   }
 }
 
+class $KbArticlesTable extends KbArticles
+    with TableInfo<$KbArticlesTable, KbArticleRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $KbArticlesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _symptomMeta = const VerificationMeta(
+    'symptom',
+  );
+  @override
+  late final GeneratedColumn<String> symptom = GeneratedColumn<String>(
+    'symptom',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _environmentMeta = const VerificationMeta(
+    'environment',
+  );
+  @override
+  late final GeneratedColumn<String> environment = GeneratedColumn<String>(
+    'environment',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _solutionMeta = const VerificationMeta(
+    'solution',
+  );
+  @override
+  late final GeneratedColumn<String> solution = GeneratedColumn<String>(
+    'solution',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serviceIdMeta = const VerificationMeta(
+    'serviceId',
+  );
+  @override
+  late final GeneratedColumn<String> serviceId = GeneratedColumn<String>(
+    'service_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _titleFoldMeta = const VerificationMeta(
+    'titleFold',
+  );
+  @override
+  late final GeneratedColumn<String> titleFold = GeneratedColumn<String>(
+    'title_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _symptomFoldMeta = const VerificationMeta(
+    'symptomFold',
+  );
+  @override
+  late final GeneratedColumn<String> symptomFold = GeneratedColumn<String>(
+    'symptom_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    title,
+    symptom,
+    environment,
+    solution,
+    status,
+    serviceId,
+    titleFold,
+    symptomFold,
+    createdAt,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'kb_articles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<KbArticleRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('symptom')) {
+      context.handle(
+        _symptomMeta,
+        symptom.isAcceptableOrUnknown(data['symptom']!, _symptomMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_symptomMeta);
+    }
+    if (data.containsKey('environment')) {
+      context.handle(
+        _environmentMeta,
+        environment.isAcceptableOrUnknown(
+          data['environment']!,
+          _environmentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('solution')) {
+      context.handle(
+        _solutionMeta,
+        solution.isAcceptableOrUnknown(data['solution']!, _solutionMeta),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('service_id')) {
+      context.handle(
+        _serviceIdMeta,
+        serviceId.isAcceptableOrUnknown(data['service_id']!, _serviceIdMeta),
+      );
+    }
+    if (data.containsKey('title_fold')) {
+      context.handle(
+        _titleFoldMeta,
+        titleFold.isAcceptableOrUnknown(data['title_fold']!, _titleFoldMeta),
+      );
+    }
+    if (data.containsKey('symptom_fold')) {
+      context.handle(
+        _symptomFoldMeta,
+        symptomFold.isAcceptableOrUnknown(
+          data['symptom_fold']!,
+          _symptomFoldMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  KbArticleRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return KbArticleRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      symptom: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symptom'],
+      )!,
+      environment: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}environment'],
+      ),
+      solution: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}solution'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      serviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}service_id'],
+      ),
+      titleFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_fold'],
+      ),
+      symptomFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symptom_fold'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $KbArticlesTable createAlias(String alias) {
+    return $KbArticlesTable(attachedDatabase, alias);
+  }
+}
+
+class KbArticleRecord extends DataClass implements Insertable<KbArticleRecord> {
+  final String id;
+  final String workspaceId;
+  final String title;
+
+  /// What people SEE. The sentence somebody types when they are looking for
+  /// this, which is why it is folded below and the solution is not.
+  final String symptom;
+
+  /// WHERE it applies — the model, the version, the line. Two machines with
+  /// the same symptom and different environments are two articles.
+  final String? environment;
+
+  /// Nullable, and that is KCS's definition rather than a convenience: a
+  /// `wip` article has captured the question and does not have the answer
+  /// yet. It reaches the device all the same — an agent standing at a machine
+  /// reading an unreviewed draft is better off than one reading nothing, as
+  /// long as [status] travels with it.
+  final String? solution;
+
+  /// `wip | draft | approved | published | retired`, the server's own word.
+  /// Carried rather than derived because only `published` has been through
+  /// both reviews, and a screen that could not tell the difference would show
+  /// one person's guess with the authority of the company's answer.
+  final String status;
+  final String? serviceId;
+
+  /// OPH-326's rule: the searchable shadows, kept in step by the applier via
+  /// foldSearchText (the fold cannot run in SQL — ADR-0013).
+  ///
+  /// The SOLUTION is deliberately not folded, for [Problems]' reason about a
+  /// root cause: somebody searching a knowledge base is describing what they
+  /// SEE, and matching on the procedure would rank the article whose steps
+  /// happen to share a word with the thing in front of them.
+  final String? titleFold;
+  final String? symptomFold;
+  final DateTime? createdAt;
+  final int revision;
+  final DateTime? updatedAt;
+  const KbArticleRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.title,
+    required this.symptom,
+    this.environment,
+    this.solution,
+    required this.status,
+    this.serviceId,
+    this.titleFold,
+    this.symptomFold,
+    this.createdAt,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['title'] = Variable<String>(title);
+    map['symptom'] = Variable<String>(symptom);
+    if (!nullToAbsent || environment != null) {
+      map['environment'] = Variable<String>(environment);
+    }
+    if (!nullToAbsent || solution != null) {
+      map['solution'] = Variable<String>(solution);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || serviceId != null) {
+      map['service_id'] = Variable<String>(serviceId);
+    }
+    if (!nullToAbsent || titleFold != null) {
+      map['title_fold'] = Variable<String>(titleFold);
+    }
+    if (!nullToAbsent || symptomFold != null) {
+      map['symptom_fold'] = Variable<String>(symptomFold);
+    }
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  KbArticlesCompanion toCompanion(bool nullToAbsent) {
+    return KbArticlesCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      title: Value(title),
+      symptom: Value(symptom),
+      environment: environment == null && nullToAbsent
+          ? const Value.absent()
+          : Value(environment),
+      solution: solution == null && nullToAbsent
+          ? const Value.absent()
+          : Value(solution),
+      status: Value(status),
+      serviceId: serviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serviceId),
+      titleFold: titleFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titleFold),
+      symptomFold: symptomFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(symptomFold),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory KbArticleRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return KbArticleRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      title: serializer.fromJson<String>(json['title']),
+      symptom: serializer.fromJson<String>(json['symptom']),
+      environment: serializer.fromJson<String?>(json['environment']),
+      solution: serializer.fromJson<String?>(json['solution']),
+      status: serializer.fromJson<String>(json['status']),
+      serviceId: serializer.fromJson<String?>(json['serviceId']),
+      titleFold: serializer.fromJson<String?>(json['titleFold']),
+      symptomFold: serializer.fromJson<String?>(json['symptomFold']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'title': serializer.toJson<String>(title),
+      'symptom': serializer.toJson<String>(symptom),
+      'environment': serializer.toJson<String?>(environment),
+      'solution': serializer.toJson<String?>(solution),
+      'status': serializer.toJson<String>(status),
+      'serviceId': serializer.toJson<String?>(serviceId),
+      'titleFold': serializer.toJson<String?>(titleFold),
+      'symptomFold': serializer.toJson<String?>(symptomFold),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  KbArticleRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? title,
+    String? symptom,
+    Value<String?> environment = const Value.absent(),
+    Value<String?> solution = const Value.absent(),
+    String? status,
+    Value<String?> serviceId = const Value.absent(),
+    Value<String?> titleFold = const Value.absent(),
+    Value<String?> symptomFold = const Value.absent(),
+    Value<DateTime?> createdAt = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => KbArticleRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    title: title ?? this.title,
+    symptom: symptom ?? this.symptom,
+    environment: environment.present ? environment.value : this.environment,
+    solution: solution.present ? solution.value : this.solution,
+    status: status ?? this.status,
+    serviceId: serviceId.present ? serviceId.value : this.serviceId,
+    titleFold: titleFold.present ? titleFold.value : this.titleFold,
+    symptomFold: symptomFold.present ? symptomFold.value : this.symptomFold,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  KbArticleRecord copyWithCompanion(KbArticlesCompanion data) {
+    return KbArticleRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      title: data.title.present ? data.title.value : this.title,
+      symptom: data.symptom.present ? data.symptom.value : this.symptom,
+      environment: data.environment.present
+          ? data.environment.value
+          : this.environment,
+      solution: data.solution.present ? data.solution.value : this.solution,
+      status: data.status.present ? data.status.value : this.status,
+      serviceId: data.serviceId.present ? data.serviceId.value : this.serviceId,
+      titleFold: data.titleFold.present ? data.titleFold.value : this.titleFold,
+      symptomFold: data.symptomFold.present
+          ? data.symptomFold.value
+          : this.symptomFold,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KbArticleRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('title: $title, ')
+          ..write('symptom: $symptom, ')
+          ..write('environment: $environment, ')
+          ..write('solution: $solution, ')
+          ..write('status: $status, ')
+          ..write('serviceId: $serviceId, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('symptomFold: $symptomFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    title,
+    symptom,
+    environment,
+    solution,
+    status,
+    serviceId,
+    titleFold,
+    symptomFold,
+    createdAt,
+    revision,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is KbArticleRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.title == this.title &&
+          other.symptom == this.symptom &&
+          other.environment == this.environment &&
+          other.solution == this.solution &&
+          other.status == this.status &&
+          other.serviceId == this.serviceId &&
+          other.titleFold == this.titleFold &&
+          other.symptomFold == this.symptomFold &&
+          other.createdAt == this.createdAt &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class KbArticlesCompanion extends UpdateCompanion<KbArticleRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> title;
+  final Value<String> symptom;
+  final Value<String?> environment;
+  final Value<String?> solution;
+  final Value<String> status;
+  final Value<String?> serviceId;
+  final Value<String?> titleFold;
+  final Value<String?> symptomFold;
+  final Value<DateTime?> createdAt;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const KbArticlesCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.symptom = const Value.absent(),
+    this.environment = const Value.absent(),
+    this.solution = const Value.absent(),
+    this.status = const Value.absent(),
+    this.serviceId = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.symptomFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  KbArticlesCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String title,
+    required String symptom,
+    this.environment = const Value.absent(),
+    this.solution = const Value.absent(),
+    required String status,
+    this.serviceId = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.symptomFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       title = Value(title),
+       symptom = Value(symptom),
+       status = Value(status);
+  static Insertable<KbArticleRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? title,
+    Expression<String>? symptom,
+    Expression<String>? environment,
+    Expression<String>? solution,
+    Expression<String>? status,
+    Expression<String>? serviceId,
+    Expression<String>? titleFold,
+    Expression<String>? symptomFold,
+    Expression<DateTime>? createdAt,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (title != null) 'title': title,
+      if (symptom != null) 'symptom': symptom,
+      if (environment != null) 'environment': environment,
+      if (solution != null) 'solution': solution,
+      if (status != null) 'status': status,
+      if (serviceId != null) 'service_id': serviceId,
+      if (titleFold != null) 'title_fold': titleFold,
+      if (symptomFold != null) 'symptom_fold': symptomFold,
+      if (createdAt != null) 'created_at': createdAt,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  KbArticlesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? title,
+    Value<String>? symptom,
+    Value<String?>? environment,
+    Value<String?>? solution,
+    Value<String>? status,
+    Value<String?>? serviceId,
+    Value<String?>? titleFold,
+    Value<String?>? symptomFold,
+    Value<DateTime?>? createdAt,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return KbArticlesCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      title: title ?? this.title,
+      symptom: symptom ?? this.symptom,
+      environment: environment ?? this.environment,
+      solution: solution ?? this.solution,
+      status: status ?? this.status,
+      serviceId: serviceId ?? this.serviceId,
+      titleFold: titleFold ?? this.titleFold,
+      symptomFold: symptomFold ?? this.symptomFold,
+      createdAt: createdAt ?? this.createdAt,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (symptom.present) {
+      map['symptom'] = Variable<String>(symptom.value);
+    }
+    if (environment.present) {
+      map['environment'] = Variable<String>(environment.value);
+    }
+    if (solution.present) {
+      map['solution'] = Variable<String>(solution.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (serviceId.present) {
+      map['service_id'] = Variable<String>(serviceId.value);
+    }
+    if (titleFold.present) {
+      map['title_fold'] = Variable<String>(titleFold.value);
+    }
+    if (symptomFold.present) {
+      map['symptom_fold'] = Variable<String>(symptomFold.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KbArticlesCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('title: $title, ')
+          ..write('symptom: $symptom, ')
+          ..write('environment: $environment, ')
+          ..write('solution: $solution, ')
+          ..write('status: $status, ')
+          ..write('serviceId: $serviceId, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('symptomFold: $symptomFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -20912,6 +21706,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $ChangesTable changes = $ChangesTable(this);
   late final $ProblemsTable problems = $ProblemsTable(this);
   late final $AssetsTable assets = $AssetsTable(this);
+  late final $KbArticlesTable kbArticles = $KbArticlesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -20947,6 +21742,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     changes,
     problems,
     assets,
+    kbArticles,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -30114,14 +30910,17 @@ class $$ProblemsTableTableManager
         RootTableManager<
           _$AwDatabase,
           $ProblemsTable,
-          Problem,
+          ProblemRecord,
           $$ProblemsTableFilterComposer,
           $$ProblemsTableOrderingComposer,
           $$ProblemsTableAnnotationComposer,
           $$ProblemsTableCreateCompanionBuilder,
           $$ProblemsTableUpdateCompanionBuilder,
-          (Problem, BaseReferences<_$AwDatabase, $ProblemsTable, Problem>),
-          Problem,
+          (
+            ProblemRecord,
+            BaseReferences<_$AwDatabase, $ProblemsTable, ProblemRecord>,
+          ),
+          ProblemRecord,
           PrefetchHooks Function()
         > {
   $$ProblemsTableTableManager(_$AwDatabase db, $ProblemsTable table)
@@ -30215,14 +31014,17 @@ typedef $$ProblemsTableProcessedTableManager =
     ProcessedTableManager<
       _$AwDatabase,
       $ProblemsTable,
-      Problem,
+      ProblemRecord,
       $$ProblemsTableFilterComposer,
       $$ProblemsTableOrderingComposer,
       $$ProblemsTableAnnotationComposer,
       $$ProblemsTableCreateCompanionBuilder,
       $$ProblemsTableUpdateCompanionBuilder,
-      (Problem, BaseReferences<_$AwDatabase, $ProblemsTable, Problem>),
-      Problem,
+      (
+        ProblemRecord,
+        BaseReferences<_$AwDatabase, $ProblemsTable, ProblemRecord>,
+      ),
+      ProblemRecord,
       PrefetchHooks Function()
     >;
 typedef $$AssetsTableCreateCompanionBuilder =
@@ -30777,6 +31579,364 @@ typedef $$AssetsTableProcessedTableManager =
       AssetRecord,
       PrefetchHooks Function()
     >;
+typedef $$KbArticlesTableCreateCompanionBuilder =
+    KbArticlesCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String title,
+      required String symptom,
+      Value<String?> environment,
+      Value<String?> solution,
+      required String status,
+      Value<String?> serviceId,
+      Value<String?> titleFold,
+      Value<String?> symptomFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$KbArticlesTableUpdateCompanionBuilder =
+    KbArticlesCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> title,
+      Value<String> symptom,
+      Value<String?> environment,
+      Value<String?> solution,
+      Value<String> status,
+      Value<String?> serviceId,
+      Value<String?> titleFold,
+      Value<String?> symptomFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$KbArticlesTableFilterComposer
+    extends Composer<_$AwDatabase, $KbArticlesTable> {
+  $$KbArticlesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symptom => $composableBuilder(
+    column: $table.symptom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get environment => $composableBuilder(
+    column: $table.environment,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get solution => $composableBuilder(
+    column: $table.solution,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serviceId => $composableBuilder(
+    column: $table.serviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symptomFold => $composableBuilder(
+    column: $table.symptomFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$KbArticlesTableOrderingComposer
+    extends Composer<_$AwDatabase, $KbArticlesTable> {
+  $$KbArticlesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symptom => $composableBuilder(
+    column: $table.symptom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get environment => $composableBuilder(
+    column: $table.environment,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get solution => $composableBuilder(
+    column: $table.solution,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serviceId => $composableBuilder(
+    column: $table.serviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symptomFold => $composableBuilder(
+    column: $table.symptomFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$KbArticlesTableAnnotationComposer
+    extends Composer<_$AwDatabase, $KbArticlesTable> {
+  $$KbArticlesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get symptom =>
+      $composableBuilder(column: $table.symptom, builder: (column) => column);
+
+  GeneratedColumn<String> get environment => $composableBuilder(
+    column: $table.environment,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get solution =>
+      $composableBuilder(column: $table.solution, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get serviceId =>
+      $composableBuilder(column: $table.serviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get titleFold =>
+      $composableBuilder(column: $table.titleFold, builder: (column) => column);
+
+  GeneratedColumn<String> get symptomFold => $composableBuilder(
+    column: $table.symptomFold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$KbArticlesTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $KbArticlesTable,
+          KbArticleRecord,
+          $$KbArticlesTableFilterComposer,
+          $$KbArticlesTableOrderingComposer,
+          $$KbArticlesTableAnnotationComposer,
+          $$KbArticlesTableCreateCompanionBuilder,
+          $$KbArticlesTableUpdateCompanionBuilder,
+          (
+            KbArticleRecord,
+            BaseReferences<_$AwDatabase, $KbArticlesTable, KbArticleRecord>,
+          ),
+          KbArticleRecord,
+          PrefetchHooks Function()
+        > {
+  $$KbArticlesTableTableManager(_$AwDatabase db, $KbArticlesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$KbArticlesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$KbArticlesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$KbArticlesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> symptom = const Value.absent(),
+                Value<String?> environment = const Value.absent(),
+                Value<String?> solution = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String?> serviceId = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> symptomFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => KbArticlesCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                title: title,
+                symptom: symptom,
+                environment: environment,
+                solution: solution,
+                status: status,
+                serviceId: serviceId,
+                titleFold: titleFold,
+                symptomFold: symptomFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String title,
+                required String symptom,
+                Value<String?> environment = const Value.absent(),
+                Value<String?> solution = const Value.absent(),
+                required String status,
+                Value<String?> serviceId = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> symptomFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => KbArticlesCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                title: title,
+                symptom: symptom,
+                environment: environment,
+                solution: solution,
+                status: status,
+                serviceId: serviceId,
+                titleFold: titleFold,
+                symptomFold: symptomFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$KbArticlesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $KbArticlesTable,
+      KbArticleRecord,
+      $$KbArticlesTableFilterComposer,
+      $$KbArticlesTableOrderingComposer,
+      $$KbArticlesTableAnnotationComposer,
+      $$KbArticlesTableCreateCompanionBuilder,
+      $$KbArticlesTableUpdateCompanionBuilder,
+      (
+        KbArticleRecord,
+        BaseReferences<_$AwDatabase, $KbArticlesTable, KbArticleRecord>,
+      ),
+      KbArticleRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AwDatabaseManager {
   final _$AwDatabase _db;
@@ -30840,4 +32000,6 @@ class $AwDatabaseManager {
       $$ProblemsTableTableManager(_db, _db.problems);
   $$AssetsTableTableManager get assets =>
       $$AssetsTableTableManager(_db, _db.assets);
+  $$KbArticlesTableTableManager get kbArticles =>
+      $$KbArticlesTableTableManager(_db, _db.kbArticles);
 }

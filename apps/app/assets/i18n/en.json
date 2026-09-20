@@ -1484,6 +1484,10 @@
       "assets": {
         "view": "See the asset register",
         "manage": "Open, edit and move an asset record"
+      },
+      "kb": {
+        "write": "Write and revise knowledge-base articles",
+        "publish": "Publish an article, or take a published one back"
       }
     },
     "permDomain": {
@@ -1504,7 +1508,8 @@
       "team": "Team",
       "tickets": "Requests",
       "units": "Units",
-      "webhooks": "Webhooks"
+      "webhooks": "Webhooks",
+      "kb": "Knowledge base"
     },
     "admin": {
       "title": "Instance console",
