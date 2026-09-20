@@ -1377,7 +1377,9 @@
       "implemented": "uyguladı",
       "rolled_back": "geri aldı",
       "freeze_created": "değişiklik dondurması ilan etti",
-      "freeze_removed": "değişiklik dondurmasını kaldırdı"
+      "freeze_removed": "değişiklik dondurmasını kaldırdı",
+      "root_cause_identified": "kök nedeni belirledi",
+      "resolved": "çözdü"
     },
     "perm": {
       "alarms": {
@@ -1468,6 +1470,9 @@
         "create": "Değişiklik aç",
         "edit": "Değişikliği düzenle ve ilerlet",
         "implement": "Değişikliği yapıldı, başarısız ya da geri alındı işaretle"
+      },
+      "problems": {
+        "manage": "Problem kaydı aç ve yürüt"
       }
     },
     "permDomain": {
@@ -1478,6 +1483,7 @@
       "files": "Dosyalar",
       "notes": "Notlar",
       "portal": "Genel portal",
+      "problems": "Problemler",
       "projects": "Projeler",
       "services": "Servisler",
       "shares": "Paylaşım",

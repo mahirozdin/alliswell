@@ -137,6 +137,12 @@ class SearchService {
   Future<List<SearchHit>> searchChanges(String workspaceId, String query) =>
       _run(_changes, workspaceId, query);
 
+  /// EE-188 / OPH-327 — known faults. The query somebody actually types here
+  /// is the SYMPTOM ("printer jams after standby"), which is why that is the
+  /// second tier and the root cause is in neither.
+  Future<List<SearchHit>> searchProblems(String workspaceId, String query) =>
+      _run(_problems, workspaceId, query);
+
   /// One query for every entry in the registry, so the core domains and an
   /// extension's read the same SQL shape and the same fold.
   Future<List<SearchHit>> _run(
@@ -296,6 +302,17 @@ const _changes = SearchEntity(
   alias: 'g',
   tiers: {0: "IFNULL(g.title_fold, '')", 2: "IFNULL(g.impact_fold, '')"},
   order: 'g.window_start IS NULL, g.window_start ASC, g.created_at DESC',
+);
+
+/// EE-188. Title first, symptom second, root cause nowhere: a person looking
+/// for a known error is describing what they SEE, and matching on the
+/// diagnosis would rank the records whose cause happens to share a word with
+/// the thing they are looking at.
+const _problems = SearchEntity(
+  table: 'problems',
+  alias: 'b',
+  tiers: {0: "IFNULL(b.title_fold, '')", 2: "IFNULL(b.symptom_fold, '')"},
+  order: "b.status = 'closed', b.created_at DESC",
 );
 
 /// A short window of [original] around the first folded match of [word] —

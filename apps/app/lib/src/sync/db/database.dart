@@ -830,6 +830,50 @@ class Changes extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// A problem record (EE-188 / OPH-327).
+///
+/// Read-only here like [Changes], and for a sharper version of the same
+/// reason: this row is the desk's SHARED understanding of a fault — its cause,
+/// its workaround — and two phones editing that offline would produce two
+/// understandings and a last-writer-wins merge of the sentence people act on.
+///
+/// It is also the one replicated row with no sweep behind it. A request ages
+/// out (EE-091); a problem can sit in `known_error` for years with a
+/// workaround people use every week, which is a healthy state rather than a
+/// stalled one — and the cost of that is measured into ADR-0011's budget.
+@DataClassName('ProblemRecord')
+class Problems extends Table {
+  TextColumn get id => text()();
+  TextColumn get workspaceId => text()();
+  TextColumn get title => text()();
+
+  /// What people SEE. The field an agent matches against when they wonder
+  /// whether this is that thing again.
+  TextColumn get symptom => text()();
+
+  /// What to do until it is fixed — the reason this record is worth carrying
+  /// offline at all.
+  TextColumn get workaround => text().nullable()();
+  TextColumn get rootCause => text().nullable()();
+  TextColumn get permanentAction => text().nullable()();
+
+  /// `investigating | known_error | resolved | closed`, the server's own word.
+  TextColumn get status => text()();
+  DateTimeColumn get resolvedAt => dateTime().nullable()();
+
+  /// v29 (OPH-326's rule): the searchable shadows. The symptom is folded
+  /// rather than the root cause on purpose — somebody searching is describing
+  /// what they SEE, not what they have worked out.
+  TextColumn get titleFold => text().nullable()();
+  TextColumn get symptomFold => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('TicketAssignmentRecord')
 class TicketAssignments extends Table {
   TextColumn get id => text()();
@@ -896,6 +940,7 @@ class TicketComments extends Table {
     TicketComments,
     TicketAssignments,
     Changes,
+    Problems,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -926,7 +971,7 @@ class AwDatabase extends _$AwDatabase {
   /// badge work with no signal. One new table; it fills from the next pull.
   /// content, and the replica's Delta-canonical rows are converted in place.
   @override
-  int get schemaVersion => 28;
+  int get schemaVersion => 29;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1129,6 +1174,12 @@ class AwDatabase extends _$AwDatabase {
       // next pull fills it. The fold columns are created WITH it, which is
       // why this step has no `addColumn` half the way v27 did.
       if (from < 28) await m.createTable(changes);
+      // v29 (EE-188 / OPH-327): problems. A step of its own rather than part
+      // of v28, because the four tables OPH-327 covers are shaped by four
+      // separate extension records that land in different phases — one step
+      // would have meant the first of them designing a schema two phases
+      // ahead of itself. New pull-only table; the next pull fills it.
+      if (from < 29) await m.createTable(problems);
     },
   );
 

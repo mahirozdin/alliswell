@@ -1378,7 +1378,9 @@
       "implemented": "implemented this",
       "rolled_back": "rolled this back",
       "freeze_created": "declared a change freeze",
-      "freeze_removed": "lifted a change freeze"
+      "freeze_removed": "lifted a change freeze",
+      "root_cause_identified": "identified the root cause",
+      "resolved": "resolved this"
     },
     "perm": {
       "alarms": {
@@ -1469,6 +1471,9 @@
         "create": "Raise a change",
         "edit": "Edit a change, and move it along",
         "implement": "Mark a change done, failed or rolled back"
+      },
+      "problems": {
+        "manage": "Open and work a problem record"
       }
     },
     "permDomain": {
@@ -1479,6 +1484,7 @@
       "files": "Files",
       "notes": "Notes",
       "portal": "Public portal",
+      "problems": "Problems",
       "projects": "Projects",
       "services": "Services",
       "shares": "Sharing",

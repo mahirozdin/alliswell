@@ -145,6 +145,8 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       // EE-186: a change leaves the device when the server stops sending it —
       // there is no local authoring, so a tombstone is the whole story.
       await (db.delete(db.changes)..where((c) => c.id.equals(id))).go();
+    case 'ee_problem':
+      await (db.delete(db.problems)..where((p) => p.id.equals(id))).go();
   }
 }
 
@@ -224,6 +226,8 @@ Future<void> _applySnapshot(
           .insertOnConflictUpdate(ticketAssignmentCompanion(data));
     case 'ee_change':
       await db.into(db.changes).insertOnConflictUpdate(changeCompanion(data));
+    case 'ee_problem':
+      await db.into(db.problems).insertOnConflictUpdate(problemCompanion(data));
   }
 }
 
@@ -644,6 +648,27 @@ ChangesCompanion changeCompanion(Map<String, dynamic> data) => ChangesCompanion(
   revision: Value((data['revision'] as num?)?.toInt() ?? 0),
   updatedAt: _dateValue(data['updatedAt']),
 );
+
+/// EE-188 / OPH-327 — a problem record, as the replica stores it.
+ProblemsCompanion problemCompanion(Map<String, dynamic> data) =>
+    ProblemsCompanion(
+      id: Value(data['id'] as String),
+      workspaceId: Value(data['workspaceId'] as String),
+      title: Value(data['title'] as String),
+      symptom: Value(data['symptom'] as String),
+      workaround: Value(data['workaround'] as String?),
+      rootCause: Value(data['rootCause'] as String?),
+      permanentAction: Value(data['permanentAction'] as String?),
+      status: Value(data['status'] as String),
+      resolvedAt: _dateValue(data['resolvedAt']),
+      // The SYMPTOM is folded, not the root cause: somebody searching describes
+      // what they see, not what somebody else worked out.
+      titleFold: _foldValue(data['title']),
+      symptomFold: _foldValue(data['symptom']),
+      createdAt: _dateValue(data['createdAt']),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: _dateValue(data['updatedAt']),
+    );
 
 TicketCommentsCompanion ticketCommentCompanion(Map<String, dynamic> data) =>
     TicketCommentsCompanion(

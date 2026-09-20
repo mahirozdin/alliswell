@@ -18746,6 +18746,841 @@ class ChangesCompanion extends UpdateCompanion<ChangeRecord> {
   }
 }
 
+class $ProblemsTable extends Problems
+    with TableInfo<$ProblemsTable, ProblemRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProblemsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workspaceIdMeta = const VerificationMeta(
+    'workspaceId',
+  );
+  @override
+  late final GeneratedColumn<String> workspaceId = GeneratedColumn<String>(
+    'workspace_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _symptomMeta = const VerificationMeta(
+    'symptom',
+  );
+  @override
+  late final GeneratedColumn<String> symptom = GeneratedColumn<String>(
+    'symptom',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _workaroundMeta = const VerificationMeta(
+    'workaround',
+  );
+  @override
+  late final GeneratedColumn<String> workaround = GeneratedColumn<String>(
+    'workaround',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rootCauseMeta = const VerificationMeta(
+    'rootCause',
+  );
+  @override
+  late final GeneratedColumn<String> rootCause = GeneratedColumn<String>(
+    'root_cause',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _permanentActionMeta = const VerificationMeta(
+    'permanentAction',
+  );
+  @override
+  late final GeneratedColumn<String> permanentAction = GeneratedColumn<String>(
+    'permanent_action',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
+    'resolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resolvedAt = GeneratedColumn<DateTime>(
+    'resolved_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _titleFoldMeta = const VerificationMeta(
+    'titleFold',
+  );
+  @override
+  late final GeneratedColumn<String> titleFold = GeneratedColumn<String>(
+    'title_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _symptomFoldMeta = const VerificationMeta(
+    'symptomFold',
+  );
+  @override
+  late final GeneratedColumn<String> symptomFold = GeneratedColumn<String>(
+    'symptom_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    workspaceId,
+    title,
+    symptom,
+    workaround,
+    rootCause,
+    permanentAction,
+    status,
+    resolvedAt,
+    titleFold,
+    symptomFold,
+    createdAt,
+    revision,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'problems';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProblemRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('workspace_id')) {
+      context.handle(
+        _workspaceIdMeta,
+        workspaceId.isAcceptableOrUnknown(
+          data['workspace_id']!,
+          _workspaceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_workspaceIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('symptom')) {
+      context.handle(
+        _symptomMeta,
+        symptom.isAcceptableOrUnknown(data['symptom']!, _symptomMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_symptomMeta);
+    }
+    if (data.containsKey('workaround')) {
+      context.handle(
+        _workaroundMeta,
+        workaround.isAcceptableOrUnknown(data['workaround']!, _workaroundMeta),
+      );
+    }
+    if (data.containsKey('root_cause')) {
+      context.handle(
+        _rootCauseMeta,
+        rootCause.isAcceptableOrUnknown(data['root_cause']!, _rootCauseMeta),
+      );
+    }
+    if (data.containsKey('permanent_action')) {
+      context.handle(
+        _permanentActionMeta,
+        permanentAction.isAcceptableOrUnknown(
+          data['permanent_action']!,
+          _permanentActionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+        _resolvedAtMeta,
+        resolvedAt.isAcceptableOrUnknown(data['resolved_at']!, _resolvedAtMeta),
+      );
+    }
+    if (data.containsKey('title_fold')) {
+      context.handle(
+        _titleFoldMeta,
+        titleFold.isAcceptableOrUnknown(data['title_fold']!, _titleFoldMeta),
+      );
+    }
+    if (data.containsKey('symptom_fold')) {
+      context.handle(
+        _symptomFoldMeta,
+        symptomFold.isAcceptableOrUnknown(
+          data['symptom_fold']!,
+          _symptomFoldMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProblemRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProblemRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      workspaceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workspace_id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      symptom: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symptom'],
+      )!,
+      workaround: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}workaround'],
+      ),
+      rootCause: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}root_cause'],
+      ),
+      permanentAction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}permanent_action'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      resolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}resolved_at'],
+      ),
+      titleFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title_fold'],
+      ),
+      symptomFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}symptom_fold'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      ),
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      ),
+    );
+  }
+
+  @override
+  $ProblemsTable createAlias(String alias) {
+    return $ProblemsTable(attachedDatabase, alias);
+  }
+}
+
+class ProblemRecord extends DataClass implements Insertable<ProblemRecord> {
+  final String id;
+  final String workspaceId;
+  final String title;
+
+  /// What people SEE. The field an agent matches against when they wonder
+  /// whether this is that thing again.
+  final String symptom;
+
+  /// What to do until it is fixed — the reason this record is worth carrying
+  /// offline at all.
+  final String? workaround;
+  final String? rootCause;
+  final String? permanentAction;
+
+  /// `investigating | known_error | resolved | closed`, the server's own word.
+  final String status;
+  final DateTime? resolvedAt;
+
+  /// v29 (OPH-326's rule): the searchable shadows. The symptom is folded
+  /// rather than the root cause on purpose — somebody searching is describing
+  /// what they SEE, not what they have worked out.
+  final String? titleFold;
+  final String? symptomFold;
+  final DateTime? createdAt;
+  final int revision;
+  final DateTime? updatedAt;
+  const ProblemRecord({
+    required this.id,
+    required this.workspaceId,
+    required this.title,
+    required this.symptom,
+    this.workaround,
+    this.rootCause,
+    this.permanentAction,
+    required this.status,
+    this.resolvedAt,
+    this.titleFold,
+    this.symptomFold,
+    this.createdAt,
+    required this.revision,
+    this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['workspace_id'] = Variable<String>(workspaceId);
+    map['title'] = Variable<String>(title);
+    map['symptom'] = Variable<String>(symptom);
+    if (!nullToAbsent || workaround != null) {
+      map['workaround'] = Variable<String>(workaround);
+    }
+    if (!nullToAbsent || rootCause != null) {
+      map['root_cause'] = Variable<String>(rootCause);
+    }
+    if (!nullToAbsent || permanentAction != null) {
+      map['permanent_action'] = Variable<String>(permanentAction);
+    }
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || resolvedAt != null) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt);
+    }
+    if (!nullToAbsent || titleFold != null) {
+      map['title_fold'] = Variable<String>(titleFold);
+    }
+    if (!nullToAbsent || symptomFold != null) {
+      map['symptom_fold'] = Variable<String>(symptomFold);
+    }
+    if (!nullToAbsent || createdAt != null) {
+      map['created_at'] = Variable<DateTime>(createdAt);
+    }
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    return map;
+  }
+
+  ProblemsCompanion toCompanion(bool nullToAbsent) {
+    return ProblemsCompanion(
+      id: Value(id),
+      workspaceId: Value(workspaceId),
+      title: Value(title),
+      symptom: Value(symptom),
+      workaround: workaround == null && nullToAbsent
+          ? const Value.absent()
+          : Value(workaround),
+      rootCause: rootCause == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rootCause),
+      permanentAction: permanentAction == null && nullToAbsent
+          ? const Value.absent()
+          : Value(permanentAction),
+      status: Value(status),
+      resolvedAt: resolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedAt),
+      titleFold: titleFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(titleFold),
+      symptomFold: symptomFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(symptomFold),
+      createdAt: createdAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdAt),
+      revision: Value(revision),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+    );
+  }
+
+  factory ProblemRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProblemRecord(
+      id: serializer.fromJson<String>(json['id']),
+      workspaceId: serializer.fromJson<String>(json['workspaceId']),
+      title: serializer.fromJson<String>(json['title']),
+      symptom: serializer.fromJson<String>(json['symptom']),
+      workaround: serializer.fromJson<String?>(json['workaround']),
+      rootCause: serializer.fromJson<String?>(json['rootCause']),
+      permanentAction: serializer.fromJson<String?>(json['permanentAction']),
+      status: serializer.fromJson<String>(json['status']),
+      resolvedAt: serializer.fromJson<DateTime?>(json['resolvedAt']),
+      titleFold: serializer.fromJson<String?>(json['titleFold']),
+      symptomFold: serializer.fromJson<String?>(json['symptomFold']),
+      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      revision: serializer.fromJson<int>(json['revision']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'workspaceId': serializer.toJson<String>(workspaceId),
+      'title': serializer.toJson<String>(title),
+      'symptom': serializer.toJson<String>(symptom),
+      'workaround': serializer.toJson<String?>(workaround),
+      'rootCause': serializer.toJson<String?>(rootCause),
+      'permanentAction': serializer.toJson<String?>(permanentAction),
+      'status': serializer.toJson<String>(status),
+      'resolvedAt': serializer.toJson<DateTime?>(resolvedAt),
+      'titleFold': serializer.toJson<String?>(titleFold),
+      'symptomFold': serializer.toJson<String?>(symptomFold),
+      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'revision': serializer.toJson<int>(revision),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+    };
+  }
+
+  ProblemRecord copyWith({
+    String? id,
+    String? workspaceId,
+    String? title,
+    String? symptom,
+    Value<String?> workaround = const Value.absent(),
+    Value<String?> rootCause = const Value.absent(),
+    Value<String?> permanentAction = const Value.absent(),
+    String? status,
+    Value<DateTime?> resolvedAt = const Value.absent(),
+    Value<String?> titleFold = const Value.absent(),
+    Value<String?> symptomFold = const Value.absent(),
+    Value<DateTime?> createdAt = const Value.absent(),
+    int? revision,
+    Value<DateTime?> updatedAt = const Value.absent(),
+  }) => ProblemRecord(
+    id: id ?? this.id,
+    workspaceId: workspaceId ?? this.workspaceId,
+    title: title ?? this.title,
+    symptom: symptom ?? this.symptom,
+    workaround: workaround.present ? workaround.value : this.workaround,
+    rootCause: rootCause.present ? rootCause.value : this.rootCause,
+    permanentAction: permanentAction.present
+        ? permanentAction.value
+        : this.permanentAction,
+    status: status ?? this.status,
+    resolvedAt: resolvedAt.present ? resolvedAt.value : this.resolvedAt,
+    titleFold: titleFold.present ? titleFold.value : this.titleFold,
+    symptomFold: symptomFold.present ? symptomFold.value : this.symptomFold,
+    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    revision: revision ?? this.revision,
+    updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+  );
+  ProblemRecord copyWithCompanion(ProblemsCompanion data) {
+    return ProblemRecord(
+      id: data.id.present ? data.id.value : this.id,
+      workspaceId: data.workspaceId.present
+          ? data.workspaceId.value
+          : this.workspaceId,
+      title: data.title.present ? data.title.value : this.title,
+      symptom: data.symptom.present ? data.symptom.value : this.symptom,
+      workaround: data.workaround.present
+          ? data.workaround.value
+          : this.workaround,
+      rootCause: data.rootCause.present ? data.rootCause.value : this.rootCause,
+      permanentAction: data.permanentAction.present
+          ? data.permanentAction.value
+          : this.permanentAction,
+      status: data.status.present ? data.status.value : this.status,
+      resolvedAt: data.resolvedAt.present
+          ? data.resolvedAt.value
+          : this.resolvedAt,
+      titleFold: data.titleFold.present ? data.titleFold.value : this.titleFold,
+      symptomFold: data.symptomFold.present
+          ? data.symptomFold.value
+          : this.symptomFold,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProblemRecord(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('title: $title, ')
+          ..write('symptom: $symptom, ')
+          ..write('workaround: $workaround, ')
+          ..write('rootCause: $rootCause, ')
+          ..write('permanentAction: $permanentAction, ')
+          ..write('status: $status, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('symptomFold: $symptomFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    workspaceId,
+    title,
+    symptom,
+    workaround,
+    rootCause,
+    permanentAction,
+    status,
+    resolvedAt,
+    titleFold,
+    symptomFold,
+    createdAt,
+    revision,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProblemRecord &&
+          other.id == this.id &&
+          other.workspaceId == this.workspaceId &&
+          other.title == this.title &&
+          other.symptom == this.symptom &&
+          other.workaround == this.workaround &&
+          other.rootCause == this.rootCause &&
+          other.permanentAction == this.permanentAction &&
+          other.status == this.status &&
+          other.resolvedAt == this.resolvedAt &&
+          other.titleFold == this.titleFold &&
+          other.symptomFold == this.symptomFold &&
+          other.createdAt == this.createdAt &&
+          other.revision == this.revision &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ProblemsCompanion extends UpdateCompanion<ProblemRecord> {
+  final Value<String> id;
+  final Value<String> workspaceId;
+  final Value<String> title;
+  final Value<String> symptom;
+  final Value<String?> workaround;
+  final Value<String?> rootCause;
+  final Value<String?> permanentAction;
+  final Value<String> status;
+  final Value<DateTime?> resolvedAt;
+  final Value<String?> titleFold;
+  final Value<String?> symptomFold;
+  final Value<DateTime?> createdAt;
+  final Value<int> revision;
+  final Value<DateTime?> updatedAt;
+  final Value<int> rowid;
+  const ProblemsCompanion({
+    this.id = const Value.absent(),
+    this.workspaceId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.symptom = const Value.absent(),
+    this.workaround = const Value.absent(),
+    this.rootCause = const Value.absent(),
+    this.permanentAction = const Value.absent(),
+    this.status = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.symptomFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProblemsCompanion.insert({
+    required String id,
+    required String workspaceId,
+    required String title,
+    required String symptom,
+    this.workaround = const Value.absent(),
+    this.rootCause = const Value.absent(),
+    this.permanentAction = const Value.absent(),
+    required String status,
+    this.resolvedAt = const Value.absent(),
+    this.titleFold = const Value.absent(),
+    this.symptomFold = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       workspaceId = Value(workspaceId),
+       title = Value(title),
+       symptom = Value(symptom),
+       status = Value(status);
+  static Insertable<ProblemRecord> custom({
+    Expression<String>? id,
+    Expression<String>? workspaceId,
+    Expression<String>? title,
+    Expression<String>? symptom,
+    Expression<String>? workaround,
+    Expression<String>? rootCause,
+    Expression<String>? permanentAction,
+    Expression<String>? status,
+    Expression<DateTime>? resolvedAt,
+    Expression<String>? titleFold,
+    Expression<String>? symptomFold,
+    Expression<DateTime>? createdAt,
+    Expression<int>? revision,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (workspaceId != null) 'workspace_id': workspaceId,
+      if (title != null) 'title': title,
+      if (symptom != null) 'symptom': symptom,
+      if (workaround != null) 'workaround': workaround,
+      if (rootCause != null) 'root_cause': rootCause,
+      if (permanentAction != null) 'permanent_action': permanentAction,
+      if (status != null) 'status': status,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
+      if (titleFold != null) 'title_fold': titleFold,
+      if (symptomFold != null) 'symptom_fold': symptomFold,
+      if (createdAt != null) 'created_at': createdAt,
+      if (revision != null) 'revision': revision,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProblemsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? workspaceId,
+    Value<String>? title,
+    Value<String>? symptom,
+    Value<String?>? workaround,
+    Value<String?>? rootCause,
+    Value<String?>? permanentAction,
+    Value<String>? status,
+    Value<DateTime?>? resolvedAt,
+    Value<String?>? titleFold,
+    Value<String?>? symptomFold,
+    Value<DateTime?>? createdAt,
+    Value<int>? revision,
+    Value<DateTime?>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ProblemsCompanion(
+      id: id ?? this.id,
+      workspaceId: workspaceId ?? this.workspaceId,
+      title: title ?? this.title,
+      symptom: symptom ?? this.symptom,
+      workaround: workaround ?? this.workaround,
+      rootCause: rootCause ?? this.rootCause,
+      permanentAction: permanentAction ?? this.permanentAction,
+      status: status ?? this.status,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+      titleFold: titleFold ?? this.titleFold,
+      symptomFold: symptomFold ?? this.symptomFold,
+      createdAt: createdAt ?? this.createdAt,
+      revision: revision ?? this.revision,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (workspaceId.present) {
+      map['workspace_id'] = Variable<String>(workspaceId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (symptom.present) {
+      map['symptom'] = Variable<String>(symptom.value);
+    }
+    if (workaround.present) {
+      map['workaround'] = Variable<String>(workaround.value);
+    }
+    if (rootCause.present) {
+      map['root_cause'] = Variable<String>(rootCause.value);
+    }
+    if (permanentAction.present) {
+      map['permanent_action'] = Variable<String>(permanentAction.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt.value);
+    }
+    if (titleFold.present) {
+      map['title_fold'] = Variable<String>(titleFold.value);
+    }
+    if (symptomFold.present) {
+      map['symptom_fold'] = Variable<String>(symptomFold.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProblemsCompanion(')
+          ..write('id: $id, ')
+          ..write('workspaceId: $workspaceId, ')
+          ..write('title: $title, ')
+          ..write('symptom: $symptom, ')
+          ..write('workaround: $workaround, ')
+          ..write('rootCause: $rootCause, ')
+          ..write('permanentAction: $permanentAction, ')
+          ..write('status: $status, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('titleFold: $titleFold, ')
+          ..write('symptomFold: $symptomFold, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('revision: $revision, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -18785,6 +19620,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $TicketAssignmentsTable ticketAssignments =
       $TicketAssignmentsTable(this);
   late final $ChangesTable changes = $ChangesTable(this);
+  late final $ProblemsTable problems = $ProblemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -18818,6 +19654,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     ticketComments,
     ticketAssignments,
     changes,
+    problems,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -27721,6 +28558,387 @@ typedef $$ChangesTableProcessedTableManager =
       ChangeRecord,
       PrefetchHooks Function()
     >;
+typedef $$ProblemsTableCreateCompanionBuilder =
+    ProblemsCompanion Function({
+      required String id,
+      required String workspaceId,
+      required String title,
+      required String symptom,
+      Value<String?> workaround,
+      Value<String?> rootCause,
+      Value<String?> permanentAction,
+      required String status,
+      Value<DateTime?> resolvedAt,
+      Value<String?> titleFold,
+      Value<String?> symptomFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ProblemsTableUpdateCompanionBuilder =
+    ProblemsCompanion Function({
+      Value<String> id,
+      Value<String> workspaceId,
+      Value<String> title,
+      Value<String> symptom,
+      Value<String?> workaround,
+      Value<String?> rootCause,
+      Value<String?> permanentAction,
+      Value<String> status,
+      Value<DateTime?> resolvedAt,
+      Value<String?> titleFold,
+      Value<String?> symptomFold,
+      Value<DateTime?> createdAt,
+      Value<int> revision,
+      Value<DateTime?> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ProblemsTableFilterComposer
+    extends Composer<_$AwDatabase, $ProblemsTable> {
+  $$ProblemsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symptom => $composableBuilder(
+    column: $table.symptom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workaround => $composableBuilder(
+    column: $table.workaround,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rootCause => $composableBuilder(
+    column: $table.rootCause,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get permanentAction => $composableBuilder(
+    column: $table.permanentAction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get symptomFold => $composableBuilder(
+    column: $table.symptomFold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProblemsTableOrderingComposer
+    extends Composer<_$AwDatabase, $ProblemsTable> {
+  $$ProblemsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symptom => $composableBuilder(
+    column: $table.symptom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workaround => $composableBuilder(
+    column: $table.workaround,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rootCause => $composableBuilder(
+    column: $table.rootCause,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get permanentAction => $composableBuilder(
+    column: $table.permanentAction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get titleFold => $composableBuilder(
+    column: $table.titleFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get symptomFold => $composableBuilder(
+    column: $table.symptomFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProblemsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $ProblemsTable> {
+  $$ProblemsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get workspaceId => $composableBuilder(
+    column: $table.workspaceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get symptom =>
+      $composableBuilder(column: $table.symptom, builder: (column) => column);
+
+  GeneratedColumn<String> get workaround => $composableBuilder(
+    column: $table.workaround,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rootCause =>
+      $composableBuilder(column: $table.rootCause, builder: (column) => column);
+
+  GeneratedColumn<String> get permanentAction => $composableBuilder(
+    column: $table.permanentAction,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get titleFold =>
+      $composableBuilder(column: $table.titleFold, builder: (column) => column);
+
+  GeneratedColumn<String> get symptomFold => $composableBuilder(
+    column: $table.symptomFold,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ProblemsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $ProblemsTable,
+          ProblemRecord,
+          $$ProblemsTableFilterComposer,
+          $$ProblemsTableOrderingComposer,
+          $$ProblemsTableAnnotationComposer,
+          $$ProblemsTableCreateCompanionBuilder,
+          $$ProblemsTableUpdateCompanionBuilder,
+          (
+            ProblemRecord,
+            BaseReferences<_$AwDatabase, $ProblemsTable, ProblemRecord>,
+          ),
+          ProblemRecord,
+          PrefetchHooks Function()
+        > {
+  $$ProblemsTableTableManager(_$AwDatabase db, $ProblemsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProblemsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProblemsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProblemsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> workspaceId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> symptom = const Value.absent(),
+                Value<String?> workaround = const Value.absent(),
+                Value<String?> rootCause = const Value.absent(),
+                Value<String?> permanentAction = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime?> resolvedAt = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> symptomFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProblemsCompanion(
+                id: id,
+                workspaceId: workspaceId,
+                title: title,
+                symptom: symptom,
+                workaround: workaround,
+                rootCause: rootCause,
+                permanentAction: permanentAction,
+                status: status,
+                resolvedAt: resolvedAt,
+                titleFold: titleFold,
+                symptomFold: symptomFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String workspaceId,
+                required String title,
+                required String symptom,
+                Value<String?> workaround = const Value.absent(),
+                Value<String?> rootCause = const Value.absent(),
+                Value<String?> permanentAction = const Value.absent(),
+                required String status,
+                Value<DateTime?> resolvedAt = const Value.absent(),
+                Value<String?> titleFold = const Value.absent(),
+                Value<String?> symptomFold = const Value.absent(),
+                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<DateTime?> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProblemsCompanion.insert(
+                id: id,
+                workspaceId: workspaceId,
+                title: title,
+                symptom: symptom,
+                workaround: workaround,
+                rootCause: rootCause,
+                permanentAction: permanentAction,
+                status: status,
+                resolvedAt: resolvedAt,
+                titleFold: titleFold,
+                symptomFold: symptomFold,
+                createdAt: createdAt,
+                revision: revision,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProblemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $ProblemsTable,
+      ProblemRecord,
+      $$ProblemsTableFilterComposer,
+      $$ProblemsTableOrderingComposer,
+      $$ProblemsTableAnnotationComposer,
+      $$ProblemsTableCreateCompanionBuilder,
+      $$ProblemsTableUpdateCompanionBuilder,
+      (
+        ProblemRecord,
+        BaseReferences<_$AwDatabase, $ProblemsTable, ProblemRecord>,
+      ),
+      ProblemRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AwDatabaseManager {
   final _$AwDatabase _db;
@@ -27780,4 +28998,6 @@ class $AwDatabaseManager {
       $$TicketAssignmentsTableTableManager(_db, _db.ticketAssignments);
   $$ChangesTableTableManager get changes =>
       $$ChangesTableTableManager(_db, _db.changes);
+  $$ProblemsTableTableManager get problems =>
+      $$ProblemsTableTableManager(_db, _db.problems);
 }

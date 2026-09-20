@@ -41,6 +41,30 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     // Opening creates the CURRENT schema, so walk it back to v1: undo what each
     // later version added, then rewind the version.
+    // v20–v29 are all NEW TABLES, and until EE-188 none of them was undone
+    // here: the fixture walked back to v18 and stopped, so every table added
+    // after it still existed in the "v1" database. The v1 → latest test then
+    // asserted those tables were present *after* migrating — which they were
+    // before it, too. Deleting the v29 step left the suite green; that is how
+    // this was found, and it had been true for ten versions.
+    //
+    // Children before parents: drift opens with foreign keys on.
+    for (final drop in [
+      'DROP TABLE problems', // v29
+      'DROP TABLE changes', // v28
+      'DROP TABLE ticket_assignments', // v25
+      'DROP TABLE ticket_comments', // v24
+      'DROP TABLE tickets', // v24 (carries v26/v27's columns; those steps are
+      // guarded `from >= 24`, so a v1 install never runs them — it gets the
+      // current definition straight from createTable.)
+      'DROP TABLE notifications', // v23
+      'DROP TABLE task_assignments', // v22
+      'DROP TABLE member_profiles', // v22
+      'DROP TABLE shared_items', // v21
+      'DROP TABLE rejected_mutations', // v20
+    ]) {
+      await db.customStatement(drop);
+    }
     await db.customStatement(
       'ALTER TABLE notes DROP COLUMN conflict_version_id', // v18
     );
@@ -280,8 +304,16 @@ void main() {
           .customSelect('SELECT title_fold, impact_fold FROM changes')
           .get();
 
+      // v29 (EE-188 / OPH-327): the second of OPH-327's tables, in a step of
+      // its own — their shapes come from separate extension records that land
+      // in different phases, so one step for all four was never buildable.
+      expect(await db.select(db.problems).get(), isEmpty);
+      await db
+          .customSelect('SELECT title_fold, symptom_fold FROM problems')
+          .get();
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 28);
+      expect(version.data['user_version'], 29);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -327,7 +359,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 28);
+      expect(version.data['user_version'], 29);
       await db.close();
     },
   );
@@ -374,7 +406,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 28);
+      expect(version.data['user_version'], 29);
       await db.close();
     },
   );

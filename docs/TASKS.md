@@ -11023,13 +11023,25 @@ public, tasarım değil._
       **dosya sayısı** hakkındadır, adım sayısı hakkında değil. Geri alınabilirlik hangi
       adım inerse onun için test edilir.
 - [ ] Dördünün şekli **uzantının kaydında** tanımlı ve buraya yazılmaz; bu iş biçimi ve
-      göçü getirir. İlgili kayıtlar: `EE-186`, `EE-188`, `EE-191`, `EE-195`.
+      göçü getirir. İlgili kayıtlar: `EE-186` ✔ (v28, `changes`), `EE-188` ✔ (v29,
+      `problems`), `EE-191`, `EE-195`.
 - [ ] Her tablo OPH-326'nın gölge kolonlarını da alır (arama dışı kalan bir entity,
       kullanıcı için var olmayan bir entity'dir).
 - [ ] Göç **geri alınabilir**: `down()` yolu test edilir. Geri alınamayan bir adım, sürüm
       düşürmeyi imkânsız yapar.
       **v28 (EE-186) indi ve zinciriyle birlikte geri alınıp yeniden koşuldu** (105
-      migration, `rollback --all` sonrası yine 105). Kalan üç tablo kendi işlerinde.
+      migration, `rollback --all` sonrası yine 105). **v29 (EE-188, `problems`) indi**
+      (107 migration, zincir yine geri alınıp koşuldu). Kalan iki tablo kendi işlerinde.
+
+      **Göç testinin kendisi onarıldı (EE-188 turunda, 2026-09-20).** v29 adımını silip
+      `migration_test.dart`'ı koştuğumda test **yeşil kaldı** — yani adımı ölçmüyordu.
+      Sebep fixture'daydı: `seedV1Database` şemayı v18'e kadar geri sarıp duruyordu, oysa
+      v20–v29'un eklediği **her tablo yeni bir tablo**dur ve hiçbiri geri alınmıyordu.
+      "v1" veritabanı aslında v18'di; `createTable` her zaman **güncel** tanımı kullandığı
+      için eksik bir adım hiçbir zaman eksik bir tablo olarak görünmüyordu. Fixture'a on
+      `DROP TABLE` eklendi (v20–v29, çocuktan ebeveyne). Şimdi v25, v28 ve v29 adımlarının
+      **her biri** silindiğinde test kırmızıya dönüyor — yani onarım yalnız bu turun iki
+      adımını değil, v20'den beri ölçülmeyen adımları da kapsıyor.
 - **Kabul:** v27'den yükselen bir replika veri kaybetmiyor; dört tablo yazılıp okunuyor;
       `down()` çalışıyor; CE'de tablolar **boş ve zararsız** duruyor.
 - **Doğrulama:** göç testi (v26 → v28 zinciri) + applier testleri + boyut ölçümü (her
