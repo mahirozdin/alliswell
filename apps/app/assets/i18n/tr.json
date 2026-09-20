@@ -1854,7 +1854,10 @@
       "relatedHint": "Kapalı talep yeniden açılmaz; özeti taşınan YENİ bir talep açılır ve ikisi bağlanır.",
       "relatedOpened": "Yeni talep açıldı ve eskisine bağlandı",
       "affectedAssets": "Etkilenen ekipman",
-      "more": "Daha fazla"
+      "more": "Daha fazla",
+      "attachments": "Ekler",
+      "attachmentExternal": "Dışarıdan geldi — açmadan önce kaynağını düşünün. Bu dosya taranmadı.",
+      "attachmentUnavailable": "Bu dosya şu anda açılamıyor."
     },
     "sla": {
       "breached": "SLA aşıldı",

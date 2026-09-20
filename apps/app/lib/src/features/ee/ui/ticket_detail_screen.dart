@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../../core/date_format.dart';
+import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
-import '../providers.dart';
-import '../../../core/error_messages.dart';
+import '../../files/providers.dart';
 import '../data/kb_models.dart';
 import '../kb_providers.dart';
+import '../providers.dart';
 import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
@@ -144,6 +146,7 @@ class _Thread extends ConsumerWidget {
         // has somebody already started" before reading forty replies.
         _Relations(ticketId: ticket.id),
         _Knowledge(ticket: ticket),
+        _Attachments(ticket: ticket),
         const SizedBox(height: AwSpace.x6),
         Text('ee.tickets.thread'.tr(), style: theme.textTheme.titleSmall),
         const SizedBox(height: AwSpace.x2),
@@ -445,6 +448,98 @@ class _Knowledge extends ConsumerWidget {
           ),
       ],
     );
+  }
+}
+
+/// EE-198 — the files on a request, and which of them a stranger sent.
+///
+/// ── THE REQUEST HAD NO ATTACHMENT LIST UNTIL NOW ───────────────────────
+///
+/// EE-168 gave a request files on the SERVER and never drew them; measured,
+/// this round. So the warning the contract asks for had nowhere to live, and
+/// the list is built here with it rather than before it — a badge on a list
+/// nobody can see would satisfy the sentence and not the person.
+///
+/// ── THE WARNING IS ABOUT ORIGIN, AND SAYS SO ───────────────────────────
+///
+/// There is no virus scanner in this product. So the badge does not say
+/// "unsafe", which would be a claim nobody measured; it says the file came
+/// from outside, which is the fact we actually hold. What the reader does
+/// with that is their judgement, and it is the judgement they would want to
+/// make before double-clicking something a stranger sent.
+///
+/// The ids come from the server and the files from the replica, so a desk
+/// whose server has not been updated sees its files with no badges rather
+/// than an error — and nothing is ever marked external by accident, only by
+/// appearing on that list.
+class _Attachments extends ConsumerWidget {
+  const _Attachments({required this.ticket});
+
+  final TicketRecord ticket;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final files =
+        ref
+            .watch(
+              targetFilesProvider((targetType: 'ticket', targetId: ticket.id)),
+            )
+            .value ??
+        const <FileAttachment>[];
+    if (files.isEmpty) return const SizedBox.shrink();
+    final external =
+        ref.watch(eeTicketExternalFilesProvider(ticket.id)).value ??
+        const <String>{};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AwSpace.x3),
+        Text('ee.tickets.attachments'.tr(), style: theme.textTheme.titleSmall),
+        for (final file in files)
+          ListTile(
+            key: Key('ticket-file-${file.id}'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            leading: Icon(
+              external.contains(file.id)
+                  ? Icons.report_gmailerrorred_outlined
+                  : Icons.attach_file,
+            ),
+            title: Text(
+              file.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: external.contains(file.id)
+                ? Text(
+                    key: Key('ticket-file-external-${file.id}'),
+                    'ee.tickets.attachmentExternal'.tr(),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                : null,
+            onTap: () => _open(context, ref, file.id),
+          ),
+      ],
+    );
+  }
+
+  /// Downloading is core's presigned GET, unchanged. The overlay adds the
+  /// sentence beside it and takes nothing away: a file a stranger sent is
+  /// still the evidence the desk asked for.
+  Future<void> _open(BuildContext context, WidgetRef ref, String fileId) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final url = await ref.read(fileUrlProvider(fileId).future);
+    if (url == null) {
+      messenger?.showSnackBar(
+        SnackBar(content: Text('ee.tickets.attachmentUnavailable'.tr())),
+      );
+      return;
+    }
+    await launchUrlString(url);
   }
 }
 

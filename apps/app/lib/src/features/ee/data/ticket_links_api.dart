@@ -116,4 +116,27 @@ class EeTicketLinksApi {
       throw asApiException(error);
     }
   }
+
+  /// EE-198 — which of this request's files arrived from OUTSIDE.
+  ///
+  /// Ids only: the files themselves are a pull-only sync entity and already
+  /// sit in the replica, so sending their names again would be a second copy
+  /// free to disagree with the first. A 403 or 404 is an empty answer rather
+  /// than an error — this is an ADDITION to a screen that already works, and
+  /// a desk without the overlay's newer half should see files without a
+  /// badge rather than a red box.
+  Future<Set<String>> externalFileIds(String ticketId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '$_base/$ticketId/portal-uploads',
+      );
+      return ((res.data?['fileIds'] as List<dynamic>?) ?? const [])
+          .map((e) => e as String)
+          .toSet();
+    } on DioException catch (error) {
+      final code = error.response?.statusCode;
+      if (code == 403 || code == 404) return const {};
+      throw asApiException(error);
+    }
+  }
 }

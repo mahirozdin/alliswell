@@ -1855,7 +1855,10 @@
       "relatedHint": "A closed request is not reopened — a NEW request is opened carrying its summary, and the two are linked.",
       "relatedOpened": "A new request was opened and linked to the old one",
       "affectedAssets": "Affected equipment",
-      "more": "More"
+      "more": "More",
+      "attachments": "Attachments",
+      "attachmentExternal": "Sent from outside — think about the source before opening. This file was not scanned.",
+      "attachmentUnavailable": "That file cannot be opened right now."
     },
     "sla": {
       "breached": "SLA missed",
