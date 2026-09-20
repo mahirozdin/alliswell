@@ -248,6 +248,18 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'ee.webhooks.settingsRowHint',
                   path: '/settings/team/webhooks',
                 ),
+              // EE-184: what is waiting on this person's decision. Gated by
+              // the verb that lets somebody BE asked — a person who cannot
+              // decide can never be named on a row, so the screen would be
+              // empty by construction.
+              if (ref.watch(canProvider('approvals.decide')))
+                _GroupRow(
+                  keyName: 'settings-group-team-approvals',
+                  icon: Icons.how_to_reg_outlined,
+                  titleKey: 'ee.approvals.settingsRow',
+                  subtitleKey: 'ee.approvals.settingsRowHint',
+                  path: '/settings/team/approvals',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain

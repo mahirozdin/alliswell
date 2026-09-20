@@ -1369,7 +1369,11 @@
       "sign_in_failed": "could not sign in",
       "locked": "was locked out",
       "revoked": "ended a session",
-      "priority_overridden": "set a priority outside the matrix"
+      "priority_overridden": "set a priority outside the matrix",
+      "approval_requested": "asked for an approval",
+      "approved": "approved this",
+      "rejected": "rejected this",
+      "approval_expired": "let an approval lapse"
     },
     "perm": {
       "alarms": {
@@ -1452,20 +1456,27 @@
       },
       "webhooks": {
         "manage": "Add and remove outgoing webhooks"
+      },
+      "approvals": {
+        "decide": "Approve or reject what is waiting on a decision"
       }
     },
     "permDomain": {
       "alarms": "Alarms",
+      "approvals": "Approvals",
       "calendar": "Calendar",
       "files": "Files",
       "notes": "Notes",
+      "portal": "Public portal",
       "projects": "Projects",
       "services": "Services",
       "shares": "Sharing",
+      "sla": "Service levels",
       "tasks": "Tasks",
       "team": "Team",
       "tickets": "Requests",
-      "units": "Units"
+      "units": "Units",
+      "webhooks": "Webhooks"
     },
     "admin": {
       "title": "Instance console",
@@ -2107,6 +2118,29 @@
       "unavailable": "Mail settings are not available here.",
       "unavailableBody": "Mail settings are not available on this instance.",
       "username": "Username"
+    },
+    "approvals": {
+      "title": "Approvals",
+      "settingsRow": "Approvals",
+      "settingsRowHint": "What is waiting on your decision",
+      "scopeMine": "Mine",
+      "scopeTeam": "The team",
+      "empty": "Nothing is waiting on you",
+      "emptyBody": "Requests and tasks that need a decision show up here, with the reason somebody asked.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approveTitle": "Approve this",
+      "rejectTitle": "Reject this",
+      "reasonLabel": "Why",
+      "reasonHelp": "Both answers need one — it is what the record will say later.",
+      "dueAt": "Lapses on {date}",
+      "targetGone": "What this was about is gone",
+      "status": {
+        "pending": "Waiting",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "expired": "Lapsed — nobody answered in time"
+      }
     }
   },
   "perm": {

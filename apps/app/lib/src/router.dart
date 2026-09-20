@@ -41,6 +41,7 @@ import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
 import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
+import 'features/ee/ui/team_approvals_screen.dart';
 import 'features/ee/ui/team_webhooks_screen.dart';
 import 'features/ee/ui/team_identity_screen.dart';
 import 'features/ee/ui/team_mail_screen.dart';
@@ -525,6 +526,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/webhooks',
         builder: (context, state) => _page(const EeTeamWebhooksScreen()),
+      ),
+      // EE-184: what is waiting on your decision. Its own route rather than a
+      // tab on the queue, because the people who answer approvals are not
+      // necessarily the people who work the queue — a purchasing manager has
+      // no reason to open a service desk.
+      GoRoute(
+        path: '/settings/team/approvals',
+        builder: (context, state) => _page(const EeTeamApprovalsScreen()),
       ),
       // EE-115: one meeting — what it decided, and who said what. A route
       // rather than a tab, for the reason EE-069's task history is one: this

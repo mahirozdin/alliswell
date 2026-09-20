@@ -1368,7 +1368,11 @@
       "sign_in_failed": "oturum açamadı",
       "locked": "kilitlendi",
       "revoked": "bir oturumu sonlandırdı",
-      "priority_overridden": "matris dışında bir öncelik verdi"
+      "priority_overridden": "matris dışında bir öncelik verdi",
+      "approval_requested": "onay istedi",
+      "approved": "onayladı",
+      "rejected": "reddetti",
+      "approval_expired": "onayın süresi doldu"
     },
     "perm": {
       "alarms": {
@@ -1451,20 +1455,27 @@
       },
       "webhooks": {
         "manage": "Giden webhookları ekle ve kaldır"
+      },
+      "approvals": {
+        "decide": "Karar bekleyeni onayla ya da reddet"
       }
     },
     "permDomain": {
       "alarms": "Alarmlar",
+      "approvals": "Onaylar",
       "calendar": "Takvim",
       "files": "Dosyalar",
       "notes": "Notlar",
+      "portal": "Genel portal",
       "projects": "Projeler",
       "services": "Servisler",
       "shares": "Paylaşım",
+      "sla": "Hizmet seviyeleri",
       "tasks": "Görevler",
       "team": "Takım",
       "tickets": "Talepler",
-      "units": "Birimler"
+      "units": "Birimler",
+      "webhooks": "Webhooklar"
     },
     "admin": {
       "title": "Instance konsolu",
@@ -2106,6 +2117,29 @@
       "unavailable": "Mail ayarları burada kullanılamıyor.",
       "unavailableBody": "Bu kurulumda mail ayarları kullanılamıyor.",
       "username": "Kullanıcı adı"
+    },
+    "approvals": {
+      "title": "Onaylar",
+      "settingsRow": "Onaylar",
+      "settingsRowHint": "Kararını bekleyenler",
+      "scopeMine": "Bende",
+      "scopeTeam": "Takımda",
+      "empty": "Seni bekleyen bir şey yok",
+      "emptyBody": "Karar bekleyen talepler ve işler, istenme gerekçesiyle birlikte burada görünür.",
+      "approve": "Onayla",
+      "reject": "Reddet",
+      "approveTitle": "Bunu onayla",
+      "rejectTitle": "Bunu reddet",
+      "reasonLabel": "Neden",
+      "reasonHelp": "İki cevap da gerekçe ister — kayıtta sonradan okunacak olan bu.",
+      "dueAt": "{date} tarihinde düşer",
+      "targetGone": "Bu kararın konusu artık yok",
+      "status": {
+        "pending": "Bekliyor",
+        "approved": "Onaylandı",
+        "rejected": "Reddedildi",
+        "expired": "Düştü — kimse zamanında cevaplamadı"
+      }
     }
   },
   "perm": {
