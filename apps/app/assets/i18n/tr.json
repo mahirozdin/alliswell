@@ -1375,7 +1375,9 @@
       "approval_expired": "onayın süresi doldu",
       "scheduled": "planladı",
       "implemented": "uyguladı",
-      "rolled_back": "geri aldı"
+      "rolled_back": "geri aldı",
+      "freeze_created": "değişiklik dondurması ilan etti",
+      "freeze_removed": "değişiklik dondurmasını kaldırdı"
     },
     "perm": {
       "alarms": {

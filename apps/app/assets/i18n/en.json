@@ -1376,7 +1376,9 @@
       "approval_expired": "let an approval lapse",
       "scheduled": "scheduled this",
       "implemented": "implemented this",
-      "rolled_back": "rolled this back"
+      "rolled_back": "rolled this back",
+      "freeze_created": "declared a change freeze",
+      "freeze_removed": "lifted a change freeze"
     },
     "perm": {
       "alarms": {
