@@ -1384,7 +1384,8 @@
       "linked": "linked this to another record",
       "unlinked": "cut a link",
       "sla_paused": "stopped the SLA clock",
-      "sla_resumed": "restarted the SLA clock"
+      "sla_resumed": "restarted the SLA clock",
+      "rated": "rated the answer"
     },
     "perm": {
       "alarms": {
@@ -1735,6 +1736,10 @@
         },
         "commented": {
           "title": "New reply on {ticketRef}",
+          "body": "{subject}"
+        },
+        "rate": {
+          "title": "How did we do on {ticketRef}?",
           "body": "{subject}"
         },
         "routed": {

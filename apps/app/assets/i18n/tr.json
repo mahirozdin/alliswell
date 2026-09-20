@@ -1383,7 +1383,8 @@
       "linked": "bağladı",
       "unlinked": "bağı kopardı",
       "sla_paused": "SLA saatini durdurdu",
-      "sla_resumed": "SLA saatini sürdürdü"
+      "sla_resumed": "SLA saatini sürdürdü",
+      "rated": "cevabı puanladı"
     },
     "perm": {
       "alarms": {
@@ -1734,6 +1735,10 @@
         },
         "commented": {
           "title": "{ticketRef} için yeni yanıt",
+          "body": "{subject}"
+        },
+        "rate": {
+          "title": "{ticketRef} nasıl gitti?",
           "body": "{subject}"
         },
         "routed": {
