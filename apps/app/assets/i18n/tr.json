@@ -1385,7 +1385,8 @@
       "sla_paused": "SLA saatini durdurdu",
       "sla_resumed": "SLA saatini sürdürdü",
       "rated": "cevabı puanladı",
-      "classified": "bunu bir kurala göre yönlendirdi"
+      "classified": "bunu bir kurala göre yönlendirdi",
+      "exported": "bunu dışa aktardı"
     },
     "perm": {
       "alarms": {
@@ -1458,6 +1459,7 @@
         "create_on_behalf": "Başkası adına talep aç",
         "comment": "Talebe yaz, ve hangi makineyle ilgili olduğunu söyle",
         "close": "Talebi kapat veya iptal et",
+        "export": "Talepleri dosya olarak dışarı aktar",
         "convert": "Talebi işe dönüştür",
         "assign": "Talebi başkasına ver ya da üstünden al",
         "override_priority": "Matrisin üretmeyeceği bir öncelik ver",

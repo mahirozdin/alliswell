@@ -1386,7 +1386,8 @@
       "sla_paused": "stopped the SLA clock",
       "sla_resumed": "restarted the SLA clock",
       "rated": "rated the answer",
-      "classified": "routed this by a rule"
+      "classified": "routed this by a rule",
+      "exported": "exported this"
     },
     "perm": {
       "alarms": {
@@ -1459,6 +1460,7 @@
         "create_on_behalf": "Open a request for somebody else",
         "comment": "Write on a request, and say which machine it is about",
         "close": "Close or cancel a request",
+        "export": "Take requests out of the product as a file",
         "convert": "Turn a request into a task in the unit",
         "assign": "Put a request on someone else, or take one off them",
         "override_priority": "Set a priority the impact × urgency matrix would not produce",
