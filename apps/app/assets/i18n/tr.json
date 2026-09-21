@@ -1389,7 +1389,8 @@
       "exported": "bunu dışa aktardı",
       "supplier_assigned": "tedarikçiye gönderdi",
       "worklog_added": "buna süre yazdı",
-      "worklog_removed": "bir süre kaydını geri çekti"
+      "worklog_removed": "bir süre kaydını geri çekti",
+      "category_changed": "kataloglama yerini değiştirdi"
     },
     "perm": {
       "alarms": {

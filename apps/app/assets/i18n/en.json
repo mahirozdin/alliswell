@@ -1390,7 +1390,8 @@
       "exported": "exported this",
       "supplier_assigned": "sent this to a supplier",
       "worklog_added": "logged time on this",
-      "worklog_removed": "withdrew a time entry"
+      "worklog_removed": "withdrew a time entry",
+      "category_changed": "moved it to another part of the catalogue"
     },
     "perm": {
       "alarms": {
