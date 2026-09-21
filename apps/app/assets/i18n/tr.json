@@ -1495,6 +1495,9 @@
       },
       "suppliers": {
         "manage": "Tedarikçi listesini ve sözlerini yönet"
+      },
+      "oncall": {
+        "manage": "Nöbet listelerini ve içindekileri belirle"
       }
     },
     "permDomain": {
@@ -1517,7 +1520,8 @@
       "units": "Birimler",
       "webhooks": "Webhooklar",
       "kb": "Bilgi bankası",
-      "suppliers": "Tedarikçiler"
+      "suppliers": "Tedarikçiler",
+      "oncall": "Nöbet"
     },
     "admin": {
       "title": "Instance konsolu",

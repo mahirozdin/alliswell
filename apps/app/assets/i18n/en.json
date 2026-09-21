@@ -1496,6 +1496,9 @@
       },
       "suppliers": {
         "manage": "Keep the supplier list and what each one promised"
+      },
+      "oncall": {
+        "manage": "Set the on-call rotas and who is in them"
       }
     },
     "permDomain": {
@@ -1518,7 +1521,8 @@
       "units": "Units",
       "webhooks": "Webhooks",
       "kb": "Knowledge base",
-      "suppliers": "Suppliers"
+      "suppliers": "Suppliers",
+      "oncall": "On-call"
     },
     "admin": {
       "title": "Instance console",
