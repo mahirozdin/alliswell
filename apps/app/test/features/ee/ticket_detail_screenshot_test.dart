@@ -37,6 +37,7 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import '../../design_screenshots_test.dart' show screenshotLocale;
 import 'support/demo_corpus.dart';
 import 'support/shot.dart';
+import 'package:alliswell/src/features/ee/worklog_providers.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
 
@@ -62,6 +63,9 @@ List<Override> _overrides(DemoCorpus corpus) {
     eeHistoryProvider.overrideWith((ref, target) async {
       return corpus.historyFor(_ticketId);
     }),
+    // EE-208: the demo corpus has no hours, and a shot of an empty section
+    // would teach a reader that this product does not record them.
+    eeWorklogProvider.overrideWith((ref, id) async => null),
   ];
 }
 

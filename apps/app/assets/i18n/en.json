@@ -1388,7 +1388,9 @@
       "rated": "rated the answer",
       "classified": "routed this by a rule",
       "exported": "exported this",
-      "supplier_assigned": "sent this to a supplier"
+      "supplier_assigned": "sent this to a supplier",
+      "worklog_added": "logged time on this",
+      "worklog_removed": "withdrew a time entry"
     },
     "perm": {
       "alarms": {
@@ -1466,7 +1468,8 @@
         "assign": "Put a request on someone else, or take one off them",
         "override_priority": "Set a priority the impact × urgency matrix would not produce",
         "link": "Link requests to each other and to problems",
-        "pause_sla": "Stop and restart a request’s SLA clock without moving it"
+        "pause_sla": "Stop and restart a request’s SLA clock without moving it",
+        "manage_worklog": "Correct or remove somebody else’s recorded time"
       },
       "units": {
         "manage": "Manage units",
@@ -2293,7 +2296,10 @@
         "title": "Requests about this asset",
         "counts": "Last {months} months: {count} requests, {open} still open, {hours}h of open time",
         "empty": "No requests have named this asset yet",
-        "archived": "Archived"
+        "archived": "Archived",
+        "labour": "{hours} h of recorded work",
+        "labourCost": "Labour: {amount} {currency}",
+        "labourUnpriced": "{hours} h of it by people with no hourly rate."
       },
       "edit": "Edit"
     },
@@ -2338,6 +2344,24 @@
         "published": "Publish",
         "retired": "Retire"
       }
+    },
+    "worklogs": {
+      "title": "Time spent",
+      "add": "Log time",
+      "empty": "No time logged on this request yet.",
+      "entry": "{hours} h on {date}",
+      "money": "{amount} {currency}",
+      "totalHours": "{hours} h in total",
+      "unpriced": "{hours} h logged by people with no hourly rate — real work, no price attached.",
+      "minutes": "Minutes",
+      "minutesHelp": "How long you actually worked. Typed, not timed.",
+      "minutesInvalid": "Enter a whole number of minutes.",
+      "day": "Worked on {date}",
+      "changeDay": "Change",
+      "note": "What you did (optional)",
+      "remove": "Withdraw",
+      "removeTitle": "Withdraw this entry?",
+      "removeBody": "Entries are withdrawn rather than edited, so you will need to log the corrected time again. Both steps stay in the history."
     }
   },
   "perm": {

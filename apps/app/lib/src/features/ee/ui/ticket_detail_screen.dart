@@ -18,6 +18,7 @@ import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
 import 'sla_chip.dart';
+import 'ticket_worklog_section.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
 ///
@@ -147,6 +148,10 @@ class _Thread extends ConsumerWidget {
         _Relations(ticketId: ticket.id),
         _Knowledge(ticket: ticket),
         _Attachments(ticket: ticket),
+        // EE-208: the hours, below the files and above the conversation.
+        // An agent scrolling to reply passes it, which is when they remember
+        // they have not written down this morning.
+        EeTicketWorklogSection(ticketId: ticket.id),
         const SizedBox(height: AwSpace.x6),
         Text('ee.tickets.thread'.tr(), style: theme.textTheme.titleSmall),
         const SizedBox(height: AwSpace.x2),

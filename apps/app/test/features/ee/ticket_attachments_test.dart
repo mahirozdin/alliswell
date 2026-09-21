@@ -14,6 +14,7 @@ import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/worklog_providers.dart';
 
 /// EE-198 — the warning half of quarantine.
 ///
@@ -100,6 +101,11 @@ void main() {
           canProvider('kb.write').overrideWith((ref) => false),
           canProvider('tickets.convert').overrideWith((ref) => false),
           canProvider('tickets.create').overrideWith((ref) => false),
+          // EE-208's section, for the reason written above it: an un-overridden
+          // provider here reaches the auth controller, whose retry timer
+          // outlives the test. `null` is the "not yours / no team" answer, so
+          // the section draws nothing and this test stays about attachments.
+          eeWorklogProvider(_ticketId).overrideWith((ref) async => null),
         ],
         child: MaterialApp(
           theme: buildAwTheme(Brightness.light),

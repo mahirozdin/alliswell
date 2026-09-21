@@ -114,6 +114,9 @@ class EeAssetStats {
     required this.openMinutes,
     this.purchaseCostMinor,
     this.currency,
+    this.labourMinutes = 0,
+    this.labourUnpricedMinutes = 0,
+    this.labourByCurrency = const [],
   });
 
   final int months;
@@ -126,6 +129,20 @@ class EeAssetStats {
   final int? purchaseCostMinor;
   final String? currency;
 
+  /// EE-208. What it has cost to KEEP, beside what it cost to buy — and never
+  /// added to it. A machine bought in euros and maintained by a team billed in
+  /// lira has two figures and no third one; a total-cost-of-ownership here
+  /// would be a number in a currency nobody chose.
+  final int labourMinutes;
+
+  /// Hours logged by people whose role carries no rate. Said out loud because
+  /// an empty cost beside real minutes means "nobody priced this role", not
+  /// "the work was free".
+  final int labourUnpricedMinutes;
+
+  /// One entry per currency. A LIST, because money does not add across them.
+  final List<EeMoneyByCurrency> labourByCurrency;
+
   factory EeAssetStats.fromJson(Map<String, dynamic> json) => EeAssetStats(
     months: (json['months'] as num?)?.toInt() ?? 12,
     ticketCount: (json['ticketCount'] as num?)?.toInt() ?? 0,
@@ -133,7 +150,40 @@ class EeAssetStats {
     openMinutes: (json['openMinutes'] as num?)?.toInt() ?? 0,
     purchaseCostMinor: (json['purchaseCostMinor'] as num?)?.toInt(),
     currency: json['currency'] as String?,
+    labourMinutes: (json['labourMinutes'] as num?)?.toInt() ?? 0,
+    labourUnpricedMinutes:
+        (json['labourUnpricedMinutes'] as num?)?.toInt() ?? 0,
+    labourByCurrency: (json['labourByCurrency'] as List<dynamic>? ?? const [])
+        .map((e) => EeMoneyByCurrency.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false),
   );
+}
+
+/// Money in ONE currency, which is the only shape this product prints money in.
+///
+/// There is deliberately no `total` beside a list of these: adding two
+/// currencies would invent an exchange rate, and a figure in a currency nobody
+/// chose is worse than no figure because it looks like an answer.
+class EeMoneyByCurrency {
+  const EeMoneyByCurrency({
+    required this.currency,
+    required this.costMinor,
+    required this.minutes,
+  });
+
+  final String currency;
+
+  /// The currency's smallest unit — kuruş, cent. Divided only at the moment it
+  /// is drawn, never in the model.
+  final int costMinor;
+  final int minutes;
+
+  factory EeMoneyByCurrency.fromJson(Map<String, dynamic> json) =>
+      EeMoneyByCurrency(
+        currency: json['currency'] as String? ?? '',
+        costMinor: (json['costMinor'] as num?)?.toInt() ?? 0,
+        minutes: (json['minutes'] as num?)?.toInt() ?? 0,
+      );
 }
 
 /// A machine's card: what it is, and what keeps happening to it.

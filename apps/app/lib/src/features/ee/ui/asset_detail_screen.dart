@@ -25,9 +25,33 @@ import 'ticket_detail_screen.dart';
 /// ── AND THE NUMBER IS LABELLED FOR WHAT IT MEASURES ────────────────────
 ///
 /// "Open time", not "downtime". The server sums how long requests stayed
-/// open, and nobody records how long the machine was stopped (EE-208's
-/// worklog is the round that will). Calling it downtime on the screen would
-/// be a number that reads as a fact and is not one.
+/// open. Calling it downtime on the screen would be a number that reads as a
+/// fact and is not one.
+///
+/// ── CORRECTED BY EE-208, BECAUSE THE OLD SENTENCE PROMISED THE WRONG THING ──
+///
+/// This used to say "nobody records how long the machine was stopped (EE-208's
+/// worklog is the round that will)". EE-208 has landed and it does NOT record
+/// that. A worklog is LABOUR — this person spent ninety minutes on this
+/// request — and a press can stand idle for three days while a technician
+/// spends two hours on it. Those are three different numbers:
+///
+///   open time   how long requests about it stayed open   (here, since EE-192)
+///   labour      how long people worked on it             (here, since EE-208)
+///   downtime    how long the machine was stopped         (NOBODY RECORDS THIS)
+///
+/// The third is still missing and is a legitimate thing to want; it needs a
+/// stopped-at/restarted-at pair on the asset, which is a feature and not a
+/// column. Saying so plainly is better than pointing at a task that has
+/// already shipped without it — a promise that has been kept wrongly is
+/// harder to notice than one nobody made.
+///
+/// ── AND THE TWO MONEY FIGURES ARE NEVER ADDED ──────────────────────────
+///
+/// Purchase price and labour cost sit beside each other. A machine bought in
+/// euros and maintained by a team billed in lira has two figures and no third
+/// one, so there is no "total cost of ownership" line here and the server has
+/// nowhere to put one either.
 class EeAssetDetailScreen extends ConsumerWidget {
   const EeAssetDetailScreen({required this.assetId, super.key});
 
@@ -181,6 +205,43 @@ class _History extends ConsumerWidget {
             key: const Key('asset-history-counts'),
             style: theme.textTheme.bodyMedium,
           ),
+          // EE-208. Drawn only when there is labour to draw: an hours line
+          // reading "0" on a machine nobody has worked on is noise, and the
+          // acceptance line asks for the cost field to be HIDDEN rather than
+          // shown empty.
+          if (data.stats.labourMinutes > 0) ...[
+            const SizedBox(height: AwSpace.x2),
+            Text(
+              'ee.assets.history.labour'.tr(
+                args: {'hours': '${(data.stats.labourMinutes / 60).round()}'},
+              ),
+              key: const Key('asset-history-labour'),
+              style: theme.textTheme.bodyMedium,
+            ),
+            // One line per currency, never a sum. The list is the refusal.
+            for (final money in data.stats.labourByCurrency)
+              Text(
+                'ee.assets.history.labourCost'.tr(
+                  args: {
+                    'amount': (money.costMinor / 100).toStringAsFixed(2),
+                    'currency': money.currency,
+                  },
+                ),
+                key: Key('asset-history-labour-${money.currency}'),
+                style: theme.textTheme.bodySmall,
+              ),
+            if (data.stats.labourUnpricedMinutes > 0)
+              Text(
+                'ee.assets.history.labourUnpriced'.tr(
+                  args: {
+                    'hours':
+                        '${(data.stats.labourUnpricedMinutes / 60).round()}',
+                  },
+                ),
+                key: const Key('asset-history-labour-unpriced'),
+                style: theme.textTheme.bodySmall,
+              ),
+          ],
           const SizedBox(height: AwSpace.x3),
           if (data.tickets.isEmpty)
             Text(

@@ -1387,7 +1387,9 @@
       "rated": "cevabı puanladı",
       "classified": "bunu bir kurala göre yönlendirdi",
       "exported": "bunu dışa aktardı",
-      "supplier_assigned": "tedarikçiye gönderdi"
+      "supplier_assigned": "tedarikçiye gönderdi",
+      "worklog_added": "buna süre yazdı",
+      "worklog_removed": "bir süre kaydını geri çekti"
     },
     "perm": {
       "alarms": {
@@ -1465,7 +1467,8 @@
         "assign": "Talebi başkasına ver ya da üstünden al",
         "override_priority": "Matrisin üretmeyeceği bir öncelik ver",
         "link": "Talepleri birbirine ve problemlere bağla",
-        "pause_sla": "Talebi hareket ettirmeden SLA saatini durdur ve sürdür"
+        "pause_sla": "Talebi hareket ettirmeden SLA saatini durdur ve sürdür",
+        "manage_worklog": "Başkasının yazdığı süreyi düzelt ya da sil"
       },
       "units": {
         "manage": "Birimleri yönet",
@@ -2292,7 +2295,10 @@
         "title": "Bu varlıkla ilgili talepler",
         "counts": "Son {months} ay: {count} talep, {open} hâlâ açık, {hours} saat açık kalma",
         "empty": "Bu varlığı adlandıran talep yok",
-        "archived": "Arşivlenmiş"
+        "archived": "Arşivlenmiş",
+        "labour": "Kayıtlı {hours} sa çalışma",
+        "labourCost": "İşçilik: {amount} {currency}",
+        "labourUnpriced": "Bunun {hours} saati saatlik ücreti tanımlı olmayan kişilerce."
       },
       "edit": "Düzenle"
     },
@@ -2337,6 +2343,24 @@
         "published": "Yayına al",
         "retired": "Emekliye ayır"
       }
+    },
+    "worklogs": {
+      "title": "Harcanan süre",
+      "add": "Süre yaz",
+      "empty": "Bu talebe henüz süre yazılmadı.",
+      "entry": "{date} — {hours} sa",
+      "money": "{amount} {currency}",
+      "totalHours": "Toplam {hours} sa",
+      "unpriced": "{hours} sa saatlik ücreti tanımlı olmayan kişilerce yazıldı — gerçek iş, fiyatı yok.",
+      "minutes": "Dakika",
+      "minutesHelp": "Gerçekte ne kadar çalıştınız. Kronometre değil, elle.",
+      "minutesInvalid": "Tam sayı olarak dakika girin.",
+      "day": "Çalışılan gün: {date}",
+      "changeDay": "Değiştir",
+      "note": "Ne yaptınız (isteğe bağlı)",
+      "remove": "Geri çek",
+      "removeTitle": "Bu kayıt geri çekilsin mi?",
+      "removeBody": "Kayıtlar düzenlenmez, geri çekilir — doğru süreyi yeniden yazmanız gerekecek. İki adım da geçmişte kalır."
     }
   },
   "perm": {
