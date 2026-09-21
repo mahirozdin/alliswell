@@ -1904,6 +1904,26 @@
       "unavailable": "Burada pano yok",
       "unavailableBody": "Bu adreste bir takım yok ya da bir masaya bağlı değilsiniz."
     },
+    "perfPanel": {
+      "title": "Performans panosu",
+      "unavailable": "Pano burada yok",
+      "unavailableBody": "Bu takımda servis masası açık değil ya da bu ekranı göremiyorsunuz.",
+      "byUnit": "Birime göre",
+      "byAgent": "Kişiye göre",
+      "noUnits": "Bu dönemde birim hareketi yok.",
+      "noAgents": "Bu dönemde kişi hareketi yok.",
+      "unattributed": "Kimseye yazılmamış",
+      "noUnit": "Birimsiz",
+      "days": "Son {days} gün",
+      "opened": "Açılan",
+      "resolved": "Biten",
+      "mtta": "İlk yanıt",
+      "mttr": "Çözüm",
+      "csat": "Memnuniyet",
+      "compliance": "SLA uyumu",
+      "minutes": "{minutes} dk",
+      "percent": "%{value}"
+    },
     "slaAdmin": {
       "title": "SLA yönetimi",
       "policies": "Politikalar",

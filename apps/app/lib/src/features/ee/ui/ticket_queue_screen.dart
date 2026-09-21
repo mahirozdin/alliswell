@@ -12,6 +12,7 @@ import '../assignments_providers.dart' show Assignee;
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
 import 'sla_chip.dart';
+import 'performance_screen.dart';
 import 'sla_dashboard_screen.dart';
 import 'ticket_detail_screen.dart';
 
@@ -81,13 +82,24 @@ class EeTicketQueueScreen extends ConsumerWidget {
             // article is a thing you link to, while the SLA dashboard is a
             // pushed screen with no address of its own (EE-098 never gave it
             // one, and inventing one here would be a second way to reach it).
-            onSelected: (value) => value == '/kb'
-                ? context.push(value)
-                : Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const EeSlaDashboardScreen(),
-                    ),
-                  ),
+            onSelected: (value) {
+              if (value == '/kb') {
+                context.push(value);
+                return;
+              }
+              // EE-205 joins the SLA dashboard on the same shelf and by the
+              // same means. Neither has a route of its own: EE-098 never gave
+              // one to the dashboard, and inventing one for either now would
+              // be a second way to reach a screen — which is how two entry
+              // points end up disagreeing about what a person may see.
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => value == 'perf'
+                      ? const EePerformanceScreen()
+                      : const EeSlaDashboardScreen(),
+                ),
+              );
+            },
             itemBuilder: (context) => [
               PopupMenuItem(
                 key: const Key('ticket-kb'),
@@ -112,6 +124,22 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     const Icon(Icons.query_stats_outlined),
                     const SizedBox(width: AwSpace.x2),
                     Text('ee.slaDash.title'.tr()),
+                  ],
+                ),
+              ),
+              // EE-205: no permission gate here either, for EE-098's reason —
+              // counting is membership (ADR-0007 §1) and the endpoint scopes
+              // itself to the caller's own desks, so everybody sees a TRUE
+              // screen rather than a forbidden one. A manager with
+              // `units.manage` sees the team; everyone else sees their own.
+              PopupMenuItem(
+                key: const Key('ticket-performance'),
+                value: 'perf',
+                child: Row(
+                  children: [
+                    const Icon(Icons.groups_outlined),
+                    const SizedBox(width: AwSpace.x2),
+                    Text('ee.perfPanel.title'.tr()),
                   ],
                 ),
               ),

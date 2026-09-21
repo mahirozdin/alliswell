@@ -1905,6 +1905,26 @@
       "unavailable": "No dashboard here",
       "unavailableBody": "This address has no team, or you are not on a desk that reports into one."
     },
+    "perfPanel": {
+      "title": "Performance",
+      "unavailable": "No panel here",
+      "unavailableBody": "This team has no service desk, or this screen is not yours to see.",
+      "byUnit": "By unit",
+      "byAgent": "By person",
+      "noUnits": "No unit activity in this period.",
+      "noAgents": "No individual activity in this period.",
+      "unattributed": "Unattributed",
+      "noUnit": "No unit",
+      "days": "Last {days} days",
+      "opened": "Opened",
+      "resolved": "Finished",
+      "mtta": "First reply",
+      "mttr": "Resolution",
+      "csat": "Satisfaction",
+      "compliance": "SLA met",
+      "minutes": "{minutes} min",
+      "percent": "{value}%"
+    },
     "slaAdmin": {
       "title": "SLA management",
       "policies": "Policies",
