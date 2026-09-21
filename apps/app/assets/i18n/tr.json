@@ -1386,7 +1386,8 @@
       "sla_resumed": "SLA saatini sürdürdü",
       "rated": "cevabı puanladı",
       "classified": "bunu bir kurala göre yönlendirdi",
-      "exported": "bunu dışa aktardı"
+      "exported": "bunu dışa aktardı",
+      "supplier_assigned": "tedarikçiye gönderdi"
     },
     "perm": {
       "alarms": {
@@ -1491,6 +1492,9 @@
       "kb": {
         "write": "Bilgi bankası makalesi yaz ve düzenle",
         "publish": "Makaleyi yayına al, ya da yayından geri çek"
+      },
+      "suppliers": {
+        "manage": "Tedarikçi listesini ve sözlerini yönet"
       }
     },
     "permDomain": {
@@ -1512,7 +1516,8 @@
       "tickets": "Talepler",
       "units": "Birimler",
       "webhooks": "Webhooklar",
-      "kb": "Bilgi bankası"
+      "kb": "Bilgi bankası",
+      "suppliers": "Tedarikçiler"
     },
     "admin": {
       "title": "Instance konsolu",

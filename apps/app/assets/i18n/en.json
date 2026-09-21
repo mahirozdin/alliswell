@@ -1387,7 +1387,8 @@
       "sla_resumed": "restarted the SLA clock",
       "rated": "rated the answer",
       "classified": "routed this by a rule",
-      "exported": "exported this"
+      "exported": "exported this",
+      "supplier_assigned": "sent this to a supplier"
     },
     "perm": {
       "alarms": {
@@ -1492,6 +1493,9 @@
       "kb": {
         "write": "Write and revise knowledge-base articles",
         "publish": "Publish an article, or take a published one back"
+      },
+      "suppliers": {
+        "manage": "Keep the supplier list and what each one promised"
       }
     },
     "permDomain": {
@@ -1513,7 +1517,8 @@
       "tickets": "Requests",
       "units": "Units",
       "webhooks": "Webhooks",
-      "kb": "Knowledge base"
+      "kb": "Knowledge base",
+      "suppliers": "Suppliers"
     },
     "admin": {
       "title": "Instance console",
