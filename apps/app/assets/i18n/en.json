@@ -1502,6 +1502,9 @@
       },
       "oncall": {
         "manage": "Set the on-call rotas and who is in them"
+      },
+      "customers": {
+        "manage": "Keep the list of companies served, their contacts and their targets"
       }
     },
     "permDomain": {
@@ -1525,7 +1528,8 @@
       "webhooks": "Webhooks",
       "kb": "Knowledge base",
       "suppliers": "Suppliers",
-      "oncall": "On-call"
+      "oncall": "On-call",
+      "customers": "Companies"
     },
     "admin": {
       "title": "Instance console",

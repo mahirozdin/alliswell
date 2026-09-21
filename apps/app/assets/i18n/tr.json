@@ -1501,6 +1501,9 @@
       },
       "oncall": {
         "manage": "Nöbet listelerini ve içindekileri belirle"
+      },
+      "customers": {
+        "manage": "Hizmet verilen firmaları, kişilerini ve hedeflerini yönet"
       }
     },
     "permDomain": {
@@ -1524,7 +1527,8 @@
       "webhooks": "Webhooklar",
       "kb": "Bilgi bankası",
       "suppliers": "Tedarikçiler",
-      "oncall": "Nöbet"
+      "oncall": "Nöbet",
+      "customers": "Firmalar"
     },
     "admin": {
       "title": "Instance konsolu",
