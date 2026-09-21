@@ -1390,7 +1390,8 @@
       "supplier_assigned": "tedarikçiye gönderdi",
       "worklog_added": "buna süre yazdı",
       "worklog_removed": "bir süre kaydını geri çekti",
-      "category_changed": "kataloglama yerini değiştirdi"
+      "category_changed": "kataloglama yerini değiştirdi",
+      "form_updated": "formu yeniledi"
     },
     "perm": {
       "alarms": {
