@@ -74,6 +74,7 @@ const DEV_EE_MAIL_KEY = 'facefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefee
 // — it is one we SIGN with — and the system that issued it is neither the
 // team's provider nor this company's directory. Same rule once more.
 const DEV_EE_WEBHOOK_KEY = 'd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeedd00dfeed';
+const DEV_EE_WHATSAPP_KEY = 'beadfeedbeadfeedbeadfeedbeadfeedbeadfeedbeadfeedbeadfeedbeadfeed';
 // A fifth owner, and the narrowest of them: the credential an extension has
 // to PRESENT in order to be allowed to ask an internal system whether it is
 // alive. It belongs to whoever runs that system — not to the team's spending,
@@ -89,6 +90,7 @@ const INSECURE_SECRETS = new Set([
   DEV_EE_IDENTITY_KEY,
   DEV_EE_MAIL_KEY,
   DEV_EE_WEBHOOK_KEY,
+  DEV_EE_WHATSAPP_KEY,
   DEV_EE_MONITOR_KEY,
   'change-me-generate-a-random-secret',
   'change-me-generate-another-random-secret',
@@ -505,6 +507,13 @@ export function loadConfig(env = process.env) {
       // held by somebody OUTSIDE the instance, so a rotation here is a
       // conversation with a third party rather than an internal change.
       webhookKey: env.EE_WEBHOOK_KEY || DEV_EE_WEBHOOK_KEY,
+      // EE-211: the token a team's own WhatsApp Business account issues.
+      // Its own key for the reason every one above gives — rotating one must
+      // not force re-encrypting the others — and the owner here is the
+      // opposite of `webhookKey`'s: that secret is one WE mint and hand to a
+      // receiver, this one is minted by a provider and merely held. Reusing
+      // that key would tie a rotation we can do alone to one we cannot.
+      whatsappKey: env.EE_WHATSAPP_KEY || DEV_EE_WHATSAPP_KEY,
       // AES-256-GCM key for the credential an extension presents to a system
       // it is only checking on. Its own key for the reason the four above
       // give, plus a narrow one: this secret is read on a timer, by a sweep,
@@ -583,6 +592,9 @@ export function loadConfig(env = process.env) {
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.webhookKey)) {
     throw new Error('EE_WEBHOOK_KEY must be 64 hex characters (openssl rand -hex 32)');
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(config.ee.whatsappKey)) {
+    throw new Error('EE_WHATSAPP_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.monitorKey)) {
     throw new Error('EE_MONITOR_KEY must be 64 hex characters (openssl rand -hex 32)');
