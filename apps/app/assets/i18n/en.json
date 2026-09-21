@@ -1507,6 +1507,9 @@
       },
       "customers": {
         "manage": "Keep the list of companies served, their contacts and their targets"
+      },
+      "announcements": {
+        "manage": "Write the notices everybody sees, and say when they run"
       }
     },
     "permDomain": {
@@ -1531,7 +1534,8 @@
       "kb": "Knowledge base",
       "suppliers": "Suppliers",
       "oncall": "On-call",
-      "customers": "Companies"
+      "customers": "Companies",
+      "announcements": "Announcements"
     },
     "admin": {
       "title": "Instance console",

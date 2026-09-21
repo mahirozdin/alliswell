@@ -1506,6 +1506,9 @@
       },
       "customers": {
         "manage": "Hizmet verilen firmaları, kişilerini ve hedeflerini yönet"
+      },
+      "announcements": {
+        "manage": "Herkesin gördüğü duyuruları yaz ve ne zaman görüneceklerini belirle"
       }
     },
     "permDomain": {
@@ -1530,7 +1533,8 @@
       "kb": "Bilgi bankası",
       "suppliers": "Tedarikçiler",
       "oncall": "Nöbet",
-      "customers": "Firmalar"
+      "customers": "Firmalar",
+      "announcements": "Duyurular"
     },
     "admin": {
       "title": "Instance konsolu",
