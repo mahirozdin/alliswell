@@ -1384,7 +1384,8 @@
       "unlinked": "bağı kopardı",
       "sla_paused": "SLA saatini durdurdu",
       "sla_resumed": "SLA saatini sürdürdü",
-      "rated": "cevabı puanladı"
+      "rated": "cevabı puanladı",
+      "classified": "bunu bir kurala göre yönlendirdi"
     },
     "perm": {
       "alarms": {

@@ -1385,7 +1385,8 @@
       "unlinked": "cut a link",
       "sla_paused": "stopped the SLA clock",
       "sla_resumed": "restarted the SLA clock",
-      "rated": "rated the answer"
+      "rated": "rated the answer",
+      "classified": "routed this by a rule"
     },
     "perm": {
       "alarms": {
