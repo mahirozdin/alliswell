@@ -50,6 +50,7 @@ void main() {
     //
     // Children before parents: drift opens with foreign keys on.
     for (final drop in [
+      'DROP TABLE ticket_drafts', // v32
       'DROP TABLE kb_articles', // v31
       'DROP TABLE assets', // v30
       'DROP TABLE problems', // v29
@@ -342,8 +343,24 @@ void main() {
           .customSelect('SELECT title_fold, symptom_fold FROM kb_articles')
           .get();
 
+      // v32 (EE-216 / OPH-330): the first EE table here the replica AUTHORS
+      // into rather than mirrors. Empty like the rest — but unlike the rest it
+      // does not fill from the next pull, so the assertion that matters is
+      // that a row can be WRITTEN and read back, with its text nullable the
+      // way a converted draft leaves it.
+      expect(await db.select(db.ticketDrafts).get(), isEmpty);
+      await db.customStatement(
+        "INSERT INTO ticket_drafts (id, workspace_id, team_id, subject, "
+        "revision) VALUES ('d1', 'w1', 't1', 'Kompresör durdu', 0)",
+      );
+      final draft = await db.select(db.ticketDrafts).getSingle();
+      expect(draft.subject, 'Kompresör durdu');
+      // `isNull` is ambiguous here — drift exports one too.
+      expect(draft.ticketId, null);
+      await db.customStatement('DELETE FROM ticket_drafts');
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 31);
+      expect(version.data['user_version'], 32);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -389,7 +406,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 31);
+      expect(version.data['user_version'], 32);
       await db.close();
     },
   );
@@ -436,7 +453,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 31);
+      expect(version.data['user_version'], 32);
       await db.close();
     },
   );

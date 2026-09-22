@@ -155,6 +155,13 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       // arrives for a retracted WIP article, which is the case that matters:
       // a captured question nobody answered should not sit on a phone.
       await (db.delete(db.kbArticles)..where((k) => k.id.equals(id))).go();
+    case 'ee_ticket_draft':
+      // EE-216: this is the ordinary END of a draft rather than an unusual
+      // one. The server tombstones it the moment it becomes a request, so the
+      // row leaving is how the device learns the thing was actually filed —
+      // and the text is already on the ticket by then, which is why deleting
+      // it here loses nothing and keeps a second copy off the phone.
+      await (db.delete(db.ticketDrafts)..where((d) => d.id.equals(id))).go();
   }
 }
 
@@ -242,6 +249,10 @@ Future<void> _applySnapshot(
       await db
           .into(db.kbArticles)
           .insertOnConflictUpdate(kbArticleCompanion(data));
+    case 'ee_ticket_draft':
+      await db
+          .into(db.ticketDrafts)
+          .insertOnConflictUpdate(ticketDraftCompanion(data));
   }
 }
 
@@ -732,6 +743,26 @@ KbArticlesCompanion kbArticleCompanion(Map<String, dynamic> data) =>
       // front of them (the [Problems] root-cause rule).
       titleFold: _foldValue(data['title']),
       symptomFold: _foldValue(data['symptom']),
+      createdAt: _dateValue(data['createdAt']),
+      revision: Value((data['revision'] as num?)?.toInt() ?? 0),
+      updatedAt: _dateValue(data['updatedAt']),
+    );
+
+/// EE-216 / OPH-330. `subject` and `body` are nullable here for a reason the
+/// server writes down: the conversion CLEARS them, because the text lives on
+/// the ticket from that moment and two copies of a fault report — one of them
+/// on a device nobody manages — is one more place it leaks from. A row in that
+/// state is on its way out anyway; the tombstone is in the same pull.
+TicketDraftsCompanion ticketDraftCompanion(Map<String, dynamic> data) =>
+    TicketDraftsCompanion(
+      id: Value(data['id'] as String),
+      workspaceId: Value(data['workspaceId'] as String),
+      teamId: Value(data['teamId'] as String?),
+      serviceId: Value(data['serviceId'] as String?),
+      subject: Value(data['subject'] as String?),
+      body: Value(data['body'] as String?),
+      ticketId: Value(data['ticketId'] as String?),
+      submittedAt: _dateValue(data['submittedAt']),
       createdAt: _dateValue(data['createdAt']),
       revision: Value((data['revision'] as num?)?.toInt() ?? 0),
       updatedAt: _dateValue(data['updatedAt']),

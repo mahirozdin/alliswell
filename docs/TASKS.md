@@ -11113,6 +11113,39 @@ taşıyor: kimlik bilgisi olmayan bir kurulumda hiçbir şey değişmiyor.)
 
 ---
 
+### OPH-330 — Replika v32: cihazın KENDİ yazdığı ilk uzantı tablosu ✅ 2026-09-22
+
+_Planlanmamıştı; uzantı tarafında EE-216 bağlanırken doğdu. Önceki dört uzantı tablosu
+(OPH-327) **ayna**ydı — sunucu gönderir, replika saklar, cihaz hiçbir zaman yazmaz.
+Bu tablo öyle değil ve fark kozmetik değil: **gönderilmemiş bir taslağın tek kopyası
+cihazdadır.** Sunucu onu henüz görmemiştir._
+
+- [x] `ticket_drafts` tablosu ve `schemaVersion 31 → 32`. Kolonlar taslağın kendi
+      şekli: `workspace_id` **yazarın kendi çalışma alanı** (masanın değil — işin
+      tamamı bu satırda), `team_id` **adlandırılmış** (kişisel bir çalışma alanı hiçbir
+      takıma eşlenmez, `ee_workspace_teams` yalnız takım sahipli alanları tutar), ve
+      `subject`/`body` **nullable** — dönüşüm onları temizler.
+- [x] Applier'ın iki tarafı da bağlandı: anlık görüntü (`ee_ticket_draft`) ve **mezar
+      taşı**. Mezar taşı burada olağan dışı değil, taslağın **normal sonu**dur:
+      sunucu dönüşümde onu siler, ve satırın gitmesi cihazın "gerçekten iletildi"yi
+      öğrenme biçimidir. Metin o an zaten talebin üstündedir.
+- [x] **Göç testinin fixture'ı büyütüldü** (`DROP TABLE ticket_drafts // v32`).
+      OPH-327 bu dersin nasıl öğrenildiğini yazmıştı: v1 fixture'ı v18'de durmuştu ve
+      on sürüm boyunca "sonradan eklenen tablolar migrasyondan SONRA var mı" sorusu
+      aslında hiçbir şey ölçmüyordu. Adım **kırmızıya düşürülerek** kanıtlandı.
+      Bu sürümün kendi iddiası da var ve o da ayna olmamasıyla ilgili: test bir satır
+      **yazıp** geri okuyor, çünkü "bir sonraki çekmeyle dolar" bu tablo için doğru
+      değil — dolduran şey cihazın kendisi.
+- **Kabul:** v31'den yükselen replika veri kaybetmiyor; tablo yazılıp okunuyor;
+  `user_version` 32; CE'de tablo **boş ve zararsız** duruyor (uzantısız bir kurulumda
+  hiçbir şey bu tipi göndermez).
+- **Doğrulama:** `test/sync/migration_test.dart` üç testiyle yeşil;
+  `flutter analyze lib/src/sync/` temiz.
+- ⚠️ **Çift kapanış:** ↔ `EE-216` (overlay kaydı: taslak entity'si ve sunucu tarafı
+  dönüşüm).
+
+---
+
 ## Backlog / v2 parking lot
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).

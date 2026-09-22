@@ -993,6 +993,55 @@ class KbArticles extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+/// OPH-330 (EE-216's twin) — the request somebody wrote with no signal.
+///
+/// ── WHY THIS IS A TABLE AND NOT A FLAG ON [Tickets] ───────────────────
+///
+/// A sync type is registered once and serializes one way, so a ticket cannot
+/// have two shapes for two audiences (ADR-0011). A requester who is in no unit
+/// has no membership of the workspace a ticket lives in and can never push
+/// one. So the thing they write offline is a DIFFERENT type, living in their
+/// OWN workspace, which the server turns into a real request on arrival.
+///
+/// The replica therefore holds the only copy of an unsent draft — the whole
+/// point — and holds nothing of a sent one: the server tombstones it on
+/// conversion and the applier deletes the row.
+@DataClassName('TicketDraftRecord')
+class TicketDrafts extends Table {
+  TextColumn get id => text()();
+
+  /// The AUTHOR'S own workspace, never the desk's.
+  TextColumn get workspaceId => text()();
+
+  /// Which desk it is for — NULL until the server says.
+  ///
+  /// The device genuinely does not know: this app carries no team id anywhere,
+  /// because every desk surface is reached through `<slug>.<domain>` and the
+  /// server reads the team off the host. So a draft written on a plane has no
+  /// team on it, the server stamps the one that host proves, and the next pull
+  /// brings the row back complete. A column that demanded one here would be
+  /// asking the replica to invent a fact it has no way to hold.
+  TextColumn get teamId => text().nullable()();
+
+  /// Nullable on purpose. Somebody can write down what happened before they
+  /// know which service it belongs under, and a draft with no service is kept
+  /// rather than refused — it simply does not convert yet.
+  TextColumn get serviceId => text().nullable()();
+  TextColumn get subject => text().nullable()();
+  TextColumn get body => text().nullable()();
+
+  /// Set once, by the server, when the draft became a request. A row carrying
+  /// one is on its way out: the tombstone follows in the same pull.
+  TextColumn get ticketId => text().nullable()();
+  DateTimeColumn get submittedAt => dateTime().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable()();
+  IntColumn get revision => integer().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('TicketAssignmentRecord')
 class TicketAssignments extends Table {
   TextColumn get id => text()();
@@ -1062,6 +1111,7 @@ class TicketComments extends Table {
     Problems,
     Assets,
     KbArticles,
+    TicketDrafts,
   ],
 )
 class AwDatabase extends _$AwDatabase {
@@ -1093,8 +1143,13 @@ class AwDatabase extends _$AwDatabase {
   /// content, and the replica's Delta-canonical rows are converted in place.
   /// v30 → v31 (EE-195 / OPH-327): kb_articles — the desk's written answers,
   /// readable at the machine with no signal. Pull-only; the next pull fills it.
+  /// v31 → v32 (EE-216 / OPH-330): ticket_drafts — the request a person writes
+  /// with no signal at all. The first EE table here that is READ-WRITE rather
+  /// than a mirror, and the only one whose rows exist nowhere else until they
+  /// sync: an unsent draft lives on the device and in the outbox, so this step
+  /// creates a table the replica AUTHORS into.
   @override
-  int get schemaVersion => 31;
+  int get schemaVersion => 32;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1316,6 +1371,10 @@ class AwDatabase extends _$AwDatabase {
       // have meant EE-186 designing this schema three phases ahead of itself.
       // New pull-only table; the next pull fills it.
       if (from < 31) await m.createTable(kbArticles);
+      // EE-216 / OPH-330. Empty on arrival like the others — but unlike them
+      // it does not "fill from the next pull": nobody has written a draft yet,
+      // and when they do it is this device that writes it.
+      if (from < 32) await m.createTable(ticketDrafts);
     },
   );
 

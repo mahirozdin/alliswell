@@ -22,6 +22,18 @@ import '../my_tickets_providers.dart';
 ///
 /// That distinction is the whole design of the error state below: "we could
 /// not reach the server" and "you have no open requests" must never look alike.
+///
+/// ── EE-216 REVISES THE HALF THAT WAS AVOIDABLE ───────────────────────────
+///
+/// READING still needs a connection, for the reason above: the list spans
+/// workspaces this replica does not hold, and a quietly incomplete list is
+/// worse than an honest failure.
+///
+/// WRITING no longer does. ADR-0011's parking lot named the way out and
+/// EE-216 took it: a draft is a different sync TYPE, living in the requester's
+/// OWN workspace, which the server converts into a real request on arrival.
+/// So "a requester cannot work offline" is now only true of looking things up
+/// — see `ticket_drafts_providers.dart`.
 class EeMyTicketsScreen extends ConsumerWidget {
   const EeMyTicketsScreen({super.key});
 
