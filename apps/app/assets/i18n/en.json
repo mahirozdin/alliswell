@@ -1392,7 +1392,8 @@
       "worklog_added": "logged time on this",
       "worklog_removed": "withdrew a time entry",
       "category_changed": "moved it to another part of the catalogue",
-      "form_updated": "published a new version of the form"
+      "form_updated": "published a new version of the form",
+      "migration_applied": "brought a migration over"
     },
     "perm": {
       "alarms": {
@@ -1443,6 +1444,7 @@
       },
       "team": {
         "import_members": "Import members in bulk from a file",
+        "import_tickets": "Migrate requests in bulk from another help desk",
         "manage_ai_keys": "Manage the team's AI provider keys and the personal-key policy",
         "manage_deliveries": "Notification deliveries",
         "export_data": "Download everything the team has, as one file",
