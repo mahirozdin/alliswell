@@ -146,8 +146,12 @@ List<String> parseBoardColumns(String value, List<String> allStatuses) {
 /// resolves back to it (`awDateFormatSpec`). Device-local, like every other
 /// display preference here.
 final dateFormatProvider = NotifierProvider<PersistedChoice, String>(
-  () => PersistedChoice('alliswell_date_format', fallback: kAwSystemDateFormat),
+  () => PersistedChoice(kDateFormatPrefKey, fallback: kAwSystemDateFormat),
 );
+
+/// [dateFormatProvider]'s localKv key, shared with the background turn that
+/// reads it without a provider graph (OPH-334) — one spelling, not two.
+const kDateFormatPrefKey = 'alliswell_date_format';
 
 /// The time-of-day a task lands on when the user picked only a DAY
 /// (round 8, OPH-161 — quick-add on a selected day, FAB prefill, date-picker

@@ -9,6 +9,8 @@ import '../features/auth/data/auth_api.dart';
 import '../features/auth/data/token_storage.dart';
 import '../features/auth/data/secure_secret_store.dart';
 import '../features/auth/data/auth_interceptor.dart';
+import '../features/widgets/widget_bridge.dart';
+import '../features/widgets/widget_host.dart';
 import '../i18n/i18n.dart';
 import '../sync/db/connection.dart';
 import '../sync/db/database.dart';
@@ -20,7 +22,8 @@ import 'planner.dart';
 import 'reminder_store.dart';
 import 'scheduler.dart';
 
-/// One background turn: sync, then re-arm the OS alarms (OPH-321).
+/// One background turn: sync, then re-arm the OS alarms (OPH-321), then redraw
+/// the home-screen widget from the replica (OPH-334).
 ///
 /// ── WHY THERE IS NO PROVIDER CONTAINER HERE ───────────────────────────────
 ///
@@ -55,6 +58,7 @@ Future<void> runHeadlessRefresh({
   AwDatabase Function()? openDatabase,
   AppLiveness? liveness,
   NotificationsGateway Function()? openGateway,
+  WidgetHost? widgetHost,
 }) async {
   // The app is in front of the user and already doing this, continuously
   // (OPH-318). WAL makes the overlap survivable; not overlapping is cheaper.
@@ -68,56 +72,70 @@ Future<void> runHeadlessRefresh({
     final workspaceId = state?.workspaceId;
     if (workspaceId == null) return;
 
-    final baseUrl = await localKv.get(kServerUrlPrefKey) ?? compiledApiBaseUrl;
-
-    final repository = AuthRepository(
-      api: AuthApi(Dio(BaseOptions(baseUrl: baseUrl))),
-      storage: TokenStorage(defaultSecretStore()),
-    );
-    // A Keychain that cannot be read is not an error here, it is an answer:
-    // iOS stores the session under `kSecAttrAccessibleWhenUnlocked`, so a wake
-    // on a locked phone reads nothing (ADR-0038 §8). Treating that as "signed
-    // out" is what makes this turn a no-op instead of a crash loop.
-    AuthSession? session;
     try {
-      session = await repository.restore();
-    } on Object {
-      session = null;
+      final baseUrl =
+          await localKv.get(kServerUrlPrefKey) ?? compiledApiBaseUrl;
+
+      final repository = AuthRepository(
+        api: AuthApi(Dio(BaseOptions(baseUrl: baseUrl))),
+        storage: TokenStorage(defaultSecretStore()),
+      );
+      // A Keychain that cannot be read is not an error here, it is an answer:
+      // iOS stores the session under `kSecAttrAccessibleWhenUnlocked`, so a
+      // wake on a locked phone reads nothing (ADR-0038 §8). Treating that as
+      // "signed out" is what makes this turn a no-op instead of a crash loop.
+      AuthSession? session;
+      try {
+        session = await repository.restore();
+      } on Object {
+        session = null;
+      }
+      if (session == null) return;
+
+      final dio = Dio(BaseOptions(baseUrl: baseUrl));
+      dio.interceptors.add(
+        AuthInterceptor(
+          getAccessToken: () => repository.accessToken,
+          refreshAccessToken: repository.refreshAccessToken,
+        ),
+      );
+
+      final engine = SyncEngine(
+        db: db,
+        api: SyncApi(dio),
+        workspaceId: workspaceId,
+      );
+      try {
+        await engine.syncNow();
+      } on Object {
+        // Offline, or the server said no. The replica still holds whatever it
+        // held, and scheduling from stale rows beats scheduling nothing: this
+        // turn exists because the app has not run, so those rows may be the
+        // only ones the device will have until it does.
+      }
+      engine.dispose();
+
+      final alarms = await ReminderStore(db, () {}).readAlarms(workspaceId);
+      final scheduler = NotificationScheduler(
+        gateway: openGateway?.call() ?? LocalNotificationsGateway(),
+        // Nothing streams here; the set is read once and applied once.
+        alarms: const Stream<List<AlarmInput>>.empty(),
+        privacyMode: await _flag('notification_privacy'),
+      );
+      await scheduler.applyOnce(alarms);
+      scheduler.dispose();
+    } finally {
+      // OPH-334: every path past this point — no session (a locked iPhone reads
+      // no Keychain), offline, a server that said no — ends by redrawing the
+      // widget from the replica. The rows may be stale; the DAY is not, and at
+      // midnight the day is what moved. Never throws (see the function).
+      await publishWidgetFromReplica(
+        db,
+        workspaceId: workspaceId,
+        now: DateTime.now(),
+        host: widgetHost ?? const HomeWidgetHost(),
+      );
     }
-    if (session == null) return;
-
-    final dio = Dio(BaseOptions(baseUrl: baseUrl));
-    dio.interceptors.add(
-      AuthInterceptor(
-        getAccessToken: () => repository.accessToken,
-        refreshAccessToken: repository.refreshAccessToken,
-      ),
-    );
-
-    final engine = SyncEngine(
-      db: db,
-      api: SyncApi(dio),
-      workspaceId: workspaceId,
-    );
-    try {
-      await engine.syncNow();
-    } on Object {
-      // Offline, or the server said no. The replica still holds whatever it
-      // held, and scheduling from stale rows beats scheduling nothing: this
-      // turn exists because the app has not run, so those rows may be the only
-      // ones the device will have until it does.
-    }
-    engine.dispose();
-
-    final alarms = await ReminderStore(db, () {}).readAlarms(workspaceId);
-    final scheduler = NotificationScheduler(
-      gateway: openGateway?.call() ?? LocalNotificationsGateway(),
-      // Nothing streams here; the set is read once and applied once.
-      alarms: const Stream<List<AlarmInput>>.empty(),
-      privacyMode: await _flag('notification_privacy'),
-    );
-    await scheduler.applyOnce(alarms);
-    scheduler.dispose();
   } finally {
     // Always: a background isolate that leaves the file open is the second
     // writer the WAL work (OPH-318) was about.

@@ -4,9 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/date_format.dart';
+import '../../core/day_boundary.dart';
+import '../../core/kv/local_kv.dart';
 import '../../core/persisted_prefs.dart';
+import '../../sync/db/database.dart';
+import '../projects/data/project_store.dart';
 import '../projects/providers.dart';
 import '../tasks/data/task.dart';
+import '../tasks/data/task_store.dart';
 import '../tasks/providers.dart';
 import 'widget_host.dart';
 import 'widget_snapshot.dart';
@@ -46,6 +51,51 @@ class WidgetBridge {
 final widgetBridgeProvider = Provider<WidgetBridge>(
   (ref) => WidgetBridge(ref.watch(widgetHostProvider)),
 );
+
+/// The widget's snapshot rebuilt from the replica, with no provider graph —
+/// the background turn's last step (OPH-334, `runHeadlessRefresh`).
+///
+/// It asks the SAME questions [widgetSyncProvider] asks the live graph, one
+/// store call each: open tasks plus today's completed ones
+/// (`watchOpen(completedSince:)` — OPH-185's dimmed rows), every project's
+/// color, and the user's date format. A second definition of "what the widget
+/// shows" is how a background redraw ends up disagreeing with the app.
+///
+/// [now] is the whole point of calling this at midnight: the rows are the
+/// same, the day is not, so the buckets move.
+///
+/// Never throws. A widget is a view of the data, not a duty of the turn that
+/// calls this: a host that is missing in some background isolate must not
+/// take the alarms of that turn down with it.
+Future<bool> publishWidgetFromReplica(
+  AwDatabase db, {
+  required String workspaceId,
+  required DateTime now,
+  WidgetHost host = const HomeWidgetHost(),
+}) async {
+  try {
+    final tasks = await TaskStore(
+      db,
+      () {},
+    ).watchOpen(workspaceId, completedSince: awStartOfDay(now)).first;
+    final projects = await ProjectStore(db, () {}).watchAll(workspaceId).first;
+    // Read from localKv directly, as the rest of the turn does: in a process
+    // this short a `PersistedChoice` answers its fallback, not the user's pick.
+    final dateFormat =
+        await localKv.get(kDateFormatPrefKey) ?? kAwSystemDateFormat;
+    await WidgetBridge(host).publish(
+      tasks,
+      now: now,
+      projectColorById: {
+        for (final project in projects) project.id: project.colorRgb,
+      },
+      dateFormat: dateFormat,
+    );
+    return true;
+  } on Object {
+    return false;
+  }
+}
 
 /// Widgets exist only on iOS, iPadOS, Android and macOS (ADR-0010). Web/Windows/
 /// Linux have no home-screen surface — the sync is a no-op there.

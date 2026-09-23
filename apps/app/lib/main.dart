@@ -37,8 +37,9 @@ Future<void> awPushBackgroundHandler(RemoteMessage message) =>
 @pragma('vm:entry-point')
 Future<void> widgetCallback(Uri? uri) async {
   // OPH-321 — the same dispatcher, a third caller. The periodic refresh is not
-  // a widget action: it syncs and re-arms the OS alarms, and it redraws
-  // nothing, so it returns before the widget update below.
+  // a widget action: it syncs, re-arms the OS alarms and — since OPH-334 —
+  // republishes the widget snapshot itself (the midnight turn exists for that
+  // last step), so it returns before the widget update below.
   if (uri != null && awIsAlarmRefresh(uri)) {
     await runHeadlessRefresh();
     return;

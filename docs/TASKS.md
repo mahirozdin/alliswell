@@ -11316,24 +11316,51 @@ açılmadı. İki ölçüm çıktı, ikisi de `add`'den eski:_
 - **Yüzey (kural 12):** yeni bir yetenek değil, mevcut görev oluşturmaya yeni bir giriş —
   MCP/API değişmez.
 
-### OPH-334 — Android widget'ı gece yarısında kendini yeniler
+### OPH-334 — Android widget'ı gece yarısında kendini yeniler ✅ 2026-09-23
 
 **Bağlam:** OPH-133'ün ertelenmiş kutusu. OPH-321'in periyodik başsız turu
 (`AlarmRefreshWorker.kt` → `widgetCallback` → `runHeadlessRefresh`) senkronlayıp alarmları
 yeniden kuruyor ama **widget'ı çizmiyor** (`main.dart`: *"it redraws nothing"*). iOS aynı
 sorunu timeline'a gece yarısı girdileri koyarak çözdü (OPH-232).
 
-- [ ] Başsız tur bittiğinde widget anlık görüntüsü **yeniden hesaplanır ve çizilir** — gün
-      kovaları uygulama açılmadan döner. Tur veriyi zaten tazeledi; çizmemek, tazelenmiş
-      veriyi ekrana koymamaktır.
-- [ ] Gece yarısı sınırı **ölçülerek** karşılanır: periyodik işin aralığı gece yarısını
-      kaçırabiliyorsa bir sonraki yerel gece yarısına tek seferlik bir iş kurulur (ve kendini
-      yeniden kurar). Hangisinin seçildiği gerekçesiyle koda yazılır.
-- **Kabul:** başsız yol widget'ı güncelliyor (Dart birim testi: dağıtıcı alarm tazelemesinde
-  artık çizimi de istiyor); `flutter build apk --debug` yeşil.
-- **Doğrulama:** `flutter test` (dağıtıcı testleri) + `flutter build apk --debug`.
+_**İşin tek cümlesi: native bir yeniden çizim, dünkü anlık görüntüyü yeniden çizer.** Kovalar
+(Gecikmiş, Bugün, Bu hafta…) Dart'ta replikadan hesaplanıyor (ADR-0010) — yani gece yarısı
+dönen şey veri değil **saat**, ve saati okuyan tek taraf Dart. Düzeltme bu yüzden iki
+parçalı: Dart'ta tur widget'ı yeniden hesaplayarak biter; Android'de bir iş o turu gece
+yarısında ister._
+
+- [x] Başsız tur widget'ı **yeniden hesaplayıp çizerek biter** — `publishWidgetFromReplica`
+      (`features/widgets/widget_bridge.dart`), `runHeadlessRefresh`'in çalışma alanından
+      sonraki her yolunun `finally`'sinde: oturum yok (kilitli bir iPhone Keychain okuyamaz),
+      çevrimdışı, sunucu reddetti — hepsinde çizer; satırlar bayat olabilir, **gün** değil.
+      Canlı grafiğin sorusunun aynısını sorar (`watchOpen(completedSince:)` — OPH-185'in
+      soluk satırları — proje renkleri, tarih biçimi; ikinci bir "widget ne gösterir" tanımı
+      yok). Hiç fırlatmaz: widget turun görevi değil bir görünümü; eklentisi olmayan bir arka
+      plan izolatı alarmları götürmemeli. Tarih biçiminin anahtarı tek yazım:
+      `kDateFormatPrefKey`. FCM uyandırması (OPH-322) da aynı turdan geçtiği için widget artık
+      senkronla birlikte de tazeleniyor — iOS dahil.
+- [x] Gece yarısı sınırı **ölçülerek** karşılandı: `AlarmRefreshWorker` **altı saatte bir**
+      koşuyor (bilerek tembel — alarmlar için bir taban), yani ona bırakılan widget sabah 7'de
+      hâlâ dünü gösterebilirdi. `WidgetMidnightWorker.kt`: bir sonraki **yerel gece yarısı +1
+      dk**'ya kurulan tek seferlik iş (`REPLACE` — geçerli tek bekleyen iş SONRAKİ gece yarısı;
+      saat dilimi ya da elle değiştirilen saat eskisini değersiz kılar), aynı Dart turunu ister
+      ve bir sonrakini kurar (`KEEP` koşan işi görüp hiçbir şey kurmazdı — zincir bu gece
+      biterdi). `Calendar` ile (desugaring'e yaslanmıyor, DST gecesini bölgenin kuralıyla
+      yürüyor). **Tam zamanlı değil, bilerek:** Doze bakım penceresine kadar erteleyebilir;
+      söz "sabahtan önce", 00:00:00 değil — bir liste çizimi için kesin alarm, OPH-304'ün
+      savunduğu izni alarm olmayan bir şeye harcamak olurdu. `MainActivity` her açılışta
+      kurar.
+- **Kabul:** ✔ aynı satırlar, yeni gün: 22:00'de "Bu hafta"daki görev 00:05'te "Bugün"de,
+  `openToday` 0 → 1; ✔ canlı sorgu eşliği (bugün biten kalır, dün biten gider, proje rengi
+  gelir); ✔ başsız tur oturum olmadan da çiziyor, uygulama öndeyken çizmiyor
+  (`test/features/widgets/widget_midnight_test.dart`, 5 test); ✔ `flutter build apk --debug`
+  yeşil ve APK işçiyi taşıyor (`classes5.dex`: `aw-widget-midnight`, `WidgetMidnightWorker`).
+- **Doğrulama:** **iki enjeksiyon** — turun çizim çağrısı kapatıldı → "oturumsuz çizim"
+  kırmızı; yayın `now` yerine gerçek saati kullandı → gece yarısı ve eşlik testleri kırmızı;
+  checksum'la geri alındı. `headless_parity_test.dart` (5) yeşil kaldı. `flutter analyze`
+  sıfır, tam süit **1759 geçti, 28 atlandı** (+5), core kapıları yeşil, Dart biçimi CI'ın sürümüyle (3.12.0).
 - **Cihazda bakılacak:** Android'de widget'ı gece yarısından önce bırak, sabah uygulamayı
-  açmadan kovaların döndüğünü gör.
+  açmadan kovaların döndüğünü gör (Doze yüzünden birkaç dakika-saat gecikme beklenen).
 - **Yüzey (kural 12):** yok (istemci içi).
 
 ### OPH-335 — macOS widget'ı

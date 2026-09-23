@@ -23,7 +23,8 @@
 | In-widget complete (App Intents) | ✅ **iOS ships it (round 15, OPH-233):** a widget-process `AWWidgetCompleteIntent` stamps the shared snapshot + queues the completion — see §4's warning about LiveActivityIntent. ✅ **Android too** (OPH-188): a row's circle is a broadcast (`ACTION_ROW` → `complete`) that runs the Dart callback without launching the app |
 | Quick-add "+" | ✅ **both platforms (OPH-333):** `alliswell://add` opens the app ON the Home create sheet — a deep link, not an intent (a widget cannot take a title). iOS: closes the date header on large/extraLarge, a narrow trailing column on medium; Android: closes the header. The router turns the link into a one-shot request Home consumes — see `core/deep_link.dart` |
 | macOS widget | ⏳ deferred — blocked on the macOS signing gap (OPH-134) |
-| Configurable list, accessory tier, private-widget, WorkManager midnight | ⏳ deferred (OPH-135) |
+| Configurable list, accessory tier, private-widget | ⏳ Epic 32: OPH-336 (configuration + lock-screen families), OPH-337 (density + private widget) |
+| Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design |
 | Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android and the other families still pending |
 
 The Dart core is the single source of truth both native widgets render; it's the

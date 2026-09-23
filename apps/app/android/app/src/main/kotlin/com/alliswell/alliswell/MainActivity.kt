@@ -12,5 +12,8 @@ class MainActivity : FlutterActivity() {
         // or not the engine is running, and `enqueueUniquePeriodicWork` with
         // KEEP makes every later launch a no-op.
         AlarmRefreshWorker.enqueue(applicationContext)
+        // OPH-334: the widget's midnight turn. It re-schedules itself; this
+        // launch just makes sure the pending one is for the NEXT midnight.
+        WidgetMidnightWorker.enqueue(applicationContext)
     }
 }

@@ -121,6 +121,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **The Android widget turns the day over by itself (OPH-334).** Its groups —
+  overdue, today, this week — used to stay on yesterday until the app was
+  opened or a six-hourly background turn happened to run. A one-time job now
+  asks for a refresh shortly after local midnight and schedules the next one,
+  and every background refresh ends by redrawing the widget. It is not
+  to-the-minute: Android may hold it until the phone's next maintenance window.
 - **A link that starts the app now lands where it points (OPH-333).** Opening
   the app from a widget row, a calendar event or a printed label while it was
   not running could end on Home instead of the task: the link arrived while the
