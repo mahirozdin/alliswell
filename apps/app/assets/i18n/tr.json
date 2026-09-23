@@ -1620,7 +1620,8 @@
         "audit_retention_days": "Tarih saklama",
         "ticket_archive_days": "Talep arşivleme süresi",
         "transcribe_minutes_monthly": "Aylık deşifre dakikası",
-        "transcribe_file_minutes_max": "En uzun tek kayıt"
+        "transcribe_file_minutes_max": "En uzun tek kayıt",
+        "storage_bytes": "Depolama (bayt)"
       },
       "teamsBar": {
         "count": "{max} takımın {used} tanesi",

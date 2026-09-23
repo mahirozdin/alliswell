@@ -1621,7 +1621,8 @@
         "audit_retention_days": "History retention",
         "ticket_archive_days": "Request archiving window",
         "transcribe_minutes_monthly": "Transcription minutes per month",
-        "transcribe_file_minutes_max": "Longest single recording"
+        "transcribe_file_minutes_max": "Longest single recording",
+        "storage_bytes": "Storage (bytes)"
       },
       "teamsBar": {
         "count": "{used} of {max} teams",
