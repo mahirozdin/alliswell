@@ -30,7 +30,10 @@ import 'package:alliswell/src/theme/theme.dart';
 /// and that a lost connection costs them a wait, never the paragraph.
 const _ticketId = '01TKAAAAAAAAAAAAAAAAAAAAAA';
 
-class _FakeWriteApi implements EeTicketWriteApi {
+// `Fake`: the composer calls two of the API's methods, and a stand-in that
+// had to restate the rest (EE-224's actions) would be a second copy of an
+// interface this file does not test.
+class _FakeWriteApi extends Fake implements EeTicketWriteApi {
   final sent = <({String body, bool internal})>[];
   Object? failWith;
 

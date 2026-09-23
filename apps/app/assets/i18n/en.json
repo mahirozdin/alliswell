@@ -609,7 +609,14 @@
     "AI_UPSTREAM_ERROR": "The AI provider returned an error. Try again; if it persists, test the connection in Settings → AI.",
     "AI_EXTRACTION_INVALID": "The AI could not turn that into tasks. Try rephrasing.",
     "AI_MODEL_REQUIRED": "Pick a model for this connection in Settings → AI first.",
-    "AI_NOT_CONFIGURED": "No AI provider is connected yet. Add one in Settings → AI."
+    "AI_NOT_CONFIGURED": "No AI provider is connected yet. Add one in Settings → AI.",
+    "PERM_DENIED": "You do not have permission to do that.",
+    "TICKET_INVALID_TRANSITION": "The request cannot move to that status — the screen may be out of date; open it again.",
+    "TICKET_TERMINAL": "This request is closed and can no longer be changed.",
+    "TICKET_APPROVAL_PENDING": "This request is waiting on an approval; until someone decides, it can only be cancelled.",
+    "TICKET_WAITING_REASON_REQUIRED": "Pick a reason to set it to waiting.",
+    "SLA_ALREADY_PAUSED": "There is no running SLA clock to stop.",
+    "SLA_NOT_PAUSED": "No SLA clock is stopped."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -1923,6 +1930,50 @@
         "replySent": "Reply sent",
         "noteAdded": "Internal note added",
         "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above."
+      },
+      "actions": {
+        "statusTitle": "Change status",
+        "now": "Now: {status}",
+        "approvalPending": "This request is waiting on an approval. Until someone decides, it can only be cancelled.",
+        "noMoves": "This request cannot move to another status right now.",
+        "back": "Back",
+        "park": "Set to waiting",
+        "confirmClose": "The request will be closed. A closed request is not reopened and its conversation closes too; if the problem comes back, a new request is opened.",
+        "confirmCancel": "The request will be cancelled. This cannot be undone.",
+        "close": "Close request",
+        "cancel": "Cancel request",
+        "statusChanged": "Status: {status}",
+        "slaTitle": "SLA clock",
+        "slaHeld": "Stopped — {reason}",
+        "pauseHint": "The request stays where it is; only the clock stops, and the reason goes on record.",
+        "slaPaused": "Clock stopped",
+        "slaResumed": "Clock restarted",
+        "priorityTitle": "Change priority",
+        "inputs": "Impact: {impact} · Urgency: {urgency}",
+        "matrixTitle": "Impact × urgency",
+        "impact": "Impact",
+        "urgency": "Urgency",
+        "matrixGives": "The matrix gives: {priority}",
+        "apply": "Apply",
+        "overridden": "This request’s priority was set by hand; changing impact or urgency will not move it.",
+        "rematrix": "Go back to the matrix ({priority})",
+        "directTitle": "Priority",
+        "overrideTitle": "Set by hand — overrides the matrix",
+        "matrixOnly": "This request’s priority comes from the matrix. Setting it by hand needs a separate permission.",
+        "priorityChanged": "Priority: {priority}",
+        "inputsSaved": "Impact and urgency saved",
+        "offline": "Status and priority need a connection — the server cannot be reached right now.",
+        "unavailable": "What you can do on this request could not be read right now."
+      },
+      "impact": {
+        "person": "One person",
+        "unit": "A unit",
+        "site": "The whole site"
+      },
+      "urgency": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
       }
     },
     "sla": {

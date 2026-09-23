@@ -608,7 +608,14 @@
     "AI_UPSTREAM_ERROR": "Yapay zekâ sağlayıcısı hata döndürdü. Tekrar dene; sürerse Ayarlar → Yapay zekâ’dan bağlantıyı test et.",
     "AI_EXTRACTION_INVALID": "Yapay zekâ bunu göreve çeviremedi. Farklı ifade etmeyi dene.",
     "AI_MODEL_REQUIRED": "Önce Ayarlar → Yapay zekâ’dan bu bağlantı için bir model seç.",
-    "AI_NOT_CONFIGURED": "Henüz bağlı bir yapay zekâ sağlayıcısı yok. Ayarlar → Yapay zekâ’dan ekle."
+    "AI_NOT_CONFIGURED": "Henüz bağlı bir yapay zekâ sağlayıcısı yok. Ayarlar → Yapay zekâ’dan ekle.",
+    "PERM_DENIED": "Bunu yapmaya yetkin yok.",
+    "TICKET_INVALID_TRANSITION": "Talep o duruma geçemez — ekran eskimiş olabilir, yeniden aç.",
+    "TICKET_TERMINAL": "Bu talep kapandı; artık değiştirilemez.",
+    "TICKET_APPROVAL_PENDING": "Bu talep bir onay bekliyor; karar verilene kadar yalnız iptal edilebilir.",
+    "TICKET_WAITING_REASON_REQUIRED": "Beklemeye almak için bir neden seç.",
+    "SLA_ALREADY_PAUSED": "Durdurulacak işleyen bir SLA saati yok.",
+    "SLA_NOT_PAUSED": "Durdurulmuş bir SLA saati yok."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -1922,6 +1929,50 @@
         "replySent": "Yanıt gönderildi",
         "noteAdded": "İç not eklendi",
         "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç."
+      },
+      "actions": {
+        "statusTitle": "Durumu değiştir",
+        "now": "Şu an: {status}",
+        "approvalPending": "Bu talep bir onay bekliyor. Karar verilene kadar yalnız iptal edilebilir.",
+        "noMoves": "Bu talep şu an başka bir duruma geçemez.",
+        "back": "Geri",
+        "park": "Beklemeye al",
+        "confirmClose": "Talep kapanacak. Kapanan talep yeniden açılmaz ve yazışması da kapanır; sorun geri gelirse yeni bir talep açılır.",
+        "confirmCancel": "Talep iptal edilecek. Bu geri alınmaz.",
+        "close": "Talebi kapat",
+        "cancel": "Talebi iptal et",
+        "statusChanged": "Durum: {status}",
+        "slaTitle": "SLA saati",
+        "slaHeld": "Durduruldu — {reason}",
+        "pauseHint": "Talep yerinden oynamaz; yalnız saat durur ve nedeni kayda geçer.",
+        "slaPaused": "Saat durduruldu",
+        "slaResumed": "Saat sürdürüldü",
+        "priorityTitle": "Önceliği değiştir",
+        "inputs": "Etki: {impact} · Aciliyet: {urgency}",
+        "matrixTitle": "Etki × aciliyet",
+        "impact": "Etki",
+        "urgency": "Aciliyet",
+        "matrixGives": "Matrisin vereceği öncelik: {priority}",
+        "apply": "Uygula",
+        "overridden": "Bu talebin önceliği elle verildi; etkiyi ya da aciliyeti değiştirmek önceliği değiştirmez.",
+        "rematrix": "Matrisin değerine dön ({priority})",
+        "directTitle": "Öncelik",
+        "overrideTitle": "Elle öncelik — matrisi ezer",
+        "matrixOnly": "Bu talebin önceliği matristen gelir. Elle vermek ayrı bir yetki ister.",
+        "priorityChanged": "Öncelik: {priority}",
+        "inputsSaved": "Etki ve aciliyet kaydedildi",
+        "offline": "Durum ve öncelik bağlantı ister — sunucuya şu an ulaşılamıyor.",
+        "unavailable": "Bu talepte ne yapabileceğin şu an okunamadı."
+      },
+      "impact": {
+        "person": "Bir kişi",
+        "unit": "Bir birim",
+        "site": "Tüm tesis"
+      },
+      "urgency": {
+        "low": "Düşük",
+        "medium": "Orta",
+        "high": "Yüksek"
       }
     },
     "sla": {

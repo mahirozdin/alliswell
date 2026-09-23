@@ -26,6 +26,141 @@ class EeCannedReply {
   final String text;
 }
 
+/// What the server says THIS caller may do to one request (EE-224).
+///
+/// Every field is the server's answer, read from the detail endpoint: the
+/// moves come from the lifecycle map both of its doors read, filtered by the
+/// caller's verbs and by the approval gate. Nothing here is worked out on the
+/// device — "the client writes no second state machine" is E19's rule, and a
+/// list of statuses typed out in the app would be exactly that.
+class EeTicketActions {
+  const EeTicketActions({
+    required this.status,
+    required this.priority,
+    this.waitingReason,
+    this.impact,
+    this.urgency,
+    this.priorityOverridden = false,
+    this.allowedTransitions = const [],
+    this.waitingReasons = const [],
+    this.priorities = const [],
+    this.approvalPending = false,
+    this.canOverridePriority = false,
+    this.canPauseSla = false,
+    this.slaPausable = false,
+    this.slaHeld = false,
+    this.slaHoldReasons = const [],
+  });
+
+  factory EeTicketActions.fromJson(Map<String, dynamic> json) {
+    List<String> strings(Object? value) =>
+        ((value as List<dynamic>?) ?? const []).cast<String>();
+    final hold = (json['slaHold'] as Map<String, dynamic>?) ?? const {};
+    return EeTicketActions(
+      status: json['status'] as String,
+      priority: json['priority'] as String,
+      waitingReason: json['waitingReason'] as String?,
+      impact: json['impact'] as String?,
+      urgency: json['urgency'] as String?,
+      priorityOverridden: json['priorityOverridden'] == true,
+      allowedTransitions: strings(json['allowedTransitions']),
+      waitingReasons: strings(json['waitingReasons']),
+      priorities: strings(json['priorities']),
+      approvalPending: json['approvalPending'] == true,
+      canOverridePriority: json['canOverridePriority'] == true,
+      canPauseSla: json['canPauseSla'] == true,
+      slaPausable: json['slaPausable'] == true,
+      slaHeld: hold['held'] == true,
+      // One reason per held clock on the wire; the same reason twice is one
+      // sentence on a screen.
+      slaHoldReasons: {
+        for (final row
+            in ((hold['reasons'] as List<dynamic>?) ?? const [])
+                .cast<Map<String, dynamic>>())
+          row['reason'] as String,
+      }.toList(growable: false),
+    );
+  }
+
+  final String status;
+  final String priority;
+
+  /// Why it is parked — null unless [status] is `waiting` (EE-190).
+  final String? waitingReason;
+
+  /// The matrix inputs (EE-183); both null on a request filed without them.
+  final String? impact;
+  final String? urgency;
+
+  /// True when somebody allowed to has taken the priority out of the
+  /// matrix's hands; a later impact correction then leaves it alone.
+  final bool priorityOverridden;
+
+  /// Where this caller may move it from here — possibly nothing.
+  final List<String> allowedTransitions;
+
+  /// Why a request may be parked, in the server's words and order.
+  final List<String> waitingReasons;
+
+  /// The priority tiers, in the server's order.
+  final List<String> priorities;
+
+  /// A signature is pending (EE-184): the reason [allowedTransitions] may be
+  /// down to cancelling alone, which a screen has to say out loud.
+  final bool approvalPending;
+
+  final bool canOverridePriority;
+  final bool canPauseSla;
+
+  /// A pause would stop something: a running promise nobody holds yet.
+  final bool slaPausable;
+
+  /// Something holds the promise — a person's pause, or an approval's.
+  final bool slaHeld;
+  final List<String> slaHoldReasons;
+
+  /// Whether this request's priority comes from the matrix at all.
+  bool get usesMatrix => impact != null && urgency != null;
+}
+
+/// The desk's impact × urgency table (EE-183), as the server hands it out.
+///
+/// The rows and columns are read from the table itself, so a screen draws
+/// exactly the inputs the server would accept. [derive] is a LOOKUP for the
+/// preview line, not a rule: the server derives again on save, from its own
+/// copy, and what it answers is what the request gets.
+class EePriorityMatrix {
+  const EePriorityMatrix({required this.cells, this.customised = false});
+
+  factory EePriorityMatrix.fromJson(Map<String, dynamic> json) {
+    final raw = (json['matrix'] as Map<String, dynamic>?) ?? const {};
+    return EePriorityMatrix(
+      cells: {
+        for (final row in raw.entries)
+          row.key: {
+            for (final cell in (row.value as Map<String, dynamic>).entries)
+              cell.key: cell.value as String,
+          },
+      },
+      customised: json['customised'] == true,
+    );
+  }
+
+  final Map<String, Map<String, String>> cells;
+
+  /// False means the desk derives from the shipped table, not that there is
+  /// no table (EE-183).
+  final bool customised;
+
+  List<String> get impacts => cells.keys.toList(growable: false);
+  List<String> get urgencies => cells.isEmpty
+      ? const []
+      : cells.values.first.keys.toList(growable: false);
+
+  String? derive(String? impact, String? urgency) =>
+      impact == null || urgency == null ? null : cells[impact]?[urgency];
+}
+
 /// Writing on a request from the app (EE-223).
 ///
 /// ONLINE, by decision (E19): a request is server-canonical, and a reply that
@@ -74,6 +209,100 @@ class EeTicketWriteApi {
     } on DioException catch (error) {
       final code = error.response?.statusCode;
       if (code == 403 || code == 404) return const [];
+      throw asApiException(error);
+    }
+  }
+
+  /// EE-224 — what this caller may do to the request, read fresh.
+  ///
+  /// A 403/404 is "nothing": a request this person cannot reach offers no
+  /// actions, rather than an error to explain on a screen that already
+  /// shows the device's copy of it.
+  Future<EeTicketActions?> actions(String ticketId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_tickets/$ticketId',
+      );
+      final data = response.data;
+      return data == null ? null : EeTicketActions.fromJson(data);
+    } on DioException catch (error) {
+      final code = error.response?.statusCode;
+      if (code == 403 || code == 404) return null;
+      throw asApiException(error);
+    }
+  }
+
+  /// The desk's matrix (EE-183); null when it cannot be read.
+  Future<EePriorityMatrix?> priorityMatrix() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/team/priority-matrix',
+      );
+      final data = response.data;
+      return data == null ? null : EePriorityMatrix.fromJson(data);
+    } on DioException catch (error) {
+      final code = error.response?.statusCode;
+      if (code == 403 || code == 404) return null;
+      throw asApiException(error);
+    }
+  }
+
+  /// Moves the request. `waiting` owes a [waitingReason] (EE-190); the
+  /// server refuses a move it does not list, whatever a screen offered.
+  Future<void> setStatus(
+    String ticketId,
+    String status, {
+    String? waitingReason,
+  }) => _write(
+    () => _dio.post<Map<String, dynamic>>(
+      '$_tickets/$ticketId/status',
+      data: {'status': status, 'waitingReason': ?waitingReason},
+    ),
+  );
+
+  /// A priority named directly. Against the matrix it is an override and
+  /// needs its own verb; agreeing with the matrix hands the request back to
+  /// it (EE-183) — both decided by the server, which answers with the
+  /// priority the request now has.
+  Future<String?> setPriority(String ticketId, String priority) =>
+      _edit(ticketId, {'priority': priority});
+
+  /// The matrix inputs. The server derives the priority from them — unless
+  /// somebody took it out of the matrix's hands — and answers with it.
+  Future<String?> setMatrixInputs(
+    String ticketId, {
+    required String impact,
+    required String urgency,
+  }) => _edit(ticketId, {'impact': impact, 'urgency': urgency});
+
+  Future<String?> _edit(String ticketId, Map<String, Object> patch) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '$_tickets/$ticketId',
+        data: patch,
+      );
+      return response.data?['priority'] as String?;
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// Stops the promise without moving the request (EE-190).
+  Future<void> pauseSla(String ticketId, String reason) => _write(
+    () => _dio.post<Map<String, dynamic>>(
+      '$_tickets/$ticketId/sla/pause',
+      data: {'reason': reason},
+    ),
+  );
+
+  Future<void> resumeSla(String ticketId) => _write(
+    () => _dio.post<Map<String, dynamic>>('$_tickets/$ticketId/sla/resume'),
+  );
+
+  Future<void> _write(Future<Object?> Function() call) async {
+    try {
+      await call();
+    } on DioException catch (error) {
       throw asApiException(error);
     }
   }

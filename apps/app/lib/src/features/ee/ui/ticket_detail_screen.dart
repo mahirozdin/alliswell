@@ -18,6 +18,7 @@ import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
 import 'sla_chip.dart';
+import 'ticket_actions.dart';
 import 'ticket_composer.dart';
 import 'ticket_worklog_section.dart';
 
@@ -119,9 +120,19 @@ class _Thread extends ConsumerWidget {
         Wrap(
           spacing: AwSpace.x2,
           runSpacing: AwSpace.x2,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            _Chip(label: 'ee.tickets.status.${ticket.status}'.tr()),
-            _Chip(label: 'ee.tickets.priority.${ticket.priority}'.tr()),
+            // EE-224: on a live request the two chips are the doors — what
+            // they offer is the server's list for this person. A finished
+            // request takes no further writes at all, so it keeps plain chips
+            // rather than buttons that could only be refused.
+            if (ticket.terminalAt == null) ...[
+              EeTicketStatusAction(ticket: ticket),
+              EeTicketPriorityAction(ticket: ticket),
+            ] else ...[
+              _Chip(label: 'ee.tickets.status.${ticket.status}'.tr()),
+              _Chip(label: 'ee.tickets.priority.${ticket.priority}'.tr()),
+            ],
             if (ticket.terminalAt != null)
               _Chip(
                 label: 'ee.tickets.closedOn'.tr(
@@ -135,6 +146,7 @@ class _Thread extends ConsumerWidget {
               ),
           ],
         ),
+        if (ticket.terminalAt == null) const EeTicketActionsOffline(),
         // EE-097: the countdown, under the chips and above the request itself.
         // An agent deciding what to pick up next reads it before the body.
         AwSlaCountdown(ticket: ticket),

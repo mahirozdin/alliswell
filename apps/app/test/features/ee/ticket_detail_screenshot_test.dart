@@ -16,6 +16,10 @@
 //     a colour-blind reader, the icon fails at a glance on a dirty screen, and
 //     the word fails nobody but is the easiest to skim past. A picture of that
 //     is a picture of the argument.
+//   • THE TWO DOORS (EE-224): the status sheet lists what the SERVER said
+//     this agent may do — and the priority sheet derives from the desk's own
+//     table. A picture of a list the app did not write is the argument that
+//     the app carries no second lifecycle.
 //   • HISTORY is the page's "who changed this" claim, and the claim is only
 //     honest if the answer can be somebody other than a person. One entry is
 //     `system`: an SLA sweep breached this ticket, and the widget says so
@@ -49,6 +53,40 @@ import 'support/shot.dart';
 import 'package:alliswell/src/features/ee/worklog_providers.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
+
+/// What the server says an AGENT on T5 may do (EE-224): the endings stay —
+/// the default member role holds `tickets.close` — and the override does not.
+/// T5 is a stopped paint shop, so its inputs are the whole site and high,
+/// which the shipped table turns into the `urgent` the corpus already says.
+class _ShotActionsApi extends Fake implements EeTicketWriteApi {
+  @override
+  Future<EeTicketActions?> actions(String ticketId) async =>
+      const EeTicketActions(
+        status: 'in_progress',
+        priority: 'urgent',
+        impact: 'site',
+        urgency: 'high',
+        allowedTransitions: ['waiting', 'resolved', 'cancelled'],
+        waitingReasons: [
+          'requester_info',
+          'supplier',
+          'spare_part',
+          'approval',
+          'planned_window',
+        ],
+        priorities: ['low', 'normal', 'high', 'urgent'],
+      );
+
+  @override
+  Future<EePriorityMatrix?> priorityMatrix() async => const EePriorityMatrix(
+    customised: true,
+    cells: {
+      'person': {'low': 'low', 'medium': 'low', 'high': 'normal'},
+      'unit': {'low': 'normal', 'medium': 'normal', 'high': 'high'},
+      'site': {'low': 'normal', 'medium': 'high', 'high': 'urgent'},
+    },
+  );
+}
 
 /// The second row of the SLA dashboard's missed-targets list, opened.
 ///
@@ -160,6 +198,29 @@ void main() {
         },
       );
     });
+
+    // EE-224: the two doors, opened. What is listed is the server's answer.
+    for (final (door, name) in [
+      ('ticket-status', 'ee-ticket-status'),
+      ('ticket-priority', 'ee-ticket-priority'),
+    ]) {
+      testWidgets('and its $door sheet — ${brightness.name}', (tester) async {
+        await eeShoot(
+          tester,
+          brightness: brightness,
+          name: name,
+          size: const Size(900, 1300),
+          overrides: [
+            ..._overrides(corpus),
+            eeFeatureProvider('teams').overrideWithValue(true),
+            eeTicketWriteApiProvider.overrideWithValue(_ShotActionsApi()),
+            syncEngineProvider.overrideWithValue(null),
+          ],
+          screen: const EeTicketDetailScreen(ticketId: _ticketId),
+          afterPump: (t) => t.tap(find.byKey(Key(door))),
+        );
+      });
+    }
 
     testWidgets('and what happened to it — ${brightness.name}', (tester) async {
       await eeShoot(
