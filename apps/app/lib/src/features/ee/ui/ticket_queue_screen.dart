@@ -6,9 +6,11 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fabs.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
+import '../providers.dart';
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
 import 'sla_chip.dart';
@@ -42,6 +44,17 @@ class EeTicketQueueScreen extends ConsumerWidget {
     final searching = ref.watch(ticketSearchQueryProvider).trim().isNotEmpty;
 
     return Scaffold(
+      // EE-225: the way in to filing one, where the desk already stands.
+      // Hidden without `tickets.create` (EE-052's cache): a button that
+      // leads to a form the door refuses is a dead one with extra steps.
+      floatingActionButton: ref.watch(canProvider('tickets.create'))
+          ? AwExtendedFab(
+              key: const Key('ticket-new'),
+              onPressed: () => context.push('/tickets/new'),
+              icon: const Icon(Icons.add),
+              label: Text('ee.tickets.new.fab'.tr()),
+            )
+          : null,
       appBar: AppBar(
         title: Text('ee.tickets.queueTitle'.tr()),
         actions: [

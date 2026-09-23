@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
 import '../my_tickets_providers.dart';
+import '../providers.dart';
 
 /// "My requests" (EE-087) — what I asked for, and where it got to.
 ///
@@ -42,6 +45,17 @@ class EeMyTicketsScreen extends ConsumerWidget {
     final tickets = ref.watch(eeMyTicketsProvider);
     return Scaffold(
       appBar: AppBar(title: Text('ee.tickets.mineTitle'.tr())),
+      // EE-225: the requester's own list is where asking for something new
+      // belongs — and filing works with no signal (a draft), even though this
+      // list does not.
+      floatingActionButton: ref.watch(canProvider('tickets.create'))
+          ? AwExtendedFab(
+              key: const Key('my-tickets-new'),
+              onPressed: () => context.push('/tickets/new'),
+              icon: const Icon(Icons.add),
+              label: Text('ee.tickets.new.fab'.tr()),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: () async => ref.refresh(eeMyTicketsProvider.future),
         child: tickets.when(

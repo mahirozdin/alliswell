@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/assignments_providers.dart'
     show Assignee;
+import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
@@ -67,7 +68,7 @@ void main() {
     ],
   };
 
-  Future<void> pumpQueue(WidgetTester tester) async {
+  Future<void> pumpQueue(WidgetTester tester, {bool mayCreate = false}) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -76,6 +77,12 @@ void main() {
             (ref) => Stream.value(assignees),
           ),
           currentUserIdProvider.overrideWithValue(_me),
+          // EE-225's "new request" button asks the permission cache, which
+          // would otherwise go looking for a session (and leave its timer
+          // running past the test).
+          canProvider.overrideWith(
+            (ref, permission) => mayCreate && permission == 'tickets.create',
+          ),
         ],
         child: MaterialApp(
           // The real theme, not a bare MaterialApp: the row's priority mark
@@ -146,4 +153,19 @@ void main() {
       expect(visible(tester), ['T1', 'T2', 'T3']);
     },
   );
+
+  // EE-225: the queue is where the desk already stands, so it is one of the
+  // two ways in to filing a request — for whoever may file one, and nobody
+  // else (a button that leads to a form the door refuses is a dead one).
+  testWidgets('the queue offers a new request to whoever may file one', (
+    tester,
+  ) async {
+    await pumpQueue(tester, mayCreate: true);
+    expect(find.byKey(const Key('ticket-new')), findsOneWidget);
+  });
+
+  testWidgets('…and no button at all to whoever may not', (tester) async {
+    await pumpQueue(tester);
+    expect(find.byKey(const Key('ticket-new')), findsNothing);
+  });
 }

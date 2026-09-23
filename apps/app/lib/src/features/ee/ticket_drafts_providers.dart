@@ -153,6 +153,13 @@ final unsentTicketDraftsProvider = StreamProvider<List<TicketDraftRecord>>((
   return query.watch();
 });
 
+/// EE-225 wires the poke EE-216 left for its first caller: a draft written
+/// in the workspace on screen is pushed by that workspace's engine at once.
+/// One written in the author's own space while another is on screen is the
+/// courier's (`draftCourierProvider`), which starts on the outbox itself.
 final ticketDraftStoreProvider = Provider<TicketDraftStore>((ref) {
-  return TicketDraftStore(ref.watch(databaseProvider));
+  return TicketDraftStore(
+    ref.watch(databaseProvider),
+    onMutation: () => ref.read(syncEngineProvider)?.notifyLocalWrite(),
+  );
 });

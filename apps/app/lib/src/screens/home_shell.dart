@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/ee/new_ticket_providers.dart';
 import '../features/ee/providers.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
@@ -197,6 +198,9 @@ class HomeShell extends ConsumerWidget {
     // OPH-130: republish the home-screen widget snapshot on task/project change
     // (self-disables off iOS/Android/macOS).
     ref.watch(widgetSyncProvider);
+    // EE-225: carry drafts written in this person's own workspace while
+    // another is on screen (self-disables otherwise — see the provider).
+    ref.watch(draftCourierProvider);
     // EE-084: which sections are DRAWN. Not the same list as the branches —
     // see `_visible` / `_selectedIn` above for why that distinction exists.
     final visibleSections = visibleAppSections(

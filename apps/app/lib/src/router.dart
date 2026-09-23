@@ -52,6 +52,7 @@ import 'features/ee/ui/team_identity_screen.dart';
 import 'features/ee/ui/team_mail_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
+import 'features/ee/ui/new_ticket_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
@@ -506,6 +507,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => _page(
           EeAssetDetailScreen(assetId: state.pathParameters['assetId'] ?? ''),
         ),
+      ),
+      // EE-225: filing a request. A route rather than a pushed widget so the
+      // queue and "my requests" reach ONE screen by one address, and so a link
+      // (a printed sign by a machine, one day) can land on it.
+      GoRoute(
+        path: '/tickets/new',
+        builder: (context, state) => _page(const EeNewTicketScreen()),
       ),
       // EE-196: the knowledge base. Reached from the request queue's bar —
       // where the person who wants it is already standing (EE-098's rule for

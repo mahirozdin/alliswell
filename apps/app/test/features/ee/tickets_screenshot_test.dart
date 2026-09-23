@@ -28,6 +28,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -46,6 +47,9 @@ List<Override> _overrides(
 }) => [
   ticketQueueProvider.overrideWith((ref) => Stream.value(rows)),
   ticketAssigneesProvider.overrideWith((ref) => Stream.value(corpus.assignees)),
+  // EE-225: an agent who may file one sees the way in, as on a real desk —
+  // and the permission cache is not sent looking for a session.
+  canProvider.overrideWith((ref, permission) => permission == 'tickets.create'),
   if (filter != null)
     ticketFilterProvider.overrideWith(() => _FixedFilter(filter)),
 ];
