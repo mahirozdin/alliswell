@@ -3998,6 +3998,8 @@ ile OPH-133'ün son iki kutusunu DEVRALIR** (ikisi de burada kapanır; oradaki k
       ağ gelince senkronlanıyor; satıra dokunma doğru görevi açıyor; iOS 16 cihaz/simülatör
       deep-link'e düşüyor.
       _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
+      _(2026-09-23, **OPH-341:** Android'de bu yol hiç koşmamıştı — `home_widget`'ın arka plan
+      alıcısı manifest'te yoktu. Bir cihaz turu ilk bunu bulurdu.)_
 
 **Context:** ADR-0010 D4 + WIDGETS §4; `flutter analyze`/`test` Swift/Kotlin derlemez —
 round 9'un kalıcı dersi: **native bağlantı kaynak ağacından değil üründen doğrulanır.**
@@ -10811,6 +10813,10 @@ _Bu epic'in en ağır işi ve tek geri dönüşsüz riski. `gateway_local.dart:1
 izolatını bir kez **bilerek** reddetmiş (*"a background isolate has no drift/auth stack here"*);
 emsal ise `main.dart:19-29`'daki `@pragma('vm:entry-point') widgetCallback`._
 
+> **2026-09-23 — OPH-341:** bu turu başlatan yayın (`AlarmRefreshWorker` →
+> `HomeWidgetBackgroundIntent`) manifest'te tanımlanmamış bir alıcıya gidiyordu; Android'de tur
+> hiç koşmadı. Alıcı artık tanımlı ve bir test manifest'i okuyor.
+
 - [x] **`ReminderStore.readAlarms(workspaceId)`** — `watchAlarms`'ın projeksiyonu saf,
       **üst düzey** `mergeAlarms()`'a çıkarıldı; `watchAlarms` onu `combineLatest3` ile,
       `readAlarms` üç `.get()` ile çağırıyor. İki sorgu da artık tek yerde
@@ -11259,6 +11265,10 @@ kuyruğu bloklamaz._
 **Sıra bağlayıcı:** 333 → 334 → 335 → 336 → 337 → 338 → 339. **OPH-340** uzantının
 ikizidir ve onunla aynı turda kapanır (`check:twin-tasks`).
 
+_**Ölçümle doğan (2026-09-23): OPH-341.** OPH-339 WIDGETS.md'yi koda karşı okurken, Android'in
+üç arka plan turunun (widget'tan tamamlama, altı saatlik yenileme, gece yarısı) manifest'te
+tanımlanmamış bir alıcıya yayın yaptığı bulundu — üçü de hiç koşmamıştı. Aynı turda kapandı._
+
 ### OPH-333 — Widget'tan hızlı ekleme: `alliswell://add` ✅ 2026-09-23
 
 **Bağlam:** OPH-132'nin açık yarısı. Tamamlama OPH-188/233'te indi; `widget_callback.dart`
@@ -11361,6 +11371,8 @@ yarısında ister._
   sıfır, tam süit **1759 geçti, 28 atlandı** (+5), core kapıları yeşil, Dart biçimi CI'ın sürümüyle (3.12.0).
 - **Cihazda bakılacak:** Android'de widget'ı gece yarısından önce bırak, sabah uygulamayı
   açmadan kovaların döndüğünü gör (Doze yüzünden birkaç dakika-saat gecikme beklenen).
+  _(OPH-341: işçinin yayını tanımsız bir alıcıya gidiyordu — bu satır ancak OPH-341'den sonra
+  doğru olabilir.)_
 - **Yüzey (kural 12):** yok (istemci içi).
 
 ### OPH-335 — macOS widget'ı ✅ 2026-09-23 (hedefin imzası sahibe — SETUP.md)
@@ -11557,20 +11569,41 @@ sekmesinde.
   `kTaskSortChoices`'ın); CI biçimi temiz._
 - **Yüzey (kural 12):** görünüm tercihi, yeni bir yetenek değil — MCP/API değişmez.
 
-### OPH-339 — Widget belgeleri, README ve ROADMAP doğruluğu
+### OPH-339 — Widget belgeleri, README ve ROADMAP doğruluğu ✅ 2026-09-23
 
 **Bağlam:** OPH-136'nın belge kutuları + 2026-09-23 taramasının bulduğu bayat iddialar.
 
-- [ ] `docs/WIDGETS.md` §0 durum tablosu gerçeğe göre: Android'de widget'tan tamamlama
+- [x] `docs/WIDGETS.md` §0 durum tablosu gerçeğe göre: Android'de widget'tan tamamlama
       **indi** (OPH-188 — tablo hâlâ "the Android bit stay deferred" diyor), hızlı ekleme
       (OPH-333), gece yarısı (OPH-334), macOS (OPH-335), yapılandırma/kilit ekranı (OPH-336),
       yoğunluk/gizlilik (OPH-337). İki "double-check" bayrağı derleme gerçeğiyle kapanır
       (Android RemoteViews kullanıyor, Glance değil; Apple aile adları `supportedFamilies`'ten).
-- [ ] README'ye "Widgets" bölümü — mevcut görüntülerle (`screenshots/ios/12-widget.png`,
+      _(2026-09-23: dosya baştan sona koda karşı okundu; koda aykırı ~20 satır düzeltildi —
+      ufuk "ay sonu" değil kayan 30 gün; anahtar `aw_snapshot` değil `aw_widget_snapshot`;
+      şema örneği üst düzey `counts`/`more` değil v4'ün gerçek şekli; "native tarih
+      biçimlendirmez" değil (başlık tarihi + saat native, seçimler uygulamanın); geri çağrı
+      örneğinde `add` yok (derin bağlantı); iOS'ta `HomeWidgetBackgroundWorker` yok; orta boyda
+      tarih başlığı yok; uzantı `home_widget`'a bağlı değil ve tabanı iOS 16; macOS'ta imza
+      boşluğu değil sahibin tek adımı; Android dosya listesi gerçek. İki bayrak: Android
+      RemoteViews (Glance yalnız `home_widget`'ın bağımlılığı olarak derlemede), aile adları
+      `supportedFamilies` ile birebir. **Okurken bir hata bulundu → OPH-341.** DESIGN §8'in
+      "Jetpack Glance" cümlesi ve W7'nin orta boy tarifi de aynı değişiklikte düzeltildi.)_
+- [x] README'ye "Widgets" bölümü — mevcut görüntülerle (`screenshots/ios/12-widget.png`,
       `13-widget-dark.png`) ve self-host edenler için kısa bir "nasıl".
-- [ ] BLUEPRINT §12.8/§15.6 doğru; ROADMAP'te bitmiş fazların ⏳ işaretleri (Phase 7, 10, 15,
+      _(2026-09-23: `## 🧩 Widgets` — iki görüntü, ne yaptıkları, ayarlar; self-host: sunucudan
+      hiçbir şey gerekmez, kendi kimliğiyle imzalayan için App Group'un üç yerde birlikte
+      değişmesi ve Mac hedefinin SETUP.md'si. Mac'in henüz imzalanmadığı dürüstçe yazıldı.)_
+- [x] BLUEPRINT §12.8/§15.6 doğru; ROADMAP'te bitmiş fazların ⏳ işaretleri (Phase 7, 10, 15,
       16) ✅ olur ve "Toward v1.14.0" Epic 32'yi de anar; CHANGELOG `[Unreleased]`.
+      _(2026-09-23: BLUEPRINT'te "+" artık uygulamayı açan bir derin bağlantı, 4×2/4×4 inşa
+      edildiği gibi, ufuk 30 gün, Android RemoteViews, G/H notları "o gün … kapandı"; Epic 32
+      için I–M revizyon notu; §15.6 köprü/tazelik/yazma yolu/gizlilik gerçeğe göre. ROADMAP:
+      her ⏳ faz sürüm başlığından ölçülerek ✅ (7: epik 11/12 kapalı; 10: v0.5.0; 15: v1.5.0 —
+      Cloudflare adımı sahibin; 16: v1.11.0 — Galaxy A12 verisi sahibin); Faz 18 "kodda tamam,
+      v1.14.0'da çıkar"; **Faz 19 = Epic 32** eklendi; v0.1.0'ın bayat "(current)" etiketi
+      kaldırıldı.)_
 - **Kabul:** `check:docs` yeşil; WIDGETS.md'de koda aykırı bir satır kalmıyor.
+  _Karşılandı: `check:docs` ✔; WIDGETS.md satır satır okundu, düzeltmeler yukarıda._
 - **Doğrulama:** `node scripts/docs/check.mjs`.
 - **Yüzey (kural 12):** yok (belge).
 
@@ -11592,6 +11625,33 @@ aldığı bir dosyayı depolamaya yazacak başka bir taraf yok.
   yazıyor, satırı doğuruyor, guard'a soruyor; tavanı aşan dosya reddediliyor.
 - **Doğrulama:** API unit + integration (sandbox), `check:no-ee` yeşil.
 - ⚠️ **Çift kapanış:** ↔ `EE-231` (uzantı kaydı: bu dikişin ilk çağıranı).
+
+### OPH-341 — Android: `home_widget`'ın arka plan alıcısı hiç tanımlanmamıştı ✅ 2026-09-23
+
+**Bağlam:** OPH-339 WIDGETS.md'yi koda karşı okurken doğdu (sözleşmenin "ölçümle doğan boşluk"
+yolu — aynı turda kapanır). `HomeWidgetBackgroundIntent.getBroadcast` yayını
+`HomeWidgetBackgroundReceiver`'a **sınıfıyla** adresliyor; `home_widget` 0.9.3'ün kendi
+manifest'i boş (`<manifest package=… />`) ve uygulamanınkinde alıcı YOK — birleştirilmiş
+manifest ölçüldü, git geçmişinde hiç eklenmemiş. Tanımsız bir alıcıya açık yayın hata vermeden
+kaybolur. Yani üç yol Android'de **hiç koşmadı:** widget'ta dairenin tamamlaması (OPH-188),
+altı saatlik alarm + widget yenilemesi (OPH-321), gece yarısı yeniden çizimi (OPH-334). Her
+birinin Dart yarısı testliydi; aradaki kablo hiç.
+
+- [x] Alıcı manifest'te, **dışa kapalı** (`exported="false"`), `BACKGROUND` eylemiyle. Üç
+      gönderen de uygulamanın kendi sürecinde (`TasksWidgetProvider.onReceive` ve iki
+      `Worker`); PendingIntent yaratıcısının kimliğiyle çalışır. Dışa açık bir alıcı, başka bir
+      uygulamanın `alliswell://complete?id=…` ile görev tamamlamasına kapı olurdu — ADR-0016'nın
+      yasakladığı URL ile yazma. (0.9.3'te alıcı işi `HomeWidgetBackgroundWorker`'a — WorkManager
+      — veriyor; eski `JobIntentService` bildirimi gerekmiyor.)
+- [x] `android_background_receiver_test.dart`: gönderenler (üç Kotlin dosyası) sabitlendi ve
+      manifest alıcıyı eylemi ve dışa kapalılığıyla tanımlıyor. **İki enjeksiyon kırmızı:**
+      bugünkü (alıcısız) manifest ve dışa açık alıcı.
+- [x] `flutter build apk --debug` ✔ ve APK'nın manifest'inde alıcı (`aapt2 dump`):
+      `exported=false`, `es.antonborri.home_widget.action.BACKGROUND`.
+- **Cihazda bakılacak:** Android widget'ında bir satırın dairesine dokun → görev uygulama
+  açılmadan tamamlanıyor; gece yarısından önce bırakılan widget sabah dönmüş (OPH-334'ün satırı);
+  altı saatlik tur (OPH-321) bildirimleri uygulama açılmadan yeniden kuruyor.
+- **Yüzey (kural 12):** yok (native kablo).
 
 ---
 

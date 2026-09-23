@@ -12,7 +12,7 @@ Where AllisWell is and where it's going. Generated from the phase plan in
 
 ---
 
-## v0.1.0 — the MVP (current)
+## v0.1.0 — the MVP
 
 Everything through **Phase 4** is shipped and verified. That is a complete
 single-workspace productivity hub: sign in, capture and plan tasks, keep
@@ -105,10 +105,11 @@ CONTRIBUTING / SECURITY / issue + PR templates, **this roadmap**, and
 import/export from other apps, a performance pass, and packaged distribution
 (F-Droid; the Docker images and the App Store listing have since shipped).
 
-### Phase 7 — Localization & widgets ⏳ (planned, feedback round 5)
+### Phase 7 — Localization & widgets ✅ (i18n and the iOS/Android widgets shipped; the widget family was completed in Epic 32)
 
-The second feedback round (2026-07-17) added two features, specced and broken
-into tasks (docs only so far):
+The second feedback round (2026-07-17) added two features. Both shipped; the
+widget's planned remainders — the configurable and lock-screen widgets, density,
+the private widget, the Mac target — closed in Phase 19:
 
 - **Localization (i18n) — Epic 11 (OPH-120…128).** Strip every hardcoded string
   behind JSON locales (an app-owned synchronous store, no third-party package):
@@ -118,8 +119,8 @@ into tasks (docs only so far):
   [ADR-0009](docs/adr/0009-localization-i18n-architecture.md), BLUEPRINT §12.9/§15.5.
 - **Home-screen / desktop widgets — Epic 12 (OPH-130…136).** iOS/Android/macOS
   widgets in three sizes that mirror Home's buckets in a scroll, carry an
-  Apple-Calendar-style date header at the largest size, and offer quick-add +
-  tap-to-complete like Apple Reminders — kept in sync via a `home_widget`
+  Apple-Calendar-style date header at the largest size, and offer tap-to-complete
+  like Apple Reminders and a quick-add "+" into the app — kept in sync via a `home_widget`
   App-Group/SharedPreferences snapshot. Note: a true **4×6 / full-screen widget
   does not exist on iPhone** (WidgetKit's ceiling is 4×4); it is delivered as
   `systemExtraLarge` on iPad/macOS and a real 4×6 on Android.
@@ -167,7 +168,7 @@ the standing device-tour matrix.
 
 ## Toward v0.5.0
 
-### Phase 10 — Feedback round 9: refresh, date format, the alarm system ⏳ (planned 2026-07-27)
+### Phase 10 — Feedback round 9: refresh, date format, the alarm system ✅ (v0.5.0, 2026-07-28)
 
 Thirteen tasks (OPH-171…183) from the first round of feedback written by someone
 who had actually **used** an alarm. Two halves:
@@ -373,7 +374,7 @@ so in brief (the full story is [CHANGELOG.md](CHANGELOG.md) + the epic headers i
 
 ## Toward v1.5.0
 
-### Phase 15 — Request round 18: the programmable surface, and memory (Epic 25) ⏳ (planned 2026-08-13)
+### Phase 15 — Request round 18: the programmable surface, and memory (Epic 25) ✅ (v1.5.0, 2026-08-16 — one Cloudflare panel setting is the owner's, OPH-273)
 
 Thirteen tasks (OPH-257…OPH-269) from the owner's eight-item list, planned on a
 dedicated research pass (four parallel codebase/literature investigations; the
@@ -434,7 +435,7 @@ instead of on an error screen (Epic 28, OPH-298).
 
 ## Toward v1.11.0
 
-### Phase 16 — Request round 22: the first outside user's five items (Epic 29) ⏳ (planned 2026-09-14)
+### Phase 16 — Request round 22: the first outside user's five items (Epic 29) ✅ (v1.11.0, 2026-09-15 — the Galaxy A12 report waits on the owner's device data, OPH-304)
 
 Nine tasks (OPH-299…OPH-307). The first report from a user who **found AllisWell
 on their own** rather than being handed it — five plainly-described problems, no
@@ -528,7 +529,7 @@ both reports are that assumption failing: **the device is running.**
 
 ## Toward v1.14.0
 
-### Phase 18 — The extension surface becomes first-class (Epic 31) ⏳ (planned 2026-09-19)
+### Phase 18 — The extension surface becomes first-class (Epic 31) ✅ (code complete 2026-09-23 — ships in v1.14.0)
 
 ADR-0002 froze the extension contract in August and it has held: six hooks, and an
 overlay that registers routes, sync entities, MCP tools and permissions without the
@@ -557,6 +558,27 @@ on its own; together they answer whether an extension is a first-class citizen.
 
 **CE behaviour does not change in any item**, and that is the epic's only hard
 acceptance: all three land an *empty* registry. What fills it is not in the core.
+
+### Phase 19 — The planned remainders (Epic 32) 🟡 (in progress, 2026-09-23)
+
+What was planned and left open when the widget epic and the sorting work closed,
+done in one pass (OPH-333…OPH-341):
+
+- **The widget family, finished.** A "+" that opens the app on the new-task sheet
+  (OPH-333); the Android widget turning the day over by itself (OPH-334); the Mac
+  widget, code complete and one signing step from the build (OPH-335); a widget per
+  project and two on the iPhone lock screen (OPH-336); a private widget that never
+  writes a title for the widget at all, and a compact one (OPH-337).
+- **A project's tasks sort like Home** — Home's own comparator, Home's preference
+  (OPH-338).
+- **An Android wire that was never connected** (OPH-341): the receiver every
+  background turn broadcasts to had never been declared, so widget completion, the
+  six-hourly refresh and the midnight redraw had not run on Android. It is declared
+  now, and a test reads the manifest.
+- **Documents that say what the code does** (OPH-339): WIDGETS.md, a Widgets section
+  in the README, BLUEPRINT §12.8/§15.6, this file.
+- **Remaining:** OPH-340 — the API writing a file it received itself (inbound mail
+  attachments), landed together with its enterprise twin.
 
 ## v2 parking lot 💤
 

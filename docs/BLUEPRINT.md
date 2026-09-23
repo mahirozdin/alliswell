@@ -1150,16 +1150,17 @@ _(Eklendi 2026-07-17, feedback round 5 — Epic 12. Bağlayıcı plan: [WIDGETS.
 karar [ADR-0010](adr/0010-home-screen-widgets-architecture.md); görsel spec DESIGN.md §8.
 Çelişkide WIDGETS.md + ADR-0010 kazanır.)_
 
-Kullanıcı, uygulamayı açmadan görevlerini ana ekranda görebilmeli; hızlı ekleyip hızlı
-tamamlayabilmelidir — Apple Reminders + Apple Takvim widget'larının birleşimi.
+Kullanıcı, uygulamayı açmadan görevlerini ana ekranda görebilmeli ve tek dokunuşla
+tamamlayabilmelidir; "+" onu uygulamada yeni görev sayfasına götürür (widget yazı alamaz —
+OPH-333) — Apple Reminders + Apple Takvim widget'larının birleşimi.
 
 - **Platformlar:** iOS, iPadOS, Android, macOS. Web/Windows/Linux'te ana ekran widget yüzeyi
   kapsam dışıdır (widget o platformlarda kendini gizler).
 - **Üç boyut** (kullanıcı isteği "4×2 ≈ ekranın ⅓'ü", "4×4 ≈ ⅔", "4×6 / tam ekran"):
-  - **4×2 (~⅓):** iOS `systemMedium` · Android 4×2. Kompakt tarih başlığı + ilk 3-4 görev +
-    hızlı-ekle "+".
-  - **4×4 (~⅔):** iOS `systemLarge` (iPhone'da EN BÜYÜK) · Android 4×4. Tam tarih başlığı +
-    kaydırılabilir bucket listesi (~8-10 satır) + hızlı-ekle satırı.
+  - **4×2 (~⅓):** iOS `systemMedium` · Android 4×2. Tarih başlığı YOK (satırlar yüksekliğe
+    muhtaç) + 4 görev, bucket etiketleriyle + dar bir sağ sütunda "+" (inşa edilen hâli).
+  - **4×4 (~⅔):** iOS `systemLarge` (iPhone'da EN BÜYÜK) · Android 4×4. Tam tarih başlığı
+    (saat ve bugünün açık sayısıyla, "+" başlığı kapatır) + bucket listesi (~10 satır).
   - **4×6 / tam ekran:** **iPhone'da MÜMKÜN DEĞİL — WidgetKit'te iPhone için `systemLarge`
     (4×4) üstü bir ana ekran boyutu yoktur.** Bu istek platform gerçeğiyle çakışıyor ve şöyle
     karşılanır: **iPad/macOS'ta `systemExtraLarge`** (~8×4 yatay), **Android'de gerçek,
@@ -1171,18 +1172,23 @@ tamamlayabilmelidir — Apple Reminders + Apple Takvim widget'larının birleşi
   senkron kalır (WIDGETS.md §6).
 - **B) Home özeti, kaydırılabilir bucket'lar.** Widget, Home'un kronolojik gruplarını aynalar
   (saf `groupTasksForWidget`, `groupTasksForHome`'un kardeşi): **Gecikmiş → Tarihsiz → Bugün →
-  Bu hafta → Bu ay**, içinde kaydırılır. Ufuk ayın sonudur (tekrar eden etkinlikler taşmasın).
+  Bu hafta → Bu ay**, içinde kaydırılır. Ufuk Home'unki gibi kayan 30 gündür
+  (`kWidgetHorizonDays`; "Bu ay" = +7…+30) — uzak ya da tekrar eden bir öğe taşmasın.
 - **C) En büyük boyutta takvim başlığı.** Tepede Apple-Takvim tarzı tarih başlığı: o günün
-  **gün adı + gün sayısı** (ve `systemExtraLarge`/4×6'da opsiyonel hafta şeridi / mini ay ızgarası).
-- **D) Hızlı ekle + hızlı tamamla (uygulamayı açmadan).** iOS 17+/macOS 14+ App Intents
-  (`Button/Toggle(intent:)`) ve Android Glance aksiyonları, dairesel checkbox'a dokununca görevi
-  arka planda tamamlar (satır ~1-2 sn sonra kaybolur), "+" hızlı ekler. Yazımlar **yerel-önce
-  `TaskStore`'dan geçer** (optimistic + outbox → sunucuya senkron olur). iOS 16 tabanında yalnız
-  derin bağlantı (dokunma uygulamayı açar). Dokunma hedefleri cömert olmalı (Reminders dersi).
+  **gün adı + gün sayısı** (hafta şeridi / mini ay ızgarası fikri inşa edilmedi).
+- **D) Hızlı tamamla (uygulamayı açmadan) + hızlı ekle (uygulamayı açarak).** iOS 17+/macOS 14+
+  App Intents (`Button(intent:)`) ve Android'de RemoteViews yayını (Glance değil), dairesel
+  checkbox'a dokununca görevi arka planda tamamlar; "+" bir derin bağlantıdır
+  (`alliswell://add`) ve uygulamayı yeni görev sayfası açık gelir (OPH-333 — widget başlık
+  yazdıramaz). Yazım **yerel-önce `TaskStore`'dan geçer** (optimistic + outbox → sunucuya senkron
+  olur). iOS 16 tabanında yalnız derin bağlantı. Dokunma hedefleri cömert olmalı (Reminders
+  dersi). Android'in arka plan yayını, `home_widget`'ın manifest'imizde tanımlanması gereken
+  alıcısına gider — OPH-341'e kadar tanımlı değildi.
 - **Etiketler yerelleştirilmiş gelir:** snapshot metinleri uygulama tarafından çevrilir (Epic 11) —
   native widget çeviri paketi taşımaz. Bu yüzden **Epic 12, Epic 11'e (i18n) bağımlıdır.**
 - **Gizlilik:** "Private widget" seçeneği (OPH-064 ruhu) açıkken widget başlık yerine sayı/yer
-  tutucu gösterir. Cihaz-yerel ayar.
+  tutucu gösterir. Cihaz-yerel ayar. İnşa edildi (OPH-337, Ayarlar › Genel › Widget): başlık
+  anlık görüntüye hiç yazılmaz — widget'a "gösterme" demek metni uygulamanın dışına çıkarmak olurdu.
 
 _(Rev. 2026-07-28, feedback round 10 #4 — OPH-187/188/189. İlk gerçek "widget'ı kullandım"
 turu; dördü de aynı ekranda çıktı:)_
@@ -1199,17 +1205,33 @@ turu; dördü de aynı ekranda çıktı:)_
 - **G) Widget'tan tamamlama artık kapsamdadır ve yolu round 9'da açıldı.** OPH-182, App
   Intent'leri iki hedefte derleyen ve **uygulama kapalıyken basılan düğmeleri App Group
   kuyruğunda bekleten** altyapıyı kurdu; widget tamamlaması aynı hattı kullanır — sıfırdan
-  mekanizma yazılmaz. Android tarafında önce eksik veri kapatılır: widget satır kaydı bugün
-  **görev id'sini taşımıyor**, dolayısıyla ne tamamlama ne satır bağlantısı mümkün.
-- **H) Widget'a dokunmak bir yere gitmelidir.** `alliswell://` şeması bugün iOS
-  `Info.plist`'te ve Android manifest'inde **kayıtlı değil** ve uygulamada hiçbir yönlendirme
-  yok → dokunuş "No route for alliswell://open/" hatasıyla karşılanıyor, hata ekranının
-  "Home" düğmesi de var olmayan `/` rotasına gidiyor. Şema kaydedilir, saf bir çözücü
+  mekanizma yazılmaz. Android tarafında önce eksik veri kapatılır: widget satır kaydı o gün
+  **görev id'sini taşımıyordu**, dolayısıyla ne tamamlama ne satır bağlantısı mümkündü
+  (OPH-188 kapattı).
+- **H) Widget'a dokunmak bir yere gitmelidir.** `alliswell://` şeması o gün iOS
+  `Info.plist`'te ve Android manifest'inde **kayıtlı değildi** ve uygulamada hiçbir yönlendirme
+  yoktu → dokunuş "No route for alliswell://open/" hatasıyla karşılanıyordu, hata ekranının
+  "Home" düğmesi de var olmayan `/` rotasına gidiyordu (OPH-189 kapattı). Şema kaydedilir, saf bir çözücü
   (`alliswell://open` → Home, `alliswell://task/{id}` → görev detayı,
   `alliswell://file/{id}` → Dosyalar) yönlendirmeyi yapar, `/` gerçek bir rotaya bağlanır ve
   yönlendiricinin hata ekranı kendi yazdığımız, çalışan çıkışı olan ekran olur. Sözleşme:
   **[ADR-0016](adr/0016-in-app-url-routing-and-widget-actions.md)** — dışarıdan gelen bağlantı
   yalnız GEZİNİR, asla veri yazmaz; yazan tek yol imzalı App Intent kuyruğudur.
+
+_(Rev. 2026-09-23 — Epic 32, OPH-333…OPH-341. Widget ailesi tamamlandı:)_
+
+- **I) Widget başına liste** (OPH-336): her widget Home'un tamamını ya da tek bir projeyi
+  gösterir; filtre Dart'ta, native yalnız seçer. **Kilit ekranı** (iOS 16+): sıradaki görev ve
+  bugünün açık sayısı.
+- **J) Yoğunluk ve gizlilik** (OPH-337): sıkı satırlar (dokunma hedefi küçülmez) ve başlığı hiç
+  yazmayan "Gizli widget".
+- **K) macOS** (OPH-335): kod ve köprü hazır; uzantının kendi kimliğini imzalamak hesap
+  sahibinin tek adımı (`macos/AllisWellWidgetMac/SETUP.md`).
+- **L) Gece yarısı** (OPH-334): Android'de uygulama açılmadan kovalar döner; iOS'ta tarih
+  zaman çizelgesinden döner, kovalar uygulamayı bekler.
+- **M) Arka plan alıcısı** (OPH-341): Android'in üç arka plan turu (widget'tan tamamlama, altı
+  saatlik yenileme, gece yarısı) `home_widget`'ın manifest'te tanımlanmamış alıcısına gidiyordu
+  — hiçbiri çalışmamıştı; alıcı artık dışa kapalı olarak tanımlı ve bir test manifest'i okuyor.
 
 ### 12.9 Uygulama dili ve yerelleştirme (i18n)
 
@@ -1635,15 +1657,20 @@ _(Eklendi 2026-07-17, feedback round 5 — [ADR-0009](adr/0009-localization-i18n
 _(Eklendi 2026-07-17, feedback round 5 — [ADR-0010](adr/0010-home-screen-widgets-architecture.md),
 [WIDGETS.md](WIDGETS.md).)_
 
-- **Köprü:** `home_widget` + App Group (iOS/macOS) / SharedPreferences (Android). Uygulama küçük
+- **Köprü:** `home_widget` + App Group (iOS) / SharedPreferences (Android); macOS'ta
+  `home_widget` yok, uygulama aynı çağrıları kendi kanalında karşılar (OPH-335). Uygulama küçük
   (birkaç KB) bir JSON snapshot yazar; widget yalnız onu render eder, DB'ye dokunmaz.
-- **Tazelik:** ön planda `updateWidget` push'ları Apple bütçesinden muaf (40-70 reload/gün);
-  gece yarısı bucket döndürme için seyrek self-refresh timeline + Android WorkManager.
-- **Yazma yolu:** widget'tan tamamla/ekle yerel-önce `TaskStore`'dan geçer (senkron olur) — ayrı
-  yazma yolu YOK.
+- **Tazelik:** ön planda push'lar Apple bütçesinden muaf (40-70 reload/gün); iOS zaman
+  çizelgesi saat için dakika girdileri (bayt bütçesiyle) + gece yarıları taşır; Android'de
+  WorkManager — gece yarısı (OPH-334) ve altı saatte bir (OPH-321) — arka plan turunu çalıştırır.
+- **Yazma yolu:** widget'tan tamamlama yerel-önce `TaskStore`'dan geçer (senkron olur) — ayrı
+  yazma yolu YOK. Ekleme bir derin bağlantıdır, uygulamada olur.
 - **Native derleme zorunlu:** `flutter analyze`/`test` Swift/Kotlin derlemez; her native widget
   görevi gerçek `flutter build ios`/`apk`/`macos` + cihaz turuyla doğrulanır (EventKit dersi).
-- **Gizlilik:** "Private widget" açıkken başlık yerine sayı/yer tutucu.
+  Ek ders (OPH-341): derlemenin ihtiyaç duymadığı bir bildirimi derleme asla özlemez —
+  birleştirilmiş manifest okunur ve yapısal testler native dosyaları okur.
+- **Gizlilik:** "Private widget" açıkken başlık anlık görüntüye hiç yazılmaz; yerine sayı/yer
+  tutucu (OPH-337).
 
 ## 16. Teknik riskler
 

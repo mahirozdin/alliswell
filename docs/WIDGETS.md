@@ -1,6 +1,7 @@
 # WIDGETS — Home-screen / desktop widgets (binding research & design plan)
 
-> Plan for **Epic 12 (OPH-130…136)**. This is the researched, citation-backed
+> Plan for **Epic 12 (OPH-130…136)**, built out in **Epic 32 (OPH-333…OPH-341)**.
+> This is the researched, citation-backed
 > source of truth for AllisWell's home-screen widgets, the way
 > [NOTIFICATIONS.md](NOTIFICATIONS.md) is for reminders and [CALDAV.md](CALDAV.md)
 > is for the iCloud connector. Architecture decision: [ADR-0010](adr/0010-home-screen-widgets-architecture.md).
@@ -11,42 +12,51 @@
 > competitor widgets we are targeting. Platform baseline at time of research:
 > iOS/iPadOS 26, macOS 26 (Tahoe); feature floors iOS 16 (accessory), **iOS 17 /
 > macOS 14 (interactivity)**, iOS 18 (Control Center). `home_widget` v0.9.3.
+>
+> **Revised against the code 2026-09-23 (OPH-339).** §0 is what is built. Where the
+> research proposed one path and a different one shipped (Glance vs RemoteViews, a
+> quick-add intent vs a deep link), the section says what shipped and why.
 
-## 0. Implementation status (2026-07-17)
+## 0. Implementation status (2026-09-23)
 
 | Piece | Status |
 | --- | --- |
 | Dart snapshot core (`groupTasksForWidget`, `WidgetSnapshot`, `WidgetBridge`) | ✅ **done + unit-tested** (OPH-130) |
-| Android widget — rendering + tap-to-open | ✅ **written, `flutter build apk` green** (OPH-133); RemoteViews (not Glance) |
+| Android widget — rendering + tap-to-open | ✅ **built** (OPH-133): an `AppWidgetProvider` (`TasksWidgetProvider`, via `home_widget`'s `HomeWidgetProvider`) drawing **RemoteViews** — a header over a scrollable collection (`TasksWidgetService`). Not Glance: `androidx.glance` is only in the build because `home_widget` depends on it |
 | iOS widget — SwiftUI + timeline | ✅ **shipping.** The Xcode target exists (`AllisWellWidgetExtension` in `Runner.xcodeproj`) and the `.appex` is embedded by the Runner build; verified rendering on an iPhone 17 Pro Max Home Screen 2026-08-10 (OPH-131, OPH-253) |
 | Header clock (date · clock · count) | ✅ **done + measured** (OPH-253). Android `TextClock`, free. iOS bakes minute entries against a byte budget — ~115 min / ≈13 reloads a day on a full list, and the clock **hides rather than lie** when a reload is deferred. Numbers and the traps in [DESIGN §31](DESIGN.md) |
-| In-widget complete (App Intents) | ✅ **iOS ships it (round 15, OPH-233):** a widget-process `AWWidgetCompleteIntent` stamps the shared snapshot + queues the completion — see §4's warning about LiveActivityIntent. ✅ **Android too** (OPH-188): a row's circle is a broadcast (`ACTION_ROW` → `complete`) that runs the Dart callback without launching the app |
+| In-widget complete (App Intents) | ✅ **iOS ships it (round 15, OPH-233):** a widget-process `AWWidgetCompleteIntent` stamps the shared snapshot + queues the completion — see §4's warning about LiveActivityIntent. ✅ **Android since OPH-341** — OPH-188 wired it (a row's circle is a broadcast, `ACTION_ROW` → `complete`, that runs the Dart callback without launching the app), but the receiver that broadcast is addressed to was never declared, so until OPH-341 the tap reached nothing (§4) |
 | Quick-add "+" | ✅ **both platforms (OPH-333):** `alliswell://add` opens the app ON the Home create sheet — a deep link, not an intent (a widget cannot take a title). iOS: closes the date header on large/extraLarge, a narrow trailing column on medium; Android: closes the header. The router turns the link into a one-shot request Home consumes — see `core/deep_link.dart` |
 | macOS widget | 🟡 **code complete, one account step away (OPH-335):** the SwiftUI source is shared with iOS (macOS 14+); the app ↔ widget bridge is live in the app (`AWMacWidgetBridge` — `home_widget` has no macOS side, so the app answers `alliswell/widget` itself and drains the widget's taps); the target is added by `macos/scripts/add_widget_extension.rb`, verified on a copy, and waits for the account holder to sign the extension's own bundle id — `macos/AllisWellWidgetMac/SETUP.md` |
 | Per-widget list | ✅ **both platforms, built (OPH-336):** each placed widget shows the whole list (the default — unconfigured widgets are unchanged) or one project. The app writes every list into the snapshot (`lists` + `views`, §3.1) and the filter is Dart's (`filterTasksForWidgetList`); native code only picks an id. iOS 17+/macOS 14+: `AppIntentConfiguration` (`AWWidgetConfigIntent`, a searchable project list); iOS 16 keeps the unconfigurable widget under the same kind. Android: `TasksWidgetConfigureActivity`, `configuration_optional` on 12+ (long-press → reconfigure) |
 | Lock screen (iOS 16+) | ✅ **built (OPH-336):** `accessoryRectangular` — the next task (`next` in the snapshot: overdue first, dateless last) with its bucket and time in words; `accessoryCircular` — today's open count, a tick at zero. They follow the widget's list setting. iOS only — the families do not exist on macOS |
 | Density, private widget | ✅ **built (OPH-337):** Settings › General › Widget. **Compact** tightens the gaps and the type (iOS: 4 → 1 pt between rows, `.footnote` → `.caption`, one more row on large/extraLarge; Android: row padding 2 → 0 dp, 14 → 13 sp) — the circle you tap keeps its size (DESIGN §8 W4). **Private widget** is applied in the snapshot, not in native code: no task title is written to the App Group / SharedPreferences at all — rows, the lock screen's `next` and every project view carry "Private task" instead (§9) |
-| Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design |
-| Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android and the other families still pending |
+| Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design. Like every Android background turn it is a broadcast to `home_widget`'s receiver, which only exists since OPH-341 |
+| Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android, the other families, and every Epic 32 surface are on the owner's device list (STATE, "Kullanıcıdan bekleyen") |
 
 The Dart core is the single source of truth both native widgets render; it's the
-only fully unit-testable piece, and it's done. The native layers are verified by
-build (`apk` green; iOS awaits its Xcode target) — the on-device *visual* pass is
-tracked like the notification/EventKit device passes.
+only fully unit-testable piece. The native layers are verified by build (`flutter
+build ios` / `apk`, `swiftc -typecheck` for the macOS target) and by **structural
+tests that read the native files** — `widget_clock_native_test`, `widget_lists_test`,
+`widget_private_test`, `android_background_receiver_test` — so deleting a rule from
+Swift, Kotlin or the manifest fails a test. The on-device *visual* pass is tracked
+like the notification/EventKit device passes.
 
 ## 1. What we are building
 
 A single glanceable surface that mirrors **Home**: the user's tasks bucketed
-chronologically, an Apple-Calendar-style date header at the larger sizes, and
-Apple-Reminders-style **quick-add** + **tap-to-complete** that work without
-opening the app. It must **stay in sync** with task data at all times.
+chronologically, an Apple-Calendar-style date header at the larger sizes,
+Apple-Reminders-style **tap-to-complete** that works without opening the app, and a
+**quick-add "+"** that opens the app on the create sheet — a widget cannot take
+typed text (OPH-333). It must **stay in sync** with task data at all times.
 
 The buckets are exactly Home's, reused from the tested `groupTasksForHome`
 philosophy (a sibling pure function `groupTasksForWidget`): **Overdue → No date →
 Today → This week → This month**, scrollable inside the widget. ("This month"
 replaces Home's "Next 30 days" tail — a widget is a glanceable agenda and the user
-asked for a monthly horizon; horizon = end of the current month, capped so
-recurring events can't flood it.)
+asked for a monthly horizon. As built, the horizon is a rolling 30 days like Home's
+(`kWidgetHorizonDays`): This month is +7…+30, and anything later is dropped, so a
+far-future or recurring item cannot flood it.)
 
 ## 2. Platform support & the size/family mapping (READ FIRST)
 
@@ -75,9 +85,9 @@ full screen." Here is what the platforms actually allow:**
 > deliver the wish as far as each platform physically allows.
 
 Apple sizes are **fixed** (three per surface); Android widgets are **user-
-resizable**, so the three Android sizes are *defaults* — build one responsive
-layout (Android 12+ `RemoteViews(Map<SizeF, RemoteViews>)` / Glance size
-handling), not three pixel-perfect ones. Declare Android 12+ `targetCellWidth/
+resizable**, so the three Android sizes are *defaults* — built as ONE layout, a
+header over a scrollable RemoteViews collection that fills whatever size the widget
+is resized to (no per-size `Map<SizeF, RemoteViews>`), not three pixel-perfect ones. Declare Android 12+ `targetCellWidth/
 Height` (cells) **and** legacy `minWidth/minHeight` dp (`70·n − 30` rule) with
 `resizeMode="horizontal|vertical"` + sensible `minResize*`/`maxResize*`.
 
@@ -95,24 +105,25 @@ drift/SQLite replica**. The sanctioned bridge is a shared container:
   `UserDefaults(suiteName:)` (small snapshots) and/or container file (blobs).
 - **Android:** **SharedPreferences** the widget process reads.
 
-`home_widget` wraps both:
+`home_widget` wraps both on iOS and Android; it has **no macOS side**, so on a Mac
+the app answers the same calls on its own channel (`MacWidgetHost` ↔
+`AWMacWidgetBridge`, OPH-335). As built (`widget_host.dart`, `widget_bridge.dart`):
 
 ```dart
-// once, in main():
-await HomeWidget.setAppGroupId('group.com.alliswell.alliswell'); // iOS/macOS
-await HomeWidget.registerInteractivityCallback(widgetCallback);
+// main(): the entry point for every background turn and widget tap
+HomeWidget.registerInteractivityCallback(widgetCallback);
 
-// after any relevant task change:
-await HomeWidget.saveWidgetData<String>('aw_snapshot', jsonEncode(snapshot));
-await HomeWidget.updateWidget(
-  iOSName: 'AllisWellWidget',
-  androidName: 'TasksWidgetProvider',
-  qualifiedAndroidName: 'com.alliswell.alliswell.TasksWidgetProvider',
-);
+// WidgetBridge.publish — on every change to open tasks, projects, the date
+// format and the widget settings (widgetSyncProvider), and at the end of every
+// background turn (publishWidgetFromReplica):
+await host.configure();          // HomeWidgetHost: setAppGroupId(group.com.alliswell.alliswell)
+await host.save('aw_widget_snapshot', jsonEncode(snapshot.toJson()));
+await host.requestUpdate();      // updateWidget(iOSName: 'AllisWellWidget', androidName: 'TasksWidgetProvider')
 ```
 
-The native timeline provider / Glance widget reads the same key back and renders
-it. **The widget never computes buckets or touches the DB** — the app owns that.
+The WidgetKit provider and the Android `RemoteViews` provider read the same key back
+and render it. **The widget never computes buckets or touches the DB** — the app
+owns that.
 
 ### 3.1 The snapshot contract
 
@@ -120,23 +131,37 @@ Keep it **small** (single-digit KB — App-Group `UserDefaults` is memory-mapped
 the widget extension has a ~30 MB budget). Serialize only what renders, with
 **already-localized** strings (Epic 11):
 
+The shape as built (`v: 4`, `WidgetSnapshot.toJson()` in `widget_snapshot.dart`;
+the Swift `AWSnapshot` and the Kotlin readers mirror it). The revisions below say
+when each field arrived and why:
+
 ```jsonc
 {
-  "v": 1,                         // snapshot schema version
+  "v": 4,                                   // schema version
   "generatedAt": "2026-07-17T09:00:00Z",
   "locale": "tr",
   "date": { "weekday": "Cuma", "day": "17", "month": "Temmuz" },
-  "counts": { "overdue": 3, "today": 5, "week": 12 },
+  "strings": { "allCaughtUp": "…", "addTask": "…", "openToday": "5 açık",
+               "upNext": "…", "chooseList": "…" },   // every native word, pre-localized
+  "clockFormat": "HH:mm",                   // v3 — the header clock's pattern
+  "density": "compact",                     // v4 — absent = normal
+  "openToday": 5,                           // v2 — absent/0 = hide the badge
+  "next": { "id": "01H…", "title": "…", "bucket": "overdue", "label": "Gecikmiş", "time": "10 Tem" },
   "buckets": [
-    { "key": "overdue", "label": "Gecikmiş",
+    { "key": "overdue", "label": "Gecikmiş", "count": 14,
       "items": [ { "id": "01H…", "title": "Teklifi bitir", "done": false,
-                   "time": "11:30", "projectColor": "#2563EB" } ] },
-    { "key": "today", "label": "Bugün", "items": [ /* … top N … */ ] }
-    // … noDate, week, month …
+                   "priority": "high", "time": "11:30", "projectColor": "#2563EB" } ],
+      "more": 2 }                           // "+N" — count minus the rows carried (12 max)
+    // … noDate, today, thisWeek, thisMonth; empty buckets are omitted …
   ],
-  "more": { "today": 2 }          // "+N more" when a bucket is truncated
+  "lists": [ … ],                           // v4 — what a widget can be set to
+  "views": { … }                            // v4 — one per project in `lists`
 }
 ```
+
+The first version (OPH-130) carried a top-level `counts` map and a top-level
+`more`; neither shipped in that form — each bucket carries its own `count` and
+`more`.
 
 **Rev. 2026-07-28 (feedback round 10 #4B — OPH-187): schema `v: 2`.** One field is
 added at the top level:
@@ -199,8 +224,12 @@ they read before:
 - `projectColor` is user data (hex allowed here — it's a data value, not UI chrome;
   DESIGN G6 exception). The native side computes readable ink over it, mirroring
   the "Project badge" contrast helper (DESIGN §4).
-- Times/dates are pre-formatted by the app in the active locale (no native
-  date formatting → no second i18n system).
+- Rows' times and dates are pre-formatted by the app in the active locale and the
+  user's date format (OPH-174) — no second i18n system. Native code formats exactly
+  two things, both of which change while the app is not running: the header's date,
+  from the timeline ENTRY's date with the snapshot's `locale` (round 15), and the
+  clock's minute, with the snapshot's `clockFormat` (OPH-253). The choices stay the
+  app's; only the ticking is native.
 
 ## 4. Interactivity — quick-add & quick-complete
 
@@ -209,7 +238,10 @@ they read before:
 WidgetKit runs `perform()` **in the background, no app launch**, then reloads.
 This is the Reminders "tap the circle to complete" behavior. Configurable widgets
 use `AppIntentConfiguration` + `AppIntentTimelineProvider`; plain interactivity
-works on a `StaticConfiguration` too.
+works on a `StaticConfiguration` too. AllisWell ships both under one kind: the
+configurable widget on iOS 17+ / macOS 14+ (OPH-336) and the static one on iOS 16,
+which steps aside at runtime on 17+ (a `WidgetBundle` has no `else` after
+`#available` — measured, see `AllisWellWidget.swift`).
 
 > **The round-15 device lesson (OPH-233): the intent's TYPE decides the
 > process.** The widget's circle originally reused `AWCompleteTaskIntent` — a
@@ -226,28 +258,39 @@ works on a `StaticConfiguration` too.
 > remains correct for the Live Activity's own buttons, where the app is the
 > point.
 
-**Android:** a Glance `Checkbox`/`Button` with `actionRunCallback<T>()` (or a
-RemoteViews collection with a `setPendingIntentTemplate` + per-row
-`setOnClickFillInIntent`) fires a background broadcast.
+**Android (as built):** a RemoteViews collection — the provider sets one
+`setPendingIntentTemplate` and each row two `setOnClickFillInIntent`s (open the task /
+complete it). "Complete" becomes a `HomeWidgetBackgroundIntent` broadcast to
+`home_widget`'s `HomeWidgetBackgroundReceiver`, which runs the Dart callback in a
+background engine without launching the app. (The research's Glance
+`actionRunCallback` path was not taken.)
 
-**The `home_widget` bridge (both platforms → one Dart callback):**
+**The Dart side of the bridge (`lib/main.dart`, `widget_callback.dart`):**
 
 ```dart
 @pragma('vm:entry-point')          // MANDATORY — survives tree-shaking & app-kill
 Future<void> widgetCallback(Uri? uri) async {
-  switch (uri?.host) {
-    case 'complete': await taskStore.complete(uri!.queryParameters['id']!); break;
-    case 'add':      await taskStore.create(workspaceId, {'title': …});     break;
-  }
-  await HomeWidget.updateWidget(iOSName: 'AllisWellWidget', androidName: 'TasksWidgetProvider');
+  // alliswell://refresh-alarms — the six-hourly and midnight turns (OPH-321/334)
+  if (uri != null && awIsAlarmRefresh(uri)) return runHeadlessRefresh();
+  // alliswell://complete?id=… — the ONLY write a widget makes (TaskStore.complete)
+  if (await handleWidgetAction(uri)) await HomeWidget.updateWidget(…);
 }
 ```
 
-- iOS: the `AppIntent.perform()` calls `HomeWidgetBackgroundWorker.run(url:appGroup:)`;
-  the **`AppIntent` .swift must be a member of BOTH the Runner and the Widget
-  Extension targets** (the #1 cause of "button does nothing").
-- Android: `HomeWidgetBackgroundIntent.getBroadcast(context, uri)`; the
-  `es.antonborri.home_widget.HomeWidgetBackgroundReceiver` must be in the manifest.
+Adding is not here: a widget cannot take a title, so the "+" is a deep link that
+opens the create sheet (`alliswell://add`, OPH-333).
+
+- iOS: no `HomeWidgetBackgroundWorker`. The circle's `AWWidgetCompleteIntent` runs in
+  the widget process and queues into `AWAlarmActionQueue`; the app drains it (the
+  round-15 note above). On a Mac the same queue is drained by `AWMacWidgetBridge`.
+- Android: `HomeWidgetBackgroundIntent.getBroadcast(context, uri)` addresses the
+  receiver **by class**, and `home_widget` 0.9.3's own manifest is empty — so
+  `HomeWidgetBackgroundReceiver` has to be declared in OURS. It was not until
+  **OPH-341**: the widget circle (OPH-188), the six-hourly refresh (OPH-321) and the
+  midnight redraw (OPH-334) were broadcasts to nobody, green in every Dart suite.
+  It is declared **non-exported** (every sender is the app's own process; an
+  exported one would let any app complete a task by URL — ADR-0016), and
+  `android_background_receiver_test` reads the manifest.
 - Completing/adding goes through **`TaskStore`** — the same optimistic-write +
   outbox path the UI uses (AGENTS §4 local-first), so a widget edit **syncs to the
   server** and every device converges. This is non-negotiable: the widget must not
@@ -282,14 +325,20 @@ out of using the shipped widget:)_
 
 ## 5. Content per size
 
+As built (`awRowBudget` in Swift; Android's list scrolls at every size):
+
 | Size | Date header | List | Actions |
 | --- | --- | --- | --- |
-| **4×2 medium** | compact (day number + weekday) | top 3–4 rows, no bucket labels; Overdue/Today first | one **quick-add "+"** ; rows tap-to-complete |
-| **4×4 large** | full (weekday name + big day number) | scrollable bucketed list ~8–10 rows with bucket labels + counts | quick-add row + per-row complete |
-| **4×6 / extraLarge** | full + optional **week strip / mini month grid** (Apple-Calendar style) | richest scroll; may split into two columns (tasks ∥ agenda) on extraLarge | quick-add + complete; densest triage |
+| **4×2 medium** | none — the rows need the height | 4 rows with bucket labels + counts (3 when the widget is set to a project: its name takes a line) | "+" in a narrow trailing column; per-row complete |
+| **4×4 large** | full: day number · weekday · month, the clock, today's open count, "+" | ~10 rows (11 compact) with labels + counts + "+N" | "+" closes the header; per-row complete |
+| **extraLarge (iPad/Mac) · tall Android** | full | ~18 rows (19 compact); Android scrolls | same |
+| **Lock screen (iOS)** | — | rectangle: the next task · circle: today's open count | tap opens the task / the app |
 
-Buckets recompute at **local midnight** so Today/Overdue roll over even if the app
-never opens (§6). Empty state: a calm "All caught up" mirroring Home.
+The research's **week strip / mini month grid** and a two-column extraLarge were not
+built. On **Android** the buckets recompute at local midnight without the app
+(OPH-334, through OPH-341's receiver); on **iOS** the header's date rolls over from
+the timeline but the buckets wait for the app to run (§6). Empty state: a calm "All
+caught up" mirroring Home.
 
 ## 6. Freshness & refresh budget
 
@@ -299,14 +348,18 @@ the **foreground**, and **the widget performs an app intent**. Android has no su
 budget but `updatePeriodMillis` has a **30-minute floor** and wakes the device.
 
 **Strategy (both platforms):**
-1. **Push on write, primary:** after every relevant `TaskStore` mutation, call
-   `HomeWidget.updateWidget(...)`. While the app is foreground these reloads are
-   **budget-exempt** → the widget stays in lock-step for free. Do it in the store/
-   bridge layer, not per screen.
-2. **Self-refresh, safety net:** a sparse WidgetKit timeline
-   (`TimelineReloadPolicy.after`, entries ≥5 min apart) + a **midnight** entry for
-   date rollover; on Android a **WorkManager** (or `AlarmManager` RTC) job at local
-   midnight re-pushes. Keep sparse to live within 40–70/day.
+1. **Push on write, primary (built):** `widgetSyncProvider`, watched by the app
+   shell, republishes the snapshot on every change to the open tasks, the projects,
+   the date format and the widget settings — one place, not per screen. While the
+   app is foreground these reloads are **budget-exempt** → the widget stays in
+   lock-step for free.
+2. **Self-refresh, safety net (built):** the iOS timeline carries one entry per
+   minute for the header clock, as many as a byte budget allows (OPH-253: up to 240,
+   ~115 on a full list), then the next midnights without a clock, and reloads when
+   the minute entries run out; the lock-screen families need no clock — one entry and
+   a reload at 00:01. On Android, `WidgetMidnightWorker` (a one-time WorkManager job,
+   re-armed nightly) and the six-hourly `AlarmRefreshWorker` run the background turn,
+   which republishes from the replica (OPH-321, OPH-334 — working since OPH-341).
    **Round 15 (OPH-232):** one entry + one reload was NOT enough — after the
    first midnight the reload re-rendered the same stale snapshot still wearing
    yesterday's date. The iOS timeline now carries **now + the next 4 midnights**
@@ -314,8 +367,10 @@ budget but `updatePeriodMillis` has a **30-minute floor** and wakes the device.
    ENTRY's date** (`awDate(for:locale:)` — OS date names via the snapshot's
    locale, not product strings, so W9 holds). Buckets stay the app's honest
    snapshot: an aging list under a correct date, never a native guess (W1).
-   The Android midnight job remains the open half of this item.
-3. Prefer `WidgetCenter.shared.reloadTimelines(ofKind:)` over `reloadAllTimelines()`.
+   The Android midnight job, once the open half of this item, is OPH-334.
+3. Prefer `WidgetCenter.shared.reloadTimelines(ofKind:)` over `reloadAllTimelines()` —
+   iOS does (`home_widget`'s `updateWidget(iOSName:)`, the complete intent). The Mac
+   bridge reloads all: its extension has one kind.
 
 ## 7. Setup — extension targets & files committed to git
 
@@ -327,25 +382,33 @@ entitlements are unavoidable and committed** (ADR-0010, deliberate deviation).
 (`AllisWellWidget`). Add **App Groups** capability (`group.com.alliswell.alliswell`)
 to **both** Runner and the extension. Commit: the extension's Swift (widget view,
 `TimelineProvider`/`AppIntentTimelineProvider`, the shared `AppIntent`), its
-`Info.plist`, `Assets.xcassets`, **both** `.entitlements`, the **`project.pbxproj`**
-diff, and the `Podfile` change that links `home_widget` into the extension. Match
-the extension's min-iOS to Runner; keep the "Thin Binary" build phase last (Flutter
-guidance).
+`Info.plist`, `Assets.xcassets`, **both** `.entitlements` and the **`project.pbxproj`**
+diff. As built, the extension does **not** link `home_widget` (no Podfile target —
+it reads the App Group's `UserDefaults` itself), and its floor is **iOS 16** (the
+lock-screen families) while Runner's is 15: on iOS 15 the widget is simply not
+offered. Keep the "Thin Binary" build phase last (Flutter guidance).
 
-**macOS (`macos/`):** same, plus **App Sandbox** — add
-`com.apple.security.application-groups` to **`DebugProfile.entitlements` AND
-`Release.entitlements`** (edit the plists directly). The App-Group string must be
-**byte-identical** across Dart `setAppGroupId`, Runner, and extension; decide the
-`group.…` vs `<TeamID>.group.…` form once (macOS `home_widget` won't add the team
-prefix for you). **Gated on the inherited macOS signing gap** (STATE: no macOS dev
-cert → `flutter build macos` fails today), like the EventKit macOS path.
+**macOS (`macos/`, OPH-335):** same, plus **App Sandbox** —
+`com.apple.security.application-groups` is in **`DebugProfile.entitlements` AND
+`Release.entitlements`**. The App-Group string is **byte-identical** everywhere:
+`group.com.alliswell.alliswell` — decided in OPH-335 (the Mac team profile covers
+it; no `<TeamID>.` prefix). `home_widget` has no macOS side, so the app answers
+`alliswell/widget` itself (`AWMacWidgetBridge`). The target is added by
+`macos/scripts/add_widget_extension.rb` (idempotent, verified on a copy) rather than
+by hand; `flutter build macos` is green without it, and the one step left — signing
+the extension's own bundle id — belongs to the account holder
+(`macos/AllisWellWidgetMac/SETUP.md`).
 
-**Android (`android/app/src/main/`):** `kotlin/com/alliswell/alliswell/
-TasksWidgetProvider.kt` (Glance `GlanceAppWidget` + `GlanceAppWidgetReceiver`, or
-`AppWidgetProvider`), `res/xml/tasks_widget_info.xml` (sizing/resize/period), any
-`res/layout/*` (RemoteViews path only), and `AndroidManifest.xml` receivers (the
-provider **and** the `home_widget` background receiver). Verify with a real
-`flutter build apk` — `flutter analyze`/`flutter test` do **not** compile Kotlin.
+**Android (`android/app/src/main/`, as built):** `kotlin/com/alliswell/alliswell/` —
+`TasksWidgetProvider.kt` (the `AppWidgetProvider`), `TasksWidgetService.kt` (the row
+collection), `TasksWidgetConfigureActivity.kt` + `WidgetLists.kt` (per-widget list,
+OPH-336), `WidgetMidnightWorker.kt` (OPH-334); `res/xml/tasks_widget_info.xml`
+(sizing, resize, `configure`, `widgetFeatures`); `res/layout/tasks_widget*.xml` and
+`widget_config_row.xml`; and in `AndroidManifest.xml` the provider, its service, the
+configure activity **and `home_widget`'s background receiver** (OPH-341). Verify
+with a real `flutter build apk` — `flutter analyze`/`flutter test` do **not** compile
+Kotlin — and read the MERGED manifest: a declaration the build does not need is one
+the build will never miss.
 
 **Verification reality (the EventKit lesson):** `flutter analyze` + `flutter test`
 compile **no** Swift/Kotlin. Every native widget task is only proven by a real
@@ -354,14 +417,18 @@ unit-testable piece is the Dart snapshot core (§8).
 
 ## 8. What is (and isn't) unit-testable
 
-- **Green in `flutter test`:** `groupTasksForWidget` (bucket boundaries, midnight,
-  horizon, event rules — mirror `task_grouping_test`), the snapshot serializer
-  (JSON shape, per-size truncation + "+N more", localized labels), the `WidgetBridge`
-  (writes + `updateWidget` on task-stream change, via a fake `HomeWidget`), and the
-  interactivity callback (`complete`/`add` → fake `TaskStore`).
-- **Only by build + device:** the SwiftUI/Glance views, the extension targets,
-  entitlements/App-Group wiring, App-Intent registration, timeline refresh, deep
-  links. Record device results in STATE like the notification/EventKit passes.
+- **Green in `flutter test`:** `groupTasksForWidget` and its neighbours
+  (`filterTasksForWidgetList`, `nextTaskForWidget`), the snapshot serializer (JSON
+  shape, "+N", localized labels, lists/views, the private placeholders), the
+  `WidgetBridge` and the background republish (via `FakeWidgetHost`), the
+  interactivity callback (`complete` → `TaskStore`; `add` is a deep link, tested in
+  `quick_add_link_test`), and the Settings card.
+- **Read, not run:** structural tests open the native files and pin what they must
+  keep saying — the clock's constants, list selection, density, the lock-screen
+  families, the background receiver in the manifest.
+- **Only by build + device:** the SwiftUI and RemoteViews drawing, the extension
+  targets, App-Intent registration, timeline refresh, the gallery. Record device
+  results in STATE like the notification/EventKit passes.
 
 ## 9. Privacy
 
@@ -402,13 +469,15 @@ with a "do not show" flag for native code would already have left the app.
 - **TickTick:** breadth-by-intent (today list, calendar, matrix, habits, pomodoro,
   countdown) + always-present **quick-add "+"**. → quick-add; future variants.
 - **Todoist:** scrollable task list, tap-circle complete, **in-widget filter
-  switcher**, **compact/density** toggle, separate add-task shortcut. → density +
-  future in-widget switcher (OPH-136).
+  switcher**, **compact/density** toggle, separate add-task shortcut. → density
+  built (OPH-337); the in-widget switcher was not — the per-widget list (OPH-336)
+  answers the same need.
 - **Things 3:** **configurable-per-instance list**, **This Evening** sub-bucket,
   **+** button whose destination follows the widget's list. → configurable widget
-  (OPH-136).
+  built (OPH-336); our "+" opens the plain create sheet, not the widget's project.
 - **Structured:** day **timeline**, "current + next task with countdown"
-  (lock-screen). → accessory tier idea (OPH-136).
+  (lock-screen). → the lock-screen rectangle (OPH-336) names the next task, without
+  a countdown.
 - **Fantastical:** combined calendar **+ tasks under one date header**. → validates
   our header-over-list layout.
 
@@ -424,8 +493,9 @@ with a "do not show" flag for native code would already have left the app.
 - **iOS 26 / macOS 26 (current):** new "Liquid Glass" system chrome — use
   `.containerBackground` so the OS themes the widget; don't hard-code backgrounds.
 - **`systemExtraLarge`:** iPad + macOS only; safe in `supportedFamilies` (filtered
-  on iPhone). **Pin `home_widget` (v0.9.3) and `androidx.glance`** at build time and
-  re-verify the macOS extension plumbing against the pinned versions.
+  on iPhone). **Pin `home_widget` (v0.9.3)** and re-verify the Android receiver and
+  the macOS bridge against it when it moves. `androidx.glance` is in the build only
+  as `home_widget`'s dependency — the widget itself is RemoteViews.
 
 ## 12. Sources
 

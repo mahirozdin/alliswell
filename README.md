@@ -177,6 +177,45 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 
 ---
 
+## 🧩 Widgets
+
+<p align="center">
+  <img src="screenshots/ios/12-widget.png" width="32%" alt="The AllisWell widget on the iPhone Home Screen in light mode: the date and a live clock in the header, today's open count beneath it, then overdue, undated and today's tasks">
+  &nbsp;
+  <img src="screenshots/ios/13-widget-dark.png" width="32%" alt="The same widget in dark mode">
+</p>
+
+The widget is Home, at a glance — the same buckets (overdue · no date · today · this
+week · this month), worked out by the app and drawn natively, so it never disagrees
+with the list you open.
+
+- **Tap the circle, the task is done** — without opening the app (iPhone and iPad on
+  iOS 17+, Android; the Mac on macOS 14+ once its widget target is signed — below).
+  It is an ordinary completion: it works offline and syncs like any other.
+- **"+" opens the app on the new-task sheet**, the day already filled in.
+- **One widget per project, if you like** — each widget can show everything or a
+  single project (edit the widget on Apple platforms; long-press → reconfigure on
+  Android).
+- **The lock screen** (iPhone): the next task and when it is due, and how many tasks
+  today still holds.
+- **A clock that really ticks** in the header, in the date format you chose in the app.
+- **Private widget and Compact widget** in *Settings › General › Widget*. Private
+  shows "Private task" instead of every title — and the titles are never written for
+  the widget at all, so they do not leave the app.
+- Sizes: medium and large on iPhone, extra large on iPad and Mac, and a freely
+  resizable widget on Android, which also turns the day over at midnight on its own.
+
+**Self-hosting?** Widgets need nothing from your server: the app writes a small
+snapshot for them from its local copy of your data, so every instance gets them as
+they are. If you build and sign the app yourself under your own identifiers, the
+iOS app and its widget extension must share one App Group (`group.com.alliswell.alliswell`
+here — change it in both entitlements and in `widget_host.dart` together); Android
+needs nothing; the macOS widget target is added by a script and signed once in Xcode
+([`SETUP.md`](apps/app/macos/AllisWellWidgetMac/SETUP.md)). The whole design, with
+the traps we measured on the way: [docs/WIDGETS.md](docs/WIDGETS.md).
+
+---
+
 <details>
 <summary><h2>✨ Every feature — click to expand</h2></summary>
 
@@ -195,7 +234,7 @@ How they are produced: <a href="docs/SCREENSHOTS.md">docs/SCREENSHOTS.md</a></su
 - 🗑 **Delete like you expect** — swipe a row from the right, it half-opens, and the red **Delete** is what deletes. Tasks, notes, projects and files, with an **Undo** that works by not having written anything yet.
 - ⚡ **Quick access** — a personal shortcut list for the projects, tasks, notes, folders, files and links you actually live in, with your own emoji, colour and order. A **sidebar section** on desktop and web, a popover on narrow windows, and a **draggable floating button** on phones. Yours alone: shortcuts never leak to other members of a shared workspace.
 - 🤖 **AI, on your terms (optional)** — see [§4 above](#4-ai-on-your-terms--including-none).
-- 🖥 **Home-screen widgets** — iPhone and Android widgets that mirror your Home buckets, carry the **system clock and how many tasks today actually holds** in the header, so the day is readable without unlocking anything.
+- 🖥 **Home-screen widgets** — iPhone, iPad, Android and (one signing step away) Mac widgets that mirror your Home buckets, carry the **system clock and how many tasks today actually holds** in the header, complete a task with one tap, follow one project if you want them to, and sit on the iPhone lock screen — see [Widgets](#-widgets).
 - 🔑 **Sign in the way you already do** — e-mail and password, **Continue with Google**, or **Continue with Apple**. The provider proves who you are; **AllisWell's own database still owns the account**, so a self-hosted instance works the same way — or drops social sign-in entirely and keeps passwords. [How it works →](docs/adr/0026-social-sign-in.md)
 - 🌐 **Localisation** — ships in English and Turkish, auto-detected from your system; adding a language is dropping in one JSON file.
 - 🔓 **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).

@@ -258,9 +258,10 @@ write the pair.
 _(Added 2026-07-17, feedback round 5. Full plan: [WIDGETS.md](WIDGETS.md);
 decision [ADR-0010](adr/0010-home-screen-widgets-architecture.md).)_
 
-Widgets render in **native views** (SwiftUI on Apple, Jetpack Glance on Android),
-NOT Flutter — so they can't consume `AwTokens`/`theme.dart` directly. They must
-still *read as AllisWell*. Rules:
+Widgets render in **native views** (SwiftUI on Apple, RemoteViews on Android — the
+research proposed Jetpack Glance; OPH-133 built RemoteViews), NOT Flutter — so they
+can't consume `AwTokens`/`theme.dart` directly. They must still *read as AllisWell*.
+Rules:
 
 - **W1 — Token parity, not token reuse.** Mirror the DESIGN §3.1 palette as a
   small native constant table (light + dark), keyed by the same roles
@@ -298,6 +299,10 @@ still *read as AllisWell*. Rules:
 - **W7 — Density per size** (WIDGETS.md §5): 4×2 = header + 3–4 rows, no bucket
   labels; 4×4 = bucketed scroll ~8–10 rows + labels/counts; extraLarge/4×6 =
   richest, optional week strip. Truncate with an honest "+N more", never silently.
+  _(Rev. 2026-09-23, OPH-339 — as built:)_ 4×2 draws **no** date header (the rows
+  need the height) and keeps its bucket labels, with the "+" in a narrow trailing
+  column; the week strip was not built. A user-chosen **compact** density (OPH-337)
+  tightens gaps and type on every size and never the circle's hit target (W4).
 - **W8 — Both themes + all sizes reviewed** before ship, on device (the native
   layer isn't covered by `flutter test`).
 

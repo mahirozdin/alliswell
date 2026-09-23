@@ -136,6 +136,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **The widget documents say what shipped (OPH-339).** The README gains a
+  Widgets section; the widget design notes, the product spec and the roadmap
+  were read against the code and corrected where they described a plan rather
+  than the build — the widget's thirty-day horizon, the "+" that opens the app,
+  the Android drawing layer, the Mac's one remaining signing step.
 - **The Mac app needs macOS 12 or later.** The Flutter toolchain raised its own
   minimum, and the Mac build had not been run since the push-notification work,
   so the project and its CocoaPods lock now say what the build already did.
@@ -152,6 +157,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **On Android, three things the app asks for in the background never
+  happened (OPH-341).** Ticking a task's circle on the home-screen widget, the
+  six-hourly refresh that re-arms your reminders without opening the app, and
+  the midnight redraw that moves the widget to the new day all send a message
+  to one small receiver — and that receiver had never been declared, so every
+  one of those messages went nowhere, silently, since each of them shipped. It
+  is declared now, open to this app only, and a test reads the manifest so it
+  cannot quietly go missing again. The iPhone was not affected.
 - **The Android widget turns the day over by itself (OPH-334).** Its groups —
   overdue, today, this week — used to stay on yesterday until the app was
   opened or a six-hourly background turn happened to run. A one-time job now

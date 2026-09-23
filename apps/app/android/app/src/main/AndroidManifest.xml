@@ -165,6 +165,23 @@
             android:name=".TasksWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
+        <!-- OPH-341: home_widget's background receiver. Every Dart turn the
+             native side asks for — the widget circle's "complete" (OPH-188),
+             the six-hourly alarm refresh (OPH-321), the midnight redraw
+             (OPH-334) — is an EXPLICIT broadcast to this class
+             (HomeWidgetBackgroundIntent), and the plugin's own manifest is
+             empty. Undeclared, all three went nowhere, silently, from the day
+             they shipped. Not exported: every sender is this app's own process
+             (a PendingIntent runs as its creator), and an exported receiver
+             would let any app complete a task with alliswell://complete?id=…
+             — the write-by-URL ADR-0016 forbids. -->
+        <receiver
+            android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
+            </intent-filter>
+        </receiver>
 
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
