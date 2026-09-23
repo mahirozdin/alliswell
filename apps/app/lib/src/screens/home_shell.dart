@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/ee/new_ticket_providers.dart';
 import '../features/ee/providers.dart';
+import '../features/ee/ticket_drafts_providers.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
@@ -201,6 +202,10 @@ class HomeShell extends ConsumerWidget {
     // EE-225: carry drafts written in this person's own workspace while
     // another is on screen (self-disables otherwise — see the provider).
     ref.watch(draftCourierProvider);
+    // …and notice when one becomes a request: "sent" is a transition, not a
+    // row, so it is only seen by something already listening when it happens.
+    // A listener, not a watch: the shell has nothing to redraw when it does.
+    ref.listen(sentDraftsProvider, (_, _) {});
     // EE-084: which sections are DRAWN. Not the same list as the branches —
     // see `_visible` / `_selectedIn` above for why that distinction exists.
     final visibleSections = visibleAppSections(

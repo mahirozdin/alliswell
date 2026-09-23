@@ -2014,6 +2014,26 @@
         "sent": "Talep açıldı",
         "sentNumbered": "Talep açıldı — #{number}",
         "drafted": "Taslak kaydedildi — bağlantı gelince gönderilecek"
+      },
+      "drafts": {
+        "title": "Taslaklar",
+        "onDevice": "Telefonda — bağlantı gelince gönderilecek",
+        "held": {
+          "noService": "Masada bekliyor — servis seçilmedi",
+          "serviceClosed": "Masada bekliyor — bu servis artık talep almıyor",
+          "needsUnit": "Masada bekliyor — bu servise birden çok birim bakıyor ve taslak birim seçemez",
+          "waiting": "Masaya ulaştı, talebe dönüşmesi bekleniyor"
+        },
+        "rejected": "Reddedildi — {reason}",
+        "sent": "İletildi — talebin aşağıda",
+        "pickService": "Servis seç",
+        "forget": "Kapat",
+        "reason": {
+          "limit": "kişisel alanında en fazla 200 gönderilmemiş taslak tutulabilir",
+          "notOwn": "taslak yalnız kişisel alanına yazılabilir",
+          "noDesk": "bu takımın masasına ulaşamıyor",
+          "other": "masa kabul etmedi ({code})"
+        }
       }
     },
     "sla": {

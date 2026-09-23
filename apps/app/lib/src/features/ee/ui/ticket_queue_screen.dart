@@ -232,7 +232,12 @@ class EeTicketQueueScreen extends ConsumerWidget {
                         );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.all(AwSpace.x4),
+                  // Clears the "new request" button (EE-225).
+                  padding: awListPadding(
+                    context,
+                    top: AwSpace.x4,
+                    extraBottom: 72,
+                  ),
                   itemCount: rows.length,
                   itemBuilder: (_, i) => _TicketCard(ticket: rows[i]),
                 );

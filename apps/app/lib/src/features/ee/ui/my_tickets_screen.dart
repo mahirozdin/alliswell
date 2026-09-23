@@ -9,6 +9,7 @@ import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
 import '../my_tickets_providers.dart';
 import '../providers.dart';
+import 'ticket_drafts_section.dart';
 
 /// "My requests" (EE-087) — what I asked for, and where it got to.
 ///
@@ -58,49 +59,59 @@ class EeMyTicketsScreen extends ConsumerWidget {
           : null,
       body: RefreshIndicator(
         onRefresh: () async => ref.refresh(eeMyTicketsProvider.future),
-        child: tickets.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => AwErrorState(
-            message: localizedError(error),
-            onRetry: () => ref.invalidate(eeMyTicketsProvider),
-          ),
-          data: (rows) {
-            if (rows == null || rows.isEmpty) {
-              return ListView(
-                children: [
-                  const SizedBox(height: AwSpace.x12),
-                  AwEmptyState(
-                    icon: Icons.help_outline,
-                    title: 'ee.tickets.mineEmptyTitle'.tr(),
-                    message: 'ee.tickets.mineEmptyBody'.tr(),
-                  ),
-                ],
-              );
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.all(AwSpace.x4),
-              itemCount: rows.length,
-              itemBuilder: (context, i) {
-                final ticket = rows[i];
-                final theme = Theme.of(context);
-                return Card(
-                  key: Key('my-ticket-${ticket.id}'),
-                  child: ListTile(
-                    title: Text(ticket.subject),
-                    subtitle: Text(
-                      [
-                        // The service's NAME, because that is what the asker
-                        // recognises — never the unit that answers them.
-                        if (ticket.serviceName != null) ticket.serviceName!,
-                        'ee.tickets.status.${ticket.status}'.tr(),
-                      ].join(' · '),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+        // One scrolling list, drafts first: they are the device's own and are
+        // right with no signal, so they must not share the fate of the REST
+        // list below them when that fails (EE-225).
+        // The same clearance every FAB list here keeps: the last card must
+        // not sit under "new request".
+        child: ListView(
+          padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+          children: [
+            const EeTicketDraftsSection(),
+            ...tickets.when(
+              loading: () => const [
+                Padding(
+                  padding: EdgeInsets.all(AwSpace.x6),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+              error: (error, _) => [
+                AwErrorState(
+                  message: localizedError(error),
+                  onRetry: () => ref.invalidate(eeMyTicketsProvider),
+                ),
+              ],
+              data: (rows) => rows == null || rows.isEmpty
+                  ? [
+                      const SizedBox(height: AwSpace.x6),
+                      AwEmptyState(
+                        icon: Icons.help_outline,
+                        title: 'ee.tickets.mineEmptyTitle'.tr(),
+                        message: 'ee.tickets.mineEmptyBody'.tr(),
+                      ),
+                    ]
+                  : [
+                      for (final ticket in rows)
+                        Card(
+                          key: Key('my-ticket-${ticket.id}'),
+                          child: ListTile(
+                            title: Text(ticket.subject),
+                            subtitle: Text(
+                              [
+                                // The service's NAME, because that is what
+                                // the asker recognises — never the unit that
+                                // answers them.
+                                if (ticket.serviceName != null)
+                                  ticket.serviceName!,
+                                'ee.tickets.status.${ticket.status}'.tr(),
+                              ].join(' · '),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        ),
+                    ],
+            ),
+          ],
         ),
       ),
     );

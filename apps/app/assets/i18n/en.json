@@ -2015,6 +2015,26 @@
         "sent": "Request filed",
         "sentNumbered": "Request filed — #{number}",
         "drafted": "Draft saved — it will be sent when the signal returns"
+      },
+      "drafts": {
+        "title": "Drafts",
+        "onDevice": "On the phone — it goes when the signal returns",
+        "held": {
+          "noService": "Waiting at the desk — no service chosen",
+          "serviceClosed": "Waiting at the desk — this service no longer takes requests",
+          "needsUnit": "Waiting at the desk — several units answer this service and a draft cannot name one",
+          "waiting": "Reached the desk, waiting to become a request"
+        },
+        "rejected": "Refused — {reason}",
+        "sent": "Sent — the request is below",
+        "pickService": "Pick a service",
+        "forget": "Dismiss",
+        "reason": {
+          "limit": "your own space can hold at most 200 unsent drafts",
+          "notOwn": "a draft can only be written into your own space",
+          "noDesk": "it cannot reach this team’s desk",
+          "other": "the desk did not accept it ({code})"
+        }
       }
     },
     "sla": {

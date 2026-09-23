@@ -547,15 +547,21 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   }
 
   Future<void> _openCatalog(AsyncValue<EeCatalog?> catalog) async {
-    final picked = await showModalBottomSheet<EeCatalogService>(
+    final picked = await showEeCatalogPicker(context);
+    if (picked != null && mounted) _pickService(picked);
+  }
+}
+
+/// The catalogue as a picker — the new-request form's, and the one a held
+/// draft uses to finally name its service (EE-225). One sheet, so the two
+/// can never offer different lists.
+Future<EeCatalogService?> showEeCatalogPicker(BuildContext context) =>
+    showModalBottomSheet<EeCatalogService>(
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
       builder: (_) => const _CatalogSheet(),
     );
-    if (picked != null && mounted) _pickService(picked);
-  }
-}
 
 TextStyle? _quiet(ThemeData theme) => theme.textTheme.bodySmall?.copyWith(
   color: theme.colorScheme.onSurfaceVariant,

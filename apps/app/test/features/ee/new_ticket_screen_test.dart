@@ -422,6 +422,9 @@ void main() {
         ProviderScope(
           overrides: <Override>[
             eeMyTicketsProvider.overrideWith((ref) async => const []),
+            // The drafts section above the list reads the device's database;
+            // these tests are about the button, not the drafts.
+            draftStatusesProvider.overrideWithValue(const []),
             canProvider.overrideWith(
               (ref, permission) => mayCreate && permission == 'tickets.create',
             ),
