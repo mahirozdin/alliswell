@@ -102,3 +102,30 @@ const kEeKbTransitions = <String, List<String>>{
 /// Entering or leaving `published` is the publisher's call — `kb.publish`.
 bool eeKbNeedsPublish(String from, String to) =>
     from == 'published' || to == 'published';
+
+/// A published answer offered while somebody writes a request (EE-226).
+///
+/// Only what the list under the subject draws: the symptom is the line a
+/// person recognises their fault in. The solution is not here on purpose —
+/// it is read by OPENING the answer, which is what the server counts as a
+/// view and what the form remembers as "read before asking".
+class EeKbSuggestion {
+  const EeKbSuggestion({
+    required this.id,
+    required this.title,
+    required this.symptom,
+    this.serviceId,
+  });
+
+  factory EeKbSuggestion.fromJson(Map<String, dynamic> json) => EeKbSuggestion(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    symptom: (json['symptom'] as String?) ?? '',
+    serviceId: json['serviceId'] as String?,
+  );
+
+  final String id;
+  final String title;
+  final String symptom;
+  final String? serviceId;
+}

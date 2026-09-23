@@ -6,7 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/reachability.dart';
+import 'package:alliswell/src/features/ee/data/kb_api.dart';
+import 'package:alliswell/src/features/ee/data/kb_models.dart';
 import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
+import 'package:alliswell/src/features/ee/kb_providers.dart';
 import 'package:alliswell/src/features/ee/my_tickets_providers.dart';
 import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
@@ -83,9 +86,11 @@ class _FakeApi extends Fake implements EeNewTicketApi {
     Map<String, Object?> fields = const {},
     String? requesterName,
     String? requesterEmail,
+    List<String> openedArticleIds = const [],
   }) async {
     if (failWith != null) throw failWith!;
     created.add({
+      if (openedArticleIds.isNotEmpty) 'openedArticleIds': openedArticleIds,
       'serviceId': serviceId,
       'subject': subject,
       'body': body,
@@ -96,6 +101,38 @@ class _FakeApi extends Fake implements EeNewTicketApi {
     });
     return (id: 'T-NEW', number: 42);
   }
+}
+
+/// The desk's answers (EE-226), as the form meets them: what a subject
+/// finds, what opening one reads, and what leaving reports.
+class _FakeKb extends Fake implements EeKbApi {
+  List<EeKbSuggestion> answers = const [];
+  Object? readFails;
+  final asked = <String>[];
+  final deflected = <List<String>>[];
+
+  @override
+  Future<List<EeKbSuggestion>> suggestions(String query) async {
+    asked.add(query);
+    return answers;
+  }
+
+  @override
+  Future<EeKbArticle> get(String articleId) async {
+    if (readFails != null) throw readFails!;
+    final answer = answers.firstWhere((a) => a.id == articleId);
+    return EeKbArticle(
+      id: answer.id,
+      title: answer.title,
+      symptom: answer.symptom,
+      status: 'published',
+      solution: 'Kapağı açın, kağıdı düz çekin.',
+    );
+  }
+
+  @override
+  Future<void> reportDeflected(List<String> articleIds) async =>
+      deflected.add(articleIds);
 }
 
 class _FakeDrafts extends Fake implements TicketDraftStore {
@@ -121,6 +158,7 @@ class _FakeDrafts extends Fake implements TicketDraftStore {
 void main() {
   late _FakeApi api;
   late _FakeDrafts drafts;
+  late _FakeKb kb;
   late ProviderContainer container;
 
   setUp(() {
@@ -128,6 +166,7 @@ void main() {
     AwI18n.instance.setActiveCached(const Locale('tr'));
     api = _FakeApi();
     drafts = _FakeDrafts();
+    kb = _FakeKb();
   });
 
   Future<void> pumpForm(
@@ -139,6 +178,8 @@ void main() {
     container = ProviderContainer(
       overrides: <Override>[
         eeNewTicketApiProvider.overrideWithValue(api),
+        eeKbApiProvider.overrideWithValue(kb),
+        eeFeatureProvider.overrideWith((ref, feature) => true),
         eeCatalogProvider.overrideWith((ref) async => _catalog),
         ticketDraftStoreProvider.overrideWithValue(drafts),
         draftWorkspaceIdProvider.overrideWithValue(home),
@@ -449,5 +490,147 @@ void main() {
       await pumpMine(tester, mayCreate: false);
       expect(key('my-tickets-new'), findsNothing);
     });
+  });
+
+  group('the answer may already be written (EE-226)', () {
+    const jam = EeKbSuggestion(
+      id: 'KB-JAM',
+      title: 'Yazıcı kağıt sıkıştırıyor',
+      symptom: 'Kağıt yolda sıkışıyor',
+    );
+
+    Future<void> typeSubject(WidgetTester tester, String text) async {
+      await tester.enterText(key('new-ticket-subject'), text);
+      await tester.pump(const Duration(milliseconds: 450));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> read(WidgetTester tester) async {
+      await tester.tap(key('new-ticket-answer-KB-JAM'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> backToForm(WidgetTester tester) async {
+      await tester.tap(key('kb-answer-back'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'offered after a pause in typing, and never for under three letters',
+      (tester) async {
+        kb.answers = const [jam];
+        await pumpForm(tester);
+        await typeSubject(tester, 'Ya');
+        expect(key('new-ticket-answers'), findsNothing);
+        expect(kb.asked, isEmpty);
+
+        await tester.enterText(key('new-ticket-subject'), 'Yazıcı sıkıştı');
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(kb.asked, isEmpty, reason: 'still typing: nobody is asked yet');
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.pumpAndSettle();
+        expect(kb.asked, ['Yazıcı sıkıştı']);
+        expect(key('new-ticket-answer-KB-JAM'), findsOneWidget);
+        expect(find.text('Belki cevabı zaten yazılmıştır'), findsOneWidget);
+      },
+    );
+
+    testWidgets('no signal: no answers, and nobody is asked', (tester) async {
+      kb.answers = const [jam];
+      await pumpForm(tester, offline: true);
+      await typeSubject(tester, 'Yazıcı kağıt');
+      expect(key('new-ticket-answers'), findsNothing);
+      expect(kb.asked, isEmpty);
+    });
+
+    testWidgets(
+      'read and sent anyway: it rides with the request, and nothing else is said',
+      (tester) async {
+        kb.answers = const [jam];
+        await pumpForm(tester);
+        await pick(tester, 'S-PRINT');
+        await typeSubject(tester, 'Yazıcı kağıt');
+        await read(tester);
+        expect(find.text('Kapağı açın, kağıdı düz çekin.'), findsOneWidget);
+        await backToForm(tester);
+        await send(tester);
+        expect(api.created.single['openedArticleIds'], ['KB-JAM']);
+        expect(kb.deflected, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'read and left without asking: that is the deflection, said once',
+      (tester) async {
+        kb.answers = const [jam];
+        await pumpForm(tester);
+        await typeSubject(tester, 'Yazıcı kağıt');
+        await read(tester);
+        await backToForm(tester);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(kb.deflected, [
+          ['KB-JAM'],
+        ]);
+        expect(api.created, isEmpty);
+      },
+    );
+
+    testWidgets('"this solved it" closes the form, and that is counted', (
+      tester,
+    ) async {
+      kb.answers = const [jam];
+      await pumpForm(tester);
+      await typeSubject(tester, 'Yazıcı kağıt');
+      await read(tester);
+      await tester.tap(key('kb-answer-solved'));
+      await tester.pumpAndSettle();
+      expect(key('new-ticket-subject'), findsNothing);
+      expect(find.text('open'), findsOneWidget);
+      expect(kb.deflected, [
+        ['KB-JAM'],
+      ]);
+    });
+
+    testWidgets('shown and never opened: leaving counts nothing', (
+      tester,
+    ) async {
+      kb.answers = const [jam];
+      await pumpForm(tester);
+      await typeSubject(tester, 'Yazıcı kağıt');
+      expect(key('new-ticket-answer-KB-JAM'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(kb.deflected, isEmpty);
+    });
+
+    testWidgets('an answer that did not load was not read', (tester) async {
+      kb.answers = const [jam];
+      kb.readFails = const ApiException('SERVER_ERROR', 'boom');
+      await pumpForm(tester);
+      await typeSubject(tester, 'Yazıcı kağıt');
+      await read(tester);
+      expect(key('kb-answer-solved'), findsNothing);
+      await backToForm(tester);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(kb.deflected, isEmpty);
+    });
+
+    testWidgets(
+      'a draft after reading is a request on its way, not a deflection',
+      (tester) async {
+        kb.answers = const [jam];
+        await pumpForm(tester);
+        await typeSubject(tester, 'Yazıcı kağıt');
+        await read(tester);
+        await backToForm(tester);
+        container.read(serverReachabilityProvider.notifier).unreachable();
+        await tester.pumpAndSettle();
+        await send(tester);
+        expect(drafts.written, hasLength(1));
+        expect(kb.deflected, isEmpty);
+      },
+    );
   });
 }

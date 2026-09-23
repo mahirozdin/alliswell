@@ -7,7 +7,9 @@ import '../../sync/providers.dart';
 import '../../sync/sync_engine.dart';
 import '../auth/providers.dart';
 import '../workspaces/workspaces.dart';
+import 'data/kb_models.dart';
 import 'data/new_ticket_api.dart';
+import 'kb_providers.dart';
 import 'providers.dart';
 
 /// Filing a request from the app (EE-225).
@@ -25,6 +27,24 @@ final eeCatalogProvider = FutureProvider<EeCatalog?>((ref) async {
   if (!ref.watch(eeFeatureProvider('teams'))) return null;
   return ref.watch(eeNewTicketApiProvider).catalog();
 });
+
+/// EE-226 — published answers for the subject being typed.
+///
+/// From the SERVER, and that is measured rather than chosen: an article lives
+/// in the workspace of the unit that wrote it, and somebody asking the desk is
+/// not in that unit — EE-196's device search has nothing to look through on
+/// their phone. The form only asks while it has signal, and says so when it
+/// does not, so "no answers" never stands in for "no network".
+///
+/// Three characters before asking: a single letter matches half the
+/// knowledge base, and a list that jumps under every keystroke is noise.
+final eeKbAnswersForProvider = FutureProvider.autoDispose
+    .family<List<EeKbSuggestion>, String>((ref, query) async {
+      final words = query.trim();
+      if (words.length < 3) return const [];
+      if (!ref.watch(eeFeatureProvider('teams'))) return const [];
+      return ref.watch(eeKbApiProvider).suggestions(words);
+    });
 
 /// Where this person's drafts live (EE-216, EE-243): their OWN workspace.
 ///

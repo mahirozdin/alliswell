@@ -13,7 +13,10 @@ import '../../../i18n/i18n.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../data/kb_api.dart';
+import '../data/kb_models.dart';
 import '../data/new_ticket_api.dart';
+import '../kb_providers.dart';
 import '../my_tickets_providers.dart';
 import '../new_ticket_providers.dart';
 import '../providers.dart';
@@ -57,16 +60,51 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   bool _busy = false;
   String? _error;
 
+  // ── EE-226: answers offered while the subject is written ──────────────
+  //
+  // The subject as last asked about, after the pause in typing.
+  String _answersFor = '';
+  Timer? _answersPause;
+
+  /// Answers this person READ while writing. How the composition ends says
+  /// what they meant: sent with the request, they were read and asked anyway;
+  /// left behind without one, they are the deflection the counter is for.
+  final _read = <String>{};
+
+  /// A request (or its draft) left this form. Leaving after that is not a
+  /// deflection, whatever was read on the way.
+  bool _filed = false;
+
+  /// Held from the start: `dispose` may not reach for providers any more.
+  late final EeKbApi _kbApi;
+
   @override
   void initState() {
     super.initState();
+    _kbApi = ref.read(eeKbApiProvider);
     for (final controller in [_subject, _body, _requesterName]) {
       controller.addListener(_changed);
     }
+    _subject.addListener(_askForAnswers);
   }
 
   @override
   void dispose() {
+    _answersPause?.cancel();
+    // Left without a request, after reading an answer: the one event the
+    // deflection counter exists for. Sent from here because leaving IS the
+    // event — and lost if it cannot be sent, so the number errs low, never
+    // high.
+    if (!_filed && _read.isNotEmpty) {
+      final read = _read.toList();
+      // `Future.sync`: even a throw on the way in becomes a failed future
+      // here — a counter must never be the reason a screen fails to close.
+      unawaited(
+        Future.sync(
+          () => _kbApi.reportDeflected(read),
+        ).catchError((Object _) {}),
+      );
+    }
     for (final controller in [
       _subject,
       _body,
@@ -80,6 +118,31 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   }
 
   void _changed() => setState(() {});
+
+  /// Asks after a pause rather than per keystroke; capped like the server's
+  /// box, where every word becomes a LIKE.
+  void _askForAnswers() {
+    final text = _subject.text.trim();
+    final query = text.length > 120 ? text.substring(0, 120) : text;
+    _answersPause?.cancel();
+    _answersPause = Timer(const Duration(milliseconds: 400), () {
+      if (mounted && query != _answersFor) setState(() => _answersFor = query);
+    });
+  }
+
+  Future<void> _openAnswer(EeKbSuggestion answer) async {
+    final navigator = Navigator.of(context);
+    final solved = await showEeKbAnswerSheet(
+      context,
+      answer,
+      onRead: () => _read.add(answer.id),
+    );
+    if (!mounted) return;
+    setState(() {});
+    // "This solved it": the person leaves without a request, which is
+    // exactly the deflection `dispose` reports.
+    if (solved == true) navigator.pop();
+  }
 
   void _pickService(EeCatalogService service) {
     setState(() {
@@ -215,7 +278,9 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
           requesterEmail: _onBehalf && _requesterEmail.text.trim().isNotEmpty
               ? _requesterEmail.text.trim()
               : null,
+          openedArticleIds: _read.toList(),
         );
+    _filed = true;
     // The requester's list is a REST read; the desk's queue is the replica.
     // Both are told now rather than at their next scheduled look.
     ref.invalidate(eeMyTicketsProvider);
@@ -238,6 +303,10 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
           body: _body.text.trim().isEmpty ? null : _body.text.trim(),
           serviceId: _service?.id,
         );
+    // A draft is a request on its way, not a deflection. What was read is not
+    // carried: the draft cannot hold it, and a draft that becomes a request
+    // leaves the difference where it was either way.
+    _filed = true;
     return 'ee.tickets.new.drafted'.tr();
   }
 
@@ -356,6 +425,9 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
                 hintText: 'ee.tickets.new.subjectHint'.tr(),
               ),
             ),
+            // ── EE-226: the answer may already be written ───────────────
+            if (online)
+              _Answers(query: _answersFor, read: _read, onOpen: _openAnswer),
             const SizedBox(height: AwSpace.x2),
             TextField(
               key: const Key('new-ticket-body'),
@@ -562,6 +634,207 @@ Future<EeCatalogService?> showEeCatalogPicker(BuildContext context) =>
       isScrollControlled: true,
       builder: (_) => const _CatalogSheet(),
     );
+
+/// EE-226 — the answers under the subject, while there is signal.
+///
+/// Draws NOTHING until there is something to offer: an empty "suggestions"
+/// box under every subject would teach people to skip the place where an
+/// answer eventually appears. While the next answer is on its way the last
+/// one stays, because a list that blinks under every word is harder to read
+/// than one that is briefly a word behind.
+class _Answers extends ConsumerStatefulWidget {
+  const _Answers({
+    required this.query,
+    required this.read,
+    required this.onOpen,
+  });
+
+  final String query;
+  final Set<String> read;
+  final void Function(EeKbSuggestion answer) onOpen;
+
+  @override
+  ConsumerState<_Answers> createState() => _AnswersState();
+}
+
+class _AnswersState extends ConsumerState<_Answers> {
+  List<EeKbSuggestion> _last = const [];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final answers = ref.watch(eeKbAnswersForProvider(widget.query));
+    // A failed ask offers nothing rather than an error: these are help, not
+    // the form, and the reachability banner above already speaks for the
+    // network (every request feeds it).
+    final shown = answers.hasError
+        ? const <EeKbSuggestion>[]
+        : answers.value ?? _last;
+    _last = shown;
+    if (shown.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      key: const Key('new-ticket-answers'),
+      padding: const EdgeInsets.only(top: AwSpace.x2),
+      child: Card(
+        margin: EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AwSpace.x4,
+                AwSpace.x3,
+                AwSpace.x4,
+                AwSpace.x1,
+              ),
+              child: Text(
+                'ee.tickets.new.answers.title'.tr(),
+                style: theme.textTheme.titleSmall,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AwSpace.x4),
+              child: Text(
+                'ee.tickets.new.answers.hint'.tr(),
+                style: _quiet(theme),
+              ),
+            ),
+            for (final answer in shown)
+              ListTile(
+                key: Key('new-ticket-answer-${answer.id}'),
+                leading: Icon(
+                  widget.read.contains(answer.id)
+                      ? Icons.task_alt_outlined
+                      : Icons.lightbulb_outline,
+                  semanticLabel: widget.read.contains(answer.id)
+                      ? 'ee.tickets.new.answers.read'.tr()
+                      : null,
+                ),
+                title: Text(answer.title),
+                subtitle: Text(
+                  answer.symptom,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => widget.onOpen(answer),
+              ),
+            const SizedBox(height: AwSpace.x1),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One answer, read in full — from the server, which counts the view.
+///
+/// Resolves `true` when the person says it solved their problem: the form
+/// then closes without a request, which is the deflection. [onRead] fires
+/// once the text is on screen: an answer that failed to load was not read.
+Future<bool?> showEeKbAnswerSheet(
+  BuildContext context,
+  EeKbSuggestion answer, {
+  required VoidCallback onRead,
+}) => showModalBottomSheet<bool>(
+  context: context,
+  showDragHandle: true,
+  isScrollControlled: true,
+  builder: (_) => _AnswerSheet(answer: answer, onRead: onRead),
+);
+
+final _answerProvider = FutureProvider.autoDispose.family<EeKbArticle, String>(
+  (ref, id) => ref.watch(eeKbApiProvider).get(id),
+);
+
+class _AnswerSheet extends ConsumerWidget {
+  const _AnswerSheet({required this.answer, required this.onRead});
+
+  final EeKbSuggestion answer;
+  final VoidCallback onRead;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    // The provider is auto-disposed with the sheet, so every opening fetches
+    // afresh and the text always ARRIVES after this first build — the change
+    // this listens for is the moment it was on screen to be read.
+    ref.listen(_answerProvider(answer.id), (_, next) {
+      if (next.hasValue) onRead();
+    });
+    final article = ref.watch(_answerProvider(answer.id));
+    Widget section(String label, String text) => Padding(
+      padding: const EdgeInsets.only(top: AwSpace.x3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: theme.textTheme.titleSmall),
+          const SizedBox(height: AwSpace.x1),
+          Text(text, style: theme.textTheme.bodyMedium),
+        ],
+      ),
+    );
+    return SafeArea(
+      child: SingleChildScrollView(
+        key: const Key('kb-answer-sheet'),
+        padding: const EdgeInsets.fromLTRB(
+          AwSpace.x4,
+          0,
+          AwSpace.x4,
+          AwSpace.x4,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(answer.title, style: theme.textTheme.titleLarge),
+            ...article.when(
+              loading: () => const [
+                Padding(
+                  padding: EdgeInsets.all(AwSpace.x6),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ],
+              error: (error, _) => [
+                const SizedBox(height: AwSpace.x3),
+                AwInlineError(message: localizedError(error)),
+              ],
+              data: (full) => [
+                section('ee.kb.symptom'.tr(), full.symptom),
+                if ((full.environment ?? '').trim().isNotEmpty)
+                  section('ee.kb.environment'.tr(), full.environment!),
+                section(
+                  'ee.kb.solution'.tr(),
+                  (full.solution ?? '').trim().isEmpty
+                      ? 'ee.tickets.new.answers.noSolution'.tr()
+                      : full.solution!,
+                ),
+              ],
+            ),
+            const SizedBox(height: AwSpace.x4),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: AwSpace.x2,
+              runSpacing: AwSpace.x2,
+              children: [
+                TextButton(
+                  key: const Key('kb-answer-back'),
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text('ee.tickets.new.answers.back'.tr()),
+                ),
+                if (article.hasValue)
+                  FilledButton.tonal(
+                    key: const Key('kb-answer-solved'),
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: Text('ee.tickets.new.answers.solved'.tr()),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 TextStyle? _quiet(ThemeData theme) => theme.textTheme.bodySmall?.copyWith(
   color: theme.colorScheme.onSurfaceVariant,

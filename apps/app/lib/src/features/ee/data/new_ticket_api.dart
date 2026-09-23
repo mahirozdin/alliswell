@@ -230,6 +230,7 @@ class EeNewTicketApi {
     Map<String, Object?> fields = const {},
     String? requesterName,
     String? requesterEmail,
+    List<String> openedArticleIds = const [],
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -242,6 +243,9 @@ class EeNewTicketApi {
           if (fields.isNotEmpty) 'fields': fields,
           'requesterName': ?requesterName,
           'requesterEmail': ?requesterEmail,
+          // EE-226: answers read before asking anyway — the server counts
+          // them as suggested AND converted, so reading did not deflect.
+          if (openedArticleIds.isNotEmpty) 'openedArticleIds': openedArticleIds,
         },
       );
       final data = response.data ?? const <String, dynamic>{};

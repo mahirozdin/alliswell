@@ -1994,6 +1994,14 @@
         "needsApproval": "Bu servis önce bir onay ister; talep onaylanınca ilerler.",
         "subject": "Konu",
         "subjectHint": "Ne oldu, kısaca",
+        "answers": {
+          "title": "Belki cevabı zaten yazılmıştır",
+          "hint": "Göndermeden önce bir bak: masanın yayımladığı cevaplardan konuna uyanlar.",
+          "read": "Okundu",
+          "noSolution": "Bu cevapta henüz çözüm yazılmamış.",
+          "back": "Talebe dön",
+          "solved": "Bu çözdü, talep açmayacağım"
+        },
         "body": "Açıklama",
         "bodyHint": "Ayrıntılar, yer, ne zamandan beri…",
         "requiredLabel": "{label} (zorunlu)",

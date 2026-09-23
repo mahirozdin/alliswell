@@ -17,7 +17,11 @@
 //     what a draft can carry, and its button says "save as draft". A form
 //     that went grey instead would be the old answer to no signal.
 //
-// And a THIRD, of where those drafts are afterwards: "my requests" with the
+// Two of EE-226, the answer that may already be written: the form with the
+// desk's answers under a subject being typed, and one of them opened — the
+// solution, and the two ways out ("back to the request", "this solved it").
+//
+// And one of where those drafts are afterwards: "my requests" with the
 // drafts section above the list — one on the phone, one waiting at the desk
 // with the button that names its service, one refused in the server's words,
 // one that went through this session — so every state is in one picture.
@@ -27,8 +31,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/reachability.dart';
+import 'package:alliswell/src/features/ee/data/kb_api.dart';
+import 'package:alliswell/src/features/ee/data/kb_models.dart';
 import 'package:alliswell/src/features/ee/data/my_tickets_api.dart';
 import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
+import 'package:alliswell/src/features/ee/kb_providers.dart';
 import 'package:alliswell/src/features/ee/my_tickets_providers.dart';
 import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
@@ -93,6 +100,61 @@ EeCatalog _catalog(bool turkish) => EeCatalog(
   ],
 );
 
+/// The desk's answers for the subject in the pictures (EE-226).
+class _ShotKb extends Fake implements EeKbApi {
+  _ShotKb(this.turkish);
+  final bool turkish;
+
+  List<EeKbSuggestion> get _answers => [
+    EeKbSuggestion(
+      id: 'KB1',
+      title: turkish
+          ? 'Kompresör basıncı düşüyor'
+          : 'Compressor pressure keeps dropping',
+      symptom: turkish
+          ? 'Manometre 6 barın altına iniyor, boya tabancası tükürüyor'
+          : 'The gauge falls below 6 bar and the spray gun spits',
+    ),
+    EeKbSuggestion(
+      id: 'KB2',
+      title: turkish
+          ? 'Boyahanede hava hattı su yapıyor'
+          : 'Water in the paint shop air line',
+      symptom: turkish
+          ? 'Tabancadan su damlıyor, yüzeyde kabarcık var'
+          : 'The gun drips water and the finish blisters',
+    ),
+  ];
+
+  @override
+  Future<List<EeKbSuggestion>> suggestions(String query) async => _answers;
+
+  // The opened-answer picture closes with an answer read and no request —
+  // a deflection, reported on the way out. Nothing to record here.
+  @override
+  Future<void> reportDeflected(List<String> articleIds) async {}
+
+  @override
+  Future<EeKbArticle> get(String articleId) async {
+    final answer = _answers.firstWhere((a) => a.id == articleId);
+    return EeKbArticle(
+      id: answer.id,
+      title: answer.title,
+      symptom: answer.symptom,
+      environment: turkish
+          ? 'Boyahane, sabah vardiyası, iki tabanca birden çalışırken'
+          : 'Paint shop, morning shift, two guns running at once',
+      solution: turkish
+          ? 'Kompresör odasındaki kurutucunun tahliye vanasını açıp suyu boşaltın, '
+                'sonra filtre elemanını kontrol edin. Basınç 7 bara dönmüyorsa talep açın.'
+          : 'Open the drain valve on the dryer in the compressor room and let the '
+                'water out, then check the filter element. If the pressure does not '
+                'come back to 7 bar, file a request.',
+      status: 'published',
+    );
+  }
+}
+
 void main() {
   if (!_enabled) return;
 
@@ -117,6 +179,7 @@ void main() {
             canProvider.overrideWith(
               (ref, permission) => permission == 'tickets.create',
             ),
+            eeKbApiProvider.overrideWithValue(_ShotKb(turkish)),
             if (offline)
               serverReachabilityProvider.overrideWith(_Unreachable.new),
           ],
@@ -132,6 +195,43 @@ void main() {
                   ? 'Boyahanede kompresör basıncı düştü'
                   : 'Compressor pressure dropped in the paint shop',
             );
+          },
+        );
+      });
+    }
+
+    for (final opened in [false, true]) {
+      final name = opened ? 'ee-new-ticket-answer' : 'ee-new-ticket-answers';
+      testWidgets('$name — ${brightness.name}', (tester) async {
+        final turkish = AwI18n.instance.locale.languageCode == 'tr';
+        await eeShoot(
+          tester,
+          brightness: brightness,
+          name: name,
+          size: const Size(900, 1500),
+          overrides: <Override>[
+            eeCatalogProvider.overrideWith((ref) async => _catalog(turkish)),
+            draftWorkspaceIdProvider.overrideWithValue('W-OWN'),
+            canProvider.overrideWith(
+              (ref, permission) => permission == 'tickets.create',
+            ),
+            eeFeatureProvider.overrideWith((ref, feature) => true),
+            eeKbApiProvider.overrideWithValue(_ShotKb(turkish)),
+          ],
+          screen: const EeNewTicketScreen(),
+          afterPump: (t) async {
+            await t.enterText(
+              find.byKey(const Key('new-ticket-subject')),
+              turkish
+                  ? 'Boyahanede kompresör basıncı düştü'
+                  : 'Compressor pressure dropped in the paint shop',
+            );
+            await t.pump(const Duration(milliseconds: 450));
+            await t.pumpAndSettle();
+            if (opened) {
+              await t.tap(find.byKey(const Key('new-ticket-answer-KB1')));
+              await t.pumpAndSettle();
+            }
           },
         );
       });

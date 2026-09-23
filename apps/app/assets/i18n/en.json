@@ -1995,6 +1995,14 @@
         "needsApproval": "This service asks for an approval first; the request moves once it is given.",
         "subject": "Subject",
         "subjectHint": "What happened, in short",
+        "answers": {
+          "title": "The answer may already be written",
+          "hint": "Have a look before sending: the desk's published answers that match your subject.",
+          "read": "Read",
+          "noSolution": "No solution has been written for this answer yet.",
+          "back": "Back to the request",
+          "solved": "This solved it — no request needed"
+        },
         "body": "Description",
         "bodyHint": "Details, where, since when…",
         "requiredLabel": "{label} (required)",

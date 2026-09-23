@@ -36,6 +36,39 @@ class EeKbApi {
     }
   }
 
+  /// EE-226 — published answers about what the door accepts, for the
+  /// subject somebody is typing. None rather than an error when the answer
+  /// is "not yours" (403/404): the form still has to be filled in without
+  /// them, and a red line under the subject would say the form is broken.
+  Future<List<EeKbSuggestion>> suggestions(String query) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/team/kb/suggestions',
+        queryParameters: {'q': query},
+      );
+      return ((res.data?['articles'] as List<dynamic>?) ?? const [])
+          .map((e) => EeKbSuggestion.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false);
+    } on DioException catch (error) {
+      final code = error.response?.statusCode;
+      if (code == 403 || code == 404) return const [];
+      throw asApiException(error);
+    }
+  }
+
+  /// EE-226 — a composition ended WITHOUT a request, after these answers
+  /// were read: the one event the deflection counter exists for.
+  Future<void> reportDeflected(List<String> articleIds) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '/api/v1/ee/team/kb/deflections',
+        data: {'articleIds': articleIds},
+      );
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
   Future<EeKbArticle> get(String articleId) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>('$_base/$articleId');
