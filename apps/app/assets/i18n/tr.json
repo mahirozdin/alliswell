@@ -155,6 +155,7 @@
     "group": {
       "general": "Genel",
       "generalSub": "Dil, tarih, varsayılan saat, tur",
+      "generalSubWidget": "Dil, tarih, varsayılan saat, widget, tur",
       "notifications": "Bildirimler",
       "notificationsSub": "Merkez ve tercihler",
       "integrations": "Entegrasyonlar",
@@ -188,6 +189,13 @@
       "plain": "Düz metin — hiç renk yok",
       "markersOnly": "Sadece işaretler — söz dizimi görünür, metin düz kalır",
       "live": "Canlı — başlık, kalın ve vurgu yazarken boyanır"
+    },
+    "widget": {
+      "title": "Widget",
+      "compact": "Sıkı widget",
+      "compactSub": "Daha sık satırlar, bir bakışta daha çok görev",
+      "private": "Gizli widget",
+      "privateSub": "Ana ekran ve kilit ekranı widget'larında görev başlıklarını gizle — başlıklar uygulamadan hiç çıkmaz"
     }
   },
   "shell": {
@@ -787,7 +795,8 @@
     "chooseList": "Bu widget'ta göster",
     "list": {
       "all": "Tüm görevler"
-    }
+    },
+    "privateTitle": "Gizli görev"
   },
   "file": {
     "add": "Dosya ekle",

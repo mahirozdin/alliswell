@@ -11478,20 +11478,51 @@ projeye **uygulanamaz**: uygulanırsa her macOS derlemesi kırmızıya düşer (
   uygulamanın dilinde.
 - **Yüzey (kural 12):** yok (cihaz içi görünüm tercihi).
 
-### OPH-337 — Widget yoğunluğu ve "Gizli widget"
+### OPH-337 — Widget yoğunluğu ve "Gizli widget" ✅ 2026-09-23
 
 **Bağlam:** OPH-135'in üçüncü kutusu; OPH-064'ün bildirim gizliliği ahlakı (WIDGETS.md §9).
 
-- [ ] Ayarlar'da "Widget" grubu (DESIGN §32'nin gelişmiş ayarlar düzenine uyar):
+- [x] Ayarlar'da "Widget" grubu (DESIGN §32'nin gelişmiş ayarlar düzenine uyar):
       **yoğunluk** (normal/sıkı) ve **Gizli widget**.
-- [ ] **Gizlilik anlık görüntüde uygulanır, native'de değil:** gizli moddayken App Group'a /
+      _(2026-09-23: Genel sayfasında bir **kart** — sekizinci bir kök grup değil: §32 S2 grupları
+      sabitliyor, S5 yeni ayarı yapının içine koyuyor; S2'nin Genel listesi aynı değişiklikte
+      güncellendi. Yalnız widget'ı olan platformlarda (`widgetsSupportedPlatform`); kökteki
+      Genel alt yazısı da orada "widget" diyor, başka yerde demiyor (S1'in haritası var olmayan
+      satırı vaat etmez). Sayım testine iki satır eklendi. **Yoğunluk** hiçbir zaman dokunulan
+      daireyi küçültmüyor (§8 W4): iOS'ta satır arası 4 → 1 pt ve `.footnote` → `.caption` —
+      aynı yükseklik `normal × 32/29` satır tutuyor (büyük 10 → 11, çok büyük 18 → 19, orta 4);
+      Android'de satır dolgusu 2 → 0 dp, 14 → 13 sp, geri dönüştürülen satırlar için İKİ yönde de
+      açıkça ayarlanıyor.)_
+- [x] **Gizlilik anlık görüntüde uygulanır, native'de değil:** gizli moddayken App Group'a /
       SharedPreferences'a **başlık hiç yazılmaz** — sayılar ve yer tutucular yazılır. Başlığı
       yazıp native tarafa "gösterme" demek, metni uygulamanın dışına çıkarmaktır.
-- [ ] i18n (en/tr), kontrast (`python3 scripts/design/contrast.py` FAILURES: 0), açık/koyu.
+      _(2026-09-23: `buildWidgetSnapshot(hideTitles:)` — satırlar, kilit ekranının `next`'i ve
+      her proje görünümü "Gizli görev" taşıyor; id, saat, sayı, proje rengi kalıyor. **ÖLÇÜLEN
+      SIZINTI YOLU:** `PersistedToggle` önce varsayılanı söyleyip sonra depoyu okuyor; widget
+      senkronu ilk cevapta yayınladığı için her açılışta başlıklar bir an App Group'a yazılırdı.
+      Bu yüzden ayar bir `AsyncNotifier` (`WidgetPrivacy`) — depo okunana kadar cevabı yok ve
+      `widgetSyncProvider` o zamana kadar hiçbir şey yayınlamıyor. Arka plan turu aynı anahtarı
+      okuyor (gece yarısı yeniden çizimi başlıkları geri koymasın). Proje adları kalıyor: widget'ın
+      ayarlandığı listeyi adlandırıyorlar ve seçici onları sunuyor. **Bilinen sınır**, bildirim
+      gizliliğiyle ortak: `LocalKv` okuyamazsa hata vermiyor, "hiç ayarlanmamış" gibi okunuyor.)_
+- [x] i18n (en/tr), kontrast (`python3 scripts/design/contrast.py` FAILURES: 0), açık/koyu.
+      _(2026-09-23: 8 anahtar iki dilde; kontrast FAILURES: 0 (palet değişmedi — kart yalnız
+      tema bileşenleri kullanıyor); kart açık ve koyu temada, 360 px genişlikte, Türkçe en uzun
+      alt yazıyla taşmadan çiziliyor (widget testi).)_
 - **Kabul:** gizli moddayken yazılan JSON'da hiçbir görev başlığı yok (birim testi JSON'u
   okuyarak ölçer); yoğunluk iki platformda da çiziliyor.
+  _Karşılandı: `widget_private_test.dart` (15) — anlık görüntü, köprü, arka plan turu ve canlı
+  yolun ilk yayını ham JSON'un her dizesinde ölçülüyor. Dört enjeksiyon kırmızı: anlık görüntü
+  bayrağı yok sayınca 5 test, canlı yol varsayılanla yayınlayınca 1, arka plan turu ayarı
+  unutunca 1, Android yoğunluğu tek yönde ayarlayınca 1._
 - **Doğrulama:** `flutter test` + derlemeler + `check:i18n`.
-- **Cihazda bakılacak:** gizli modu aç, widget'ta başlık görünmediğini gör.
+  _`flutter analyze` 0; tam süit 1795 geçti, 28 atlandı (+15); `check:i18n` ✔; iOS ve APK derlemeleri
+  yeşil (uzantıda `compact`, dex'te yapılandırma ekranı); `swiftc -typecheck` iOS 16 + macOS 14 temiz. Tam süit `widget_clock_native_test`'in
+  bayt bütçesi pinini yine yakaladı (çağrıya `compact:` eklendi) — pin artık yoğunluğun da bütçeye
+  girdiğini ölçüyor._
+- **Cihazda bakılacak:** gizli modu aç, widget'ta başlık görünmediğini gör. Ayrıca sıkı modda
+  büyük widget'ın son satırının kesilmediğini (11 satır) ve Android'de sıkı/normal arasında
+  geçişte satırların doğru boyuta döndüğünü gör.
 - **Yüzey (kural 12):** ayar cihaz-yereldir (tarih biçimi ve hatırlatıcı profili gibi);
   sunucu tarafı ayar deposu parking lot'ta — MCP/API değişmez.
 

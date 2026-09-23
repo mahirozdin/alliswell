@@ -156,6 +156,7 @@
     "group": {
       "general": "General",
       "generalSub": "Language, dates, default time, tour",
+      "generalSubWidget": "Language, dates, default time, widget, tour",
       "notifications": "Notifications",
       "notificationsSub": "Centre and preferences",
       "integrations": "Integrations",
@@ -189,6 +190,13 @@
       "plain": "Plain text — no colour at all",
       "markersOnly": "Markers only — syntax stays visible, text stays plain",
       "live": "Live — headings, bold and highlight painted as you type"
+    },
+    "widget": {
+      "title": "Widget",
+      "compact": "Compact widget",
+      "compactSub": "Tighter rows, more tasks at a glance",
+      "private": "Private widget",
+      "privateSub": "Hide task titles on your home-screen and lock-screen widgets — they never leave the app"
     }
   },
   "shell": {
@@ -788,7 +796,8 @@
     "chooseList": "Show in this widget",
     "list": {
       "all": "All tasks"
-    }
+    },
+    "privateTitle": "Private task"
   },
   "file": {
     "add": "Add file",

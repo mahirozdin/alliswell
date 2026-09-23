@@ -19,6 +19,7 @@ import '../features/settings/account_locale.dart';
 import '../features/quick_access/ui/quick_access_bubble.dart';
 import '../features/quick_access/ui/quick_access_row.dart';
 import '../features/settings/server_url_sheet.dart';
+import '../features/widgets/widget_bridge.dart' show widgetsSupportedPlatform;
 import '../features/ee/providers.dart' show canProvider;
 import '../features/ee/team_admin_providers.dart';
 import '../features/ee/ui/notification_badge.dart';
@@ -80,7 +81,12 @@ class SettingsScreen extends ConsumerWidget {
                 keyName: 'settings-group-general',
                 icon: Icons.tune_outlined,
                 titleKey: 'settings.group.general',
-                subtitleKey: 'settings.group.generalSub',
+                // OPH-337: the map names the widget section only where the
+                // page has one — a subtitle promising a row that is not there
+                // is the one thing S1's map must not do.
+                subtitleKey: widgetsSupportedPlatform
+                    ? 'settings.group.generalSubWidget'
+                    : 'settings.group.generalSub',
                 path: '/settings/general',
               ),
               _GroupRow(
@@ -543,7 +549,66 @@ class SettingsGeneralScreen extends ConsumerWidget {
             ],
           ),
         ),
+        // OPH-337: only where there is a widget to set (ADR-0010).
+        if (widgetsSupportedPlatform) ...[
+          const SizedBox(height: AwSpace.x3),
+          const _WidgetSettingsCard(),
+        ],
       ],
+    );
+  }
+}
+
+/// How the home-screen and lock-screen widgets look (OPH-337).
+///
+/// A section of Genel rather than an eighth group: §32 S2 fixes the groups,
+/// and S5 puts a new setting inside the structure. Both are device-local, like
+/// the date format above — a widget belongs to one device's screen.
+class _WidgetSettingsCard extends ConsumerWidget {
+  const _WidgetSettingsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final privacy = ref.watch(widgetPrivateProvider);
+    return Card(
+      key: const Key('settings-widget'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              AwSpace.x4,
+              AwSpace.x4,
+              AwSpace.x1,
+            ),
+            child: Text(
+              'settings.widget.title'.tr(),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+          SwitchListTile(
+            key: const Key('settings-widget-compact'),
+            secondary: const Icon(Icons.density_small_outlined),
+            title: Text('settings.widget.compact'.tr()),
+            subtitle: Text('settings.widget.compactSub'.tr()),
+            value: ref.watch(widgetCompactProvider),
+            onChanged: (_) => ref.read(widgetCompactProvider.notifier).toggle(),
+          ),
+          SwitchListTile(
+            key: const Key('settings-widget-private'),
+            secondary: const Icon(Icons.visibility_off_outlined),
+            title: Text('settings.widget.private'.tr()),
+            subtitle: Text('settings.widget.privateSub'.tr()),
+            value: privacy.value ?? false,
+            // Live only once the stored answer is known: flipping a value
+            // nobody has read yet could undo the person's own choice.
+            onChanged: privacy.hasValue
+                ? (value) => ref.read(widgetPrivateProvider.notifier).set(value)
+                : null,
+          ),
+        ],
+      ),
     );
   }
 }

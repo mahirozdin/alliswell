@@ -85,11 +85,15 @@ struct AWSnapshot: Codable {
   let next: AWNextTask?
   let lists: [AWListInfo]?
   let views: [String: AWListView]?
+  // OPH-337 (v4): "compact" draws tighter rows; absent means normal.
+  let density: String?
 
   static let empty = AWSnapshot(
     v: 4, generatedAt: "", locale: "en",
     date: AWDate(weekday: "", day: "", month: ""), strings: nil, openToday: nil,
-    clockFormat: nil, buckets: [], next: nil, lists: nil, views: nil)
+    clockFormat: nil, buckets: [], next: nil, lists: nil, views: nil, density: nil)
+
+  var isCompact: Bool { density == "compact" }
 }
 
 struct AWDate: Codable {
@@ -161,7 +165,7 @@ extension AWSnapshot {
     let picked = AWSnapshot(
       v: v, generatedAt: generatedAt, locale: locale, date: date, strings: words,
       openToday: view.openToday, clockFormat: clockFormat, buckets: view.buckets,
-      next: view.next, lists: lists, views: nil)
+      next: view.next, lists: lists, views: nil, density: density)
     return (picked, lists?.first { $0.id == listId })
   }
 }
@@ -318,7 +322,9 @@ func awTimeline(snapshot: AWSnapshot, list: AWListInfo?, family: WidgetFamily)
 
   // How many minutes of clock this widget can afford to draw. Bytes, not
   // entries — see kAWArchiveBudgetBytes for the measurement that forced this.
-  let rows = distribute(snapshot.buckets, budget: awRowBudget(family, titled: list != nil))
+  let rows = distribute(
+    snapshot.buckets,
+    budget: awRowBudget(family, titled: list != nil, compact: snapshot.isCompact))
     .reduce(0) { $0 + $1.items.count }
   let bytesPerEntry = kAWEntryBytesBase + rows * kAWEntryBytesPerRow
   let affordable = kAWArchiveBudgetBytes / max(bytesPerEntry, 1)
@@ -650,6 +656,9 @@ struct AWAddLink: View {
 
 struct AWTaskRowView: View {
   let row: AWTaskRow
+  /// OPH-337: a smaller type size. The circle's frame does NOT shrink with it —
+  /// its hit target is W4's, and density is not a reason to miss it.
+  var compact = false
   var body: some View {
     HStack(spacing: 8) {
       // OPH-188: the circle is a BUTTON on iOS 17+. WidgetKit performs the
@@ -676,7 +685,7 @@ struct AWTaskRowView: View {
         Circle().fill(flag).frame(width: 6, height: 6)
       }
       Text(row.title)
-        .font(.footnote)
+        .font(compact ? .caption : .footnote)
         .lineLimit(1)
         .strikethrough(row.done)
       Spacer(minLength: 4)
@@ -695,8 +704,10 @@ struct AWTaskRowView: View {
 
 struct AWBucketView: View {
   let bucket: AWBucket
+  var compact = false
   var body: some View {
-    VStack(alignment: .leading, spacing: 4) {
+    // OPH-337: compact takes its rows from the gap between them.
+    VStack(alignment: .leading, spacing: compact ? 1 : 4) {
       HStack {
         Text(bucket.label.uppercased())
           .font(.caption2.weight(.bold))
@@ -705,7 +716,7 @@ struct AWBucketView: View {
           .font(.caption2).foregroundStyle(.secondary)
         Spacer()
       }
-      ForEach(bucket.items) { AWTaskRowView(row: $0) }
+      ForEach(bucket.items) { AWTaskRowView(row: $0, compact: compact) }
       if let more = bucket.more, more > 0 {
         Text("+\(more)").font(.caption2).foregroundStyle(.secondary)
       }
@@ -737,7 +748,7 @@ struct AllisWellWidgetEntryView: View {
       // OPH-333: the medium size has no date header to carry the "+", so it
       // gets a narrow trailing column — 44 pt of width instead of a row.
       HStack(alignment: .top, spacing: 4) {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: snap.isCompact ? 4 : 8) {
           if family != .systemMedium {
             // Round 15: the ENTRY's date, not the snapshot's — see awDate(for:).
             AWDateHeader(
@@ -762,9 +773,12 @@ struct AllisWellWidgetEntryView: View {
             Spacer()
           } else {
             ForEach(
-              distribute(snap.buckets, budget: awRowBudget(family, titled: entry.list != nil))
+              distribute(
+                snap.buckets,
+                budget: awRowBudget(
+                  family, titled: entry.list != nil, compact: snap.isCompact))
             ) {
-              AWBucketView(bucket: $0)
+              AWBucketView(bucket: $0, compact: snap.isCompact)
             }
           }
           Spacer(minLength: 0)
@@ -786,12 +800,17 @@ struct AllisWellWidgetEntryView: View {
 ///
 /// OPH-336: a widget set to one project pays for its title line with a row —
 /// otherwise the geometry clamp above cuts the last row in half.
-func awRowBudget(_ family: WidgetFamily, titled: Bool = false) -> Int {
+///
+/// OPH-337: compact rows are 29 pt apart instead of 32 (the 28 pt circle stays,
+/// the 4 pt gap becomes 1), so the SAME height holds `normal × 32 / 29` rows,
+/// rounded down: 4 → 4, 10 → 11, 18 → 19. Derived from the measured normal
+/// budgets rather than guessed — a row too many is cut in half at the bottom.
+func awRowBudget(_ family: WidgetFamily, titled: Bool = false, compact: Bool = false) -> Int {
   let rows: Int
   switch family {
   case .systemMedium: rows = 4
-  case .systemLarge: rows = 10
-  default: rows = 18
+  case .systemLarge: rows = compact ? 11 : 10
+  default: rows = compact ? 19 : 18
   }
   return titled ? rows - 1 : rows
 }

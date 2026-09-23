@@ -25,7 +25,7 @@
 | macOS widget | 🟡 **code complete, one account step away (OPH-335):** the SwiftUI source is shared with iOS (macOS 14+); the app ↔ widget bridge is live in the app (`AWMacWidgetBridge` — `home_widget` has no macOS side, so the app answers `alliswell/widget` itself and drains the widget's taps); the target is added by `macos/scripts/add_widget_extension.rb`, verified on a copy, and waits for the account holder to sign the extension's own bundle id — `macos/AllisWellWidgetMac/SETUP.md` |
 | Per-widget list | ✅ **both platforms, built (OPH-336):** each placed widget shows the whole list (the default — unconfigured widgets are unchanged) or one project. The app writes every list into the snapshot (`lists` + `views`, §3.1) and the filter is Dart's (`filterTasksForWidgetList`); native code only picks an id. iOS 17+/macOS 14+: `AppIntentConfiguration` (`AWWidgetConfigIntent`, a searchable project list); iOS 16 keeps the unconfigurable widget under the same kind. Android: `TasksWidgetConfigureActivity`, `configuration_optional` on 12+ (long-press → reconfigure) |
 | Lock screen (iOS 16+) | ✅ **built (OPH-336):** `accessoryRectangular` — the next task (`next` in the snapshot: overdue first, dateless last) with its bucket and time in words; `accessoryCircular` — today's open count, a tick at zero. They follow the widget's list setting. iOS only — the families do not exist on macOS |
-| Density, private widget | ⏳ Epic 32: OPH-337 |
+| Density, private widget | ✅ **built (OPH-337):** Settings › General › Widget. **Compact** tightens the gaps and the type (iOS: 4 → 1 pt between rows, `.footnote` → `.caption`, one more row on large/extraLarge; Android: row padding 2 → 0 dp, 14 → 13 sp) — the circle you tap keeps its size (DESIGN §8 W4). **Private widget** is applied in the snapshot, not in native code: no task title is written to the App Group / SharedPreferences at all — rows, the lock screen's `next` and every project view carry "Private task" instead (§9) |
 | Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design |
 | Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android and the other families still pending |
 
@@ -189,6 +189,9 @@ they read before:
   whole list's number.
 - New `strings`: `upNext` (the rectangle's heading) and `chooseList` (the Android
   configure screen's title).
+- **`density`** (OPH-337): `"compact"` when the user chose tighter rows, absent for
+  the default. The "Private widget" setting is NOT a field — it changes what the title
+  fields hold (§9).
 
 - **N per bucket is per-size** (§5): medium shows few, large ~8–10, extraLarge
   more. Truncation is honest — show a "+N more" affordance, never silently drop
@@ -367,6 +370,28 @@ container. Offer a **"Private widget"** switch (same spirit as OPH-064 "Private
 notifications"): when on, the widget renders **counts and placeholders** ("3
 tasks") instead of titles — a glanceable surface others can see over your shoulder
 shouldn't leak content by default for users who care. Setting is device-local.
+
+**Built in OPH-337 — and where it is applied is the whole design.** The switch lives
+in Settings › General › Widget. When it is on, `buildWidgetSnapshot(hideTitles:)`
+never writes a task's title: every row, the lock screen's `next` and every project's
+view carry the placeholder ("Private task" / "Gizli görev") while ids, times, counts
+and project colors stay, so the widget still works. A title written to the App Group
+with a "do not show" flag for native code would already have left the app.
+
+- **The live app does not publish until the setting has been read.** Every other
+  device-local preference answers its default first and reads storage after; for
+  this one that would mean "not private" published once at every start — the titles
+  in the App Group for a moment, and for good if the app died in it. So it is an
+  `AsyncNotifier` (`WidgetPrivacy`) with no answer until storage has spoken, and
+  `widgetSyncProvider` returns without publishing while it has none.
+- **The background turn reads the same key** (`kWidgetPrivatePrefKey`), so the
+  midnight redraw (OPH-334) hides exactly what the app hides.
+- **Project names stay.** They name the list a widget was set to (§3.1, OPH-336) and
+  the configuration sheet offers them; the setting's own words promise task titles.
+- **Known limit, shared with notification privacy:** device storage degrades to "no
+  persistence" rather than throwing (`LocalKv`), so if it cannot be read at all the
+  setting reads as never set — the same behaviour OPH-064's switch has.
+- Tests read the JSON the host was handed, every string of it (`widget_private_test`).
 
 ## 10. Reference apps — what we're stealing (design targets)
 

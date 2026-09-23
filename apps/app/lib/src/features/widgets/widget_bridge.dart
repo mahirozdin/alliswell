@@ -28,13 +28,16 @@ class WidgetBridge {
 
   /// Serialize [tasks] into the snapshot and push it. [projectColorById] maps a
   /// task's `projectId` to its `#RRGGBB` color; [projects] are the lists a
-  /// widget can be set to (OPH-336), in the app's order.
+  /// widget can be set to (OPH-336), in the app's order. [hideTitles] and
+  /// [compact] are the widget settings (OPH-337).
   Future<void> publish(
     List<Task> tasks, {
     required DateTime now,
     Map<String, String> projectColorById = const {},
     Iterable<Project> projects = const [],
     String dateFormat = kAwSystemDateFormat,
+    bool hideTitles = false,
+    bool compact = false,
   }) async {
     if (!_configured) {
       await _host.configure();
@@ -46,6 +49,8 @@ class WidgetBridge {
       projectColorById: projectColorById,
       projects: projects,
       dateFormat: dateFormat,
+      hideTitles: hideTitles,
+      compact: compact,
     );
     await _host.save(kWidgetSnapshotKey, jsonEncode(snapshot.toJson()));
     await _host.requestUpdate();
@@ -62,8 +67,10 @@ final widgetBridgeProvider = Provider<WidgetBridge>(
 /// It asks the SAME questions [widgetSyncProvider] asks the live graph, one
 /// store call each: open tasks plus today's completed ones
 /// (`watchOpen(completedSince:)` — OPH-185's dimmed rows), every project (its
-/// color, and since OPH-336 the lists a widget can be set to), and the user's
-/// date format. A second definition of "what the widget
+/// color, and since OPH-336 the lists a widget can be set to), the user's
+/// date format, and since OPH-337 the two widget settings — a midnight redraw
+/// that forgot "Private widget" would put every title back while the phone
+/// sleeps. A second definition of "what the widget
 /// shows" is how a background redraw ends up disagreeing with the app.
 ///
 /// [now] is the whole point of calling this at midnight: the rows are the
@@ -88,6 +95,8 @@ Future<bool> publishWidgetFromReplica(
     // this short a `PersistedChoice` answers its fallback, not the user's pick.
     final dateFormat =
         await localKv.get(kDateFormatPrefKey) ?? kAwSystemDateFormat;
+    final hideTitles = await localKv.get(kWidgetPrivatePrefKey) == 'true';
+    final compact = await localKv.get(kWidgetCompactPrefKey) == 'true';
     await WidgetBridge(host ?? defaultWidgetHost()).publish(
       tasks,
       now: now,
@@ -96,6 +105,8 @@ Future<bool> publishWidgetFromReplica(
       },
       projects: projects,
       dateFormat: dateFormat,
+      hideTitles: hideTitles,
+      compact: compact,
     );
     return true;
   } on Object {
@@ -125,6 +136,11 @@ final widgetSyncProvider = Provider<void>((ref) {
   if (!widgetsSupportedPlatform) return;
   final tasks = ref.watch(openTasksProvider).value;
   if (tasks == null) return;
+  // OPH-337: nothing goes out until "Private widget" has been READ. Publishing
+  // on a default would write every title once per start, a moment before the
+  // stored setting arrived — see WidgetPrivacy.
+  final hideTitles = ref.watch(widgetPrivateProvider).value;
+  if (hideTitles == null) return;
   final projects = ref.watch(projectsByIdProvider);
   final colors = {
     for (final entry in projects.entries) entry.key: entry.value.colorRgb,
@@ -143,5 +159,7 @@ final widgetSyncProvider = Provider<void>((ref) {
         // order the widget's list picker offers them in (OPH-336).
         projects: projects.values,
         dateFormat: dateFormat,
+        hideTitles: hideTitles,
+        compact: ref.watch(widgetCompactProvider),
       );
 });

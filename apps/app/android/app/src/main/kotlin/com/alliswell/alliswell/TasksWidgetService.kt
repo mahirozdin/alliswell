@@ -3,6 +3,7 @@ package com.alliswell.alliswell
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
@@ -42,6 +43,9 @@ class TasksRemoteViewsFactory(
 
   private var rows: List<Row> = emptyList()
 
+  /// OPH-337: the snapshot's density, read together with the rows.
+  private var compact = false
+
   override fun onCreate() {}
   override fun onDataSetChanged() { rows = load() }
   override fun onDestroy() { rows = emptyList() }
@@ -61,6 +65,14 @@ class TasksRemoteViewsFactory(
     } else {
       views.setViewVisibility(R.id.aw_section, View.GONE)
     }
+
+    // OPH-337: density, set in BOTH directions — the launcher recycles row
+    // views, and a row last drawn compact keeps its padding unless told
+    // otherwise. The circle keeps its size: density never shrinks what you tap.
+    val pad = dp(if (compact) 0 else 2)
+    views.setViewPadding(R.id.aw_row, 0, pad, 0, pad)
+    views.setTextViewTextSize(R.id.aw_title, TypedValue.COMPLEX_UNIT_SP, if (compact) 13f else 14f)
+    views.setTextViewTextSize(R.id.aw_time, TypedValue.COMPLEX_UNIT_SP, if (compact) 11f else 12f)
 
     views.setTextViewText(R.id.aw_check, if (row.done) "●" else "○") // ● / ○
     views.setTextViewText(R.id.aw_title, row.title)
@@ -103,8 +115,10 @@ class TasksRemoteViewsFactory(
     val raw = HomeWidgetPlugin.getData(context)
       .getString(KEY_SNAPSHOT, null) ?: return emptyList()
     return try {
+      val snapshot = JSONObject(raw)
+      compact = snapshot.optString("density") == "compact"
       // OPH-336: this widget's list — the whole one, or its project's view.
-      val shown = selectWidgetView(JSONObject(raw), TasksWidgetConfig.listFor(context, widgetId))
+      val shown = selectWidgetView(snapshot, TasksWidgetConfig.listFor(context, widgetId))
       val buckets = shown.getJSONArray("buckets")
       val out = mutableListOf<Row>()
       for (b in 0 until buckets.length()) {
@@ -132,4 +146,7 @@ class TasksRemoteViewsFactory(
       emptyList()
     }
   }
+
+  private fun dp(value: Int): Int =
+    Math.round(value * context.resources.displayMetrics.density)
 }

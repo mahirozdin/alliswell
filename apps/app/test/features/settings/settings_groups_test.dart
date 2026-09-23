@@ -103,6 +103,10 @@ void main() {
         'settings-note-source-styling',
         'quick-bubble-toggle',
         'replay-tour',
+        // OPH-337: the widget section — a card of Genel, not an eighth group
+        // (§32 S2/S5). The test platform is Android, which has widgets.
+        'settings-widget-compact',
+        'settings-widget-private',
       ],
       'settings-group-notifications': [
         'alarm-status',

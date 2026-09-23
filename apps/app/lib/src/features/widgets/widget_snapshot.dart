@@ -24,11 +24,14 @@ import 'widget_grouping.dart';
 /// format"). Same tolerance rule as v2: an older snapshot has no `clockFormat`
 /// and the widget falls back to the locale's own clock.
 ///
-/// **v4 (OPH-336):** adds `next` (the lock screen's one row), `lists` (what a
-/// widget can be set to) and `views` (each project's own buckets, count and
-/// next task). The whole list stays at the top level, where v3 put it, so an
-/// unconfigured widget — and a widget from before v4 — reads exactly what it
-/// always read. Same tolerance rule again: every new field is optional.
+/// **v4 (OPH-336, OPH-337):** adds `next` (the lock screen's one row), `lists`
+/// (what a widget can be set to), `views` (each project's own buckets, count
+/// and next task) and `density`. The whole list stays at the top level, where
+/// v3 put it, so an unconfigured widget — and a widget from before v4 — reads
+/// exactly what it always read. Same tolerance rule again: every new field is
+/// optional. (Both tasks landed before any release, so one version covers
+/// both.) The "Private widget" setting is not a field at all: it changes what
+/// the title fields HOLD — see [buildWidgetSnapshot]'s `hideTitles`.
 const int kWidgetSnapshotVersion = 4;
 
 /// How many rows per bucket the snapshot carries; the native layer trims further
@@ -203,6 +206,7 @@ class WidgetSnapshot {
     this.next,
     this.lists = const [],
     this.views = const {},
+    this.compact = false,
   });
 
   final int version;
@@ -240,6 +244,10 @@ class WidgetSnapshot {
   /// it does only for an id this map has never heard of (a deleted project).
   final Map<String, WidgetListView> views;
 
+  /// Draw tighter rows (OPH-337) — `"density": "compact"` in the JSON, absent
+  /// for the normal density so an unchanged widget writes unchanged bytes.
+  final bool compact;
+
   Map<String, dynamic> toJson() => {
     'v': version,
     'generatedAt': generatedAt,
@@ -247,6 +255,7 @@ class WidgetSnapshot {
     'date': date.toJson(),
     'strings': strings,
     'clockFormat': clockFormat,
+    if (compact) 'density': 'compact',
     if (openToday > 0) 'openToday': openToday,
     if (next != null) 'next': next!.toJson(),
     'buckets': [for (final bucket in buckets) bucket.toJson()],
@@ -280,19 +289,26 @@ String? _timeLabel(
   );
 }
 
+/// What a row says instead of its title when the widget is private (OPH-337).
+/// The same words for every task: the row is still a row — its time, its
+/// project's color and its circle stay — but nothing the user wrote.
+String _titleOf(Task task, {required bool hideTitles}) =>
+    hideTitles ? 'widget.privateTitle'.tr() : task.title;
+
 WidgetTaskRow _rowFor(
   Task task,
   WidgetBucket bucket,
   String dateFormat,
   String localeTag,
-  Map<String, String> projectColorById,
-) {
+  Map<String, String> projectColorById, {
+  required bool hideTitles,
+}) {
   final color = task.projectId != null
       ? projectColorById[task.projectId]
       : task.colorRgb;
   return WidgetTaskRow(
     id: task.id,
-    title: task.title,
+    title: _titleOf(task, hideTitles: hideTitles),
     done: task.status == 'completed',
     priority: task.priority,
     time: _timeLabel(task, bucket, localeTag, dateFormat),
@@ -325,6 +341,7 @@ _listData(
   required int rowsPerBucket,
   required String dateFormat,
   required String localeTag,
+  required bool hideTitles,
 }) {
   final groups = groupTasksForWidget(tasks, now: now);
 
@@ -342,6 +359,7 @@ _listData(
               dateFormat,
               localeTag,
               projectColorById,
+              hideTitles: hideTitles,
             ),
         ],
         more: group.tasks.length > rowsPerBucket
@@ -369,7 +387,7 @@ _listData(
       ? null
       : WidgetNextTask(
           id: picked.task.id,
-          title: picked.task.title,
+          title: _titleOf(picked.task, hideTitles: hideTitles),
           bucket: picked.bucket.name,
           label: 'widget.bucket.${picked.bucket.name}'.tr(),
           time: _timeLabel(picked.task, picked.bucket, localeTag, dateFormat),
@@ -385,6 +403,13 @@ _listData(
 /// [projectColorById] maps a task's `projectId` to its `#RRGGBB` color.
 /// [projects] are the workspace's projects in the app's order; each one a
 /// widget can be set to gets its own view (OPH-336).
+///
+/// [hideTitles] is the "Private widget" setting (OPH-337): no task's title is
+/// written — not in a row, not in the lock screen's `next`, not in a project's
+/// view. Counts, times and placeholders are. It is applied HERE, before the
+/// JSON exists, because a title handed to the native side with a "do not
+/// show" flag has already left the app (WIDGETS §9). Project names stay: they
+/// name the list a widget was set to, and the picker offers them.
 WidgetSnapshot buildWidgetSnapshot(
   List<Task> tasks, {
   required DateTime now,
@@ -395,6 +420,8 @@ WidgetSnapshot buildWidgetSnapshot(
   /// The user's display format (OPH-174). Defaults to "follow the language" so
   /// unit tests and any future caller stay honest without extra ceremony.
   String dateFormat = kAwSystemDateFormat,
+  bool hideTitles = false,
+  bool compact = false,
 }) {
   final localeTag = AwI18n.instance.locale.toLanguageTag();
 
@@ -405,6 +432,7 @@ WidgetSnapshot buildWidgetSnapshot(
     rowsPerBucket: rowsPerBucket,
     dateFormat: dateFormat,
     localeTag: localeTag,
+    hideTitles: hideTitles,
   );
 
   // OPH-336: every list a widget can be set to is computed HERE, with the same
@@ -420,6 +448,7 @@ WidgetSnapshot buildWidgetSnapshot(
       rowsPerBucket: rowsPerBucket,
       dateFormat: dateFormat,
       localeTag: localeTag,
+      hideTitles: hideTitles,
     );
     views[list.id] = WidgetListView(
       openToday: data.openToday,
@@ -459,5 +488,6 @@ WidgetSnapshot buildWidgetSnapshot(
     next: all.next,
     lists: lists,
     views: views,
+    compact: compact,
   );
 }

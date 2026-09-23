@@ -80,10 +80,13 @@ void main() {
       );
       expect(
         swift,
-        contains('awRowBudget(family, titled: list != nil)'),
+        contains(
+          'awRowBudget(family, titled: list != nil, compact: snapshot.isCompact)',
+        ),
         reason:
             'the row count depends on the widget SIZE; an extraLarge draws 18 '
-            'rows where a medium draws 4, and the archive scales with it',
+            'rows where a medium draws 4, and the archive scales with it — '
+            'and since OPH-337 on the density, which adds a row to the big ones',
       );
       // OPH-336 lifted the timeline out of AWProvider into `awTimeline`, so
       // the size has to be handed in — by BOTH providers, or one of them

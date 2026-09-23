@@ -119,6 +119,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   and when it is due — overdue first, and saying "Overdue" in words, since the
   lock screen draws in one tint — and today's open count. Which tasks belong to
   which list is still worked out in the app, never in the widget.
+- **A private widget, and a compact one (OPH-337).** Settings › General has a
+  Widget card with two switches. "Private widget" shows "Private task" in
+  place of every title — on the home screen, on the lock screen, in every
+  project's widget — and it does that before anything is written for the
+  widget, so the titles never leave the app at all; the counts, times and
+  colours stay. It is also why the app now reads that setting before it
+  writes a widget's data, even at start-up. "Compact widget" draws tighter
+  rows with slightly smaller type, and never shrinks the circle you tap.
 
 ### Changed
 

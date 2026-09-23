@@ -179,3 +179,42 @@ DateTime applyDefaultTaskTime(DateTime day, String hhmm) {
   final (hour, minute) = parseTaskTime(hhmm);
   return DateTime(day.year, day.month, day.day, hour, minute);
 }
+
+/// How tightly the home-screen widget draws its rows (OPH-337, WIDGETS §5):
+/// compact is tighter spacing and a smaller type size — never a smaller circle
+/// to tap (DESIGN §8 W4). Cosmetic, so an ordinary toggle; see
+/// [widgetPrivateProvider] for why the privacy switch is not one.
+final widgetCompactProvider = NotifierProvider<PersistedToggle, bool>(
+  () => PersistedToggle(kWidgetCompactPrefKey, fallback: false),
+);
+
+/// [widgetCompactProvider]'s localKv key, shared with the background turn.
+const kWidgetCompactPrefKey = 'alliswell_widget_compact';
+
+/// "Private widget" (OPH-337, WIDGETS §9): task titles never reach the
+/// widget's shared storage — counts and placeholders do.
+///
+/// NOT a [PersistedToggle], and that is the point of this class. A toggle
+/// answers its fallback first and reads storage after, and the widget sync
+/// publishes on the first answer — so "not private" would go out at every
+/// start, a moment before the stored "private" arrived. The titles would sit
+/// in the App Group for that moment, and stay there if the app died in it.
+/// This has no answer at all until storage has been read.
+class WidgetPrivacy extends AsyncNotifier<bool> {
+  @override
+  Future<bool> build() async =>
+      (await localKv.get(kWidgetPrivatePrefKey)) == 'true';
+
+  Future<void> set(bool value) async {
+    state = AsyncData(value);
+    await localKv.set(kWidgetPrivatePrefKey, '$value');
+  }
+}
+
+final widgetPrivateProvider = AsyncNotifierProvider<WidgetPrivacy, bool>(
+  WidgetPrivacy.new,
+);
+
+/// [widgetPrivateProvider]'s localKv key, shared with the background turn —
+/// the midnight redraw (OPH-334) must hide exactly what the app hides.
+const kWidgetPrivatePrefKey = 'alliswell_widget_private';
