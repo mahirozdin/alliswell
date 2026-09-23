@@ -20,6 +20,15 @@ library;
 /// launches us and the failure is silent.
 const String kAwScheme = 'alliswell';
 
+/// The query parameter that asks Home to open its "new task" sheet (OPH-333).
+const String kAwAddParam = 'add';
+
+/// Where the widget's "+" (`alliswell://add`) lands: Home, with the SAME sheet
+/// the Home FAB opens. The parameter is a one-shot REQUEST, not a state: the
+/// router turns it into a flag Home consumes, and the location into plain
+/// Home (see the router's redirect and `homeCreateRequestProvider`).
+const String kAwQuickAddLocation = '/home?$kAwAddParam=1';
+
 /// Crockford base32 (ULID) — no I, L, O or U, so a typo cannot masquerade as a
 /// valid id. Anything that fails this is not routed.
 final RegExp _ulid = RegExp(r'^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$');
@@ -45,6 +54,14 @@ String? awRouteForUri(Uri uri) {
       // Extra segments mean a URL we do not understand — open Home rather than
       // guess, but only for the bare form.
       return segments.length == 1 ? '/home' : null;
+    case 'add':
+      // OPH-333: the widget's "+". A NAVIGATION, not a write — it opens the
+      // create sheet and nothing exists until the person saves. It takes NO
+      // parameters on purpose: a link must not be able to put words into the
+      // title field (a URL is untrusted input — see the top of this file).
+      return segments.length == 1 && uri.query.isEmpty
+          ? kAwQuickAddLocation
+          : null;
     case 'task':
       if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
       return '/tasks/${segments[1]}';
@@ -82,14 +99,16 @@ bool awIsAlarmRefresh(Uri uri) =>
     uri.scheme == kAwScheme && uri.host == kAwAlarmRefreshHost;
 
 /// True for URLs this app owns but does not route — the widget's background
-/// actions, which are handled by the App Intent queue long before anything
+/// action, which is handled by the App Intent queue long before anything
 /// reaches the router, and the alarm refresh. Kept explicit so a future reader
 /// sees that the omission is a decision, not an oversight (ADR-0016).
+///
+/// `add` USED to be listed here and never had a caller: a background "add"
+/// needs a title, which a widget button cannot supply. OPH-333 made it what it
+/// always had to be — a navigation into the create sheet, routed above.
 bool awIsBackgroundAction(Uri uri) =>
     uri.scheme == kAwScheme &&
-    (uri.host == 'complete' ||
-        uri.host == 'add' ||
-        uri.host == kAwAlarmRefreshHost);
+    (uri.host == 'complete' || uri.host == kAwAlarmRefreshHost);
 
 /// The iOS share extension's callback scheme: `ShareMedia-<host bundle id>`
 /// (OPH-298, amends ADR-0029).

@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/persisted_prefs.dart';
 import '../features/ee/providers.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
 import '../features/calendar/apple/providers.dart';
 import '../features/devices/providers.dart';
+import '../features/home/home_create.dart';
 import '../features/ai/data/ai_context_builder.dart';
 import '../features/ai/data/ai_models.dart';
 import '../features/ai/data/share_intent.dart';
@@ -25,8 +25,6 @@ import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
 import '../features/quick_access/ui/quick_access_rail_section.dart';
-import '../features/tasks/providers.dart';
-import '../features/tasks/ui/task_create_sheet.dart';
 import '../features/widgets/widget_bridge.dart';
 import '../i18n/i18n.dart';
 import '../notifications/alarm_overlay.dart';
@@ -144,16 +142,8 @@ class HomeShell extends ConsumerWidget {
       AppSection.notes when !ref.watch(canProvider('notes.create')) => null,
       AppSection.home => FloatingActionButton(
         tooltip: 'shell.fabNewTask'.tr(),
-        onPressed: () {
-          // Day-only prefill lands on the user's default task time (OPH-161).
-          final day = ref.read(selectedDayProvider);
-          showTaskCreateSheet(
-            context,
-            initialDue: day == null
-                ? null
-                : applyDefaultTaskTime(day, ref.read(defaultTaskTimeProvider)),
-          );
-        },
+        // The widget's "+" opens this same sheet (OPH-333) — one function.
+        onPressed: () => showHomeTaskCreateSheet(context, ref),
         child: const Icon(Icons.add),
       ),
       AppSection.projects => FloatingActionButton(

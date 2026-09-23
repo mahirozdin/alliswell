@@ -102,6 +102,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   seen — one fixed sentence chosen from the catalogue. Nothing about what
   happened travels with it: the device fetches the row itself. ADR-0038 said
   the payload had two types and it now says three.
+- **A "+" on the home-screen widget (OPH-333).** Tapping it opens the app with
+  the new-task sheet already up — the same sheet as the Home "+" button, with
+  the same day pre-filled. It is a shortcut into the app rather than a way to
+  add from the widget itself: a widget cannot take typed text, so nothing is
+  created until you save. On iPhone it sits in the date header of the large
+  sizes and in a narrow column of its own on the medium one; on Android it
+  closes the header.
 
 ### Changed
 
@@ -111,6 +118,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 - **The generated API reference follows the registry change (OPH-325).**
   `docs/openapi.json` and `docs/API.md` no longer enumerate the four attachment
   targets, because the route no longer promises exactly those four.
+
+### Fixed
+
+- **A link that starts the app now lands where it points (OPH-333).** Opening
+  the app from a widget row, a calendar event or a printed label while it was
+  not running could end on Home instead of the task: the link arrived while the
+  session was still being restored, and nothing kept it. It now waits and is
+  followed once you are signed in.
 
 ## [1.13.0] — 2026-09-19
 

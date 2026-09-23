@@ -80,6 +80,10 @@ class TasksWidgetProvider : HomeWidgetProvider() {
           // Localized empty state (shown by setEmptyView when the list is empty).
           val empty = snap.optJSONObject("strings")?.optString("allCaughtUp")
           if (!empty.isNullOrEmpty()) views.setTextViewText(R.id.aw_empty, empty)
+          // OPH-333: the "+" is read aloud in the app's language, not the
+          // device's — the same source every other widget string comes from.
+          val addLabel = snap.optJSONObject("strings")?.optString("addTask")
+          if (!addLabel.isNullOrEmpty()) views.setContentDescription(R.id.aw_add, addLabel)
           // OPH-253 (v3): the header clock's pattern. TextClock ticks on its own
           // — it needs no data from us — but it would otherwise pick 12h vs 24h
           // from the DEVICE, and which clock the user reads is a product rule
@@ -128,6 +132,17 @@ class TasksWidgetProvider : HomeWidgetProvider() {
         Uri.parse("alliswell://open"),
       )
       views.setOnClickPendingIntent(R.id.aw_header, open)
+      // OPH-333: the "+" opens the app ON the create sheet. A launch, not a
+      // broadcast — adding needs a title only the person can type. Distinct
+      // from `open` by its data URI, which is what keeps the two PendingIntents
+      // (same request code 0 inside HomeWidgetLaunchIntent) from overwriting
+      // each other.
+      val add = HomeWidgetLaunchIntent.getActivity(
+        context,
+        MainActivity::class.java,
+        Uri.parse("alliswell://add"),
+      )
+      views.setOnClickPendingIntent(R.id.aw_add, add)
       // OPH-188: rows go through a BROADCAST template so a tap can either open
       // that task or complete it without launching anything. Which one is
       // decided by the fill-in extras the factory attaches per row.

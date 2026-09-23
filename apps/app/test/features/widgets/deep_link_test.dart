@@ -84,6 +84,36 @@ void main() {
       expect(awIsBackgroundAction(complete), isTrue);
       expect(awIsBackgroundAction(Uri.parse('alliswell://task/$id')), isFalse);
     });
+
+    test(
+      'the widget\'s "+" is a NAVIGATION into the create sheet (OPH-333)',
+      () {
+        // What both native widgets now open. It lands on Home with a one-shot
+        // request the router turns into a flag Home consumes — and it is not a
+        // background action: adding needs a title only the person can type.
+        final add = Uri.parse('alliswell://add');
+        expect(awRouteForUri(add), kAwQuickAddLocation);
+        expect(kAwQuickAddLocation, '/home?add=1');
+        expect(awIsBackgroundAction(add), isFalse);
+        // The form some launchers hand over, with a trailing slash.
+        expect(
+          awRouteForUri(Uri.parse('alliswell://add/')),
+          kAwQuickAddLocation,
+        );
+      },
+    );
+
+    test('"+" takes no parameters — a link cannot write the title', () {
+      // A URL is untrusted input. If `?title=` were honoured, any calendar
+      // invite or email could put words into the field the person saves.
+      for (final raw in [
+        'alliswell://add?title=Pay%20the%20invoice',
+        'alliswell://add/extra',
+        'alliswell://add?id=$id',
+      ]) {
+        expect(awRouteForUri(Uri.parse(raw)), isNull, reason: raw);
+      }
+    });
   });
 
   /// OPH-298 — the share extension's callback (amends ADR-0029).

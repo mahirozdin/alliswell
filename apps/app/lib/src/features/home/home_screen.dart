@@ -26,6 +26,7 @@ import '../ai/providers.dart';
 import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
+import '../ee/providers.dart';
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
 import '../tasks/data/task_defaults.dart';
@@ -35,6 +36,7 @@ import '../tasks/ui/quick_add_bar.dart';
 import '../tasks/ui/task_tile.dart';
 import '../workspaces/workspaces.dart';
 import 'home_board.dart';
+import 'home_create.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
 
@@ -82,6 +84,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _quickAddFocus.addListener(_keepQuickAddVisible);
+    // OPH-333: the widget's "+". `fireImmediately` covers the cold start, where
+    // the request is already waiting when Home is first built; the listener
+    // covers a warm "+" while Home is mounted (possibly on another tab).
+    ref.listenManual<bool>(homeCreateRequestProvider, (_, wanted) {
+      if (wanted) _openCreateFromRequest();
+    }, fireImmediately: true);
+  }
+
+  /// Guards against a second notification landing before the first frame's
+  /// callback has run — two sheets from one tap.
+  bool _createRequestScheduled = false;
+
+  /// OPH-333: `alliswell://add` → `/home?add=1` → [homeCreateRequestProvider]
+  /// → the Home FAB's sheet.
+  ///
+  /// The request is consumed FIRST, so it is one-shot whatever happens next.
+  /// Nothing is written here — the link only navigates; the task exists when
+  /// the person saves (ADR-0016).
+  ///
+  /// Same permission as the FAB (EE-052): a role without `tasks.create` never
+  /// sees the FAB, so a link must not hand it a sheet it cannot save. It lands
+  /// on Home instead — the URL is untrusted input, not an instruction.
+  void _openCreateFromRequest() {
+    if (_createRequestScheduled) return;
+    _createRequestScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _createRequestScheduled = false;
+      if (!mounted) return;
+      if (!ref.read(homeCreateRequestProvider.notifier).take()) return;
+      if (!ref.read(canProvider('tasks.create'))) return;
+      showHomeTaskCreateSheet(context, ref);
+    });
   }
 
   @override

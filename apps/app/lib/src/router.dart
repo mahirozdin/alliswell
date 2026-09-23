@@ -16,6 +16,7 @@ import 'features/ee/admin/ui/admin_teams_screen.dart';
 import 'features/ee/admin/ui/admin_usage_screen.dart';
 import 'features/ee/ui/join_screen.dart';
 import 'features/files/ui/files_screen.dart';
+import 'features/home/home_create.dart';
 import 'features/home/home_screen.dart';
 import 'features/notes/ui/markdown_import_screen.dart';
 import 'features/notes/ui/note_editor_screen.dart';
@@ -165,6 +166,36 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: authChanged,
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
+      // OPH-333: our own scheme is resolved HERE, before route matching can
+      // swallow it. go_router rewrites an EMPTY path to '/', so a bare-host
+      // URL (`alliswell://add`, `alliswell://open`) matches the root route and
+      // never reaches `onException`, where this table used to be consulted.
+      // `open` only ever worked because '/' happens to redirect to Home; `add`
+      // silently became Home too — measured, the first cut opened nothing.
+      final appLink = state.uri.scheme == kAwScheme
+          ? awRouteForUri(state.uri)
+          : null;
+      if (appLink != null) {
+        if (auth.value != null && !auth.isLoading) return appLink;
+        // Not ready (restoring, or signed out): park it — it wins once the
+        // session exists. A cold start is exactly this case: a restoring
+        // session parks every location on /splash, and before this the link
+        // was dropped there.
+        ref.read(pendingDeepLinkProvider.notifier).remember(appLink);
+      }
+      // OPH-333: `?add=1` is a REQUEST, not a place. Once there is a session
+      // to act for, it becomes a flag Home consumes and the location becomes
+      // plain Home. A query that has to survive the auth dance does not: after
+      // a restore, a second refresh in the same frame re-parses the stale
+      // /splash and lands on /home without it (measured on a cold start). A
+      // flag waits until Home is there to read it.
+      if (auth.value != null &&
+          !auth.isLoading &&
+          state.matchedLocation == AppSection.home.path &&
+          state.uri.queryParameters[kAwAddParam] == '1') {
+        ref.read(homeCreateRequestProvider.notifier).request();
+        return AppSection.home.path;
+      }
       final decision = computeAuthRedirect(
         isRestoring: auth.isLoading,
         isLoggedIn: auth.value != null,

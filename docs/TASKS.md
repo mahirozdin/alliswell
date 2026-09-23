@@ -11259,25 +11259,61 @@ kuyruğu bloklamaz._
 **Sıra bağlayıcı:** 333 → 334 → 335 → 336 → 337 → 338 → 339. **OPH-340** uzantının
 ikizidir ve onunla aynı turda kapanır (`check:twin-tasks`).
 
-### OPH-333 — Widget'tan hızlı ekleme: `alliswell://add`
+### OPH-333 — Widget'tan hızlı ekleme: `alliswell://add` ✅ 2026-09-23
 
 **Bağlam:** OPH-132'nin açık yarısı. Tamamlama OPH-188/233'te indi; `widget_callback.dart`
 yalnız `complete` tanıyor ve `core/deep_link.dart`'ın URL sözleşmesinde `add` yok.
 
-- [ ] Widget başlığına **"+"** (iOS: `Link` → `alliswell://add`; Android: başlıkta aynı URL'e
-      giden bir `PendingIntent`). **Arka plan intent'i değil, derin bağlantı:** WidgetKit ve
-      RemoteViews metin alanı taşımaz; yazılacak bir şey yokken arka planda bir süreç
-      doğurmanın anlamı yok — düğme uygulamayı **hızlı ekleme sheet'i açık** getirir.
-- [ ] `core/deep_link.dart` sözleşmesine `add` girer → Home + hızlı ekleme sheet'i; bilinmeyen
-      yol bugünkü gibi hata çıkışına düşer (OPH-189).
-- [ ] Düğmenin erişilebilirlik etiketi i18n'den (en/tr), dokunma hedefi ≥ 44 pt, açık/koyu
-      (kural 11).
-- **Kabul:** `alliswell://add` uygulamayı sheet açık getiriyor (deep-link testi); iki platform
-  derleniyor.
-- **Doğrulama:** deep-link testi + `flutter build ios --no-codesign` + `flutter build apk
-  --debug`; `flutter analyze` sıfır uyarı; `check:i18n` yeşil.
-- **Cihazda bakılacak:** iPhone ve Android widget'ında "+" → sheet açık geliyor.
-- **Yüzey (kural 12):** yeni bir yetenek değil, mevcut hızlı eklemeye yeni bir giriş —
+_**İşin tek cümlesi: bir URL'nin tabloya ULAŞTIĞINI görmeden tablo yazılmış sayılmaz.** İlk
+kesim tabloyu, Home'u ve gerçek router'la koşan bir widget testini yazdı — ve hiçbir şey
+açılmadı. İki ölçüm çıktı, ikisi de `add`'den eski:_
+
+1. _**go_router boş yolu `/`'ye çeviriyor.** `alliswell://add`'ın yolu boş, yani kök rotaya
+   **eşleşiyor** ve tablonun sorulduğu tek yere (`onException`) hiç varmıyor.
+   `alliswell://open` OPH-189'dan beri bu yüzden "çalışıyordu": `/` zaten Home'a yönleniyor —
+   tesadüfen doğru bir sonuç, bir sözleşme değil. Artık kendi şemamız **eşleştirmeden önce**,
+   üst düzey `redirect`'te çözülüyor._
+2. _**Soğuk başlangıçta bağlantı kayboluyordu.** Oturum geri yüklenirken her konum
+   `/splash`'e park ediliyor ve bağlantı hatırlanmıyordu (bekleyen-bağlantı yalnız "çıkış
+   yapılmış" hâlini kapsıyordu); artık geri yükleme sırasında da park ediliyor. `?add=1` ise
+   bir sorgu parametresi olarak bu dansı yine atlatamadı: geri yüklemeden sonra aynı karede
+   gelen ikinci bir yenileme bayat `/splash`'i yeniden ayrıştırıp düz `/home`'a indi (redirect
+   izlemesiyle ölçüldü). İstek bu yüzden bir **bayrak**: `redirect` `/home?add=1`'i
+   `homeCreateRequestProvider`'a, konumu düz `/home`'a çevirir; Home onu ekrandayken tüketir._
+
+- [x] Widget'a **"+"** — iOS: `AWAddLink` (`Link` → `alliswell://add`, 44 pt, rengi DESIGN
+      §3.1 `primary`'nin yerel aynası: açık #0A5CFF / koyu #3E9BFF — W1), large/extraLarge'da
+      tarih başlığını kapatır, **medium**'da başlık olmadığı için 44 pt'lik dar bir sütunda
+      durur (bir satır yerine genişlikten yer; WIDGETS §5 4×2'de de bir "+" istiyor). Android:
+      başlığın sonunda `aw_add` (44dp, `aw_widget_accent`) + `HomeWidgetLaunchIntent` —
+      `open`'la aynı istek kodunu kullanır, **veri URI'si** ayırır. Derin bağlantı, arka plan
+      intent'i değil: widget metin alamaz, yazılacak bir şey yokken süreç doğurmanın anlamı yok.
+- [x] `core/deep_link.dart`'a `add` → `kAwQuickAddLocation` (`/home?add=1`) ve **parametre
+      almaz** (`?title=` bir bağlantının başlığa kelime koyması demek — test üç biçimi
+      reddediyor). `awIsBackgroundAction`'dan `add` çıktı: hiç çağıranı yoktu. Açılan sheet
+      **Home FAB'ının sheet'i** — `showHomeTaskCreateSheet` (`features/home/home_create.dart`)
+      iki kapının tek fonksiyonu, takvimde seçili gün aynı ön-dolumla gelir. `tasks.create`
+      izni olmayan rol Home'a iner, sheet'e değil (EE-052 — FAB'ın kuralı).
+- [x] Erişilebilirlik etiketi uygulamanın i18n'inden: anlık görüntünün `strings.addTask`'ı
+      (`widget.addTask` en/tr — OPH-130'dan beri hazır bekliyordu); Android'de
+      `setContentDescription`, iOS'ta `accessibilityLabel`. Dokunma hedefi 44 pt / 44dp; renk
+      aynası açık ve koyuda 3:1 simge tabanının üstünde (W2).
+- **Kabul:** ✔ `alliswell://add` sıcak **ve soğuk** başlangıçta sheet'i açık getiriyor, konum
+  düz `/home`, hiçbir şey yazılmıyor, kapatınca ikinci bir sheet açılmıyor; izinsiz rol sheet
+  görmüyor — `test/features/widgets/quick_add_link_test.dart` (3 test, **gerçek router**,
+  tam uygulama). ✔ İki platform derleniyor ve **üründe** doğrulandı: iOS widget uzantısının
+  debug dylib'i `alliswell://add` + `plus.circle.fill` taşıyor; APK `res/drawable/ic_widget_add.xml`
+  ve `alliswell://add`'i (classes5.dex) taşıyor.
+- **Doğrulama:** `deep_link_test.dart` +2 test. **İki enjeksiyon:** router'ın bayrak çağrısı
+  düşürüldü → sıcak + soğuk kırmızı; geri yüklemede park kaldırıldı → yalnız soğuk kırmızı;
+  checksum'la geri alındı (`dafa86fd78a1`), üçü yeşil. `flutter build ios --debug
+  --no-codesign` ✔ (Xcode 72 s, artımlı 12 s), `flutter build apk --debug` ✔, `flutter
+  analyze` sıfır, tam süit **1754 geçti, 28 atlandı** (+5), core kapıları (docs, fab, opacity, search-reachable,
+  sync-fields, push-payload, notify-matrix, i18n, no-ee, no-ts) yeşil. Dart biçimi CI'ın
+  sürümüyle (3.12.0, sandbox) — dokunulan sekiz dosya.
+- **Cihazda bakılacak:** iPhone'da large/XL başlığındaki ve medium sütunundaki "+", Android
+  başlığındaki "+" → uygulama sheet açık geliyor; uygulama **kapalıyken** de.
+- **Yüzey (kural 12):** yeni bir yetenek değil, mevcut görev oluşturmaya yeni bir giriş —
   MCP/API değişmez.
 
 ### OPH-334 — Android widget'ı gece yarısında kendini yeniler

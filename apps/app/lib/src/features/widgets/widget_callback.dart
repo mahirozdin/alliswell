@@ -26,10 +26,10 @@ Future<bool> handleWidgetAction(
   if (uri == null || !awIsBackgroundAction(uri)) return false;
   final taskId = uri.queryParameters['id'];
   if (taskId == null || taskId.isEmpty) return false;
-  // Only `complete` today. `add` is in the queue's vocabulary but needs a
-  // title, which a widget button cannot supply — it stays a deep link into the
-  // app (WIDGETS §4), and saying so here is cheaper than a future reader
-  // wondering whether it was forgotten.
+  // Only `complete`. Adding needs a title, which a widget button cannot
+  // supply — so the widget's "+" is a deep link into the create sheet
+  // (`alliswell://add`, OPH-333) and never reaches this isolate. Saying so here
+  // is cheaper than a future reader wondering whether it was forgotten.
   if (uri.host != 'complete') return false;
 
   // Close only what we opened. An injected handle belongs to its owner — the

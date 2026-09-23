@@ -365,6 +365,8 @@ struct AWDateHeader: View {
   let date: AWDate
   let clock: String?
   let openToday: String?
+  /// OPH-333: the "+"'s spoken label, pre-localized by the app.
+  let addLabel: String
 
   var body: some View {
     // OPH-187 (round 10 #4A): `.firstTextBaseline` aligned a 34 pt number's
@@ -415,7 +417,39 @@ struct AWDateHeader: View {
           }
         }
       }
+      // OPH-333: last in the row, so the clock and the count keep the edge
+      // they are measured against (C1–C5) and the "+" sits outside them.
+      AWAddLink(label: addLabel)
     }
+  }
+}
+
+/// DESIGN §3.1 `primary`, mirrored natively (W1 — token parity): light
+/// #0A5CFF, dark #3E9BFF — the same pair Android carries as `aw_widget_accent`.
+/// Both clear the 3:1 icon floor on the widget's background (W2).
+private let awPrimary = Color(UIColor { traits in
+  traits.userInterfaceStyle == .dark
+    ? UIColor(red: 0x3E / 255.0, green: 0x9B / 255.0, blue: 0xFF / 255.0, alpha: 1)
+    : UIColor(red: 0x0A / 255.0, green: 0x5C / 255.0, blue: 0xFF / 255.0, alpha: 1)
+})
+
+/// OPH-333: the widget's "+" — a deep link into the app's create sheet, not an
+/// App Intent. Adding needs a title and a widget cannot take text, so the only
+/// honest thing a button here can do is bring the app forward ready to type.
+/// 44 pt hit target (DESIGN W4 / rule 11). On large/extraLarge it closes the
+/// date header; systemMedium draws no header, so there it gets a narrow column
+/// of its own rather than costing a row (WIDGETS §5: one "+" at 4×2 too).
+struct AWAddLink: View {
+  let label: String
+  var body: some View {
+    Link(destination: URL(string: "alliswell://add")!) {
+      Image(systemName: "plus.circle.fill")
+        .font(.title2)
+        .foregroundStyle(awPrimary)
+        .frame(width: 44, height: 44)
+        .contentShape(Rectangle())
+    }
+    .accessibilityLabel(label)
   }
 }
 
@@ -490,6 +524,7 @@ struct AllisWellWidgetEntryView: View {
 
   var body: some View {
     let snap = entry.snapshot
+    let addLabel = snap.strings?["addTask"] ?? "Add task"
     // OPH-253, measured on device: a full list is TALLER than a systemLarge
     // card, and an oversized child centres itself — so the widget was losing
     // pixels at BOTH ends, and the top end is where the header lives. The day
@@ -504,28 +539,36 @@ struct AllisWellWidgetEntryView: View {
     // bottom: the list already has a vocabulary for being cut short ("+N"), and
     // the header does not.
     GeometryReader { geo in
-      VStack(alignment: .leading, spacing: 8) {
-        if family != .systemMedium {
-          // Round 15: the ENTRY's date, not the snapshot's — see awDate(for:).
-          AWDateHeader(
-            date: snap.generatedAt.isEmpty
-              ? snap.date
-              : awDate(for: entry.date, locale: snap.locale),
-            clock: awClockLabel(for: entry),
-            openToday: awOpenTodayLabel(snap))
-        }
-        if snap.buckets.isEmpty {
-          Spacer()
-          Text(snap.strings?["allCaughtUp"] ?? "All caught up")
-            .font(.subheadline).foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .center)
-          Spacer()
-        } else {
-          ForEach(distribute(snap.buckets, budget: awRowBudget(family))) {
-            AWBucketView(bucket: $0)
+      // OPH-333: the medium size has no date header to carry the "+", so it
+      // gets a narrow trailing column — 44 pt of width instead of a row.
+      HStack(alignment: .top, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
+          if family != .systemMedium {
+            // Round 15: the ENTRY's date, not the snapshot's — see awDate(for:).
+            AWDateHeader(
+              date: snap.generatedAt.isEmpty
+                ? snap.date
+                : awDate(for: entry.date, locale: snap.locale),
+              clock: awClockLabel(for: entry),
+              openToday: awOpenTodayLabel(snap),
+              addLabel: addLabel)
           }
+          if snap.buckets.isEmpty {
+            Spacer()
+            Text(snap.strings?["allCaughtUp"] ?? "All caught up")
+              .font(.subheadline).foregroundStyle(.secondary)
+              .frame(maxWidth: .infinity, alignment: .center)
+            Spacer()
+          } else {
+            ForEach(distribute(snap.buckets, budget: awRowBudget(family))) {
+              AWBucketView(bucket: $0)
+            }
+          }
+          Spacer(minLength: 0)
         }
-        Spacer(minLength: 0)
+        if family == .systemMedium {
+          AWAddLink(label: addLabel)
+        }
       }
       .padding(family == .systemMedium ? 12 : 14)
       .frame(width: geo.size.width, height: geo.size.height, alignment: .top)

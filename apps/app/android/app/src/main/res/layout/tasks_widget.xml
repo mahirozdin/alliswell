@@ -94,6 +94,21 @@
                 android:textStyle="bold"
                 android:visibility="gone" />
         </LinearLayout>
+
+        <!-- OPH-333: the "+" opens the app ON the create sheet
+             (alliswell://add). A deep link, never a background write: adding
+             needs a title, and a widget cannot take text. 44dp hit target
+             (rule 11); the label is set at runtime from the app's own i18n
+             (snapshot `strings.addTask`), and the whole header — this button
+             with it — is GONE until a snapshot exists. -->
+        <ImageView
+            android:id="@+id/aw_add"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="4dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_widget_add"
+            tools:ignore="ContentDescription" />
     </LinearLayout>
 
     <ListView
