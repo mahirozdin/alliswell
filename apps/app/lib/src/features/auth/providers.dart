@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/reachability.dart';
 import '../../core/server_url.dart';
 import '../devices/providers.dart';
 import 'data/auth_api.dart';
@@ -46,6 +47,11 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 final apiClientProvider = Provider<Dio>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   final dio = Dio(BaseOptions(baseUrl: ref.watch(apiBaseUrlProvider)));
+  // OPH-342: first, so it sees every raw answer and every "no answer" before
+  // the auth layer retries or rewrites anything.
+  dio.interceptors.add(
+    ReachabilityInterceptor(ref.read(serverReachabilityProvider.notifier)),
+  );
   dio.interceptors.add(
     AuthInterceptor(
       getAccessToken: () => repository.accessToken,

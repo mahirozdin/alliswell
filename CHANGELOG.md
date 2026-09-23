@@ -136,6 +136,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **The app knows whether the server answered the last time it asked
+  (OPH-342).** Most of the app works offline and never needs to know. A
+  screen that writes straight to the server does: it can now grey itself out
+  before it is pressed, and say why, instead of failing after someone typed a
+  paragraph. The answer comes from the traffic the app already makes, not
+  from the phone's network icon — hotel wi-fi is a network that reaches
+  nothing.
 - **The widget documents say what shipped (OPH-339).** The README gains a
   Widgets section; the widget design notes, the product spec and the roadmap
   were read against the code and corrected where they described a plan rather

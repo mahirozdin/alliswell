@@ -101,6 +101,9 @@ void main() {
           canProvider('kb.write').overrideWith((ref) => false),
           canProvider('tickets.convert').overrideWith((ref) => false),
           canProvider('tickets.create').overrideWith((ref) => false),
+          // EE-223's reply box asks for this one; the answer here is "no", so
+          // the test stays about attachments.
+          canProvider('tickets.comment').overrideWith((ref) => false),
           // EE-208's section, for the reason written above it: an un-overridden
           // provider here reaches the auth controller, whose retry timer
           // outlives the test. `null` is the "not yours / no team" answer, so

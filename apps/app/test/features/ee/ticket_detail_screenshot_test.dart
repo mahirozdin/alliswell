@@ -24,15 +24,24 @@
 // The team-wide audit screen is NOT photographed. EeAuditLogScreen is written
 // and tested but reachable from nothing in router.dart, and a marketing page
 // that shows a screen a customer cannot open is selling a picture.
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
+import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/history_providers.dart';
+import 'package:alliswell/src/features/ee/kb_providers.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/ticket_links_providers.dart';
+import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
+import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/sync/providers.dart';
 
 import '../../design_screenshots_test.dart' show screenshotLocale;
 import 'support/demo_corpus.dart';
@@ -50,9 +59,27 @@ const bool _enabled = bool.fromEnvironment('screenshots');
 /// so the screens still link to each other and nothing has to be untrue.
 const String _ticketId = 'T5';
 
-List<Override> _overrides(DemoCorpus corpus) {
+List<Override> _overrides(DemoCorpus corpus, {bool canComment = false}) {
   final ticket = corpus.ticket(_ticketId);
   return [
+    // EE-189/190/196/198 added sections to this screen after these shots were
+    // last taken, and this file — inert without the dart-define — never
+    // noticed: each section reached for the network or the device database,
+    // and every shot here failed on a missing plugin (found in EE-223). They
+    // are overridden to what the demo corpus holds for T5, which is nothing,
+    // so the pictures stay about the conversation.
+    targetFilesProvider.overrideWith((ref, target) => Stream.value(const [])),
+    eeTicketExternalFilesProvider.overrideWith((ref, id) async => const {}),
+    eeTicketRelationsProvider.overrideWith(
+      (ref, id) async => const EeTicketRelations(),
+    ),
+    eeKbSuggestionsProvider.overrideWith((ref, subject) async => const []),
+    eeKbOfTicketProvider.overrideWith((ref, id) async => const []),
+    // Only the verb a shot is about — the permission cache would otherwise
+    // go looking for a session.
+    canProvider.overrideWith(
+      (ref, permission) => canComment && permission == 'tickets.comment',
+    ),
     ticketProvider.overrideWith((ref, id) => Stream.value(ticket)),
     ticketCommentsProvider.overrideWith(
       (ref, id) => Stream.value(corpus.commentsFor(_ticketId)),
@@ -93,6 +120,44 @@ void main() {
         size: const Size(900, 1300),
         overrides: _overrides(corpus),
         screen: const EeTicketDetailScreen(ticketId: _ticketId),
+      );
+    });
+
+    // EE-223: the answer, being written — as an internal note, because that
+    // is the one whose three signals have to be visible BEFORE the send.
+    testWidgets('and the answer being written — ${brightness.name}', (
+      tester,
+    ) async {
+      final turkish = AwI18n.instance.locale.languageCode == 'tr';
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-ticket-reply',
+        size: const Size(900, 1300),
+        overrides: [
+          ..._overrides(corpus, canComment: true),
+          eeTicketWriteApiProvider.overrideWithValue(EeTicketWriteApi(Dio())),
+          syncEngineProvider.overrideWithValue(null),
+        ],
+        screen: const EeTicketDetailScreen(ticketId: _ticketId),
+        afterPump: (t) async {
+          final composer = find.byKey(const Key('ticket-composer'));
+          await t.scrollUntilVisible(
+            composer,
+            400,
+            scrollable: find.byWidgetPredicate(
+              (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+            ),
+          );
+          await t.tap(find.text('ee.tickets.composer.internal'.tr()));
+          await t.pumpAndSettle();
+          await t.enterText(
+            find.byKey(const Key('ticket-composer-text')),
+            turkish
+                ? 'Parça yarın geliyor; müşteriye saat vermeyelim.'
+                : "The part arrives tomorrow — let's not promise a time yet.",
+          );
+        },
       );
     });
 

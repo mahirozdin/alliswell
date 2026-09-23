@@ -11653,6 +11653,27 @@ birinin Dart yarısı testliydi; aradaki kablo hiç.
   altı saatlik tur (OPH-321) bildirimleri uygulama açılmadan yeniden kuruyor.
 - **Yüzey (kural 12):** yok (native kablo).
 
+### OPH-342 — Sunucuya ulaşılabilirlik sinyali ✅ 2026-09-23
+
+**Bağlam:** ölçümle doğdu (EE-223'ün turunda). Uygulamanın çoğu yerel-önce ve çevrimdışını
+bilmesine gerek yok; ama doğrudan sunucuya yazan bir yüzey, basılmadan ÖNCE devre dışı olup
+nedenini söylemek zorunda. Ölçüldü: böyle bir sinyal yoktu — AI balonu ve not sürümleri
+çevrimdışını başarısız bir istekten öğreniyor.
+
+- [x] `core/reachability.dart`: `serverReachabilityProvider` (`bool?`) — `null` bilinmiyor
+      (≠ çevrimdışı: açılışta ilk çekiş bitene kadar gri bir yüzey, çevrimiçi herkes için
+      yanlış olurdu), `true` sunucu cevap verdi (**4xx dahil** — "yok" da bir cevaptır),
+      `false` cevap yok (bağlantı hatası, bağlanırken/gönderirken zaman aşımı). İptal edilen
+      istek ağ hakkında bir şey söylemez.
+- [x] `ReachabilityInterceptor` uygulamanın paylaşılan istemcisinde, yetkilendirmeden ÖNCE
+      (ham 401'i de görsün). Senkron aynı istemciyi kullandığı için sinyal periyodik
+      çekişlerle bedavaya tazeleniyor — işletim sisteminin ağ durumuna bakılmıyor: otel
+      wi-fi'si ağdır ama hiçbir yere ulaşmaz.
+- [x] `reachability_test.dart` (5): bilinmiyor ≠ çevrimdışı, 404 bir cevap, üç "cevap yok"
+      türü, iptal nötr, istemcide sıralama. Enjeksiyon: 4xx'i "ulaşılamaz" saymak kırmızı.
+- **Yüzey (kural 12):** yok (istemci içi sinyal).
+- ⚠️ **Çift kapanış:** ↔ `EE-223` (uzantı kaydı: sinyalin ilk kullanıcısı).
+
 ---
 
 ## Backlog / v2 parking lot

@@ -1905,7 +1905,25 @@
       "more": "More",
       "attachments": "Attachments",
       "attachmentExternal": "Sent from outside — think about the source before opening. This file was not scanned.",
-      "attachmentUnavailable": "That file cannot be opened right now."
+      "attachmentUnavailable": "That file cannot be opened right now.",
+      "composer": {
+        "reply": "Reply",
+        "internal": "Internal note",
+        "replyAudience": "The requester reads this.",
+        "internalAudience": "Only your desk reads this — never the requester.",
+        "replyHint": "Write to the requester…",
+        "noteHint": "A note for your colleagues…",
+        "sendReply": "Send to requester",
+        "addNote": "Add internal note",
+        "canned": "Saved replies",
+        "cannedTitle": "Insert a saved reply",
+        "cannedEmptyTitle": "No saved replies yet",
+        "cannedEmptyBody": "Your desk's saved replies appear here once someone who manages its services adds them.",
+        "offline": "You're offline. Replies go straight to the server, so this waits for a connection — what you've written stays here.",
+        "replySent": "Reply sent",
+        "noteAdded": "Internal note added",
+        "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above."
+      }
     },
     "sla": {
       "breached": "SLA missed",

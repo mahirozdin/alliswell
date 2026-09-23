@@ -18,6 +18,7 @@ import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
 import 'sla_chip.dart';
+import 'ticket_composer.dart';
 import 'ticket_worklog_section.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
@@ -173,6 +174,27 @@ class _Thread extends ConsumerWidget {
                   ],
                 ),
         ),
+        // EE-223: the answer, under the conversation it answers. Hidden — not
+        // disabled — without `tickets.comment` (EE-052's cache): a box that
+        // 403s on send is a dead button with extra steps. Whoever reaches
+        // this screen reads the request from the device's copy, which only a
+        // member of its desk syncs, so offering the internal note is right.
+        if (ref.watch(canProvider('tickets.comment')))
+          // The server closes a finished thread (TICKET_TERMINAL) and says so
+          // with the terminal stamp it sends down; the box follows that stamp
+          // rather than a list of statuses of its own.
+          ticket.terminalAt == null
+              ? EeTicketComposer(ticketId: ticket.id)
+              : Padding(
+                  key: const Key('ticket-composer-closed'),
+                  padding: const EdgeInsets.only(top: AwSpace.x3),
+                  child: Text(
+                    'ee.tickets.composer.closed'.tr(),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
       ],
     );
   }

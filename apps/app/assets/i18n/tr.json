@@ -1904,7 +1904,25 @@
       "more": "Daha fazla",
       "attachments": "Ekler",
       "attachmentExternal": "Dışarıdan geldi — açmadan önce kaynağını düşünün. Bu dosya taranmadı.",
-      "attachmentUnavailable": "Bu dosya şu anda açılamıyor."
+      "attachmentUnavailable": "Bu dosya şu anda açılamıyor.",
+      "composer": {
+        "reply": "Yanıt",
+        "internal": "İç not",
+        "replyAudience": "Bunu talep sahibi okur.",
+        "internalAudience": "Bunu yalnız ekibin okur — talep sahibi asla.",
+        "replyHint": "Talep sahibine yaz…",
+        "noteHint": "Ekip arkadaşlarına bir not…",
+        "sendReply": "Talep sahibine gönder",
+        "addNote": "İç not olarak ekle",
+        "canned": "Hazır yanıtlar",
+        "cannedTitle": "Hazır yanıt ekle",
+        "cannedEmptyTitle": "Henüz hazır yanıt yok",
+        "cannedEmptyBody": "Hizmetleri yöneten biri eklediğinde ekibinin hazır yanıtları burada görünür.",
+        "offline": "Çevrimdışısın. Yanıt doğrudan sunucuya gider; bağlantı gelene kadar bekler — yazdığın burada duruyor.",
+        "replySent": "Yanıt gönderildi",
+        "noteAdded": "İç not eklendi",
+        "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç."
+      }
     },
     "sla": {
       "breached": "SLA aşıldı",
