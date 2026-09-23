@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:home_widget/home_widget.dart';
 
@@ -41,6 +43,38 @@ class HomeWidgetHost implements WidgetHost {
   );
 }
 
-/// The active host. Tests override this with a fake; production uses
-/// `home_widget`.
-final widgetHostProvider = Provider<WidgetHost>((_) => const HomeWidgetHost());
+/// macOS implementation over the app's own channel (OPH-335).
+///
+/// `home_widget` 0.9.3 declares android and ios only, so on a Mac its calls
+/// ended in a MissingPluginException nobody saw. The macOS Runner answers
+/// `alliswell/widget` itself (`AWMacWidgetBridge` in MainFlutterWindow.swift):
+/// the same key, the same App Group, then a WidgetKit reload. The group is
+/// fixed on the native side, so there is nothing to configure.
+class MacWidgetHost implements WidgetHost {
+  const MacWidgetHost([
+    this._channel = const MethodChannel('alliswell/widget'),
+  ]);
+
+  final MethodChannel _channel;
+
+  @override
+  Future<void> configure() async {}
+
+  @override
+  Future<void> save(String key, String value) =>
+      _channel.invokeMethod<void>('save', {'key': key, 'value': value});
+
+  @override
+  Future<void> requestUpdate() => _channel.invokeMethod<void>('update');
+}
+
+/// The host this platform has: the app's own channel on macOS, `home_widget`
+/// everywhere else it runs. One answer for the live graph and the background
+/// turn alike (OPH-334/335).
+WidgetHost defaultWidgetHost() =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS
+    ? const MacWidgetHost()
+    : const HomeWidgetHost();
+
+/// The active host. Tests override this with a fake.
+final widgetHostProvider = Provider<WidgetHost>((_) => defaultWidgetHost());

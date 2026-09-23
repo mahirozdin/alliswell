@@ -71,7 +71,7 @@ Future<bool> publishWidgetFromReplica(
   AwDatabase db, {
   required String workspaceId,
   required DateTime now,
-  WidgetHost host = const HomeWidgetHost(),
+  WidgetHost? host,
 }) async {
   try {
     final tasks = await TaskStore(
@@ -83,7 +83,7 @@ Future<bool> publishWidgetFromReplica(
     // this short a `PersistedChoice` answers its fallback, not the user's pick.
     final dateFormat =
         await localKv.get(kDateFormatPrefKey) ?? kAwSystemDateFormat;
-    await WidgetBridge(host).publish(
+    await WidgetBridge(host ?? defaultWidgetHost()).publish(
       tasks,
       now: now,
       projectColorById: {

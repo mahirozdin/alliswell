@@ -11363,30 +11363,71 @@ yarısında ister._
   açmadan kovaların döndüğünü gör (Doze yüzünden birkaç dakika-saat gecikme beklenen).
 - **Yüzey (kural 12):** yok (istemci içi).
 
-### OPH-335 — macOS widget'ı
+### OPH-335 — macOS widget'ı ✅ 2026-09-23 (hedefin imzası sahibe — SETUP.md)
 
 **Bağlam:** OPH-134. İmza engeli 2026-07-24'te kalktı (STATE "Blocked / notes": macOS ve iOS
 aynı takımda imzalanıyor) ama iş hiç başlamadı — `macos/`'ta WidgetKit yok. iOS eklentisi
 (`ios/AllisWellWidget/`) hazır ve paylaşılabilir SwiftUI görünümleri taşıyor.
 
-- [ ] `macos/Runner.xcodeproj`'a Widget Extension hedefi **betikle** eklenir — CocoaPods'la
-      gelen `xcodeproj` Ruby gem'i hedefi, derleme fazlarını ve gömme adımını yazabilir; elle
-      pbxproj düzenlemek yok (`flutter_launcher_icons` dersi). Betik depoda kalır ve ikinci
-      koşusu hiçbir şey değiştirmez.
-- [ ] **App Sandbox** + `com.apple.security.application-groups` hem `DebugProfile.entitlements`
-      hem `Release.entitlements`'ta ve eklentide; App-Group dizesi Dart `setAppGroupId`,
-      Runner ve eklentide **bayt bayt aynı** (`group.…` mı `<TeamID>.group.…` mı kararı bir kez
-      verilir ve yazılır — macOS `home_widget` takım önekini eklemez).
-- [ ] Görünümler iOS eklentisiyle **paylaşılır** (ortak kaynak — kopya değil);
-      `systemSmall/Medium/Large/ExtraLarge`; derin bağlantı `alliswell://open`; macOS 14+'ta
-      satır tamamlama aynı `AWWidgetCompleteIntent` ile.
-- [ ] **Geri çekilme yazılı:** hedef GUI'siz kurulamıyorsa ya da `flutter build macos`'u
-      kırmızıya düşürüyorsa, iş OPH-131'in kalıbına döner — Swift + `SETUP.md` devri, bu kutu
-      `[~]` + gerekçe. **Derleme hiçbir koşulda kırmızı bırakılmaz.**
-- **Kabul:** `flutter build macos` yeşil ve `.appex` uygulamanın içinde
-  (`find build/macos -name '*.appex'`); iOS derlemesi etkilenmedi.
-- **Doğrulama:** `flutter build macos` + `flutter build ios --no-codesign` + `flutter analyze`.
-- **Cihazda bakılacak:** macOS masaüstüne/Bildirim Merkezi'ne widget ekle, açık/koyu, tamamla.
+_**İşin tek cümlesi: bir widget'ın yarısı veri köprüsüdür, ve o yarı macOS'ta hiç yoktu.**
+Ölçüldü: `home_widget` 0.9.3 yalnız android ve ios bildiriyor — Mac'te her anlık görüntü
+yazımı kimsenin görmediği bir MissingPluginException'la bitiyordu; bir macOS widget'ı
+kurulsaydı okuyacak hiçbir şeyi olmayacaktı. İkinci ölçüm işin şeklini belirledi: takımdaki
+TEK Mac profili ("Mac Team Provisioning Profile: com.alliswell.alliswell") yalnız uygulamanın
+kimliğini kapsıyor; uzantının kendi kimliği hesaba kaydedilmeden imzalanamıyor, ve
+`flutter build macos` Xcode'un kimlik kaydetmesine izin vermiyor (`-allowProvisioningUpdates`
+geçmiyor — iOS yolunda geçiyor, macOS'ta yok). Yani hedef, yazılıp kanıtlanabilir ama
+projeye **uygulanamaz**: uygulanırsa her macOS derlemesi kırmızıya düşer (§0.0/6)._
+
+- [~] `macos/Runner.xcodeproj`'a Widget Extension hedefi **betikle** eklenir —
+      `macos/scripts/add_widget_extension.rb` (CocoaPods'un `xcodeproj` gem'i) yazıldı ve **bir
+      kopyada ölçüldü**: ikinci koşu no-op (pbxproj checksum'ı aynı, `fae8cf623aef`), `plutil
+      -lint` OK, uzantı hedefi imzasız derlendi (`BUILD SUCCEEDED`, `AllisWellWidgetMac.appex`:
+      `com.apple.widgetkit-extension`, `com.alliswell.alliswell.AllisWellWidget`, macOS 14).
+      **Gerçek projeye UYGULANMADI, gerekçe ölçülü:** uygulanınca `flutter build macos` şu
+      hatayla düştü — *"AllisWellWidgetMac has entitlements that require signing with a
+      development certificate"* — ve proje geri alındı. Uzantının kimliğini hesaba kaydetmek
+      bir hesap değişikliğidir, sahibin adımıdır: `macos/AllisWellWidgetMac/SETUP.md`.
+- [x] **App Sandbox** + `com.apple.security.application-groups` hem `DebugProfile.entitlements`
+      hem `Release.entitlements`'ta (uygulama) ve uzantının `AllisWellWidgetMac.entitlements`'ında.
+      Karar: **`group.com.alliswell.alliswell`** — `<TeamID>.group.…` değil: Mac takım profili
+      bu grubu zaten yetkilendiriyor (uygulamanın imzası değişmedi — `codesign --verify
+      --deep --strict` OK, yetkide grup görünüyor) ve dört yerde tek yazım App Group'un yaşam
+      şartı.
+- [x] Görünümler iOS eklentisiyle **paylaşılır** — kopya değil: `AllisWellWidget.swift`
+      iki platformda derleniyor (`UIColor`/`NSColor` ve arka plan için koşullu derleme,
+      `#available(iOS 17, macOS 14)`), `AWAlarmShared.swift`'in AlarmKit niyetleri
+      `os(iOS)`'a alındı (Live Activity Mac'te yok; kuyruk kaldı). Uzantının kendi `@main`'i
+      `AllisWellWidgetMacBundle.swift` (iOS paketi eksi Live Activity). **macOS 14 (Sonoma)
+      tabanı** — `swiftc -typecheck` macOS 11'de 44 hata verdi (iOS 17 çağının SwiftUI'si);
+      etkileşimli widget'lar da 14'le başlıyor. Uygulamanın kendisi etkilenmez; eski
+      Mac'te widget listede görünmez. Satır tamamlama aynı `AWWidgetCompleteIntent` ile.
+- [x] **Veri köprüsü (ölçümle doğdu):** `AWMacWidgetBridge` (`macos/Runner/MainFlutterWindow.swift`
+      — pbxproj'a dokunmadan) `alliswell/widget` kanalını karşılar: aynı anahtar
+      (`aw_widget_snapshot`), aynı App Group, sonra `WidgetCenter.reloadAllTimelines()`. Dart
+      tarafı `MacWidgetHost` + tek bir platform kararı `defaultWidgetHost()` (canlı grafik ve
+      OPH-334'ün başsız turu aynı cevabı alır). Ve **widget dokunuşları uygulamaya ulaşır:** aynı
+      köprü Mac'te `alliswell/alarmkit`'in `drainPendingActions`'ını karşılar — uzantının
+      tamamlama niyeti dokunuşu iOS'taki gibi `AWAlarmActionQueue`'ya bırakır, köprü onu
+      Dart'ın zaten dinlediği `onAlarmAction`'a iletir; Dart'ta ikinci bir yol yok. Kanalın
+      diğer yöntemleri eksik eklentinin verdiği cevabı verir (Mac'te AlarmKit yok).
+- [x] **Geri çekilme yazılı ve uygulandı** (§0.0/6): Swift + betik + `SETUP.md` devri, bu
+      işin ilk kutusu `[~]` + ölçülü gerekçe. **Derleme kırmızı bırakılmadı.**
+- **Araç göçü (ölçüldü, commit'lendi):** macOS OPH-319'dan beri hiç derlenmemişti —
+  `flutter build macos` Podfile'ı `platform :osx, '12.0'`'a ve proje hedefini 12.0'a taşıdı
+  (*"Updating minimum macOS deployment target to 12.0"*) ve `firebase_messaging`'i
+  Podfile.lock'a işledi. Bunlar aracın kendi değişiklikleri; commit'lenmezse bir sonraki Mac
+  derlemesi aynı farkı yeniden üretir. **Uygulamanın asgari macOS'u artık 12** (CHANGELOG).
+- **Kabul:** ✔ `flutter build macos --debug` **yeşil** (hedefsiz) ve uygulama App Group
+  yetkisini taşıyor; ✔ uzantı hedefi betikle kuruluyor ve imzasız derleniyor (kopyada);
+  ✔ iOS derlemesi etkilenmedi (`flutter build ios --debug --no-codesign` ✔). `.appex`'in
+  **uygulamanın içinde** olması sahibin imza adımından sonra — SETUP.md.
+- **Doğrulama:** `mac_widget_host_test.dart` (3 test: macOS'ta kendi kanal, diğerlerinde
+  home_widget, anahtar + yeniden çizim sözleşmesi). Enjeksiyon: `defaultWidgetHost()` her
+  yerde home_widget döndürdü → macOS testi kırmızı; checksum'la geri alındı. `swiftc
+  -typecheck` macOS 14 ✔, tam süit **1762 geçti, 28 atlandı** (+3), `flutter analyze` sıfır, Dart biçimi 3.12.0.
+- **Cihazda bakılacak:** SETUP.md'nin adımından sonra: macOS masaüstüne/Bildirim Merkezi'ne
+  widget ekle, açık/koyu, bir satırı tamamla (macOS 14+) ve uygulamada gör, "+"ya bas.
 - **Yüzey (kural 12):** yok.
 
 ### OPH-336 — Widget yapılandırması ve kilit ekranı widget'ları

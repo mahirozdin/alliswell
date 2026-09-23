@@ -36,6 +36,9 @@ PODS:
   - Firebase/Crashlytics (12.15.0):
     - Firebase/CoreOnly
     - FirebaseCrashlytics (~> 12.15.0)
+  - Firebase/Messaging (12.15.0):
+    - Firebase/CoreOnly
+    - FirebaseMessaging (~> 12.15.0)
   - firebase_analytics (12.4.5):
     - firebase_core
     - FirebaseAnalytics (= 12.15.0)
@@ -51,6 +54,11 @@ PODS:
   - firebase_crashlytics (5.2.6):
     - Firebase/CoreOnly (~> 12.15.0)
     - Firebase/Crashlytics (~> 12.15.0)
+    - firebase_core
+    - FlutterMacOS
+  - firebase_messaging (16.4.3):
+    - Firebase/CoreOnly (~> 12.15.0)
+    - Firebase/Messaging (~> 12.15.0)
     - firebase_core
     - FlutterMacOS
   - FirebaseAnalytics (12.15.0):
@@ -104,6 +112,15 @@ PODS:
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/UserDefaults (~> 8.1)
     - PromisesObjC (~> 2.4)
+  - FirebaseMessaging (12.15.0):
+    - FirebaseCore (~> 12.15.0)
+    - FirebaseInstallations (~> 12.15.0)
+    - GoogleDataTransport (~> 10.1)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Reachability (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - nanopb (~> 3.30910.0)
   - FirebaseRemoteConfigInterop (12.15.0)
   - FirebaseSessions (12.15.0):
     - FirebaseCore (~> 12.15.0)
@@ -223,6 +240,7 @@ DEPENDENCIES:
   - firebase_auth (from `Flutter/ephemeral/.symlinks/plugins/firebase_auth/macos`)
   - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
   - firebase_crashlytics (from `Flutter/ephemeral/.symlinks/plugins/firebase_crashlytics/macos`)
+  - firebase_messaging (from `Flutter/ephemeral/.symlinks/plugins/firebase_messaging/macos`)
   - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_secure_storage_darwin (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - FlutterMacOS (from `Flutter/ephemeral`)
@@ -249,6 +267,7 @@ SPEC REPOS:
     - FirebaseCoreInternal
     - FirebaseCrashlytics
     - FirebaseInstallations
+    - FirebaseMessaging
     - FirebaseRemoteConfigInterop
     - FirebaseSessions
     - GoogleAppMeasurement
@@ -282,6 +301,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_core/macos
   firebase_crashlytics:
     :path: Flutter/ephemeral/.symlinks/plugins/firebase_crashlytics/macos
+  firebase_messaging:
+    :path: Flutter/ephemeral/.symlinks/plugins/firebase_messaging/macos
   flutter_local_notifications:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos
   flutter_secure_storage_darwin:
@@ -317,6 +338,7 @@ SPEC CHECKSUMS:
   firebase_auth: f0277c8164b6d15ea44388f90dbbb438e9b91eed
   firebase_core: 1c188a8384be0315478a22c1a3165871d75a95ba
   firebase_crashlytics: d7ca294426a824597fef503cf367bc36f09313d3
+  firebase_messaging: 0a1020fbef83562475d63ce805b7fa5d25cb2629
   FirebaseAnalytics: 9c9fa7915fc52ea03077000d5a7b6a8947b2d76e
   FirebaseAppCheckInterop: 5083c9acf65f206832fe659e1c676b7bc3d55e8a
   FirebaseAuth: 6d1d4e5875d93f82e669bee6b05a70a642025b58
@@ -326,11 +348,12 @@ SPEC CHECKSUMS:
   FirebaseCoreInternal: 6ab6a02c94446c026d2cf35cf5383842ebaa4992
   FirebaseCrashlytics: 87e76cc33259b076dd1f96cd829db76849338e08
   FirebaseInstallations: eb29ccbf64eaedf86fd5b2ccc7fabde567660b52
+  FirebaseMessaging: 40017d7bc8457ee295b0f41d480a80fdabc9994e
   FirebaseRemoteConfigInterop: 7e3d57ce4b1e958bb1d15403faa7178f46bbb5b7
   FirebaseSessions: acfe7eadca47cda94ac86592737204581bb1abf6
   flutter_local_notifications: 1fc7ffb10a83d6a2eeeeddb152d43f1944b0aad0
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
-  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
   google_sign_in_ios: 000870aa06da9b28d1d0bf7ef70ff0213059dd28
   GoogleAppMeasurement: a6d37949071d456e9147dac6789c4342e0e7a8c5
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
@@ -347,6 +370,6 @@ SPEC CHECKSUMS:
   speech_to_text: 3b313d98516d3d0406cea424782ec25470c59d19
   url_launcher_macos: f87a979182d112f911de6820aefddaf56ee9fbfd
 
-PODFILE CHECKSUM: c5d0c65b1663f8d360231f3a9467921dbddf6780
+PODFILE CHECKSUM: 5fa5fdcf2f7d6d2e46386d6e51afc6d20113aef7
 
 COCOAPODS: 1.17.0

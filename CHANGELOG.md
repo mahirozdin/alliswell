@@ -112,6 +112,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **The Mac app needs macOS 12 or later.** The Flutter toolchain raised its own
+  minimum, and the Mac build had not been run since the push-notification work,
+  so the project and its CocoaPods lock now say what the build already did.
+- **The Mac app is ready for its widget (OPH-335).** It now writes the widget's
+  data and receives the widget's taps itself — the widget library the phones
+  use has no Mac side, so on a Mac those writes had been failing silently. The
+  widget arrives once its extension is signed with the developer account.
 - **The documented extension surface matches what the code offers (OPH-328).**
   The seam reference lists the two registries above, and the attachments page
   stopped describing a shape that had been out of date since July.

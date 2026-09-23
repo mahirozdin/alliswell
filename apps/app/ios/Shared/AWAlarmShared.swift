@@ -85,7 +85,10 @@ enum AWAlarmActionQueue {
 
 // MARK: - The alert's buttons, as App Intents
 
-#if canImport(AppIntents)
+// iOS only: these are `LiveActivityIntent`s — AlarmKit's alert is a Live
+// Activity, and neither exists on macOS. The macOS widget (OPH-335) compiles
+// this file for the QUEUE above, which its complete intent writes into.
+#if canImport(AppIntents) && os(iOS)
   /// "Onayla" on the AlarmKit alert. Acknowledges the reminder in our data model
   /// (and therefore on every other device, through sync).
   @available(iOS 17.0, *)

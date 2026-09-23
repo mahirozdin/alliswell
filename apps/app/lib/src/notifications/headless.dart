@@ -133,7 +133,7 @@ Future<void> runHeadlessRefresh({
         db,
         workspaceId: workspaceId,
         now: DateTime.now(),
-        host: widgetHost ?? const HomeWidgetHost(),
+        host: widgetHost,
       );
     }
   } finally {

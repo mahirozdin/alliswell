@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- OPH-335: a macOS widget extension runs sandboxed, always. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Byte-identical to the app's (Runner/*.entitlements), the iOS extension's
+	     and Dart's kWidgetAppGroupId. The "group." form, not "<TeamID>.group.":
+	     the Mac team profile already authorizes it, and one spelling across
+	     four places is the rule the App Group lives or dies by. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.alliswell.alliswell</string>
+	</array>
+</dict>
+</plist>

@@ -162,7 +162,7 @@ func markAWSnapshotDone(taskId: String) {
 /// device report). A plain `AppIntent` runs HERE in the widget extension:
 /// stamp the shared snapshot, queue the real completion for the app's
 /// existing drain (AlarmKitBridge → Dart), redraw. No app launch at all.
-@available(iOS 17.0, *)
+@available(iOS 17.0, macOS 14.0, *)
 struct AWWidgetCompleteIntent: AppIntent {
   static var title: LocalizedStringResource = "Complete task"
   static var description = IntentDescription("Marks an AllisWell task done.")
@@ -426,12 +426,30 @@ struct AWDateHeader: View {
 
 /// DESIGN §3.1 `primary`, mirrored natively (W1 — token parity): light
 /// #0A5CFF, dark #3E9BFF — the same pair Android carries as `aw_widget_accent`.
-/// Both clear the 3:1 icon floor on the widget's background (W2).
-private let awPrimary = Color(UIColor { traits in
-  traits.userInterfaceStyle == .dark
-    ? UIColor(red: 0x3E / 255.0, green: 0x9B / 255.0, blue: 0xFF / 255.0, alpha: 1)
-    : UIColor(red: 0x0A / 255.0, green: 0x5C / 255.0, blue: 0xFF / 255.0, alpha: 1)
-})
+/// Both clear the 3:1 icon floor on the widget's background (W2). One source
+/// file serves iOS and macOS (OPH-335), so the dynamic color is built from
+/// whichever toolkit the platform has.
+#if canImport(UIKit)
+  private let awPrimary = Color(UIColor { traits in
+    traits.userInterfaceStyle == .dark
+      ? UIColor(red: 0x3E / 255.0, green: 0x9B / 255.0, blue: 0xFF / 255.0, alpha: 1)
+      : UIColor(red: 0x0A / 255.0, green: 0x5C / 255.0, blue: 0xFF / 255.0, alpha: 1)
+  })
+#else
+  private let awPrimary = Color(NSColor(name: nil) { appearance in
+    appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+      ? NSColor(red: 0x3E / 255.0, green: 0x9B / 255.0, blue: 0xFF / 255.0, alpha: 1)
+      : NSColor(red: 0x0A / 255.0, green: 0x5C / 255.0, blue: 0xFF / 255.0, alpha: 1)
+  })
+#endif
+
+/// The card behind the rows: the system's own background on each platform, so
+/// the OS themes it (DESIGN W3 — no fake glass).
+#if canImport(UIKit)
+  private let awWidgetBackground = Color(.systemBackground)
+#else
+  private let awWidgetBackground = Color(nsColor: .windowBackgroundColor)
+#endif
 
 /// OPH-333: the widget's "+" — a deep link into the app's create sheet, not an
 /// App Intent. Adding needs a title and a widget cannot take text, so the only
@@ -463,7 +481,7 @@ struct AWTaskRowView: View {
       // (the row opens the task), which is why this is gated rather than
       // replaced. Generous hit target: the stock Reminders widget's loudest
       // complaint is completing the wrong thing by accident (DESIGN W4).
-      if #available(iOS 17.0, *), !row.done {
+      if #available(iOS 17.0, macOS 14.0, *), !row.done {
         Button(intent: AWWidgetCompleteIntent(taskId: row.id)) {
           Image(systemName: "circle")
             .foregroundStyle(Color.secondary)
@@ -611,13 +629,13 @@ private func distribute(_ buckets: [AWBucket], budget: Int) -> [AWBucket] {
 struct AllisWellWidget: Widget {
   var body: some WidgetConfiguration {
     StaticConfiguration(kind: kWidgetKind, provider: AWProvider()) { entry in
-      if #available(iOS 17.0, *) {
+      if #available(iOS 17.0, macOS 14.0, *) {
         AllisWellWidgetEntryView(entry: entry)
-          .containerBackground(for: .widget) { Color(.systemBackground) }
+          .containerBackground(for: .widget) { awWidgetBackground }
       } else {
         AllisWellWidgetEntryView(entry: entry)
           .padding()
-          .background(Color(.systemBackground))
+          .background(awWidgetBackground)
       }
     }
     .configurationDisplayName("AllisWell")

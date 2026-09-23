@@ -18,5 +18,13 @@
 	<true/>
 	<key>com.apple.security.personal-information.calendars</key>
 	<true/>
+	<!-- OPH-335: where the widget snapshot and the widget's queued taps live —
+	     byte-identical to the macOS widget extension's, the iOS targets' and
+	     Dart's kWidgetAppGroupId. The Mac team provisioning profile already
+	     authorizes this group, so the app's signing does not change. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.alliswell.alliswell</string>
+	</array>
 </dict>
 </plist>
