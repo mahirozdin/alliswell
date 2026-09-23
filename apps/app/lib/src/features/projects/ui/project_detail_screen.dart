@@ -8,6 +8,7 @@ import '../../quick_access/ui/quick_access_add.dart';
 import '../../../core/list_sort.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
+import '../../../theme/tokens.dart';
 import '../../../widgets/sort_menu.dart';
 import '../../files/data/file_attachment.dart';
 import '../../../widgets/status_views.dart';
@@ -18,6 +19,8 @@ import '../../notes/data/note.dart';
 import 'package:markdown_forge/markdown_forge.dart';
 import '../../notes/providers.dart';
 import '../../notes/ui/notes_screen.dart';
+import '../../home/task_grouping.dart' show orderTasks;
+import '../../tasks/data/task_sort.dart';
 import '../../tasks/providers.dart';
 import '../../tasks/ui/quick_add_bar.dart';
 import '../../tasks/ui/task_tile.dart';
@@ -395,12 +398,37 @@ class _ProjectTasksTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tasks = ref.watch(projectTasksProvider(projectId));
+    // OPH-338: Home's order, Home's preference — the project Files tab's
+    // pattern (§34 L4), where the tab and the global section share one
+    // choice. Two task lists ordered two ways would be the thing to explain.
+    final sort = AwSortState.parse(
+      ref.watch(tasksSortProvider),
+      kTaskSortChoices,
+    );
     return Column(
       children: [
-        QuickAddBar(
-          key: const Key('project-quick-add'),
-          hintText: 'project.addTaskHint'.tr(),
-          onAdd: (title) => _add(ref, title),
+        // §34 L2: no new row — the sort control closes the tab's action row,
+        // as it closes the Files tab's.
+        Row(
+          children: [
+            Expanded(
+              child: QuickAddBar(
+                key: const Key('project-quick-add'),
+                hintText: 'project.addTaskHint'.tr(),
+                onAdd: (title) => _add(ref, title),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: AwSpace.x2),
+              child: AwSortMenuButton(
+                key: const Key('project-tasks-sort'),
+                choices: kTaskSortChoices,
+                sort: sort,
+                onChanged: (next) =>
+                    ref.read(tasksSortProvider.notifier).set(next.encode()),
+              ),
+            ),
+          ],
         ),
         Expanded(
           child: tasks.when(
@@ -409,19 +437,25 @@ class _ProjectTasksTab extends ConsumerWidget {
               message: localizedError(error),
               onRetry: () => ref.invalidate(projectTasksProvider(projectId)),
             ),
-            data: (items) => items.isEmpty
-                ? AwEmptyState(
-                    icon: Icons.check_circle_outline,
-                    title: 'project.allClear'.tr(),
-                    message: 'project.noOpenTasks'.tr(),
-                  )
-                : ListView.builder(
-                    padding: awListPadding(context),
-                    itemCount: items.length,
-                    // Every row here is this project — the badge would be noise.
-                    itemBuilder: (context, index) =>
-                        TaskTile(task: items[index], showProjectBadge: false),
-                  ),
+            data: (raw) {
+              if (raw.isEmpty) {
+                return AwEmptyState(
+                  icon: Icons.check_circle_outline,
+                  title: 'project.allClear'.tr(),
+                  message: 'project.noOpenTasks'.tr(),
+                );
+              }
+              // Until OPH-338 this list came in creation order (the query's
+              // `id DESC`), which no user ever chose.
+              final items = orderTasks(raw, sort);
+              return ListView.builder(
+                padding: awListPadding(context),
+                itemCount: items.length,
+                // Every row here is this project — the badge would be noise.
+                itemBuilder: (context, index) =>
+                    TaskTile(task: items[index], showProjectBadge: false),
+              );
+            },
           ),
         ),
       ],

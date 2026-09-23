@@ -127,6 +127,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   colours stay. It is also why the app now reads that setting before it
   writes a widget's data, even at start-up. "Compact widget" draws tighter
   rows with slightly smaller type, and never shrinks the circle you tap.
+- **A project's tasks can be sorted (OPH-338).** The Tasks tab of a project
+  has the same sort button as Home, at the end of its add-a-task row, with
+  the same choices — date, priority, title, and reversed. It shares Home's
+  choice, so both lists are always in the same order; until now the tab was
+  simply in the order the tasks were created, newest first. Finished tasks
+  still sink to the bottom whatever the order.
 
 ### Changed
 

@@ -11526,18 +11526,35 @@ projeye **uygulanamaz**: uygulanırsa her macOS derlemesi kırmızıya düşer (
 - **Yüzey (kural 12):** ayar cihaz-yereldir (tarih biçimi ve hatırlatıcı profili gibi);
   sunucu tarafı ayar deposu parking lot'ta — MCP/API değişmez.
 
-### OPH-338 — Proje detayındaki Görevler sekmesine sıralama
+### OPH-338 — Proje detayındaki Görevler sekmesine sıralama ✅ 2026-09-23
 
 **Bağlam:** OPH-305'in bilinçli olarak dar tuttuğu, OPH-306'nın da almadığı artık (ikisinin
 "AÇIK" notları). Home'un sıralayıcısı `kTaskSortChoices` hazır; araç çubuğu kalıbı Dosyalar
 sekmesinde.
 
-- [ ] Görevler sekmesine sıralama denetimi (Dosyalar sekmesinin araç çubuğu kalıbı);
+- [x] Görevler sekmesine sıralama denetimi (Dosyalar sekmesinin araç çubuğu kalıbı);
       seçenekler `kTaskSortChoices`'tan — ikinci bir sıralama tanımı doğmaz.
-- [ ] Seçim, Home'un sıralama seçiminin saklandığı biçimde saklanır (ölçülür, aynısı
+      _(2026-09-23: aynı `AwSortMenuButton`, sekmenin hızlı ekleme satırının SONUNDA — §34 L2
+      "yeni satır yok"; Dosyalar sekmesinde de eylem satırını kapatıyor. **ÖLÇÜLDÜ:** Home'un
+      karşılaştırıcıları `groupTasksForHome`'un içinde yerel kapanışlardı; sekme onları
+      yeniden yazmasın diye blok olduğu gibi `homeItemOrder(sort)`'a taşındı (Home'un 36 testi
+      değişmeden yeşil) ve sekme `orderTasks` ile aynı fonksiyonu kullanıyor — bitmiş iş
+      yine dibe iniyor (§20 C1). Sekme bugüne kadar oluşturma sırasındaydı (`id DESC`).)_
+- [x] Seçim, Home'un sıralama seçiminin saklandığı biçimde saklanır (ölçülür, aynısı
       kullanılır).
+      _(2026-09-23: ölçülen emsal §34 L4 — proje Dosyalar sekmesi global Dosyalar bölümüyle
+      AYNI tercihi (`filesSortProvider`) paylaşıyor. Görevler sekmesi de Home'un
+      `tasksSortProvider`'ını (`alliswell_tasks_sort`) okuyup yazıyor: iki görev listesi iki
+      ayrı düzende durmuyor. DESIGN §34'e L6 eklendi; L5'in OPH-305'ten beri yanlış olan
+      "Home sıralanmaz" cümlesi "Home'un GRUPLAMASI sıralanmaz" olarak düzeltildi.)_
 - **Kabul:** sekme seçilen düzene göre diziliyor (widget testi, en az iki düzen).
+  _Karşılandı: `projects_flow_test.dart` — üç görev, üç ayrı cevap (tarih: Zeta, Alfa, Beta ·
+  öncelik: Beta, Zeta, Alfa · başlık: Alfa, Beta, Zeta) ve Home'un tercihinin değiştiği ölçülüyor.
+  İki enjeksiyon kırmızı: sekme sıralamayı uygulamayınca (oluşturma sırası: Beta, Alfa, Zeta),
+  tercihi yok sayınca (öncelik seçilince liste kıpırdamıyor)._
 - **Doğrulama:** `flutter test` + `flutter analyze` + `check:i18n`.
+  _`flutter analyze` 0; tam süit 1796 geçti, 28 atlandı (+1); `check:i18n` ✔ (yeni metin yok — etiketler
+  `kTaskSortChoices`'ın); CI biçimi temiz._
 - **Yüzey (kural 12):** görünüm tercihi, yeni bir yetenek değil — MCP/API değişmez.
 
 ### OPH-339 — Widget belgeleri, README ve ROADMAP doğruluğu

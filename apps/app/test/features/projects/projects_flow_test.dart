@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/persisted_prefs.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -202,6 +203,72 @@ void main() {
 
     expect(find.text('Proje görevi'), findsOneWidget);
     expect(api.tasks.single['projectId'], api.projects.single['id']);
+  });
+
+  // OPH-338: the Tasks tab takes Home's order AND Home's preference — the
+  // pattern the project Files tab already follows with the Files section.
+  testWidgets('the project Tasks tab is in the order you chose', (
+    tester,
+  ) async {
+    final api = FakeApi();
+    final projectId = api.seedProject(name: 'Sıralı')['id'] as String;
+    String inDays(int days) =>
+        DateTime.now().add(Duration(days: days)).toUtc().toIso8601String();
+    // Three tasks, three different answers: by date, by priority, by title.
+    api
+      ..seedTask(
+        title: 'Zeta',
+        projectId: projectId,
+        priority: 'high',
+        dueAt: inDays(1),
+      )
+      ..seedTask(
+        title: 'Alfa',
+        projectId: projectId,
+        priority: 'low',
+        dueAt: inDays(3),
+      )
+      ..seedTask(title: 'Beta', projectId: projectId, priority: 'urgent');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Sıralı'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: find.byType(TabBar), matching: find.text('Tasks')),
+    );
+    await tester.pumpAndSettle();
+
+    List<String> onScreen() {
+      final rows = [
+        for (final title in ['Alfa', 'Beta', 'Zeta'])
+          (title, tester.getTopLeft(find.text(title)).dy),
+      ]..sort((a, b) => a.$2.compareTo(b.$2));
+      return [for (final (title, _) in rows) title];
+    }
+
+    Future<void> choose(String label) async {
+      await tester.tap(find.byKey(const Key('project-tasks-sort')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label).last);
+      await tester.pumpAndSettle();
+    }
+
+    // Home's default: the nearest deadline first, the dateless last. Until
+    // now this tab was in creation order, newest first: Beta, Alfa, Zeta.
+    expect(onScreen(), ['Zeta', 'Alfa', 'Beta']);
+
+    await choose('Priority');
+    expect(onScreen(), ['Beta', 'Zeta', 'Alfa'], reason: 'urgent, high, low');
+
+    await choose('Title');
+    expect(onScreen(), ['Alfa', 'Beta', 'Zeta']);
+
+    // One preference for every task list: Home now opens in this order too.
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(TabBar)),
+    );
+    expect(container.read(tasksSortProvider), startsWith('title'));
   });
 
   testWidgets('Create README spawns a linked note and opens its editor', (
