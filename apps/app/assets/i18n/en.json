@@ -2313,7 +2313,10 @@
         "labourCost": "Labour: {amount} {currency}",
         "labourUnpriced": "{hours} h of it by people with no hourly rate."
       },
-      "edit": "Edit"
+      "edit": "Edit",
+      "searchHint": "Search tag or name",
+      "searchEmpty": "Nothing matched",
+      "searchEmptyBody": "Try another tag or name. Search runs over the records on this device."
     },
     "kb": {
       "title": "Knowledge base",

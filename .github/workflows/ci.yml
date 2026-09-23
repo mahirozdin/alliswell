@@ -108,6 +108,14 @@ jobs:
       - name: Policy — the client's sync contract matches the server's
         run: npm run check:sync-fields
 
+      # OPH-332: the search registry promises that a registered entity is
+      # findable, and for three entities nothing ever asked. The registry was
+      # green the whole time, because the gap was an ABSENCE in a screen — the
+      # one failure mode a review does not catch. This runs the other half of
+      # OPH-326's own rule.
+      - name: Policy — every searchable entity is reachable from a screen
+        run: npm run check:search-reachable
+
       # OPH-294: the reference, the spec and the Postman collection are all
       # generated from the route schemas. These three gates are what make that
       # true tomorrow as well — a route whose schema changes without the docs

@@ -11113,6 +11113,33 @@ taşıyor: kimlik bilgisi olmayan bir kurulumda hiçbir şey değişmiyor.)
 
 ---
 
+### OPH-332 — `check:search-reachable`: kayıtlı bir entity ekrandan da bulunabilsin ✅ 2026-09-23
+
+_Planlanmamıştı; EE-220 bağlanırken doğdu ve kuralı **OPH-326 kendisi yazmıştı**:
+*"arama dışı kalan bir entity, kullanıcı için var olmayan bir entity'dir."* Kayıt defteri o
+sözü tuttu — kaydet, gölge kolonların dolsun, SQL'in hazır olsun. **Kimse diğer ucu
+denetlemedi:** bir EKRAN hiç soruyor mu._
+
+- [x] Kapı `scripts/search/check-reachable.mjs`, **iki yönde**: kayıtlı-ama-çağrılmayan
+      (kullanıcının arayamadığı entity) ve çağrılan-ama-kayıtsız (entity'si silindikten
+      sonra hayatta kalan bir metot). Muafiyet **gerekçe cümlesiyle** dosyanın içinde;
+      gerekçesiz susturulabilen bir kapı, kapı değildir. Bayat muafiyet de yakalanıyor.
+- [x] **Boş kümede geçmiyor** — kayıt defteri bu kalıbın dışına çıkarsa kapı sessizce
+      yeşile dönmüyor, kırmızı yanıyor.
+- [x] **Dışlama ölçülerek daraltıldı:** ilk hâli `src/search/` klasörünün tamamını
+      dışlıyordu ve görev, etkinlik ve projeyi *"ulaşılamaz"* diye raporladı — oysa
+      `src/search/providers.dart` genel arama ekranının sağlayıcılarıdır, yani tam olarak
+      bu kapının aradığı türden bir çağıran. Yalnız metotları **tanımlayan** dosya
+      çağıran sayılmaz.
+- [x] CI'a adım eklendi (`check:sync-fields`'in yanına).
+- **Kabul:** bugün 8 entity, 6'sı bir ekrandan ulaşılıyor, 2'si yazılı gerekçeyle muaf,
+  yetim çağıran yok.
+- **Doğrulama:** **beş enjeksiyon** ayrı ayrı yakalandı — çağıran silindi, muafiyet
+  entity'sini kaybetti, kayıt defteri bir entity'yi yitirdi, kayıt defteri ile servis
+  ayrıştı, ve kapı boş kümeye düşürüldü. Checksum'lar birebir.
+- ⚠️ **Çift kapanış:** ↔ `EE-220` (uzantı kaydı: varlık araması, girişi ve
+  `changes`/`problems` kararı).
+
 ### OPH-331 — Yükleme dikişi: uzantı bir yüklemeye HAYIR diyebilsin ✅ 2026-09-23
 
 _Planlanmamıştı; uzantı tarafında EE-221 bağlanırken ölçümle doğdu. Ölçüm şuydu:

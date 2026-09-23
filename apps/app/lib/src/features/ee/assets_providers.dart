@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../search/providers.dart';
+import '../../search/search.dart';
+import '../workspaces/workspaces.dart';
+
 import '../auth/providers.dart';
 import 'data/assets_api.dart';
 import 'data/assets_models.dart';
@@ -84,3 +88,44 @@ final eeAssetTypesProvider = FutureProvider<EeAssetTypes>((ref) async {
   if (!ref.watch(eeFeatureProvider('teams'))) return const EeAssetTypes();
   return ref.watch(eeAssetsApiProvider).types();
 });
+
+/// EE-220 — the register's search field, and the replica's first reader.
+///
+/// ── `searchAssets` HAS EXISTED SINCE EE-191 AND NOBODY CALLED IT ──────
+///
+/// OPH-326 wrote the rule that makes this a bug rather than a gap: "an entity
+/// left out of search is an entity that does not exist for the user." The
+/// registry obeyed it — `assets` is registered, its shadow columns are filled
+/// on every pull, the SQL is ready — and the app never asked. Measured in the
+/// EE-196 round and again here: zero callers.
+///
+/// It was worse than one missing field. Nothing in the app read the assets
+/// REPLICA at all: the list, the detail and the history all go to REST. So the
+/// table EE-191 shipped "to be read at the machine with no signal" was being
+/// written on every pull and read by nobody. This provider is its first
+/// reader.
+final assetSearchQueryProvider = NotifierProvider<SearchQuery, String>(
+  SearchQuery.new,
+);
+
+/// Ranked ids, or null when search is off.
+///
+/// ── WHAT THIS DOES AND DOES NOT BUY, SAID PLAINLY ─────────────────────
+///
+/// It reads the replica, so the MATCHING is local, instant and does the
+/// Turkish `ı`/`i` fold that neither SQLite nor MySQL does on its own
+/// (ADR-0013). What it does not buy yet is the offline half: the list behind
+/// it is still `eeAssetsProvider`, which is REST, so with no signal there are
+/// no rows for these hits to rank. Closing that means moving the register's
+/// list onto the replica, which is a screen rewrite and belongs to whoever
+/// takes EE-219's measurement of what these replicas are worth. Written down
+/// rather than left for somebody to discover in a factory basement.
+final assetSearchResultsProvider = FutureProvider.autoDispose<List<SearchHit>?>(
+  (ref) async {
+    final query = ref.watch(assetSearchQueryProvider).trim();
+    if (query.isEmpty) return null;
+    final workspace = ref.watch(currentWorkspaceProvider).value;
+    if (workspace == null) return null;
+    return ref.watch(searchServiceProvider).searchAssets(workspace.id, query);
+  },
+);

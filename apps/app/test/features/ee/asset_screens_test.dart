@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/ee/assets_providers.dart';
+import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/search/search.dart';
 import 'package:alliswell/src/features/ee/data/assets_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ui/asset_detail_screen.dart';
@@ -27,6 +29,82 @@ void main() {
     status: 'in_use',
     location: 'Hol 2',
   );
+
+  const other = EeAsset(
+    id: '01JZZZZZZZZZZZZZZZZZZZZZZZ',
+    tag: 'KMP-02',
+    name: 'Kompresör',
+    type: 'machine',
+    status: 'in_use',
+  );
+
+  /// EE-220 — the register's search, and the two answers it has to keep apart.
+  ///
+  /// The register was reachable only by scanning a QR code before this round,
+  /// and `searchAssets` had no caller at all. A test that only proved "the
+  /// field exists" would pass against a field wired to nothing, so these
+  /// assert what the field DOES: it narrows the list, it orders by rank, and
+  /// an open field that matched nothing says something different from an
+  /// empty register.
+  testWidgets('EE-220: search narrows the register and keeps rank', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          eeAssetsProvider.overrideWith((ref, filter) async => [asset, other]),
+          eeAssetTypesProvider.overrideWith(
+            (ref) async => const EeAssetTypes(),
+          ),
+          canProvider.overrideWith((ref, id) => false),
+          // The replica answered with ONE of the two, and that is the whole
+          // point: the list shows what search returned, not everything.
+          assetSearchResultsProvider.overrideWith(
+            (ref) async => [
+              const SearchHit(id: '01JZZZZZZZZZZZZZZZZZZZZZZZ', tier: 0),
+            ],
+          ),
+        ],
+        child: const MaterialApp(home: EeAssetsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The row draws tag and name together (`KMP-02 · Kompresör`), so the
+    // assertion matches how it actually renders rather than how one might
+    // assume it does.
+    expect(find.textContaining('KMP-02'), findsOneWidget);
+    // The one the search did not return is gone — a search field that leaves
+    // the whole list on screen is a search field that does nothing.
+    expect(find.textContaining('PRN-14'), findsNothing);
+  });
+
+  testWidgets('EE-220: an open field that matched nothing says so', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          eeAssetsProvider.overrideWith((ref, filter) async => [asset]),
+          eeAssetTypesProvider.overrideWith(
+            (ref) async => const EeAssetTypes(),
+          ),
+          canProvider.overrideWith((ref, id) => false),
+          // Open, and nothing matched — NOT the same as an empty register.
+          assetSearchResultsProvider.overrideWith((ref) async => []),
+        ],
+        child: const MaterialApp(home: EeAssetsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Conflating the two is how somebody concludes the register is empty when
+    // their query simply missed.
+    expect(find.text('ee.assets.searchEmpty'.tr()), findsOneWidget);
+    expect(find.text('ee.assets.empty'.tr()), findsNothing);
+  });
 
   testWidgets('the register lists a machine tag-first', (tester) async {
     await tester.pumpWidget(

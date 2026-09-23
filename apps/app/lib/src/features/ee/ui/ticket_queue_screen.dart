@@ -83,7 +83,10 @@ class EeTicketQueueScreen extends ConsumerWidget {
             // pushed screen with no address of its own (EE-098 never gave it
             // one, and inventing one here would be a second way to reach it).
             onSelected: (value) {
-              if (value == '/kb') {
+              // EE-220 adds `/assets` beside `/kb` for the same reason and by
+              // the same means: both are real ROUTES because both are things
+              // you link to (a QR code on a machine opens an asset).
+              if (value == '/kb' || value == '/assets') {
                 context.push(value);
                 return;
               }
@@ -109,6 +112,25 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     const Icon(Icons.menu_book_outlined),
                     const SizedBox(width: AwSpace.x2),
                     Text('ee.kb.title'.tr()),
+                  ],
+                ),
+              ),
+              // EE-220. THE REGISTER HAD NO DOOR — measured, not assumed:
+              // `/assets` was a route with no `context.push('/assets')`
+              // anywhere in the app, so the only way in was scanning a QR
+              // code, which opens a DETAIL. A list nobody can reach is a list
+              // nobody searches, which is half of why `searchAssets` had no
+              // caller. It goes on this shelf because EE-196 put the
+              // knowledge base here on EE-098's reasoning: the person who
+              // wants it is already looking at the queue.
+              PopupMenuItem(
+                key: const Key('ticket-assets'),
+                value: '/assets',
+                child: Row(
+                  children: [
+                    const Icon(Icons.precision_manufacturing_outlined),
+                    const SizedBox(width: AwSpace.x2),
+                    Text('ee.assets.title'.tr()),
                   ],
                 ),
               ),
