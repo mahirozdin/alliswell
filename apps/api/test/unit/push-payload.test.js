@@ -195,7 +195,7 @@ describe('OPH-320 — the only words a push may carry', () => {
   });
 });
 
-describe('OPH-329 — the third type, for an extension\'s notification', () => {
+describe("OPH-329 — the third type, for an extension's notification", () => {
   test('a notify payload is accepted with an id, and an alert is optional', () => {
     expect(() =>
       assertPushPayload({
@@ -241,8 +241,6 @@ describe('OPH-329 — the third type, for an extension\'s notification', () => {
   test('its alert resolves to a line that names nothing', () => {
     const text = alertTextFor('notification_waiting', 'tr');
     expect(text.body).toBe('Yeni bir bildirimin var');
-    expect(alertTextFor('notification_waiting', 'de').body).toBe(
-      'You have a new notification',
-    );
+    expect(alertTextFor('notification_waiting', 'de').body).toBe('You have a new notification');
   });
 });

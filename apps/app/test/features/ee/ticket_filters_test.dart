@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:alliswell/src/features/ee/assignments_providers.dart' show Assignee;
+import 'package:alliswell/src/features/ee/assignments_providers.dart'
+    show Assignee;
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
@@ -71,7 +72,9 @@ void main() {
       ProviderScope(
         overrides: [
           ticketQueueProvider.overrideWith((ref) => Stream.value(rows)),
-          ticketAssigneesProvider.overrideWith((ref) => Stream.value(assignees)),
+          ticketAssigneesProvider.overrideWith(
+            (ref) => Stream.value(assignees),
+          ),
           currentUserIdProvider.overrideWithValue(_me),
         ],
         child: MaterialApp(
@@ -108,7 +111,9 @@ void main() {
       .map((t) => t.id)
       .where((id) => find.byKey(Key('ticket-$id')).evaluate().isNotEmpty);
 
-  testWidgets('a chip narrows the queue, and two narrow it together', (tester) async {
+  testWidgets('a chip narrows the queue, and two narrow it together', (
+    tester,
+  ) async {
     await pumpQueue(tester);
     expect(visible(tester), ['T1', 'T2', 'T3']);
 
@@ -122,22 +127,23 @@ void main() {
     expect(find.byKey(const Key('ticket-search-empty')), findsNothing);
   });
 
-  testWidgets('"on me" and "on nobody" are the two questions, and they toggle', (
-    tester,
-  ) async {
-    await pumpQueue(tester);
+  testWidgets(
+    '"on me" and "on nobody" are the two questions, and they toggle',
+    (tester) async {
+      await pumpQueue(tester);
 
-    await tapChip(tester, 'ticket-filter-mine');
-    expect(visible(tester), ['T1']);
+      await tapChip(tester, 'ticket-filter-mine');
+      expect(visible(tester), ['T1']);
 
-    // The costliest state a queue has, and the one that is invisible until
-    // something asks for it.
-    await tapChip(tester, 'ticket-filter-unassigned');
-    expect(visible(tester), ['T2', 'T3']);
+      // The costliest state a queue has, and the one that is invisible until
+      // something asks for it.
+      await tapChip(tester, 'ticket-filter-unassigned');
+      expect(visible(tester), ['T2', 'T3']);
 
-    // Tapping the one that is already on turns it OFF rather than doing
-    // nothing: the two are mutually exclusive, so there is no other way back.
-    await tapChip(tester, 'ticket-filter-unassigned');
-    expect(visible(tester), ['T1', 'T2', 'T3']);
-  });
+      // Tapping the one that is already on turns it OFF rather than doing
+      // nothing: the two are mutually exclusive, so there is no other way back.
+      await tapChip(tester, 'ticket-filter-unassigned');
+      expect(visible(tester), ['T1', 'T2', 'T3']);
+    },
+  );
 }

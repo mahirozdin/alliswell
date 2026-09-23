@@ -188,7 +188,12 @@ void main() {
     // Distinct creation times: inside a tier the newest is first, and rows
     // that all tie would be ordered by id — which would make this test assert
     // an accident instead of the rule.
-    await applyTicket('K1', 'Dolum bandı durdu', number: 41, createdAt: '2026-09-01T08:00:00.000Z');
+    await applyTicket(
+      'K1',
+      'Dolum bandı durdu',
+      number: 41,
+      createdAt: '2026-09-01T08:00:00.000Z',
+    );
     await applyTicket(
       'K2',
       'Yazıcı arızası',
@@ -196,7 +201,12 @@ void main() {
       number: 42,
       createdAt: '2026-09-03T08:00:00.000Z',
     );
-    await applyTicket('K3', 'Kompresör', number: 43, createdAt: '2026-09-02T08:00:00.000Z');
+    await applyTicket(
+      'K3',
+      'Kompresör',
+      number: 43,
+      createdAt: '2026-09-02T08:00:00.000Z',
+    );
     await applyTicketComment('C1', 'K3', 'Dolum bölümünden bildirildi');
 
     final hits = await service.searchTickets(ws, 'dolum');
@@ -213,7 +223,12 @@ void main() {
 
   test('#1042 is an exact lookup, not a word in the body', () async {
     await applyTicket('K1', 'Rulman değişimi', number: 1042);
-    await applyTicket('K2', 'Bakım', body: 'Sipariş no 1042 ile geldi', number: 7);
+    await applyTicket(
+      'K2',
+      'Bakım',
+      body: 'Sipariş no 1042 ile geldi',
+      number: 7,
+    );
 
     // The lookup answers with the request that HAS the number, and ONLY it:
     // the other one merely mentions 1042 in its body, and somebody reading a
@@ -227,7 +242,12 @@ void main() {
   });
 
   test('a number that no request holds finds the text instead', () async {
-    await applyTicket('K2', 'Bakım', body: 'Sipariş no 1042 ile geldi', number: 7);
+    await applyTicket(
+      'K2',
+      'Bakım',
+      body: 'Sipariş no 1042 ile geldi',
+      number: 7,
+    );
     final hits = await service.searchTickets(ws, '1042');
     expect(hits.map((h) => h.id), ['K2']);
     expect(hits.single.tier, 2);
@@ -235,7 +255,12 @@ void main() {
 
   test('a query with a number AND a word stays a text search', () async {
     await applyTicket('K1', 'Rulman değişimi', number: 1042);
-    await applyTicket('K2', 'Rulman sipariş', body: '1042 numaralı parça', number: 8);
+    await applyTicket(
+      'K2',
+      'Rulman sipariş',
+      body: '1042 numaralı parça',
+      number: 8,
+    );
     // "1042 rulman" is somebody remembering roughly; answering with request
     // 1042 alone would drop half of what they typed.
     expect(ticketNumberQuery('1042 rulman'), null);
@@ -252,17 +277,22 @@ void main() {
     expect(ticketNumberQuery('1234567890123'), null);
   });
 
-  test('the applier folds a ticket and its replies — both write points', () async {
-    await applyTicket('K1', 'Fırın sıcaklığı', body: 'Gövde metni');
-    await applyTicketComment('C1', 'K1', 'Yorum metni');
-    final ticket = await (db.select(db.tickets)..where((t) => t.id.equals('K1'))).getSingle();
-    final comment = await (db.select(
-      db.ticketComments,
-    )..where((c) => c.id.equals('C1'))).getSingle();
-    expect(ticket.subjectFold, 'firin sicakligi');
-    expect(ticket.bodyFold, 'govde metni');
-    expect(comment.bodyFold, 'yorum metni');
-  });
+  test(
+    'the applier folds a ticket and its replies — both write points',
+    () async {
+      await applyTicket('K1', 'Fırın sıcaklığı', body: 'Gövde metni');
+      await applyTicketComment('C1', 'K1', 'Yorum metni');
+      final ticket = await (db.select(
+        db.tickets,
+      )..where((t) => t.id.equals('K1'))).getSingle();
+      final comment = await (db.select(
+        db.ticketComments,
+      )..where((c) => c.id.equals('C1'))).getSingle();
+      expect(ticket.subjectFold, 'firin sicakligi');
+      expect(ticket.bodyFold, 'govde metni');
+      expect(comment.bodyFold, 'yorum metni');
+    },
+  );
 
   /// The v27 upgrade's half that nobody would notice was missing: pull is
   /// incremental, so a request already on the device is never sent again and

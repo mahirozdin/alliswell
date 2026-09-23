@@ -187,7 +187,10 @@ void main() {
   }
 
   /// The queue with a FILTER applied, through the real provider chain.
-  Future<List<TicketRecord>> filtered(TicketFilter filter, {String? userId}) async {
+  Future<List<TicketRecord>> filtered(
+    TicketFilter filter, {
+    String? userId,
+  }) async {
     final container = ProviderContainer(
       overrides: [
         databaseProvider.overrideWithValue(db),
@@ -220,205 +223,218 @@ void main() {
     return row.data['n'] as int;
   }
 
-
   /// EE-169 — the acceptance's own sentence: search works OFFLINE, because it
   /// reads the replica's fold shadows and never asks the server anything.
-  test('search answers with the server unreachable — subject, body, reply, number', () async {
-    await pulled([
-      SyncChange(
-        revision: 1,
-        entityType: 'ee_ticket',
-        entityId: id('T1'),
-        operation: 'upsert',
-        data: {...ticket(id('T1'), subject: 'ISITICI arızası'), 'number': 41},
-      ),
-      SyncChange(
-        revision: 2,
-        entityType: 'ee_ticket',
-        entityId: id('T2'),
-        operation: 'upsert',
-        data: {
-          ...ticket(id('T2'), subject: 'Kompresör sesi'),
-          'body': 'Isıtıcı hattında da duyuldu',
-          'number': 42,
-          // Distinct clocks on purpose: inside a tier the newest is first, and
-          // rows that tie fall back to the id — which would make the
-          // assertion below about an accident instead of the rule.
-          'createdAt': '2026-08-01T10:00:00.000Z',
-        },
-      ),
-      SyncChange(
-        revision: 3,
-        entityType: 'ee_ticket',
-        entityId: id('T3'),
-        operation: 'upsert',
-        data: {
-          ...ticket(id('T3'), subject: 'Pano'),
-          'body': null,
-          'number': 43,
-          'createdAt': '2026-08-01T09:00:00.000Z',
-        },
-      ),
-      SyncChange(
-        revision: 4,
-        entityType: 'ee_ticket_comment',
-        entityId: id('C1'),
-        operation: 'upsert',
-        data: {
-          'id': id('C1'),
-          'workspaceId': ws,
-          'ticketId': id('T3'),
-          'authorId': null,
-          'body': 'ısıtıcı bölümünden bildirildi',
-          'internal': false,
-          'revision': 4,
-          'createdAt': '2026-08-01T09:00:00.000Z',
-          'updatedAt': '2026-08-01T09:00:00.000Z',
-        },
-      ),
-    ]);
+  test(
+    'search answers with the server unreachable — subject, body, reply, number',
+    () async {
+      await pulled([
+        SyncChange(
+          revision: 1,
+          entityType: 'ee_ticket',
+          entityId: id('T1'),
+          operation: 'upsert',
+          data: {
+            ...ticket(id('T1'), subject: 'ISITICI arızası'),
+            'number': 41,
+          },
+        ),
+        SyncChange(
+          revision: 2,
+          entityType: 'ee_ticket',
+          entityId: id('T2'),
+          operation: 'upsert',
+          data: {
+            ...ticket(id('T2'), subject: 'Kompresör sesi'),
+            'body': 'Isıtıcı hattında da duyuldu',
+            'number': 42,
+            // Distinct clocks on purpose: inside a tier the newest is first, and
+            // rows that tie fall back to the id — which would make the
+            // assertion below about an accident instead of the rule.
+            'createdAt': '2026-08-01T10:00:00.000Z',
+          },
+        ),
+        SyncChange(
+          revision: 3,
+          entityType: 'ee_ticket',
+          entityId: id('T3'),
+          operation: 'upsert',
+          data: {
+            ...ticket(id('T3'), subject: 'Pano'),
+            'body': null,
+            'number': 43,
+            'createdAt': '2026-08-01T09:00:00.000Z',
+          },
+        ),
+        SyncChange(
+          revision: 4,
+          entityType: 'ee_ticket_comment',
+          entityId: id('C1'),
+          operation: 'upsert',
+          data: {
+            'id': id('C1'),
+            'workspaceId': ws,
+            'ticketId': id('T3'),
+            'authorId': null,
+            'body': 'ısıtıcı bölümünden bildirildi',
+            'internal': false,
+            'revision': 4,
+            'createdAt': '2026-08-01T09:00:00.000Z',
+            'updatedAt': '2026-08-01T09:00:00.000Z',
+          },
+        ),
+      ]);
 
-    // The shift starts, and there is no signal for the rest of it.
-    api.pullThrows = Exception('offline');
-    api.pushThrows = Exception('offline');
-    await engine.syncNow();
+      // The shift starts, and there is no signal for the rest of it.
+      api.pullThrows = Exception('offline');
+      api.pushThrows = Exception('offline');
+      await engine.syncNow();
 
-    // Folded both ways (ADR-0013): a lowercase dotted query finds the SHOUTED
-    // dotless subject, which neither SQLite nor MySQL would do on its own.
-    final byText = await searched('ısıtıcı');
-    expect(byText.map((t) => t.id), [id('T1'), id('T2'), id('T3')]);
+      // Folded both ways (ADR-0013): a lowercase dotted query finds the SHOUTED
+      // dotless subject, which neither SQLite nor MySQL would do on its own.
+      final byText = await searched('ısıtıcı');
+      expect(byText.map((t) => t.id), [id('T1'), id('T2'), id('T3')]);
 
-    // The number is an identifier, so it answers with exactly one request —
-    // not with every request whose text happens to contain the digits.
-    expect((await searched('#42')).map((t) => t.id), [id('T2')]);
-    expect((await searched('42')).map((t) => t.id), [id('T2')]);
+      // The number is an identifier, so it answers with exactly one request —
+      // not with every request whose text happens to contain the digits.
+      expect((await searched('#42')).map((t) => t.id), [id('T2')]);
+      expect((await searched('42')).map((t) => t.id), [id('T2')]);
 
-    // And a query that matches nothing narrows to nothing rather than
-    // quietly showing the unfiltered queue — the screen's third emptiness.
-    expect(await searched('bulunmayan'), isEmpty);
-  });
-
+      // And a query that matches nothing narrows to nothing rather than
+      // quietly showing the unfiltered queue — the screen's third emptiness.
+      expect(await searched('bulunmayan'), isEmpty);
+    },
+  );
 
   /// EE-171 — the four filters the queue gained, and the two questions a desk
   /// actually asks. All of it runs on the replica, so it answers offline like
   /// everything else on this screen.
-  test('filters narrow the queue: SLA, source, date window, and who is on it', () async {
-    await pulled([
-      SyncChange(
-        revision: 1,
-        entityType: 'ee_ticket',
-        entityId: id('T1'),
-        operation: 'upsert',
-        data: {
-          ...ticket(id('T1'), subject: 'İhlal edilmiş'),
-          'slaStatus': 'breached',
-          'source': 'internal',
-          'createdAt': '2026-08-01T08:00:00.000Z',
-        },
-      ),
-      SyncChange(
-        revision: 2,
-        entityType: 'ee_ticket',
-        entityId: id('T2'),
-        operation: 'upsert',
-        data: {
-          ...ticket(id('T2'), subject: 'Portaldan gelen'),
-          'slaStatus': 'ok',
-          'source': 'public',
-          'createdAt': '2026-08-10T08:00:00.000Z',
-        },
-      ),
-      SyncChange(
-        revision: 3,
-        entityType: 'ee_ticket',
-        entityId: id('T3'),
-        operation: 'upsert',
-        data: {
-          ...ticket(id('T3'), subject: 'Sözü olmayan'),
-          'slaStatus': null,
-          'source': 'internal',
-          'createdAt': '2026-08-20T08:00:00.000Z',
-        },
-      ),
-      // Somebody is on T1 and nobody is on the other two.
-      SyncChange(
-        revision: 4,
-        entityType: 'ee_ticket_assignment',
-        entityId: id('A1'),
-        operation: 'upsert',
-        data: {
-          'id': id('A1'),
-          'workspaceId': ws,
-          'ticketId': id('T1'),
-          'userId': id('U1'),
-          'assignedBy': id('U9'),
-          'assignedAt': '2026-08-01T09:00:00.000Z',
-          'revision': 4,
-          'updatedAt': '2026-08-01T09:00:00.000Z',
-        },
-      ),
-    ]);
-
-    api.pullThrows = Exception('offline');
-    api.pushThrows = Exception('offline');
-    await engine.syncNow();
-
-    expect(
-      (await filtered(const TicketFilter(slaStatuses: {'breached'}))).map((t) => t.id),
-      [id('T1')],
-    );
-    // A request nobody promised anything about is `none`, not "missing": the
-    // filter has to be able to ask for it, or that row can never be found.
-    expect(
-      (await filtered(const TicketFilter(slaStatuses: {'none'}))).map((t) => t.id),
-      [id('T3')],
-    );
-    expect(
-      (await filtered(const TicketFilter(sources: {'public'}))).map((t) => t.id),
-      [id('T2')],
-    );
-    expect(
-      (await filtered(
-        TicketFilter(
-          from: DateTime.utc(2026, 8, 5),
-          to: DateTime.utc(2026, 8, 15),
+  test(
+    'filters narrow the queue: SLA, source, date window, and who is on it',
+    () async {
+      await pulled([
+        SyncChange(
+          revision: 1,
+          entityType: 'ee_ticket',
+          entityId: id('T1'),
+          operation: 'upsert',
+          data: {
+            ...ticket(id('T1'), subject: 'İhlal edilmiş'),
+            'slaStatus': 'breached',
+            'source': 'internal',
+            'createdAt': '2026-08-01T08:00:00.000Z',
+          },
         ),
-      )).map((t) => t.id),
-      [id('T2')],
-    );
+        SyncChange(
+          revision: 2,
+          entityType: 'ee_ticket',
+          entityId: id('T2'),
+          operation: 'upsert',
+          data: {
+            ...ticket(id('T2'), subject: 'Portaldan gelen'),
+            'slaStatus': 'ok',
+            'source': 'public',
+            'createdAt': '2026-08-10T08:00:00.000Z',
+          },
+        ),
+        SyncChange(
+          revision: 3,
+          entityType: 'ee_ticket',
+          entityId: id('T3'),
+          operation: 'upsert',
+          data: {
+            ...ticket(id('T3'), subject: 'Sözü olmayan'),
+            'slaStatus': null,
+            'source': 'internal',
+            'createdAt': '2026-08-20T08:00:00.000Z',
+          },
+        ),
+        // Somebody is on T1 and nobody is on the other two.
+        SyncChange(
+          revision: 4,
+          entityType: 'ee_ticket_assignment',
+          entityId: id('A1'),
+          operation: 'upsert',
+          data: {
+            'id': id('A1'),
+            'workspaceId': ws,
+            'ticketId': id('T1'),
+            'userId': id('U1'),
+            'assignedBy': id('U9'),
+            'assignedAt': '2026-08-01T09:00:00.000Z',
+            'revision': 4,
+            'updatedAt': '2026-08-01T09:00:00.000Z',
+          },
+        ),
+      ]);
 
-    // The costliest state a queue has: work nobody picked up.
-    expect(
-      (await filtered(
-        const TicketFilter(assigneeScope: TicketAssigneeScope.unassigned),
-      )).map((t) => t.id),
-      [id('T3'), id('T2')],
-    );
-    // …and mine, which is the same question asked about me.
-    expect(
-      (await filtered(
-        const TicketFilter(assigneeScope: TicketAssigneeScope.mine),
-        userId: id('U1'),
-      )).map((t) => t.id),
-      [id('T1')],
-    );
-    // Somebody else's holds nothing of mine.
-    expect(
-      await filtered(
-        const TicketFilter(assigneeScope: TicketAssigneeScope.mine),
-        userId: id('U2'),
-      ),
-      isEmpty,
-    );
+      api.pullThrows = Exception('offline');
+      api.pushThrows = Exception('offline');
+      await engine.syncNow();
 
-    // Combined: two filters narrow together rather than either winning.
-    expect(
-      await filtered(
-        const TicketFilter(sources: {'public'}, slaStatuses: {'breached'}),
-      ),
-      isEmpty,
-    );
-  });
+      expect(
+        (await filtered(
+          const TicketFilter(slaStatuses: {'breached'}),
+        )).map((t) => t.id),
+        [id('T1')],
+      );
+      // A request nobody promised anything about is `none`, not "missing": the
+      // filter has to be able to ask for it, or that row can never be found.
+      expect(
+        (await filtered(
+          const TicketFilter(slaStatuses: {'none'}),
+        )).map((t) => t.id),
+        [id('T3')],
+      );
+      expect(
+        (await filtered(
+          const TicketFilter(sources: {'public'}),
+        )).map((t) => t.id),
+        [id('T2')],
+      );
+      expect(
+        (await filtered(
+          TicketFilter(
+            from: DateTime.utc(2026, 8, 5),
+            to: DateTime.utc(2026, 8, 15),
+          ),
+        )).map((t) => t.id),
+        [id('T2')],
+      );
+
+      // The costliest state a queue has: work nobody picked up.
+      expect(
+        (await filtered(
+          const TicketFilter(assigneeScope: TicketAssigneeScope.unassigned),
+        )).map((t) => t.id),
+        [id('T3'), id('T2')],
+      );
+      // …and mine, which is the same question asked about me.
+      expect(
+        (await filtered(
+          const TicketFilter(assigneeScope: TicketAssigneeScope.mine),
+          userId: id('U1'),
+        )).map((t) => t.id),
+        [id('T1')],
+      );
+      // Somebody else's holds nothing of mine.
+      expect(
+        await filtered(
+          const TicketFilter(assigneeScope: TicketAssigneeScope.mine),
+          userId: id('U2'),
+        ),
+        isEmpty,
+      );
+
+      // Combined: two filters narrow together rather than either winning.
+      expect(
+        await filtered(
+          const TicketFilter(sources: {'public'}, slaStatuses: {'breached'}),
+        ),
+        isEmpty,
+      );
+    },
+  );
 
   test(
     'the queue opens with the server unreachable, and it is not empty',

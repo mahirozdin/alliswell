@@ -301,7 +301,6 @@ describe('EE overlay seam (EE-002)', () => {
     expect(result.structuredContent).toEqual({ ok: true });
   });
 
-
   it('lets an overlay add a kind of thing files hang on — and CE keeps the four (OPH-325)', async () => {
     const store = fakeStorage();
     ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR), storage: store }));
