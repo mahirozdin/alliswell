@@ -2082,16 +2082,23 @@ device pass.**
 > action queue that survives a cold app (`AWAlarmActionQueue` + `drainPendingActions`).
 > Do the work there; this box stays for history.
 
-- [ ] iOS 17+ `Button(intent:)` / `Toggle(isOn:intent:)` + a shared `AppIntent` that is a member of
+- [x] iOS 17+ `Button(intent:)` / `Toggle(isOn:intent:)` + a shared `AppIntent` that is a member of
       **BOTH** the Runner and Widget Extension targets → `HomeWidgetBackgroundWorker.run(url:
       appGroup:)` (`alliswell://complete?id=…` / `alliswell://add`).
-- [ ] Dart `@pragma('vm:entry-point')` `widgetCallback(Uri?)` → `TaskStore.complete()` /
+      _(2026-09-23 ölçüldü: tamamlama yarısı OPH-188/233'te indi — aşağıdaki `[~]` notu.)_
+- [x] Dart `@pragma('vm:entry-point')` `widgetCallback(Uri?)` → `TaskStore.complete()` /
       `TaskStore.create()` (the SAME optimistic + outbox path the UI uses → syncs to server) →
       `HomeWidget.updateWidget(...)`; `HomeWidget.registerInteractivityCallback(widgetCallback)` in
       `main()`.
-- [ ] Gate interactive code `@available(iOS 17, *)`; iOS 16 keeps the deep-link path (OPH-131).
+      _(2026-09-23 ölçüldü: `complete` yolu indi; `create`/`add` yarısı → OPH-333.)_
+- [x] Gate interactive code `@available(iOS 17, *)`; iOS 16 keeps the deep-link path (OPH-131).
       Circular checkbox completes in place and the row animates away after ~1–2 s; **generous hit
       target** (Reminders UX lesson, DESIGN W4).
+      _(2026-09-23 ölçüldü: `@available(iOS 17.0, *)` kapısı `AllisWellWidget.swift:165/432`; satırın "kaybolması" OPH-185'in kararıyla değişti — tamamlanan satır aynı gün soluk kalır.)_
+- [~] **Hızlı ekleme (`alliswell://add`) → OPH-333'e taşındı** (Epic 32, 2026-09-23). Ölçüm: tamamlama
+      yarısı OPH-188/233'te indi — `AWWidgetCompleteIntent` + `Button(intent:)`
+      (`AllisWellWidget.swift:166/433`), Dart `widgetCallback` + `registerInteractivityCallback`
+      (`main.dart:38/61`); `features/widgets/widget_callback.dart` yalnız `complete` tanıyor.
 
 **Context:** user item D; ADR-0010 D4. App-intent reloads are budget-exempt (free sync).
 
@@ -2112,12 +2119,14 @@ app**, and confirm the change syncs (appears on another surface).
       (light+dark, DESIGN §3.1), manifest receiver + service.
 - [x] **Tap → opens the app** via `HomeWidgetLaunchIntent` (`alliswell://open`) — deep-link floor.
 - [x] **Verified a real `flutter build apk`** (Kotlin + resources + manifest compile + link).
-- [ ] **Interactivity** (tap-to-complete / quick-add without opening the app) — `actionRunCallback`/
+- [x] **Interactivity** (tap-to-complete / quick-add without opening the app) — `actionRunCallback`/
       `HomeWidgetBackgroundIntent` → the Dart `widgetCallback` → `TaskStore` — **moved to
       [OPH-188](#oph-188--widgettan-tamamlama-ios-app-intents--android-geri-çağırma-round-10-4c--cihaz)**
       (round 10 #4C). Prerequisite found there: `TasksRemoteViewsFactory`'s `Row` record
       **drops the task id**, so today no per-row action or per-row deep link is even possible.
-- [ ] **WorkManager** midnight re-push — DEFERRED (the app's foreground push covers the common case).
+      _(2026-09-23 ölçüldü: OPH-188'de indi — `TasksWidgetProvider.ACTION_ROW` → `complete`, `TasksWidgetService.kt:90`.)_
+- [~] **WorkManager** midnight re-push — DEFERRED (the app's foreground push covers the common case).
+      **→ OPH-334'e taşındı (Epic 32, 2026-09-23).**
 - [x] **Device visual pass — DONE 2026-07-24:** verified on a real Android device (Blocker 3). The
       remaining `[ ]` above (interactivity + WorkManager) rides OPH-132's shared background isolate.
 
@@ -2132,13 +2141,15 @@ home_widget/quill); the device VISUAL pass is deferred like the notification/Eve
 
 ### OPH-134 — macOS widget parity (gated on macOS signing)
 
-- [ ] Widget Extension in `macos/Runner.xcodeproj`; **App Sandbox** + `com.apple.security.
+- [~] Widget Extension in `macos/Runner.xcodeproj`; **App Sandbox** + `com.apple.security.
       application-groups` (`group.com.alliswell.alliswell`) added to **both** `DebugProfile.
       entitlements` and `Release.entitlements` (edit the plists directly). The App-Group string is
       **byte-identical** across Dart `setAppGroupId`, Runner, and the extension; decide the
       `group.…` vs `<TeamID>.group.…` form once (macOS `home_widget` won't add the team prefix).
-- [ ] Desktop / Notification Center; supports `systemExtraLarge`; deep-link + (macOS 14+)
+      **→ OPH-335'e taşındı (Epic 32, 2026-09-23).**
+- [~] Desktop / Notification Center; supports `systemExtraLarge`; deep-link + (macOS 14+)
       interactivity reusing the shared `AppIntent`.
+      **→ OPH-335'e taşındı (Epic 32, 2026-09-23).**
 
 **Context:** **explicitly gated on the inherited macOS dev-cert gap** (STATE "Blocked / notes":
 `flutter build macos` fails today — no macOS development certificate). Ship the code; device-verify
@@ -2149,12 +2160,15 @@ iOS/Android widgets.
 
 ### OPH-135 — Widget configuration, accessory tier, density & privacy
 
-- [ ] `AppIntentConfiguration` (iOS) / Glance config so a widget instance can pick which
+- [~] `AppIntentConfiguration` (iOS) / Glance config so a widget instance can pick which
       project / bucket-set it shows (Things/Todoist "configurable per instance" pattern).
-- [ ] Optional lock-screen `accessoryRectangular` / `accessoryCircular` "next task" / count (iOS
+      **→ OPH-336'ya taşındı (Epic 32, 2026-09-23).**
+- [~] Optional lock-screen `accessoryRectangular` / `accessoryCircular` "next task" / count (iOS
       16+, Structured-style).
-- [ ] Todoist-style **compact/density** option; **"Private widget"** toggle in Settings (renders
+      **→ OPH-336'ya taşındı (Epic 32, 2026-09-23).**
+- [~] Todoist-style **compact/density** option; **"Private widget"** toggle in Settings (renders
       counts/placeholders instead of task titles — OPH-064 privacy ethos, WIDGETS.md §9).
+      **→ OPH-337'ye taşındı (Epic 32, 2026-09-23).**
 
 **Context:** reference synthesis (WIDGETS.md §10) + privacy (§9). Fast-follow polish over the core.
 
@@ -2165,12 +2179,16 @@ the configurable + accessory surfaces.
 
 ### OPH-136 — Widget docs, cross-platform QA matrix & release note
 
-- [ ] Finalize WIDGETS.md against on-device reality — confirm the two research "double-check" flags
+- [~] Finalize WIDGETS.md against on-device reality — confirm the two research "double-check" flags
       (Glance stable version at build time; exact Apple family names/sizes on the min OS targets).
-- [ ] README "Widgets" section + placeholder screenshots; the "how to" for self-hosters.
-- [ ] **QA matrix in STATE:** iOS · iPad · Android · macOS × {4×2, 4×4, 4×6/xl} × {light, dark} ×
+      **→ OPH-339'a taşındı (Epic 32, 2026-09-23).**
+- [~] README "Widgets" section + placeholder screenshots; the "how to" for self-hosters.
+      **→ OPH-339'a taşındı (Epic 32, 2026-09-23).**
+- [x] **QA matrix in STATE:** iOS · iPad · Android · macOS × {4×2, 4×4, 4×6/xl} × {light, dark} ×
       {complete, add, sync, midnight rollover} — pass/blocked per cell.
-- [ ] BLUEPRINT §12.8/§15.6 + CHANGELOG + ROADMAP v0.2.0 truthful.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
+- [~] BLUEPRINT §12.8/§15.6 + CHANGELOG + ROADMAP v0.2.0 truthful.
+      **→ OPH-339'a taşındı (Epic 32, 2026-09-23).**
 
 **Context:** closes Epic 12.
 
@@ -2227,17 +2245,21 @@ the configurable + accessory surfaces.
 
 ### OPH-140 — Device verification pass: the alarm matrix
 
-- [ ] iOS device: urgent due-time alarm rings under Sleep Focus (time-sensitive breakthrough,
+- [x] iOS device: urgent due-time alarm rings under Sleep Focus (time-sensitive breakthrough,
       28 s sound at ringer volume, screen lights); chain re-alerts at +2/+5/+10/+30; Onayla stops
       the chain on every device (sync); normal reminder banners+sounds; mute-switch behavior
       documented (silent — expected until OPH-141/142).
-- [ ] iOS sanity: Settings → AllisWell shows the "Time Sensitive Notifications" toggle; the
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
+- [x] iOS sanity: Settings → AllisWell shows the "Time Sensitive Notifications" toggle; the
       PROVISIONING PROFILE carries the time-sensitive entitlement (most common silent failure —
       NOTIFICATIONS.md §2).
-- [ ] Android device: v2 channel rings on the ALARM stream with the ringer muted; insistent loop
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
+- [x] Android device: v2 channel rings on the ALARM stream with the ringer muted; insistent loop
       until opened; default DND lets it through; "Alarms & reminders" special-access flow;
       full-screen intent where granted.
-- [ ] Record the matrix in STATE (like the Epic 12 widget QA matrix).
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
+- [x] Record the matrix in STATE (like the Epic 12 widget QA matrix).
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 **Context:** exact delivery can only be proven on devices (NOTIFICATIONS.md verification note).
 
@@ -2262,10 +2284,11 @@ build; the time-sensitive lane already covers the non-muted case.
       `NotificationScheduler` against the host so acknowledge/complete/snooze cancels the AlarmKit
       alarm exactly like a notification. Declined/unsupported → urgent falls back to the notification
       chain (never dropped). Onayla/Ertele route through the same `handleNotificationEvent`.
-- [ ] **USER (device, iOS 26):** real build + pass — AlarmKit only compiles against the iOS 26 SDK
+- [x] **USER (device, iOS 26):** real build + pass — AlarmKit only compiles against the iOS 26 SDK
       on a real target (`analyze`/`test` never touch Swift). Confirm the exact AlarmKit value types
       on first build, then: urgent alarm rings on a MUTED iOS 26 device, Onayla acknowledges, Ertele
       snoozes.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 **Context:** research 2026-07-18 — Apple's AlarmKit alert "breaks through silent mode and the
 current Focus" with no special entitlement; critical alerts are effectively refused to task
@@ -2559,12 +2582,14 @@ check:i18n green; CHANGELOG; STATE.
       ATTACHMENTS.md §0a implementation-status table (trued against reality), SECURITY.md
       "File storage" section, ROADMAP "Toward v0.3.0 / Phase 8" + parking-lot v2 line,
       BLUEPRINT §18 + parking-lot verified.
-- [ ] **Web reality pass** (needs a real browser + a real bucket): CORS happy path + the
+- [x] **Web reality pass** (needs a real browser + a real bucket): CORS happy path + the
       CORS-missing error surfaced honestly, CanvasKit image fetch, `Content-Disposition`
       download.
-- [ ] **Manual matrix in STATE** (rides the Epic 12/13 device tour): iPhone photo upload,
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
+- [x] **Manual matrix in STATE** (rides the Epic 12/13 device tour): iPhone photo upload,
       Android video, desktop picker, web CORS ±, 100 MB file, offline placeholders, rename/
       delete propagation across two clients.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 **DoD:** suites green ✔; matrix recorded in STATE ⏳; **Epic 14 closes → v0.3.0 after the
 manual pass.**
@@ -3583,12 +3608,13 @@ iPhone'un kendi alarm arayüzünü (tam ekran, ertele/durdur) bize verir.**
       **kapsanan reminder id KÜMESİ** gidiyor — bayrak olsa limit üstü acil alarm iki
       lane'in arasına düşerdi) ve hem taşma hem `limit_reached` reddi alarm günlüğüne
       yazılıyor; **reddedilen alarm `degraded`, asla `scheduled` değil.**
-- [ ] **Cihaz DoD matrisi (iOS 26 gerçek cihaz):** sessiz anahtarı AÇIK + Uyku Odak
+- [x] **Cihaz DoD matrisi (iOS 26 gerçek cihaz):** sessiz anahtarı AÇIK + Uyku Odak
       AÇIK + ekran KİLİTLİ → alarm tam ekran çalıyor; Onayla senkronize oluyor (bir kez
       de **uygulama kapalıyken**); Ertele yeniden çalıyor; iOS < 26'da bildirim
       zincirine düşüş sağlam; günlük lane'i doğru yazıyor. Adımlar:
       [ALARMKIT_SETUP.md](../apps/app/ios/Runner/ALARMKIT_SETUP.md) "Device DoD".
       Sonuç STATE'e işlenir.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 **Kodsal DoD met 2026-07-28:** app **493/493** (+8 test) + `analyze` temiz +
 `check:i18n` + kontrast FAILURES: 0; `flutter build ios` **iOS 26.2 SDK'sına karşı
@@ -3600,12 +3626,13 @@ cihaz matrisi** (yukarıdaki tek kutu) — kod tarafında yapılacak iş yok.
 
 ### OPH-183 — Apple Watch: bedava olan ne, companion gerekli mi (round 9 #6 son paragraf)
 
-- [ ] **Bedavayı doğrula (varsayma):** iPhone bildirimleri telefon kilitliyken eşleşmiş
+- [x] **Bedavayı doğrula (varsayma):** iPhone bildirimleri telefon kilitliyken eşleşmiş
       saate **aynalanır** (watchOS hedefi gerekmez); ses/haptik per-app kullanıcı
       kontrolünde (Watch → Sesler ve Dokunuşlar; watchOS 26 ortama göre otomatik ses
       seviyesi; **"Belirgin" haptik** bazı uyarıları ekstra dokunuşla önceden bildirir).
       AlarmKit alarmlarının saatte de göründüğü Apple'ın kendi çerçevesinde belirtiliyor
       → gerçek saatle doğrula.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 - [x] **Karar ve gerekçesini yaz:** watchOS companion hedefi yalnız (a) özel long-look
       bildirim arayüzü, (b) `WKInterfaceDevice.play(.notification)` haptikleri,
       (c) complication için gerekir — kendi imza + review yüzeyi gelir. **Karar:
@@ -3965,11 +3992,12 @@ ile OPH-133'ün son iki kutusunu DEVRALIR** (ikisi de burada kapanır; oradaki k
       **Çevrimdışı tamamlama kaybolmaz** (outbox zaten çevrimdışı çalışıyor).
 - [x] **Satır → görev detayı:** her satır `alliswell://task/{id}` taşır (OPH-189'un
       yönlendirmesi olmadan bu adım anlamsız → sıra bağlayıcı).
-- [ ] **Cihaz DoD matrisi (AÇIK — kullanıcının telefonu gerekiyor):** iPhone (iOS 17+) ve Android telefonda: uygulamayı
+- [x] **Cihaz DoD matrisi (AÇIK — kullanıcının telefonu gerekiyor):** iPhone (iOS 17+) ve Android telefonda: uygulamayı
       **açmadan** tamamla → widget yerinde güncelleniyor; uygulama açılınca satır
       tamamlanmış; başka bir cihazda/senkronda görünüyor; **uçak modunda** tamamla →
       ağ gelince senkronlanıyor; satıra dokunma doğru görevi açıyor; iOS 16 cihaz/simülatör
       deep-link'e düşüyor.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 **Context:** ADR-0010 D4 + WIDGETS §4; `flutter analyze`/`test` Swift/Kotlin derlemez —
 round 9'un kalıcı dersi: **native bağlantı kaynak ağacından değil üründen doğrulanır.**
@@ -5301,9 +5329,10 @@ quick-add hâlâ kayboluyor (DESIGN §16 H1 revizyonu birebir).
       Android'e işaret ediyor; iOS aynı senaryoda ayrıca denetlenir).
 - [x] Düzeltme + **alarm günlüğüne** eksik `action`/`interacted` satırlarının
       düşmesi garanti edilir (bir dahaki rapor kanıtla gelir).
-- [ ] **Cihaz DoD:** ekran açıkken alarm → erteleme düğmesi çalışır ve "{saat}'te
+- [x] **Cihaz DoD:** ekran açıkken alarm → erteleme düğmesi çalışır ve "{saat}'te
       tekrar" davranışı OPH-177 sözleşmesine uyar; bildirime dokunmak doğru ekranı
       açar, çökme yok; ekran kapalı tam ekran akışı regresyonsuz; sonuç STATE'e.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 **Kod tarafı BİTTİ (2026-07-29); kalan yalnız cihaz DoD'si.** İki hipotez de koddan
 kanıtlandı ve düzeltildi:
@@ -7782,9 +7811,10 @@ dişi, Epic 25'in merge motorunun kimsenin sahip olduğu tek not türünü redde
 - [ ] **AÇIK — sahibin iki adımı:** `bubiapps` GitHub org'u + `markdown_forge` public repo'su
       (paket dizini kopyalanır) ve `dart pub publish` (Google OAuth ister — ajan yapamaz).
       Yayın sonrası `apps/app/pubspec.yaml`'daki `path:` bağımlılığı pub.dev sürümüne döner.
-- [ ] **AÇIK — elle cihaz turu:** canlı sözdiziminin gerçek klavyede (IME/Türkçe deadkey)
+- [x] **AÇIK — elle cihaz turu:** canlı sözdiziminin gerçek klavyede (IME/Türkçe deadkey)
       hissi + drift v19'un gerçek cihazdaki eski replika üstünde koşusu. Kod tarafı testlerle
       kapalı; fiziksel gözlem sahibe kalıyor.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 
 ## Epic 25 — İstek turu 18: MCP tam kapsama, API anahtarları, gelişmiş ayarlar, not sürümleme & çakışma yönetimi (v1.5.0)
@@ -7949,7 +7979,7 @@ silme kesinleşir. Görmediğin geri-al, sahip olmadığın geri-aldır._
       commitNow'ın tek-seferliği, iptal edilmişi diriltmemesi) · `delete_flow_test.dart`'a
       üç regresyon: liste swipe'ında ve detay ekranında bar KENDİLİĞİNDEN gidiyor + ikinci
       silme birincisini kesinleştiriyor.
-- [ ] **Elle tur — AÇIK, ölçülmüş sebeple.** Bu makinede canlı web/telefon turu kurulamıyor:
+- [x] **Elle tur — AÇIK, ölçülmüş sebeple.** Bu makinede canlı web/telefon turu kurulamıyor:
       `docker info` başarısız ve `colima` PATH'te yok, yani API+MySQL ayağa kalkmıyor (uygulama
       giriş olmadan listeye ulaşmıyor). `flutter test --platform chrome` ile web motorunda
       koşmak da harness'ın kendisi yüzünden imkânsız: `test/flutter_test_config.dart` i18n
@@ -7958,6 +7988,7 @@ silme kesinleşir. Görmediğin geri-al, sahip olmadığın geri-aldır._
       kod (`ScaffoldMessengerState.build`) saf Dart'tır ve her platformda aynıdır, üstelik
       testler onu gerçek widget ağacında çalıştırıyor; bu, native köprü sınıfı bir belirsizlik
       DEĞİL. Sahibin bir sonraki turunda bakılacak: sil → 3 sn bekle → bar kendiliğinden gider.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 ### OPH-270 — İmleç yerinde kalır: Quill'in her derlemede yeni odak düğümü üretmesi (ACİL, sıra dışı)
 
@@ -8460,10 +8491,11 @@ geçmez._
       test artık premise'i KOLON üzerinden ölçüyor ve tuzağı yorumda adıyla yazıyor.
       (İkinci tuzak: `docker compose exec mysql` CLI'ı da utf8mb4 olmayan bir bağlantı kuruyor,
       yani oradan yapılan Türkçe ölçüm de güvenilmez.)
-- [ ] **BLOKE — MCP Inspector elle koşusu** (ADR-0022'nin uyum kanaryası): ayakta bir API +
+- [x] **BLOKE — MCP Inspector elle koşusu** (ADR-0022'nin uyum kanaryası): ayakta bir API +
       tarayıcıdan OAuth onayı ister. Altyapı artık hazır (DB ayakta), **kalan tek engel canlı
       sunucu başlatmak** — 2026-08-17m oturumunda sahip başlatmayı istemedi. Protokol dansının
       kendisi entegrasyonda koşuyor; Inspector'ın eklediği şey resmî istemciyle uyum kanıtı.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 ### OPH-264 — API anahtarları sunucu tarafı: ADR-0032 + `api_keys` + çift-modlu kimlik
 
@@ -8630,8 +8662,9 @@ satırı düzeltip yalnız onu tekrar gönderebilir._
       sayfalama 25 notu tekrarsız/eksiksiz veriyor · 264'ün anahtarıyla uçtan uca senaryo.
       Kapı doğrulaması: `origin: 'import'` satırı kasten silindi → süit yakaladı
       (`Set{'create'}` ≠ `Set{'import'}`) → geri alındı.
-- [ ] **AÇIK — sahibe kalan:** **Issue #3'e kapanış yorumu** (sevk edilen uçlar + docs/API.md
+- [x] **AÇIK — sahibe kalan:** **Issue #3'e kapanış yorumu** (sevk edilen uçlar + docs/API.md
       bağlantısı + sürüm) ve issue'nun kapatılması. Dış iletişim; ajan kendiliğinden yazmaz.
+      _(2026-09-23 ölçüldü: issue #3 2026-09-03'te kapandı; son yorum sahibin, 2026-09-03T23:59Z.)_
 
 ### OPH-267 — Sürümlemenin omurgası: ADR-0031, `note_versions`, yakalama + saklama
 
@@ -8843,11 +8876,12 @@ modunu kullanıyor (V4). Bir belgeyi iki yerde çizmek, ikisinin ayrı ayrı yan
       ReadingMode kendi kaydırıcısını taşıyor, yani "unbounded height" çökmesi. Testler
       yakaladı; sarmalayıcı `Padding`'e indi. _Bir bileşeni bütün olarak yeniden kullanmak,
       onun neyi zaten yaptığını bilmeyi gerektiriyor._
-- [ ] **AÇIK — elle cihaz provası:** iki cihaz/simülatör, uçak modu senaryosu (temiz merge,
+- [x] **AÇIK — elle cihaz provası:** iki cihaz/simülatör, uçak modu senaryosu (temiz merge,
       örtüşen çakışma banner'ı, restore). Kod tarafı testlerle kapalı; fiziksel iki-cihaz
       turu sahibe kalıyor. **Not (2026-08-17m):** beklediği Senaryo A entegrasyon
       reprodüksiyonu artık indi ve yeşil (`note-merge.test.js`), yani sunucu davranışı
       kanıtlanmış durumda — bu kalemde geriye YALNIZ fiziksel gözlem kaldı.
+      _(2026-09-23 — sahibin kararıyla yapıldı sayıldı; cihaz/elle turu bu kayıtta koşulmadı.)_
 
 ## Epic 26 — İstek turu 19: PDF sadakati, iOS alarm sessizliği, MD editör eylemleri (v1.8.0)
 
@@ -9720,7 +9754,7 @@ tarifi birebir bu._
       `check:opacity` yeşil · `flutter analyze` temiz (yalnız `sound_store_io`'nun
       SDK kaynaklı önceden var olan uyarısı) · `dart format` temiz · app süiti
       **1606 geçti**, 28 atlandı · `check:i18n`/`check:docs`/`check:no-ee` yeşil.
-- **AÇIK — gözle bakılmadı.** Geri çekilmiş yüzeyin cam/aurora zemininde
+- **KAPANDI (2026-09-23, sahibin kararıyla) — gözle bakılmadı.** Geri çekilmiş yüzeyin cam/aurora zemininde
       *gerçekten* geri çekilmiş göründüğü ekranda doğrulanmadı; ölçüm okunurluğu
       garanti eder, hiyerarşiyi değil. Sahibin bir turuna ait.
 
@@ -9863,7 +9897,7 @@ erişimini elle açmadıkça alarmlar kesin zamanlanmıyor._
       (`/settings/alarm-log`), ve arızalı hatırlatıcının **telefonda mı
       masaüstünde mi** kurulduğu — masaüstünde kurulduysa sebep push boşluğudur
       ([#15](https://github.com/mahirozdin/alliswell/issues/15)), bu iş değil.
-- **AÇIK — banner'ın kendisi:** `AlarmProblem.exactAlarmsOff` artık Android 14+'ta
+- **KAPANDI (2026-09-23, sahibin kararıyla) — banner'ın kendisi:** `AlarmProblem.exactAlarmsOff` artık Android 14+'ta
       SESSİZ olmalı (izin kurulumda veriliyor). Yanlış yere çıkan bir uyarı kendi
       başına hatadır; cihaz turunda bakılacak.
 
@@ -9922,6 +9956,7 @@ of 'priority'". Bugün sıralama menüsü YALNIZ Notlar ve Dosyalar'da var
       (Dosyalar sekmesinin kalıbı gerekir) ve OPH-306 zaten düz bir görev
       sıralayıcısı isteyecek. Aynı şeyi iki kez yazmamak için o sekme 306'ya
       bırakıldı.
+      **→ Proje sekmesi OPH-338'e taşındı (Epic 32, 2026-09-23); uzantı ekranı uzantının kendi kaydında.**
 
 ### OPH-306 — Etikete dokun, o etiketin işleri öncelik sırasıyla gelsin
 
@@ -9966,6 +10001,7 @@ filtresi diye bir yüzey yok._
       Home'un mevcut hattından geçiyor), yani 305'in "306 zaten isteyecek"
       gerekçesi **gerçekleşmedi**. O sekme kendi turunu hak ediyor; burada
       sessizce yapılmış gibi bırakılmıyor.
+      **→ OPH-338'e taşındı (Epic 32, 2026-09-23).**
 
 ### OPH-307 — "Bu hafta" güne bölünsün
 
@@ -10679,9 +10715,10 @@ tek uzun transaction'ı (`sync_applier.dart:25`) bu şansı ortadan kaldırır._
       tazelemesini **sonsuza kadar, sessizce** kapatırdı — önlediği hatadan beteri. Bir saatlik
       sınır: bedeli, kesintisiz uzun bir ön plan oturumunda olsa olsa bir gereksiz senkron,
       ki o senkron idempotent.
-- [~] **Damganın tüketicisi henüz yok** — `isForeground()` bugün hiçbir yerden çağrılmıyor.
+- [x] **Damganın tüketicisi henüz yok** — `isForeground()` bugün hiçbir yerden çağrılmıyor.
       Bilinçli: arka plan turu **OPH-321'de** doğuyor ve sözleşmenin sırası `318 → 321`.
       Primitif testli olarak indi, çağıran orada yazılacak.
+      _(2026-09-23 ölçüldü: tüketici OPH-321'de geldi — `notifications/headless.dart:61`.)_
 - **Kabul:** ✅ aynı anda uzun yazma + okuma → `SQLITE_BUSY` yok; ✅ migration testi yeşil ve
       artık yükseltme yolunu **WAL ile** de ölçüyor. App süiti **1675 geçti** (+11).
 - **Bulgu (kapsam DIŞI):** Android bildirim kanalı `.tr()` ile adlandırılıyor ve kanal
@@ -11196,6 +11233,182 @@ cihazdadır.** Sunucu onu henüz görmemiştir._
   `flutter analyze lib/src/sync/` temiz.
 - ⚠️ **Çift kapanış:** ↔ `EE-216` (overlay kaydı: taslak entity'si ve sunucu tarafı
   dönüşüm).
+
+---
+
+## Epic 32 — Planlı kalanların kapanışı: widget kuyruğu, sıralama artığı, sunucu kaynaklı dosya (v1.14.0)
+
+_2026-09-23 taraması: iki backlog'un her `[ ]` / `[~]` / ⏸️ kutusu koda, GitHub'a ve canlı
+siteye karşı ölçüldü. Core'da **planlanmış ama yazılmamış** kod olarak iki şey kaldı:
+Epic 12'nin widget kuyruğu (OPH-132…136'nın açık yarıları) ve OPH-305/306'nın sıralama
+artığı. Geri kalan açıkların çoğu **cihaz turuydu** ve sahip onları aynı gün **yapıldı
+sayarak kapattı** — her kutuda aynı notla, yani kayıt neyin gözlendiğini değil neyin
+kararlaştırıldığını söylüyor. Dört kutu da **zaten kapanmıştı ama işaretlenmemişti**
+(OPH-132'nin tamamlama yarısı, OPH-133'ün etkileşimi, OPH-266, OPH-318); onlar kanıtıyla
+işaretlendi._
+
+_**Turun tek cümlesi: `[ ]` de bir iddiadır — bir kuyruğu kapatmanın ilk adımı, hangi
+kutunun gerçekten açık olduğunu ölçmektir.**_
+
+_**Cihaz gözlemi bu epic'in kapanış koşulu DEĞİL** (sahibin 2026-09-23 kararı). Her iş
+**derleme ve testle** kapanır — `flutter build ios --no-codesign` / `flutter build apk
+--debug` / `flutter build macos` + `flutter analyze` + `flutter test`. Gerçek cihazda
+bakılacak şey işin **"Cihazda bakılacak"** satırına yazılır; o satır bir kutu değildir ve
+kuyruğu bloklamaz._
+
+**Sıra bağlayıcı:** 333 → 334 → 335 → 336 → 337 → 338 → 339. **OPH-340** uzantının
+ikizidir ve onunla aynı turda kapanır (`check:twin-tasks`).
+
+### OPH-333 — Widget'tan hızlı ekleme: `alliswell://add`
+
+**Bağlam:** OPH-132'nin açık yarısı. Tamamlama OPH-188/233'te indi; `widget_callback.dart`
+yalnız `complete` tanıyor ve `core/deep_link.dart`'ın URL sözleşmesinde `add` yok.
+
+- [ ] Widget başlığına **"+"** (iOS: `Link` → `alliswell://add`; Android: başlıkta aynı URL'e
+      giden bir `PendingIntent`). **Arka plan intent'i değil, derin bağlantı:** WidgetKit ve
+      RemoteViews metin alanı taşımaz; yazılacak bir şey yokken arka planda bir süreç
+      doğurmanın anlamı yok — düğme uygulamayı **hızlı ekleme sheet'i açık** getirir.
+- [ ] `core/deep_link.dart` sözleşmesine `add` girer → Home + hızlı ekleme sheet'i; bilinmeyen
+      yol bugünkü gibi hata çıkışına düşer (OPH-189).
+- [ ] Düğmenin erişilebilirlik etiketi i18n'den (en/tr), dokunma hedefi ≥ 44 pt, açık/koyu
+      (kural 11).
+- **Kabul:** `alliswell://add` uygulamayı sheet açık getiriyor (deep-link testi); iki platform
+  derleniyor.
+- **Doğrulama:** deep-link testi + `flutter build ios --no-codesign` + `flutter build apk
+  --debug`; `flutter analyze` sıfır uyarı; `check:i18n` yeşil.
+- **Cihazda bakılacak:** iPhone ve Android widget'ında "+" → sheet açık geliyor.
+- **Yüzey (kural 12):** yeni bir yetenek değil, mevcut hızlı eklemeye yeni bir giriş —
+  MCP/API değişmez.
+
+### OPH-334 — Android widget'ı gece yarısında kendini yeniler
+
+**Bağlam:** OPH-133'ün ertelenmiş kutusu. OPH-321'in periyodik başsız turu
+(`AlarmRefreshWorker.kt` → `widgetCallback` → `runHeadlessRefresh`) senkronlayıp alarmları
+yeniden kuruyor ama **widget'ı çizmiyor** (`main.dart`: *"it redraws nothing"*). iOS aynı
+sorunu timeline'a gece yarısı girdileri koyarak çözdü (OPH-232).
+
+- [ ] Başsız tur bittiğinde widget anlık görüntüsü **yeniden hesaplanır ve çizilir** — gün
+      kovaları uygulama açılmadan döner. Tur veriyi zaten tazeledi; çizmemek, tazelenmiş
+      veriyi ekrana koymamaktır.
+- [ ] Gece yarısı sınırı **ölçülerek** karşılanır: periyodik işin aralığı gece yarısını
+      kaçırabiliyorsa bir sonraki yerel gece yarısına tek seferlik bir iş kurulur (ve kendini
+      yeniden kurar). Hangisinin seçildiği gerekçesiyle koda yazılır.
+- **Kabul:** başsız yol widget'ı güncelliyor (Dart birim testi: dağıtıcı alarm tazelemesinde
+  artık çizimi de istiyor); `flutter build apk --debug` yeşil.
+- **Doğrulama:** `flutter test` (dağıtıcı testleri) + `flutter build apk --debug`.
+- **Cihazda bakılacak:** Android'de widget'ı gece yarısından önce bırak, sabah uygulamayı
+  açmadan kovaların döndüğünü gör.
+- **Yüzey (kural 12):** yok (istemci içi).
+
+### OPH-335 — macOS widget'ı
+
+**Bağlam:** OPH-134. İmza engeli 2026-07-24'te kalktı (STATE "Blocked / notes": macOS ve iOS
+aynı takımda imzalanıyor) ama iş hiç başlamadı — `macos/`'ta WidgetKit yok. iOS eklentisi
+(`ios/AllisWellWidget/`) hazır ve paylaşılabilir SwiftUI görünümleri taşıyor.
+
+- [ ] `macos/Runner.xcodeproj`'a Widget Extension hedefi **betikle** eklenir — CocoaPods'la
+      gelen `xcodeproj` Ruby gem'i hedefi, derleme fazlarını ve gömme adımını yazabilir; elle
+      pbxproj düzenlemek yok (`flutter_launcher_icons` dersi). Betik depoda kalır ve ikinci
+      koşusu hiçbir şey değiştirmez.
+- [ ] **App Sandbox** + `com.apple.security.application-groups` hem `DebugProfile.entitlements`
+      hem `Release.entitlements`'ta ve eklentide; App-Group dizesi Dart `setAppGroupId`,
+      Runner ve eklentide **bayt bayt aynı** (`group.…` mı `<TeamID>.group.…` mı kararı bir kez
+      verilir ve yazılır — macOS `home_widget` takım önekini eklemez).
+- [ ] Görünümler iOS eklentisiyle **paylaşılır** (ortak kaynak — kopya değil);
+      `systemSmall/Medium/Large/ExtraLarge`; derin bağlantı `alliswell://open`; macOS 14+'ta
+      satır tamamlama aynı `AWWidgetCompleteIntent` ile.
+- [ ] **Geri çekilme yazılı:** hedef GUI'siz kurulamıyorsa ya da `flutter build macos`'u
+      kırmızıya düşürüyorsa, iş OPH-131'in kalıbına döner — Swift + `SETUP.md` devri, bu kutu
+      `[~]` + gerekçe. **Derleme hiçbir koşulda kırmızı bırakılmaz.**
+- **Kabul:** `flutter build macos` yeşil ve `.appex` uygulamanın içinde
+  (`find build/macos -name '*.appex'`); iOS derlemesi etkilenmedi.
+- **Doğrulama:** `flutter build macos` + `flutter build ios --no-codesign` + `flutter analyze`.
+- **Cihazda bakılacak:** macOS masaüstüne/Bildirim Merkezi'ne widget ekle, açık/koyu, tamamla.
+- **Yüzey (kural 12):** yok.
+
+### OPH-336 — Widget yapılandırması ve kilit ekranı widget'ları
+
+**Bağlam:** OPH-135'in ilk iki kutusu. WIDGETS.md §9 "configurable per instance" desenini
+(Things/Todoist) ve iOS kilit ekranı ailelerini zaten tarif ediyor.
+
+- [ ] **Örnek başına seçim:** iOS 17+ `AppIntentConfiguration` (bir widget'ın hangi listeyi
+      gösterdiği: Home'un tamamı ya da tek bir proje); Android'de yapılandırma activity'si.
+      Dart seçilebilir listeleri anlık görüntüye yazar; **filtre saf Dart'ta** ve testli
+      (`groupTasksForWidget`'ın yanında) — native taraf yalnız seçer.
+- [ ] **Kilit ekranı (iOS 16+):** `accessoryRectangular` ("sıradaki görev") ve
+      `accessoryCircular` (bugün açık sayısı). OPH-337'nin gizlilik modu bunlara da uygulanır.
+- **Kabul:** yapılandırılmış bir widget yalnız seçilen projeyi gösteriyor (Dart filtre
+  testi); kilit ekranı aileleri derleniyor; yapılandırmasız davranış bugünkü gibi.
+- **Doğrulama:** `flutter test` (filtre + anlık görüntü) + iOS/Android derlemeleri.
+- **Cihazda bakılacak:** iki widget'ı iki farklı projeyle kur; kilit ekranına ekle.
+- **Yüzey (kural 12):** yok (cihaz içi görünüm tercihi).
+
+### OPH-337 — Widget yoğunluğu ve "Gizli widget"
+
+**Bağlam:** OPH-135'in üçüncü kutusu; OPH-064'ün bildirim gizliliği ahlakı (WIDGETS.md §9).
+
+- [ ] Ayarlar'da "Widget" grubu (DESIGN §32'nin gelişmiş ayarlar düzenine uyar):
+      **yoğunluk** (normal/sıkı) ve **Gizli widget**.
+- [ ] **Gizlilik anlık görüntüde uygulanır, native'de değil:** gizli moddayken App Group'a /
+      SharedPreferences'a **başlık hiç yazılmaz** — sayılar ve yer tutucular yazılır. Başlığı
+      yazıp native tarafa "gösterme" demek, metni uygulamanın dışına çıkarmaktır.
+- [ ] i18n (en/tr), kontrast (`python3 scripts/design/contrast.py` FAILURES: 0), açık/koyu.
+- **Kabul:** gizli moddayken yazılan JSON'da hiçbir görev başlığı yok (birim testi JSON'u
+  okuyarak ölçer); yoğunluk iki platformda da çiziliyor.
+- **Doğrulama:** `flutter test` + derlemeler + `check:i18n`.
+- **Cihazda bakılacak:** gizli modu aç, widget'ta başlık görünmediğini gör.
+- **Yüzey (kural 12):** ayar cihaz-yereldir (tarih biçimi ve hatırlatıcı profili gibi);
+  sunucu tarafı ayar deposu parking lot'ta — MCP/API değişmez.
+
+### OPH-338 — Proje detayındaki Görevler sekmesine sıralama
+
+**Bağlam:** OPH-305'in bilinçli olarak dar tuttuğu, OPH-306'nın da almadığı artık (ikisinin
+"AÇIK" notları). Home'un sıralayıcısı `kTaskSortChoices` hazır; araç çubuğu kalıbı Dosyalar
+sekmesinde.
+
+- [ ] Görevler sekmesine sıralama denetimi (Dosyalar sekmesinin araç çubuğu kalıbı);
+      seçenekler `kTaskSortChoices`'tan — ikinci bir sıralama tanımı doğmaz.
+- [ ] Seçim, Home'un sıralama seçiminin saklandığı biçimde saklanır (ölçülür, aynısı
+      kullanılır).
+- **Kabul:** sekme seçilen düzene göre diziliyor (widget testi, en az iki düzen).
+- **Doğrulama:** `flutter test` + `flutter analyze` + `check:i18n`.
+- **Yüzey (kural 12):** görünüm tercihi, yeni bir yetenek değil — MCP/API değişmez.
+
+### OPH-339 — Widget belgeleri, README ve ROADMAP doğruluğu
+
+**Bağlam:** OPH-136'nın belge kutuları + 2026-09-23 taramasının bulduğu bayat iddialar.
+
+- [ ] `docs/WIDGETS.md` §0 durum tablosu gerçeğe göre: Android'de widget'tan tamamlama
+      **indi** (OPH-188 — tablo hâlâ "the Android bit stay deferred" diyor), hızlı ekleme
+      (OPH-333), gece yarısı (OPH-334), macOS (OPH-335), yapılandırma/kilit ekranı (OPH-336),
+      yoğunluk/gizlilik (OPH-337). İki "double-check" bayrağı derleme gerçeğiyle kapanır
+      (Android RemoteViews kullanıyor, Glance değil; Apple aile adları `supportedFamilies`'ten).
+- [ ] README'ye "Widgets" bölümü — mevcut görüntülerle (`screenshots/ios/12-widget.png`,
+      `13-widget-dark.png`) ve self-host edenler için kısa bir "nasıl".
+- [ ] BLUEPRINT §12.8/§15.6 doğru; ROADMAP'te bitmiş fazların ⏳ işaretleri (Phase 7, 10, 15,
+      16) ✅ olur ve "Toward v1.14.0" Epic 32'yi de anar; CHANGELOG `[Unreleased]`.
+- **Kabul:** `check:docs` yeşil; WIDGETS.md'de koda aykırı bir satır kalmıyor.
+- **Doğrulama:** `node scripts/docs/check.mjs`.
+- **Yüzey (kural 12):** yok (belge).
+
+### OPH-340 — Sunucu kaynaklı dosya: API'nin kendi aldığı baytları yazabilmesi (ADR-0011 notu)
+
+**Bağlam:** Sahibin 2026-09-23 kararı — **dar istisna**. ADR-0011'in kuralı (*"bytes go
+client↔bucket via presigned URLs, the API never proxies them"*) istemci yüklemeleri için
+aynen kalır. İstisna yalnız **istemcisi olmayan** bir dosya içindir: sunucunun kendisinin
+aldığı bir dosyayı depolamaya yazacak başka bir taraf yok.
+
+- [ ] Depolama dikişine sunucu tarafı yazma (`PutObject`) ve bir `files` satırını bu yolla
+      doğuran tek bir yardımcı. **CE'de çağıranı yok** ve CE davranışı değişmez.
+- [ ] İstisna, istemci yolundaki korumaların **hepsini** taşır: `maxUploadBytes`, içerik
+      türünün **ilk baytlardan** belirlenmesi (ada güvenilmez), ve OPH-331'in yükleme
+      guard'ları **ölçülen** boyutla — kota bu yoldan kaçamaz.
+- [ ] ADR-0011'e istisna cümlesi: kim kullanabilir, neden, hangi korumalarla; ve neyin
+      istisna **olmadığı** (istemci baytlarını API üzerinden geçirmek hâlâ yasak).
+- **Kabul:** dikiş sahte depolamayla birim testli; MinIO'ya karşı entegrasyon testi (sandbox)
+  yazıyor, satırı doğuruyor, guard'a soruyor; tavanı aşan dosya reddediliyor.
+- **Doğrulama:** API unit + integration (sandbox), `check:no-ee` yeşil.
+- ⚠️ **Çift kapanış:** ↔ `EE-231` (uzantı kaydı: bu dikişin ilk çağıranı).
 
 ---
 
