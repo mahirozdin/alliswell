@@ -55,6 +55,14 @@ export async function loadEeOverlay(app) {
     // four built-in kinds live in `routes/files.js` and nothing else is
     // accepted.
     attachmentTargets: Object.create(null),
+    // OPH-331: guards an extension may put in front of an upload. Empty here
+    // IS the plain build — CE has one ceiling (`maxUploadBytes`, per file) and
+    // that is the whole policy.
+    //
+    // `attachmentTargets` answers "may this file exist HERE"; this answers
+    // "may this file exist AT ALL, given how much already does". They are
+    // different questions and the second one CE does not ask.
+    uploadGuards: [],
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -281,6 +289,38 @@ function buildSeam(state) {
         throw new Error('registerAiConnectionResolver: a function is required');
       }
       state.aiConnectionResolvers.push(resolver);
+    },
+
+    /**
+     * Upload guard (OPH-331): `async (ctx) => { code, message } | null`,
+     * where `ctx` is `{ app, db, request, workspaceId, sizeBytes, phase }`.
+     *
+     * Consulted TWICE for an ordinary upload, and the pair is the point:
+     *
+     *   phase `declare`  the client has said how big the file will be and no
+     *                    bytes have moved. A refusal here costs nothing, so
+     *                    it is worth making early.
+     *   phase `commit`   the object is in storage and its size was verified
+     *                    by HeadObject. A refusal here is the one that cannot
+     *                    be lied to — the declare phase trusts a number the
+     *                    caller chose.
+     *
+     * That split is EE-117's, which learned it on transcription minutes: "an
+     * uploader can claim a duration and a claim is not a measurement." The
+     * same shape applies to bytes, and for the same reason: without the second
+     * check, one honest-looking declaration per request is enough to walk a
+     * whole tenant past any ceiling by opening many uploads at once.
+     *
+     * Returning a code refuses the upload; returning null allows it. Guards
+     * run in registration order and the first refusal wins. An extension that
+     * registers none — or a build with no extension — behaves exactly as
+     * before, which is why CE needs no branch for this.
+     */
+    registerUploadGuard(guard) {
+      if (typeof guard !== 'function') {
+        throw new Error('registerUploadGuard: a function is required');
+      }
+      state.uploadGuards.push(guard);
     },
 
     /**

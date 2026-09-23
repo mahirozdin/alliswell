@@ -23,6 +23,26 @@ import { recordSyncWrite } from '../db/sync.js';
 import { notifyEntityWrite } from '../lib/ee.js';
 import { storageKeyFor, softDeleteReadyFile } from '../db/files.js';
 
+/**
+ * OPH-331 — ask every registered upload guard, refuse on the first no.
+ *
+ * Lives here rather than in `lib/ee.js` because the REFUSAL is an HTTP
+ * concern: a guard answers with a code and a sentence, and turning that into
+ * a 4xx is the route's job. `lib/ee.js` stays a registry.
+ *
+ * A build with no extension has an empty list and pays one `?? []`.
+ */
+async function runUploadGuards(app, ctx) {
+  for (const guard of app.ee?.uploadGuards ?? []) {
+    const refusal = await guard({ app, db: app.db, ...ctx });
+    if (!refusal) continue;
+    throw coded(
+      app.httpErrors.forbidden(refusal.message ?? 'This upload was refused'),
+      refusal.code ?? 'FILE_UPLOAD_REFUSED',
+    );
+  }
+}
+
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
 // Round 8 (OPH-169, ADR-0014): `workspace` = a standalone file (target_id is
@@ -261,6 +281,16 @@ export default async function fileRoutes(app) {
         }
       }
 
+      // OPH-331. The DECLARE phase: the caller has said how big this will be
+      // and no bytes have moved, so a refusal here is the cheap one. It is
+      // also the one that can be lied to — see the commit-phase check.
+      await runUploadGuards(app, {
+        request,
+        workspaceId,
+        sizeBytes,
+        phase: 'declare',
+      });
+
       const id = newId();
       const row = {
         id,
@@ -335,6 +365,21 @@ export default async function fileRoutes(app) {
           'FILE_UPLOAD_MISMATCH',
         );
       }
+
+      // OPH-331. The COMMIT phase, and the reason there are two: `head.size`
+      // was measured by storage, not claimed by the caller. Without this,
+      // opening many uploads at once — each individually under the ceiling —
+      // walks straight past it, because at declare time none of them had
+      // landed yet. A guard that refuses here leaves the object in storage
+      // and the row `uploading`; the 24h sweep reaps both, which is the same
+      // path an abandoned upload already takes.
+      await runUploadGuards(app, {
+        request,
+        workspaceId: row.workspace_id,
+        sizeBytes: head.size,
+        fileId: row.id,
+        phase: 'commit',
+      });
 
       let fresh;
       await app.db.transaction(async (trx) => {

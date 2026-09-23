@@ -11113,6 +11113,32 @@ taşıyor: kimlik bilgisi olmayan bir kurulumda hiçbir şey değişmiyor.)
 
 ---
 
+### OPH-331 — Yükleme dikişi: uzantı bir yüklemeye HAYIR diyebilsin ✅ 2026-09-23
+
+_Planlanmamıştı; uzantı tarafında EE-221 bağlanırken ölçümle doğdu. Ölçüm şuydu:
+`routes/files.js`'te uzantının tek kancası `attachmentTargets` ve o **"bu dosya BURAYA
+asılabilir mi"** sorusunu cevaplıyor. **"Bu dosya HİÇ var olabilir mi"** diye soran bir
+kanca yok — yani bir uzantı, ADR-0002 §1'i çiğnemeden bir depolama tavanı uygulayamıyordu._
+
+- [x] `registerUploadGuard(guard)` dikişi: `async (ctx) => { code, message } | null`.
+      CE'de liste **boş** ve boş liste tam olarak CE davranışıdır — çekirdeğin tek tavanı
+      `maxUploadBytes`'tır (dosya başına) ve politikanın tamamı odur.
+- [x] **İKİ FAZDA sorulur, ve çifti asıl mesele:** `declare` çağıranın BEYAN ettiği boyutla
+      (henüz bayt kıpırdamadı — bedava bir ret erken yapılmaya değer), `commit` ise
+      storage'ın HeadObject ile **ölçtüğü** boyutla. EE-117 bunu deşifre dakikalarında
+      öğrenmişti: *"an uploader can claim a duration and a claim is not a measurement."*
+      Tek faz bırakmak, aynı anda çok sayıda yükleme açarak her birini tek tek tavanın
+      altında göstermeye ve toplamda tavanı aşmaya izin verirdi.
+- [x] Ret, rotanın işi: guard bir kod ve bir cümle döndürür, onu 4xx'e çeviren
+      `routes/files.js`'in kendi yardımcısıdır. `lib/ee.js` bir **kayıt defteri** olarak
+      kalır — HTTP oraya sızmaz.
+- **Kabul:** uzantısız bir derlemede davranış **birebir aynı** (boş liste, bir `?? []`);
+  uzantı bir guard kaydettiğinde iki faz da ona sorulur.
+- **Doğrulama:** EE tarafında `storage-quota.integration.test.js` dikişi **doğrudan**
+  ölçüyor (`app.ee.uploadGuards` uzunluğu ve iki fazın aynı cevabı), ve guard'ın
+  kaydedilmemesi **enjeksiyonla kırmızı** kanıtlandı.
+- ⚠️ **Çift kapanış:** ↔ `EE-221` (uzantı kaydı: depolama kotasının kendisi).
+
 ### OPH-330 — Replika v32: cihazın KENDİ yazdığı ilk uzantı tablosu ✅ 2026-09-22
 
 _Planlanmamıştı; uzantı tarafında EE-216 bağlanırken doğdu. Önceki dört uzantı tablosu
