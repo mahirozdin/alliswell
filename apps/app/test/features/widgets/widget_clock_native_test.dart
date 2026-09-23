@@ -80,10 +80,27 @@ void main() {
       );
       expect(
         swift,
-        contains('awRowBudget(context.family)'),
+        contains('awRowBudget(family, titled: list != nil)'),
         reason:
             'the row count depends on the widget SIZE; an extraLarge draws 18 '
             'rows where a medium draws 4, and the archive scales with it',
+      );
+      // OPH-336 lifted the timeline out of AWProvider into `awTimeline`, so
+      // the size has to be handed in — by BOTH providers, or one of them
+      // budgets a medium widget's clock for an extraLarge's rows.
+      expect(
+        swift,
+        contains(
+          'awTimeline(snapshot: loadAWSnapshot(), list: nil, '
+          'family: context.family)',
+        ),
+      );
+      expect(
+        swift,
+        contains(
+          'awTimeline(snapshot: picked.snapshot, list: picked.list, '
+          'family: context.family)',
+        ),
       );
     });
 

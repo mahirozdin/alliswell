@@ -8,6 +8,7 @@ import '../../core/day_boundary.dart';
 import '../../core/kv/local_kv.dart';
 import '../../core/persisted_prefs.dart';
 import '../../sync/db/database.dart';
+import '../projects/data/project.dart';
 import '../projects/data/project_store.dart';
 import '../projects/providers.dart';
 import '../tasks/data/task.dart';
@@ -26,11 +27,13 @@ class WidgetBridge {
   bool _configured = false;
 
   /// Serialize [tasks] into the snapshot and push it. [projectColorById] maps a
-  /// task's `projectId` to its `#RRGGBB` color.
+  /// task's `projectId` to its `#RRGGBB` color; [projects] are the lists a
+  /// widget can be set to (OPH-336), in the app's order.
   Future<void> publish(
     List<Task> tasks, {
     required DateTime now,
     Map<String, String> projectColorById = const {},
+    Iterable<Project> projects = const [],
     String dateFormat = kAwSystemDateFormat,
   }) async {
     if (!_configured) {
@@ -41,6 +44,7 @@ class WidgetBridge {
       tasks,
       now: now,
       projectColorById: projectColorById,
+      projects: projects,
       dateFormat: dateFormat,
     );
     await _host.save(kWidgetSnapshotKey, jsonEncode(snapshot.toJson()));
@@ -57,8 +61,9 @@ final widgetBridgeProvider = Provider<WidgetBridge>(
 ///
 /// It asks the SAME questions [widgetSyncProvider] asks the live graph, one
 /// store call each: open tasks plus today's completed ones
-/// (`watchOpen(completedSince:)` — OPH-185's dimmed rows), every project's
-/// color, and the user's date format. A second definition of "what the widget
+/// (`watchOpen(completedSince:)` — OPH-185's dimmed rows), every project (its
+/// color, and since OPH-336 the lists a widget can be set to), and the user's
+/// date format. A second definition of "what the widget
 /// shows" is how a background redraw ends up disagreeing with the app.
 ///
 /// [now] is the whole point of calling this at midnight: the rows are the
@@ -89,6 +94,7 @@ Future<bool> publishWidgetFromReplica(
       projectColorById: {
         for (final project in projects) project.id: project.colorRgb,
       },
+      projects: projects,
       dateFormat: dateFormat,
     );
     return true;
@@ -133,6 +139,9 @@ final widgetSyncProvider = Provider<void>((ref) {
         tasks,
         now: DateTime.now(),
         projectColorById: colors,
+        // The map keeps the list's order (sort order, then creation) — the
+        // order the widget's list picker offers them in (OPH-336).
+        projects: projects.values,
         dateFormat: dateFormat,
       );
 });

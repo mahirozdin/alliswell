@@ -15,4 +15,9 @@
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- OPH-336: the widget's configure screen — a system dialog, tinted with
+         the widget's own accent (W1, the same token the "+" uses). -->
+    <style name="AwWidgetConfigTheme" parent="@android:style/Theme.Material.Dialog">
+        <item name="android:colorAccent">@color/aw_widget_accent</item>
+    </style>
 </resources>

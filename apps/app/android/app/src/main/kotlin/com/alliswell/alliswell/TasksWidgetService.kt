@@ -1,8 +1,8 @@
 package com.alliswell.alliswell
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
@@ -15,8 +15,13 @@ const val EXTRA_ACTION = "aw_action"
 const val EXTRA_TASK_ID = "aw_task_id"
 
 class TasksWidgetService : RemoteViewsService() {
+  // OPH-336: the factory is per widget (the provider makes each widget's
+  // intent unique), and it needs the id to know which list that widget shows.
   override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
-    TasksRemoteViewsFactory(applicationContext)
+    TasksRemoteViewsFactory(
+      applicationContext,
+      intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID),
+    )
 }
 
 private data class Row(
@@ -32,6 +37,7 @@ private data class Row(
 
 class TasksRemoteViewsFactory(
   private val context: Context,
+  private val widgetId: Int,
 ) : RemoteViewsService.RemoteViewsFactory {
 
   private var rows: List<Row> = emptyList()
@@ -66,7 +72,7 @@ class TasksRemoteViewsFactory(
       views.setViewVisibility(R.id.aw_time, View.GONE)
     }
 
-    val color = parseColor(row.color)
+    val color = parseWidgetColor(row.color)
     if (color != null) {
       views.setTextViewText(R.id.aw_dot, "●")
       views.setTextColor(R.id.aw_dot, color)
@@ -95,9 +101,11 @@ class TasksRemoteViewsFactory(
 
   private fun load(): List<Row> {
     val raw = HomeWidgetPlugin.getData(context)
-      .getString("aw_widget_snapshot", null) ?: return emptyList()
+      .getString(KEY_SNAPSHOT, null) ?: return emptyList()
     return try {
-      val buckets = JSONObject(raw).getJSONArray("buckets")
+      // OPH-336: this widget's list — the whole one, or its project's view.
+      val shown = selectWidgetView(JSONObject(raw), TasksWidgetConfig.listFor(context, widgetId))
+      val buckets = shown.getJSONArray("buckets")
       val out = mutableListOf<Row>()
       for (b in 0 until buckets.length()) {
         val bucket = buckets.getJSONObject(b)
@@ -122,15 +130,6 @@ class TasksRemoteViewsFactory(
       out
     } catch (_: Exception) {
       emptyList()
-    }
-  }
-
-  private fun parseColor(hex: String?): Int? {
-    if (hex.isNullOrEmpty()) return null
-    return try {
-      Color.parseColor(if (hex.startsWith("#")) hex else "#$hex")
-    } catch (_: Exception) {
-      null
     }
   }
 }

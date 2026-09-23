@@ -23,7 +23,9 @@
 | In-widget complete (App Intents) | ✅ **iOS ships it (round 15, OPH-233):** a widget-process `AWWidgetCompleteIntent` stamps the shared snapshot + queues the completion — see §4's warning about LiveActivityIntent. ✅ **Android too** (OPH-188): a row's circle is a broadcast (`ACTION_ROW` → `complete`) that runs the Dart callback without launching the app |
 | Quick-add "+" | ✅ **both platforms (OPH-333):** `alliswell://add` opens the app ON the Home create sheet — a deep link, not an intent (a widget cannot take a title). iOS: closes the date header on large/extraLarge, a narrow trailing column on medium; Android: closes the header. The router turns the link into a one-shot request Home consumes — see `core/deep_link.dart` |
 | macOS widget | 🟡 **code complete, one account step away (OPH-335):** the SwiftUI source is shared with iOS (macOS 14+); the app ↔ widget bridge is live in the app (`AWMacWidgetBridge` — `home_widget` has no macOS side, so the app answers `alliswell/widget` itself and drains the widget's taps); the target is added by `macos/scripts/add_widget_extension.rb`, verified on a copy, and waits for the account holder to sign the extension's own bundle id — `macos/AllisWellWidgetMac/SETUP.md` |
-| Configurable list, accessory tier, private-widget | ⏳ Epic 32: OPH-336 (configuration + lock-screen families), OPH-337 (density + private widget) |
+| Per-widget list | ✅ **both platforms, built (OPH-336):** each placed widget shows the whole list (the default — unconfigured widgets are unchanged) or one project. The app writes every list into the snapshot (`lists` + `views`, §3.1) and the filter is Dart's (`filterTasksForWidgetList`); native code only picks an id. iOS 17+/macOS 14+: `AppIntentConfiguration` (`AWWidgetConfigIntent`, a searchable project list); iOS 16 keeps the unconfigurable widget under the same kind. Android: `TasksWidgetConfigureActivity`, `configuration_optional` on 12+ (long-press → reconfigure) |
+| Lock screen (iOS 16+) | ✅ **built (OPH-336):** `accessoryRectangular` — the next task (`next` in the snapshot: overdue first, dateless last) with its bucket and time in words; `accessoryCircular` — today's open count, a tick at zero. They follow the widget's list setting. iOS only — the families do not exist on macOS |
+| Density, private widget | ⏳ Epic 32: OPH-337 |
 | Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design |
 | Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android and the other families still pending |
 
@@ -80,8 +82,9 @@ Height` (cells) **and** legacy `minWidth/minHeight` dp (`70·n − 30` rule) wit
 `resizeMode="horizontal|vertical"` + sensible `minResize*`/`maxResize*`.
 
 **Lock-screen / StandBy** accessory families (`accessoryCircular/Rectangular/
-Inline`, iOS 16+) are a separate, tiny surface — a good bonus tier ("next task",
-count) tracked under OPH-136, not one of the three main sizes.
+Inline`, iOS 16+) are a separate, tiny surface, not one of the three main sizes.
+OPH-336 ships two: `accessoryRectangular` (the next task) and `accessoryCircular`
+(today's open count). They are iOS-only — the SDK marks them unavailable on macOS.
 
 ## 3. Data bridge — app → widget
 
@@ -155,6 +158,37 @@ added at the top level:
 - **Row `id` is not optional decoration.** It is already in the contract above, but
   the Android factory dropped it — without it there is no per-row completion and no
   per-row deep link. Any consumer that discards `id` is a bug (OPH-188).
+
+**Rev. 2026-09-23 (OPH-336): schema `v: 4`** (v3 was OPH-253's `clockFormat`). Three
+optional fields, added **beside** the v3 ones — the whole list stays at the top level
+where it always was, so an unconfigured widget and a pre-v4 widget read exactly what
+they read before:
+
+```jsonc
+  "next": { "id": "01H…", "title": "Teklifi bitir", "bucket": "overdue",
+            "label": "Gecikmiş", "time": "10 Tem" },     // the lock screen's row
+  "lists": [ { "id": "all", "name": "Tüm görevler" },     // what a widget can be set to
+             { "id": "01J…", "name": "İş", "color": "#2563EB" } ],
+  "views": { "01J…": { "openToday": 2, "openTodayLabel": "2 açık",
+                       "next": { … }, "buckets": [ … ] } } // one per project in `lists`
+```
+
+- **The filter is Dart's.** `filterTasksForWidgetList` (next to `groupTasksForWidget`)
+  decides what a project's list holds, and every view is built by the same function as
+  the whole list. Native code picks `views[id]` and draws it; no Swift or Kotlin file
+  reads a task's project (a test pins that).
+- **Offered lists:** `all` first, then every project a task can be filed under — not
+  the archived ones (the task picker's rule) — in the Projects screen's order.
+- **An empty project still has a view** (`{"buckets": []}`), so its widget says "all
+  caught up". A widget falls back to the whole list only for an id `views` has never
+  heard of — a project deleted or archived since it was set up.
+- **`next`** is the first open task in the widget's bucket order — overdue, today,
+  this week, this month — with dateless tasks last: they are every day's work, so
+  nobody's "next" while something dated is open (`nextTaskForWidget`).
+- **Each view carries its own `openTodayLabel`**, because `strings.openToday` spells the
+  whole list's number.
+- New `strings`: `upNext` (the rectangle's heading) and `chooseList` (the Android
+  configure screen's title).
 
 - **N per bucket is per-size** (§5): medium shows few, large ~8–10, extraLarge
   more. Truncation is honest — show a "+N more" affordance, never silently drop

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One choice on the widget's configure screen (OPH-336): the project's color,
+     its name, and a radio check on the list the widget shows now. 56dp rows —
+     well over the 44dp tap floor (rule 11). Bound in
+     TasksWidgetConfigureActivity. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="56dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="24dp"
+    android:paddingEnd="16dp">
+
+    <TextView
+        android:id="@+id/aw_config_dot"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:textSize="14sp"
+        android:importantForAccessibility="no"
+        tools:ignore="HardcodedText"
+        android:text="●" />
+
+    <CheckedTextView
+        android:id="@+id/aw_config_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:checkMark="?android:attr/listChoiceIndicatorSingle"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="?android:attr/textAppearanceListItem" />
+</LinearLayout>

@@ -21,6 +21,10 @@ import org.json.JSONObject
  * RemoteViews collection (TasksWidgetService).
  *
  * Snapshot key must match widget_host.dart (`aw_widget_snapshot`).
+ *
+ * OPH-336: each placed widget shows the list it is set to (the whole list by
+ * default; TasksWidgetConfigureActivity changes it). The app computed every
+ * list — this only draws the chosen part (`selectWidgetView`, WidgetLists.kt).
  */
 class TasksWidgetProvider : HomeWidgetProvider() {
 
@@ -66,12 +70,16 @@ class TasksWidgetProvider : HomeWidgetProvider() {
   ) {
     for (widgetId in appWidgetIds) {
       val views = RemoteViews(context.packageName, R.layout.tasks_widget)
+      val listId = TasksWidgetConfig.listFor(context, widgetId)
 
       // Date header (from the snapshot).
-      val raw = widgetData.getString("aw_widget_snapshot", null)
+      val raw = widgetData.getString(KEY_SNAPSHOT, null)
       if (raw != null) {
         try {
           val snap = JSONObject(raw)
+          // OPH-336: the part of the snapshot this widget's list is — the top
+          // level for the whole list, a project's `views` entry otherwise.
+          val shown = selectWidgetView(snap, listId)
           val date = snap.getJSONObject("date")
           views.setTextViewText(R.id.aw_day, date.optString("day"))
           views.setTextViewText(R.id.aw_weekday, date.optString("weekday"))
@@ -99,8 +107,12 @@ class TasksWidgetProvider : HomeWidgetProvider() {
           // OPH-187 #4B: today's open count. `optInt` returns 0 for a v1
           // snapshot that has no such field — which is also the "hide it"
           // value, so an older app degrades to exactly the old header.
-          val openToday = snap.optInt("openToday", 0)
-          val openLabel = snap.optJSONObject("strings")?.optString("openToday")
+          // OPH-336: the count of the list this widget shows, in its own
+          // words — `strings.openToday` spells the WHOLE list's number.
+          val openToday = shown.optInt("openToday", 0)
+          val openLabel = shown.optString("openTodayLabel").ifEmpty {
+            snap.optJSONObject("strings")?.optString("openToday").orEmpty()
+          }
           if (openToday > 0) {
             views.setTextViewText(
               R.id.aw_open_today,
@@ -109,6 +121,23 @@ class TasksWidgetProvider : HomeWidgetProvider() {
             views.setViewVisibility(R.id.aw_open_today, View.VISIBLE)
           } else {
             views.setViewVisibility(R.id.aw_open_today, View.GONE)
+          }
+          // OPH-336: a widget set to one project names it, in its color —
+          // two widgets set to two projects must be told apart at a glance.
+          // The whole list draws no title, exactly as before.
+          val list = selectedWidgetList(snap, listId)
+          if (list != null) {
+            views.setTextViewText(R.id.aw_list_name, list.name)
+            val dot = parseWidgetColor(list.color)
+            if (dot != null) {
+              views.setTextColor(R.id.aw_list_dot, dot)
+              views.setViewVisibility(R.id.aw_list_dot, View.VISIBLE)
+            } else {
+              views.setViewVisibility(R.id.aw_list_dot, View.GONE)
+            }
+            views.setViewVisibility(R.id.aw_list_bar, View.VISIBLE)
+          } else {
+            views.setViewVisibility(R.id.aw_list_bar, View.GONE)
           }
         } catch (_: Exception) {
           views.setViewVisibility(R.id.aw_header, View.GONE)
@@ -159,5 +188,11 @@ class TasksWidgetProvider : HomeWidgetProvider() {
       appWidgetManager.updateAppWidget(widgetId, views)
       appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.aw_list)
     }
+  }
+
+  // OPH-336: a removed widget's list choice goes with it.
+  override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+    TasksWidgetConfig.forget(context, appWidgetIds)
+    super.onDeleted(context, appWidgetIds)
   }
 }

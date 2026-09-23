@@ -136,7 +136,8 @@ void main() {
         task('t', DateTime(2026, 8, 10, 16)),
       ], now: now);
 
-      expect(snap.version, 3);
+      // The field arrived in v3; the literal pin lives in deep_link_test.
+      expect(snap.version, greaterThanOrEqualTo(3));
       expect(snap.clockFormat, 'h:mm\u202Fa');
       expect(snap.toJson()['clockFormat'], 'h:mm\u202Fa');
       // The header and the row it sits above resolve from the same preference —

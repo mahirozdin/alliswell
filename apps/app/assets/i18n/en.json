@@ -783,7 +783,12 @@
     },
     "allCaughtUp": "All caught up",
     "addTask": "Add task",
-    "openToday": "{count} open"
+    "openToday": "{count} open",
+    "upNext": "Up next",
+    "chooseList": "Show in this widget",
+    "list": {
+      "all": "All tasks"
+    }
   },
   "file": {
     "add": "Add file",

@@ -782,7 +782,12 @@
     },
     "allCaughtUp": "Her şey tamam",
     "addTask": "Görev ekle",
-    "openToday": "{count} açık"
+    "openToday": "{count} açık",
+    "upNext": "Sıradaki",
+    "chooseList": "Bu widget'ta göster",
+    "list": {
+      "all": "Tüm görevler"
+    }
   },
   "file": {
     "add": "Dosya ekle",

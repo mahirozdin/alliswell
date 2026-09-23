@@ -146,6 +146,21 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/tasks_widget_info" />
         </receiver>
+        <!-- OPH-336: which list a placed widget shows. Exported because the
+             launcher starts it (it accepts only this app's widget ids); its own
+             empty task affinity so finishing it returns to the home screen, not
+             into the app. -->
+        <activity
+            android:name=".TasksWidgetConfigureActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:label="@string/aw_widget_choose_list"
+            android:theme="@style/AwWidgetConfigTheme">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
         <service
             android:name=".TasksWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"

@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../core/date_format.dart';
 
 import '../../i18n/i18n.dart';
+import '../projects/data/project.dart';
 import '../tasks/data/task.dart';
 import 'widget_clock.dart';
 import 'widget_grouping.dart';
@@ -22,7 +23,13 @@ import 'widget_grouping.dart';
 /// product rule and stays here (W9, and OPH-174's "the widget speaks the app's
 /// format"). Same tolerance rule as v2: an older snapshot has no `clockFormat`
 /// and the widget falls back to the locale's own clock.
-const int kWidgetSnapshotVersion = 3;
+///
+/// **v4 (OPH-336):** adds `next` (the lock screen's one row), `lists` (what a
+/// widget can be set to) and `views` (each project's own buckets, count and
+/// next task). The whole list stays at the top level, where v3 put it, so an
+/// unconfigured widget — and a widget from before v4 — reads exactly what it
+/// always read. Same tolerance rule again: every new field is optional.
+const int kWidgetSnapshotVersion = 4;
 
 /// How many rows per bucket the snapshot carries; the native layer trims further
 /// per widget size. The largest tier shows the most, so keep this generous.
@@ -103,6 +110,86 @@ class WidgetDateHeader {
   };
 }
 
+/// The lock screen's one row (OPH-336): the task [nextTaskForWidget] picked,
+/// with its bucket's label and its time already in the user's words and
+/// format.
+class WidgetNextTask {
+  const WidgetNextTask({
+    required this.id,
+    required this.title,
+    required this.bucket,
+    required this.label,
+    this.time,
+  });
+
+  final String id;
+  final String title;
+
+  /// The bucket's key (`overdue`, `today`, …), as a bucket carries it.
+  final String bucket;
+
+  /// The bucket's localized label ("Overdue", "Bugün"). The lock screen is
+  /// drawn in one tint, so this word — not a red — is what says it is late.
+  final String label;
+
+  /// The same short label a row carries (HH:mm today, a short date otherwise).
+  final String? time;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'bucket': bucket,
+    'label': label,
+    if (time != null) 'time': time,
+  };
+}
+
+/// One entry in the widget's list picker (OPH-336) — what the iOS
+/// configuration sheet and the Android configure screen offer. Pre-localized
+/// like every other widget word: the whole list's name comes from the app.
+class WidgetListChoice {
+  const WidgetListChoice({required this.id, required this.name, this.color});
+
+  final String id;
+  final String name;
+
+  /// The project's `#RRGGBB`; null for the whole list.
+  final String? color;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    if (color != null) 'color': color,
+  };
+}
+
+/// What a widget set to one project draws (OPH-336): the three things the
+/// snapshot's top level carries for the whole list, computed from that
+/// project's tasks alone.
+class WidgetListView {
+  const WidgetListView({
+    required this.openToday,
+    required this.openTodayLabel,
+    required this.buckets,
+    this.next,
+  });
+
+  final int openToday;
+
+  /// The count in words ("2 open"). The top level's `strings.openToday` spells
+  /// the WHOLE list's number, so a project view carries its own.
+  final String openTodayLabel;
+  final List<WidgetBucketData> buckets;
+  final WidgetNextTask? next;
+
+  Map<String, dynamic> toJson() => {
+    if (openToday > 0) 'openToday': openToday,
+    if (openToday > 0) 'openTodayLabel': openTodayLabel,
+    if (next != null) 'next': next!.toJson(),
+    'buckets': [for (final bucket in buckets) bucket.toJson()],
+  };
+}
+
 class WidgetSnapshot {
   const WidgetSnapshot({
     required this.version,
@@ -113,6 +200,9 @@ class WidgetSnapshot {
     required this.strings,
     required this.openToday,
     required this.clockFormat,
+    this.next,
+    this.lists = const [],
+    this.views = const {},
   });
 
   final int version;
@@ -136,6 +226,20 @@ class WidgetSnapshot {
   /// so it carries no translations of its own.
   final Map<String, String> strings;
 
+  /// The whole list's next task, for the lock screen (OPH-336); null when
+  /// nothing is open.
+  final WidgetNextTask? next;
+
+  /// The lists a widget can be set to (OPH-336): [kWidgetListAll] first, then
+  /// every project a task can be filed under, in the app's own order.
+  final List<WidgetListChoice> lists;
+
+  /// Each project's own view, keyed by project id (OPH-336). A project with
+  /// nothing on it still gets one — an empty view is how the widget knows to
+  /// say "all caught up" for it rather than fall back to the whole list, which
+  /// it does only for an id this map has never heard of (a deleted project).
+  final Map<String, WidgetListView> views;
+
   Map<String, dynamic> toJson() => {
     'v': version,
     'generatedAt': generatedAt,
@@ -144,7 +248,13 @@ class WidgetSnapshot {
     'strings': strings,
     'clockFormat': clockFormat,
     if (openToday > 0) 'openToday': openToday,
+    if (next != null) 'next': next!.toJson(),
     'buckets': [for (final bucket in buckets) bucket.toJson()],
+    'lists': [for (final list in lists) list.toJson()],
+    if (views.isNotEmpty)
+      'views': {
+        for (final entry in views.entries) entry.key: entry.value.toJson(),
+      },
   };
 }
 
@@ -190,22 +300,32 @@ WidgetTaskRow _rowFor(
   );
 }
 
-/// Builds the widget snapshot from open tasks. Pure (pass [now]); labels come
-/// from the active locale (`AwI18n`) and dates from `intl` — so it carries
-/// already-localized text and the native widget needs no translations.
-///
-/// [projectColorById] maps a task's `projectId` to its `#RRGGBB` color.
-WidgetSnapshot buildWidgetSnapshot(
+/// The projects a widget can be set to (OPH-336), after the whole list: the
+/// ones a task can be filed under — not the archived ones, which is the task
+/// picker's rule too (`project_picker.dart`) — in the order given, which is
+/// the Projects screen's (sort order, then creation).
+List<WidgetListChoice> widgetListChoices(Iterable<Project> projects) => [
+  WidgetListChoice(id: kWidgetListAll, name: 'widget.list.all'.tr()),
+  for (final project in projects)
+    if (project.status != 'archived')
+      WidgetListChoice(
+        id: project.id,
+        name: project.name,
+        color: project.colorRgb,
+      ),
+];
+
+/// One list's buckets, open count and next task. The whole list and every
+/// project view come out of this one function, so they cannot drift apart.
+({List<WidgetBucketData> buckets, int openToday, WidgetNextTask? next})
+_listData(
   List<Task> tasks, {
   required DateTime now,
-  Map<String, String> projectColorById = const {},
-  int rowsPerBucket = kWidgetRowsPerBucket,
-
-  /// The user's display format (OPH-174). Defaults to "follow the language" so
-  /// unit tests and any future caller stay honest without extra ceremony.
-  String dateFormat = kAwSystemDateFormat,
+  required Map<String, String> projectColorById,
+  required int rowsPerBucket,
+  required String dateFormat,
+  required String localeTag,
 }) {
-  final localeTag = AwI18n.instance.locale.toLanguageTag();
   final groups = groupTasksForWidget(tasks, now: now);
 
   final buckets = [
@@ -244,9 +364,76 @@ WidgetSnapshot buildWidgetSnapshot(
     }
   }
 
+  final picked = nextTaskForWidget(groups);
+  final next = picked == null
+      ? null
+      : WidgetNextTask(
+          id: picked.task.id,
+          title: picked.task.title,
+          bucket: picked.bucket.name,
+          label: 'widget.bucket.${picked.bucket.name}'.tr(),
+          time: _timeLabel(picked.task, picked.bucket, localeTag, dateFormat),
+        );
+
+  return (buckets: buckets, openToday: openToday, next: next);
+}
+
+/// Builds the widget snapshot from open tasks. Pure (pass [now]); labels come
+/// from the active locale (`AwI18n`) and dates from `intl` — so it carries
+/// already-localized text and the native widget needs no translations.
+///
+/// [projectColorById] maps a task's `projectId` to its `#RRGGBB` color.
+/// [projects] are the workspace's projects in the app's order; each one a
+/// widget can be set to gets its own view (OPH-336).
+WidgetSnapshot buildWidgetSnapshot(
+  List<Task> tasks, {
+  required DateTime now,
+  Map<String, String> projectColorById = const {},
+  Iterable<Project> projects = const [],
+  int rowsPerBucket = kWidgetRowsPerBucket,
+
+  /// The user's display format (OPH-174). Defaults to "follow the language" so
+  /// unit tests and any future caller stay honest without extra ceremony.
+  String dateFormat = kAwSystemDateFormat,
+}) {
+  final localeTag = AwI18n.instance.locale.toLanguageTag();
+
+  final all = _listData(
+    tasks,
+    now: now,
+    projectColorById: projectColorById,
+    rowsPerBucket: rowsPerBucket,
+    dateFormat: dateFormat,
+    localeTag: localeTag,
+  );
+
+  // OPH-336: every list a widget can be set to is computed HERE, with the same
+  // function as the whole list — the native side only picks one by id.
+  final lists = widgetListChoices(projects);
+  final views = <String, WidgetListView>{};
+  for (final list in lists) {
+    if (list.id == kWidgetListAll) continue;
+    final data = _listData(
+      filterTasksForWidgetList(tasks, list.id),
+      now: now,
+      projectColorById: projectColorById,
+      rowsPerBucket: rowsPerBucket,
+      dateFormat: dateFormat,
+      localeTag: localeTag,
+    );
+    views[list.id] = WidgetListView(
+      openToday: data.openToday,
+      openTodayLabel: 'widget.openToday'.tr(
+        args: {'count': '${data.openToday}'},
+      ),
+      buckets: data.buckets,
+      next: data.next,
+    );
+  }
+
   return WidgetSnapshot(
     version: kWidgetSnapshotVersion,
-    openToday: openToday,
+    openToday: all.openToday,
     // The header clock's pattern, from the same preference the rows above use
     // (OPH-253 — the native side formats the minute, it does not choose how).
     clockFormat: widgetClockPattern(format: dateFormat, locale: localeTag),
@@ -262,8 +449,15 @@ WidgetSnapshot buildWidgetSnapshot(
       'addTask': 'widget.addTask'.tr(),
       // Pre-localized like every other widget word — the native side owns no
       // translations (W-rule).
-      'openToday': 'widget.openToday'.tr(args: {'count': '$openToday'}),
+      'openToday': 'widget.openToday'.tr(args: {'count': '${all.openToday}'}),
+      // OPH-336: the lock screen's heading, and the Android configure
+      // screen's title — native words, the app's translations.
+      'upNext': 'widget.upNext'.tr(),
+      'chooseList': 'widget.chooseList'.tr(),
     },
-    buckets: buckets,
+    buckets: all.buckets,
+    next: all.next,
+    lists: lists,
+    views: views,
   );
 }

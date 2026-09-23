@@ -244,14 +244,16 @@ void main() {
       expect(snapshot.toJson().containsKey('openToday'), isFalse);
     });
 
-    test('the snapshot declares v3 and carries the localized phrase', () {
+    test('the snapshot declares v4 and carries the localized phrase', () {
       final snapshot = buildWidgetSnapshot([
         _task(title: 'Bugun', due: DateTime(2026, 7, 29, 17)),
       ], now: now);
       // Pinned as a LITERAL on purpose: bumping the schema has to break a test,
       // because a new field means an older widget is about to read a snapshot
-      // it does not fully understand (v3 = OPH-253's `clockFormat`).
-      expect(snapshot.toJson()['v'], 3);
+      // it does not fully understand (v3 = OPH-253's `clockFormat`; v4 =
+      // OPH-336's `next`, `lists` and `views` — added BESIDE the v3 fields,
+      // which stay where they were, so a v3 widget still draws the whole list).
+      expect(snapshot.toJson()['v'], 4);
       // Native code carries no translations (W-rule) — the wording ships here.
       expect(snapshot.strings['openToday'], contains('1'));
     });

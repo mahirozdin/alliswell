@@ -109,6 +109,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   created until you save. On iPhone it sits in the date header of the large
   sizes and in a narrow column of its own on the medium one; on Android it
   closes the header.
+- **A widget per project, and two on the lock screen (OPH-336).** Each widget
+  you place can now show everything, as before, or a single project — so two
+  widgets can follow two projects, each named at the top in its own colour.
+  On iPhone, iPad and Mac it is the widget's "Edit" (iOS 17 / macOS 14 and
+  later); on Android, long-press the widget and reconfigure it (before Android
+  12 the choice appears as you place it). A widget you never set keeps showing
+  everything. The iPhone lock screen gains two small widgets: the next task
+  and when it is due — overdue first, and saying "Overdue" in words, since the
+  lock screen draws in one tint — and today's open count. Which tasks belong to
+  which list is still worked out in the app, never in the widget.
 
 ### Changed
 

@@ -83,3 +83,54 @@ List<WidgetGroup> groupTasksForWidget(
         ),
   ];
 }
+
+/// The id of the widget's whole list (OPH-336): Home's tasks, every project.
+/// What an unconfigured widget shows, and the first choice a configured one
+/// offers. The Swift and Kotlin readers name it too — widget_lists_test.dart
+/// pins all three to this spelling.
+const String kWidgetListAll = 'all';
+
+/// The tasks a widget set to [listId] draws (OPH-336, WIDGETS §9).
+///
+/// The native side only PICKS a list id; which tasks belong to that list is
+/// decided here, in pure Dart, next to the grouping it feeds (W9) — so a
+/// Swift picker and a Kotlin one can never disagree about what "Work" holds.
+/// [kWidgetListAll] is every task; a project id is that project's tasks and
+/// nothing else.
+List<Task> filterTasksForWidgetList(List<Task> tasks, String listId) {
+  if (listId == kWidgetListAll) return tasks;
+  return [
+    for (final task in tasks)
+      if (task.projectId == listId) task,
+  ];
+}
+
+/// The lock screen's "next task" (OPH-336): the first OPEN task in the order
+/// the widget draws its buckets — overdue, today, this week, this month — with
+/// the dateless ones last. They are every day's work (see
+/// [groupTasksForWidget]), so they are nobody's "next" while something dated
+/// is still open. Null when nothing is open. The bucket comes back with the
+/// task because the lock screen says which one it is ("Overdue", "Today").
+///
+/// Reads the same [groups] the list is drawn from, so the lock screen cannot
+/// name a task the home-screen widget does not have.
+({Task task, WidgetBucket bucket})? nextTaskForWidget(
+  List<WidgetGroup> groups,
+) {
+  const order = [
+    WidgetBucket.overdue,
+    WidgetBucket.today,
+    WidgetBucket.thisWeek,
+    WidgetBucket.thisMonth,
+    WidgetBucket.noDate,
+  ];
+  for (final bucket in order) {
+    for (final group in groups) {
+      if (group.bucket != bucket) continue;
+      for (final task in group.tasks) {
+        if (!task.isCompleted) return (task: task, bucket: bucket);
+      }
+    }
+  }
+  return null;
+}

@@ -3,4 +3,7 @@
     <!-- Shown in the widget picker gallery (OPH-133). A localized values-<lang>/
          variant can override it per language. -->
     <string name="aw_widget_description">Your tasks at a glance — overdue, today and beyond.</string>
+    <!-- The configure screen's title until the app has written its own
+         (`strings.chooseList` in the snapshot, in the app's language) — OPH-336. -->
+    <string name="aw_widget_choose_list">Show in this widget</string>
 </resources>

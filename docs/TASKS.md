@@ -11430,21 +11430,52 @@ projeye **uygulanamaz**: uygulanırsa her macOS derlemesi kırmızıya düşer (
   widget ekle, açık/koyu, bir satırı tamamla (macOS 14+) ve uygulamada gör, "+"ya bas.
 - **Yüzey (kural 12):** yok.
 
-### OPH-336 — Widget yapılandırması ve kilit ekranı widget'ları
+### OPH-336 — Widget yapılandırması ve kilit ekranı widget'ları ✅ 2026-09-23
 
 **Bağlam:** OPH-135'in ilk iki kutusu. WIDGETS.md §9 "configurable per instance" desenini
 (Things/Todoist) ve iOS kilit ekranı ailelerini zaten tarif ediyor.
 
-- [ ] **Örnek başına seçim:** iOS 17+ `AppIntentConfiguration` (bir widget'ın hangi listeyi
+- [x] **Örnek başına seçim:** iOS 17+ `AppIntentConfiguration` (bir widget'ın hangi listeyi
       gösterdiği: Home'un tamamı ya da tek bir proje); Android'de yapılandırma activity'si.
       Dart seçilebilir listeleri anlık görüntüye yazar; **filtre saf Dart'ta** ve testli
       (`groupTasksForWidget`'ın yanında) — native taraf yalnız seçer.
-- [ ] **Kilit ekranı (iOS 16+):** `accessoryRectangular` ("sıradaki görev") ve
+      _(2026-09-23: `filterTasksForWidgetList` + `nextTaskForWidget` `widget_grouping.dart`'ta;
+      anlık görüntü **v4** — `lists` (tamamı + arşivli olmayan projeler, Projeler ekranının
+      sırası) ve `views` (her projenin kendi kovaları/sayısı/sıradakisi, tamamıyla aynı
+      fonksiyondan). Üst düzey değişmedi → yapılandırmasız widget bugünkü gibi (test: v3
+      alanları bayt bayt aynı). iOS: `AWWidgetConfigIntent` + aranabilir `AWListQuery`;
+      Android: `TasksWidgetConfigureActivity` + `configuration_optional|reconfigurable`,
+      seçim widget başına `aw_widget_config`'te, `onDeleted` temizler. Bilinmeyen id → tamamı;
+      boş proje → kendi "her şey tamam"ı. **ÖLÇÜLDÜ:** `WidgetBundleBuilder`'da `buildEither`
+      yok (`else` derlenmiyor, `#unavailable` derleyiciyi çökertiyor) → iOS 16 widget'ı her
+      pakette durur, iOS 17+'da çalışma zamanında `kind`'ını devreder (`.ios16`) ve ailesiz
+      kalır; yapılandırılabilir olan eski `kind`'ı alır, yerleşik widget'lar yerinde kalır.)_
+- [x] **Kilit ekranı (iOS 16+):** `accessoryRectangular` ("sıradaki görev") ve
       `accessoryCircular` (bugün açık sayısı). OPH-337'nin gizlilik modu bunlara da uygulanır.
+      _(2026-09-23: dikdörtgen = başlık (liste adı ya da "Sıradaki") + başlık + "Gecikmiş · 10 Tem";
+      tek renkte çizildiği için gecikmeyi KELİME söyler. Daire = bugün açık sayısı, sıfırda tik.
+      İkisi de widget'ın liste ayarına uyar; zaman çizelgesi tek girdi + gece yarısı yeniden
+      yükleme (dakika girdileri saat içindi). Yalnız iOS — SDK bu aileleri macOS'ta
+      `unavailable` işaretliyor. Gizlilik OPH-337'de `next.title`'ı da kapsayacak.)_
 - **Kabul:** yapılandırılmış bir widget yalnız seçilen projeyi gösteriyor (Dart filtre
   testi); kilit ekranı aileleri derleniyor; yapılandırmasız davranış bugünkü gibi.
+  _Karşılandı: `widget_lists_test.dart` (18) — üç enjeksiyonla kırmızı görüldü (filtre her şeyi
+  geçirince 3 test, bitmiş görev "sıradaki" olunca 1, Kotlin `"all"`'ı başka yazınca 1); biri
+  zayıf testi yakaladı (aynı kovada bitmiş satır zaten dibe iniyor) ve test düzeltildi._
 - **Doğrulama:** `flutter test` (filtre + anlık görüntü) + iOS/Android derlemeleri.
-- **Cihazda bakılacak:** iki widget'ı iki farklı projeyle kur; kilit ekranına ekle.
+  _`flutter analyze` 0; tam süit 1780 geçti, 28 atlandı (+18); `flutter build ios --debug --no-codesign` ✔ (uzantının
+  `Metadata.appintents`'inde `AWWidgetConfigIntent`/`AWListEntity`/`AWListQuery`);
+  `flutter build apk --debug` ✔ (manifest'te yapılandırma ekranı, `widgetFeatures=0x5`);
+  `swiftc -typecheck` iOS 16 ve macOS 14 hedefleriyle temiz. Tam süit `widget_clock_native_test`'in
+  bayt bütçesi pinini kırdı (satır `awTimeline`'a taşındı) — pin yeni yapıya taşındı ve artık iki
+  sağlayıcının da `context.family` geçirdiğini ölçüyor._
+- **Cihazda bakılacak:** iki widget'ı iki farklı projeyle kur; kilit ekranına ekle. Ayrıca:
+  iOS 17+ galerisinde **tek** "AllisWell" görünüyor (iOS 16 kopyası ailesiz — ölçülemedi,
+  dokümante edilmiş davranış); iOS 16'da widget eskisi gibi; Android 12 öncesinde widget
+  yerleştirilirken seçim ekranı açılıyor, geri tuşu yerleştirmeyi iptal ediyor.
+- **Bilinen sınır:** yapılandırma sayfasının kendi etiketleri ("List", açıklama) İngilizce —
+  galeri metni gibi (native metaveri, uygulamanın çevirisi oraya ulaşmıyor). Liste ADLARI
+  uygulamanın dilinde.
 - **Yüzey (kural 12):** yok (cihaz içi görünüm tercihi).
 
 ### OPH-337 — Widget yoğunluğu ve "Gizli widget"
