@@ -34,6 +34,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/history_providers.dart';
@@ -44,6 +45,7 @@ import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
 import 'package:alliswell/src/features/files/providers.dart';
+import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/providers.dart';
 
@@ -75,6 +77,7 @@ class _ShotActionsApi extends Fake implements EeTicketWriteApi {
           'planned_window',
         ],
         priorities: ['low', 'normal', 'high', 'urgent'],
+        canAssignOthers: true,
       );
 
   @override
@@ -124,6 +127,14 @@ List<Override> _overrides(DemoCorpus corpus, {bool canComment = false}) {
     ),
     ticketAssigneesProvider.overrideWith(
       (ref) => Stream.value(corpus.assignees),
+    ),
+    // EE-224: the detail's own "who is on it" row, from the same corpus.
+    ticketAssigneesForProvider(_ticketId).overrideWith(
+      (ref) => Stream.value(corpus.assignees[_ticketId] ?? const []),
+    ),
+    // …and the unit's roster, so the row's door shows as it would on a desk.
+    workspaceRosterOfProvider.overrideWith(
+      (ref, workspaceId) => Stream.value(corpus.memberProfiles(workspaceId)),
     ),
     eeHistoryProvider.overrideWith((ref, target) async {
       return corpus.historyFor(_ticketId);
@@ -199,10 +210,13 @@ void main() {
       );
     });
 
-    // EE-224: the two doors, opened. What is listed is the server's answer.
+    // EE-224: the three doors, opened. What is listed is the server's answer.
+    // T5 has nobody on it yet — a breached, urgent request nobody has picked
+    // up — so the third shot is the moment somebody takes it.
     for (final (door, name) in [
       ('ticket-status', 'ee-ticket-status'),
       ('ticket-priority', 'ee-ticket-priority'),
+      ('ticket-assignees-open', 'ee-ticket-assign'),
     ]) {
       testWidgets('and its $door sheet — ${brightness.name}', (tester) async {
         await eeShoot(
@@ -215,6 +229,8 @@ void main() {
             eeFeatureProvider('teams').overrideWithValue(true),
             eeTicketWriteApiProvider.overrideWithValue(_ShotActionsApi()),
             syncEngineProvider.overrideWithValue(null),
+            // The agent looking at it (the roster comes with the base set).
+            currentUserIdProvider.overrideWithValue('P02'),
           ],
           screen: const EeTicketDetailScreen(ticketId: _ticketId),
           afterPump: (t) => t.tap(find.byKey(Key(door))),

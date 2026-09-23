@@ -147,6 +147,10 @@ class _Thread extends ConsumerWidget {
           ],
         ),
         if (ticket.terminalAt == null) const EeTicketActionsOffline(),
+        // EE-224: the third door, beside the other two. Who is on it is read
+        // before anything else below: an agent asks "is somebody already
+        // here" before reading forty replies.
+        EeTicketAssigneeSection(ticket: ticket),
         // EE-097: the countdown, under the chips and above the request itself.
         // An agent deciding what to pick up next reads it before the body.
         AwSlaCountdown(ticket: ticket),

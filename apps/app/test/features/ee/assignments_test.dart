@@ -273,5 +273,82 @@ void main() {
       await store.release('NOPE');
       expect(await db.select(db.pendingMutations).get(), isEmpty);
     });
+
+    // EE-224 shared the picker's LIST with requests. The task side keeps its
+    // own write path — the local store, offline-first — and this pins that
+    // the sharing did not quietly reroute it.
+    for (final (onIt, expected) in [
+      (const <Assignee>[], 'assign U1'),
+      (const [Assignee(assignmentId: 'A1', userId: 'U1')], 'release A1'),
+    ]) {
+      testWidgets('the task picker still writes through its store: $expected', (
+        tester,
+      ) async {
+        final store = _RecordingStore();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              assignmentStoreProvider.overrideWithValue(store),
+              taskAssigneesProvider(
+                task,
+              ).overrideWith((ref) => Stream.value(onIt)),
+              workspaceRosterProvider.overrideWith(
+                (ref) => Stream.value(const [
+                  MemberProfile(
+                    id: 'P1',
+                    workspaceId: ws,
+                    userId: 'U1',
+                    displayName: 'Ayla Yönetici',
+                    initials: 'AY',
+                    colorRgb: '#2563EB',
+                    revision: 1,
+                  ),
+                ]),
+              ),
+            ],
+            child: MaterialApp(
+              home: Scaffold(
+                body: Builder(
+                  builder: (context) => TextButton(
+                    onPressed: () => showAssigneePicker(
+                      context,
+                      workspaceId: ws,
+                      taskId: task,
+                    ),
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+        final option = find.byKey(const Key('assignee-option-U1'));
+        expect(tester.widget<CheckboxListTile>(option).value, onIt.isNotEmpty);
+        await tester.tap(option);
+        await tester.pumpAndSettle();
+        expect(store.calls, [expected]);
+      });
+    }
   });
+}
+
+class _RecordingStore extends Fake implements AssignmentStore {
+  final calls = <String>[];
+
+  @override
+  Future<String> assign({
+    required String workspaceId,
+    required String taskId,
+    required String userId,
+  }) async {
+    calls.add('assign $userId');
+    return 'NEW';
+  }
+
+  @override
+  Future<void> release(String assignmentId) async {
+    calls.add('release $assignmentId');
+  }
 }

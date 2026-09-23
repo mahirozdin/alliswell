@@ -155,6 +155,21 @@ final workspaceRosterProvider = StreamProvider<List<MemberProfile>>((ref) {
       .watch();
 });
 
+/// The roster of ONE workspace (EE-224).
+///
+/// A request lives in the workspace of the unit that answers it, which is not
+/// necessarily the one on screen — a link can open a request from any unit
+/// this device syncs — so its picker asks for that workspace by name rather
+/// than following [currentWorkspaceProvider].
+final workspaceRosterOfProvider =
+    StreamProvider.family<List<MemberProfile>, String>((ref, workspaceId) {
+      final db = ref.watch(databaseProvider);
+      return (db.select(db.memberProfiles)
+            ..where((p) => p.workspaceId.equals(workspaceId))
+            ..orderBy([(p) => OrderingTerm.asc(p.displayName)]))
+          .watch();
+    });
+
 /// Assign and release, offline-first (EE-066 made the type push-capable).
 ///
 /// The optimistic row and its outbox mutation go in ONE transaction, the way

@@ -120,6 +120,21 @@ class DemoCorpus {
       )
       .toList();
 
+  /// The same people as the replica's roster rows (EE-224's picker reads
+  /// those, not the admin list above) — one source, two shapes.
+  List<MemberProfile> memberProfiles(String unitId) => [
+    for (final p in _list('people').where((p) => p['unitId'] == unitId))
+      MemberProfile(
+        id: 'MP-${p['id']}',
+        workspaceId: unitId,
+        userId: p['id'] as String,
+        displayName: p['displayName'] as String?,
+        initials: p['initials'] as String?,
+        colorRgb: p['colorRgb'] as String,
+        revision: 1,
+      ),
+  ];
+
   // ── The catalogue ────────────────────────────────────────────────────────
 
   List<EeService> get services => _list('services')

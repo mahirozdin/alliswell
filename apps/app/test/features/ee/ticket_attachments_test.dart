@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
+import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_links_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
@@ -109,6 +110,14 @@ void main() {
           // outlives the test. `null` is the "not yours / no team" answer, so
           // the section draws nothing and this test stays about attachments.
           eeWorklogProvider(_ticketId).overrideWith((ref) async => null),
+          // EE-224's "who is on it" row reads the device's copy; without these
+          // the screen opens a real database under the test.
+          ticketAssigneesForProvider(
+            _ticketId,
+          ).overrideWith((ref) => Stream.value(const [])),
+          workspaceRosterOfProvider.overrideWith(
+            (ref, workspaceId) => Stream.value(const []),
+          ),
         ],
         child: MaterialApp(
           theme: buildAwTheme(Brightness.light),

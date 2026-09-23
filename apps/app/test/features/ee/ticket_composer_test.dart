@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/reachability.dart';
+import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
@@ -300,6 +301,13 @@ void main() {
               _ticketId,
             ).overrideWith((ref) async => const []),
             eeWorklogProvider(_ticketId).overrideWith((ref) async => null),
+            // EE-224's "who is on it" row reads the device's copy.
+            ticketAssigneesForProvider(
+              _ticketId,
+            ).overrideWith((ref) => Stream.value(const [])),
+            workspaceRosterOfProvider.overrideWith(
+              (ref, workspaceId) => Stream.value(const []),
+            ),
             canProvider('kb.write').overrideWith((ref) => false),
             canProvider('tickets.convert').overrideWith((ref) => false),
             canProvider('tickets.create').overrideWith((ref) => false),

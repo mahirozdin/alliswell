@@ -338,6 +338,42 @@ final queueServiceIdsProvider = Provider<List<String>>(
       .toList(),
 );
 
+/// Everyone on ONE request — the detail's view (EE-224), and the ticket twin
+/// of `taskAssigneesProvider`: one query, joined to the roster for a name and
+/// a colour, and not tied to the workspace on screen (a request opened from a
+/// link may live in another unit this device syncs).
+final ticketAssigneesForProvider =
+    StreamProvider.family<List<Assignee>, String>((ref, ticketId) {
+      final db = ref.watch(databaseProvider);
+      final assignments = db.select(db.ticketAssignments)
+        ..where((a) => a.ticketId.equals(ticketId))
+        ..orderBy([(a) => OrderingTerm.asc(a.assignedAt)]);
+      return assignments
+          .join([
+            leftOuterJoin(
+              db.memberProfiles,
+              db.memberProfiles.userId.equalsExp(db.ticketAssignments.userId) &
+                  db.memberProfiles.workspaceId.equalsExp(
+                    db.ticketAssignments.workspaceId,
+                  ),
+            ),
+          ])
+          .watch()
+          .map(
+            (rows) => rows.map((row) {
+              final a = row.readTable(db.ticketAssignments);
+              final p = row.readTableOrNull(db.memberProfiles);
+              return Assignee(
+                assignmentId: a.id,
+                userId: a.userId,
+                displayName: p?.displayName,
+                initials: p?.initials,
+                colorRgb: p?.colorRgb,
+              );
+            }).toList(),
+          );
+    });
+
 /// Who is on each request in this workspace (EE-086) — item 9's avatar row,
 /// the ticket half.
 ///

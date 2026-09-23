@@ -11,9 +11,13 @@ import '../../../sync/db/database.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../../workspaces/workspaces.dart';
+import '../assignments_providers.dart';
 import '../data/ticket_write_api.dart';
 import '../ticket_links_providers.dart';
 import '../ticket_write_providers.dart';
+import '../tickets_providers.dart';
+import 'assignee_avatars.dart';
 
 /// EE-224 — moving a request, and saying how urgent it is, from its own screen.
 ///
@@ -83,7 +87,7 @@ class EeTicketPriorityAction extends ConsumerWidget {
   }
 }
 
-/// Why the two chips above are grey — one line, only while it is true.
+/// Why the doors above are grey — one line, only while it is true.
 class EeTicketActionsOffline extends ConsumerWidget {
   const EeTicketActionsOffline({super.key});
 
@@ -837,4 +841,192 @@ class _Segments extends StatelessWidget {
             if (selection.isNotEmpty) onChanged!(selection.first);
           },
   );
+}
+
+// ── Assignment ────────────────────────────────────────────────────────────
+
+/// Who is on the request — the avatars, and on a live request the door that
+/// changes them (EE-224).
+///
+/// The avatars come from the device's copy, so they are right offline; the
+/// door needs the server (E19: a request is written online), so offline it
+/// greys out and the line under the chips says why. A finished request keeps
+/// its avatars and loses the door — the server takes no assignment there —
+/// and a unit with nobody to pick from gets no door either (DESIGN §22).
+class EeTicketAssigneeSection extends ConsumerWidget {
+  const EeTicketAssigneeSection({super.key, required this.ticket});
+
+  final TicketRecord ticket;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assignees =
+        ref.watch(ticketAssigneesForProvider(ticket.id)).value ?? const [];
+    final roster =
+        ref.watch(workspaceRosterOfProvider(ticket.workspaceId)).value ??
+        const [];
+    final offline = ref.watch(serverReachabilityProvider) == false;
+    return Padding(
+      key: const Key('ticket-assignees'),
+      padding: const EdgeInsets.only(top: AwSpace.x2),
+      child: Row(
+        children: [
+          Expanded(
+            child: assignees.isEmpty
+                ? Text('ee.tickets.assign.nobody'.tr(), style: _quiet(context))
+                : Wrap(
+                    spacing: AwSpace.x2,
+                    runSpacing: AwSpace.x2,
+                    children: [
+                      for (final assignee in assignees)
+                        AwAssigneeAvatar(
+                          assignee: assignee,
+                          size: kAwAvatarSizeLarge,
+                        ),
+                    ],
+                  ),
+          ),
+          if (ticket.terminalAt == null && roster.isNotEmpty)
+            IconButton(
+              key: const Key('ticket-assignees-open'),
+              tooltip: 'ee.tickets.assign.manage'.tr(),
+              icon: const Icon(Icons.person_add_alt_outlined),
+              onPressed: offline
+                  ? null
+                  : () => showModalBottomSheet<void>(
+                      context: context,
+                      showDragHandle: true,
+                      isScrollControlled: true,
+                      builder: (_) => _TicketAssigneeSheet(ticket: ticket),
+                    ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The roster, as switches — each tap one REST write, one at a time.
+///
+/// Without `tickets.assign` the only person offered is the caller: taking a
+/// request yourself is free (EE-086), putting it on anybody else is the
+/// gated act, and a list of colleagues the server would refuse is a list of
+/// dead switches. The sheet says so rather than going quiet about it.
+class _TicketAssigneeSheet extends ConsumerStatefulWidget {
+  const _TicketAssigneeSheet({required this.ticket});
+
+  final TicketRecord ticket;
+
+  @override
+  ConsumerState<_TicketAssigneeSheet> createState() =>
+      _TicketAssigneeSheetState();
+}
+
+class _TicketAssigneeSheetState extends ConsumerState<_TicketAssigneeSheet> {
+  /// What the server accepted in this sheet before the device's copy caught
+  /// up — so a switch does not flip back for the length of one pull.
+  final _accepted = <String, bool>{};
+
+  /// Assignment ids the server answered with: what a release names when the
+  /// row it undoes has not been pulled yet.
+  final _created = <String, String>{};
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _toggle(
+    MemberProfile person,
+    bool on,
+    List<Assignee> assignees,
+  ) async {
+    final api = ref.read(eeTicketWriteApiProvider);
+    final ticketId = widget.ticket.id;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      if (on) {
+        _created[person.userId] = await api.assign(ticketId, person.userId);
+      } else {
+        final id =
+            assignees
+                .where((a) => a.userId == person.userId)
+                .firstOrNull
+                ?.assignmentId ??
+            _created[person.userId];
+        if (id != null) await api.release(ticketId, id);
+      }
+      _accepted[person.userId] = on;
+      // The avatars read the device's copy; ask for the new row now rather
+      // than at the next scheduled pull (the composer's precedent).
+      unawaited(ref.read(syncEngineProvider)?.syncNow());
+    } on ApiException catch (failure) {
+      if (failure.code == 'NETWORK_ERROR') {
+        ref.read(serverReachabilityProvider.notifier).unreachable();
+      }
+      _error = localizedError(failure);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ticket = widget.ticket;
+    final me = ref.watch(currentUserIdProvider);
+    final roster =
+        ref.watch(workspaceRosterOfProvider(ticket.workspaceId)).value ??
+        const [];
+    final assignees =
+        ref.watch(ticketAssigneesForProvider(ticket.id)).value ?? const [];
+    final onIt = {for (final a in assignees) a.userId};
+    return _answered(
+      context,
+      ref,
+      ref.watch(eeTicketActionsProvider(ticket.id)),
+      (data) {
+        final people = data.canAssignOthers
+            ? roster
+            : [
+                for (final person in roster)
+                  if (person.userId == me) person,
+              ];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'ee.tickets.assign.title'.tr(),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            if (!data.canAssignOthers) ...[
+              const SizedBox(height: AwSpace.x1),
+              Text(
+                'ee.tickets.assign.selfOnly'.tr(),
+                key: const Key('ticket-assign-self-only'),
+                style: _quiet(context),
+              ),
+            ],
+            const SizedBox(height: AwSpace.x2),
+            if (people.isEmpty)
+              Text('ee.assign.noRoster'.tr(), style: _quiet(context)),
+            AwRosterChecklist(
+              roster: people,
+              isOn: (userId) => _accepted[userId] ?? onIt.contains(userId),
+              onToggle: _busy
+                  ? null
+                  : (person, on) => _toggle(person, on, assignees),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: AwSpace.x3),
+              AwInlineError(
+                message: _error!,
+                textKey: const Key('ticket-action-error'),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
 }

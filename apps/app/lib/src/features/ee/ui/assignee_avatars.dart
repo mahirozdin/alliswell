@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../assignments_providers.dart';
 
@@ -26,6 +27,10 @@ import '../assignments_providers.dart';
 /// sizes rather than a literal repeated at three call sites (DESIGN §36).
 const double _kAvatarSize = 24;
 const double _kAvatarSizeLarge = 32;
+
+/// The detail card's size, for the other owner's detail (EE-224) — one named
+/// size across both, never a second literal.
+const double kAwAvatarSizeLarge = _kAvatarSizeLarge;
 const double _kTintAlpha = 0.20;
 const int _kMaxAvatars = 4;
 
@@ -325,41 +330,79 @@ class _AssigneePicker extends ConsumerWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-          for (final person in roster)
-            CheckboxListTile(
-              key: Key('assignee-option-${person.userId}'),
-              value: byUser.containsKey(person.userId),
-              title: Text(person.displayName ?? person.initials ?? '—'),
-              secondary: AwAssigneeAvatar(
-                assignee: Assignee(
-                  assignmentId: '',
+          AwRosterChecklist(
+            roster: roster,
+            isOn: byUser.containsKey,
+            onToggle: (person, on) async {
+              // The write is local-first and the server decides on arrival.
+              // A refusal is parked, not lost (EE-051), so the sheet does not
+              // pretend to know the answer before the push lands.
+              if (on) {
+                await store.assign(
+                  workspaceId: workspaceId,
+                  taskId: taskId,
                   userId: person.userId,
-                  displayName: person.displayName,
-                  initials: person.initials,
-                  colorRgb: person.colorRgb,
-                ),
-                size: _kAvatarSizeLarge,
-              ),
-              onChanged: (checked) async {
-                // The write is local-first and the server decides on arrival.
-                // A refusal is parked, not lost (EE-051), so the sheet does
-                // not pretend to know the answer before the push lands.
-                if (checked ?? false) {
-                  await store.assign(
-                    workspaceId: workspaceId,
-                    taskId: taskId,
-                    userId: person.userId,
-                  );
-                } else {
-                  final existing = byUser[person.userId];
-                  if (existing != null) {
-                    await store.release(existing.assignmentId);
-                  }
+                );
+              } else {
+                final existing = byUser[person.userId];
+                if (existing != null) {
+                  await store.release(existing.assignmentId);
                 }
-              },
-            ),
+              }
+            },
+          ),
         ],
       ),
     );
   }
+}
+
+/// The roster as a list of switches: who is on it, and who could be.
+///
+/// EE-224 split it out of the task picker, and the split was measured rather
+/// than assumed (EE-171 found the picker bound to a `taskId`). A task and a
+/// request share the LIST — the same people, the same avatars, one tap puts a
+/// person on or takes them off — and differ in everything behind the tap: a
+/// task writes locally and queues (EE-066), a request writes to the server and
+/// waits for it (E19's decision), so it has to be able to say "busy", leave out
+/// the people it may not touch, and keep a refusal on screen. Those arrive as
+/// parameters; the list knows about neither owner.
+class AwRosterChecklist extends StatelessWidget {
+  const AwRosterChecklist({
+    super.key,
+    required this.roster,
+    required this.isOn,
+    required this.onToggle,
+  });
+
+  final List<MemberProfile> roster;
+  final bool Function(String userId) isOn;
+
+  /// Null while a write is in flight: every switch waits for it.
+  final void Function(MemberProfile person, bool on)? onToggle;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (final person in roster)
+        CheckboxListTile(
+          key: Key('assignee-option-${person.userId}'),
+          value: isOn(person.userId),
+          title: Text(person.displayName ?? person.initials ?? '—'),
+          secondary: AwAssigneeAvatar(
+            assignee: Assignee(
+              assignmentId: '',
+              userId: person.userId,
+              displayName: person.displayName,
+              initials: person.initials,
+              colorRgb: person.colorRgb,
+            ),
+            size: _kAvatarSizeLarge,
+          ),
+          onChanged: onToggle == null
+              ? null
+              : (checked) => onToggle!(person, checked ?? false),
+        ),
+    ],
+  );
 }

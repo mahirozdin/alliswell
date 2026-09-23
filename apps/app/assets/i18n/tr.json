@@ -1961,7 +1961,7 @@
         "matrixOnly": "Bu talebin önceliği matristen gelir. Elle vermek ayrı bir yetki ister.",
         "priorityChanged": "Öncelik: {priority}",
         "inputsSaved": "Etki ve aciliyet kaydedildi",
-        "offline": "Durum ve öncelik bağlantı ister — sunucuya şu an ulaşılamıyor.",
+        "offline": "Durum, öncelik ve atama bağlantı ister — sunucuya şu an ulaşılamıyor.",
         "unavailable": "Bu talepte ne yapabileceğin şu an okunamadı."
       },
       "impact": {
@@ -1973,6 +1973,12 @@
         "low": "Düşük",
         "medium": "Orta",
         "high": "Yüksek"
+      },
+      "assign": {
+        "title": "Bu talepte kimler var",
+        "manage": "Bu talepte kimlerin olacağını değiştir",
+        "nobody": "Bu talebi henüz kimse almadı",
+        "selfOnly": "Başkasını atamak ya da çıkarmak ayrı bir yetki ister; kendini alabilir ya da bırakabilirsin."
       }
     },
     "sla": {

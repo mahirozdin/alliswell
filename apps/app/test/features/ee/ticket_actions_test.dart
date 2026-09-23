@@ -10,6 +10,7 @@ import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/reachability.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
+import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ticket_links_providers.dart';
@@ -19,6 +20,7 @@ import 'package:alliswell/src/features/ee/ui/ticket_actions.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
 import 'package:alliswell/src/features/ee/worklog_providers.dart';
 import 'package:alliswell/src/features/files/providers.dart';
+import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -58,6 +60,7 @@ EeTicketActions _actions({
   bool canPause = false,
   bool pausable = false,
   List<String> held = const [],
+  bool canAssignOthers = false,
 }) => EeTicketActions(
   status: status,
   priority: priority,
@@ -70,6 +73,7 @@ EeTicketActions _actions({
   approvalPending: approvalPending,
   canOverridePriority: canOverride,
   canPauseSla: canPause,
+  canAssignOthers: canAssignOthers,
   slaPausable: pausable,
   slaHeld: held.isNotEmpty,
   slaHoldReasons: held,
@@ -86,6 +90,12 @@ class _FakeWriteApi extends Fake implements EeTicketWriteApi {
   final inputs = <({String impact, String urgency})>[];
   final pauses = <String>[];
   int resumes = 0;
+  final assigned = <String>[];
+  final released = <String>[];
+
+  /// Holds an assignment write open, so a test can look at the sheet while it
+  /// is in flight.
+  Completer<void>? hold;
 
   void _maybeFail() {
     if (failWith != null) throw failWith!;
@@ -138,6 +148,20 @@ class _FakeWriteApi extends Fake implements EeTicketWriteApi {
   Future<void> resumeSla(String ticketId) async {
     _maybeFail();
     resumes++;
+  }
+
+  @override
+  Future<String> assign(String ticketId, String userId) async {
+    await hold?.future;
+    _maybeFail();
+    assigned.add(userId);
+    return 'A-$userId';
+  }
+
+  @override
+  Future<void> release(String ticketId, String assignmentId) async {
+    _maybeFail();
+    released.add(assignmentId);
   }
 }
 
@@ -445,7 +469,8 @@ void main() {
       // same under its now-grey chips.
       expect(
         tester.widget<Text>(key('ticket-actions-unavailable')).data,
-        'Durum ve öncelik bağlantı ister — sunucuya şu an ulaşılamıyor.',
+        'Durum, öncelik ve atama bağlantı ister — sunucuya şu an '
+        'ulaşılamıyor.',
       );
       expect(key('ticket-actions-offline'), findsOneWidget);
       expect(pressable(tester, 'ticket-status'), isFalse);
@@ -547,6 +572,224 @@ void main() {
       expect(api.reads, 2);
     },
   );
+
+  group('who is on it', () {
+    const me = 'U-BARIS';
+    MemberProfile person(String id, String name) => MemberProfile(
+      id: 'P-$id',
+      workspaceId: 'W1',
+      userId: id,
+      displayName: name,
+      initials: name.substring(0, 2).toUpperCase(),
+      colorRgb: '#2563EB',
+      revision: 1,
+    );
+    final roster = [
+      person('U-AYLA', 'Ayla Yönetici'),
+      person(me, 'Barış Saha'),
+      person('U-DENIZ', 'Deniz Koordinatör'),
+    ];
+    late StreamController<List<Assignee>> onIt;
+
+    Future<void> pumpSection(
+      WidgetTester tester, {
+      DateTime? terminalAt,
+      List<MemberProfile>? people,
+    }) async {
+      onIt = StreamController<List<Assignee>>.broadcast();
+      // Closed without being awaited: `close()`'s future waits for the done
+      // event to reach a subscriber the container is still holding, and a
+      // teardown that awaits it never finishes (measured — the run hung).
+      addTearDown(() {
+        onIt.close();
+      });
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          eeTicketWriteApiProvider.overrideWithValue(api),
+          eeFeatureProvider('teams').overrideWithValue(true),
+          ticketProvider(_ticketId).overrideWith(
+            (ref) => Stream.value(_ticket(terminalAt: terminalAt)),
+          ),
+          syncEngineProvider.overrideWithValue(null),
+          currentUserIdProvider.overrideWithValue(me),
+          ticketAssigneesForProvider(
+            _ticketId,
+          ).overrideWith((ref) => onIt.stream),
+          workspaceRosterOfProvider(
+            'W1',
+          ).overrideWith((ref) => Stream.value(people ?? roster)),
+        ],
+      );
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: buildAwTheme(Brightness.light),
+            home: Scaffold(
+              body: Column(
+                children: [
+                  EeTicketAssigneeSection(
+                    ticket: _ticket(terminalAt: terminalAt),
+                  ),
+                  const EeTicketActionsOffline(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      onIt.add(const []);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(key('ticket-assignees-open'));
+      await tester.pumpAndSettle();
+    }
+
+    CheckboxListTile option(WidgetTester tester, String userId) =>
+        tester.widget<CheckboxListTile>(key('assignee-option-$userId'));
+
+    testWidgets(
+      "the avatars are the device's copy; the door is for a live request",
+      (tester) async {
+        await pumpSection(tester);
+        expect(find.text('Bu talebi henüz kimse almadı'), findsOneWidget);
+        onIt.add(const [Assignee(assignmentId: 'A1', userId: 'U-AYLA')]);
+        await tester.pumpAndSettle();
+        expect(key('assignee-U-AYLA'), findsOneWidget);
+        expect(key('ticket-assignees-open'), findsOneWidget);
+        expect(api.reads, 0, reason: 'the avatars ask the server nothing');
+      },
+    );
+
+    testWidgets('a finished request keeps its avatars and loses the door', (
+      tester,
+    ) async {
+      await pumpSection(tester, terminalAt: DateTime.utc(2026, 9, 21));
+      onIt.add(const [Assignee(assignmentId: 'A1', userId: 'U-AYLA')]);
+      await tester.pumpAndSettle();
+      expect(key('assignee-U-AYLA'), findsOneWidget);
+      expect(key('ticket-assignees-open'), findsNothing);
+    });
+
+    testWidgets('nobody to pick from: no door (DESIGN §22)', (tester) async {
+      await pumpSection(tester, people: const []);
+      expect(key('ticket-assignees-open'), findsNothing);
+    });
+
+    testWidgets(
+      'without the verb only the caller is offered, and the sheet says why',
+      (tester) async {
+        api.answer = _actions();
+        await pumpSection(tester);
+        await openSheet(tester);
+        expect(key('ticket-assign-self-only'), findsOneWidget);
+        expect(key('assignee-option-$me'), findsOneWidget);
+        expect(key('assignee-option-U-AYLA'), findsNothing);
+        expect(key('assignee-option-U-DENIZ'), findsNothing);
+
+        await tester.tap(key('assignee-option-$me'));
+        await tester.pumpAndSettle();
+        expect(api.assigned, [me]);
+        expect(option(tester, me).value, isTrue);
+      },
+    );
+
+    testWidgets(
+      'with the verb anybody; the switch holds until the pull catches up',
+      (tester) async {
+        api.answer = _actions(canAssignOthers: true);
+        await pumpSection(tester);
+        await openSheet(tester);
+        expect(key('ticket-assign-self-only'), findsNothing);
+        for (final p in roster) {
+          expect(key('assignee-option-${p.userId}'), findsOneWidget);
+        }
+
+        await tester.tap(key('assignee-option-U-DENIZ'));
+        await tester.pumpAndSettle();
+        expect(api.assigned, ['U-DENIZ']);
+        // The device's copy has not heard yet; the switch says what the server
+        // said, not what the stale copy says.
+        expect(option(tester, 'U-DENIZ').value, isTrue);
+
+        // Taken off again BEFORE the pull brought the row: the release names
+        // the id the server answered with.
+        await tester.tap(key('assignee-option-U-DENIZ'));
+        await tester.pumpAndSettle();
+        expect(api.released, ['A-U-DENIZ']);
+        expect(option(tester, 'U-DENIZ').value, isFalse);
+
+        // And once the copy has the row, its own id is the one named.
+        onIt.add(const [Assignee(assignmentId: 'A9', userId: 'U-AYLA')]);
+        await tester.pumpAndSettle();
+        expect(option(tester, 'U-AYLA').value, isTrue);
+        await tester.tap(key('assignee-option-U-AYLA'));
+        await tester.pumpAndSettle();
+        expect(api.released, ['A-U-DENIZ', 'A9']);
+      },
+    );
+
+    testWidgets(
+      'one write at a time: every switch waits for the one in flight',
+      (tester) async {
+        api.answer = _actions(canAssignOthers: true);
+        api.hold = Completer<void>();
+        await pumpSection(tester);
+        await openSheet(tester);
+        await tester.tap(key('assignee-option-U-AYLA'));
+        await tester.pump();
+        for (final p in roster) {
+          expect(option(tester, p.userId).onChanged, isNull, reason: p.userId);
+        }
+        api.hold!.complete();
+        await tester.pumpAndSettle();
+        expect(option(tester, 'U-DENIZ').onChanged, isNotNull);
+        expect(api.assigned, ['U-AYLA']);
+      },
+    );
+
+    testWidgets("a refusal stays in the sheet, in the server's words", (
+      tester,
+    ) async {
+      api.answer = _actions(canAssignOthers: true);
+      api.failWith = const ApiException(
+        'TICKET_TERMINAL',
+        'That ticket is closed',
+      );
+      await pumpSection(tester);
+      await openSheet(tester);
+      await tester.tap(key('assignee-option-U-AYLA'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Bu talep kapandı; artık değiştirilemez.'),
+        findsOneWidget,
+      );
+      expect(option(tester, 'U-AYLA').value, isFalse);
+    });
+
+    testWidgets(
+      'offline: the door is grey before it is pressed, with the reason',
+      (tester) async {
+        await pumpSection(tester);
+        container.read(serverReachabilityProvider.notifier).unreachable();
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<IconButton>(key('ticket-assignees-open')).onPressed,
+          isNull,
+        );
+        expect(
+          find.text(
+            'Durum, öncelik ve atama bağlantı ister — sunucuya şu an '
+            'ulaşılamıyor.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+  });
 
   group('the priority sheet', () {
     testWidgets('a desk without the matrix picks the priority itself', (
@@ -669,6 +912,12 @@ void main() {
               _ticketId,
             ).overrideWith((ref) async => const []),
             eeWorklogProvider(_ticketId).overrideWith((ref) async => null),
+            ticketAssigneesForProvider(
+              _ticketId,
+            ).overrideWith((ref) => Stream.value(const [])),
+            workspaceRosterOfProvider.overrideWith(
+              (ref, workspaceId) => Stream.value(const []),
+            ),
             canProvider.overrideWith((ref, permission) => false),
           ],
           child: MaterialApp(

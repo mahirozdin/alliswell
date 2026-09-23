@@ -46,6 +46,7 @@ class EeTicketActions {
     this.priorities = const [],
     this.approvalPending = false,
     this.canOverridePriority = false,
+    this.canAssignOthers = false,
     this.canPauseSla = false,
     this.slaPausable = false,
     this.slaHeld = false,
@@ -68,6 +69,7 @@ class EeTicketActions {
       priorities: strings(json['priorities']),
       approvalPending: json['approvalPending'] == true,
       canOverridePriority: json['canOverridePriority'] == true,
+      canAssignOthers: json['canAssignOthers'] == true,
       canPauseSla: json['canPauseSla'] == true,
       slaPausable: json['slaPausable'] == true,
       slaHeld: hold['held'] == true,
@@ -110,6 +112,10 @@ class EeTicketActions {
   final bool approvalPending;
 
   final bool canOverridePriority;
+
+  /// `tickets.assign`: putting the request on somebody else, or taking it
+  /// off them. Taking it yourself needs nothing (EE-086's rule).
+  final bool canAssignOthers;
   final bool canPauseSla;
 
   /// A pause would stop something: a running promise nobody holds yet.
@@ -297,6 +303,25 @@ class EeTicketWriteApi {
 
   Future<void> resumeSla(String ticketId) => _write(
     () => _dio.post<Map<String, dynamic>>('$_tickets/$ticketId/sla/resume'),
+  );
+
+  /// Puts [userId] on the request and answers the assignment's id — the one
+  /// a later release names. Already on it is the same state, not an error.
+  Future<String> assign(String ticketId, String userId) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$_tickets/$ticketId/assignments',
+        data: {'userId': userId},
+      );
+      return (response.data ?? const <String, dynamic>{})['id'] as String;
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// Takes an assignment off the request. Released already is the same state.
+  Future<void> release(String ticketId, String assignmentId) => _write(
+    () => _dio.delete<void>('$_tickets/$ticketId/assignments/$assignmentId'),
   );
 
   Future<void> _write(Future<Object?> Function() call) async {

@@ -1962,7 +1962,7 @@
         "matrixOnly": "This request’s priority comes from the matrix. Setting it by hand needs a separate permission.",
         "priorityChanged": "Priority: {priority}",
         "inputsSaved": "Impact and urgency saved",
-        "offline": "Status and priority need a connection — the server cannot be reached right now.",
+        "offline": "Status, priority and assignment need a connection — the server cannot be reached right now.",
         "unavailable": "What you can do on this request could not be read right now."
       },
       "impact": {
@@ -1974,6 +1974,12 @@
         "low": "Low",
         "medium": "Medium",
         "high": "High"
+      },
+      "assign": {
+        "title": "Who is on this request",
+        "manage": "Change who is on this request",
+        "nobody": "Nobody has taken this request yet",
+        "selfOnly": "Putting someone else on it, or taking them off, needs a separate permission; you can take it or leave it yourself."
       }
     },
     "sla": {
