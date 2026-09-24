@@ -91,6 +91,7 @@ class _Body extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 88),
       children: [
         _QuotaCard(links: data.linkQuota, tickets: data.ticketQuota),
+        if (!data.attachmentScanOn) const _ScanOffCard(),
         if (data.links.isEmpty)
           Padding(
             padding: const EdgeInsets.all(24),
@@ -103,6 +104,53 @@ class _Body extends ConsumerWidget {
         for (final link in data.links)
           _LinkTile(link: link, serviceName: nameOf[link.serviceId]),
       ],
+    );
+  }
+}
+
+/// Files through these doors are not virus-scanned — said beside the doors.
+///
+/// The person opening a public link is the one deciding to take files from
+/// strangers, so this is where they learn that nothing checks them. The mark
+/// carries the colour and the sentences are body text, for the contrast
+/// reason in the header. Nothing here can switch scanning on: it is a server
+/// setting, and the card says who holds it.
+class _ScanOffCard extends StatelessWidget {
+  const _ScanOffCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.awTokens;
+    return Card(
+      key: const Key('portal-scan-off'),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.gpp_maybe_outlined, color: tokens.warning, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ee.portal.scanOffTitle'.tr(),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'ee.portal.scanOffBody'.tr(),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

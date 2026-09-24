@@ -125,17 +125,17 @@ class EeTicketLinksApi {
   /// than an error — this is an ADDITION to a screen that already works, and
   /// a desk without the overlay's newer half should see files without a
   /// badge rather than a red box.
-  Future<Set<String>> externalFileIds(String ticketId) async {
+  ///
+  /// EE-260: and which of those no scanner read ([EeExternalFiles]).
+  Future<EeExternalFiles> externalFiles(String ticketId) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
         '$_base/$ticketId/portal-uploads',
       );
-      return ((res.data?['fileIds'] as List<dynamic>?) ?? const [])
-          .map((e) => e as String)
-          .toSet();
+      return EeExternalFiles.fromJson(res.data ?? const {});
     } on DioException catch (error) {
       final code = error.response?.statusCode;
-      if (code == 403 || code == 404) return const {};
+      if (code == 403 || code == 404) return EeExternalFiles.none;
       throw asApiException(error);
     }
   }

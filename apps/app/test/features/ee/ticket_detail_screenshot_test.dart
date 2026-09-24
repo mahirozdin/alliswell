@@ -117,7 +117,9 @@ List<Override> _overrides(
     // are overridden to what the demo corpus holds for T5, which is nothing,
     // so the pictures stay about the conversation.
     targetFilesProvider.overrideWith((ref, target) => Stream.value(const [])),
-    eeTicketExternalFilesProvider.overrideWith((ref, id) async => const {}),
+    eeTicketExternalFilesProvider.overrideWith(
+      (ref, id) async => EeExternalFiles.none,
+    ),
     eeTicketRelationsProvider.overrideWith(
       (ref, id) async => const EeTicketRelations(),
     ),

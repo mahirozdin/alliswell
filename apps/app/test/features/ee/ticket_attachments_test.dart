@@ -27,8 +27,11 @@ import 'package:alliswell/src/features/ee/worklog_providers.dart';
 ///   1. THE BADGE IS ON THE EXTERNAL FILE AND ONLY ON IT. A test that only
 ///      checked "the warning appears" would pass against a screen that
 ///      warned about every attachment, which would teach people to ignore it.
-///   2. THE WORDS ARE ABOUT ORIGIN, NOT SAFETY. There is no scanner in this
-///      product, so the screen must not claim one.
+///   2. THE WORDS ARE ABOUT ORIGIN, NOT SAFETY. Since EE-260 a server may
+///      scan what comes from outside, so "not scanned" is said of exactly
+///      the files no scanner read — and a file one passed still says where it
+///      came from and still asks for care, because passing a signature list
+///      is not a verdict of safety.
 ///   3. A SERVER THAT DOES NOT ANSWER MEANS NO BADGE, NOT AN ERROR. The list
 ///      is an addition to a screen that already worked.
 const _ticketId = '01TKAAAAAAAAAAAAAAAAAAAAAA';
@@ -71,6 +74,7 @@ void main() {
   Future<void> pump(
     WidgetTester tester, {
     required Set<String> external,
+    Set<String>? unscanned,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -82,9 +86,12 @@ void main() {
             targetType: 'ticket',
             targetId: _ticketId,
           )).overrideWith((ref) => Stream.value(files)),
-          eeTicketExternalFilesProvider(
-            _ticketId,
-          ).overrideWith((ref) async => external),
+          eeTicketExternalFilesProvider(_ticketId).overrideWith(
+            (ref) async => EeExternalFiles(
+              ids: external,
+              unscanned: unscanned ?? external,
+            ),
+          ),
           eeTicketRelationsProvider(
             _ticketId,
           ).overrideWith((ref) async => const EeTicketRelations()),
@@ -162,8 +169,8 @@ void main() {
       findsNothing,
     );
 
-    // And the words are about ORIGIN. There is no scanner in this product, so
-    // the screen must not imply one has passed or failed.
+    // And the words are about ORIGIN — plus "not scanned", because THIS file
+    // was not (EE-260: the sentence is per file now, see below).
     // The key is ON the Text, so it is read directly — `find.descendant` of a
     // Text matching Text finds nothing, which is how this assertion first
     // failed rather than passing vacuously.
@@ -172,6 +179,38 @@ void main() {
     );
     expect(text.data, contains('Dışarıdan'));
     expect(text.data, contains('taranmadı'));
+  });
+
+  testWidgets(
+    'EE-260: a file the scanner read does not say "not scanned" — and still says where it came from',
+    (tester) async {
+      await pump(tester, external: {_fromOutside}, unscanned: const {});
+      final text = tester.widget<Text>(
+        find.byKey(const Key('ticket-file-external-$_fromOutside')),
+      );
+      expect(text.data, contains('Dışarıdan'));
+      expect(text.data, contains('taramasından geçti'));
+      expect(text.data, isNot(contains('taranmadı')));
+      // Passing a scan is not a verdict of safety: the sentence still asks
+      // for care before opening.
+      expect(text.data, contains('kaynağını düşünün'));
+    },
+  );
+
+  test('a server from before scanning names no scanned files', () {
+    // EE-260's client reading an older server: no second list means nothing
+    // was read, so every outside file stays "not scanned".
+    final old = EeExternalFiles.fromJson({
+      'fileIds': ['F1'],
+    });
+    expect(old.isExternal('F1'), isTrue);
+    expect(old.isUnscanned('F1'), isTrue);
+    final scanned = EeExternalFiles.fromJson({
+      'fileIds': ['F1', 'F2'],
+      'unscannedFileIds': ['F2'],
+    });
+    expect(scanned.isUnscanned('F1'), isFalse);
+    expect(scanned.isUnscanned('F2'), isTrue);
   });
 
   testWidgets('a server that says nothing means no badge, not an error', (

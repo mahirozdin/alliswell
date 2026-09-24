@@ -90,7 +90,7 @@ void main() {
           )).overrideWith((ref) => Stream.value(const [])),
           eeTicketExternalFilesProvider(
             _ticketId,
-          ).overrideWith((ref) async => const <String>{}),
+          ).overrideWith((ref) async => EeExternalFiles.none),
           eeTicketRelationsProvider(
             _ticketId,
           ).overrideWith((ref) async => const EeTicketRelations()),

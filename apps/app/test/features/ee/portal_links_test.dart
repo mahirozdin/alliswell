@@ -253,4 +253,69 @@ void main() {
       expect(find.byKey(const Key('portal-create')), findsNothing);
     });
   });
+
+  // EE-260 — whether files through these doors are virus-scanned, said
+  // beside the doors, to the person who opens them.
+  group('scanning', () {
+    testWidgets(
+      'AW-E12: when files through these links are not scanned, the screen that opens them says so',
+      (tester) async {
+        await _pump(
+          tester,
+          EePortalLinksData(
+            links: [_link()],
+            linkQuota: const EePortalQuota(used: 1),
+            ticketQuota: const EePortalQuota(used: 0),
+            attachmentScanOn: false,
+          ),
+        );
+        final card = find.byKey(const Key('portal-scan-off'));
+        expect(card, findsOneWidget);
+        expect(
+          find.descendant(
+            of: card,
+            matching: find.textContaining('not virus-scanned'),
+          ),
+          findsOneWidget,
+        );
+        // The mark carries the warning colour; the words stay body text.
+        final theme = buildAwTheme(Brightness.light);
+        final icon = tester.widget<Icon>(
+          find.descendant(of: card, matching: find.byType(Icon)),
+        );
+        expect(icon.color, theme.extension<AwTokens>()!.warning);
+        for (final text in tester.widgetList<Text>(
+          find.descendant(of: card, matching: find.byType(Text)),
+        )) {
+          expect(
+            text.style?.color,
+            isNot(theme.extension<AwTokens>()!.warning),
+          );
+        }
+      },
+    );
+
+    testWidgets('a server that scans shows no card', (tester) async {
+      await _pump(
+        tester,
+        EePortalLinksData(
+          links: [_link()],
+          linkQuota: const EePortalQuota(used: 1),
+          ticketQuota: const EePortalQuota(used: 0),
+        ),
+      );
+      expect(find.byKey(const Key('portal-scan-off')), findsNothing);
+    });
+
+    test(
+      'only an explicit "on" counts — a server that says nothing does not scan',
+      () {
+        EePortalLinksData read(Map<String, dynamic> extra) =>
+            EePortalLinksData.fromJson({'links': const [], ...extra});
+        expect(read({'attachmentScan': 'on'}).attachmentScanOn, isTrue);
+        expect(read({'attachmentScan': 'off'}).attachmentScanOn, isFalse);
+        expect(read({}).attachmentScanOn, isFalse);
+      },
+    );
+  });
 }

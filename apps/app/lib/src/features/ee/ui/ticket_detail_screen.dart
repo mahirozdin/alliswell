@@ -12,6 +12,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
 import '../data/kb_models.dart';
+import '../data/ticket_links_models.dart';
 import '../data/ticket_write_api.dart';
 import '../kb_providers.dart';
 import '../providers.dart';
@@ -598,7 +599,7 @@ class _Attachments extends ConsumerWidget {
     if (files.isEmpty) return const SizedBox.shrink();
     final external =
         ref.watch(eeTicketExternalFilesProvider(ticket.id)).value ??
-        const <String>{};
+        EeExternalFiles.none;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -611,7 +612,7 @@ class _Attachments extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             dense: true,
             leading: Icon(
-              external.contains(file.id)
+              external.isExternal(file.id)
                   ? Icons.report_gmailerrorred_outlined
                   : Icons.attach_file,
             ),
@@ -620,10 +621,10 @@ class _Attachments extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: external.contains(file.id)
+            subtitle: external.isExternal(file.id)
                 ? Text(
                     key: Key('ticket-file-external-${file.id}'),
-                    'ee.tickets.attachmentExternal'.tr(),
+                    _externalLabel(external, file.id),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -634,6 +635,15 @@ class _Attachments extends ConsumerWidget {
       ],
     );
   }
+
+  /// EE-260: where the file came from, always; "not scanned" only when that
+  /// is true of THIS file. A file a scanner passed still says it came from
+  /// outside and still asks for care — a signature list that does not know a
+  /// file is not a verdict that the file is safe.
+  String _externalLabel(EeExternalFiles external, String fileId) =>
+      external.isUnscanned(fileId)
+      ? 'ee.tickets.attachmentExternal'.tr()
+      : 'ee.tickets.attachmentExternalScanned'.tr();
 
   /// Downloading is core's presigned GET, unchanged. The overlay adds the
   /// sentence beside it and takes nothing away: a file a stranger sent is

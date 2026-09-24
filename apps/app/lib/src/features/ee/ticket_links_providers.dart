@@ -34,15 +34,16 @@ final eeTicketRelationsProvider =
 /// The ids come from the SERVER because provenance is the overlay's own fact
 /// and core's file rows cannot carry it (core must not learn the overlay
 /// exists). The files themselves come from the replica. The screen
-/// intersects the two, which is why this returns a Set and nothing else.
+/// intersects the two, which is why this returns ids and nothing else —
+/// since EE-260, two sets of them ([EeExternalFiles]).
 ///
 /// An empty answer is the safe default everywhere: a desk whose server has
 /// not been updated sees its files without badges rather than an error, and
 /// nothing is ever marked external by accident — only by being on this list.
 final eeTicketExternalFilesProvider = FutureProvider.autoDispose
-    .family<Set<String>, String>((ref, ticketId) async {
-      if (!ref.watch(eeFeatureProvider('teams'))) return const {};
-      return ref.watch(eeTicketLinksApiProvider).externalFileIds(ticketId);
+    .family<EeExternalFiles, String>((ref, ticketId) async {
+      if (!ref.watch(eeFeatureProvider('teams'))) return EeExternalFiles.none;
+      return ref.watch(eeTicketLinksApiProvider).externalFiles(ticketId);
     });
 
 /// The titles of the work a request caused, read from the DEVICE's own copy.

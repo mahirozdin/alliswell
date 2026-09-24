@@ -77,6 +77,31 @@ void main() {
         screen: const EePortalLinksScreen(),
       );
     });
+    // EE-260: the same doors on a server that does not scan what comes
+    // through them — the card a person sees before opening another one.
+    testWidgets('portal links, scanning off (${brightness.name})', (
+      tester,
+    ) async {
+      final unscanned = EePortalLinksData(
+        links: corpus.portalLinks.links,
+        linkQuota: corpus.portalLinks.linkQuota,
+        ticketQuota: corpus.portalLinks.ticketQuota,
+        attachmentScanOn: false,
+      );
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-portal-scan-off',
+        size: const Size(900, 1100),
+        overrides: [
+          eePortalLinksProvider.overrideWith(() => _Fixed(unscanned)),
+          eeServicesProvider.overrideWith(
+            () => _FixedServices(corpus.services),
+          ),
+        ],
+        screen: const EePortalLinksScreen(),
+      );
+    });
     testWidgets('portal link creation (${brightness.name})', (tester) async {
       await eeShoot(
         tester,

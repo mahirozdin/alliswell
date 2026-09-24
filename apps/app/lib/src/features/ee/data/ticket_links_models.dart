@@ -119,3 +119,39 @@ class EeTicketRelations {
   /// Null unless the request is parked (EE-190).
   final String? waitingReason;
 }
+
+/// EE-198 + EE-260 — which of a request's files came from OUTSIDE, and which
+/// of those no scanner read.
+///
+/// Two sets because the badge says two things, and each has to be true of
+/// the one file it sits on: "this came from outside" is always the server's
+/// fact, and "this was not scanned" is true of a file that arrived with no
+/// scanner configured or before scanning existed — and false of one a
+/// scanner passed.
+class EeExternalFiles {
+  const EeExternalFiles({this.ids = const {}, this.unscanned = const {}});
+
+  factory EeExternalFiles.fromJson(Map<String, dynamic> json) {
+    final ids = ((json['fileIds'] as List<dynamic>?) ?? const [])
+        .map((e) => e as String)
+        .toSet();
+    // A server from before EE-260 sends no second list — and it scanned
+    // nothing, so every file it names is unscanned. Reading the absence as
+    // "all scanned" would put the reassuring sentence on files nobody read.
+    final unscanned = json.containsKey('unscannedFileIds')
+        ? ((json['unscannedFileIds'] as List<dynamic>?) ?? const [])
+              .map((e) => e as String)
+              .toSet()
+        : ids;
+    return EeExternalFiles(ids: ids, unscanned: unscanned);
+  }
+
+  /// Nothing is marked external by accident — only by being on the list.
+  static const none = EeExternalFiles();
+
+  final Set<String> ids;
+  final Set<String> unscanned;
+
+  bool isExternal(String fileId) => ids.contains(fileId);
+  bool isUnscanned(String fileId) => unscanned.contains(fileId);
+}

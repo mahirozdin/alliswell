@@ -134,6 +134,7 @@ class EePortalLinksData {
     required this.links,
     required this.linkQuota,
     required this.ticketQuota,
+    this.attachmentScanOn = true,
   });
 
   factory EePortalLinksData.fromJson(Map<String, dynamic> json) =>
@@ -149,11 +150,20 @@ class EePortalLinksData {
           (json['quota'] as Map<String, dynamic>?)?['ticketsThisMonth']
               as Map<String, dynamic>?,
         ),
+        // Strict on the wire: only an explicit `on` counts. A server that
+        // does not send the field is one that does not scan, so the warning
+        // it produces is true.
+        attachmentScanOn: json['attachmentScan'] == 'on',
       );
 
   final List<EePortalLink> links;
   final EePortalQuota linkQuota;
   final EePortalQuota ticketQuota;
+
+  /// Whether files sent through these links are virus-scanned before the desk
+  /// sees them. `true` means the server has a scanner configured; one that
+  /// stops answering refuses files rather than letting them through.
+  final bool attachmentScanOn;
 }
 
 /// The answer to a create — and the ONLY place a usable URL exists.

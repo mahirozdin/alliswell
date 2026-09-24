@@ -18,8 +18,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   anonymously. On the request itself the desk now sees its attachments —
   which it never could before — and the ones a stranger sent say so, in
   words about where they came from rather than a claim about whether they
-  are safe. Nothing in this product scans files, so nothing here pretends
-  otherwise.
+  are safe. A server can have them virus-scanned on the way in: a file the
+  scanner flags is never kept, and the words "not scanned" appear only on a
+  file that was not.
 
 - **One link, several things to ask about — and the answer before the
   question.** A public link can now open onto a chosen set of topics instead
