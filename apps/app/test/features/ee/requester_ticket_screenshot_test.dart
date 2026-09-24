@@ -7,13 +7,16 @@
 //
 // Inert without the dart-define, like every other shot file here.
 //
-// TWO SHOTS, the two moments the screen exists for:
+// THREE SHOTS, the three moments the screen exists for:
 //
 //   • "Waiting for you": the desk asked a question, the card says the next
 //     move is theirs, and the answer is being typed into the one box there
 //     is — a visible reply, with no internal note to choose.
-//   • Resolved: the desk says it is done, and the two answers the person who
-//     asked may give — "yes, close it" and "no, it is not".
+//   • Resolved: the desk says it is done, the photo it asked for sits under
+//     the conversation read-only, and the two answers the person who asked
+//     may give — "yes, close it" and "no, it is not".
+//   • Closed: no box any more, and the way on is a new request that carries
+//     this one.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +25,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/features/ee/data/requester_ticket_api.dart';
 import 'package:alliswell/src/features/ee/requester_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/ui/requester_ticket_screen.dart';
+import 'package:alliswell/src/features/integrations/providers.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 
@@ -32,20 +36,22 @@ const bool _enabled = bool.fromEnvironment('screenshots');
 const _id = '01TKAAAAAAAAAAAAAAAAAAAAAA';
 const _me = 'U-ME';
 
-EeRequesterTicket _ticket(bool turkish, {required bool resolved}) =>
+EeRequesterTicket _ticket(bool turkish, {required String status}) =>
     EeRequesterTicket(
       id: _id,
       subject: turkish ? 'Pres 2 yağ kaçırıyor' : 'Press 2 is leaking oil',
-      status: resolved ? 'resolved' : 'waiting',
+      status: status,
       viewer: 'requester',
       number: 1042,
       body: turkish
           ? 'Pres 2’nin altında sabahtan beri yağ birikiyor.'
           : 'Oil has been pooling under press 2 since this morning.',
-      waitingReason: resolved ? null : 'requester_info',
+      waitingReason: status == 'waiting' ? 'requester_info' : null,
       serviceName: turkish ? 'Hat duruşu' : 'Line stop',
       updatedAt: DateTime.utc(2026, 9, 24, 9, 30),
-      allowedTransitions: resolved ? const ['closed', 'in_progress'] : const [],
+      allowedTransitions: status == 'resolved'
+          ? const ['closed', 'in_progress']
+          : const [],
     );
 
 List<EeRequesterComment> _lines(bool turkish, {required bool resolved}) => [
@@ -86,10 +92,12 @@ void main() {
   });
 
   for (final brightness in Brightness.values) {
-    for (final resolved in [false, true]) {
-      final name = resolved
-          ? 'ee-requester-ticket-resolved'
-          : 'ee-requester-ticket';
+    for (final status in ['waiting', 'resolved', 'closed']) {
+      final resolved = status != 'waiting';
+      final name = switch (status) {
+        'waiting' => 'ee-requester-ticket',
+        _ => 'ee-requester-ticket-$status',
+      };
       testWidgets('$name — ${brightness.name}', (tester) async {
         final turkish = AwI18n.instance.locale.languageCode == 'tr';
         await eeShoot(
@@ -100,14 +108,28 @@ void main() {
           overrides: <Override>[
             currentUserIdProvider.overrideWithValue(_me),
             eeRequesterTicketProvider.overrideWith(
-              (ref, id) async => _ticket(turkish, resolved: resolved),
+              (ref, id) async => _ticket(turkish, status: status),
             ),
             eeRequesterCommentsProvider.overrideWith(
               (ref, id) async => _lines(turkish, resolved: resolved),
             ),
+            // The photo the desk asked for, on the answer it came with.
+            eeRequesterFilesProvider.overrideWith(
+              (ref, id) async => resolved
+                  ? const [
+                      EeTicketFile(
+                        id: 'F1',
+                        name: 'pres-2-hortum.jpg',
+                        sizeBytes: 482133,
+                        commentId: 'C2',
+                      ),
+                    ]
+                  : const [],
+            ),
+            urlLauncherProvider.overrideWithValue((url) async => true),
           ],
           screen: const EeRequesterTicketScreen(ticketId: _id),
-          afterPump: resolved
+          afterPump: status != 'waiting'
               ? null
               : (t) async {
                   await t.enterText(

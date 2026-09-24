@@ -40,8 +40,32 @@ import 'service_icons.dart';
 /// marks are the server's too; the device only evaluates them as somebody
 /// types (`visibleFormFields`), because a form that waited for a round trip
 /// to reveal the next question would not be a form.
+/// A request that follows a closed one (EE-252).
+///
+/// A closed request is an outcome and takes no reply, so when the problem
+/// comes back its requester files a new one. This carries the old one into
+/// the new form: its number and subject in the body, where the desk reads
+/// them, and its service picked again when the catalogue still offers it.
+/// The formal link is the desk's tool (`tickets.link`), not the requester's.
+///
+/// Carried in-app (the route's `extra`), never in a URL: an address a
+/// notification or a printed sign can open carries an id and nothing else.
+class EeTicketFollowUp {
+  const EeTicketFollowUp({required this.subject, this.number, this.serviceId});
+
+  final String subject;
+  final int? number;
+  final String? serviceId;
+
+  /// How the form names the old request: its number, or its subject.
+  String get reference => number != null ? '#$number' : '"$subject"';
+}
+
 class EeNewTicketScreen extends ConsumerStatefulWidget {
-  const EeNewTicketScreen({super.key});
+  const EeNewTicketScreen({super.key, this.followUp});
+
+  /// Set when this request follows a closed one.
+  final EeTicketFollowUp? followUp;
 
   @override
   ConsumerState<EeNewTicketScreen> createState() => _EeNewTicketScreenState();
@@ -77,10 +101,31 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   /// Held from the start: `dispose` may not reach for providers any more.
   late final EeKbApi _kbApi;
 
+  /// A follow-up's service is picked once, when the catalogue first answers;
+  /// after that the choice is the person's.
+  bool _followUpSeeded = false;
+
   @override
   void initState() {
     super.initState();
     _kbApi = ref.read(eeKbApiProvider);
+    // EE-252: before the listeners, so carrying the old request in does not
+    // count as typing (no answers asked for a subject nobody wrote here).
+    final followUp = widget.followUp;
+    if (followUp != null) {
+      _subject.text = followUp.subject;
+      final said = followUp.number != null
+          ? 'ee.tickets.new.followUpBody'.tr(
+              args: {
+                'number': '${followUp.number}',
+                'subject': followUp.subject,
+              },
+            )
+          : 'ee.tickets.new.followUpBodyNoNumber'.tr(
+              args: {'subject': followUp.subject},
+            );
+      _body.text = '$said\n\n';
+    }
     for (final controller in [_subject, _body, _requesterName]) {
       controller.addListener(_changed);
     }
@@ -140,6 +185,22 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
     // "This solved it": the person leaves without a request, which is
     // exactly the deflection `dispose` reports.
     if (solved == true) navigator.pop();
+  }
+
+  /// EE-252: the closed request's service, once, if the catalogue has it.
+  /// Assigned rather than `setState`: this runs inside `build`, before the
+  /// fields it sets are read.
+  void _seedFollowUpService(EeCatalog? catalog) {
+    final id = widget.followUp?.serviceId;
+    if (_followUpSeeded || id == null || catalog == null) return;
+    _followUpSeeded = true;
+    if (_service != null) return;
+    for (final service in catalog.services) {
+      if (service.id != id) continue;
+      _service = service;
+      _unitId = service.units.length == 1 ? service.units.single.id : null;
+      return;
+    }
   }
 
   void _pickService(EeCatalogService service) {
@@ -292,6 +353,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
     final online = ref.watch(serverReachabilityProvider) != false;
     final catalog = ref.watch(eeCatalogProvider);
     final mayActForOthers = ref.watch(canProvider('tickets.create_on_behalf'));
+    _seedFollowUpService(catalog.value);
     final service = _service;
 
     return Scaffold(
@@ -306,6 +368,16 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
             AwSpace.x6 + MediaQuery.viewInsetsOf(context).bottom,
           ),
           children: [
+            if (widget.followUp case final followUp?) ...[
+              _Note(
+                key: const Key('new-ticket-follow-up'),
+                icon: Icons.link,
+                text: 'ee.tickets.new.followUpNote'.tr(
+                  args: {'ref': followUp.reference},
+                ),
+              ),
+              const SizedBox(height: AwSpace.x4),
+            ],
             if (!online) ...[
               _Note(
                 key: const Key('new-ticket-offline'),

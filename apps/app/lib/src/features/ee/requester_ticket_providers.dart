@@ -22,3 +22,10 @@ final eeRequesterCommentsProvider =
       (ref, ticketId) =>
           ref.watch(eeRequesterTicketApiProvider).comments(ticketId),
     );
+
+/// EE-252 — the request's files this reader may see, read-only.
+final eeRequesterFilesProvider =
+    FutureProvider.family<List<EeTicketFile>, String>(
+      (ref, ticketId) =>
+          ref.watch(eeRequesterTicketApiProvider).files(ticketId),
+    );

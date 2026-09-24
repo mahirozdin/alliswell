@@ -2176,7 +2176,10 @@
         "missing": "Missing before it can be sent: {fields}",
         "sent": "Request filed",
         "sentNumbered": "Request filed — #{number}",
-        "drafted": "Draft saved — it will be sent when the signal returns"
+        "drafted": "Draft saved — it will be sent when the signal returns",
+        "followUpNote": "You are following up on {ref}, which is closed. The desk can link the two.",
+        "followUpBody": "Follows up on #{number}: {subject}",
+        "followUpBodyNoNumber": "Follows up on: {subject}"
       },
       "drafts": {
         "title": "Drafts",
@@ -2214,7 +2217,8 @@
         "closedDone": "Request closed",
         "disputed": "Sent back to the desk",
         "newRequest": "Open a new request",
-        "needsConnection": "This request is read from the server, and there is no connection. It opens when you are back online."
+        "needsConnection": "This request is read from the server, and there is no connection. It opens when you are back online.",
+        "closedFooter": "This request is closed, and so is its conversation. If the problem is back, open a new request; this one’s number goes with it."
       }
     },
     "sla": {

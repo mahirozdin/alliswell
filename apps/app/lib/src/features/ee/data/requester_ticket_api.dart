@@ -18,6 +18,7 @@ class EeRequesterTicket {
     this.number,
     this.body,
     this.waitingReason,
+    this.serviceId,
     this.serviceName,
     this.createdAt,
     this.updatedAt,
@@ -33,6 +34,7 @@ class EeRequesterTicket {
         number: (json['number'] as num?)?.toInt(),
         body: json['body'] as String?,
         waitingReason: json['waitingReason'] as String?,
+        serviceId: json['serviceId'] as String?,
         serviceName: json['serviceName'] as String?,
         createdAt: _date(json['createdAt']),
         updatedAt: _date(json['updatedAt']),
@@ -49,6 +51,10 @@ class EeRequesterTicket {
   final int? number;
   final String? body;
   final String? waitingReason;
+
+  /// What a follow-up request is filed against again, when the person's
+  /// catalogue still offers it.
+  final String? serviceId;
   final String? serviceName;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -93,6 +99,35 @@ class EeRequesterComment {
   final DateTime? createdAt;
 }
 
+/// One file on the request, as its requester may see it (EE-252): on the
+/// request itself or on a visible reply — the server never selects one that
+/// rides an internal note. Read-only: the requester adds by writing.
+class EeTicketFile {
+  const EeTicketFile({
+    required this.id,
+    required this.name,
+    required this.sizeBytes,
+    this.mime,
+    this.commentId,
+  });
+
+  factory EeTicketFile.fromJson(Map<String, dynamic> json) => EeTicketFile(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    sizeBytes: (json['sizeBytes'] as num).toInt(),
+    mime: json['mime'] as String?,
+    commentId: json['commentId'] as String?,
+  );
+
+  final String id;
+  final String name;
+  final int sizeBytes;
+  final String? mime;
+
+  /// The reply it came with; null for the request itself.
+  final String? commentId;
+}
+
 DateTime? _date(Object? value) =>
     value is String ? DateTime.tryParse(value) : null;
 
@@ -114,6 +149,35 @@ class EeRequesterTicketApi {
       return data == null ? null : EeRequesterTicket.fromJson(data);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
+      throw asApiException(e);
+    }
+  }
+
+  /// The files this reader may see (EE-252). Core's file doors ask for the
+  /// unit's membership, which the requester does not hold; these ask what the
+  /// server's conversation asks, plus core's own `files.view`.
+  Future<List<EeTicketFile>> files(String ticketId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '$_tickets/$ticketId/files',
+      );
+      return ((res.data?['files'] as List?) ?? const [])
+          .map((f) => EeTicketFile.fromJson(f as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  /// A short-lived download address, minted per tap and never kept. Null
+  /// when the server has no object storage to sign for.
+  Future<String?> fileUrl(String ticketId, String fileId) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '$_tickets/$ticketId/files/$fileId',
+      );
+      return res.data?['downloadUrl'] as String?;
+    } on DioException catch (e) {
       throw asApiException(e);
     }
   }

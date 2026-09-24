@@ -10,10 +10,13 @@ import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../../files/ui/file_widgets.dart' show formatBytes;
+import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../workspaces/workspaces.dart';
 import '../data/requester_ticket_api.dart';
 import '../requester_ticket_providers.dart';
 import '../ticket_write_providers.dart';
+import 'new_ticket_screen.dart' show EeTicketFollowUp;
 
 /// One request, as the person who ASKED sees it (EE-252, ADR-0017 D17.6).
 ///
@@ -160,9 +163,10 @@ class _RequesterBody extends ConsumerWidget {
               ),
           ],
         ),
+        _Files(ticketId: ticket.id),
         const SizedBox(height: AwSpace.x3),
         if (ticket.isClosed)
-          _ClosedFooter(key: const Key('ee-requester-closed'))
+          _ClosedFooter(key: const Key('ee-requester-closed'), ticket: ticket)
         else ...[
           if (ticket.allowedTransitions.isNotEmpty) ...[
             _Outcome(ticket: ticket),
@@ -426,8 +430,82 @@ class _RequesterReplyBoxState extends ConsumerState<_RequesterReplyBox> {
   }
 }
 
+/// The request's files, read-only (EE-252): on the request and on its
+/// visible answers — the server never selects one on an internal note. A tap
+/// asks the server for a fresh download address and opens it; nothing is
+/// kept, because the address expires and a list of dead links is worse than
+/// a second request.
+class _Files extends ConsumerWidget {
+  const _Files({required this.ticketId});
+
+  final String ticketId;
+
+  Future<void> _open(
+    BuildContext context,
+    WidgetRef ref,
+    EeTicketFile file,
+  ) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      final url = await ref
+          .read(eeRequesterTicketApiProvider)
+          .fileUrl(ticketId, file.id);
+      if (url == null) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text('ee.tickets.attachmentUnavailable'.tr())),
+        );
+        return;
+      }
+      await ref.read(urlLauncherProvider)(Uri.parse(url));
+    } on ApiException catch (error) {
+      if (error.code == 'NETWORK_ERROR') {
+        ref.read(serverReachabilityProvider.notifier).unreachable();
+      }
+      messenger?.showSnackBar(SnackBar(content: Text(localizedError(error))));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final files = ref.watch(eeRequesterFilesProvider(ticketId));
+    return files.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, _) => AwInlineError(message: localizedError(error)),
+      data: (rows) {
+        if (rows.isEmpty) return const SizedBox.shrink();
+        return Column(
+          key: const Key('ee-requester-files'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: AwSpace.x3),
+            Text(
+              'ee.tickets.attachments'.tr(),
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            for (final file in rows)
+              ListTile(
+                key: Key('ee-requester-file-${file.id}'),
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.attach_file),
+                title: Text(
+                  file.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(formatBytes(file.sizeBytes)),
+                onTap: () => _open(context, ref, file),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _ClosedFooter extends StatelessWidget {
-  const _ClosedFooter({super.key});
+  const _ClosedFooter({super.key, required this.ticket});
+
+  final EeRequesterTicket ticket;
 
   @override
   Widget build(BuildContext context) {
@@ -437,11 +515,20 @@ class _ClosedFooter extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ee.tickets.composer.closed'.tr()),
+            Text('ee.tickets.requester.closedFooter'.tr()),
             const SizedBox(height: AwSpace.x2),
             FilledButton.tonal(
               key: const Key('ee-requester-new'),
-              onPressed: () => context.push('/tickets/new'),
+              // EE-252: the new request carries this one — its number and
+              // subject in the body, its service picked again.
+              onPressed: () => context.push(
+                '/tickets/new',
+                extra: EeTicketFollowUp(
+                  subject: ticket.subject,
+                  number: ticket.number,
+                  serviceId: ticket.serviceId,
+                ),
+              ),
               child: Text('ee.tickets.requester.newRequest'.tr()),
             ),
           ],

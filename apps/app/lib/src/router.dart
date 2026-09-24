@@ -88,7 +88,16 @@ List<RouteBase> eeTicketRoutes() => [
   // (a printed sign by a machine, one day) can land on it.
   GoRoute(
     path: '/tickets/new',
-    builder: (context, state) => _page(const EeNewTicketScreen()),
+    builder: (context, state) => _page(
+      EeNewTicketScreen(
+        // EE-252: a follow-up to a closed request rides in-app, in `extra`;
+        // the address itself carries nothing.
+        followUp: switch (state.extra) {
+          final EeTicketFollowUp followUp => followUp,
+          _ => null,
+        },
+      ),
+    ),
   ),
   // EE-251: one request by its address — what a notification, a pasted
   // `alliswell://ticket/{id}` and the queue all open. Before it, the detail
