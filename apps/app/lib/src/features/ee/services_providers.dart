@@ -94,6 +94,19 @@ class EeServicesController extends AsyncNotifier<List<EeService>?> {
     if (moveShelf) await api.setCategory(serviceId, categoryId);
     if (patch.isNotEmpty) await api.patch(serviceId, patch);
   });
+
+  /// EE-229 — the designer's publish: the WHOLE schema in one PATCH, which
+  /// the server turns into the next version (EE-214). No fields at all is
+  /// null, "the plain subject + body form" — not `{fields: []}`, which the
+  /// server would store as a different form that asks the same nothing.
+  Future<void> publishForm(String serviceId, List<EeServiceField> fields) =>
+      _then(
+        () => ref.read(eeServicesApiProvider).patch(serviceId, {
+          'formSchema': fields.isEmpty
+              ? null
+              : {'fields': fields.map((f) => f.toJson()).toList()},
+        }),
+      );
 }
 
 /// The catalogue's shelves (EE-212, EE-228). Null = not yours to shape.

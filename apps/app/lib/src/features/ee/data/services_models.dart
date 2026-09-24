@@ -1,3 +1,5 @@
+import 'new_ticket_api.dart' show EeFormCondition, EeFormField;
+
 /// The service catalogue, client side (EE-082).
 ///
 /// A service is "what can I ask this company for"; `unitIds` is "and who
@@ -18,6 +20,7 @@ class EeService {
     this.approvalMode = 'none',
     this.approverRoleKey,
     this.approverUserIds = const [],
+    this.formVersion = 0,
   });
 
   factory EeService.fromJson(Map<String, dynamic> json) => EeService(
@@ -32,6 +35,7 @@ class EeService {
     approverRoleKey: json['approverRoleKey'] as String?,
     approverUserIds: ((json['approverUserIds'] as List?) ?? const [])
         .cast<String>(),
+    formVersion: (json['formVersion'] as num?)?.toInt() ?? 0,
     formFields:
         (((json['formSchema'] as Map<String, dynamic>?)?['fields'] as List?) ??
                 const [])
@@ -70,6 +74,10 @@ class EeService {
   /// The named people, for `users`.
   final List<String> approverUserIds;
 
+  /// The form version in force (EE-214): every publish is the next number,
+  /// and a request answered against an older one keeps it. 0 = never set.
+  final int formVersion;
+
   /// The state worth drawing loudly: live, but reaching nobody.
   bool get unroutable => !archived && unitIds.isEmpty;
 
@@ -90,14 +98,24 @@ class EeServiceField {
     required this.type,
     this.required = false,
     this.options = const [],
+    this.help,
+    this.showIf,
   });
 
+  // EE-246: `help` and `showIf` (EE-214) are READ — and written back below.
+  // Until then this model knew five properties of seven, so an admin who
+  // touched a form in the app stripped every help text and every condition
+  // on save, silently, from every field.
   factory EeServiceField.fromJson(Map<String, dynamic> json) => EeServiceField(
     key: json['key'] as String,
     label: json['label'] as String,
     type: json['type'] as String,
     required: (json['required'] as bool?) ?? false,
     options: ((json['options'] as List?) ?? const []).cast<String>(),
+    help: json['help'] as String?,
+    showIf: json['showIf'] == null
+        ? null
+        : EeFormCondition.fromJson(json['showIf'] as Map<String, dynamic>),
   );
 
   static const List<String> types = [
@@ -114,6 +132,43 @@ class EeServiceField {
   final bool required;
   final List<String> options;
 
+  /// The sentence under the label (EE-214, at most 200 characters).
+  final String? help;
+
+  /// Shown only when an EARLIER field was answered with a value (EE-214).
+  final EeFormCondition? showIf;
+
+  EeServiceField copyWith({
+    String? label,
+    String? type,
+    bool? required,
+    List<String>? options,
+    String? help,
+    bool clearHelp = false,
+    EeFormCondition? showIf,
+    bool clearShowIf = false,
+  }) => EeServiceField(
+    key: key,
+    label: label ?? this.label,
+    type: type ?? this.type,
+    required: required ?? this.required,
+    options: options ?? this.options,
+    help: clearHelp ? null : (help ?? this.help),
+    showIf: clearShowIf ? null : (showIf ?? this.showIf),
+  );
+
+  /// The same question as the person filing reads it — what the designer's
+  /// preview draws (EE-229), through the request form's own renderer.
+  EeFormField toFormField() => EeFormField(
+    key: key,
+    label: label,
+    type: type,
+    required: required,
+    options: options,
+    help: help,
+    showIf: showIf,
+  );
+
   Map<String, dynamic> toJson() => {
     'key': key,
     'label': label,
@@ -122,6 +177,9 @@ class EeServiceField {
     // Only a select may carry options — the server rejects them anywhere else,
     // so sending an empty list on a text field would fail the save.
     if (type == 'select') 'options': options,
+    if (help != null && help!.trim().isNotEmpty) 'help': help!.trim(),
+    if (showIf != null)
+      'showIf': {'key': showIf!.key, 'equals': showIf!.equals},
   };
 }
 

@@ -41,9 +41,10 @@ class EeFormCondition {
 
 /// One question a service's form asks — the requester's view of it.
 ///
-/// Not `EeServiceField`: that one is the ADMIN's model, and it writes the
-/// schema back; teaching it `help` and `showIf` without teaching the admin
-/// screen to keep them would drop both on the next save. This one only reads.
+/// Not `EeServiceField`: that one is the ADMIN's model and writes the schema
+/// back (EE-246 taught it to keep `help` and `showIf`, which it used to drop
+/// on every save); this one only reads. The designer's preview converts one
+/// into the other (`toFormField`), so both screens draw the same question.
 class EeFormField {
   const EeFormField({
     required this.key,

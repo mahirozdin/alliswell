@@ -4,9 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
-import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
-import '../../../core/persisted_prefs.dart';
 import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/providers.dart';
@@ -21,6 +19,7 @@ import '../my_tickets_providers.dart';
 import '../new_ticket_providers.dart';
 import '../providers.dart';
 import '../ticket_drafts_providers.dart';
+import 'form_field_view.dart';
 import 'service_icons.dart';
 
 /// EE-225 — filing a request from the app.
@@ -54,7 +53,6 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   final _requesterName = TextEditingController();
   final _requesterEmail = TextEditingController();
   final _answers = <String, Object?>{};
-  final _textAnswers = <String, TextEditingController>{};
   EeCatalogService? _service;
   String? _unitId;
   bool _onBehalf = false;
@@ -111,7 +109,6 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
       _body,
       _requesterName,
       _requesterEmail,
-      ..._textAnswers.values,
     ]) {
       controller.dispose();
     }
@@ -152,31 +149,9 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
       _unitId = service.units.length == 1 ? service.units.single.id : null;
       // Answers belong to the form they were given against.
       _answers.clear();
-      for (final controller in _textAnswers.values) {
-        controller.dispose();
-      }
-      _textAnswers.clear();
       _error = null;
     });
   }
-
-  TextEditingController _textFor(EeFormField field) =>
-      _textAnswers.putIfAbsent(field.key, () {
-        final controller = TextEditingController();
-        controller.addListener(() {
-          final text = controller.text.trim();
-          setState(() {
-            if (text.isEmpty) {
-              _answers.remove(field.key);
-            } else if (field.type == 'number') {
-              _answers[field.key] = num.tryParse(text) ?? text;
-            } else {
-              _answers[field.key] = text;
-            }
-          });
-        });
-        return controller;
-      });
 
   /// What is still missing for an online send, in the words on the screen.
   List<String> _missing(bool online) {
@@ -448,7 +423,22 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
               for (final field in visibleFormFields(service.fields, _answers))
                 Padding(
                   padding: const EdgeInsets.only(top: AwSpace.x3),
-                  child: _field(context, field),
+                  // Keyed by service AND field: two services may both ask
+                  // "line", and the second must not inherit the first's text.
+                  child: EeFormFieldView(
+                    key: ValueKey('${service.id}/${field.key}'),
+                    field: field,
+                    value: _answers[field.key],
+                    keyPrefix: 'new-ticket-field',
+                    enabled: !_busy,
+                    onChanged: (value) => setState(() {
+                      if (value == null) {
+                        _answers.remove(field.key);
+                      } else {
+                        _answers[field.key] = value;
+                      }
+                    }),
+                  ),
                 ),
             // ── For somebody else (EE-170) ────────────────────────────────
             if (mayActForOthers && online) ...[
@@ -514,109 +504,6 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
         ),
       ),
     );
-  }
-
-  Widget _field(BuildContext context, EeFormField field) {
-    final theme = Theme.of(context);
-    final label = field.required
-        ? 'ee.tickets.new.requiredLabel'.tr(args: {'label': field.label})
-        : field.label;
-    final key = Key('new-ticket-field-${field.key}');
-    final help = field.help;
-    switch (field.type) {
-      case 'checkbox':
-        return CheckboxListTile(
-          key: key,
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          value: _answers[field.key] == true,
-          title: Text(label),
-          subtitle: help == null ? null : Text(help),
-          onChanged: _busy
-              ? null
-              : (value) => setState(() => _answers[field.key] = value ?? false),
-        );
-      case 'select':
-        return DropdownButtonFormField<String>(
-          key: key,
-          initialValue: _answers[field.key] as String?,
-          isExpanded: true,
-          decoration: InputDecoration(labelText: label, helperText: help),
-          hint: Text('ee.tickets.new.selectHint'.tr()),
-          items: [
-            for (final option in field.options)
-              DropdownMenuItem(value: option, child: Text(option)),
-          ],
-          onChanged: _busy
-              ? null
-              : (value) => setState(() {
-                  if (value == null) {
-                    _answers.remove(field.key);
-                  } else {
-                    _answers[field.key] = value;
-                  }
-                }),
-        );
-      case 'date':
-        final picked = _answers[field.key] as String?;
-        final format = ref.watch(dateFormatProvider);
-        return InputDecorator(
-          key: key,
-          decoration: InputDecoration(labelText: label, helperText: help),
-          child: Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: TextButton.icon(
-              key: Key('new-ticket-field-${field.key}-pick'),
-              onPressed: _busy ? null : () => _pickDate(field),
-              icon: const Icon(Icons.event_outlined),
-              label: Text(
-                picked == null
-                    ? 'ee.tickets.new.pickDate'.tr()
-                    : awFormatDate(DateTime.parse(picked), format: format),
-              ),
-            ),
-          ),
-        );
-      default:
-        final number = field.type == 'number';
-        final controller = _textFor(field);
-        final raw = controller.text.trim();
-        return TextField(
-          key: key,
-          controller: controller,
-          enabled: !_busy,
-          keyboardType: number
-              ? const TextInputType.numberWithOptions(decimal: true)
-              : TextInputType.text,
-          decoration: InputDecoration(
-            labelText: label,
-            helperText: help,
-            errorText: number && raw.isNotEmpty && num.tryParse(raw) == null
-                ? 'ee.tickets.new.invalidNumber'.tr()
-                : null,
-          ),
-          style: theme.textTheme.bodyLarge,
-        );
-    }
-  }
-
-  Future<void> _pickDate(EeFormField field) async {
-    final now = DateTime.now();
-    final current = _answers[field.key] as String?;
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: current == null ? now : DateTime.parse(current),
-      firstDate: DateTime(now.year - 5),
-      lastDate: DateTime(now.year + 5),
-    );
-    if (picked == null || !mounted) return;
-    setState(() {
-      // The day, as the server's date answers are written: yyyy-mm-dd.
-      _answers[field.key] =
-          '${picked.year.toString().padLeft(4, '0')}-'
-          '${picked.month.toString().padLeft(2, '0')}-'
-          '${picked.day.toString().padLeft(2, '0')}';
-    });
   }
 
   Future<void> _openCatalog(AsyncValue<EeCatalog?> catalog) async {

@@ -15,13 +15,21 @@
 // exactly what a code diff cannot show and a picture can. The list shot puts
 // the unrouted service next to a routed one and an archived one, so the three
 // have to be tellable apart at a glance; the routing shot is where an admin
-// fixes it, with the custom-field editor underneath.
+// fixes it, with the form's summary and the designer's door underneath.
+//
+// EE-229 adds the designer twice. Once with the preview's box TICKED, because
+// the one thing the preview is for — a question that appears only after an
+// answer — is invisible in a picture of the untouched form. And once broken:
+// a question dragged above the one it depends on, so the row's warning and
+// the blocked publish are judged in both themes, where contrast is decided.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/data/new_ticket_api.dart'
+    show EeFormCondition;
 import 'package:alliswell/src/features/ee/data/services_api.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
 import 'package:alliswell/src/features/ee/data/team_admin_api.dart';
@@ -31,6 +39,7 @@ import 'package:alliswell/src/features/ee/data/units_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/services_providers.dart';
 import 'package:alliswell/src/features/ee/team_admin_providers.dart';
+import 'package:alliswell/src/features/ee/ui/form_designer_screen.dart';
 import 'package:alliswell/src/features/ee/ui/service_categories_screen.dart';
 import 'package:alliswell/src/features/ee/ui/team_services_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
@@ -80,6 +89,7 @@ final _services = [
     approvalMode: 'manager',
     approverRoleKey: 'admin',
     unitIds: ['U1'],
+    formVersion: 2,
     formFields: [
       EeServiceField(
         key: 'line_no',
@@ -116,6 +126,40 @@ final _services = [
     unitIds: ['U1'],
   ),
 ];
+
+/// EE-229: a form worth designing — a picker, a question behind one of its
+/// answers, a box, and a question behind the box.
+const _designed = EeService(
+  id: 'S9',
+  name: 'Hat duruşu',
+  unitIds: ['U1'],
+  formVersion: 3,
+  formFields: [
+    EeServiceField(
+      key: 'kind',
+      label: 'Talep türü',
+      type: 'select',
+      required: true,
+      options: ['Arıza', 'Bakım talebi'],
+      help: 'Hat durduysa Arıza seçin.',
+    ),
+    EeServiceField(
+      key: 'machine',
+      label: 'Makine kodu',
+      type: 'text',
+      help: 'Makinenin plakasındaki kod.',
+      showIf: EeFormCondition(key: 'kind', equals: 'Arıza'),
+    ),
+    EeServiceField(key: 'stopped', label: 'Hat durdu mu?', type: 'checkbox'),
+    EeServiceField(
+      key: 'since',
+      label: 'Ne zamandan beri?',
+      type: 'text',
+      required: true,
+      showIf: EeFormCondition(key: 'stopped', equals: 'true'),
+    ),
+  ],
+);
 
 class _ShotServicesApi implements EeServicesApi {
   const _ShotServicesApi();
@@ -230,6 +274,7 @@ void main() {
     String name,
     Widget screen, {
     Size size = const Size(900, 1100),
+    Future<void> Function(WidgetTester tester)? afterPump,
   }) async {
     await loadRealFontsForStore();
     tester.view.physicalSize = size;
@@ -258,6 +303,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      if (afterPump != null) {
+        await afterPump(tester);
+        await tester.pumpAndSettle();
+      }
 
       await expectLater(
         find.byType(MaterialApp),
@@ -289,6 +338,40 @@ void main() {
         // EE-228 made the setup one long page — shelf, icon, units, the
         // approval rule, the form — and the picture shows all of it.
         size: const Size(900, 3000),
+      );
+    });
+
+    // EE-229: the designer, with the question behind the box revealed.
+    testWidgets('the form designer, its preview answering — '
+        '${brightness.name}', (tester) async {
+      await shoot(
+        tester,
+        brightness,
+        'ee-form-designer',
+        const EeFormDesignerScreen(service: _designed),
+        size: const Size(900, 3000),
+        afterPump: (tester) async {
+          await tester.ensureVisible(
+            find.byKey(const Key('form-preview-stopped')),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(const Key('form-preview-stopped')));
+        },
+      );
+    });
+
+    // EE-229: and broken — a question moved above the one it waits for.
+    testWidgets('the form designer, a condition broken by a move — '
+        '${brightness.name}', (tester) async {
+      await shoot(
+        tester,
+        brightness,
+        'ee-form-designer-problem',
+        const EeFormDesignerScreen(service: _designed),
+        size: const Size(900, 1800),
+        afterPump: (tester) async {
+          await tester.tap(find.byKey(const Key('form-field-up-machine')));
+        },
       );
     });
 

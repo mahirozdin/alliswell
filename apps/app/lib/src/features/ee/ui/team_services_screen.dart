@@ -12,6 +12,7 @@ import '../data/units_models.dart';
 import '../services_providers.dart';
 import '../team_admin_providers.dart';
 import '../units_providers.dart';
+import 'form_designer_screen.dart';
 import 'service_categories_screen.dart';
 import 'service_icons.dart';
 
@@ -476,6 +477,11 @@ class _ServiceCard extends ConsumerWidget {
 /// admin's side — "set this service up" — and because the second is
 /// meaningless without the first: custom fields on a service nobody answers
 /// are questions nobody will read.
+///
+/// EE-229 moved the form itself to its own screen: a form is PUBLISHED as a
+/// version, while everything else here is saved, and one button doing both
+/// would mint a form version every time somebody changed an icon. This page
+/// keeps the form's summary and the door to the designer.
 class EeServiceRoutingScreen extends ConsumerStatefulWidget {
   const EeServiceRoutingScreen({super.key, required this.service});
 
@@ -489,7 +495,6 @@ class EeServiceRoutingScreen extends ConsumerStatefulWidget {
 class _EeServiceRoutingScreenState
     extends ConsumerState<EeServiceRoutingScreen> {
   late final Set<String> _units = widget.service.unitIds.toSet();
-  late final List<EeServiceField> _fields = [...widget.service.formFields];
   // EE-228: the shelf, the icon and EE-185's approval rule.
   late String? _shelf = widget.service.categoryId;
   late String? _icon = widget.service.icon;
@@ -501,7 +506,6 @@ class _EeServiceRoutingScreenState
 
   bool get _dirty =>
       !_setEquals(_units, widget.service.unitIds.toSet()) ||
-      !_fieldsEqual(_fields, widget.service.formFields) ||
       _shelf != widget.service.categoryId ||
       _icon != widget.service.icon ||
       _approvalChanged;
@@ -542,17 +546,6 @@ class _EeServiceRoutingScreenState
   static bool _setEquals(Set<String> a, Set<String> b) =>
       a.length == b.length && a.containsAll(b);
 
-  static bool _fieldsEqual(List<EeServiceField> a, List<EeServiceField> b) =>
-      a.length == b.length &&
-      List.generate(a.length, (i) => i).every(
-        (i) =>
-            a[i].key == b[i].key &&
-            a[i].label == b[i].label &&
-            a[i].type == b[i].type &&
-            a[i].required == b[i].required &&
-            a[i].options.join('\x00') == b[i].options.join('\x00'),
-      );
-
   Future<void> _save() async {
     setState(() {
       _busy = true;
@@ -573,11 +566,6 @@ class _EeServiceRoutingScreenState
             ? _approvers.toList()
             : const <String>[],
       },
-      if (!_fieldsEqual(_fields, service.formFields))
-        // No fields at all is null — "the plain subject + body form".
-        'formSchema': _fields.isEmpty
-            ? null
-            : {'fields': _fields.map((f) => f.toJson()).toList()},
     };
     await ref
         .read(eeServicesProvider.notifier)
@@ -655,58 +643,7 @@ class _EeServiceRoutingScreenState
             const SizedBox(height: AwSpace.x6),
             ..._approval(context),
             const SizedBox(height: AwSpace.x6),
-            Text(
-              'ee.team.services.fields'.tr(),
-              style: theme.textTheme.titleSmall,
-            ),
-            Text(
-              'ee.team.services.fieldsHint'.tr(),
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: AwSpace.x2),
-            if (_fields.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
-                child: Text(
-                  'ee.team.services.fieldsNone'.tr(),
-                  style: theme.textTheme.bodySmall,
-                ),
-              )
-            else
-              Card(
-                child: Column(
-                  children: [
-                    for (final field in _fields)
-                      ListTile(
-                        key: Key('service-field-${field.key}'),
-                        title: Text(field.label),
-                        subtitle: Text(
-                          [
-                            'ee.team.services.fieldType.${field.type}'.tr(),
-                            if (field.required)
-                              'ee.team.services.fieldRequired'.tr(),
-                          ].join(' · '),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        trailing: IconButton(
-                          key: Key('service-field-remove-${field.key}'),
-                          tooltip: 'ee.team.services.fieldRemove'.tr(),
-                          icon: const Icon(Icons.close),
-                          onPressed: _busy
-                              ? null
-                              : () => setState(() => _fields.remove(field)),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: AwSpace.x2),
-            OutlinedButton.icon(
-              key: const Key('service-field-add'),
-              onPressed: _busy ? null : _addField,
-              icon: const Icon(Icons.add),
-              label: Text('ee.team.services.fieldAdd'.tr()),
-            ),
+            ..._form(context),
             if (_error != null) ...[
               const SizedBox(height: AwSpace.x4),
               AwInlineError(
@@ -724,6 +661,61 @@ class _EeServiceRoutingScreenState
         ),
       ),
     );
+  }
+
+  /// The form's summary and the door to its designer (EE-229).
+  ///
+  /// Read from the LIST, not from `widget.service`: that is the snapshot this
+  /// page opened with, and a version published in the designer a moment ago
+  /// is not in it.
+  List<Widget> _form(BuildContext context) {
+    final theme = Theme.of(context);
+    final service =
+        ref
+            .watch(eeServicesProvider)
+            .value
+            ?.where((s) => s.id == widget.service.id)
+            .firstOrNull ??
+        widget.service;
+    return [
+      Text('ee.team.services.fields'.tr(), style: theme.textTheme.titleSmall),
+      Text(
+        'ee.team.services.fieldsHint'.tr(),
+        style: theme.textTheme.bodySmall,
+      ),
+      const SizedBox(height: AwSpace.x2),
+      Text(
+        service.formFields.isEmpty
+            ? 'ee.team.services.designer.summaryNone'.tr()
+            // Version 0 with questions: a form from before EE-214, live and
+            // not yet numbered — "version 0" would read as a bug.
+            : service.formVersion == 0
+            ? 'ee.team.services.designer.summaryUnnumbered'.tr(
+                args: {'count': '${service.formFields.length}'},
+              )
+            : 'ee.team.services.designer.summary'.tr(
+                args: {
+                  'count': '${service.formFields.length}',
+                  'version': '${service.formVersion}',
+                },
+              ),
+        key: const Key('service-form-summary'),
+        style: theme.textTheme.bodyMedium,
+      ),
+      const SizedBox(height: AwSpace.x2),
+      OutlinedButton.icon(
+        key: const Key('service-form-design'),
+        onPressed: _busy
+            ? null
+            : () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => EeFormDesignerScreen(service: service),
+                ),
+              ),
+        icon: const Icon(Icons.dynamic_form_outlined),
+        label: Text('ee.team.services.designer.open'.tr()),
+      ),
+    ];
   }
 
   /// The shelf and the icon (EE-212's two catalogue fields).
@@ -871,165 +863,5 @@ class _EeServiceRoutingScreenState
           ),
         ),
     ];
-  }
-
-  Future<void> _addField() async {
-    final field = await showDialog<EeServiceField>(
-      context: context,
-      builder: (ctx) => const _FieldDialog(),
-    );
-    if (field == null) return;
-    // A duplicate key means one answer overwrites another when the form is
-    // submitted — the server refuses it, and refusing here costs a round trip
-    // less and explains itself at the moment of the mistake.
-    if (_fields.any((f) => f.key == field.key)) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ee.team.services.fieldDuplicate'.tr())),
-      );
-      return;
-    }
-    setState(() => _fields.add(field));
-  }
-}
-
-class _FieldDialog extends StatefulWidget {
-  const _FieldDialog();
-
-  @override
-  State<_FieldDialog> createState() => _FieldDialogState();
-}
-
-class _FieldDialogState extends State<_FieldDialog> {
-  final _key = TextEditingController();
-  final _label = TextEditingController();
-  final _options = TextEditingController();
-  String _type = 'text';
-  bool _required = false;
-
-  @override
-  void dispose() {
-    _key.dispose();
-    _label.dispose();
-    _options.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text('ee.team.services.fieldAdd'.tr()),
-    content: SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            key: const Key('field-label'),
-            controller: _label,
-            autofocus: true,
-            decoration: InputDecoration(
-              labelText: 'ee.team.services.fieldLabel'.tr(),
-            ),
-          ),
-          TextField(
-            key: const Key('field-key'),
-            controller: _key,
-            decoration: InputDecoration(
-              labelText: 'ee.team.services.fieldKey'.tr(),
-              helperText: 'ee.team.services.fieldKeyHint'.tr(),
-            ),
-          ),
-          const SizedBox(height: AwSpace.x3),
-          DropdownButtonFormField<String>(
-            key: const Key('field-type'),
-            initialValue: _type,
-            decoration: InputDecoration(
-              // `fieldType` is a MAP of the five type names, so the picker's
-              // own label needs a separate key — a dotted lookup cannot make
-              // one name mean both a leaf and a branch.
-              labelText: 'ee.team.services.fieldTypeLabel'.tr(),
-            ),
-            items: [
-              for (final type in EeServiceField.types)
-                DropdownMenuItem(
-                  value: type,
-                  child: Text('ee.team.services.fieldType.$type'.tr()),
-                ),
-            ],
-            onChanged: (v) => setState(() => _type = v ?? 'text'),
-          ),
-          if (_type == 'select')
-            TextField(
-              key: const Key('field-options'),
-              controller: _options,
-              decoration: InputDecoration(
-                labelText: 'ee.team.services.fieldOptions'.tr(),
-                helperText: 'ee.team.services.fieldOptionsHint'.tr(),
-              ),
-            ),
-          SwitchListTile(
-            key: const Key('field-required'),
-            value: _required,
-            title: Text('ee.team.services.fieldRequired'.tr()),
-            onChanged: (v) => setState(() => _required = v),
-          ),
-        ],
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text('common.cancel'.tr()),
-      ),
-      FilledButton(
-        key: const Key('field-save'),
-        onPressed: _submit,
-        child: Text('common.add'.tr()),
-      ),
-    ],
-  );
-
-  void _submit() {
-    final label = _label.text.trim();
-    // The key is derived from the label when the admin does not supply one:
-    // it is a machine name they should not have to think about, but they may
-    // if they are matching an existing export.
-    final key = (_key.text.trim().isEmpty ? _slug(label) : _key.text.trim());
-    final options = _options.text
-        .split(',')
-        .map((o) => o.trim())
-        .where((o) => o.isNotEmpty)
-        .toList();
-    if (label.isEmpty || key.isEmpty) return;
-    if (_type == 'select' && options.isEmpty) return;
-    Navigator.of(context).pop(
-      EeServiceField(
-        key: key,
-        label: label,
-        type: _type,
-        required: _required,
-        options: options,
-      ),
-    );
-  }
-
-  /// Turkish letters fold to ASCII first: `ç→c`, `ı→i`, … A key is `a-z0-9_`
-  /// on the server, so a label like "Hat numarası" must not become "hat_numaras".
-  static String _slug(String label) {
-    const map = {
-      'ç': 'c',
-      'ğ': 'g',
-      'ı': 'i',
-      'i̇': 'i',
-      'ö': 'o',
-      'ş': 's',
-      'ü': 'u',
-    };
-    var out = label.toLowerCase();
-    map.forEach((from, to) => out = out.replaceAll(from, to));
-    out = out.replaceAll(RegExp('[^a-z0-9]+'), '_');
-    out = out.replaceAll(RegExp('^_+|_+\$'), '');
-    if (out.isEmpty) return '';
-    if (RegExp('^[0-9]').hasMatch(out)) out = 'f_$out';
-    return out.length > 32 ? out.substring(0, 32) : out;
   }
 }
