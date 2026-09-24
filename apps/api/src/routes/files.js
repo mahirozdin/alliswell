@@ -21,7 +21,7 @@ import { toIso } from '../lib/serialize.js';
 import { coded } from '../lib/errors.js';
 import { recordSyncWrite } from '../db/sync.js';
 import { notifyEntityWrite } from '../lib/ee.js';
-import { storageKeyFor, softDeleteReadyFile } from '../db/files.js';
+import { sanitizeFileName, storageKeyFor, softDeleteReadyFile } from '../db/files.js';
 
 /**
  * OPH-331 — ask every registered upload guard, refuse on the first no.
@@ -105,18 +105,9 @@ export function serializeFile(row) {
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS = /[\u0000-\u001f\u007f]/u;
 
-/**
- * Filenames are display data (ATTACHMENTS.md §9): keep the basename only
- * (drop any path a platform picker smuggled in), reject control characters
- * and empty/dot names. Returns the clean name or null.
- */
-export function sanitizeFileName(raw) {
-  if (typeof raw !== 'string') return null;
-  const base = raw.split(/[/\\]/).pop().trim();
-  if (!base || base === '.' || base === '..') return null;
-  if (base.length > 255 || CONTROL_CHARS.test(base)) return null;
-  return base;
-}
+// The name rule lives beside the storage key (OPH-340); re-exported here
+// because this is where it was first written and read.
+export { sanitizeFileName };
 
 export default async function fileRoutes(app) {
   const auth = { onRequest: [app.authenticate] };

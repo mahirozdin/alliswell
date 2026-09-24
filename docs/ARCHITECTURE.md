@@ -213,10 +213,14 @@ object store (R2 primary, MinIO in dev/CI); MySQL keeps only metadata (`files`, 
 (`buildApp({ storage })` for unit tests) and decorates presign/head/delete helpers. Bytes
 go direct: upload is init (row `status='uploading'`, unsynced) → client PUT
 to a presigned URL → complete (HeadObject verifies size → `ready` + `recordSyncWrite`);
-downloads are presigned GETs minted per request. **One relay exists** and is
-bounded in ADR-0011's amendment: a page that cannot run script cannot sign a
-PUT, so the enterprise overlay's public request page posts a capped file to
-the API, which writes it to the bucket. Every authenticated client is direct. `file` is a **pull-only** sync entity
+downloads are presigned GETs minted per request. **One door exists for files with no
+client** and is bounded in ADR-0011's amendments: a page that cannot run script cannot
+sign a PUT (the enterprise overlay's public request page), and an attachment on an
+arriving mail has no client at all. Both go through `src/lib/server-files.js`, which
+applies the upload path's checks to the bytes in hand — `maxUploadBytes`, the type from
+the first bytes, every upload guard with the measured size — before the storage plugin's
+`putObject` is reached; nothing else calls it, and the plain build has no caller. Every
+authenticated client is direct. `file` is a **pull-only** sync entity
 (ADR-0008 model — pushes answer `SYNC_UNSUPPORTED_ENTITY`); entity deletion cascades to files
 in-transaction and object deletion rides the queue runner (`jobKey = storage_key`); a sweep
 reaps stale uploads. Feature is optional config (`STORAGE_S3_*`): unset ⇒

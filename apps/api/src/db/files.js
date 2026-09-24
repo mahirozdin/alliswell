@@ -12,6 +12,27 @@ export function storageKeyFor(workspaceId, fileId) {
   return `ws/${workspaceId}/${fileId}`;
 }
 
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS = /[\u0000-\u001f\u007f]/u;
+
+/**
+ * Filenames are display data (ATTACHMENTS.md §9): keep the basename only
+ * (drop any path a platform picker smuggled in), reject control characters
+ * and empty/dot names. Returns the clean name or null.
+ *
+ * Lives here, beside the key, since OPH-340: the upload route and the
+ * server-held file writer (`lib/server-files.js`) both name files, and a
+ * `lib` module reaching into `routes/` for it would run the layering
+ * backwards. The route re-exports it.
+ */
+export function sanitizeFileName(raw) {
+  if (typeof raw !== 'string') return null;
+  const base = raw.split(/[/\\]/).pop().trim();
+  if (!base || base === '.' || base === '..') return null;
+  if (base.length > 255 || CONTROL_CHARS.test(base)) return null;
+  return base;
+}
+
 /**
  * Soft-deletes one READY file inside the caller's transaction: tombstone
  * revision + `deleted_at`, exactly like every synced entity. The caller owns

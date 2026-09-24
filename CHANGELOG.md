@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **A file the server itself receives is stored through one guarded path.** An
+  attachment on an arriving email has no app or browser that could upload it, so the
+  server writes it — and it now meets exactly the checks an upload from the app meets:
+  the size limit, the type decided by the file's first bytes rather than its name (a
+  photo sent as `invoice.pdf` is kept as the photo it is), and the storage quota,
+  measured on the bytes. Nothing else can write a file this way; an app, an API key or
+  an MCP client still uploads its own files directly.
+
 - **Someone outside can send a photo with their request.** A public request
   page can now take one image or PDF, up to 5 MB. What it is gets decided by
   the file's first bytes rather than by its name, so a `.pdf` that is really a

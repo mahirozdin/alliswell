@@ -19,8 +19,9 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  * ── ONE EXCEPTION, AND IT WAS FORCED BY A MEASUREMENT ──────────────────
  *
  * `putObject` below is the single path where bytes cross this process, and it
- * exists for exactly one caller: an upload from a page that CANNOT sign its
- * own request. The overlay's public request page is served with
+ * exists for files that have NO client able to upload them. It was forced by
+ * the first of them: an upload from a page that CANNOT sign its own request.
+ * The overlay's public request page is served with
  * `default-src 'none'` and no `script-src` at all, so a visitor's browser has
  * no way to run `fetch` — and an HTML form can only issue GET or POST, never
  * the PUT a presigned upload needs.
@@ -41,6 +42,12 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
  * The full argument, including why the alternative (widening the page's
  * `form-action` to name the bucket) was refused, is in ADR-0011's amendment
  * and in the overlay's ADR-0013.
+ *
+ * OPH-340 named the second kind of such a file — one the server itself
+ * received, like a mail's attachment, which has no client at all — and moved
+ * every caller behind ONE door: `lib/server-files.js`, which applies the
+ * client path's protections (size, type from the first bytes, the upload
+ * guards with the measured size) before this method is reached.
  *
  * Decorates `app.storage`:
  *   enabled            — false without full STORAGE_S3_* config (feature off)
@@ -131,8 +138,9 @@ export function createStorage(config) {
     /**
      * THE RELAY. Writes bytes this process is already holding.
      *
-     * Only one caller may use it (the overlay's anonymous portal upload), and
-     * the header of this file says why it has to exist at all. The `body` is
+     * Reached only through `lib/server-files.js` (OPH-340), for files that
+     * have no client — the header of this file says why that has to exist at
+     * all, and that module carries every check. The `body` is
      * a Buffer rather than a stream on purpose: the caller has already
      * enforced a hard cap while reading, and handing a stream here would move
      * that enforcement somewhere nobody can see it.

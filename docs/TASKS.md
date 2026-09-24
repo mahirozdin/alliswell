@@ -11607,7 +11607,7 @@ sekmesinde.
 - **Doğrulama:** `node scripts/docs/check.mjs`.
 - **Yüzey (kural 12):** yok (belge).
 
-### OPH-340 — Sunucu kaynaklı dosya: API'nin kendi aldığı baytları yazabilmesi (ADR-0011 notu)
+### OPH-340 — Sunucu kaynaklı dosya: API'nin kendi aldığı baytları yazabilmesi (ADR-0011 notu) ✅ 2026-09-25
 
 **Bağlam:** Sahibin 2026-09-23 kararı — **dar istisna**. ADR-0011'in kuralı (*"bytes go
 client↔bucket via presigned URLs, the API never proxies them"*) istemci yüklemeleri için
@@ -11618,16 +11618,35 @@ _Ölçüldü (2026-09-24): dikişte sunucu tarafı yazma **zaten var** — `plug
 `putObject` rölesi, bugün tek çağıranlı. İş onu sıfırdan eklemek değil, `files` satırını
 doğuran yardımcıya genelleştirmek; aşağıdaki ilk kutu bu okumayla yapılır._
 
-- [ ] Depolama dikişine sunucu tarafı yazma (`PutObject`) ve bir `files` satırını bu yolla
-      doğuran tek bir yardımcı. **CE'de çağıranı yok** ve CE davranışı değişmez.
-- [ ] İstisna, istemci yolundaki korumaların **hepsini** taşır: `maxUploadBytes`, içerik
+- [x] Depolama dikişine sunucu tarafı yazma (`PutObject`) ve bir `files` satırını bu yolla
+      doğuran tek bir yardımcı. **CE'de çağıranı yok** ve CE davranışı değişmez. —
+      `src/lib/server-files.js` `storeServerFile`: satır `ready` ve senkron revizyonuyla tek
+      transaction'da doğuyor, gözlemciler `origin: 'server'` ile duyuyor, çağıranın kendi
+      satırları aynı transaction'da (`inTransaction`), commit olmayan satırın nesnesi GC
+      kuyruğuna. `sanitizeFileName` `db/files.js`'e taşındı (lib'in routes'a uzanmaması
+      için; rota yeniden dışa aktarıyor). Rölenin iki kaynak yorumu ve ARCHITECTURE güncel.
+      "CE'de çağıran yok" bir testle sabit: hiçbir core modülü kapıyı içe aktarmıyor.
+- [x] İstisna, istemci yolundaki korumaların **hepsini** taşır: `maxUploadBytes`, içerik
       türünün **ilk baytlardan** belirlenmesi (ada güvenilmez), ve OPH-331'in yükleme
-      guard'ları **ölçülen** boyutla — kota bu yoldan kaçamaz.
-- [ ] ADR-0011'e istisna cümlesi: kim kullanabilir, neden, hangi korumalarla; ve neyin
-      istisna **olmadığı** (istemci baytlarını API üzerinden geçirmek hâlâ yasak).
+      guard'ları **ölçülen** boyutla — kota bu yoldan kaçamaz. — Tür, çağıranın kabul
+      ettiği türler arasında ilk baytlardan; saklanan ad, dosyanın gerçek türünün uzantısını
+      taşıyor. Koruyucular `commit` aşamasında, ölçülen boyutla, `request: null` ve
+      `origin: 'server'` ile. Core hedefi çalışma alanının canlı satırı olmalı. Uzantının
+      kendi hedef türüne uzantı kefil: kayıtlı kontrol bir KİŞİ sorar (takım, üyelik, fiil),
+      postayı tutan sunucu bunu cevaplayamaz.
+- [x] ADR-0011'e istisna cümlesi: kim kullanabilir, neden, hangi korumalarla; ve neyin
+      istisna **olmadığı** (istemci baytlarını API üzerinden geçirmek hâlâ yasak). — Ek
+      (2026-09-25): yalnız istemcisi olmayan dosya, tek kapı, korumaların listesi ve "istemcisi
+      olan dosya doğrudan yükler, sunucunun aktarabilmesi bir gerekçe değil".
 - **Kabul:** dikiş sahte depolamayla birim testli; MinIO'ya karşı entegrasyon testi (sandbox)
   yazıyor, satırı doğuruyor, guard'a soruyor; tavanı aşan dosya reddediliyor.
-- **Doğrulama:** API unit + integration (sandbox), `check:no-ee` yeşil.
+- **Doğrulama:** API unit + integration (sandbox), `check:no-ee` yeşil. — **Ölçüldü:**
+  `test/unit/server-files.test.js` 10, `test/integration/server-files.test.js` 3 (MinIO +
+  MySQL: nesne, satır, revizyon, koruyucu ölçülen boyutla, indirme aynı baytı veriyor;
+  çağıranın satırı düşünce satır geri alınıyor ve nesne kuyruktan siliniyor; 1 MB tavanda
+  1 MB + 10 bayt reddediliyor ve kovada yeni anahtar yok). Sahte veritabanında geri alma
+  yok (fakedb.js yazıyor), o yüzden geri almayı entegrasyon testi kanıtlıyor. Dokuz
+  enjeksiyon kırmızı (STATE 2026-09-25a).
 - ⚠️ **Çift kapanış:** ↔ `EE-231` (uzantı kaydı: bu dikişin ilk çağıranı).
 
 ### OPH-341 — Android: `home_widget`'ın arka plan alıcısı hiç tanımlanmamıştı ✅ 2026-09-23

@@ -114,6 +114,38 @@ rather than a driver.
 the anonymous surface's half — quarantine, the content-sniffed type
 whitelist, and the ceilings.
 
+## Amendment (2026-09-25, OPH-340) — files with no client, through one door
+
+The relay above was written for one caller. A second kind of file has since
+needed it for the same reason: an **attachment on an arriving mail**. The
+server received that message itself; there is no device, no person and no
+page that could PUT its attachment to a presigned URL. Without the relay such
+a file either never reaches the bucket or asks some client to upload bytes it
+never had.
+
+**Who may use it.** Only a file that has **no client able to upload it** —
+today, a public page that cannot sign a request and an attachment on an
+arriving mail. Both go through one module, `lib/server-files.js`; the storage
+plugin's `putObject` is reached from nowhere else. The plain build has no
+caller at all, and a unit test pins that no core module imports that door.
+
+**Which protections it carries — all of the client path's, on measured bytes:**
+- `maxUploadBytes`, against the buffer's own length;
+- the type decided by the **first bytes**, among the types the caller accepts —
+  the file's name and any claimed type never get a vote, and the stored name
+  takes the extension of what the file is;
+- every upload guard (OPH-331) asked in the `commit` phase with the **measured**
+  size, so a storage quota cannot be walked past by writing from the server;
+- a core target must be a live row of the workspace;
+- the row is written `ready` with its sync revision in one transaction, the
+  entity-write observers hear it (`origin: 'server'`), and an object whose row
+  fails to commit is queued for removal.
+
+**What this is NOT.** Proxying a client's bytes through the API is still
+refused, for the three reasons below. An app, an API key or an MCP client that
+has a file uploads it direct, exactly as before; "the server could relay it"
+is not a reason to let it.
+
 ## Alternatives considered
 
 - **Proxy uploads/downloads through Fastify** — simplest client, no CORS, but
