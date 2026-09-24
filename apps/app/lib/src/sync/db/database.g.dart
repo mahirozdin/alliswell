@@ -15685,6 +15685,28 @@ class $TicketsTable extends Tickets
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _requesterNameMeta = const VerificationMeta(
+    'requesterName',
+  );
+  @override
+  late final GeneratedColumn<String> requesterName = GeneratedColumn<String>(
+    'requester_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _requesterEmailMeta = const VerificationMeta(
+    'requesterEmail',
+  );
+  @override
+  late final GeneratedColumn<String> requesterEmail = GeneratedColumn<String>(
+    'requester_email',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _subjectMeta = const VerificationMeta(
     'subject',
   );
@@ -15838,6 +15860,8 @@ class $TicketsTable extends Tickets
     workspaceId,
     serviceId,
     requesterId,
+    requesterName,
+    requesterEmail,
     subject,
     body,
     status,
@@ -15893,6 +15917,24 @@ class $TicketsTable extends Tickets
         requesterId.isAcceptableOrUnknown(
           data['requester_id']!,
           _requesterIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('requester_name')) {
+      context.handle(
+        _requesterNameMeta,
+        requesterName.isAcceptableOrUnknown(
+          data['requester_name']!,
+          _requesterNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('requester_email')) {
+      context.handle(
+        _requesterEmailMeta,
+        requesterEmail.isAcceptableOrUnknown(
+          data['requester_email']!,
+          _requesterEmailMeta,
         ),
       );
     }
@@ -16016,6 +16058,14 @@ class $TicketsTable extends Tickets
         DriftSqlType.string,
         data['${effectivePrefix}requester_id'],
       ),
+      requesterName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}requester_name'],
+      ),
+      requesterEmail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}requester_email'],
+      ),
       subject: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}subject'],
@@ -16093,6 +16143,14 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
   /// ordinary here rather than exceptional: a requester is usually NOT in the
   /// unit that answers them, so their profile never reaches this replica.
   final String? requesterId;
+
+  /// v33: who asked when they have no account — a mail, a public form, a
+  /// colleague filing on their behalf — and the address the request answers.
+  /// The server has sent both all along and this table dropped them, so a
+  /// desk with no signal could not say who a request was from or where the
+  /// answer goes. Server-owned: the push entity does not list them.
+  final String? requesterName;
+  final String? requesterEmail;
   final String subject;
   final String? body;
 
@@ -16140,6 +16198,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     required this.workspaceId,
     this.serviceId,
     this.requesterId,
+    this.requesterName,
+    this.requesterEmail,
     required this.subject,
     this.body,
     required this.status,
@@ -16165,6 +16225,12 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     }
     if (!nullToAbsent || requesterId != null) {
       map['requester_id'] = Variable<String>(requesterId);
+    }
+    if (!nullToAbsent || requesterName != null) {
+      map['requester_name'] = Variable<String>(requesterName);
+    }
+    if (!nullToAbsent || requesterEmail != null) {
+      map['requester_email'] = Variable<String>(requesterEmail);
     }
     map['subject'] = Variable<String>(subject);
     if (!nullToAbsent || body != null) {
@@ -16211,6 +16277,12 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       requesterId: requesterId == null && nullToAbsent
           ? const Value.absent()
           : Value(requesterId),
+      requesterName: requesterName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(requesterName),
+      requesterEmail: requesterEmail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(requesterEmail),
       subject: Value(subject),
       body: body == null && nullToAbsent ? const Value.absent() : Value(body),
       status: Value(status),
@@ -16254,6 +16326,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       workspaceId: serializer.fromJson<String>(json['workspaceId']),
       serviceId: serializer.fromJson<String?>(json['serviceId']),
       requesterId: serializer.fromJson<String?>(json['requesterId']),
+      requesterName: serializer.fromJson<String?>(json['requesterName']),
+      requesterEmail: serializer.fromJson<String?>(json['requesterEmail']),
       subject: serializer.fromJson<String>(json['subject']),
       body: serializer.fromJson<String?>(json['body']),
       status: serializer.fromJson<String>(json['status']),
@@ -16278,6 +16352,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       'workspaceId': serializer.toJson<String>(workspaceId),
       'serviceId': serializer.toJson<String?>(serviceId),
       'requesterId': serializer.toJson<String?>(requesterId),
+      'requesterName': serializer.toJson<String?>(requesterName),
+      'requesterEmail': serializer.toJson<String?>(requesterEmail),
       'subject': serializer.toJson<String>(subject),
       'body': serializer.toJson<String?>(body),
       'status': serializer.toJson<String>(status),
@@ -16300,6 +16376,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     String? workspaceId,
     Value<String?> serviceId = const Value.absent(),
     Value<String?> requesterId = const Value.absent(),
+    Value<String?> requesterName = const Value.absent(),
+    Value<String?> requesterEmail = const Value.absent(),
     String? subject,
     Value<String?> body = const Value.absent(),
     String? status,
@@ -16319,6 +16397,12 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     workspaceId: workspaceId ?? this.workspaceId,
     serviceId: serviceId.present ? serviceId.value : this.serviceId,
     requesterId: requesterId.present ? requesterId.value : this.requesterId,
+    requesterName: requesterName.present
+        ? requesterName.value
+        : this.requesterName,
+    requesterEmail: requesterEmail.present
+        ? requesterEmail.value
+        : this.requesterEmail,
     subject: subject ?? this.subject,
     body: body.present ? body.value : this.body,
     status: status ?? this.status,
@@ -16344,6 +16428,12 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       requesterId: data.requesterId.present
           ? data.requesterId.value
           : this.requesterId,
+      requesterName: data.requesterName.present
+          ? data.requesterName.value
+          : this.requesterName,
+      requesterEmail: data.requesterEmail.present
+          ? data.requesterEmail.value
+          : this.requesterEmail,
       subject: data.subject.present ? data.subject.value : this.subject,
       body: data.body.present ? data.body.value : this.body,
       status: data.status.present ? data.status.value : this.status,
@@ -16372,6 +16462,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           ..write('workspaceId: $workspaceId, ')
           ..write('serviceId: $serviceId, ')
           ..write('requesterId: $requesterId, ')
+          ..write('requesterName: $requesterName, ')
+          ..write('requesterEmail: $requesterEmail, ')
           ..write('subject: $subject, ')
           ..write('body: $body, ')
           ..write('status: $status, ')
@@ -16396,6 +16488,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     workspaceId,
     serviceId,
     requesterId,
+    requesterName,
+    requesterEmail,
     subject,
     body,
     status,
@@ -16419,6 +16513,8 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           other.workspaceId == this.workspaceId &&
           other.serviceId == this.serviceId &&
           other.requesterId == this.requesterId &&
+          other.requesterName == this.requesterName &&
+          other.requesterEmail == this.requesterEmail &&
           other.subject == this.subject &&
           other.body == this.body &&
           other.status == this.status &&
@@ -16440,6 +16536,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
   final Value<String> workspaceId;
   final Value<String?> serviceId;
   final Value<String?> requesterId;
+  final Value<String?> requesterName;
+  final Value<String?> requesterEmail;
   final Value<String> subject;
   final Value<String?> body;
   final Value<String> status;
@@ -16460,6 +16558,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     this.workspaceId = const Value.absent(),
     this.serviceId = const Value.absent(),
     this.requesterId = const Value.absent(),
+    this.requesterName = const Value.absent(),
+    this.requesterEmail = const Value.absent(),
     this.subject = const Value.absent(),
     this.body = const Value.absent(),
     this.status = const Value.absent(),
@@ -16481,6 +16581,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     required String workspaceId,
     this.serviceId = const Value.absent(),
     this.requesterId = const Value.absent(),
+    this.requesterName = const Value.absent(),
+    this.requesterEmail = const Value.absent(),
     required String subject,
     this.body = const Value.absent(),
     required String status,
@@ -16507,6 +16609,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Expression<String>? workspaceId,
     Expression<String>? serviceId,
     Expression<String>? requesterId,
+    Expression<String>? requesterName,
+    Expression<String>? requesterEmail,
     Expression<String>? subject,
     Expression<String>? body,
     Expression<String>? status,
@@ -16528,6 +16632,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       if (workspaceId != null) 'workspace_id': workspaceId,
       if (serviceId != null) 'service_id': serviceId,
       if (requesterId != null) 'requester_id': requesterId,
+      if (requesterName != null) 'requester_name': requesterName,
+      if (requesterEmail != null) 'requester_email': requesterEmail,
       if (subject != null) 'subject': subject,
       if (body != null) 'body': body,
       if (status != null) 'status': status,
@@ -16551,6 +16657,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Value<String>? workspaceId,
     Value<String?>? serviceId,
     Value<String?>? requesterId,
+    Value<String?>? requesterName,
+    Value<String?>? requesterEmail,
     Value<String>? subject,
     Value<String?>? body,
     Value<String>? status,
@@ -16572,6 +16680,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       workspaceId: workspaceId ?? this.workspaceId,
       serviceId: serviceId ?? this.serviceId,
       requesterId: requesterId ?? this.requesterId,
+      requesterName: requesterName ?? this.requesterName,
+      requesterEmail: requesterEmail ?? this.requesterEmail,
       subject: subject ?? this.subject,
       body: body ?? this.body,
       status: status ?? this.status,
@@ -16604,6 +16714,12 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     }
     if (requesterId.present) {
       map['requester_id'] = Variable<String>(requesterId.value);
+    }
+    if (requesterName.present) {
+      map['requester_name'] = Variable<String>(requesterName.value);
+    }
+    if (requesterEmail.present) {
+      map['requester_email'] = Variable<String>(requesterEmail.value);
     }
     if (subject.present) {
       map['subject'] = Variable<String>(subject.value);
@@ -16660,6 +16776,8 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
           ..write('workspaceId: $workspaceId, ')
           ..write('serviceId: $serviceId, ')
           ..write('requesterId: $requesterId, ')
+          ..write('requesterName: $requesterName, ')
+          ..write('requesterEmail: $requesterEmail, ')
           ..write('subject: $subject, ')
           ..write('body: $body, ')
           ..write('status: $status, ')
@@ -29894,6 +30012,8 @@ typedef $$TicketsTableCreateCompanionBuilder =
       required String workspaceId,
       Value<String?> serviceId,
       Value<String?> requesterId,
+      Value<String?> requesterName,
+      Value<String?> requesterEmail,
       required String subject,
       Value<String?> body,
       required String status,
@@ -29916,6 +30036,8 @@ typedef $$TicketsTableUpdateCompanionBuilder =
       Value<String> workspaceId,
       Value<String?> serviceId,
       Value<String?> requesterId,
+      Value<String?> requesterName,
+      Value<String?> requesterEmail,
       Value<String> subject,
       Value<String?> body,
       Value<String> status,
@@ -29959,6 +30081,16 @@ class $$TicketsTableFilterComposer
 
   ColumnFilters<String> get requesterId => $composableBuilder(
     column: $table.requesterId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get requesterName => $composableBuilder(
+    column: $table.requesterName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get requesterEmail => $composableBuilder(
+    column: $table.requesterEmail,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -30062,6 +30194,16 @@ class $$TicketsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get requesterName => $composableBuilder(
+    column: $table.requesterName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get requesterEmail => $composableBuilder(
+    column: $table.requesterEmail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get subject => $composableBuilder(
     column: $table.subject,
     builder: (column) => ColumnOrderings(column),
@@ -30158,6 +30300,16 @@ class $$TicketsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get requesterName => $composableBuilder(
+    column: $table.requesterName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get requesterEmail => $composableBuilder(
+    column: $table.requesterEmail,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get subject =>
       $composableBuilder(column: $table.subject, builder: (column) => column);
 
@@ -30240,6 +30392,8 @@ class $$TicketsTableTableManager
                 Value<String> workspaceId = const Value.absent(),
                 Value<String?> serviceId = const Value.absent(),
                 Value<String?> requesterId = const Value.absent(),
+                Value<String?> requesterName = const Value.absent(),
+                Value<String?> requesterEmail = const Value.absent(),
                 Value<String> subject = const Value.absent(),
                 Value<String?> body = const Value.absent(),
                 Value<String> status = const Value.absent(),
@@ -30260,6 +30414,8 @@ class $$TicketsTableTableManager
                 workspaceId: workspaceId,
                 serviceId: serviceId,
                 requesterId: requesterId,
+                requesterName: requesterName,
+                requesterEmail: requesterEmail,
                 subject: subject,
                 body: body,
                 status: status,
@@ -30282,6 +30438,8 @@ class $$TicketsTableTableManager
                 required String workspaceId,
                 Value<String?> serviceId = const Value.absent(),
                 Value<String?> requesterId = const Value.absent(),
+                Value<String?> requesterName = const Value.absent(),
+                Value<String?> requesterEmail = const Value.absent(),
                 required String subject,
                 Value<String?> body = const Value.absent(),
                 required String status,
@@ -30302,6 +30460,8 @@ class $$TicketsTableTableManager
                 workspaceId: workspaceId,
                 serviceId: serviceId,
                 requesterId: requesterId,
+                requesterName: requesterName,
+                requesterEmail: requesterEmail,
                 subject: subject,
                 body: body,
                 status: status,

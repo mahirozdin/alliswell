@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/sync/db/connection_native.dart';
 import 'package:alliswell/src/sync/db/database.dart';
+import 'package:alliswell/src/sync/sync_applier.dart';
 
 /// OPH-081 — the replica's FIRST schema migration (v1 → v2: the calendar
 /// mirror flag). The plan is in docs/TASKS.md; this is the proof.
@@ -359,8 +360,17 @@ void main() {
       expect(draft.ticketId, null);
       await db.customStatement('DELETE FROM ticket_drafts');
 
+      // v33 (OPH-344): who asked when they have no account, and the address
+      // the request answers. Named in SQL for the v26 reason. On THIS path
+      // the columns come from step 24's `createTable` — the v33 ALTER is
+      // guarded `from >= 24` and never runs from v1 — so the test that proves
+      // the ALTER itself is the v24 one below.
+      await db
+          .customSelect('SELECT requester_name, requester_email FROM tickets')
+          .get();
+
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 32);
+      expect(version.data['user_version'], 33);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -370,6 +380,108 @@ void main() {
         (db.select(db.tasks)..where((t) => t.id.equals('T1'))).getSingle(),
         completes,
       );
+      await db.close();
+    },
+  );
+
+  /// A device that has had the service desk since it arrived (v24): its
+  /// `tickets` and `ticket_comments` exist and hold rows, so every later step
+  /// that ALTERs them runs against real data.
+  ///
+  /// The v1 fixture above cannot prove any of those steps. It drops `tickets`,
+  /// so step 24 rebuilds the table with TODAY's definition and the guarded
+  /// ALTERs (`from >= 24`) never run — every column they add is there
+  /// whether or not the step exists. That was true of v26 and v27 since they
+  /// shipped; OPH-344's v33 is how it was noticed.
+  Future<void> seedV24Database() async {
+    final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    for (final drop in [
+      'DROP TABLE ticket_drafts', // v32
+      'DROP TABLE kb_articles', // v31
+      'DROP TABLE assets', // v30
+      'DROP TABLE problems', // v29
+      'DROP TABLE changes', // v28
+      'DROP TABLE ticket_assignments', // v25
+      'ALTER TABLE tickets DROP COLUMN requester_email', // v33
+      'ALTER TABLE tickets DROP COLUMN requester_name', // v33
+      'ALTER TABLE tickets DROP COLUMN number', // v27
+      'ALTER TABLE tickets DROP COLUMN subject_fold', // v27
+      'ALTER TABLE tickets DROP COLUMN body_fold', // v27
+      'ALTER TABLE ticket_comments DROP COLUMN body_fold', // v27
+      'ALTER TABLE tickets DROP COLUMN sla_due_at', // v26
+      'ALTER TABLE tickets DROP COLUMN sla_status', // v26
+    ]) {
+      await db.customStatement(drop);
+    }
+    await db.customStatement('PRAGMA user_version = 24');
+    await db.customStatement('''
+      INSERT INTO tickets (id, workspace_id, requester_id, subject, body,
+                           status, priority, source, revision)
+      VALUES ('K1', 'W1', NULL, 'Pres İki yağ kaçırıyor', 'Hat 3, sabah',
+              'new', 'high', 'email', 4)
+    ''');
+    await db.customStatement('''
+      INSERT INTO ticket_comments (id, workspace_id, ticket_id, body,
+                                   internal, revision)
+      VALUES ('C1', 'W1', 'K1', 'Ekip yolda', 0, 2)
+    ''');
+    await db.close();
+  }
+
+  test(
+    'v24 → latest: a device that already holds requests keeps them and gains every column added since',
+    () async {
+      await seedV24Database();
+      final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+
+      final row = await db
+          .customSelect(
+            'SELECT subject, sla_due_at, sla_status, number, subject_fold, '
+            'requester_name, requester_email FROM tickets WHERE id = ?',
+            variables: [Variable.withString('K1')],
+          )
+          .getSingle();
+      // The request itself survived every ALTER.
+      expect(row.data['subject'], 'Pres İki yağ kaçırıyor');
+      // v26 and v33: server-owned values this device was never told —
+      // empty, not guessed, until the server next sends the row.
+      expect(row.data['sla_due_at'], null);
+      expect(row.data['sla_status'], null);
+      expect(row.data['number'], null);
+      expect(row.data['requester_name'], null);
+      expect(row.data['requester_email'], null);
+      // v27's backfill ran over the rows the device already had: a request
+      // that is on this device and never sent again is still searchable.
+      expect(row.data['subject_fold'], isA<String>());
+      final comment = await db
+          .customSelect('SELECT body_fold FROM ticket_comments')
+          .getSingle();
+      expect(comment.data['body_fold'], isA<String>());
+
+      // The applier fills the new pair the next time the row arrives.
+      await db
+          .into(db.tickets)
+          .insertOnConflictUpdate(
+            ticketCompanion({
+              'id': 'K1',
+              'workspaceId': 'W1',
+              'subject': 'Pres İki yağ kaçırıyor',
+              'status': 'in_progress',
+              'priority': 'high',
+              'source': 'email',
+              'requesterName': 'Ada Lovelace',
+              'requesterEmail': 'ada@musteri.example',
+              'revision': 5,
+            }),
+          );
+      final filled = await (db.select(
+        db.tickets,
+      )..where((t) => t.id.equals('K1'))).getSingle();
+      expect(filled.requesterName, 'Ada Lovelace');
+      expect(filled.requesterEmail, 'ada@musteri.example');
+
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 33);
       await db.close();
     },
   );
@@ -406,7 +518,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 32);
+      expect(version.data['user_version'], 33);
       await db.close();
     },
   );
@@ -453,7 +565,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 32);
+      expect(version.data['user_version'], 33);
       await db.close();
     },
   );

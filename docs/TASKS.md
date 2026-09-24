@@ -11757,17 +11757,30 @@ yalnız MySQL ve Redis'e bakar; uzantının durumunu yalnız oturumlu `/ee/statu
 - ⚠️ **Çift kapanış:** ↔ `EE-250` (uzantı kaydı: kendi dağıtım ayarı, doğrulama betiği ve
   güvenlik belgesi).
 
-### OPH-344 — Replika: uzantının talep tablosuna talep sahibinin adı ve e-postası
+### OPH-344 — Replika: uzantının talep tablosuna talep sahibinin adı ve e-postası ✅ 2026-09-24
 
 **Bağlam:** uzantının talep tablosu (`apps/app/lib/src/sync/db/database.dart:723-726`) yalnız
 `requesterId` saklıyor; sunucu ad ve e-postayı da gönderiyor, applier atıyor
 (`sync_applier.dart:626`).
 
-- [ ] İki nullable kolon + `schemaVersion` artışı + migration adımı.
-- [ ] Applier iki alanı eşler.
-- [ ] Göç testinin fixture'ı yeni sürüme büyür ve adım **kırmızıya düşürülerek** kanıtlanır
-      (OPH-327/330 dersi).
-- **Kabul:** göç testi yeşil; eski satırlar null'la açılır, bir sonraki çekmeyle dolar.
+- [x] İki nullable kolon + `schemaVersion` artışı + migration adımı. — `requesterName`,
+      `requesterEmail`; v33; adım v26/v27'nin `from >= 24` korumasıyla (v24'ten önce gelen
+      cihaz tabloyu bugünkü tanımla adım 24'te kuruyor).
+- [x] Applier iki alanı eşler.
+- [x] Göç testinin fixture'ı yeni sürüme büyür ve adım **kırmızıya düşürülerek** kanıtlanır
+      (OPH-327/330 dersi). — **Ölçülünce genişledi:** v1 fixture'ı `tickets`'ı düşürüyor, yani
+      adım 24 tabloyu bugünkü tanımla yeniden kuruyor ve korumalı ALTER'lar hiç koşmuyor.
+      v26 ve v27 de hiç kanıtlanmamıştı. Yeni bir **v24 fixture'ı**, satırlarıyla birlikte
+      talep tablosunu tutan bir cihaz: v26, v27 (geri dolgu dahil) ve v33 gerçek veriye karşı
+      koşuyor, applier yeni çifti dolduruyor. **Kırmızı:** v33 adımı silinince bu test
+      `no such column: requester_name` ile düşüyor, v1 testi yeşil kalıyor (yorumunda
+      yazdığı gibi). v27 adımı silinince de düşüyor, bugüne kadar hiçbir test onu
+      yakalamıyordu. ARCHITECTURE'a bir paragraf.
+- **Kabul:** göç testi yeşil; eski satırlar null'la açılır, bir sonraki çekmeyle dolar. —
+  **Ölçülünce düzeltildi:** çekme artımlı, yani değişmeyen bir satır yeniden gönderilmez.
+  Eski satır, sunucu onu bir sonraki gönderişinde (satır değişince) dolar; v27'nin numarası
+  da aynı sınırla yaşıyor. Uzantının detay ekranı yeni bir sunucu sorusu eklemiyor. Zaten
+  sorduğu yerde cevabı okuyor, başka yerde satır bir sonraki gönderişi bekliyor (EE-258).
 - **Doğrulama:** `flutter test` (göç + applier), `flutter analyze` 0.
 - **Yüzey (kural 12):** yok (replika).
 - ⚠️ **Çift kapanış:** ↔ `EE-258` (uzantı kaydı: kolonların okuyucusu).

@@ -624,6 +624,10 @@ TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   workspaceId: Value(data['workspaceId'] as String),
   serviceId: Value(data['serviceId'] as String?),
   requesterId: Value(data['requesterId'] as String?),
+  // OPH-344: who asked when they have no account, and where the answer goes.
+  // Sent all along; kept from v33.
+  requesterName: Value(data['requesterName'] as String?),
+  requesterEmail: Value(data['requesterEmail'] as String?),
   subject: Value(data['subject'] as String),
   body: Value(data['body'] as String?),
   // EE-167: server-owned, like the SLA pair below. A device that wrote its own

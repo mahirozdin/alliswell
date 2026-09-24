@@ -724,6 +724,14 @@ class Tickets extends Table {
   /// ordinary here rather than exceptional: a requester is usually NOT in the
   /// unit that answers them, so their profile never reaches this replica.
   TextColumn get requesterId => text().nullable()();
+
+  /// v33: who asked when they have no account — a mail, a public form, a
+  /// colleague filing on their behalf — and the address the request answers.
+  /// The server has sent both all along and this table dropped them, so a
+  /// desk with no signal could not say who a request was from or where the
+  /// answer goes. Server-owned: the push entity does not list them.
+  TextColumn get requesterName => text().nullable()();
+  TextColumn get requesterEmail => text().nullable()();
   TextColumn get subject => text()();
   TextColumn get body => text().nullable()();
 
@@ -1148,8 +1156,10 @@ class AwDatabase extends _$AwDatabase {
   /// than a mirror, and the only one whose rows exist nowhere else until they
   /// sync: an unsent draft lives on the device and in the outbox, so this step
   /// creates a table the replica AUTHORS into.
+  /// v32 → v33 (OPH-344): tickets.requester_name + requester_email — who
+  /// asked when they have no account, and where the answer goes.
   @override
-  int get schemaVersion => 32;
+  int get schemaVersion => 33;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1375,6 +1385,19 @@ class AwDatabase extends _$AwDatabase {
       // it does not "fill from the next pull": nobody has written a draft yet,
       // and when they do it is this device that writes it.
       if (from < 32) await m.createTable(ticketDrafts);
+      // v33 (OPH-344): who asked, for a requester with no account. Two
+      // ALTERs on a table a device may already hold, so the `from >= 24`
+      // guard of v26/v27 applies for their measured reason: a device arriving
+      // from before v24 gets `tickets` built with today's definition at step
+      // 24, columns included.
+      //
+      // Nothing to backfill, and honestly so: the values are the server's and
+      // this device was never told them. A request fills in the next time the
+      // server sends its row (any change to it) — v27's number said the same.
+      if (from >= 24 && from < 33) {
+        await m.addColumn(tickets, tickets.requesterName);
+        await m.addColumn(tickets, tickets.requesterEmail);
+      }
     },
   );
 

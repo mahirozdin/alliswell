@@ -78,6 +78,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   two together — the old one is left exactly as it was, because a request that
   was finished stays finished.
 
+- **The device keeps who asked for an extension's request, and where the
+  answer goes (OPH-344).** The server always sent both; the local copy dropped
+  them, so a screen with no signal could not show them. Kept from local schema
+  v33. A request already on the device fills in the next time the server sends
+  it. The migration test gained a fixture for a device that already holds such
+  requests, the only kind that runs the column steps; it proved two older steps
+  that no test had ever run.
+
 - **The device's local copy learned one more kind of record (OPH-327).** An
   extension can register an entity that lives on the phone beside tasks and
   notes — pulled, searched by the same folded-text rules, and readable with no
