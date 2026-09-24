@@ -2197,6 +2197,24 @@
           "noDesk": "it cannot reach this team’s desk",
           "other": "the desk did not accept it ({code})"
         }
+      },
+      "requester": {
+        "updated": "Updated {when}",
+        "waitingOnYou": "Waiting for you — the desk needs something from you. Write it below.",
+        "yourRequest": "Your request",
+        "you": "You",
+        "desk": "Support desk",
+        "replyHint": "Write to the desk…",
+        "send": "Send",
+        "resolvedPrompt": "The desk says this is resolved. Is it?",
+        "confirmClose": "Resolved — close it",
+        "dispute": "Not resolved",
+        "closeConfirmTitle": "Close this request?",
+        "closeConfirmBody": "A closed request is finished. If the problem comes back, you open a new one.",
+        "closedDone": "Request closed",
+        "disputed": "Sent back to the desk",
+        "newRequest": "Open a new request",
+        "needsConnection": "This request is read from the server, and there is no connection. It opens when you are back online."
       }
     },
     "sla": {

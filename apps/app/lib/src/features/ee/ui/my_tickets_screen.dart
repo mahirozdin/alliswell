@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
 import '../my_tickets_providers.dart';
 import '../providers.dart';
+import 'ticket_detail_screen.dart';
 import 'ticket_drafts_section.dart';
 
 /// "My requests" (EE-087) — what I asked for, and where it got to.
@@ -104,9 +107,23 @@ class EeMyTicketsScreen extends ConsumerWidget {
                                 if (ticket.serviceName != null)
                                   ticket.serviceName!,
                                 'ee.tickets.status.${ticket.status}'.tr(),
+                                // EE-252: "what happened last" (GUIDE-USER).
+                                if (ticket.updatedAt != null)
+                                  'ee.tickets.requester.updated'.tr(
+                                    args: {
+                                      'when': awFormatDateTime(
+                                        ticket.updatedAt!.toLocal(),
+                                        format: ref.watch(dateFormatProvider),
+                                      ),
+                                    },
+                                  ),
                               ].join(' · '),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
+                            // EE-252: the row opens the request — its own
+                            // address, the requester's view (EE-251).
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => awOpenTicket(context, ticket.id),
                           ),
                         ),
                     ],

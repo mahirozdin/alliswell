@@ -17,6 +17,7 @@ import '../providers.dart';
 import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import 'history_tab.dart';
+import 'requester_ticket_screen.dart';
 import 'sla_chip.dart';
 import 'ticket_actions.dart';
 import 'ticket_composer.dart';
@@ -66,6 +67,12 @@ class EeTicketDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ticket = ref.watch(ticketProvider(ticketId));
+    // EE-252: this device holds no copy — which for the person who ASKED is
+    // the normal case (the unit's replica is not theirs, ADR-0011 §3). The
+    // same address then shows their view, read from the server.
+    if (ticket.hasValue && ticket.value == null) {
+      return EeRequesterTicketScreen(ticketId: ticketId);
+    }
 
     return DefaultTabController(
       length: 2,

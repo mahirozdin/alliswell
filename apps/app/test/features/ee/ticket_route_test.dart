@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:alliswell/src/features/ee/notifications_providers.dart';
+import 'package:alliswell/src/features/ee/requester_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/new_ticket_screen.dart';
 import 'package:alliswell/src/features/ee/ui/notification_center_screen.dart';
@@ -88,6 +89,11 @@ void main() {
             // The detail's replica-miss path: this test is about getting
             // there, not about what a present row draws.
             ticketProvider.overrideWith((ref, ticketId) => Stream.value(null)),
+            // …which opens the requester's view at the same address (EE-252);
+            // a request that is not theirs either is the gone state.
+            eeRequesterTicketProvider.overrideWith(
+              (ref, ticketId) async => null,
+            ),
           ],
           // The product's theme: the routes wrap their page in the app
           // background, which reads AllisWell Glass's tokens.

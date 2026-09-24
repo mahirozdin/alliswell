@@ -17,6 +17,7 @@ class EeMyTicket {
     required this.priority,
     required this.createdAt,
     this.serviceName,
+    this.updatedAt,
   });
 
   factory EeMyTicket.fromJson(Map<String, dynamic> json) => EeMyTicket(
@@ -26,6 +27,11 @@ class EeMyTicket {
     priority: json['priority'] as String,
     serviceName: json['serviceName'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
+    // EE-252: "what happened last" — the server always sent it; the list
+    // dropped it, so a row could not say whether anything had moved.
+    updatedAt: json['updatedAt'] is String
+        ? DateTime.tryParse(json['updatedAt'] as String)
+        : null,
   );
 
   final String id;
@@ -34,6 +40,7 @@ class EeMyTicket {
   final String priority;
   final String? serviceName;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 }
 
 /// "My requests" — an ONLINE list, and the only honest one (ADR-0011 §3).

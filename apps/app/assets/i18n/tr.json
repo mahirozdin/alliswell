@@ -2196,6 +2196,24 @@
           "noDesk": "bu takımın masasına ulaşamıyor",
           "other": "masa kabul etmedi ({code})"
         }
+      },
+      "requester": {
+        "updated": "Son güncelleme: {when}",
+        "waitingOnYou": "Sizden bilgi bekleniyor — masanın sizden bir şeye ihtiyacı var. Aşağıya yazın.",
+        "yourRequest": "Talebiniz",
+        "you": "Siz",
+        "desk": "Destek ekibi",
+        "replyHint": "Masaya yazın…",
+        "send": "Gönder",
+        "resolvedPrompt": "Masa bu talebin çözüldüğünü söylüyor. Çözüldü mü?",
+        "confirmClose": "Çözüldü, kapat",
+        "dispute": "Çözülmedi",
+        "closeConfirmTitle": "Talep kapansın mı?",
+        "closeConfirmBody": "Kapanan talep sonuçlanmış olur. Sorun geri dönerse yeni bir talep açarsınız.",
+        "closedDone": "Talep kapandı",
+        "disputed": "Masaya geri gönderildi",
+        "newRequest": "Yeni talep aç",
+        "needsConnection": "Bu talep sunucudan okunur ve şu an bağlantı yok. Tekrar bağlandığınızda açılır."
       }
     },
     "sla": {

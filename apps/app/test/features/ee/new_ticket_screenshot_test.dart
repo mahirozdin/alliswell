@@ -293,6 +293,7 @@ void main() {
                 priority: 'normal',
                 serviceName: turkish ? 'Hat duruşu' : 'Line stop',
                 createdAt: DateTime.utc(2026, 9, 24, 7, 40),
+                updatedAt: DateTime.utc(2026, 9, 24, 7, 40),
               ),
               EeMyTicket(
                 id: 'T2',
@@ -303,6 +304,8 @@ void main() {
                 priority: 'normal',
                 serviceName: turkish ? 'Tesis' : 'Facilities',
                 createdAt: DateTime.utc(2026, 9, 23, 14, 5),
+                // EE-252: the row says what happened last.
+                updatedAt: DateTime.utc(2026, 9, 24, 8, 15),
               ),
             ],
           ),
