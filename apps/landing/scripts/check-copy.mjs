@@ -204,6 +204,84 @@ for (const pair of PAIRS) {
   }
 }
 
+// ── 6. What the page claims comes from one list (EE-261) ─────────────────
+//
+// The enterprise page told buyers, in two languages, that an asset register,
+// change approvals, a satisfaction survey and requests by e-mail did not exist
+// — for weeks after each shipped. Checks 1–5 could not see it: both files said
+// the same wrong thing, perfectly translated. So what the page says ABOUT THE
+// PRODUCT is built from `src/enterprise/capabilities.js`, and this holds the
+// page to it: the list is whole, the generated parts are in the page as
+// generated, and no other FAQ answer may say that something is missing.
+const caps = await import(path.join(root, 'src/enterprise/capabilities.js'));
+{
+  const tag = '[capabilities]';
+  const keys = new Set();
+  for (const c of caps.CAPABILITIES) {
+    if (!c.key || keys.has(c.key)) fail(`${tag} missing or repeated key "${c.key}"`);
+    keys.add(c.key);
+    if (!caps.LEVELS.includes(c.level)) {
+      fail(`${tag} ${c.key}: level "${c.level}" is not one of ${caps.LEVELS.join(', ')}`);
+    }
+    for (const lang of ['tr', 'en']) {
+      if (typeof c[lang] !== 'string' || c[lang].trim() === '') fail(`${tag} ${c.key}: no ${lang} text`);
+    }
+    if (c.level === 'none' && c.packages) {
+      fail(`${tag} ${c.key}: something the product does not have cannot be in a package`);
+    }
+    if (c.level !== 'none' && !c.packages) {
+      fail(`${tag} ${c.key}: something the product has belongs in the package table`);
+    }
+    if (c.packages && (c.packages.length !== 3 || c.packages.some((v) => !caps.CELLS.includes(v)))) {
+      fail(`${tag} ${c.key}: packages must be three of ${caps.CELLS.join('/')}`);
+    }
+    if (c.level === 'pilot' && !(c.note?.tr?.trim() && c.note?.en?.trim())) {
+      fail(`${tag} ${c.key}: a pilot says, in both languages, what it has been proven against`);
+    }
+  }
+
+  // "Something is missing", in each language — the claim only the generated
+  // answer may make.
+  const MISSING = {
+    tr: /henüz yok|bulunmuyor|mevcut değil|desteklenmiyor|yapılamıyor/i,
+    en: /not (?:in (?:it|the product) )?yet|does not exist|is not supported|not available|cannot be done/i,
+  };
+  const pair = PAIRS.find((x) => x.name === 'enterprise');
+  for (const lang of ['tr', 'en']) {
+    const content = (await import(path.join(root, pair[lang]))).default;
+    const file = pair[lang];
+    const notYet = content.faq.items.find((item) => item.key === 'notYet');
+    if (!notYet) fail(`${tag} ${file}: the FAQ has no "notYet" item`);
+    else if (notYet.a !== caps.notYetAnswer(lang)) {
+      fail(`${tag} ${file}: the "not yet" answer was edited by hand — change capabilities.js instead`);
+    }
+    for (const item of content.faq.items) {
+      if (item.key === 'notYet') continue;
+      if (MISSING[lang].test(`${item.q} ${item.a}`)) {
+        fail(
+          `${tag} ${file}: the FAQ "${item.q}" says something is missing — only the generated ` +
+            '"not yet" answer may, so that the list is the one place it can go stale',
+        );
+      }
+    }
+    const rows = new Set(content.packages.rows.map((row) => JSON.stringify(row)));
+    for (const row of caps.packageRows(lang)) {
+      if (!rows.has(JSON.stringify(row))) fail(`${tag} ${file}: the package table lacks "${row[0]}"`);
+    }
+    const offline = caps.OFFLINE[lang];
+    const integrity = content.security.items.find((item) => item.key === 'integrity');
+    if (!content.hero.facts.includes(offline.fact)) {
+      fail(`${tag} ${file}: the hero's offline fact is not the list's`);
+    }
+    if (!content.itsm.points.includes(offline.queue)) {
+      fail(`${tag} ${file}: the queue's offline sentence is not the list's`);
+    }
+    if (!integrity?.body.startsWith(offline.integrity)) {
+      fail(`${tag} ${file}: the integrity paragraph does not open with the list's offline sentence`);
+    }
+  }
+}
+
 if (problems.length) {
   for (const p of problems) console.error(`::error::${p}`);
   console.error(`\n✗ copy: ${problems.length} problem(s).`);
@@ -211,5 +289,6 @@ if (problems.length) {
 }
 
 console.log(
-  `✓ copy: ${total} strings across ${PAIRS.length} pages, both languages, and the heads agree with them`,
+  `✓ copy: ${total} strings across ${PAIRS.length} pages, both languages, and the heads agree with them; ` +
+    `${caps.CAPABILITIES.length} capabilities, the page's claims built from them`,
 );

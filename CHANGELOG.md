@@ -193,6 +193,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **The enterprise page says what is there today.** Its "what is not in it yet?" answer
+  still named an asset register, change approvals, a satisfaction survey and requests by
+  e-mail — all shipped since — and its offline line promised that requests are edited with
+  the internet down (tasks and notes are; a request is read offline, a new one waits as a
+  draft, and writing to one needs a connection). The page's claims about the product are
+  now built from one capability list, where each item says whether it is in the app, API
+  only, in pilot or not there. The package table gains a row for every module, and the
+  copy check refuses a page whose "not yet" answer, capability rows or offline sentences
+  differ from the list, or whose other answers say something is missing.
+
 - **CI and `docker-compose` pull MinIO from Chainguard's registry (OPH-347).**
   MinIO
   no longer publishes a public image: quay.io's `minio/minio`, which replaced

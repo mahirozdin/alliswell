@@ -31,6 +31,11 @@
 export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 
+// EE-261: what the page claims about the product comes from one list —
+// the FAQ's "not yet", the package table's capability rows and every offline
+// sentence. `scripts/check-copy.mjs` holds the page to it.
+import { OFFLINE, notYetAnswer, packageRows, pilotNote } from './capabilities.js';
+
 export default {
   lang: 'en',
 
@@ -69,7 +74,7 @@ export default {
       'In the cloud or on your own servers',
       'English and Turkish interface',
       'Phone, tablet, web and desktop',
-      'Keeps working when the internet drops',
+      OFFLINE.en.fact,
     ],
     shot: '/shots/ee/hero-light-en.jpg',
     shotDark: '/shots/ee/hero-dark-en.jpg',
@@ -127,7 +132,7 @@ export default {
     points: [
       'Every request shows its state, its priority and who owns it at a glance',
       'One request can be split into tasks for several people; each task has a clear owner',
-      'The list opens and can be edited with the internet down; changes sync when the connection is back',
+      OFFLINE.en.queue,
     ],
     shot: '/shots/ee/ticket-queue-light-en.jpg',
     shotDark: '/shots/ee/ticket-queue-dark-en.jpg',
@@ -250,9 +255,10 @@ export default {
     title: 'Let your customers and dealers send requests without an account',
     lede:
       'Creating a user account for every customer is impractical, and a shared mailbox cannot ' +
-      'be tracked. With AllisWell Enterprise you publish a public request form for each ' +
-      'service: whoever fills it in sends a request without signing in, it lands with the right ' +
-      'team, and its progress can be followed from outside.',
+      'be tracked on its own. AllisWell Enterprise turns the mail arriving in that box into ' +
+      'requests; and for each service you publish a public request form: whoever fills it in ' +
+      'sends a request without signing in, it lands with the right team, and its progress can ' +
+      'be followed from outside.',
     steps: [
       {
         n: 1,
@@ -471,7 +477,8 @@ export default {
       'There is no separate user list to maintain. An Active Directory or LDAP connection, ' +
       'single sign-on with systems such as Microsoft Entra ID (SAML, OpenID Connect) and ' +
       'automatic user provisioning (SCIM) are all supported. Directory groups map to ' +
-      'departments: an account opens when somebody joins, and closes the day they leave.',
+      'departments: an account opens when somebody joins, and closes the day they leave. ' +
+      pilotNote('directory', 'en'),
     points: [
       'Single sign-on: employees sign in with the corporate password they already use',
       'Group membership decides the department; nothing is assigned by hand',
@@ -523,8 +530,7 @@ export default {
         icon: '🛡️',
         title: 'Backups, portability and KVKK/GDPR',
         body:
-          'Changes made while the internet is down are kept on the device and synchronised ' +
-          'when the connection returns; no record is left half-written. In the cloud, regular ' +
+          `${OFFLINE.en.integrity} In the cloud, regular ` +
           'backups are our responsibility; on your own servers they follow our backup and ' +
           'restore guide. Your organisation’s entire data exports as one document, and one ' +
           'person’s data can be erased on request. KVKK and GDPR requirements are part of the ' +
@@ -609,12 +615,8 @@ export default {
       ['Units (departments)', '5', '50', 'Unlimited'],
       ['Public request form: active forms and requests per month', 'Set by the package', 'Set by the package', 'Set by the package'],
       ['Activity history retained', '90 days', '1 year', '7 years'],
-      ['Request management, SLAs, system health monitoring', 'yes', 'yes', 'yes'],
-      ['Units, permissions, activity log', 'yes', 'yes', 'yes'],
-      ['Public request form', 'yes', 'yes', 'yes'],
-      ['Tasks, projects, notes, files', 'yes', 'yes', 'yes'],
-      ['Meeting notes (AI) and monthly transcription minutes', 'no', 'yes', 'yes'],
-      ['Active Directory / single sign-on / SCIM', 'no', 'no', 'yes'],
+      // EE-261: every capability row, with its level in the label.
+      ...packageRows('en'),
     ],
     footnote:
       'What a package includes is written in your agreement, and a package is upgraded as your ' +
@@ -716,7 +718,9 @@ export default {
         a:
           'Yes. An Active Directory or LDAP connection, single sign-on with Microsoft Entra ID ' +
           'and similar systems, and automatic user provisioning are included in the cloud ' +
-          'Enterprise package, and in whatever scope you need on your own servers.',
+          'Enterprise package, and in whatever scope you need on your own servers. Single ' +
+          'sign-on and provisioning are verified by automated tests on every release. ' +
+          pilotNote('directory', 'en'),
       },
       {
         q: 'Do our customers need an account in the system?',
@@ -732,12 +736,10 @@ export default {
           'and the corporate identity connection, and is used under a commercial licence.',
       },
       {
+        // EE-261: generated, never hand-written — see capabilities.js.
+        key: 'notYet',
         q: 'What is not in it yet?',
-        a:
-          'There is no asset (inventory) register, no change-approval workflow, no customer ' +
-          'satisfaction survey, and no custom report designer beyond the dashboard. Requests ' +
-          'cannot be opened by e-mail yet; they come in through the form and the app. We would ' +
-          'rather say so up front.',
+        a: notYetAnswer('en'),
       },
     ],
   },

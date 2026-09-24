@@ -32,6 +32,11 @@
 export const APP_URL = '/app';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 
+// EE-261: what the page claims about the product comes from one list —
+// the FAQ's "not yet", the package table's capability rows and every offline
+// sentence. `scripts/check-copy.mjs` holds the page to it.
+import { OFFLINE, notYetAnswer, packageRows, pilotNote } from './capabilities.js';
+
 export default {
   lang: 'tr',
 
@@ -70,7 +75,7 @@ export default {
       'Bulutta ya da kendi sunucunuzda',
       'Türkçe ve İngilizce arayüz',
       'Telefon, tablet, web ve masaüstü',
-      'İnternet kesildiğinde de çalışır',
+      OFFLINE.tr.fact,
     ],
     shot: '/shots/ee/hero-light-tr.jpg',
     shotDark: '/shots/ee/hero-dark-tr.jpg',
@@ -125,7 +130,7 @@ export default {
     points: [
       'Her talebin durumu, öncelik seviyesi ve sorumlusu listede bir bakışta görünür',
       'Bir talep birden fazla kişiye görev olarak dağıtılabilir; her görevin sorumlusu bellidir',
-      'İnternet kesildiğinde de liste açılır ve düzenlenir; bağlantı gelince değişiklikler eşitlenir',
+      OFFLINE.tr.queue,
     ],
     shot: '/shots/ee/ticket-queue-light-tr.jpg',
     shotDark: '/shots/ee/ticket-queue-dark-tr.jpg',
@@ -247,9 +252,10 @@ export default {
     title: 'Müşterileriniz ve bayileriniz size hesap açmadan talep iletsin',
     lede:
       'Her müşteriye kullanıcı hesabı açmak pratik değildir; ortak bir e-posta kutusu ise ' +
-      'takip edilemez. AllisWell Enterprise ile her hizmet için herkese açık bir talep formu ' +
-      'yayınlarsınız: formu dolduran kişi sisteme girmeden talebini iletir, talep doğru ekibe ' +
-      'düşer ve durumu dışarıdan takip edilir.',
+      'kendi başına takip edilemez. AllisWell Enterprise o kutuya gelen postayı da talebe ' +
+      'çevirir; ayrıca her hizmet için herkese açık bir talep formu yayınlarsınız: formu ' +
+      'dolduran kişi sisteme girmeden talebini iletir, talep doğru ekibe düşer ve durumu ' +
+      'dışarıdan takip edilir.',
     steps: [
       {
         n: 1,
@@ -464,7 +470,7 @@ export default {
       'Ayrı bir kullanıcı listesi tutmanız gerekmez. Active Directory ya da LDAP bağlantısı, ' +
       'Microsoft Entra ID gibi sistemlerle tek oturum açma (SAML, OpenID Connect) ve otomatik ' +
       'kullanıcı aktarımı (SCIM) desteklenir. Dizindeki gruplar birimlere eşlenir: personel işe ' +
-      'girdiğinde hesabı açılır, ayrıldığında aynı gün kapanır.',
+      `girdiğinde hesabı açılır, ayrıldığında aynı gün kapanır. ${pilotNote('directory', 'tr')}`,
     points: [
       'Tek oturum açma: çalışanlar zaten kullandıkları kurumsal şifreyle girer',
       'Grup üyelikleri birimleri belirler; elle atama gerekmez',
@@ -516,8 +522,7 @@ export default {
         icon: '🛡️',
         title: 'Yedekleme, taşınabilirlik ve KVKK',
         body:
-          'İnternet kesildiğinde yapılan değişiklikler cihazda saklanır, bağlantı gelince ' +
-          'eşitlenir; hiçbir kayıt yarım kalmaz. Bulutta düzenli yedekleme bizim ' +
+          `${OFFLINE.tr.integrity} Bulutta düzenli yedekleme bizim ` +
           'sorumluluğumuzda; kendi sunucunuzda yedekleme ve geri yükleme rehberiyle. Kurumunuzun ' +
           'bütün verisi tek belge olarak dışa aktarılır, bir kişinin verisi talep üzerine ' +
           'silinir. KVKK ve GDPR gerekleri sistemin parçasıdır.',
@@ -600,12 +605,8 @@ export default {
       ['Birim (departman) sayısı', '5', '50', 'Sınırsız'],
       ['Kurum dışı talep formu: aktif form ve aylık talep sayısı', 'Paketle belirlenir', 'Paketle belirlenir', 'Paketle belirlenir'],
       ['İşlem geçmişi saklama süresi', '90 gün', '1 yıl', '7 yıl'],
-      ['Talep yönetimi, SLA, sistem sağlığı izleme', 'yes', 'yes', 'yes'],
-      ['Birimler, yetki yönetimi, işlem kaydı', 'yes', 'yes', 'yes'],
-      ['Kurum dışı talep formu', 'yes', 'yes', 'yes'],
-      ['Görevler, projeler, notlar, dosyalar', 'yes', 'yes', 'yes'],
-      ['Toplantı notları (yapay zekâ) ve aylık deşifre dakikası', 'no', 'yes', 'yes'],
-      ['Active Directory / tek oturum açma / SCIM', 'no', 'no', 'yes'],
+      // EE-261: every capability row, with its level in the label.
+      ...packageRows('tr'),
     ],
     footnote:
       'Paket içeriği sözleşmenizde yazar; ihtiyaç değiştikçe paket yükseltilir. Fiyatlar ' +
@@ -703,7 +704,8 @@ export default {
         a:
           'Evet. Active Directory ve LDAP bağlantısı, Microsoft Entra ID ve benzeri sistemlerle ' +
           'tek oturum açma ve otomatik kullanıcı aktarımı bulutta Enterprise paketinde, kendi ' +
-          'sunucunuza kurulumda ise istediğiniz kapsamda mevcuttur.',
+          'sunucunuza kurulumda ise istediğiniz kapsamda mevcuttur. Tek oturum açma ve ' +
+          `kullanıcı aktarımı her sürümde otomatik testlerle doğrulanır. ${pilotNote('directory', 'tr')}`,
       },
       {
         q: 'Müşterilerimizin sistemde hesabı olması gerekir mi?',
@@ -719,11 +721,10 @@ export default {
           've kurumsal kimlik bağlantısını ekler; ticari lisansla kullanılır.',
       },
       {
+        // EE-261: generated, never hand-written — see capabilities.js.
+        key: 'notYet',
         q: 'Neler henüz yok?',
-        a:
-          'Varlık (envanter) yönetimi, değişiklik onay akışı, müşteri memnuniyet anketi ve pano ' +
-          'dışında özel rapor tasarımı bulunmuyor. E-posta ile talep açma henüz yok; talepler ' +
-          'form ve uygulama üzerinden açılır. Bunları baştan söylemeyi tercih ederiz.',
+        a: notYetAnswer('tr'),
       },
     ],
   },
