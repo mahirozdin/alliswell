@@ -18,7 +18,10 @@ const readySchema = {
     status: { type: 'string', enum: ['ok', 'degraded'] },
     checks: {
       type: 'object',
-      properties: { mysql: componentSchema, redis: componentSchema },
+      // `extension` appears only when there is one to report (OPH-343): a
+      // loaded overlay, or a server locked because its extension is missing.
+      // The plain build's answer carries exactly the two it always did.
+      properties: { mysql: componentSchema, redis: componentSchema, extension: componentSchema },
       required: ['mysql', 'redis'],
     },
   },
@@ -79,10 +82,12 @@ export default async function healthRoutes(app) {
     },
     async (_request, reply) => {
       const [mysql, redis] = await Promise.all([checkMysql(app), checkRedis(app)]);
-      const ok = mysql.status === 'up' && redis.status === 'up';
-      return reply
-        .code(ok ? 200 : 503)
-        .send({ status: ok ? 'ok' : 'degraded', checks: { mysql, redis } });
+      const checks = { mysql, redis };
+      const extension = (await app.ee?.readiness?.()) ?? null;
+      if (extension) checks.extension = extension;
+      const ok =
+        mysql.status === 'up' && redis.status === 'up' && (!extension || extension.status === 'up');
+      return reply.code(ok ? 200 : 503).send({ status: ok ? 'ok' : 'degraded', checks });
     },
   );
 }

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { coreMigrationsDir, migrationNamesIn } from '../db/migration-dirs.js';
 import { MCP_TOOLS } from './mcp/tools.js';
 
 // The overlay's default home: a sibling checkout at the repo root. Resolved
@@ -23,10 +24,32 @@ export function resolveEeDir(config) {
  * routes, sync entities land before /sync snapshots its registries, MCP tools
  * land before /mcp compiles its schemas.
  *
- * Failure policy: an ABSENT overlay is the CE build (info log, nothing else).
- * A PRESENT-but-broken overlay must not take the instance down with it — the
- * server boots as CE, logs loudly, and keeps the message on `app.ee.error`
- * for an operator-facing status surface to report.
+ * Failure policy (OPH-343, ADR-0041 — it replaced "a broken overlay boots as
+ * CE"): the question is not whether the extension is here but whether the
+ * DATA it governs is. Its rules — permission resolvers, sync guards — leave
+ * with it, and core's answer without them is membership: every member of a
+ * workspace the extension restricted would be served with the plain build's
+ * wider rights. So:
+ *
+ *   • disabled                          → CE, and nothing here runs at all;
+ *   • loaded                            → open;
+ *   • present but failed to load        → LOCKED (whatever EE_REQUIRED says —
+ *                                         a half-registered overlay is the
+ *                                         worst state to serve from);
+ *   • absent, EE_REQUIRED=true          → LOCKED;
+ *   • absent, EE_REQUIRED=false         → CE (the operator accepted it);
+ *   • absent, EE_REQUIRED unset         → the migration ledger decides: a
+ *                                         recorded migration this build does
+ *                                         not have means the extension wrote
+ *                                         data here → LOCKED; a clean ledger
+ *                                         is the plain build → CE.
+ *
+ * Locked = every request but /health answers 503 EXTENSION_UNAVAILABLE and
+ * readiness reports why. A ledger that cannot be read yet (the database is
+ * still coming up) locks too, and is asked again on the next request: failing
+ * closed costs a few seconds of 503 on a server that could not serve anyway.
+ * The plain build — disabled, or absent with a clean ledger — installs no hook
+ * and answers byte for byte as before (tested).
  */
 export async function loadEeOverlay(app) {
   const state = {
@@ -34,6 +57,8 @@ export async function loadEeOverlay(app) {
     loaded: false,
     dir: null,
     error: null,
+    // OPH-343: null = open, else { code } — see the failure policy above.
+    lock: null,
     // App-scoped extension registries — deliberately NOT module-level: two
     // apps built in one test process must not see each other's registrations.
     syncEntities: Object.create(null),
@@ -70,24 +95,106 @@ export async function loadEeOverlay(app) {
   const dir = resolveEeDir(app.config);
   state.dir = dir;
   const entry = path.join(dir, 'server', 'index.js');
-  if (!existsSync(entry)) {
-    app.log.info({ dir }, 'EE overlay not present — running as CE');
-    return;
+  if (existsSync(entry)) {
+    const seam = buildSeam(state);
+    try {
+      const mod = await import(pathToFileURL(entry).href);
+      if (typeof mod.register !== 'function') {
+        throw new Error('overlay entry must export register(app, seam)');
+      }
+      await mod.register(app, seam);
+      state.loaded = true;
+      app.log.info({ dir }, 'EE overlay loaded');
+    } catch (err) {
+      state.error = err?.message ?? String(err);
+      app.log.error({ err, dir }, 'EE overlay failed to load — the server locks (ADR-0041)');
+    }
+  } else {
+    app.log.info({ dir }, 'EE overlay not present');
   }
 
-  const seam = buildSeam(state);
-  try {
-    const mod = await import(pathToFileURL(entry).href);
-    if (typeof mod.register !== 'function') {
-      throw new Error('overlay entry must export register(app, seam)');
-    }
-    await mod.register(app, seam);
-    state.loaded = true;
-    app.log.info({ dir }, 'EE overlay loaded');
-  } catch (err) {
-    state.error = err?.message ?? String(err);
-    app.log.error({ err, dir }, 'EE overlay failed to load — continuing as CE');
+  const gate = lockGate(app, state);
+  state.readiness = gate.readiness;
+  await gate.verdict();
+  // Installed only when the answer is or may become "locked": the plain build
+  // (absent, clean ledger) carries no hook, so it answers exactly as before.
+  if (gate.mayLock()) app.addHook('onRequest', gate.onRequest);
+}
+
+/** OPH-343 — the lock's three questions, asked once and remembered. */
+function lockGate(app, state) {
+  let settled = false;
+  let inflight = null;
+
+  async function decide() {
+    if (state.loaded) return null;
+    if (state.error) return 'EXTENSION_LOAD_FAILED';
+    const required = app.config.ee.required;
+    if (required === true) return 'EXTENSION_REQUIRED';
+    if (required === false) return null;
+    const unknown = await unknownLedgerEntries(app.db);
+    return unknown.length > 0 ? 'EXTENSION_MISSING' : null;
   }
+
+  async function verdict() {
+    if (settled) return state.lock;
+    inflight ??= decide()
+      .then((code) => {
+        state.lock = code ? { code } : null;
+        settled = true;
+        if (code)
+          app.log.error({ code }, 'extension unavailable — the server is locked (ADR-0041)');
+      })
+      .catch((err) => {
+        // Unreadable is not clean: stay locked and ask again next time.
+        state.lock = { code: 'EXTENSION_UNVERIFIED' };
+        app.log.error({ err }, 'migration ledger unreadable — locked until it can be read');
+      })
+      .finally(() => {
+        inflight = null;
+      });
+    await inflight;
+    return state.lock;
+  }
+
+  return {
+    verdict,
+    mayLock: () => !settled || state.lock !== null,
+    async onRequest(request) {
+      if (request.url === '/health' || request.url.startsWith('/health/')) return;
+      const lock = await verdict();
+      if (!lock) return;
+      const err = app.httpErrors.serviceUnavailable(
+        'This server is locked until its extension is available again.',
+      );
+      err.code = 'EXTENSION_UNAVAILABLE';
+      throw err;
+    },
+    /** A readiness component, or null when there is nothing to report (plain build). */
+    async readiness() {
+      const lock = await verdict();
+      if (lock) return { status: 'down', error: lock.code };
+      return state.loaded ? { status: 'up' } : null;
+    },
+  };
+}
+
+/**
+ * Ledger rows this build has no file for. With the overlay absent, "known" is
+ * core's directory alone — so every row the extension's migrations wrote is
+ * unknown, and one is enough.
+ */
+async function unknownLedgerEntries(db) {
+  let rows;
+  try {
+    rows = await db('knex_migrations').select('name');
+  } catch (err) {
+    // A database never migrated has written nothing for anyone.
+    if (err?.code === 'ER_NO_SUCH_TABLE') return [];
+    throw err;
+  }
+  const known = new Set(migrationNamesIn(coreMigrationsDir()));
+  return rows.map((row) => row.name).filter((name) => !known.has(name));
 }
 
 /**

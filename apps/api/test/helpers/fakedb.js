@@ -100,8 +100,18 @@ const OPS = {
 /** Ordering compares primitives — Dates become their millisecond value. */
 const sortValue = (value) => (value instanceof Date ? value.getTime() : value);
 
-export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {}) {
+export function fakeDb({
+  hideUsersFromPrecheck = false,
+  extraTables = [],
+  // OPH-343: the migration ledger the extension loader reads at boot. Seeded
+  // here because the loader reads it inside buildApp, before a test could.
+  seedLedger = [],
+  ledgerMissing = false,
+  failLedgerReads = 0,
+} = {}) {
   const tables = {
+    // OPH-343: the loader reads the migration ledger when an overlay is absent.
+    knex_migrations: [],
     users: [],
     workspaces: [],
     workspace_members: [],
@@ -149,6 +159,8 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
   // the fixed list above stays the contract for core code — an unknown-table
   // throw is a real bug signal — but a test may declare extras up front.
   for (const name of extraTables) tables[name] ??= [];
+  tables.knex_migrations.push(...seedLedger.map((row, i) => ({ id: i + 1, batch: 1, ...row })));
+  let ledgerFailures = failLedgerReads;
 
   const columnDefaults = {
     users: () => ({ timezone: 'Europe/Istanbul', locale: 'tr-TR' }),
@@ -472,6 +484,19 @@ export function fakeDb({ hideUsersFromPrecheck = false, extraTables = [] } = {})
   };
 
   const db = (name) => {
+    if (name === 'knex_migrations') {
+      if (ledgerMissing) {
+        const err = new Error("Table 'knex_migrations' doesn't exist");
+        err.code = 'ER_NO_SUCH_TABLE';
+        throw err;
+      }
+      if (ledgerFailures > 0) {
+        ledgerFailures -= 1;
+        const err = new Error('connect ECONNREFUSED');
+        err.code = 'ECONNREFUSED';
+        throw err;
+      }
+    }
     if (!tables[name]) throw new Error(`fakeDb: unknown table "${name}"`);
     return builder(name);
   };

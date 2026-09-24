@@ -2637,6 +2637,11 @@ curl -X GET 'https://api.alliswell.space/health/ready'
       "status": "up",
       "latencyMs": 1,
       "error": "string"
+    },
+    "extension": {
+      "status": "up",
+      "latencyMs": 1,
+      "error": "string"
     }
   }
 }

@@ -16649,6 +16649,27 @@
                           "required": [
                             "status"
                           ]
+                        },
+                        "extension": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "up",
+                                "down"
+                              ]
+                            },
+                            "latencyMs": {
+                              "type": "number"
+                            },
+                            "error": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ]
                         }
                       },
                       "required": [
@@ -16704,6 +16725,27 @@
                           ]
                         },
                         "redis": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "up",
+                                "down"
+                              ]
+                            },
+                            "latencyMs": {
+                              "type": "number"
+                            },
+                            "error": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ]
+                        },
+                        "extension": {
                           "type": "object",
                           "properties": {
                             "status": {

@@ -83,9 +83,15 @@ suites are deterministic with or without a checkout). `src/lib/ee.js` imports
 and before any route** — that ordering is the contract: overlay hooks reach core routes, and
 overlay-registered sync entities / MCP tools land before `/sync` and `/mcp` snapshot their
 registries. Registries are app-scoped on `app.ee` (never module-level — two test apps must
-not share registrations). An absent overlay is simply the CE build; a broken one fails open
-to CE with a loud log and `app.ee.error` — never a boot failure. Contract tests:
-`test/unit/ee-seam.test.js` with fixture overlays under `test/fixtures/ee-overlay*`.
+not share registrations). A broken overlay is never a boot failure — but since OPH-343 it is
+not the CE build either: an extension that wrote data must be present to serve it
+([ADR-0041](adr/0041-an-extension-that-wrote-data-must-be-present-to-serve-it.md)). A present
+overlay that fails to load, an absent one with `EE_REQUIRED=true`, or an absent one whose
+migrations are in the ledger **locks** the server: every request but `/health/*` answers 503
+`EXTENSION_UNAVAILABLE` and `/health/ready` reports `checks.extension`. Absent with a clean
+ledger (or `EE_REQUIRED=false`) is the CE build, byte for byte. Contract tests:
+`test/unit/ee-seam.test.js` and `test/unit/ee-lock.test.js` with fixture overlays under
+`test/fixtures/ee-overlay*`.
 
 Entitlements ride the same seam (EE-003/EE-004): `app.entitlements` resolves the ONE
 feature dictionary (`src/lib/entitlements.js`) from a development override

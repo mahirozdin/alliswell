@@ -157,9 +157,14 @@ jobs:
           emit OVERLAY_LICENSE_B64 "$OVERLAY_LICENSE"
           # Public (vars) and secret (secrets) env lines are merged, secrets
           # LAST so a secret always wins over a same-named plain value.
-          merged=$(printf '%s\n%s\n' "$OVERLAY_ENV" "$OVERLAY_ENV_SECRET")
-          # Two empty inputs still make two newlines. Encoding that would send
-          # the server a payload whose only effect is a pointless .env backup.
+          # OPH-343 (ADR-0041): a deploy that ships an overlay declares it
+          # required, FIRST — so the server locks rather than serving the
+          # overlay's data under plain-build rules if its files ever go
+          # missing. An explicit EE_REQUIRED in the vars/secrets comes later
+          # and wins.
+          merged=$(printf 'EE_REQUIRED=true\n%s\n%s\n' "$OVERLAY_ENV" "$OVERLAY_ENV_SECRET")
+          # The guard below predates OPH-343: with EE_REQUIRED always present it
+          # no longer empties anything, and stays as the shape check it is.
           case "$merged" in *=*) : ;; *) merged="" ;; esac
           emit OVERLAY_ENV_B64 "$merged"
           echo "overlay: $OVERLAY_REPO@$OVERLAY_REF"

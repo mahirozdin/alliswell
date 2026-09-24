@@ -468,6 +468,13 @@ export function loadConfig(env = process.env) {
     ee: Object.freeze({
       enabled: toBool(env.EE_ENABLED, (env.NODE_ENV ?? 'development') !== 'test', 'EE_ENABLED'),
       dir: env.EE_DIR || null,
+      // OPH-343 (ADR-0041): what an ABSENT overlay means. Three states on
+      // purpose: unset = the migration ledger decides (an extension that wrote
+      // data must be present to serve it), true = always required (a deploy
+      // that ships one sets this), false = the operator accepts plain-build
+      // rules over that data. A present overlay that fails to load locks the
+      // server in every state.
+      required: toBool(env.EE_REQUIRED, null, 'EE_REQUIRED'),
       // EE-129: an optional fence around the operator console. Comma-separated
       // addresses and IPv4 CIDRs; empty means no fence at all (the overlay's
       // own module says why the default is not "nowhere"). Core stores the

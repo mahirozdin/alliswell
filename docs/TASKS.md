@@ -11698,7 +11698,7 @@ _Cihaz gözlemi kapanış koşulu değil (sahibin 2026-09-23 kararı); etiket, s
 → OPH-345 (`EE-263` ile) → OPH-346 (`EE-268` ile). Epic 32'nin OPH-340'ı `EE-231` ile aynı
 turda. İşaretçi uzantının STATE'indedir.
 
-### OPH-343 — Uzantı yüklenemezse sunucu kilitlenir
+### OPH-343 — Uzantı yüklenemezse sunucu kilitlenir ✅ 2026-09-24
 
 **Bağlam:** yükleyicinin başarısızlık politikası: uzantı yoksa "running as CE"
 (`apps/api/src/lib/ee.js:73-76`), varsa ama yüklenemiyorsa "continuing as CE" (`:87-90`).
@@ -11707,25 +11707,52 @@ kurulum için doğru, **uzantının yazdığı veri dururken** değil: uzantın�
 onunla birlikte kaybolur ve üye sade kurulumun geniş yetkisiyle kalır. `/health/ready`
 yalnız MySQL ve Redis'e bakar; uzantının durumunu yalnız oturumlu `/ee/status` söyler.
 
-- [ ] Politika (`lib/ee.js`): `ee.enabled` iken uzantı **yüklenemedi**, ya da **yok ve**
+- [x] Politika (`lib/ee.js`): `ee.enabled` iken uzantı **yüklenemedi**, ya da **yok ve**
       (`EE_REQUIRED=true` **ya da** migration defterinde diskte karşılığı olmayan bir kayıt
       var) → `app.ee.locked` (nedeniyle). Kilitliyken `/health/*` dışındaki her istek
       **503 `EXTENSION_UNAVAILABLE`**; yüksek sesli log.
-- [ ] `config.js`: `EE_REQUIRED` üç hâl — boş (defter karar verir), `true` (her zaman
+      _(2026-09-24: `app.ee.lock` (`null` ya da `{ code }`), `lockGate`: karar bir kez
+      veriliyor ve hatırlanıyor; okunamayan defter `EXTENSION_UNVERIFIED` ile kilitliyor ve
+      bir sonraki istekte yeniden soruluyor. **Kanca yalnız kilitlenebilecekken takılıyor** —
+      sade kurulumda (kapalı ya da yok + temiz defter) hiç yok. Kodlar:
+      `EXTENSION_LOAD_FAILED` · `EXTENSION_REQUIRED` · `EXTENSION_MISSING` ·
+      `EXTENSION_UNVERIFIED`.)_
+- [x] `config.js`: `EE_REQUIRED` üç hâl — boş (defter karar verir), `true` (her zaman
       gerekli), `false` (sade kurulum semantiğinin bilinçli kabulü: yokluk kilitlemez;
       yüklenemeyen uzantı yine kilitler).
-- [ ] Defter kontrolü açılışta tek sorgu: `knex_migrations` adları core'un ve (yüklüyse)
+      _(`toBool(env.EE_REQUIRED, null, …)` — var olan yardımcı üç hâli zaten taşıyordu.)_
+- [x] Defter kontrolü açılışta tek sorgu: `knex_migrations` adları core'un ve (yüklüyse)
       uzantının migration dizinleriyle karşılaştırılır.
-- [ ] `/health/ready`: `ee.enabled` iken `checks.extension` (`up` / `down` + neden);
+      _(Yüklü uzantıda soru hiç sorulmuyor (açık); yokken "bilinen" yalnız core'un dizini.
+      Dizin tanımı tek yerde: `src/db/migration-dirs.js` — knex ayarı da onu okuyor.
+      Hiç göç etmemiş veritabanı (`ER_NO_SUCH_TABLE`) temiz sayılıyor.)_
+- [x] `/health/ready`: `ee.enabled` iken `checks.extension` (`up` / `down` + neden);
       kilitliyken 503.
-- [ ] `deploy.yml`: uzantı dağıtılırken ortam `EE_REQUIRED=true` taşır.
-- [ ] ADR-0041 — "Veriyi yazan kod yoksa sunucu o veriyi sunmaz": neden, üç hâl, sade
+      _(Ölçülerek daraltıldı: üretimde `EE_ENABLED` varsayılanı açık olduğu için "etkinken"
+      her sade kurulumun cevabına bir alan eklerdi. Alan yalnız söylenecek bir şey varken
+      çıkıyor — yüklü uzantı (`up`) ya da kilit (`down` + kod). Sade kurulumun cevabı iki
+      anahtar, testli.)_
+- [x] `deploy.yml`: uzantı dağıtılırken ortam `EE_REQUIRED=true` taşır.
+      _(Uzantı yükünün env satırları `EE_REQUIRED=true` ile başlıyor; dağıtım değişkenlerindeki
+      açık bir değer sonra geldiği için kazanıyor. YAML ayrıştırıldı; `actionlint` bu makinede
+      yok.)_
+- [x] ADR-0041 — "Veriyi yazan kod yoksa sunucu o veriyi sunmaz": neden, üç hâl, sade
       kurulumun değişmediği.
+      _(ADR dizininde; ARCHITECTURE §3b'nin "fail open to CE" cümlesi yeni kurala çevrildi.)_
 - **Kabul:** beş senaryo testli — uzantı kapalı: bayt bayt aynı; uzantı yok + temiz defter:
   sade; uzantı yok + defterde bilinmeyen kayıt: kilit; uzantı yüklenemiyor (fixture
   `register` fırlatır): kilit; `EE_REQUIRED=true` + yok: kilit. Enjeksiyon: kilit kapısı
   kaldırılınca kırmızı.
+  _Karşılandı: `test/unit/ee-lock.test.js` (10): beş senaryo + `EE_REQUIRED=false` + yarıda
+  kalan uzantı + yüklü uzantı + okunamayan defter + hiç göç etmemiş defter. `ee-seam`'in
+  bozuk-uzantı testi yeni sözleşmeye çevrildi. `test/integration/extension-lock.test.js`
+  (2) gerçek deftere karşı koşuyor; beklentiyi defterin kendisinden türetiyor ve kendi
+  satırını temizliyor. **Enjeksiyon:** kanca sökülünce 3 kırmızı, checksum'la geri._
 - **Doğrulama:** API unit (fixture `EE_DIR`) + integration (defter, sandbox); `check:no-ee`.
+  _Sandbox: API birim 894 geçti. Kırmızı 3 test, adı konmuş ortam kırmızısı:
+  `ai-chat-transport` (sandbox'ta gerçek dinleyicinin kapanış zaman aşımı; CI'da yeşil,
+  değişiklikler stash'liyken de aynı). API entegrasyon: `extension-lock` 2/2 + 105 geçti;
+  tek kırmızı yine adı konmuş `ai-chat` zaman aşımı. ESLint temiz, prettier temiz._
 - **Yüzey (kural 12):** yok (altyapı).
 - ⚠️ **Çift kapanış:** ↔ `EE-250` (uzantı kaydı: kendi dağıtım ayarı, doğrulama betiği ve
   güvenlik belgesi).

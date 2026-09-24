@@ -136,6 +136,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **A server whose extension cannot be served now refuses, instead of serving
+  the plain build's rules (OPH-343, ADR-0041).** An extension brings its own
+  rules — who may delete what, which writes a device may push. Until now, if
+  one failed to load, the API carried on without them, and a member it had
+  restricted was served with the plain build's wider rights. Now, when an
+  extension is enabled and fails to load — or is missing while the database
+  holds migrations it wrote, or `EE_REQUIRED=true` says it must be there —
+  every request except `/health/*` answers **503 `EXTENSION_UNAVAILABLE`**, and
+  `/health/ready` answers 503 with the reason under `checks.extension`. A plain
+  install (no extension, or `EE_REQUIRED=false`) is unchanged, byte for byte.
+  Deploys that ship an extension set `EE_REQUIRED=true` themselves.
+
 - **The app knows whether the server answered the last time it asked
   (OPH-342).** Most of the app works offline and never needs to know. A
   screen that writes straight to the server does: it can now grey itself out

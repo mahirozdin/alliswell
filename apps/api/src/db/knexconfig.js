@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { resolveEeDir } from '../lib/ee.js';
+import { coreMigrationsDir } from './migration-dirs.js';
 
 /**
  * Shared knex configuration used by both the runtime plugin (src/plugins/mysql.js)
@@ -16,7 +16,7 @@ export function buildKnexConfig(config) {
   // filename timestamp (single knex_migrations table), which is why the
   // overlay repo carries a collision gate. Both paths are absolute so the CLI
   // (cwd apps/api) and the runtime plugin agree.
-  const coreMigrations = fileURLToPath(new URL('../../migrations', import.meta.url));
+  const coreMigrations = coreMigrationsDir();
   const eeDir = resolveEeDir(config);
   const eeMigrations = eeDir ? path.join(eeDir, 'server', 'migrations') : null;
   const directory =

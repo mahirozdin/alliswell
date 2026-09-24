@@ -11,7 +11,8 @@ import { newId } from '../../src/lib/ids.js';
  * EE-002 — the enterprise overlay seam. The contract under test: absent
  * overlay = CE byte for byte; a fixture overlay can use every hook (route,
  * sync pull + push, MCP tool, permission collection, core-route reach); a
- * broken overlay fails open to CE loudly, never fatally.
+ * broken overlay locks the server loudly (OPH-343, ADR-0041) but never fatally —
+ * the process boots and health answers. The lock's full matrix: ee-lock.test.js.
  */
 
 const FIXTURE_DIR = fileURLToPath(new URL('../fixtures/ee-overlay', import.meta.url));
@@ -368,12 +369,17 @@ describe('EE overlay seam (EE-002)', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('fails open to CE when the overlay is broken — loudly, not fatally', async () => {
+  it('locks when the overlay is broken — loudly, not fatally (OPH-343)', async () => {
+    // Until OPH-343 this was "fails open to CE". Serving the plain build's
+    // rules over data an extension governed is the hole ADR-0041 closes.
     ({ app } = await buildTestApp({ config: eeConfig(BROKEN_DIR) }));
     expect(app.ee.loaded).toBe(false);
     expect(app.ee.error).toMatch(/already taken/);
+    expect(app.ee.lock).toEqual({ code: 'EXTENSION_LOAD_FAILED' });
     const health = await app.inject({ method: 'GET', url: '/health/live' });
     expect(health.statusCode).toBe(200);
+    const api = await app.inject({ method: 'GET', url: '/api/v1/me' });
+    expect(api.statusCode).toBe(503);
   });
 
   it('consults overlay CORS origin checks after the static list (EE-013)', async () => {
