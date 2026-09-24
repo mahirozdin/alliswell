@@ -496,13 +496,7 @@ class _TicketCard extends ConsumerWidget {
             AwAssigneeStrip(assignees: assignees),
           ],
         ),
-        onTap: selecting
-            ? toggle
-            : () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => EeTicketDetailScreen(ticketId: ticket.id),
-                ),
-              ),
+        onTap: selecting ? toggle : () => awOpenTicket(context, ticket.id),
         onLongPress: toggle,
       ),
     );

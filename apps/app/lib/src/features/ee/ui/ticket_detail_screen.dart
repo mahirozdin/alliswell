@@ -42,6 +42,22 @@ import 'ticket_worklog_section.dart';
 /// them alone fails somebody: colour fails a colour-blind reader, the icon
 /// fails at a glance on a dirty screen, and the word fails nobody but is the
 /// easiest to skim past.
+/// Opens one request (EE-251). By its address when a router is there to ask —
+/// the queue, an asset's history and a notification then reach the SAME
+/// place a pasted link does — and by a plain push when the screen is hosted
+/// without one.
+void awOpenTicket(BuildContext context, String ticketId) {
+  if (GoRouter.maybeOf(context) != null) {
+    context.push('/tickets/$ticketId');
+    return;
+  }
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => EeTicketDetailScreen(ticketId: ticketId),
+    ),
+  );
+}
+
 class EeTicketDetailScreen extends ConsumerWidget {
   const EeTicketDetailScreen({super.key, required this.ticketId});
 

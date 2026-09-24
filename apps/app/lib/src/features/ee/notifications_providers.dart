@@ -74,6 +74,10 @@ class NotificationItem {
   /// than a button that does nothing (DESIGN §22).
   String? get destination => switch (entityType) {
     'task' when entityId != null => '/tasks/$entityId',
+    // EE-251: a request opens at its address. Until then every ticket
+    // notification — assigned, commented, status — was a line with nowhere
+    // to go, although the server has always named the ticket.
+    'ee_ticket' when entityId != null => '/tickets/$entityId',
     // EE-230: an approval opens where it is answered.
     'ee_approval' => '/settings/team/approvals',
     _ => null,

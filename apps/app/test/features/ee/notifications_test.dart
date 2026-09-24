@@ -150,8 +150,9 @@ void main() {
         data: {...notification('N2'), 'entityType': 'ticket', 'entityId': 'K1'},
       );
       final rows = await readCentre(containerWith());
-      // No dead controls (DESIGN §22): E09 has not shipped a ticket route yet,
-      // so tapping must do nothing rather than land on an error page.
+      // No dead controls (DESIGN §22): `ticket` is not a type this build
+      // routes (the ticket's type is `ee_ticket`, EE-251), so tapping must do
+      // nothing rather than land on an error page.
       expect(rows.first.destination, isNull);
     },
   );
@@ -191,8 +192,8 @@ void main() {
     // so the sentence follows the device, not the server's language.
     AwI18n.instance.setActiveCached(const Locale('tr'));
     expect(row.args['decision'], 'Onay isteğiniz reddedildi');
-    // A request is not a route this build has, so the row stays a line.
-    expect(row.destination, isNull);
+    // EE-251: a request has an address now, so the outcome opens it.
+    expect(row.destination, '/tickets/K1');
   });
 
   test('an approval request opens the screen where it is answered', () async {
@@ -305,6 +306,23 @@ void main() {
       // The server has no bulk verb, and inventing a client-only one would make
       // the two paths disagree the first time a push failed halfway.
       expect(queued, hasLength(2));
+    },
+  );
+
+  test(
+    'EE-251: a ticket notification opens the ticket at its address',
+    () async {
+      await pull(
+        'N7',
+        data: {
+          ...notification('N7', titleKey: 'ee.notif.ticket.assigned.title'),
+          'eventClass': 'ticket.assigned',
+          'entityType': 'ee_ticket',
+          'entityId': '01JABCDEFGHJKMNPQRSTVWXYZ0',
+        },
+      );
+      final row = (await readCentre(containerWith())).single;
+      expect(row.destination, '/tickets/01JABCDEFGHJKMNPQRSTVWXYZ0');
     },
   );
 }

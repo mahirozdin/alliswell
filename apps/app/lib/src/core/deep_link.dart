@@ -72,6 +72,11 @@ String? awRouteForUri(Uri uri) {
       // asks somebody in a machine hall to log in.
       if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
       return '/assets/${segments[1]}';
+    case 'ticket':
+      // EE-251: one request. Same guard as `asset` — a URL is untrusted input,
+      // and only a ULID becomes a route.
+      if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
+      return '/tickets/${segments[1]}';
     case 'file':
       if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
       // Files has no per-file route BY DECISION (OPH-199/203): a file's

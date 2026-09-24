@@ -53,6 +53,7 @@ import 'features/ee/ui/team_mail_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/new_ticket_screen.dart';
+import 'features/ee/ui/ticket_detail_screen.dart';
 import 'features/ee/ui/ticket_queue_screen.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
@@ -76,6 +77,29 @@ const String _kNotFound = '/not-found';
 /// look like it was hanging; making that impossible is one wrapper, applied here
 /// rather than trusted to each screen.
 Widget _page(Widget child) => AwPageBackground(child: child);
+
+/// A request's two addresses (EE-225, EE-251). **The order is the contract:**
+/// go_router matches in declaration order, so `/tickets/new` must come before
+/// `/tickets/:ticketId` or "new" would be read as an id. A function rather than
+/// inline entries so a test reads the very list the router uses.
+List<RouteBase> eeTicketRoutes() => [
+  // EE-225: filing a request. A route rather than a pushed widget so the
+  // queue and "my requests" reach ONE screen by one address, and so a link
+  // (a printed sign by a machine, one day) can land on it.
+  GoRoute(
+    path: '/tickets/new',
+    builder: (context, state) => _page(const EeNewTicketScreen()),
+  ),
+  // EE-251: one request by its address — what a notification, a pasted
+  // `alliswell://ticket/{id}` and the queue all open. Before it, the detail
+  // was only ever pushed, so nothing arriving from outside could reach it.
+  GoRoute(
+    path: '/tickets/:ticketId',
+    builder: (context, state) => _page(
+      EeTicketDetailScreen(ticketId: state.pathParameters['ticketId'] ?? ''),
+    ),
+  ),
+];
 
 /// The operator console lives on its own realm (EE-033): a different identity
 /// table, a different token audience, and therefore a different session on
@@ -508,13 +532,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           EeAssetDetailScreen(assetId: state.pathParameters['assetId'] ?? ''),
         ),
       ),
-      // EE-225: filing a request. A route rather than a pushed widget so the
-      // queue and "my requests" reach ONE screen by one address, and so a link
-      // (a printed sign by a machine, one day) can land on it.
-      GoRoute(
-        path: '/tickets/new',
-        builder: (context, state) => _page(const EeNewTicketScreen()),
-      ),
+      ...eeTicketRoutes(),
       // EE-196: the knowledge base. Reached from the request queue's bar —
       // where the person who wants it is already standing (EE-098's rule for
       // the SLA dashboard, and the same sentence applies: a screen nothing

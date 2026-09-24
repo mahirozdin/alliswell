@@ -45,6 +45,11 @@ void main() {
       // EE-194: what a printed QR label resolves to. The whole acceptance of
       // the label sheet is that scanning it lands on the right card.
       expect(awRouteForUri(Uri.parse('alliswell://asset/$id')), '/assets/$id');
+      // EE-251: one request, the address a notification and a pasted link use.
+      expect(
+        awRouteForUri(Uri.parse('alliswell://ticket/$id')),
+        '/tickets/$id',
+      );
     });
 
     test('refuses ids that are not ULIDs', () {
@@ -63,6 +68,11 @@ void main() {
           awRouteForUri(Uri.parse('alliswell://asset/$bad')),
           isNull,
           reason: '"$bad" must not become an asset route',
+        );
+        expect(
+          awRouteForUri(Uri.parse('alliswell://ticket/$bad')),
+          isNull,
+          reason: '"$bad" must not become a ticket route',
         );
       }
     });

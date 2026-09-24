@@ -282,12 +282,7 @@ class _History extends ConsumerWidget {
                 // "not found" is not.
                 onTap: ticket.archived
                     ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              EeTicketDetailScreen(ticketId: ticket.id),
-                        ),
-                      ),
+                    : () => awOpenTicket(context, ticket.id),
               ),
         ],
       ),
