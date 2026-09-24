@@ -6,13 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/api_exception.dart';
 import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
-import '../../../core/fold.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../catalogue_search.dart';
 import '../data/kb_api.dart';
 import '../data/kb_models.dart';
 import '../data/new_ticket_api.dart';
@@ -21,6 +21,7 @@ import '../my_tickets_providers.dart';
 import '../new_ticket_providers.dart';
 import '../providers.dart';
 import '../ticket_drafts_providers.dart';
+import 'service_icons.dart';
 
 /// EE-225 — filing a request from the app.
 ///
@@ -910,13 +911,12 @@ class _CatalogSheetState extends ConsumerState<_CatalogSheet> {
                           .tr(),
                 );
               }
-              final needle = foldSearchText(_query);
               final hits = [
                 for (final service in data.services)
-                  if (needle.isEmpty ||
-                      foldSearchText(
-                        '${service.name} ${service.description ?? ''}',
-                      ).contains(needle))
+                  if (catalogueMatches(_query, [
+                    service.name,
+                    service.description,
+                  ]))
                     service,
               ];
               final names = {for (final c in data.categories) c.id: c.name};
@@ -974,6 +974,9 @@ class _CatalogSheetState extends ConsumerState<_CatalogSheet> {
                             ListTile(
                               key: Key('catalog-service-${service.id}'),
                               contentPadding: EdgeInsets.zero,
+                              // EE-228: the desk's chosen icon, where the
+                              // person choosing a service looks for it.
+                              leading: Icon(serviceIconData(service.icon)),
                               title: Text(service.name),
                               subtitle: service.description == null
                                   ? null

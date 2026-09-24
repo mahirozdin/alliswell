@@ -19,6 +19,7 @@ class EeServicesApi {
   final Dio _dio;
 
   static const _services = '/api/v1/ee/team/services';
+  static const _categories = '/api/v1/ee/team/service-categories';
 
   Future<List<EeService>?> list() => _run(() async {
     try {
@@ -70,6 +71,69 @@ class EeServicesApi {
         for (final key in clear) key: null,
       },
     );
+  });
+
+  /// EE-228 — a partial edit with exactly the keys given, nulls included.
+  ///
+  /// The setup screen sends only what changed: an approval rule the admin
+  /// did not touch is not in the body, and the server leaves it as it was
+  /// (EE-185's merge). When the rule IS touched all three of its parts go
+  /// together, because the server validates the rule as a whole.
+  Future<void> patch(String serviceId, Map<String, Object?> body) =>
+      _run(() async {
+        await _dio.patch<Map<String, dynamic>>(
+          '$_services/$serviceId',
+          data: body,
+        );
+      });
+
+  /// Files a service on a shelf, or back at the root with null (EE-212).
+  Future<void> setCategory(String serviceId, String? categoryId) =>
+      _run(() async {
+        await _dio.put<Map<String, dynamic>>(
+          '$_services/$serviceId/category',
+          data: {'categoryId': categoryId},
+        );
+      });
+
+  /// The shelves. Null on 403/404, like [list]: "not yours" is not "none".
+  Future<List<EeServiceCategory>?> categories() => _run(() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(_categories);
+      return ((res.data?['categories'] as List?) ?? const [])
+          .map((c) => EeServiceCategory.fromJson(c as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 403 || code == 404) return null;
+      rethrow;
+    }
+  });
+
+  Future<void> createCategory({
+    required String name,
+    String? parentId,
+    String? icon,
+  }) => _run(() async {
+    await _dio.post<Map<String, dynamic>>(
+      _categories,
+      data: {'name': name, 'parentId': ?parentId, 'icon': ?icon},
+    );
+  });
+
+  /// A partial edit; a null value CLEARS (a parent → back to the top, an
+  /// icon → none).
+  Future<void> updateCategory(String categoryId, Map<String, Object?> body) =>
+      _run(() async {
+        await _dio.patch<Map<String, dynamic>>(
+          '$_categories/$categoryId',
+          data: body,
+        );
+      });
+
+  /// What sat on it falls back to the root — services AND sub-shelves.
+  Future<void> deleteCategory(String categoryId) => _run(() async {
+    await _dio.delete<Map<String, dynamic>>('$_categories/$categoryId');
   });
 
   Future<void> setArchived(String serviceId, {required bool archived}) =>

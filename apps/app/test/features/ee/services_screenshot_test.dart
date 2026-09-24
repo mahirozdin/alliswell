@@ -24,10 +24,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/data/services_api.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
+import 'package:alliswell/src/features/ee/data/team_admin_api.dart';
+import 'package:alliswell/src/features/ee/data/team_admin_models.dart';
 import 'package:alliswell/src/features/ee/data/units_api.dart';
 import 'package:alliswell/src/features/ee/data/units_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/services_providers.dart';
+import 'package:alliswell/src/features/ee/team_admin_providers.dart';
+import 'package:alliswell/src/features/ee/ui/service_categories_screen.dart';
 import 'package:alliswell/src/features/ee/ui/team_services_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -53,11 +57,28 @@ final _units = [
 
 /// One of each state the row must make legible — and the second one is the
 /// point of the screen: live, correct-looking, and reaching nobody.
+// EE-228: the catalogue on its shelves — a top shelf with a sub-shelf, a
+// second top shelf, and one service left unshelved, each with its icon.
+const _shelves = [
+  EeServiceCategory(id: 'C1', name: 'Arızalar', icon: 'wrench'),
+  EeServiceCategory(
+    id: 'C2',
+    name: 'Bilgi işlem',
+    parentId: 'C1',
+    icon: 'laptop',
+  ),
+  EeServiceCategory(id: 'C3', name: 'Personel', icon: 'people', position: 1),
+];
+
 final _services = [
   const EeService(
     id: 'S1',
     name: 'Elektrik arızası',
     description: 'Hat duruşları, pano ve sensör arızaları',
+    categoryId: 'C1',
+    icon: 'wrench',
+    approvalMode: 'manager',
+    approverRoleKey: 'admin',
     unitIds: ['U1'],
     formFields: [
       EeServiceField(
@@ -78,8 +99,16 @@ final _services = [
     id: 'S2',
     name: 'Yeni personel kartı',
     description: 'Giriş kartı ve yetkilendirme',
+    categoryId: 'C3',
+    icon: 'key',
   ),
-  const EeService(id: 'S3', name: 'Bilgisayar arızası', unitIds: ['U2', 'U3']),
+  const EeService(
+    id: 'S3',
+    name: 'Bilgisayar arızası',
+    categoryId: 'C2',
+    icon: 'laptop',
+    unitIds: ['U2', 'U3'],
+  ),
   const EeService(
     id: 'S4',
     name: 'Eski servis talebi',
@@ -111,6 +140,49 @@ class _ShotServicesApi implements EeServicesApi {
   Future<void> setArchived(String serviceId, {required bool archived}) async {}
   @override
   Future<void> setUnits(String serviceId, List<String> unitIds) async {}
+  @override
+  Future<void> patch(String serviceId, Map<String, Object?> body) async {}
+  @override
+  Future<void> setCategory(String serviceId, String? categoryId) async {}
+  @override
+  Future<List<EeServiceCategory>?> categories() async => _shelves;
+  @override
+  Future<void> createCategory({
+    required String name,
+    String? parentId,
+    String? icon,
+  }) async {}
+  @override
+  Future<void> updateCategory(
+    String categoryId,
+    Map<String, Object?> body,
+  ) async {}
+  @override
+  Future<void> deleteCategory(String categoryId) async {}
+}
+
+class _ShotAdminApi extends Fake implements EeTeamAdminApi {
+  @override
+  Future<List<EeRole>> roles() async => const [
+    EeRole(
+      key: 'admin',
+      name: 'Yönetici',
+      base: true,
+      anchor: 'admin',
+      editable: true,
+    ),
+    EeRole(
+      key: 'member',
+      name: 'Üye',
+      base: true,
+      anchor: 'member',
+      editable: true,
+    ),
+  ];
+
+  @override
+  Future<EeTeamRoster> members() async =>
+      const EeTeamRoster(members: [], seats: EeSeats());
 }
 
 class _ShotUnitsApi implements EeUnitsApi {
@@ -138,6 +210,7 @@ class _ShotUnitsApi implements EeUnitsApi {
 
 List<Override> _overrides() => [
   eeServicesApiProvider.overrideWithValue(const _ShotServicesApi()),
+  eeTeamAdminApiProvider.overrideWithValue(_ShotAdminApi()),
   eeUnitsApiProvider.overrideWithValue(const _ShotUnitsApi()),
   canProvider.overrideWith((ref, id) => true),
   eeFeatureProvider.overrideWith((ref, feature) => true),
@@ -155,10 +228,11 @@ void main() {
     WidgetTester tester,
     Brightness brightness,
     String name,
-    Widget screen,
-  ) async {
+    Widget screen, {
+    Size size = const Size(900, 1100),
+  }) async {
     await loadRealFontsForStore();
-    tester.view.physicalSize = const Size(900, 1100);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 2.0;
     addTearDown(() {
       tester.view.resetPhysicalSize();
@@ -212,6 +286,19 @@ void main() {
         brightness,
         'ee-service-routing',
         EeServiceRoutingScreen(service: _services.first),
+        // EE-228 made the setup one long page — shelf, icon, units, the
+        // approval rule, the form — and the picture shows all of it.
+        size: const Size(900, 3000),
+      );
+    });
+
+    // EE-228: the shelves themselves, two levels deep.
+    testWidgets('the shelves — ${brightness.name}', (tester) async {
+      await shoot(
+        tester,
+        brightness,
+        'ee-service-shelves',
+        const EeServiceCategoriesScreen(),
       );
     });
   }

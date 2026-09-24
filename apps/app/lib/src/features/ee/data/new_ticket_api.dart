@@ -96,6 +96,7 @@ class EeCatalogService {
     required this.name,
     this.description,
     this.categoryId,
+    this.icon,
     this.formVersion = 0,
     this.fields = const [],
     this.units = const [],
@@ -108,6 +109,7 @@ class EeCatalogService {
         name: json['name'] as String,
         description: json['description'] as String?,
         categoryId: json['categoryId'] as String?,
+        icon: json['icon'] as String?,
         formVersion: (json['formVersion'] as num?)?.toInt() ?? 0,
         fields: [
           for (final field
@@ -128,6 +130,10 @@ class EeCatalogService {
   final String name;
   final String? description;
   final String? categoryId;
+
+  /// The desk's icon token (EE-212) — the catalogue always sent it; the app
+  /// read it from EE-228 on.
+  final String? icon;
 
   /// The form version in force — what the answers are given against.
   final int formVersion;

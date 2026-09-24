@@ -79,25 +79,69 @@ class EeServicesController extends AsyncNotifier<List<EeService>?> {
         .setArchived(serviceId, archived: archived),
   );
 
-  Future<void> setUnits(String serviceId, List<String> unitIds) =>
-      _then(() => ref.read(eeServicesApiProvider).setUnits(serviceId, unitIds));
+  /// EE-228 — a service's whole setup, saved in the order that matters: who
+  /// answers it first (the routing decides whether it works at all), then the
+  /// shelf, then one PATCH with every other key that changed.
+  Future<void> saveSetup(
+    String serviceId, {
+    List<String>? units,
+    bool moveShelf = false,
+    String? categoryId,
+    Map<String, Object?> patch = const {},
+  }) => _then(() async {
+    final api = ref.read(eeServicesApiProvider);
+    if (units != null) await api.setUnits(serviceId, units);
+    if (moveShelf) await api.setCategory(serviceId, categoryId);
+    if (patch.isNotEmpty) await api.patch(serviceId, patch);
+  });
+}
 
-  Future<void> setFields(
-    String serviceId,
-    List<EeServiceField> fields,
-  ) => _then(
-    () => ref
-        .read(eeServicesApiProvider)
-        .update(
-          serviceId,
-          formSchema: fields.isEmpty
-              ? null
-              : {'fields': fields.map((f) => f.toJson()).toList()},
-          // No fields at all is null, not `{fields: []}` — the server treats null
-          // as "the plain subject + body form", which is what an emptied list means.
-          clear: fields.isEmpty ? const {'formSchema'} : const {},
-        ),
+/// The catalogue's shelves (EE-212, EE-228). Null = not yours to shape.
+final eeServiceCategoriesProvider =
+    AsyncNotifierProvider<
+      EeServiceCategoriesController,
+      List<EeServiceCategory>?
+    >(EeServiceCategoriesController.new);
+
+class EeServiceCategoriesController
+    extends AsyncNotifier<List<EeServiceCategory>?> {
+  @override
+  Future<List<EeServiceCategory>?> build() async {
+    if (!ref.watch(eeFeatureProvider('teams'))) return null;
+    try {
+      return await ref.watch(eeServicesApiProvider).categories();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Re-read, never patched in place — the depth rule is the server's, and a
+  /// refused move must leave the screen showing what is true.
+  Future<void> _then(Future<void> Function() action) async {
+    state = await AsyncValue.guard(() async {
+      await action();
+      return ref.read(eeServicesApiProvider).categories();
+    });
+  }
+
+  Future<void> create({required String name, String? parentId, String? icon}) =>
+      _then(
+        () => ref
+            .read(eeServicesApiProvider)
+            .createCategory(name: name, parentId: parentId, icon: icon),
+      );
+
+  Future<void> edit(String categoryId, Map<String, Object?> patch) => _then(
+    () => ref.read(eeServicesApiProvider).updateCategory(categoryId, patch),
   );
+
+  /// The services on it fall back to the root, so the list is asked again too.
+  Future<void> remove(String categoryId) async {
+    await _then(
+      () => ref.read(eeServicesApiProvider).deleteCategory(categoryId),
+    );
+    ref.invalidate(eeServicesProvider);
+  }
 }
 
 /// Should a "Services" entry exist at all? Same shape as the units answer:
