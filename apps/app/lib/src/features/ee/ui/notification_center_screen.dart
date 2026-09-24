@@ -87,9 +87,7 @@ class _NotificationTile extends ConsumerWidget {
     // The server sends KEYS and their parameters; the device renders them in
     // the language it is set to now (EE-073). A missing key falls back to the
     // key itself rather than to a blank row — visible, and traceable.
-    final args = {
-      for (final entry in item.params.entries) entry.key: '${entry.value}',
-    };
+    final args = item.args;
     final title = item.titleKey.tr(args: args);
     final body = item.bodyKey?.tr(args: args);
     final destination = item.destination;

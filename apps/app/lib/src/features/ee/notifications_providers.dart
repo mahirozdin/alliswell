@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../i18n/i18n.dart';
 import '../../sync/db/database.dart';
 import '../../sync/outbox.dart';
 import '../../sync/providers.dart';
@@ -73,8 +74,34 @@ class NotificationItem {
   /// than a button that does nothing (DESIGN §22).
   String? get destination => switch (entityType) {
     'task' when entityId != null => '/tasks/$entityId',
+    // EE-230: an approval opens where it is answered.
+    'ee_approval' => '/settings/team/approvals',
     _ => null,
   };
+
+  /// What the title and body are drawn with.
+  ///
+  /// Every param as text — and a param whose name ends in `Key` is an i18n
+  /// KEY the server chose (EE-230: an approval's outcome), translated HERE,
+  /// into the language this device is set to now, and handed on under its
+  /// name without the suffix. The row keeps the key rather than the word for
+  /// the reason it keeps `titleKey`: it may be read years later on a phone
+  /// set to another language. The translation wins over a raw param of the
+  /// same name, because that one (`decision: rejected`) is the machine word
+  /// an integration reads, not a sentence for a person.
+  Map<String, String> get args {
+    final out = {
+      for (final entry in params.entries) entry.key: '${entry.value}',
+    };
+    for (final entry in params.entries) {
+      final name = entry.key;
+      final value = entry.value;
+      if (name.length > 3 && name.endsWith('Key') && value is String) {
+        out[name.substring(0, name.length - 3)] = value.tr();
+      }
+    }
+    return out;
+  }
 
   static Map<String, dynamic> _decode(String? raw) {
     if (raw == null || raw.isEmpty) return const {};

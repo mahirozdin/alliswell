@@ -1920,7 +1920,12 @@
           "created": "Bir davet gönderildiğinde"
         },
         "ticket": {
-          "routed": "Biriminize yeni kayıt düştüğünde"
+          "routed": "Biriminize yeni kayıt düştüğünde",
+          "routed_public": "Biriminize dışarıdan talep düştüğünde",
+          "assigned": "Bir talep size atandığında",
+          "status_changed": "İstediğiniz ya da tuttuğunuz bir talebin durumu değiştiğinde",
+          "commented": "İzlediğiniz bir talebe yanıt yazıldığında",
+          "rate": "Bir talebi puanlamanız istendiğinde"
         },
         "sla": {
           "warned": "Bir SLA süresi yaklaştığında",
@@ -1928,6 +1933,17 @@
         },
         "share": {
           "received": "Sizinle bir şey paylaşıldığında"
+        },
+        "approval": {
+          "requested": "Onayınız istendiğinde",
+          "decided": "İstediğiniz bir onay karara bağlandığında"
+        },
+        "report": {
+          "weekly": "Haftalık servis masası raporu",
+          "savedView": "Zamanladığınız kayıtlı görünüm"
+        },
+        "asset": {
+          "expiring": "Bir ekipmanın garanti ya da kalibrasyon tarihi yaklaştığında"
         }
       },
       "time": {
@@ -1940,6 +1956,21 @@
         "expiring": {
           "title": "Ekipman tarihi doluyor",
           "body": "{assetTag} — {kind} {dueOn} tarihinde doluyor"
+        }
+      },
+      "approval": {
+        "requested": {
+          "title": "Onayınız bekleniyor",
+          "body": "{summary}"
+        },
+        "decided": {
+          "title": "{decision}",
+          "body": "{detail}"
+        },
+        "decision": {
+          "approved": "Onay isteğiniz onaylandı",
+          "rejected": "Onay isteğiniz reddedildi",
+          "expired": "Onay isteğinizin süresi doldu, karar verilmedi"
         }
       }
     },

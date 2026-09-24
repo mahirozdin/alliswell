@@ -156,6 +156,63 @@ void main() {
     },
   );
 
+  // ── EE-230: approvals ────────────────────────────────────────────────
+
+  test('an approval outcome is drawn in the device\'s language, over the raw '
+      'word an integration reads', () async {
+    await pull(
+      'N5',
+      data: {
+        ...notification('N5', titleKey: 'ee.notif.approval.decided.title'),
+        'eventClass': 'approval.decided',
+        'bodyKey': 'ee.notif.approval.decided.body',
+        'params': {
+          // Both travel: the machine word for webhooks, the KEY for people.
+          'decision': 'rejected',
+          'decisionKey': 'ee.notif.approval.decision.rejected',
+          'detail': '#1042 — Dizüstü bilgisayar — “bütçe yok”',
+        },
+        'entityType': 'ee_ticket',
+        'entityId': 'K1',
+      },
+    );
+    final row = (await readCentre(containerWith())).single;
+    expect(row.args['decision'], 'Your approval request was rejected');
+    expect(
+      row.titleKey.tr(args: row.args),
+      'Your approval request was rejected',
+    );
+    expect(
+      row.bodyKey!.tr(args: row.args),
+      '#1042 — Dizüstü bilgisayar — “bütçe yok”',
+    );
+
+    // The same stored row, read on a phone set to Turkish: the KEY was kept,
+    // so the sentence follows the device, not the server's language.
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    expect(row.args['decision'], 'Onay isteğiniz reddedildi');
+    // A request is not a route this build has, so the row stays a line.
+    expect(row.destination, isNull);
+  });
+
+  test('an approval request opens the screen where it is answered', () async {
+    await pull(
+      'N6',
+      data: {
+        ...notification('N6', titleKey: 'ee.notif.approval.requested.title'),
+        'eventClass': 'approval.requested',
+        'bodyKey': 'ee.notif.approval.requested.body',
+        'params': {'summary': '#1042 — Dizüstü bilgisayar'},
+        'entityType': 'ee_approval',
+        'entityId': 'A1',
+      },
+    );
+    final row = (await readCentre(containerWith())).single;
+    expect(row.destination, '/settings/team/approvals');
+    expect(row.titleKey.tr(args: row.args), 'Your approval is needed');
+    expect(row.bodyKey!.tr(args: row.args), '#1042 — Dizüstü bilgisayar');
+  });
+
   testWidgets('the badge counts unread, and MOVES when a pull arrives', (
     tester,
   ) async {

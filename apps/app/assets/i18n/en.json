@@ -1921,7 +1921,12 @@
           "created": "An invitation is sent"
         },
         "ticket": {
-          "routed": "A ticket lands on your unit"
+          "routed": "A ticket lands on your unit",
+          "routed_public": "A request from outside lands on your unit",
+          "assigned": "A request is assigned to you",
+          "status_changed": "A request you asked for or hold changes status",
+          "commented": "A request you follow gets a reply",
+          "rate": "You are asked to rate a request"
         },
         "sla": {
           "warned": "An SLA deadline is approaching",
@@ -1929,6 +1934,17 @@
         },
         "share": {
           "received": "Something is shared with you"
+        },
+        "approval": {
+          "requested": "Your approval is requested",
+          "decided": "An approval you asked for is decided"
+        },
+        "report": {
+          "weekly": "The weekly service desk report",
+          "savedView": "A saved view you scheduled"
+        },
+        "asset": {
+          "expiring": "An asset's warranty or calibration is about to lapse"
         }
       },
       "time": {
@@ -1941,6 +1957,21 @@
         "expiring": {
           "title": "Equipment date running out",
           "body": "{assetTag} — its {kind} runs out on {dueOn}"
+        }
+      },
+      "approval": {
+        "requested": {
+          "title": "Your approval is needed",
+          "body": "{summary}"
+        },
+        "decided": {
+          "title": "{decision}",
+          "body": "{detail}"
+        },
+        "decision": {
+          "approved": "Your approval request was approved",
+          "rejected": "Your approval request was rejected",
+          "expired": "Your approval request expired undecided"
         }
       }
     },
