@@ -54,7 +54,7 @@ import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/new_ticket_screen.dart';
 import 'features/ee/ui/ticket_detail_screen.dart';
-import 'features/ee/ui/ticket_queue_screen.dart';
+import 'features/ee/ui/tickets_home.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
 import 'features/ai/ui/share_log_screen.dart';
@@ -403,7 +403,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                     // EE-084. The BRANCH always exists — only the navigation
                     // destination is conditional (see `home_shell`), because
                     // dropping a branch would renumber every one after it.
-                    AppSection.tickets => const EeTicketQueueScreen(),
+                    // EE-253: what it shows depends on who is looking.
+                    AppSection.tickets => const EeTicketsHome(),
                   },
                   routes: [
                     // OPH-199: a folder shortcut needs an ADDRESS, not a

@@ -2218,7 +2218,8 @@
         "disputed": "Sent back to the desk",
         "newRequest": "Open a new request",
         "needsConnection": "This request is read from the server, and there is no connection. It opens when you are back online.",
-        "closedFooter": "This request is closed, and so is its conversation. If the problem is back, open a new request; this one’s number goes with it."
+        "closedFooter": "This request is closed, and so is its conversation. If the problem is back, open a new request; this one’s number goes with it.",
+        "waitingOnYouShort": "Waiting for you"
       }
     },
     "sla": {

@@ -70,17 +70,28 @@ class EePermissions {
     required this.workspaceId,
     required this.governed,
     this.permissions = const [],
+    this.desk = true,
   });
 
   factory EePermissions.fromJson(Map<String, dynamic> json) => EePermissions(
     workspaceId: (json['workspaceId'] as String?) ?? '',
     governed: (json['governed'] as bool?) ?? false,
     permissions: ((json['permissions'] as List?) ?? const []).cast<String>(),
+    // A server from before EE-253 does not say; the answer it would have
+    // drawn — the queue — stands until it does.
+    desk: (json['desk'] as bool?) ?? true,
   );
 
   final String workspaceId;
   final bool governed;
   final List<String> permissions;
+
+  /// EE-253: whether this person works a desk — a member of a live unit's
+  /// workspace. The "Talepler" tab draws the desk's queue for them and "my
+  /// requests" for everybody else, who used to open it onto an empty queue.
+  /// True while unknown, for [can]'s reason: a wrong true shows an empty
+  /// queue for a moment, a wrong false hides an agent's work.
+  final bool desk;
 
   /// The answer a screen asks for before it draws a button.
   bool can(String permission) => !governed || permissions.contains(permission);
@@ -96,5 +107,6 @@ class EePermissions {
     'workspaceId': workspaceId,
     'governed': governed,
     'permissions': permissions,
+    'desk': desk,
   };
 }

@@ -18,6 +18,7 @@ class EeMyTicket {
     required this.createdAt,
     this.serviceName,
     this.updatedAt,
+    this.waitingReason,
   });
 
   factory EeMyTicket.fromJson(Map<String, dynamic> json) => EeMyTicket(
@@ -32,6 +33,7 @@ class EeMyTicket {
     updatedAt: json['updatedAt'] is String
         ? DateTime.tryParse(json['updatedAt'] as String)
         : null,
+    waitingReason: json['waitingReason'] as String?,
   );
 
   final String id;
@@ -41,6 +43,13 @@ class EeMyTicket {
   final String? serviceName;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  /// EE-253: which wait, when it is one — the server's word, one of five.
+  final String? waitingReason;
+
+  /// Only `requester_info` is the asker's move; the other four are not.
+  bool get waitsOnRequester =>
+      status == 'waiting' && waitingReason == 'requester_info';
 }
 
 /// "My requests" — an ONLINE list, and the only honest one (ADR-0011 §3).

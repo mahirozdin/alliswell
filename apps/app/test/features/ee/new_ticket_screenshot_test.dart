@@ -243,7 +243,8 @@ void main() {
         tester,
         brightness: brightness,
         name: 'ee-my-tickets-drafts',
-        size: const Size(900, 1500),
+        // Taller since EE-253's two waiting rows: every state in one picture.
+        size: const Size(900, 2150),
         overrides: <Override>[
           eeCatalogProvider.overrideWith((ref) async => _catalog(turkish)),
           canProvider.overrideWith(
@@ -306,6 +307,32 @@ void main() {
                 createdAt: DateTime.utc(2026, 9, 23, 14, 5),
                 // EE-252: the row says what happened last.
                 updatedAt: DateTime.utc(2026, 9, 24, 8, 15),
+              ),
+              // EE-253: the one wait that is theirs, marked; another wait,
+              // named for what the desk is waiting on.
+              EeMyTicket(
+                id: 'T3',
+                subject: turkish
+                    ? 'Pres 2 yağ kaçırıyor'
+                    : 'Press 2 is leaking oil',
+                status: 'waiting',
+                waitingReason: 'requester_info',
+                priority: 'high',
+                serviceName: turkish ? 'Hat duruşu' : 'Line stop',
+                createdAt: DateTime.utc(2026, 9, 23, 9, 10),
+                updatedAt: DateTime.utc(2026, 9, 24, 9, 30),
+              ),
+              EeMyTicket(
+                id: 'T4',
+                subject: turkish
+                    ? 'Forklift şarj istasyonu'
+                    : 'Forklift charging station',
+                status: 'waiting',
+                waitingReason: 'spare_part',
+                priority: 'normal',
+                serviceName: turkish ? 'Tesis' : 'Facilities',
+                createdAt: DateTime.utc(2026, 9, 22, 11, 0),
+                updatedAt: DateTime.utc(2026, 9, 23, 16, 45),
               ),
             ],
           ),

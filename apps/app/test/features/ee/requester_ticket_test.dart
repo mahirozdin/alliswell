@@ -18,6 +18,9 @@ import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/my_tickets_screen.dart';
 import 'package:alliswell/src/features/ee/ui/new_ticket_screen.dart';
 import 'package:alliswell/src/features/ee/ui/requester_ticket_screen.dart';
+import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
+import 'package:alliswell/src/features/ee/ui/tickets_home.dart';
+import 'package:alliswell/src/features/ee/data/ee_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
 import 'package:alliswell/src/features/integrations/providers.dart';
@@ -457,6 +460,110 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('ee.tickets.new.pickService'.tr()), findsOneWidget);
       expect(find.byKey(const Key('new-ticket-follow-up')), findsOneWidget);
+    });
+  });
+
+  group('EE-253: what "my requests" says, and whose tab it is', () {
+    EeMyTicket row(String id, String status, {String? reason}) => EeMyTicket(
+      id: id,
+      subject: 'Talep $id',
+      status: status,
+      priority: 'normal',
+      serviceName: 'Üretim hattı arızası',
+      createdAt: DateTime.utc(2026, 9, 24, 8),
+      waitingReason: reason,
+    );
+
+    List<Override> listOverrides(List<EeMyTicket> rows) => [
+      eeFeatureProvider.overrideWith((ref, feature) => true),
+      eeMyTicketsProvider.overrideWith((ref) async => rows),
+      // The list's neighbours, quiet: no drafts, no catalogue, no "new".
+      draftStatusesProvider.overrideWith((ref) => const []),
+      eeCatalogProvider.overrideWith((ref) async => null),
+      canProvider.overrideWith((ref, permission) => false),
+    ];
+
+    Future<void> pumpHome(WidgetTester tester, List<Override> overrides) async {
+      // A phone-sized surface, as the queue's own tests use.
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      container = ProviderContainer(overrides: overrides);
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: buildAwTheme(Brightness.light),
+            home: const EeTicketsHome(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('only a wait for THEM says "you"; the others name what the '
+        'desk waits on', (tester) async {
+      await pumpHome(tester, [
+        ...listOverrides([
+          row('A', 'waiting', reason: 'requester_info'),
+          row('B', 'waiting', reason: 'spare_part'),
+          row('C', 'in_progress'),
+        ]),
+        eeDeskProvider.overrideWithValue(false),
+      ]);
+      expect(find.textContaining('Sizden bilgi bekleniyor'), findsOneWidget);
+      expect(find.textContaining('Yedek parça bekleniyor'), findsOneWidget);
+      expect(
+        find.byKey(const Key('my-ticket-waiting-on-you-A')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('my-ticket-waiting-on-you-B')), findsNothing);
+      expect(find.byKey(const Key('my-ticket-waiting-on-you-C')), findsNothing);
+    });
+
+    testWidgets('the tab draws "my requests" for somebody who works no desk', (
+      tester,
+    ) async {
+      await pumpHome(tester, [
+        ...listOverrides([row('A', 'new')]),
+        eeDeskProvider.overrideWithValue(false),
+      ]);
+      expect(find.byType(EeMyTicketsScreen), findsOneWidget);
+      expect(find.byType(EeTicketQueueScreen), findsNothing);
+    });
+
+    testWidgets('…and the queue for somebody who does', (tester) async {
+      await pumpHome(tester, [
+        eeDeskProvider.overrideWithValue(true),
+        ticketQueueProvider.overrideWith((ref) => Stream.value(const [])),
+        ticketAssigneesProvider.overrideWith((ref) => Stream.value(const {})),
+        currentUserIdProvider.overrideWithValue(_me),
+        canProvider.overrideWith((ref, permission) => false),
+      ]);
+      expect(find.byType(EeTicketQueueScreen), findsOneWidget);
+      expect(find.byType(EeMyTicketsScreen), findsNothing);
+    });
+
+    test('a server from before EE-253 says nothing, and the queue stands', () {
+      expect(
+        EePermissions.fromJson(const {
+          'workspaceId': 'W',
+          'governed': true,
+          'permissions': <String>[],
+        }).desk,
+        isTrue,
+      );
+      expect(
+        EePermissions.fromJson(const {
+          'workspaceId': 'W',
+          'governed': true,
+          'permissions': <String>[],
+          'desk': false,
+        }).desk,
+        isFalse,
+      );
+      expect(EePermissions.unknown.desk, isTrue);
     });
   });
 }

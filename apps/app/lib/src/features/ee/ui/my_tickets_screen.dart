@@ -9,6 +9,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
+import '../data/my_tickets_api.dart';
 import '../my_tickets_providers.dart';
 import '../providers.dart';
 import 'ticket_detail_screen.dart';
@@ -98,6 +99,19 @@ class EeMyTicketsScreen extends ConsumerWidget {
                         Card(
                           key: Key('my-ticket-${ticket.id}'),
                           child: ListTile(
+                            // EE-253: the one wait that is theirs to end,
+                            // findable at a glance down a long list.
+                            leading: ticket.waitsOnRequester
+                                ? Icon(
+                                    Icons.front_hand_outlined,
+                                    key: Key(
+                                      'my-ticket-waiting-on-you-${ticket.id}',
+                                    ),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                  )
+                                : null,
                             title: Text(ticket.subject),
                             subtitle: Text(
                               [
@@ -106,7 +120,7 @@ class EeMyTicketsScreen extends ConsumerWidget {
                                 // answers them.
                                 if (ticket.serviceName != null)
                                   ticket.serviceName!,
-                                'ee.tickets.status.${ticket.status}'.tr(),
+                                _statusLabel(ticket),
                                 // EE-252: "what happened last" (GUIDE-USER).
                                 if (ticket.updatedAt != null)
                                   'ee.tickets.requester.updated'.tr(
@@ -133,4 +147,19 @@ class EeMyTicketsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// EE-253: which wait it is. "Beklemede" alone read the same for all five
+/// reasons, and only `requester_info` is the asker's move — so that one says
+/// "you", and the others name what the desk is waiting on.
+String _statusLabel(EeMyTicket ticket) {
+  if (ticket.status != 'waiting') {
+    return 'ee.tickets.status.${ticket.status}'.tr();
+  }
+  final reason = ticket.waitingReason;
+  if (reason == 'requester_info') {
+    return 'ee.tickets.requester.waitingOnYouShort'.tr();
+  }
+  if (reason != null) return 'ee.sla.reason.$reason'.tr();
+  return 'ee.tickets.status.waiting'.tr();
 }

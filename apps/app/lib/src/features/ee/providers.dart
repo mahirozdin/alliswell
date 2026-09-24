@@ -150,6 +150,12 @@ class EePermissionsController extends AsyncNotifier<EePermissions> {
   }
 }
 
+/// EE-253: does this person work a desk? The "Talepler" tab reads it to draw
+/// the queue or "my requests". True while unknown, like [canProvider].
+final eeDeskProvider = Provider<bool>(
+  (ref) => ref.watch(eePermissionsProvider).value?.desk ?? true,
+);
+
 /// `ref.watch(canProvider('tasks.create'))` — the one question a screen asks.
 ///
 /// Answers TRUE while loading and while signed out, and that default is
