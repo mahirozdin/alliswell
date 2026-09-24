@@ -51,6 +51,8 @@ class EeTicketActions {
     this.slaPausable = false,
     this.slaHeld = false,
     this.slaHoldReasons = const [],
+    this.senderUnverified = false,
+    this.unverifiedCommentIds = const {},
   });
 
   factory EeTicketActions.fromJson(Map<String, dynamic> json) {
@@ -81,8 +83,20 @@ class EeTicketActions {
                 .cast<Map<String, dynamic>>())
           row['reason'] as String,
       }.toList(growable: false),
+      senderUnverified: json['senderUnverified'] == true,
+      unverifiedCommentIds: strings(json['unverifiedCommentIds']).toSet(),
     );
   }
+
+  /// EE-254 (D17.2): this request arrived as mail claiming a colleague's
+  /// address that could not be checked, so it was filed as an outside sender
+  /// under the address it claimed. The server's word, read with the actions:
+  /// the replica has no column for it.
+  final bool senderUnverified;
+
+  /// …and the replies that did the same, by id — the conversation itself is
+  /// drawn from the replica.
+  final Set<String> unverifiedCommentIds;
 
   final String status;
   final String priority;

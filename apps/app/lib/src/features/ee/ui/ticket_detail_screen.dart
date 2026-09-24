@@ -16,6 +16,7 @@ import '../kb_providers.dart';
 import '../providers.dart';
 import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
+import '../ticket_write_providers.dart';
 import 'history_tab.dart';
 import 'requester_ticket_screen.dart';
 import 'sla_chip.dart';
@@ -123,6 +124,20 @@ class _Thread extends ConsumerWidget {
     final theme = Theme.of(context);
     final dateFormat = ref.watch(dateFormatProvider);
     final comments = ref.watch(ticketCommentsProvider(ticket.id));
+    // EE-254: who could not be checked, in the server's words — read with
+    // the actions, since the replica has no column for it. And ASKED ONLY
+    // WHERE IT CAN BE TRUE: a request a mail filed for somebody outside, or a
+    // reply nobody on the team wrote (an unverified mail is always authorless).
+    // Everywhere else the detail still opens without asking the server
+    // anything — EE-224's measured rule.
+    final mayBeUnverified =
+        (ticket.source == 'email' && ticket.requesterId == null) ||
+        (comments.value ?? const <TicketCommentRecord>[]).any(
+          (c) => c.authorId == null && !c.internal,
+        );
+    final checked = mayBeUnverified
+        ? ref.watch(eeTicketActionsProvider(ticket.id)).value
+        : null;
 
     return ListView(
       padding: const EdgeInsets.all(AwSpace.x4),
@@ -170,6 +185,14 @@ class _Thread extends ConsumerWidget {
           ],
         ),
         if (ticket.terminalAt == null) const EeTicketActionsOffline(),
+        // EE-254 (D17.2): the request came as mail claiming a colleague's
+        // address that could not be proven. Said before anything else is
+        // read, because it changes who "the person who asked" is.
+        if (checked?.senderUnverified == true)
+          _Unverified(
+            key: const Key('ticket-sender-unverified'),
+            text: 'ee.tickets.senderUnverified'.tr(),
+          ),
         // EE-224: the third door, beside the other two. Who is on it is read
         // before anything else below: an agent asks "is somebody already
         // here" before reading forty replies.
@@ -209,7 +232,15 @@ class _Thread extends ConsumerWidget {
               : Column(
                   children: [
                     for (final comment in rows)
-                      _CommentCard(comment: comment, dateFormat: dateFormat),
+                      _CommentCard(
+                        comment: comment,
+                        dateFormat: dateFormat,
+                        unverified:
+                            checked?.unverifiedCommentIds.contains(
+                              comment.id,
+                            ) ??
+                            false,
+                      ),
                   ],
                 ),
         ),
@@ -627,11 +658,46 @@ class _Chip extends StatelessWidget {
   );
 }
 
+/// EE-254: "we could not check who wrote this", with the icon and the words
+/// both — never colour alone.
+class _Unverified extends StatelessWidget {
+  const _Unverified({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: AwSpace.x2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.gpp_maybe_outlined,
+            size: 18,
+            color: theme.colorScheme.error,
+          ),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
+        ],
+      ),
+    );
+  }
+}
+
 class _CommentCard extends StatelessWidget {
-  const _CommentCard({required this.comment, required this.dateFormat});
+  const _CommentCard({
+    required this.comment,
+    required this.dateFormat,
+    this.unverified = false,
+  });
 
   final TicketCommentRecord comment;
   final String dateFormat;
+
+  /// EE-254: arrived as mail claiming a colleague's address it could not prove.
+  final bool unverified;
 
   @override
   Widget build(BuildContext context) {
@@ -663,6 +729,13 @@ class _CommentCard extends StatelessWidget {
                 ],
               ),
             if (comment.internal) const SizedBox(height: AwSpace.x2),
+            if (unverified) ...[
+              _Unverified(
+                key: Key('ticket-comment-unverified-${comment.id}'),
+                text: 'ee.tickets.senderUnverifiedShort'.tr(),
+              ),
+              const SizedBox(height: AwSpace.x2),
+            ],
             Text(comment.body, style: theme.textTheme.bodyMedium),
             if (comment.createdAt != null) ...[
               const SizedBox(height: AwSpace.x1),

@@ -2220,7 +2220,9 @@
         "needsConnection": "This request is read from the server, and there is no connection. It opens when you are back online.",
         "closedFooter": "This request is closed, and so is its conversation. If the problem is back, open a new request; this one’s number goes with it.",
         "waitingOnYouShort": "Waiting for you"
-      }
+      },
+      "senderUnverified": "Sender not verified — this mail carries a colleague’s address but could not be proven to come from them, so it was filed as an outside sender.",
+      "senderUnverifiedShort": "Sender not verified"
     },
     "sla": {
       "breached": "SLA missed",

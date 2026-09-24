@@ -2219,7 +2219,9 @@
         "needsConnection": "Bu talep sunucudan okunur ve şu an bağlantı yok. Tekrar bağlandığınızda açılır.",
         "closedFooter": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yeni bir talep açın; bu talebin numarası yenisine taşınır.",
         "waitingOnYouShort": "Sizden bilgi bekleniyor"
-      }
+      },
+      "senderUnverified": "Gönderen doğrulanmadı — bu posta bir çalışma arkadaşınızın adresini taşıyor ama ondan geldiği kanıtlanamadı; dış gönderen olarak kaydedildi.",
+      "senderUnverifiedShort": "Gönderen doğrulanmadı"
     },
     "sla": {
       "breached": "SLA aşıldı",

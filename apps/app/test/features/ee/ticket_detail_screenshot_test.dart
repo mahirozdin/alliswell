@@ -29,6 +29,7 @@
 // and tested but reachable from nothing in router.dart, and a marketing page
 // that shows a screen a customer cannot open is selling a picture.
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -47,6 +48,7 @@ import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
 import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 
 import '../../design_screenshots_test.dart' show screenshotLocale;
@@ -100,8 +102,13 @@ class _ShotActionsApi extends Fake implements EeTicketWriteApi {
 /// so the screens still link to each other and nothing has to be untrue.
 const String _ticketId = 'T5';
 
-List<Override> _overrides(DemoCorpus corpus, {bool canComment = false}) {
-  final ticket = corpus.ticket(_ticketId);
+List<Override> _overrides(
+  DemoCorpus corpus, {
+  bool canComment = false,
+  TicketRecord? ticket,
+  List<TicketCommentRecord>? comments,
+}) {
+  final shown = ticket ?? corpus.ticket(_ticketId);
   return [
     // EE-189/190/196/198 added sections to this screen after these shots were
     // last taken, and this file — inert without the dart-define — never
@@ -121,9 +128,9 @@ List<Override> _overrides(DemoCorpus corpus, {bool canComment = false}) {
     canProvider.overrideWith(
       (ref, permission) => canComment && permission == 'tickets.comment',
     ),
-    ticketProvider.overrideWith((ref, id) => Stream.value(ticket)),
+    ticketProvider.overrideWith((ref, id) => Stream.value(shown)),
     ticketCommentsProvider.overrideWith(
-      (ref, id) => Stream.value(corpus.commentsFor(_ticketId)),
+      (ref, id) => Stream.value(comments ?? corpus.commentsFor(_ticketId)),
     ),
     ticketAssigneesProvider.overrideWith(
       (ref) => Stream.value(corpus.assignees),
@@ -168,6 +175,44 @@ void main() {
         name: 'ee-ticket-detail',
         size: const Size(900, 1300),
         overrides: _overrides(corpus),
+        screen: const EeTicketDetailScreen(ticketId: _ticketId),
+      );
+    });
+
+    // EE-254: a request that arrived as mail claiming a colleague's address,
+    // and one reply that did the same — said on both, and on nothing else.
+    testWidgets('and a sender that could not be checked — ${brightness.name}', (
+      tester,
+    ) async {
+      final claimed = corpus
+          .commentsFor(_ticketId)
+          .firstWhere((c) => !c.internal)
+          .id;
+      // As the mail door files it: the request opened by mail for somebody
+      // outside, and the claiming reply written by nobody on the team.
+      final ticket = corpus
+          .ticket(_ticketId)
+          .copyWith(source: 'email', requesterId: const Value(null));
+      final comments = [
+        for (final c in corpus.commentsFor(_ticketId))
+          c.id == claimed ? c.copyWith(authorId: const Value(null)) : c,
+      ];
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-ticket-sender-unverified',
+        size: const Size(900, 1300),
+        overrides: [
+          ..._overrides(corpus, ticket: ticket, comments: comments),
+          eeTicketActionsProvider(_ticketId).overrideWith(
+            (ref) async => EeTicketActions(
+              status: 'in_progress',
+              priority: 'urgent',
+              senderUnverified: true,
+              unverifiedCommentIds: {claimed},
+            ),
+          ),
+        ],
         screen: const EeTicketDetailScreen(ticketId: _ticketId),
       );
     });

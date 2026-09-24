@@ -152,7 +152,11 @@ class _RequesterBody extends ConsumerWidget {
           data: (rows) => [
             for (final c in rows)
               _Line(
-                author: c.authorId != null && c.authorId == me
+                // EE-254: a reply the mail door could not tie to anybody is
+                // not "the desk" — it says what it is.
+                author: c.senderUnverified
+                    ? 'ee.tickets.senderUnverifiedShort'.tr()
+                    : c.authorId != null && c.authorId == me
                     ? 'ee.tickets.requester.you'.tr()
                     : 'ee.tickets.requester.desk'.tr(),
                 body: c.body,

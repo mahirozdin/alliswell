@@ -104,6 +104,7 @@ void main() {
   List<Override> overrides(
     EeRequesterTicket? ticket, {
     List<EeTicketFile> files = const [],
+    List<EeRequesterComment>? comments,
   }) => [
     eeTicketWriteApiProvider.overrideWithValue(api),
     eeRequesterTicketApiProvider.overrideWithValue(reads),
@@ -115,10 +116,16 @@ void main() {
     currentUserIdProvider.overrideWithValue(_me),
     eeRequesterTicketProvider.overrideWith((ref, id) async => ticket),
     eeRequesterCommentsProvider.overrideWith(
-      (ref, id) async => const [
-        EeRequesterComment(id: 'C1', body: 'Hangi hat?', authorId: 'U-AGENT'),
-        EeRequesterComment(id: 'C2', body: 'Üçüncü hat.', authorId: _me),
-      ],
+      (ref, id) async =>
+          comments ??
+          const [
+            EeRequesterComment(
+              id: 'C1',
+              body: 'Hangi hat?',
+              authorId: 'U-AGENT',
+            ),
+            EeRequesterComment(id: 'C2', body: 'Üçüncü hat.', authorId: _me),
+          ],
     ),
   ];
 
@@ -126,8 +133,11 @@ void main() {
     WidgetTester tester,
     EeRequesterTicket? ticket, {
     List<EeTicketFile> files = const [],
+    List<EeRequesterComment>? comments,
   }) async {
-    container = ProviderContainer(overrides: overrides(ticket, files: files));
+    container = ProviderContainer(
+      overrides: overrides(ticket, files: files, comments: comments),
+    );
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -173,6 +183,23 @@ void main() {
     await pump(tester, _ticket());
     expect(find.text('İç not'), findsNothing);
     expect(find.byType(SegmentedButton<bool>), findsNothing);
+  });
+
+  testWidgets('EE-254: a reply the mail door could not tie to anybody is not '
+      '"the desk"', (tester) async {
+    await pump(
+      tester,
+      _ticket(),
+      comments: const [
+        EeRequesterComment(
+          id: 'C9',
+          body: 'Ben Ayla, hat 3 duruyor.',
+          senderUnverified: true,
+        ),
+      ],
+    );
+    expect(find.textContaining('Gönderen doğrulanmadı'), findsOneWidget);
+    expect(find.textContaining('Destek ekibi'), findsNothing);
   });
 
   testWidgets('the lines say who wrote them: you, or the desk', (tester) async {

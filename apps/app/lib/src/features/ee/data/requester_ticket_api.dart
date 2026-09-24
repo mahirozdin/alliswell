@@ -83,6 +83,7 @@ class EeRequesterComment {
     required this.body,
     this.authorId,
     this.createdAt,
+    this.senderUnverified = false,
   });
 
   factory EeRequesterComment.fromJson(Map<String, dynamic> json) =>
@@ -91,12 +92,17 @@ class EeRequesterComment {
         body: json['body'] as String,
         authorId: json['authorId'] as String?,
         createdAt: _date(json['createdAt']),
+        senderUnverified: json['senderUnverified'] == true,
       );
 
   final String id;
   final String body;
   final String? authorId;
   final DateTime? createdAt;
+
+  /// EE-254: arrived as mail claiming a colleague's address it could not
+  /// prove — never "the desk", whatever it says.
+  final bool senderUnverified;
 }
 
 /// One file on the request, as its requester may see it (EE-252): on the
