@@ -135,6 +135,10 @@ List<Override> _overrides(
     ticketAssigneesProvider.overrideWith(
       (ref) => Stream.value(corpus.assignees),
     ),
+    // EE-258: who asked — the names a desk's device holds.
+    eeMemberNamesProvider.overrideWith(
+      (ref) => Stream.value(corpus.memberNames),
+    ),
     // EE-224: the detail's own "who is on it" row, from the same corpus.
     ticketAssigneesForProvider(_ticketId).overrideWith(
       (ref) => Stream.value(corpus.assignees[_ticketId] ?? const []),
@@ -210,6 +214,35 @@ void main() {
               priority: 'urgent',
               senderUnverified: true,
               unverifiedCommentIds: {claimed},
+            ),
+          ),
+        ],
+        screen: const EeTicketDetailScreen(ticketId: _ticketId),
+      );
+    });
+
+    // EE-258 (AW-E07): a customer with no account wrote in by mail — the desk
+    // reads who, where the answer goes, and how it arrived, from the device.
+    testWidgets('and who asked, by mail — ${brightness.name}', (tester) async {
+      final ticket = corpus
+          .ticket(_ticketId)
+          .copyWith(
+            source: 'email',
+            requesterId: const Value(null),
+            requesterName: const Value('Ada Lovelace'),
+            requesterEmail: const Value('ada.lovelace@musteri.example'),
+          );
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-ticket-requester',
+        size: const Size(900, 1300),
+        overrides: [
+          ..._overrides(corpus, ticket: ticket),
+          eeTicketActionsProvider(_ticketId).overrideWith(
+            (ref) async => const EeTicketActions(
+              status: 'in_progress',
+              priority: 'urgent',
             ),
           ),
         ],

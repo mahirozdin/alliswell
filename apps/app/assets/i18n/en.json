@@ -2221,6 +2221,14 @@
         "closedFooter": "This request is closed, and so is its conversation. If the problem is back, open a new request; this one’s number goes with it.",
         "waitingOnYouShort": "Waiting for you"
       },
+      "askedBy": {
+        "title": "Requested by",
+        "viaEmail": "Came in by e-mail",
+        "viaPortal": "Came in through the portal",
+        "onBehalf": "A colleague opened it on their behalf",
+        "teamMember": "A team member",
+        "writeTo": "Write an e-mail to {address}"
+      },
       "senderUnverified": "Sender not verified — this mail carries a colleague’s address but could not be proven to come from them, so it was filed as an outside sender.",
       "senderUnverifiedShort": "Sender not verified"
     },

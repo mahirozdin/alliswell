@@ -2220,6 +2220,14 @@
         "closedFooter": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yeni bir talep açın; bu talebin numarası yenisine taşınır.",
         "waitingOnYouShort": "Sizden bilgi bekleniyor"
       },
+      "askedBy": {
+        "title": "Talep sahibi",
+        "viaEmail": "E-postayla geldi",
+        "viaPortal": "Portaldan geldi",
+        "onBehalf": "Bir çalışma arkadaşı onun adına açtı",
+        "teamMember": "Takım üyesi",
+        "writeTo": "{address} adresine e-posta yaz"
+      },
       "senderUnverified": "Gönderen doğrulanmadı — bu posta bir çalışma arkadaşınızın adresini taşıyor ama ondan geldiği kanıtlanamadı; dış gönderen olarak kaydedildi.",
       "senderUnverifiedShort": "Gönderen doğrulanmadı"
     },

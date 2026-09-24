@@ -135,6 +135,14 @@ class DemoCorpus {
       ),
   ];
 
+  /// Everybody's name by user id — what EE-258's roster map holds on a device
+  /// that syncs the team's general workspace, where every member is.
+  Map<String, String> get memberNames => {
+    for (final p in _list('people'))
+      if (p['displayName'] != null)
+        p['id'] as String: p['displayName'] as String,
+  };
+
   // ── The catalogue ────────────────────────────────────────────────────────
 
   List<EeService> get services => _list('services')

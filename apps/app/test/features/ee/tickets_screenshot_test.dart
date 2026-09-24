@@ -50,6 +50,8 @@ List<Override> _overrides(
 }) => [
   ticketQueueProvider.overrideWith((ref) => Stream.value(rows)),
   ticketAssigneesProvider.overrideWith((ref) => Stream.value(corpus.assignees)),
+  // EE-258: who asked, on each row — the names a desk's device holds.
+  eeMemberNamesProvider.overrideWith((ref) => Stream.value(corpus.memberNames)),
   // EE-225: an agent who may file one sees the way in, as on a real desk —
   // and the permission cache is not sent looking for a session.
   canProvider.overrideWith((ref, permission) => permission == 'tickets.create'),

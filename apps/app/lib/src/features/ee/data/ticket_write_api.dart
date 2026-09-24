@@ -53,6 +53,8 @@ class EeTicketActions {
     this.slaHoldReasons = const [],
     this.senderUnverified = false,
     this.unverifiedCommentIds = const {},
+    this.requesterEmail,
+    this.requesterDisplayName,
   });
 
   factory EeTicketActions.fromJson(Map<String, dynamic> json) {
@@ -85,8 +87,16 @@ class EeTicketActions {
       }.toList(growable: false),
       senderUnverified: json['senderUnverified'] == true,
       unverifiedCommentIds: strings(json['unverifiedCommentIds']).toSet(),
+      requesterEmail: json['requesterEmail'] as String?,
+      requesterDisplayName: json['requesterDisplayName'] as String?,
     );
   }
+
+  /// EE-258: who asked, in the server's words. The replica keeps them from
+  /// v33 on; a request this device pulled before that has neither until the
+  /// server next sends it, and the detail reads these instead.
+  final String? requesterEmail;
+  final String? requesterDisplayName;
 
   /// EE-254 (D17.2): this request arrived as mail claiming a colleague's
   /// address that could not be checked, so it was filed as an outside sender

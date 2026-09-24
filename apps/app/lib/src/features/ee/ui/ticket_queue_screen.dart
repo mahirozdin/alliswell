@@ -437,6 +437,15 @@ class _TicketCard extends ConsumerWidget {
     );
     void toggle() =>
         ref.read(ticketSelectionProvider.notifier).toggle(ticket.id);
+    // EE-258: who asked, when the device knows — an account's name from the
+    // rosters (one map, `select`ed, so a queue opens no stream per row), or
+    // the name kept for somebody without one. Nothing when nobody asked.
+    final requesterId = ticket.requesterId;
+    final askedBy = requesterId == null
+        ? ticket.requesterName
+        : ref.watch(
+            eeMemberNamesProvider.select((names) => names.value?[requesterId]),
+          );
     return Card(
       key: Key('ticket-${ticket.id}'),
       child: ListTile(
@@ -484,6 +493,9 @@ class _TicketCard extends ConsumerWidget {
                   [
                     'ee.tickets.status.${ticket.status}'.tr(),
                     'ee.tickets.priority.${ticket.priority}'.tr(),
+                    // Last, so on a narrow phone it is the name that folds
+                    // to the next line, never the status.
+                    ?askedBy,
                   ].join(' · '),
                   style: theme.textTheme.bodySmall,
                 ),

@@ -12,6 +12,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
 import '../data/kb_models.dart';
+import '../data/ticket_write_api.dart';
 import '../kb_providers.dart';
 import '../providers.dart';
 import '../ticket_links_providers.dart';
@@ -135,6 +136,13 @@ class _Thread extends ConsumerWidget {
         (comments.value ?? const <TicketCommentRecord>[]).any(
           (c) => c.authorId == null && !c.internal,
         );
+    // EE-258: who asked is the replica's (v33). A request this device pulled
+    // before it kept them has neither until the server sends it again — and
+    // NO question is added for that: where the detail already asks (above),
+    // the answer carries who asked and fills the gap; elsewhere the row waits,
+    // because the device cannot tell an old row from a request nobody put a
+    // name on, and asking on every open for an answer that does not exist is
+    // the cost EE-224 refused.
     final checked = mayBeUnverified
         ? ref.watch(eeTicketActionsProvider(ticket.id)).value
         : null;
@@ -193,6 +201,9 @@ class _Thread extends ConsumerWidget {
             key: const Key('ticket-sender-unverified'),
             text: 'ee.tickets.senderUnverified'.tr(),
           ),
+        // EE-258 (AW-E07): who asked, and where the answer goes — read before
+        // who is on it, because it is the first thing somebody asks.
+        _Requester(ticket: ticket, fromServer: checked),
         // EE-224: the third door, beside the other two. Who is on it is read
         // before anything else below: an agent asks "is somebody already
         // here" before reading forty replies.
@@ -660,6 +671,111 @@ class _Chip extends StatelessWidget {
 
 /// EE-254: "we could not check who wrote this", with the icon and the words
 /// both — never colour alone.
+/// EE-258 (AW-E07) — who asked, and where the answer goes.
+///
+/// From the replica, so a desk with no signal can still say who a request is
+/// from: v33 keeps the name and address of somebody without an account, and
+/// an account's name comes from the rosters this device syncs. Where the
+/// detail has the server's answer anyway ([fromServer]), it fills in for a
+/// request pulled before the replica kept them. Nobody asked a request a
+/// monitor or a rule opened, so it draws nothing.
+class _Requester extends ConsumerWidget {
+  const _Requester({required this.ticket, this.fromServer});
+
+  final TicketRecord ticket;
+  final EeTicketActions? fromServer;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final requesterId = ticket.requesterId;
+    final accountName = requesterId == null
+        ? null
+        : ref.watch(
+            eeMemberNamesProvider.select((names) => names.value?[requesterId]),
+          );
+    final name =
+        accountName ??
+        ticket.requesterName ??
+        fromServer?.requesterDisplayName ??
+        (requesterId != null ? 'ee.tickets.askedBy.teamMember'.tr() : null);
+    final email = ticket.requesterEmail ?? fromServer?.requesterEmail;
+    if (name == null && email == null) return const SizedBox.shrink();
+    final origin = switch (ticket.source) {
+      'email' => 'ee.tickets.askedBy.viaEmail'.tr(),
+      'public' => 'ee.tickets.askedBy.viaPortal'.tr(),
+      'internal' when requesterId == null => 'ee.tickets.askedBy.onBehalf'.tr(),
+      _ => null,
+    };
+    return Padding(
+      key: const Key('ticket-requester'),
+      padding: const EdgeInsets.only(top: AwSpace.x3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.person_outline,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ee.tickets.askedBy.title'.tr(),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (name != null)
+                  Text(
+                    name,
+                    key: const Key('ticket-requester-name'),
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                if (email != null)
+                  // The address IS the way back, so it is a button: a tap
+                  // opens the mail app with it filled in. A full-size target,
+                  // and the words say where it goes.
+                  Semantics(
+                    link: true,
+                    label: 'ee.tickets.askedBy.writeTo'.tr(
+                      args: {'address': email},
+                    ),
+                    excludeSemantics: true,
+                    child: TextButton.icon(
+                      key: const Key('ticket-requester-email'),
+                      style: TextButton.styleFrom(
+                        alignment: Alignment.centerLeft,
+                        padding: EdgeInsets.zero,
+                      ),
+                      onPressed: () => ref.read(eeMailLauncherProvider)(email),
+                      icon: const Icon(Icons.mail_outline, size: 18),
+                      label: Text(email),
+                    ),
+                  ),
+                if (origin != null)
+                  Text(
+                    origin,
+                    key: const Key('ticket-requester-origin'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Unverified extends StatelessWidget {
   const _Unverified({super.key, required this.text});
 

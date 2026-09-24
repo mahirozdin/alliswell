@@ -3,6 +3,7 @@
 // does not carry.
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../search/providers.dart';
 import '../../search/search.dart';
@@ -313,6 +314,36 @@ final ticketProvider = StreamProvider.family<TicketRecord?, String>((
     db.tickets,
   )..where((t) => t.id.equals(ticketId))).watchSingleOrNull();
 });
+
+/// EE-258 — a colleague's name by their user id, from every roster this
+/// device syncs.
+///
+/// A requester is usually NOT in the unit that answers them, so the request's
+/// own workspace roster misses them. The team's general workspace — every
+/// member is in it, and every member's device syncs it — does not. One map
+/// for the whole screen, read with `select` per row, so a queue does not
+/// open a stream per request.
+final eeMemberNamesProvider = StreamProvider<Map<String, String>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.select(db.memberProfiles).watch().map((rows) {
+    final names = <String, String>{};
+    for (final row in rows) {
+      final name = row.displayName;
+      if (name != null && name.isNotEmpty) {
+        names.putIfAbsent(row.userId, () => name);
+      }
+    }
+    return names;
+  });
+});
+
+/// EE-258 — hands an address to the device's mail app. A provider so a test
+/// can see which address a tap asked for, without a platform to open.
+final eeMailLauncherProvider = Provider<Future<void> Function(String address)>(
+  (ref) => (address) async {
+    await launchUrl(Uri(scheme: 'mailto', path: address));
+  },
+);
 
 /// The thread, oldest first — how a conversation is read.
 final ticketCommentsProvider =
