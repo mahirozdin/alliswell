@@ -28,11 +28,14 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
+import 'package:alliswell/src/sync/providers.dart';
 
 import '../../design_screenshots_test.dart' show screenshotLocale;
 import 'support/demo_corpus.dart';
@@ -53,6 +56,42 @@ List<Override> _overrides(
   if (filter != null)
     ticketFilterProvider.overrideWith(() => _FixedFilter(filter)),
 ];
+
+/// EE-227's pictures: the server offers the moves and answers the batch — one
+/// row moved, one already was, one held by an approval — so the result sheet
+/// shows every kind of line it can show.
+class _ShotWrite extends Fake implements EeTicketWriteApi {
+  @override
+  Future<EeTicketActions?> actions(String ticketId) async =>
+      const EeTicketActions(
+        status: 'new',
+        priority: 'normal',
+        allowedTransitions: ['triage', 'in_progress', 'waiting', 'cancelled'],
+        waitingReasons: ['requester_info', 'supplier', 'spare_part'],
+        priorities: ['low', 'normal', 'high', 'urgent'],
+      );
+
+  @override
+  Future<EeBulkResult> bulk(
+    List<String> ticketIds,
+    Map<String, Object> action,
+  ) async => EeBulkResult(
+    changed: 1,
+    skipped: ticketIds.length - 1,
+    rows: [
+      for (var i = 0; i < ticketIds.length; i += 1)
+        EeBulkRow(
+          ticketId: ticketIds[i],
+          changed: i == 0,
+          reason: switch (i) {
+            0 => null,
+            1 => 'TICKET_APPROVAL_PENDING',
+            _ => 'NO_CHANGE',
+          },
+        ),
+    ],
+  );
+}
 
 class _FixedFilter extends TicketFilterController {
   _FixedFilter(this._value);
@@ -102,6 +141,40 @@ void main() {
         screen: const EeTicketQueueScreen(),
       );
     });
+
+    // EE-227: three requests ticked — the bar is the batch's, the boxes take
+    // the dots' place, and "new request" has stepped aside.
+    for (final result in [false, true]) {
+      final name = result ? 'ee-ticket-bulk-result' : 'ee-ticket-queue-bulk';
+      testWidgets('$name — ${brightness.name}', (tester) async {
+        await eeShoot(
+          tester,
+          brightness: brightness,
+          name: name,
+          overrides: [
+            ..._overrides(corpus, corpus.queue),
+            eeFeatureProvider.overrideWith((ref, feature) => true),
+            eeTicketWriteApiProvider.overrideWithValue(_ShotWrite()),
+            syncEngineProvider.overrideWithValue(null),
+          ],
+          screen: const EeTicketQueueScreen(),
+          afterPump: (t) async {
+            final cards = find.byType(Card);
+            await t.longPress(cards.at(0));
+            await t.pumpAndSettle();
+            await t.tap(cards.at(1));
+            await t.tap(cards.at(2));
+            await t.pumpAndSettle();
+            if (result) {
+              await t.tap(find.byKey(const Key('bulk-status')));
+              await t.pumpAndSettle();
+              await t.tap(find.byKey(const Key('bulk-status-triage')));
+              await t.pumpAndSettle();
+            }
+          },
+        );
+      });
+    }
 
     // The SAME emptiness, the opposite meaning. Two shots because one message
     // for both states would be wrong exactly when somebody is stuck.

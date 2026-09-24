@@ -11,8 +11,10 @@ import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
 import '../providers.dart';
+import '../ticket_bulk_providers.dart';
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
+import 'ticket_bulk.dart';
 import 'sla_chip.dart';
 import 'performance_screen.dart';
 import 'sla_dashboard_screen.dart';
@@ -42,12 +44,18 @@ class EeTicketQueueScreen extends ConsumerWidget {
     final tickets = ref.watch(filteredTicketsProvider);
     final filter = ref.watch(ticketFilterProvider);
     final searching = ref.watch(ticketSearchQueryProvider).trim().isNotEmpty;
+    // EE-227: a long press starts a selection; while one is open the bar is
+    // the batch's, and "new request" steps aside.
+    final selecting = ref.watch(
+      ticketSelectionProvider.select((ids) => ids.isNotEmpty),
+    );
 
     return Scaffold(
       // EE-225: the way in to filing one, where the desk already stands.
       // Hidden without `tickets.create` (EE-052's cache): a button that
       // leads to a form the door refuses is a dead one with extra steps.
-      floatingActionButton: ref.watch(canProvider('tickets.create'))
+      floatingActionButton:
+          !selecting && ref.watch(canProvider('tickets.create'))
           ? AwExtendedFab(
               key: const Key('ticket-new'),
               onPressed: () => context.push('/tickets/new'),
@@ -55,141 +63,146 @@ class EeTicketQueueScreen extends ConsumerWidget {
               label: Text('ee.tickets.new.fab'.tr()),
             )
           : null,
-      appBar: AppBar(
-        title: Text('ee.tickets.queueTitle'.tr()),
-        actions: [
-          // EE-169. The house search shape (DESIGN §12 S1, round 13 #5): an
-          // icon until somebody wants it. It reads the REPLICA, so it answers
-          // with no signal — which is the whole reason the queue is a replica
-          // query and not a request.
-          AwSearchAction(
-            fieldKey: const Key('ticket-search'),
-            hintText: 'ee.tickets.searchHint'.tr(),
-            onQuery: (q) => ref.read(ticketSearchQueryProvider.notifier).set(q),
-          ),
-          // EE-098. Reachability (DESIGN §22): a dashboard nothing opens is
-          // not a feature, and the queue is where the person who wants it is
-          // already standing. No permission gate — counting is membership
-          // (ADR-0007 §1), and the endpoint scopes itself to the caller's own
-          // desks, so everyone sees a true screen rather than a forbidden one.
-          // EE-196 — AND A MEASURED CORRECTION TO THIS BAR.
-          //
-          // The knowledge base belongs on the queue for EE-098's reason,
-          // repeated: the person who wants a written answer is the one
-          // already looking at requests, and a screen nothing opens is not a
-          // feature. But adding a fourth action OVERFLOWED the toolbar by
-          // 3.6 pixels at 390 logical width — measured, by the filter test,
-          // not predicted. The title takes the rest of the row, which is the
-          // part an action count alone does not tell you.
-          //
-          // So the two destinations share one overflow button. That makes the
-          // bar SMALLER than it was, leaves headroom for the next one, and
-          // trades two icons nobody can name for two menu entries that say
-          // what they are.
-          PopupMenuButton<String>(
-            key: const Key('ticket-more'),
-            icon: const Icon(Icons.more_vert),
-            tooltip: 'ee.tickets.more'.tr(),
-            // The two destinations are reached differently, and that is not
-            // untidiness: the knowledge base has real ROUTES because an
-            // article is a thing you link to, while the SLA dashboard is a
-            // pushed screen with no address of its own (EE-098 never gave it
-            // one, and inventing one here would be a second way to reach it).
-            onSelected: (value) {
-              // EE-220 adds `/assets` beside `/kb` for the same reason and by
-              // the same means: both are real ROUTES because both are things
-              // you link to (a QR code on a machine opens an asset).
-              if (value == '/kb' || value == '/assets') {
-                context.push(value);
-                return;
-              }
-              // EE-205 joins the SLA dashboard on the same shelf and by the
-              // same means. Neither has a route of its own: EE-098 never gave
-              // one to the dashboard, and inventing one for either now would
-              // be a second way to reach a screen — which is how two entry
-              // points end up disagreeing about what a person may see.
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => value == 'perf'
-                      ? const EePerformanceScreen()
-                      : const EeSlaDashboardScreen(),
+      appBar: selecting
+          ? EeBulkAppBar(visible: tickets.value ?? const [])
+          : AppBar(
+              title: Text('ee.tickets.queueTitle'.tr()),
+              actions: [
+                // EE-169. The house search shape (DESIGN §12 S1, round 13 #5): an
+                // icon until somebody wants it. It reads the REPLICA, so it answers
+                // with no signal — which is the whole reason the queue is a replica
+                // query and not a request.
+                AwSearchAction(
+                  fieldKey: const Key('ticket-search'),
+                  hintText: 'ee.tickets.searchHint'.tr(),
+                  onQuery: (q) =>
+                      ref.read(ticketSearchQueryProvider.notifier).set(q),
                 ),
-              );
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                key: const Key('ticket-kb'),
-                value: '/kb',
-                child: Row(
-                  children: [
-                    const Icon(Icons.menu_book_outlined),
-                    const SizedBox(width: AwSpace.x2),
-                    Text('ee.kb.title'.tr()),
+                // EE-098. Reachability (DESIGN §22): a dashboard nothing opens is
+                // not a feature, and the queue is where the person who wants it is
+                // already standing. No permission gate — counting is membership
+                // (ADR-0007 §1), and the endpoint scopes itself to the caller's own
+                // desks, so everyone sees a true screen rather than a forbidden one.
+                // EE-196 — AND A MEASURED CORRECTION TO THIS BAR.
+                //
+                // The knowledge base belongs on the queue for EE-098's reason,
+                // repeated: the person who wants a written answer is the one
+                // already looking at requests, and a screen nothing opens is not a
+                // feature. But adding a fourth action OVERFLOWED the toolbar by
+                // 3.6 pixels at 390 logical width — measured, by the filter test,
+                // not predicted. The title takes the rest of the row, which is the
+                // part an action count alone does not tell you.
+                //
+                // So the two destinations share one overflow button. That makes the
+                // bar SMALLER than it was, leaves headroom for the next one, and
+                // trades two icons nobody can name for two menu entries that say
+                // what they are.
+                PopupMenuButton<String>(
+                  key: const Key('ticket-more'),
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'ee.tickets.more'.tr(),
+                  // The two destinations are reached differently, and that is not
+                  // untidiness: the knowledge base has real ROUTES because an
+                  // article is a thing you link to, while the SLA dashboard is a
+                  // pushed screen with no address of its own (EE-098 never gave it
+                  // one, and inventing one here would be a second way to reach it).
+                  onSelected: (value) {
+                    // EE-220 adds `/assets` beside `/kb` for the same reason and by
+                    // the same means: both are real ROUTES because both are things
+                    // you link to (a QR code on a machine opens an asset).
+                    if (value == '/kb' || value == '/assets') {
+                      context.push(value);
+                      return;
+                    }
+                    // EE-205 joins the SLA dashboard on the same shelf and by the
+                    // same means. Neither has a route of its own: EE-098 never gave
+                    // one to the dashboard, and inventing one for either now would
+                    // be a second way to reach a screen — which is how two entry
+                    // points end up disagreeing about what a person may see.
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => value == 'perf'
+                            ? const EePerformanceScreen()
+                            : const EeSlaDashboardScreen(),
+                      ),
+                    );
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      key: const Key('ticket-kb'),
+                      value: '/kb',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.menu_book_outlined),
+                          const SizedBox(width: AwSpace.x2),
+                          Text('ee.kb.title'.tr()),
+                        ],
+                      ),
+                    ),
+                    // EE-220. THE REGISTER HAD NO DOOR — measured, not assumed:
+                    // `/assets` was a route with no `context.push('/assets')`
+                    // anywhere in the app, so the only way in was scanning a QR
+                    // code, which opens a DETAIL. A list nobody can reach is a list
+                    // nobody searches, which is half of why `searchAssets` had no
+                    // caller. It goes on this shelf because EE-196 put the
+                    // knowledge base here on EE-098's reasoning: the person who
+                    // wants it is already looking at the queue.
+                    PopupMenuItem(
+                      key: const Key('ticket-assets'),
+                      value: '/assets',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.precision_manufacturing_outlined),
+                          const SizedBox(width: AwSpace.x2),
+                          Text('ee.assets.title'.tr()),
+                        ],
+                      ),
+                    ),
+                    // EE-098: no permission gate — counting is membership
+                    // (ADR-0007 §1), and the endpoint scopes itself to the caller's
+                    // own desks, so everyone sees a true screen rather than a
+                    // forbidden one.
+                    PopupMenuItem(
+                      key: const Key('ticket-sla-dashboard'),
+                      value: 'sla',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.query_stats_outlined),
+                          const SizedBox(width: AwSpace.x2),
+                          Text('ee.slaDash.title'.tr()),
+                        ],
+                      ),
+                    ),
+                    // EE-205: no permission gate here either, for EE-098's reason —
+                    // counting is membership (ADR-0007 §1) and the endpoint scopes
+                    // itself to the caller's own desks, so everybody sees a TRUE
+                    // screen rather than a forbidden one. A manager with
+                    // `units.manage` sees the team; everyone else sees their own.
+                    PopupMenuItem(
+                      key: const Key('ticket-performance'),
+                      value: 'perf',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.groups_outlined),
+                          const SizedBox(width: AwSpace.x2),
+                          Text('ee.perfPanel.title'.tr()),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              // EE-220. THE REGISTER HAD NO DOOR — measured, not assumed:
-              // `/assets` was a route with no `context.push('/assets')`
-              // anywhere in the app, so the only way in was scanning a QR
-              // code, which opens a DETAIL. A list nobody can reach is a list
-              // nobody searches, which is half of why `searchAssets` had no
-              // caller. It goes on this shelf because EE-196 put the
-              // knowledge base here on EE-098's reasoning: the person who
-              // wants it is already looking at the queue.
-              PopupMenuItem(
-                key: const Key('ticket-assets'),
-                value: '/assets',
-                child: Row(
-                  children: [
-                    const Icon(Icons.precision_manufacturing_outlined),
-                    const SizedBox(width: AwSpace.x2),
-                    Text('ee.assets.title'.tr()),
-                  ],
-                ),
-              ),
-              // EE-098: no permission gate — counting is membership
-              // (ADR-0007 §1), and the endpoint scopes itself to the caller's
-              // own desks, so everyone sees a true screen rather than a
-              // forbidden one.
-              PopupMenuItem(
-                key: const Key('ticket-sla-dashboard'),
-                value: 'sla',
-                child: Row(
-                  children: [
-                    const Icon(Icons.query_stats_outlined),
-                    const SizedBox(width: AwSpace.x2),
-                    Text('ee.slaDash.title'.tr()),
-                  ],
-                ),
-              ),
-              // EE-205: no permission gate here either, for EE-098's reason —
-              // counting is membership (ADR-0007 §1) and the endpoint scopes
-              // itself to the caller's own desks, so everybody sees a TRUE
-              // screen rather than a forbidden one. A manager with
-              // `units.manage` sees the team; everyone else sees their own.
-              PopupMenuItem(
-                key: const Key('ticket-performance'),
-                value: 'perf',
-                child: Row(
-                  children: [
-                    const Icon(Icons.groups_outlined),
-                    const SizedBox(width: AwSpace.x2),
-                    Text('ee.perfPanel.title'.tr()),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (!filter.isEmpty)
-            TextButton(
-              key: const Key('ticket-filter-clear'),
-              onPressed: () => ref.read(ticketFilterProvider.notifier).clear(),
-              child: Text('ee.tickets.filterClear'.tr()),
+                if (!filter.isEmpty)
+                  TextButton(
+                    key: const Key('ticket-filter-clear'),
+                    onPressed: () =>
+                        ref.read(ticketFilterProvider.notifier).clear(),
+                    child: Text('ee.tickets.filterClear'.tr()),
+                  ),
+              ],
             ),
-        ],
-      ),
       body: Column(
         children: [
+          if (selecting) const EeBulkBlockedNote(),
           const _FilterBar(),
           Expanded(
             child: tickets.when(
@@ -415,10 +428,27 @@ class _TicketCard extends ConsumerWidget {
         (value) => value.value?[ticket.id] ?? const <Assignee>[],
       ),
     );
+    // EE-227. `select`s again: ticking one row must not rebuild the queue.
+    final selecting = ref.watch(
+      ticketSelectionProvider.select((ids) => ids.isNotEmpty),
+    );
+    final selected = ref.watch(
+      ticketSelectionProvider.select((ids) => ids.contains(ticket.id)),
+    );
+    void toggle() =>
+        ref.read(ticketSelectionProvider.notifier).toggle(ticket.id);
     return Card(
       key: Key('ticket-${ticket.id}'),
       child: ListTile(
-        leading: _PriorityMark(priority: ticket.priority, muted: finished),
+        // While selecting, the box takes the dot's place: the priority is
+        // still a WORD on the status line below, so nothing is lost.
+        leading: selecting
+            ? Checkbox(
+                key: Key('ticket-select-${ticket.id}'),
+                value: selected,
+                onChanged: (_) => toggle(),
+              )
+            : _PriorityMark(priority: ticket.priority, muted: finished),
         title: Text(
           // EE-167: the number leads, because it is what the person on the
           // phone says. Nullable while a request pulled before the numbering
@@ -466,11 +496,14 @@ class _TicketCard extends ConsumerWidget {
             AwAssigneeStrip(assignees: assignees),
           ],
         ),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => EeTicketDetailScreen(ticketId: ticket.id),
-          ),
-        ),
+        onTap: selecting
+            ? toggle
+            : () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => EeTicketDetailScreen(ticketId: ticket.id),
+                ),
+              ),
+        onLongPress: toggle,
       ),
     );
   }

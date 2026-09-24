@@ -1874,12 +1874,32 @@
         "sourceHealth": "İzleyici açtı"
       },
       "bulk": {
-        "selected": "{n} seçili",
+        "selected": "{count} seçili",
+        "exit": "Seçimi kapat",
+        "selectAll": "Görünenlerin hepsini seç",
         "status": "Durumu değiştir",
-        "assignToMe": "Bana ata",
         "priority": "Önceliği değiştir",
-        "result": "{changed} değişti, {skipped} tanesine dokunulmadı",
-        "allChanged": "{changed} değişti"
+        "assign": "Birine ver",
+        "offline": "Bağlantı yok — toplu işlem masaya gider; bağlantı gelince yapılabilir.",
+        "tooMany": "Bir seferde en çok {max} talep değiştirilebilir; seçimi daralt.",
+        "statusTitle": "{count} talebin durumu",
+        "priorityTitle": "{count} talebin önceliği",
+        "assignTitle": "{count} talebi kim alsın",
+        "me": "Ben alıyorum",
+        "noMoves": "Seçilenlerin hiçbiri buradan başka bir duruma geçemez.",
+        "confirmClose": "{count} talep kapatılacak. Kapanan talep yeniden açılmaz; sorun dönerse yeni bir talep açılır.",
+        "confirmCancel": "{count} talep iptal edilecek. İptal edilen talep yeniden açılmaz.",
+        "back": "Geri",
+        "allDone": "{count} talep değişti.",
+        "partial": "{total} talepten {changed} tanesi değişti",
+        "ok": "Tamam",
+        "reason": {
+          "NO_CHANGE": "Zaten öyleydi",
+          "NOT_FOUND": "Bu talepte yapılamaz — biriminde değilsin ya da talep artık görünmüyor",
+          "TICKET_PRIORITY_OVERRIDE_DENIED": "Öncelik masanın matrisinden geliyor; değiştirmeye yetkin yok",
+          "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "Bu kişi talebin biriminde değil",
+          "UNKNOWN": "Masa bir neden söylemeden değiştirmedi"
+        }
       },
       "status": {
         "new": "Yeni",

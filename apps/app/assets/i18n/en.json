@@ -1875,12 +1875,32 @@
         "sourceHealth": "Raised by a monitor"
       },
       "bulk": {
-        "selected": "{n} selected",
-        "status": "Change status",
-        "assignToMe": "Put on me",
-        "priority": "Change priority",
-        "result": "{changed} changed, {skipped} left alone",
-        "allChanged": "{changed} changed"
+        "selected": "{count} selected",
+        "exit": "Close the selection",
+        "selectAll": "Select everything shown",
+        "status": "Change the status",
+        "priority": "Change the priority",
+        "assign": "Assign",
+        "offline": "No connection — a batch goes to the desk; it can be sent when the signal returns.",
+        "tooMany": "At most {max} requests can be changed at once; narrow the selection.",
+        "statusTitle": "Status of {count} requests",
+        "priorityTitle": "Priority of {count} requests",
+        "assignTitle": "Who takes {count} requests",
+        "me": "I'll take them",
+        "noMoves": "None of the selected requests can move anywhere from here.",
+        "confirmClose": "{count} requests will be closed. A closed request does not reopen; if the problem returns, a new request is filed.",
+        "confirmCancel": "{count} requests will be cancelled. A cancelled request does not reopen.",
+        "back": "Back",
+        "allDone": "{count} requests changed.",
+        "partial": "{changed} of {total} requests changed",
+        "ok": "OK",
+        "reason": {
+          "NO_CHANGE": "Already so",
+          "NOT_FOUND": "Cannot be done on this request — you are not in its unit, or it is no longer visible",
+          "TICKET_PRIORITY_OVERRIDE_DENIED": "The priority comes from the desk's matrix; you may not override it",
+          "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "This person is not in the request's unit",
+          "UNKNOWN": "The desk did not change it and gave no reason"
+        }
       },
       "status": {
         "new": "New",

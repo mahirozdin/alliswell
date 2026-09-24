@@ -247,12 +247,15 @@ class _StatusSheet extends ConsumerStatefulWidget {
   ConsumerState<_StatusSheet> createState() => _StatusSheetState();
 }
 
+/// The moves that get a second tap: they end the matter, and the server has
+/// no way back from either (a problem that returns becomes a NEW request,
+/// ADR-0011 §2). Shared with the queue's batch (EE-227) — one request or
+/// fifty, ending them asks the same yes.
+const kTicketEndings = {'closed', 'cancelled'};
+
 class _StatusSheetState extends ConsumerState<_StatusSheet>
     with _SheetWrite<_StatusSheet> {
-  /// The moves that get a second tap: they end the matter, and the server
-  /// has no way back from either (a problem that returns becomes a NEW
-  /// request, ADR-0011 §2).
-  static const _endings = {'closed', 'cancelled'};
+  static const _endings = kTicketEndings;
 
   /// The move waiting for its second step — `waiting` owes a reason
   /// (EE-190), an ending owes a yes. Null while the list is shown.

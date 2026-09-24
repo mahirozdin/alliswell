@@ -174,6 +174,49 @@ class EePriorityMatrix {
 /// signal, in an order nobody chose. So a failure travels back intact — the
 /// composer keeps the text and says why — and nothing is retried behind the
 /// person's back.
+/// One request's answer inside a batch (EE-171, EE-227).
+class EeBulkRow {
+  const EeBulkRow({required this.ticketId, required this.changed, this.reason});
+
+  factory EeBulkRow.fromJson(Map<String, dynamic> json) => EeBulkRow(
+    ticketId: json['ticketId'] as String,
+    changed: json['changed'] == true,
+    reason: json['reason'] as String?,
+  );
+
+  final String ticketId;
+  final bool changed;
+
+  /// The code the single door would have answered with, or `NO_CHANGE` /
+  /// `NOT_FOUND` — null when the row moved.
+  final String? reason;
+}
+
+/// A batch's whole answer: every row accounted for, so a screen can say
+/// "12 of 15 moved, and why the other three did not".
+class EeBulkResult {
+  const EeBulkResult({
+    required this.changed,
+    required this.skipped,
+    required this.rows,
+  });
+
+  factory EeBulkResult.fromJson(Map<String, dynamic> json) => EeBulkResult(
+    changed: (json['changed'] as num?)?.toInt() ?? 0,
+    skipped: (json['skipped'] as num?)?.toInt() ?? 0,
+    rows: [
+      for (final row
+          in ((json['results'] as List<dynamic>?) ?? const [])
+              .cast<Map<String, dynamic>>())
+        EeBulkRow.fromJson(row),
+    ],
+  );
+
+  final int changed;
+  final int skipped;
+  final List<EeBulkRow> rows;
+}
+
 class EeTicketWriteApi {
   const EeTicketWriteApi(this._dio);
   final Dio _dio;
@@ -314,6 +357,26 @@ class EeTicketWriteApi {
         data: {'userId': userId},
       );
       return (response.data ?? const <String, dynamic>{})['id'] as String;
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// EE-227 — one action on many requests (`POST /tickets/bulk`, EE-171).
+  ///
+  /// Every row walks the single door's checks on the server and answers for
+  /// itself; a missing verb refuses the whole batch (403), which arrives here
+  /// as the thrown error it is.
+  Future<EeBulkResult> bulk(
+    List<String> ticketIds,
+    Map<String, Object> action,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$_tickets/bulk',
+        data: {'ticketIds': ticketIds, 'action': action},
+      );
+      return EeBulkResult.fromJson(response.data ?? const <String, dynamic>{});
     } on DioException catch (error) {
       throw asApiException(error);
     }
