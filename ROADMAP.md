@@ -7,7 +7,7 @@ Where AllisWell is and where it's going. Generated from the phase plan in
 **Legend:** ✅ shipped · 🟡 partial (rest deferred) · ⏳ planned · 💤 v2 parking lot
 
 > This file is a summary. The authoritative, task-by-task status is
-> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-269); the live pointer to
+> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-346); the live pointer to
 > "what's next" is [docs/STATE.md](docs/STATE.md). When they disagree, they win.
 
 ---
@@ -579,6 +579,19 @@ done in one pass (OPH-333…OPH-341):
   in the README, BLUEPRINT §12.8/§15.6, this file.
 - **Remaining:** OPH-340 — the API writing a file it received itself (inbound mail
   attachments), landed together with its enterprise twin.
+
+### Phase 20 — An outside review's core half (Epic 33) ⏳ (planned 2026-09-24)
+
+An outside review read the whole product ahead of a customer presentation. The core's share
+is four seams, each the twin of an extension task and landed in that task's turn
+(OPH-343…OPH-346):
+
+- **A server that will not serve what it cannot guard** (OPH-343): when an extension that
+  wrote data fails to load, the API locks — 503 except health, and readiness says why —
+  instead of carrying on under plain-build rules. A plain build is byte-for-byte unchanged.
+- **Two replica columns** the extension's screens read (OPH-344, OPH-346).
+- **A deploy that refuses an extension commit whose CI is not green** (OPH-345), and records
+  which commit it shipped.
 
 ## v2 parking lot 💤
 

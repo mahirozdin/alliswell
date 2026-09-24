@@ -11614,6 +11614,10 @@ client↔bucket via presigned URLs, the API never proxies them"*) istemci yükle
 aynen kalır. İstisna yalnız **istemcisi olmayan** bir dosya içindir: sunucunun kendisinin
 aldığı bir dosyayı depolamaya yazacak başka bir taraf yok.
 
+_Ölçüldü (2026-09-24): dikişte sunucu tarafı yazma **zaten var** — `plugins/storage.js`'teki
+`putObject` rölesi, bugün tek çağıranlı. İş onu sıfırdan eklemek değil, `files` satırını
+doğuran yardımcıya genelleştirmek; aşağıdaki ilk kutu bu okumayla yapılır._
+
 - [ ] Depolama dikişine sunucu tarafı yazma (`PutObject`) ve bir `files` satırını bu yolla
       doğuran tek bir yardımcı. **CE'de çağıranı yok** ve CE davranışı değişmez.
 - [ ] İstisna, istemci yolundaki korumaların **hepsini** taşır: `maxUploadBytes`, içerik
@@ -11673,6 +11677,104 @@ nedenini söylemek zorunda. Ölçüldü: böyle bir sinyal yoktu — AI balonu v
       türü, iptal nötr, istemcide sıralama. Enjeksiyon: 4xx'i "ulaşılamaz" saymak kırmızı.
 - **Yüzey (kural 12):** yok (istemci içi sinyal).
 - ⚠️ **Çift kapanış:** ↔ `EE-223` (uzantı kaydı: sinyalin ilk kullanıcısı).
+
+---
+
+## Epic 33 — Bir dış incelemenin çekirdek yarısı: uzantı kilidi, replika kolonları, dağıtım kapısı (v1.14.0)
+
+_2026-09-24: bir müşteri sunumu öncesinde ürünün bütününe bakan dış bir inceleme koda karşı
+ölçüldü. Çekirdeğe düşen yarı dört dikiştir ve **dördü de bir uzantı kaydının ikizidir** —
+kod o kaydın turunda yazılır, iki kutu birlikte kapanır (`check:twin-tasks`). Çekirdeğin
+kendi davranışı hiçbirinde değişmez: uzantısız bir kurulum bayt bayt aynı kalır ve bu,
+testle sabitlenir._
+
+_**Turun tek cümlesi: bir dikiş, arkasındaki kod yokken ne yaptığını da söylemek zorundadır.**
+Yükleyicinin "uzantı yoksa sade kurulum gibi devam et" kuralı, uzantının yazdığı veri
+dururken sessizce daha geniş bir yetki demekti._
+
+_Cihaz gözlemi kapanış koşulu değil (sahibin 2026-09-23 kararı); etiket, sürüm, deploy yok._
+
+**Sıra bağlayıcı:** uzantı kaydının sırası — OPH-343 (`EE-250` ile) → OPH-344 (`EE-258` ile)
+→ OPH-345 (`EE-263` ile) → OPH-346 (`EE-268` ile). Epic 32'nin OPH-340'ı `EE-231` ile aynı
+turda. İşaretçi uzantının STATE'indedir.
+
+### OPH-343 — Uzantı yüklenemezse sunucu kilitlenir
+
+**Bağlam:** yükleyicinin başarısızlık politikası: uzantı yoksa "running as CE"
+(`apps/api/src/lib/ee.js:73-76`), varsa ama yüklenemiyorsa "continuing as CE" (`:87-90`).
+`requirePermission` kayıtlı çözümleyici yokken üyeliği döndürür (`plugins/auth.js`) — sade
+kurulum için doğru, **uzantının yazdığı veri dururken** değil: uzantının koyduğu kısıtlar
+onunla birlikte kaybolur ve üye sade kurulumun geniş yetkisiyle kalır. `/health/ready`
+yalnız MySQL ve Redis'e bakar; uzantının durumunu yalnız oturumlu `/ee/status` söyler.
+
+- [ ] Politika (`lib/ee.js`): `ee.enabled` iken uzantı **yüklenemedi**, ya da **yok ve**
+      (`EE_REQUIRED=true` **ya da** migration defterinde diskte karşılığı olmayan bir kayıt
+      var) → `app.ee.locked` (nedeniyle). Kilitliyken `/health/*` dışındaki her istek
+      **503 `EXTENSION_UNAVAILABLE`**; yüksek sesli log.
+- [ ] `config.js`: `EE_REQUIRED` üç hâl — boş (defter karar verir), `true` (her zaman
+      gerekli), `false` (sade kurulum semantiğinin bilinçli kabulü: yokluk kilitlemez;
+      yüklenemeyen uzantı yine kilitler).
+- [ ] Defter kontrolü açılışta tek sorgu: `knex_migrations` adları core'un ve (yüklüyse)
+      uzantının migration dizinleriyle karşılaştırılır.
+- [ ] `/health/ready`: `ee.enabled` iken `checks.extension` (`up` / `down` + neden);
+      kilitliyken 503.
+- [ ] `deploy.yml`: uzantı dağıtılırken ortam `EE_REQUIRED=true` taşır.
+- [ ] ADR-0041 — "Veriyi yazan kod yoksa sunucu o veriyi sunmaz": neden, üç hâl, sade
+      kurulumun değişmediği.
+- **Kabul:** beş senaryo testli — uzantı kapalı: bayt bayt aynı; uzantı yok + temiz defter:
+  sade; uzantı yok + defterde bilinmeyen kayıt: kilit; uzantı yüklenemiyor (fixture
+  `register` fırlatır): kilit; `EE_REQUIRED=true` + yok: kilit. Enjeksiyon: kilit kapısı
+  kaldırılınca kırmızı.
+- **Doğrulama:** API unit (fixture `EE_DIR`) + integration (defter, sandbox); `check:no-ee`.
+- **Yüzey (kural 12):** yok (altyapı).
+- ⚠️ **Çift kapanış:** ↔ `EE-250` (uzantı kaydı: kendi dağıtım ayarı, doğrulama betiği ve
+  güvenlik belgesi).
+
+### OPH-344 — Replika: uzantının talep tablosuna talep sahibinin adı ve e-postası
+
+**Bağlam:** uzantının talep tablosu (`apps/app/lib/src/sync/db/database.dart:723-726`) yalnız
+`requesterId` saklıyor; sunucu ad ve e-postayı da gönderiyor, applier atıyor
+(`sync_applier.dart:626`).
+
+- [ ] İki nullable kolon + `schemaVersion` artışı + migration adımı.
+- [ ] Applier iki alanı eşler.
+- [ ] Göç testinin fixture'ı yeni sürüme büyür ve adım **kırmızıya düşürülerek** kanıtlanır
+      (OPH-327/330 dersi).
+- **Kabul:** göç testi yeşil; eski satırlar null'la açılır, bir sonraki çekmeyle dolar.
+- **Doğrulama:** `flutter test` (göç + applier), `flutter analyze` 0.
+- **Yüzey (kural 12):** yok (replika).
+- ⚠️ **Çift kapanış:** ↔ `EE-258` (uzantı kaydı: kolonların okuyucusu).
+
+### OPH-345 — Dağıtım, uzantının CI'ı yeşil olmayan commit'ini yayınlamaz
+
+**Bağlam:** `deploy.yml` isteğe bağlı uzantıyı `OVERLAY_REF` (varsayılan `main`) ile çekiyor
+ve o commit'in CI sonucuna bakmıyor (`.github/workflows/deploy.yml:42-50,127-146`);
+çekirdeğin kendisi sürümde CI'dan geçiyor (`release.yml` `gate`). Uzantı deposunda branch
+koruması planın izin vermediği bir ayar (403) — dağıtım son kapıdır.
+
+- [ ] `scripts/deploy/overlay-ci.mjs`: ref → SHA; o SHA'nın kontrol sonuçları (API, uzantı
+      token'ı) → yeşil / kırmızı / bekliyor / yok. Karar mantığı saf ve birim testli
+      (fixture JSON'larla).
+- [ ] `deploy.yml`: uzantı çekilmeden önce betik; yeşil değilse iş durur ve nedenini yazar;
+      SHA dağıtım özetine yazılır.
+- [ ] `DEPLOY_OVERLAY_TOKEN`'ın gereken okuma izni belgede.
+- **Kabul:** kırmızı / bekleyen / yok / yeşil dört vaka birim testli; iş akışı sözdizimi
+  geçerli.
+- **Doğrulama:** API unit (vitest, betik); `actionlint` varsa.
+- **Yüzey (kural 12):** yok (CI).
+- ⚠️ **Çift kapanış:** ↔ `EE-263` (uzantı kaydı: kendi CI'ının adı ve branch korumasının
+  belgesi).
+
+### OPH-346 — Replika: uzantının talep tablosuna süreç türü kolonu
+
+**Bağlam:** uzantı talebe bir süreç türü ekliyor (olay / istek); kuyruk süzgeci replikadan
+okuduğu için kolon cihaza inmek zorunda.
+
+- [ ] Nullable kolon + `schemaVersion` artışı + migration adımı + applier.
+- [ ] Göç testinin fixture'ı büyür; adım kırmızıya düşürülerek kanıtlanır.
+- **Kabul / Doğrulama:** OPH-344'ünkiler.
+- **Yüzey (kural 12):** yok (replika).
+- ⚠️ **Çift kapanış:** ↔ `EE-268` (uzantı kaydı: süzgeç ve raporlar).
 
 ---
 
@@ -11790,3 +11892,7 @@ nedenini söylemek zorunda. Ölçüldü: böyle bir sinyal yoktu — AI balonu v
 - Import from Todoist/TickTick/Apple Reminders; ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), release packaging (Docker image publish, F-Droid/TestFlight).
+- **İstemci yüklemelerinin taranması** (2026-09-24 incelemesi) — sunucunun kendi aldığı
+  dosyalar bir uzantıda taranabiliyor; istemcinin presigned yüklemesi kovaya doğrudan gider
+  ve taranmaz. Doğru çözüm kovada asenkron tarama + indirme kapısıdır (`files` satırında
+  durum) — kendi turu.
