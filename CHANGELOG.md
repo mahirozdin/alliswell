@@ -176,6 +176,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **CI and `docker-compose` pull MinIO from Chainguard's registry (OPH-347).**
+  MinIO
+  no longer publishes a public image: quay.io's `minio/minio`, which replaced
+  Docker Hub's in 1.10.2, now issues a token and still answers 401 for the
+  manifest. Both API jobs died on the container start before a single
+  integration test ran, and a fresh `docker compose up` would have hit the
+  same wall. `cgr.dev/chainguard/minio` is the same server; the
+  storage-backed integration tests passed against it before the switch. The
+  compose service runs as root so that a data volume written by the old
+  image stays readable.
 - **On Android, three things the app asks for in the background never
   happened (OPH-341).** Ticking a task's circle on the home-screen widget, the
   six-hourly refresh that re-arms your reminders without opening the app, and

@@ -3,7 +3,21 @@
 > This file is the pointer for the "do the next task" (TR: _"sıradaki işi yap"_) workflow.
 > Always read it first; always update it before finishing a session. Backlog: [TASKS.md](TASKS.md).
 
-**Last updated:** 2026-09-24b (**OPH-343 ✅ — uzantı yüklenemezse sunucu kilitlenir.**
+**Last updated:** 2026-09-24c (**OPH-347 ✅ — CI ve `docker-compose`, MinIO'yu hâlâ
+çekilebilen bir kayıttan alıyor.** Ölçümle doğdu. `030395f`'in CI'ında iki API işi "Start MinIO"
+adımında düştü: `unauthorized`. Entegrasyon testleri hiç koşmadı, bir saat önce aynı adım
+geçmişti. quay.io `minio/minio` için anonim token veriyor ama manifest 401 dönüyor; Docker
+Hub'daki kopya 2026-09-12'den beri 401. MinIO'nun herkese açık imajı kalmadı.
+
+Düzeltme: `cgr.dev/chainguard/minio:latest` (aynı sunucu, Chainguard yapımı; manifest anonim
+200). Sandbox'ta CI komutunun aynısıyla denendi:
+- imajın kendi kullanıcısıyla sağlıklı; `mc` var, yani compose'un sağlık kontrolü çalışır;
+- depolamaya dayanan beş entegrasyon dosyası bu kaba karşı **10/10**.
+
+Compose `user: '0:0'` ile koşuyor, çünkü eski imajın yazdığı birim root'a ait. Yedek aday,
+bakımı donmuş `bitnamilegacy/minio` (manifest 200). Sıradaki iş uzantının işaretçisinde.)
+
+Önceki blok: 2026-09-24b (**OPH-343 ✅ — uzantı yüklenemezse sunucu kilitlenir.**
 Yükleyici artık uzantının burada olup olmadığını değil, yönettiği verinin burada olup
 olmadığını soruyor: uzantı etkinken yüklenemezse, ya da yokken `EE_REQUIRED=true` ise, ya da
 yokken migration defteri onun yazdığı bir kaydı taşıyorsa, `/health/*` dışındaki her istek 503

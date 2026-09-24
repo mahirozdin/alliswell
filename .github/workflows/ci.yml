@@ -152,17 +152,22 @@ jobs:
       # test bootstrap creates the bucket itself (with retries), so no
       # healthcheck choreography is needed.
       #
-      # Pulled from quay.io, which is MinIO's own registry: the Docker Hub
-      # mirror this used to name is GONE — `docker pull minio/minio:latest`
-      # answers "pull access denied … repository does not exist", and
-      # registry-1.docker.io returns 401 for its manifest while quay.io
-      # returns 200 (measured 2026-09-12, OPH-298's CI round). Both API jobs
-      # died here, before a single integration test ran.
+      # Pulled from Chainguard's registry (OPH-347). MinIO no longer publishes
+      # a public image: Docker Hub's `minio/minio` went first (401 for its
+      # manifest, measured 2026-09-12, OPH-298), and quay.io's `minio/minio`,
+      # which replaced it, followed — its token is issued and the manifest
+      # still answers 401 "access to the requested resource is not
+      # authorized" (measured 2026-09-24). Both API jobs died here again,
+      # before a single integration test ran. `cgr.dev/chainguard/minio` is
+      # the same server built by Chainguard, pullable anonymously at `latest`
+      # (manifest 200). It runs as a non-root user with a writable /data, and
+      # it passed the five storage-backed integration files against it on the
+      # sandbox before this line changed.
       - name: Start MinIO (attachments storage)
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=alliswell -e MINIO_ROOT_PASSWORD=alliswell_dev \
-            quay.io/minio/minio:latest server /data
+            cgr.dev/chainguard/minio:latest server /data
 
       - name: Integration tests
         run: npm run test:integration
@@ -239,7 +244,7 @@ jobs:
         run: |
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=alliswell -e MINIO_ROOT_PASSWORD=alliswell_dev \
-            quay.io/minio/minio:latest server /data
+            cgr.dev/chainguard/minio:latest server /data
 
       - name: Integration tests
         run: npm run test:integration

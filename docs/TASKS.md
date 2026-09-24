@@ -11803,6 +11803,30 @@ okuduğu için kolon cihaza inmek zorunda.
 - **Yüzey (kural 12):** yok (replika).
 - ⚠️ **Çift kapanış:** ↔ `EE-268` (uzantı kaydı: süzgeç ve raporlar).
 
+### OPH-347 — CI ve `docker-compose`, MinIO'yu hâlâ çekilebilen bir kayıttan alır (ölçümle doğdu) ✅ 2026-09-24
+
+**Bağlam:** `030395f`'in CI'ında iki API işi "Start MinIO" adımında düştü: `docker: unauthorized:
+access to the requested resource is not authorized`. Entegrasyon testleri hiç koşmadı. Aynı adım
+bir saat önce (`5fbe122`) geçmişti. Ölçüldü: quay.io `minio/minio` için anonim token veriyor, ama
+manifest 401 dönüyor. Docker Hub'daki `minio/minio` da 401 dönüyor (2026-09-12'den beri — OPH-298
+bu yüzden quay.io'ya geçmişti). MinIO'nun herkese açık imajı kalmadı. Her core push'u bu adımda
+kırmızı olacaktı, ve yeni bir `docker compose up` da aynı duvara çarpacaktı.
+
+- [x] `.github/workflows/ci.yml` (iki iş) ve `docker-compose.yml`: `cgr.dev/chainguard/minio:latest`
+      — aynı sunucu, Chainguard'ın yapımı. Manifest anonim 200.
+- [x] Sandbox'ta CI komutunun aynısıyla denendi: `server /data` imajın kendi kullanıcısıyla
+      (65532) sağlıklı; imajda `mc` var, yani compose'un `mc ready local` sağlık kontrolü
+      çalışır. Depolamaya dayanan beş entegrasyon dosyası (`storage`, `files-upload`,
+      `files-read`, `folders`, `account-deletion`) bu kaba karşı **10/10**: imzalı PUT/GET,
+      sabitlenen dosya adı, bozulmuş imzanın reddi, nesnenin silinmesi.
+- [x] Compose'da `user: '0:0'`: eski imajın yazdığı `minio_data` birimi root'a ait; imajın
+      kendi kullanıcısı onu açamazdı. Root olarak da denendi, sağlıklı.
+- **Kabul:** bu commit'in CI'ında iki API işinin MinIO adımı ve entegrasyon adımı `success`.
+- **Yüzey (kural 12):** yok (CI ve geliştirme ortamı).
+- **Not:** Chainguard'ın ücretsiz katmanı yalnız `latest`'i sunar; bu yüzden etiket sabitlenmedi
+  (önceki satır da `latest`'ti). Bu kayıt da kapanırsa sıradaki aday, bakımı donmuş
+  `bitnamilegacy/minio` (manifest 200, ölçüldü).
+
 ---
 
 ## Backlog / v2 parking lot

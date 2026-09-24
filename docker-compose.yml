@@ -38,9 +38,13 @@ services:
   # automatically the first time the integration tests run (or make it yourself
   # in the console at http://localhost:9001).
   minio:
-    # quay.io is MinIO's own registry; the Docker Hub mirror is gone (it now
-    # answers "repository does not exist" — 2026-09-12).
-    image: quay.io/minio/minio:latest
+    # MinIO publishes no public image any more: Docker Hub's went on
+    # 2026-09-12, quay.io's on 2026-09-24 (OPH-347). Chainguard builds the same
+    # server and serves `latest` anonymously. It runs as root here because a
+    # `minio_data` volume written by the previous image is root-owned; the
+    # image's own user (65532) could not open it.
+    image: cgr.dev/chainguard/minio:latest
+    user: '0:0'
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
