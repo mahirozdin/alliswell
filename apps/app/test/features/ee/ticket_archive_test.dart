@@ -279,7 +279,7 @@ void main() {
 
   tearDown(() => db.close());
 
-  List<Override> overrides() {
+  List<Override> overrides({bool entitled = true}) {
     final dio = Dio(BaseOptions(baseUrl: 'https://api.alliswell.test'))
       ..httpClientAdapter = server;
     return [
@@ -287,7 +287,7 @@ void main() {
       databaseProvider.overrideWithValue(db),
       eeRequesterTicketApiProvider.overrideWithValue(EeRequesterTicketApi(dio)),
       eeTicketArchiveApiProvider.overrideWithValue(EeTicketArchiveApi(dio)),
-      eeFeatureProvider.overrideWith((ref, name) => true),
+      eeFeatureProvider.overrideWith((ref, name) => entitled),
       canProvider.overrideWith((ref, permission) => false),
       // Who is signed in, without a session (whose restore leaves a timer).
       currentUserIdProvider.overrideWithValue(_me),
@@ -316,6 +316,7 @@ void main() {
     WidgetTester tester,
     Widget home, {
     List<Override> extra = const [],
+    bool entitled = true,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -324,7 +325,10 @@ void main() {
       ProviderScope(
         // The app's own retry policy (main.dart), not Riverpod's default ten.
         retry: awRetry,
-        overrides: [...overrides(), ...extra],
+        overrides: [
+          ...overrides(entitled: entitled),
+          ...extra,
+        ],
         child: MaterialApp(theme: buildAwTheme(Brightness.light), home: home),
       ),
     );
@@ -584,6 +588,21 @@ void main() {
       ),
       isEmpty,
     );
+  });
+
+  testWidgets('EE-266: without the entitlement the archive asks nothing — '
+      'neither the asker\'s list nor the desk\'s search', (tester) async {
+    // The house idiom: no entitlement, the endpoints do not exist, so asking
+    // would be a 404 on every open.
+    await pump(tester, const EeMyArchivedTicketsScreen(), entitled: false);
+    expect(find.byKey(const Key('my-archive-empty')), findsOneWidget);
+    await pump(
+      tester,
+      const EeTicketArchiveSearchScreen(initialQuery: 'pres'),
+      entitled: false,
+    );
+    expect(find.byKey(const Key('archive-search-empty')), findsOneWidget);
+    expect(server.asked, isEmpty);
   });
 
   testWidgets('EE-266: with no signal the asker\'s archive names the '
