@@ -1,3 +1,7 @@
+import 'labour_models.dart';
+
+export 'labour_models.dart' show EeMoneyByCurrency, EeWorklogTotals, eeHoursText;
+
 /// The equipment register, as the screens read it (EE-191, EE-192, EE-194).
 class EeAsset {
   const EeAsset({
@@ -85,6 +89,7 @@ class EeAssetTicket {
     required this.archived,
     this.number,
     this.terminalAt,
+    this.labour,
   });
 
   final String id;
@@ -99,6 +104,11 @@ class EeAssetTicket {
   /// history is archived, which is the whole reason this list exists.
   final bool archived;
 
+  /// EE-240 — the hours on this request and what they cost, or null when the
+  /// request sits on a desk this person does not work on: a request's hours
+  /// are its desk's, and a machine's card does not widen that.
+  final EeWorklogTotals? labour;
+
   factory EeAssetTicket.fromJson(Map<String, dynamic> json) => EeAssetTicket(
     id: json['id'] as String,
     number: (json['number'] as num?)?.toInt(),
@@ -110,6 +120,9 @@ class EeAssetTicket {
         ? null
         : DateTime.parse(json['terminalAt'] as String),
     archived: json['archived'] as bool? ?? false,
+    labour: json['labour'] == null
+        ? null
+        : EeWorklogTotals.fromJson(json['labour'] as Map<String, dynamic>),
   );
 }
 
@@ -165,33 +178,6 @@ class EeAssetStats {
         .map((e) => EeMoneyByCurrency.fromJson(e as Map<String, dynamic>))
         .toList(growable: false),
   );
-}
-
-/// Money in ONE currency, which is the only shape this product prints money in.
-///
-/// There is deliberately no `total` beside a list of these: adding two
-/// currencies would invent an exchange rate, and a figure in a currency nobody
-/// chose is worse than no figure because it looks like an answer.
-class EeMoneyByCurrency {
-  const EeMoneyByCurrency({
-    required this.currency,
-    required this.costMinor,
-    required this.minutes,
-  });
-
-  final String currency;
-
-  /// The currency's smallest unit — kuruş, cent. Divided only at the moment it
-  /// is drawn, never in the model.
-  final int costMinor;
-  final int minutes;
-
-  factory EeMoneyByCurrency.fromJson(Map<String, dynamic> json) =>
-      EeMoneyByCurrency(
-        currency: json['currency'] as String? ?? '',
-        costMinor: (json['costMinor'] as num?)?.toInt() ?? 0,
-        minutes: (json['minutes'] as num?)?.toInt() ?? 0,
-      );
 }
 
 /// A machine's card: what it is, and what keeps happening to it.

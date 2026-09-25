@@ -1,4 +1,6 @@
-import 'assets_models.dart' show EeMoneyByCurrency;
+import 'labour_models.dart';
+
+export 'labour_models.dart' show EeMoneyByCurrency, EeWorklogTotals, eeHoursText;
 
 /// One person's record of their own labour on a request (EE-208).
 ///
@@ -51,43 +53,6 @@ class EeWorklog {
     currency: json['currency'] as String?,
     costMinor: (json['costMinor'] as num?)?.toInt(),
   );
-}
-
-/// The request's hours, and what they are worth — in the only shape money has.
-///
-/// `minutes` is ONE number because minutes are one unit everywhere.
-/// `byCurrency` is a LIST because money is not, and there is deliberately no
-/// field that could hold a single total: two technicians billed in two
-/// currencies are two figures, and a third one would be an invented exchange
-/// rate.
-class EeWorklogTotals {
-  const EeWorklogTotals({
-    required this.minutes,
-    required this.unpricedMinutes,
-    required this.byCurrency,
-  });
-
-  final int minutes;
-
-  /// Time logged by people whose role has no rate. Shown, because an empty
-  /// cost beside real minutes means "nobody priced this role", not "free".
-  final int unpricedMinutes;
-  final List<EeMoneyByCurrency> byCurrency;
-
-  static const empty = EeWorklogTotals(
-    minutes: 0,
-    unpricedMinutes: 0,
-    byCurrency: [],
-  );
-
-  factory EeWorklogTotals.fromJson(Map<String, dynamic> json) =>
-      EeWorklogTotals(
-        minutes: (json['minutes'] as num?)?.toInt() ?? 0,
-        unpricedMinutes: (json['unpricedMinutes'] as num?)?.toInt() ?? 0,
-        byCurrency: (json['byCurrency'] as List<dynamic>? ?? const [])
-            .map((e) => EeMoneyByCurrency.fromJson(e as Map<String, dynamic>))
-            .toList(growable: false),
-      );
 }
 
 /// What the worklog panel draws: the entries and the server's own totals.

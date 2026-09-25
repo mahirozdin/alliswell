@@ -111,7 +111,7 @@ class _Row extends ConsumerWidget {
       leading: const Icon(Icons.schedule),
       title: Text(
         'ee.worklogs.entry'.tr(
-          args: {'hours': _hours(row.minutes), 'date': row.workedOn},
+          args: {'hours': eeHoursText(row.minutes), 'date': row.workedOn},
         ),
         style: theme.textTheme.bodyMedium,
       ),
@@ -175,7 +175,7 @@ class _Totals extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'ee.worklogs.totalHours'.tr(args: {'hours': _hours(totals.minutes)}),
+          'ee.worklogs.totalHours'.tr(args: {'hours': eeHoursText(totals.minutes)}),
           key: const Key('worklog-total-hours'),
           style: theme.textTheme.bodyMedium,
         ),
@@ -194,7 +194,7 @@ class _Totals extends StatelessWidget {
         if (totals.unpricedMinutes > 0)
           Text(
             'ee.worklogs.unpriced'.tr(
-              args: {'hours': _hours(totals.unpricedMinutes)},
+              args: {'hours': eeHoursText(totals.unpricedMinutes)},
             ),
             key: const Key('worklog-unpriced'),
             style: theme.textTheme.bodySmall,
@@ -335,4 +335,3 @@ class _AddSheetState extends ConsumerState<_AddSheet> {
 ///
 /// Stored as minutes and shown as hours on purpose: nobody types 0.1 h, and
 /// 0.1 h is six minutes rounded differently by every desk that tries.
-String _hours(int minutes) => (minutes / 60).toStringAsFixed(1);

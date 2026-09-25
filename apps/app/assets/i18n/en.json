@@ -2769,6 +2769,7 @@
         "labour": "{hours} h of recorded work",
         "labourCost": "Labour: {amount} {currency}",
         "labourUnpriced": "{hours} h of it by people with no hourly rate.",
+        "ticketLabour": "{hours} h of work",
         "live": "From the server · needs a connection",
         "offline": "History needs a connection — requests and labour show up here once you are back online.",
         "openTimeNote": "Open time is how long requests stayed open, not how long the machine was stopped. Downtime is not recorded."

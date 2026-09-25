@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:alliswell/src/features/ee/data/assets_models.dart';
 import 'package:alliswell/src/features/ee/data/worklog_models.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_worklog_section.dart';
 import 'package:alliswell/src/features/ee/worklog_providers.dart';

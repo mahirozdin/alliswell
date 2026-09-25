@@ -2768,6 +2768,7 @@
         "labour": "Kayıtlı {hours} sa çalışma",
         "labourCost": "İşçilik: {amount} {currency}",
         "labourUnpriced": "Bunun {hours} saati saatlik ücreti tanımlı olmayan kişilerce.",
+        "ticketLabour": "{hours} sa işçilik",
         "live": "Sunucudan · bağlantı ister",
         "offline": "Geçmiş bağlantı ister — talepler ve işçilik bağlantı gelince burada görünür.",
         "openTimeNote": "Açık kalma, taleplerin açık kaldığı süredir; makinenin durduğu süre değildir. Duruş kaydı tutulmuyor."

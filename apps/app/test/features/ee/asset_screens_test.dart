@@ -268,6 +268,113 @@ void main() {
     expect(find.byKey(const Key('archive-strip')), findsOneWidget);
     expect(find.text('Geçen yılın arızası'), findsWidgets);
   });
+  testWidgets('EE-240: each request in the history carries its own hours and '
+      'cost — money one currency at a time, and nothing for another desk\'s '
+      'request', (tester) async {
+    final history = EeAssetHistory(
+      stats: const EeAssetStats(
+        months: 12,
+        ticketCount: 3,
+        openTicketCount: 0,
+        openMinutes: 0,
+        // 90 + 20 on this desk's requests; the other desk's hours are in the
+        // machine's total (EE-208) and nowhere else.
+        labourMinutes: 110,
+        labourUnpricedMinutes: 20,
+        labourByCurrency: [
+          EeMoneyByCurrency(currency: 'TRY', costMinor: 15000, minutes: 90),
+        ],
+      ),
+      tickets: [
+        EeAssetTicket(
+          id: 'T1',
+          number: 1042,
+          subject: 'Kayış koptu',
+          status: 'closed',
+          priority: 'normal',
+          createdAt: DateTime(2026, 9, 1),
+          archived: false,
+          labour: const EeWorklogTotals(
+            minutes: 90,
+            unpricedMinutes: 0,
+            byCurrency: [
+              EeMoneyByCurrency(currency: 'TRY', costMinor: 15000, minutes: 90),
+            ],
+          ),
+        ),
+        EeAssetTicket(
+          id: 'T2',
+          number: 1043,
+          subject: 'Kalite ölçümü',
+          status: 'closed',
+          priority: 'normal',
+          createdAt: DateTime(2026, 9, 2),
+          archived: false,
+          // Another desk's request: the server sends no figure.
+        ),
+        EeAssetTicket(
+          id: 'T3',
+          number: 1044,
+          subject: 'Yağ kaçağı',
+          status: 'closed',
+          priority: 'normal',
+          createdAt: DateTime(2026, 9, 3),
+          archived: false,
+          labour: const EeWorklogTotals(
+            minutes: 20,
+            unpricedMinutes: 20,
+            byCurrency: [],
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          eeAssetOnDeviceProvider.overrideWith(
+            (ref, id) => Stream.value(asset),
+          ),
+          eeAssetHistoryProvider.overrideWith((ref, id) async => history),
+          canProvider.overrideWith((ref, id) => false),
+        ],
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: const EeAssetDetailScreen(assetId: '01JABCDEFGHJKMNPQRSTVWXYZ'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    String meta(String id) =>
+        tester.widget<Text>(find.byKey(Key('asset-ticket-meta-$id'))).data!;
+    final hours = 'ee.assets.history.ticketLabour'.tr(args: {'hours': '1.5'});
+    expect(meta('T1'), contains(hours));
+    expect(meta('T1'), contains('150.00 TRY'));
+    // Priced by nobody: the hours, and no money — never "0.00".
+    expect(
+      meta('T3'),
+      contains('ee.assets.history.ticketLabour'.tr(args: {'hours': '0.3'})),
+    );
+    expect(meta('T3'), isNot(contains('TRY')));
+    // Another desk's request says its state and nothing about its hours.
+    expect(meta('T2'), 'ee.tickets.status.closed'.tr());
+
+    // The machine's total in the same spelling — twenty minutes are "0.3",
+    // and 110 minutes "1.8", where whole hours used to round them away.
+    expect(
+      tester.widget<Text>(find.byKey(const Key('asset-history-labour'))).data,
+      'ee.assets.history.labour'.tr(args: {'hours': '1.8'}),
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('asset-history-labour-unpriced')))
+          .data,
+      'ee.assets.history.labourUnpriced'.tr(args: {'hours': '0.3'}),
+    );
+  });
+
   // ── EE-238: the device's copy first, the server for the rest ──────────
 
   testWidgets('EE-238: rows only the server holds come under their own '

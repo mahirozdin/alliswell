@@ -465,9 +465,11 @@ class _HistoryBody extends StatelessWidget {
         // shown empty.
         if (data.stats.labourMinutes > 0) ...[
           const SizedBox(height: AwSpace.x2),
+          // EE-240: one decimal, like the worklog panel — rounded to whole
+          // hours, twenty minutes of recorded work read as "0".
           Text(
             'ee.assets.history.labour'.tr(
-              args: {'hours': '${(data.stats.labourMinutes / 60).round()}'},
+              args: {'hours': eeHoursText(data.stats.labourMinutes)},
             ),
             key: const Key('asset-history-labour'),
             style: theme.textTheme.bodyMedium,
@@ -487,9 +489,7 @@ class _HistoryBody extends StatelessWidget {
           if (data.stats.labourUnpricedMinutes > 0)
             Text(
               'ee.assets.history.labourUnpriced'.tr(
-                args: {
-                  'hours': '${(data.stats.labourUnpricedMinutes / 60).round()}',
-                },
+                args: {'hours': eeHoursText(data.stats.labourUnpricedMinutes)},
               ),
               key: const Key('asset-history-labour-unpriced'),
               style: theme.textTheme.bodySmall,
@@ -522,10 +522,29 @@ class _HistoryBody extends StatelessWidget {
                       )
                     : null,
               ),
+              // EE-240: the request's own hours beside its state — minutes
+              // as hours, money one currency at a time, never summed. Absent
+              // when nobody logged any, and absent for a request on a desk
+              // this person does not work on (the server sends no figure).
               subtitle: Text(
-                ticket.archived
-                    ? 'ee.assets.history.archived'.tr()
-                    : 'ee.tickets.status.${ticket.status}'.tr(),
+                [
+                  ticket.archived
+                      ? 'ee.assets.history.archived'.tr()
+                      : 'ee.tickets.status.${ticket.status}'.tr(),
+                  if (ticket.labour != null && ticket.labour!.minutes > 0) ...[
+                    'ee.assets.history.ticketLabour'.tr(
+                      args: {'hours': eeHoursText(ticket.labour!.minutes)},
+                    ),
+                    for (final money in ticket.labour!.byCurrency)
+                      'ee.worklogs.money'.tr(
+                        args: {
+                          'amount': (money.costMinor / 100).toStringAsFixed(2),
+                          'currency': money.currency,
+                        },
+                      ),
+                  ],
+                ].join(' · '),
+                key: Key('asset-ticket-meta-${ticket.id}'),
               ),
               // EE-266: an archived request opens the archive's read-only
               // view (it used to have no screen at all, so the row took no
