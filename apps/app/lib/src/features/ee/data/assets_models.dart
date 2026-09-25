@@ -18,6 +18,7 @@ class EeAsset {
     this.currency,
     this.notes,
     this.ownerUserId,
+    this.workspaceId,
   });
 
   final String id;
@@ -45,6 +46,12 @@ class EeAsset {
   final String? notes;
   final String? ownerUserId;
 
+  /// The unit (or the team's stock shelf) the record lives in — ADR-0008's
+  /// "a unit IS a workspace". EE-238 reads it to say how fresh the device's
+  /// copy is: the replica of a workspace is as new as that workspace's last
+  /// pull, and a card should not claim more than that.
+  final String? workspaceId;
+
   factory EeAsset.fromJson(Map<String, dynamic> json) => EeAsset(
     id: json['id'] as String,
     tag: json['tag'] as String,
@@ -63,6 +70,7 @@ class EeAsset {
     currency: json['currency'] as String?,
     notes: json['notes'] as String?,
     ownerUserId: json['ownerUserId'] as String?,
+    workspaceId: json['workspaceId'] as String?,
   );
 }
 

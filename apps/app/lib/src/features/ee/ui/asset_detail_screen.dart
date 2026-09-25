@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../assets_providers.dart';
@@ -52,6 +57,18 @@ import 'ticket_detail_screen.dart';
 /// euros and maintained by a team billed in lira has two figures and no third
 /// one, so there is no "total cost of ownership" line here and the server has
 /// nowhere to put one either.
+///
+/// ── THE CARD OPENS FROM THE DEVICE; ITS HISTORY SAYS IT NEEDS THE SERVER ──
+///
+/// EE-238, and the reason the replica exists (AW-E16): a technician in a
+/// basement scans the sticker and gets the machine, not a network error. The
+/// facts come from the device's copy and say how old that copy is; the server
+/// is asked only when the device does not hold the machine at all — another
+/// unit's, or a retired one EE-219 took off devices — and a card drawn from
+/// the server says THAT. The history and the labour are the server's alone
+/// (they span the archive, which no device carries), and the section says so
+/// before it is needed rather than after it fails: offline it is one quiet
+/// line and a retry, never yesterday's numbers drawn as today's.
 class EeAssetDetailScreen extends ConsumerWidget {
   const EeAssetDetailScreen({required this.assetId, super.key});
 
@@ -59,61 +76,189 @@ class EeAssetDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asset = ref.watch(eeAssetProvider(assetId));
+    final local = ref.watch(eeAssetOnDeviceProvider(assetId));
+    final onDevice = local.value;
+    // Asked only once the device has answered "not here": a card the device
+    // holds must not wait on, or be overwritten by, a network round trip.
+    final remote = local.hasValue && onDevice == null
+        ? ref.watch(eeAssetProvider(assetId))
+        : null;
+    final asset = onDevice ?? remote?.value;
+    final canManage = ref.watch(canProvider('assets.manage'));
+    // Editing is a server write (a register nobody can audit is the reason
+    // there is no offline edit), so offline the pencil is greyed BEFORE it is
+    // pressed, with the reason as its tooltip — OPH-342's rule.
+    final offline = ref.watch(
+      serverReachabilityProvider.select((up) => up == false),
+    );
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(asset.value?.tag ?? 'ee.assets.one'.tr()),
+        title: Text(asset?.tag ?? 'ee.assets.one'.tr()),
         actions: [
-          if (asset.value != null &&
-              ref.watch(canProvider('assets.manage')) &&
-              asset.value!.status != 'retired')
+          if (asset != null && canManage && asset.status != 'retired')
             IconButton(
               key: const Key('asset-edit'),
-              tooltip: 'ee.assets.edit'.tr(),
+              tooltip: offline
+                  ? 'ee.assets.editOffline'.tr()
+                  : 'ee.assets.edit'.tr(),
               icon: const Icon(Icons.edit_outlined),
-              onPressed: () => editAssetSheet(context, ref, asset.value!),
+              onPressed: offline
+                  ? null
+                  : () => editAssetSheet(context, ref, asset),
             ),
-          if (asset.value != null && ref.watch(canProvider('assets.manage')))
+          if (asset != null && canManage)
             IconButton(
               key: const Key('asset-label-one'),
               tooltip: 'ee.assets.labels.action'.tr(),
               icon: const Icon(Icons.qr_code_2),
-              onPressed: () => printAssetLabels(context, ref, [asset.value!]),
+              onPressed: () => printAssetLabels(context, ref, [asset]),
             ),
         ],
       ),
-      body: asset.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        // A scan that shows an empty card is worse than one that says the tag
-        // is not in this register — this screen is reached from a sticker.
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eeAssetProvider(assetId)),
+      body: _body(ref, local, remote),
+    );
+  }
+
+  Widget _body(
+    WidgetRef ref,
+    AsyncValue<EeAsset?> local,
+    AsyncValue<EeAsset>? remote,
+  ) {
+    if (!local.hasValue) {
+      return local.hasError
+          ? AwErrorState(
+              message: localizedError(local.error!),
+              onRetry: () => ref.invalidate(eeAssetOnDeviceProvider(assetId)),
+            )
+          : const Center(child: CircularProgressIndicator());
+    }
+    final onDevice = local.value;
+    if (onDevice != null) return _Card(asset: onDevice, fromServer: false);
+    if (remote == null) return const Center(child: CircularProgressIndicator());
+    return remote.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      // A scan that shows an empty card is worse than one that says the tag
+      // is not in this register — this screen is reached from a sticker. And
+      // "not on this device, no connection" is a third answer, not an error:
+      // the machine exists, the phone does not carry it, and the signal is
+      // what is missing.
+      error: (error, _) => assetNeedsConnection(error)
+          ? AwEmptyState(
+              key: const Key('asset-not-on-device'),
+              icon: Icons.cloud_off_outlined,
+              title: 'ee.assets.card.notOnDevice'.tr(),
+              message: 'ee.assets.card.notOnDeviceBody'.tr(),
+              action: OutlinedButton.icon(
+                onPressed: () =>
+                    _retry(ref, () => ref.invalidate(eeAssetProvider(assetId))),
+                icon: const Icon(Icons.refresh),
+                label: Text('common.retry'.tr()),
+              ),
+            )
+          : AwErrorState(
+              message: localizedError(error),
+              onRetry: () => ref.invalidate(eeAssetProvider(assetId)),
+            ),
+      data: (row) => _Card(asset: row, fromServer: true),
+    );
+  }
+}
+
+/// A retry that can actually change the answer.
+///
+/// The reads here do not ask while the app knows it is offline, so
+/// invalidating one alone would ask the same stale question. The sync
+/// engine's pull is the probe every other surface already trusts: if the
+/// server answers it, the reachability signal flips and every read watching
+/// it asks again on its own.
+void _retry(WidgetRef ref, void Function() invalidate) {
+  invalidate();
+  unawaited(ref.read(syncEngineProvider)?.syncNow());
+}
+
+class _Card extends ConsumerWidget {
+  const _Card({required this.asset, required this.fromServer});
+
+  final EeAsset asset;
+  final bool fromServer;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final types = ref.watch(eeAssetTypesProvider).value ?? const EeAssetTypes();
+    return ListView(
+      padding: const EdgeInsets.all(AwSpace.x4),
+      children: [
+        _Facts(
+          asset: asset,
+          typeLabel: assetTypeLabel(asset.type, types),
+          provenance: _Provenance(asset: asset, fromServer: fromServer),
         ),
-        data: (row) => ListView(
-          padding: const EdgeInsets.all(AwSpace.x4),
-          children: [
-            _Facts(asset: row),
-            const SizedBox(height: AwSpace.x6),
-            _History(assetId: assetId),
-          ],
+        const SizedBox(height: AwSpace.x6),
+        _History(assetId: asset.id),
+      ],
+    );
+  }
+}
+
+/// Where the facts above came from, and how old they are.
+class _Provenance extends ConsumerWidget {
+  const _Provenance({required this.asset, required this.fromServer});
+
+  final EeAsset asset;
+  final bool fromServer;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final workspaceId = asset.workspaceId;
+    final synced = fromServer || workspaceId == null
+        ? null
+        : ref.watch(eeReplicaSyncedAtProvider(workspaceId)).value;
+    final text = fromServer
+        ? 'ee.assets.card.fromServer'.tr()
+        : synced == null
+        ? 'ee.assets.card.onDevice'.tr()
+        : 'ee.assets.card.onDeviceSynced'.tr(
+            args: {'ago': awRelativePast(synced, DateTime.now())},
+          );
+    return Row(
+      key: const Key('asset-provenance'),
+      children: [
+        Icon(
+          fromServer ? Icons.cloud_outlined : Icons.offline_pin_outlined,
+          size: 16,
+          color: muted,
         ),
-      ),
+        const SizedBox(width: AwSpace.x1),
+        Expanded(
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(color: muted),
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _Facts extends StatelessWidget {
-  const _Facts({required this.asset});
+  const _Facts({
+    required this.asset,
+    required this.typeLabel,
+    required this.provenance,
+  });
   final EeAsset asset;
+  final String typeLabel;
+  final Widget provenance;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final rows = <(String, String?)>[
       ('ee.assets.field.name', asset.name),
-      ('ee.assets.field.type', 'ee.assets.type.${asset.type}'.tr()),
+      ('ee.assets.field.type', typeLabel),
       ('ee.assets.field.status', 'ee.assets.status.${asset.status}'.tr()),
       ('ee.assets.field.location', asset.location),
       ('ee.assets.field.serial', asset.serialNo),
@@ -127,6 +272,8 @@ class _Facts extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(asset.tag, style: theme.textTheme.headlineSmall),
+        const SizedBox(height: AwSpace.x1),
+        provenance,
         const SizedBox(height: AwSpace.x3),
         for (final (key, value) in rows)
           if (value != null && value.isNotEmpty)
@@ -178,114 +325,165 @@ class _History extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
     final history = ref.watch(eeAssetHistoryProvider(assetId));
 
-    return history.when(
-      // Quiet on both: the facts above already work, and a red box here would
-      // make a slow network look like a broken machine record.
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (data) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ee.assets.history.title'.tr(),
-            style: theme.textTheme.titleSmall,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('ee.assets.history.title'.tr(), style: theme.textTheme.titleSmall),
+        const SizedBox(height: AwSpace.x1),
+        // EE-238. Said while it works, not only when it fails: the facts above
+        // open anywhere, this part does not, and a technician should know
+        // which half of the card to trust in a basement before the basement.
+        Row(
+          children: [
+            Icon(Icons.cloud_outlined, size: 14, color: muted),
+            const SizedBox(width: AwSpace.x1),
+            Expanded(
+              child: Text(
+                'ee.assets.history.live'.tr(),
+                key: const Key('asset-history-live'),
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AwSpace.x2),
+        history.when(
+          // Quiet: the facts above already work, and a spinner the size of
+          // the card would make a slow network look like a missing machine.
+          loading: () => const LinearProgressIndicator(minHeight: 2),
+          // Muted, never red: a history that needs a connection is not a
+          // broken machine record.
+          error: (error, _) => Row(
+            key: const Key('asset-history-offline'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.cloud_off_outlined, size: 18, color: muted),
+              const SizedBox(width: AwSpace.x2),
+              Expanded(
+                child: Text(
+                  assetNeedsConnection(error)
+                      ? 'ee.assets.history.offline'.tr()
+                      : localizedError(error),
+                  style: theme.textTheme.bodyMedium?.copyWith(color: muted),
+                ),
+              ),
+              TextButton(
+                onPressed: () => _retry(
+                  ref,
+                  () => ref.invalidate(eeAssetHistoryProvider(assetId)),
+                ),
+                child: Text('common.retry'.tr()),
+              ),
+            ],
           ),
+          data: (data) => _HistoryBody(data: data),
+        ),
+      ],
+    );
+  }
+}
+
+class _HistoryBody extends StatelessWidget {
+  const _HistoryBody({required this.data});
+  final EeAssetHistory data;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ee.assets.history.counts'.tr(
+            args: {
+              'months': '${data.stats.months}',
+              'count': '${data.stats.ticketCount}',
+              'open': '${data.stats.openTicketCount}',
+              'hours': '${(data.stats.openMinutes / 60).round()}',
+            },
+          ),
+          key: const Key('asset-history-counts'),
+          style: theme.textTheme.bodyMedium,
+        ),
+        // EE-208. Drawn only when there is labour to draw: an hours line
+        // reading "0" on a machine nobody has worked on is noise, and the
+        // acceptance line asks for the cost field to be HIDDEN rather than
+        // shown empty.
+        if (data.stats.labourMinutes > 0) ...[
           const SizedBox(height: AwSpace.x2),
           Text(
-            'ee.assets.history.counts'.tr(
-              args: {
-                'months': '${data.stats.months}',
-                'count': '${data.stats.ticketCount}',
-                'open': '${data.stats.openTicketCount}',
-                'hours': '${(data.stats.openMinutes / 60).round()}',
-              },
+            'ee.assets.history.labour'.tr(
+              args: {'hours': '${(data.stats.labourMinutes / 60).round()}'},
             ),
-            key: const Key('asset-history-counts'),
+            key: const Key('asset-history-labour'),
             style: theme.textTheme.bodyMedium,
           ),
-          // EE-208. Drawn only when there is labour to draw: an hours line
-          // reading "0" on a machine nobody has worked on is noise, and the
-          // acceptance line asks for the cost field to be HIDDEN rather than
-          // shown empty.
-          if (data.stats.labourMinutes > 0) ...[
-            const SizedBox(height: AwSpace.x2),
+          // One line per currency, never a sum. The list is the refusal.
+          for (final money in data.stats.labourByCurrency)
             Text(
-              'ee.assets.history.labour'.tr(
-                args: {'hours': '${(data.stats.labourMinutes / 60).round()}'},
+              'ee.assets.history.labourCost'.tr(
+                args: {
+                  'amount': (money.costMinor / 100).toStringAsFixed(2),
+                  'currency': money.currency,
+                },
               ),
-              key: const Key('asset-history-labour'),
-              style: theme.textTheme.bodyMedium,
-            ),
-            // One line per currency, never a sum. The list is the refusal.
-            for (final money in data.stats.labourByCurrency)
-              Text(
-                'ee.assets.history.labourCost'.tr(
-                  args: {
-                    'amount': (money.costMinor / 100).toStringAsFixed(2),
-                    'currency': money.currency,
-                  },
-                ),
-                key: Key('asset-history-labour-${money.currency}'),
-                style: theme.textTheme.bodySmall,
-              ),
-            if (data.stats.labourUnpricedMinutes > 0)
-              Text(
-                'ee.assets.history.labourUnpriced'.tr(
-                  args: {
-                    'hours':
-                        '${(data.stats.labourUnpricedMinutes / 60).round()}',
-                  },
-                ),
-                key: const Key('asset-history-labour-unpriced'),
-                style: theme.textTheme.bodySmall,
-              ),
-          ],
-          const SizedBox(height: AwSpace.x3),
-          if (data.tickets.isEmpty)
-            Text(
-              'ee.assets.history.empty'.tr(),
+              key: Key('asset-history-labour-${money.currency}'),
               style: theme.textTheme.bodySmall,
-            )
-          else
-            for (final ticket in data.tickets)
-              ListTile(
-                key: Key('asset-ticket-${ticket.id}'),
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                leading: Icon(
-                  ticket.archived
-                      ? Icons.inventory_2_outlined
-                      : Icons.confirmation_number_outlined,
-                  color: ticket.archived
-                      ? theme.colorScheme.onSurfaceVariant
-                      : null,
-                ),
-                title: Text(
-                  ticket.number == null
-                      ? ticket.subject
-                      : '#${ticket.number} · ${ticket.subject}',
-                  style: ticket.archived
-                      ? theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        )
-                      : null,
-                ),
-                subtitle: Text(
-                  ticket.archived
-                      ? 'ee.assets.history.archived'.tr()
-                      : 'ee.tickets.status.${ticket.status}'.tr(),
-                ),
-                // An archived request has no live screen to open — it left
-                // `ee_tickets`. Saying nothing is honest; a tap that lands on
-                // "not found" is not.
-                onTap: ticket.archived
-                    ? null
-                    : () => awOpenTicket(context, ticket.id),
+            ),
+          if (data.stats.labourUnpricedMinutes > 0)
+            Text(
+              'ee.assets.history.labourUnpriced'.tr(
+                args: {
+                  'hours': '${(data.stats.labourUnpricedMinutes / 60).round()}',
+                },
               ),
+              key: const Key('asset-history-labour-unpriced'),
+              style: theme.textTheme.bodySmall,
+            ),
         ],
-      ),
+        const SizedBox(height: AwSpace.x3),
+        if (data.tickets.isEmpty)
+          Text('ee.assets.history.empty'.tr(), style: theme.textTheme.bodySmall)
+        else
+          for (final ticket in data.tickets)
+            ListTile(
+              key: Key('asset-ticket-${ticket.id}'),
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              leading: Icon(
+                ticket.archived
+                    ? Icons.inventory_2_outlined
+                    : Icons.confirmation_number_outlined,
+                color: ticket.archived
+                    ? theme.colorScheme.onSurfaceVariant
+                    : null,
+              ),
+              title: Text(
+                ticket.number == null
+                    ? ticket.subject
+                    : '#${ticket.number} · ${ticket.subject}',
+                style: ticket.archived
+                    ? theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      )
+                    : null,
+              ),
+              subtitle: Text(
+                ticket.archived
+                    ? 'ee.assets.history.archived'.tr()
+                    : 'ee.tickets.status.${ticket.status}'.tr(),
+              ),
+              // An archived request has no live screen to open — it left
+              // `ee_tickets`. Saying nothing is honest; a tap that lands on
+              // "not found" is not.
+              onTap: ticket.archived
+                  ? null
+                  : () => awOpenTicket(context, ticket.id),
+            ),
+      ],
     );
   }
 }

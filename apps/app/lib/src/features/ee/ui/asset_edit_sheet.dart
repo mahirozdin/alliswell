@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/sheets.dart';
 import '../assets_providers.dart';
@@ -89,6 +92,10 @@ class _EditSheetState extends ConsumerState<_EditSheet> {
         await api.setStatus(widget.asset.id, _status);
       }
       ref.invalidate(eeAssetProvider(widget.asset.id));
+      // EE-238: the card reads the device's copy, which the server's write
+      // reaches through a pull — asked for now rather than at the next tick,
+      // so the card does not show the old name for a minute after "saved".
+      unawaited(ref.read(syncEngineProvider)?.syncNow());
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) {

@@ -2657,12 +2657,27 @@
         "archived": "Arşivlenmiş",
         "labour": "Kayıtlı {hours} sa çalışma",
         "labourCost": "İşçilik: {amount} {currency}",
-        "labourUnpriced": "Bunun {hours} saati saatlik ücreti tanımlı olmayan kişilerce."
+        "labourUnpriced": "Bunun {hours} saati saatlik ücreti tanımlı olmayan kişilerce.",
+        "live": "Sunucudan · bağlantı ister",
+        "offline": "Geçmiş bağlantı ister — talepler ve işçilik bağlantı gelince burada görünür."
       },
       "edit": "Düzenle",
       "searchHint": "Etiket veya ad ara",
       "searchEmpty": "Eşleşen kayıt yok",
-      "searchEmptyBody": "Başka bir etiket veya ad deneyin. Arama cihazdaki kayıtlarda çalışır."
+      "searchEmptyBody": "Başka bir etiket veya ad deneyin. Önce bu cihazdaki kayıtlar aranır; bağlantı varken sunucuya da sorulur.",
+      "emptyOnDevice": "Bu cihazda kayıt yok",
+      "editOffline": "Düzenlemek bağlantı ister",
+      "offDevice": {
+        "title": "Sunucudan — bu cihazda tutulmuyor",
+        "offline": "Bu birimin dışındaki ekipman ve 90 gündür değişmeyen hurda kayıtlar bu cihazda tutulmaz; bağlantı gelince burada görünür."
+      },
+      "card": {
+        "onDevice": "Bu cihazdaki kayıt",
+        "onDeviceSynced": "Bu cihazdaki kayıt · {ago} eşitlendi",
+        "fromServer": "Sunucudan okundu — bu cihazda tutulmuyor",
+        "notOnDevice": "Bu varlık bu cihazda yok",
+        "notOnDeviceBody": "Bu birimin dışındaki ekipman ve 90 gündür değişmeyen hurda kayıtlar cihazda tutulmaz. Bağlantı gelince açılır."
+      }
     },
     "kb": {
       "title": "Bilgi bankası",

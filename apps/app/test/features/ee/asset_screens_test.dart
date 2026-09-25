@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/core/reachability.dart';
 import 'package:alliswell/src/features/ee/assets_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/search/search.dart';
@@ -38,6 +41,25 @@ void main() {
     status: 'in_use',
   );
 
+  /// The register as the device holds it (EE-238), and a server with nothing
+  /// more to add — the two sources the list screen reads.
+  List<Override> register(
+    List<EeAsset> rows, {
+    List<EeAsset> server = const [],
+    List<String> types = const [],
+  }) => [
+    eeAssetRegisterProvider.overrideWith(
+      (ref, filter) => Stream.value(
+        EeAssetRegister(
+          rows: rows,
+          onDevice: {for (final a in rows) a.id},
+          types: types,
+        ),
+      ),
+    ),
+    eeAssetsOffDeviceProvider.overrideWith((ref, key) async => server),
+  ];
+
   /// EE-220 — the register's search, and the two answers it has to keep apart.
   ///
   /// The register was reachable only by scanning a QR code before this round,
@@ -53,7 +75,7 @@ void main() {
       ProviderScope(
         overrides: [
           eeFeatureProvider.overrideWith((ref, name) => true),
-          eeAssetsProvider.overrideWith((ref, filter) async => [asset, other]),
+          ...register([asset, other]),
           eeAssetTypesProvider.overrideWith(
             (ref) async => const EeAssetTypes(),
           ),
@@ -87,7 +109,7 @@ void main() {
       ProviderScope(
         overrides: [
           eeFeatureProvider.overrideWith((ref, name) => true),
-          eeAssetsProvider.overrideWith((ref, filter) async => [asset]),
+          ...register([asset]),
           eeAssetTypesProvider.overrideWith(
             (ref) async => const EeAssetTypes(),
           ),
@@ -112,7 +134,7 @@ void main() {
         overrides: [
           // The feature gate, on: these screens do not exist without it.
           eeFeatureProvider.overrideWith((ref, name) => true),
-          eeAssetsProvider.overrideWith((ref, filter) async => [asset]),
+          ...register([asset]),
           eeAssetTypesProvider.overrideWith(
             (ref) async => const EeAssetTypes(),
           ),
@@ -140,7 +162,7 @@ void main() {
       ProviderScope(
         overrides: [
           eeFeatureProvider.overrideWith((ref, name) => true),
-          eeAssetsProvider.overrideWith((ref, filter) async => [asset]),
+          ...register([asset]),
           eeAssetTypesProvider.overrideWith(
             (ref) async => const EeAssetTypes(),
           ),
@@ -188,7 +210,9 @@ void main() {
       ProviderScope(
         overrides: [
           eeFeatureProvider.overrideWith((ref, name) => true),
-          eeAssetProvider.overrideWith((ref, id) async => asset),
+          eeAssetOnDeviceProvider.overrideWith(
+            (ref, id) => Stream.value(asset),
+          ),
           eeAssetHistoryProvider.overrideWith((ref, id) async => history),
           canProvider.overrideWith((ref, id) => false),
         ],
@@ -210,4 +234,229 @@ void main() {
     );
     expect(counts.data, contains('14'));
   });
+  // ── EE-238: the device's copy first, the server for the rest ──────────
+
+  testWidgets('EE-238: rows only the server holds come under their own '
+      'heading, once', (tester) async {
+    const scrap = EeAsset(
+      id: '01JHRDZZZZZZZZZZZZZZZZZZZZ',
+      tag: 'HRD-7',
+      name: 'Eski kaynak makinesi',
+      type: 'machine',
+      status: 'retired',
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          // The server answers with the device's row AND one it does not
+          // hold; only the second is "not on this device".
+          ...register([asset], server: [asset, scrap]),
+          eeAssetTypesProvider.overrideWith(
+            (ref) async => const EeAssetTypes(),
+          ),
+          canProvider.overrideWith((ref, id) => false),
+        ],
+        child: const MaterialApp(home: EeAssetsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('asset-off-device')), findsOneWidget);
+    expect(find.text('ee.assets.offDevice.title'.tr()), findsOneWidget);
+    expect(find.byKey(Key('asset-${scrap.id}')), findsOneWidget);
+    // The device's row is drawn once, above the heading — not a second time
+    // below it because the server also sent it.
+    expect(find.byKey(Key('asset-${asset.id}')), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byKey(Key('asset-${asset.id}'))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const Key('asset-off-device'))).dy),
+    );
+    // Online, nothing is out of reach, so no "needs a connection" line.
+    expect(find.byKey(const Key('asset-off-device-offline')), findsNothing);
+  });
+
+  testWidgets('EE-238: offline, the type chips come from the device — and a '
+      "team's own key is printed as itself, never as an i18n path", (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          ...register([asset], types: ['cnc_torna', 'machine']),
+          // The vocabulary lives on the server, and the server is not there.
+          eeAssetTypesProvider.overrideWith(
+            (ref) async => throw Exception('no signal'),
+          ),
+          canProvider.overrideWith((ref, id) => false),
+        ],
+        child: const MaterialApp(home: EeAssetsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('asset-filter-type-machine')), findsOneWidget);
+    expect(
+      find.byKey(const Key('asset-filter-type-cnc_torna')),
+      findsOneWidget,
+    );
+    expect(find.text('cnc_torna'), findsOneWidget);
+    expect(find.textContaining('ee.assets.type.'), findsNothing);
+  });
+
+  testWidgets('EE-238: a card the device does not hold, read from the server, '
+      'says where it came from', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          eeAssetOnDeviceProvider.overrideWith((ref, id) => Stream.value(null)),
+          eeAssetProvider.overrideWith((ref, id) async => asset),
+          eeAssetHistoryProvider.overrideWith(
+            (ref, id) async => const EeAssetHistory(
+              stats: EeAssetStats(
+                months: 12,
+                ticketCount: 0,
+                openTicketCount: 0,
+                openMinutes: 0,
+              ),
+            ),
+          ),
+          canProvider.overrideWith((ref, id) => false),
+        ],
+        child: const MaterialApp(
+          home: EeAssetDetailScreen(assetId: '01JABCDEFGHJKMNPQRSTVWXYZ'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Kat 2 yazıcısı'), findsOneWidget);
+    expect(find.text('ee.assets.card.fromServer'.tr()), findsOneWidget);
+    expect(find.textContaining('ee.assets.card.onDevice'.tr()), findsNothing);
+  });
+
+  testWidgets('EE-238: offline, the pencil is greyed before it is pressed, '
+      'with the reason', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          eeAssetOnDeviceProvider.overrideWith(
+            (ref, id) => Stream.value(asset),
+          ),
+          eeAssetHistoryProvider.overrideWith(
+            (ref, id) async => throw const ApiException(
+              'NETWORK_ERROR',
+              'Could not reach the AllisWell server',
+            ),
+          ),
+          serverReachabilityProvider.overrideWith(_Offline.new),
+          canProvider.overrideWith((ref, id) => id == 'assets.manage'),
+        ],
+        child: const MaterialApp(
+          home: EeAssetDetailScreen(assetId: '01JABCDEFGHJKMNPQRSTVWXYZ'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final pencil = tester.widget<IconButton>(
+      find.byKey(const Key('asset-edit')),
+    );
+    expect(pencil.onPressed, isNull);
+    expect(pencil.tooltip, 'ee.assets.editOffline'.tr());
+    // The card itself is all there.
+    expect(find.text('Kat 2 yazıcısı'), findsOneWidget);
+    expect(find.text('ee.assets.history.offline'.tr()), findsOneWidget);
+  });
+
+  group('EE-238: the register\'s filters, on the device', () {
+    final now = DateTime(2026, 9, 25, 1, 30);
+    const press = EeAsset(
+      id: 'P',
+      tag: 'PRS-1',
+      name: 'Pres',
+      type: 'machine',
+      status: 'in_use',
+      location: 'Döküm Holü / Hat 3',
+      warrantyUntil: '2026-10-20',
+    );
+    const scale = EeAsset(
+      id: 'S',
+      tag: 'TRT-1',
+      name: 'ağırlık terazisi',
+      type: 'instrument',
+      status: 'in_use',
+      location: 'Kalite',
+      calibrationDue: '2026-09-25',
+    );
+    const old = EeAsset(
+      id: 'O',
+      tag: 'ESK-1',
+      name: 'Anahtarlık',
+      type: 'machine',
+      status: 'retired',
+      warrantyUntil: '2026-09-24',
+    );
+
+    test('"hol 3" finds "Döküm Holü / Hat 3" — every word, folded', () {
+      final kept = filterAssets(
+        [press, scale, old],
+        const EeAssetFilter(location: 'hol 3'),
+        now: now,
+      );
+      expect(kept.map((a) => a.id), ['P']);
+      // Typed without the dots and the accents, the way a phone keyboard in a
+      // hurry types them: the fold is on BOTH sides, not only the query's.
+      expect(
+        filterAssets(
+          [press, scale, old],
+          const EeAssetFilter(location: 'DOKUM holu'),
+          now: now,
+        ).map((a) => a.id),
+        ['P'],
+      );
+    });
+
+    test('"running out soon" counts from the device\'s own day', () {
+      // 01:30 on the 25th, local. Today's calibration is inside the window;
+      // yesterday's warranty is not, whatever the UTC date says.
+      final kept = filterAssets(
+        [press, scale, old],
+        const EeAssetFilter(expiringWithinDays: 30),
+        now: now,
+      );
+      expect(kept.map((a) => a.id).toSet(), {'P', 'S'});
+    });
+
+    test('retired last, then by name the way a person reads it', () {
+      final kept = filterAssets(
+        [old, press, scale],
+        const EeAssetFilter(),
+        now: now,
+      );
+      // "ağırlık" sorts as "agirlik", before "Pres"; the retired one is last
+      // although "Anahtarlık" would lead the alphabet.
+      expect(kept.map((a) => a.id), ['S', 'P', 'O']);
+    });
+
+    test('type and status are exact', () {
+      expect(
+        filterAssets(
+          [press, scale, old],
+          const EeAssetFilter(type: 'machine', status: 'in_use'),
+          now: now,
+        ).map((a) => a.id),
+        ['P'],
+      );
+    });
+  });
+}
+
+/// The app already knows the server is out of reach (OPH-342).
+class _Offline extends ServerReachability {
+  @override
+  bool? build() => false;
 }

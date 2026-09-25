@@ -30,6 +30,17 @@ import 'asset_labels.dart';
 /// never struck through or coloured like an error. Somebody looking for a
 /// scrapped machine is asking what happened to it, and a register that hides
 /// its own history answers "did we already replace this" with silence.
+///
+/// ── TWO SOURCES, AND THE SCREEN SAYS WHICH IS WHICH (EE-238) ───────────
+///
+/// The rows first are the device's own copy of this unit's register: they
+/// open with no signal, and search ranks them with no signal. Below them,
+/// under their own heading, come the rows only the server holds — another
+/// unit's equipment, and the retired records EE-219 takes off devices after
+/// ninety still days. Offline that second half cannot be fetched, so it is
+/// replaced by one line saying it exists and needs a connection. The line is
+/// the difference between "there is no such machine" and "this phone does
+/// not carry it" — the second is true, the first would be a guess.
 class EeAssetsScreen extends ConsumerStatefulWidget {
   const EeAssetsScreen({super.key});
 
@@ -56,10 +67,28 @@ class _EeAssetsScreenState extends ConsumerState<EeAssetsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final assets = ref.watch(eeAssetsProvider(_filter));
+    final register = ref.watch(eeAssetRegisterProvider(_filter));
     final types = ref.watch(eeAssetTypesProvider).value ?? const EeAssetTypes();
     final canManage = ref.watch(canProvider('assets.manage'));
+    final query = ref.watch(assetSearchQueryProvider).trim();
     final hits = ref.watch(assetSearchResultsProvider).value;
+    final server = ref.watch(
+      eeAssetsOffDeviceProvider((filter: _filter, query: query)),
+    );
+
+    final device = register.value;
+    final here = device == null
+        ? const <EeAsset>[]
+        : _ranked(device.rows, hits);
+    // The server's answer minus everything this workspace's copy holds —
+    // filters aside, so a row a filter hid on the device does not come back
+    // from the server labelled "not on this device".
+    final elsewhere = device == null
+        ? const <EeAsset>[]
+        : [
+            for (final asset in server.value ?? const <EeAsset>[])
+              if (!device.onDevice.contains(asset.id)) asset,
+          ];
 
     return Scaffold(
       appBar: AppBar(
@@ -79,47 +108,158 @@ class _EeAssetsScreenState extends ConsumerState<EeAssetsScreen> {
               key: const Key('asset-labels'),
               tooltip: 'ee.assets.labels.action'.tr(),
               icon: const Icon(Icons.qr_code_2),
-              onPressed: () => printAssetLabels(
-                context,
-                ref,
-                assets.value ?? const <EeAsset>[],
-              ),
+              onPressed: () =>
+                  printAssetLabels(context, ref, [...here, ...elsewhere]),
             ),
         ],
       ),
       body: Column(
         children: [
-          _Filters(filter: _filter, types: types, onChanged: _set),
+          _Filters(
+            filter: _filter,
+            types: types,
+            deviceTypes: device?.types ?? const [],
+            onChanged: _set,
+          ),
           Expanded(
-            child: assets.when(
+            child: register.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, _) => AwErrorState(
                 message: localizedError(error),
-                onRetry: () => ref.invalidate(eeAssetsProvider(_filter)),
+                onRetry: () => ref.invalidate(eeAssetRegisterProvider(_filter)),
               ),
-              data: (all) {
-                final rows = _ranked(all, hits);
-                if (rows.isEmpty) {
-                  // Two different emptinesses, and conflating them is how a
-                  // person concludes the register is empty when their query
-                  // simply missed (the queue screen settled this first).
-                  return AwEmptyState(
-                    icon: hits == null
-                        ? Icons.precision_manufacturing_outlined
-                        : Icons.search_off,
-                    title: hits == null
-                        ? 'ee.assets.empty'.tr()
-                        : 'ee.assets.searchEmpty'.tr(),
-                    message: hits == null
-                        ? 'ee.assets.emptyBody'.tr()
-                        : 'ee.assets.searchEmptyBody'.tr(),
-                  );
-                }
-                return ListView.builder(
-                  itemCount: rows.length,
-                  itemBuilder: (context, i) => _Row(asset: rows[i]),
-                );
-              },
+              data: (_) => _body(
+                here: here,
+                elsewhere: elsewhere,
+                server: server,
+                // `hits` is null exactly when the field is closed (EE-220's
+                // contract); the typed words also count, for the frame
+                // before the replica's first answer arrives.
+                searching: hits != null || query.isNotEmpty,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _body({
+    required List<EeAsset> here,
+    required List<EeAsset> elsewhere,
+    required AsyncValue<List<EeAsset>> server,
+    required bool searching,
+  }) {
+    final offline = server.hasError && assetNeedsConnection(server.error);
+    if (here.isEmpty && elsewhere.isEmpty) {
+      // Nothing on the device yet and the server still answering: wait for
+      // it rather than announce an empty register for a second.
+      if (server.isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      // Two different emptinesses, and conflating them is how a person
+      // concludes the register is empty when their query simply missed (the
+      // queue screen settled this first). EE-238 adds the third: nothing on
+      // THIS DEVICE, with the rest out of reach — which is not "no
+      // equipment", and must not say so.
+      return AwEmptyState(
+        key: const Key('asset-empty'),
+        icon: searching
+            ? Icons.search_off
+            : offline
+            ? Icons.cloud_off_outlined
+            : Icons.precision_manufacturing_outlined,
+        title: searching
+            ? 'ee.assets.searchEmpty'.tr()
+            : offline
+            ? 'ee.assets.emptyOnDevice'.tr()
+            : 'ee.assets.empty'.tr(),
+        message: offline
+            ? 'ee.assets.offDevice.offline'.tr()
+            : searching
+            ? 'ee.assets.searchEmptyBody'.tr()
+            : 'ee.assets.emptyBody'.tr(),
+      );
+    }
+    final heading = elsewhere.isEmpty ? 0 : 1;
+    final note = offline ? 1 : 0;
+    return ListView.builder(
+      itemCount: here.length + heading + elsewhere.length + note,
+      itemBuilder: (context, index) {
+        var i = index;
+        if (i < here.length) return _Row(asset: here[i]);
+        i -= here.length;
+        if (heading == 1 && i == 0) return const _ServerHeading();
+        i -= heading;
+        if (i < elsewhere.length) {
+          return _Row(asset: elsewhere[i], fromServer: true);
+        }
+        return const _OfflineNote();
+      },
+    );
+  }
+}
+
+/// The heading over the rows only the server holds.
+class _ServerHeading extends StatelessWidget {
+  const _ServerHeading();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      key: const Key('asset-off-device'),
+      padding: const EdgeInsets.fromLTRB(
+        AwSpace.x4,
+        AwSpace.x5,
+        AwSpace.x4,
+        AwSpace.x1,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cloud_outlined,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(
+            child: Text(
+              'ee.assets.offDevice.title'.tr(),
+              style: theme.textTheme.titleSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// What stands in for the server's rows when the server cannot be reached.
+class _OfflineNote extends StatelessWidget {
+  const _OfflineNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      key: const Key('asset-off-device-offline'),
+      padding: const EdgeInsets.fromLTRB(
+        AwSpace.x4,
+        AwSpace.x5,
+        AwSpace.x4,
+        AwSpace.x6,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.cloud_off_outlined, size: 18, color: muted),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(
+            child: Text(
+              'ee.assets.offDevice.offline'.tr(),
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
             ),
           ),
         ],
@@ -132,15 +272,26 @@ class _Filters extends StatelessWidget {
   const _Filters({
     required this.filter,
     required this.types,
+    required this.deviceTypes,
     required this.onChanged,
   });
 
   final EeAssetFilter filter;
   final EeAssetTypes types;
+
+  /// The types on the device's copy. Offline the server's vocabulary is out
+  /// of reach, and a filter row that lost its type chips in the basement
+  /// would be the register quietly shrinking to "search only".
+  final List<String> deviceTypes;
   final ValueChanged<EeAssetFilter> onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final typeKeys = [
+      ...types.all,
+      for (final type in deviceTypes)
+        if (!types.all.contains(type)) type,
+    ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
@@ -209,10 +360,10 @@ class _Filters extends StatelessWidget {
             ),
             const SizedBox(width: AwSpace.x2),
           ],
-          for (final type in types.all) ...[
+          for (final type in typeKeys) ...[
             FilterChip(
               key: Key('asset-filter-type-$type'),
-              label: Text(types.team[type] ?? 'ee.assets.type.$type'.tr()),
+              label: Text(assetTypeLabel(type, types)),
               selected: filter.type == type,
               onSelected: (on) => onChanged(
                 EeAssetFilter(
@@ -232,8 +383,12 @@ class _Filters extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.asset});
+  const _Row({required this.asset, this.fromServer = false});
   final EeAsset asset;
+
+  /// Drawn from the server's answer rather than the device's copy — it opens
+  /// only with a connection, and the icon says so beside the heading above.
+  final bool fromServer;
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +396,11 @@ class _Row extends StatelessWidget {
     final retired = asset.status == 'retired';
     return ListTile(
       key: Key('asset-${asset.id}'),
-      leading: const Icon(Icons.precision_manufacturing_outlined),
+      leading: Icon(
+        fromServer
+            ? Icons.cloud_outlined
+            : Icons.precision_manufacturing_outlined,
+      ),
       // Tag first — it is painted on the machine, and it is what somebody
       // reads out on the phone.
       title: Text(

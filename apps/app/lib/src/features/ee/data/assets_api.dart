@@ -14,11 +14,17 @@ class EeAssetsApi {
 
   static const _base = '/api/v1/ee/team/assets';
 
+  /// The register as the SERVER holds it — every workspace the caller
+  /// reaches, the retired records EE-219 took off devices included.
+  ///
+  /// [q] (EE-238): every word somewhere in the tag or the name, the same two
+  /// fields the device's own search folds.
   Future<List<EeAsset>> list({
     String? type,
     String? status,
     String? location,
     int? expiringWithinDays,
+    String? q,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
@@ -29,6 +35,7 @@ class EeAssetsApi {
           if (location != null && location.trim().isNotEmpty)
             'location': location.trim(),
           'expiringWithinDays': ?expiringWithinDays,
+          if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
         },
       );
       return ((res.data?['assets'] as List<dynamic>?) ?? const [])

@@ -110,6 +110,25 @@ List<RouteBase> eeTicketRoutes() => [
   ),
 ];
 
+/// The equipment register and one machine's card (EE-194). Real routes rather
+/// than a pushed screen, because the second one is what a printed QR label
+/// resolves to (`alliswell://asset/{id}` → `/assets/{id}`), and a deep link
+/// needs somewhere to land. Since EE-238 that card opens from the device's own
+/// copy — a function rather than inline entries so a test can scan a label into
+/// the very list the router uses, with the network switched off.
+List<RouteBase> eeAssetRoutes() => [
+  GoRoute(
+    path: '/assets',
+    builder: (context, state) => _page(const EeAssetsScreen()),
+  ),
+  GoRoute(
+    path: '/assets/:assetId',
+    builder: (context, state) => _page(
+      EeAssetDetailScreen(assetId: state.pathParameters['assetId'] ?? ''),
+    ),
+  ),
+];
+
 /// The operator console lives on its own realm (EE-033): a different identity
 /// table, a different token audience, and therefore a different session on
 /// this device. `/admin` is reachable while the app is signed OUT — on a
@@ -528,20 +547,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // instance is entitled AND the caller is a team admin — but the routes
       // themselves exist, because a 404 on a link an admin was sent is worse
       // than a screen that says "not yours".
-      // EE-194: the equipment register and one machine's card. Real routes
-      // rather than a pushed screen, because the second one is what a printed
-      // QR label resolves to (`alliswell://asset/{id}` → `/assets/{id}`), and
-      // a deep link needs somewhere to land.
-      GoRoute(
-        path: '/assets',
-        builder: (context, state) => _page(const EeAssetsScreen()),
-      ),
-      GoRoute(
-        path: '/assets/:assetId',
-        builder: (context, state) => _page(
-          EeAssetDetailScreen(assetId: state.pathParameters['assetId'] ?? ''),
-        ),
-      ),
+      ...eeAssetRoutes(),
       ...eeTicketRoutes(),
       // EE-196: the knowledge base. Reached from the request queue's bar —
       // where the person who wants it is already standing (EE-098's rule for

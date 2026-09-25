@@ -2658,12 +2658,27 @@
         "archived": "Archived",
         "labour": "{hours} h of recorded work",
         "labourCost": "Labour: {amount} {currency}",
-        "labourUnpriced": "{hours} h of it by people with no hourly rate."
+        "labourUnpriced": "{hours} h of it by people with no hourly rate.",
+        "live": "From the server · needs a connection",
+        "offline": "History needs a connection — requests and labour show up here once you are back online."
       },
       "edit": "Edit",
       "searchHint": "Search tag or name",
       "searchEmpty": "Nothing matched",
-      "searchEmptyBody": "Try another tag or name. Search runs over the records on this device."
+      "searchEmptyBody": "Try another tag or name. The records on this device are searched first; with a connection the server is asked too.",
+      "emptyOnDevice": "Nothing on this device",
+      "editOffline": "Editing needs a connection",
+      "offDevice": {
+        "title": "From the server — not kept on this device",
+        "offline": "Equipment outside this unit, and retired records untouched for 90 days, are not kept on this device. They show up here once you are back online."
+      },
+      "card": {
+        "onDevice": "Kept on this device",
+        "onDeviceSynced": "Kept on this device · synced {ago}",
+        "fromServer": "Read from the server — not kept on this device",
+        "notOnDevice": "This asset is not on this device",
+        "notOnDeviceBody": "Equipment outside this unit, and retired records untouched for 90 days, are not kept on devices. It opens once you are back online."
+      }
     },
     "kb": {
       "title": "Knowledge base",
