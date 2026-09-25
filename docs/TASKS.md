@@ -11879,6 +11879,22 @@ kırmızı olacaktı, ve yeni bir `docker compose up` da aynı duvara çarpacakt
   (önceki satır da `latest`'ti). Bu kayıt da kapanırsa sıradaki aday, bakımı donmuş
   `bitnamilegacy/minio` (manifest 200, ölçüldü).
 
+### OPH-348 — Arama erişilebilirlik kapısı: çağıranı olan varlığın muafiyeti bayattır (ölçümle doğdu) ✅ 2026-09-25
+
+**Bağlam:** EE-269'un turunda ölçüldü. `check:search-reachable` (OPH-332) muaf bir varlığı, bir
+ekran onu aramaya başladıktan sonra da muaf saymaya devam ediyordu: çağıran bulununca döngü
+muafiyete hiç bakmadan geçiyordu. Muafiyetin gerekçesi ("uygulamada ekranı yok") o anda yanlış
+olur ve kapı onu yeşil taşır — kapının "var olmayan varlık için muafiyet" kuralının öbür yarısı.
+
+- [x] Kapı: muaf listesindeki bir varlığın çağıranı varsa kırmızı ("muafiyet bayat, sil").
+      Çağıranı bulunan varlıkta döngü artık muafiyete bakıyor; hata çağıranın dosyasını adıyla
+      söylüyor.
+- [x] `changes` muafiyeti kaldırıldı: uzantının değişiklik ekranı onu çağırıyor (EE-269).
+      Kapı: 8 varlık, 7'si bir ekrandan, 1 gerekçeli muaf (`problems`).
+- [x] Enjeksiyon: muafiyet geri konunca kırmızı ("EXEMPT lists \"changes\" but searchChanges()
+      is called from …"), dosya sağlama toplamıyla geri, yeşil.
+- **Yüzey (kural 12):** yok (kapı).
+
 ---
 
 ## Backlog / v2 parking lot

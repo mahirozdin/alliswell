@@ -42,11 +42,6 @@ const REGISTRY = join(APP, 'src', 'search', 'search.dart');
  * record. Doing neither is not a third option.
  */
 const EXEMPT = {
-  changes:
-    'EE-186 landed changes server-side only: the app has no change screen at ' +
-    'all, so there is nothing to search FROM. EE-219 decides whether the ' +
-    'replica rows are worth their budget or the screen is worth writing; ' +
-    'until then this is a known, costed absence rather than an oversight.',
   problems:
     'EE-188, same shape as changes: no screen in the app, so no caller can ' +
     'exist. Recorded here so the next round finds a decision instead of a gap.',
@@ -110,7 +105,21 @@ for (const entity of entities) {
     continue;
   }
   const seen = callers.get(method) ?? [];
-  if (seen.length > 0) continue;
+  if (seen.length > 0) {
+    // OPH-348: the other half of "an exemption for an entity that no longer
+    // exists". An exemption says why nothing calls this; the day a screen
+    // does, that sentence is false — and a gate that kept carrying it green
+    // would be the place the NEXT real absence hides, behind a reason nobody
+    // reads any more. Measured: `changes` gained its screen and this loop
+    // walked straight past its "the app has no change screen" line.
+    if (EXEMPT[entity]) {
+      failures.push(
+        `EXEMPT lists "${entity}" but ${method}() is called from ${seen[0]} — ` +
+          'the reason is stale; delete the exemption',
+      );
+    }
+    continue;
+  }
   if (EXEMPT[entity]) continue;
   failures.push(
     `${method}() has no caller in apps/app/lib — OPH-326: an entity left out of ` +

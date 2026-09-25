@@ -87,6 +87,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   two together — the old one is left exactly as it was, because a request that
   was finished stays finished.
 
+- **The search reachability gate refuses an exemption that is no longer true
+  (OPH-348).** An entity may be exempt from having a screen that searches it,
+  with a written reason ("no screen yet"). When a screen started calling it,
+  the gate stopped looking at the exemption and carried the stale reason
+  green. It now fails, naming the caller, until the exemption is deleted; the
+  extension's change entity lost its exemption this way.
+
 - **The device keeps what kind of work an extension's request is (OPH-346).**
   The server sends it with the request, and the queue filters by it with no
   signal, so the value lives in the local copy. Kept from local schema v34. A
