@@ -6,6 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/reachability.dart';
 import 'package:alliswell/src/features/ee/assets_providers.dart';
+import 'package:alliswell/src/features/ee/data/ticket_archive_api.dart';
+import 'package:alliswell/src/features/ee/ticket_archive_providers.dart';
+import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/search/search.dart';
 import 'package:alliswell/src/features/ee/data/assets_models.dart';
@@ -215,9 +218,22 @@ void main() {
           ),
           eeAssetHistoryProvider.overrideWith((ref, id) async => history),
           canProvider.overrideWith((ref, id) => false),
+          eeArchivedTicketProvider.overrideWith(
+            (ref, id) async => EeArchivedTicket(
+              summary: EeArchivedTicketSummary(
+                id: 'T2',
+                number: 812,
+                subject: 'Geçen yılın arızası',
+                status: 'closed',
+                priority: 'normal',
+                terminalAt: DateTime(2025, 6, 2),
+              ),
+            ),
+          ),
         ],
-        child: const MaterialApp(
-          home: EeAssetDetailScreen(assetId: '01JABCDEFGHJKMNPQRSTVWXYZ'),
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: const EeAssetDetailScreen(assetId: '01JABCDEFGHJKMNPQRSTVWXYZ'),
         ),
       ),
     );
@@ -233,6 +249,13 @@ void main() {
       find.byKey(const Key('asset-history-counts')),
     );
     expect(counts.data, contains('14'));
+
+    // EE-266: the archived one opens — read-only, from the archive — where
+    // it used to take no tap because there was nowhere to go.
+    await tester.tap(find.byKey(const Key('asset-ticket-T2')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('archive-strip')), findsOneWidget);
+    expect(find.text('Geçen yılın arızası'), findsWidgets);
   });
   // ── EE-238: the device's copy first, the server for the rest ──────────
 

@@ -1984,7 +1984,7 @@
       "emptyFilteredBody": "Seçili filtreleri kaldırıp tekrar bakın.",
       "searchHint": "Talep ara veya #numara",
       "searchEmptyTitle": "Eşleşen bir şey yok",
-      "searchEmptyBody": "Arama bu cihazdaki talepleri tarar, bu yüzden şebeke olmadan da çalışır — ve biten talepler saklama süresi dolunca cihazdan iniyor. Aradığınız talep bundan eskiyse sunucudaki arşivden bakın.",
+      "searchEmptyBody": "Arama bu cihazdaki talepleri tarar, bu yüzden şebeke olmadan da çalışır — ve biten talepler saklama süresi dolunca cihazdan iniyor. Aradığınız talep bundan eskiyse arşivde arayın.",
       "filterClear": "Filtreyi temizle",
       "goneTitle": "Bu talep artık cihazda değil",
       "goneBody": "Kapanmış talepler bir süre sonra cihazdan düşürülür; kaydı sunucuda duruyor.",
@@ -2234,7 +2234,42 @@
         "title": "Form cevapları"
       },
       "senderUnverified": "Gönderen doğrulanmadı — bu posta bir çalışma arkadaşınızın adresini taşıyor ama ondan geldiği kanıtlanamadı; dış gönderen olarak kaydedildi.",
-      "senderUnverifiedShort": "Gönderen doğrulanmadı"
+      "senderUnverifiedShort": "Gönderen doğrulanmadı",
+      "elsewhere": {
+        "offlineTitle": "Bu talep bu cihazda değil",
+        "offlineBody": "Arşivdeki talepler ve diğer birimlerinizin talepleri sunucudan okunur; şu an bağlantı yok.",
+        "nowhereTitle": "Talep bulunamadı",
+        "nowhereBody": "Birimlerinizde ya da onların arşivinde yok. Üyesi olmadığınız bir birime ait olabilir ya da bağlantı hatalı olabilir.",
+        "unitTitle": "Bu talep başka bir birimde",
+        "unitBody": "Talep {unit} biriminde açık; bu cihaz şu an başka bir birimi gösteriyor.",
+        "unitBodyUnnamed": "Talep birimlerinizden başka birinde açık; bu cihaz şu an farklı bir birimi gösteriyor.",
+        "switch": "{unit} birimine geç"
+      },
+      "archive": {
+        "title": "Arşiv",
+        "intro": "Biten talepler saklama süresi dolunca cihazdan iner ve sunucuda kalır. Numarayla ya da konudaki kelimelerle arayın.",
+        "searchHint": "Numara ya da konudaki kelimeler",
+        "searchAction": "Arşivde ara",
+        "searchFooter": "Arşivde “{query}” ara",
+        "offlineTitle": "Arşiv bağlantı ister",
+        "offlineBody": "Arşivdeki talepler bu cihazda değil, sunucuda tutulur.",
+        "emptyTitle": "Arşivde eşleşen talep yok",
+        "emptyBody": "Talep numarasını ya da daha az kelimeyi deneyin.",
+        "more": "Daha eski eşleşmeler var — bir kelime ekleyin ya da numarayla arayın.",
+        "strip": "Arşivde · {date} tarihinde kapandı · salt okunur",
+        "stripUndated": "Arşivde · salt okunur",
+        "askedBy": "Talep sahibi: {name}",
+        "thread": "Yazışma",
+        "noComments": "Bu talebe kimse yazmadı.",
+        "rating": "Memnuniyet: {score}/5",
+        "labour": "Kayıtlı {time} çalışma",
+        "approval": {
+          "approved": "{name} {date} tarihinde onayladı",
+          "rejected": "{name} {date} tarihinde reddetti",
+          "expired": "Onay cevapsız kalıp süresi doldu",
+          "pending": "Kapandığında onay hâlâ bekliyordu"
+        }
+      }
     },
     "sla": {
       "breached": "SLA aşıldı",

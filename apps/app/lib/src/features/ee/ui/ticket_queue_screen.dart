@@ -18,6 +18,7 @@ import 'ticket_bulk.dart';
 import 'sla_chip.dart';
 import 'performance_screen.dart';
 import 'sla_dashboard_screen.dart';
+import 'ticket_archive_screen.dart';
 import 'ticket_detail_screen.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
@@ -43,7 +44,8 @@ class EeTicketQueueScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tickets = ref.watch(filteredTicketsProvider);
     final filter = ref.watch(ticketFilterProvider);
-    final searching = ref.watch(ticketSearchQueryProvider).trim().isNotEmpty;
+    final query = ref.watch(ticketSearchQueryProvider).trim();
+    final searching = query.isNotEmpty;
     // EE-227: a long press starts a selection; while one is open the bar is
     // the batch's, and "new request" steps aside.
     final selecting = ref.watch(
@@ -224,12 +226,22 @@ class EeTicketQueueScreen extends ConsumerWidget {
                   // read as "no such request", so the state says where the
                   // rest of them are (ADR-0016 D16.3 wrote this bill down;
                   // this is where it is paid).
+                  //
+                  // EE-266 pays the rest of it: the sentence used to send the
+                  // person to an archive the app could not open. Now the
+                  // same words open it, with the query they typed.
                   if (searching) {
                     return AwEmptyState(
                       key: const Key('ticket-search-empty'),
                       icon: Icons.search_off_outlined,
                       title: 'ee.tickets.searchEmptyTitle'.tr(),
                       message: 'ee.tickets.searchEmptyBody'.tr(),
+                      action: FilledButton.tonalIcon(
+                        key: const Key('ticket-search-archive'),
+                        onPressed: () => _openArchive(context, query),
+                        icon: const Icon(Icons.inventory_2_outlined),
+                        label: Text('ee.tickets.archive.searchAction'.tr()),
+                      ),
                     );
                   }
                   return filter.isEmpty
@@ -251,8 +263,22 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     top: AwSpace.x4,
                     extraBottom: 72,
                   ),
-                  itemCount: rows.length,
-                  itemBuilder: (_, i) => _TicketCard(ticket: rows[i]),
+                  // EE-266: a search that found live requests may still be
+                  // missing the one somebody wants — it closed last spring.
+                  // The last row asks the archive the same question.
+                  itemCount: rows.length + (searching ? 1 : 0),
+                  itemBuilder: (_, i) => i < rows.length
+                      ? _TicketCard(ticket: rows[i])
+                      : ListTile(
+                          key: const Key('ticket-search-archive'),
+                          leading: const Icon(Icons.inventory_2_outlined),
+                          title: Text(
+                            'ee.tickets.archive.searchFooter'.tr(
+                              args: {'query': query},
+                            ),
+                          ),
+                          onTap: () => _openArchive(context, query),
+                        ),
                 );
               },
             ),
@@ -551,4 +577,13 @@ class _PriorityMark extends StatelessWidget {
       ),
     );
   }
+}
+
+/// EE-266 — the archive, searched with the words the queue was given.
+void _openArchive(BuildContext context, String query) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => EeTicketArchiveSearchScreen(initialQuery: query),
+    ),
+  );
 }

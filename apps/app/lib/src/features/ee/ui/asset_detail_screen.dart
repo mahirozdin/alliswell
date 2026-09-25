@@ -15,6 +15,7 @@ import '../data/assets_models.dart';
 import '../providers.dart';
 import 'asset_edit_sheet.dart';
 import 'asset_labels.dart';
+import 'ticket_archive_screen.dart';
 import 'ticket_detail_screen.dart';
 
 /// One machine's card — what a QR code opens (EE-194).
@@ -476,11 +477,17 @@ class _HistoryBody extends StatelessWidget {
                     ? 'ee.assets.history.archived'.tr()
                     : 'ee.tickets.status.${ticket.status}'.tr(),
               ),
-              // An archived request has no live screen to open — it left
-              // `ee_tickets`. Saying nothing is honest; a tap that lands on
-              // "not found" is not.
+              // EE-266: an archived request opens the archive's read-only
+              // view (it used to have no screen at all, so the row took no
+              // tap — the honest answer then). A live one opens by its
+              // address, which now also says when it lives in another unit.
               onTap: ticket.archived
-                  ? null
+                  ? () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) =>
+                            EeArchivedTicketScreen(ticketId: ticket.id),
+                      ),
+                    )
                   : () => awOpenTicket(context, ticket.id),
             ),
       ],

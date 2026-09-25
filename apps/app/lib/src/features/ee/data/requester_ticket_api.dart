@@ -23,6 +23,7 @@ class EeRequesterTicket {
     this.createdAt,
     this.updatedAt,
     this.allowedTransitions = const [],
+    this.workspaceId,
   });
 
   factory EeRequesterTicket.fromJson(Map<String, dynamic> json) =>
@@ -40,6 +41,7 @@ class EeRequesterTicket {
         updatedAt: _date(json['updatedAt']),
         allowedTransitions: ((json['allowedTransitions'] as List?) ?? const [])
             .cast<String>(),
+        workspaceId: json['workspaceId'] as String?,
       );
 
   final String id;
@@ -62,6 +64,11 @@ class EeRequesterTicket {
   /// The requester's own moves, from the server (`requester-rules.js`): from
   /// `resolved`, `closed` and `in_progress`; otherwise none.
   final List<String> allowedTransitions;
+
+  /// The unit (workspace) the request lives in — sent on the desk's view.
+  /// EE-266 reads it when this device holds no copy: the request is live, and
+  /// in ANOTHER unit of this person's, which is neither "archived" nor "gone".
+  final String? workspaceId;
 
   bool get isRequesterView => viewer == 'requester';
 

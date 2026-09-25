@@ -1985,7 +1985,7 @@
       "emptyFilteredBody": "Clear the selected filters and look again.",
       "searchHint": "Search requests or #number",
       "searchEmptyTitle": "Nothing here matches",
-      "searchEmptyBody": "This searches the requests on this device, so it works with no signal — and finished ones are taken off it after the retention window. If the request you want is older than that, look it up in the archive on the server.",
+      "searchEmptyBody": "This searches the requests on this device, so it works with no signal — and finished ones are taken off it after the retention window. If the request you want is older than that, search the archive.",
       "filterClear": "Clear filter",
       "goneTitle": "This request is no longer on the device",
       "goneBody": "Closed requests are dropped from the device after a while; the record is still on the server.",
@@ -2235,7 +2235,42 @@
         "title": "Form answers"
       },
       "senderUnverified": "Sender not verified — this mail carries a colleague’s address but could not be proven to come from them, so it was filed as an outside sender.",
-      "senderUnverifiedShort": "Sender not verified"
+      "senderUnverifiedShort": "Sender not verified",
+      "elsewhere": {
+        "offlineTitle": "This request is not on this device",
+        "offlineBody": "Archived requests and requests in your other units are read from the server, and there is no connection right now.",
+        "nowhereTitle": "Request not found",
+        "nowhereBody": "It is not in your units or their archive. It may belong to a unit you are not in, or the link may be wrong.",
+        "unitTitle": "This request is in another unit",
+        "unitBody": "It is live in {unit}, and this device is showing another unit right now.",
+        "unitBodyUnnamed": "It is live in another of your units, and this device is showing a different one right now.",
+        "switch": "Switch to {unit}"
+      },
+      "archive": {
+        "title": "Archive",
+        "intro": "Finished requests leave the device after the retention window and stay on the server. Search them by number or by words from the subject.",
+        "searchHint": "Number or words from the subject",
+        "searchAction": "Search the archive",
+        "searchFooter": "Search the archive for “{query}”",
+        "offlineTitle": "The archive needs a connection",
+        "offlineBody": "Archived requests are kept on the server, not on this device.",
+        "emptyTitle": "Nothing in the archive matched",
+        "emptyBody": "Try the request number, or fewer words.",
+        "more": "Older matches exist — add a word or search by number to narrow it down.",
+        "strip": "Archived · closed on {date} · read-only",
+        "stripUndated": "Archived · read-only",
+        "askedBy": "Asked by {name}",
+        "thread": "Conversation",
+        "noComments": "Nobody wrote on this request.",
+        "rating": "Satisfaction: {score}/5",
+        "labour": "{time} of recorded work",
+        "approval": {
+          "approved": "Approved by {name} on {date}",
+          "rejected": "Rejected by {name} on {date}",
+          "expired": "Approval expired unanswered",
+          "pending": "Approval was still pending when it closed"
+        }
+      }
     },
     "sla": {
       "breached": "SLA missed",

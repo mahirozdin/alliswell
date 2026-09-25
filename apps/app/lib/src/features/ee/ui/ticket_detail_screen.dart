@@ -21,7 +21,7 @@ import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import '../ticket_write_providers.dart';
 import 'history_tab.dart';
-import 'requester_ticket_screen.dart';
+import 'ticket_archive_screen.dart';
 import 'sla_chip.dart';
 import 'ticket_actions.dart';
 import 'ticket_composer.dart';
@@ -72,10 +72,11 @@ class EeTicketDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ticket = ref.watch(ticketProvider(ticketId));
     // EE-252: this device holds no copy — which for the person who ASKED is
-    // the normal case (the unit's replica is not theirs, ADR-0011 §3). The
-    // same address then shows their view, read from the server.
+    // the normal case (the unit's replica is not theirs, ADR-0011 §3).
+    // EE-266: and for the desk it is three other cases — archived, live in
+    // another unit, or not theirs at all — which the server tells apart.
     if (ticket.hasValue && ticket.value == null) {
-      return EeRequesterTicketScreen(ticketId: ticketId);
+      return EeTicketOffDeviceScreen(ticketId: ticketId);
     }
 
     return DefaultTabController(
@@ -236,7 +237,7 @@ class _Thread extends ConsumerWidget {
         // EE-278: what the form asked, and what they answered — right under
         // the request's own words, because it is part of what was asked.
         if (checked != null && checked.answers.isNotEmpty)
-          _Answers(answers: checked.answers, dateFormat: dateFormat),
+          EeTicketAnswersView(answers: checked.answers, dateFormat: dateFormat),
         // EE-189/EE-190: what this request has to do with anything else, and
         // what came out of it. Below the request and ABOVE the conversation,
         // because an agent picking this up asks "is this the known one, and
@@ -709,8 +710,12 @@ class _Chip extends StatelessWidget {
 /// request in March said. EE-242 fixed the endpoint that returns them and
 /// wrote that the app "will read" them; no screen did, until the demo's
 /// purchase opened with its amount nowhere on it.
-class _Answers extends StatelessWidget {
-  const _Answers({required this.answers, required this.dateFormat});
+class EeTicketAnswersView extends StatelessWidget {
+  const EeTicketAnswersView({
+    required this.answers,
+    required this.dateFormat,
+    super.key,
+  });
 
   final List<EeTicketAnswer> answers;
   final String dateFormat;
@@ -926,9 +931,14 @@ class _CommentCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.lock_outline, size: 16),
                   const SizedBox(width: AwSpace.x1),
-                  Text(
-                    'ee.tickets.internalNote'.tr(),
-                    style: theme.textTheme.labelMedium,
+                  // Wraps rather than running off the card on a phone — the
+                  // English label is 45 characters (found by EE-266's archive
+                  // twin of this card).
+                  Expanded(
+                    child: Text(
+                      'ee.tickets.internalNote'.tr(),
+                      style: theme.textTheme.labelMedium,
+                    ),
                   ),
                 ],
               ),
