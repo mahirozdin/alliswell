@@ -2726,7 +2726,11 @@
       "openRequest": "Bu varlık için talep aç",
       "filter": {
         "expiring": "Yakında doluyor",
-        "location": "Lokasyon"
+        "location": "Lokasyon",
+        "unit": "Birim",
+        "unitSet": "Birim: {unit}",
+        "unitPickTitle": "Hangi birimin varlıkları?",
+        "unitStock": "Takımın stoku"
       },
       "type": {
         "machine": "Makine",

@@ -47,6 +47,7 @@ class EeAssetFilter {
     this.status,
     this.location,
     this.expiringWithinDays,
+    this.workspaceId,
   });
 
   final String? type;
@@ -54,16 +55,23 @@ class EeAssetFilter {
   final String? location;
   final int? expiringWithinDays;
 
+  /// EE-239 — one place: a unit's workspace or the stock shelf. On the device
+  /// it keeps the current workspace's rows only when it names that
+  /// workspace; on the server it narrows the answer to that one place.
+  final String? workspaceId;
+
   @override
   bool operator ==(Object other) =>
       other is EeAssetFilter &&
       other.type == type &&
       other.status == status &&
       other.location == location &&
-      other.expiringWithinDays == expiringWithinDays;
+      other.expiringWithinDays == expiringWithinDays &&
+      other.workspaceId == workspaceId;
 
   @override
-  int get hashCode => Object.hash(type, status, location, expiringWithinDays);
+  int get hashCode =>
+      Object.hash(type, status, location, expiringWithinDays, workspaceId);
 }
 
 /// The same record, as the replica holds it.
@@ -128,6 +136,9 @@ List<EeAsset> filterAssets(
 
   final kept = <(String, EeAsset)>[];
   for (final asset in rows) {
+    if (filter.workspaceId != null && asset.workspaceId != filter.workspaceId) {
+      continue;
+    }
     if (filter.type != null && asset.type != filter.type) continue;
     if (filter.status != null && asset.status != filter.status) continue;
     if (place.isNotEmpty) {
@@ -237,8 +248,26 @@ final eeAssetsOffDeviceProvider = FutureProvider.autoDispose
             location: key.filter.location,
             expiringWithinDays: key.filter.expiringWithinDays,
             q: query.isEmpty ? null : query,
+            workspaceId: key.filter.workspaceId,
           );
     });
+
+/// EE-239 — the places the register can be narrowed to.
+///
+/// The SERVER's answer, deliberately: a list derived from the rows on screen
+/// would miss every unit whose machines sort past the first page of a plant
+/// register, and the picker would quietly offer a smaller company than the
+/// person works in. Server-only and gated like the type vocabulary — with no
+/// signal it does not ask, and the screen draws no picker it cannot fill.
+final eeAssetUnitsProvider = FutureProvider.autoDispose<List<EeAssetUnit>>((
+  ref,
+) async {
+  if (!ref.watch(eeFeatureProvider('teams'))) return const [];
+  if (ref.watch(serverReachabilityProvider.select((up) => up == false))) {
+    throw _unreachable;
+  }
+  return ref.watch(eeAssetsApiProvider).units();
+});
 
 /// EE-238 — one machine's card, from the device's copy.
 ///

@@ -223,3 +223,27 @@ class EeAssetTypes {
     },
   );
 }
+
+/// A place the register can be narrowed to (EE-239): a workspace of the team
+/// the caller reaches, by its own name — the name the workspace switcher
+/// shows. [unitName] says whose it is; [stock] marks the team-wide shelf.
+class EeAssetUnit {
+  const EeAssetUnit({
+    required this.workspaceId,
+    required this.name,
+    this.unitName,
+    this.stock = false,
+  });
+
+  factory EeAssetUnit.fromJson(Map<String, dynamic> json) => EeAssetUnit(
+    workspaceId: json['workspaceId'] as String,
+    name: json['name'] as String,
+    unitName: json['unitName'] as String?,
+    stock: (json['stock'] as bool?) ?? false,
+  );
+
+  final String workspaceId;
+  final String name;
+  final String? unitName;
+  final bool stock;
+}

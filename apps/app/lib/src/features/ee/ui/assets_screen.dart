@@ -119,6 +119,7 @@ class _EeAssetsScreenState extends ConsumerState<EeAssetsScreen> {
             filter: _filter,
             types: types,
             deviceTypes: device?.types ?? const [],
+            units: ref.watch(eeAssetUnitsProvider).value ?? const [],
             onChanged: _set,
           ),
           Expanded(
@@ -273,11 +274,17 @@ class _Filters extends StatelessWidget {
     required this.filter,
     required this.types,
     required this.deviceTypes,
+    required this.units,
     required this.onChanged,
   });
 
   final EeAssetFilter filter;
   final EeAssetTypes types;
+
+  /// EE-239 — the places this person's register spans, from the server.
+  /// Empty offline: the device holds one unit's copy, so there is nothing to
+  /// choose between until the server can say what else there is.
+  final List<EeAssetUnit> units;
 
   /// The types on the device's copy. Offline the server's vocabulary is out
   /// of reach, and a filter row that lost its type chips in the basement
@@ -319,6 +326,7 @@ class _Filters extends StatelessWidget {
                   status: filter.status,
                   location: value.trim().isEmpty ? null : value.trim(),
                   expiringWithinDays: filter.expiringWithinDays,
+                  workspaceId: filter.workspaceId,
                 ),
               ),
             ),
@@ -335,10 +343,19 @@ class _Filters extends StatelessWidget {
                 status: filter.status,
                 location: filter.location,
                 expiringWithinDays: on ? 90 : null,
+                workspaceId: filter.workspaceId,
               ),
             ),
           ),
           const SizedBox(width: AwSpace.x2),
+          // EE-239: one place — a unit or the stock shelf. Shown once there is
+          // more than one place to choose (a picker with one answer is not a
+          // question), and always while one is chosen, so it can be undone
+          // with no signal as well.
+          if (filter.workspaceId != null || units.length > 1) ...[
+            _UnitChip(filter: filter, units: units, onChanged: onChanged),
+            const SizedBox(width: AwSpace.x2),
+          ],
           for (final status in const [
             'in_use',
             'faulty',
@@ -355,6 +372,7 @@ class _Filters extends StatelessWidget {
                   status: on ? status : null,
                   location: filter.location,
                   expiringWithinDays: filter.expiringWithinDays,
+                  workspaceId: filter.workspaceId,
                 ),
               ),
             ),
@@ -371,11 +389,107 @@ class _Filters extends StatelessWidget {
                   status: filter.status,
                   location: filter.location,
                   expiringWithinDays: filter.expiringWithinDays,
+                  workspaceId: filter.workspaceId,
                 ),
               ),
             ),
             const SizedBox(width: AwSpace.x2),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// EE-239 — the place filter. Tapped while set, it clears (the queue's tag
+/// chip settled the gesture); otherwise it asks which place.
+class _UnitChip extends StatelessWidget {
+  const _UnitChip({
+    required this.filter,
+    required this.units,
+    required this.onChanged,
+  });
+
+  final EeAssetFilter filter;
+  final List<EeAssetUnit> units;
+  final ValueChanged<EeAssetFilter> onChanged;
+
+  EeAssetFilter _with(String? workspaceId) => EeAssetFilter(
+    type: filter.type,
+    status: filter.status,
+    location: filter.location,
+    expiringWithinDays: filter.expiringWithinDays,
+    workspaceId: workspaceId,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    String? chosen;
+    for (final unit in units) {
+      if (unit.workspaceId == filter.workspaceId) chosen = unit.name;
+    }
+    return FilterChip(
+      key: const Key('asset-filter-unit'),
+      avatar: const Icon(Icons.apartment_outlined, size: 18),
+      label: Text(
+        chosen == null
+            ? 'ee.assets.filter.unit'.tr()
+            : 'ee.assets.filter.unitSet'.tr(args: {'unit': chosen}),
+      ),
+      selected: filter.workspaceId != null,
+      onSelected: (_) async {
+        if (filter.workspaceId != null) {
+          onChanged(_with(null));
+          return;
+        }
+        final picked = await showModalBottomSheet<EeAssetUnit>(
+          context: context,
+          showDragHandle: true,
+          builder: (_) => _UnitPicker(units: units),
+        );
+        if (picked != null) onChanged(_with(picked.workspaceId));
+      },
+    );
+  }
+}
+
+class _UnitPicker extends StatelessWidget {
+  const _UnitPicker({required this.units});
+
+  final List<EeAssetUnit> units;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              0,
+              AwSpace.x4,
+              AwSpace.x2,
+            ),
+            child: Text(
+              'ee.assets.filter.unitPickTitle'.tr(),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          for (final unit in units)
+            ListTile(
+              key: Key('asset-filter-unit-option-${unit.workspaceId}'),
+              leading: Icon(
+                unit.stock ? Icons.inventory_2_outlined : Icons.apartment_outlined,
+              ),
+              title: Text(unit.name),
+              subtitle: unit.stock
+                  ? Text('ee.assets.filter.unitStock'.tr())
+                  : (unit.unitName != null && unit.unitName != unit.name
+                        ? Text(unit.unitName!)
+                        : null),
+              onTap: () => Navigator.of(context).pop(unit),
+            ),
         ],
       ),
     );

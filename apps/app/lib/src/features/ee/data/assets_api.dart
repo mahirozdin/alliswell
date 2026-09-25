@@ -18,13 +18,16 @@ class EeAssetsApi {
   /// reaches, the retired records EE-219 took off devices included.
   ///
   /// [q] (EE-238): every word somewhere in the tag or the name, the same two
-  /// fields the device's own search folds.
+  /// fields the device's own search folds. [workspaceId] (EE-239): one of
+  /// the places [units] offers — a narrowing, never a widening (the server
+  /// answers 404 for a workspace the caller does not reach).
   Future<List<EeAsset>> list({
     String? type,
     String? status,
     String? location,
     int? expiringWithinDays,
     String? q,
+    String? workspaceId,
   }) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(
@@ -36,10 +39,26 @@ class EeAssetsApi {
             'location': location.trim(),
           'expiringWithinDays': ?expiringWithinDays,
           if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+          'workspaceId': ?workspaceId,
         },
       );
       return ((res.data?['assets'] as List<dynamic>?) ?? const [])
           .map((e) => EeAsset.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false);
+    } on DioException catch (error) {
+      final code = error.response?.statusCode;
+      if (code == 403 || code == 404) return const [];
+      throw asApiException(error);
+    }
+  }
+
+  /// EE-239 — the places the register can be narrowed to: the workspaces of
+  /// the team the caller reaches (one, for an API key), the stock shelf first.
+  Future<List<EeAssetUnit>> units() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>('$_base/units');
+      return ((res.data?['units'] as List<dynamic>?) ?? const [])
+          .map((e) => EeAssetUnit.fromJson(e as Map<String, dynamic>))
           .toList(growable: false);
     } on DioException catch (error) {
       final code = error.response?.statusCode;

@@ -2727,7 +2727,11 @@
       "openRequest": "Open a request for this asset",
       "filter": {
         "expiring": "Running out soon",
-        "location": "Location"
+        "location": "Location",
+        "unit": "Unit",
+        "unitSet": "Unit: {unit}",
+        "unitPickTitle": "Which unit's equipment?",
+        "unitStock": "The team's stock"
       },
       "type": {
         "machine": "Machine",

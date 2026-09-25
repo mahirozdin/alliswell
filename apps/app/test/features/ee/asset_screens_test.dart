@@ -50,6 +50,7 @@ void main() {
     List<EeAsset> rows, {
     List<EeAsset> server = const [],
     List<String> types = const [],
+    List<EeAssetUnit> units = const [],
   }) => [
     eeAssetRegisterProvider.overrideWith(
       (ref, filter) => Stream.value(
@@ -61,6 +62,9 @@ void main() {
       ),
     ),
     eeAssetsOffDeviceProvider.overrideWith((ref, key) async => server),
+    // EE-239: the places, from the server — overridden everywhere so no test
+    // here reaches for a network it does not have.
+    eeAssetUnitsProvider.overrideWith((ref) async => units),
   ];
 
   /// EE-220 — the register's search, and the two answers it has to keep apart.
@@ -402,6 +406,130 @@ void main() {
     expect(find.text('ee.assets.history.offline'.tr()), findsOneWidget);
   });
 
+  /// EE-239 — the unit filter narrows BOTH halves of the register: the
+  /// device's copy of the current unit (kept only when that unit is chosen)
+  /// and the server's answer (asked with the chosen place).
+  testWidgets('EE-239: choosing a unit narrows the register to its machines — '
+      'and tapping the chip again gives the whole register back', (
+    tester,
+  ) async {
+    const bakim = 'WS-BAKIM';
+    const kalite = 'WS-KALITE';
+    const stock = 'WS-STOK';
+    const mine = EeAsset(
+      id: 'A1',
+      tag: 'BKM-1',
+      name: 'Hat 3 tornası',
+      type: 'machine',
+      status: 'in_use',
+      workspaceId: bakim,
+    );
+    const theirs = EeAsset(
+      id: 'K1',
+      tag: 'KLT-1',
+      name: 'Ölçüm masası',
+      type: 'machine',
+      status: 'in_use',
+      workspaceId: kalite,
+    );
+    const shelf = EeAsset(
+      id: 'S1',
+      tag: 'STK-1',
+      name: 'Yedek pompa',
+      type: 'machine',
+      status: 'in_stock',
+      workspaceId: stock,
+    );
+    final asked = <String?>[];
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          // The device holds Bakım's copy; the filter is applied to it the
+          // way the real provider applies it.
+          eeAssetRegisterProvider.overrideWith(
+            (ref, filter) => Stream.value(
+              EeAssetRegister(
+                rows: filterAssets(const [mine], filter, now: DateTime(2026)),
+                onDevice: const {'A1'},
+              ),
+            ),
+          ),
+          eeAssetsOffDeviceProvider.overrideWith((ref, key) async {
+            asked.add(key.filter.workspaceId);
+            return [
+              for (final a in const [mine, theirs, shelf])
+                if (key.filter.workspaceId == null ||
+                    a.workspaceId == key.filter.workspaceId)
+                  a,
+            ];
+          }),
+          eeAssetUnitsProvider.overrideWith(
+            (ref) async => const [
+              EeAssetUnit(workspaceId: stock, name: 'Genel', stock: true),
+              EeAssetUnit(workspaceId: bakim, name: 'Bakım', unitName: 'Bakım'),
+              EeAssetUnit(workspaceId: kalite, name: 'Kalite', unitName: 'Kalite'),
+            ],
+          ),
+          eeAssetTypesProvider.overrideWith((ref) async => const EeAssetTypes()),
+          canProvider.overrideWith((ref, id) => false),
+        ],
+        child: const MaterialApp(home: EeAssetsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // The whole register: the device's row, and the server's two others.
+    expect(find.textContaining('BKM-1'), findsOneWidget);
+    expect(find.textContaining('KLT-1'), findsOneWidget);
+    expect(find.textContaining('STK-1'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('asset-filter-unit')));
+    await tester.pumpAndSettle();
+    // The picker names the places, the shelf as the team's stock.
+    expect(find.text('ee.assets.filter.unitStock'.tr()), findsOneWidget);
+    await tester.tap(find.byKey(const Key('asset-filter-unit-option-WS-KALITE')));
+    await tester.pumpAndSettle();
+
+    // Kalite's machine only — the device's Bakım row is not Kalite's, the
+    // shelf is not either — and the server was ASKED with the place, not
+    // asked for everything and filtered here.
+    expect(find.textContaining('KLT-1'), findsOneWidget);
+    expect(find.textContaining('BKM-1'), findsNothing);
+    expect(find.textContaining('STK-1'), findsNothing);
+    expect(asked.last, kalite);
+    expect(
+      find.text('ee.assets.filter.unitSet'.tr(args: {'unit': 'Kalite'})),
+      findsOneWidget,
+    );
+
+    // The chip, tapped while set, clears — the queue's tag chip's gesture.
+    await tester.tap(find.byKey(const Key('asset-filter-unit')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('BKM-1'), findsOneWidget);
+    expect(find.textContaining('STK-1'), findsOneWidget);
+    expect(asked.last, isNull);
+  });
+
+  testWidgets('EE-239: with one place to choose there is no unit chip — a '
+      'picker with one answer is not a question', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          ...register(
+            [asset],
+            units: const [EeAssetUnit(workspaceId: 'WS-1', name: 'Bakım')],
+          ),
+          eeAssetTypesProvider.overrideWith((ref) async => const EeAssetTypes()),
+          canProvider.overrideWith((ref, id) => false),
+        ],
+        child: const MaterialApp(home: EeAssetsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('asset-filter-unit')), findsNothing);
+  });
+
   group('EE-238: the register\'s filters, on the device', () {
     final now = DateTime(2026, 9, 25, 1, 30);
     const press = EeAsset(
@@ -470,6 +598,39 @@ void main() {
       // "ağırlık" sorts as "agirlik", before "Pres"; the retired one is last
       // although "Anahtarlık" would lead the alphabet.
       expect(kept.map((a) => a.id), ['S', 'P', 'O']);
+    });
+
+    test('EE-239: a place keeps only its own rows', () {
+      const here = EeAsset(
+        id: 'H',
+        tag: 'H-1',
+        name: 'Burada',
+        type: 'machine',
+        status: 'in_use',
+        workspaceId: 'W1',
+      );
+      const there = EeAsset(
+        id: 'T',
+        tag: 'T-1',
+        name: 'Orada',
+        type: 'machine',
+        status: 'in_use',
+        workspaceId: 'W2',
+      );
+      expect(
+        filterAssets(
+          const [here, there],
+          const EeAssetFilter(workspaceId: 'W2'),
+          now: now,
+        ).map((a) => a.id),
+        ['T'],
+      );
+      expect(
+        filterAssets(const [here, there], const EeAssetFilter(), now: now)
+            .map((a) => a.id)
+            .toSet(),
+        {'H', 'T'},
+      );
     });
 
     test('type and status are exact', () {
