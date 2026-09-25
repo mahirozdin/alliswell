@@ -156,18 +156,16 @@ class _Thread extends ConsumerWidget {
     // (EE-213 keeps them out of the replica), and come with the same read.
     // Asked only where there can be some — the service has a form, which the
     // catalogue says — so a request with no form still opens without a
-    // question, as EE-224 measured it should.
+    // question, as EE-224 measured it should. EE-284: the catalogue EVERY
+    // member may read, not only the admin list — an agent never saw them.
     final serviceId = ticket.serviceId;
     final hasForm =
         serviceId != null &&
-        (ref.watch(
-              eeServicesProvider.select(
-                (services) => services.value?.any(
-                  (s) => s.id == serviceId && s.formFields.isNotEmpty,
-                ),
-              ),
-            ) ??
-            false);
+        ref.watch(
+          eeServiceGlancesProvider.select(
+            (services) => services[serviceId]?.hasForm ?? false,
+          ),
+        );
     final checked = mayBeUnverified || hasForm
         ? ref.watch(eeTicketActionsProvider(ticket.id)).value
         : null;

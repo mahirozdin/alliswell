@@ -16,8 +16,10 @@ import 'package:alliswell/src/features/ee/changes_providers.dart';
 import 'package:alliswell/src/features/ee/data/approvals_api.dart';
 import 'package:alliswell/src/features/ee/data/changes_api.dart';
 import 'package:alliswell/src/features/ee/data/changes_models.dart';
+import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/services_providers.dart';
 import 'package:alliswell/src/features/ee/ui/new_change_screen.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
@@ -133,11 +135,15 @@ class _Server implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// The admin list, as the server answers it: null is its 403 (EE-284).
+List<EeService>? _adminServices;
+
+/// The catalogue every member reads (EE-225).
+EeCatalog? _memberCatalog;
+
 class _Catalogue extends EeServicesController {
   @override
-  Future<List<EeService>?> build() async => const [
-    EeService(id: hat3, name: 'Hat 3 PLC'),
-  ];
+  Future<List<EeService>?> build() async => _adminServices;
 }
 
 void main() {
@@ -179,6 +185,7 @@ void main() {
         eeChangesApiProvider.overrideWithValue(EeChangesApi(dio)),
         eeApprovalsApiProvider.overrideWithValue(EeApprovalsApi(dio)),
         eeServicesProvider.overrideWith(_Catalogue.new),
+        eeCatalogProvider.overrideWith((ref) async => _memberCatalog),
         // The screens poke the engine after a write; there is no engine here.
         syncEngineProvider.overrideWithValue(null),
       ],
@@ -345,6 +352,8 @@ void main() {
   setUp(() async {
     entitled = true;
     grants = {};
+    _adminServices = const [EeService(id: hat3, name: 'Hat 3 PLC')];
+    _memberCatalog = null;
     await setUpWith();
   });
 
@@ -485,6 +494,32 @@ void main() {
       findsNothing,
     );
     await letSnackbarGo(tester);
+  });
+
+  testWidgets('AW-E09: an agent who cannot edit the catalogue still names '
+      'what a change touches, and may pick it (EE-284)', (tester) async {
+    tallScreen(tester);
+    grants = {'changes.create'};
+    // No `services.manage`: the admin list is the server's 403 — the
+    // catalogue every member reads is what names the services.
+    _adminServices = null;
+    _memberCatalog = const EeCatalog(
+      services: [EeCatalogService(id: hat3, name: 'Hat 3 PLC')],
+    );
+    scriptDiskChange();
+
+    await pumpAt(tester, '/changes/$diskId');
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('change-service-$hat3')),
+        matching: find.text('Hat 3 PLC'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Katalogda olmayan bir servis'), findsNothing);
+
+    await pumpAt(tester, '/changes/new');
+    expect(find.byKey(const Key('change-new-service-$hat3')), findsOneWidget);
   });
 
   testWidgets('the plan opens with no signal; the rest says it needs a '

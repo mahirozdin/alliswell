@@ -230,6 +230,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Fixed
 
+- **The enterprise page's list caught up with the app again.** Change management and
+  problem records had moved into the app while the page still called them "API only";
+  both are now listed as in the app, each naming the one part that still goes through the
+  API (moving a change along; a problem's root cause and status). A live list across
+  several units, which the page said did not exist, is listed as there, and three shipped
+  capabilities that were missing are added: incidents apart from service requests, archived
+  requests that stay readable, and the absence calendar. Two lines said more than the
+  product does and now say less: the SLA line names what is still entered through the API
+  (target durations, shifts, holidays), and the partners line no longer offers a
+  per-customer SLA, which nothing can attach yet.
+
 - **The enterprise page says what is there today.** Its "what is not in it yet?" answer
   still named an asset register, change approvals, a satisfaction survey and requests by
   e-mail — all shipped since — and its offline line promised that requests are edited with

@@ -249,6 +249,13 @@ void main() {
       find.byKey(const Key('asset-history-counts')),
     );
     expect(counts.data, contains('14'));
+    // AW-E22 (EE-272): and right under it, that open time is not downtime —
+    // the number reads like one until something on the card says otherwise.
+    expect(
+      find.byKey(const Key('asset-history-open-time-note')),
+      findsOneWidget,
+    );
+    expect(find.text('ee.assets.history.openTimeNote'.tr()), findsOneWidget);
 
     // EE-266: the archived one opens — read-only, from the archive — where
     // it used to take no tap because there was nowhere to go.

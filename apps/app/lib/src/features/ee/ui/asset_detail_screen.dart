@@ -445,6 +445,20 @@ class _HistoryBody extends StatelessWidget {
           key: const Key('asset-history-counts'),
           style: theme.textTheme.bodyMedium,
         ),
+        // EE-272 (AW-E22): the header of this file says it to the code; this
+        // says it to the reader. "36 h of open time" beside a machine's name
+        // reads as "the machine was down for 36 h" unless something says it is
+        // not — and nothing on this card records when a machine stopped.
+        if (data.stats.ticketCount > 0) ...[
+          const SizedBox(height: AwSpace.x1),
+          Text(
+            'ee.assets.history.openTimeNote'.tr(),
+            key: const Key('asset-history-open-time-note'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
         // EE-208. Drawn only when there is labour to draw: an hours line
         // reading "0" on a machine nobody has worked on is noise, and the
         // acceptance line asks for the cost field to be HIDDEN rather than

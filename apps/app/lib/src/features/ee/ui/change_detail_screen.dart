@@ -583,8 +583,10 @@ class _Services extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (serviceIds.isEmpty) return const SizedBox.shrink();
-    final services = ref.watch(eeServicesProvider).value ?? const [];
-    final names = {for (final s in services) s.id: s.name};
+    // EE-284: names every member can read, not only the admin list's.
+    final names = {
+      for (final s in ref.watch(eeServiceGlancesProvider).values) s.id: s.name,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

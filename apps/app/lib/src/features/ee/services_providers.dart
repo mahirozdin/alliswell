@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/providers.dart';
+import 'data/new_ticket_api.dart';
 import 'data/services_api.dart';
 import 'data/services_models.dart';
+import 'new_ticket_providers.dart';
 import 'providers.dart';
 
 /// Service catalogue providers (EE-082).
@@ -163,3 +165,54 @@ class EeServiceCategoriesController
 final eeServicesVisibleProvider = Provider<bool>(
   (ref) => ref.watch(eeServicesProvider).value != null,
 );
+
+/// What a screen that does not EDIT the catalogue may say about a service
+/// (EE-284): its name, whether it asks questions, whether it is archived.
+class EeServiceGlance {
+  const EeServiceGlance({
+    required this.id,
+    required this.name,
+    required this.hasForm,
+    this.archived = false,
+  });
+
+  final String id;
+  final String name;
+  final bool hasForm;
+  final bool archived;
+}
+
+/// Every service this person may name, by id (EE-284).
+///
+/// The admin list above answers only `services.manage`; everybody else gets
+/// null from it. Three screens read it anyway — the request's form answers
+/// (EE-278), a change's services and the new change's picker (EE-269) — so for
+/// an agent the answers never showed and every chip read "a service the
+/// catalogue does not name". Measured by EE-272's read of the handbooks.
+///
+/// So: the admin list where it answers (it also knows archived services and
+/// forms nobody can file today), and otherwise the member catalogue EE-225
+/// reads to file a request — live, routed services with the form in force,
+/// open to every member. Nothing new is asked while the admin list is still
+/// loading, so an admin never pays for the second read.
+final eeServiceGlancesProvider = Provider<Map<String, EeServiceGlance>>((ref) {
+  final admin = ref.watch(eeServicesProvider);
+  if (!admin.hasValue) return const {};
+  final services = admin.value;
+  if (services != null) {
+    return {
+      for (final s in services)
+        s.id: EeServiceGlance(
+          id: s.id,
+          name: s.name,
+          hasForm: s.formFields.isNotEmpty,
+          archived: s.archived,
+        ),
+    };
+  }
+  final catalog = ref.watch(eeCatalogProvider).value;
+  return {
+    for (final s in catalog?.services ?? const <EeCatalogService>[])
+      s.id: EeServiceGlance(id: s.id, name: s.name, hasForm: s.fields.isNotEmpty),
+  };
+});

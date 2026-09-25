@@ -7,10 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/core/date_format.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/changes_providers.dart';
+import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
+import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/services_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_links_providers.dart';
@@ -90,6 +92,7 @@ void main() {
     WidgetTester tester, {
     required List<EeService>? services,
     required EeTicketActions? actions,
+    EeCatalog? catalog,
   }) async {
     var asked = 0;
     await tester.pumpWidget(
@@ -102,6 +105,8 @@ void main() {
             _ticketId,
           ).overrideWith((ref) => Stream.value(const [])),
           eeServicesProvider.overrideWith(() => _Catalogue(services)),
+          // EE-284: what a member who cannot edit the catalogue reads.
+          eeCatalogProvider.overrideWith((ref) async => catalog),
           eeTicketActionsProvider(_ticketId).overrideWith((ref) async {
             asked += 1;
             return actions;
@@ -192,6 +197,43 @@ void main() {
     final reason = tester.getTopLeft(find.text('Gerekçe'));
     expect(amount.dy, lessThan(reason.dy));
   });
+
+  testWidgets(
+    'AW-E14: an agent who cannot edit the catalogue still reads what the '
+    'request was filed with (EE-284)',
+    (tester) async {
+      // No `services.manage`: the admin list answers null, as the server's
+      // 403 makes it. The catalogue every member reads says the form exists.
+      await pump(
+        tester,
+        services: null,
+        catalog: const EeCatalog(
+          services: [
+            EeCatalogService(
+              id: _serviceId,
+              name: 'Yatırım ve demirbaş alımı',
+              formVersion: 1,
+              fields: [
+                EeFormField(
+                  key: 'tutar',
+                  label: 'Tahmini tutar (TL)',
+                  type: 'number',
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: const EeTicketActions(
+          status: 'new',
+          priority: 'high',
+          answers: _answers,
+        ),
+      );
+
+      expect(find.byKey(const Key('ticket-answers')), findsOneWidget);
+      expect(find.text('48500'), findsOneWidget);
+    },
+  );
 
   testWidgets('a request whose service has no form does not ask the server '
       'anything — EE-224’s rule holds', (tester) async {

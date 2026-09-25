@@ -131,8 +131,10 @@ class _EeNewChangeScreenState extends ConsumerState<EeNewChangeScreen> {
       serverReachabilityProvider.select((up) => up == false),
     );
     final format = ref.watch(dateFormatProvider);
+    // EE-284: every member may name what a change touches — the picker used
+    // to exist only for people who can EDIT the catalogue.
     final services = [
-      for (final s in ref.watch(eeServicesProvider).value ?? const [])
+      for (final s in ref.watch(eeServiceGlancesProvider).values)
         if (!s.archived) s,
     ];
     final source = widget.source;

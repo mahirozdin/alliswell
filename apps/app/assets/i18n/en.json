@@ -2113,7 +2113,7 @@
         "cannedTitle": "Insert a saved reply",
         "cannedEmptyTitle": "No saved replies yet",
         "cannedEmptyBody": "Your desk's saved replies appear here once someone who manages its services adds them.",
-        "offline": "You're offline. Replies go straight to the server, so this waits for a connection — what you've written stays here.",
+        "offline": "You're offline. A reply only goes while you're connected — it is not sent on its own; what you've written stays here while the app is open.",
         "replySent": "Reply sent",
         "noteAdded": "Internal note added",
         "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above."
@@ -2197,7 +2197,7 @@
         "selectHint": "Choose",
         "invalidNumber": "Enter a number",
         "onBehalf": "On behalf of someone else",
-        "onBehalfHelp": "Write the name of somebody without an account; give an address and they are kept informed by email.",
+        "onBehalfHelp": "Write the name of somebody without an account; give an address and they are emailed a link to follow the request, and a satisfaction survey once it is done.",
         "requesterName": "On whose behalf",
         "requesterEmail": "Email (optional)",
         "send": "Send request",
@@ -2753,7 +2753,8 @@
         "labourCost": "Labour: {amount} {currency}",
         "labourUnpriced": "{hours} h of it by people with no hourly rate.",
         "live": "From the server · needs a connection",
-        "offline": "History needs a connection — requests and labour show up here once you are back online."
+        "offline": "History needs a connection — requests and labour show up here once you are back online.",
+        "openTimeNote": "Open time is how long requests stayed open, not how long the machine was stopped. Downtime is not recorded."
       },
       "edit": "Edit",
       "searchHint": "Search tag or name",

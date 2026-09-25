@@ -243,6 +243,24 @@ void main() {
       expect(find.byKey(const Key('ticket-composer-offline')), findsOneWidget);
     });
 
+    testWidgets(
+      'AW-E03: offline, the box says the reply does not go on its own — no queue is promised (EE-283)',
+      (tester) async {
+        api.failWith = const ApiException('NETWORK_ERROR', 'no answer');
+        await pumpComposer(tester);
+        await tester.enterText(field(), 'Bekleyen yanıt');
+        await tester.pump();
+        await tester.tap(send());
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('kendiliğinden gönderilmez'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('bağlantı gelene kadar bekler'), findsNothing);
+      },
+    );
+
     testWidgets('backing out does not lose what was typed', (tester) async {
       await pumpComposer(tester);
       await tester.enterText(field(), 'Sonra devam ederim');

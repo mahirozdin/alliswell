@@ -240,6 +240,9 @@ void main() {
 
   Future<void> send(WidgetTester tester) async {
     await tester.ensureVisible(key('new-ticket-submit'));
+    // The scroll lands on the next frame; tapping before it hits whatever was
+    // there (EE-283's longer hint pushed the button past the fold).
+    await tester.pumpAndSettle();
     await tester.tap(key('new-ticket-submit'));
     await tester.pumpAndSettle();
   }
@@ -384,6 +387,19 @@ void main() {
       containsPair('requesterEmail', 'kerem@ornek.com'),
     );
   });
+
+  testWidgets(
+    'AW-E03: filing for somebody promises them a follow link and a survey — not updates by e-mail (EE-283)',
+    (tester) async {
+      await pumpForm(tester, mayActForOthers: true);
+      await pick(tester, 'S-PRINT');
+      await tester.ensureVisible(key('new-ticket-on-behalf'));
+      // Only a follow link and, at the end, a survey leave for that address;
+      // replies and moves are not mailed to somebody with no account.
+      expect(find.textContaining('izleyeceği bir bağlantı'), findsOneWidget);
+      expect(find.textContaining('gelişmeleri'), findsNothing);
+    },
+  );
 
   testWidgets(
     'offline: the same form keeps a draft in the own space, and says what it carries',

@@ -2112,7 +2112,7 @@
         "cannedTitle": "Hazır yanıt ekle",
         "cannedEmptyTitle": "Henüz hazır yanıt yok",
         "cannedEmptyBody": "Hizmetleri yöneten biri eklediğinde ekibinin hazır yanıtları burada görünür.",
-        "offline": "Çevrimdışısın. Yanıt doğrudan sunucuya gider; bağlantı gelene kadar bekler — yazdığın burada duruyor.",
+        "offline": "Çevrimdışısın. Yanıt yalnız bağlantı varken gider, kendiliğinden gönderilmez; yazdığın, uygulama açık kaldıkça burada duruyor.",
         "replySent": "Yanıt gönderildi",
         "noteAdded": "İç not eklendi",
         "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç."
@@ -2196,7 +2196,7 @@
         "selectHint": "Seç",
         "invalidNumber": "Bir sayı yaz",
         "onBehalf": "Başkası adına",
-        "onBehalfHelp": "Hesabı olmayan birini adıyla yaz; adres verirsen gelişmeleri ona e-postayla bildiririz.",
+        "onBehalfHelp": "Hesabı olmayan birini adıyla yaz; adres verirsen ona talebi izleyeceği bir bağlantı, iş bitince de bir memnuniyet anketi e-postayla gider.",
         "requesterName": "Kimin adına",
         "requesterEmail": "E-posta (isteğe bağlı)",
         "send": "Talebi gönder",
@@ -2752,7 +2752,8 @@
         "labourCost": "İşçilik: {amount} {currency}",
         "labourUnpriced": "Bunun {hours} saati saatlik ücreti tanımlı olmayan kişilerce.",
         "live": "Sunucudan · bağlantı ister",
-        "offline": "Geçmiş bağlantı ister — talepler ve işçilik bağlantı gelince burada görünür."
+        "offline": "Geçmiş bağlantı ister — talepler ve işçilik bağlantı gelince burada görünür.",
+        "openTimeNote": "Açık kalma, taleplerin açık kaldığı süredir; makinenin durduğu süre değildir. Duruş kaydı tutulmuyor."
       },
       "edit": "Düzenle",
       "searchHint": "Etiket veya ad ara",

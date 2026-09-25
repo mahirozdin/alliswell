@@ -38,12 +38,38 @@ export const CAPABILITIES = Object.freeze([
     tr: 'Birim talep listeleri: durum, öncelik, atama, yanıt, iç not ve toplu işlem',
     en: 'Unit request queues: status, priority, assignment, replies, internal notes and bulk actions',
   },
+  // EE-272: Phase C of the review (EE-266…EE-270) moved these into the app; the
+  // list said "api" or "none" about three of them until the last measurement.
+  {
+    key: 'processType',
+    level: 'app',
+    packages: all,
+    tr: 'Olay ile hizmet isteği ayrı: hizmetin türü, liste süzgeci ve türe göre performans',
+    en: 'Incidents apart from service requests: a kind per service, a queue filter and performance by kind',
+  },
+  {
+    key: 'crossUnit',
+    level: 'app',
+    packages: all,
+    tr: 'Birden çok birimin açık taleplerini tek canlı listede görmek, SLA uyarısıyla',
+    en: 'One live list of open requests across several units, with SLA warnings',
+  },
+  {
+    key: 'archive',
+    level: 'app',
+    packages: all,
+    tr: 'Arşivdeki talepler okunur: masa arar ve açar, talep sahibi kendi arşivini görür',
+    en: 'Archived requests stay readable: the desk searches and opens them, requesters see their own',
+  },
   {
     key: 'sla',
     level: 'app',
     packages: all,
-    tr: 'SLA hedefleri, çalışma takvimi, eskalasyon ve sistem sağlığı izleme',
-    en: 'SLA targets, working calendars, escalation and system health monitoring',
+    // EE-272: the app edits a policy's name, calendar, threshold and default,
+    // and a calendar's name and zone; target durations, shifts and holidays
+    // are entered through the API (measured against sla_admin_screen.dart).
+    tr: 'SLA politikaları, çalışma takvimleri, eskalasyon, SLA panosu ve sistem sağlığı izleme (hedef süreler, vardiya ve tatiller şimdilik API ile)',
+    en: 'SLA policies, working calendars, escalation, the SLA dashboard and system health monitoring (target durations, shifts and holidays are API only for now)',
   },
   {
     key: 'catalog',
@@ -102,6 +128,13 @@ export const CAPABILITIES = Object.freeze([
     en: 'Units, roles and custom permissions, activity log',
   },
   {
+    key: 'absences',
+    level: 'app',
+    packages: all,
+    tr: 'Devamsızlık takvimi: izinli kişiyi nöbet ve dengeli atama atlar',
+    en: 'Absence calendar: on-call and balanced assignment skip whoever is away',
+  },
+  {
     key: 'webhooks',
     level: 'app',
     packages: all,
@@ -115,19 +148,23 @@ export const CAPABILITIES = Object.freeze([
     tr: 'Görevler, projeler, notlar, dosyalar',
     en: 'Tasks, projects, notes, files',
   },
+  // EE-272: in the app since EE-269/EE-270. What still goes through the API is
+  // named in the row itself, the way a level suffix would name it — a buyer who
+  // reads "change management" and finds no "schedule" button was told less than
+  // the truth.
   {
     key: 'changes',
-    level: 'api',
+    level: 'app',
     packages: all,
-    tr: 'Değişiklik yönetimi (onay kurulu, değişiklik takvimi, dondurma dönemleri)',
-    en: 'Change management (approval board, change calendar, freeze periods)',
+    tr: 'Değişiklik yönetimi: plan, onay kurulunun imzası, takvim ve dondurma çakışması (değişikliği ilerletmek şimdilik API ile)',
+    en: 'Change management: the plan, the approval board’s signature, calendar and freeze clashes (moving a change along is API only for now)',
   },
   {
     key: 'problems',
-    level: 'api',
+    level: 'app',
     packages: all,
-    tr: 'Problem ve bilinen hata yönetimi',
-    en: 'Problem and known-error management',
+    tr: 'Problem ve bilinen hata kaydı: geçici çözüm çevrimdışı okunur, talepten bilinen hata kaydı açılır (kök neden ve durum şimdilik API ile)',
+    en: 'Problem and known-error records: the workaround reads offline, a known-error record is raised from a request (root cause and status are API only for now)',
   },
   {
     key: 'rules',
@@ -147,8 +184,11 @@ export const CAPABILITIES = Object.freeze([
     key: 'partners',
     level: 'api',
     packages: all,
-    tr: 'Kurumsal müşteriye özel SLA ve tedarikçi süreleri',
-    en: 'Per-customer SLAs and supplier response times',
+    // EE-272: nothing — app, REST or MCP — attaches a policy to a customer
+    // (only tests write `ee_customers.sla_policy_id`), so the row no longer
+    // sells a per-customer SLA.
+    tr: 'Kurumsal müşteri kaydı, müşteri portalı ve tedarikçi hedef süreleri (müşteriye özel SLA henüz bağlanamıyor)',
+    en: 'Corporate customer records, the customer portal and supplier response targets (a per-customer SLA cannot be attached yet)',
   },
   {
     key: 'meetings',
@@ -211,12 +251,6 @@ export const CAPABILITIES = Object.freeze([
     level: 'none',
     tr: 'masanın yanıtına dosya eklemek',
     en: 'attaching a file to the desk’s reply',
-  },
-  {
-    key: 'crossUnit',
-    level: 'none',
-    tr: 'birden çok birimin taleplerini tek canlı listede görmek',
-    en: 'one live list across several units',
   },
   {
     key: 'whatsappReplies',
