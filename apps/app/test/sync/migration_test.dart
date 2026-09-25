@@ -371,9 +371,14 @@ void main() {
       // v34 (OPH-346): the kind of work a request is — the same shape as
       // v33, proven by the same v24 test below.
       await db.customSelect('SELECT process_type FROM tickets').get();
+      // v35 (OPH-349): the machine a draft is about. From v1 the column comes
+      // from step 32's `createTable` — the ALTER is guarded `from >= 32` and
+      // never runs on this path — so the ALTER itself is proven by the draft
+      // test below, the v24 lesson one table over.
+      await db.customSelect('SELECT asset_id FROM ticket_drafts').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 34);
+      expect(version.data['user_version'], 35);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -490,7 +495,80 @@ void main() {
       expect(filled.processType, 'incident');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 34);
+      expect(version.data['user_version'], 35);
+      await db.close();
+    },
+  );
+
+  /// A device that holds an unsent DRAFT when the v35 step arrives (OPH-349).
+  ///
+  /// `ticket_drafts` is the one EE table this device AUTHORS into, so the row
+  /// the ALTER meets is a fault report somebody wrote with no signal and the
+  /// server has not heard yet — with its create still queued behind it. Both
+  /// fixtures above drop the table, so step 32 rebuilds it with today's
+  /// definition and the guarded ALTER never runs on either: only this one
+  /// proves it.
+  Future<void> seedV34DraftDatabase() async {
+    final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement(
+      'ALTER TABLE ticket_drafts DROP COLUMN asset_id', // v35
+    );
+    await db.customStatement('PRAGMA user_version = 34');
+    await db.customStatement('''
+      INSERT INTO ticket_drafts (id, workspace_id, subject, body, revision)
+      VALUES ('D1', 'W1', 'Forklift frende ses yapıyor', 'Depo girişi', 0)
+    ''');
+    await db.customStatement('''
+      INSERT INTO pending_mutations (id, workspace_id, entity_type, entity_id,
+                                     operation, local_updated_at, created_at, attempts)
+      VALUES ('M9', 'W1', 'ee_ticket_draft', 'D1', 'create',
+              '2026-09-25T10:00:00.000Z', '2026-09-25T10:00:00.000Z', 0)
+    ''');
+    await db.close();
+  }
+
+  test(
+    'v34 → latest: an unsent draft keeps its words and its place in the queue, and gains the machine column',
+    () async {
+      await seedV34DraftDatabase();
+      final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+
+      final row = await db
+          .customSelect(
+            'SELECT subject, body, asset_id FROM ticket_drafts WHERE id = ?',
+            variables: [Variable.withString('D1')],
+          )
+          .getSingle();
+      expect(row.data['subject'], 'Forklift frende ses yapıyor');
+      expect(row.data['body'], 'Depo girişi');
+      // Nothing to backfill: it was written before there was a machine to
+      // carry.
+      expect(row.data['asset_id'], null);
+      // The create that will deliver it is still queued — the ALTER ran
+      // beside the outbox, not over it.
+      final pending = await db.select(db.pendingMutations).get();
+      expect(pending.map((m) => m.entityId), ['D1']);
+
+      // And the pull that follows a push keeps the machine this device sent.
+      await db
+          .into(db.ticketDrafts)
+          .insertOnConflictUpdate(
+            ticketDraftCompanion({
+              'id': 'D1',
+              'workspaceId': 'W1',
+              'teamId': 'TEAM1',
+              'subject': 'Forklift frende ses yapıyor',
+              'assetId': 'A1',
+              'revision': 1,
+            }),
+          );
+      final filled = await (db.select(
+        db.ticketDrafts,
+      )..where((d) => d.id.equals('D1'))).getSingle();
+      expect(filled.assetId, 'A1');
+
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 35);
       await db.close();
     },
   );
@@ -527,7 +605,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 34);
+      expect(version.data['user_version'], 35);
       await db.close();
     },
   );
@@ -574,7 +652,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 34);
+      expect(version.data['user_version'], 35);
       await db.close();
     },
   );

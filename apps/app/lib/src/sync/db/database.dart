@@ -1044,6 +1044,12 @@ class TicketDrafts extends Table {
   /// know which service it belongs under, and a draft with no service is kept
   /// rather than refused — it simply does not convert yet.
   TextColumn get serviceId => text().nullable()();
+
+  /// The machine the report is about, when it was written from a machine's
+  /// card (OPH-349). Written by THIS device — unlike the columns the server
+  /// fills — so a draft typed with no signal carries the machine to the
+  /// server, which links it when the draft becomes a request.
+  TextColumn get assetId => text().nullable()();
   TextColumn get subject => text().nullable()();
   TextColumn get body => text().nullable()();
 
@@ -1170,7 +1176,7 @@ class AwDatabase extends _$AwDatabase {
   /// v33 → v34 (OPH-346): tickets.process_type — incident or request, the
   /// kind of work a request is.
   @override
-  int get schemaVersion => 34;
+  int get schemaVersion => 35;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1415,6 +1421,15 @@ class AwDatabase extends _$AwDatabase {
       // is the server's, and a request fills in when its row is next sent.
       if (from >= 24 && from < 34) {
         await m.addColumn(tickets, tickets.processType);
+      }
+      // v35 (OPH-349): the machine a draft is about. One ALTER, guarded by
+      // `from >= 32` for v33's reason one table over: a device arriving from
+      // before v32 gets `ticket_drafts` built at step 32 with today's
+      // definition, column included, and adding it again would fail the open.
+      // Nothing to backfill: a draft written before this version was written
+      // with no machine to carry.
+      if (from >= 32 && from < 35) {
+        await m.addColumn(ticketDrafts, ticketDrafts.assetId);
       }
     },
   );

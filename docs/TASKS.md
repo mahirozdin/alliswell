@@ -11895,6 +11895,26 @@ olur ve kapı onu yeşil taşır — kapının "var olmayan varlık için muafiy
       is called from …"), dosya sağlama toplamıyla geri, yeşil.
 - **Yüzey (kural 12):** yok (kapı).
 
+### OPH-349 — Replika: uzantının taslak tablosuna varlık kolonu (ölçümle doğdu) ✅ 2026-09-25
+
+**Bağlam:** uzantının talep taslağı (OPH-330'un tablosu) artık bir makinenin kartından da
+yazılıyor ve kart çoğu zaman sinyalsiz açılıyor; taslağın makineyi taşıyacak kolonu yoktu. Bu,
+cihazın **yazdığı** tek uzantı tablosu: kolon sunucudan dolmayı beklemiyor, cihaz kendisi
+yazıyor ve itmeyle gönderiyor.
+
+- [x] Nullable kolon + `schemaVersion` artışı + migration adımı + applier. — `assetId`; v35;
+      adım `from >= 32` korumalı (v32'den önce gelen cihaz tabloyu bugünkü tanımla adım 32'de
+      kuruyor); applier tek satır — itmeden sonraki çekme cihazın gönderdiği değeri silmesin.
+- [x] Göç testinin fixture'ı büyür; adım kırmızıya düşürülerek kanıtlanır. — v1 ve v24
+      fikstürleri tabloyu düşürdüğü için bu ALTER'ı hiçbiri koşturmuyordu (v24'ün dersi, bir
+      tablo ötede); yeni v34 fikstürü gönderilmemiş bir taslak ve kuyruktaki `create`'iyle
+      açılıyor. Test metnin ve kuyruğun kaldığını, kolonun boş açıldığını ve applier'ın
+      doldurduğunu soruyor. **Kırmızı:** v35 adımı silinince bu test `no such column: asset_id`
+      ile düşüyor; dosya sağlama toplamıyla geri, 5/5.
+- **Kabul / Doğrulama:** OPH-344'ünkiler.
+- **Yüzey (kural 12):** yok (replika).
+- ⚠️ **Çift kapanış:** ↔ `EE-281` (uzantı kaydı: taslağın taşıdığı makine).
+
 ---
 
 ## Backlog / v2 parking lot

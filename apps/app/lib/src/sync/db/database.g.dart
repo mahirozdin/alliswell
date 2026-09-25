@@ -21891,6 +21891,17 @@ class $TicketDraftsTable extends TicketDrafts
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _assetIdMeta = const VerificationMeta(
+    'assetId',
+  );
+  @override
+  late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
+    'asset_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _subjectMeta = const VerificationMeta(
     'subject',
   );
@@ -21973,6 +21984,7 @@ class $TicketDraftsTable extends TicketDrafts
     workspaceId,
     teamId,
     serviceId,
+    assetId,
     subject,
     body,
     ticketId,
@@ -22019,6 +22031,12 @@ class $TicketDraftsTable extends TicketDrafts
       context.handle(
         _serviceIdMeta,
         serviceId.isAcceptableOrUnknown(data['service_id']!, _serviceIdMeta),
+      );
+    }
+    if (data.containsKey('asset_id')) {
+      context.handle(
+        _assetIdMeta,
+        assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta),
       );
     }
     if (data.containsKey('subject')) {
@@ -22091,6 +22109,10 @@ class $TicketDraftsTable extends TicketDrafts
         DriftSqlType.string,
         data['${effectivePrefix}service_id'],
       ),
+      assetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asset_id'],
+      ),
       subject: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}subject'],
@@ -22149,6 +22171,12 @@ class TicketDraftRecord extends DataClass
   /// know which service it belongs under, and a draft with no service is kept
   /// rather than refused — it simply does not convert yet.
   final String? serviceId;
+
+  /// The machine the report is about, when it was written from a machine's
+  /// card (OPH-349). Written by THIS device — unlike the columns the server
+  /// fills — so a draft typed with no signal carries the machine to the
+  /// server, which links it when the draft becomes a request.
+  final String? assetId;
   final String? subject;
   final String? body;
 
@@ -22164,6 +22192,7 @@ class TicketDraftRecord extends DataClass
     required this.workspaceId,
     this.teamId,
     this.serviceId,
+    this.assetId,
     this.subject,
     this.body,
     this.ticketId,
@@ -22182,6 +22211,9 @@ class TicketDraftRecord extends DataClass
     }
     if (!nullToAbsent || serviceId != null) {
       map['service_id'] = Variable<String>(serviceId);
+    }
+    if (!nullToAbsent || assetId != null) {
+      map['asset_id'] = Variable<String>(assetId);
     }
     if (!nullToAbsent || subject != null) {
       map['subject'] = Variable<String>(subject);
@@ -22215,6 +22247,9 @@ class TicketDraftRecord extends DataClass
       serviceId: serviceId == null && nullToAbsent
           ? const Value.absent()
           : Value(serviceId),
+      assetId: assetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetId),
       subject: subject == null && nullToAbsent
           ? const Value.absent()
           : Value(subject),
@@ -22245,6 +22280,7 @@ class TicketDraftRecord extends DataClass
       workspaceId: serializer.fromJson<String>(json['workspaceId']),
       teamId: serializer.fromJson<String?>(json['teamId']),
       serviceId: serializer.fromJson<String?>(json['serviceId']),
+      assetId: serializer.fromJson<String?>(json['assetId']),
       subject: serializer.fromJson<String?>(json['subject']),
       body: serializer.fromJson<String?>(json['body']),
       ticketId: serializer.fromJson<String?>(json['ticketId']),
@@ -22262,6 +22298,7 @@ class TicketDraftRecord extends DataClass
       'workspaceId': serializer.toJson<String>(workspaceId),
       'teamId': serializer.toJson<String?>(teamId),
       'serviceId': serializer.toJson<String?>(serviceId),
+      'assetId': serializer.toJson<String?>(assetId),
       'subject': serializer.toJson<String?>(subject),
       'body': serializer.toJson<String?>(body),
       'ticketId': serializer.toJson<String?>(ticketId),
@@ -22277,6 +22314,7 @@ class TicketDraftRecord extends DataClass
     String? workspaceId,
     Value<String?> teamId = const Value.absent(),
     Value<String?> serviceId = const Value.absent(),
+    Value<String?> assetId = const Value.absent(),
     Value<String?> subject = const Value.absent(),
     Value<String?> body = const Value.absent(),
     Value<String?> ticketId = const Value.absent(),
@@ -22289,6 +22327,7 @@ class TicketDraftRecord extends DataClass
     workspaceId: workspaceId ?? this.workspaceId,
     teamId: teamId.present ? teamId.value : this.teamId,
     serviceId: serviceId.present ? serviceId.value : this.serviceId,
+    assetId: assetId.present ? assetId.value : this.assetId,
     subject: subject.present ? subject.value : this.subject,
     body: body.present ? body.value : this.body,
     ticketId: ticketId.present ? ticketId.value : this.ticketId,
@@ -22305,6 +22344,7 @@ class TicketDraftRecord extends DataClass
           : this.workspaceId,
       teamId: data.teamId.present ? data.teamId.value : this.teamId,
       serviceId: data.serviceId.present ? data.serviceId.value : this.serviceId,
+      assetId: data.assetId.present ? data.assetId.value : this.assetId,
       subject: data.subject.present ? data.subject.value : this.subject,
       body: data.body.present ? data.body.value : this.body,
       ticketId: data.ticketId.present ? data.ticketId.value : this.ticketId,
@@ -22324,6 +22364,7 @@ class TicketDraftRecord extends DataClass
           ..write('workspaceId: $workspaceId, ')
           ..write('teamId: $teamId, ')
           ..write('serviceId: $serviceId, ')
+          ..write('assetId: $assetId, ')
           ..write('subject: $subject, ')
           ..write('body: $body, ')
           ..write('ticketId: $ticketId, ')
@@ -22341,6 +22382,7 @@ class TicketDraftRecord extends DataClass
     workspaceId,
     teamId,
     serviceId,
+    assetId,
     subject,
     body,
     ticketId,
@@ -22357,6 +22399,7 @@ class TicketDraftRecord extends DataClass
           other.workspaceId == this.workspaceId &&
           other.teamId == this.teamId &&
           other.serviceId == this.serviceId &&
+          other.assetId == this.assetId &&
           other.subject == this.subject &&
           other.body == this.body &&
           other.ticketId == this.ticketId &&
@@ -22371,6 +22414,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
   final Value<String> workspaceId;
   final Value<String?> teamId;
   final Value<String?> serviceId;
+  final Value<String?> assetId;
   final Value<String?> subject;
   final Value<String?> body;
   final Value<String?> ticketId;
@@ -22384,6 +22428,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
     this.workspaceId = const Value.absent(),
     this.teamId = const Value.absent(),
     this.serviceId = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.subject = const Value.absent(),
     this.body = const Value.absent(),
     this.ticketId = const Value.absent(),
@@ -22398,6 +22443,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
     required String workspaceId,
     this.teamId = const Value.absent(),
     this.serviceId = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.subject = const Value.absent(),
     this.body = const Value.absent(),
     this.ticketId = const Value.absent(),
@@ -22413,6 +22459,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
     Expression<String>? workspaceId,
     Expression<String>? teamId,
     Expression<String>? serviceId,
+    Expression<String>? assetId,
     Expression<String>? subject,
     Expression<String>? body,
     Expression<String>? ticketId,
@@ -22427,6 +22474,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
       if (workspaceId != null) 'workspace_id': workspaceId,
       if (teamId != null) 'team_id': teamId,
       if (serviceId != null) 'service_id': serviceId,
+      if (assetId != null) 'asset_id': assetId,
       if (subject != null) 'subject': subject,
       if (body != null) 'body': body,
       if (ticketId != null) 'ticket_id': ticketId,
@@ -22443,6 +22491,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
     Value<String>? workspaceId,
     Value<String?>? teamId,
     Value<String?>? serviceId,
+    Value<String?>? assetId,
     Value<String?>? subject,
     Value<String?>? body,
     Value<String?>? ticketId,
@@ -22457,6 +22506,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
       workspaceId: workspaceId ?? this.workspaceId,
       teamId: teamId ?? this.teamId,
       serviceId: serviceId ?? this.serviceId,
+      assetId: assetId ?? this.assetId,
       subject: subject ?? this.subject,
       body: body ?? this.body,
       ticketId: ticketId ?? this.ticketId,
@@ -22482,6 +22532,9 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
     }
     if (serviceId.present) {
       map['service_id'] = Variable<String>(serviceId.value);
+    }
+    if (assetId.present) {
+      map['asset_id'] = Variable<String>(assetId.value);
     }
     if (subject.present) {
       map['subject'] = Variable<String>(subject.value);
@@ -22517,6 +22570,7 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
           ..write('workspaceId: $workspaceId, ')
           ..write('teamId: $teamId, ')
           ..write('serviceId: $serviceId, ')
+          ..write('assetId: $assetId, ')
           ..write('subject: $subject, ')
           ..write('body: $body, ')
           ..write('ticketId: $ticketId, ')
@@ -32873,6 +32927,7 @@ typedef $$TicketDraftsTableCreateCompanionBuilder =
       required String workspaceId,
       Value<String?> teamId,
       Value<String?> serviceId,
+      Value<String?> assetId,
       Value<String?> subject,
       Value<String?> body,
       Value<String?> ticketId,
@@ -32888,6 +32943,7 @@ typedef $$TicketDraftsTableUpdateCompanionBuilder =
       Value<String> workspaceId,
       Value<String?> teamId,
       Value<String?> serviceId,
+      Value<String?> assetId,
       Value<String?> subject,
       Value<String?> body,
       Value<String?> ticketId,
@@ -32924,6 +32980,11 @@ class $$TicketDraftsTableFilterComposer
 
   ColumnFilters<String> get serviceId => $composableBuilder(
     column: $table.serviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get assetId => $composableBuilder(
+    column: $table.assetId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -32992,6 +33053,11 @@ class $$TicketDraftsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get assetId => $composableBuilder(
+    column: $table.assetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get subject => $composableBuilder(
     column: $table.subject,
     builder: (column) => ColumnOrderings(column),
@@ -33050,6 +33116,9 @@ class $$TicketDraftsTableAnnotationComposer
 
   GeneratedColumn<String> get serviceId =>
       $composableBuilder(column: $table.serviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get assetId =>
+      $composableBuilder(column: $table.assetId, builder: (column) => column);
 
   GeneratedColumn<String> get subject =>
       $composableBuilder(column: $table.subject, builder: (column) => column);
@@ -33110,6 +33179,7 @@ class $$TicketDraftsTableTableManager
                 Value<String> workspaceId = const Value.absent(),
                 Value<String?> teamId = const Value.absent(),
                 Value<String?> serviceId = const Value.absent(),
+                Value<String?> assetId = const Value.absent(),
                 Value<String?> subject = const Value.absent(),
                 Value<String?> body = const Value.absent(),
                 Value<String?> ticketId = const Value.absent(),
@@ -33123,6 +33193,7 @@ class $$TicketDraftsTableTableManager
                 workspaceId: workspaceId,
                 teamId: teamId,
                 serviceId: serviceId,
+                assetId: assetId,
                 subject: subject,
                 body: body,
                 ticketId: ticketId,
@@ -33138,6 +33209,7 @@ class $$TicketDraftsTableTableManager
                 required String workspaceId,
                 Value<String?> teamId = const Value.absent(),
                 Value<String?> serviceId = const Value.absent(),
+                Value<String?> assetId = const Value.absent(),
                 Value<String?> subject = const Value.absent(),
                 Value<String?> body = const Value.absent(),
                 Value<String?> ticketId = const Value.absent(),
@@ -33151,6 +33223,7 @@ class $$TicketDraftsTableTableManager
                 workspaceId: workspaceId,
                 teamId: teamId,
                 serviceId: serviceId,
+                assetId: assetId,
                 subject: subject,
                 body: body,
                 ticketId: ticketId,

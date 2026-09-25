@@ -766,6 +766,10 @@ TicketDraftsCompanion ticketDraftCompanion(Map<String, dynamic> data) =>
       workspaceId: Value(data['workspaceId'] as String),
       teamId: Value(data['teamId'] as String?),
       serviceId: Value(data['serviceId'] as String?),
+      // OPH-349: the machine it was written about, as this device sent it —
+      // so the pull after a push does not take it off the draft on screen.
+      // Kept from v35.
+      assetId: Value(data['assetId'] as String?),
       subject: Value(data['subject'] as String?),
       body: Value(data['body'] as String?),
       ticketId: Value(data['ticketId'] as String?),

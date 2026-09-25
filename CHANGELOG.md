@@ -94,6 +94,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   green. It now fails, naming the caller, until the exemption is deleted; the
   extension's change entity lost its exemption this way.
 
+- **The device keeps which machine a draft request is about (OPH-349).** A
+  request written with no signal waits on the phone as a draft, and a draft can
+  now be written from a machine's card; the machine travels with it, so the
+  request that arrives later is tied to the machine like one filed online. The
+  one extension table the device writes into rather than mirrors, so the value
+  is the device's own and a pull no longer takes it back off the draft on
+  screen. Kept from local schema v35. The migration test gained a fixture for a
+  device holding an unsent draft — the only kind that runs the new step — and
+  deleting the step turns it red.
+
 - **The device keeps what kind of work an extension's request is (OPH-346).**
   The server sends it with the request, and the queue filters by it with no
   signal, so the value lives in the local copy. Kept from local schema v34. A
