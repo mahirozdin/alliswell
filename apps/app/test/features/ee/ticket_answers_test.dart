@@ -123,6 +123,8 @@ void main() {
             _ticketId,
           ).overrideWith((ref) async => const []),
           canProvider('changes.create').overrideWith((ref) => false),
+          canProvider('problems.manage').overrideWith((ref) => false),
+          canProvider('tickets.link').overrideWith((ref) => false),
           eeKbSuggestionsProvider(
             'Hat 3 sunucusu için yedek disk ve RAID kartı',
           ).overrideWith((ref) async => const []),

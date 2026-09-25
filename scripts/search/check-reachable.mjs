@@ -41,11 +41,7 @@ const REGISTRY = join(APP, 'src', 'search', 'search.dart');
  * this — "or its absence recorded in a written decision" — and this is that
  * record. Doing neither is not a third option.
  */
-const EXEMPT = {
-  problems:
-    'EE-188, same shape as changes: no screen in the app, so no caller can ' +
-    'exist. Recorded here so the next round finds a decision instead of a gap.',
-};
+const EXEMPT = {};
 
 const failures = [];
 const src = readFileSync(REGISTRY, 'utf8');

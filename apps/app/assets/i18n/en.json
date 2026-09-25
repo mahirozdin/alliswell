@@ -2860,6 +2860,60 @@
         "done": "Change raised"
       }
     },
+    "problems": {
+      "title": "Problems",
+      "searchHint": "Search problems",
+      "new": "New problem record",
+      "empty": "No problems in this unit",
+      "emptyBody": "A problem record is the desk's shared understanding of a fault that keeps coming back: what people see, why it happens and what to do until it is fixed. A record opened in another unit is in that unit's list.",
+      "searchEmpty": "No problem matches",
+      "searchEmptyBody": "Search looks at a problem's title and what people see.",
+      "section": {
+        "known_error": "Known errors",
+        "investigating": "Being investigated",
+        "resolved": "Resolved",
+        "closed": "Closed"
+      },
+      "status": {
+        "known_error": "Known error",
+        "investigating": "Investigating",
+        "resolved": "Resolved",
+        "closed": "Closed"
+      },
+      "hasWorkaround": "A workaround is written down",
+      "detailTitle": "Problem",
+      "workaround": "What to do until it is fixed",
+      "noWorkaround": "No workaround is written down yet.",
+      "symptom": "What people see",
+      "rootCause": "Why it happens",
+      "permanentAction": "The permanent fix",
+      "resolvedOn": "Resolved {date}",
+      "fromServer": "Read from the server — this device does not keep it",
+      "notOnDevice": "This problem is not on this device",
+      "notOnDeviceBody": "Opening it needs a connection.",
+      "gone": "Problem not found",
+      "goneBody": "It may have been removed, or it belongs to another team.",
+      "live": {
+        "offline": "The requests it explains need a connection."
+      },
+      "requests": "Requests it explains",
+      "requestsNone": "No request is linked to it yet.",
+      "requestsMore": "…and {count} more",
+      "requestsElsewhere": "{count} more in units you do not work in",
+      "fromTicketAction": "Open a known-error record",
+      "create": {
+        "title": "New problem record",
+        "knownErrorTitle": "Known-error record",
+        "fromTicket": "Raised from the request {ticket} — it will be linked to it",
+        "name": "Title",
+        "symptomHelp": "Required. What people see, in their words — how anybody recognises it next time.",
+        "workaround": "What to do until it is fixed (optional)",
+        "workaroundHelp": "If you already know one, write it down: it is what the desk reads out on the phone.",
+        "save": "Open the record",
+        "offline": "Opening a record needs a connection.",
+        "done": "Problem record opened"
+      }
+    },
     "kb": {
       "title": "Knowledge base",
       "articleTitle": "Article",

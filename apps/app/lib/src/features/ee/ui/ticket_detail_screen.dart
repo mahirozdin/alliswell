@@ -14,6 +14,7 @@ import '../../files/providers.dart';
 import '../changes_providers.dart';
 import '../data/changes_models.dart';
 import '../data/kb_models.dart';
+import '../data/problems_models.dart';
 import '../data/ticket_links_models.dart';
 import '../data/ticket_write_api.dart';
 import '../kb_providers.dart';
@@ -24,6 +25,8 @@ import '../tickets_providers.dart';
 import '../ticket_write_providers.dart';
 import 'changes_screen.dart';
 import 'history_tab.dart';
+import 'problem_detail_screen.dart';
+import 'problems_screen.dart';
 import 'ticket_archive_screen.dart';
 import 'sla_chip.dart';
 import 'ticket_actions.dart';
@@ -246,6 +249,9 @@ class _Thread extends ConsumerWidget {
         // because an agent picking this up asks "is this the known one, and
         // has somebody already started" before reading forty replies.
         _Relations(ticketId: ticket.id),
+        // EE-280: "let's open the known-error record" — from the request it
+        // was recognised in, linked to it in the same step.
+        _RaiseKnownError(ticket: ticket),
         // EE-279: what planned work came of this request, and the door to
         // raise some — right under the work it caused (EE-189/190).
         _Changes(ticket: ticket),
@@ -353,23 +359,30 @@ class _Relations extends ConsumerWidget {
             for (final problem in data.problems) ...[
               const SizedBox(height: AwSpace.x4),
               Card(
+                key: Key('ticket-problem-${problem.id}'),
                 margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(AwSpace.x3),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(problem.title, style: theme.textTheme.titleSmall),
-                      if (problem.hasUsableWorkaround) ...[
-                        const SizedBox(height: AwSpace.x2),
-                        // The reason this card exists. Full text, never
-                        // truncated: a workaround cut in half is a wrong one.
-                        Text(
-                          problem.workaround!,
-                          style: theme.textTheme.bodyMedium,
-                        ),
+                clipBehavior: Clip.antiAlias,
+                // EE-270: the card opens the record — its symptom, its cause,
+                // and the requests it explains — where it used to be an end.
+                child: InkWell(
+                  onTap: () => awOpenProblem(context, problem.id),
+                  child: Padding(
+                    padding: const EdgeInsets.all(AwSpace.x3),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(problem.title, style: theme.textTheme.titleSmall),
+                        if (problem.hasUsableWorkaround) ...[
+                          const SizedBox(height: AwSpace.x2),
+                          // The reason this card exists. Full text, never
+                          // truncated: a workaround cut in half is a wrong one.
+                          Text(
+                            problem.workaround!,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -485,6 +498,42 @@ class _Relations extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('ee.tickets.relatedOpened'.tr())));
+  }
+}
+
+/// EE-280 — the known-error record, raised from this request.
+///
+/// Two verbs, because it is two acts in one step: keeping a problem record
+/// (`problems.manage`) and linking a request to it (`tickets.link` — a link
+/// reaches the requester when the problem is solved). The button is drawn
+/// only for somebody who holds both; the server asks the same two questions.
+class _RaiseKnownError extends ConsumerWidget {
+  const _RaiseKnownError({required this.ticket});
+
+  final TicketRecord ticket;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final may =
+        ref.watch(canProvider('problems.manage')) &&
+        ref.watch(canProvider('tickets.link'));
+    if (!may) return const SizedBox.shrink();
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton.icon(
+        key: const Key('ticket-raise-known-error'),
+        onPressed: () => awOpenNewProblem(
+          context,
+          source: EeProblemSource(
+            ticketId: ticket.id,
+            subject: ticket.subject,
+            number: ticket.number,
+          ),
+        ),
+        icon: const Icon(Icons.lightbulb_outline),
+        label: Text('ee.problems.fromTicketAction'.tr()),
+      ),
+    );
   }
 }
 

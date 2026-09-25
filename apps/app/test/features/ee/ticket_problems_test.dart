@@ -6,15 +6,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/changes_providers.dart';
-import 'package:alliswell/src/features/ee/data/changes_models.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
+import 'package:alliswell/src/features/ee/problems_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/services_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_links_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
+import 'package:alliswell/src/features/ee/ui/problem_detail_screen.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
 import 'package:alliswell/src/features/ee/worklog_providers.dart';
 import 'package:alliswell/src/features/files/providers.dart';
@@ -23,14 +24,14 @@ import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
-/// EE-279 — what planned work came of a request, and the door to raise some.
+/// EE-270 + EE-280 — a request and its problem, from the request's side.
 ///
-/// The request's detail lists the changes raised from it (read from the
-/// server: the device's copy of a change does not carry its request) and,
-/// for somebody who holds `changes.create`, offers to raise one — a form that
-/// knows which request it comes from.
+/// The linked-problem card used to be an end: it showed the workaround and
+/// went nowhere. It opens the record now. And "let's open the known-error
+/// record" starts here — for somebody who holds both verbs the act takes
+/// (`problems.manage` to keep the record, `tickets.link` to link the request).
 const _ticketId = '01TKCCCCCCCCCCCCCCCCCCCCCC';
-const _changeId = '01CHFROMTICKETAAAAAAAAAAAA';
+const _problemId = '01PRFROMTICKETAAAAAAAAAAAA';
 
 TicketRecord _ticket() => TicketRecord(
   id: _ticketId,
@@ -57,8 +58,9 @@ void main() {
 
   Future<void> pump(
     WidgetTester tester, {
-    required List<EeChange> raised,
-    required bool canCreate,
+    required EeTicketRelations relations,
+    required bool canManage,
+    required bool canLink,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -80,17 +82,22 @@ void main() {
           ).overrideWith((ref) async => EeExternalFiles.none),
           eeTicketRelationsProvider(
             _ticketId,
-          ).overrideWith((ref) async => const EeTicketRelations()),
+          ).overrideWith((ref) async => relations),
           eeKbSuggestionsProvider(
             'Hat 3 her vardiya iki kez duruyor',
           ).overrideWith((ref) async => const []),
           eeKbOfTicketProvider(_ticketId).overrideWith((ref) async => const []),
           eeChangesRaisedFromProvider(
             _ticketId,
-          ).overrideWith((ref) async => raised),
-          canProvider('changes.create').overrideWith((ref) => canCreate),
-          canProvider('problems.manage').overrideWith((ref) => false),
-          canProvider('tickets.link').overrideWith((ref) => false),
+          ).overrideWith((ref) async => const []),
+          canProvider('changes.create').overrideWith((ref) => false),
+          canProvider('problems.manage').overrideWith((ref) => canManage),
+          canProvider('tickets.link').overrideWith((ref) => canLink),
+          // The record the card opens: quiet, so the test is about the card.
+          eeProblemOnDeviceProvider(
+            _problemId,
+          ).overrideWith((ref) => Stream.value(null)),
+          eeProblemLiveProvider(_problemId).overrideWith((ref) async => null),
           canProvider('kb.write').overrideWith((ref) => false),
           canProvider('tickets.convert').overrideWith((ref) => false),
           canProvider('tickets.create').overrideWith((ref) => false),
@@ -119,58 +126,73 @@ void main() {
     }
   }
 
-  testWidgets('EE-279: a request lists the changes raised from it, and '
-      'raising another opens a form that knows where it comes from', (
+  const linked = EeTicketRelations(
+    problems: [
+      EeLinkedProblem(
+        id: _problemId,
+        title: 'Hat 3 PLC her vardiya kilitleniyor',
+        status: 'known_error',
+        hasUsableWorkaround: true,
+        workaround: 'PLC panelinden yazılımı yeniden başlatın',
+      ),
+    ],
+  );
+
+  testWidgets('EE-270: the linked-problem card opens the record', (
     tester,
   ) async {
-    await pump(
-      tester,
-      raised: [
-        EeChange(
-          id: _changeId,
-          workspaceId: 'W1',
-          title: 'Hat 3 PLC yazılımı güncellemesi',
-          type: 'normal',
-          status: 'awaiting_approval',
-          risk: 'medium',
-          impact: 'Hat 3 bir vardiya durur',
-          sourceTicketId: _ticketId,
-          fromServer: true,
-        ),
-      ],
-      canCreate: true,
+    await pump(tester, relations: linked, canManage: false, canLink: false);
+
+    expect(
+      find.text('PLC panelinden yazılımı yeniden başlatın'),
+      findsOneWidget,
     );
-
-    expect(find.byKey(const Key('ticket-changes')), findsOneWidget);
-    expect(find.text('Bu talepten açılan değişiklikler'), findsOneWidget);
-    expect(find.byKey(const Key('change-$_changeId')), findsOneWidget);
-    expect(find.text('Hat 3 PLC yazılımı güncellemesi'), findsOneWidget);
-
-    await tester.ensureVisible(find.byKey(const Key('ticket-raise-change')));
-    await tester.tap(find.byKey(const Key('ticket-raise-change')));
+    await tester.ensureVisible(
+      find.byKey(const Key('ticket-problem-$_problemId')),
+    );
+    await tester.tap(find.byKey(const Key('ticket-problem-$_problemId')));
     for (var i = 0; i < 5; i += 1) {
       await tester.pump(const Duration(milliseconds: 100));
     }
+    expect(find.byType(EeProblemDetailScreen), findsOneWidget);
+  });
 
-    // The form, prefilled from the request and saying so.
+  testWidgets('EE-280: the record keeper without the right to link is not '
+      'offered the known-error record', (tester) async {
+    await pump(
+      tester,
+      relations: const EeTicketRelations(),
+      canManage: true,
+      canLink: false,
+    );
+    expect(find.byKey(const Key('ticket-raise-known-error')), findsNothing);
+  });
+
+  testWidgets('EE-280: with both verbs the known-error record is offered, and '
+      'opens knowing its request', (tester) async {
+    await pump(
+      tester,
+      relations: const EeTicketRelations(),
+      canManage: true,
+      canLink: true,
+    );
+    await tester.ensureVisible(
+      find.byKey(const Key('ticket-raise-known-error')),
+    );
+    await tester.tap(find.byKey(const Key('ticket-raise-known-error')));
+    for (var i = 0; i < 5; i += 1) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
     expect(
       find.descendant(
-        of: find.byKey(const Key('change-new-source')),
+        of: find.byKey(const Key('problem-new-source')),
         matching: find.textContaining('#1042'),
       ),
       findsOneWidget,
     );
     final title = tester.widget<TextField>(
-      find.byKey(const Key('change-new-title')),
+      find.byKey(const Key('problem-new-title')),
     );
     expect(title.controller!.text, 'Hat 3 her vardiya iki kez duruyor');
-  });
-
-  testWidgets('nothing raised and no right to raise: the section is not '
-      'drawn at all', (tester) async {
-    await pump(tester, raised: const [], canCreate: false);
-
-    expect(find.byKey(const Key('ticket-changes')), findsNothing);
-    expect(find.byKey(const Key('ticket-raise-change')), findsNothing);
   });
 }

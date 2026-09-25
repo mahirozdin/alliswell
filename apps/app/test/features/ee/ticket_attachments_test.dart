@@ -101,6 +101,8 @@ void main() {
             _ticketId,
           ).overrideWith((ref) async => const []),
           canProvider('changes.create').overrideWith((ref) => false),
+          canProvider('problems.manage').overrideWith((ref) => false),
+          canProvider('tickets.link').overrideWith((ref) => false),
           // Everything else this screen watches, overridden so the tree has no
           // live provider left to spin on: the comment thread and the
           // knowledge section otherwise reach the auth controller, whose

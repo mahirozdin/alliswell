@@ -42,6 +42,10 @@ import 'features/ee/data/changes_models.dart';
 import 'features/ee/ui/change_detail_screen.dart';
 import 'features/ee/ui/changes_screen.dart';
 import 'features/ee/ui/new_change_screen.dart';
+import 'features/ee/data/problems_models.dart';
+import 'features/ee/ui/new_problem_screen.dart';
+import 'features/ee/ui/problem_detail_screen.dart';
+import 'features/ee/ui/problems_screen.dart';
 import 'features/ee/ui/kb_screen.dart';
 import 'features/ee/ui/kb_article_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
@@ -162,6 +166,34 @@ List<RouteBase> eeChangeRoutes() => [
     path: '/changes/:changeId',
     builder: (context, state) => _page(
       EeChangeDetailScreen(changeId: state.pathParameters['changeId'] ?? ''),
+    ),
+  ),
+];
+
+/// Known faults (EE-270): the list, the form, and one problem by its address —
+/// in that order, `new` before the id, for the requests' reason. A request's
+/// linked-problem card opens one, which is why they are real routes.
+List<RouteBase> eeProblemRoutes() => [
+  GoRoute(
+    path: '/problems',
+    builder: (context, state) => _page(const EeProblemsScreen()),
+  ),
+  GoRoute(
+    path: '/problems/new',
+    builder: (context, state) => _page(
+      EeNewProblemScreen(
+        // EE-280: the request it is raised from rides in `extra`.
+        source: switch (state.extra) {
+          final EeProblemSource source => source,
+          _ => null,
+        },
+      ),
+    ),
+  ),
+  GoRoute(
+    path: '/problems/:problemId',
+    builder: (context, state) => _page(
+      EeProblemDetailScreen(problemId: state.pathParameters['problemId'] ?? ''),
     ),
   ),
 ];
@@ -586,6 +618,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // than a screen that says "not yours".
       ...eeAssetRoutes(),
       ...eeChangeRoutes(),
+      ...eeProblemRoutes(),
       ...eeTicketRoutes(),
       // EE-196: the knowledge base. Reached from the request queue's bar —
       // where the person who wants it is already standing (EE-098's rule for

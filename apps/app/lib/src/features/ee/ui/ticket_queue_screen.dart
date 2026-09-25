@@ -118,7 +118,8 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     // relations both link to one change.
                     if (value == '/kb' ||
                         value == '/assets' ||
-                        value == '/changes') {
+                        value == '/changes' ||
+                        value == '/problems') {
                       context.push(value);
                       return;
                     }
@@ -197,6 +198,25 @@ class EeTicketQueueScreen extends ConsumerWidget {
                           Flexible(
                             child: Text(
                               'ee.changes.title'.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // EE-270: known faults beside planned work. The same
+                    // shelf, because the same person asks "is this that thing
+                    // again, and what do we tell them until it is fixed?".
+                    PopupMenuItem(
+                      key: const Key('ticket-problems'),
+                      value: '/problems',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.bug_report_outlined),
+                          const SizedBox(width: AwSpace.x2),
+                          Flexible(
+                            child: Text(
+                              'ee.problems.title'.tr(),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),

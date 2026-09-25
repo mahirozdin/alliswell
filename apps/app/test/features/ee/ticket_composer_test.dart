@@ -300,6 +300,8 @@ void main() {
               _ticketId,
             ).overrideWith((ref) async => const []),
             canProvider('changes.create').overrideWith((ref) => false),
+            canProvider('problems.manage').overrideWith((ref) => false),
+            canProvider('tickets.link').overrideWith((ref) => false),
             eeKbSuggestionsProvider(
               'Kompresör arızası',
             ).overrideWith((ref) async => const []),

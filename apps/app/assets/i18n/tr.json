@@ -2859,6 +2859,60 @@
         "done": "Değişiklik açıldı"
       }
     },
+    "problems": {
+      "title": "Problemler",
+      "searchHint": "Problemlerde ara",
+      "new": "Yeni problem kaydı",
+      "empty": "Bu birimde problem kaydı yok",
+      "emptyBody": "Problem kaydı, masanın tekrar eden bir arızayı ortak anlayışıdır: insanlar ne görüyor, neden oluyor ve düzelene kadar ne yapılır. Başka bir birimde açılan kayıt o birimin listesindedir.",
+      "searchEmpty": "Eşleşen problem yok",
+      "searchEmptyBody": "Arama problemin başlığına ve insanların gördüğüne bakar.",
+      "section": {
+        "known_error": "Bilinen hatalar",
+        "investigating": "İnceleniyor",
+        "resolved": "Çözüldü",
+        "closed": "Kapandı"
+      },
+      "status": {
+        "known_error": "Bilinen hata",
+        "investigating": "İnceleniyor",
+        "resolved": "Çözüldü",
+        "closed": "Kapandı"
+      },
+      "hasWorkaround": "Geçici çözüm yazılı",
+      "detailTitle": "Problem",
+      "workaround": "Düzelene kadar ne yapılır",
+      "noWorkaround": "Henüz geçici çözüm yazılmadı.",
+      "symptom": "İnsanlar ne görüyor",
+      "rootCause": "Neden oluyor",
+      "permanentAction": "Kalıcı çözüm",
+      "resolvedOn": "{date} tarihinde çözüldü",
+      "fromServer": "Sunucudan okundu — bu cihaz tutmuyor",
+      "notOnDevice": "Bu problem bu cihazda yok",
+      "notOnDeviceBody": "Açmak için bağlantı gerekiyor.",
+      "gone": "Problem bulunamadı",
+      "goneBody": "Silinmiş olabilir ya da başka bir takımın.",
+      "live": {
+        "offline": "Açıkladığı talepler bağlantı ister."
+      },
+      "requests": "Açıkladığı talepler",
+      "requestsNone": "Henüz bağlı bir talep yok.",
+      "requestsMore": "…ve {count} tane daha",
+      "requestsElsewhere": "Çalışmadığınız birimlerde {count} tane daha",
+      "fromTicketAction": "Bilinen hata kaydı aç",
+      "create": {
+        "title": "Yeni problem kaydı",
+        "knownErrorTitle": "Bilinen hata kaydı",
+        "fromTicket": "{ticket} talebinden açılıyor — ona bağlanacak",
+        "name": "Başlık",
+        "symptomHelp": "Zorunlu. İnsanların gördüğü, onların sözleriyle — bir dahaki sefere tanınmasının yolu.",
+        "workaround": "Düzelene kadar ne yapılır (isteğe bağlı)",
+        "workaroundHelp": "Biliyorsanız yazın: masanın telefonda okuduğu cümle bu.",
+        "save": "Kaydı aç",
+        "offline": "Kayıt açmak bağlantı ister.",
+        "done": "Problem kaydı açıldı"
+      }
+    },
     "kb": {
       "title": "Bilgi bankası",
       "articleTitle": "Makale",
