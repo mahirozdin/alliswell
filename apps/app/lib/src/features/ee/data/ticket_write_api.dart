@@ -26,6 +26,29 @@ class EeCannedReply {
   final String text;
 }
 
+/// One answer a request was filed with (EE-213), as the detail endpoint
+/// returns it (EE-242). The server's words: [label] is the question as it was
+/// asked on the day, [value] the text the requester typed or picked.
+class EeTicketAnswer {
+  const EeTicketAnswer({
+    required this.label,
+    required this.type,
+    required this.value,
+  });
+
+  factory EeTicketAnswer.fromJson(Map<String, dynamic> json) => EeTicketAnswer(
+    label: json['label'] as String,
+    type: json['type'] as String,
+    value: json['value'] as String,
+  );
+
+  final String label;
+
+  /// `text` | `number` | `date` | `checkbox` | `select`.
+  final String type;
+  final String value;
+}
+
 /// What the server says THIS caller may do to one request (EE-224).
 ///
 /// Every field is the server's answer, read from the detail endpoint: the
@@ -55,6 +78,7 @@ class EeTicketActions {
     this.unverifiedCommentIds = const {},
     this.requesterEmail,
     this.requesterDisplayName,
+    this.answers = const [],
   });
 
   factory EeTicketActions.fromJson(Map<String, dynamic> json) {
@@ -89,8 +113,18 @@ class EeTicketActions {
       unverifiedCommentIds: strings(json['unverifiedCommentIds']).toSet(),
       requesterEmail: json['requesterEmail'] as String?,
       requesterDisplayName: json['requesterDisplayName'] as String?,
+      answers: ((json['fields'] as List<dynamic>?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(EeTicketAnswer.fromJson)
+          .toList(growable: false),
     );
   }
+
+  /// EE-278: the service form's answers, in the form's order. The replica
+  /// keeps none (they are the server's, EE-213), so the detail reads them
+  /// here — the endpoint has returned them since EE-242, and until EE-278 no
+  /// screen did.
+  final List<EeTicketAnswer> answers;
 
   /// EE-258: who asked, in the server's words. The replica keeps them from
   /// v33 on; a request this device pulled before that has neither until the

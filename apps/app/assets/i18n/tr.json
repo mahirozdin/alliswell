@@ -2230,6 +2230,9 @@
         "teamMember": "Takım üyesi",
         "writeTo": "{address} adresine e-posta yaz"
       },
+      "answers": {
+        "title": "Form cevapları"
+      },
       "senderUnverified": "Gönderen doğrulanmadı — bu posta bir çalışma arkadaşınızın adresini taşıyor ama ondan geldiği kanıtlanamadı; dış gönderen olarak kaydedildi.",
       "senderUnverifiedShort": "Gönderen doğrulanmadı"
     },

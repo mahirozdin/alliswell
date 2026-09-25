@@ -41,6 +41,8 @@ import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/history_providers.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/data/services_models.dart';
+import 'package:alliswell/src/features/ee/services_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_links_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
@@ -252,6 +254,71 @@ void main() {
       );
     });
 
+    // EE-278: what the request was filed with — the service form's answers,
+    // under the request, as the server returns them. Only asked for a request
+    // whose service has a form, which the catalogue override says.
+    testWidgets('and what it was filed with — ${brightness.name}', (
+      tester,
+    ) async {
+      const serviceId = '01SVSHOTAAAAAAAAAAAAAAAAAA';
+      final ticket = corpus
+          .ticket(_ticketId)
+          .copyWith(serviceId: const Value(serviceId));
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-ticket-answers',
+        size: const Size(900, 1300),
+        overrides: [
+          ..._overrides(corpus, ticket: ticket),
+          eeServicesProvider.overrideWith(
+            () => _Catalogue(const [
+              EeService(
+                id: serviceId,
+                name: 'Yatırım ve demirbaş alımı',
+                formFields: [
+                  EeServiceField(
+                    key: 'tutar',
+                    label: 'Tahmini tutar (TL)',
+                    type: 'number',
+                  ),
+                ],
+              ),
+            ]),
+          ),
+          eeTicketActionsProvider(_ticketId).overrideWith(
+            (ref) async => const EeTicketActions(
+              status: 'in_progress',
+              priority: 'urgent',
+              answers: [
+                EeTicketAnswer(
+                  label: 'Tahmini tutar (TL)',
+                  type: 'number',
+                  value: '48500',
+                ),
+                EeTicketAnswer(
+                  label: 'Gerekçe',
+                  type: 'select',
+                  value: 'Arıza',
+                ),
+                EeTicketAnswer(
+                  label: 'İstenen teslim tarihi',
+                  type: 'date',
+                  value: '2026-09-29',
+                ),
+                EeTicketAnswer(
+                  label: 'Bütçede var mı',
+                  type: 'checkbox',
+                  value: 'true',
+                ),
+              ],
+            ),
+          ),
+        ],
+        screen: const EeTicketDetailScreen(ticketId: _ticketId),
+      );
+    });
+
     // EE-223: the answer, being written — as an internal note, because that
     // is the one whose three signals have to be visible BEFORE the send.
     testWidgets('and the answer being written — ${brightness.name}', (
@@ -335,4 +402,14 @@ void main() {
       );
     });
   }
+}
+
+/// EE-278's shot: a catalogue that says which service has a form.
+class _Catalogue extends EeServicesController {
+  _Catalogue(this.services);
+
+  final List<EeService> services;
+
+  @override
+  Future<List<EeService>?> build() async => services;
 }

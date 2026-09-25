@@ -2231,6 +2231,9 @@
         "teamMember": "A team member",
         "writeTo": "Write an e-mail to {address}"
       },
+      "answers": {
+        "title": "Form answers"
+      },
       "senderUnverified": "Sender not verified — this mail carries a colleague’s address but could not be proven to come from them, so it was filed as an outside sender.",
       "senderUnverifiedShort": "Sender not verified"
     },

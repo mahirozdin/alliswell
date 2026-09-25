@@ -16,6 +16,7 @@ import '../data/ticket_links_models.dart';
 import '../data/ticket_write_api.dart';
 import '../kb_providers.dart';
 import '../providers.dart';
+import '../services_providers.dart';
 import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import '../ticket_write_providers.dart';
@@ -144,7 +145,23 @@ class _Thread extends ConsumerWidget {
     // because the device cannot tell an old row from a request nobody put a
     // name on, and asking on every open for an answer that does not exist is
     // the cost EE-224 refused.
-    final checked = mayBeUnverified
+    // EE-278: the answers the request was filed with live on the server
+    // (EE-213 keeps them out of the replica), and come with the same read.
+    // Asked only where there can be some — the service has a form, which the
+    // catalogue says — so a request with no form still opens without a
+    // question, as EE-224 measured it should.
+    final serviceId = ticket.serviceId;
+    final hasForm =
+        serviceId != null &&
+        (ref.watch(
+              eeServicesProvider.select(
+                (services) => services.value?.any(
+                  (s) => s.id == serviceId && s.formFields.isNotEmpty,
+                ),
+              ),
+            ) ??
+            false);
+    final checked = mayBeUnverified || hasForm
         ? ref.watch(eeTicketActionsProvider(ticket.id)).value
         : null;
 
@@ -216,6 +233,10 @@ class _Thread extends ConsumerWidget {
           const SizedBox(height: AwSpace.x4),
           Text(ticket.body!, style: theme.textTheme.bodyMedium),
         ],
+        // EE-278: what the form asked, and what they answered — right under
+        // the request's own words, because it is part of what was asked.
+        if (checked != null && checked.answers.isNotEmpty)
+          _Answers(answers: checked.answers, dateFormat: dateFormat),
         // EE-189/EE-190: what this request has to do with anything else, and
         // what came out of it. Below the request and ABOVE the conversation,
         // because an agent picking this up asks "is this the known one, and
@@ -681,6 +702,63 @@ class _Chip extends StatelessWidget {
 
 /// EE-254: "we could not check who wrote this", with the icon and the words
 /// both — never colour alone.
+/// EE-278 — the answers a request was filed with (EE-213's service form).
+///
+/// The server's words, read with the detail: the label is the question as it
+/// was asked on the day, so renaming a field later does not rewrite what a
+/// request in March said. EE-242 fixed the endpoint that returns them and
+/// wrote that the app "will read" them; no screen did, until the demo's
+/// purchase opened with its amount nowhere on it.
+class _Answers extends StatelessWidget {
+  const _Answers({required this.answers, required this.dateFormat});
+
+  final List<EeTicketAnswer> answers;
+  final String dateFormat;
+
+  String _shown(EeTicketAnswer answer) => switch (answer.type) {
+    'checkbox' => (answer.value == 'true' ? 'common.yes' : 'common.no').tr(),
+    'date' => switch (DateTime.tryParse(answer.value)) {
+      final day? => awFormatDate(day, format: dateFormat),
+      null => answer.value,
+    },
+    _ => answer.value,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      key: const Key('ticket-answers'),
+      padding: const EdgeInsets.only(top: AwSpace.x4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ee.tickets.answers.title'.tr(),
+            style: theme.textTheme.titleSmall,
+          ),
+          for (final answer in answers)
+            Padding(
+              padding: const EdgeInsets.only(top: AwSpace.x2),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    answer.label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(_shown(answer), style: theme.textTheme.bodyLarge),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// EE-258 (AW-E07) — who asked, and where the answer goes.
 ///
 /// From the replica, so a desk with no signal can still say who a request is
