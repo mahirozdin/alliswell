@@ -15767,6 +15767,17 @@ class $TicketsTable extends Tickets
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _tagNamesMeta = const VerificationMeta(
+    'tagNames',
+  );
+  @override
+  late final GeneratedColumn<String> tagNames = GeneratedColumn<String>(
+    'tag_names',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _terminalAtMeta = const VerificationMeta(
     'terminalAt',
   );
@@ -15879,6 +15890,7 @@ class $TicketsTable extends Tickets
     priority,
     source,
     processType,
+    tagNames,
     terminalAt,
     slaDueAt,
     slaStatus,
@@ -15997,6 +16009,12 @@ class $TicketsTable extends Tickets
         ),
       );
     }
+    if (data.containsKey('tag_names')) {
+      context.handle(
+        _tagNamesMeta,
+        tagNames.isAcceptableOrUnknown(data['tag_names']!, _tagNamesMeta),
+      );
+    }
     if (data.containsKey('terminal_at')) {
       context.handle(
         _terminalAtMeta,
@@ -16111,6 +16129,10 @@ class $TicketsTable extends Tickets
         DriftSqlType.string,
         data['${effectivePrefix}process_type'],
       ),
+      tagNames: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tag_names'],
+      ),
       terminalAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}terminal_at'],
@@ -16194,6 +16216,14 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
   /// sends that row again.
   final String? processType;
 
+  /// v36 (OPH-350): the desk's words on the request, as a JSON list of names
+  /// in the vocabulary's order — so the queue filters by them with no signal.
+  /// A copy the server rewrites with the request's revision whenever a word
+  /// is added or taken off; server-owned like the SLA pair below (the push
+  /// entity does not list it). Null for "no tags", and on a row pulled before
+  /// v36 until the server sends that row again.
+  final String? tagNames;
+
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   final DateTime? terminalAt;
@@ -16240,6 +16270,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     required this.priority,
     required this.source,
     this.processType,
+    this.tagNames,
     this.terminalAt,
     this.slaDueAt,
     this.slaStatus,
@@ -16276,6 +16307,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     map['source'] = Variable<String>(source);
     if (!nullToAbsent || processType != null) {
       map['process_type'] = Variable<String>(processType);
+    }
+    if (!nullToAbsent || tagNames != null) {
+      map['tag_names'] = Variable<String>(tagNames);
     }
     if (!nullToAbsent || terminalAt != null) {
       map['terminal_at'] = Variable<DateTime>(terminalAt);
@@ -16329,6 +16363,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       processType: processType == null && nullToAbsent
           ? const Value.absent()
           : Value(processType),
+      tagNames: tagNames == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tagNames),
       terminalAt: terminalAt == null && nullToAbsent
           ? const Value.absent()
           : Value(terminalAt),
@@ -16375,6 +16412,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       priority: serializer.fromJson<String>(json['priority']),
       source: serializer.fromJson<String>(json['source']),
       processType: serializer.fromJson<String?>(json['processType']),
+      tagNames: serializer.fromJson<String?>(json['tagNames']),
       terminalAt: serializer.fromJson<DateTime?>(json['terminalAt']),
       slaDueAt: serializer.fromJson<DateTime?>(json['slaDueAt']),
       slaStatus: serializer.fromJson<String?>(json['slaStatus']),
@@ -16402,6 +16440,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       'priority': serializer.toJson<String>(priority),
       'source': serializer.toJson<String>(source),
       'processType': serializer.toJson<String?>(processType),
+      'tagNames': serializer.toJson<String?>(tagNames),
       'terminalAt': serializer.toJson<DateTime?>(terminalAt),
       'slaDueAt': serializer.toJson<DateTime?>(slaDueAt),
       'slaStatus': serializer.toJson<String?>(slaStatus),
@@ -16427,6 +16466,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     String? priority,
     String? source,
     Value<String?> processType = const Value.absent(),
+    Value<String?> tagNames = const Value.absent(),
     Value<DateTime?> terminalAt = const Value.absent(),
     Value<DateTime?> slaDueAt = const Value.absent(),
     Value<String?> slaStatus = const Value.absent(),
@@ -16453,6 +16493,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     priority: priority ?? this.priority,
     source: source ?? this.source,
     processType: processType.present ? processType.value : this.processType,
+    tagNames: tagNames.present ? tagNames.value : this.tagNames,
     terminalAt: terminalAt.present ? terminalAt.value : this.terminalAt,
     slaDueAt: slaDueAt.present ? slaDueAt.value : this.slaDueAt,
     slaStatus: slaStatus.present ? slaStatus.value : this.slaStatus,
@@ -16487,6 +16528,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       processType: data.processType.present
           ? data.processType.value
           : this.processType,
+      tagNames: data.tagNames.present ? data.tagNames.value : this.tagNames,
       terminalAt: data.terminalAt.present
           ? data.terminalAt.value
           : this.terminalAt,
@@ -16518,6 +16560,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           ..write('priority: $priority, ')
           ..write('source: $source, ')
           ..write('processType: $processType, ')
+          ..write('tagNames: $tagNames, ')
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
@@ -16545,6 +16588,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     priority,
     source,
     processType,
+    tagNames,
     terminalAt,
     slaDueAt,
     slaStatus,
@@ -16571,6 +16615,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           other.priority == this.priority &&
           other.source == this.source &&
           other.processType == this.processType &&
+          other.tagNames == this.tagNames &&
           other.terminalAt == this.terminalAt &&
           other.slaDueAt == this.slaDueAt &&
           other.slaStatus == this.slaStatus &&
@@ -16595,6 +16640,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
   final Value<String> priority;
   final Value<String> source;
   final Value<String?> processType;
+  final Value<String?> tagNames;
   final Value<DateTime?> terminalAt;
   final Value<DateTime?> slaDueAt;
   final Value<String?> slaStatus;
@@ -16618,6 +16664,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     this.priority = const Value.absent(),
     this.source = const Value.absent(),
     this.processType = const Value.absent(),
+    this.tagNames = const Value.absent(),
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
@@ -16642,6 +16689,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     required String priority,
     required String source,
     this.processType = const Value.absent(),
+    this.tagNames = const Value.absent(),
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
@@ -16671,6 +16719,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Expression<String>? priority,
     Expression<String>? source,
     Expression<String>? processType,
+    Expression<String>? tagNames,
     Expression<DateTime>? terminalAt,
     Expression<DateTime>? slaDueAt,
     Expression<String>? slaStatus,
@@ -16695,6 +16744,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       if (priority != null) 'priority': priority,
       if (source != null) 'source': source,
       if (processType != null) 'process_type': processType,
+      if (tagNames != null) 'tag_names': tagNames,
       if (terminalAt != null) 'terminal_at': terminalAt,
       if (slaDueAt != null) 'sla_due_at': slaDueAt,
       if (slaStatus != null) 'sla_status': slaStatus,
@@ -16721,6 +16771,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Value<String>? priority,
     Value<String>? source,
     Value<String?>? processType,
+    Value<String?>? tagNames,
     Value<DateTime?>? terminalAt,
     Value<DateTime?>? slaDueAt,
     Value<String?>? slaStatus,
@@ -16745,6 +16796,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       priority: priority ?? this.priority,
       source: source ?? this.source,
       processType: processType ?? this.processType,
+      tagNames: tagNames ?? this.tagNames,
       terminalAt: terminalAt ?? this.terminalAt,
       slaDueAt: slaDueAt ?? this.slaDueAt,
       slaStatus: slaStatus ?? this.slaStatus,
@@ -16797,6 +16849,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     if (processType.present) {
       map['process_type'] = Variable<String>(processType.value);
     }
+    if (tagNames.present) {
+      map['tag_names'] = Variable<String>(tagNames.value);
+    }
     if (terminalAt.present) {
       map['terminal_at'] = Variable<DateTime>(terminalAt.value);
     }
@@ -16845,6 +16900,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
           ..write('priority: $priority, ')
           ..write('source: $source, ')
           ..write('processType: $processType, ')
+          ..write('tagNames: $tagNames, ')
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
@@ -30136,6 +30192,7 @@ typedef $$TicketsTableCreateCompanionBuilder =
       required String priority,
       required String source,
       Value<String?> processType,
+      Value<String?> tagNames,
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
@@ -30161,6 +30218,7 @@ typedef $$TicketsTableUpdateCompanionBuilder =
       Value<String> priority,
       Value<String> source,
       Value<String?> processType,
+      Value<String?> tagNames,
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
@@ -30239,6 +30297,11 @@ class $$TicketsTableFilterComposer
 
   ColumnFilters<String> get processType => $composableBuilder(
     column: $table.processType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tagNames => $composableBuilder(
+    column: $table.tagNames,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -30357,6 +30420,11 @@ class $$TicketsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get tagNames => $composableBuilder(
+    column: $table.tagNames,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get terminalAt => $composableBuilder(
     column: $table.terminalAt,
     builder: (column) => ColumnOrderings(column),
@@ -30458,6 +30526,9 @@ class $$TicketsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get tagNames =>
+      $composableBuilder(column: $table.tagNames, builder: (column) => column);
+
   GeneratedColumn<DateTime> get terminalAt => $composableBuilder(
     column: $table.terminalAt,
     builder: (column) => column,
@@ -30533,6 +30604,7 @@ class $$TicketsTableTableManager
                 Value<String> priority = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<String?> processType = const Value.absent(),
+                Value<String?> tagNames = const Value.absent(),
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
@@ -30556,6 +30628,7 @@ class $$TicketsTableTableManager
                 priority: priority,
                 source: source,
                 processType: processType,
+                tagNames: tagNames,
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,
@@ -30581,6 +30654,7 @@ class $$TicketsTableTableManager
                 required String priority,
                 required String source,
                 Value<String?> processType = const Value.absent(),
+                Value<String?> tagNames = const Value.absent(),
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
@@ -30604,6 +30678,7 @@ class $$TicketsTableTableManager
                 priority: priority,
                 source: source,
                 processType: processType,
+                tagNames: tagNames,
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,

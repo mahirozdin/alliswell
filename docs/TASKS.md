@@ -11915,6 +11915,27 @@ yazıyor ve itmeyle gönderiyor.
 - **Yüzey (kural 12):** yok (replika).
 - ⚠️ **Çift kapanış:** ↔ `EE-281` (uzantı kaydı: taslağın taşıdığı makine).
 
+### OPH-350 — Replika: uzantının talep tablosuna etiket adları kolonu ✅ 2026-09-25
+
+**Bağlam:** uzantının talepleri artık etiket taşıyor ve kuyruk onlarla süzülüyor — sinyalsiz de.
+Cihaz yalnız talep satırının taşıdığını alıyor; sunucu kelimeleri satıra bir kopya olarak
+yazıyor ve talebin revizyonunu aynı işlemde artırıyor (OPH-346'nın süreç türüyle aynı kalıp:
+ayrı bir senkron varlığı değil, satırda bir kolon).
+
+- [x] Nullable kolon + `schemaVersion` artışı + migration adımı + applier. — `tagNames`
+      (JSON listesi, yoksa null); v36; adım `from >= 24` korumalı (v34'ün şekli); applier
+      listeyi JSON olarak saklıyor, boş liste null.
+- [x] Göç testinin fixture'ı büyür; adım kırmızıya düşürülerek kanıtlanır. — v24 fikstürü yeni
+      kolonu da düşürüyor, boş açıldığını ve applier'ın doldurduğunu soruyor. Ölçüm bir fikstür
+      hatası buldu: OPH-349'un v34 taslak fikstürü bugünkü şemayla kurulup yalnız kendi
+      kolonunu düşürüyordu; yeni kolon fikstürde kalınca v36 adımı ikinci kez eklemeye çalışıp
+      açılışı düşürdü → v34 fikstürü de v34'ten sonra eklenen her şeyi düşürüyor, 5/5.
+      **Kırmızı:** enjeksiyon (v36 adımı silinince `no such column: tag_names`) son kontrol
+      turunda.
+- **Kabul / Doğrulama:** OPH-344'ünkiler.
+- **Yüzey (kural 12):** yok (replika).
+- ⚠️ **Çift kapanış:** ↔ `EE-235` (uzantı kaydı: detayda çipler, kuyrukta süzgeç).
+
 ---
 
 ## Backlog / v2 parking lot

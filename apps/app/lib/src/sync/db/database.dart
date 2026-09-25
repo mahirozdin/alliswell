@@ -750,6 +750,14 @@ class Tickets extends Table {
   /// sends that row again.
   TextColumn get processType => text().nullable()();
 
+  /// v36 (OPH-350): the desk's words on the request, as a JSON list of names
+  /// in the vocabulary's order — so the queue filters by them with no signal.
+  /// A copy the server rewrites with the request's revision whenever a word
+  /// is added or taken off; server-owned like the SLA pair below (the push
+  /// entity does not list it). Null for "no tags", and on a row pulled before
+  /// v36 until the server sends that row again.
+  TextColumn get tagNames => text().nullable()();
+
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   DateTimeColumn get terminalAt => dateTime().nullable()();
@@ -1175,8 +1183,12 @@ class AwDatabase extends _$AwDatabase {
   /// asked when they have no account, and where the answer goes.
   /// v33 → v34 (OPH-346): tickets.process_type — incident or request, the
   /// kind of work a request is.
+  /// v34 → v35 (OPH-349): ticket_drafts.asset_id — the machine a draft is
+  /// about.
+  /// v35 → v36 (OPH-350): tickets.tag_names — the desk's words on a request,
+  /// for a queue filter that needs no signal.
   @override
-  int get schemaVersion => 35;
+  int get schemaVersion => 36;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1430,6 +1442,13 @@ class AwDatabase extends _$AwDatabase {
       // with no machine to carry.
       if (from >= 32 && from < 35) {
         await m.addColumn(ticketDrafts, ticketDrafts.assetId);
+      }
+      // v36 (OPH-350): the desk's words on a request. v34's shape exactly —
+      // one ALTER on a table a device may already hold, under the `from >= 24`
+      // guard (a device from before v24 gets the table built with this column
+      // already), and nothing to backfill: the value is the server's.
+      if (from >= 24 && from < 36) {
+        await m.addColumn(tickets, tickets.tagNames);
       }
     },
   );

@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The device keeps an extension request's tags (OPH-350).** Local schema v36 adds a
+  nullable column to the extension's request table holding the request's tag names as a JSON
+  list; the applier fills it from what the server sends, and a request already on the device
+  fills in the next time the server sends it. The migration test's v24 fixture drops the new
+  column and asks that it opens empty and fills; the v34 fixture now drops everything added
+  after v34 — it had kept a later column, and the step that added it again failed the open.
+
 - **The enterprise page's enquiry form can ask for a verification (EE-232).** Built with
   `VITE_SALES_CAPTCHA_PROVIDER` (`turnstile` or `hcaptcha`) and `VITE_SALES_CAPTCHA_SITE_KEY`,
   the form draws the provider's box, holds the send button until it is ticked, sends its

@@ -619,6 +619,14 @@ TaskAssignmentsCompanion taskAssignmentCompanion(Map<String, dynamic> data) =>
 /// EE-081's ticket, as it arrives. Every field is the server's own word —
 /// `status` and `priority` especially, because the transition table lives on
 /// the server and a client that translated them would be a second vocabulary.
+/// OPH-350 — the server's list of tag names, as the replica column keeps it:
+/// the JSON list, or null for none (an empty list and an absent one mean the
+/// same thing to a filter, so they are stored the same way).
+String? encodeTagNames(Object? raw) {
+  if (raw is! List || raw.isEmpty) return null;
+  return jsonEncode([for (final name in raw) '$name']);
+}
+
 TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   id: Value(data['id'] as String),
   workspaceId: Value(data['workspaceId'] as String),
@@ -631,6 +639,9 @@ TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   // OPH-346: incident or request, copied from the service at opening. Kept
   // from v34.
   processType: Value(data['processType'] as String?),
+  // OPH-350: the desk's words, kept as the JSON list the server sent (null for
+  // none). Kept from v36.
+  tagNames: Value(encodeTagNames(data['tagNames'])),
   subject: Value(data['subject'] as String),
   body: Value(data['body'] as String?),
   // EE-167: server-owned, like the SLA pair below. A device that wrote its own

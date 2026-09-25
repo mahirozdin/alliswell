@@ -371,6 +371,9 @@ void main() {
       // v34 (OPH-346): the kind of work a request is — the same shape as
       // v33, proven by the same v24 test below.
       await db.customSelect('SELECT process_type FROM tickets').get();
+      // v36 (OPH-350): the desk's words — v34's shape, proven by the v24
+      // test below.
+      await db.customSelect('SELECT tag_names FROM tickets').get();
       // v35 (OPH-349): the machine a draft is about. From v1 the column comes
       // from step 32's `createTable` — the ALTER is guarded `from >= 32` and
       // never runs on this path — so the ALTER itself is proven by the draft
@@ -378,7 +381,7 @@ void main() {
       await db.customSelect('SELECT asset_id FROM ticket_drafts').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 35);
+      expect(version.data['user_version'], 36);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -410,6 +413,7 @@ void main() {
       'DROP TABLE problems', // v29
       'DROP TABLE changes', // v28
       'DROP TABLE ticket_assignments', // v25
+      'ALTER TABLE tickets DROP COLUMN tag_names', // v36
       'ALTER TABLE tickets DROP COLUMN process_type', // v34
       'ALTER TABLE tickets DROP COLUMN requester_email', // v33
       'ALTER TABLE tickets DROP COLUMN requester_name', // v33
@@ -446,8 +450,8 @@ void main() {
       final row = await db
           .customSelect(
             'SELECT subject, sla_due_at, sla_status, number, subject_fold, '
-            'requester_name, requester_email, process_type FROM tickets '
-            'WHERE id = ?',
+            'requester_name, requester_email, process_type, tag_names '
+            'FROM tickets WHERE id = ?',
             variables: [Variable.withString('K1')],
           )
           .getSingle();
@@ -462,6 +466,8 @@ void main() {
       expect(row.data['requester_email'], null);
       // v34: the kind of work — the server's too, so empty until it is sent.
       expect(row.data['process_type'], null);
+      // v36: the desk's words — the server's, so empty until it is sent.
+      expect(row.data['tag_names'], null);
       // v27's backfill ran over the rows the device already had: a request
       // that is on this device and never sent again is still searchable.
       expect(row.data['subject_fold'], isA<String>());
@@ -484,6 +490,7 @@ void main() {
               'requesterName': 'Ada Lovelace',
               'requesterEmail': 'ada@musteri.example',
               'processType': 'incident',
+              'tagNames': ['Garanti', 'Hidrolik'],
               'revision': 5,
             }),
           );
@@ -493,9 +500,10 @@ void main() {
       expect(filled.requesterName, 'Ada Lovelace');
       expect(filled.requesterEmail, 'ada@musteri.example');
       expect(filled.processType, 'incident');
+      expect(filled.tagNames, '["Garanti","Hidrolik"]');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 35);
+      expect(version.data['user_version'], 36);
       await db.close();
     },
   );
@@ -510,6 +518,12 @@ void main() {
   /// proves it.
   Future<void> seedV34DraftDatabase() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    // Everything added after v34 comes off, newest first — a v34 device had
+    // none of it, and a fixture that kept a later column would have the step
+    // that adds it fail the open (OPH-350 found this one).
+    await db.customStatement(
+      'ALTER TABLE tickets DROP COLUMN tag_names', // v36
+    );
     await db.customStatement(
       'ALTER TABLE ticket_drafts DROP COLUMN asset_id', // v35
     );
@@ -568,7 +582,7 @@ void main() {
       expect(filled.assetId, 'A1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 35);
+      expect(version.data['user_version'], 36);
       await db.close();
     },
   );
@@ -605,7 +619,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 35);
+      expect(version.data['user_version'], 36);
       await db.close();
     },
   );
@@ -652,7 +666,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 35);
+      expect(version.data['user_version'], 36);
       await db.close();
     },
   );

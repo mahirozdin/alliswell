@@ -304,7 +304,9 @@ share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/a
   that table was born (the `v24` one for the extension's request tables): the v1 fixture
   rebuilds such a table from today's definition, so it proves nothing about the ALTER.
   Prove the step by deleting it and watching that fixture go red (OPH-344; OPH-346's
-  v34 `process_type` was proven the same way).
+  v34 `process_type` was proven the same way). And every fixture that sets
+  `user_version = N` must drop everything added after N, not just its own column: OPH-349's
+  v34 fixture kept a column v36 then added again, and the open failed (OPH-350).
 - **Provider retry (`core/retry.dart`):** Riverpod 3 retries every failed provider by
   default (10×, 200 ms → 6.4 s) and reports `AsyncLoading` throughout, which makes error
   states unreachable. `awRetry` — passed to every `ProviderScope`, tests included — retries
