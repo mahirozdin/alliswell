@@ -499,6 +499,8 @@ class _EeServiceRoutingScreenState
   late String? _shelf = widget.service.categoryId;
   late String? _icon = widget.service.icon;
   late String _mode = widget.service.approvalMode;
+  // EE-268: incident or request.
+  late String _processType = widget.service.processType;
   late String? _roleKey = widget.service.approverRoleKey;
   late final Set<String> _approvers = widget.service.approverUserIds.toSet();
   bool _busy = false;
@@ -508,6 +510,7 @@ class _EeServiceRoutingScreenState
       !_setEquals(_units, widget.service.unitIds.toSet()) ||
       _shelf != widget.service.categoryId ||
       _icon != widget.service.icon ||
+      _processType != widget.service.processType ||
       _approvalChanged;
 
   /// The rule as the server will hold it: a role only where the mode reads
@@ -557,6 +560,7 @@ class _EeServiceRoutingScreenState
     // was touched, all three parts go, because the rule is checked whole.
     final patch = <String, Object?>{
       if (_icon != service.icon) 'icon': _icon,
+      if (_processType != service.processType) 'processType': _processType,
       if (_approvalChanged) ...{
         'approvalMode': _mode,
         'approverRoleKey': _mode == 'manager' || _mode == 'role'
@@ -607,6 +611,8 @@ class _EeServiceRoutingScreenState
           padding: const EdgeInsets.all(AwSpace.x4),
           children: [
             ..._shelfAndIcon(context),
+            const SizedBox(height: AwSpace.x6),
+            ..._processTypeSection(context),
             const SizedBox(height: AwSpace.x6),
             Text(
               'ee.team.services.units'.tr(),
@@ -661,6 +667,41 @@ class _EeServiceRoutingScreenState
         ),
       ),
     );
+  }
+
+  /// EE-268 (AW-E21): what kind of work a request filed here is. A request
+  /// copies the answer when it is opened, so the hint says the one thing a
+  /// person changing it needs to know: past work does not move.
+  List<Widget> _processTypeSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return [
+      Text(
+        'ee.team.services.processType.title'.tr(),
+        style: theme.textTheme.titleSmall,
+      ),
+      Text(
+        'ee.team.services.processType.hint'.tr(),
+        style: theme.textTheme.bodySmall,
+      ),
+      RadioGroup<String>(
+        groupValue: _processType,
+        onChanged: (type) {
+          if (!_busy && type != null) setState(() => _processType = type);
+        },
+        child: Column(
+          children: [
+            for (final type in const ['incident', 'request'])
+              RadioListTile<String>(
+                key: Key('service-process-type-$type'),
+                contentPadding: EdgeInsets.zero,
+                value: type,
+                title: Text('ee.team.services.processType.$type'.tr()),
+                subtitle: Text('ee.team.services.processType.${type}Hint'.tr()),
+              ),
+          ],
+        ),
+      ),
+    ];
   }
 
   /// The form's summary and the door to its designer (EE-229).

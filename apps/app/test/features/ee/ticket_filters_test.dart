@@ -31,6 +31,7 @@ TicketRecord _ticket(
   String priority = 'normal',
   String source = 'internal',
   String? slaStatus,
+  String? processType,
 }) => TicketRecord(
   id: id,
   workspaceId: 'W1',
@@ -39,6 +40,7 @@ TicketRecord _ticket(
   priority: priority,
   source: source,
   slaStatus: slaStatus,
+  processType: processType,
   revision: 1,
   createdAt: DateTime.utc(2026, 8, 10),
 );
@@ -50,8 +52,19 @@ void main() {
   });
 
   final rows = [
-    _ticket('T1', subject: 'İhlal edilmiş', slaStatus: 'breached'),
-    _ticket('T2', subject: 'Portaldan gelen', source: 'public'),
+    _ticket(
+      'T1',
+      subject: 'İhlal edilmiş',
+      slaStatus: 'breached',
+      processType: 'incident',
+    ),
+    _ticket(
+      'T2',
+      subject: 'Portaldan gelen',
+      source: 'public',
+      processType: 'request',
+    ),
+    // Pulled before the replica had the column: no kind yet.
     _ticket('T3', subject: 'Kimsede olmayan'),
   ];
 
@@ -132,6 +145,22 @@ void main() {
     await tapChip(tester, 'ticket-filter-source-public');
     expect(visible(tester), isEmpty);
     expect(find.byKey(const Key('ticket-search-empty')), findsNothing);
+  });
+
+  testWidgets('EE-268 (AW-E21): "only incidents" keeps the incidents — and a '
+      'request the device has no kind for stays out rather than guessed', (
+    tester,
+  ) async {
+    await pumpQueue(tester);
+    await tapChip(tester, 'ticket-filter-type-incident');
+    expect(visible(tester), ['T1']);
+    // Both kinds: everything that HAS a kind, still not the unknown one.
+    await tapChip(tester, 'ticket-filter-type-request');
+    expect(visible(tester), ['T1', 'T2']);
+    // Off again, the queue is whole.
+    await tapChip(tester, 'ticket-filter-type-incident');
+    await tapChip(tester, 'ticket-filter-type-request');
+    expect(visible(tester), ['T1', 'T2', 'T3']);
   });
 
   testWidgets(

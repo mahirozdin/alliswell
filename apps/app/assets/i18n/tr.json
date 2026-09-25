@@ -1453,6 +1453,14 @@
           "discardBody": "Burada değiştirdiğiniz hiçbir şey henüz yayınlanmadı.",
           "discard": "At",
           "keep": "Düzenlemeye devam et"
+        },
+        "processType": {
+          "title": "İşin türü",
+          "hint": "Bir talep açılırken bu türü alır. Değiştirmek yalnız bundan sonra açılanları etkiler; geçmiş işin raporları kaymaz.",
+          "incident": "Olay",
+          "incidentHint": "Bir şey bozuldu ya da durdu: arıza, kesinti, kaza.",
+          "request": "Hizmet isteği",
+          "requestHint": "Birinin bir şeye ihtiyacı var: erişim, cihaz, değişiklik, soru."
         }
       }
     },
@@ -2016,7 +2024,11 @@
         "dates": "Tarih farketmez",
         "datesSet": "Tarih aralığı",
         "sourcePublic": "Portaldan",
-        "sourceHealth": "İzleyici açtı"
+        "sourceHealth": "İzleyici açtı",
+        "processType": {
+          "incident": "Olaylar",
+          "request": "Hizmet istekleri"
+        }
       },
       "bulk": {
         "selected": "{count} seçili",
@@ -2346,7 +2358,14 @@
       "csat": "Memnuniyet",
       "compliance": "SLA uyumu",
       "minutes": "{minutes} dk",
-      "percent": "%{value}"
+      "percent": "%{value}",
+      "byProcessType": "İşin türüne göre",
+      "noProcessTypes": "Bu aralıkta iş yok.",
+      "processTypeNone": "Türü kaydedilmemiş",
+      "processType": {
+        "incident": "Olaylar",
+        "request": "Hizmet istekleri"
+      }
     },
     "slaAdmin": {
       "title": "SLA yönetimi",

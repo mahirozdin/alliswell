@@ -90,6 +90,8 @@ final _services = [
     approverRoleKey: 'admin',
     unitIds: ['U1'],
     formVersion: 2,
+    // EE-268: a fault is an incident — the picture shows the choice made.
+    processType: 'incident',
     formFields: [
       EeServiceField(
         key: 'line_no',

@@ -428,6 +428,19 @@ class _FilterBar extends ConsumerWidget {
             const SizedBox(width: AwSpace.x2),
           ],
           const SizedBox(width: AwSpace.x2),
+          // EE-268 (AW-E21): the kind of work. "Only incidents" is the
+          // question a shift asks when something is down, and it is answered
+          // from the replica like every chip here — with no signal.
+          for (final type in ['incident', 'request']) ...[
+            FilterChip(
+              key: Key('ticket-filter-type-$type'),
+              label: Text('ee.tickets.filter.processType.$type'.tr()),
+              selected: filter.processTypes.contains(type),
+              onSelected: (_) => notifier.toggleProcessType(type),
+            ),
+            const SizedBox(width: AwSpace.x2),
+          ],
+          const SizedBox(width: AwSpace.x2),
           // EE-171: filed between two days. A chip rather than two fields,
           // because the question is always a RANGE — "this week", "since the
           // shutdown" — and a half-applied one would empty the list under the

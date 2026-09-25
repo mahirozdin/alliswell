@@ -74,6 +74,19 @@ class EePerformanceScreen extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: AwSpace.x6),
+                // EE-268 (AW-E21): "how long do repairs take, apart from
+                // access requests?" — first, because it is the question
+                // this panel is opened to answer.
+                _Rows(
+                  titleKey: 'ee.perfPanel.byProcessType',
+                  emptyKey: 'ee.perfPanel.noProcessTypes',
+                  rows: data.processTypes,
+                  showCsat: false,
+                  labelOf: (row) => row.key == null
+                      ? 'ee.perfPanel.processTypeNone'.tr()
+                      : 'ee.perfPanel.processType.${row.key}'.tr(),
+                ),
+                const SizedBox(height: AwSpace.x6),
                 _Rows(
                   titleKey: 'ee.perfPanel.byUnit',
                   emptyKey: 'ee.perfPanel.noUnits',
@@ -156,12 +169,21 @@ class _Rows extends StatelessWidget {
     required this.emptyKey,
     required this.rows,
     this.unnamedKey,
+    this.labelOf,
+    this.showCsat = true,
   });
 
   final String titleKey;
   final String emptyKey;
   final List<EePerformanceRow> rows;
   final String? unnamedKey;
+
+  /// A row's name when the server does not send one (EE-268: a kind of
+  /// work is named HERE, in this device's language).
+  final String Function(EePerformanceRow row)? labelOf;
+
+  /// Satisfaction is asked per unit and per person, never per kind of work.
+  final bool showCsat;
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +199,8 @@ class _Rows extends StatelessWidget {
           ...rows.map(
             (row) => _RowCard(
               row: row,
+              label: labelOf?.call(row),
+              showCsat: showCsat,
               // A null key on the people axis is work nobody was there for.
               // Named rather than dropped: the rows have to add up to the
               // desk's totals or somebody spends an afternoon reconciling them.
@@ -191,10 +215,17 @@ class _Rows extends StatelessWidget {
 }
 
 class _RowCard extends StatelessWidget {
-  const _RowCard({required this.row, required this.fallbackLabel});
+  const _RowCard({
+    required this.row,
+    required this.fallbackLabel,
+    this.label,
+    this.showCsat = true,
+  });
 
   final EePerformanceRow row;
   final String fallbackLabel;
+  final String? label;
+  final bool showCsat;
 
   /// An average with its denominator, or a dash. Never a bare number and never
   /// a zero standing in for "nothing measured".
@@ -214,7 +245,7 @@ class _RowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final label = row.label ?? fallbackLabel;
+    final label = this.label ?? row.label ?? fallbackLabel;
     return Card(
       key: Key('perf-row-${row.key ?? 'none'}'),
       child: Padding(
@@ -238,7 +269,11 @@ class _RowCard extends StatelessWidget {
                 ),
                 _Figure(labelKey: 'ee.perfPanel.mtta', value: _avg(row.mtta)),
                 _Figure(labelKey: 'ee.perfPanel.mttr', value: _avg(row.mttr)),
-                _Figure(labelKey: 'ee.perfPanel.csat', value: _csat(row.csat)),
+                if (showCsat)
+                  _Figure(
+                    labelKey: 'ee.perfPanel.csat',
+                    value: _csat(row.csat),
+                  ),
                 if (row.compliance != null)
                   _Figure(
                     labelKey: 'ee.perfPanel.compliance',

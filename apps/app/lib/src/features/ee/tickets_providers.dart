@@ -43,6 +43,7 @@ class TicketFilter {
     this.assigneeId,
     this.slaStatuses = const {},
     this.sources = const {},
+    this.processTypes = const {},
     this.from,
     this.to,
   });
@@ -64,6 +65,13 @@ class TicketFilter {
   /// `internal` · `public` · `health` · `sla` — where the request came from.
   final Set<String> sources;
 
+  /// EE-268: `incident` · `request` — the kind of work, the service's type
+  /// copied when the request was opened. A row pulled before the replica had
+  /// the column (v34) has none until the server sends it again, and is
+  /// EXCLUDED while this filter is on — the date filter's rule below: a
+  /// filter that quietly keeps unknown rows answers another question.
+  final Set<String> processTypes;
+
   /// Filed within this window. Inclusive at both ends, day-resolution: the
   /// person picking "last week" means the whole of both days.
   final DateTime? from;
@@ -76,6 +84,7 @@ class TicketFilter {
       assigneeScope == TicketAssigneeScope.any &&
       slaStatuses.isEmpty &&
       sources.isEmpty &&
+      processTypes.isEmpty &&
       from == null &&
       to == null;
 
@@ -88,6 +97,7 @@ class TicketFilter {
     String? assigneeId,
     Set<String>? slaStatuses,
     Set<String>? sources,
+    Set<String>? processTypes,
     DateTime? from,
     DateTime? to,
     bool clearDates = false,
@@ -105,6 +115,7 @@ class TicketFilter {
           : null,
       slaStatuses: slaStatuses ?? this.slaStatuses,
       sources: sources ?? this.sources,
+      processTypes: processTypes ?? this.processTypes,
       from: clearDates ? null : (from ?? this.from),
       to: clearDates ? null : (to ?? this.to),
     );
@@ -144,6 +155,9 @@ class TicketFilterController extends Notifier<TicketFilter> {
 
   void toggleSource(String source) =>
       state = state.copyWith(sources: _toggled(state.sources, source));
+
+  void toggleProcessType(String type) =>
+      state = state.copyWith(processTypes: _toggled(state.processTypes, type));
 
   /// Both ends at once: a range with one end is a range the person is still
   /// typing, and applying it halfway would empty the list under their hands.
@@ -221,6 +235,10 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
         return false;
       }
       if (filter.sources.isNotEmpty && !filter.sources.contains(t.source)) {
+        return false;
+      }
+      if (filter.processTypes.isNotEmpty &&
+          !filter.processTypes.contains(t.processType)) {
         return false;
       }
       // Filed within the window. `createdAt` is nullable on the replica (a row

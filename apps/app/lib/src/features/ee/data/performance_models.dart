@@ -113,6 +113,7 @@ class EePerformance {
     required this.units,
     required this.agents,
     required this.closedIsNotPerformance,
+    this.processTypes = const [],
   });
 
   final String from;
@@ -120,6 +121,11 @@ class EePerformance {
   final List<EePerformanceRow> units;
   final List<EePerformanceRow> agents;
   final String closedIsNotPerformance;
+
+  /// EE-268 (AW-E21): incidents and service requests apart — the same row
+  /// shape, keyed by the kind of work (`incident`, `request`, or null for
+  /// work counted with no kind), each with its own SLA compliance.
+  final List<EePerformanceRow> processTypes;
 
   factory EePerformance.fromJson(Map<String, dynamic> json) => EePerformance(
     from: json['from'] as String? ?? '',
@@ -131,5 +137,13 @@ class EePerformance {
         .map((e) => EePerformanceRow.fromJson(e as Map<String, dynamic>))
         .toList(growable: false),
     closedIsNotPerformance: json['closedIsNotPerformance'] as String? ?? '',
+    processTypes: ((json['processTypes'] as List<dynamic>?) ?? const [])
+        .map(
+          (e) => EePerformanceRow.fromJson({
+            ...(e as Map<String, dynamic>),
+            'key': e['processType'],
+          }),
+        )
+        .toList(growable: false),
   );
 }

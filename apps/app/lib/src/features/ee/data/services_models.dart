@@ -21,6 +21,7 @@ class EeService {
     this.approverRoleKey,
     this.approverUserIds = const [],
     this.formVersion = 0,
+    this.processType = 'request',
   });
 
   factory EeService.fromJson(Map<String, dynamic> json) => EeService(
@@ -36,6 +37,7 @@ class EeService {
     approverUserIds: ((json['approverUserIds'] as List?) ?? const [])
         .cast<String>(),
     formVersion: (json['formVersion'] as num?)?.toInt() ?? 0,
+    processType: (json['processType'] as String?) ?? 'request',
     formFields:
         (((json['formSchema'] as Map<String, dynamic>?)?['fields'] as List?) ??
                 const [])
@@ -77,6 +79,10 @@ class EeService {
   /// The form version in force (EE-214): every publish is the next number,
   /// and a request answered against an older one keeps it. 0 = never set.
   final int formVersion;
+
+  /// EE-268: `incident | request` — the kind of work a request filed here is.
+  /// A request copies it when it is opened; changing it moves no past work.
+  final String processType;
 
   /// The state worth drawing loudly: live, but reaching nobody.
   bool get unroutable => !archived && unitIds.isEmpty;

@@ -343,6 +343,29 @@ void main() {
       },
     );
 
+    testWidgets('EE-268 (AW-E21): the kind of work is one key, and saying it '
+        'again is no change', (tester) async {
+      await pumpCatalogue(tester);
+      await openSetup(tester, 'S4');
+      // Every service starts as a request — the answer before this existed.
+      await reveal(tester, 'service-process-type-incident');
+      expect(await saveEnabled(tester), isFalse);
+      await reveal(tester, 'service-process-type-incident');
+      await tester.tap(key('service-process-type-incident'));
+      await tester.pumpAndSettle();
+      // Back to what it was is not a change…
+      await tester.tap(key('service-process-type-request'));
+      await tester.pumpAndSettle();
+      expect(await saveEnabled(tester), isFalse);
+      // …and a real change sends that key alone.
+      await reveal(tester, 'service-process-type-incident');
+      await tester.tap(key('service-process-type-incident'));
+      await tester.pumpAndSettle();
+      await save(tester);
+      expect(api.patched.single.$1, 'S4');
+      expect(api.patched.single.$2, {'processType': 'incident'});
+    });
+
     testWidgets('a role rule waits for its role, then goes whole', (
       tester,
     ) async {

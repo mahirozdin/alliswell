@@ -1454,6 +1454,14 @@
           "discardBody": "Nothing you changed here is published yet.",
           "discard": "Discard",
           "keep": "Keep editing"
+        },
+        "processType": {
+          "title": "Kind of work",
+          "hint": "A request takes this when it is opened. Changing it affects only the requests opened afterwards — the reports of past work do not move.",
+          "incident": "Incident",
+          "incidentHint": "Something broke or stopped: a fault, an outage, an accident.",
+          "request": "Service request",
+          "requestHint": "Somebody needs something: access, a device, a change, a question."
         }
       }
     },
@@ -2017,7 +2025,11 @@
         "dates": "Any date",
         "datesSet": "Date range",
         "sourcePublic": "From the portal",
-        "sourceHealth": "Raised by a monitor"
+        "sourceHealth": "Raised by a monitor",
+        "processType": {
+          "incident": "Incidents",
+          "request": "Service requests"
+        }
       },
       "bulk": {
         "selected": "{count} selected",
@@ -2347,7 +2359,14 @@
       "csat": "Satisfaction",
       "compliance": "SLA met",
       "minutes": "{minutes} min",
-      "percent": "{value}%"
+      "percent": "{value}%",
+      "byProcessType": "By kind of work",
+      "noProcessTypes": "Nothing in this window.",
+      "processTypeNone": "No kind recorded",
+      "processType": {
+        "incident": "Incidents",
+        "request": "Service requests"
+      }
     },
     "slaAdmin": {
       "title": "SLA management",
