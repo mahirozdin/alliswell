@@ -6,6 +6,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../notifications_providers.dart';
+import 'notification_prefs_screen.dart';
 
 /// The notification centre (EE-077) — what happened to you, offline.
 ///
@@ -49,6 +50,22 @@ class EeNotificationCenterScreen extends ConsumerWidget {
               },
               child: Text('ee.notif.markAllRead'.tr()),
             ),
+          // EE-271: what reaches you, chosen from where it arrives. The
+          // preferences screen had a route and a paragraph in the guide and
+          // no door; this is the one somebody reaches for while looking at
+          // the notification they wish they had not received.
+          IconButton(
+            key: const Key('notif-open-prefs'),
+            tooltip: 'ee.notif.openPrefs'.tr(),
+            icon: const Icon(Icons.tune),
+            onPressed: () => GoRouter.maybeOf(context) != null
+                ? context.push('/settings/team/notifications')
+                : Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const EeNotificationPrefsScreen(),
+                    ),
+                  ),
+          ),
         ],
       ),
       body: items.when(

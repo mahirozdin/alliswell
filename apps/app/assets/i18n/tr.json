@@ -184,7 +184,13 @@
       "teamIdentity": "Kimlik kaynakları",
       "teamIdentitySub": "Şirketin kendi dizini ve çoklu oturum açma ile giriş",
       "absences": "Devamsızlıklar",
-      "absencesSub": "İzin günleriniz ve nöbette kim var"
+      "absencesSub": "İzin günleriniz ve nöbette kim var",
+      "teamNotifications": "Ekip bildirimleri",
+      "teamNotificationsSub": "Başkalarının yaptıkları: talepler, onaylar, atamalar",
+      "meetings": "Toplantılar",
+      "meetingsSub": "Birimin toplantı notları ve kararları",
+      "teamAudit": "Denetim günlüğü",
+      "teamAuditSub": "Takımda kim neyi ne zaman değiştirdi"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -198,7 +204,9 @@
       "compactSub": "Daha sık satırlar, bir bakışta daha çok görev",
       "private": "Gizli widget",
       "privateSub": "Ana ekran ve kilit ekranı widget'larında görev başlıklarını gizle — başlıklar uygulamadan hiç çıkmaz"
-    }
+    },
+    "teamNotificationPrefs": "Ekip bildirimleri",
+    "teamNotificationPrefsSub": "Başkalarının yaptıkları size hangi kanaldan ulaşsın: uygulama, e-posta, telefon"
   },
   "shell": {
     "fabNewTask": "Seçeneklerle yeni görev",
@@ -1991,7 +1999,8 @@
           "rejected": "Onay isteğiniz reddedildi",
           "expired": "Onay isteğinizin süresi doldu, karar verilmedi"
         }
-      }
+      },
+      "openPrefs": "Bildirim tercihleri"
     },
     "tickets": {
       "queueTitle": "Talepler",
@@ -2193,7 +2202,7 @@
         "send": "Talebi gönder",
         "saveDraft": "Taslak olarak kaydet",
         "offline": "Bağlantı yok — talep taslak olarak bu telefonda tutulur ve bağlantı gelince kendiliğinden gönderilir.",
-        "draftCarries": "Taslak konuyu, açıklamayı ve servisi taşır; formun ek soruları ve başkası adına alanı taslakta gitmez.",
+        "draftCarries": "Taslak konuyu, açıklamayı, servisi ve varlığı taşır; formun ek soruları ve başkası adına alanı taslakta gitmez.",
         "draftMultiUnit": "Bu servise birden çok birim bakıyor ve taslak birim seçemez: masa taslağı, birim seçilene kadar bekletir.",
         "noDraftHome": "Bu cihazda taslağın tutulacağı kişisel bir alan yok; bağlantı gelince yeniden dene.",
         "missing": "Göndermek için eksik: {fields}",
@@ -2202,7 +2211,15 @@
         "drafted": "Taslak kaydedildi — bağlantı gelince gönderilecek",
         "followUpNote": "Kapanmış {ref} talebinin devamını açıyorsunuz. Masa ikisini birbirine bağlayabilir.",
         "followUpBody": "Önceki talep #{number}: {subject}",
-        "followUpBodyNoNumber": "Önceki talep: {subject}"
+        "followUpBodyNoNumber": "Önceki talep: {subject}",
+        "asset": "Varlık",
+        "assetPick": "Bir makineyle mi ilgili? Seçin",
+        "assetHelp": "İsteğe bağlı — seçerseniz talep makinenin geçmişinde sayılır",
+        "assetClear": "Varlığı kaldır",
+        "assetPickTitle": "Hangi makine?",
+        "assetSearch": "Etiket, ad ya da yer",
+        "assetNoneOnDevice": "Bu birimin cihazda tutulan bir varlığı yok. Makinenin etiketini okutup kartından da talep açabilirsiniz.",
+        "assetNoMatch": "Bu aramayla eşleşen bir makine yok."
       },
       "drafts": {
         "title": "Taslaklar",
@@ -2722,7 +2739,9 @@
         "model": "Model",
         "warranty": "Garanti bitişi",
         "calibration": "Kalibrasyon tarihi",
-        "supplier": "Tedarikçi"
+        "supplier": "Tedarikçi",
+        "purchased": "Satın alma tarihi",
+        "purchaseCost": "Satın alma fiyatı"
       },
       "history": {
         "title": "Bu varlıkla ilgili talepler",
@@ -3014,6 +3033,14 @@
       "stripBreached": "Diğer birimleriniz: {breached} SLA aşıldı",
       "stripWarned": "Diğer birimleriniz: {warned} SLA yaklaşıyor",
       "stripAll": "Tümünü gör"
+    },
+    "meetings": {
+      "title": "Toplantılar",
+      "offline": "Toplantılar bağlantı ister",
+      "offlineBody": "Toplantı notları sunucuda tutulur; bağlantı gelince liste açılır.",
+      "empty": "Bu birimde henüz toplantı notu yok",
+      "emptyBody": "Bir toplantının kaydı yüklendiğinde özeti ve kararları burada görünür.",
+      "counts": "{decisions} karar · {ideas} fikir"
     }
   },
   "perm": {

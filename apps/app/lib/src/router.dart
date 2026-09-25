@@ -62,6 +62,8 @@ import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/absences_screen.dart';
 import 'features/ee/ui/new_ticket_screen.dart';
+import 'features/ee/ui/meetings_screen.dart';
+import 'features/ee/ui/audit_log_screen.dart';
 import 'features/ee/ui/ticket_detail_screen.dart';
 import 'features/ee/ui/tickets_home.dart';
 import 'features/ee/ui/team_invites_screen.dart';
@@ -103,6 +105,11 @@ List<RouteBase> eeTicketRoutes() => [
         // the address itself carries nothing.
         followUp: switch (state.extra) {
           final EeTicketFollowUp followUp => followUp,
+          _ => null,
+        },
+        // EE-271: and so does the machine a card files it about.
+        asset: switch (state.extra) {
+          final EeTicketAsset asset => asset,
           _ => null,
         },
       ),
@@ -704,6 +711,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/team/webhooks',
         builder: (context, state) => _page(const EeTeamWebhooksScreen()),
       ),
+      // EE-271: the team's whole history (EE-130). The screen was written
+      // with its filters and its three honest empties and had no route at
+      // all — only its test imported it. Behind `team.view_audit`, which the
+      // server checks; the settings row is drawn only for whoever holds it.
+      GoRoute(
+        path: '/settings/team/audit',
+        builder: (context, state) => _page(const EeAuditLogScreen()),
+      ),
       // EE-184: what is waiting on your decision. Its own route rather than a
       // tab on the queue, because the people who answer approvals are not
       // necessarily the people who work the queue — a purchasing manager has
@@ -711,6 +726,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/approvals',
         builder: (context, state) => _page(const EeTeamApprovalsScreen()),
+      ),
+      // EE-271: the unit's meetings — the door the route below shipped
+      // without (a meeting could be read only by somebody who already had its
+      // address). Declared BEFORE `/meetings/:meetingId`, the way `/new` sits
+      // before an id: order is the contract.
+      GoRoute(
+        path: '/meetings',
+        builder: (context, state) => _page(const EeMeetingsScreen()),
       ),
       // EE-115: one meeting — what it decided, and who said what. A route
       // rather than a tab, for the reason EE-069's task history is one: this

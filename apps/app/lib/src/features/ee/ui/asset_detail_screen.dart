@@ -15,6 +15,7 @@ import '../data/assets_models.dart';
 import '../providers.dart';
 import 'asset_edit_sheet.dart';
 import 'asset_labels.dart';
+import 'new_ticket_screen.dart';
 import 'ticket_archive_screen.dart';
 import 'ticket_detail_screen.dart';
 
@@ -195,6 +196,7 @@ class _Card extends ConsumerWidget {
           typeLabel: assetTypeLabel(asset.type, types),
           provenance: _Provenance(asset: asset, fromServer: fromServer),
         ),
+        _OpenRequest(asset: asset),
         const SizedBox(height: AwSpace.x6),
         _History(assetId: asset.id),
       ],
@@ -244,6 +246,15 @@ class _Provenance extends ConsumerWidget {
   }
 }
 
+/// The purchase price as the record states it, or null when it states none.
+String? _price(EeAsset asset) {
+  final minor = asset.purchaseCostMinor;
+  if (minor == null) return null;
+  final amount = (minor / 100).toStringAsFixed(2);
+  final currency = asset.currency;
+  return currency == null ? amount : '$amount $currency';
+}
+
 class _Facts extends StatelessWidget {
   const _Facts({
     required this.asset,
@@ -268,6 +279,13 @@ class _Facts extends StatelessWidget {
       ('ee.assets.field.warranty', asset.warrantyUntil),
       ('ee.assets.field.calibration', asset.calibrationDue),
       ('ee.assets.field.supplier', asset.supplier),
+      // EE-271: when it was bought and for how much — on the device since
+      // EE-191 and never drawn, while the guide promised both. The date is
+      // the day as typed (`YYYY-MM-DD`, like the warranty); the price is the
+      // record's own currency, never converted — the history below keeps
+      // labour in ITS currency beside it and adds nothing up.
+      ('ee.assets.field.purchased', asset.purchasedAt),
+      ('ee.assets.field.purchaseCost', _price(asset)),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,23 +319,41 @@ class _Facts extends StatelessWidget {
   }
 }
 
-/// ── WHY THERE IS NO "OPEN A REQUEST FOR THIS ASSET" BUTTON ────────────
+/// "Open a request for this machine" (EE-271).
 ///
-/// The task asks for one, and it cannot land here yet. Measured before it was
-/// written: this app has no in-app request-creation flow at all. Every ticket
-/// endpoint it calls is a read or an edit of an existing request (`/mine`,
-/// `/links`, `/convert`, `/related`, `/assets`) and nothing POSTs
-/// `/ee/team/tickets`. Requests arrive through the public portal, by e-mail,
-/// or from an agent.
-///
-/// So the button would be the FIRST one, and what it needs is a request form
-/// — a service picker, an impact-and-urgency pair, an attachment path — which
-/// is a task, not a button. Shipping one that navigates to a route that does
-/// not exist would be a dead button, which this codebase tests against by
-/// name.
-///
-/// What the QR code does deliver is already the larger half: scanning the
-/// sticker opens exactly this card, with the machine's whole history on it.
+/// This card once explained why the button could not exist: the app had no
+/// request form. EE-225 built the form and the explanation went stale while
+/// the button stayed missing, so a technician who scanned the sticker had the
+/// machine's whole history in hand and no way to add to it. The button opens
+/// the same form every other door uses, with this machine already in its
+/// asset field — and it works with no signal, because the form then writes a
+/// draft that carries the machine (EE-281). Not offered for a retired
+/// machine: a request is about something that is supposed to be working.
+class _OpenRequest extends ConsumerWidget {
+  const _OpenRequest({required this.asset});
+  final EeAsset asset;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (asset.status == 'retired' ||
+        !ref.watch(canProvider('tickets.create'))) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: AwSpace.x4),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: FilledButton.tonalIcon(
+          key: const Key('asset-open-request'),
+          onPressed: () =>
+              awOpenNewTicket(context, asset: EeTicketAsset.of(asset)),
+          icon: const Icon(Icons.add_comment_outlined),
+          label: Text('ee.assets.openRequest'.tr()),
+        ),
+      ),
+    );
+  }
+}
 
 class _History extends ConsumerWidget {
   const _History({required this.assetId});

@@ -2,15 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/fold.dart';
 import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
+import '../../../search/search.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../assets_providers.dart';
 import '../catalogue_search.dart';
+import '../data/assets_models.dart';
 import '../data/kb_api.dart';
 import '../data/kb_models.dart';
 import '../data/new_ticket_api.dart';
@@ -61,11 +66,52 @@ class EeTicketFollowUp {
   String get reference => number != null ? '#$number' : '"$subject"';
 }
 
+/// The machine a request is about, when it is filed from its card (EE-271).
+///
+/// Carried in `extra` like a follow-up, never in the address — and only the
+/// three things the form shows: the server resolves the id itself, so a stale
+/// name here can mislabel a line on one screen but never link the wrong
+/// machine.
+class EeTicketAsset {
+  const EeTicketAsset({
+    required this.id,
+    required this.tag,
+    required this.name,
+  });
+
+  factory EeTicketAsset.of(EeAsset asset) =>
+      EeTicketAsset(id: asset.id, tag: asset.tag, name: asset.name);
+
+  final String id;
+  final String tag;
+  final String name;
+
+  /// The tag leads, as it does everywhere a machine is named: it is the
+  /// number painted on it.
+  String get label => '$tag · $name';
+}
+
+/// Opens the form from a machine's card (EE-271). By its route when there is
+/// a router — one screen, one address — with the machine in `extra`.
+void awOpenNewTicket(BuildContext context, {EeTicketAsset? asset}) {
+  if (GoRouter.maybeOf(context) != null) {
+    context.push('/tickets/new', extra: asset);
+    return;
+  }
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(builder: (_) => EeNewTicketScreen(asset: asset)),
+  );
+}
+
 class EeNewTicketScreen extends ConsumerStatefulWidget {
-  const EeNewTicketScreen({super.key, this.followUp});
+  const EeNewTicketScreen({super.key, this.followUp, this.asset});
 
   /// Set when this request follows a closed one.
   final EeTicketFollowUp? followUp;
+
+  /// Set when it is filed from a machine's card (EE-271): the asset field
+  /// starts on that machine, and the person can still change or clear it.
+  final EeTicketAsset? asset;
 
   @override
   ConsumerState<EeNewTicketScreen> createState() => _EeNewTicketScreenState();
@@ -79,6 +125,9 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   final _answers = <String, Object?>{};
   EeCatalogService? _service;
   String? _unitId;
+  // EE-271: the machine this is about — linked by the server in the
+  // request's own step online, carried by the draft offline (EE-281).
+  EeTicketAsset? _asset;
   bool _onBehalf = false;
   bool _busy = false;
   String? _error;
@@ -108,6 +157,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   @override
   void initState() {
     super.initState();
+    _asset = widget.asset;
     _kbApi = ref.read(eeKbApiProvider);
     // EE-252: before the listeners, so carrying the old request in does not
     // count as typing (no answers asked for a subject nobody wrote here).
@@ -316,6 +366,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
               ? _requesterEmail.text.trim()
               : null,
           openedArticleIds: _read.toList(),
+          assetId: _asset?.id,
         );
     _filed = true;
     // The requester's list is a REST read; the desk's queue is the replica.
@@ -339,6 +390,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
           subject: _subject.text.trim(),
           body: _body.text.trim().isEmpty ? null : _body.text.trim(),
           serviceId: _service?.id,
+          assetId: _asset?.id,
         );
     // A draft is a request on its way, not a deflection. What was read is not
     // carried: the draft cannot hold it, and a draft that becomes a request
@@ -460,6 +512,20 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
                   ),
                 ),
             ],
+            // ── EE-271: the machine it is about ───────────────────────────
+            // Beside the service because it answers the same question —
+            // WHERE this goes — and above the words, so a request filed from
+            // a card shows its machine first. Offered to whoever may see the
+            // register, and always shown when a card already chose one.
+            if (_asset != null || ref.watch(canProvider('assets.view'))) ...[
+              const SizedBox(height: AwSpace.x4),
+              _AssetField(
+                asset: _asset,
+                enabled: !_busy,
+                onPick: _pickAsset,
+                onClear: () => setState(() => _asset = null),
+              ),
+            ],
             // ── What happened ─────────────────────────────────────────────
             const SizedBox(height: AwSpace.x4),
             TextField(
@@ -576,6 +642,18 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
         ),
       ),
     );
+  }
+
+  /// EE-271: the machines this device holds for the unit on screen — the
+  /// picker works with no signal, which is where a machine is usually chosen.
+  Future<void> _pickAsset() async {
+    final picked = await showModalBottomSheet<EeTicketAsset>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const _AssetPicker(),
+    );
+    if (picked != null && mounted) setState(() => _asset = picked);
   }
 
   Future<void> _openCatalog(AsyncValue<EeCatalog?> catalog) async {
@@ -969,6 +1047,161 @@ class _CatalogSheetState extends ConsumerState<_CatalogSheet> {
                 ],
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// EE-271 — the machine a request is about: one row, the service's shape.
+class _AssetField extends StatelessWidget {
+  const _AssetField({
+    required this.asset,
+    required this.enabled,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final EeTicketAsset? asset;
+  final bool enabled;
+  final VoidCallback onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final picked = asset;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        key: const Key('new-ticket-asset'),
+        leading: const Icon(Icons.precision_manufacturing_outlined),
+        title: Text(picked?.label ?? 'ee.tickets.new.assetPick'.tr()),
+        subtitle: Text(
+          picked == null
+              ? 'ee.tickets.new.assetHelp'.tr()
+              : 'ee.tickets.new.asset'.tr(),
+        ),
+        trailing: picked == null
+            ? const Icon(Icons.chevron_right)
+            : IconButton(
+                key: const Key('new-ticket-asset-clear'),
+                tooltip: 'ee.tickets.new.assetClear'.tr(),
+                icon: const Icon(Icons.close),
+                onPressed: enabled ? onClear : null,
+              ),
+        enabled: enabled,
+        onTap: onPick,
+      ),
+    );
+  }
+}
+
+/// The register this device holds for the unit on screen (EE-238), searched
+/// the house way — every word somewhere, Turkish-folded (ADR-0013) — and with
+/// no network: a machine is usually chosen standing in front of it.
+///
+/// Retired machines are not offered. A request is about something that is
+/// supposed to be working, and a scrapped press that appears in the list is a
+/// mis-tap waiting for a technician in a hurry.
+class _AssetPicker extends ConsumerStatefulWidget {
+  const _AssetPicker();
+
+  @override
+  ConsumerState<_AssetPicker> createState() => _AssetPickerState();
+}
+
+class _AssetPickerState extends ConsumerState<_AssetPicker> {
+  String _query = '';
+
+  static bool _matches(EeAsset asset, List<String> words) {
+    final text = foldSearchText(
+      '${asset.tag} ${asset.name} ${asset.location ?? ''}',
+    );
+    return words.every(text.contains);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final register = ref
+        .watch(eeAssetRegisterProvider(const EeAssetFilter()))
+        .value;
+    final words = SearchService.queryWords(_query);
+    final rows = [
+      for (final asset in register?.rows ?? const <EeAsset>[])
+        if (asset.status != 'retired' &&
+            (words.isEmpty || _matches(asset, words)))
+          asset,
+    ];
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AwSpace.x4,
+                  0,
+                  AwSpace.x4,
+                  AwSpace.x2,
+                ),
+                child: Text(
+                  'ee.tickets.new.assetPickTitle'.tr(),
+                  style: theme.textTheme.titleMedium,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AwSpace.x4),
+                child: TextField(
+                  key: const Key('new-ticket-asset-search'),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'ee.tickets.new.assetSearch'.tr(),
+                  ),
+                  onChanged: (value) => setState(() => _query = value),
+                ),
+              ),
+              const SizedBox(height: AwSpace.x2),
+              Expanded(
+                child: rows.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(AwSpace.x4),
+                        child: Text(
+                          (register?.onDevice.isEmpty ?? true)
+                              ? 'ee.tickets.new.assetNoneOnDevice'.tr()
+                              : 'ee.tickets.new.assetNoMatch'.tr(),
+                          key: const Key('new-ticket-asset-empty'),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      )
+                    : ListView(
+                        children: [
+                          for (final asset in rows)
+                            ListTile(
+                              key: Key('new-ticket-asset-option-${asset.id}'),
+                              leading: const Icon(
+                                Icons.precision_manufacturing_outlined,
+                              ),
+                              title: Text('${asset.tag} · ${asset.name}'),
+                              subtitle: asset.location == null
+                                  ? null
+                                  : Text(asset.location!),
+                              onTap: () => Navigator.of(
+                                context,
+                              ).pop(EeTicketAsset.of(asset)),
+                            ),
+                        ],
+                      ),
+              ),
+            ],
           ),
         ),
       ),

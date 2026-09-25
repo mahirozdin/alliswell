@@ -20,7 +20,7 @@ import '../features/quick_access/ui/quick_access_bubble.dart';
 import '../features/quick_access/ui/quick_access_row.dart';
 import '../features/settings/server_url_sheet.dart';
 import '../features/widgets/widget_bridge.dart' show widgetsSupportedPlatform;
-import '../features/ee/providers.dart' show canProvider;
+import '../features/ee/providers.dart' show canProvider, eeFeatureProvider;
 import '../features/ee/team_admin_providers.dart';
 import '../features/ee/ui/notification_badge.dart';
 import '../features/ee/units_providers.dart';
@@ -48,6 +48,19 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).value;
     final scheme = Theme.of(context).colorScheme;
+    // EE-282: a permission row is drawn only where the capability EXISTS.
+    // `canProvider` answers true for an ungoverned workspace — the right
+    // default for a button inside a team screen, and the wrong one for a door
+    // on the settings root: on a plain instance it drew eight admin rows onto
+    // screens whose every endpoint answers 404. The entitlement comes first
+    // (false until known, so nothing flickers in); the verb then decides among
+    // the people on an instance that has the feature.
+    final teams = ref.watch(eeFeatureProvider('teams'));
+    bool may(String permission) => teams && ref.watch(canProvider(permission));
+    // Anyone whose workspace has a roster — the replica's own data, so it is
+    // right offline and simply absent on a plain build (EE-068's gate).
+    final inTeam =
+        ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false;
     return _SettingsPage(
       title: 'settings.title'.tr(),
       children: [
@@ -156,7 +169,7 @@ class SettingsScreen extends ConsumerWidget {
               // roster — asking for something is the least privileged act in
               // the product, and the person most likely to want this list is
               // the one with the fewest other team rows.
-              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+              if (inTeam)
                 _GroupRow(
                   keyName: 'settings-group-my-tickets',
                   icon: Icons.help_outline,
@@ -167,7 +180,7 @@ class SettingsScreen extends ConsumerWidget {
               // EE-236: absences, and who is on call because of them. The
               // same door as "my requests" and for the same reason: saying
               // "I am away" is anybody's act, and the rota must hear it.
-              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+              if (inTeam)
                 _GroupRow(
                   keyName: 'settings-group-absences',
                   icon: Icons.event_busy_outlined,
@@ -180,14 +193,14 @@ class SettingsScreen extends ConsumerWidget {
               // row above, which had to ask the server because a delegated
               // manager holds no role that says so.
               //
-              // PROVISIONAL PLACEMENT. This is a team-admin screen and it
-              // belongs behind the Team group, next to members, invites and
-              // roles — except that group's landing page is the settings FORM
-              // and has no links onward, so those three screens are reachable
-              // only by URL today. Rather than add a fourth unreachable
-              // screen, this row is its door until that hub exists; the task
-              // that builds it absorbs this row.
-              if (ref.watch(canProvider('services.manage')))
+              // On the root and NOT behind the Team group, and that is now a
+              // reason rather than a stopgap (EE-271 corrected the comment
+              // that called it provisional): the group's hub does link onward
+              // since EE-042 — members, invites, roles, units, shared — but it
+              // opens only for a team ADMIN, and this verb (like every row
+              // below it) is granted by role to people who are not one. Moved
+              // behind the group, the catalogue's owner would lose the door.
+              if (may('services.manage'))
                 _GroupRow(
                   keyName: 'settings-group-services',
                   icon: Icons.support_agent_outlined,
@@ -199,7 +212,7 @@ class SettingsScreen extends ConsumerWidget {
               // verb itself — `sla.manage` is a plain role-based permission,
               // so `canProvider` is the honest gate and an admin who lacks it
               // sees no door rather than a forbidden one.
-              if (ref.watch(canProvider('sla.manage')))
+              if (may('sla.manage'))
                 _GroupRow(
                   keyName: 'settings-group-sla',
                   icon: Icons.gavel_outlined,
@@ -211,7 +224,7 @@ class SettingsScreen extends ConsumerWidget {
               // row above — `portal.manage_links` is a plain role permission,
               // so an admin who lacks it sees no door rather than a forbidden
               // one.
-              if (ref.watch(canProvider('portal.manage_links')))
+              if (may('portal.manage_links'))
                 _GroupRow(
                   keyName: 'settings-group-portal',
                   icon: Icons.add_link,
@@ -222,7 +235,7 @@ class SettingsScreen extends ConsumerWidget {
               // EE-111: the team's AI keys and the personal-key policy. Same
               // gate shape as the two rows above — a permission, not an
               // entitlement, so the door is absent rather than forbidden.
-              if (ref.watch(canProvider('team.manage_ai_keys')))
+              if (may('team.manage_ai_keys'))
                 _GroupRow(
                   keyName: 'settings-group-team-ai',
                   icon: Icons.vpn_key_outlined,
@@ -233,7 +246,7 @@ class SettingsScreen extends ConsumerWidget {
               // OPH-287: the team's identity sources. Same gate shape as the
               // rows above — a permission, not an entitlement, so the door is
               // absent rather than forbidden for somebody who cannot use it.
-              if (ref.watch(canProvider('team.manage_identity')))
+              if (may('team.manage_identity'))
                 _GroupRow(
                   keyName: 'settings-group-team-identity',
                   icon: Icons.account_tree_outlined,
@@ -245,7 +258,7 @@ class SettingsScreen extends ConsumerWidget {
               // this existed every team's notifications left through the
               // operator's server; now a team that has not filled this in
               // sends nothing, so the row has to be findable.
-              if (ref.watch(canProvider('team.manage_mail')))
+              if (may('team.manage_mail'))
                 _GroupRow(
                   keyName: 'settings-group-team-mail',
                   icon: Icons.outgoing_mail,
@@ -257,7 +270,7 @@ class SettingsScreen extends ConsumerWidget {
               // Beside the mail relay on purpose — both answer "where does
               // what happens here end up", one for people and one for the
               // systems a company already runs.
-              if (ref.watch(canProvider('webhooks.manage')))
+              if (may('webhooks.manage'))
                 _GroupRow(
                   keyName: 'settings-group-team-webhooks',
                   icon: Icons.webhook_outlined,
@@ -269,7 +282,7 @@ class SettingsScreen extends ConsumerWidget {
               // the verb that lets somebody BE asked — a person who cannot
               // decide can never be named on a row, so the screen would be
               // empty by construction.
-              if (ref.watch(canProvider('approvals.decide')))
+              if (may('approvals.decide'))
                 _GroupRow(
                   keyName: 'settings-group-team-approvals',
                   icon: Icons.how_to_reg_outlined,
@@ -277,25 +290,53 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'ee.approvals.settingsRowHint',
                   path: '/settings/team/approvals',
                 ),
+              // EE-271: the team's audit log (EE-130), which had a screen and
+              // no route. Behind the verb that reads it — the server's own
+              // gate — and, like the rows above, only where teams exist.
+              if (may('team.view_audit'))
+                _GroupRow(
+                  keyName: 'settings-group-team-audit',
+                  icon: Icons.manage_search_outlined,
+                  titleKey: 'settings.group.teamAudit',
+                  subtitleKey: 'settings.group.teamAuditSub',
+                  path: '/settings/team/audit',
+                ),
               // EE-077: the notification centre and its preferences. Gated
               // the same way the assignments row is — by the REPLICA's own
               // roster — so it is right offline and simply absent on a plain
               // build, with no entitlement check to get wrong.
-              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+              //
+              // EE-271: its own key and its own name. It used to borrow the
+              // device group's — the same key, "Notifications", "Centre and
+              // preferences" — so a person in a team saw two identical rows
+              // going to two different places, and a test could not tell them
+              // apart. This one is what OTHER PEOPLE did; the device group
+              // above is what this phone rings for.
+              if (inTeam)
                 _GroupRow(
-                  keyName: 'settings-group-notifications',
-                  icon: Icons.notifications_active_outlined,
-                  titleKey: 'settings.group.notifications',
-                  subtitleKey: 'settings.group.notificationsSub',
+                  keyName: 'settings-group-team-notifications',
+                  icon: Icons.forum_outlined,
+                  titleKey: 'settings.group.teamNotifications',
+                  subtitleKey: 'settings.group.teamNotificationsSub',
                   path: '/notifications',
                   trailing: const AwNotificationBadge(),
+                ),
+              // EE-271: the unit's meetings (EE-115's screen had a route and
+              // no door). Anyone in a team, where the instance has meetings.
+              if (inTeam && ref.watch(eeFeatureProvider('meetings')))
+                _GroupRow(
+                  keyName: 'settings-group-meetings',
+                  icon: Icons.record_voice_over_outlined,
+                  titleKey: 'settings.group.meetings',
+                  subtitleKey: 'settings.group.meetingsSub',
+                  path: '/meetings',
                 ),
               // EE-068: "assigned to me". Shown to anyone whose workspace has
               // a roster — being given work is not an admin act, and the
               // person most likely to want this list is the one with the
               // fewest other team rows. The test is the REPLICA's own data,
               // so it is right offline and absent on a plain build.
-              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+              if (inTeam)
                 _GroupRow(
                   keyName: 'settings-group-assignments',
                   icon: Icons.assignment_ind_outlined,
@@ -670,6 +711,22 @@ class SettingsNotificationsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/settings/alarm-log'),
             ),
+            // EE-271: what OTHER PEOPLE's actions may send — a different
+            // thing from what this phone rings for, and kept on its own
+            // screen for the router's reason ("turn these off" must not be
+            // ambiguous). Linked from here because this page is where
+            // somebody looking for notification settings looks first; the
+            // guide sent them to a screen with no door. Team-only, by the
+            // replica's roster.
+            if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+              ListTile(
+                key: const Key('settings-team-notification-prefs'),
+                leading: const Icon(Icons.forum_outlined),
+                title: Text('settings.teamNotificationPrefs'.tr()),
+                subtitle: Text('settings.teamNotificationPrefsSub'.tr()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/settings/team/notifications'),
+              ),
           ],
         ),
       ),

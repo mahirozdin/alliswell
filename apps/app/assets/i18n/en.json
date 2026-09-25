@@ -185,7 +185,13 @@
       "teamIdentity": "Identity sources",
       "teamIdentitySub": "Sign in with the company's own directory, and single sign-on",
       "absences": "Absences",
-      "absencesSub": "Your days away, and who is on call"
+      "absencesSub": "Your days away, and who is on call",
+      "teamNotifications": "Team notifications",
+      "teamNotificationsSub": "What others did: requests, approvals, assignments",
+      "meetings": "Meetings",
+      "meetingsSub": "Your unit's meeting notes and decisions",
+      "teamAudit": "Audit log",
+      "teamAuditSub": "Who changed what in the team, and when"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -199,7 +205,9 @@
       "compactSub": "Tighter rows, more tasks at a glance",
       "private": "Private widget",
       "privateSub": "Hide task titles on your home-screen and lock-screen widgets — they never leave the app"
-    }
+    },
+    "teamNotificationPrefs": "Team notifications",
+    "teamNotificationPrefsSub": "How other people's actions reach you: in the app, by e-mail, on the phone"
   },
   "shell": {
     "fabNewTask": "New task with options",
@@ -1992,7 +2000,8 @@
           "rejected": "Your approval request was rejected",
           "expired": "Your approval request expired undecided"
         }
-      }
+      },
+      "openPrefs": "Notification preferences"
     },
     "tickets": {
       "queueTitle": "Requests",
@@ -2194,7 +2203,7 @@
         "send": "Send request",
         "saveDraft": "Save as draft",
         "offline": "No connection — the request is kept on this phone as a draft and sent by itself when the signal returns.",
-        "draftCarries": "A draft carries the subject, the description and the service; the form’s extra questions and the on-behalf field do not travel with it.",
+        "draftCarries": "A draft carries the subject, the description, the service and the asset; the form’s extra questions and the on-behalf field do not travel with it.",
         "draftMultiUnit": "Several units answer this service and a draft cannot name one: the desk holds the draft until a unit is chosen.",
         "noDraftHome": "There is no personal space on this device to keep a draft in; try again when the signal returns.",
         "missing": "Missing before it can be sent: {fields}",
@@ -2203,7 +2212,15 @@
         "drafted": "Draft saved — it will be sent when the signal returns",
         "followUpNote": "You are following up on {ref}, which is closed. The desk can link the two.",
         "followUpBody": "Follows up on #{number}: {subject}",
-        "followUpBodyNoNumber": "Follows up on: {subject}"
+        "followUpBodyNoNumber": "Follows up on: {subject}",
+        "asset": "Asset",
+        "assetPick": "About a machine? Pick it",
+        "assetHelp": "Optional — if you pick one, the request counts in that machine's history",
+        "assetClear": "Remove the asset",
+        "assetPickTitle": "Which machine?",
+        "assetSearch": "Tag, name or place",
+        "assetNoneOnDevice": "This unit has no assets on this device. You can also scan the machine's label and open a request from its card.",
+        "assetNoMatch": "No machine matches this search."
       },
       "drafts": {
         "title": "Drafts",
@@ -2723,7 +2740,9 @@
         "model": "Model",
         "warranty": "Warranty until",
         "calibration": "Calibration due",
-        "supplier": "Supplier"
+        "supplier": "Supplier",
+        "purchased": "Purchased",
+        "purchaseCost": "Purchase price"
       },
       "history": {
         "title": "Requests about this asset",
@@ -3015,6 +3034,14 @@
       "stripBreached": "Your other units: {breached} SLA missed",
       "stripWarned": "Your other units: {warned} SLA due soon",
       "stripAll": "See all"
+    },
+    "meetings": {
+      "title": "Meetings",
+      "offline": "Meetings need a connection",
+      "offlineBody": "Meeting notes are kept on the server; the list opens when you are back online.",
+      "empty": "No meeting notes in this unit yet",
+      "emptyBody": "When a meeting's recording is uploaded, its summary and decisions appear here.",
+      "counts": "{decisions} decisions · {ideas} ideas"
     }
   },
   "perm": {

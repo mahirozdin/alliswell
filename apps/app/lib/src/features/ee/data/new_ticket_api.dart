@@ -238,6 +238,7 @@ class EeNewTicketApi {
     String? requesterName,
     String? requesterEmail,
     List<String> openedArticleIds = const [],
+    String? assetId,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -253,6 +254,9 @@ class EeNewTicketApi {
           // EE-226: answers read before asking anyway — the server counts
           // them as suggested AND converted, so reading did not deflect.
           if (openedArticleIds.isNotEmpty) 'openedArticleIds': openedArticleIds,
+          // EE-271: the machine it is about, linked by the server in the
+          // request's own transaction.
+          'assetId': ?assetId,
         },
       );
       final data = response.data ?? const <String, dynamic>{};

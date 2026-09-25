@@ -87,10 +87,12 @@ class _FakeApi extends Fake implements EeNewTicketApi {
     String? requesterName,
     String? requesterEmail,
     List<String> openedArticleIds = const [],
+    String? assetId,
   }) async {
     if (failWith != null) throw failWith!;
     created.add({
       if (openedArticleIds.isNotEmpty) 'openedArticleIds': openedArticleIds,
+      'assetId': ?assetId,
       'serviceId': serviceId,
       'subject': subject,
       'body': body,
@@ -144,12 +146,14 @@ class _FakeDrafts extends Fake implements TicketDraftStore {
     required String subject,
     String? body,
     String? serviceId,
+    String? assetId,
   }) async {
     written.add({
       'workspaceId': workspaceId,
       'subject': subject,
       'body': body,
       'serviceId': serviceId,
+      'assetId': ?assetId,
     });
     return 'D-1';
   }
@@ -174,6 +178,7 @@ void main() {
     bool mayActForOthers = false,
     String? home = 'W-OWN',
     bool offline = false,
+    EeTicketAsset? asset,
   }) async {
     container = ProviderContainer(
       overrides: <Override>[
@@ -206,7 +211,7 @@ void main() {
                 child: TextButton(
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const EeNewTicketScreen(),
+                      builder: (_) => EeNewTicketScreen(asset: asset),
                     ),
                   ),
                   child: const Text('open'),
@@ -632,5 +637,31 @@ void main() {
         expect(kb.deflected, isEmpty);
       },
     );
+  });
+
+  testWidgets('AW-E26: opened from a machine card, the request names the '
+      'machine, and the server is asked to link it', (tester) async {
+    await pumpForm(
+      tester,
+      asset: const EeTicketAsset(
+        id: 'A-PRESS',
+        tag: 'PRS-250',
+        name: 'Hidrolik pres',
+      ),
+    );
+    // The machine is on the form before anything is typed — the field a
+    // card fills, shown even to somebody the register is not offered to.
+    expect(
+      find.descendant(
+        of: key('new-ticket-asset'),
+        matching: find.text('PRS-250 · Hidrolik pres'),
+      ),
+      findsOneWidget,
+    );
+    await pick(tester, 'S-PRINT');
+    await tester.enterText(key('new-ticket-subject'), 'Pres yağ kaçırıyor');
+    await send(tester);
+    expect(api.created.single['assetId'], 'A-PRESS');
+    expect(api.created.single['serviceId'], 'S-PRINT');
   });
 }

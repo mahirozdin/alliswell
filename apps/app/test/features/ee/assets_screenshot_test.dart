@@ -14,7 +14,10 @@
 //     says at once — the machine's facts, WHERE they came from (this
 //     device's copy, and how old it is), and that the history below needs a
 //     connection. A card that drew the facts and hid the rest would be the old
-//     silence in a nicer frame.
+//     silence in a nicer frame. Since EE-271 it also shows what the guide
+//     promised and the card never drew — when the press was bought and for
+//     how much — and the one thing a technician standing there wants to do:
+//     open a request for it, which works in the basement too (a draft).
 //   • THE REGISTER, OFFLINE, SEARCHED. The unit's machines answer a search
 //     with no server, and the line under them is the whole EE-219 bargain in
 //     one sentence: some records are not kept on this device, and they come
@@ -86,6 +89,9 @@ Map<String, dynamic> _asset(
   String? warrantyUntil,
   String? calibrationDue,
   String? supplier,
+  String? purchasedAt,
+  int? purchaseCostMinor,
+  String? currency,
 }) => {
   'id': id,
   'workspaceId': _ws,
@@ -101,9 +107,9 @@ Map<String, dynamic> _asset(
   'warrantyUntil': warrantyUntil,
   'calibrationDue': calibrationDue,
   'supplier': supplier,
-  'purchasedAt': null,
-  'purchaseCostMinor': null,
-  'currency': null,
+  'purchasedAt': purchasedAt,
+  'purchaseCostMinor': purchaseCostMinor,
+  'currency': currency,
   'notes': null,
   'revision': 1,
   'createdAt': '2026-06-01T08:00:00.000Z',
@@ -147,6 +153,9 @@ void main() {
             warrantyUntil: '2028-06-30',
             calibrationDue: '2026-11-15',
             supplier: tr ? 'Anadolu Makina Ltd.' : 'Anatolia Machinery Ltd.',
+            purchasedAt: '2021-04-12',
+            purchaseCostMinor: 184500000,
+            currency: 'TRY',
           ),
         ),
         SyncChange(
@@ -223,7 +232,9 @@ void main() {
       ),
     ),
     eeFeatureProvider.overrideWith((ref, name) => true),
-    canProvider.overrideWith((ref, id) => false),
+    // A field technician: may file a request, may not edit the register —
+    // so the card shows EE-271's button and not the pencil.
+    canProvider.overrideWith((ref, id) => id == 'tickets.create'),
     serverReachabilityProvider.overrideWith(_Offline.new),
     eeAssetsApiProvider.overrideWithValue(
       EeAssetsApi(Dio()..httpClientAdapter = _NoSignal()),
@@ -238,7 +249,7 @@ void main() {
         tester,
         brightness: brightness,
         name: 'ee-asset-card-offline',
-        size: const Size(900, 1400),
+        size: const Size(900, 1700),
         overrides: overrides(),
         screen: const EeAssetDetailScreen(assetId: _press),
       );

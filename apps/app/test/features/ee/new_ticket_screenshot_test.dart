@@ -15,7 +15,9 @@
 //     is of a desk that decided what to ask, not of a free-text box.
 //   • OFFLINE, the same form: it says the request will wait on the phone and
 //     what a draft can carry, and its button says "save as draft". A form
-//     that went grey instead would be the old answer to no signal.
+//     that went grey instead would be the old answer to no signal. Opened
+//     from the compressor's card (EE-271), so the machine is already in its
+//     asset field — the draft carries it to the desk (EE-281).
 //
 // Two of EE-226, the answer that may already be written: the form with the
 // desk's answers under a subject being typed, and one of them opened — the
@@ -183,7 +185,15 @@ void main() {
             if (offline)
               serverReachabilityProvider.overrideWith(_Unreachable.new),
           ],
-          screen: const EeNewTicketScreen(),
+          screen: EeNewTicketScreen(
+            asset: offline
+                ? EeTicketAsset(
+                    id: 'A-KMP',
+                    tag: 'KMP-3',
+                    name: turkish ? 'Vidalı kompresör' : 'Screw compressor',
+                  )
+                : null,
+          ),
           afterPump: (t) async {
             await t.tap(find.byKey(const Key('new-ticket-service')));
             await t.pumpAndSettle();

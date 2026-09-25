@@ -45,11 +45,18 @@ class TicketDraftStore {
   /// may not know which service it files under, and the catalogue may not even
   /// be on the device. A draft with no service is KEPT — the server holds it
   /// unsent instead of refusing it, and it converts the moment they pick one.
+  ///
+  /// `assetId` (EE-281) is the machine it was written about, when it was
+  /// written from a machine's card — the case this store exists for, since
+  /// that card opens in a basement (EE-238). The server links it when the
+  /// draft becomes a request, or leaves it behind if the machine is no longer
+  /// the team's; either way the report itself arrives.
   Future<String> write({
     required String workspaceId,
     required String subject,
     String? body,
     String? serviceId,
+    String? assetId,
   }) async {
     final id = newUlid();
     final now = DateTime.now().toUtc();
@@ -65,6 +72,7 @@ class TicketDraftStore {
               subject: Value(subject),
               body: Value(body),
               serviceId: Value(serviceId),
+              assetId: Value(assetId),
               createdAt: Value(now),
               updatedAt: Value(now),
             ),
@@ -75,7 +83,12 @@ class TicketDraftStore {
         entityType: 'ee_ticket_draft',
         entityId: id,
         operation: 'create',
-        patch: {'subject': subject, 'body': ?body, 'serviceId': ?serviceId},
+        patch: {
+          'subject': subject,
+          'body': ?body,
+          'serviceId': ?serviceId,
+          'assetId': ?assetId,
+        },
       );
     });
     _poke();
