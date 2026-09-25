@@ -66,6 +66,34 @@ jobs:
           node-version: 22
           cache: npm
 
+      # OPH-345: the overlay's own CI decides whether it ships. The core half of
+      # this deploy already passed release.yml's gate; the overlay was fetched
+      # from whatever DEPLOY_OVERLAY_REF pointed at, and nothing asked whether
+      # that commit's CI had passed — its repository cannot require it (branch
+      # protection is a plan feature there), so this is the last gate. The ref
+      # is resolved to ONE commit here, that commit's run of the overlay's CI
+      # workflow must have passed, and the server is handed that commit rather
+      # than the ref, which may move in between. Not green (red, still running,
+      # never run, or unreadable) stops the job here, with the reason in the
+      # job summary.
+      #
+      # First, before any build: a deploy that is going to stop should stop in
+      # seconds, not after the bundles. The script is read from the workflow's
+      # own commit, not from the tag being deployed: a hand-run redeploy of an
+      # older tag meets the gate this file promises instead of failing on a
+      # file that tag never had.
+      - name: Check the overlay's CI
+        id: overlay_ci
+        if: env.OVERLAY_REPO != ''
+        env:
+          OVERLAY_TOKEN: ${{ secrets.DEPLOY_OVERLAY_TOKEN }}
+          OVERLAY_CI_WORKFLOW: ${{ vars.DEPLOY_OVERLAY_CI_WORKFLOW || 'EE CI' }}
+          WORKFLOW_SHA: ${{ github.workflow_sha }}
+        run: |
+          git fetch --quiet --depth=1 origin "$WORKFLOW_SHA"
+          git show "$WORKFLOW_SHA:scripts/deploy/overlay-ci.mjs" > "$RUNNER_TEMP/overlay-ci.mjs"
+          node "$RUNNER_TEMP/overlay-ci.mjs"
+
       # The API base URL is compiled INTO the bundle, so production needs its
       # own build — the release artifact is the generic one.
       #
@@ -167,7 +195,7 @@ jobs:
           # no longer empties anything, and stays as the shape check it is.
           case "$merged" in *=*) : ;; *) merged="" ;; esac
           emit OVERLAY_ENV_B64 "$merged"
-          echo "overlay: $OVERLAY_REPO@$OVERLAY_REF"
+          echo "overlay: $OVERLAY_REPO@$OVERLAY_REF → ${{ steps.overlay_ci.outputs.sha }} (its CI passed)"
           [ -n "$OVERLAY_LICENSE" ] || echo "::warning::secrets.DEPLOY_OVERLAY_LICENSE is empty — the overlay will load, but without entitlements it behaves like the plain build"
 
       # Everything that touches the server runs as ONE script, so a failure
@@ -176,7 +204,7 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' CORE_URL='$CORE_URL' CORE_TOKEN_B64='$CORE_TOKEN_B64' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' OVERLAY_REPO='$OVERLAY_REPO' OVERLAY_REF='$OVERLAY_REF' OVERLAY_TOKEN_B64='$OVERLAY_TOKEN_B64' OVERLAY_LICENSE_B64='$OVERLAY_LICENSE_B64' OVERLAY_ENV_B64='$OVERLAY_ENV_B64' bash -euo pipefail" <<'REMOTE'
+            "APP_DIR='$APP_DIR' PM2_APP='$PM2_APP' TAG='$DEPLOY_REF' CORE_URL='$CORE_URL' CORE_TOKEN_B64='$CORE_TOKEN_B64' DEPLOY_NODE_PATH='${{ vars.DEPLOY_NODE_PATH }}' OVERLAY_REPO='$OVERLAY_REPO' OVERLAY_REF='$OVERLAY_REF' OVERLAY_SHA='${{ steps.overlay_ci.outputs.sha }}' OVERLAY_TOKEN_B64='$OVERLAY_TOKEN_B64' OVERLAY_LICENSE_B64='$OVERLAY_LICENSE_B64' OVERLAY_ENV_B64='$OVERLAY_ENV_B64' bash -euo pipefail" <<'REMOTE'
           cd "$APP_DIR"
 
           # A non-interactive SSH session sources no login profile, and panels
@@ -413,14 +441,24 @@ jobs:
             git -C "$OVERLAY_DIR" fetch --quiet --tags --force --prune "$AUTH_URL" \
               "+refs/heads/*:refs/remotes/origin/*"
             unset TOKEN AUTH_URL
-            # A ref may be a tag or a branch. Resolve it once, then move to the
-            # exact commit — `checkout <branch>` would leave the tree tracking a
-            # branch whose next commit lands unannounced on the next restart.
-            if ! SHA=$(git -C "$OVERLAY_DIR" rev-parse --verify --quiet "refs/tags/$OVERLAY_REF^{commit}"); then
-              SHA=$(git -C "$OVERLAY_DIR" rev-parse --verify --quiet "refs/remotes/origin/$OVERLAY_REF^{commit}") || {
-                echo "ERROR: overlay ref '$OVERLAY_REF' is neither a tag nor a branch on $OVERLAY_REPO." >&2
-                exit 1
-              }
+            # OPH-345: the commit the job CHECKED, not the ref resolved again. A
+            # branch can move between that check and this line, and what ships
+            # is what was checked. An exact commit, too — `checkout <branch>`
+            # would leave the tree tracking a branch whose next commit lands
+            # unannounced on the next restart. No checked commit, no overlay:
+            # there is no path from here that ships one nobody vouched for.
+            SHA="${OVERLAY_SHA:-}"
+            [ -n "$SHA" ] || { echo "ERROR: no checked overlay commit reached the server — refusing to deploy an overlay nobody checked (OPH-345)." >&2; exit 1; }
+            git -C "$OVERLAY_DIR" cat-file -e "$SHA^{commit}" 2>/dev/null || {
+              echo "ERROR: the checked overlay commit $SHA is not on the server after the fetch." >&2
+              exit 1
+            }
+            # Said, not refused: the ref moving after the check is the race this
+            # hand-off closes, and the operator should know it happened.
+            NOW=$(git -C "$OVERLAY_DIR" rev-parse --verify --quiet "refs/tags/$OVERLAY_REF^{commit}" \
+              || git -C "$OVERLAY_DIR" rev-parse --verify --quiet "refs/remotes/origin/$OVERLAY_REF^{commit}" || true)
+            if [ -n "$NOW" ] && [ "$NOW" != "$SHA" ]; then
+              echo "::warning::overlay ref '$OVERLAY_REF' moved to $NOW after its CI was checked — deploying the checked commit $SHA"
             fi
             git -C "$OVERLAY_DIR" checkout -f --quiet "$SHA"
             echo "overlay: $OVERLAY_REPO@$OVERLAY_REF → $(git -C "$OVERLAY_DIR" describe --tags --always)"

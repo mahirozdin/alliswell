@@ -11804,22 +11804,37 @@ yalnız MySQL ve Redis'e bakar; uzantının durumunu yalnız oturumlu `/ee/statu
 - **Yüzey (kural 12):** yok (replika).
 - ⚠️ **Çift kapanış:** ↔ `EE-258` (uzantı kaydı: kolonların okuyucusu).
 
-### OPH-345 — Dağıtım, uzantının CI'ı yeşil olmayan commit'ini yayınlamaz
+### OPH-345 — Dağıtım, uzantının CI'ı yeşil olmayan commit'ini yayınlamaz ✅ 2026-09-25
 
 **Bağlam:** `deploy.yml` isteğe bağlı uzantıyı `OVERLAY_REF` (varsayılan `main`) ile çekiyor
 ve o commit'in CI sonucuna bakmıyor (`.github/workflows/deploy.yml:42-50,127-146`);
 çekirdeğin kendisi sürümde CI'dan geçiyor (`release.yml` `gate`). Uzantı deposunda branch
 koruması planın izin vermediği bir ayar (403) — dağıtım son kapıdır.
 
-- [ ] `scripts/deploy/overlay-ci.mjs`: ref → SHA; o SHA'nın kontrol sonuçları (API, uzantı
+- [x] `scripts/deploy/overlay-ci.mjs`: ref → SHA; o SHA'nın kontrol sonuçları (API, uzantı
       token'ı) → yeşil / kırmızı / bekliyor / yok. Karar mantığı saf ve birim testli
-      (fixture JSON'larla).
-- [ ] `deploy.yml`: uzantı çekilmeden önce betik; yeşil değilse iş durur ve nedenini yazar;
-      SHA dağıtım özetine yazılır.
-- [ ] `DEPLOY_OVERLAY_TOKEN`'ın gereken okuma izni belgede.
+      (fixture JSON'larla). — `GET commits/:ref` → SHA, `GET actions/runs?head_sha=` → koşular.
+      Adı `DEPLOY_OVERLAY_CI_WORKFLOW` (varsayılan `EE CI`) olan iş akışının **en yeni** koşusu
+      karar veriyor; başka bir iş akışı kapıyı açamıyor. Jetonun koşuları okuyamaması ayrı bir
+      hata: izin adıyla söyleniyor, "CI yok" diye okunmuyor. Bağımlılık yok: iş akışı betiği
+      kendi commit'inden okuyor. Fixture'lar `apps/api/test/fixtures/overlay-ci/`.
+- [x] `deploy.yml`: uzantı çekilmeden önce betik; yeşil değilse iş durur ve nedenini yazar;
+      SHA dağıtım özetine yazılır. — "Check the overlay's CI" adımı derlemelerden **önce**
+      (duracak bir dağıtım saniyeler içinde duruyor). Betik `github.workflow_sha`'dan okunuyor;
+      elle yeniden dağıtılan eski bir etiket de kapıdan geçiyor. Sunucuya ref değil
+      **denetlenen SHA** gidiyor (`OVERLAY_SHA`), sunucu onsuz katman kurmayı reddediyor. Ref
+      arada ilerlediyse bir uyarı basılıyor, ama kurulan denetlenen commit. Özet ve hatalar
+      deponun adını yazmıyor: `DEPLOY_OVERLAY_REPO` bir secret, public Actions sayfalarında
+      görünmesin diye (koşu URL'si de adı taşıdığı için yazılmıyor).
+- [x] `DEPLOY_OVERLAY_TOKEN`'ın gereken okuma izni belgede. — Contents: Read + **Actions:
+      Read** (klasik: `repo`); betiğin başlığında ve uzantının dağıtım belgesinde.
 - **Kabul:** kırmızı / bekleyen / yok / yeşil dört vaka birim testli; iş akışı sözdizimi
   geçerli.
-- **Doğrulama:** API unit (vitest, betik); `actionlint` varsa.
+- **Doğrulama:** API unit (vitest, betik); `actionlint` varsa. — **Ölçüldü:**
+  `deploy-overlay-ci.test.js` 15 test: dört karar, en yeni koşu, yalnız adı geçen iş akışı,
+  jeton hatası, eksik ref, katmansız dağıtım, özetin gizliliği. Ayrıca `deploy.yml`'in
+  sözleşmesi: adımın yeri, SHA'nın sunucuya gidişi, sunucunun ref'i yeniden çözmemesi.
+  `actionlint` (sandbox, resmi imaj) `deploy.yml`'de temiz. Enjeksiyon (9) STATE'te.
 - **Yüzey (kural 12):** yok (CI).
 - ⚠️ **Çift kapanış:** ↔ `EE-263` (uzantı kaydı: kendi CI'ının adı ve branch korumasının
   belgesi).

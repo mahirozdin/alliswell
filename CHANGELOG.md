@@ -153,6 +153,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Changed
 
+- **A deploy no longer ships an extension commit whose own CI has not passed
+  (OPH-345).** The core half of a release only reaches a server through the
+  release gate; the extension half was fetched from whatever its ref pointed
+  at. Now the deploy resolves that ref to one commit first, before any build,
+  and continues only if that commit's run of the extension's CI workflow
+  (`DEPLOY_OVERLAY_CI_WORKFLOW`, default `EE CI`) succeeded — a red, still
+  running, never run or unreadable result stops it, with the reason in the
+  job summary. The server is then handed that exact commit, not the ref, so
+  what was checked is what ships. **Operators:** the extension token
+  (`DEPLOY_OVERLAY_TOKEN`) now needs to read Actions runs as well as contents
+  (fine-grained: Actions + Contents, read-only; classic: `repo`); without it
+  the deploy stops and says so.
+
 - **A server whose extension cannot be served now refuses, instead of serving
   the plain build's rules (OPH-343, ADR-0041).** An extension brings its own
   rules — who may delete what, which writes a device may push. Until now, if
